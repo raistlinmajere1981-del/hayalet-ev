@@ -1,0 +1,57 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Electron
+dist/
+dist-electron/
+out/
+build/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Archives (user data - should not be in git)
+archives/
+
+# Commands (runtime data)
+commands/
+
+# Settings (may contain sensitive data)
+settings.json
+
+# Google Drive credentials
+googledrive-credentials.json
+token.json
+
+# Screenshots
+screenshots/
+*.png
+*.jpg
+*.jpeg
+!src/assets/*.png
+!src/assets/*.jpg
+!src/assets/*.jpeg

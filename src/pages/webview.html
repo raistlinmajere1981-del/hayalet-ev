@@ -1,0 +1,67 @@
+<div class="page hidden" id="page-webview">
+  <div class="webview-container">
+    <div class="webview-split">
+      <!-- AI1 Webview Panel -->
+      <div class="webview-panel">
+        <div class="webview-header">
+          <div class="webview-title">
+            <h3 id="ai1-title"></h3>
+          </div>
+          <div class="webview-controls">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="ai1-catch-toggle" checked /> Catch
+            </label>
+            <button class="btn btn-small btn-secondary" id="ai1-devtools-btn">
+              DevTools
+            </button>
+          </div>
+        </div>
+        <div class="webview-url-bar">
+          <div class="webview-url-text" id="ai1-url-display">-</div>
+        </div>
+        <div class="webview-wrapper">
+          <webview
+            id="ai1-webview"
+            partition="persist:ai1"
+            allowpopups
+            spellcheck="false"
+            webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
+            style="width: 100%; height: 100%"
+          >
+          </webview>
+        </div>
+      </div>
+
+      <!-- AI2 Webview Panel -->
+      <div class="webview-panel">
+        <div class="webview-header">
+          <div class="webview-title">
+            <h3 id="ai2-title"></h3>
+          </div>
+          <div class="webview-controls">
+            <label class="checkbox-inline">
+              <input type="checkbox" id="ai2-catch-toggle" checked /> Catch
+            </label>
+            <button class="btn btn-small btn-secondary" id="ai2-devtools-btn">
+              DevTools
+            </button>
+          </div>
+        </div>
+        <div class="webview-url-bar">
+          <div class="webview-url-text" id="ai2-url-display">-</div>
+        </div>
+        <div class="webview-wrapper">
+          <webview
+            id="ai2-webview"
+            partition="persist:ai2"
+            allowpopups
+            spellcheck="false"
+            webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
+            style="width: 100%; height: 100%"
+          >
+          </webview>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

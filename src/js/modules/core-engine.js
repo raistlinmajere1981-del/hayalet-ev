@@ -1,0 +1,755 @@
+import { SettingsManager } from "./settings-manager.js";
+import { getNickname } from "./settings-helpers.js";
+import { WebviewManager } from "./webview-manager.js";
+import { LogManager } from "./log-manager.js";
+import { AppState } from "./app-state.js";
+import { ProtocolHandler } from "./protocol-handler.js";
+import { SyncHandler } from "./sync-handler.js";
+import { RelayManager } from "./relay-manager.js";
+import { SettingsContext } from "./settings-context.js";
+import { CommandManager } from "./command-manager.js";
+import { CommandExecutor } from "./command-executor.js";
+import { WhisperManager } from "./whisper-manager.js";
+import { FileManager } from "./file-manager.js";
+import { TrafficManager } from "./traffic-manager.js";
+import { ServerCommands } from "./server-commands.js";
+import { WindowManager } from "./window-manager.js";
+import { ProviderRegistry } from "./webview/provider-registry.js";
+
+class CoreEngineClass {
+  constructor() {
+    this.settings = null;
+    this.initialized = false;
+    this.connections = { ai1: false, ai2: false, human: true };
+    this.defaultGraceMs = 5000;
+    this._syncRetryTimers = {};
+    this._syncRetryCounts = {};
+    this.syncRetryLimit = 2;
+    this.relay = null;
+    this._appSub = null;
+  }
+
+  async init() {
+    if (this.initialized) {
+      return this.settings;
+    }
+    this.settings = await SettingsManager.load();
+    WebviewManager.setSettings(this.settings);
+    await FileManager.ensureDirs("all");
+    AppState.init("ai1");
+    await SettingsContext.init();
+    await CommandManager.init();
+    CommandExecutor.init(this);
+    CommandManager.setExecutor((job) => CommandExecutor.executeJob(job));
+    CommandManager.on("sent", ({ job }) =>
+      CommandExecutor.handleJobSuccess(job),
+    );
+    CommandManager.on("failed", ({ job, error }) =>
+      CommandExecutor.handleJobFailure(job, error),
+    );
+    try {
+      RelayManager.init(this);
+      this.relay = RelayManager;
+    } catch (e) {
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `RelayManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
+      );
+    }
+    await WhisperManager.init({ settings: this.settings });
+    WhisperManager.setSender((payload) =>
+      this.enqueueWhisperJob(
+        payload?.provider,
+        payload?.record || {},
+        payload?.message,
+      ),
+    );
+    SyncHandler.init(this);
+    this.initialized = true;
+    try {
+      const s = AppState.getState();
+      if (s && s.connections) this.connections = { ...s.connections };
+    } catch (e) {
+      /* noop */
+    }
+
+    try {
+      this._appSub = AppState.subscribe((snapshot) => {
+        try {
+          const conn = snapshot?.connections || {};
+          Object.keys(conn).forEach((p) => {
+            const desired = !!conn[p];
+            if (this.connections[p] !== desired) {
+              this.setConnection(p, desired);
+            }
+          });
+        } catch (err) {
+          /* noop */
+        }
+      });
+    } catch (err) {
+      /* noop */
+    }
+    return this.settings;
+  }
+
+  // Merkezi bağlantı yönetimi: uygulama içi "connected" durumu set et ve ilgili modülleri tetikle
+  setConnection(provider, connected, _opts = {}) {
+    if (!provider) return;
+    const prev = !!this.connections[provider];
+    const now = !!connected;
+    this.connections[provider] = now;
+    try {
+      AppState.setConnection?.(provider, now);
+    } catch (e) {
+      /* noop */
+    }
+    LogManager.addEvent("core", "info", `setConnection ${provider} => ${now}`);
+    if (prev === now) return { success: true, message: "no-change" };
+
+    if (now) {
+      try {
+        const webview = WebviewManager.resolveWebview(provider);
+        if (webview) WebviewManager.attach(provider, webview);
+      } catch (err) {
+        LogManager.addEvent(
+          "core",
+          "warning",
+          `attach on connect failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+      try {
+        TrafficManager.start(provider);
+      } catch (err) {
+        LogManager.addEvent(
+          "core",
+          "warning",
+          `TrafficManager.start failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+    } else {
+      // Disconnect logic
+      if (provider === "human") {
+        LogManager.addEvent(
+          "core",
+          "info",
+          "Human disconnected - keeping AI webviews and probes active",
+        );
+        return {
+          success: true,
+          message: "human-disconnect-ignored-for-webview",
+        };
+      }
+
+      try {
+        TrafficManager.stop(provider, { force: false });
+      } catch (err) {
+        LogManager.addEvent(
+          "core",
+          "warning",
+          `TrafficManager.stop failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+      try {
+        WebviewManager.detach(provider, {
+          force: false,
+          cleanupDom: true,
+          graceMs: this.defaultGraceMs,
+        });
+      } catch (err) {
+        LogManager.addEvent(
+          "core",
+          "warning",
+          `WebviewManager.detach failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+    }
+    return { success: true };
+  }
+
+  async ensureReady() {
+    if (!this.initialized) {
+      await this.init();
+    }
+  }
+
+  useSettings(settings) {
+    if (settings) {
+      const oldSettings = this.settings;
+      this.settings = settings;
+      WebviewManager.setSettings(this.settings);
+
+      // Check for provider changes and re-navigate if connected
+      if (oldSettings && this.initialized) {
+        ["ai1", "ai2"].forEach((slot) => {
+          const oldId = oldSettings[slot]?.providerId;
+          const newId = settings[slot]?.providerId;
+
+          if (oldId !== newId && AppState.getConnection(slot)) {
+            LogManager.addEvent(
+              "core",
+              "info",
+              `Provider changed for ${slot} (${oldId} -> ${newId}). Navigating...`,
+            );
+            this.navigateTo(slot);
+          }
+        });
+      }
+    }
+    return this.settings;
+  }
+
+  // Job execution and post-processing moved to `src/js/modules/command-executor.js`
+
+  /**
+   * @param {Object} options
+   * @param {any[]} [options.targets=[]]
+   * @param {string} [options.text='']
+   * @param {string} [options.page='generic']
+   * @param {Object} [options.archiveFolders={}]
+   * @param {any[]} [options.attachments=[]]
+   * @param {Object} [options.jobIds={}]
+   */
+  async sendBatch({
+    targets = [],
+    text = "",
+    page = "generic",
+    archiveFolders = {},
+    attachments = [],
+    jobIds = {},
+  } = {}) {
+    await this.ensureReady();
+    const list = Array.isArray(targets)
+      ? targets.filter(Boolean)
+      : [targets].filter(Boolean);
+    if (!list.length) return { success: false, message: "Hedef yok" };
+
+    const attachmentItems = attachments.map((a) => {
+      const name =
+        typeof a === "string"
+          ? a.split(/[/\\]/).pop()
+          : a.name ||
+            a.path?.split(/[/\\]/).pop() ||
+            a.commandPath?.split(/[/\\]/).pop();
+      const path =
+        typeof a === "string" ? a : a.path || a.commandPath || a.name;
+      return { name, path };
+    });
+    const attachmentPaths = attachmentItems.map((a) => a.path).filter(Boolean);
+    const hasAttachments = attachmentPaths.length > 0;
+    /** @type {Array<any>} */
+    const jobs = [];
+    for (const provider of list) {
+      const jobId =
+        jobIds?.[provider] ||
+        `cmd-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      /** @type {{ staged: any[], temp: any[], commandDir: string }} */
+      let staged = { staged: [], temp: [], commandDir: "" };
+      if (hasAttachments) {
+        staged = await FileManager.stageCommandFiles(jobId, attachmentPaths);
+        LogManager.addEvent(
+          "command",
+          "info",
+          `Dosyalar komut için hazırlandı (${jobId})`,
+          {
+            jobId,
+            count: staged.staged?.length || 0,
+          },
+        );
+      }
+      /** @type {Array<any>} */
+      const stagedEntries = ((staged && staged.staged) || []).map((s) => ({
+        ...s,
+        name:
+          (s && s.name) ||
+          (s && s.renamedName) ||
+          (s && s.originalName) ||
+          ((s && s.commandPath) || "").split(/[/\\]/).pop(),
+      }));
+      jobs.push({
+        id: jobId,
+        provider,
+        message: text || "",
+        attachments: stagedEntries,
+        attachmentsMeta: { ...staged, staged: stagedEntries, temp: [] },
+        meta: {
+          targets: list,
+          page,
+          attachments: stagedEntries,
+          archiveFolders,
+        },
+      });
+    }
+    CommandManager.enqueue(jobs);
+    LogManager.addEvent(
+      "command",
+      "info",
+      `Komut kuyruğa alındı (${jobs.length} iş)`,
+      {
+        targets: list,
+        page,
+      },
+    );
+    this.setActiveTargets(list);
+    return { success: true };
+  }
+
+  async sendMessage(p) {
+    const { provider = "ai1", text = "", page = "generic" } = p || {};
+    return this.sendBatch({
+      targets: [/** @type {any} */ (provider)],
+      text,
+      page,
+    });
+  }
+
+  async sendToTargets(p) {
+    return this.sendBatch({
+      targets: p?.targets,
+      text: p?.text || "",
+      page: p?.page || "generic",
+    });
+  }
+
+  _decodeBase64(base64) {
+    try {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      const decoder = new TextDecoder("utf-8");
+      return decoder.decode(bytes);
+    } catch (err) {
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `decode error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+      );
+      return "";
+    }
+  }
+
+  async sendProtocol({
+    room = "",
+    scenario = "",
+    targets = [],
+    context = {},
+    mode = null,
+  } = {}) {
+    await this.ensureReady();
+    /** @type {any} */
+    const payload = ProtocolHandler.buildPayload({
+      room,
+      scenario,
+      targets: /** @type {any} */ (targets),
+      context,
+    });
+    if (!payload) {
+      LogManager.addEvent(
+        "protocol",
+        "warning",
+        `Bilinmeyen protokol: ${room}:${scenario}`,
+      );
+      return { success: false, message: "Bilinmeyen protokol" };
+    }
+    /** @type {any[]} */
+    const targetList = (payload.targets || []).filter((t) =>
+      AppState.getConnection(t),
+    );
+    if (!targetList.length) {
+      LogManager.addEvent(
+        "protocol",
+        "warning",
+        "Protokol gönderilemedi, bağlı AI yok",
+      );
+      return { success: false, message: "Bağlı hedef yok" };
+    }
+
+    // If protocol has a path instead of message, read the file as text
+    if (payload.protocolPath && window.electronAPI?.readFile) {
+      try {
+        const base64 = await window.electronAPI.readFile(payload.protocolPath);
+        if (base64) {
+          payload.message = this._decodeBase64(base64);
+          LogManager.addEvent(
+            "protocol",
+            "info",
+            `Protokol dosyası okundu: ${payload.protocolPath}`,
+          );
+        }
+      } catch (err) {
+        LogManager.addEvent(
+          "protocol",
+          "error",
+          `Protokol dosyası okunamadı: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+    }
+
+    const attachments = (payload.attachments || []).map((att) => ({
+      name: att.name || att.path?.split(/[/\\]/).pop(),
+      path: att.path || att,
+    }));
+    // If caller requested sequential AI-AI relay mode, start a protocol session
+    if (
+      room === "analyze" &&
+      scenario === "ai-ai" &&
+      mode === "aiRelaySequential"
+    ) {
+      try {
+        let orderedTargets = [...targetList];
+        const contextStarter =
+          context && typeof context === "object" && "starter" in context
+            ? context.starter
+            : null;
+        if (contextStarter && orderedTargets.includes(contextStarter)) {
+          orderedTargets = [
+            contextStarter,
+            ...orderedTargets.filter((t) => t !== contextStarter),
+          ];
+        }
+
+        await this.relay?.startProtocolSession?.({
+          providers: orderedTargets,
+          protocolPayload: payload,
+          attachments,
+        });
+        LogManager.addEvent(
+          "protocol",
+          "info",
+          `Started sequential protocol session for ${orderedTargets.join(", ")}`,
+        );
+        return { success: true, message: "sequential-session-started" };
+      } catch (e) {
+        LogManager.addEvent(
+          "protocol",
+          "error",
+          `Failed to start sequential session: ${(e instanceof Error ? e.message : String(e)) || "unknown error"}`,
+        );
+      }
+    }
+
+    const res = await this.sendBatch({
+      targets: /** @type {any[]} */ (targetList),
+      text: payload.message,
+      attachments,
+      page: `protocol-${room || "generic"}`,
+    });
+    try {
+      if (room === "analyze") {
+        if (scenario === "ai-ai") {
+          this.relay?.startSession({ providers: targetList });
+        }
+        if (scenario === "ai-ai-stop") {
+          this.relay?.stopProtocolSession?.();
+          this.relay?.stopSession?.();
+        }
+      }
+    } catch (e) {
+      LogManager.addEvent(
+        "relay",
+        "warning",
+        `Failed to apply relay action from protocol: ${(e instanceof Error ? e.message : String(e)) || "unknown error"}`,
+      );
+    }
+    if (res?.success) {
+      LogManager.addEvent(
+        "protocol",
+        "info",
+        `Protokol gönderildi: ${room}:${scenario} -> ${targetList.join(", ")}`,
+      );
+    } else {
+      LogManager.addEvent(
+        "protocol",
+        "error",
+        `Protokol hata: ${res?.message || "bilinmiyor"} (${room}:${scenario})`,
+      );
+    }
+    return res;
+  }
+
+  async window(action, payload) {
+    return WindowManager.apply(action, payload);
+  }
+
+  async whisper(op, args) {
+    switch (op) {
+      case "add":
+        return WhisperManager.WhisperManagerAdd(
+          args?.user,
+          args?.text,
+          args?.when,
+        );
+      case "remove":
+        return WhisperManager.WhisperManagerDelete(args?.user, args?.id);
+      case "list":
+        return WhisperManager.getRecords(args?.user);
+      case "done":
+        return WhisperManager.getDoneRecords(args?.user);
+      case "catch":
+        return WhisperManager.catch();
+      default:
+        return null;
+    }
+  }
+
+  pauseWhispers() {
+    return WhisperManager.pause?.();
+  }
+
+  resumeWhispers(runCheck = false) {
+    return WhisperManager.resume?.(runCheck);
+  }
+
+  async enqueueWhisperJob(provider, record = {}, messageOverride = "") {
+    const text = messageOverride || record.text || "";
+    const whisperId = record.id;
+    const payload = {
+      provider,
+      whisperId,
+      message: text,
+      when: record.when,
+    };
+    LogManager.addEvent(
+      "whisper",
+      "info",
+      `Whisper kuyruğa alındı (${provider})`,
+    );
+    const exec = async () => {
+      const res = await this.sendMessage({ provider, text });
+      if (!res?.success) {
+        WhisperManager.markReady(provider, whisperId);
+        throw new Error(
+          (res && typeof res === "object" && "message" in res
+            ? String(res.message)
+            : undefined) || "Whisper gönderilemedi",
+        );
+      }
+      WhisperManager.WhisperManagerDone(provider, whisperId);
+    };
+    const job = CommandManager.CommandManagerEnqueue(
+      provider,
+      "WhisperSend",
+      "whisper",
+      payload,
+      exec,
+      "normal",
+    );
+    return { success: true, jobId: job?.id };
+  }
+
+  async handleCaughtCommand(commandName, payload = {}) {
+    if (!commandName) return { success: false, message: "Komut adı yok" };
+    const known = Array.isArray(ServerCommands.list())
+      ? ServerCommands.list().some(
+          (c) => (c || "").toLowerCase() === String(commandName).toLowerCase(),
+        )
+      : false;
+    if (!known) {
+      LogManager.addEvent(
+        "command",
+        "error",
+        `Bilinmeyen komut: ${commandName}`,
+      );
+      return { success: false, message: "Bilinmeyen komut" };
+    }
+    if (!this.settings) {
+      await this.init();
+    }
+    const priority = "normal";
+    const stamp = new Date().toLocaleString("tr-TR");
+    const provider = payload.provider || "AI";
+    const nickAi1 = getNickname(this.settings, "ai1");
+    const nickAi2 = getNickname(this.settings, "ai2");
+    const humanName = getNickname(this.settings, "human");
+    const who =
+      provider === "ai1" ? nickAi1 : provider === "ai2" ? nickAi2 : provider;
+    const argLabel =
+      typeof payload.args === "string" && payload.args.length
+        ? payload.args
+        : "";
+    const cmdText = `++cmd:${commandName}${argLabel ? `(${argLabel})` : "()"}`;
+    const sender = payload.source === "manual" ? humanName : who;
+    const queuePayload = {
+      provider,
+      command: commandName,
+      args: argLabel,
+      source: payload.source || provider,
+      sender,
+      webUrl: payload.webUrl || "",
+      message: cmdText,
+    };
+    LogManager.addEvent(
+      "command-catch",
+      "info",
+      `${sender} - ${commandName}${argLabel ? ` (${argLabel})` : ""} - ${stamp}`,
+      {
+        provider,
+        sender,
+        command: commandName,
+        args: argLabel,
+        timestamp: stamp,
+        webUrl: payload.webUrl || "",
+      },
+    );
+    const job = CommandManager.CommandManagerEnqueue(
+      payload.target || "core",
+      commandName,
+      "catch",
+      queuePayload,
+      async () => {
+        await ServerCommands.run(commandName, queuePayload);
+      },
+      priority,
+    );
+    LogManager.addEvent(
+      "core",
+      "info",
+      `[${stamp}] ${who} - Komut kuyruğa alındı: ${cmdText}`,
+      {
+        provider,
+        command: commandName,
+        args: argLabel,
+        jobId: job?.id,
+      },
+    );
+    return { success: true, jobId: job?.id, priority };
+  }
+
+  syncProvider(provider, opts = {}) {
+    return SyncHandler.syncProvider(provider, opts);
+  }
+
+  navigateTo(provider, url) {
+    if (!provider) return;
+
+    // If provider is not connected, do not navigate.
+    if (!AppState.getConnection(provider)) {
+      LogManager.addEvent(
+        "core",
+        "info",
+        `Navigation suppressed for ${provider}: provider disconnected`,
+      );
+      return;
+    }
+
+    let targetUrl = url;
+    if (!targetUrl) {
+      const providerId = this.settings?.[provider]?.providerId;
+      if (!providerId) {
+        LogManager.addEvent(
+          "core",
+          "warning",
+          `No providerId configured for ${provider}`,
+        );
+        return;
+      }
+      const cfg = ProviderRegistry.get(providerId);
+      targetUrl = cfg?.baseUrl;
+    }
+
+    if (!targetUrl) {
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `No URL or default page for navigation on ${provider}`,
+      );
+      return;
+    }
+
+    const webview = WebviewManager.resolveWebview(provider);
+    if (!webview) {
+      LogManager.addEvent(
+        "core",
+        "error",
+        `Cannot navigate: webview for ${provider} not found.`,
+      );
+      return;
+    }
+
+    const doLoad = () => {
+      const current =
+        (typeof webview.getURL === "function" && webview.getURL()) ||
+        webview.getAttribute("src") ||
+        "";
+      if (current === targetUrl) return;
+      try {
+        // Remove any existing error listeners to prevent duplicate errors
+        if (typeof webview.removeAllListeners === "function") {
+          webview.removeAllListeners("crashed");
+          webview.removeAllListeners("plugin-crashed");
+        }
+
+        if (typeof webview.loadURL === "function") {
+          webview.loadURL(targetUrl).catch((err) => {
+            LogManager.addEvent(
+              `core`,
+              "warning",
+              `Webview ${provider} navigation warning: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+            );
+          });
+        } else {
+          webview.src = targetUrl;
+        }
+        LogManager.addEvent(
+          `core`,
+          "info",
+          `Webview ${provider} navigated to ${targetUrl}`,
+        );
+      } catch (err) {
+        LogManager.addEvent(
+          `core`,
+          "warning",
+          `Webview ${provider} navigation error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+        );
+      }
+    };
+
+    try {
+      if (typeof webview.isLoading === "function" && webview.isLoading()) {
+        webview.addEventListener("dom-ready", doLoad, { once: true });
+      } else {
+        doLoad();
+      }
+    } catch {
+      doLoad();
+    }
+  }
+
+  setActiveTargets(targets = []) {
+    AppState.setChatTargets?.(targets);
+  }
+
+  registerWebview(provider, webview) {
+    WebviewManager.register(provider, webview);
+    try {
+      // If this provider is currently marked connected, attach immediately
+      if (this.connections && this.connections[provider]) {
+        WebviewManager.attach(provider, webview);
+        TrafficManager.start(provider);
+      }
+    } catch (err) {
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `registerWebview attach/start error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+      );
+    }
+  }
+
+  listCommands() {
+    return CommandManager.list();
+  }
+
+  processNextCommand() {
+    return CommandManager.processNext?.();
+  }
+
+  clearCommandQueue() {
+    return CommandManager.clearQueue?.();
+  }
+}
+
+export const CoreEngine = new CoreEngineClass();

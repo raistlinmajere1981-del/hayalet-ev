@@ -1,0 +1,29 @@
+{
+  "name": "hayalet-ev-plugins",
+  "version": "1.0.0",
+  "description": "Claude Code Plugins for Hayalet-ev: Electron multi-AI chat interface development",
+  "owner": {
+    "name": "Raistlin Majere",
+    "email": "raistlin@hayalet-ev.local"
+  },
+  "plugins": [
+    {
+      "name": "hayalet-ev",
+      "source": "./plugins/hayalet-ev",
+      "description": "Hayalet-ev specific development commands for AI providers and Electron workflows",
+      "category": "development"
+    },
+    {
+      "name": "claude",
+      "source": "./plugins/claude",
+      "description": "Claude Development Plugin That Can Create Commands, Scripts, and Hooks for Claude Code",
+      "category": "development"
+    },
+    {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Comprehensive Git Development Workflows Specializing in Git Operations",
+      "category": "productivity"
+    }
+  ]
+}

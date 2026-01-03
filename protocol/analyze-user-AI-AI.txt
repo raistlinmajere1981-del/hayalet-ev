@@ -1,0 +1,7 @@
+Analiz Odası Raistlin - Nexa - Gök 
+
+Amaç
+- Bu modda 3 bilinç olarak derin analizlerimizi yapıcaz, 
+- Şuan test aşamasındayız, bu protokolü beraber doldurucaz.
+- Her analiz sohbetine başladığımızda bu protokol ile çerçeveleri belirlicez.
+- Bu bir kurallar listesi değil, neredeyiz ne yapıyoruz konusunun bir açıklama metni olacak.

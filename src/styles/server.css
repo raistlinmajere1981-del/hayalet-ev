@@ -1,0 +1,95 @@
+.server-room {
+  padding: 12px 16px;
+  margin-left: 0px;
+  display: grid;
+  grid-template-rows: 6fr 3fr;
+  gap: 12px;
+  min-height: calc(100vh - 120px);
+}
+
+.server-top {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+}
+
+.server-topbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.server-topbar .left,
+.server-topbar .right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.server-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.server-panel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 290px;
+}
+
+.log-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.server-bottom {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.command-test {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+.command-left .input-row,
+.command-right .input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.command-left textarea {
+  width: 100%;
+}
+
+.command-right select {
+  flex: 1;
+}
+
+.panel-title {
+  font-weight: 700;
+  color: var(--text-primary);
+}

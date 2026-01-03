@@ -1,0 +1,75 @@
+.whisper-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 10px 0;
+}
+.whisper-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.whisper-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+.whisper-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px;
+}
+.panel h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.whisper-list {
+  width: 100%;
+  min-height: 200px;
+  max-height: 200px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--text-primary);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.whisper-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.whisper-text {
+  flex: 1;
+  font-size: 13px;
+}
+.whisper-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+}
+.whisper-empty {
+  font-size: 13px;
+  color: var(--text-secondary);
+  opacity: 0.9;
+}

@@ -1,0 +1,309 @@
+.analyze-container {
+  padding: 10px 10px;
+}
+.analyze-wrapper {
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 0;
+}
+.conversation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 0;
+}
+.conv-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.conv-card.disconnected {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.conv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  display: grid;
+  place-items: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  overflow: hidden;
+}
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.name {
+  font-weight: 700;
+}
+.status {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.pill-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  color: var(--text-primary);
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.conv-filters {
+  display: flex;
+  gap: 10px;
+}
+.conv-select-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.form-select.compact {
+  padding: 8px 10px;
+  height: 34px;
+}
+.conv-body {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  min-height: 400px;
+  max-height: 400px;
+  padding: 12px;
+  color: var(--text-secondary);
+  overflow-y: auto;
+}
+.message-placeholder {
+  opacity: 0.8;
+  font-size: 14px;
+}
+.msg-bubble {
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msg-ai {
+  background: rgba(83, 52, 131, 0.25);
+}
+.msg-user {
+  background: rgba(116, 185, 255, 0.12);
+}
+.msg-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.msg-text {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.compose-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+.compose-area {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.compose-area.disconnected {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.form-input.large {
+  min-height: 150px;
+  resize: none;
+}
+.compose-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  font-size: 13px;
+}
+.compose-actions .btn-primary {
+  margin-left: auto;
+}
+.relay-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+}
+.relay-controls span {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.send-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+}
+.send-controls span {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.compose-files {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.compose-files.disconnected {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.files-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.file-box {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 150px;
+  max-height: 150px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+.ai-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+.upload-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.upload-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.msg-context {
+  position: absolute;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 9999;
+}
+.msg-context.hidden {
+  display: none;
+}
+.msg-context button {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.msg-context button:hover {
+  background: var(--bg-tertiary);
+}
+.read-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 9998;
+}
+.read-modal.hidden {
+  display: none;
+}
+.read-modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: min(800px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.read-modal-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.read-modal-body {
+  padding: 12px;
+  overflow-y: auto;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.5;
+}

@@ -1,0 +1,55 @@
+{
+  "name": "hayalet-ev",
+  "version": "5.2.0",
+  "description": "Hayalet Ev - İnsan ve AI arasında kolektif zihin platformu",
+  "main": "electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "LIBVA_DRIVER_NAME=i965 electron . --no-sandbox 2>&1 | grep -v 'xapp-gtk3-module'",
+    "electron:dev": "concurrently -k -s first \"vite\" \"wait-on http://localhost:5173 && LIBVA_DRIVER_NAME=i965 electron . --no-sandbox 2>&1 | grep -v 'xapp-gtk3-module'\"",
+    "start": "npm run electron:dev",
+    "lint": "eslint \"src/js/**/*.{js,cjs,mjs}\"",
+    "lint:fix": "eslint \"src/js/**/*.{js,cjs,mjs}\" --fix",
+    "format": "prettier --write \"src/**/*.{js,css,html,json,md}\"",
+    "check:all": "npm run lint && npm run build",
+    "check-types": "tsc --noEmit -p jsconfig.json",
+    "git-sync": "git add . && git commit -m \"Sync\" && git push",
+    "git-status": "git status",
+    "git-diff": "git diff",
+    "drive-push": "node scripts/sync-to-drive.js"
+  },
+  "keywords": [
+    "electron",
+    "ai",
+    "chatgpt",
+    "grok"
+  ],
+  "author": "Raistlin, Nexa, Gök",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "concurrently": "^9.2.1",
+    "depcheck": "^1.4.7",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "wait-on": "^9.0.3"
+  },
+  "dependencies": {
+    "googleapis": "^169.0.0",
+    "konva": "^10.0.12",
+    "screenshot-desktop": "^1.15.3"
+  }
+}

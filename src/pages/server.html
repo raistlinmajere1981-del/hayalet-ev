@@ -1,0 +1,61 @@
+<div class="page hidden" id="page-server">
+  <div class="server-room">
+    <div class="server-top">
+      <div class="server-topbar">
+        <div class="left">
+          <span>Kontrol AI</span>
+          <select id="server-controller-select" class="form-select compact">
+            <option value="ai1">AI1</option>
+            <option value="ai2">AI2</option>
+          </select>
+          <button class="btn btn-secondary btn-small" id="server-delegate-btn">
+            Kontrolü Devret
+          </button>
+          <button class="btn btn-secondary btn-small" id="server-reclaim-btn">
+            Kontrolü Devral
+          </button>
+        </div>
+      </div>
+      <div class="server-panels">
+        <div class="server-panel">
+          <div class="panel-title">AI → CoreEngine</div>
+          <div class="log-list" id="server-ai-log"></div>
+        </div>
+        <div class="server-panel">
+          <div class="panel-title">CoreEngine → AI</div>
+          <div class="log-list" id="server-core-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="server-bottom">
+      <div class="panel-title">Komut Testi</div>
+      <div class="command-test">
+        <div class="command-left">
+          <div class="input-row">
+            <textarea
+              id="server-command-text"
+              class="form-input"
+              rows="3"
+              placeholder="++cmd:PlayMusic(classic)"
+            ></textarea>
+          </div>
+          <div class="input-row">
+            <button class="btn btn-primary" id="server-command-send">
+              CoreEngine'e Gönder
+            </button>
+          </div>
+        </div>
+        <div class="command-right">
+          <label for="server-command-select">Komut Ekle</label>
+          <div class="input-row">
+            <select id="server-command-select" class="form-select"></select>
+            <button class="btn btn-secondary" id="server-command-add">
+              Ekle
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

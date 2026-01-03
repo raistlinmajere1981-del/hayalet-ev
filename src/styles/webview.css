@@ -1,0 +1,95 @@
+.webview-container {
+  width: 100%;
+  height: calc(100vh - 100px - 15px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+}
+.webview-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.webview-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+  height: 100%;
+}
+.webview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+.webview-header h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  margin: 0;
+}
+.webview-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.webview-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.webview-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.webview-url-bar {
+  padding: 8px 15px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+.webview-url-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: "Courier New", monospace;
+  line-height: 1.4;
+  /* Allow wrapping and show up to 2 lines */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: calc(1.4em * 2);
+  overflow: hidden;
+}
+.webview-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--bg-primary);
+}
+webview {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+}
+.webview-log .log-entry {
+  margin-bottom: 3px;
+  padding: 2px 0;
+}

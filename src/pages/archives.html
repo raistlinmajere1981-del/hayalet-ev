@@ -1,0 +1,57 @@
+<div class="page hidden" id="page-archives">
+  <div class="archives-container">
+    <div class="archives-grid">
+      <div class="archives-left">
+        <div class="archives-provider-toggle">
+          <label
+            ><input type="radio" name="archives-provider" value="ai1" checked />
+            <span id="archives-provider-ai1">AI1</span></label
+          >
+          <label
+            ><input type="radio" name="archives-provider" value="ai2" />
+            <span id="archives-provider-ai2">AI2</span></label
+          >
+        </div>
+        <div class="panel-heading">Sohbetler</div>
+        <div class="archives-list" id="archives-list">
+          <div class="empty">Kayıt yok</div>
+        </div>
+      </div>
+      <div class="archives-right">
+        <div class="panel">
+          <div class="form-group">
+            <label for="archive-title">Başlık</label>
+            <input
+              type="text"
+              id="archive-title"
+              class="form-input"
+              placeholder="Sohbet başlığı"
+            />
+          </div>
+          <div class="form-group">
+            <label for="archive-summary">Özet</label>
+            <textarea
+              id="archive-summary"
+              class="form-input"
+              rows="6"
+              placeholder="Özet"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="archive-weburl">Web URL</label>
+            <input
+              type="text"
+              id="archive-weburl"
+              class="form-input"
+              placeholder="https://..."
+            />
+          </div>
+          <div class="archive-save-row">
+            <button class="btn btn-primary" id="archive-save">Kaydet</button>
+            <div class="form-hint" id="archive-status"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

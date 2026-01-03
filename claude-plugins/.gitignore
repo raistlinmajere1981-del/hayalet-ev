@@ -1,0 +1,10 @@
+
+
+# Always ignore sensitive files even in tracked directories
+**/*.key
+**/*.pem
+**/secrets.*
+**/credentials.*
+**/*_private.*
+**/*_secret.*
+.claude

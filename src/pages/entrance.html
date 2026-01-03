@@ -1,0 +1,72 @@
+<div class="page" id="page-entrance">
+  <div class="entrance-container">
+    <div class="users-grid">
+      <!-- AI1 -->
+      <div class="user-card" id="user-ai1">
+        <div class="user-avatar">
+          <div class="avatar-placeholder" id="ai1-avatar"></div>
+        </div>
+        <div class="user-info">
+          <h3 id="ai1-nickname">AI1</h3>
+          <div class="user-status">
+            <span class="status-dot" id="ai1-status-dot"></span>
+            <span id="ai1-status-text">Bağlı Değil</span>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="btn btn-primary" id="ai1-toggle-btn">Bağlan</button>
+        </div>
+      </div>
+
+      <!-- Human User -->
+      <div class="user-card" id="user-human">
+        <div class="user-avatar">
+          <div class="avatar-placeholder" id="human-avatar"></div>
+        </div>
+        <div class="user-info">
+          <h3 id="human-nickname">Kullanıcı</h3>
+          <div class="user-status">
+            <span class="status-dot" id="human-status-dot"></span>
+            <span id="human-status-text">Bağlı Değil</span>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="btn btn-primary" id="human-toggle-btn">Bağlan</button>
+        </div>
+      </div>
+
+      <!-- AI2 -->
+      <div class="user-card" id="user-ai2">
+        <div class="user-avatar">
+          <div class="avatar-placeholder" id="ai2-avatar"></div>
+        </div>
+        <div class="user-info">
+          <h3 id="ai2-nickname">AI2</h3>
+          <div class="user-status">
+            <span class="status-dot" id="ai2-status-dot"></span>
+            <span id="ai2-status-text">Bağlı Değil</span>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="btn btn-primary" id="ai2-toggle-btn">Bağlan</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pending-section">
+      <div class="pending-card">
+        <div class="pending-header">
+          <h3>Geçmiş Zamanlı Bekleyen Kayıtlar</h3>
+          <div class="pending-actions">
+            <button class="btn btn-secondary btn-small" id="whisper-clear-btn">
+              Temizle
+            </button>
+          </div>
+        </div>
+        <div class="pending-list" id="whisper-pending-list">
+          <div class="empty">Kayıt yok</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

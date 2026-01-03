@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hayalet Ev</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/entrance.css" />
+    <link rel="stylesheet" href="/styles/settings.css" />
+    <link rel="stylesheet" href="/styles/archives.css" />
+    <link rel="stylesheet" href="/styles/webview.css" />
+    <link rel="stylesheet" href="/styles/analyze.css" />
+    <link rel="stylesheet" href="/styles/server.css" />
+    <link rel="stylesheet" href="/styles/whisper.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="top-bar-left">
+          <div class="logo">
+            <img
+              src="/assets/logo.jpg"
+              class="app-logo"
+              alt="Hayalet Ev logo"
+            />
+            <span class="logo-text">Hayalet Ev</span>
+          </div>
+          <!-- page title removed -->
+          <button
+            class="icon-btn menu-toggle"
+            id="menu-toggle"
+            title="Menüyü gizle/göster"
+          >
+            ≡
+          </button>
+        </div>
+        <div class="top-bar-center">
+          <div class="indicators">
+            <div class="indicator-cluster">
+              <div class="indicator-avatar" id="indicator-avatar-ai1"></div>
+              <div class="indicator-inline">
+                <div class="indicator-pair">
+                  <span class="indicator-label">Loading</span>
+                  <div
+                    class="indicator-dot loading"
+                    id="ai1-loading-indicator"
+                    title="Yükleniyor"
+                  ></div>
+                </div>
+                <div class="indicator-pair">
+                  <span class="indicator-label">Send</span>
+                  <div
+                    class="indicator-dot"
+                    id="ai1-send-indicator"
+                    title="Gönder"
+                  ></div>
+                </div>
+                <div class="indicator-pair">
+                  <span class="indicator-label">Thinking</span>
+                  <div
+                    class="indicator-dot"
+                    id="ai1-thinking-indicator"
+                    title="Düşünüyor"
+                  ></div>
+                </div>
+                <div class="indicator-select-row">
+                  <select
+                    id="conversation-ai1"
+                    class="indicator-select"
+                  ></select>
+                  <button
+                    id="conversation-refresh-ai1"
+                    class="conv-refresh"
+                    title="Yenile"
+                  >
+                    ⟳
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="indicator-cluster">
+              <div class="indicator-avatar" id="indicator-avatar-human"></div>
+            </div>
+            <div class="indicator-cluster">
+              <div class="relay-indicator" id="relay-indicator">
+                relay pasif
+              </div>
+            </div>
+            <div class="indicator-cluster">
+              <div class="indicator-avatar" id="indicator-avatar-ai2"></div>
+              <div class="indicator-inline">
+                <div class="indicator-pair">
+                  <span class="indicator-label">Loading</span>
+                  <div
+                    class="indicator-dot loading"
+                    id="ai2-loading-indicator"
+                    title="Yükleniyor"
+                  ></div>
+                </div>
+                <div class="indicator-pair">
+                  <span class="indicator-label">Send</span>
+                  <div
+                    class="indicator-dot"
+                    id="ai2-send-indicator"
+                    title="Gönder"
+                  ></div>
+                </div>
+                <div class="indicator-pair">
+                  <span class="indicator-label">Thinking</span>
+                  <div
+                    class="indicator-dot"
+                    id="ai2-thinking-indicator"
+                    title="Düşünüyor"
+                  ></div>
+                </div>
+                <div class="indicator-select-row">
+                  <select
+                    id="conversation-ai2"
+                    class="indicator-select"
+                  ></select>
+                  <button
+                    id="conversation-refresh-ai2"
+                    class="conv-refresh"
+                    title="Yenile"
+                  >
+                    ⟳
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="top-bar-right">
+          <button class="icon-btn" id="settings-btn" title="Ayarlar">⚙️</button>
+          <button class="icon-btn" id="archive-btn" title="Arşiv">📁</button>
+          <button class="icon-btn" id="webview-btn" title="Webview">🌐</button>
+          <button
+            class="icon-btn"
+            id="window-tray"
+            title="Sistem Tepsisine Küçült"
+          >
+            🗕
+          </button>
+          <button
+            class="icon-btn"
+            id="window-minimize"
+            title="Görev Çubuğuna Küçült"
+          >
+            ➖
+          </button>
+          <button class="icon-btn" id="window-fullscreen" title="Tam Ekran">
+            ⛶
+          </button>
+          <button class="icon-btn" id="window-close" title="Kapat">✕</button>
+        </div>
+      </div>
+
+      <!-- Side Menu -->
+      <div class="side-menu" id="side-menu">
+        <button class="menu-item active" data-page="entrance">
+          🏠 Giriş Salonu
+        </button>
+        <button class="menu-item" data-page="analyze">🔍 Analiz Odası</button>
+        <button class="menu-item" data-page="whisper">👂 Fısıltı Odası</button>
+        <button class="menu-item" data-page="server">🖥️ Sunucu Odası</button>
+        <button class="menu-item" data-page="test-konva">🎨 Konva Test</button>
+      </div>
+
+      <!-- Main Content -->
+      <!-- Main Content -->
+      <div class="main-content" id="main-content">
+        <div id="pages-container"></div>
+      </div>
+
+      <!-- Report Panel -->
+      <div class="report-panel" id="report-panel">
+        <div class="report-header">
+          <span>Rapor</span>
+          <button class="icon-btn-small" id="report-toggle">📊</button>
+        </div>
+        <div class="report-content" id="report-content">
+          <div class="log-entry">Sistem başlatıldı...</div>
+        </div>
+      </div>
+
+      <!-- Rapor Okuma Modu -->
+      <div class="report-modal hidden" id="report-modal">
+        <div class="report-modal-content">
+          <div class="report-modal-header">
+            <span>Canlı Log Görünümü</span>
+            <button class="btn btn-secondary btn-ghost" id="report-modal-close">
+              Kapat
+            </button>
+          </div>
+          <div class="report-modal-body" id="report-modal-body"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

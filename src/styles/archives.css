@@ -1,0 +1,129 @@
+.archives-container {
+  padding: 10px 20px;
+}
+.archives-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  height: calc(100vh - 140px);
+}
+.archives-left {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.archives-provider-toggle {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.archives-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.archive-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+.archive-item.selected {
+  outline: 1px solid var(--accent-primary);
+}
+.archive-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  margin-left: 8px;
+  cursor: pointer;
+}
+.archive-remove:hover {
+  color: var(--error);
+}
+.panel-heading {
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.archive-item {
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    background 0.15s;
+}
+.archive-item:hover {
+  border-color: var(--accent-secondary);
+  transform: translateY(-1px);
+  background: rgba(108, 92, 231, 0.1);
+}
+.archive-item.selected {
+  border-color: var(--accent-secondary);
+  box-shadow: 0 0 0 1px rgba(108, 92, 231, 0.4);
+}
+.archives-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.archives-right .panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+}
+.archives-right .form-group {
+  margin-bottom: 12px;
+}
+.archive-save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#archive-summary {
+  resize: none;
+}
+.form-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-height: 18px;
+}
+.form-hint.success {
+  color: var(--success);
+}
+.form-hint.warning {
+  color: var(--warning);
+}
+.form-hint.error {
+  color: var(--error);
+}
+.flex-row {
+  display: flex;
+  gap: 10px;
+}
+.empty {
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 8px 4px;
+}
