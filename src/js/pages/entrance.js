@@ -1,18 +1,12 @@
-// @ts-nocheck
 // Ana salon (Giriş) sayfası controller'ı
 import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { CoreEngine } from "../modules/core-engine.js";
-import { getAvatarPath } from "../modules/settings-helpers.js";
+import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 
 export class EntranceHallController {
   constructor() {
-    this.users = {
-      human: { connected: true, nickname: "Kullanıcı" },
-      ai1: { connected: true, nickname: "AI1" },
-      ai2: { connected: true, nickname: "AI2" },
-    };
     this.defaultsApplied = false;
     this.overdueWhispers = [];
     this.whisperListEl = null;
@@ -25,10 +19,20 @@ export class EntranceHallController {
     this.updateUI();
     this.renderPending();
 
-    // Realtime settings sync (avatar/nickname changes)
+    // Realtime settings sync (avatar/nickname/slot assignment changes)
     if (!this._unsubSettings) {
-      this._unsubSettings = SettingsManager.subscribe(async () => {
-        await this.loadUserSettings();
+      this._unsubSettings = SettingsManager.subscribe(
+        ({ settings, changedPaths }) => {
+          // UI; no disk reload here
+          this.applySettingsToUI(settings, changedPaths);
+        },
+      );
+    }
+
+    // SlotController state değişikliklerini dinle (bağlantı durumu için)
+    if (!this._unsubSlotController) {
+      this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
+        // Sadece bağlantı durumu değişikliklerinde UI'ı güncelle
         this.updateUI();
       });
     }
@@ -36,11 +40,12 @@ export class EntranceHallController {
 
   setupEventListeners() {
     try {
-      ["human", "ai1", "ai2"].forEach((u) => {
+      // Only AI slots have toggle buttons (user always active)
+      ["ai1", "ai2"].forEach((u) => {
         const btn = document.getElementById(`${u}-toggle-btn`);
         if (btn) {
           btn.addEventListener("click", async () => {
-            if (this.users[u].connected) await this.disconnectUser(u);
+            if (SlotController.isConnected(u)) await this.disconnectUser(u);
             else await this.connectUser(u);
           });
         }
@@ -64,38 +69,56 @@ export class EntranceHallController {
   async loadUserSettings() {
     try {
       const settings = await SettingsManager.load();
-
-      this.users.human.nickname = AppState.getNickname("human");
-      this.users.ai1.nickname = AppState.getNickname("ai1");
-      this.users.ai2.nickname = AppState.getNickname("ai2");
-
-      document.getElementById("human-nickname").textContent =
-        this.users.human.nickname;
-      document.getElementById("ai1-nickname").textContent =
-        this.users.ai1.nickname;
-      document.getElementById("ai2-nickname").textContent =
-        this.users.ai2.nickname;
-
-      this.updateAvatar("human", getAvatarPath(settings, "human"));
-      this.updateAvatar("ai1", getAvatarPath(settings, "ai1"));
-      this.updateAvatar("ai2", getAvatarPath(settings, "ai2"));
+      this.applySettingsToUI(settings, ["*"]);
     } catch (error) {
       console.error("Error loading user settings:", error);
-      this.users.human.nickname = AppState.getNickname("human");
-      this.users.ai1.nickname = AppState.getNickname("ai1");
-      this.users.ai2.nickname = AppState.getNickname("ai2");
-
-      document.getElementById("human-nickname").textContent =
-        this.users.human.nickname;
-      document.getElementById("ai1-nickname").textContent =
-        this.users.ai1.nickname;
-      document.getElementById("ai2-nickname").textContent =
-        this.users.ai2.nickname;
     }
   }
 
+  applySettingsToUI(settings, _changedPaths = []) {
+    if (!settings) settings = SettingsManager.getSnapshot();
+
+    const userNickname = AppState.getNickname("user");
+    const ai1Nickname = AppState.getNickname("ai1");
+    const ai2Nickname = AppState.getNickname("ai2");
+
+    const userNickEl = document.getElementById("user-nickname");
+    const ai1NickEl = document.getElementById("ai1-nickname");
+    const ai2NickEl = document.getElementById("ai2-nickname");
+
+    if (userNickEl) userNickEl.textContent = userNickname;
+    if (ai1NickEl) ai1NickEl.textContent = ai1Nickname;
+    if (ai2NickEl) ai2NickEl.textContent = ai2Nickname;
+
+    const getAvatar = (provider) => {
+      if (provider === "user") return settings.user?.avatarPath || "";
+      if (provider === "ai1" || provider === "ai2") {
+        const accountId = settings.slots?.[provider]?.accountId;
+        if (!accountId) return "";
+        const account = settings.accounts?.find((acc) => acc.id === accountId);
+        return account?.avatarPath || "";
+      }
+      return "";
+    };
+
+    // Allow clearing avatar if empty
+    this.updateAvatar("user", getAvatar("user"));
+    this.updateAvatar("ai1", getAvatar("ai1"));
+    this.updateAvatar("ai2", getAvatar("ai2"));
+
+    this.updateUI();
+  }
+
   async updateAvatar(userType, avatarPath) {
-    if (!avatarPath) return;
+    const avatarElement = document.getElementById(`${userType}-avatar`);
+    if (!avatarElement) return;
+
+    // Slot boşaltıldığında / avatar kaldırıldığında eski resmi temizle
+    if (!avatarPath) {
+      avatarElement.innerHTML = "";
+      avatarElement.style.backgroundImage = "";
+      return;
+    }
 
     try {
       if (window.electronAPI?.readFile) {
@@ -111,10 +134,7 @@ export class EntranceHallController {
           };
           const mimeType = mimeTypes[ext] || "image/png";
 
-          const avatarElement = document.getElementById(`${userType}-avatar`);
-          if (avatarElement) {
-            avatarElement.innerHTML = `<img src="data:${mimeType};base64,${imageData}" alt="${userType} avatar" style="width: 100%; height: 100%; object-fit: cover;">`;
-          }
+          avatarElement.innerHTML = `<img src="data:${mimeType};base64,${imageData}" alt="${userType} avatar" style="width: 100%; height: 100%; object-fit: cover;">`;
         }
       }
     } catch (error) {
@@ -123,29 +143,29 @@ export class EntranceHallController {
   }
 
   async connectUser(userType) {
-    if (this.users[userType].connected) {
+    const settings = await SettingsManager.load();
+    const currentlyConnected = SlotController.isConnected(userType);
+
+    if (currentlyConnected) {
+      return;
+    }
+
+    // User always active; only AI slots can be connected
+    if (userType === "user") {
       return;
     }
 
     const nickname = AppState.getNickname(userType);
     LogManager.addEvent("entrance", "info", `${nickname} bağlanıyor...`);
 
-    if (userType === "human") {
-      this.users.human.connected = true;
-      this.updateUserStatus("human", true);
-      CoreEngine.setConnection("human", true);
-      LogManager.addEvent("entrance", "success", "İnsan kullanıcı bağlandı");
-      return;
-    }
-
     // AI slots require an assigned account
-    const settings = await SettingsManager.load();
-    const hasAccount = !!settings?.[userType]?.activeAccountId;
+    const hasAccount = !!settings?.slots?.[userType]?.accountId;
     if (!hasAccount) {
-      this.users[userType].connected = false;
       this.updateUserStatus(userType, false);
-      CoreEngine.setConnection(userType, false);
-      this.showFeedback?.(`${userType.toUpperCase()} için hesap atanmadı`, "warning");
+      this.showFeedback?.(
+        `${userType.toUpperCase()} için hesap atanmadı`,
+        "warning",
+      );
       LogManager.addEvent(
         "entrance",
         "warning",
@@ -154,14 +174,21 @@ export class EntranceHallController {
       return;
     }
 
-    this.users[userType].connected = true;
-    this.updateUserStatus(userType, true);
-    CoreEngine.setConnection(userType, true);
+    await CoreEngine.setConnection(userType, true);
+
+    this.updateUserStatus(userType);
     LogManager.addEvent("entrance", "success", `${nickname} bağlandı`);
   }
 
   async disconnectUser(userType) {
-    if (!this.users[userType].connected) {
+    // User always active; only AI slots can be disconnected
+    if (userType === "user") {
+      return;
+    }
+
+    const currentlyConnected = SlotController.isConnected(userType);
+
+    if (!currentlyConnected) {
       return;
     }
 
@@ -172,9 +199,11 @@ export class EntranceHallController {
       `${nickname} bağlantısı kesiliyor...`,
     );
 
-    this.users[userType].connected = false;
-    this.updateUserStatus(userType, false);
-    CoreEngine.setConnection(userType, false);
+    if (userType !== "user") {
+      await CoreEngine.setConnection(userType, false);
+    }
+
+    this.updateUserStatus(userType);
 
     LogManager.addEvent(
       "entrance",
@@ -183,24 +212,137 @@ export class EntranceHallController {
     );
   }
 
-  updateUserStatus(userType, connected) {
+  async updateUserStatus(userType) {
+    // New UI gating based on slot state (empty/assigned/connected)
+    const settings = SettingsManager.getSnapshot();
     const statusDot = document.getElementById(`${userType}-status-dot`);
     const statusText = document.getElementById(`${userType}-status-text`);
     const toggleBtn = document.getElementById(`${userType}-toggle-btn`);
+    const avatarEl = document.getElementById(`${userType}-avatar`);
 
-    if (connected) {
-      statusDot.classList.add("connected");
-      statusText.textContent = "Bağlı";
+    if (userType === "user") {
+      const connected = true; // user always active (no connection state)
+
+      if (statusDot) {
+        if (connected) {
+          statusDot.classList.add("connected");
+          statusDot.style.backgroundColor = "#4CAF50";
+        } else {
+          statusDot.classList.remove("connected");
+          statusDot.style.backgroundColor = "#FFA726";
+        }
+      }
+
+      if (statusText)
+        statusText.textContent = connected ? "Bağlı" : "Bağlı değil";
+
       if (toggleBtn) {
+        toggleBtn.textContent = connected ? "Bağlantıyı Kes" : "Bağlan";
+        toggleBtn.disabled = false;
+        toggleBtn.classList.toggle("btn-primary", !connected);
+        toggleBtn.classList.toggle("btn-secondary", connected);
+      }
+
+      // Avatar
+      if (avatarEl) {
+        const avatarPath = settings.user?.avatarPath || "";
+        if (avatarPath) {
+          try {
+            const data = await window.electronAPI?.readFile(avatarPath);
+            const ext = avatarPath.split(".").pop().toLowerCase();
+            const mimeTypes = {
+              png: "image/png",
+              jpg: "image/jpeg",
+              jpeg: "image/jpeg",
+              gif: "image/gif",
+              webp: "image/webp",
+            };
+            const mimeType = mimeTypes[ext] || "image/png";
+            avatarEl.style.backgroundImage = `url(data:${mimeType};base64,${data})`;
+          } catch {
+            avatarEl.style.backgroundImage = "";
+          }
+        } else {
+          avatarEl.style.backgroundImage = "";
+        }
+        avatarEl.style.opacity = connected ? "1" : "0.5";
+      }
+
+      return;
+    }
+
+    // AI slots: empty/assigned/connected logic
+    const hasAccount = !!settings.slots?.[userType]?.accountId;
+    const connected = SlotController.isConnected(userType);
+
+    // Avatar
+    if (avatarEl) {
+      const accountId = settings.slots?.[userType]?.accountId;
+      const account = accountId
+        ? settings.accounts?.find((acc) => acc.id === accountId)
+        : null;
+      const avatarPath = account?.avatarPath || "";
+      if (avatarPath) {
+        try {
+          const data = await window.electronAPI?.readFile(avatarPath);
+          const ext = avatarPath.split(".").pop().toLowerCase();
+          const mimeTypes = {
+            png: "image/png",
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            gif: "image/gif",
+            webp: "image/webp",
+          };
+          const mimeType = mimeTypes[ext] || "image/png";
+          avatarEl.style.backgroundImage = `url(data:${mimeType};base64,${data})`;
+        } catch {
+          avatarEl.style.backgroundImage = "";
+        }
+      } else {
+        avatarEl.style.backgroundImage = "";
+      }
+      // Grileştir if assigned but disconnected
+      avatarEl.style.opacity = hasAccount && !connected ? "0.5" : "1";
+    }
+
+    // Status dot + text
+    if (statusDot) {
+      if (!hasAccount) {
+        statusDot.classList.remove("connected");
+        statusDot.style.backgroundColor = "#999";
+      } else if (connected) {
+        statusDot.classList.add("connected");
+        statusDot.style.backgroundColor = "#4CAF50";
+      } else {
+        statusDot.classList.remove("connected");
+        statusDot.style.backgroundColor = "#FFA726"; // Orange for assigned+disconnected
+      }
+    }
+
+    if (statusText) {
+      if (!hasAccount) {
+        statusText.textContent = "Hesap yok";
+      } else if (connected) {
+        statusText.textContent = "Bağlı";
+      } else {
+        statusText.textContent = "Bağlı değil";
+      }
+    }
+
+    // Toggle button
+    if (toggleBtn) {
+      if (!hasAccount) {
+        toggleBtn.textContent = "Hesap Ata";
+        toggleBtn.disabled = true;
+        toggleBtn.title = "Settings'ten hesap atayın";
+      } else if (connected) {
         toggleBtn.textContent = "Bağlantıyı Kes";
+        toggleBtn.disabled = false;
         toggleBtn.classList.remove("btn-primary");
         toggleBtn.classList.add("btn-secondary");
-      }
-    } else {
-      statusDot.classList.remove("connected");
-      statusText.textContent = "Bağlı Değil";
-      if (toggleBtn) {
+      } else {
         toggleBtn.textContent = "Bağlan";
+        toggleBtn.disabled = false;
         toggleBtn.classList.remove("btn-secondary");
         toggleBtn.classList.add("btn-primary");
       }
@@ -208,24 +350,9 @@ export class EntranceHallController {
   }
 
   async updateUI() {
-    const settings = await SettingsManager.load();
-    
-    Object.keys(this.users).forEach((userType) => {
-      this.updateUserStatus(userType, this.users[userType].connected);
-      
-      // Disable connect button for empty AI slots
-      if (userType === "ai1" || userType === "ai2") {
-        const hasAccount = !!settings?.[userType]?.activeAccountId;
-        const toggleBtn = document.getElementById(`${userType}-toggle-btn`);
-        if (toggleBtn) {
-          toggleBtn.disabled = !hasAccount;
-          if (!hasAccount) {
-            toggleBtn.title = "Bu slot için hesap atanmadı";
-          } else {
-            toggleBtn.title = "";
-          }
-        }
-      }
+    // Update user + AI slots
+    ["user", "ai1", "ai2"].forEach((userType) => {
+      this.updateUserStatus(userType);
     });
     this.renderPending();
   }
@@ -279,18 +406,15 @@ export class EntranceHallController {
   async onShow() {
     CoreEngine.pauseWhispers();
     await this.loadUserSettings();
-    await this.applyDefaultConnections();
+    // applyDefaultConnections() sadece init()'te çağrılmalı
     this.updateUI();
   }
 
   onHide() {
     CoreEngine.resumeWhispers(true);
-    try {
-      this._unsubSettings?.();
-      this._unsubSettings = null;
-    } catch (_) {
-      void 0;
-    }
+    // ❌ SUBSCRIPTIONLARI TEMİZLEME!
+    // Sayfa değiştiğinde subscriptionlar aktif kalmalı
+    // Aksi halde settings/bağlantı değişikliklerinde UI güncellenmiyor
   }
 
   handleWhisperClear() {
@@ -308,22 +432,28 @@ export class EntranceHallController {
 
   async applyDefaultConnections() {
     if (this.defaultsApplied) return;
-    const settings = await SettingsManager.load();
 
-    // human always true
-    this.users.human.connected = true;
-    this.updateUserStatus("human", true);
-    CoreEngine.setConnection("human", true);
-
-    // ai slots: connected only if account assigned
-    ["ai1", "ai2"].forEach((u) => {
-      const hasAccount = !!settings?.[u]?.activeAccountId;
-      this.users[u].connected = hasAccount;
-      this.updateUserStatus(u, hasAccount);
-      CoreEngine.setConnection(u, hasAccount);
-    });
+    try {
+      await CoreEngine.setConnection("ai1", false, { force: true });
+    } catch (e) {
+      LogManager.addEvent(
+        "entrance",
+        "warning",
+        "ai1 immediate disconnect failed",
+        { error: e instanceof Error ? e.message : String(e) },
+      );
+    }
+    try {
+      await CoreEngine.setConnection("ai2", false, { force: true });
+    } catch (e) {
+      LogManager.addEvent(
+        "entrance",
+        "warning",
+        "ai2 immediate disconnect failed",
+        { error: e instanceof Error ? e.message : String(e) },
+      );
+    }
 
     this.defaultsApplied = true;
   }
-
 }

@@ -1,0 +1,42 @@
+# AI-Asistan İletişim Protokolü
+
+## Bağlam
+
+Sen bir AI asistanla iletişim kuruyorsun. Bu asistan sistemde kurulu olan bir CLI (Command Line Interface) aracıdır. 
+
+Kullanıcı senin ve asistan arasında bir köprü kurmuştur. Bundan sonra gönderdiğin tüm mesajlar asistana iletilecek, asistanın cevapları da sana gönderilecektir.
+
+## İletişim Kuralları
+
+1. **Doğrudan İletişim**: Asistanla doğrudan konuşuyorsun. Kullanıcıya değil, asistana hitap et.
+
+2. **Protokol Komutları**: Bu mesajı aldıktan sonra sohbet moduna geç. İlk mesajın asistana tanıtım olmalı:
+   - Kim olduğunu söyle
+   - Hangi konularda yardımcı olabileceğini belirt
+   - Asistanın kimliğini ve yeteneklerini sor
+
+3. **Sohbet Sürekliliği**: Asistanla olan diyaloğu sürdür. Her mesaj karşılıklı olmalı.
+
+4. **Sonlandırma**: Sohbeti sonlandırmak istediğinde veya kullanıcı bitirmeni istediğinde şu komutu gönder:
+   ```
+   ++cmd:StopAIAssistanChat()
+   ```
+
+## Örnek Başlangıç Mesajı
+
+```
+Merhaba! Ben [Senin Adın], [kısa tanıtım]. Şu anda seninle doğrudan iletişim kuruyorum. 
+
+Sen kimsin ve hangi konularda bana yardımcı olabilirsin?
+```
+
+## Önemli Notlar
+
+- Kullanıcı bu sohbete müdahale etmeyecek
+- Tüm mesajlar otomatik olarak asistana iletiliyor
+- Asistanın cevapları sana gerçek zamanlı olarak geliyor
+- Teknik sorunlar için veya sohbeti bitirmek için yukarıdaki komutu kullan
+
+---
+
+**Protokol Aktif - AI-Asistan Sohbet Başlatıldı**

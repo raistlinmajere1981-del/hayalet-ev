@@ -47,6 +47,7 @@ import {
   copyToAssets,
   copyFileTo,
   removeArchive,
+  deleteAsset,
   readArchivesIndex,
   writeArchivesIndex,
   generateTree,
@@ -69,14 +70,29 @@ import {
   googledriveUpload,
 } from "./googledrive-manager.js";
 import { ServerCommands } from "./server-commands.js";
-import { 
-  interceptMainConsole, 
+import {
+  initLogSystem,
+  interceptMainConsole,
   setupRendererLogger,
+  setupWebviewLogger,
+  setMainWindow,
+  getSessionId,
+  getSessionDir,
+  getLogDir,
   readConsoleLogs,
   readErrorLogs,
+  readAllLogs,
+  queryLogs,
+  listSessions,
+  writeStateSnapshot,
+  writeSessionSummary,
+  updateAppState,
+  getAppState,
+  generateCorrelationId,
   CONSOLE_LOG,
-  ERROR_LOG
+  ERROR_LOG,
 } from "./console-logger.js";
+import { assistantManager } from "./asistan-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -90,28 +106,57 @@ const PATHS = {
   logs: () => join(process.cwd(), "logs"),
 };
 
+// Log sistemini başlat (session oluştur)
+const { sessionId } = initLogSystem();
+
 // Console logger'ı başlat (main process)
 interceptMainConsole();
+
+// Terminal focus tracking modunu devre dışı bırak (ANSI escape kodlarını önler)
+// ^[[O (focus out) ve ^[[I (focus in) karakterlerini engeller
+if (process.stdout && process.stdout.isTTY) {
+  try {
+    process.stdout.write('\x1b[?1004l'); // Focus events OFF
+  } catch (e) {
+    // Terminal write hatası - sessizce geç
+  }
+}
+
+// Uygulama başlangıç state'ini kaydet
+updateAppState({
+  startTime: new Date().toISOString(),
+  platform: process.platform,
+  nodeVersion: process.version,
+});
 
 app.whenReady().then(async () => {
   try {
     mainWindow = await createAppWindow({ __dirname });
-    
+
+    // Main window referansını ayarla (IPC forwarding için)
+    setMainWindow(mainWindow);
+
     // Renderer process logger'ını bağla
     setupRendererLogger(mainWindow.webContents);
-    
+
     try {
       ServerCommands?.init?.({ mainWindow });
     } catch (e) {
-      console.error("ServerCommands.init failed:", e);
+      // ServerCommands init failed - non-critical
     }
     try {
       initWindowManager({ mainWindow });
     } catch (e) {
-      console.error("initWindowManager failed:", e);
+      // WindowManager init failed - non-critical
+    }
+    try {
+      assistantManager.setMainWindow(mainWindow);
+    } catch (e) {
+      // AssistantManager init failed - non-critical
     }
   } catch (err) {
-    console.error("createAppWindow failed:", err);
+    console.error("CRITICAL: createAppWindow failed:", err);
+    process.exit(1);
   }
 
   app.on("activate", async () => {
@@ -122,6 +167,13 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  // Asistan process'ini temizle
+  if (assistantManager) {
+    assistantManager.disconnect().catch(err => {
+      console.error("Failed to disconnect assistant:", err);
+    });
+  }
+  
   if (process.platform !== "darwin") {
     app.quit();
   }
@@ -137,8 +189,27 @@ app.on("will-quit", (event) => {
   /* noop */
 });
 
-app.on("before-quit", () => {
-  /* noop */
+app.on("before-quit", async (event) => {
+  // Session summary yaz
+  try {
+    await writeSessionSummary("normal");
+  } catch (err) {
+    console.error("Failed to write session summary:", err);
+  }
+  
+  // Asistan web server'ını temizle
+  if (assistantManager && assistantManager.isConnected) {
+    event.preventDefault();
+    try {
+      await assistantManager.disconnect();
+    } catch (err) {
+      console.error("Failed to disconnect assistant:", err);
+    }
+    // Cleanup tamamlandıktan sonra quit'e izin ver
+    setTimeout(() => {
+      app.quit();
+    }, 300);
+  }
 });
 
 // Handle SIGTERM and SIGINT for clean shutdown
@@ -157,7 +228,6 @@ ipcMain.handle("get-preload-path", async (event, type) => {
     // This path is now specifically for webviews
     return `file://${join(__dirname, "webview-preload.cjs")}`;
   } catch (err) {
-    console.error("get-preload-path handler error:", err);
     throw err;
   }
 });
@@ -194,7 +264,6 @@ ipcMain.handle("get-provider-config", async (event, providerId) => {
     };
     return allowed;
   } catch (err) {
-    console.error("get-provider-config handler error for", providerId, err);
     return null;
   }
 });
@@ -203,7 +272,6 @@ ipcMain.handle("load-settings", async (event, ...args) => {
   try {
     return await loadSettings(event, ...args);
   } catch (err) {
-    console.error("load-settings handler error:", err);
     throw err;
   }
 });
@@ -212,110 +280,12 @@ ipcMain.handle("save-settings", async (event, ...args) => {
   try {
     return await saveSettings(event, ...args);
   } catch (err) {
-    console.error("save-settings handler error:", err);
     throw err;
   }
 });
 
-ipcMain.handle("create-account", async (event, accountData) => {
-  try {
-    const settings = await loadSettings(event);
-    if (!settings) {
-      throw new Error("Ayarlar yüklenemedi");
-    }
-
-    if (!Array.isArray(settings.accounts)) {
-      settings.accounts = [];
-    }
-
-    const generateId = () =>
-      `acc-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
-
-    let avatarPath = accountData.avatarPath || "";
-
-    // If a local avatar file is provided, copy it into src/assets with the naming rule
-    try {
-      if (avatarPath) {
-        const copied = await copyToAssets(
-          event,
-          avatarPath,
-          "account",
-          { email: accountData.email, provider: accountData.provider },
-        );
-        if (copied?.success && copied?.path) {
-          avatarPath = copied.path;
-        }
-      }
-    } catch (e) {
-      console.warn("Account avatar copy failed:", e?.message || e);
-    }
-
-    const newAccount = {
-      id: accountData.id || generateId(),
-      email: accountData.email,
-      provider: accountData.provider,
-      nickname: accountData.nickname || accountData.email,
-      avatarPath,
-    };
-
-    const existingIndex = settings.accounts.findIndex(
-      (acc) =>
-        acc.email === newAccount.email && acc.provider === newAccount.provider,
-    );
-
-    if (existingIndex >= 0) {
-      settings.accounts[existingIndex] = newAccount;
-    } else {
-      settings.accounts.push(newAccount);
-    }
-
-    await saveSettings(event, settings);
-    return { success: true, account: newAccount };
-  } catch (err) {
-    console.error("create-account handler error:", err);
-    throw err;
-  }
-});
-
-ipcMain.handle("assign-account-to-slot", async (event, slot, accountId) => {
-  try {
-    if (!slot || !["ai1", "ai2"].includes(slot)) {
-      throw new Error("Geçersiz slot");
-    }
-
-    const settings = await loadSettings(event);
-    if (!settings) {
-      throw new Error("Ayarlar yüklenemedi");
-    }
-
-    if (!accountId) {
-      settings[slot].activeAccountId = null;
-      settings[slot].providerId = "";
-      await saveSettings(event, settings);
-      return { success: true, slot, accountId: null };
-    }
-
-    if (!Array.isArray(settings.accounts)) {
-      throw new Error("Hesap bulunamadı");
-    }
-
-    const account = settings.accounts.find((acc) => acc.id === accountId);
-    if (!account) {
-      throw new Error("Hesap bulunamadı");
-    }
-
-    settings[slot].activeAccountId = accountId;
-    settings[slot].providerId = account.provider;
-    settings[slot].nickname = account.nickname;
-    settings[slot].avatarPath = account.avatarPath;
-
-    await saveSettings(event, settings);
-    return { success: true, slot, accountId, account };
-  } catch (err) {
-    console.error("assign-account-to-slot handler error:", err);
-    throw err;
-  }
-});
+// Legacy IPC removed: create-account, assign-account-to-slot
+// Now handled in renderer via SettingsManager.save()
 
 ipcMain.handle("device-action", deviceActionHandler);
 
@@ -329,7 +299,6 @@ ipcMain.handle("show-open-dialog", async (event, options = {}) => {
     const res = await dialog.showOpenDialog(win, options || {});
     return res;
   } catch (err) {
-    console.error("show-open-dialog error:", err);
     return { canceled: true, message: err?.message || String(err) };
   }
 });
@@ -346,7 +315,7 @@ ipcMain.handle("googledrive-start-auth", async () => {
     try {
       await shell.openExternal(result.url);
     } catch (err) {
-      console.error("Failed to open browser:", err);
+      // Failed to open browser - silent failure
       result.message = "Tarayıcı açılamadı: " + (err?.message || "hata");
     }
   }
@@ -390,26 +359,25 @@ ipcMain.handle("copy-to-assets", copyToAssets);
 ipcMain.handle("copy-file-to", copyFileTo);
 
 ipcMain.handle("remove-archive", removeArchive);
+ipcMain.handle("delete-asset", deleteAsset);
 
 ipcMain.handle("open-path", openPath);
 
 ipcMain.handle("generate-tree", generateTree);
 
 // Console log handlers
-ipcMain.handle("read-console-logs", async () => {
+ipcMain.handle("read-console-logs", async (event, tail = 100) => {
   try {
-    return await readConsoleLogs();
+    return await readConsoleLogs(tail);
   } catch (err) {
-    console.error("read-console-logs handler error:", err);
     throw err;
   }
 });
 
-ipcMain.handle("read-error-logs", async () => {
+ipcMain.handle("read-error-logs", async (event, tail = 100) => {
   try {
-    return await readErrorLogs();
+    return await readErrorLogs(tail);
   } catch (err) {
-    console.error("read-error-logs handler error:", err);
     throw err;
   }
 });
@@ -417,6 +385,106 @@ ipcMain.handle("read-error-logs", async () => {
 ipcMain.handle("get-log-paths", async () => {
   return {
     console: CONSOLE_LOG,
-    error: ERROR_LOG
+    error: ERROR_LOG,
+    sessionDir: getSessionDir(),
+    logDir: getLogDir(),
   };
+});
+
+// Yeni log handler'ları
+ipcMain.handle("get-session-id", async () => {
+  return getSessionId();
+});
+
+ipcMain.handle("read-all-logs", async (event, targetSessionId = null) => {
+  try {
+    return await readAllLogs(targetSessionId);
+  } catch (err) {
+    throw err;
+  }
+});
+
+ipcMain.handle("query-logs", async (event, query = {}) => {
+  try {
+    return await queryLogs(query);
+  } catch (err) {
+    throw err;
+  }
+});
+
+ipcMain.handle("list-sessions", async () => {
+  try {
+    return await listSessions();
+  } catch (err) {
+    throw err;
+  }
+});
+
+ipcMain.handle("get-app-state", async () => {
+  return getAppState();
+});
+
+ipcMain.handle("write-state-snapshot", async () => {
+  try {
+    await writeStateSnapshot();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("setup-webview-logger", async (event, webviewId, slot, provider) => {
+  try {
+    const { webContents } = await import("electron");
+    const wc = webContents.fromId(webviewId);
+    if (wc) {
+      setupWebviewLogger(wc, slot, provider);
+      return { success: true };
+    }
+    return { success: false, error: "WebContents not found" };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("generate-correlation-id", async (event, prefix = "op") => {
+  return generateCorrelationId(prefix);
+});
+
+// Assistant IPC handlers (Web mode only)
+ipcMain.handle("assistant-connect", async (event, provider) => {
+  try {
+    return await assistantManager.connect(provider);
+  } catch (err) {
+    console.error("[IPC] assistant-connect error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("assistant-disconnect", async (event) => {
+  try {
+    await assistantManager.disconnect();
+    return { success: true };
+  } catch (err) {
+    console.error("[IPC] assistant-disconnect error:", err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("assistant-status", async (event) => {
+  try {
+    return assistantManager.getStatus();
+  } catch (err) {
+    console.error("[IPC] assistant-status error:", err);
+    return { isConnected: false };
+  }
+});
+
+ipcMain.handle("assistant-get-config", async (event, providerId) => {
+  try {
+    return await assistantManager.getProviderConfig(providerId);
+  } catch (err) {
+    console.error("[IPC] assistant-get-config error:", err);
+    return null;
+  }
 });

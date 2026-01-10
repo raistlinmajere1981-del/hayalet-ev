@@ -1,12 +1,10 @@
 import { SettingsManager } from "./settings-manager.js";
-import { getNickname } from "./settings-helpers.js";
 import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
 import { AppState } from "./app-state.js";
 import { ProtocolHandler } from "./protocol-handler.js";
-import { SyncHandler } from "./sync-handler.js";
+// SyncHandler artık WebviewManager içine entegre edildi
 import { RelayManager } from "./relay-manager.js";
-import { SettingsContext } from "./settings-context.js";
 import { CommandManager } from "./command-manager.js";
 import { CommandExecutor } from "./command-executor.js";
 import { WhisperManager } from "./whisper-manager.js";
@@ -14,19 +12,17 @@ import { FileManager } from "./file-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { ServerCommands } from "./server-commands.js";
 import { WindowManager } from "./window-manager.js";
-import { ProviderRegistry } from "./webview/provider-registry.js";
+import { AssistantManager } from "./asistan-manager.js";
+import { SlotController, SlotEvent } from "./slot-controller.js";
 
 class CoreEngineClass {
   constructor() {
     this.settings = null;
     this.initialized = false;
-    this.connections = { ai1: false, ai2: false, human: true };
-    this.defaultGraceMs = 5000;
-    this._syncRetryTimers = {};
-    this._syncRetryCounts = {};
-    this.syncRetryLimit = 2;
     this.relay = null;
-    this._appSub = null;
+    this.assistant = null;
+    this._settingsSub = null;
+    this._previousSettings = null;
   }
 
   async init() {
@@ -37,8 +33,18 @@ class CoreEngineClass {
     WebviewManager.setSettings(this.settings);
     await FileManager.ensureDirs("all");
     AppState.init("ai1");
-    await SettingsContext.init();
+    LogManager.init();
+    // Settings already loaded via SettingsManager
     await CommandManager.init();
+    
+    // Start periodic webview cleanup (every 10 minutes)
+    setInterval(() => {
+      try {
+        WebviewManager.cleanupInactiveWebviews();
+      } catch (err) {
+        // Cleanup error - silent
+      }
+    }, 10 * 60 * 1000);
     CommandExecutor.init(this);
     CommandManager.setExecutor((job) => CommandExecutor.executeJob(job));
     CommandManager.on("sent", ({ job }) =>
@@ -57,6 +63,19 @@ class CoreEngineClass {
         `RelayManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
       );
     }
+
+    // AssistantManager başlat
+    try {
+      AssistantManager.init(this);
+      this.assistant = AssistantManager;
+    } catch (e) {
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `AssistantManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
+      );
+    }
+
     await WhisperManager.init({ settings: this.settings });
     WhisperManager.setSender((payload) =>
       this.enqueueWhisperJob(
@@ -65,107 +84,90 @@ class CoreEngineClass {
         payload?.message,
       ),
     );
-    SyncHandler.init(this);
+    WebviewManager.initSyncer(this);
+    
+    // SlotController başlat
+    await SlotController.init();
+    
+    // SlotController event'lerini dinle - TrafficManager entegrasyonu
+    SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }) => {
+      const webview = SlotController.getWebview(slot);
+      if (webview) {
+        TrafficManager.attachWebview(slot, webview);
+        TrafficManager.start(slot);
+      }
+    });
+    
+    SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }) => {
+      TrafficManager.stop(slot);
+    });
+    
     this.initialized = true;
-    try {
-      const s = AppState.getState();
-      if (s && s.connections) this.connections = { ...s.connections };
-    } catch (e) {
-      /* noop */
-    }
+
+    // Initialize previous settings snapshot for comparison
+    this._previousSettings = JSON.parse(JSON.stringify(this.settings));
 
     try {
-      this._appSub = AppState.subscribe((snapshot) => {
-        try {
-          const conn = snapshot?.connections || {};
-          Object.keys(conn).forEach((p) => {
-            const desired = !!conn[p];
-            if (this.connections[p] !== desired) {
-              this.setConnection(p, desired);
-            }
-          });
-        } catch (err) {
-          /* noop */
-        }
+      this._settingsSub = SettingsManager.subscribe((payload) => {
+        const { settings } = payload;
+        if (!settings) return;
+
+        // Settings değişikliklerini SlotController otomatik olarak handle ediyor
+        // Burada sadece WebviewManager'a settings'i geçiyoruz
+        this.useSettings(settings);
+        this._previousSettings = JSON.parse(JSON.stringify(settings));
       });
     } catch (err) {
-      /* noop */
+      LogManager.addEvent(
+        "core",
+        "warning",
+        `SettingsManager subscribe error: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
+
     return this.settings;
   }
 
-  // Merkezi bağlantı yönetimi: uygulama içi "connected" durumu set et ve ilgili modülleri tetikle
-  setConnection(provider, connected, _opts = {}) {
-    if (!provider) return;
-    const prev = !!this.connections[provider];
+  /**
+   * Set connection state for a provider slot
+   * Delegates to SlotController for coordinated state management
+   * @param {string} provider - 'ai1' or 'ai2'
+   * @param {boolean} connected - Whether to connect or disconnect
+   * @param {Object} opts - Options { force: boolean }
+   * @returns {Promise<{ success: boolean, message?: string, correlationId?: string }>}
+   */
+  async setConnection(provider, connected, opts = {}) {
+    if (!provider) return { success: false, message: "no-provider" };
+
+    // Sadece ai1 ve ai2 slotları için connection yönetimi yapılır
+    if (provider !== "ai1" && provider !== "ai2") {
+      return { success: false, message: "invalid-provider" };
+    }
+
+    const prev = SlotController.isConnected(provider);
     const now = !!connected;
-    this.connections[provider] = now;
-    try {
-      AppState.setConnection?.(provider, now);
-    } catch (e) {
-      /* noop */
-    }
-    LogManager.addEvent("core", "info", `setConnection ${provider} => ${now}`);
-    if (prev === now) return { success: true, message: "no-change" };
+    const force = !!opts.force;
 
+    LogManager.addEvent(
+      "core",
+      "info",
+      `setConnection ${provider} => ${now} (force=${force}, prev=${prev})`,
+    );
+
+    // Skip if no change and not forced
+    if (!force && prev === now) {
+      return { success: true, message: "no-change" };
+    }
+
+    // Delegate to SlotController
+    let result;
     if (now) {
-      try {
-        const webview = WebviewManager.resolveWebview(provider);
-        if (webview) WebviewManager.attach(provider, webview);
-      } catch (err) {
-        LogManager.addEvent(
-          "core",
-          "warning",
-          `attach on connect failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-        );
-      }
-      try {
-        TrafficManager.start(provider);
-      } catch (err) {
-        LogManager.addEvent(
-          "core",
-          "warning",
-          `TrafficManager.start failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-        );
-      }
+      result = await SlotController.connect(provider, { force });
     } else {
-      // Disconnect logic
-      if (provider === "human") {
-        LogManager.addEvent(
-          "core",
-          "info",
-          "Human disconnected - keeping AI webviews and probes active",
-        );
-        return {
-          success: true,
-          message: "human-disconnect-ignored-for-webview",
-        };
-      }
-
-      try {
-        TrafficManager.stop(provider, { force: false });
-      } catch (err) {
-        LogManager.addEvent(
-          "core",
-          "warning",
-          `TrafficManager.stop failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-        );
-      }
-      try {
-        WebviewManager.detach(provider, {
-          force: false,
-          cleanupDom: true,
-          graceMs: this.defaultGraceMs,
-        });
-      } catch (err) {
-        LogManager.addEvent(
-          "core",
-          "warning",
-          `WebviewManager.detach failed: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-        );
-      }
+      result = await SlotController.disconnect(provider, { force });
     }
-    return { success: true };
+
+    return result;
   }
 
   async ensureReady() {
@@ -176,31 +178,12 @@ class CoreEngineClass {
 
   useSettings(settings) {
     if (settings) {
-      const oldSettings = this.settings;
       this.settings = settings;
       WebviewManager.setSettings(this.settings);
-
-      // Check for provider changes and re-navigate if connected
-      if (oldSettings && this.initialized) {
-        ["ai1", "ai2"].forEach((slot) => {
-          const oldId = oldSettings[slot]?.providerId;
-          const newId = settings[slot]?.providerId;
-
-          if (oldId !== newId && AppState.getConnection(slot)) {
-            LogManager.addEvent(
-              "core",
-              "info",
-              `Provider changed for ${slot} (${oldId} -> ${newId}). Navigating...`,
-            );
-            this.navigateTo(slot);
-          }
-        });
-      }
+      // Navigasyon _settingsSub callback'inde yapılıyor, burada tekrar yapmaya gerek yok
     }
     return this.settings;
   }
-
-  // Job execution and post-processing moved to `src/js/modules/command-executor.js`
 
   /**
    * @param {Object} options
@@ -356,7 +339,7 @@ class CoreEngineClass {
     }
     /** @type {any[]} */
     const targetList = (payload.targets || []).filter((t) =>
-      AppState.getConnection(t),
+      SlotController.isConnected(t),
     );
     if (!targetList.length) {
       LogManager.addEvent(
@@ -367,7 +350,6 @@ class CoreEngineClass {
       return { success: false, message: "Bağlı hedef yok" };
     }
 
-    // If protocol has a path instead of message, read the file as text
     if (payload.protocolPath && window.electronAPI?.readFile) {
       try {
         const base64 = await window.electronAPI.readFile(payload.protocolPath);
@@ -392,7 +374,6 @@ class CoreEngineClass {
       name: att.name || att.path?.split(/[/\\]/).pop(),
       path: att.path || att,
     }));
-    // If caller requested sequential AI-AI relay mode, start a protocol session
     if (
       room === "analyze" &&
       scenario === "ai-ai" &&
@@ -561,9 +542,22 @@ class CoreEngineClass {
     const priority = "normal";
     const stamp = new Date().toLocaleString("tr-TR");
     const provider = payload.provider || "AI";
-    const nickAi1 = getNickname(this.settings, "ai1");
-    const nickAi2 = getNickname(this.settings, "ai2");
-    const humanName = getNickname(this.settings, "human");
+    // Get nicknames from settings
+    const getNick = (p) => {
+      if (p === "user") return this.settings.user?.nickname || "Kullanıcı";
+      if (p === "ai1" || p === "ai2") {
+        const accountId = this.settings.slots?.[p]?.accountId;
+        if (!accountId) return p.toUpperCase();
+        const account = this.settings.accounts?.find(
+          (acc) => acc.id === accountId,
+        );
+        return account?.nickname || account?.email || p.toUpperCase();
+      }
+      return p.toUpperCase();
+    };
+    const nickAi1 = getNick("ai1");
+    const nickAi2 = getNick("ai2");
+    const humanName = getNick("user");
     const who =
       provider === "ai1" ? nickAi1 : provider === "ai2" ? nickAi2 : provider;
     const argLabel =
@@ -619,136 +613,52 @@ class CoreEngineClass {
   }
 
   syncProvider(provider, opts = {}) {
-    return SyncHandler.syncProvider(provider, opts);
+    return WebviewManager.syncProvider(provider, opts);
   }
 
   navigateTo(provider, url) {
     if (!provider) return;
 
-    // If provider is not connected, do not navigate.
-    if (!AppState.getConnection(provider)) {
-      LogManager.addEvent(
-        "core",
-        "info",
-        `Navigation suppressed for ${provider}: provider disconnected`,
-      );
-      return;
-    }
-
-    let targetUrl = url;
-    if (!targetUrl) {
-      const providerId = this.settings?.[provider]?.providerId;
-      if (!providerId) {
-        LogManager.addEvent(
-          "core",
-          "warning",
-          `No providerId configured for ${provider}`,
-        );
-        return;
-      }
-      const cfg = ProviderRegistry.get(providerId);
-      targetUrl = cfg?.baseUrl;
-    }
-
-    if (!targetUrl) {
-      LogManager.addEvent(
-        "core",
-        "warning",
-        `No URL or default page for navigation on ${provider}`,
-      );
-      return;
-    }
-
-    const webview = WebviewManager.resolveWebview(provider);
-    if (!webview) {
-      LogManager.addEvent(
-        "core",
-        "error",
-        `Cannot navigate: webview for ${provider} not found.`,
-      );
-      return;
-    }
-
-    const doLoad = () => {
-      const current =
-        (typeof webview.getURL === "function" && webview.getURL()) ||
-        webview.getAttribute("src") ||
-        "";
-      if (current === targetUrl) return;
-      try {
-        // Remove any existing error listeners to prevent duplicate errors
-        if (typeof webview.removeAllListeners === "function") {
-          webview.removeAllListeners("crashed");
-          webview.removeAllListeners("plugin-crashed");
-        }
-
-        if (typeof webview.loadURL === "function") {
-          webview.loadURL(targetUrl).catch((err) => {
-            LogManager.addEvent(
-              `core`,
-              "warning",
-              `Webview ${provider} navigation warning: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-            );
-          });
-        } else {
-          webview.src = targetUrl;
-        }
-        LogManager.addEvent(
-          `core`,
-          "info",
-          `Webview ${provider} navigated to ${targetUrl}`,
-        );
-      } catch (err) {
-        LogManager.addEvent(
-          `core`,
-          "warning",
-          `Webview ${provider} navigation error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-        );
-      }
-    };
-
-    try {
-      if (typeof webview.isLoading === "function" && webview.isLoading()) {
-        webview.addEventListener("dom-ready", doLoad, { once: true });
-      } else {
-        doLoad();
-      }
-    } catch {
-      doLoad();
-    }
+    // SlotController üzerinden navigate et
+    SlotController.navigate(provider, url);
   }
 
   setActiveTargets(targets = []) {
-    AppState.setChatTargets?.(targets);
+    AppState.setChatTargets(targets);
   }
 
   registerWebview(provider, webview) {
+    // SlotController'a webview kaydet
+    SlotController.registerWebview(provider, webview);
+    // WebviewManager'a da kaydet (DOM operasyonları için)
     WebviewManager.register(provider, webview);
-    try {
-      // If this provider is currently marked connected, attach immediately
-      if (this.connections && this.connections[provider]) {
-        WebviewManager.attach(provider, webview);
-        TrafficManager.start(provider);
-      }
-    } catch (err) {
-      LogManager.addEvent(
-        "core",
-        "warning",
-        `registerWebview attach/start error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-      );
-    }
+  }
+
+  /**
+   * FIX: Unregister webview - senkronize olarak her iki manager'dan da kaldır
+   */
+  unregisterWebview(provider) {
+    // SlotController'dan kaldır (bu disconnect da yapar)
+    SlotController.unregisterWebview(provider);
+    // WebviewManager'dan da kaldır
+    WebviewManager.detach(provider, { cleanupDom: false, skipTrafficStop: true });
   }
 
   listCommands() {
     return CommandManager.list();
   }
 
-  processNextCommand() {
-    return CommandManager.processNext?.();
-  }
-
-  clearCommandQueue() {
-    return CommandManager.clearQueue?.();
+  /**
+   * FIX: Cleanup method - settings subscription'ı temizle
+   * Uygulama kapanırken çağrılmalı
+   */
+  destroy() {
+    if (this._settingsSub) {
+      this._settingsSub();
+      this._settingsSub = null;
+    }
+    this.initialized = false;
+    LogManager.addEvent("core", "info", "CoreEngine destroyed");
   }
 }
 

@@ -25,13 +25,13 @@ export async function createWindow(options = {}) {
     try {
       win.loadURL('http://localhost:5173');
     } catch (e) {
-      console.warn('createWindow: loadURL failed', e?.message);
+      // loadURL failed - attempting loadFile fallback
     }
   } else {
     try {
       win.loadFile(join(__dirname, '../dist/index.html'));
     } catch (e) {
-      console.warn('createWindow: loadFile failed', e?.message);
+      // loadFile failed - critical
     }
   }
 
@@ -53,7 +53,7 @@ export function windowMinimize() {
   try {
     _mainWindow?.minimize();
   } catch (err) {
-    console.error('windowMinimize error:', err);
+    // windowMinimize error - silent
   }
 }
 
@@ -61,7 +61,7 @@ export function windowClose() {
   try {
     _mainWindow?.close();
   } catch (err) {
-    console.error('windowClose error:', err);
+    // windowClose error - silent
   }
 }
 
@@ -71,7 +71,7 @@ export function windowToggleFullscreen() {
     const isFull = _mainWindow.isFullScreen();
     _mainWindow.setFullScreen(!isFull);
   } catch (err) {
-    console.error('windowToggleFullscreen error:', err);
+    // windowToggleFullscreen error - silent
   }
 }
 
@@ -84,7 +84,7 @@ export async function appRestart() {
     if (!app.isPackaged) {
       if (_mainWindow) {
         _mainWindow.reload();
-        console.log('App is in dev mode, reloading window instead of relaunching.');
+        // Dev mode - reloading window instead of relaunching
         return { success: true, message: 'Geliştirme modu: Sayfa yenilendi' };
       }
     }
@@ -93,7 +93,7 @@ export async function appRestart() {
     app.quit();
     return { success: true };
   } catch (err) {
-    console.error('appRestart error:', err);
+    // appRestart error - silent
     return { success: false, message: err?.message };
   }
 }

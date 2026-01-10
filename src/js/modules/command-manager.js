@@ -32,7 +32,7 @@ class CommandManagerClass {
   async init() {
     try {
       await window.electronAPI?.commandInit?.();
-      LogManager.addEvent("command", "info", "CommandManager init");
+      // Init logu kaldırıldı - gereksiz gürültü
       this.queue = [];
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -77,7 +77,7 @@ class CommandManagerClass {
       try {
         l(payload);
       } catch (err) {
-        console.warn("CommandManager listener error:", err);
+        LogManager.addEvent("command", "warning", `Listener error: ${err?.message || err}`);
       }
     });
   }
@@ -104,7 +104,6 @@ class CommandManagerClass {
       Object.entries(rest || {}).forEach(([key, value]) => {
         if (typeof value === "function") return;
         try {
-          // @ts-ignore
           cleaned[key] = JSON.parse(JSON.stringify(value));
         } catch (e) {
           /* noop */
@@ -190,11 +189,29 @@ class CommandManagerClass {
       this.markFailed(job.id, message);
       job._deferred.reject(err);
     } finally {
+      // FIX: Clean up deferred references to prevent memory leak
+      // The promise has been resolved/rejected, so we can safely clear these
+      this._cleanupJobReferences(job);
+      
       this.processing = false;
       if (this.queue.length) {
         this.processNext();
       }
     }
+  }
+
+  /**
+   * FIX: Clean up job references after completion to prevent memory leak
+   * @param {CommandJob} job
+   */
+  _cleanupJobReferences(job) {
+    if (!job) return;
+    // Clear deferred object - promise is already settled
+    job._deferred = null;
+    // Clear the done promise reference
+    job.done = null;
+    // Clear the runner function reference
+    job.run = null;
   }
 
   /**
@@ -207,7 +224,7 @@ class CommandManagerClass {
         /* noop */
       });
     }
-    LogManager.addEvent("command", "success", `Komut tamamlandı (${id})`);
+    LogManager.addEvent("command", "info", `Komut tamamlandı (${id})`);
     return true;
   }
 

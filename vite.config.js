@@ -1,23 +1,23 @@
 import { defineConfig } from 'vite';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { resolve } from 'path';
 
 export default defineConfig({
-  root: './src',
+  root: 'src',
   base: './',
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/index.html'),
+      },
+    },
   },
   server: {
     port: 5173,
+    strictPort: false,
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
+  optimizeDeps: {
+    exclude: ['@xterm/xterm', '@xterm/addon-fit']
+  }
 });
-

@@ -1,7 +1,7 @@
-// @ts-nocheck
 // Whisper odası controller'ı
 import { CoreEngine } from "../modules/core-engine.js";
 import { AppState } from "../modules/app-state.js";
+import { SettingsManager } from "../modules/settings-manager.js";
 
 export class WhisperController {
   async init() {
@@ -12,17 +12,42 @@ export class WhisperController {
     this.doneAi2 = document.getElementById("whisper-done-ai2");
     this.nameAi1 = document.getElementById("whisper-name-ai1");
     this.nameAi2 = document.getElementById("whisper-name-ai2");
-    this.nameAi1.textContent = AppState.getNickname("ai1");
-    this.nameAi2.textContent = AppState.getNickname("ai2");
+    
+    this.updateNames();
 
     // Realtime nickname sync via AppState
     this._unsubAppState = AppState.subscribe(() => {
-      if (this.nameAi1) this.nameAi1.textContent = AppState.getNickname("ai1");
-      if (this.nameAi2) this.nameAi2.textContent = AppState.getNickname("ai2");
+      this.updateNames();
     });
+
+    // Realtime settings sync
+    this._unsubSettings = SettingsManager.subscribe(() => {
+      this.updateNames();
+    });
+
     this.updateHandler = () => this.render();
     window.addEventListener("whisper-updated", this.updateHandler);
     await this.render();
+  }
+
+  updateNames() {
+    // New UI gating: show nickname if slot assigned, else AI1/AI2
+    const settings = SettingsManager.getSnapshot();
+    const ai1Assigned = !!settings?.slots?.ai1?.accountId;
+    const ai2Assigned = !!settings?.slots?.ai2?.accountId;
+
+    if (this.nameAi1) {
+      this.nameAi1.textContent = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
+    }
+    if (this.nameAi2) {
+      this.nameAi2.textContent = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
+    }
+
+    // Disable lists if slot empty
+    if (this.pendingAi1) this.pendingAi1.style.opacity = ai1Assigned ? "1" : "0.5";
+    if (this.pendingAi2) this.pendingAi2.style.opacity = ai2Assigned ? "1" : "0.5";
+    if (this.doneAi1) this.doneAi1.style.opacity = ai1Assigned ? "1" : "0.5";
+    if (this.doneAi2) this.doneAi2.style.opacity = ai2Assigned ? "1" : "0.5";
   }
 
   async render() {
@@ -78,12 +103,9 @@ export class WhisperController {
   }
 
   onHide() {
-    try {
-      this._unsubAppState?.();
-      this._unsubAppState = null;
-    } catch (_) {
-      void 0;
-    }
+    // ❌ SUBSCRIPTIONLARI TEMİZLEME!
+    // Sayfa değiştiğinde subscriptionlar aktif kalmalı
+    // Aksi halde settings değişikliklerinde UI güncellenmiyor
   }
 
   formatDate(ts) {

@@ -244,7 +244,7 @@ async function main() {
     log("info", "Google Drive senkronizasyon başlatılıyor...");
 
     const settings = loadSettings();
-    const gconf = settings.human?.googledrive || {};
+    const gconf = settings.integrations?.googledrive || {};
 
     const clientId = gconf.clientId || process.env.GOOGLE_CLIENT_ID;
     const clientSecret = gconf.clientSecret || process.env.GOOGLE_CLIENT_SECRET;
@@ -273,9 +273,10 @@ async function main() {
     oauth2Client.on("tokens", (newTokens) => {
       if (newTokens.access_token || newTokens.refresh_token) {
         log("info", "Token yenilendi, settings güncelleniyor...");
-        settings.human = settings.human || {};
-        settings.human.googledrive = settings.human.googledrive || {};
-        settings.human.googledrive.tokens = { ...tokens, ...newTokens };
+        settings.integrations = settings.integrations || {};
+        settings.integrations.googledrive =
+          settings.integrations.googledrive || {};
+        settings.integrations.googledrive.tokens = { ...tokens, ...newTokens };
         saveSettings(settings);
       }
     });

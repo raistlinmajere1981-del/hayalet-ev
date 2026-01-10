@@ -1,15 +1,15 @@
-// @ts-nocheck
 // Sunucu odası controller'ı - kontrol devri, log tabanlı paneller
 import { LogManager } from "../modules/log-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
+// FIX: Import SlotEvent for proper state change subscription
+import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
 
 export class ServerController {
   constructor() {
-    this.settings = null;
     this.isDelegated = false;
     this.availableControllers = [];
     this.unsubscribeTraffic = null;
@@ -18,19 +18,19 @@ export class ServerController {
 
   getProviderLabel(provider) {
     if (!provider) return "AI";
-    if (provider === "ai1" || provider === "ai2" || provider === "human") {
+    if (provider === "ai1" || provider === "ai2" || provider === "user") {
       return AppState.getNickname(provider);
     }
     return provider;
   }
 
   async init() {
-    this.settings = await SettingsManager.load();
+    await SettingsManager.load();
 
     // Realtime settings sync
     if (!this._unsubSettings) {
-      this._unsubSettings = SettingsManager.subscribe((s) => {
-        this.settings = s;
+      this._unsubSettings = SettingsManager.subscribe(() => {
+        // Settings updated
       });
     }
     this.controllerSelect = document.getElementById("server-controller-select");
@@ -62,6 +62,14 @@ export class ServerController {
       this.updateControlButtons();
     });
 
+    // FIX: SlotController state değişikliklerini dinle (bağlantı durumu için)
+    if (!this._unsubSlotController) {
+      this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
+        this.renderControllerOptions();
+        this.updateControlButtons();
+      });
+    }
+
     this.unsubscribeTraffic = TrafficManager.onUpdate((snapshot) => {
       if (!snapshot) return;
       this.updateControlButtons();
@@ -80,36 +88,39 @@ export class ServerController {
       { key: "ai1", fallback: "AI1" },
       { key: "ai2", fallback: "AI2" },
     ];
-    const available = providers.filter((p) => AppState.getConnection(p.key));
+
+    const available = providers.filter((p) => {
+      return SlotController.isConnected(p.key);
+    });
     this.availableControllers = available;
     this.controllerSelect.innerHTML = "";
-    available.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.key;
-      opt.textContent = AppState.getNickname(p.key);
-      this.controllerSelect.appendChild(opt);
-    });
     if (!available.length) {
       const opt = document.createElement("option");
       opt.value = "";
       opt.textContent = "Bağlı AI yok";
       this.controllerSelect.appendChild(opt);
+    } else {
+      available.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.key;
+        opt.textContent = AppState.getNickname(p.key);
+        this.controllerSelect.appendChild(opt);
+      });
     }
   }
 
   updateControlButtons() {
-    const controller = this.controllerSelect?.value || "";
-    const hasTarget = !!controller;
-    const state = controller ? TrafficManager.state?.[controller] || {} : {};
-    const busy =
-      !hasTarget ||
-      state.readyState !== "ready" ||
-      state.thinkingState === "thinking";
-    if (this.delegateBtn)
-      this.delegateBtn.disabled =
-        busy || this.availableControllers.length === 0;
-    if (this.reclaimBtn)
-      this.reclaimBtn.disabled = busy || this.availableControllers.length === 0;
+    const hasConnectedAI =
+      this.availableControllers && this.availableControllers.length > 0;
+    const delegateBtn = document.getElementById("server-delegate-btn");
+    const reclaimBtn = document.getElementById("server-reclaim-btn");
+
+    if (delegateBtn) {
+      delegateBtn.disabled = !hasConnectedAI;
+    }
+    if (reclaimBtn) {
+      reclaimBtn.disabled = !hasConnectedAI;
+    }
   }
 
   populateCommandDropdown() {
@@ -188,7 +199,6 @@ export class ServerController {
     this.updateControlButtons();
     this.renderLogs();
   }
-
 
   onHide() {
     try {

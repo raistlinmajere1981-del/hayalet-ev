@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Hayalet-ev MCP Server
+ * Hayalet-ev MCP Server (Orchestrator)
  * 
- * Bu server Rovodev CLI'ye hayalet-ev projesine özel araçlar sağlar:
- * - list_providers: Mevcut AI provider'ları listele
- * - add_provider: Yeni provider ekle
- * - test_electron: Electron'u test modunda çalıştır
- * - list_plugins: Mevcut plugin'leri listele
+ * Alt modüller:
+ * - tools/provider-tools.js: Provider yönetim araçları
+ * - tools/electron-tools.js: Electron test ve plugin araçları
+ * - tools/log-tools.js: Log okuma ve sorgulama araçları
+ * - tools/debug-tools.js: Hata analizi ve debugging araçları
+ * - utils/log-utils.js: Log yardımcı fonksiyonları
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -16,22 +17,25 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const execAsync = promisify(exec);
+// Tool handlers
+import { listProviders, addProvider } from "./tools/provider-tools.js";
+import { testElectron, listPlugins } from "./tools/electron-tools.js";
+import { readElectronLogs, listLogSessions, getSessionSummary } from "./tools/log-tools.js";
+import { getErrorHints } from "./tools/debug-tools.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PROJECT_ROOT = join(__dirname, '..');
+const PROJECT_ROOT = join(__dirname, "..");
+const LOG_DIR = join(PROJECT_ROOT, "logs");
 
 // MCP Server oluştur
 const server = new Server(
   {
     name: "hayalet-ev-mcp",
-    version: "1.0.0",
+    version: "1.2.0",
   },
   {
     capabilities: {
@@ -40,80 +44,93 @@ const server = new Server(
   }
 );
 
+// Tool definitions
+const TOOL_DEFINITIONS = [
+  {
+    name: "list_providers",
+    description: "Hayalet-ev'deki mevcut AI provider'ları listele",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "add_provider",
+    description: "Hayalet-ev'e yeni AI provider ekle",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Provider adı (örn: perplexity, ollama)" },
+        url: { type: "string", description: "Provider URL'i" },
+      },
+      required: ["name", "url"],
+    },
+  },
+  {
+    name: "test_electron",
+    description: "Hayalet-ev Electron uygulamasını test et",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeout: { type: "number", description: "Test süresi (saniye), varsayılan 5", default: 5 },
+      },
+    },
+  },
+  {
+    name: "list_plugins",
+    description: "Hayalet-ev plugin'lerini listele",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "read_electron_logs",
+    description: "Electron console ve error loglarını oku. Gelişmiş filtreleme: source (MAIN, RENDERER, WEBVIEW-AI1, etc.), level (LOG, WARN, ERROR), içerik arama, correlation ID ile işlem takibi.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["console", "error", "all", "structured"], description: "Log tipi", default: "all" },
+        tail: { type: "number", description: "Son N satırı göster (varsayılan: 50)", default: 50 },
+        source: { type: "string", description: "Kaynak filtresi: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob destekli)" },
+        level: { type: "string", enum: ["LOG", "WARN", "ERROR", "DEBUG", "INFO"], description: "Log seviyesi filtresi" },
+        contains: { type: "string", description: "İçerik arama (case-insensitive)" },
+        correlationId: { type: "string", description: "İşlem takibi için correlation ID" },
+        sessionId: { type: "string", description: "Belirli bir session'ın loglarını oku (varsayılan: en son session)" },
+      },
+    },
+  },
+  {
+    name: "list_log_sessions",
+    description: "Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Gösterilecek maksimum session sayısı (varsayılan: 10)", default: 10 },
+      },
+    },
+  },
+  {
+    name: "get_error_hints",
+    description: "Belirli bir hata mesajı için AI debugging ipuçları al. Bilinen hata pattern'lerini eşleştirir ve çözüm önerileri sunar.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        errorMessage: { type: "string", description: "Analiz edilecek hata mesajı" },
+        provider: { type: "string", description: "İlgili provider (chatgpt, gemini, grok) - dosya yolları için kullanılır" },
+      },
+      required: ["errorMessage"],
+    },
+  },
+  {
+    name: "get_session_summary",
+    description: "Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sessionId: { type: "string", description: "Session ID (varsayılan: en son session)" },
+      },
+    },
+  },
+];
+
 // Tool listesini sun
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "list_providers",
-        description: "Hayalet-ev'deki mevcut AI provider'ları listele",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "add_provider",
-        description: "Hayalet-ev'e yeni AI provider ekle",
-        inputSchema: {
-          type: "object",
-          properties: {
-            name: {
-              type: "string",
-              description: "Provider adı (örn: perplexity, ollama)",
-            },
-            url: {
-              type: "string",
-              description: "Provider URL'i",
-            },
-          },
-          required: ["name", "url"],
-        },
-      },
-      {
-        name: "test_electron",
-        description: "Hayalet-ev Electron uygulamasını test et",
-        inputSchema: {
-          type: "object",
-          properties: {
-            timeout: {
-              type: "number",
-              description: "Test süresi (saniye), varsayılan 5",
-              default: 5,
-            },
-          },
-        },
-      },
-      {
-        name: "list_plugins",
-        description: "Hayalet-ev plugin'lerini listele",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
-      },
-      {
-        name: "read_electron_logs",
-        description: "Electron console ve error loglarını oku (runtime hatalarını görmek için)",
-        inputSchema: {
-          type: "object",
-          properties: {
-            type: {
-              type: "string",
-              enum: ["console", "error", "all"],
-              description: "Log tipi: console (tüm loglar), error (sadece hatalar), all (her ikisi)",
-              default: "all",
-            },
-            tail: {
-              type: "number",
-              description: "Son N satırı göster (varsayılan: 50)",
-              default: 50,
-            },
-          },
-        },
-      },
-    ],
-  };
+  return { tools: TOOL_DEFINITIONS };
 });
 
 // Tool çağrılarını işle
@@ -122,193 +139,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
-      case "list_providers": {
-        const providersDir = join(PROJECT_ROOT, 'src/js/modules/webview');
-        const files = await readdir(providersDir);
-        const providers = files
-          .filter(f => f.endsWith('-view.js'))
-          .map(f => f.replace('-view.js', ''));
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Mevcut AI Provider'lar:\n${providers.map(p => `- ${p}`).join('\n')}`,
-            },
-          ],
-        };
-      }
+      case "list_providers":
+        return await listProviders(PROJECT_ROOT);
 
-      case "add_provider": {
-        const { name: providerName, url } = args;
-        const filename = `${providerName}-view.js`;
-        const filepath = join(PROJECT_ROOT, 'src/js/modules/webview', filename);
-        
-        const template = `// ${providerName.charAt(0).toUpperCase() + providerName.slice(1)} AI Provider
-export const ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}View = {
-    name: '${providerName}',
-    url: '${url}',
-    preload: null,
-    
-    init() {
-        console.log('${providerName} view initialized');
-    },
-    
-    onLoad() {
-        console.log('${providerName} webview loaded');
-    }
-};
-`;
-        
-        await writeFile(filepath, template);
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `✅ Provider eklendi: ${filepath}\n\nSonraki adımlar:\n1. electron/webview-manager.js'ye kaydet\n2. UI'da buton ekle\n3. npm run dev ile test et`,
-            },
-          ],
-        };
-      }
+      case "add_provider":
+        return await addProvider(PROJECT_ROOT, args);
 
-      case "test_electron": {
-        const timeout = args.timeout || 5;
-        
-        try {
-          const { stdout, stderr } = await execAsync('npm run dev', {
-            cwd: PROJECT_ROOT,
-            timeout: timeout * 1000,
-          });
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Electron test başlatıldı.\n\nÇıktı:\n${stdout}\n${stderr ? `Hatalar:\n${stderr}` : ''}`,
-              },
-            ],
-          };
-        } catch (error) {
-          if (error.killed) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `✅ Electron ${timeout} saniye çalıştı ve kapatıldı.`,
-                },
-              ],
-            };
-          }
-          throw error;
-        }
-      }
+      case "test_electron":
+        return await testElectron(PROJECT_ROOT, args);
 
-      case "list_plugins": {
-        const pluginsDir = join(PROJECT_ROOT, 'plugins');
-        const dirs = await readdir(pluginsDir, { withFileTypes: true });
-        const plugins = [];
-        
-        for (const dir of dirs) {
-          if (dir.isDirectory()) {
-            try {
-              const manifestPath = join(pluginsDir, dir.name, 'manifest.json');
-              const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
-              plugins.push({
-                name: dir.name,
-                version: manifest.version,
-                description: manifest.description,
-              });
-            } catch {
-              plugins.push({
-                name: dir.name,
-                version: 'unknown',
-                description: 'No manifest',
-              });
-            }
-          }
-        }
-        
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Hayalet-ev Plugin'leri:\n${plugins.map(p => `- ${p.name} (${p.version}): ${p.description}`).join('\n')}`,
-            },
-          ],
-        };
-      }
+      case "list_plugins":
+        return await listPlugins(PROJECT_ROOT);
 
-      case "read_electron_logs": {
-        const { type = "all", tail = 50 } = args;
-        const { homedir } = await import('os');
-        const userDataPath = join(homedir(), '.config', 'hayalet-ev');
-        const consoleLogPath = join(userDataPath, 'logs', 'console.log');
-        const errorLogPath = join(userDataPath, 'logs', 'error.log');
-        
-        const tailLines = (content, n) => {
-          const lines = content.split('\n').filter(l => l.trim());
-          return lines.slice(-n).join('\n');
-        };
-        
-        let output = '';
-        
-        try {
-          if (type === "console" || type === "all") {
-            try {
-              const consoleLog = await readFile(consoleLogPath, 'utf-8');
-              const tailed = tailLines(consoleLog, tail);
-              output += `📋 Console Logs (son ${tail} satır):\n${'='.repeat(60)}\n${tailed}\n\n`;
-            } catch (err) {
-              output += `📋 Console Logs: Dosya bulunamadı (${consoleLogPath})\n\n`;
-            }
-          }
-          
-          if (type === "error" || type === "all") {
-            try {
-              const errorLog = await readFile(errorLogPath, 'utf-8');
-              const tailed = tailLines(errorLog, tail);
-              output += `❌ Error Logs (son ${tail} satır):\n${'='.repeat(60)}\n${tailed}\n`;
-            } catch (err) {
-              output += `❌ Error Logs: Dosya bulunamadı (${errorLogPath})\n`;
-            }
-          }
-          
-          if (!output) {
-            output = '✅ Henüz log yok. Electron uygulaması çalıştırıldıktan sonra loglar burada görünecek.';
-          }
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: output,
-              },
-            ],
-          };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `❌ Log okuma hatası: ${error.message}\n\nLog dosyaları:\n- Console: ${consoleLogPath}\n- Error: ${errorLogPath}`,
-              },
-            ],
-          };
-        }
-      }
+      case "read_electron_logs":
+        return await readElectronLogs(LOG_DIR, args);
+
+      case "list_log_sessions":
+        return await listLogSessions(LOG_DIR, args);
+
+      case "get_error_hints":
+        return await getErrorHints(LOG_DIR, args);
+
+      case "get_session_summary":
+        return await getSessionSummary(LOG_DIR, args);
 
       default:
         throw new Error(`Bilinmeyen tool: ${name}`);
     }
   } catch (error) {
     return {
-      content: [
-        {
-          type: "text",
-          text: `❌ Hata: ${error.message}`,
-        },
-      ],
+      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
     };
   }
@@ -318,7 +178,7 @@ export const ${providerName.charAt(0).toUpperCase() + providerName.slice(1)}View
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Hayalet-ev MCP Server başlatıldı");
+  console.error("Hayalet-ev MCP Server v1.2.0 başlatıldı");
 }
 
 main().catch((error) => {

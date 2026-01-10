@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as chatgptProvider from "./providers/chatgpt/index.js";
 import * as grokProvider from "./providers/grok/index.js";
 import * as geminiProvider from "./providers/gemini/index.js";

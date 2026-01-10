@@ -1,5 +1,39 @@
-// @ts-nocheck
-import { AppState } from "./app-state.js";
+// FIX: Import SlotState for proper state validation
+import { SlotController, SlotState } from "./slot-controller.js";
+import { LogManager } from "./log-manager.js";
+
+/**
+ * Check if slot is ready for protocol communication
+ * - Must be CONNECTED (not CONNECTING, DISCONNECTING, or ERROR)
+ * @param {string} slot 
+ * @returns {boolean}
+ */
+function isSlotReady(slot) {
+  const state = SlotController.getState(slot);
+  if (!state) return false;
+  
+  // Only allow protocol communication when fully connected
+  if (state.state !== SlotState.CONNECTED) {
+    LogManager.addEvent(
+      "protocol",
+      "debug",
+      `Slot ${slot} not ready for protocol: state=${state.state}`
+    );
+    return false;
+  }
+  
+  // Also check if URL is excluded (login pages, etc.)
+  if (state.urlExcluded) {
+    LogManager.addEvent(
+      "protocol",
+      "debug",
+      `Slot ${slot} URL excluded, skipping protocol`
+    );
+    return false;
+  }
+  
+  return true;
+}
 
 function buildProtocolPayload({
   room = "",
@@ -7,7 +41,8 @@ function buildProtocolPayload({
   targets = [],
   context = {},
 }) {
-  const connected = (targets || []).filter((t) => AppState.getConnection(t));
+  // FIX: Use isSlotReady instead of just isConnected for safer state validation
+  const connected = (targets || []).filter((t) => isSlotReady(t));
 
   if (room === "analyze") {
     if (scenario === "user-ai-ai") {

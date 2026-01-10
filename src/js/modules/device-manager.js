@@ -1,4 +1,3 @@
-// @ts-nocheck
 // DeviceManager - basit/örnek cihaz etkileşim katmanı
 import { LogManager } from "./log-manager.js";
 // Use electronAPI.deviceAction when available; fallback to logging stub
@@ -8,12 +7,13 @@ const callDevice = async (action, payload) => {
       return await window.electronAPI.deviceAction(action, payload);
     }
   } catch (err) {
+    const error = /** @type {Error} */ (err);
     LogManager.addEvent(
       "device",
       "error",
-      `deviceAction error: ${err?.message || err}`,
+      `deviceAction error: ${error?.message || error}`,
     );
-    return { success: false, message: err?.message || String(err) };
+    return { success: false, message: error?.message || String(error) };
   }
   LogManager.addEvent(
     "device",

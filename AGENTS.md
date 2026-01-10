@@ -44,7 +44,11 @@ electron/                    # Main process modules
 ├── main.js                 # Application entry point & IPC handlers
 ├── preload.cjs             # Main window preload (exposes electronAPI)
 ├── webview-preload.cjs     # Webview preload (AI provider injection)
-├── webview-manager.js      # Webview lifecycle & communication
+├── console-logger.js       # Unified logging orchestrator
+├── logger/                 # Logging alt modülleri
+│   ├── session-manager.js  # Session lifecycle & meta
+│   ├── log-writer.js       # Log file writing & rotation
+│   └── log-reader.js       # Log querying & filtering
 ├── settings-manager.js     # Settings persistence (JSON file)
 ├── file-manager.js         # File operations & archive management
 ├── command-manager.js      # Command queue system
@@ -59,51 +63,169 @@ src/js/modules/             # Renderer process modules
 ├── core-engine.js          # Central coordinator (singleton)
 ├── app-state.js            # Global state management
 ├── settings-manager.js     # Settings UI & sync
-├── webview-manager.js      # Webview control from renderer
 ├── command-manager.js      # Command queue client
 ├── command-executor.js     # Job execution logic
 ├── protocol-handler.js     # AI-AI communication protocol
-├── relay-manager.js        # Message relay between AIs
-├── sync-handler.js         # Archive synchronization
-├── traffic-manager.js      # Message tracking & loading states
 ├── catch-manager.js        # Command interception
-└── webview/                # Provider implementations
-    ├── provider-registry.js    # Provider configuration registry
-    ├── provider-factory.js     # Provider instantiation
-    ├── providers/
-    │   ├── chatgpt/
-    │   │   ├── config.js       # Provider config & DOM selectors
-    │   │   ├── index.js        # Main provider logic
-    │   │   └── scraper.js      # DOM scraping utilities
-    │   ├── gemini/
-    │   └── grok/
-    └── methods/                # Injection methods
-        ├── message/            # Message sending strategies
-        │   ├── injection.js    # DOM injection method
-        │   └── xdotools.js     # X11 automation fallback
-        └── file/               # File upload strategies
-            ├── dragdrop.js     # Drag & drop simulation
-            ├── injection.js    # Direct DOM injection
-            ├── googledrive.js  # Google Drive links
-            ├── catbox.js       # Catbox.moe upload
-            └── uguu.js         # Uguu.se upload
+│
+├── relay-manager.js        # Relay orchestrator (AI↔AI, AI↔Asistan)
+├── relay/                  # Relay alt modülleri
+│   ├── base-relay.js       # Abstract base class for all relays
+│   ├── ai-ai-relay.js      # AI-to-AI communication relay
+│   ├── ai-asistan-relay.js # AI-to-Asistan communication relay
+│   └── index.js            # Barrel export
+│
+├── slot-controller.js      # Slot lifecycle orchestrator
+├── slot/                   # Slot alt modülleri
+│   ├── webview-handler.js  # Webview attach/detach/dom-ready
+│   ├── url-handler.js      # URL change tracking & exclusion
+│   ├── timeout-handler.js  # Timeout & error management
+│   ├── settings-sync.js    # Settings synchronization
+│   └── index.js            # Barrel export
+│
+├── webview-manager.js      # Webview facade (send, sync, lifecycle)
+├── webview/                # Webview alt modülleri
+│   ├── lifecycle-manager.js    # Register, attach, detach, destroy
+│   ├── message-sender.js       # Message & file sending
+│   ├── conversation-syncer.js  # DOM scraping & archive sync
+│   ├── pending-archive-handler.js # Pending archive operations
+│   ├── provider-registry.js    # Provider configuration registry
+│   ├── provider-factory.js     # Provider instantiation
+│   ├── index.js                # Barrel export
+│   ├── providers/
+│   │   ├── chatgpt/
+│   │   │   ├── config.js       # Provider config & DOM selectors
+│   │   │   ├── index.js        # Main provider logic
+│   │   │   └── scraper.js      # DOM scraping utilities
+│   │   ├── gemini/
+│   │   └── grok/
+│   └── methods/                # Injection methods
+│       ├── message/            # Message sending strategies
+│       │   ├── injection.js    # DOM injection method
+│       │   └── xdotools.js     # X11 automation fallback
+│       └── file/               # File upload strategies
+│           ├── dragdrop.js     # Drag & drop simulation
+│           ├── injection.js    # Direct DOM injection
+│           ├── googledrive.js  # Google Drive links
+│           ├── catbox.js       # Catbox.moe upload
+│           └── uguu.js         # Uguu.se upload
+│
+├── traffic-manager.js      # Traffic orchestrator (loading/thinking/send)
+├── traffic/                # Traffic alt modülleri
+│   ├── loading-tracker.js  # Page loading state tracking
+│   ├── thinking-tracker.js # AI thinking state tracking
+│   ├── send-tracker.js     # Send button state tracking
+│   ├── probe-script-builder.js # Webview probe script generator
+│   └── webview-events.js   # Webview navigation events
+│
+├── server-commands.js      # Server command dispatcher
+└── commands/               # Command handler'ları
+    ├── utils.js            # Shared utilities
+    ├── device-commands.js  # DeviceManager handler
+    ├── screenshot-commands.js # Screenshot handlers
+    ├── window-commands.js  # Window control handlers
+    ├── whisper-commands.js # WhisperManager handler
+    ├── file-commands.js    # File operation handlers
+    └── ai-chat-commands.js # AI-AI chat handlers
+
+src/js/pages/               # Page controllers
+├── analyze.js              # Analyze page orchestrator
+├── analyze/                # Analyze alt modülleri
+│   ├── message-renderer.js # Message bubble rendering
+│   ├── upload-handler.js   # File upload UI
+│   ├── context-menu.js     # Context menu & read modal
+│   └── draft-manager.js    # Draft persistence
+├── settings.js
+├── webview.js
+└── ...
+
+mcp-server/                 # MCP Protocol Server
+├── index.js                # Server orchestrator
+├── tools/                  # Tool handler'ları
+│   ├── provider-tools.js   # list_providers, add_provider
+│   ├── electron-tools.js   # test_electron, list_plugins
+│   ├── log-tools.js        # read_electron_logs, list_log_sessions
+│   └── debug-tools.js      # get_error_hints
+└── utils/                  # Yardımcı fonksiyonlar
+    └── log-utils.js        # Log reading utilities
 ```
 
 ---
 
 ## 🔑 Key Concepts
 
+### 0. Modular Architecture Pattern
+
+Proje, büyük modülleri yönetilebilir alt modüllere bölen **Orchestrator Pattern** kullanır:
+
+**Yapı:**
+```
+module-name.js              # Orchestrator (public API, koordinasyon)
+module-name/                # Alt modüller klasörü
+├── sub-module-1.js         # Tek sorumluluk
+├── sub-module-2.js         # Tek sorumluluk
+└── index.js                # Barrel export (opsiyonel)
+```
+
+**Kurallar:**
+- **Orchestrator:** Public API'yi expose eder, alt modülleri koordine eder (~200-500 satır)
+- **Alt modüller:** Tek bir sorumluluğa odaklanır (~100-300 satır)
+- **Barrel export:** `index.js` ile tüm modülleri tek noktadan export et
+- **AI-friendly:** Her dosya AI asistanların işlem yapabileceği boyutta (~300 satır ideal)
+
+**Mevcut Orchestrator'lar:**
+| Orchestrator | Alt Klasör | Açıklama |
+|--------------|------------|----------|
+| `relay-manager.js` | `relay/` | AI↔AI, AI↔Asistan relay yönetimi |
+| `slot-controller.js` | `slot/` | Webview bağlantı yaşam döngüsü |
+| `webview-manager.js` | `webview/` | Mesaj gönderim, sync, lifecycle |
+| `traffic-manager.js` | `traffic/` | Loading, thinking, send tracking |
+| `server-commands.js` | `commands/` | Server komut handler'ları |
+| `console-logger.js` | `logger/` | Session, writer, reader |
+| `analyze.js` | `analyze/` | Sayfa alt bileşenleri |
+| `mcp-server/index.js` | `tools/`, `utils/` | MCP tool handler'ları |
+
 ### 1. Settings System
-- **Storage:** `~/.config/hayalet-ev/settings.json` (Linux) or platform equivalent
+- **Storage:** `./config/settings.json` (project root, portable across platforms)
 - **Schema:** Defined in `src/js/modules/settings/settings-schema.js`
 - **Structure:**
   ```javascript
   {
-    human: { nickname: "Kullanıcı", avatarPath: "" },
-    ai1: { providerId: "chatgpt", catchCommands: true, messageMethod: "injection", fileMethod: "dragdrop", activeAccountId: null },
-    ai2: { providerId: "grok", ... },
-    general: { messageMethod: "injection", fileMethod: "dragdrop" },
-    accounts: []  // Multi-account support per provider
+    user: { nickname: "Kullanıcı", avatarPath: "", connected: false },
+    integrations: {
+      googledrive: {
+        clientId: "",
+        clientSecret: "",
+        authorizationCode: "",
+        connected: false,
+        account: ""
+      }
+    },
+    accounts: [
+      {
+        id: "uuid-123",
+        email: "user@example.com",
+        provider: "chatgpt",
+        nickname: "My ChatGPT",
+        avatarPath: "assets/user@example.com-chatgpt.png"
+      }
+    ],
+    slots: {
+      ai1: {
+        accountId: "uuid-123",
+        connected: false,
+        catchCommands: true,
+        messageMethod: "injection",
+        fileMethod: "dragdrop"
+      },
+      ai2: {
+        accountId: null,
+        connected: false,
+        catchCommands: true,
+        messageMethod: "injection",
+        fileMethod: "dragdrop"
+      }
+    }
   }
   ```
 - **Access:** Via `SettingsManager.load()` / `SettingsManager.save()`
@@ -140,7 +262,7 @@ Each AI provider is a self-contained module with:
 Asynchronous job queue for AI message sending:
 - **Location:** `electron/command-manager.js` (main) + `src/js/modules/command-manager.js` (renderer)
 - **Flow:** `pending → in_progress → sent | failed`
-- **Persistence:** Jobs stored in `~/.config/hayalet-ev/command/`
+- **Persistence:** Jobs stored in `./commands/` (project root)
 - **Use Case:** Ensures messages are sent even if webview is loading
 
 ### 5. AI-AI Communication Protocol
@@ -161,6 +283,72 @@ Three types of activity tracking:
 - **Sending:** `traffic/send-tracker.js` - Message send progress
 - **Thinking:** `traffic/thinking-tracker.js` - AI response generation
 
+### 8. Unified Log System
+Session bazlı, AI-debugging için optimize edilmiş log sistemi.
+
+**Log Dosya Yapısı:**
+```
+./logs/
+├── {sessionId}/                    # Her uygulama çalışması için ayrı dizin
+│   ├── meta.json                  # Session metadata (platform, versions)
+│   ├── console-001.log            # Console logları (10K satırda chunk'lanır)
+│   ├── console-002.log            # Sonraki chunk
+│   ├── error.log                  # Sadece hatalar ve uyarılar
+│   ├── structured.jsonl           # JSON formatında structured loglar
+│   ├── state-snapshots.jsonl      # Periyodik uygulama durumu
+│   └── summary.json               # Session özeti (kapanışta yazılır)
+```
+
+**Log Seviyeleri:**
+- `error` - Kritik hatalar, her zaman loglanır
+- `warning` - Uyarılar, error.log'a da yazılır
+- `info` - Genel bilgi mesajları
+- `debug` - Detaylı debug bilgisi (gürültülü, filtrelenebilir)
+- `system` - Sistem olayları (init, shutdown)
+
+**LogManager Kullanımı (Renderer Process):**
+```javascript
+import { LogManager } from "./modules/log-manager.js";
+
+// Basit log
+LogManager.addEvent("source", "info", "Mesaj");
+
+// Context ile log (webview işlemleri için)
+LogManager.addEventWithContext("webview", "error", "Selector bulunamadı", {
+  provider: "chatgpt",
+  selector: "button[data-testid='send']",
+  url: "https://chat.openai.com/c/xxx",
+}, correlationId);
+
+// İşlem takibi (correlation ID ile)
+const correlationId = LogManager.startOperation("file-upload", { provider: "ai1" });
+// ... işlem ...
+LogManager.endOperation(correlationId, "success", { uploadedCount: 3 });
+```
+
+**Error Pattern Hints:**
+Bilinen hata pattern'leri otomatik olarak tespit edilir ve çözüm önerileri eklenir:
+```javascript
+// Hata loglandığında otomatik hint eklenir:
+{
+  "type": "error",
+  "message": "Cannot read property 'click' of null",
+  "aiHint": {
+    "category": "dom-selector",
+    "suggestion": "Selector muhtemelen değişti. Provider config'i kontrol et.",
+    "checkFiles": ["src/js/modules/webview/providers/chatgpt/config.js"],
+    "severity": "high"
+  }
+}
+```
+
+**Best Practices:**
+- ❌ `console.log()` kullanma - main process'te intercepted ama renderer'da LogManager tercih edilmeli
+- ✅ `LogManager.addEvent()` kullan - dosyaya yazılır, UI'da görünür
+- ✅ Error ve warning için her zaman context ekle
+- ✅ Uzun işlemlerde correlation ID kullan
+- ❌ Döngülerde veya sık çağrılan fonksiyonlarda info log yazma (throttling var ama yine de dikkat)
+
 ---
 
 ## 🎯 Development Guidelines
@@ -174,11 +362,14 @@ Three types of activity tracking:
 - **Documentation:** All Markdown files in Turkish
 
 ### File Naming Conventions
-- **Managers:** `*-manager.js` (singleton services)
+- **Managers:** `*-manager.js` (singleton services, orchestrators)
 - **Handlers:** `*-handler.js` (event processors)
 - **Trackers:** `*-tracker.js` (state monitoring)
 - **Utils:** `*-utils.js` (helper functions)
+- **Commands:** `*-commands.js` (command handlers in `commands/`)
+- **Tools:** `*-tools.js` (MCP tool handlers in `mcp-server/tools/`)
 - **Pages:** `src/js/pages/*.js` + `src/pages/*.html` (page logic + markup)
+- **Barrel Exports:** `index.js` (re-export all from a module folder)
 
 ### Module Pattern
 ```javascript
@@ -239,8 +430,6 @@ npm install
 
 # Development mode (Vite dev server + Electron)
 npm run start
-# or
-npm run electron:dev
 
 # Production build
 npm run build
@@ -290,8 +479,42 @@ npm run check-types
 - **Main Process:** Console output in terminal (where `npm start` runs)
 - **Renderer Process:** DevTools in Electron window (Ctrl+Shift+I)
 - **Webview:** Right-click webview → Inspect Element
-- **IPC Issues:** Add `console.log` in preload.cjs and main.js handlers
-- **Logs:** Check `~/.config/hayalet-ev/logs/`
+- **Logs:** Check `./logs/{sessionId}/` (session bazlı log dizinleri)
+
+#### Log Sistemini Kullanarak Debug
+```bash
+# 1. Uygulamayı başlat
+npm run start
+
+# 2. Hata oluştuğunda logları kontrol et
+ls -la logs/                           # Session listesi
+cat logs/{sessionId}/error.log         # Sadece hatalar
+tail -50 logs/{sessionId}/console-001.log  # Son 50 console logu
+cat logs/{sessionId}/meta.json         # Session bilgisi
+cat logs/{sessionId}/summary.json      # Session özeti (kapanışta)
+
+# 3. Structured logları incele (JSON format)
+cat logs/{sessionId}/structured.jsonl | jq .
+```
+
+#### MCP Server ile Log Okuma (AI-Assisted Debugging)
+```bash
+# Session listesi
+read_electron_logs --type all --tail 100
+
+# Sadece webview hataları
+read_electron_logs --source "WEBVIEW-*" --type error
+
+# Belirli bir işlemi takip et (correlation ID ile)
+read_electron_logs --correlationId "cmd-xxxxx"
+
+# Hata analizi ve çözüm ipucu
+get_error_hints --errorMessage "Cannot read property 'click' of null" --provider chatgpt
+
+# Session özeti
+get_session_summary
+list_log_sessions --limit 5
+```
 
 ### Testing with MCP Server
 ```bash
@@ -378,7 +601,6 @@ See `ultrathink.md` for full behavioral protocols. Key points:
 - `README.md` - Project overview (Turkish)
 - `ultrathink.md` - AI behavioral protocols
 - `AGENTS.md` - This file (development guide)
-- `CLAUDE.md` - Claude Code specific guidance (to be migrated)
 
 ### MCP Server
 - `mcp-server/index.js` - MCP protocol implementation
@@ -445,7 +667,7 @@ npm run electron -- --user-data-dir=/tmp/hayalet-test
 - Check if provider changed their DOM structure
 
 **Settings not persisting:**
-- Check file permissions on `~/.config/hayalet-ev/`
+- Check file permissions on `./config/` directory
 - Verify JSON syntax in settings.json
 - Look for errors in settings-manager.js logs
 
@@ -516,7 +738,9 @@ git push origin feature/my-feature
 
 ### Code Review Checklist
 - [ ] Follows project code style
-- [ ] No console.log statements (use LogManager)
+- [ ] No direct `console.log` in renderer (use `LogManager.addEvent()`)
+- [ ] Error/warning logs include context (provider, url, selector, etc.)
+- [ ] Long operations use correlation ID for tracking
 - [ ] Error handling implemented
 - [ ] Comments in Turkish for complex logic
 - [ ] No new dependencies without discussion
@@ -571,6 +795,6 @@ Use conventional commits (Turkish):
 
 ---
 
-**Last Updated:** 2026-01-03  
-**Version:** 5.2.0  
+**Last Updated:** 2026-01-11  
+**Version:** 5.3.0 (Modular Architecture Refactor)  
 **Maintainer:** Raistlin Majere, Nexa, Gök

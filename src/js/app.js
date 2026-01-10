@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Ana uygulama kontrolörü
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
@@ -8,13 +7,13 @@ import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
 import { ServerController } from "./pages/server.js";
 import { ArchivesController } from "./pages/archives.js";
-import { TestKonvaController } from "./pages/test-konva.js";
+import { asistanPage } from "./pages/asistan.js";
 import { LogManager } from "./modules/log-manager.js";
 import { TrafficManager } from "./modules/traffic-manager.js";
 import { CoreEngine } from "./modules/core-engine.js";
-import { SettingsContext } from "./modules/settings-context.js";
-import { getAvatarPath } from "./modules/settings-helpers.js";
 import { SettingsManager } from "./modules/settings-manager.js";
+// FIX: Import SlotEvent for proper state change subscription
+import { SlotController, SlotEvent } from "./modules/slot-controller.js";
 import { ConversationListManager } from "./modules/conversation-list-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
 import settingsTemplate from "../pages/settings.html?raw";
@@ -23,7 +22,7 @@ import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
 import serverTemplate from "../pages/server.html?raw";
 import archivesTemplate from "../pages/archives.html?raw";
-import testKonvaTemplate from "../pages/test-konva.html?raw";
+import asistanTemplate from "../pages/asistan.html?raw";
 
 let currentPage = null;
 /**
@@ -31,7 +30,6 @@ let currentPage = null;
  */
 const controllers = {};
 
-// taklit edilmiş versiyonlarını sunar.
 function ensureElectronApiFallback() {
   if (window.electronAPI) return;
   const storageKey = "hayalet-settings-v1";
@@ -81,7 +79,6 @@ function ensureElectronApiFallback() {
       }
     },
     readFilesMulti: (paths) => {
-      // @ts-ignore
       return Promise.all(
         paths.map(async (p) => ({
           path: p,
@@ -168,34 +165,28 @@ function ensureElectronApiFallback() {
     googledriveStartAuth: async () => null,
     googledriveExchangeCode: async () => null,
     googledriveDisconnect: async () => null,
+    assistantConnect: async () => ({ success: false }),
+    assistantDisconnect: async () => ({ success: false }),
+    assistantSend: async () => ({ success: false }),
+    assistantStatus: async () => ({ isConnected: false }),
+    onAssistantOutput: () => {},
+    onAssistantDisconnected: () => {},
   };
 }
 
-ensureElectronApiFallback();
+if (!window.electronAPI) {
+  ensureElectronApiFallback();
+}
 
 function injectPageTemplates() {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${archivesTemplate}${settingsTemplate}${webviewTemplate}${testKonvaTemplate}`;
-  }
-}
-
-async function syncAppStateNicknames() {
-  try {
-    const s = await SettingsContext.refresh();
-    if (s) {
-      AppState.setNicknames({
-        human: s.human?.nickname || "User",
-        // ai1 and ai2 nicknames are now retrieved dynamically from accounts via AppState.getNickname()
-      });
-    }
-  } catch (err) {
-    console.warn("syncAppStateNicknames failed", err);
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${archivesTemplate}${asistanTemplate}${settingsTemplate}${webviewTemplate}`;
   }
 }
 
 export async function initApp() {
-  LogManager.init();
+  // LogManager.init() ve SettingsManager.load() CoreEngine.init() içinde yapılıyor
   await CoreEngine.init();
   try {
     document.documentElement.setAttribute("spellcheck", "false");
@@ -205,31 +196,13 @@ export async function initApp() {
   }
   injectPageTemplates();
   TrafficManager.init();
-  await SettingsContext.init();
-  await syncAppStateNicknames();
+  // SettingsManager.load() CoreEngine.init() içinde zaten yapıldı
 
-  // Realtime sync via settings manager (stronger than relying only on DOM event)
   try {
     if (!window.__hayalet_settings_unsub) {
-      // @ts-ignore
       window.__hayalet_settings_unsub = SettingsManager.subscribe(async () => {
         try {
-          await syncAppStateNicknames();
-          try {
-            // also force-disconnect slots without assigned account
-            const s = SettingsContext.get() || (await SettingsContext.refresh());
-            ["ai1", "ai2"].forEach((slot) => {
-              const hasAccount = !!s?.[slot]?.activeAccountId;
-              if (!hasAccount) CoreEngine.setConnection(slot, false);
-            });
-          } catch (_) {
-            void 0;
-          }
-          try {
-            updateIndicatorAvatars();
-          } catch (_) {
-            void 0;
-          }
+          updateIndicatorAvatars();
         } catch (_) {
           void 0;
         }
@@ -239,8 +212,6 @@ export async function initApp() {
     /* noop */
   }
 
-  // SettingsManager.subscribe handles realtime sync
-
   controllers.entrance = new EntranceHallController();
   controllers.settings = new SettingsController();
   controllers.webview = new WebviewController();
@@ -248,7 +219,7 @@ export async function initApp() {
   controllers.whisper = new WhisperController();
   controllers.server = new ServerController();
   controllers.archives = new ArchivesController();
-  controllers["test-konva"] = new TestKonvaController();
+  controllers.asistan = asistanPage;
 
   await controllers.entrance.init();
   await controllers.settings.init();
@@ -257,30 +228,47 @@ export async function initApp() {
   await controllers.whisper.init();
   await controllers.server.init();
   await controllers.archives.init();
-  await controllers["test-konva"].init();
+  await controllers.asistan.init();
   await ConversationListManager.init();
 
-  // Gezinmeyi yapılandır
+  const ai1Webview = document.getElementById("ai1-webview");
+  const ai2Webview = document.getElementById("ai2-webview");
+  if (ai1Webview) {
+    CoreEngine.registerWebview("ai1", ai1Webview);
+  }
+  if (ai2Webview) {
+    CoreEngine.registerWebview("ai2", ai2Webview);
+  }
+
   setupNavigation();
-
-  // Pencere kontrol butonlarını ayarla
   setupWindowControls();
-
-  // Üst çubuk butonlarını ayarla
   setupTopBarButtons();
-
-  // Rapor panelini ayarla
   setupReportPanel();
 
-  // Başlangıç sayfasını göster
+  // Cleanup on window close
+  window.addEventListener("beforeunload", async () => {
+    try {
+      if (controllers.asistan?.isConnected) {
+        await controllers.asistan.cleanup?.();
+      }
+    } catch (e) {
+      LogManager.addEvent("system", "error", `Asistan cleanup error: ${e?.message || e}`);
+    }
+  });
+
   showPage("entrance");
   updateIndicatorAvatars();
   AppState.subscribe(updateIndicatorAvatars);
 
+  // FIX: SlotController state değişikliklerini dinle (topbar bağlantı göstergeleri için)
+  // Bu subscription olmadan bağlantı durumu değiştiğinde topbar avatarları güncellenmiyor
+  SlotController.on(SlotEvent.STATE_CHANGED, () => {
+    updateIndicatorAvatars();
+  });
+
   LogManager.addEvent("system", "info", "Uygulama başlatıldı");
 }
 
-// Paylaşılan yardımcı fonksiyonlar (diğer modüller tarafından import edilebilir)
 export async function waitForDomReady(webview) {
   if (!webview) return;
   try {
@@ -303,19 +291,19 @@ function setupNavigation() {
   try {
     const menuItems = document.querySelectorAll(".menu-item");
     if (menuItems.length === 0) {
-      console.warn("No menu items found");
+      LogManager.addEvent("system", "warning", "No menu items found");
       return;
     }
     menuItems.forEach((item) => {
       item.addEventListener("click", () => {
-        const page = /** @type {HTMLElement} */ (item).dataset.page;
+        const page = item.dataset.page;
         if (page) {
           showPage(page);
         }
       });
     });
   } catch (error) {
-    console.error("Error setting up navigation:", error);
+    LogManager.addEvent("system", "error", `Navigation setup error: ${error?.message || error}`);
   }
 }
 
@@ -340,8 +328,7 @@ function showPage(pageName) {
     pageElement.classList.remove("hidden");
     currentPage = pageName;
 
-    // Eğer varsa sayfa controller'ının `onShow` metodunu çağır
-    if (controllers[pageName] && controllers[pageName].onShow) {
+    if (controllers[pageName]?.onShow) {
       controllers[pageName].onShow();
     }
 
@@ -369,10 +356,17 @@ function setupWindowControls() {
 
 function setupTopBarButtons() {
   try {
+    const asistanBtn = document.getElementById("asistan-btn");
     const settingsBtn = document.getElementById("settings-btn");
     const archiveBtn = document.getElementById("archive-btn");
     const webviewBtn = document.getElementById("webview-btn");
     const menuToggle = document.getElementById("menu-toggle");
+
+    if (asistanBtn) {
+      asistanBtn.addEventListener("click", () => {
+        showPage("asistan");
+      });
+    }
 
     if (settingsBtn) {
       settingsBtn.addEventListener("click", () => {
@@ -398,7 +392,7 @@ function setupTopBarButtons() {
       });
     }
   } catch (error) {
-    console.error("Error setting up top bar buttons:", error);
+    LogManager.addEvent("system", "error", `Top bar setup error: ${error?.message || error}`);
   }
 }
 
@@ -407,11 +401,11 @@ function setupTopBarButtons() {
  */
 function setActiveNavigation(pageName) {
   const menuItems = document.querySelectorAll(".menu-item");
-  const specialPages = ["settings", "archives", "webview"];
+  const specialPages = ["asistan", "settings", "archives", "webview"];
   menuItems.forEach((mi) => mi.classList.remove("active"));
   if (!specialPages.includes(pageName)) {
     menuItems.forEach((mi) => {
-      if (/** @type {HTMLElement} */ (mi).dataset.page === pageName) {
+      if (mi.dataset.page === pageName) {
         mi.classList.add("active");
       }
     });
@@ -419,6 +413,7 @@ function setActiveNavigation(pageName) {
 
   /** @type {Record<string, HTMLElement | null>} */
   const iconMap = {
+    asistan: document.getElementById("asistan-btn"),
     settings: document.getElementById("settings-btn"),
     archives: document.getElementById("archive-btn"),
     webview: document.getElementById("webview-btn"),
@@ -431,26 +426,36 @@ function setActiveNavigation(pageName) {
 }
 
 async function updateIndicatorAvatars() {
-  const settings = SettingsContext.get() || {};
+  const settings = SettingsManager.getSnapshot();
+
+  const getAvatar = (provider) => {
+    if (provider === "user") return settings.user?.avatarPath || "";
+    if (provider === "ai1" || provider === "ai2") {
+      const accountId = settings.slots?.[provider]?.accountId;
+      if (!accountId) return "";
+      const account = settings.accounts?.find((acc) => acc.id === accountId);
+      return account?.avatarPath || "";
+    }
+    return "";
+  };
+
   const map = {
-    human: {
-      el: document.getElementById("indicator-avatar-human"),
-      path: getAvatarPath(settings, "human"),
-      connected: AppState.getConnection
-        ? AppState.getConnection("human")
-        : false,
-      nickname: AppState.getNickname("human"),
+    user: {
+      el: document.getElementById("indicator-avatar-user"),
+      path: getAvatar("user"),
+      connected: true, // user her zaman aktif
+      nickname: AppState.getNickname("user"),
     },
     ai1: {
       el: document.getElementById("indicator-avatar-ai1"),
-      path: getAvatarPath(settings, "ai1"),
-      connected: AppState.getConnection ? AppState.getConnection("ai1") : false,
+      path: getAvatar("ai1"),
+      connected: SlotController.isConnected("ai1"),
       nickname: AppState.getNickname("ai1"),
     },
     ai2: {
       el: document.getElementById("indicator-avatar-ai2"),
-      path: getAvatarPath(settings, "ai2"),
-      connected: AppState.getConnection ? AppState.getConnection("ai2") : false,
+      path: getAvatar("ai2"),
+      connected: SlotController.isConnected("ai2"),
       nickname: AppState.getNickname("ai2"),
     },
   };
@@ -476,7 +481,7 @@ async function updateIndicatorAvatars() {
       const mime = mimeMap[ext] || "image/png";
       return `data:${mime};base64,${data}`;
     } catch (err) {
-      console.warn("Avatar read failed", err);
+      // Avatar okuma hatası - sessiz geç (kritik değil)
       return null;
     }
   };
@@ -486,7 +491,7 @@ async function updateIndicatorAvatars() {
    * @param {string | null} src
    * @param {boolean} connected
    */
-  const applyAvatar = (el, src, connected) => {
+  const applyAvatar = (el, src, slotState) => {
     if (!el) return;
     if (src) {
       el.style.backgroundImage = `url('${src}')`;
@@ -495,65 +500,84 @@ async function updateIndicatorAvatars() {
     } else {
       el.style.backgroundImage = "";
       el.classList.add("avatar-placeholder");
-      el.textContent = ""; // Leave empty if no avatar
+      el.textContent = "";
     }
-    el.classList.toggle("connected", !!connected);
+
     const cluster = el.closest(".indicator-cluster");
-    if (cluster) cluster.classList.toggle("disconnected", !connected);
+    if (!cluster) return;
+
+    if (slotState === "empty") {
+      el.style.opacity = "0.3";
+      cluster.style.opacity = "0.5";
+      cluster.style.pointerEvents = "none";
+    } else if (slotState === "disconnected") {
+      el.style.opacity = "0.6";
+      cluster.style.opacity = "0.7";
+      cluster.style.pointerEvents = "none";
+    } else if (slotState === "connected") {
+      el.style.opacity = "1";
+      cluster.style.opacity = "1";
+      cluster.style.pointerEvents = "auto";
+    }
   };
 
-  Object.values(map).forEach(({ el, path, connected }) => {
+  Object.entries(map).forEach(([provider, { el, path }]) => {
     if (!el) return;
-    // varsayılan: yer tutucu
-    applyAvatar(el, null, connected);
+
+    /** @type {"empty"|"disconnected"|"connected"} */
+    let slotState = "empty";
+
+    if (provider === "user") {
+      slotState = "connected";
+    } else {
+      const settings = SettingsManager.getSnapshot();
+      const hasAccount = !!settings?.slots?.[provider]?.accountId;
+      const connected = SlotController.isConnected(provider);
+      if (!hasAccount) {
+        slotState = "empty";
+      } else if (connected) {
+        slotState = "connected";
+      } else {
+        slotState = "disconnected";
+      }
+    }
+
+    applyAvatar(el, null, slotState);
     if (path) {
       buildDataUrl(path).then((uri) => {
-        if (uri) applyAvatar(el, uri, connected);
+        if (uri) applyAvatar(el, uri, slotState);
       });
     }
+
     try {
-      if (el && el.id && el.id.includes("indicator-avatar-")) {
-        const provider = el.id.replace("indicator-avatar-", "");
-        /** @type {HTMLSelectElement | null} */
-        const conv = document.getElementById(`conversation-${provider}`);
-        if (conv) {
-          conv.disabled = !connected;
-          // If disconnected, ensure 'Yeni Sohbet' is selected
-          if (!connected) {
-            try {
-              conv.value = "new";
-            } catch (_) {
-              void 0;
+      /** @type {HTMLSelectElement | null} */
+      const conv = document.getElementById(`conversation-${provider}`);
+      if (conv) {
+        conv.disabled = slotState !== "connected";
+        try {
+          /** @type {HTMLButtonElement | null} */
+          const btn = document.getElementById(
+            `conversation-refresh-${provider}`,
+          );
+          if (btn) {
+            btn.disabled = slotState !== "connected";
+            if (btn.__convRefreshHandler) {
+              btn.removeEventListener("click", btn.__convRefreshHandler);
             }
-          }
-          try {
-            /** @type {HTMLButtonElement | null} */
-            const btn = document.getElementById(
-              `conversation-refresh-${provider}`,
-            );
-            if (btn) {
-              btn.disabled = !connected;
-              // @ts-ignore
-              if (btn.__convRefreshHandler) {
-                // @ts-ignore
-                btn.removeEventListener("click", btn.__convRefreshHandler);
+            /** @param {MouseEvent} [ev] */
+            const handler = async (ev) => {
+              ev?.preventDefault();
+              try {
+                await CoreEngine.syncProvider(provider, { from: "manual" });
+              } catch (err) {
+                LogManager.addEvent("sync", "warning", `Manual sync failed: ${err?.message || err}`);
               }
-              /** @param {MouseEvent} [ev] */
-              const handler = async (ev) => {
-                ev?.preventDefault();
-                try {
-                  await CoreEngine.syncProvider(provider, { from: "manual" });
-                } catch (err) {
-                  console.warn("Manual sync failed", err);
-                }
-              };
-              // @ts-ignore
-              btn.__convRefreshHandler = handler;
-              btn.addEventListener("click", handler);
-            }
-          } catch (e) {
-            /* noop */
+            };
+            btn.__convRefreshHandler = handler;
+            btn.addEventListener("click", handler);
           }
+        } catch (e) {
+          /* noop */
         }
       }
     } catch (e) {
@@ -573,7 +597,6 @@ function setupReportPanel() {
 
   const openModal = () => {
     if (!modal) return;
-    // Modal açılmadan önce mevcut oturum loglarını güncel sırayla yaz
     if (modalBody) {
       modalBody.innerHTML = "";
       const all = LogManager.getAll();
@@ -626,5 +649,6 @@ function setupReportPanel() {
 
 export { currentPage, showPage };
 
-// Self-initialize the app once the script is loaded
-initApp();
+setTimeout(() => {
+  initApp();
+}, 0);

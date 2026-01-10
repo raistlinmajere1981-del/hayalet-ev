@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Arşiv sayfası controller'ı (`archives/index.json` okuma/yazma işlemleri)
 import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
@@ -10,7 +9,6 @@ export class ArchivesController {
     this.entries = [];
     this.activeProvider = "ai1";
     this.selectedId = null;
-    this.settings = null;
   }
 
   async init() {
@@ -22,8 +20,7 @@ export class ArchivesController {
 
     // Realtime settings sync
     if (!this._unsubSettings) {
-      this._unsubSettings = SettingsManager.subscribe((s) => {
-        this.settings = s;
+      this._unsubSettings = SettingsManager.subscribe(() => {
         this.applyNames();
       });
     }
@@ -57,9 +54,9 @@ export class ArchivesController {
 
   async loadSettings() {
     try {
-      this.settings = await SettingsManager.load();
-    } catch {
-      this.settings = null;
+      await SettingsManager.load();
+    } catch (error) {
+      console.error("Failed to load settings:", error);
     }
   }
 
@@ -220,12 +217,25 @@ export class ArchivesController {
   }
 
   applyNames() {
-    const ai1Name = AppState.getNickname("ai1");
-    const ai2Name = AppState.getNickname("ai2");
+    // New UI gating: update nicknames and enable/disable based on slot assignment
+    const settings = SettingsManager.getSnapshot();
+    const ai1Assigned = !!settings?.slots?.ai1?.accountId;
+    const ai2Assigned = !!settings?.slots?.ai2?.accountId;
+
+    const ai1Name = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
+    const ai2Name = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
+    
     const labelAi1 = document.getElementById("archives-provider-ai1");
     const labelAi2 = document.getElementById("archives-provider-ai2");
+    const radioAi1 = document.getElementById("archive-filter-ai1");
+    const radioAi2 = document.getElementById("archive-filter-ai2");
+
     if (labelAi1) labelAi1.textContent = ai1Name;
     if (labelAi2) labelAi2.textContent = ai2Name;
+
+    // Disable radio if slot empty
+    if (radioAi1) radioAi1.disabled = !ai1Assigned;
+    if (radioAi2) radioAi2.disabled = !ai2Assigned;
   }
 
   onShow() {

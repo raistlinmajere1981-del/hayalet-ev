@@ -21,7 +21,6 @@ export async function capturePageHandler(event, type = 'full', region = '') {
     const dataUrl = img.toDataURL();
     return { success: true, dataUrl };
   } catch (error) {
-    console.error('capture-page error:', error);
     return { success: false, message: error.message };
   }
 }
@@ -51,7 +50,6 @@ export async function screenshotCaptureHandler(event, options = {}) {
     }
     return { success: true, dataUrl, path: savedPath || null };
   } catch (error) {
-    console.error('screenshot-capture error:', error);
     return { success: false, message: error.message };
   }
 }

@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { WebviewManager } from "./webview-manager.js";
 import { FileManager } from "./file-manager.js";
 import { LogManager } from "./log-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
-import { SyncHandler } from "./sync-handler.js";
+// SyncHandler artık WebviewManager içine entegre edildi
 
 class CommandExecutorClass {
   constructor() {
@@ -18,18 +17,55 @@ class CommandExecutorClass {
   }
 
   async executeJob(job) {
+    const startTime = Date.now();
+    const hasAttachments = job.attachments?.length > 0;
+    
+    LogManager.addEventWithContext(
+      "command",
+      "info",
+      `Job başlatılıyor: ${job.provider}`,
+      {
+        provider: job.provider,
+        hasAttachments,
+        attachmentCount: job.attachments?.length || 0,
+        messageLength: job.message?.length || 0,
+      },
+      job.id // correlationId olarak job.id kullan
+    );
+
     const result = await WebviewManager.send({
       provider: job.provider,
       text: job.message,
       attachments: job.attachments,
     });
 
+    const duration = Date.now() - startTime;
+
     if (!result?.success) {
+      LogManager.addEventWithContext(
+        "command",
+        "error",
+        `Job başarısız: ${job.provider} - ${result?.message || "E_WEBVIEW_SEND"}`,
+        {
+          provider: job.provider,
+          duration,
+          errorCode: result?.code || "E_WEBVIEW_SEND",
+        },
+        job.id
+      );
       const err = new Error(result?.message || "E_WEBVIEW_SEND");
-      // @ts-ignore
       err.code = result?.code || "E_WEBVIEW_SEND";
       throw err;
     }
+    
+    LogManager.addEventWithContext(
+      "command",
+      "info",
+      `Job tamamlandı: ${job.provider} (${duration}ms)`,
+      { provider: job.provider, duration },
+      job.id
+    );
+    
     return result;
   }
 
@@ -41,7 +77,7 @@ class CommandExecutorClass {
         job.attachmentsMeta?.staged || job.meta?.attachments || [];
 
       if (folder && stagedFiles.length > 0) {
-        SyncHandler.addPendingArchive(job.provider, {
+        WebviewManager.addPendingArchive(job.provider, {
           jobId: job.id,
           folder,
           stagedFiles,
@@ -64,10 +100,11 @@ class CommandExecutorClass {
         );
       }
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "core",
         "warning",
-        `Sync/temizlik hatası: ${err.message}`,
+        `Sync/temizlik hatası: ${error.message}`,
         {
           jobId: job.id,
         },

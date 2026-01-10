@@ -71,7 +71,6 @@ export async function deviceActionHandler(event, action, payload) {
 
     return { success: false, message: 'unknown action' };
   } catch (err) {
-    console.error('device-action error', err);
     return { success: false, message: err?.message || String(err) };
   }
 }

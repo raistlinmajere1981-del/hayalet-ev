@@ -6,10 +6,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   loadSettings: () => ipcRenderer.invoke("load-settings"),
   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
-  createAccount: (accountData) =>
-    ipcRenderer.invoke("create-account", accountData),
-  assignAccountToSlot: (slot, accountId) =>
-    ipcRenderer.invoke("assign-account-to-slot", slot, accountId),
+  // Legacy IPC removed: createAccount, assignAccountToSlot
+  // Use SettingsManager.save() in renderer instead
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   readArchivesIndex: () => ipcRenderer.invoke("read-archives-index"),
   writeArchivesIndex: (entries) =>
@@ -35,6 +33,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("copy-to-assets", srcPath, role, accountInfo),
   removeArchive: (folderPath) =>
     ipcRenderer.invoke("remove-archive", folderPath),
+  deleteAsset: (assetPath) => ipcRenderer.invoke("delete-asset", assetPath),
   copyFileTo: (srcPath, destDir) =>
     ipcRenderer.invoke("copy-file-to", srcPath, destDir),
   openPath: (path) => ipcRenderer.invoke("open-path", path),
@@ -50,6 +49,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
   archiveSync: (payload) => ipcRenderer.invoke("archive-sync", payload),
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
+  // Yeni log metodları
+  getSessionId: () => ipcRenderer.invoke("get-session-id"),
+  readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
+  queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
+  listSessions: () => ipcRenderer.invoke("list-sessions"),
+  getAppState: () => ipcRenderer.invoke("get-app-state"),
+  writeStateSnapshot: () => ipcRenderer.invoke("write-state-snapshot"),
+  setupWebviewLogger: (webviewId, slot, provider) =>
+    ipcRenderer.invoke("setup-webview-logger", webviewId, slot, provider),
+  generateCorrelationId: (prefix) =>
+    ipcRenderer.invoke("generate-correlation-id", prefix),
+  readConsoleLogs: (tail) => ipcRenderer.invoke("read-console-logs", tail),
+  readErrorLogs: (tail) => ipcRenderer.invoke("read-error-logs", tail),
+  getLogPaths: () => ipcRenderer.invoke("get-log-paths"),
+  // Console log forwarding listener
+  onConsoleLogForward: (callback) =>
+    ipcRenderer.on("console-log-forward", (event, data) => callback(data)),
   whisperLoad: (provider) => ipcRenderer.invoke("whisper-load", provider),
   whisperSave: (provider, payload) =>
     ipcRenderer.invoke("whisper-save", provider, payload),
@@ -73,6 +89,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) =>
     ipcRenderer.invoke("generate-tree", basePath, options),
+  // Assistant IPC (Web mode only)
+  assistantConnect: (provider) =>
+    ipcRenderer.invoke("assistant-connect", provider),
+  assistantDisconnect: () => ipcRenderer.invoke("assistant-disconnect"),
+  assistantStatus: () => ipcRenderer.invoke("assistant-status"),
+  assistantGetConfig: (providerId) =>
+    ipcRenderer.invoke("assistant-get-config", providerId),
+  onAssistantDisconnected: (callback) =>
+    ipcRenderer.on("assistant-disconnected", (event, data) => callback(data)),
 });
 
 try {

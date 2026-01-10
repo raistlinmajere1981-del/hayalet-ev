@@ -1,4 +1,3 @@
-// @ts-nocheck
 // FileManager - tek yetkili disk katmanı (IPC üzerinden)
 import { LogManager } from "./log-manager.js";
 
@@ -9,14 +8,17 @@ class FileManagerClass {
 
   async ensureDirs(scope = "all") {
     try {
-      const res = await window.electronAPI?.fmEnsureDirs?.(scope);
+      const res = /** @type {{ success: boolean; message?: string; paths?: Record<string, string> }} */ (
+        await window.electronAPI?.fmEnsureDirs?.(scope)
+      );
       if (!res?.success) throw new Error(res?.message || "ensureDirs failed");
       if (res.paths && typeof res.paths === "object") {
         this.paths = { ...this.paths, ...res.paths };
       }
       return res.paths || {};
     } catch (err) {
-      LogManager.addEvent("file", "error", `ensureDirs hata: ${err.message}`);
+      const error = /** @type {Error} */ (err);
+      LogManager.addEvent("file", "error", `ensureDirs hata: ${error.message}`);
       return {};
     }
   }
@@ -68,10 +70,11 @@ class FileManagerClass {
           return results;
         }
       } catch (err) {
+        const error = /** @type {Error} */ (err);
         LogManager.addEvent(
           "file",
           "warning",
-          `Batch read başarısız, sequential fallback: ${err.message}`,
+          `Batch read başarısız, sequential fallback: ${error.message}`,
         );
       }
     }
@@ -96,8 +99,9 @@ class FileManagerClass {
         const mimeType = mimeTypes[ext] || "application/octet-stream";
         results.push({ name: base, base64: data, mimeType });
       } catch (err) {
+        const error = /** @type {Error} */ (err);
         LogManager.addEvent("file", "warning", `Dosya okunamadı: ${path}`, {
-          error: err?.message,
+          error: error?.message,
         });
       }
     }
@@ -114,8 +118,9 @@ class FileManagerClass {
         )
         .filter(Boolean),
     };
-    const stagedRes =
-      await window.electronAPI?.commandStageAttachments?.(payload);
+    const stagedRes = /** @type {{ success?: boolean; message?: string; staged?: any[]; temp?: string[]; commandDir?: string }} */ (
+      await window.electronAPI?.commandStageAttachments?.(payload)
+    );
     if (!stagedRes?.success) {
       LogManager.addEvent(
         "file",
@@ -135,10 +140,12 @@ class FileManagerClass {
   async commandArchiveCopy(jobId, targetDir) {
     if (!jobId || !targetDir)
       return { success: false, message: "parametre eksik" };
-    const res = await window.electronAPI?.commandArchiveCopy?.({
-      jobId,
-      targetDir,
-    });
+    const res = /** @type {{ success?: boolean; message?: string }} */ (
+      await window.electronAPI?.commandArchiveCopy?.({
+        jobId,
+        targetDir,
+      })
+    );
     if (!res?.success) {
       LogManager.addEvent(
         "file",
@@ -165,10 +172,12 @@ class FileManagerClass {
     const tempPaths = (tempEntries || [])
       .map((t) => t.tempPath)
       .filter(Boolean);
-    const res = await window.electronAPI?.commandMoveFailed?.({
-      jobId,
-      tempPaths,
-    });
+    const res = /** @type {{ success?: boolean; message?: string }} */ (
+      await window.electronAPI?.commandMoveFailed?.({
+        jobId,
+        tempPaths,
+      })
+    );
     if (!res?.success) {
       LogManager.addEvent(
         "file",
@@ -208,10 +217,11 @@ class FileManagerClass {
       }
       return res.path;
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "file",
         "error",
-        `writeFileAtomic hata: ${err.message}`,
+        `writeFileAtomic hata: ${error.message}`,
       );
       return "";
     }
@@ -219,10 +229,13 @@ class FileManagerClass {
 
   async tempPath(prefix = "tmp", ext = "tmp") {
     try {
-      const res = await window.electronAPI?.fmTempPath?.(prefix, ext);
+      const res = /** @type {{ path: string }} */ (
+        await window.electronAPI?.fmTempPath?.(prefix, ext)
+      );
       return res?.path || "";
     } catch (err) {
-      LogManager.addEvent("file", "error", `tempPath hata: ${err.message}`);
+      const error = /** @type {Error} */ (err);
+      LogManager.addEvent("file", "error", `tempPath hata: ${error.message}`);
       return "";
     }
   }
@@ -244,10 +257,11 @@ class FileManagerClass {
       if (!res?.success) throw new Error(res?.message || "archiveWrite failed");
       return res.path;
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "file",
         "warning",
-        `archiveWrite başarısız: ${err.message}`,
+        `archiveWrite başarısız: ${error.message}`,
       );
       return "";
     }

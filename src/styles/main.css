@@ -103,8 +103,6 @@ body {
   background-size: cover;
   background-position: center;
   border: 1px solid var(--border-color);
-  filter: grayscale(1);
-  opacity: 0.5;
   /* Keep the avatar element from collapsing when image is removed/updated */
   display: inline-block;
   flex: 0 0 28px;
@@ -458,4 +456,14 @@ body.menu-hidden .report-panel {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-primary);
+}
+
+/* Page container height fix */
+.page {
+  height: calc(100vh - 53px - 12px - 20px); /* viewport - header - margin - padding */
+  box-sizing: border-box;
+}
+
+#page-webview {
+  overflow: hidden; /* webview sayfasında scroll olmasın, webview kendi scroll'unu kullansın */
 }

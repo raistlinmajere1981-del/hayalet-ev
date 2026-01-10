@@ -1,6 +1,5 @@
-// @ts-nocheck
 // Send Tracker - Gönder butonu durumunu izler
-import { LogManager } from "../log-manager.js";
+// import { LogManager } from "../log-manager.js";
 
 export class SendTracker {
   constructor(config) {
@@ -12,10 +11,10 @@ export class SendTracker {
    * @param {string} provider - Provider identifier (ai1/ai2)
    * @param {Object} viewState - Current state
    * @param {Object} data - Probe data containing sendState
-   * @param {number} now - Current timestamp
+   * @param {number} _now - Current timestamp (unused)
    * @returns {Object} { indicator: string, newState: Object }
    */
-  handleProbe(provider, viewState, data, now) {
+  handleProbe(provider, viewState, data, _now) {
     const sendState = data.sendState || "missing";
     const indicator = this.getSendStatus(sendState);
     return { indicator, newState: viewState };

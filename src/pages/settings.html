@@ -1,27 +1,27 @@
 <div class="page hidden" id="page-settings">
   <div class="settings-container">
-    <!-- Human User Settings -->
+    <!-- User Settings -->
     <div class="settings-section">
       <h2>Kullanıcı Ayarları</h2>
       <div class="settings-form">
         <div class="form-group">
-          <label for="settings-human-nickname">Takma Ad</label>
+          <label for="settings-user-nickname">Takma Ad</label>
           <div style="display:flex; gap:8px; align-items:center;">
             <input
               type="text"
-              id="settings-human-nickname"
+              id="settings-user-nickname"
               class="form-input"
               placeholder="User"
             />
-            <button class="btn btn-primary" id="settings-human-nickname-update">
+            <button class="btn btn-primary" id="settings-user-nickname-update">
               Güncelle
             </button>
           </div>
         </div>
         <div class="form-group">
-          <label for="human-avatar">Avatar</label>
+          <label for="user-avatar">Avatar</label>
           <div class="file-input-group">
-            <button class="btn btn-secondary" id="settings-human-avatar-browse">
+            <button class="btn btn-secondary" id="settings-user-avatar-browse">
               Dosya Seç
             </button>
           </div>
@@ -84,14 +84,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="ai1-message-method">Mesaj Ekleme Metodu</label>
+          <label for="settings-ai1-message-method">Mesaj Ekleme Metodu</label>
           <select id="settings-ai1-message-method" class="form-select">
             <option value="injection">JavaScript Injection</option>
             <option value="xdotools">Xdotools-Xclip</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="ai1-file-method">Dosya Ekleme Metodu</label>
+          <label for="settings-ai1-file-method">Dosya Ekleme Metodu</label>
           <select id="settings-ai1-file-method" class="form-select">
             <option value="dragdrop">Drag&Drop</option>
             <option value="injection">JavaScript Injection</option>
@@ -101,6 +101,12 @@
             <option value="catbox">Catbox</option>
             <option value="googledrive">Google Drive</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="settings-ai1-catch" checked>
+            Catch Commands
+          </label>
         </div>
       </div>
     </div>
@@ -117,14 +123,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="ai2-message-method">Mesaj Ekleme Metodu</label>
+          <label for="settings-ai2-message-method">Mesaj Ekleme Metodu</label>
           <select id="settings-ai2-message-method" class="form-select">
             <option value="injection">JavaScript Injection</option>
             <option value="xdotools">Xdotools-Xclip</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="ai2-file-method">Dosya Ekleme Metodu</label>
+          <label for="settings-ai2-file-method">Dosya Ekleme Metodu</label>
           <select id="settings-ai2-file-method" class="form-select">
             <option value="dragdrop">Drag&Drop</option>
             <option value="injection">JavaScript Injection</option>
@@ -134,6 +140,12 @@
             <option value="catbox">Catbox</option>
             <option value="googledrive">Google Drive</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="settings-ai2-catch" checked>
+            Catch Commands
+          </label>
         </div>
       </div>
     </div>
@@ -179,7 +191,7 @@
                 <div class="avatar-placeholder-text">Avatar seçilmedi</div>
               </div>
             </div>
-            <button class="btn btn-primary" id="create-account-btn">
+            <button class="btn btn-primary" id="settings-create-account">
               Hesap Ekle
             </button>
           </div>

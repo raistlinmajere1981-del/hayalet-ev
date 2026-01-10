@@ -1,13 +1,11 @@
-// AppState - global aktif sağlayıcı/konuşma durumunu tutan yapı
-import { getNickname as getHelperNickname } from "./settings-helpers.js";
-import { SettingsContext } from "./settings-context.js";
+// AppState - global UI state (activeProvider, activeConversations, chat targets)
+// Connection/nickname state is derived from SettingsManager, not stored here
+import { SettingsManager } from "./settings-manager.js";
 
 class AppStateClass {
   constructor() {
     this.activeProvider = null;
     this.activeConversations = {};
-    this.connections = { human: true, ai1: false, ai2: false };
-    this.nicknames = { human: "User", ai1: "AI1", ai2: "AI2" };
     this.listeners = [];
     this.chat = {
       activeTargets: ["ai1"],
@@ -18,8 +16,6 @@ class AppStateClass {
   init(defaultProvider = "ai1") {
     this.activeProvider = defaultProvider;
     this.activeConversations = { ai1: null, ai2: null };
-    this.connections = { human: true, ai1: false, ai2: false };
-    this.nicknames = { human: "User", ai1: "AI1", ai2: "AI2" };
     this.chat = {
       activeTargets: ["ai1"],
       titleByProvider: { ai1: "", ai2: "" },
@@ -37,30 +33,32 @@ class AppStateClass {
     this.notify();
   }
 
-  setConnection(provider, connected) {
-    this.connections[provider] = !!connected;
-    this.notify();
-  }
-
-  setNicknames(nicks = {}) {
-    this.nicknames = { ...this.nicknames, ...nicks };
-    this.notify();
-  }
-
+  // Derived from settings (not stored in AppState)
   getNickname(provider) {
-    // For ai1/ai2, use helper to get nickname from active account
-    if (provider === "ai1" || provider === "ai2") {
-      const settings = SettingsContext.get();
-      if (settings) {
-        return getHelperNickname(settings, provider);
-      }
+    const settings = SettingsManager.getSnapshot();
+    if (provider === "user") {
+      return settings.user?.nickname || "Kullanıcı";
     }
-    
-    return (
-      this.nicknames[provider] ||
-      (provider === "human" ? "User" : provider.toUpperCase())
-    );
+    if (provider === "ai1" || provider === "ai2") {
+      const accountId = settings.slots?.[provider]?.accountId;
+      if (!accountId) return provider.toUpperCase();
+
+      const accounts = Array.isArray(settings.accounts)
+        ? settings.accounts
+        : [];
+      const account =
+        accounts.find((acc) => acc && acc.id === accountId) || null;
+
+      return (
+        (account && (account.nickname || account.email)) ||
+        provider.toUpperCase()
+      );
+    }
+    return provider.toUpperCase();
   }
+
+  // Connection state artık SlotController tarafından yönetiliyor
+  // SlotController.isConnected(provider) kullanın
 
   setChatTargets(targets = []) {
     const uniq = Array.from(new Set(targets.filter(Boolean)));
@@ -76,16 +74,10 @@ class AppStateClass {
     this.notify();
   }
 
-  getConnection(provider) {
-    return !!this.connections[provider];
-  }
-
   getState() {
     return {
       provider: this.activeProvider,
       conversations: { ...this.activeConversations },
-      connections: { ...this.connections },
-      nicknames: { ...this.nicknames },
       chat: { ...this.chat, titleByProvider: { ...this.chat.titleByProvider } },
     };
   }
@@ -105,7 +97,7 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
-        console.warn("AppState listener error:", err);
+        // AppState listener error - silent
       }
     });
   }

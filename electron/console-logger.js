@@ -1,160 +1,290 @@
 /**
- * Console Logger for Hayalet-ev
+ * Unified Console Logger for Hayalet-ev (Orchestrator)
  * 
- * Tüm console output'larını (main + renderer process) dosyaya yazar.
- * AI'ların runtime hatalarını görmesini sağlar.
+ * Tüm console output'larını (main + renderer + webview) dosyaya yazar.
+ * Session bazlı log dosyaları oluşturur.
+ * 
+ * Alt modüller:
+ * - logger/session-manager.js: Session yönetimi
+ * - logger/log-writer.js: Log yazma işlemleri
+ * - logger/log-reader.js: Log okuma ve sorgulama
  */
 
-import { appendFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { app } from 'electron';
-import { existsSync } from 'fs';
+// Alt modüllerden re-export
+export {
+  generateSessionId,
+  initLogSystem,
+  ensureSessionDir,
+  writeSessionSummary,
+  listSessions,
+  clearLogs,
+  updateAppState,
+  getAppState,
+  getSessionId,
+  getSessionDir,
+  getLogDir,
+  SESSION_ID,
+  SESSION_DIR,
+  LOG_DIR,
+} from "./logger/session-manager.js";
 
-const LOG_DIR = join(app.getPath('userData'), 'logs');
-const CONSOLE_LOG = join(LOG_DIR, 'console.log');
-const ERROR_LOG = join(LOG_DIR, 'error.log');
+export {
+  formatLog,
+  writeLog,
+  writeErrorLog,
+  writeStructuredLog,
+  writeStateSnapshot,
+  updateLogPaths,
+  getConsoleLogPath,
+  getErrorLogPath,
+  getStructuredLogPath,
+  getCurrentChunkIndex,
+  CONSOLE_LOG,
+  ERROR_LOG,
+  STRUCTURED_LOG,
+} from "./logger/log-writer.js";
 
-// Log dizinini oluştur
-async function ensureLogDir() {
-    if (!existsSync(LOG_DIR)) {
-        await mkdir(LOG_DIR, { recursive: true });
-    }
+export {
+  readConsoleLogs,
+  readErrorLogs,
+  readAllLogs,
+  queryLogs,
+  calculateLogStats,
+} from "./logger/log-reader.js";
+
+// Session ve writer importları
+import {
+  initLogSystem,
+  getSessionId,
+  writeSessionSummary,
+} from "./logger/session-manager.js";
+
+import {
+  writeLog,
+  writeErrorLog,
+  updateLogPaths,
+  getCurrentChunkIndex,
+} from "./logger/log-writer.js";
+
+import { calculateLogStats } from "./logger/log-reader.js";
+
+// ============================================
+// MAIN WINDOW REFERENCE (IPC forwarding)
+// ============================================
+
+let mainWindowRef = null;
+
+/**
+ * Main window referansını ayarla (IPC için gerekli)
+ * @param {Electron.BrowserWindow} win
+ */
+export function setMainWindow(win) {
+  mainWindowRef = win;
 }
 
-// Log mesajını formatla
-function formatLog(level, args) {
-    const timestamp = new Date().toISOString();
-    const message = args.map(arg => {
-        if (typeof arg === 'object') {
-            try {
-                return JSON.stringify(arg, null, 2);
-            } catch {
-                return String(arg);
-            }
-        }
-        return String(arg);
-    }).join(' ');
-    
-    return `[${timestamp}] [${level}] ${message}\n`;
+/**
+ * LogManager'a IPC üzerinden log gönder
+ * @param {string} level - Log seviyesi
+ * @param {string} source - Kaynak
+ * @param {string} message - Mesaj
+ * @param {object} [context] - Bağlam
+ */
+function forwardToLogManager(level, source, message, context = null) {
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+
+  try {
+    mainWindowRef.webContents.send("console-log-forward", {
+      level,
+      source,
+      message,
+      context,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (_err) {
+    // Silent fail
+  }
 }
 
-// Dosyaya yaz
-async function writeLog(file, level, args) {
-    try {
-        await ensureLogDir();
-        const logMessage = formatLog(level, args);
-        await appendFile(file, logMessage);
-    } catch (err) {
-        // Log yazma başarısız olursa sessizce geç
-        // (sonsuz loop'tan kaçınmak için)
-    }
+// ============================================
+// CORRELATION ID
+// ============================================
+
+let correlationCounter = 0;
+
+/**
+ * Benzersiz correlation ID oluştur
+ * @param {string} [prefix='op'] - ID prefix'i
+ * @returns {string}
+ */
+export function generateCorrelationId(prefix = "op") {
+  correlationCounter++;
+  const timestamp = Date.now().toString(36);
+  const counter = correlationCounter.toString(36).padStart(4, "0");
+  return `${prefix}-${timestamp}-${counter}`;
 }
 
-// Main process console'unu intercept et
+// ============================================
+// CONSOLE INTERCEPTORS
+// ============================================
+
+/**
+ * Main process console'unu intercept et
+ */
 export function interceptMainConsole() {
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
-    const originalInfo = console.info;
-    const originalDebug = console.debug;
+  if (!getSessionId()) initLogSystem();
+  updateLogPaths();
 
-    console.log = (...args) => {
-        originalLog(...args);
-        writeLog(CONSOLE_LOG, 'LOG', args);
-    };
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const originalInfo = console.info;
+  const originalDebug = console.debug;
 
-    console.warn = (...args) => {
-        originalWarn(...args);
-        writeLog(CONSOLE_LOG, 'WARN', args);
-    };
+  console.log = (...args) => {
+    originalLog(...args);
+    writeLog("LOG", "MAIN", args);
+    forwardToLogManager("info", "main", args.join(" "));
+  };
 
-    console.error = (...args) => {
-        originalError(...args);
-        writeLog(ERROR_LOG, 'ERROR', args);
-    };
+  console.warn = (...args) => {
+    originalWarn(...args);
+    writeLog("WARN", "MAIN", args, null, true);
+    forwardToLogManager("warning", "main", args.join(" "));
+  };
 
-    console.info = (...args) => {
-        originalInfo(...args);
-        writeLog(CONSOLE_LOG, 'INFO', args);
-    };
+  console.error = (...args) => {
+    originalError(...args);
+    writeErrorLog("ERROR", "MAIN", args);
+    forwardToLogManager("error", "main", args.join(" "));
+  };
 
-    console.debug = (...args) => {
-        originalDebug(...args);
-        writeLog(CONSOLE_LOG, 'DEBUG', args);
-    };
+  console.info = (...args) => {
+    originalInfo(...args);
+    writeLog("INFO", "MAIN", args);
+    forwardToLogManager("info", "main", args.join(" "));
+  };
+
+  console.debug = (...args) => {
+    originalDebug(...args);
+    writeLog("DEBUG", "MAIN", args);
+    forwardToLogManager("debug", "main", args.join(" "));
+  };
 }
 
-// Renderer process loglarını dinle
+/**
+ * Renderer process loglarını dinle
+ * @param {Electron.WebContents} webContents
+ */
 export function setupRendererLogger(webContents) {
-    // Console mesajlarını yakala
-    webContents.on('console-message', (event, level, message, line, sourceId) => {
-        const levelMap = {
-            0: 'LOG',
-            1: 'WARN',
-            2: 'ERROR',
-            3: 'DEBUG',
-            4: 'INFO'
-        };
-        
-        const levelName = levelMap[level] || 'LOG';
-        const source = sourceId ? ` (${sourceId}:${line})` : '';
-        const fullMessage = `[RENDERER] ${message}${source}`;
-        
-        const file = level === 2 ? ERROR_LOG : CONSOLE_LOG;
-        writeLog(file, levelName, [fullMessage]);
-    });
+  // Console mesajlarını yakala (yeni Event object API)
+  webContents.on("console-message", (event) => {
+    const { level, message, line, sourceId } = event;
+    const levelMap = {
+      0: "LOG",
+      1: "WARN",
+      2: "ERROR",
+      3: "DEBUG",
+    };
 
-    // JavaScript hataları (uncaught exceptions)
-    webContents.on('render-process-gone', (event, details) => {
-        writeLog(ERROR_LOG, 'FATAL', [
-            'Renderer process crashed:',
-            details
-        ]);
-    });
+    const levelName = levelMap[level] || "LOG";
+    const source = sourceId ? ` (${sourceId}:${line})` : "";
+    const fullMessage = `${message}${source}`;
 
-    // Preload script hataları
-    webContents.on('preload-error', (event, preloadPath, error) => {
-        writeLog(ERROR_LOG, 'PRELOAD-ERROR', [
-            `Preload script error: ${preloadPath}`,
-            error.stack || error
-        ]);
-    });
+    const isError = level === 2;
+    const isWarn = level === 1;
+    
+    writeLog(levelName, "RENDERER", [fullMessage], null, isError || isWarn);
+
+    // LogManager'a da gönder
+    const logType = isError ? "error" : isWarn ? "warning" : "info";
+    forwardToLogManager(logType, "renderer", fullMessage);
+  });
+
+  // JavaScript hataları (uncaught exceptions)
+  webContents.on("render-process-gone", (_event, details) => {
+    const msg = `Renderer process crashed: ${JSON.stringify(details)}`;
+    writeErrorLog("FATAL", "RENDERER", [msg]);
+    forwardToLogManager("error", "renderer", msg);
+  });
+
+  // Preload script hataları
+  webContents.on("preload-error", (_event, preloadPath, error) => {
+    const msg = `Preload script error: ${preloadPath} - ${error.stack || error}`;
+    writeErrorLog("PRELOAD-ERROR", "RENDERER", [msg]);
+    forwardToLogManager("error", "preload", msg);
+  });
 }
 
-// Log dosyalarını temizle (opsiyonel)
-export async function clearLogs() {
-    try {
-        const { unlink } = await import('fs/promises');
-        if (existsSync(CONSOLE_LOG)) await unlink(CONSOLE_LOG);
-        if (existsSync(ERROR_LOG)) await unlink(ERROR_LOG);
-    } catch (err) {
-        console.error('Failed to clear logs:', err);
-    }
+/**
+ * Webview loglarını dinle
+ * @param {Electron.WebContents} webviewContents - Webview webContents
+ * @param {string} slot - Slot adı (ai1, ai2)
+ * @param {string} [provider] - Provider adı (chatgpt, gemini, etc.)
+ */
+export function setupWebviewLogger(webviewContents, slot, provider = "unknown") {
+  if (!webviewContents) return;
+
+  const source = `WEBVIEW-${slot.toUpperCase()}`;
+
+  // Console mesajlarını yakala (yeni Event object API)
+  webviewContents.on("console-message", (event) => {
+    const { level, message, line, sourceId } = event;
+    const levelMap = {
+      0: "LOG",
+      1: "WARN",
+      2: "ERROR",
+      3: "DEBUG",
+    };
+
+    const levelName = levelMap[level] || "LOG";
+    const sourceInfo = sourceId ? ` (${sourceId}:${line})` : "";
+    const fullMessage = `[${provider}] ${message}${sourceInfo}`;
+
+    const context = { provider, slot, url: webviewContents.getURL?.() || "" };
+    const isError = level === 2;
+    const isWarn = level === 1;
+
+    writeLog(levelName, source, [fullMessage], context, isError || isWarn);
+
+    // LogManager'a da gönder
+    const logType = isError ? "error" : isWarn ? "warning" : "info";
+    forwardToLogManager(logType, `webview-${slot}`, fullMessage, context);
+  });
+
+  // Webview crash
+  webviewContents.on("render-process-gone", (_event, details) => {
+    const msg = `Webview crashed: ${JSON.stringify(details)}`;
+    const context = { provider, slot };
+    writeErrorLog("FATAL", source, [msg], context);
+    forwardToLogManager("error", `webview-${slot}`, msg, context);
+  });
+
+  // Did-fail-load
+  webviewContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    if (errorCode === -3) return; // Aborted loads, ignore
+    const msg = `Load failed: ${errorDescription} (${errorCode}) - ${validatedURL}`;
+    const context = { provider, slot, errorCode, url: validatedURL };
+    writeErrorLog("LOAD-ERROR", source, [msg], context);
+    forwardToLogManager("error", `webview-${slot}`, msg, context);
+  });
 }
 
-// Log dosyalarını oku
-export async function readConsoleLogs() {
-    try {
-        const { readFile } = await import('fs/promises');
-        if (existsSync(CONSOLE_LOG)) {
-            return await readFile(CONSOLE_LOG, 'utf-8');
-        }
-        return 'No console logs found';
-    } catch (err) {
-        return `Failed to read logs: ${err.message}`;
-    }
-}
+// ============================================
+// SESSION SUMMARY WRAPPER
+// ============================================
 
-export async function readErrorLogs() {
-    try {
-        const { readFile } = await import('fs/promises');
-        if (existsSync(ERROR_LOG)) {
-            return await readFile(ERROR_LOG, 'utf-8');
-        }
-        return 'No error logs found';
-    } catch (err) {
-        return `Failed to read error logs: ${err.message}`;
-    }
+/**
+ * Session özeti yaz (uygulama kapanırken çağrılır)
+ * @param {string} [endReason='normal'] - Kapanış nedeni
+ */
+export async function writeSessionSummaryWithStats(endReason = "normal") {
+  const stats = await calculateLogStats();
+  const chunkIndex = getCurrentChunkIndex();
+  await writeSessionSummary(
+    stats.totalLogs,
+    stats.errorCount,
+    stats.warnCount,
+    chunkIndex,
+    endReason
+  );
 }
-
-export { CONSOLE_LOG, ERROR_LOG };

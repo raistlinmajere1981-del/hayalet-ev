@@ -12,8 +12,32 @@
     <link rel="stylesheet" href="/styles/analyze.css" />
     <link rel="stylesheet" href="/styles/server.css" />
     <link rel="stylesheet" href="/styles/whisper.css" />
+    <link rel="stylesheet" href="/styles/asistan.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
   </head>
   <body>
+    <!-- Global Webview Container (always in DOM, hidden offscreen) -->
+    <div id="global-webview-container" style="position: fixed; top: -99999px; left: -99999px; width: 1px; height: 1px; overflow: hidden;">
+      <webview
+        id="ai1-webview"
+        partition="persist:ai1"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+      <webview
+        id="ai2-webview"
+        partition="persist:ai2"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+    </div>
+
     <div id="app">
       <!-- Top Bar -->
       <div class="top-bar">
@@ -26,7 +50,6 @@
             />
             <span class="logo-text">Hayalet Ev</span>
           </div>
-          <!-- page title removed -->
           <button
             class="icon-btn menu-toggle"
             id="menu-toggle"
@@ -80,7 +103,7 @@
               </div>
             </div>
             <div class="indicator-cluster">
-              <div class="indicator-avatar" id="indicator-avatar-human"></div>
+              <div class="indicator-avatar" id="indicator-avatar-user"></div>
             </div>
             <div class="indicator-cluster">
               <div class="relay-indicator" id="relay-indicator">
@@ -132,6 +155,7 @@
           </div>
         </div>
         <div class="top-bar-right">
+          <button class="icon-btn" id="asistan-btn" title="Asistan">🤖</button>
           <button class="icon-btn" id="settings-btn" title="Ayarlar">⚙️</button>
           <button class="icon-btn" id="archive-btn" title="Arşiv">📁</button>
           <button class="icon-btn" id="webview-btn" title="Webview">🌐</button>
@@ -164,11 +188,8 @@
         <button class="menu-item" data-page="analyze">🔍 Analiz Odası</button>
         <button class="menu-item" data-page="whisper">👂 Fısıltı Odası</button>
         <button class="menu-item" data-page="server">🖥️ Sunucu Odası</button>
-        <button class="menu-item" data-page="test-konva">🎨 Konva Test</button>
       </div>
 
-      <!-- Main Content -->
-      <!-- Main Content -->
       <div class="main-content" id="main-content">
         <div id="pages-container"></div>
       </div>

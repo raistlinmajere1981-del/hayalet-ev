@@ -40,7 +40,10 @@ archives/
 # Commands (runtime data)
 commands/
 
-# Settings (may contain sensitive data)
+# Config directory (contains settings and sensitive data)
+config/
+
+# Settings (may contain sensitive data - legacy, now in config/)
 settings.json
 
 # Google Drive credentials

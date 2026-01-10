@@ -14,6 +14,12 @@ async function ensureCommandDirs() {
   return { root, doneDir, failedDir };
 }
 
+/**
+ * Main Process: Command Queue Persistence Layer
+ * Bu modül SADECE dosya I/O işlemlerini yapar.
+ * Queue management renderer tarafında (src/js/modules/command-manager.js)
+ */
+
 export async function commandInit(event) {
   try {
     const { root, failedDir } = await ensureCommandDirs();
@@ -23,10 +29,8 @@ export async function commandInit(event) {
         await rename(join(root, e.name), join(failedDir, e.name));
       }
     }
-    console.log('command-init completed');
     return { success: true, root, failedDir };
   } catch (err) {
-    console.error('command-init error:', err);
     return { success: false, error: err?.message };
   }
 }
@@ -36,10 +40,8 @@ export async function commandWrite(event, item) {
     const { root } = await ensureCommandDirs();
     const filePath = join(root, `${item.id}.json`);
     await writeFile(filePath, JSON.stringify(item, null, 2), 'utf-8');
-    console.log('command-write', filePath);
     return true;
   } catch (err) {
-    console.error('command-write error:', err);
     return false;
   }
 }
@@ -90,7 +92,6 @@ export async function commandStageAttachments(event, payload = {}) {
     }
     return { success: true, jobId, commandDir: targetDir, staged };
   } catch (err) {
-    console.error('command-stage-attachments error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -105,7 +106,6 @@ export async function commandStageTemp(event, payload = {}) {
     }));
     return { success: true, temp: tempList };
   } catch (err) {
-    console.error('command-stage-temp error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -120,7 +120,6 @@ export async function commandCleanupTemp(event, payload = {}) {
     }
     return { success: true };
   } catch (err) {
-    console.error('command-cleanup-temp error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -151,7 +150,6 @@ export async function commandMoveFailed(event, payload = {}) {
     }
     return { success: true, destDir };
   } catch (err) {
-    console.error('command-move-failed error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -173,7 +171,6 @@ export async function commandArchiveCopy(event, payload = {}) {
     }
     return { success: true, targetDir };
   } catch (err) {
-    console.error('command-archive-copy error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -189,7 +186,6 @@ export async function commandCleanupJob(event, payload = {}) {
     }
     return { success: true };
   } catch (err) {
-    console.error('command-cleanup-job error:', err);
     return { success: false, message: err.message };
   }
 }
@@ -209,10 +205,8 @@ export async function commandMove(event, id, status = 'done', reason = '') {
       }
       await rename(src, dest);
     }
-    console.log('command-move', src, '->', dest);
     return true;
   } catch (err) {
-    console.error('command-move error:', err);
     return false;
   }
 }

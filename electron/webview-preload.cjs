@@ -6,8 +6,6 @@ let __global_hayalet_slot = null;
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) =>
     ipcRenderer.invoke("read-directory-files", dirPath),
-  loadSettings: () => ipcRenderer.invoke("load-settings"),
-  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   readArchivesIndex: () => ipcRenderer.invoke("read-archives-index"),

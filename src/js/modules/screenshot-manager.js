@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { LogManager } from "./log-manager.js";
 import { FileManager } from "./file-manager.js";
 
@@ -15,10 +14,11 @@ class ScreenshotManagerClass {
         res = await window.electronAPI.capturePage("region", region);
       }
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "warning",
-        `capturePage başarısız: ${err.message}`,
+        `capturePage başarısız: ${error.message}`,
       );
     }
     if (!res?.success || !res.dataUrl) {
@@ -38,10 +38,11 @@ class ScreenshotManagerClass {
         res = await window.electronAPI.capturePage("window", "");
       }
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "warning",
-        `captureWindow fallback: ${err.message}`,
+        `captureWindow fallback: ${error.message}`,
       );
     }
     if (!res?.success || !res.dataUrl) {
@@ -62,20 +63,22 @@ class ScreenshotManagerClass {
         return this.persist(res, tag, opts.format);
       }
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `captureSystem hata: ${err.message}`,
+        `captureSystem hata: ${error.message}`,
       );
     }
     try {
       const res = await window.electronAPI?.capturePage?.("full", "");
       return this.persist(res, tag, opts.format);
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `captureSystem fallback hata: ${err.message}`,
+        `captureSystem fallback hata: ${error.message}`,
       );
       return "";
     }
@@ -106,10 +109,11 @@ class ScreenshotManagerClass {
       );
       return target;
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `Screenshot yazılamadı: ${err.message}`,
+        `Screenshot yazılamadı: ${error.message}`,
       );
       return "";
     }

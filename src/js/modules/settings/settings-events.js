@@ -1,5 +1,7 @@
 // Lightweight event emitter + BroadcastChannel wrapper.
 
+import { LogManager } from "../log-manager.js";
+
 export class Emitter {
   constructor() {
     this.listeners = new Set();
@@ -16,7 +18,7 @@ export class Emitter {
       try {
         fn(payload);
       } catch (err) {
-        console.warn("Emitter listener error:", err);
+        LogManager.addEvent("settings-events", "warning", "Listener error", { error: err.message });
       }
     }
   }
@@ -26,9 +28,13 @@ export function createSettingsBroadcast(channelName = "hayalet-settings") {
   try {
     const bc = new BroadcastChannel(channelName);
     return {
-      post: (msg) => bc.postMessage(msg),
+      post: (msg) => {
+        bc.postMessage(msg);
+      },
       on: (handler) => {
-        bc.onmessage = (e) => handler?.(e?.data);
+        bc.onmessage = (e) => {
+          handler?.(e?.data);
+        };
         return () => {
           try {
             bc.onmessage = null;
@@ -39,8 +45,8 @@ export function createSettingsBroadcast(channelName = "hayalet-settings") {
         };
       },
     };
-  } catch {
-    // Fallback: no broadcast
+  } catch (err) {
+    LogManager.addEvent("settings-events", "warning", `Failed to create BroadcastChannel: ${channelName}`, { error: err.message });
     return {
       post: () => {},
       on: () => () => {},

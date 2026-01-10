@@ -1,0 +1,122 @@
+<div class="page hidden" id="page-asistan">
+  <div class="asistan-container">
+    <!-- Asistan Bağlantı Kontrolü -->
+    <div class="asistan-section connection-section">
+      <div class="section-header">
+        <h2>Asistan Bağlantısı</h2>
+        <div class="connection-status">
+          <span class="status-dot" id="asistan-status-dot"></span>
+          <span id="asistan-status-text">Bağlı Değil</span>
+        </div>
+      </div>
+      <div class="connection-controls">
+        <div class="control-group">
+          <label for="asistan-provider">Asistan:</label>
+          <select id="asistan-provider" class="form-select">
+            <option value="">Seçiniz</option>
+            <option value="opencode">OpenCode</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <button id="asistan-connect-btn" class="btn btn-primary" disabled>Bağlan</button>
+          <button id="asistan-disconnect-btn" class="btn btn-danger" disabled style="display: none;">Bağlantıyı Kes</button>
+          <button id="asistan-devtools-btn" class="btn btn-secondary" disabled style="display: none;">DevTools</button>
+        </div>
+
+        <!-- AI-Asistan Relay Kontrolleri -->
+        <div class="relay-controls-inline" id="relay-controls-inline" style="opacity: 0.3; pointer-events: none;">
+          <div class="control-group">
+            <label for="relay-ai-select">AI:</label>
+            <select id="relay-ai-select" class="form-select">
+              <option value="">Seçiniz</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <button id="relay-start-btn" class="btn btn-success" disabled>Sohbet Başlat</button>
+            <button id="relay-stop-btn" class="btn btn-warning" disabled style="display: none;">Sohbet Bitir</button>
+          </div>
+
+          <div class="relay-status">
+            <span class="status-indicator" id="relay-status-indicator">●</span>
+            <span id="relay-status-text">Relay İnaktif</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webview Görünümü -->
+    <div class="asistan-section display-section">
+      <!-- Loading Overlay -->
+      <div id="asistan-loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <span class="loading-text">Asistan başlatılıyor...</span>
+        </div>
+      </div>
+
+      <!-- Processing Indicator -->
+      <div id="asistan-processing" class="processing-indicator" style="display: none;">
+        <div class="processing-dot"></div>
+        <span class="processing-text">Cevap bekleniyor...</span>
+      </div>
+
+      <!-- Webview Container -->
+      <div id="webview-container" class="webview-wrapper">
+        <webview 
+          id="asistan-webview" 
+          style="width: 100%; height: 100%;"
+          partition="persist:asistan"
+          allowpopups
+        ></webview>
+      </div>
+
+      <div class="empty-state" id="display-empty">
+        <p>Asistana bağlanmak için yukarıdan seçim yapın</p>
+      </div>
+    </div>
+
+    <!-- TEST PANEL -->
+    <div class="asistan-section test-panel" id="test-panel" style="display: none;">
+      <div class="section-header">
+        <h2>🧪 Test Panel</h2>
+        <button id="test-panel-clear" class="btn btn-small">Temizle</button>
+      </div>
+      
+      <div class="test-panel-grid">
+        <!-- Mesaj Gönderme -->
+        <div class="test-input-area">
+          <label for="test-message-input">Asistana Gönderilecek Mesaj:</label>
+          <div class="test-input-row">
+            <input 
+              type="text" 
+              id="test-message-input" 
+              class="form-input" 
+              placeholder="Mesajınızı yazın..."
+              autocomplete="off"
+            >
+            <button id="test-send-btn" class="btn btn-primary">Gönder</button>
+          </div>
+        </div>
+
+        <!-- Yakalanan Cevaplar -->
+        <div class="test-output-area">
+          <label for="test-output">Asistandan Gelen Cevaplar:</label>
+          <textarea 
+            id="test-output" 
+            class="form-textarea" 
+            readonly 
+            placeholder="Asistandan gelen cevaplar burada görünecek..."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Debug Bilgileri -->
+      <div class="test-debug-info">
+        <span id="test-debug-status">Bekleniyor...</span>
+        <span id="test-debug-count">Mesaj: 0 | Karakter: 0</span>
+      </div>
+    </div>
+  </div>
+</div>

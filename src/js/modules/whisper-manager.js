@@ -1,12 +1,20 @@
-// @ts-nocheck
 import { LogManager } from "./log-manager.js";
 
 const PROVIDERS = ["ai1", "ai2"];
 
 function resolveProvider(name = "", settings = {}) {
   const lowered = name.toLowerCase();
-  const nick1 = (settings.ai1?.nickname || "").toLowerCase();
-  const nick2 = (settings.ai2?.nickname || "").toLowerCase();
+  
+  // Yeni settings yapısı: slots.ai1/ai2.accountId üzerinden account'u bul
+  const getAccountNickname = (slot) => {
+    const accountId = settings.slots?.[slot]?.accountId;
+    if (!accountId) return "";
+    const account = settings.accounts?.find(acc => acc.id === accountId);
+    return (account?.nickname || "").toLowerCase();
+  };
+  
+  const nick1 = getAccountNickname("ai1");
+  const nick2 = getAccountNickname("ai2");
 
   if (lowered === "ai1" || (nick1 && lowered === nick1)) return "ai1";
   if (lowered === "ai2" || (nick2 && lowered === nick2)) return "ai2";
@@ -59,10 +67,11 @@ class WhisperManagerClass {
         };
       }
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "whisper",
         "warning",
-        `Whisper yüklenemedi (${provider}): ${err.message}`,
+        `Whisper yüklenemedi (${provider}): ${error.message}`,
       );
     }
     return { pending: [], done: [] };
@@ -72,10 +81,11 @@ class WhisperManagerClass {
     try {
       await window.electronAPI?.whisperSave?.(provider, this.data[provider]);
     } catch (err) {
+      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "whisper",
         "error",
-        `Whisper kaydedilemedi (${provider}): ${err.message}`,
+        `Whisper kaydedilemedi (${provider}): ${error.message}`,
       );
     }
   }
@@ -170,10 +180,11 @@ class WhisperManagerClass {
               this.markReady(provider, rec.id);
             }
           } catch (err) {
+            const error = /** @type {Error} */ (err);
             LogManager.addEvent(
               "whisper",
               "error",
-              `Whisper gönderilemedi (${provider}): ${err.message}`,
+              `Whisper gönderilemedi (${provider}): ${error.message}`,
             );
             this.markReady(provider, rec.id);
           }

@@ -1,6 +1,8 @@
-// @ts-nocheck
 import { CoreEngine } from "./core-engine.js";
 import { LogManager } from "./log-manager.js";
+import { SettingsManager } from "./settings-manager.js";
+// FIX: Import SlotEvent for proper state change subscription
+import { SlotController, SlotEvent } from "./slot-controller.js";
 
 class ConversationListManagerClass {
   constructor() {
@@ -10,11 +12,34 @@ class ConversationListManagerClass {
     };
     this.entries = [];
     this.currentSelections = { ai1: "new", ai2: "new" };
+    this._settingsSub = null;
   }
 
   async init() {
     await this.refresh({ silent: true });
     this.bindEvents();
+    this.subscribeToSettings();
+  }
+
+  subscribeToSettings() {
+    this._settingsSub = SettingsManager.subscribe(({ changedPaths }) => {
+      const slotAccountPaths = ["slots.ai1.accountId", "slots.ai2.accountId"];
+      const slotChanged =
+        changedPaths.includes("*") ||
+        changedPaths.some((p) => slotAccountPaths.some((path) => p === path));
+
+      if (slotChanged) {
+        this.renderAll({ silent: true });
+      }
+    });
+
+    // FIX: SlotController state değişikliklerini dinle (bağlantı durumu için)
+    // Bağlantı durumu değiştiğinde liste enabled/disabled durumunu güncelle
+    if (!this._slotControllerSub) {
+      this._slotControllerSub = SlotController.on(SlotEvent.STATE_CHANGED, () => {
+        this.renderAll({ silent: true });
+      });
+    }
   }
 
   bindEvents() {
@@ -67,10 +92,11 @@ class ConversationListManagerClass {
         );
       }
     } catch (error) {
+      const err = /** @type {Error} */ (error);
       LogManager.addEvent(
         "conversation",
         "error",
-        `Listeyi yenileme hatası: ${error.message}`,
+        `Listeyi yenileme hatası: ${err.message}`,
       );
     }
   }
@@ -85,11 +111,31 @@ class ConversationListManagerClass {
     const select = this.selects[provider];
     if (!select) return;
 
+    const settings = SettingsManager.getSnapshot();
+    const slot = settings?.slots?.[provider] || {};
+    const hasAccount = !!slot.accountId;
+    const isConnected = SlotController.isConnected(provider);
+
+    // Gating (doc/settings-rebuild.txt):
+    // - empty slot: list disabled + empty
+    // - assigned but disconnected: list disabled
+    // - assigned + connected: list enabled
+    select.disabled = !hasAccount || !isConnected;
+
     const currentVal = options.silent
       ? select.value
       : this.currentSelections[provider] || "new";
 
     select.innerHTML = "";
+
+    if (!hasAccount) {
+      const emptyOpt = new Option("— Slot boş —", "empty");
+      emptyOpt.disabled = true;
+      emptyOpt.selected = true;
+      select.appendChild(emptyOpt);
+      this.currentSelections[provider] = "empty";
+      return;
+    }
 
     const newOption = new Option("Yeni Sohbet", "new");
     newOption.dataset.url = "";
@@ -106,6 +152,7 @@ class ConversationListManagerClass {
       select.appendChild(option);
     }
 
+    // Keep selection if possible
     select.value = currentVal;
     if (select.selectedIndex === -1) {
       select.value = "new";

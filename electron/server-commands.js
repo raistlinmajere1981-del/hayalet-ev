@@ -20,7 +20,7 @@ async function appendLogLine(line) {
     const path = join(baseDir, 'server-commands.log');
     await appendFile(path, line + '\n', 'utf-8');
   } catch (err) {
-    console.error('appendLogLine error:', err);
+    // appendLogLine error - silent failure
   }
 }
 

@@ -52,7 +52,6 @@ export async function catboxUpload(_event, payload = {}) {
       data: text,
     };
   } catch (err) {
-    console.error("catbox-upload error:", err);
     return { success: false, message: err?.message || "catbox upload failed" };
   }
 }
@@ -106,7 +105,6 @@ export async function uguuUpload(_event, payload = {}) {
       data: text,
     };
   } catch (err) {
-    console.error("uguu-upload error:", err);
     return { success: false, message: err?.message || "uguu upload failed" };
   }
 }
@@ -229,7 +227,6 @@ export async function archiveSync(_event, payload = {}) {
         existing.webUrl = webUrl;
         await writeFile(indexPath, JSON.stringify(indexData, null, 2), "utf-8");
       } catch (err) {
-        console.error("write-archives-index update error:", err);
       }
     } else {
       const newEntry = { ...meta };
@@ -240,7 +237,6 @@ export async function archiveSync(_event, payload = {}) {
 
     return { success: true, meta, count: history.length };
   } catch (error) {
-    console.error("archive-sync error:", error);
     return { success: false, error: error.message };
   }
 }

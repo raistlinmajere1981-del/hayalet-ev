@@ -1,4 +1,3 @@
-// @ts-nocheck
 export * from "./scraper.js";
 
 // Message methods from new location

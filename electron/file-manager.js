@@ -33,7 +33,6 @@ export async function ensureScope(scope = "all") {
     }
     return { success: true, ...resolved };
   } catch (err) {
-    console.error("ensureScope error:", err);
     return { success: false, message: err?.message || String(err) };
   }
 }
@@ -58,7 +57,6 @@ export async function fmTempPath(event, prefix = "tmp", ext = "tmp") {
     const fullPath = join(baseDir, filename);
     return { success: true, path: fullPath };
   } catch (error) {
-    console.error("fm-temp-path error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -77,7 +75,6 @@ export async function fmEnsureDirs(event, scope = "all") {
     }
     return { success: true, ...resolved };
   } catch (err) {
-    console.error("fm-ensure-dirs error:", err);
     return { success: false, message: err?.message || String(err) };
   }
 }
@@ -97,7 +94,6 @@ export async function fmWriteFileAtomic(event, payload) {
     await rename(tmpPath, targetPath);
     return { success: true, path: targetPath };
   } catch (error) {
-    console.error("fm-write-file-atomic error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -115,7 +111,6 @@ export async function fmArchiveWrite(event, meta = {}, files = []) {
     await writeFile(target, JSON.stringify(payload, null, 2), "utf-8");
     return { success: true, path: target };
   } catch (error) {
-    console.error("fm-archive-write error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -126,7 +121,6 @@ export async function readFileAsBase64(event, filePath) {
     const buffer = await readFile(filePath);
     return buffer.toString("base64");
   } catch (err) {
-    console.error("readFileAsBase64 error:", err);
     return null;
   }
 }
@@ -187,7 +181,6 @@ export async function copyToAssets(
         }
       } catch (e) {
         // non-fatal
-        console.warn("user.* cleanup failed:", e?.message || e);
       }
     }
 
@@ -195,7 +188,6 @@ export async function copyToAssets(
     await copyFile(srcPath, destPath);
     return { success: true, path: destPath, fileName: candidate };
   } catch (error) {
-    console.error("copy-to-assets error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -219,7 +211,6 @@ export async function copyFileTo(event, srcPath, destDir) {
     await copyFile(srcPath, target);
     return { success: true, path: target, name: candidate };
   } catch (error) {
-    console.error("copy-file-to error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -234,7 +225,20 @@ export async function removeArchive(event, folderPath) {
     await rm(target, { recursive: true, force: true });
     return { success: true };
   } catch (error) {
-    console.error("remove-archive error:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function deleteAsset(event, assetPath) {
+  try {
+    if (!assetPath) throw new Error("assetPath missing");
+    const target = assetPath;
+    if (!existsSync(target)) {
+      return { success: true, message: "Asset not found" };
+    }
+    await rm(target, { force: true });
+    return { success: true };
+  } catch (error) {
     return { success: false, message: error.message };
   }
 }
@@ -246,7 +250,6 @@ export async function readArchivesIndex(event) {
     const data = await readFile(indexPath, "utf-8");
     return JSON.parse(data || "[]");
   } catch (error) {
-    console.error("read-archives-index error:", error);
     return [];
   }
 }
@@ -261,7 +264,6 @@ export async function writeArchivesIndex(event, entries) {
     await writeFile(indexPath, JSON.stringify(entries || [], null, 2), "utf-8");
     return true;
   } catch (error) {
-    console.error("write-archives-index error:", error);
     return false;
   }
 }
@@ -312,7 +314,6 @@ export async function generateTree(event, basePath = "", options = {}) {
         }
         return lines;
       } catch (err) {
-        console.error("buildTree error:", err);
         return [];
       }
     };
@@ -333,7 +334,6 @@ export async function generateTree(event, basePath = "", options = {}) {
       lines: lines.length,
     };
   } catch (error) {
-    console.error("generate-tree error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -345,7 +345,6 @@ export async function openPath(event, targetPath) {
     if (res) throw new Error(res);
     return { success: true };
   } catch (error) {
-    console.error("open-path error:", error);
     return { success: false, message: error.message };
   }
 }

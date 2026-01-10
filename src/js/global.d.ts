@@ -14,7 +14,7 @@ declare global {
       readFile: (path: string) => Promise<string | null>; // returns base64
       readFilesMulti: (paths: string[]) => Promise<Array<{ path: string; data: string | null }>>;
       showOpenDialog: (options: any) => Promise<any>;
-      copyToAssets: (sourcePath: string, roleName: string) => Promise<{ path: string } | null>;
+      copyToAssets: (sourcePath: string, roleName: string, accountInfo?: any) => Promise<{ path: string } | null>;
       // archives
       archiveSync: (payload: any) => Promise<any>;
       readArchivesIndex: () => Promise<any[]>;
@@ -47,6 +47,15 @@ declare global {
       windowClose: () => void;
       // app control
       appRestart: () => void;
+      // device control
+      deviceAction: (action: string, payload?: any) => Promise<any>;
+      // file manager
+      fmEnsureDirs: (scope: string) => Promise<void>;
+      fmTempPath: (prefix: string, ext: string) => Promise<string>;
+      fmWriteFileAtomic: (payload: any) => Promise<any>;
+      fmArchiveWrite: (meta: any, files: any) => Promise<any>;
+      // logging
+      appendLog: (payload: any) => Promise<void>;
       // misc
       getPreloadPath: (provider: string) => Promise<string>;
       generateTree: (
@@ -66,5 +75,16 @@ declare global {
     // Global helper functions attached in app.js
     updateChatListOnNewEntry?: (provider: string, selectedId: string, options?: any) => Promise<void>;
     refreshAnalyzeMessages?: (provider: string) => Promise<void>;
+    
+    // Custom properties
+    __hayalet_settings_unsub?: () => void;
+    __hayalet_provider_config?: any;
+  }
+  
+  // Extend HTMLElement for webview
+  interface HTMLElement {
+    getWebContentsId?(): number;
+    send?(channel: string, ...args: any[]): void;
+    executeJavaScript?(code: string): Promise<any>;
   }
 }

@@ -3,16 +3,26 @@
 // - Persists via electronAPI (main)
 // - Publishes realtime updates via emitter + BroadcastChannel
 
-import { defaultSettings, migrateLegacySettings } from "./settings/settings-schema.js";
-import { Emitter, createSettingsBroadcast } from "./settings/settings-events.js";
+import {
+  defaultSettings,
+  normalizeSettings,
+  getChangedPaths,
+} from "./settings/settings-schema.js";
+import {
+  Emitter,
+  createSettingsBroadcast,
+} from "./settings/settings-events.js";
 import { ipcLoadSettings, ipcSaveSettings } from "./settings/settings-ipc.js";
+import { LogManager } from "./log-manager.js";
 
 function deepClone(obj) {
   return obj ? JSON.parse(JSON.stringify(obj)) : obj;
 }
 
 function setByPath(obj, path, value) {
-  const parts = String(path || "").split(".").filter(Boolean);
+  const parts = String(path || "")
+    .split(".")
+    .filter(Boolean);
   if (!parts.length) return obj;
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
@@ -29,31 +39,51 @@ class SettingsManagerClass {
     this._settings = defaultSettings();
     this._loaded = false;
     this._emitter = new Emitter();
+    this._lastSaved = defaultSettings();
     this._broadcast = createSettingsBroadcast("hayalet-settings");
     this._stopBroadcast = this._broadcast.on((msg) => {
-      if (!msg || msg.type !== "settings-changed") return;
+      if (!msg || msg.type !== "settings-changed") {
+        return;
+      }
+      
       // Avoid loops: only accept if payload differs
       if (msg.payload && typeof msg.payload === "object") {
-        this._settings = migrateLegacySettings(msg.payload);
+        const next = normalizeSettings(msg.payload);
+        const changedPaths = getChangedPaths(this._settings, next);
+        
+        this._settings = next;
         this._loaded = true;
-        this._emitter.emit(this._settings);
+        
+        this._emitter.emit({ settings: this._settings, changedPaths });
       }
     });
   }
 
+  getSnapshot() {
+    return this._settings;
+  }
+
+  // Backwards compatible getter
   get settings() {
     return this._settings;
   }
 
   async load(options = {}) {
     const force = !!options.force;
-    if (this._loaded && !force) return this._settings;
+    
+    if (this._loaded && !force) {
+      return this._settings;
+    }
+    
     const loaded = await ipcLoadSettings();
-    this._settings = migrateLegacySettings(loaded);
+    this._settings = normalizeSettings(loaded);
+    
+    this._lastSaved = this._settings;
     this._loaded = true;
-    this._emitter.emit(this._settings);
-    // also broadcast to keep other pages in sync
+    
+    this._emitter.emit({ settings: this._settings, changedPaths: ["*"] });
     this._broadcast.post({ type: "settings-changed", payload: this._settings });
+    
     return this._settings;
   }
 
@@ -70,17 +100,24 @@ class SettingsManagerClass {
   }
 
   subscribe(listener) {
+    // listener(payload: {settings, changedPaths})
     return this._emitter.on(listener);
   }
 
   async save(nextSettings) {
-    const payload = migrateLegacySettings(nextSettings);
-    this._settings = payload;
+    const next = normalizeSettings(nextSettings);
+    const changedPaths = getChangedPaths(this._lastSaved, next);
+    
+    this._settings = next;
     this._loaded = true;
-    await ipcSaveSettings(payload);
-    // local + app-wide notifications
-    this._emitter.emit(this._settings);
+    
+    await ipcSaveSettings(next);
+    
+    this._lastSaved = next;
+    
+    this._emitter.emit({ settings: this._settings, changedPaths });
     this._broadcast.post({ type: "settings-changed", payload: this._settings });
+    
     return true;
   }
 
@@ -100,8 +137,10 @@ class SettingsManagerClass {
     return await this.save(next);
   }
 
-  async reset() {
-    return await this.save(defaultSettings());
+  async resetToDefaults() {
+    LogManager.addEvent("settings", "warning", "resetToDefaults() called - resetting all settings to default values");
+    const defaults = defaultSettings();
+    return await this.save(defaults);
   }
 }
 

@@ -1,7 +1,6 @@
-// @ts-nocheck
 // Loading Tracker - Webview yüklenme durumunu izler
-import { LogManager } from "../log-manager.js";
-import { SettingsContext } from "../settings-context.js";
+// import { LogManager } from "../log-manager.js";
+import { SettingsManager } from "../settings-manager.js";
 import { ProviderRegistry } from "../webview/provider-registry.js";
 
 export class LoadingTracker {
@@ -18,7 +17,11 @@ export class LoadingTracker {
   async scrollToBottom(provider, webview) {
     if (!webview || webview.isDestroyed?.()) return false;
     
-    const providerId = SettingsContext.get(`${provider}.providerId`);
+    // Get provider from slot
+    const settings = SettingsManager.getSnapshot();
+    const accountId = settings.slots?.[provider]?.accountId;
+    const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
+    const providerId = account?.provider || "";
     const cfg = providerId ? ProviderRegistry.get(providerId) : null;
     const scrollerSelectors = cfg?.scrollerSelectors || [
       "div.flex.h-full.flex-col.overflow-y-auto",
@@ -247,8 +250,8 @@ export class LoadingTracker {
     }
 
     const scroll = data.scroll || {};
-    const sendState = data.sendState || "missing";
-    const voiceMode = !!data.voiceMode;
+    // const sendState = data.sendState || "missing";
+    // const voiceMode = !!data.voiceMode;
 
     const scrollGap = (scroll.scrollHeight || 0) - (scroll.clientHeight || 0);
     const hasScroll = scrollGap > 12;

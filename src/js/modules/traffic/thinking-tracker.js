@@ -1,6 +1,5 @@
-// @ts-nocheck
 // Thinking Tracker - AI düşünme (response generation) durumunu izler
-import { LogManager } from "../log-manager.js";
+// import { LogManager } from "../log-manager.js";
 
 export class ThinkingTracker {
   constructor(config) {
@@ -16,9 +15,9 @@ export class ThinkingTracker {
    * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
   handleProbe(provider, viewState, data, now) {
-    const stopVisible = !!data.stopVisible;
-    const sendState = data.sendState || "missing";
-    const voiceMode = !!data.voiceMode;
+    // const stopVisible = !!data.stopVisible;
+    // const sendState = data.sendState || "missing";
+    // const voiceMode = !!data.voiceMode;
     const lastSend = data.lastSend || 0;
 
     let event = null;

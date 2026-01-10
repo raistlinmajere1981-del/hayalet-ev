@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { LogManager } from "./log-manager.js";
 import { ServerCommands } from "./server-commands.js";
 
@@ -30,14 +29,15 @@ class CatchManagerClass {
       (msg) => msg?.role === "assistant" && (msg.index || 0) >= startIndex,
     );
 
-    const regex = new RegExp(
-      `\\+\\+${prefix}:([A-Za-z0-9_]+)\\(([^)]*)\\)`,
-      "g",
-    );
     const found = [];
 
     targetMessages.forEach((msg) => {
       const text = msg.text || "";
+      // Her mesaj için yeni regex oluştur - global flag ile lastIndex sorunu önlenir
+      const regex = new RegExp(
+        `\\+\\+${prefix}:([A-Za-z0-9_]+)\\(([^)]*)\\)`,
+        "g",
+      );
       let match;
       while ((match = regex.exec(text)) !== null) {
         const [, name, argsRaw] = match;

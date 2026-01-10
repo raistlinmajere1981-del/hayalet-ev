@@ -1,10 +1,9 @@
-// @ts-nocheck
 // Pencere kontrol yardımcı fonksiyonları (renderer -> Electron via preload)
 function minimizeToTaskbar() {
   try {
     window.electronAPI?.windowMinimize?.();
   } catch (err) {
-    console.warn("minimizeToTaskbar error:", err);
+    // minimizeToTaskbar error - silent
   }
 }
 
@@ -12,7 +11,7 @@ function toggleFullscreen() {
   try {
     window.electronAPI?.windowToggleFullscreen?.();
   } catch (err) {
-    console.warn("toggleFullscreen error:", err);
+    // toggleFullscreen error - silent
   }
 }
 
@@ -20,7 +19,7 @@ function closeApp() {
   try {
     window.electronAPI?.windowClose?.();
   } catch (err) {
-    console.warn("closeApp error:", err);
+    // closeApp error - silent
   }
 }
 

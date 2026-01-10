@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function scrapeMessages() {
   const config = window.__hayalet_provider_config || {};
   const { scrapeSelectors = {}, roleSelectors = {} } = config;

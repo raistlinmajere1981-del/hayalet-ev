@@ -1,4 +1,3 @@
-// @ts-nocheck
 export function scrapeMessages() {
   const preferredSel =
     (window.__hayalet_provider_config &&

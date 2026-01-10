@@ -49,7 +49,9 @@ export const config = {
     '.ql-editor.textarea',
     'rich-textarea .ql-editor[contenteditable="true"]',
   ],
-  excludedUrls: [],
+  excludedUrls: [ 
+  ],
+
   filters: {
     selectors: [],
     hosts: [],
