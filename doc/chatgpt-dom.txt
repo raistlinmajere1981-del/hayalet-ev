@@ -4,7 +4,8 @@ Chatgpt - Türkçe
 - Pasif Gönder Butonu : <button disabled="" id="composer-submit-button" aria-label="İstem gönder" data-testid="send-button" class="composer-submit-btn composer-submit-button-color h-9 w-9"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon"><use href="/cdn/assets/sprites-core-i9agxugi.svg#01bab7" fill="currentColor"></use></svg></button>
 - Thinking Butonu : <button id="composer-submit-button" aria-label="Yanıtlamayı durdur" data-testid="stop-button" class="composer-submit-btn composer-secondary-button-color h-9 w-9"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon"><use href="/cdn/assets/sprites-core-i9agxugi.svg#bbf3a9" fill="currentColor"></use></svg></button>
 - Dosya Taşıma Alanı (Drag&Drop metodu için) :
-
+- AI cevap alanı :
+- Kullanıcı mesajı alanı : 
 
 Chatgpt - İngilizce
 - Metin Alanı : <p data-placeholder="Ask anything" class="placeholder"><br class="ProseMirror-trailingBreak"></p>
@@ -12,5 +13,7 @@ Chatgpt - İngilizce
 - Pasif Gönder Butonu : <button disabled="" id="composer-submit-button" aria-label="Send prompt" data-testid="send-button" class="composer-submit-btn composer-submit-button-color h-9 w-9"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon"><use href="/cdn/assets/sprites-core-i9agxugi.svg#01bab7" fill="currentColor"></use></svg></button>
 - Thinking Butonu : <button id="composer-submit-button" aria-label="Stop streaming" data-testid="stop-button" class="composer-submit-btn composer-secondary-button-color h-9 w-9"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" class="icon"><use href="/cdn/assets/sprites-core-i9agxugi.svg#bbf3a9" fill="currentColor"></use></svg></button>
 - Dosya Taşıma Alanı (Drag&Drop metodu için) :
+- AI cevap alanı :
+- Kullanıcı mesajı alanı : 
 
 

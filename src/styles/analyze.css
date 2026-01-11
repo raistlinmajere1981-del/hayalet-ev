@@ -27,6 +27,16 @@
   opacity: 0.55;
   pointer-events: none;
 }
+.conv-card.slot-empty {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.conv-card.slot-disconnected {
+  opacity: 0.6;
+}
+.conv-card.slot-connected {
+  opacity: 1;
+}
 .conv-header {
   display: flex;
   justify-content: space-between;

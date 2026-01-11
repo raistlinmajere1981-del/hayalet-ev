@@ -17,7 +17,7 @@ import { ThinkingTracker } from "./traffic/thinking-tracker.js";
 import { SendTracker } from "./traffic/send-tracker.js";
 import { buildProbeScript } from "./traffic/probe-script-builder.js";
 import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } from "./traffic/webview-events.js";
-import { isUrlExcluded as checkUrlExcluded } from "./webview/methods/shared/url-utils.js";
+import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
 
 // ============================================
 // ============================================
@@ -40,9 +40,9 @@ const STATUS_COLORS = {
 };
 
 const defaultStatus = () => ({
-  loading: "busy",
+  loading: "idle",
   thinking: "idle",
-  send: "busy",
+  send: "idle",
 });
 
 const defaultState = () => ({
@@ -165,7 +165,25 @@ class TrafficManagerClass {
     const viewState = this.state[provider] || defaultState();
 
     if (href && href !== viewState.lastHref) {
+      const previousHref = viewState.lastHref;
       viewState.lastHref = href;
+      
+      // Default page'den conversation page'e geçiş kontrolü
+      const providerId = AppState.getProviderIdForSlot(provider) || "";
+      const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
+      const isOnDefaultPage = isDefaultPage(href, providerId);
+      
+      // Default page'den çıkış = mesaj gönderiminden kaynaklı (yeni conversation oluşuyor)
+      // Bu durumda loading tetikleme - thinking tracker takip edecek
+      // Kullanıcı manuel link tıklasa bile sorun yok çünkü conversation page'de
+      // zaten thinking aktif olmayacak ve normal çalışacak
+      if (wasOnDefaultPage && !isOnDefaultPage) {
+        LogManager.addEvent("traffic", "debug", 
+          `Skipping loading trigger for ${provider}: default page exit (${previousHref} → ${href})`);
+        this.state[provider] = viewState;
+        return;
+      }
+      
       this.loadingTracker.startLoading(viewState, Date.now());
       this.state[provider] = viewState;
       this.setIndicator(provider, "loading", "busy");
@@ -242,6 +260,20 @@ class TrafficManagerClass {
     if (!provider) return;
     const webview = this.webviews[provider];
     if (!webview || webview.isDestroyed?.()) return;
+    
+    // FIX: Webview'ın DOM'a attach olup olmadığını kontrol et
+    // getWebContentsId yoksa veya hata veriyorsa webview henüz hazır değil
+    try {
+      if (typeof webview.getWebContentsId !== "function") {
+        return false;
+      }
+      // getWebContentsId çağrısı webview hazır değilse hata fırlatır
+      webview.getWebContentsId();
+    } catch (_) {
+      // Webview henüz DOM'a attach olmamış, sessizce geç
+      return false;
+    }
+    
     const viewState = this.state[provider] || defaultState();
     if (viewState.polling) return;
     viewState.polling = true;
@@ -253,6 +285,12 @@ class TrafficManagerClass {
         : typeof webview.getWebContents === "function"
           ? !!webview.getWebContents()?.isLoading?.()
           : false;
+      
+      // isLoading true ise executeJavaScript çağırma
+      if (isLoading) {
+        return false;
+      }
+      
       const result = await webview.executeJavaScript(script, true);
       const ok = await this.handleProbe(provider, result, isLoading);
       return !!ok;
@@ -298,7 +336,10 @@ class TrafficManagerClass {
     const now = Date.now();
     const webview = this.webviews[provider];
 
-    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
+    // Önce mevcut thinking durumunu kontrol et (loading tracker'a geçirmek için)
+    const currentThinkingStatus = viewState.status?.thinking === "busy";
+
+    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref, currentThinkingStatus);
     viewState = loadingResult.newState;
     this.setIndicator(provider, "loading", loadingResult.indicator);
     if (loadingResult.event) {

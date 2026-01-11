@@ -2,6 +2,8 @@ export const config = {
   id: "gemini",
   name: "Gemini",
   baseUrl: "https://gemini.google.com",
+  // Default page path'leri (baseUrl'e eklenir)
+  defaultPaths: ["/app"],
   loginUrl: "https://gemini.google.com/",
   lastVerified: "2026-01-11",
   selectors: {

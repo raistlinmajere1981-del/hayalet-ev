@@ -26,6 +26,7 @@ export const config = {
     messageContainer: "main",
   },
 
+  // Grok textarea için character-by-character gerekli (React state algılaması için)
   inputType: "character-by-character",
   scrollerSelectors: [
     "div.flex.h-full.flex-col.overflow-y-auto",

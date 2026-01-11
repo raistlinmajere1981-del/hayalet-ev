@@ -87,10 +87,19 @@ export function setMainWindow(win) {
  * @param {object} [context] - Bağlam
  */
 function forwardToLogManager(level, source, message, context = null) {
+  // FIX: Daha kapsamlı hazırlık kontrolü - webContents tam hazır olmalı
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
-
+  
+  const webContents = mainWindowRef.webContents;
+  if (!webContents || webContents.isDestroyed()) return;
+  
+  // WebContents'in IPC mesajı alabilecek durumda olup olmadığını kontrol et
+  // isLoading() true ise veya henüz did-finish-load olmadıysa mesaj göndermeyiz
   try {
-    mainWindowRef.webContents.send("console-log-forward", {
+    // Sadece hazır olan pencereye gönder
+    if (webContents.isLoading()) return;
+    
+    webContents.send("console-log-forward", {
       level,
       source,
       message,
@@ -98,6 +107,7 @@ function forwardToLogManager(level, source, message, context = null) {
       timestamp: new Date().toISOString(),
     });
   } catch (_err) {
+    // Sessizce geç - IPC henüz hazır değil
   }
 }
 

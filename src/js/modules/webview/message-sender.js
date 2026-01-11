@@ -275,19 +275,53 @@ class MessageSenderClass {
     }
 
     const sendSel = JSON.stringify(providerConfig.selectors.sendButton);
-    const script = `(function() {
-      const sendButton = document.querySelector(${sendSel});
-      if (sendButton && !sendButton.disabled) {
+    
+    // Retry logic - dosya yüklemesi sonrası buton gecikmeli aktif olabilir
+    const maxRetries = 10;
+    const retryInterval = 500;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const script = `(function() {
+        const sendButton = document.querySelector(${sendSel});
+        if (!sendButton) {
+          return { success: false, message: 'send button not found', retry: true };
+        }
+        
+        // Kapsamlı disabled kontrolü
+        const disabledAttr = sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true';
+        const disabledStyle = getComputedStyle(sendButton).pointerEvents === 'none';
+        const disabledClass = /disabled|opacity-4|opacity-5|cursor-not-allowed/i.test(sendButton.className || '');
+        const isDisabled = disabledAttr || disabledStyle || disabledClass;
+        
+        if (isDisabled) {
+          return { success: false, message: 'send button disabled', retry: true, 
+                   debug: { disabled: sendButton.disabled, ariaDisabled: sendButton.getAttribute('aria-disabled'), className: sendButton.className } };
+        }
+        
         sendButton.click();
         return { success: true, message: 'send clicked' };
-      }
-      return { success: false, message: 'send button not found or disabled' };
-    })();`;
+      })();`;
 
-    const res = await webview.executeJavaScript(script);
-    if (!res?.success) {
-      throw new Error("Send butonu tetiklenemedi");
+      const res = await webview.executeJavaScript(script);
+      
+      if (res?.success) {
+        return; // Başarılı
+      }
+      
+      if (!res?.retry || attempt >= maxRetries - 1) {
+        LogManager.addEvent(
+          `webview-${provider}`,
+          "warning",
+          `Send button trigger failed: ${res?.message}, debug: ${JSON.stringify(res?.debug || {})}`,
+        );
+        throw new Error("Send butonu tetiklenemedi");
+      }
+      
+      // Retry için bekle
+      await new Promise(resolve => setTimeout(resolve, retryInterval));
     }
+    
+    throw new Error("Send butonu tetiklenemedi (max retries)");
   }
 
 }

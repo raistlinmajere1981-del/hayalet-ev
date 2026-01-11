@@ -227,6 +227,14 @@ export class AnalyzeController {
     document.getElementById("filter-count-ai2")?.addEventListener("change", () => this._renderMessages("ai2"));
     document.getElementById("compose-input")?.addEventListener("input", () => this.updateSendButtonState());
     
+    // Ctrl+Enter ile mesaj gönderme
+    document.getElementById("compose-input")?.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        this.handleSend();
+      }
+    });
+    
     ["send-ai1", "send-ai2", "send-cross"].forEach((id) => {
       document.getElementById(id)?.addEventListener("change", () => this.updateSendButtonState());
     });
@@ -445,9 +453,15 @@ export class AnalyzeController {
 
   _getConversationFolder(provider) {
     const select = document.getElementById(`conversation-${provider}`);
-    const opt = select?.selectedOptions?.[0];
-    const folder = opt?.dataset?.folder || "";
-    return (!folder || opt?.value === "new") ? "" : folder;
+    if (!select) {
+      LogManager.addEvent("analyze", "debug", `conversation-${provider} select element not found`);
+      return "";
+    }
+    const opt = select.selectedOptions?.[0];
+    if (!opt || opt.value === "new") {
+      return "";
+    }
+    return opt.dataset?.folder || "";
   }
 
   _formatTimestamp() {

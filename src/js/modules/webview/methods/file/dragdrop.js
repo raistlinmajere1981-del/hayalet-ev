@@ -219,32 +219,37 @@ export async function attachFiles(webview, { files }) {
       dataTransfer: dataTransfer
     });
 
-    const targets = [];
-    if (target) targets.push(target);
-    if (target?.parentElement) targets.push(target.parentElement);
-    const inputArea = target?.closest('input-area-v2, input-container, .input-area-container');
-    if (inputArea) targets.push(inputArea);
-
-    function dispatchAll(evt) {
-      for (const t of targets) {
-        try { t.dispatchEvent(evt); } catch (_) {}
-      }
-    }
+    // FIX: Sadece tek bir target'a dispatch et - birden fazla target dosyanın
+    // çoklu eklenmesine neden olabilir
+    const dropTarget = target || document.body;
 
     return new Promise((resolve) => {
-      dispatchAll(dragEnterEvent);
+      try { dropTarget.dispatchEvent(dragEnterEvent); } catch (_) {}
 
       setTimeout(() => {
-        dispatchAll(dragOverEvent);
+        try { dropTarget.dispatchEvent(dragOverEvent); } catch (_) {}
         setTimeout(() => {
-          dispatchAll(dropEvent);
+          try { dropTarget.dispatchEvent(dropEvent); } catch (_) {}
 
           setTimeout(() => {
-            const previewSelectors = [
+            // Provider config'den preview selector'larını al
+            const config = window.__hayalet_provider_config;
+            let previewSelectors = [
               'uploader-file-preview',
               '.file-preview-wrapper',
               '[data-test-id="image-preview"]',
+              '[data-testid*="attachment"]',
+              '[data-testid*="file"]',
+              '.attachment-preview',
+              '.file-attachment'
             ];
+            
+            if (config?.selectors?.filePreview) {
+              // Config'de array veya string olabilir
+              previewSelectors = Array.isArray(config.selectors.filePreview) 
+                ? config.selectors.filePreview 
+                : [config.selectors.filePreview];
+            }
 
             const hasPreview = previewSelectors.some((sel) => {
               try {
@@ -253,12 +258,14 @@ export async function attachFiles(webview, { files }) {
                 return false;
               }
             });
+            
+            const providerName = config?.name || config?.id || 'Provider';
 
             resolve({
               success: hasPreview,
               message: hasPreview
                 ? 'Dosyalar drag-drop ile eklendi'
-                : 'Drag-drop tetiklendi ama Gemini dosyayı kabul etmedi (preview oluşmadı)',
+                : 'Drag-drop tetiklendi ama ' + providerName + ' dosyayı kabul etmedi (preview oluşmadı)',
               count: dataTransfer.files.length,
               target: (target?.tagName || 'unknown').toLowerCase() + (target?.id ? '#' + target.id : ''),
             });

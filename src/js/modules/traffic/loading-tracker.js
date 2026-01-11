@@ -1,5 +1,6 @@
 import { ProviderRegistry } from "../webview/provider-registry.js";
 import { AppState } from "../app-state.js";
+import { isDefaultPage } from "../webview/methods/shared/url-utils.js";
 
 export class LoadingTracker {
   constructor(config) {
@@ -14,6 +15,15 @@ export class LoadingTracker {
    */
   async scrollToBottom(provider, webview) {
     if (!webview || webview.isDestroyed?.()) return false;
+    
+    // FIX: Webview'ın DOM'a attach olduğunu ve hazır olduğunu kontrol et
+    try {
+      if (typeof webview.getWebContentsId !== "function") return false;
+      webview.getWebContentsId(); // Hazır değilse hata fırlatır
+      if (webview.isLoading?.()) return false;
+    } catch (_) {
+      return false;
+    }
     
     const providerId = AppState.getProviderIdForSlot(provider) || "";
     const cfg = providerId ? ProviderRegistry.get(providerId) : null;
@@ -163,20 +173,35 @@ export class LoadingTracker {
    * @param {number} now - Current timestamp
    * @param {Object} webview - Webview element
    * @param {string} currentHref - Current URL
+   * @param {boolean} [isThinking=false] - AI thinking durumunda mı?
    * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
-  async handleProbe(provider, viewState, data, now, webview, currentHref) {
+  async handleProbe(provider, viewState, data, now, webview, currentHref, isThinking = false) {
     let indicator = viewState.status?.loading || "busy";
     let event = null;
 
     if (currentHref && currentHref !== viewState.lastHref) {
+      const previousHref = viewState.lastHref;
       viewState.lastHref = currentHref;
-      this.startLoading(viewState, now);
-      indicator = "busy";
-      event = {
-        type: "loading-started",
-        message: `loading started for ${provider}: ${currentHref}`,
-      };
+      
+      // Default page'den conversation page'e geçiş kontrolü
+      // Thinking aktifken URL değişimi = mesaj gönderiminden kaynaklı, loading tetikleme
+      const providerId = AppState.getProviderIdForSlot(provider) || "";
+      const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
+      const isOnDefaultPage = isDefaultPage(currentHref, providerId);
+      
+      // Thinking aktifken ve default page'den çıkıyorsak (mesaj gönderildi),
+      // loading tetikleme - sadece thinking tracker takip etsin
+      const skipLoadingTrigger = isThinking && wasOnDefaultPage && !isOnDefaultPage;
+      
+      if (!skipLoadingTrigger) {
+        this.startLoading(viewState, now);
+        indicator = "busy";
+        event = {
+          type: "loading-started",
+          message: `loading started for ${provider}: ${currentHref}`,
+        };
+      }
     }
 
     if (viewState.loadingActive) {
@@ -185,7 +210,8 @@ export class LoadingTracker {
         viewState,
         data,
         now,
-        webview
+        webview,
+        currentHref
       );
 
       if (result.shouldEnd) {
@@ -225,20 +251,50 @@ export class LoadingTracker {
    * @param {Object} data - Probe data containing scroll, sendState, etc.
    * @param {number} now - Current timestamp
    * @param {Object} webview - Webview element for scrolling
+   * @param {string} [currentUrl] - Current URL for default page detection
    * @returns {Object} { shouldEnd: boolean, reason: string, newState: Object }
    */
-  async checkLoadingEnd(provider, viewState, data, now, webview) {
+  async checkLoadingEnd(provider, viewState, data, now, webview, currentUrl = "") {
     if (!viewState.loadingActive) {
       return { shouldEnd: false, reason: null, newState: viewState };
     }
 
     const scroll = data.scroll || {};
+    const loadingElapsed = now - viewState.loadingStartTime;
+
+    // Default page kontrolü - scroll yerine send button varlığı ile loading sonlandır
+    const providerId = AppState.getProviderIdForSlot(provider) || "";
+    const onDefaultPage = isDefaultPage(currentUrl, providerId);
+    
+    if (onDefaultPage) {
+      // Default page'de scroll yok, send butonu bulunduğunda (aktif veya pasif) loading biter
+      // sendState: "idle" (aktif), "disabled" (pasif), "not-found" (bulunamadı)
+      const sendButtonFound = data.sendState === "idle" || data.sendState === "disabled";
+      
+      if (sendButtonFound) {
+        return {
+          shouldEnd: true,
+          reason: "default page ready (send button found)",
+          newState: this.endLoading(viewState, now),
+        };
+      }
+      
+      // Default page için daha kısa timeout (5 saniye)
+      if (loadingElapsed > 5000) {
+        return {
+          shouldEnd: true,
+          reason: "default page timeout",
+          newState: this.endLoading(viewState, now),
+        };
+      }
+      
+      return { shouldEnd: false, reason: null, newState: viewState };
+    }
 
     const scrollGap = (scroll.scrollHeight || 0) - (scroll.clientHeight || 0);
     const hasScroll = scrollGap > 12;
     const scrollChanged =
       scroll.lastChange && scroll.lastChange !== viewState.lastScrollChange;
-    const loadingElapsed = now - viewState.loadingStartTime;
 
     if (scrollChanged) {
       viewState.lastScrollChange = scroll.lastChange;

@@ -43,16 +43,22 @@ export async function renderMessages(provider, callbacks = {}) {
   
   container.innerHTML = "";
   
-  const selected = select?.selectedOptions?.[0];
+  // Select element yoksa veya seçili option yoksa placeholder göster
+  if (!select) {
+    container.innerHTML = '<div class="message-placeholder">Sohbet listesi yükleniyor...</div>';
+    return { lastMessage: "" };
+  }
+  
+  const selected = select.selectedOptions?.[0];
   const folder = selected?.dataset?.folder || "";
   
-  if (selected?.value === "new") {
+  if (!selected || selected.value === "new") {
     container.innerHTML = '<div class="message-placeholder">Yeni sohbet başlatılıyor...</div>';
     return { lastMessage: "" };
   }
   
   if (!folder) {
-    container.innerHTML = '<div class="message-placeholder">Sohbet seçilmedi.</div>';
+    container.innerHTML = '<div class="message-placeholder">Sohbet seçiniz.</div>';
     return { lastMessage: "" };
   }
   

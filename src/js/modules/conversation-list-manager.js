@@ -5,16 +5,20 @@ import { SlotController, SlotEvent } from "./slot-controller.js";
 
 class ConversationListManagerClass {
   constructor() {
+    this.selects = { ai1: null, ai2: null };
+    this.entries = [];
+    this.currentSelections = { ai1: "new", ai2: "new" };
+    this._settingsSub = null;
+    this._slotControllerSub = null;
+  }
+
+  async init() {
+    // DOM query'leri init sırasında yap - constructor'da sayfa henüz yüklenmemiş olabilir
     this.selects = {
       ai1: document.getElementById("conversation-ai1"),
       ai2: document.getElementById("conversation-ai2"),
     };
-    this.entries = [];
-    this.currentSelections = { ai1: "new", ai2: "new" };
-    this._settingsSub = null;
-  }
-
-  async init() {
+    
     await this.refresh({ silent: true });
     this.bindEvents();
     this.subscribeToSettings();

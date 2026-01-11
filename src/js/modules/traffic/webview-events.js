@@ -41,6 +41,15 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
   const { onNavigation, onDomReady, onFailLoad, buildProbeScript } = callbacks;
 
   const ensureBridge = () => {
+    // FIX: Webview'ın hazır olduğunu doğrula
+    try {
+      if (typeof webviewEl.getWebContentsId !== "function") return;
+      webviewEl.getWebContentsId(); // Hazır değilse hata fırlatır
+      if (webviewEl.isLoading?.()) return; // Yükleme devam ediyorsa bekle
+    } catch (_) {
+      return; // Webview henüz hazır değil
+    }
+    
     const script = buildProbeScript(provider);
     webviewEl.executeJavaScript(script).catch(() => {
     });

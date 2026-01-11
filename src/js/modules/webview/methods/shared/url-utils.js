@@ -5,6 +5,8 @@
  * tekrarlanan URL fonksiyonlarını tek bir yerde toplar.
  */
 
+import { ProviderRegistry } from "../../provider-registry.js";
+
 /**
  * URL'i normalize et (query string ve hash kaldır, trailing slash temizle)
  * @param {string} url - Normalize edilecek URL
@@ -13,6 +15,38 @@
 export function normalizeUrl(url) {
   if (!url) return "";
   return url.split("?")[0].split("#")[0].replace(/\/+$/, "");
+}
+
+/**
+ * URL'in provider'ın default (ana) sayfası olup olmadığını kontrol et
+ * Default page = baseUrl ile aynı veya sadece trailing slash farkı olan URL
+ * Örn: chatgpt.com, chatgpt.com/, grok.com, gemini.google.com
+ * @param {string} url - Kontrol edilecek URL
+ * @param {string} providerId - Provider ID (chatgpt, grok, gemini)
+ * @returns {boolean} - URL default page mi?
+ */
+export function isDefaultPage(url, providerId) {
+  if (!url || !providerId) return false;
+  
+  const config = ProviderRegistry.get(providerId);
+  if (!config?.baseUrl) return false;
+  
+  const normalizedUrl = normalizeUrl(url);
+  const normalizedBase = normalizeUrl(config.baseUrl);
+  
+  // Tam eşleşme kontrolü
+  if (normalizedUrl === normalizedBase) return true;
+  
+  // Bazı provider'lar /app veya benzeri path kullanabilir
+  // Örn: gemini.google.com/app
+  if (config.defaultPaths) {
+    for (const path of config.defaultPaths) {
+      const fullPath = normalizeUrl(`${config.baseUrl}${path}`);
+      if (normalizedUrl === fullPath) return true;
+    }
+  }
+  
+  return false;
 }
 
 /**

@@ -288,15 +288,26 @@ export class WebviewController {
   setupWebviewEvents(type, webviewEl, providerId = null) {
     if (!webviewEl) return;
 
-    let domReady = false;
     webviewEl.addEventListener("dom-ready", () => {
-      domReady = true;
       this.addLog(type, "info", "DOM hazır");
     });
 
     webviewEl.addEventListener("did-start-loading", () => {
+      // FIX: Webview hazır değilse erken çık
+      try {
+        if (typeof webviewEl.getWebContentsId !== "function") return;
+        webviewEl.getWebContentsId();
+      } catch (_) {
+        return; // Webview henüz DOM'a attach olmamış
+      }
+
       // FIX: Check if URL is excluded before logging
-      const currentUrl = webviewEl.getURL?.() || "";
+      let currentUrl = "";
+      try {
+        currentUrl = webviewEl.getURL?.() || "";
+      } catch (_) {
+        // getURL başarısız olabilir
+      }
       const isExcluded = WebviewManager?.isUrlExcluded?.(type, currentUrl);
       
       const state = this.loadLogState[type] || { lastStart: 0, lastStop: 0 };
@@ -307,23 +318,17 @@ export class WebviewController {
         state.lastStart = now;
       }
       this.loadLogState[type] = state;
-
-      const sendNavStart = () => {
-        try {
-          webviewEl.send?.("nav-start");
-        } catch (error) {
-          const err = /** @type {Error} */ (error);
-          console.warn("nav-start send failed:", error);
-        }
-      };
-      if (domReady) {
-        sendNavStart();
-      } else {
-        webviewEl.addEventListener("dom-ready", sendNavStart, { once: true });
-      }
     });
 
     webviewEl.addEventListener("did-stop-loading", () => {
+      // FIX: Webview hazır değilse erken çık
+      try {
+        if (typeof webviewEl.getWebContentsId !== "function") return;
+        webviewEl.getWebContentsId();
+      } catch (_) {
+        return;
+      }
+
       const state = this.loadLogState[type] || { lastStop: 0 };
       const now = Date.now();
 
@@ -337,72 +342,56 @@ export class WebviewController {
     // Send providerId and slot into the guest preload once DOM ready so preload can fetch config
     webviewEl.addEventListener("dom-ready", async () => {
       try {
-        if (providerId && webviewEl.send) {
-          try {
-            // Send both providerId and slot information via IPC
-            this.addLog(
-              type,
-              "debug",
-              `Sending hayalet-set-provider IPC: providerId=${providerId}, slot=${type}`,
-            );
-            webviewEl.send("hayalet-set-provider", { providerId, slot: type });
-            this.addLog(
-              type,
-              "debug",
-              `hayalet-set-provider IPC sent successfully`,
-            );
+        // FIX: Webview'ın gerçekten hazır olduğunu doğrula
+        try {
+          if (typeof webviewEl.getWebContentsId !== "function") {
+            this.addLog(type, "debug", "Webview not fully attached yet, skipping provider config injection");
+            return;
+          }
+          // getWebContentsId çağrısı webview hazır değilse hata fırlatır
+          webviewEl.getWebContentsId();
+        } catch (_) {
+          this.addLog(type, "debug", "Webview not ready for script injection");
+          return;
+        }
 
-            // ALSO inject provider config directly via executeJavaScript as a fallback
-            try {
-              const cfg = ProviderRegistry.get(providerId);
-              if (cfg) {
-                const configScript = `
-                  (function() {
-                    try {
-                      window.__hayalet_slot = ${JSON.stringify(type)};
-                      window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                      return true;
-                    } catch (e) {
-                      console.error('[Hayalet-Direct-Inject] Failed:', e);
-                      return false;
-                    }
-                  })();
-                `;
-                await webviewEl.executeJavaScript(configScript);
-                this.addLog(
-                  type,
-                  "debug",
-                  `Provider config injected directly via executeJavaScript`,
-                );
-              }
-            } catch (error) {
-              this.addLog(
-                type,
-                "warning",
-                `Failed to inject provider config directly: ${error.message}`,
-              );
-            }
-          } catch (err) {
-            const error = /** @type {Error} */ (err);
+        // Provider config'i doğrudan inject et (daha güvenilir)
+        const cfg = providerId ? ProviderRegistry.get(providerId) : null;
+        if (cfg) {
+          try {
+            const configScript = `
+              (function() {
+                try {
+                  window.__hayalet_slot = ${JSON.stringify(type)};
+                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
+                  return true;
+                } catch (e) {
+                  console.error('[Hayalet-Direct-Inject] Failed:', e);
+                  return false;
+                }
+              })();
+            `;
+            await webviewEl.executeJavaScript(configScript);
             this.addLog(
               type,
-              "error",
-              `Failed to send hayalet-set-provider IPC: ${error.message}`,
+              "debug",
+              `Provider config injected for ${providerId}`,
+            );
+          } catch (error) {
+            // executeJavaScript hatası - webview henüz hazır değil
+            this.addLog(
+              type,
+              "warning",
+              `Provider config injection deferred: ${error.message}`,
             );
           }
-        } else {
-          this.addLog(
-            type,
-            "warning",
-            `Cannot send hayalet-set-provider: providerId=${providerId}, send=${!!webviewEl.send}`,
-          );
         }
       } catch (err) {
         const error = /** @type {Error} */ (err);
         this.addLog(
           type,
-          "error",
-          `hayalet-set-provider outer error: ${error.message}`,
+          "warning",
+          `dom-ready handler error: ${error.message}`,
         );
       }
     });

@@ -21,6 +21,16 @@ export const config = {
     inputField: "#prompt-textarea",
 
     messageContainer: "main",
+    
+    // File preview selectors - dosya yüklendiğinde görünen preview elementi
+    filePreview: [
+      '[data-testid="attachment-preview"]',
+      '[data-testid*="file"]',
+      '.group\\/attachment',
+      '[class*="attachment"]',
+      'button[aria-label*="Remove"]',
+      'button[aria-label*="Kaldır"]'
+    ],
   },
 
   inputType: "direct",
