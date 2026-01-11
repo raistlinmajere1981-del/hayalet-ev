@@ -477,12 +477,14 @@ src/js/constants/
 ├── timeouts.js       # TIMEOUTS, INTERVALS, DELAYS
 ├── slots.js          # SLOTS, SLOT_LIST, PROVIDERS, PROVIDER_LIST, SPECIAL_PAGES
 ├── ipc-channels.js   # IPC channel isimleri
-└── events.js         # EVENTS, DOM_EVENTS
+├── events.js         # EVENTS, DOM_EVENTS
+└── file-utils.js     # getFilename, getExtension, getMimeType, generateUniqueId
 ```
 
 **Kullanım:**
 ```javascript
 import { TIMEOUTS, SLOTS, SLOT_LIST } from "./constants/index.js";
+import { getFilename, generateUniqueId, getMimeTypeFromPath } from "./constants/index.js";
 
 // Timeout kullanımı
 setTimeout(callback, TIMEOUTS.DOM_READY);
@@ -492,6 +494,37 @@ if (SLOT_LIST.includes(provider)) { ... }
 
 // Slot referansı
 CoreEngine.registerWebview(SLOTS.AI1, webview);
+
+// Dosya adı çıkarma (path'ten)
+const filename = getFilename("/path/to/file.txt"); // "file.txt"
+
+// Benzersiz ID oluşturma
+const id = generateUniqueId("cmd"); // "cmd-1736603000000-a1b2c3d4"
+
+// MIME type belirleme
+const mime = getMimeTypeFromPath("image.png"); // "image/png"
+```
+
+### File Utility Functions
+`src/js/constants/file-utils.js` dosyasında merkezi dosya işlemleri:
+
+| Fonksiyon | Açıklama | Örnek |
+|-----------|----------|-------|
+| `getFilename(path)` | Dosya yolundan dosya adını çıkarır | `getFilename("/a/b/c.txt")` → `"c.txt"` |
+| `getExtension(filename)` | Dosya uzantısını çıkarır (nokta olmadan) | `getExtension("file.png")` → `"png"` |
+| `getMimeType(ext)` | Uzantıdan MIME type belirler | `getMimeType("png")` → `"image/png"` |
+| `getMimeTypeFromPath(path)` | Dosya yolundan MIME type belirler | `getMimeTypeFromPath("x.pdf")` → `"application/pdf"` |
+| `generateUniqueId(prefix)` | Timestamp + random ile benzersiz ID | `generateUniqueId("relay")` → `"relay-173660-f3a2"` |
+
+**⚠️ Önemli:** Inline pattern kullanmayın! Bunun yerine utility fonksiyonlarını kullanın:
+```javascript
+// ❌ YANLIŞ - Inline pattern
+const name = path.split(/[/\\]/).pop();
+const id = `cmd-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+// ✅ DOĞRU - Utility fonksiyonları
+const name = getFilename(path);
+const id = generateUniqueId("cmd");
 ```
 
 ### Module Pattern
