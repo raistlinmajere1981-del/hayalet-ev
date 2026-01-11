@@ -1,4 +1,5 @@
 import { LogManager } from "./log-manager.js";
+import { getExtension, getMimeType } from "../constants/index.js";
 
 class FileManagerClass {
   constructor() {
@@ -53,16 +54,8 @@ class FileManagerClass {
               entry?.name ||
               entry?.originalName ||
               (entry?.path || "").split(/[/\\]/).pop();
-            const ext = base.split(".").pop().toLowerCase();
-            const mimeTypes = {
-              jpg: "image/jpeg",
-              jpeg: "image/jpeg",
-              png: "image/png",
-              gif: "image/gif",
-              webp: "image/webp",
-              pdf: "application/pdf",
-            };
-            const mimeType = mimeTypes[ext] || "application/octet-stream";
+            const ext = getExtension(base);
+            const mimeType = getMimeType(ext);
             results.push({ name: base, base64: data, mimeType });
           }
           return results;
@@ -84,16 +77,8 @@ class FileManagerClass {
       try {
         const data = await window.electronAPI?.readFile?.(path);
         if (!data) continue;
-        const ext = base.split(".").pop().toLowerCase();
-        const mimeTypes = {
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          png: "image/png",
-          gif: "image/gif",
-          webp: "image/webp",
-          pdf: "application/pdf",
-        };
-        const mimeType = mimeTypes[ext] || "application/octet-stream";
+        const ext = getExtension(base);
+        const mimeType = getMimeType(ext);
         results.push({ name: base, base64: data, mimeType });
       } catch (err) {
         const error = /** @type {Error} */ (err);

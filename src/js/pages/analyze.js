@@ -13,6 +13,7 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { LogManager } from "../modules/log-manager.js";
 import { AppState } from "../modules/app-state.js";
+import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 
 import { renderMessages } from "./analyze/message-renderer.js";
@@ -107,8 +108,7 @@ export class AnalyzeController {
             el.textContent = "";
             return;
           }
-          const ext = path.split(".").pop().toLowerCase();
-          const mime = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" }[ext] || "image/png";
+          const mime = getMimeTypeFromPath(path);
           el.innerHTML = `<img src="data:${mime};base64,${data}" alt="${provider} avatar" />`;
         })
         .catch(() => {

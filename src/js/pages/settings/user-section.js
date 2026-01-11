@@ -1,3 +1,4 @@
+import { getMimeTypeFromPath } from "../../constants/index.js";
 
 export class UserSection {
   constructor(settingsManager, fileManager) {
@@ -42,15 +43,7 @@ export class UserSection {
       if (user.avatarPath) {
         try {
           const data = await window.electronAPI?.readFile(user.avatarPath);
-          const ext = user.avatarPath.split(".").pop().toLowerCase();
-          const mimeTypes = {
-            png: "image/png",
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            gif: "image/gif",
-            webp: "image/webp",
-          };
-          const mimeType = mimeTypes[ext] || "image/png";
+          const mimeType = getMimeTypeFromPath(user.avatarPath);
           avatarPreview.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Kullanıcı avatar">`;
         } catch {
           avatarPreview.innerHTML = '<div class="avatar-placeholder">👤</div>';

@@ -3,6 +3,7 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
+import { getMimeTypeFromPath } from "../constants/index.js";
 
 export class EntranceHallController {
   constructor() {
@@ -116,16 +117,7 @@ export class EntranceHallController {
       if (window.electronAPI?.readFile) {
         const imageData = await window.electronAPI.readFile(avatarPath);
         if (imageData) {
-          const ext = avatarPath.split(".").pop().toLowerCase();
-          const mimeTypes = {
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            png: "image/png",
-            gif: "image/gif",
-            webp: "image/webp",
-          };
-          const mimeType = mimeTypes[ext] || "image/png";
-
+          const mimeType = getMimeTypeFromPath(avatarPath);
           avatarElement.innerHTML = `<img src="data:${mimeType};base64,${imageData}" alt="${userType} avatar" style="width: 100%; height: 100%; object-fit: cover;">`;
         }
       }
@@ -236,15 +228,7 @@ export class EntranceHallController {
         if (avatarPath) {
           try {
             const data = await window.electronAPI?.readFile(avatarPath);
-            const ext = avatarPath.split(".").pop().toLowerCase();
-            const mimeTypes = {
-              png: "image/png",
-              jpg: "image/jpeg",
-              jpeg: "image/jpeg",
-              gif: "image/gif",
-              webp: "image/webp",
-            };
-            const mimeType = mimeTypes[ext] || "image/png";
+            const mimeType = getMimeTypeFromPath(avatarPath);
             avatarEl.style.backgroundImage = `url(data:${mimeType};base64,${data})`;
           } catch {
             avatarEl.style.backgroundImage = "";
@@ -270,15 +254,7 @@ export class EntranceHallController {
       if (avatarPath) {
         try {
           const data = await window.electronAPI?.readFile(avatarPath);
-          const ext = avatarPath.split(".").pop().toLowerCase();
-          const mimeTypes = {
-            png: "image/png",
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            gif: "image/gif",
-            webp: "image/webp",
-          };
-          const mimeType = mimeTypes[ext] || "image/png";
+          const mimeType = getMimeTypeFromPath(avatarPath);
           avatarEl.style.backgroundImage = `url(data:${mimeType};base64,${data})`;
         } catch {
           avatarEl.style.backgroundImage = "";

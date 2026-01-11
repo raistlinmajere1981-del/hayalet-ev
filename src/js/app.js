@@ -1,6 +1,6 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
-import { SLOTS, SLOT_LIST, SPECIAL_PAGES } from "./constants/index.js";
+import { SLOTS, SLOT_LIST, SPECIAL_PAGES, getMimeTypeFromPath } from "./constants/index.js";
 import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
@@ -445,16 +445,7 @@ async function updateIndicatorAvatars() {
     try {
       const data = await window.electronAPI.readFile(filePath);
       if (!data) return null;
-      const ext = filePath.split(".").pop()?.toLowerCase() || "";
-      /** @type {Record<string, string>} */
-      const mimeMap = {
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        png: "image/png",
-        gif: "image/gif",
-        webp: "image/webp",
-      };
-      const mime = mimeMap[ext] || "image/png";
+      const mime = getMimeTypeFromPath(filePath);
       return `data:${mime};base64,${data}`;
     } catch (err) {
       // Avatar okuma hatası - sessiz geç (kritik değil)

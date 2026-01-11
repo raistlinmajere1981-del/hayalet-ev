@@ -1,3 +1,4 @@
+import { getMimeTypeFromPath } from "../../constants/index.js";
 
 export class AccountsSection {
   constructor(settingsManager) {
@@ -81,15 +82,7 @@ export class AccountsSection {
     if (avatarPath) {
       try {
         const data = await window.electronAPI?.readFile(avatarPath);
-        const ext = avatarPath.split(".").pop().toLowerCase();
-        const mimeTypes = {
-          png: "image/png",
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          gif: "image/gif",
-          webp: "image/webp",
-        };
-        const mimeType = mimeTypes[ext] || "image/png";
+        const mimeType = getMimeTypeFromPath(avatarPath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Account avatar">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">👤</div>';
@@ -107,15 +100,7 @@ export class AccountsSection {
     if (avatarPath) {
       try {
         const data = await window.electronAPI?.readFile(avatarPath);
-        const ext = avatarPath.split(".").pop().toLowerCase();
-        const mimeTypes = {
-          png: "image/png",
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          gif: "image/gif",
-          webp: "image/webp",
-        };
-        const mimeType = mimeTypes[ext] || "image/png";
+        const mimeType = getMimeTypeFromPath(avatarPath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Yeni hesap avatar">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">👤</div>';
