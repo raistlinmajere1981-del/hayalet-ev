@@ -13,6 +13,7 @@ import { getProvider } from "./webview/provider-factory.js";
 import { isUrlExcluded as checkUrlExcluded } from "./webview/methods/shared/url-utils.js";
 import { LifecycleManager } from "./webview/lifecycle-manager.js";
 import { MessageSender } from "./webview/message-sender.js";
+import { AppState } from "./app-state.js";
 import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import { PendingArchiveHandler } from "./webview/pending-archive-handler.js";
 
@@ -53,7 +54,7 @@ class WebviewManagerClass {
    * @param {Object} opts - { onReady }
    */
   attach(provider, webview, opts = {}) {
-    const providerId = this.getProviderIdForSlot(provider);
+    const providerId = AppState.getProviderIdForSlot(provider);
     LifecycleManager.attach(provider, webview, { ...opts, providerId });
   }
 
@@ -178,36 +179,13 @@ class WebviewManagerClass {
   // ==========================================
 
   /**
-   * Slot için provider ID'sini getir
-   * @param {string} slot - Slot ID
-   * @returns {string}
-   */
-  getProviderIdForSlot(slot) {
-    const account = this.getAccountForSlot(slot);
-    return account?.provider || "";
-  }
-
-  /**
    * Slot için provider modülünü getir
    * @param {string} providerSlot - Slot ID
    * @returns {Object|null}
    */
   getProviderModule(providerSlot) {
-    const providerId = this.getProviderIdForSlot(providerSlot);
+    const providerId = AppState.getProviderIdForSlot(providerSlot);
     return providerId ? getProvider(providerId) : null;
-  }
-
-  /**
-   * Slot için account bilgisini getir
-   * @param {string} slot - Slot ID
-   * @returns {Object|null}
-   */
-  getAccountForSlot(slot) {
-    const activeAccountId = this.settings?.slots?.[slot]?.accountId;
-    if (!activeAccountId || !Array.isArray(this.settings?.accounts)) {
-      return null;
-    }
-    return this.settings.accounts.find((acc) => acc.id === activeAccountId);
   }
 
   /**
@@ -217,7 +195,7 @@ class WebviewManagerClass {
    * @returns {boolean}
    */
   isUrlExcluded(providerSlot, url) {
-    const providerId = this.getProviderIdForSlot(providerSlot);
+    const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 
     const cfg = ProviderRegistry.get(providerId);

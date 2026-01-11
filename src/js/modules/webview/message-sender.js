@@ -10,6 +10,7 @@
 import { LogManager } from "../log-manager.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { FileManager } from "../file-manager.js";
+import { AppState } from "../app-state.js";
 import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
 import { waitForDomReady } from "../../app.js";
@@ -29,22 +30,12 @@ class MessageSenderClass {
   }
 
   /**
-   * Slot için provider ID'sini getir
-   * @param {string} slot - Slot ID (ai1/ai2)
-   * @returns {string}
-   */
-  getProviderIdForSlot(slot) {
-    const account = this._getAccountForSlot(slot);
-    return account?.provider || "";
-  }
-
-  /**
    * Slot için provider modülünü getir
    * @param {string} providerSlot - Slot ID
    * @returns {Object|null}
    */
   getProviderModule(providerSlot) {
-    const providerId = this.getProviderIdForSlot(providerSlot);
+    const providerId = AppState.getProviderIdForSlot(providerSlot);
     return providerId ? getProvider(providerId) : null;
   }
 
@@ -55,7 +46,7 @@ class MessageSenderClass {
    * @returns {boolean}
    */
   isUrlExcluded(providerSlot, url) {
-    const providerId = this.getProviderIdForSlot(providerSlot);
+    const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 
     const cfg = ProviderRegistry.get(providerId);
@@ -84,7 +75,7 @@ class MessageSenderClass {
       throw new Error(`URL excluded from operations: ${currentUrl}`);
     }
 
-    const providerId = this.getProviderIdForSlot(provider);
+    const providerId = AppState.getProviderIdForSlot(provider);
     if (!providerId) {
       throw new Error(
         `Provider for slot "${provider}" not configured (no account/provider).`,
@@ -299,17 +290,6 @@ class MessageSenderClass {
     }
   }
 
-  /**
-   * Slot için account bilgisini getir
-   * @private
-   */
-  _getAccountForSlot(slot) {
-    const activeAccountId = this._settings?.slots?.[slot]?.accountId;
-    if (!activeAccountId || !Array.isArray(this._settings?.accounts)) {
-      return null;
-    }
-    return this._settings.accounts.find((acc) => acc.id === activeAccountId);
-  }
 }
 
 export const MessageSender = new MessageSenderClass();

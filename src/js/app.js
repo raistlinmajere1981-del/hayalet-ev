@@ -264,12 +264,6 @@ export async function waitForDomReady(webview) {
   }
 }
 
-export function normalizeUrl(url) {
-  let cleaned = (url || "").split("?")[0].split("#")[0];
-  cleaned = cleaned.replace(/\/c\/([a-f0-9-]+)(\/.*)?\??.*$/i, "/c/$1");
-  return cleaned;
-}
-
 function setupNavigation() {
   try {
     const menuItems = document.querySelectorAll(".menu-item");

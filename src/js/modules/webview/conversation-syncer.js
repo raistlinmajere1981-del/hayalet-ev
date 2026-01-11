@@ -88,23 +88,13 @@ class ConversationSyncerClass {
   }
 
   /**
-   * Slot için provider ID'sini getir
-   * @param {string} slot - Slot ID
-   * @returns {string}
-   */
-  getProviderIdForSlot(slot) {
-    const account = this._getAccountForSlot(slot);
-    return account?.provider || "";
-  }
-
-  /**
    * URL excluded mı kontrol et
    * @param {string} providerSlot - Slot ID
    * @param {string} url - Kontrol edilecek URL
    * @returns {boolean}
    */
   isUrlExcluded(providerSlot, url) {
-    const providerId = this.getProviderIdForSlot(providerSlot);
+    const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 
     const cfg = ProviderRegistry.get(providerId);
@@ -149,7 +139,7 @@ class ConversationSyncerClass {
     try {
       await waitForDomReady(webview);
 
-      const providerId = this.getProviderIdForSlot(provider);
+      const providerId = AppState.getProviderIdForSlot(provider);
       const providerModule = providerId ? getProvider(providerId) : null;
       
       if (!providerModule || typeof providerModule.scrapeMessages !== "function") {
@@ -208,7 +198,7 @@ class ConversationSyncerClass {
           })
         : [];
 
-      const accountInfo = this._getAccountForSlot(provider);
+      const accountInfo = AppState.getAccountForSlot(provider);
       const archiveResult = await window.electronAPI.archiveSync({
         provider,
         webUrl,
@@ -397,18 +387,6 @@ class ConversationSyncerClass {
     } catch (_error) {
       return { existing: null, prevCount: 0, newEntry: false };
     }
-  }
-
-  /**
-   * Slot için account bilgisini getir
-   * @private
-   */
-  _getAccountForSlot(slot) {
-    const activeAccountId = this._settings?.slots?.[slot]?.accountId;
-    if (!activeAccountId || !Array.isArray(this._settings?.accounts)) {
-      return null;
-    }
-    return this._settings.accounts.find((acc) => acc.id === activeAccountId);
   }
 
   /**

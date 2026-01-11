@@ -31,27 +31,38 @@ class AppStateClass {
     this.notify();
   }
 
+  getSettings() {
+    return SettingsManager.getSnapshot();
+  }
+
+  getAccountForSlot(slot) {
+    const settings = this.getSettings();
+    const accountId = settings.slots?.[slot]?.accountId;
+    if (!accountId) return null;
+    return settings.accounts?.find((acc) => acc.id === accountId) || null;
+  }
+
+  getProviderIdForSlot(slot) {
+    const account = this.getAccountForSlot(slot);
+    return account?.provider || null;
+  }
+
+  getAvatar(provider) {
+    const settings = this.getSettings();
+    if (provider === "user") {
+      return settings.user?.avatarPath || "";
+    }
+    const account = this.getAccountForSlot(provider);
+    return account?.avatarPath || "";
+  }
+
   getNickname(provider) {
-    const settings = SettingsManager.getSnapshot();
+    const settings = this.getSettings();
     if (provider === "user") {
       return settings.user?.nickname || "Kullanıcı";
     }
-    if (provider === "ai1" || provider === "ai2") {
-      const accountId = settings.slots?.[provider]?.accountId;
-      if (!accountId) return provider.toUpperCase();
-
-      const accounts = Array.isArray(settings.accounts)
-        ? settings.accounts
-        : [];
-      const account =
-        accounts.find((acc) => acc && acc.id === accountId) || null;
-
-      return (
-        (account && (account.nickname || account.email)) ||
-        provider.toUpperCase()
-      );
-    }
-    return provider.toUpperCase();
+    const account = this.getAccountForSlot(provider);
+    return account?.nickname || account?.email || provider.toUpperCase();
   }
 
 
