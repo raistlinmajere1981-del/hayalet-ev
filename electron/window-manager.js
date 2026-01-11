@@ -1,8 +1,12 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, session } from 'electron';
 import { join } from 'path';
 
 export async function createWindow(options = {}) {
   const { __dirname = process.cwd(), isDev = (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) } = options;
+
+  if (isDev) {
+    process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+  }
 
   const win = new BrowserWindow({
     width: 1400,
@@ -18,6 +22,19 @@ export async function createWindow(options = {}) {
       webviewTag: true,
       spellcheck: false,
     },
+  });
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          isDev
+            ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; img-src 'self' data: https:; connect-src 'self' http://localhost:* ws://localhost:*"
+            : "default-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'"
+        ]
+      }
+    });
   });
 
   if (isDev || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
