@@ -17,7 +17,6 @@ class AsistanPage {
   }
 
   async init() {
-    console.log("[AsistanPage] Initializing...");
     
     this.cacheElements();
     
@@ -31,7 +30,6 @@ class AsistanPage {
       this.onAssistantConnected();
     }
     
-    console.log("[AsistanPage] Initialized");
   }
 
   cacheElements() {
@@ -416,7 +414,6 @@ class AsistanPage {
   // ==========================================
 
   destroy() {
-    console.log("[AsistanPage] Destroying...");
     
     if (this.assistantManager) {
       this.assistantManager.off("connected", this.onAssistantConnected);
