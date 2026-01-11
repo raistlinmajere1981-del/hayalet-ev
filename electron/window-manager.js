@@ -27,20 +27,14 @@ export async function createWindow(options = {}) {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const cspDev = [
       "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "img-src 'self' data: https:",
       "connect-src 'self' http://localhost:* ws://localhost:*",
-      "font-src 'self' data: https://cdn.jsdelivr.net",
     ].join('; ');
 
     const cspProd = [
       "default-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "img-src 'self' data: https:",
       "connect-src 'self'",
-      "font-src 'self' data: https://cdn.jsdelivr.net",
     ].join('; ');
 
     callback({
