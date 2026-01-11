@@ -404,16 +404,7 @@ function setActiveNavigation(pageName) {
 async function updateIndicatorAvatars() {
   const settings = SettingsManager.getSnapshot();
 
-  const getAvatar = (provider) => {
-    if (provider === "user") return settings.user?.avatarPath || "";
-    if (SLOT_LIST.includes(provider)) {
-      const accountId = settings.slots?.[provider]?.accountId;
-      if (!accountId) return "";
-      const account = settings.accounts?.find((acc) => acc.id === accountId);
-      return account?.avatarPath || "";
-    }
-    return "";
-  };
+  const getAvatar = (provider) => AppState.getAvatar(provider);
 
   const map = {
     user: {

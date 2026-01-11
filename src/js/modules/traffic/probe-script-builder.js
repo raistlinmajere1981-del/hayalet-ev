@@ -8,8 +8,8 @@
  * - Kullanıcı etkileşimlerini dinler
  */
 
-import { SettingsManager } from "../settings-manager.js";
 import { ProviderRegistry } from "../webview/provider-registry.js";
+import { AppState } from "../app-state.js";
 
 /**
  * Provider için probe script'i oluştur
@@ -17,10 +17,7 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
  * @returns {string} - Çalıştırılacak JavaScript kodu
  */
 export function buildProbeScript(provider) {
-  const settings = SettingsManager.getSnapshot();
-  const accountId = settings.slots?.[provider]?.accountId;
-  const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
-  const providerId = account?.provider || "";
+  const providerId = AppState.getProviderIdForSlot(provider) || "";
   const cfg = providerId ? ProviderRegistry.get(providerId) : null;
   
   if (!cfg) {

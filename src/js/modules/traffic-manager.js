@@ -11,6 +11,7 @@
 
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
+import { AppState } from "./app-state.js";
 import { ProviderRegistry } from "./webview/provider-registry.js";
 import { LoadingTracker } from "./traffic/loading-tracker.js";
 import { ThinkingTracker } from "./traffic/thinking-tracker.js";
@@ -86,10 +87,7 @@ class TrafficManagerClass {
   // ============================================
 
   isUrlExcluded(providerSlot, url) {
-    const settings = SettingsManager.getSnapshot();
-    const accountId = settings.slots?.[providerSlot]?.accountId;
-    const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
-    const providerId = account?.provider || "";
+    const providerId = AppState.getProviderIdForSlot(providerSlot) || "";
     if (!providerId || !url) return false;
 
     const cfg = ProviderRegistry.get(providerId);

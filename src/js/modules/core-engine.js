@@ -528,22 +528,9 @@ class CoreEngineClass {
     const priority = "normal";
     const stamp = new Date().toLocaleString("tr-TR");
     const provider = payload.provider || "AI";
-    // Get nicknames from settings
-    const getNick = (p) => {
-      if (p === "user") return this.settings.user?.nickname || "Kullanıcı";
-      if (p === "ai1" || p === "ai2") {
-        const accountId = this.settings.slots?.[p]?.accountId;
-        if (!accountId) return p.toUpperCase();
-        const account = this.settings.accounts?.find(
-          (acc) => acc.id === accountId,
-        );
-        return account?.nickname || account?.email || p.toUpperCase();
-      }
-      return p.toUpperCase();
-    };
-    const nickAi1 = getNick("ai1");
-    const nickAi2 = getNick("ai2");
-    const humanName = getNick("user");
+    const nickAi1 = AppState.getNickname("ai1");
+    const nickAi2 = AppState.getNickname("ai2");
+    const humanName = AppState.getNickname("user");
     const who =
       provider === "ai1" ? nickAi1 : provider === "ai2" ? nickAi2 : provider;
     const argLabel =

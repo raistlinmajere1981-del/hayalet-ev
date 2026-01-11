@@ -85,16 +85,7 @@ export class EntranceHallController {
     if (ai1NickEl) ai1NickEl.textContent = ai1Nickname;
     if (ai2NickEl) ai2NickEl.textContent = ai2Nickname;
 
-    const getAvatar = (provider) => {
-      if (provider === "user") return settings.user?.avatarPath || "";
-      if (provider === "ai1" || provider === "ai2") {
-        const accountId = settings.slots?.[provider]?.accountId;
-        if (!accountId) return "";
-        const account = settings.accounts?.find((acc) => acc.id === accountId);
-        return account?.avatarPath || "";
-      }
-      return "";
-    };
+    const getAvatar = (provider) => AppState.getAvatar(provider);
 
     this.updateAvatar("user", getAvatar("user"));
     this.updateAvatar("ai1", getAvatar("ai1"));
@@ -242,15 +233,11 @@ export class EntranceHallController {
       return;
     }
 
-    const hasAccount = !!settings.slots?.[userType]?.accountId;
+    const hasAccount = !!AppState.getAccountForSlot(userType);
     const connected = SlotController.isConnected(userType);
 
     if (avatarEl) {
-      const accountId = settings.slots?.[userType]?.accountId;
-      const account = accountId
-        ? settings.accounts?.find((acc) => acc.id === accountId)
-        : null;
-      const avatarPath = account?.avatarPath || "";
+      const avatarPath = AppState.getAvatar(userType);
       if (avatarPath) {
         try {
           const data = await window.electronAPI?.readFile(avatarPath);

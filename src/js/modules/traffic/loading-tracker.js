@@ -1,5 +1,5 @@
-import { SettingsManager } from "../settings-manager.js";
 import { ProviderRegistry } from "../webview/provider-registry.js";
+import { AppState } from "../app-state.js";
 
 export class LoadingTracker {
   constructor(config) {
@@ -15,10 +15,7 @@ export class LoadingTracker {
   async scrollToBottom(provider, webview) {
     if (!webview || webview.isDestroyed?.()) return false;
     
-    const settings = SettingsManager.getSnapshot();
-    const accountId = settings.slots?.[provider]?.accountId;
-    const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
-    const providerId = account?.provider || "";
+    const providerId = AppState.getProviderIdForSlot(provider) || "";
     const cfg = providerId ? ProviderRegistry.get(providerId) : null;
     const scrollerSelectors = cfg?.scrollerSelectors || [
       "div.flex.h-full.flex-col.overflow-y-auto",

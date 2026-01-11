@@ -1,19 +1,13 @@
 import { LogManager } from "./log-manager.js";
+import { AppState } from "./app-state.js";
 
 const PROVIDERS = ["ai1", "ai2"];
 
-function resolveProvider(name = "", settings = {}) {
+function resolveProvider(name = "") {
   const lowered = name.toLowerCase();
   
-  const getAccountNickname = (slot) => {
-    const accountId = settings.slots?.[slot]?.accountId;
-    if (!accountId) return "";
-    const account = settings.accounts?.find(acc => acc.id === accountId);
-    return (account?.nickname || "").toLowerCase();
-  };
-  
-  const nick1 = getAccountNickname("ai1");
-  const nick2 = getAccountNickname("ai2");
+  const nick1 = AppState.getNickname("ai1").toLowerCase();
+  const nick2 = AppState.getNickname("ai2").toLowerCase();
 
   if (lowered === "ai1" || (nick1 && lowered === nick1)) return "ai1";
   if (lowered === "ai2" || (nick2 && lowered === nick2)) return "ai2";
@@ -90,7 +84,7 @@ class WhisperManagerClass {
   }
 
   WhisperManagerAdd(userName, text, when) {
-    const provider = resolveProvider(userName, this.settings);
+    const provider = resolveProvider(userName);
     const whenTs = this.parseWhen(when);
     const rec = {
       id: `whisper-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -110,7 +104,7 @@ class WhisperManagerClass {
   }
 
   WhisperManagerDone(userName, whisperId) {
-    const provider = resolveProvider(userName, this.settings);
+    const provider = resolveProvider(userName);
     const idx = this.data[provider].pending.findIndex(
       (r) => r.id === whisperId,
     );
@@ -128,7 +122,7 @@ class WhisperManagerClass {
   }
 
   WhisperManagerDelete(userName, whisperId) {
-    const provider = resolveProvider(userName, this.settings);
+    const provider = resolveProvider(userName);
     const before = this.data[provider].pending.length;
     this.data[provider].pending = this.data[provider].pending.filter(
       (r) => r.id !== whisperId,
@@ -143,7 +137,7 @@ class WhisperManagerClass {
   }
 
   WhisperManagerClear(userName) {
-    const provider = resolveProvider(userName, this.settings);
+    const provider = resolveProvider(userName);
     this.data[provider].pending = [];
     this.saveProvider(provider);
     LogManager.addEvent(
@@ -199,12 +193,12 @@ class WhisperManagerClass {
   }
 
   getRecords(provider) {
-    const p = resolveProvider(provider, this.settings);
+    const p = resolveProvider(provider);
     return [...(this.data[p]?.pending || [])];
   }
 
   getDoneRecords(provider) {
-    const p = resolveProvider(provider, this.settings);
+    const p = resolveProvider(provider);
     return [...(this.data[p]?.done || [])];
   }
 

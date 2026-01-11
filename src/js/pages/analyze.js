@@ -90,9 +90,7 @@ export class AnalyzeController {
     const settings = SettingsManager.getSnapshot();
     
     ["ai1", "ai2"].forEach((provider) => {
-      const id = settings.slots?.[provider]?.accountId;
-      const acc = id ? settings.accounts?.find((a) => a.id === id) : null;
-      const path = acc?.avatarPath || "";
+      const path = AppState.getAvatar(provider);
       
       const el = document.getElementById(`avatar-${provider}`);
       if (!el) return;
@@ -156,13 +154,13 @@ export class AnalyzeController {
     if (sendBtn) sendBtn.disabled = false;
 
     ["ai1", "ai2"].forEach((slot) => {
-      const hasAccount = !!settings.slots?.[slot]?.accountId;
+      const hasAccount = !!AppState.getAccountForSlot(slot);
       const connected = SlotController.isConnected(slot);
 
       this._updateSlotUI(slot, hasAccount, connected);
     });
 
-    this._updateAIAIControls(settings);
+    this._updateAIAIControls();
   }
 
   _updateSlotUI(slot, hasAccount, connected) {
@@ -199,9 +197,9 @@ export class AnalyzeController {
     }
   }
 
-  _updateAIAIControls(settings) {
-    const ai1Assigned = !!settings.slots?.ai1?.accountId;
-    const ai2Assigned = !!settings.slots?.ai2?.accountId;
+  _updateAIAIControls() {
+    const ai1Assigned = !!AppState.getAccountForSlot("ai1");
+    const ai2Assigned = !!AppState.getAccountForSlot("ai2");
     const ai1Connected = SlotController.isConnected("ai1");
     const ai2Connected = SlotController.isConnected("ai2");
     const bothAIsConnected = ai1Connected && ai2Connected;

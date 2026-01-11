@@ -58,8 +58,7 @@ export class WebviewController {
     const urlDisplay = document.getElementById(`${provider}-url-display`);
     if (!urlDisplay) return;
 
-    const settings = SettingsManager.getSnapshot();
-    const hasAccount = !!settings.slots?.[provider]?.accountId;
+    const hasAccount = !!AppState.getAccountForSlot(provider);
     if (!hasAccount) {
       urlDisplay.textContent = "Slot boş - Hesap atanmadı";
       return;
@@ -147,14 +146,10 @@ export class WebviewController {
         ai2WebviewEl.style.left = "0";
       }
 
-      const ai1HasAccount = !!settings.slots?.ai1?.accountId;
+      const ai1HasAccount = !!AppState.getAccountForSlot("ai1");
 
       if (ai1WebviewEl && ai1HasAccount && !ai1WebviewEl.dataset.eventsSetup) {
-        const accountId = settings.slots?.ai1?.accountId;
-        const account = accountId
-          ? settings.accounts?.find((acc) => acc.id === accountId)
-          : null;
-        const ai1ProviderId = account?.provider || "";
+        const ai1ProviderId = AppState.getProviderIdForSlot("ai1") || "";
         
         this.setupWebviewEvents("ai1", ai1WebviewEl, ai1ProviderId);
         ai1WebviewEl.dataset.eventsSetup = "true";
@@ -178,14 +173,10 @@ export class WebviewController {
         }
       }
 
-      const ai2HasAccount = !!settings.slots?.ai2?.accountId;
+      const ai2HasAccount = !!AppState.getAccountForSlot("ai2");
 
       if (ai2WebviewEl && ai2HasAccount && !ai2WebviewEl.dataset.eventsSetup) {
-        const accountId2 = settings.slots?.ai2?.accountId;
-        const account2 = accountId2
-          ? settings.accounts?.find((acc) => acc.id === accountId2)
-          : null;
-        const ai2ProviderId = account2?.provider || "";
+        const ai2ProviderId = AppState.getProviderIdForSlot("ai2") || "";
         
         this.setupWebviewEvents("ai2", ai2WebviewEl, ai2ProviderId);
         ai2WebviewEl.dataset.eventsSetup = "true";
