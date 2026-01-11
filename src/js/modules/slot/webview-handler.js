@@ -7,8 +7,7 @@
  * - waitForDomReady: DOM hazır olana kadar bekle
  */
 
-
-const DOM_READY_TIMEOUT_MS = 15000;
+import { TIMEOUTS } from "../../constants/index.js";
 
 /**
  * Webview'ı slot'a bağla
@@ -124,7 +123,7 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
     const timeoutId = setTimeout(() => {
       clearDomReadyHandler(slot);
       reject(new Error("DOM ready timeout"));
-    }, DOM_READY_TIMEOUT_MS);
+    }, TIMEOUTS.DOM_READY);
 
     const handler = () => {
       clearTimeout(timeoutId);

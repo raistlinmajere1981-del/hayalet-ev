@@ -1,5 +1,6 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
+import { SLOTS, SLOT_LIST, SPECIAL_PAGES } from "./constants/index.js";
 import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
@@ -220,10 +221,10 @@ async function initApp() {
   const ai1Webview = document.getElementById("ai1-webview");
   const ai2Webview = document.getElementById("ai2-webview");
   if (ai1Webview) {
-    CoreEngine.registerWebview("ai1", ai1Webview);
+    CoreEngine.registerWebview(SLOTS.AI1, ai1Webview);
   }
   if (ai2Webview) {
-    CoreEngine.registerWebview("ai2", ai2Webview);
+    CoreEngine.registerWebview(SLOTS.AI2, ai2Webview);
   }
 
   setupNavigation();
@@ -383,9 +384,8 @@ function setupTopBarButtons() {
  */
 function setActiveNavigation(pageName) {
   const menuItems = document.querySelectorAll(".menu-item");
-  const specialPages = ["asistan", "settings", "archives", "webview"];
   menuItems.forEach((mi) => mi.classList.remove("active"));
-  if (!specialPages.includes(pageName)) {
+  if (!SPECIAL_PAGES.includes(pageName)) {
     menuItems.forEach((mi) => {
       if (mi.dataset.page === pageName) {
         mi.classList.add("active");
@@ -412,7 +412,7 @@ async function updateIndicatorAvatars() {
 
   const getAvatar = (provider) => {
     if (provider === "user") return settings.user?.avatarPath || "";
-    if (provider === "ai1" || provider === "ai2") {
+    if (SLOT_LIST.includes(provider)) {
       const accountId = settings.slots?.[provider]?.accountId;
       if (!accountId) return "";
       const account = settings.accounts?.find((acc) => acc.id === accountId);

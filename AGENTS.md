@@ -468,6 +468,32 @@ Bilinen hata pattern'leri otomatik olarak tespit edilir ve çözüm önerileri e
 - **Pages:** `src/js/pages/*.js` + `src/pages/*.html` (page logic + markup)
 - **Barrel Exports:** `index.js` (re-export all from a module folder)
 
+### Constants Structure
+Sabit değerler `src/js/constants/` klasöründe merkezi olarak yönetilir:
+
+```
+src/js/constants/
+├── index.js          # Barrel export (tüm constants)
+├── timeouts.js       # TIMEOUTS, INTERVALS, DELAYS
+├── slots.js          # SLOTS, SLOT_LIST, PROVIDERS, PROVIDER_LIST, SPECIAL_PAGES
+├── ipc-channels.js   # IPC channel isimleri
+└── events.js         # EVENTS, DOM_EVENTS
+```
+
+**Kullanım:**
+```javascript
+import { TIMEOUTS, SLOTS, SLOT_LIST } from "./constants/index.js";
+
+// Timeout kullanımı
+setTimeout(callback, TIMEOUTS.DOM_READY);
+
+// Slot kontrolü
+if (SLOT_LIST.includes(provider)) { ... }
+
+// Slot referansı
+CoreEngine.registerWebview(SLOTS.AI1, webview);
+```
+
 ### Module Pattern
 ```javascript
 // Singleton manager pattern

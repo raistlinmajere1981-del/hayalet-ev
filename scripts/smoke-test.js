@@ -55,13 +55,18 @@ async function analyzeLog(logDir) {
 
   const summaryPath = join(logDir, 'summary.json');
   if (existsSync(summaryPath)) {
-    const summary = JSON.parse(await readFile(summaryPath, 'utf-8'));
-    if (summary.endReason !== 'normal') {
-      results.errors.push(`Abnormal shutdown: ${summary.endReason}`);
-      results.success = false;
+    const summaryContent = await readFile(summaryPath, 'utf-8');
+    if (summaryContent.trim()) {
+      const summary = JSON.parse(summaryContent);
+      if (summary.endReason !== 'normal') {
+        results.errors.push(`Abnormal shutdown: ${summary.endReason}`);
+        results.success = false;
+      }
+      results.info.push(`Session duration: ${summary.duration || 'N/A'}`);
+      results.info.push(`End reason: ${summary.endReason}`);
+    } else {
+      results.warnings.push('summary.json boş (uygulama hızlı kapatıldı)');
     }
-    results.info.push(`Session duration: ${summary.duration || 'N/A'}`);
-    results.info.push(`End reason: ${summary.endReason}`);
   }
 
   const consoleLogPath = join(logDir, 'console-001.log');
