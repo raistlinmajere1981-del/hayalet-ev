@@ -45,12 +45,10 @@ export const AssistantManager = {
   ...EventEmitterMixin,
   _events: {},
   
-  // State
   isConnected: false,
   currentProvider: null,
   currentUrl: null,
   
-  // Handlers
   webviewHandler: null,
   webviewElement: null,
   
@@ -77,7 +75,6 @@ export const AssistantManager = {
     LogManager.addEvent("assistant", "info", `Connecting to ${provider}...`);
 
     try {
-      // Main process'te web server'ı başlat
       const result = await window.electronAPI.assistantConnect(provider);
       
       if (!result.success) {
@@ -90,7 +87,6 @@ export const AssistantManager = {
 
       LogManager.addEvent("assistant", "info", `Connected to ${provider} at ${result.url}`);
       
-      // Connected event'i emit et
       this.emit("connected", { provider, url: result.url });
 
       return result;
@@ -111,7 +107,6 @@ export const AssistantManager = {
     this.webviewElement = webviewElement;
     this.webviewHandler = new WebviewHandler(webviewElement);
 
-    // Webview'e URL yükle
     if (this.currentUrl) {
       await this.webviewHandler.init(this.currentUrl);
       LogManager.addEvent("assistant", "info", `Webview loaded: ${this.currentUrl}`);
@@ -129,13 +124,11 @@ export const AssistantManager = {
     LogManager.addEvent("assistant", "info", `Disconnecting from ${this.currentProvider}...`);
 
     try {
-      // Webview'i temizle
       if (this.webviewHandler) {
         this.webviewHandler.destroy();
         this.webviewHandler = null;
       }
 
-      // Main process'te server'ı durdur
       await window.electronAPI.assistantDisconnect();
 
       this.isConnected = false;
@@ -145,7 +138,6 @@ export const AssistantManager = {
 
       LogManager.addEvent("assistant", "info", "Disconnected");
       
-      // Disconnected event'i emit et
       this.emit("disconnected");
     } catch (error) {
       LogManager.addEvent("assistant", "error", `Disconnect failed: ${error.message}`);
@@ -194,7 +186,7 @@ export const AssistantManager = {
    * Mesaj gönder ve cevabı bekle
    */
   async query(message, options = {}) {
-    const timeout = options.timeout || 120000; // 2 dakika default
+    const timeout = options.timeout || 120000;
 
     if (!this.isConnected || !this.webviewHandler) {
       return {
@@ -207,10 +199,8 @@ export const AssistantManager = {
     LogManager.addEvent("assistant", "info", `Query: "${message.substring(0, 50)}..."`);
 
     try {
-      // Mesajı gönder
       await this.sendMessage(message);
 
-      // Cevabı bekle (polling ile)
       const response = await this.webviewHandler.waitForResponse(timeout);
 
       return {
@@ -238,7 +228,6 @@ export const AssistantManager = {
     };
   },
 
-  // Relay state (gelecekte kullanılacak)
   isRelayActive: false,
   
   async startRelay(aiSlot) {
@@ -253,7 +242,6 @@ export const AssistantManager = {
   }
 };
 
-// IPC event listener (disconnect bildirimi)
 if (window.electronAPI?.onAssistantDisconnected) {
   window.electronAPI.onAssistantDisconnected((data) => {
     console.log("[AssistantManager] Received disconnect event from main process");

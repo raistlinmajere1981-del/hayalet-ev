@@ -2,7 +2,6 @@ import { WebviewManager } from "./webview-manager.js";
 import { FileManager } from "./file-manager.js";
 import { LogManager } from "./log-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
-// SyncHandler artık WebviewManager içine entegre edildi
 
 class CommandExecutorClass {
   constructor() {
@@ -30,7 +29,7 @@ class CommandExecutorClass {
         attachmentCount: job.attachments?.length || 0,
         messageLength: job.message?.length || 0,
       },
-      job.id // correlationId olarak job.id kullan
+      job.id
     );
 
     const result = await WebviewManager.send({

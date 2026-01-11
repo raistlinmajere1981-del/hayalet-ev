@@ -1,9 +1,7 @@
-// Pencere kontrol yardımcı fonksiyonları (renderer -> Electron via preload)
 function minimizeToTaskbar() {
   try {
     window.electronAPI?.windowMinimize?.();
   } catch (err) {
-    // minimizeToTaskbar error - silent
   }
 }
 
@@ -11,7 +9,6 @@ function toggleFullscreen() {
   try {
     window.electronAPI?.windowToggleFullscreen?.();
   } catch (err) {
-    // toggleFullscreen error - silent
   }
 }
 
@@ -19,7 +16,6 @@ function closeApp() {
   try {
     window.electronAPI?.windowClose?.();
   } catch (err) {
-    // closeApp error - silent
   }
 }
 

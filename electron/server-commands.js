@@ -1,5 +1,5 @@
-import { join, basename } from 'path';
-import { mkdir, appendFile, readFile, writeFile } from 'fs/promises';
+import { join } from 'path';
+import { mkdir, appendFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { deviceActionHandler } from './device-manager.js';
 import { screenshotCaptureHandler } from './screenshot-manager.js';
@@ -20,7 +20,6 @@ async function appendLogLine(line) {
     const path = join(baseDir, 'server-commands.log');
     await appendFile(path, line + '\n', 'utf-8');
   } catch (err) {
-    // appendLogLine error - silent failure
   }
 }
 

@@ -1,4 +1,3 @@
-// Whisper odası controller'ı
 import { CoreEngine } from "../modules/core-engine.js";
 import { AppState } from "../modules/app-state.js";
 import { SettingsManager } from "../modules/settings-manager.js";
@@ -15,12 +14,10 @@ export class WhisperController {
     
     this.updateNames();
 
-    // Realtime nickname sync via AppState
     this._unsubAppState = AppState.subscribe(() => {
       this.updateNames();
     });
 
-    // Realtime settings sync
     this._unsubSettings = SettingsManager.subscribe(() => {
       this.updateNames();
     });
@@ -31,7 +28,6 @@ export class WhisperController {
   }
 
   updateNames() {
-    // New UI gating: show nickname if slot assigned, else AI1/AI2
     const settings = SettingsManager.getSnapshot();
     const ai1Assigned = !!settings?.slots?.ai1?.accountId;
     const ai2Assigned = !!settings?.slots?.ai2?.accountId;
@@ -43,7 +39,6 @@ export class WhisperController {
       this.nameAi2.textContent = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
     }
 
-    // Disable lists if slot empty
     if (this.pendingAi1) this.pendingAi1.style.opacity = ai1Assigned ? "1" : "0.5";
     if (this.pendingAi2) this.pendingAi2.style.opacity = ai2Assigned ? "1" : "0.5";
     if (this.doneAi1) this.doneAi1.style.opacity = ai1Assigned ? "1" : "0.5";
@@ -103,9 +98,6 @@ export class WhisperController {
   }
 
   onHide() {
-    // ❌ SUBSCRIPTIONLARI TEMİZLEME!
-    // Sayfa değiştiğinde subscriptionlar aktif kalmalı
-    // Aksi halde settings değişikliklerinde UI güncellenmiyor
   }
 
   formatDate(ts) {

@@ -59,7 +59,6 @@ export async function readSessionLogs(logDir, sessionId, type = "console") {
       return "Structured log dosyası bulunamadı";
     }
     
-    // Console logs (multiple chunks)
     const files = await readdir(sessionDir);
     const consoleFiles = files
       .filter(f => f.startsWith("console-") && f.endsWith(".log"))
@@ -131,7 +130,6 @@ export async function readSessionInfo(logDir, sessionId) {
       summary = JSON.parse(await readFile(summaryPath, "utf-8"));
     }
   } catch {
-    // Parse error
   }
   
   return { meta, summary };

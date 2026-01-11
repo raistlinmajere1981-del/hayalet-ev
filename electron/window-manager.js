@@ -20,18 +20,15 @@ export async function createWindow(options = {}) {
     },
   });
 
-  // Load URL or file depending on dev/packaged
   if (isDev || !process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
     try {
       win.loadURL('http://localhost:5173');
     } catch (e) {
-      // loadURL failed - attempting loadFile fallback
     }
   } else {
     try {
       win.loadFile(join(__dirname, '../dist/index.html'));
     } catch (e) {
-      // loadFile failed - critical
     }
   }
 
@@ -53,7 +50,6 @@ export function windowMinimize() {
   try {
     _mainWindow?.minimize();
   } catch (err) {
-    // windowMinimize error - silent
   }
 }
 
@@ -61,7 +57,6 @@ export function windowClose() {
   try {
     _mainWindow?.close();
   } catch (err) {
-    // windowClose error - silent
   }
 }
 
@@ -71,20 +66,15 @@ export function windowToggleFullscreen() {
     const isFull = _mainWindow.isFullScreen();
     _mainWindow.setFullScreen(!isFull);
   } catch (err) {
-    // windowToggleFullscreen error - silent
   }
 }
 
 import { app } from 'electron';
 export async function appRestart() {
   try {
-    // In development (not packaged), relaunching kills the process managed by concurrently,
-    // which usually kills the Vite server too (-k flag), leading to a white screen.
-    // So we just reload the window in dev mode.
     if (!app.isPackaged) {
       if (_mainWindow) {
         _mainWindow.reload();
-        // Dev mode - reloading window instead of relaunching
         return { success: true, message: 'Geliştirme modu: Sayfa yenilendi' };
       }
     }
@@ -93,7 +83,6 @@ export async function appRestart() {
     app.quit();
     return { success: true };
   } catch (err) {
-    // appRestart error - silent
     return { success: false, message: err?.message };
   }
 }

@@ -53,12 +53,10 @@ class ConversationSyncerClass {
     this._coreEngine = coreEngine;
     this._resolveWebviewFn = resolveWebviewFn;
 
-    // Önceki listener varsa kaldır
     if (this._trafficUnsubscribe) {
       this._trafficUnsubscribe();
     }
 
-    // TrafficManager'dan otomatik sync tetiklemesi
     this._trafficUnsubscribe = TrafficManager.onUpdate(async (snapshot) => {
       try {
         const provider = snapshot?.provider;
@@ -69,13 +67,11 @@ class ConversationSyncerClass {
         const prevThinking = this._lastThinkingState[provider] || "idle";
         this._lastThinkingState[provider] = currentThinking;
 
-        // Thinking idle olunca sync yap
         if (prevThinking !== "idle" && currentThinking === "idle") {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           await this.syncProvider(provider, { from: "auto" });
         }
 
-        // Loading bitince sync yap
         if (
           state.loadingJustEnded &&
           state.loadingEndedAt > this._lastLoadingEnded[provider]
@@ -85,7 +81,6 @@ class ConversationSyncerClass {
           await this.syncProvider(provider, { from: "auto" });
         }
       } catch (_err) {
-        // Silent fail
       }
     });
 
@@ -131,7 +126,6 @@ class ConversationSyncerClass {
       return { success: false, message: "Webview bulunamadı" };
     }
 
-    // URL exclusion kontrolü
     const currentUrl = webview.getURL?.() || "";
     if (this.isUrlExcluded(provider, currentUrl)) {
       LogManager.addEvent(
@@ -142,7 +136,6 @@ class ConversationSyncerClass {
       return { success: false, message: "URL excluded from operations" };
     }
 
-    // Çift sync önleme
     if (this._syncInProgress[provider]) {
       LogManager.addEvent(
         `webview-${provider}`,
@@ -165,7 +158,6 @@ class ConversationSyncerClass {
         );
       }
 
-      // DOM'dan mesajları çek
       const messages = await webview.executeJavaScript(
         `(${providerModule.scrapeMessages.toString()})();`,
       );
@@ -173,7 +165,6 @@ class ConversationSyncerClass {
       const rawUrl = webview.getURL() || "";
       const webUrl = normalizeUrl(rawUrl);
 
-      // Archive durumunu kontrol et
       const { existing, prevCount, newEntry } = await this._getArchiveStatus(
         provider,
         webUrl,
@@ -191,7 +182,6 @@ class ConversationSyncerClass {
         };
       }
 
-      // Author bilgilerini ekle
       const authors = {
         user: AppState.getNickname("user"),
         ai: AppState.getNickname(provider),
@@ -203,7 +193,6 @@ class ConversationSyncerClass {
         ts: Date.now(),
       }));
 
-      // Komut yakalama
       const catchEnabled =
         options.catchEnabled ??
         this._settings?.slots?.[provider]?.catchCommands ??
@@ -219,7 +208,6 @@ class ConversationSyncerClass {
           })
         : [];
 
-      // Archive'a kaydet
       const accountInfo = this._getAccountForSlot(provider);
       const archiveResult = await window.electronAPI.archiveSync({
         provider,
@@ -264,7 +252,6 @@ class ConversationSyncerClass {
   async syncProvider(provider, opts = {}) {
     if (!provider) return { success: false, message: "no-provider" };
 
-    // Manual sync'te retry'ları sıfırla
     if (opts?.from === "manual") {
       if (this._syncRetryTimers[provider]) {
         clearTimeout(this._syncRetryTimers[provider]);
@@ -279,13 +266,11 @@ class ConversationSyncerClass {
         `syncProvider called for ${provider} (source=${opts.from || "manual"})`,
       );
 
-      // Webview'ı çöz
       const webview = this._resolveWebviewFn?.(provider);
       const res = await this.syncConversation(provider, webview);
       
       this._lastSyncResult[provider] = res;
 
-      // Stable kontrolü (son mesaj assistant ise)
       const lastAfter = res.messages?.[res.messages.length - 1];
       const stableAfter = lastAfter && lastAfter.role && lastAfter.role !== "user";
       
@@ -296,7 +281,6 @@ class ConversationSyncerClass {
       if (!res) return { success: false, message: "no-result" };
       if (res.count === 0) return res;
 
-      // Son mesaj user ise retry planla
       const last = res.messages?.[res.messages.length - 1];
       if (last?.role === "user") {
         const tried = this._syncRetryCounts[provider] || 0;
@@ -314,14 +298,12 @@ class ConversationSyncerClass {
           }, 3000);
         }
       } else {
-        // Retry'ları temizle
         if (this._syncRetryTimers[provider]) {
           clearTimeout(this._syncRetryTimers[provider]);
         }
         this._syncRetryCounts[provider] = 0;
       }
 
-      // Conversation listesini güncelle
       if (res.success) {
         await ConversationListManager.refresh({
           silent: true,
@@ -329,7 +311,6 @@ class ConversationSyncerClass {
         });
       }
 
-      // Yakalanan komutları işle
       if (res.commands?.length > 0 && this._coreEngine) {
         for (const cmd of res.commands) {
           await this._coreEngine.handleCaughtCommand(cmd.command, {
@@ -364,18 +345,14 @@ class ConversationSyncerClass {
         try {
           cb(null, res);
         } catch (_e) {
-          /* noop */
         }
       }
 
-      // Pending archive'ları işle
       try {
         PendingArchiveHandler.processPending(provider, res);
       } catch (_e) {
-        /* noop */
       }
     } catch (_e) {
-      /* noop */
     }
   }
 
@@ -443,7 +420,6 @@ class ConversationSyncerClass {
       this._trafficUnsubscribe = null;
     }
 
-    // Tüm retry timer'ları temizle
     Object.values(this._syncRetryTimers).forEach((timer) => {
       clearTimeout(timer);
     });

@@ -6,7 +6,6 @@
 export async function sendMessage(webview, { message }) {
   const fullText = ` ${message}`;
 
-  // Focus on input field first
   const focusScript = `(function() {
     const config = window.__hayalet_provider_config;
     if (!config || !config.selectors?.inputField) {
@@ -28,7 +27,6 @@ export async function sendMessage(webview, { message }) {
     return { success: false, message: "Composer textarea/div bulunamadı" };
   }
 
-  // Type message character by character
   try {
     for (const ch of fullText) {
       webview.sendInputEvent({ type: "char", keyCode: ch });

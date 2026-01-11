@@ -1,4 +1,3 @@
-// Google Drive OAuth integration section controller
 
 export class GoogleDriveSection {
   constructor(settingsManager) {
@@ -99,7 +98,6 @@ export class GoogleDriveSection {
     const isConnected = gd.connected || false;
 
     if (isConnected) {
-      // Disconnect
       try {
         const res = await window.electronAPI?.googledriveDisconnect?.();
         if (res?.success) {
@@ -121,7 +119,6 @@ export class GoogleDriveSection {
         this.showFeedback(`Bağlantı kesme hatası: ${err.message}`, "error");
       }
     } else {
-      // Connect
       const clientIdEl = /** @type {HTMLInputElement|null} */ (
         document.getElementById("settings-googledrive-clientid")
       );
@@ -145,7 +142,6 @@ export class GoogleDriveSection {
       }
 
       try {
-        // Save credentials first
         const updated = {
           ...settings,
           integrations: {
@@ -160,7 +156,6 @@ export class GoogleDriveSection {
         };
         await this.settingsManager.save(updated);
 
-        // Exchange code
         const res = await window.electronAPI?.googledriveExchangeCode?.(code);
         if (res?.success) {
           const finalUpdated = {

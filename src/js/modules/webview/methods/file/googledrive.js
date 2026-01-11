@@ -9,19 +9,16 @@ import { isServiceAvailable } from "../shared/upload-services.js";
 export async function attachFiles(webview, { files }) {
   console.log("[attachFiles-googledrive] called", files && files.length);
 
-  // Validate files
   const validation = validateFiles(files);
   if (!validation.valid) {
     return createErrorResponse(validation.message);
   }
 
-  // Check service availability
   if (!isServiceAvailable("GOOGLEDRIVE")) {
     return createErrorResponse("Google Drive IPC servisi mevcut değil");
   }
 
   try {
-    // Prepare files for Google Drive upload (same format as original)
     const payloadFiles = files.map((f) => ({
       name: f.name,
       mimeType: f.mimeType,
@@ -33,7 +30,6 @@ export async function attachFiles(webview, { files }) {
       payloadFiles.map((p) => ({ name: p.name, hasBase64: !!p.base64 })),
     );
 
-    // Use IPC for Google Drive
     if (!window.electronAPI?.googledriveUpload) {
       throw new Error("electronAPI.googledriveUpload not available");
     }

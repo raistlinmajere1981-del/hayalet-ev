@@ -25,7 +25,6 @@ export function initContextMenu() {
   `;
   document.body.appendChild(contextMenuEl);
   
-  // Click outside to hide
   document.addEventListener("click", hideContextMenu);
 }
 
@@ -67,7 +66,7 @@ export function showContextMenu(event, payload, onAction) {
 /**
  * Context menu'yu gizle
  */
-export function hideContextMenu() {
+function hideContextMenu() {
   contextMenuEl?.classList.add("hidden");
 }
 
@@ -97,7 +96,6 @@ function handleContextAction(action, payload, onAction) {
     
     textarea.value = newVal;
     
-    // Trigger send button state update
     onAction?.();
   }
 }
@@ -121,6 +119,6 @@ export function showReadModal(payload) {
 /**
  * Read modal'ı gizle
  */
-export function hideReadModal() {
+function hideReadModal() {
   readModalEl?.classList.add("hidden");
 }

@@ -1,9 +1,7 @@
-// Sunucu odası controller'ı - kontrol devri, log tabanlı paneller
 import { LogManager } from "../modules/log-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
-// FIX: Import SlotEvent for proper state change subscription
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
@@ -27,10 +25,8 @@ export class ServerController {
   async init() {
     await SettingsManager.load();
 
-    // Realtime settings sync
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(() => {
-        // Settings updated
       });
     }
     this.controllerSelect = document.getElementById("server-controller-select");
@@ -62,7 +58,6 @@ export class ServerController {
       this.updateControlButtons();
     });
 
-    // FIX: SlotController state değişikliklerini dinle (bağlantı durumu için)
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
         this.renderControllerOptions();

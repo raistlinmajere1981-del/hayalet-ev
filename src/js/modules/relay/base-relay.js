@@ -112,7 +112,6 @@ export class BaseRelay {
         })
       );
     } catch (e) {
-      // Event dispatch başarısız olursa sessizce devam et
     }
   }
 
@@ -133,7 +132,6 @@ export class BaseRelay {
       addClasses.forEach(cls => el.classList.add(cls));
       removeClasses.forEach(cls => el.classList.remove(cls));
     } catch (e) {
-      // UI güncellemesi başarısız olursa sessizce devam et
     }
   }
 

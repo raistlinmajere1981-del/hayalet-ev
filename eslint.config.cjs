@@ -43,17 +43,15 @@ module.exports = [
       },
     },
     rules: {
-      // This project intentionally uses unused placeholders like `_`, `e`, `err` in many callbacks/catches.
-      // Ignore these to keep lint output actionable.
       "no-unused-vars": [
         "warn",
         {
-          // Ignore any var/arg starting with underscore, and common error placeholders
           argsIgnorePattern: "^(_|e|err|error|evt|event)|^_",
           varsIgnorePattern: "^(_|e|err|error|evt|event)|^_",
           caughtErrorsIgnorePattern: "^(_|e|err|error)|^_", 
         },
       ],
+      "no-empty": ["error", { "allowEmptyCatch": true }],
       "no-console": "off",
       "prefer-const": "warn",
       "no-undef": "error",

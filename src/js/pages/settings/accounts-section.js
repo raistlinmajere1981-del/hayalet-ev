@@ -1,4 +1,3 @@
-// Accounts management section (create/delete accounts, avatar naming: email-provider.ext)
 
 export class AccountsSection {
   constructor(settingsManager) {
@@ -71,7 +70,6 @@ export class AccountsSection {
 
       accountListEl.appendChild(item);
 
-      // Render avatar
       this.renderAccountAvatar(acc.id, acc.avatarPath);
     }
   }
@@ -186,10 +184,8 @@ export class AccountsSection {
       const settings = this.settingsManager.getSnapshot();
       const accounts = settings?.accounts || [];
 
-      // Generate account ID
       const accountId = `acc-${provider}-${Date.now().toString(36)}`;
 
-      // Copy avatar with naming: email-provider.ext
       let finalAvatarPath = "";
       if (this._newAccountAvatarPath) {
         const copied = await window.electronAPI?.copyToAssets(
@@ -243,10 +239,8 @@ export class AccountsSection {
         return;
       }
 
-      // Remove from accounts array
       const updatedAccounts = accounts.filter((a) => a.id !== accountId);
 
-      // Clear from slots if assigned
       const slots = { ...settings.slots };
       if (slots.ai1?.accountId === accountId) {
         slots.ai1 = { ...slots.ai1, accountId: null };
@@ -258,12 +252,10 @@ export class AccountsSection {
       const updated = { ...settings, accounts: updatedAccounts, slots };
       await this.settingsManager.save(updated);
 
-      // Delete avatar file if exists
       if (account.avatarPath) {
         try {
           await window.electronAPI?.deleteAsset?.(account.avatarPath);
         } catch {
-          /* best effort */
         }
       }
 

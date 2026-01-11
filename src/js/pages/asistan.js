@@ -5,15 +5,13 @@
 
 import { AssistantManager } from "../modules/asistan-manager.js";
 import { AppState } from "../modules/app-state.js";
-// FIX: Import SlotEvent for proper state change subscription
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 
-export class AsistanPage {
+class AsistanPage {
   constructor() {
     this.assistantManager = null;
     this.elements = {};
     
-    // State flags
     this._isLoading = false;
     this._isProcessing = false;
   }
@@ -21,19 +19,14 @@ export class AsistanPage {
   async init() {
     console.log("[AsistanPage] Initializing...");
     
-    // DOM elementlerini yakala
     this.cacheElements();
     
-    // AssistantManager referansı
     this.assistantManager = AssistantManager;
     
-    // Event listener'ları bağla
     this.bindEvents();
     
-    // Connected AI'leri yükle (relay dropdown için)
     this.loadConnectedAIs();
 
-    // Zaten bağlı mı kontrol et
     if (this.assistantManager.isConnected) {
       this.onAssistantConnected();
     }
@@ -43,22 +36,18 @@ export class AsistanPage {
 
   cacheElements() {
     this.elements = {
-      // Provider seçimi
       providerSelect: document.getElementById("asistan-provider"),
       
-      // Bağlantı kontrolleri
       connectBtn: document.getElementById("asistan-connect-btn"),
       disconnectBtn: document.getElementById("asistan-disconnect-btn"),
       devtoolsBtn: document.getElementById("asistan-devtools-btn"),
       statusDot: document.getElementById("asistan-status-dot"),
       statusText: document.getElementById("asistan-status-text"),
       
-      // Display alanları
       displayEmpty: document.getElementById("display-empty"),
       webviewContainer: document.getElementById("webview-container"),
       assistantWebview: document.getElementById("asistan-webview"),
       
-      // Relay kontrolleri
       relayControlsInline: document.getElementById("relay-controls-inline"),
       relayAiSelect: document.getElementById("relay-ai-select"),
       relayStartBtn: document.getElementById("relay-start-btn"),
@@ -66,7 +55,6 @@ export class AsistanPage {
       relayStatusIndicator: document.getElementById("relay-status-indicator"),
       relayStatusText: document.getElementById("relay-status-text"),
 
-      // Test Panel
       testPanel: document.getElementById("test-panel"),
       testMessageInput: document.getElementById("test-message-input"),
       testSendBtn: document.getElementById("test-send-btn"),
@@ -75,69 +63,56 @@ export class AsistanPage {
       testDebugStatus: document.getElementById("test-debug-status"),
       testDebugCount: document.getElementById("test-debug-count"),
 
-      // Loading ve Processing göstergeleri
       loadingOverlay: document.getElementById("asistan-loading-overlay"),
       loadingText: document.querySelector("#asistan-loading-overlay .loading-text"),
       processingIndicator: document.getElementById("asistan-processing"),
       processingText: document.querySelector("#asistan-processing .processing-text"),
     };
 
-    // Test panel state
     this._testCharCount = 0;
   }
 
   bindEvents() {
-    // Provider değiştiğinde
     this.elements.providerSelect.addEventListener("change", () => {
       this.onProviderChange();
     });
 
-    // Bağlan butonu
     this.elements.connectBtn.addEventListener("click", () => {
       this.onConnect();
     });
 
-    // Bağlantıyı kes butonu
     this.elements.disconnectBtn.addEventListener("click", () => {
       this.onDisconnect();
     });
 
-    // DevTools butonu
     this.elements.devtoolsBtn.addEventListener("click", () => {
       this.onOpenDevTools();
     });
 
-    // Relay başlat
     this.elements.relayStartBtn.addEventListener("click", () => {
       this.onRelayStart();
     });
 
-    // Relay durdur
     this.elements.relayStopBtn.addEventListener("click", () => {
       this.onRelayStop();
     });
 
-    // AI selection değiştiğinde relay başlat butonunu etkinleştir
     this.elements.relayAiSelect.addEventListener("change", () => {
       const hasSelection = this.elements.relayAiSelect.value !== "";
       this.elements.relayStartBtn.disabled = !hasSelection;
     });
 
-    // AssistantManager event'lerini dinle
     this.assistantManager.on("connected", () => this.onAssistantConnected());
     this.assistantManager.on("disconnected", () => this.onAssistantDisconnected());
     this.assistantManager.on("relay-started", () => this.onRelayActivated());
     this.assistantManager.on("relay-stopped", () => this.onRelayDeactivated());
 
-    // FIX: SlotController state değişikliklerini dinle (bağlantı durumu için)
-    // AI slot'ları bağlanıp koptuğunda relay dropdown'u güncelle
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
         this.loadConnectedAIs();
       });
     }
 
-    // Test Panel Event'leri
     this.elements.testSendBtn?.addEventListener("click", () => this.onTestSend());
     
     this.elements.testMessageInput?.addEventListener("keydown", (e) => {
@@ -163,14 +138,11 @@ export class AsistanPage {
       this.elements.connectBtn.disabled = true;
       this.elements.providerSelect.disabled = true;
 
-      // Loading state başlat
       this.showLoading("OpenCode başlatılıyor...");
 
-      // Bağlan
       const result = await this.assistantManager.connect(provider);
       
       if (result.success && result.url) {
-        // Webview'i initialize et
         this.showLoading("Web arayüzü yükleniyor...");
         await this.assistantManager.initWebview(this.elements.assistantWebview);
       }
@@ -202,7 +174,6 @@ export class AsistanPage {
   }
 
   onAssistantConnected() {
-    // UI güncellemeleri
     this.elements.connectBtn.style.display = "none";
     this.elements.disconnectBtn.style.display = "inline-block";
     this.elements.disconnectBtn.disabled = false;
@@ -212,16 +183,13 @@ export class AsistanPage {
     this.elements.statusDot.classList.add("connected");
     this.elements.statusText.textContent = "Bağlı";
 
-    // Webview'i göster
     this.elements.displayEmpty.style.display = "none";
     this.elements.webviewContainer.classList.add("active");
     this.elements.webviewContainer.style.display = "block";
 
-    // Relay controls'u aktif et
     this.elements.relayControlsInline.style.opacity = "1";
     this.elements.relayControlsInline.style.pointerEvents = "auto";
 
-    // Test Panel'i göster
     if (this.elements.testPanel) {
       this.elements.testPanel.style.display = "block";
       this.elements.testSendBtn.disabled = false;
@@ -233,7 +201,6 @@ export class AsistanPage {
   }
 
   onAssistantDisconnected() {
-    // UI güncellemeleri
     this.elements.connectBtn.style.display = "inline-block";
     this.elements.disconnectBtn.style.display = "none";
     this.elements.devtoolsBtn.style.display = "none";
@@ -244,25 +211,20 @@ export class AsistanPage {
     this.elements.statusDot.classList.remove("connected");
     this.elements.statusText.textContent = "Bağlı Değil";
 
-    // Display alanını gizle
     this.elements.displayEmpty.style.display = "flex";
     this.elements.webviewContainer.classList.remove("active");
     this.elements.webviewContainer.style.display = "none";
 
-    // Relay controls'u deaktif et
     this.elements.relayControlsInline.style.opacity = "0.3";
     this.elements.relayControlsInline.style.pointerEvents = "none";
     
-    // Relay durumunu sıfırla
     if (this.assistantManager.isRelayActive) {
       this.assistantManager.stopRelay();
     }
 
-    // Loading/Processing state'lerini sıfırla
     this.hideLoading();
     this.hideProcessing();
 
-    // Test Panel'i temizle ve gizle
     if (this.elements.testPanel) {
       this.elements.testPanel.style.display = "none";
       this.elements.testSendBtn.disabled = true;
@@ -278,7 +240,6 @@ export class AsistanPage {
   }
 
   // ==========================================
-  // LOADING & PROCESSING STATE
   // ==========================================
 
   showLoading(text = "Yükleniyor...") {
@@ -316,7 +277,6 @@ export class AsistanPage {
   }
 
   // ==========================================
-  // RELAY METHODS
   // ==========================================
 
   async onRelayStart() {
@@ -381,7 +341,6 @@ export class AsistanPage {
   }
 
   // ==========================================
-  // TEST PANEL METHODS
   // ==========================================
 
   async onTestSend() {
@@ -397,25 +356,20 @@ export class AsistanPage {
       this.updateTestDebugStatus("Mesaj gönderiliyor...");
       this.elements.testSendBtn.disabled = true;
 
-      // Output alanını temizle
       if (this.elements.testOutput) {
         this.elements.testOutput.value = "";
       }
       this._testCharCount = 0;
       this.updateTestDebugCount();
 
-      // Processing state başlat
       this.showProcessing("Cevap bekleniyor...");
 
-      // Input'u temizle
       this.elements.testMessageInput.value = "";
 
-      // Query gönder (mesaj gönder + cevap bekle)
       const result = await this.assistantManager.query(message, {
-        timeout: 120000 // 2 dakika
+        timeout: 120000
       });
 
-      // Cevabı göster
       if (result.success) {
         this.elements.testOutput.value = result.response;
         this._testCharCount = result.response.length;
@@ -459,13 +413,11 @@ export class AsistanPage {
   }
 
   // ==========================================
-  // LIFECYCLE
   // ==========================================
 
   destroy() {
     console.log("[AsistanPage] Destroying...");
     
-    // Event listener'ları temizle
     if (this.assistantManager) {
       this.assistantManager.off("connected", this.onAssistantConnected);
       this.assistantManager.off("disconnected", this.onAssistantDisconnected);
@@ -475,5 +427,4 @@ export class AsistanPage {
   }
 }
 
-// Export singleton instance
 export const asistanPage = new AsistanPage();

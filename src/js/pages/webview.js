@@ -1,4 +1,3 @@
-// Webview sayfası controller'ı
 import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
@@ -23,7 +22,6 @@ export class WebviewController {
     await this.loadSettings();
     this.applyTitles();
 
-    // Realtime settings sync
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(
         ({ settings, changedPaths }) => {
@@ -33,10 +31,8 @@ export class WebviewController {
       );
     }
     
-    // SlotController state değişikliklerini dinle (bağlantı durumu için)
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
-        // Bağlantı durumu değiştiğinde webview görünürlüğünü güncelle
         this.applyWebviewGating(SettingsManager.getSnapshot(), ["*"]);
       });
     }
@@ -62,7 +58,6 @@ export class WebviewController {
     const urlDisplay = document.getElementById(`${provider}-url-display`);
     if (!urlDisplay) return;
 
-    // Check if slot has an active account
     const settings = SettingsManager.getSnapshot();
     const hasAccount = !!settings.slots?.[provider]?.accountId;
     if (!hasAccount) {
@@ -122,11 +117,9 @@ export class WebviewController {
     try {
       const settings = SettingsManager.getSnapshot();
       
-      // Get webviews from global container (always in DOM)
       const ai1WebviewEl = document.getElementById("ai1-webview");
       const ai2WebviewEl = document.getElementById("ai2-webview");
       
-      // ✅ ALWAYS register webviews with CoreEngine (even if not connected yet)
       if (ai1WebviewEl && !this.ai1Webview) {
         this.ai1Webview = ai1WebviewEl;
         CoreEngine.registerWebview("ai1", ai1WebviewEl);
@@ -137,7 +130,6 @@ export class WebviewController {
         CoreEngine.registerWebview("ai2", ai2WebviewEl);
       }
       
-      // Mount webviews to their placeholders on webview page (only when page is visible)
       const ai1Mount = document.getElementById("ai1-webview-mount");
       const ai2Mount = document.getElementById("ai2-webview-mount");
       
@@ -155,7 +147,6 @@ export class WebviewController {
         ai2WebviewEl.style.left = "0";
       }
 
-      // Setup webview events and preload (only once per webview)
       const ai1HasAccount = !!settings.slots?.ai1?.accountId;
 
       if (ai1WebviewEl && ai1HasAccount && !ai1WebviewEl.dataset.eventsSetup) {
@@ -168,7 +159,6 @@ export class WebviewController {
         this.setupWebviewEvents("ai1", ai1WebviewEl, ai1ProviderId);
         ai1WebviewEl.dataset.eventsSetup = "true";
 
-        // Preload script yolunu Electron IPC ile ayarla (src yüklenmeden önce)
         if (window.electronAPI?.getPreloadPath && !ai1WebviewEl.getAttribute("preload")) {
           try {
             const preloadPath = await window.electronAPI.getPreloadPath("ai1");
@@ -188,7 +178,6 @@ export class WebviewController {
         }
       }
 
-      // Setup webview events and preload for AI2 (only once per webview)
       const ai2HasAccount = !!settings.slots?.ai2?.accountId;
 
       if (ai2WebviewEl && ai2HasAccount && !ai2WebviewEl.dataset.eventsSetup) {
@@ -201,7 +190,6 @@ export class WebviewController {
         this.setupWebviewEvents("ai2", ai2WebviewEl, ai2ProviderId);
         ai2WebviewEl.dataset.eventsSetup = "true";
 
-        // Preload script yolunu Electron IPC ile ayarla (src yüklenmeden önce)
         if (window.electronAPI?.getPreloadPath && !ai2WebviewEl.getAttribute("preload")) {
           try {
             const preloadPath = await window.electronAPI.getPreloadPath("ai2");
@@ -234,7 +222,7 @@ export class WebviewController {
   getSlotState(settings, provider) {
     const slot = settings?.slots?.[provider] || {};
     const hasAccount = !!slot.accountId;
-    const connected = SlotController.isConnected(provider); // SlotController'dan runtime durumu oku
+    const connected = SlotController.isConnected(provider);
     return {
       hasAccount,
       connected,

@@ -2,7 +2,7 @@
  * LogTools - Log okuma ve sorgulama araçları
  */
 
-import { readdir, readFile } from "fs/promises";
+import { readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { findLatestSession, readSessionLogs, filterLogs, readSessionInfo } from "../utils/log-utils.js";
@@ -21,7 +21,6 @@ export async function readElectronLogs(logDir, args) {
     sessionId: requestedSessionId,
   } = args || {};
   
-  // Session bul
   const sessionId = requestedSessionId || await findLatestSession(logDir);
   
   if (!sessionId) {
@@ -37,26 +36,22 @@ export async function readElectronLogs(logDir, args) {
   
   let output = `📋 Session: ${sessionId}\n${"=".repeat(60)}\n\n`;
   
-  // Console logs
   if (type === "console" || type === "all") {
     const consoleLogs = await readSessionLogs(logDir, sessionId, "console");
     const filtered = filterLogs(consoleLogs, { source, level, contains, correlationId, tail });
     output += `📝 Console Logs (son ${filtered.length} satır):\n${"-".repeat(40)}\n${filtered.join("\n")}\n\n`;
   }
   
-  // Error logs
   if (type === "error" || type === "all") {
     const errorLogs = await readSessionLogs(logDir, sessionId, "error");
     const filtered = filterLogs(errorLogs, { source, level: level || "ERROR", contains, correlationId, tail });
     output += `❌ Error Logs (son ${filtered.length} satır):\n${"-".repeat(40)}\n${filtered.join("\n")}\n\n`;
   }
   
-  // Structured logs
   if (type === "structured") {
     const structuredLogs = await readSessionLogs(logDir, sessionId, "structured");
     const lines = structuredLogs.split("\n").filter(l => l.trim()).slice(-tail);
     
-    // JSON formatla
     const formatted = lines.map(l => {
       try {
         const obj = JSON.parse(l);
@@ -107,7 +102,6 @@ export async function listLogSessions(logDir, args) {
     });
   }
   
-  // Tarihe göre sırala
   sessions.sort((a, b) => {
     if (a.startTime === "unknown") return 1;
     if (b.startTime === "unknown") return -1;

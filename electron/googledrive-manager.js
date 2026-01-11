@@ -1,9 +1,6 @@
 import { PassThrough } from "stream";
 import { google } from "googleapis";
 import { loadSettings, saveSettings } from "./settings-manager.js";
-import fs from "fs";
-import { existsSync, readFileSync } from "fs";
-import { basename } from "path";
 
 function safeGet(obj, path, def = "") {
   try {
@@ -96,7 +93,6 @@ export async function googledriveExchangeCode(event, code) {
       const me = (await oauth2.userinfo.get()).data;
       accountEmail = me?.email || "";
     } catch (err) {
-      /* noop */
     }
 
     settings.integrations.googledrive.connected = true;

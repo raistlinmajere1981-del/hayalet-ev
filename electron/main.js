@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
-import { google } from "googleapis";
 import { fileURLToPath, pathToFileURL } from "url";
 import { dirname, join } from "path";
 import {
@@ -15,9 +14,7 @@ import {
   rm,
 } from "fs/promises";
 import { existsSync } from "fs";
-import { PassThrough } from "stream";
 import screenshot from "screenshot-desktop";
-import { basename } from "path";
 import { deviceActionHandler } from "./device-manager.js";
 import {
   capturePageHandler,
@@ -106,23 +103,17 @@ const PATHS = {
   logs: () => join(process.cwd(), "logs"),
 };
 
-// Log sistemini başlat (session oluştur)
 const { sessionId } = initLogSystem();
 
-// Console logger'ı başlat (main process)
 interceptMainConsole();
 
-// Terminal focus tracking modunu devre dışı bırak (ANSI escape kodlarını önler)
-// ^[[O (focus out) ve ^[[I (focus in) karakterlerini engeller
 if (process.stdout && process.stdout.isTTY) {
   try {
-    process.stdout.write('\x1b[?1004l'); // Focus events OFF
+    process.stdout.write('\x1b[?1004l');
   } catch (e) {
-    // Terminal write hatası - sessizce geç
   }
 }
 
-// Uygulama başlangıç state'ini kaydet
 updateAppState({
   startTime: new Date().toISOString(),
   platform: process.platform,
@@ -133,26 +124,21 @@ app.whenReady().then(async () => {
   try {
     mainWindow = await createAppWindow({ __dirname });
 
-    // Main window referansını ayarla (IPC forwarding için)
     setMainWindow(mainWindow);
 
-    // Renderer process logger'ını bağla
     setupRendererLogger(mainWindow.webContents);
 
     try {
       ServerCommands?.init?.({ mainWindow });
     } catch (e) {
-      // ServerCommands init failed - non-critical
     }
     try {
       initWindowManager({ mainWindow });
     } catch (e) {
-      // WindowManager init failed - non-critical
     }
     try {
       assistantManager.setMainWindow(mainWindow);
     } catch (e) {
-      // AssistantManager init failed - non-critical
     }
   } catch (err) {
     console.error("CRITICAL: createAppWindow failed:", err);
@@ -167,7 +153,6 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  // Asistan process'ini temizle
   if (assistantManager) {
     assistantManager.disconnect().catch(err => {
       console.error("Failed to disconnect assistant:", err);
@@ -186,18 +171,15 @@ ipcMain.on("window-toggle-fullscreen", windowToggleFullscreen);
 ipcMain.handle("app-restart", appRestart);
 
 app.on("will-quit", (event) => {
-  /* noop */
 });
 
 app.on("before-quit", async (event) => {
-  // Session summary yaz
   try {
     await writeSessionSummary("normal");
   } catch (err) {
     console.error("Failed to write session summary:", err);
   }
   
-  // Asistan web server'ını temizle
   if (assistantManager && assistantManager.isConnected) {
     event.preventDefault();
     try {
@@ -205,14 +187,12 @@ app.on("before-quit", async (event) => {
     } catch (err) {
       console.error("Failed to disconnect assistant:", err);
     }
-    // Cleanup tamamlandıktan sonra quit'e izin ver
     setTimeout(() => {
       app.quit();
     }, 300);
   }
 });
 
-// Handle SIGTERM and SIGINT for clean shutdown
 if (process.platform !== "win32") {
   process.on("SIGTERM", () => {
     app.quit();
@@ -225,14 +205,12 @@ if (process.platform !== "win32") {
 
 ipcMain.handle("get-preload-path", async (event, type) => {
   try {
-    // This path is now specifically for webviews
     return `file://${join(__dirname, "webview-preload.cjs")}`;
   } catch (err) {
     throw err;
   }
 });
 
-// Return provider config by dynamic-importing provider config module.
 ipcMain.handle("get-provider-config", async (event, providerId) => {
   try {
     if (!providerId) return null;
@@ -251,7 +229,6 @@ ipcMain.handle("get-provider-config", async (event, providerId) => {
     const mod = await import(pathToFileURL(cfgPath).href);
     const cfg = mod?.config || mod?.default || mod;
     if (!cfg) return null;
-    // Only expose a minimal set of fields to the preload/guest.
     const allowed = {
       id: cfg.id,
       name: cfg.name,
@@ -284,8 +261,6 @@ ipcMain.handle("save-settings", async (event, ...args) => {
   }
 });
 
-// Legacy IPC removed: create-account, assign-account-to-slot
-// Now handled in renderer via SettingsManager.save()
 
 ipcMain.handle("device-action", deviceActionHandler);
 
@@ -315,7 +290,6 @@ ipcMain.handle("googledrive-start-auth", async () => {
     try {
       await shell.openExternal(result.url);
     } catch (err) {
-      // Failed to open browser - silent failure
       result.message = "Tarayıcı açılamadı: " + (err?.message || "hata");
     }
   }
@@ -365,7 +339,6 @@ ipcMain.handle("open-path", openPath);
 
 ipcMain.handle("generate-tree", generateTree);
 
-// Console log handlers
 ipcMain.handle("read-console-logs", async (event, tail = 100) => {
   try {
     return await readConsoleLogs(tail);
@@ -391,7 +364,6 @@ ipcMain.handle("get-log-paths", async () => {
   };
 });
 
-// Yeni log handler'ları
 ipcMain.handle("get-session-id", async () => {
   return getSessionId();
 });
@@ -451,7 +423,6 @@ ipcMain.handle("generate-correlation-id", async (event, prefix = "op") => {
   return generateCorrelationId(prefix);
 });
 
-// Assistant IPC handlers (Web mode only)
 ipcMain.handle("assistant-connect", async (event, provider) => {
   try {
     return await assistantManager.connect(provider);

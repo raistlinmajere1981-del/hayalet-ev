@@ -1,4 +1,3 @@
-/* global process */
 /**
  * LogWriter - Log yazma işlemleri
  * 
@@ -13,12 +12,10 @@ import { appendFile } from "fs/promises";
 import { join } from "path";
 import { ensureSessionDir, getSessionDir, getAppState } from "./session-manager.js";
 
-// Chunk tracking
 let currentChunkIndex = 1;
 let currentChunkLines = 0;
 const MAX_CHUNK_LINES = 10000;
 
-// Log dosya yolları (session başlatıldıktan sonra set edilir)
 let CONSOLE_LOG = null;
 let ERROR_LOG = null;
 let STRUCTURED_LOG = null;
@@ -92,11 +89,9 @@ export async function writeLog(level, source, args, context = null, isError = fa
     
     const logMessage = formatLog(level, source, args, context);
     
-    // Console log'a yaz
     if (CONSOLE_LOG) {
       await appendFile(CONSOLE_LOG, logMessage);
       
-      // Chunk rotation
       currentChunkLines++;
       if (currentChunkLines >= MAX_CHUNK_LINES) {
         currentChunkIndex++;
@@ -105,12 +100,10 @@ export async function writeLog(level, source, args, context = null, isError = fa
       }
     }
     
-    // Error/Warning ise error log'a da yaz
     if (isError && ERROR_LOG) {
       await appendFile(ERROR_LOG, logMessage);
     }
   } catch (_err) {
-    // Log yazma başarısız olursa sessizce geç
   }
 }
 
@@ -131,7 +124,6 @@ export async function writeErrorLog(level, source, args, context = null) {
     const logMessage = formatLog(level, source, args, context);
     await appendFile(ERROR_LOG, logMessage);
   } catch (_err) {
-    // Silent fail
   }
 }
 
@@ -148,7 +140,6 @@ export async function writeStructuredLog(entry) {
     
     await appendFile(STRUCTURED_LOG, JSON.stringify(entry) + "\n");
   } catch (_err) {
-    // Silent fail
   }
 }
 
@@ -170,12 +161,10 @@ export async function writeStateSnapshot() {
     const snapshotPath = join(sessionDir, "state-snapshots.jsonl");
     await appendFile(snapshotPath, JSON.stringify(snapshot) + "\n");
   } catch (_err) {
-    // Silent fail
   }
 }
 
 // ============================================
-// GETTERS
 // ============================================
 
 export function getConsoleLogPath() {

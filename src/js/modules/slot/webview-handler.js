@@ -7,9 +7,7 @@
  * - waitForDomReady: DOM hazır olana kadar bekle
  */
 
-// LogManager dışarıdan parametre olarak geçiriliyor
 
-// DOM ready bekleme timeout (ms)
 const DOM_READY_TIMEOUT_MS = 15000;
 
 /**
@@ -28,19 +26,16 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
     throw new Error("Webview not available");
   }
 
-  // Restore from detached state
   if (webview.getAttribute?.("data-detached")) {
     webview.removeAttribute("data-detached");
   }
   webview.style.display = "";
 
-  // Set src if needed
   const currentSrc = webview.getAttribute("src") || "";
   let currentUrl = "";
   try {
     currentUrl = (webview.getURL?.() || "").split("?")[0].split("#")[0];
   } catch (_e) {
-    // Webview not ready yet
   }
 
   const targetUrl = slotState.providerConfig?.baseUrl || "";
@@ -51,12 +46,11 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
                        !currentUrl.startsWith(normalizedTarget) && 
                        !normalizedTarget.startsWith(currentUrl));
 
-  // Track if we're starting a new load
   slotState._pendingLoad = false;
 
   if (targetUrl && needsReload) {
     logFn(slot, "info", `Loading URL: ${targetUrl}`, { correlationId });
-    slotState._pendingLoad = true; // Mark that we're loading a new page
+    slotState._pendingLoad = true;
     webview.setAttribute("src", targetUrl);
   } else if (currentUrl) {
     logFn(slot, "debug", `Webview already loaded: ${currentUrl}`, { correlationId });
@@ -114,7 +108,6 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
   }
 
   return new Promise((resolve, reject) => {
-    // Check if already loaded - but NOT if we just started a new load
     if (!slotState._pendingLoad) {
       try {
         if (webview.getURL?.() && !webview.isLoading?.()) {
@@ -123,20 +116,16 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
           return;
         }
       } catch (_e) {
-        // Not ready yet
       }
     }
 
-    // Clear pending load flag - we're now waiting for it
     slotState._pendingLoad = false;
 
-    // Timeout
     const timeoutId = setTimeout(() => {
       clearDomReadyHandler(slot);
       reject(new Error("DOM ready timeout"));
     }, DOM_READY_TIMEOUT_MS);
 
-    // Handlers
     const handler = () => {
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
@@ -147,11 +136,10 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
     const errorHandler = (event) => {
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
-      // -3 is aborted, -102 is connection refused - ignore these
       if (event?.errorCode !== -3 && event?.errorCode !== -102) {
         reject(new Error(`Load failed: ${event?.errorDescription || "unknown"}`));
       } else {
-        resolve(); // Treat as success for common navigation interrupts
+        resolve();
       }
     };
 
@@ -176,7 +164,6 @@ export function clearDomReadyHandler(slot) {
     webview?.removeEventListener?.("dom-ready", handler);
     webview?.removeEventListener?.("did-fail-load", errorHandler);
   } catch (_e) {
-    // Already removed
   }
   delete domReadyHandlers[slot];
 }

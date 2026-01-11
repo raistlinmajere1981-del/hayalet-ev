@@ -2,8 +2,6 @@ import { join } from "path";
 import { readFile, writeFile, mkdir, copyFile } from "fs/promises";
 import { existsSync } from "fs";
 
-// Settings now stored in project directory for portability
-// Path: ./config/settings.json (relative to project root)
 function getConfigDir() {
   return join(process.cwd(), "config");
 }
@@ -11,8 +9,6 @@ function getConfigDir() {
 const configDir = getConfigDir();
 const settingsPath = join(configDir, "settings.json");
 
-// Main process persistence: read/write only (no schema/migration logic)
-// Schema normalization is handled in renderer (settings-schema.js)
 
 export async function loadSettings() {
   try {
@@ -22,7 +18,6 @@ export async function loadSettings() {
       return parsed;
     }
     
-    // Return minimal stub if file doesn't exist; renderer will normalize
     const stub = {
       user: { nickname: "Kullanıcı", avatarPath: "" },
       integrations: { googledrive: {} },
@@ -41,10 +36,8 @@ export async function saveSettings(eventOrSettings, maybeSettings) {
     const settings =
       typeof maybeSettings === "undefined" ? eventOrSettings : maybeSettings;
 
-    // Ensure config directory exists
     await mkdir(configDir, { recursive: true });
 
-    // Backup existing settings BEFORE writing
     const backupPath = `${settingsPath}.bak`;
     if (existsSync(settingsPath)) {
       try {
@@ -54,7 +47,6 @@ export async function saveSettings(eventOrSettings, maybeSettings) {
       }
     }
 
-    // Simple direct write - no atomic rename complexity
     const jsonString = JSON.stringify(settings, null, 2);
     await writeFile(settingsPath, jsonString, { encoding: "utf-8", mode: 0o644 });
 

@@ -15,7 +15,6 @@ import { LogManager } from "../modules/log-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 
-// Alt modüller
 import { renderMessages } from "./analyze/message-renderer.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
 import { initContextMenu, initReadModal, showContextMenu, showReadModal } from "./analyze/context-menu.js";
@@ -32,7 +31,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // INITIALIZATION
   // ============================================
 
   async init() {
@@ -40,7 +38,6 @@ export class AnalyzeController {
     this.applyAvatars();
     this.applyNames();
 
-    // Settings subscription
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(() => {
         this.applyAvatars();
@@ -52,7 +49,6 @@ export class AnalyzeController {
     this.bindActions();
     TrafficManager.onUpdate(() => this.updateSendButtonState());
 
-    // SlotController state subscription
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
         this.applyNames();
@@ -60,7 +56,6 @@ export class AnalyzeController {
       });
     }
 
-    // AppState subscription
     if (!this._unsubAppState) {
       this._unsubAppState = AppState.subscribe(() => {
         this.applyNames();
@@ -70,15 +65,12 @@ export class AnalyzeController {
     await this.updateConnectionStates();
     await this.refreshUploads();
     
-    // Alt modülleri başlat
     initContextMenu();
     initReadModal();
     await this._initDraftSystem();
 
-    // Relay event listener
     this._setupRelayListener();
 
-    // Conversation selection listener
     window.addEventListener("conversation-selected", (e) => {
       if (e.detail?.provider) {
         this._renderMessages(e.detail.provider);
@@ -91,7 +83,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // AVATAR & NAME MANAGEMENT
   // ============================================
 
   applyAvatars() {
@@ -130,25 +121,21 @@ export class AnalyzeController {
     const nickAi1 = AppState.getNickname("ai1");
     const nickAi2 = AppState.getNickname("ai2");
 
-    // Name labels
     const nameAi1 = document.getElementById("name-ai1");
     const nameAi2 = document.getElementById("name-ai2");
     if (nameAi1) nameAi1.textContent = nickAi1;
     if (nameAi2) nameAi2.textContent = nickAi2;
 
-    // Send labels
     const sendLabelAi1 = document.getElementById("send-ai1-label");
     const sendLabelAi2 = document.getElementById("send-ai2-label");
     if (sendLabelAi1) sendLabelAi1.textContent = nickAi1;
     if (sendLabelAi2) sendLabelAi2.textContent = nickAi2;
 
-    // Relay labels
     const relayLabelAi1 = document.getElementById("relay-ai1-label");
     const relayLabelAi2 = document.getElementById("relay-ai2-label");
     if (relayLabelAi1) relayLabelAi1.textContent = nickAi1;
     if (relayLabelAi2) relayLabelAi2.textContent = nickAi2;
 
-    // AI chat button
     const aiChatBtn = document.getElementById("ai-chat-start");
     if (aiChatBtn) {
       aiChatBtn.textContent = `${nickAi1} - ${nickAi2} Sohbet Başlat`;
@@ -156,13 +143,11 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // CONNECTION STATE MANAGEMENT
   // ============================================
 
   async updateConnectionStates() {
     const settings = SettingsManager.getSnapshot();
 
-    // User controls (always active)
     const composeInput = document.getElementById("compose-input");
     const uploadBtn = document.getElementById("upload-add-btn");
     const sendBtn = document.getElementById("compose-send-btn");
@@ -170,7 +155,6 @@ export class AnalyzeController {
     if (uploadBtn) uploadBtn.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
 
-    // AI slots
     ["ai1", "ai2"].forEach((slot) => {
       const hasAccount = !!settings.slots?.[slot]?.accountId;
       const connected = SlotController.isConnected(slot);
@@ -178,7 +162,6 @@ export class AnalyzeController {
       this._updateSlotUI(slot, hasAccount, connected);
     });
 
-    // AI-AI controls
     this._updateAIAIControls(settings);
   }
 
@@ -189,33 +172,28 @@ export class AnalyzeController {
     const messageArea = document.getElementById(`${slot}-message-area`);
     const filterCount = document.getElementById(`filter-count-${slot}`);
 
-    // Status text
     if (status) {
       if (!hasAccount) status.textContent = "Slot boş";
       else if (connected) status.textContent = "Bağlı";
       else status.textContent = "Bağlı değil";
     }
 
-    // Card styling
     if (card) {
       card.classList.toggle("slot-empty", !hasAccount);
       card.classList.toggle("slot-disconnected", hasAccount && !connected);
       card.classList.toggle("slot-connected", hasAccount && connected);
     }
 
-    // Send toggle
     if (sendToggle) {
       sendToggle.disabled = !hasAccount || !connected;
       if (!hasAccount || !connected) sendToggle.checked = false;
     }
 
-    // Message area
     if (messageArea) {
       messageArea.style.opacity = (!hasAccount || !connected) ? "0.5" : "1";
       messageArea.style.pointerEvents = (!hasAccount || !connected) ? "none" : "auto";
     }
 
-    // Filter count
     if (filterCount) {
       filterCount.disabled = !hasAccount || !connected;
     }
@@ -229,26 +207,21 @@ export class AnalyzeController {
     const bothAIsConnected = ai1Connected && ai2Connected;
     const aiChatEnabled = ai1Assigned && ai2Assigned && bothAIsConnected;
 
-    // AI chat button
     const aiChatBtn = document.getElementById("ai-chat-start");
     if (aiChatBtn) aiChatBtn.disabled = !aiChatEnabled;
 
-    // Radio buttons
     const relayRadioAi1 = document.querySelector('input[name="relay-starter"][value="ai1"]');
     const relayRadioAi2 = document.querySelector('input[name="relay-starter"][value="ai2"]');
     if (relayRadioAi1) relayRadioAi1.disabled = !aiChatEnabled;
     if (relayRadioAi2) relayRadioAi2.disabled = !aiChatEnabled;
 
-    // Analyze button
     const analyzeBtn = document.getElementById("compose-start-btn");
     if (analyzeBtn) analyzeBtn.disabled = !aiChatEnabled;
 
-    // Cross checkbox
     this._updateCrossCheckboxState();
   }
 
   // ============================================
-  // ACTION BINDINGS
   // ============================================
 
   bindActions() {
@@ -266,7 +239,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // MESSAGE RENDERING (delegated)
   // ============================================
 
   async _renderMessages(provider) {
@@ -278,7 +250,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // UPLOAD HANDLING (delegated)
   // ============================================
 
   async refreshUploads() {
@@ -299,7 +270,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // DRAFT HANDLING (delegated)
   // ============================================
 
   async _initDraftSystem() {
@@ -322,7 +292,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // SEND & PROTOCOL HANDLING
   // ============================================
 
   handleSend() {
@@ -429,7 +398,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // UI STATE UPDATES
   // ============================================
 
   updateSendButtonState() {
@@ -459,7 +427,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // HELPERS
   // ============================================
 
   _setupRelayListener() {
@@ -495,7 +462,6 @@ export class AnalyzeController {
   }
 
   // ============================================
-  // LIFECYCLE
   // ============================================
 
   async onShow() {

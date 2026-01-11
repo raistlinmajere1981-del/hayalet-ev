@@ -10,7 +10,6 @@ import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 export async function attachFiles(webview, { files }) {
   await waitForDomReady(webview);
 
-  // Validate files
   const validation = validateFiles(files);
   if (!validation.valid) {
     return createErrorResponse(validation.message);
@@ -23,7 +22,6 @@ export async function attachFiles(webview, { files }) {
       return { success: false, message: 'Dosya listesi boş' };
     }
 
-    // Convert base64 to File objects and DataTransfer
     function base64ToUint8(base64) {
       const binary = atob(base64);
       const len = binary.length;
@@ -41,9 +39,8 @@ export async function attachFiles(webview, { files }) {
       dataTransfer.items.add(f);
     });
 
-    // Get file input selectors from config with fallbacks
     const config = window.__hayalet_provider_config;
-    let inputSelectors = ['input[type="file"][multiple]', 'input[type="file"]']; // default fallback
+    let inputSelectors = ['input[type="file"][multiple]', 'input[type="file"]'];
     
     if (config && config.fileInputSelectors) {
       inputSelectors = config.fileInputSelectors;
@@ -51,7 +48,6 @@ export async function attachFiles(webview, { files }) {
       inputSelectors = [config.selectors.fileInput];
     }
 
-    // Some providers (Gemini) create the <input type="file"> only after clicking an upload/attach button.
     const attachButtonSelector = config?.selectors?.attachButton;
     if (attachButtonSelector) {
       try {
@@ -60,15 +56,12 @@ export async function attachFiles(webview, { files }) {
       } catch (_) {}
     }
 
-    // Helper: deep querySelector that also searches open shadow roots
     function querySelectorDeep(selector) {
-      // 1) normal DOM
       try {
         const direct = document.querySelector(selector);
         if (direct) return direct;
       } catch (_) {}
 
-      // 2) open shadow roots
       const all = Array.from(document.querySelectorAll("*"));
       for (const el of all) {
         const sr = el.shadowRoot;
@@ -81,7 +74,6 @@ export async function attachFiles(webview, { files }) {
       return null;
     }
 
-    // Find file input element
     let input = null;
     for (const selector of inputSelectors) {
       try {
@@ -99,7 +91,6 @@ export async function attachFiles(webview, { files }) {
       };
     }
 
-    // Set files and trigger events
     input.files = dataTransfer.files;
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));

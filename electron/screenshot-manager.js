@@ -1,4 +1,4 @@
-import { dirname, join } from 'path';
+import { dirname } from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { nativeImage, BrowserWindow } from 'electron';

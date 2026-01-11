@@ -1,4 +1,3 @@
-// Ana uygulama kontrolörü
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
 import { SettingsController } from "./pages/settings.js";
@@ -12,7 +11,6 @@ import { LogManager } from "./modules/log-manager.js";
 import { TrafficManager } from "./modules/traffic-manager.js";
 import { CoreEngine } from "./modules/core-engine.js";
 import { SettingsManager } from "./modules/settings-manager.js";
-// FIX: Import SlotEvent for proper state change subscription
 import { SlotController, SlotEvent } from "./modules/slot-controller.js";
 import { ConversationListManager } from "./modules/conversation-list-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
@@ -94,10 +92,8 @@ function ensureElectronApiFallback() {
     readArchivesIndex: async () => [],
     writeArchivesIndex: async () => ({ success: true }),
     removeArchive: async () => {
-      /* noop */
     },
     openPath: async () => {
-      /* noop */
     },
 
     appendLog: async (payload) => {
@@ -131,10 +127,8 @@ function ensureElectronApiFallback() {
     }),
     commandArchiveCopy: async () => ({ success: true }),
     commandCleanupJob: async () => {
-      /* noop */
     },
     commandMoveFailed: async () => {
-      /* noop */
     },
 
     whisperLoad: async (_provider) => ({ pending: [], done: [] }),
@@ -146,16 +140,12 @@ function ensureElectronApiFallback() {
     capturePage: async () => ({ success: false }),
     screenshotCapture: async () => ({ success: false }),
     windowMinimize: () => {
-      /* noop */
     },
     windowToggleFullscreen: () => {
-      /* noop */
     },
     windowClose: () => {
-      /* noop */
     },
     appRestart: () => {
-      /* noop */
     },
     generateTree: async () => ({ success: false }),
     fetchUrl: async () => null,
@@ -185,18 +175,15 @@ function injectPageTemplates() {
   }
 }
 
-export async function initApp() {
-  // LogManager.init() ve SettingsManager.load() CoreEngine.init() içinde yapılıyor
+async function initApp() {
   await CoreEngine.init();
   try {
     document.documentElement.setAttribute("spellcheck", "false");
     document.body?.setAttribute("spellcheck", "false");
   } catch (e) {
-    /* noop */
   }
   injectPageTemplates();
   TrafficManager.init();
-  // SettingsManager.load() CoreEngine.init() içinde zaten yapıldı
 
   try {
     if (!window.__hayalet_settings_unsub) {
@@ -209,7 +196,6 @@ export async function initApp() {
       });
     }
   } catch (_) {
-    /* noop */
   }
 
   controllers.entrance = new EntranceHallController();
@@ -245,7 +231,6 @@ export async function initApp() {
   setupTopBarButtons();
   setupReportPanel();
 
-  // Cleanup on window close
   window.addEventListener("beforeunload", async () => {
     try {
       if (controllers.asistan?.isConnected) {
@@ -260,8 +245,6 @@ export async function initApp() {
   updateIndicatorAvatars();
   AppState.subscribe(updateIndicatorAvatars);
 
-  // FIX: SlotController state değişikliklerini dinle (topbar bağlantı göstergeleri için)
-  // Bu subscription olmadan bağlantı durumu değiştiğinde topbar avatarları güncellenmiyor
   SlotController.on(SlotEvent.STATE_CHANGED, () => {
     updateIndicatorAvatars();
   });
@@ -277,7 +260,6 @@ export async function waitForDomReady(webview) {
       webview.addEventListener("dom-ready", resolve, { once: true });
     });
   } catch (e) {
-    // ignore
   }
 }
 
@@ -581,7 +563,6 @@ async function updateIndicatorAvatars() {
         }
       }
     } catch (e) {
-      /* noop */
     }
   });
 }

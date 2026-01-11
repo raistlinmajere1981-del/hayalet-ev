@@ -16,13 +16,11 @@ import {
 export async function attachFiles(webview, { files }) {
   console.log("[attachFiles-uguu] called", files && files.length);
 
-  // Validate files
   const validation = validateFiles(files);
   if (!validation.valid) {
     return createErrorResponse(validation.message);
   }
 
-  // Check service availability
   if (!isServiceAvailable("UGUU")) {
     return createErrorResponse("Uguu servisi mevcut değil");
   }

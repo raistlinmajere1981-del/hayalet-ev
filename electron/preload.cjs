@@ -6,8 +6,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   loadSettings: () => ipcRenderer.invoke("load-settings"),
   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
-  // Legacy IPC removed: createAccount, assignAccountToSlot
-  // Use SettingsManager.save() in renderer instead
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   readArchivesIndex: () => ipcRenderer.invoke("read-archives-index"),
   writeArchivesIndex: (entries) =>
@@ -49,7 +47,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
   archiveSync: (payload) => ipcRenderer.invoke("archive-sync", payload),
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
-  // Yeni log metodları
   getSessionId: () => ipcRenderer.invoke("get-session-id"),
   readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
   queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
@@ -63,7 +60,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readConsoleLogs: (tail) => ipcRenderer.invoke("read-console-logs", tail),
   readErrorLogs: (tail) => ipcRenderer.invoke("read-error-logs", tail),
   getLogPaths: () => ipcRenderer.invoke("get-log-paths"),
-  // Console log forwarding listener
   onConsoleLogForward: (callback) =>
     ipcRenderer.on("console-log-forward", (event, data) => callback(data)),
   whisperLoad: (provider) => ipcRenderer.invoke("whisper-load", provider),
@@ -89,7 +85,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) =>
     ipcRenderer.invoke("generate-tree", basePath, options),
-  // Assistant IPC (Web mode only)
   assistantConnect: (provider) =>
     ipcRenderer.invoke("assistant-connect", provider),
   assistantDisconnect: () => ipcRenderer.invoke("assistant-disconnect"),
@@ -101,7 +96,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 try {
-  // Guard to ensure this only runs in the main application window, not in a provider webview.
   const isMainFrame =
     !window.location.href.startsWith("http") ||
     window.location.hostname.includes("localhost");
@@ -115,7 +109,6 @@ try {
           el.autocomplete = "off";
         });
       } catch (err) {
-        /* noop */
       }
     }
 
@@ -125,17 +118,13 @@ try {
         window.__hayalet_init_injected = true;
         disableSpellcheck();
 
-        // Create a script tag and set its src to load the main app script.
-        // This is more CSP-friendly than setting textContent.
         const s = document.createElement("script");
         s.type = "module";
         s.src = "/js/app.js"; // Set the src directly
         s.onload = () => {
           console.log("[Hayalet-Preload] /js/app.js loaded via src.");
-          // The app.js module itself should now handle calling initApp.
         };
         s.onerror = (err) => {
-          // It's a bit tricky to get detailed error from script tags
           console.error(
             "[Hayalet-Preload] Error loading /js/app.js via src:",
             JSON.stringify(err),
@@ -155,5 +144,4 @@ try {
     }
   }
 } catch (e) {
-  /* noop */
 }

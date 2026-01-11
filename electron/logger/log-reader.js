@@ -26,7 +26,6 @@ export async function readConsoleLogs(tail = 100) {
       return "No session logs found";
     }
     
-    // Tüm console chunk'larını oku
     const files = await readdir(sessionDir);
     const consoleFiles = files
       .filter(f => f.startsWith("console-") && f.endsWith(".log"))
@@ -90,7 +89,6 @@ export async function readAllLogs(targetSessionId = null) {
       return { ...result, error: "Session not found" };
     }
     
-    // Console logs
     const files = await readdir(sessionDir);
     const consoleFiles = files
       .filter(f => f.startsWith("console-") && f.endsWith(".log"))
@@ -100,13 +98,11 @@ export async function readAllLogs(targetSessionId = null) {
       result.console += await readFile(join(sessionDir, file), "utf-8");
     }
     
-    // Error log
     const errorPath = join(sessionDir, "error.log");
     if (existsSync(errorPath)) {
       result.error = await readFile(errorPath, "utf-8");
     }
     
-    // Structured logs (JSONL)
     const structuredPath = join(sessionDir, "structured.jsonl");
     if (existsSync(structuredPath)) {
       const content = await readFile(structuredPath, "utf-8");
@@ -123,13 +119,11 @@ export async function readAllLogs(targetSessionId = null) {
         .filter(Boolean);
     }
     
-    // Meta
     const metaPath = join(sessionDir, "meta.json");
     if (existsSync(metaPath)) {
       result.meta = JSON.parse(await readFile(metaPath, "utf-8"));
     }
     
-    // Summary
     const summaryPath = join(sessionDir, "summary.json");
     if (existsSync(summaryPath)) {
       result.summary = JSON.parse(await readFile(summaryPath, "utf-8"));
@@ -148,11 +142,11 @@ export async function readAllLogs(targetSessionId = null) {
  */
 export async function queryLogs(query = {}) {
   const {
-    type = "all",       // console, error, all
-    source = null,      // MAIN, RENDERER, WEBVIEW-AI1, etc. (glob destekli)
-    contains = null,    // İçerik arama
-    level = null,       // LOG, WARN, ERROR, DEBUG
-    since = null,       // ISO timestamp
+    type = "all",
+    source = null,
+    contains = null,
+    level = null,
+    since = null,
     tail = 100,
     sessionId = null,
   } = query;
@@ -168,7 +162,6 @@ export async function queryLogs(query = {}) {
       lines = lines.concat(logs.error.split("\n"));
     }
     
-    // Filtrele
     let filtered = lines.filter(l => l.trim());
     
     if (source) {
@@ -218,7 +211,6 @@ export async function calculateLogStats() {
       return { totalLogs, errorCount, warnCount };
     }
     
-    // Error log'dan hata ve uyarı sayısı
     const errorPath = join(sessionDir, "error.log");
     if (existsSync(errorPath)) {
       const errorContent = await readFile(errorPath, "utf-8");
@@ -227,7 +219,6 @@ export async function calculateLogStats() {
       warnCount = errorLines.filter(l => l.includes("[WARN]")).length;
     }
     
-    // Console loglarını say
     const files = await readdir(sessionDir);
     for (const file of files) {
       if (file.startsWith("console-") && file.endsWith(".log")) {
@@ -236,7 +227,6 @@ export async function calculateLogStats() {
       }
     }
   } catch (_err) {
-    // İstatistik toplama hatası
   }
   
   return { totalLogs, errorCount, warnCount };

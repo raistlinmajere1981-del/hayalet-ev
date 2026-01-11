@@ -20,7 +20,6 @@ export class WebviewHandler {
   async init(url) {
     this.currentUrl = url;
     
-    // Provider config'ini al (selectors için)
     this.config = getProviderConfig("opencode");
     
     return new Promise((resolve, reject) => {
@@ -29,15 +28,12 @@ export class WebviewHandler {
         reject(new Error("Webview load timeout (30s)"));
       }, 30000);
 
-      // Load event
       const onLoad = () => {
         this.isLoaded = true;
         console.log("[WebviewHandler] Loaded:", url);
         cleanup();
         
-        // DOM hazır olması için daha uzun bekleme (React render)
         setTimeout(async () => {
-          // DOM analizi yap (debug için)
           try {
             await this.analyzeDOM();
           } catch (e) {
@@ -47,7 +43,6 @@ export class WebviewHandler {
         }, 2000);
       };
 
-      // Error event
       const onError = (event) => {
         console.error("[WebviewHandler] Load error:", event);
         cleanup();
@@ -63,7 +58,6 @@ export class WebviewHandler {
       this.webview.addEventListener("did-finish-load", onLoad);
       this.webview.addEventListener("did-fail-load", onError);
 
-      // URL'i yükle
       this.webview.src = url;
     });
   }
@@ -162,19 +156,13 @@ export class WebviewHandler {
   async findInputElement() {
     const script = `
       (function() {
-        // OpenCode input alanı selectors - öncelik sırasına göre
         const inputSelectors = [
-          // OpenCode specific
           '[data-component="prompt-input"]',
           '[contenteditable="true"][class*="prompt"]',
-          // Generic contentEditable
           '[contenteditable="true"]',
           '[contenteditable="plaintext-only"]',
-          // Textarea variants
           'textarea',
-          // Role-based
           '[role="textbox"]',
-          // ProseMirror (common in chat UIs)
           '.ProseMirror',
           '.tiptap'
         ];
@@ -182,7 +170,7 @@ export class WebviewHandler {
         for (const sel of inputSelectors) {
           try {
             const el = document.querySelector(sel);
-            if (el && el.offsetParent !== null) { // Visible check
+            if (el && el.offsetParent !== null) {
               return {
                 found: true,
                 selector: sel,
@@ -209,20 +197,16 @@ export class WebviewHandler {
       throw new Error("Webview henüz yüklenmedi");
     }
 
-    // Önce input alanını kontrol et
     const inputInfo = await this.findInputElement();
     console.log("[WebviewHandler] Input search result:", inputInfo);
     
     if (!inputInfo?.found) {
-      // Tekrar DOM analizi yap
       await this.analyzeDOM();
       throw new Error("Input alanı bulunamadı - Lütfen OpenCode'da bir proje/session açın");
     }
 
-    // Önceki mesaj sayısını kaydet (cevap tespiti için)
     this.lastMessageCount = await this.getMessageCount();
 
-    // Escape message for JavaScript string
     const escapedMessage = message
       .replace(/\\/g, "\\\\")
       .replace(/'/g, "\\'")
@@ -231,7 +215,6 @@ export class WebviewHandler {
 
     const script = `
       (function() {
-        // Input alanını bul - OpenCode specific selector önce
         const input = document.querySelector('[data-component="prompt-input"]') 
                    || document.querySelector('[contenteditable="true"]')
                    || document.querySelector('textarea');
@@ -240,32 +223,24 @@ export class WebviewHandler {
           return { success: false, error: 'Input alanı bulunamadı' };
         }
         
-        // Mesajı yaz
         input.focus();
         
-        // ContentEditable için (OpenCode bu yöntemi kullanıyor)
         if (input.isContentEditable) {
-          // Önce temizle
           input.innerHTML = '';
-          // Mesajı ekle
           input.textContent = '${escapedMessage}';
           
-          // React için input event tetikle
           input.dispatchEvent(new InputEvent('input', { 
             bubbles: true, 
             inputType: 'insertText',
             data: '${escapedMessage}'
           }));
         } else {
-          // Normal textarea/input için
           input.value = '${escapedMessage}';
           input.dispatchEvent(new Event('input', { bubbles: true }));
         }
         
-        // Kısa bir delay sonra Enter ile gönder
         return new Promise((resolve) => {
           setTimeout(() => {
-            // Enter tuşu ile gönder
             const enterEvent = new KeyboardEvent('keydown', {
               key: 'Enter',
               code: 'Enter',
@@ -298,7 +273,6 @@ export class WebviewHandler {
   async getMessageCount() {
     const script = `
       (function() {
-        // OpenCode session turns
         const turns = document.querySelectorAll('[data-slot="session-turn-content"]');
         return turns.length;
       })();
@@ -313,7 +287,6 @@ export class WebviewHandler {
   async getLastResponse() {
     const script = `
       (function() {
-        // OpenCode markdown response - en son session turn içindeki markdown
         const markdowns = document.querySelectorAll('[data-component="markdown"][data-slot="session-turn-markdown"]');
         
         if (markdowns.length > 0) {
@@ -345,39 +318,31 @@ export class WebviewHandler {
   async isThinking() {
     const script = `
       (function() {
-        // OpenCode'da thinking sırasında response-trigger içinde animasyonlu element var
-        // Tamamlandığında "Show steps · Xs" şeklinde statik button görünür
         
-        // Animasyonlu SVG kontrolü (thinking sırasında dönen kare)
         const triggers = document.querySelectorAll('[data-slot="session-turn-response-trigger"]');
         if (triggers.length === 0) return false;
         
         const lastTrigger = triggers[triggers.length - 1];
         
-        // Button içinde "Show steps" yazıyorsa tamamlanmış demektir
         const button = lastTrigger.querySelector('button');
         if (button) {
           const text = button.innerText || button.textContent;
-          // "Show steps · Xs" veya "Show steps · Xm, Xs" formatı = tamamlandı
           if (text.includes('Show steps') && /\\d+(\\.\\d+)?s/.test(text)) {
-            return false; // Tamamlandı
+            return false;
           }
         }
         
-        // Henüz response-trigger yoksa veya içeriği farklıysa thinking devam ediyor
-        // Ayrıca animasyonlu element kontrolü
         const animatedElements = lastTrigger.querySelectorAll('[class*="animate"], svg[class*="spin"], [data-component="loading"]');
         if (animatedElements.length > 0) {
           return true;
         }
         
-        // Summary section henüz oluşmadıysa thinking devam ediyor
         const turns = document.querySelectorAll('[data-slot="session-turn-content"]');
         if (turns.length > 0) {
           const lastTurn = turns[turns.length - 1];
           const summary = lastTurn.querySelector('[data-slot="session-turn-summary-section"]');
           if (!summary) {
-            return true; // Summary henüz yok, thinking devam ediyor
+            return true;
           }
         }
         
@@ -392,36 +357,31 @@ export class WebviewHandler {
    */
   async waitForResponse(timeout = 120000) {
     const startTime = Date.now();
-    const pollInterval = 1000; // 1 saniye aralıklarla kontrol
+    const pollInterval = 1000;
     const initialCount = this.lastMessageCount;
     
     console.log("[WebviewHandler] Waiting for response, initial count:", initialCount);
 
-    // İlk bekleme - mesajın işlenmeye başlaması için
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     while (Date.now() - startTime < timeout) {
-      // Mesaj sayısı arttı mı?
       const currentCount = await this.getMessageCount();
       
       if (currentCount > initialCount) {
         console.log("[WebviewHandler] New message detected, count:", currentCount);
         
-        // Thinking bitene kadar bekle
         let isThinking = await this.isThinking();
         let thinkingWaitCount = 0;
         
-        while (isThinking && thinkingWaitCount < 300) { // Max 5 dakika thinking
+        while (isThinking && thinkingWaitCount < 300) {
           console.log("[WebviewHandler] Still thinking...");
           await new Promise(resolve => setTimeout(resolve, pollInterval));
           isThinking = await this.isThinking();
           thinkingWaitCount++;
         }
         
-        // Thinking bitti, kısa bir bekleme daha (DOM güncellemesi için)
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Son cevabı al
         const response = await this.getLastResponse();
         if (response) {
           console.log("[WebviewHandler] Response received, length:", response.length);

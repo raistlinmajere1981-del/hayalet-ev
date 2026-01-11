@@ -1,4 +1,3 @@
-// FileManager - tek yetkili disk katmanı (IPC üzerinden)
 import { LogManager } from "./log-manager.js";
 
 class FileManagerClass {
@@ -30,7 +29,6 @@ class FileManagerClass {
   async readUploadFiles(filterNames = []) {
     const results = [];
 
-    // Eğer batch (toplu) okuma varsa kullan (performans optimizasyonu)
     if (window.electronAPI?.readFilesMulti) {
       try {
         const paths = filterNames
@@ -79,7 +77,6 @@ class FileManagerClass {
       }
     }
 
-    // Ardışık (sıralı) yedek yöntem
     for (const entry of filterNames) {
       const base = entry?.name || (entry?.path || "").split(/[/\\]/).pop();
       const path = entry?.path || entry?.tempPath || entry?.commandPath;
@@ -164,7 +161,6 @@ class FileManagerClass {
     await window.electronAPI
       ?.commandCleanupJob?.({ jobId, tempPaths })
       .catch(() => {
-        /* noop */
       });
   }
 

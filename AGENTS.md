@@ -152,6 +152,95 @@ mcp-server/                 # MCP Protocol Server
 
 ---
 
+## ⚠️ Dikkat Edilmesi Gerekenler
+
+### Silinmemesi Gereken Modüller
+Bu modüller "kullanılmıyor" gibi görünebilir ama kritik bağımlılıkları var:
+
+| Modül | Kullananlar | Not |
+|-------|-------------|-----|
+| `upload-services.js` | catbox.js, uguu.js, tmpfile.js, googledrive.js | File upload metodları için kritik |
+| `file-utils.js` | Tüm file upload metodları (6 dosya) | Silme! |
+| `url-utils.js` | slot/url-handler, traffic-manager, webview-manager, conversation-syncer | URL işlemleri için kritik |
+| `provider-registry.js` | 10 dosya tarafından kullanılıyor | Provider sistemi için merkezi |
+
+### IPC Üzerinden Çağrılan Modüller
+Bu modüller doğrudan import edilmez, `electron/main.js`'de IPC handler'ları üzerinden çağrılır:
+
+- `device-manager.js` → `deviceActionHandler` (mouse, keyboard kontrolleri)
+- `screenshot-manager.js` → `screenshot` IPC handler
+- `whisper-manager.js` → `whisperLoad`, `whisperSave`
+- `googledrive-manager.js` → OAuth ve sync işlemleri
+- `server-commands.js` → Terminal/server komutları
+- `asistan-manager.js` → Asistan modu yönetimi
+
+### Provider Config'leri
+AI siteleri DOM yapılarını sık değiştiriyor. Config dosyalarındaki selector'lar kırılabilir:
+- `providers/chatgpt/config.js`
+- `providers/gemini/config.js`
+- `providers/grok/config.js`
+
+Selector değişikliği yapmadan önce ilgili AI sitesinde manuel test yap.
+
+---
+
+## 🗺️ Modül Bağımlılık Haritası
+
+### Kritik Shared Modüller
+```
+src/js/modules/webview/methods/shared/
+├── upload-services.js ← catbox.js, uguu.js, tmpfile.js, googledrive.js
+├── file-utils.js ← catbox.js, uguu.js, tmpfile.js, googledrive.js, dragdrop.js, injection.js
+└── url-utils.js ← url-handler.js, traffic-manager.js, webview-manager.js, conversation-syncer.js, message-sender.js
+```
+
+### Core Engine Bağımlılıkları
+```
+core-engine.js
+├── app.js (entry point)
+├── pages/analyze.js
+├── pages/entrance.js
+├── pages/server.js
+├── pages/webview.js
+├── pages/whisper.js
+├── commands/ai-chat-commands.js
+└── conversation-list-manager.js
+```
+
+### Provider Registry Bağımlılıkları
+```
+provider-registry.js
+├── webview-manager.js
+├── webview/lifecycle-manager.js
+├── webview/conversation-syncer.js
+├── webview/message-sender.js
+├── webview/index.js
+├── slot/settings-sync.js
+├── traffic-manager.js
+├── traffic/loading-tracker.js
+├── traffic/probe-script-builder.js
+└── pages/webview.js
+```
+
+### Electron Main Process Bağımlılıkları
+```
+electron/main.js
+├── device-manager.js (IPC: deviceAction)
+├── screenshot-manager.js (IPC: screenshot)
+├── whisper-manager.js (IPC: whisperLoad, whisperSave)
+├── googledrive-manager.js (IPC: OAuth, sync)
+├── settings-manager.js (IPC: load-settings, save-settings)
+├── command-manager.js (IPC: command-write, command-read)
+├── file-manager.js (IPC: file operations)
+├── webview-manager.js (IPC: catboxUpload, uguuUpload)
+├── server-commands.js (IPC: server commands)
+├── asistan-manager.js (IPC: asistan mode)
+├── log-manager.js (logging)
+└── console-logger.js (session logging)
+```
+
+---
+
 ## 🔑 Key Concepts
 
 ### 0. Modular Architecture Pattern
@@ -358,7 +447,15 @@ Bilinen hata pattern'leri otomatik olarak tespit edilir ve çözüm önerileri e
 - **Async:** Always use `async/await`, never callbacks
 - **Error Handling:** Always wrap async operations in try-catch
 - **Naming:** Descriptive camelCase for functions, PascalCase for classes
-- **Comments:** Turkish for inline comments, English for JSDoc (per project convention)
+- **Comments:** Minimize comments - only add AI-assistant-friendly comments:
+  - ✅ JSDoc blocks (`/** ... */`) for function/module documentation
+  - ✅ Section separators (`// ===...`, `// ---...`) for code organization
+  - ✅ Selector explanations in config files (`// Turkish:`, `// Primary:`, `// Fallback:`)
+  - ✅ URL references and external documentation links
+  - ✅ Critical warnings (`// WARNING:`, `// HACK:`, `// TODO:`)
+  - ❌ Avoid: Simple explanatory comments that describe obvious code
+  - ❌ Avoid: Commented-out code blocks
+  - ❌ Avoid: Redundant inline comments
 - **Documentation:** All Markdown files in Turkish
 
 ### File Naming Conventions
@@ -514,6 +611,52 @@ get_error_hints --errorMessage "Cannot read property 'click' of null" --provider
 # Session özeti
 get_session_summary
 list_log_sessions --limit 5
+```
+
+#### Application Testing with Logs
+Uygulama değişikliklerini test etmek için `npm run start` ile çalıştırıp log dosyalarını analiz edin:
+
+```bash
+# 1. Uygulamayı başlat (arka planda)
+npm run start &
+APP_PID=$!
+
+# 2. Bir süre bekle (10-15 saniye)
+sleep 12
+
+# 3. Uygulamayı kapat
+kill $APP_PID 2>/dev/null
+pkill -f "electron" 2>/dev/null
+
+# 4. En son log klasörünü bul ve analiz et
+LATEST_LOG=$(ls -t logs/ | head -1)
+echo "Session: $LATEST_LOG"
+
+# 5. Log dosyalarını kontrol et
+ls -la "logs/$LATEST_LOG/"              # Dosya listesi
+cat "logs/$LATEST_LOG/meta.json"        # Session meta bilgisi
+cat "logs/$LATEST_LOG/error.log"        # Hatalar (boş olmalı)
+cat "logs/$LATEST_LOG/summary.json"     # Session özeti
+tail -30 "logs/$LATEST_LOG/console-001.log"     # Console logları
+tail -20 "logs/$LATEST_LOG/structured.jsonl"    # Structured eventler
+```
+
+**Başarılı Test Kriterleri:**
+- ✅ `error.log` boş veya sadece uyarılar içermeli
+- ✅ `summary.json` → `endReason: "normal"` olmalı
+- ✅ `structured.jsonl` → Beklenen event'ler loglanmış olmalı
+- ✅ `console-001.log` → Kritik hata mesajı olmamalı
+
+**Yaygın Log Analiz Senaryoları:**
+```bash
+# Sadece hataları filtrele
+grep -i "error\|fail\|exception" "logs/$LATEST_LOG/console-001.log"
+
+# Belirli bir modülün loglarını filtrele
+grep "webview\|slot" "logs/$LATEST_LOG/structured.jsonl" | jq .
+
+# Import/syntax hatalarını kontrol et
+grep -i "failed to resolve\|cannot find\|syntax" "logs/$LATEST_LOG/console-001.log"
 ```
 
 ### Testing with MCP Server

@@ -20,7 +20,6 @@ import {
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-// Tool handlers
 import { listProviders, addProvider } from "./tools/provider-tools.js";
 import { testElectron, listPlugins } from "./tools/electron-tools.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "./tools/log-tools.js";
@@ -31,7 +30,6 @@ const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, "..");
 const LOG_DIR = join(PROJECT_ROOT, "logs");
 
-// MCP Server oluştur
 const server = new Server(
   {
     name: "hayalet-ev-mcp",
@@ -44,7 +42,6 @@ const server = new Server(
   }
 );
 
-// Tool definitions
 const TOOL_DEFINITIONS = [
   {
     name: "list_providers",
@@ -128,12 +125,10 @@ const TOOL_DEFINITIONS = [
   },
 ];
 
-// Tool listesini sun
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOL_DEFINITIONS };
 });
 
-// Tool çağrılarını işle
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
@@ -174,7 +169,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Server'ı başlat
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

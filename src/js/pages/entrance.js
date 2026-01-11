@@ -1,4 +1,3 @@
-// Ana salon (Giriş) sayfası controller'ı
 import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
@@ -19,20 +18,16 @@ export class EntranceHallController {
     this.updateUI();
     this.renderPending();
 
-    // Realtime settings sync (avatar/nickname/slot assignment changes)
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(
         ({ settings, changedPaths }) => {
-          // UI; no disk reload here
           this.applySettingsToUI(settings, changedPaths);
         },
       );
     }
 
-    // SlotController state değişikliklerini dinle (bağlantı durumu için)
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
-        // Sadece bağlantı durumu değişikliklerinde UI'ı güncelle
         this.updateUI();
       });
     }
@@ -40,7 +35,6 @@ export class EntranceHallController {
 
   setupEventListeners() {
     try {
-      // Only AI slots have toggle buttons (user always active)
       ["ai1", "ai2"].forEach((u) => {
         const btn = document.getElementById(`${u}-toggle-btn`);
         if (btn) {
@@ -101,7 +95,6 @@ export class EntranceHallController {
       return "";
     };
 
-    // Allow clearing avatar if empty
     this.updateAvatar("user", getAvatar("user"));
     this.updateAvatar("ai1", getAvatar("ai1"));
     this.updateAvatar("ai2", getAvatar("ai2"));
@@ -113,7 +106,6 @@ export class EntranceHallController {
     const avatarElement = document.getElementById(`${userType}-avatar`);
     if (!avatarElement) return;
 
-    // Slot boşaltıldığında / avatar kaldırıldığında eski resmi temizle
     if (!avatarPath) {
       avatarElement.innerHTML = "";
       avatarElement.style.backgroundImage = "";
@@ -150,7 +142,6 @@ export class EntranceHallController {
       return;
     }
 
-    // User always active; only AI slots can be connected
     if (userType === "user") {
       return;
     }
@@ -158,7 +149,6 @@ export class EntranceHallController {
     const nickname = AppState.getNickname(userType);
     LogManager.addEvent("entrance", "info", `${nickname} bağlanıyor...`);
 
-    // AI slots require an assigned account
     const hasAccount = !!settings?.slots?.[userType]?.accountId;
     if (!hasAccount) {
       this.updateUserStatus(userType, false);
@@ -181,7 +171,6 @@ export class EntranceHallController {
   }
 
   async disconnectUser(userType) {
-    // User always active; only AI slots can be disconnected
     if (userType === "user") {
       return;
     }
@@ -213,7 +202,6 @@ export class EntranceHallController {
   }
 
   async updateUserStatus(userType) {
-    // New UI gating based on slot state (empty/assigned/connected)
     const settings = SettingsManager.getSnapshot();
     const statusDot = document.getElementById(`${userType}-status-dot`);
     const statusText = document.getElementById(`${userType}-status-text`);
@@ -221,7 +209,7 @@ export class EntranceHallController {
     const avatarEl = document.getElementById(`${userType}-avatar`);
 
     if (userType === "user") {
-      const connected = true; // user always active (no connection state)
+      const connected = true;
 
       if (statusDot) {
         if (connected) {
@@ -243,7 +231,6 @@ export class EntranceHallController {
         toggleBtn.classList.toggle("btn-secondary", connected);
       }
 
-      // Avatar
       if (avatarEl) {
         const avatarPath = settings.user?.avatarPath || "";
         if (avatarPath) {
@@ -271,11 +258,9 @@ export class EntranceHallController {
       return;
     }
 
-    // AI slots: empty/assigned/connected logic
     const hasAccount = !!settings.slots?.[userType]?.accountId;
     const connected = SlotController.isConnected(userType);
 
-    // Avatar
     if (avatarEl) {
       const accountId = settings.slots?.[userType]?.accountId;
       const account = accountId
@@ -301,11 +286,9 @@ export class EntranceHallController {
       } else {
         avatarEl.style.backgroundImage = "";
       }
-      // Grileştir if assigned but disconnected
       avatarEl.style.opacity = hasAccount && !connected ? "0.5" : "1";
     }
 
-    // Status dot + text
     if (statusDot) {
       if (!hasAccount) {
         statusDot.classList.remove("connected");
@@ -315,7 +298,7 @@ export class EntranceHallController {
         statusDot.style.backgroundColor = "#4CAF50";
       } else {
         statusDot.classList.remove("connected");
-        statusDot.style.backgroundColor = "#FFA726"; // Orange for assigned+disconnected
+        statusDot.style.backgroundColor = "#FFA726";
       }
     }
 
@@ -329,7 +312,6 @@ export class EntranceHallController {
       }
     }
 
-    // Toggle button
     if (toggleBtn) {
       if (!hasAccount) {
         toggleBtn.textContent = "Hesap Ata";
@@ -350,7 +332,6 @@ export class EntranceHallController {
   }
 
   async updateUI() {
-    // Update user + AI slots
     ["user", "ai1", "ai2"].forEach((userType) => {
       this.updateUserStatus(userType);
     });
@@ -406,15 +387,11 @@ export class EntranceHallController {
   async onShow() {
     CoreEngine.pauseWhispers();
     await this.loadUserSettings();
-    // applyDefaultConnections() sadece init()'te çağrılmalı
     this.updateUI();
   }
 
   onHide() {
     CoreEngine.resumeWhispers(true);
-    // ❌ SUBSCRIPTIONLARI TEMİZLEME!
-    // Sayfa değiştiğinde subscriptionlar aktif kalmalı
-    // Aksi halde settings/bağlantı değişikliklerinde UI güncellenmiyor
   }
 
   handleWhisperClear() {

@@ -1,5 +1,3 @@
-// AppState - global UI state (activeProvider, activeConversations, chat targets)
-// Connection/nickname state is derived from SettingsManager, not stored here
 import { SettingsManager } from "./settings-manager.js";
 
 class AppStateClass {
@@ -33,7 +31,6 @@ class AppStateClass {
     this.notify();
   }
 
-  // Derived from settings (not stored in AppState)
   getNickname(provider) {
     const settings = SettingsManager.getSnapshot();
     if (provider === "user") {
@@ -57,8 +54,6 @@ class AppStateClass {
     return provider.toUpperCase();
   }
 
-  // Connection state artık SlotController tarafından yönetiliyor
-  // SlotController.isConnected(provider) kullanın
 
   setChatTargets(targets = []) {
     const uniq = Array.from(new Set(targets.filter(Boolean)));
@@ -97,7 +92,6 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
-        // AppState listener error - silent
       }
     });
   }

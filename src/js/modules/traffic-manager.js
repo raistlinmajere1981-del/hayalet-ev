@@ -20,7 +20,6 @@ import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } 
 import { isUrlExcluded as checkUrlExcluded } from "./webview/methods/shared/url-utils.js";
 
 // ============================================
-// CONFIGURATION
 // ============================================
 const TIMING_CONFIG = {
   pollIntervalMs: 2000,
@@ -68,7 +67,6 @@ const defaultState = () => ({
 });
 
 // ============================================
-// TRAFFIC MANAGER CLASS
 // ============================================
 class TrafficManagerClass {
   constructor() {
@@ -79,14 +77,12 @@ class TrafficManagerClass {
     this.pollTimer = null;
     this._runners = {};
 
-    // Trackers
     this.loadingTracker = new LoadingTracker(TIMING_CONFIG);
     this.thinkingTracker = new ThinkingTracker(TIMING_CONFIG);
     this.sendTracker = new SendTracker(TIMING_CONFIG);
   }
 
   // ============================================
-  // URL EXCLUSION
   // ============================================
 
   isUrlExcluded(providerSlot, url) {
@@ -103,7 +99,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // LISTENER API
   // ============================================
 
   onUpdate(listener) {
@@ -120,13 +115,11 @@ class TrafficManagerClass {
       try {
         listener(snapshot);
       } catch (_err) {
-        // Silent
       }
     });
   }
 
   // ============================================
-  // INITIALIZATION
   // ============================================
 
   init() {
@@ -145,7 +138,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // WEBVIEW MANAGEMENT
   // ============================================
 
   attachWebview(provider, webviewEl) {
@@ -184,7 +176,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // START / STOP
   // ============================================
 
   async start(provider) {
@@ -217,7 +208,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // POLLING
   // ============================================
 
   startPolling() {
@@ -244,7 +234,6 @@ class TrafficManagerClass {
           }
         }
       } catch (_err) {
-        /* noop */
       } finally {
         this.pollTimer = setTimeout(loop, Math.max(250, Math.floor(TIMING_CONFIG.pollIntervalMs / 4)));
       }
@@ -280,7 +269,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // PROBE HANDLING
   // ============================================
 
   async handleProbe(provider, data, isStillLoading = false) {
@@ -313,7 +301,6 @@ class TrafficManagerClass {
     const now = Date.now();
     const webview = this.webviews[provider];
 
-    // Loading tracking
     const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
     viewState = loadingResult.newState;
     this.setIndicator(provider, "loading", loadingResult.indicator);
@@ -330,7 +317,6 @@ class TrafficManagerClass {
       }
     }
 
-    // Thinking tracking
     const thinkingResult = this.thinkingTracker.handleProbe(provider, viewState, data, now);
     viewState = thinkingResult.newState;
     this.setIndicator(provider, "thinking", thinkingResult.indicator);
@@ -347,7 +333,6 @@ class TrafficManagerClass {
       }
     }
 
-    // Send button tracking
     const sendResult = this.sendTracker.handleProbe(provider, viewState, data, now);
     viewState = sendResult.newState;
     this.setIndicator(provider, "send", sendResult.indicator);
@@ -363,7 +348,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // INDICATOR MANAGEMENT
   // ============================================
 
   refreshIndicators(provider) {
@@ -416,7 +400,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // WAIT METHODS
   // ============================================
 
   waitForSendEnabled(provider, timeout = 4000, interval = 100) {
@@ -454,7 +437,6 @@ class TrafficManagerClass {
   }
 
   // ============================================
-  // SIGNAL
   // ============================================
 
   signal(channel, status, message = "") {
@@ -465,7 +447,6 @@ class TrafficManagerClass {
       try {
         listener({ channel, status, message });
       } catch (_err) {
-        // Silent
       }
     });
   }

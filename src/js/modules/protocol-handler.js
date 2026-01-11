@@ -1,4 +1,3 @@
-// FIX: Import SlotState for proper state validation
 import { SlotController, SlotState } from "./slot-controller.js";
 import { LogManager } from "./log-manager.js";
 
@@ -12,7 +11,6 @@ function isSlotReady(slot) {
   const state = SlotController.getState(slot);
   if (!state) return false;
   
-  // Only allow protocol communication when fully connected
   if (state.state !== SlotState.CONNECTED) {
     LogManager.addEvent(
       "protocol",
@@ -22,7 +20,6 @@ function isSlotReady(slot) {
     return false;
   }
   
-  // Also check if URL is excluded (login pages, etc.)
   if (state.urlExcluded) {
     LogManager.addEvent(
       "protocol",
@@ -41,7 +38,6 @@ function buildProtocolPayload({
   targets = [],
   context = {},
 }) {
-  // FIX: Use isSlotReady instead of just isConnected for safer state validation
   const connected = (targets || []).filter((t) => isSlotReady(t));
 
   if (room === "analyze") {

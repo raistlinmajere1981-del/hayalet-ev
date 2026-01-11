@@ -1,4 +1,3 @@
-// Lightweight event emitter + BroadcastChannel wrapper.
 
 import { LogManager } from "../log-manager.js";
 
@@ -40,7 +39,6 @@ export function createSettingsBroadcast(channelName = "hayalet-settings") {
             bc.onmessage = null;
             bc.close();
           } catch {
-            /* noop */
           }
         };
       },

@@ -1,4 +1,3 @@
-/* global process */
 /**
  * SessionManager - Log session yönetimi
  * 
@@ -13,12 +12,10 @@ import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
-// Session state
 let LOG_DIR = null;
 let SESSION_ID = null;
 let SESSION_DIR = null;
 
-// State snapshot (app durumu)
 let appStateSnapshot = {};
 
 /**
@@ -59,7 +56,6 @@ export async function ensureSessionDir() {
   if (!existsSync(SESSION_DIR)) {
     await mkdir(SESSION_DIR, { recursive: true });
     
-    // Session meta dosyası oluştur
     const meta = {
       sessionId: SESSION_ID,
       startTime: new Date().toISOString(),
@@ -107,7 +103,6 @@ export async function writeSessionSummary(totalLogs, errorCount, warnCount, chun
       JSON.stringify(summary, null, 2)
     );
   } catch (_err) {
-    // Silent fail
   }
 }
 
@@ -139,7 +134,6 @@ export async function listSessions() {
             summary = JSON.parse(await readFile(summaryPath, "utf-8"));
           }
         } catch {
-          // Parse hatası, devam et
         }
         
         sessions.push({
@@ -152,7 +146,6 @@ export async function listSessions() {
       }
     }
     
-    // Tarihe göre sırala (yeniden eskiye)
     sessions.sort((a, b) => {
       if (!a.startTime) return 1;
       if (!b.startTime) return -1;
@@ -184,7 +177,6 @@ export async function clearLogs(targetSessionId = null) {
 }
 
 // ============================================
-// STATE SNAPSHOT
 // ============================================
 
 /**
@@ -208,7 +200,6 @@ export function getAppState() {
 }
 
 // ============================================
-// GETTERS
 // ============================================
 
 export function getSessionId() {

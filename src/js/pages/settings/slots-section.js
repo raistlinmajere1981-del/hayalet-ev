@@ -1,4 +1,3 @@
-// Slots management section (assign/clear slots, methods, catchCommands)
 
 export class SlotsSection {
   constructor(settingsManager) {

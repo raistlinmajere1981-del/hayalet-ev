@@ -33,7 +33,6 @@ class CatchManagerClass {
 
     targetMessages.forEach((msg) => {
       const text = msg.text || "";
-      // Her mesaj için yeni regex oluştur - global flag ile lastIndex sorunu önlenir
       const regex = new RegExp(
         `\\+\\+${prefix}:([A-Za-z0-9_]+)\\(([^)]*)\\)`,
         "g",
@@ -57,7 +56,6 @@ class CatchManagerClass {
       }
     });
 
-    // Only validate against ServerCommands if the prefix is 'cmd'
     if (prefix === "cmd") {
       try {
         const valid = (ServerCommands.list() || []).map((s) =>

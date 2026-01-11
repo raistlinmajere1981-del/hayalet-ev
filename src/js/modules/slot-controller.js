@@ -13,9 +13,7 @@
 
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
-// normalizeUrl artık alt modüllerde kullanılıyor
 
-// Alt modüller
 import {
   attachWebview,
   detachWebview,
@@ -47,7 +45,6 @@ import {
 } from "./slot/settings-sync.js";
 
 // ============================================
-// SLOT STATES
 // ============================================
 export const SlotState = {
   EMPTY: "empty",
@@ -59,7 +56,6 @@ export const SlotState = {
 };
 
 // ============================================
-// SLOT EVENTS
 // ============================================
 export const SlotEvent = {
   ACCOUNT_ASSIGNED: "account_assigned",
@@ -83,7 +79,6 @@ export const SlotEvent = {
 };
 
 // ============================================
-// CONFIGURATION
 // ============================================
 const CONFIG = {
   connectTimeoutMs: 30000,
@@ -91,7 +86,6 @@ const CONFIG = {
 };
 
 // ============================================
-// SLOT STATE STRUCTURE
 // ============================================
 const createSlotState = () => ({
   state: SlotState.EMPTY,
@@ -110,7 +104,6 @@ const createSlotState = () => ({
 });
 
 // ============================================
-// SLOT CONTROLLER CLASS
 // ============================================
 class SlotControllerClass {
   constructor() {
@@ -121,14 +114,12 @@ class SlotControllerClass {
     this._listeners = [];
     this._initialized = false;
     
-    // Bound methods for passing to sub-modules
     this._boundLog = this._log.bind(this);
     this._boundEmit = this._emit.bind(this);
     this._boundTransition = this._transition.bind(this);
   }
 
   // ============================================
-  // INITIALIZATION
   // ============================================
   
   async init() {
@@ -150,7 +141,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PUBLIC API - STATE QUERIES
   // ============================================
 
   getState(slot) {
@@ -190,7 +180,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PUBLIC API - WEBVIEW REGISTRATION
   // ============================================
 
   registerWebview(slot, webview) {
@@ -246,7 +235,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PUBLIC API - CONNECTION MANAGEMENT
   // ============================================
 
   async connect(slot, options = {}) {
@@ -259,7 +247,6 @@ class SlotControllerClass {
     
     this._log(slot, "info", `Connect requested`, { correlationId });
 
-    // State validation
     if (slotState.state === SlotState.EMPTY) {
       this._log(slot, "warning", "Cannot connect: no account assigned", { correlationId });
       return { success: false, message: "no-account-assigned", correlationId };
@@ -291,12 +278,10 @@ class SlotControllerClass {
       return { success: false, message: "webview-not-registered", correlationId };
     }
 
-    // Transition to CONNECTING
     slotState.correlationId = correlationId;
     this._transition(slot, SlotState.CONNECTING);
     this._emit(slot, SlotEvent.CONNECT_START, { correlationId });
 
-    // Start timeout
     startTimeout(slot, "connect", CONFIG.connectTimeoutMs, () => {
       handleConnectTimeout(
         slotState, slot, correlationId, SlotState.ERROR,
@@ -307,15 +292,12 @@ class SlotControllerClass {
     });
 
     try {
-      // Step 1: Attach webview
       await attachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_ATTACHED);
 
-      // Step 2: Wait for DOM ready
       await waitForDomReady(slotState, slot, correlationId, this._boundLog);
       slotState.domReady = true;
       this._emit(slot, SlotEvent.WEBVIEW_DOM_READY, { correlationId });
 
-      // Step 3: Check URL exclusion
       await this._delay(CONFIG.urlCheckDelayMs);
       const currentUrl = getCurrentUrl(slotState);
       slotState.currentUrl = currentUrl;
@@ -331,12 +313,10 @@ class SlotControllerClass {
         await this._startTraffic(slot, correlationId);
       }
 
-      // Step 4: Setup URL change monitoring
       setupUrlChangeHandler(slotState, slot, correlationId, (s, url) => {
         this._handleUrlChange(s, url);
       });
 
-      // Success
       clearTimeout(slot, "connect");
       this._transition(slot, SlotState.CONNECTED);
       this._emit(slot, SlotEvent.CONNECT_COMPLETE, { correlationId, urlExcluded: isExcluded });
@@ -413,7 +393,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PUBLIC API - NAVIGATION
   // ============================================
 
   navigate(slot, url = null) {
@@ -426,7 +405,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PUBLIC API - EVENT SUBSCRIPTION
   // ============================================
 
   subscribe(listener) {
@@ -453,7 +431,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - SETTINGS SYNC
   // ============================================
 
   _syncSlotWithSettings(slot, settings) {
@@ -468,7 +445,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - URL HANDLING
   // ============================================
 
   _handleUrlChange(slot, newUrl) {
@@ -482,7 +458,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - TRAFFIC MANAGEMENT
   // ============================================
 
   async _startTraffic(slot, correlationId) {
@@ -512,7 +487,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - ERROR CLEANUP
   // ============================================
 
   async _cleanupAfterError(slot, correlationId) {
@@ -527,7 +501,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - STATE MACHINE
   // ============================================
 
   _transition(slot, newState) {
@@ -544,7 +517,6 @@ class SlotControllerClass {
   }
 
   // ============================================
-  // PRIVATE - UTILITIES
   // ============================================
 
   _isValidSlot(slot) {
@@ -570,7 +542,6 @@ class SlotControllerClass {
       try {
         listener(payload);
       } catch (_err) {
-        // Listener error - silent
       }
     });
   }

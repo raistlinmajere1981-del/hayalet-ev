@@ -72,12 +72,10 @@ export function syncSlotWithSettings(
   const newAccountId = slotSettings?.accountId || null;
   const oldAccountId = slotState.accountId;
 
-  // Account değişikliği yoksa skip
   if (newAccountId === oldAccountId) return;
 
   logFn(slot, "info", `Account changed: ${oldAccountId} -> ${newAccountId}`);
 
-  // Account kaldırıldı
   if (!newAccountId) {
     if (slotState.state === states.CONNECTED || slotState.state === states.CONNECTING) {
       disconnectFn(slot, { force: true });
@@ -90,7 +88,6 @@ export function syncSlotWithSettings(
     return;
   }
 
-  // Yeni account atandı veya değişti
   const account = settings.accounts?.find((a) => a.id === newAccountId);
   const providerId = account?.provider || null;
   const providerConfig = providerId ? ProviderRegistry.get(providerId) : null;
@@ -99,7 +96,6 @@ export function syncSlotWithSettings(
   slotState.providerId = providerId;
   slotState.providerConfig = providerConfig;
 
-  // Eğer connected ise yeni account için reconnect gerekebilir
   if (slotState.state === states.CONNECTED) {
     logFn(slot, "info", "Account changed while connected - will navigate to new provider");
     navigateFn(slot);

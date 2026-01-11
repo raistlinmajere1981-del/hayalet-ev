@@ -8,7 +8,6 @@
  * - PendingArchiveHandler: Bekleyen arşiv işlemleri
  */
 
-// LogManager alt modüllerde kullanılıyor
 import { ProviderRegistry } from "./webview/provider-registry.js";
 import { getProvider } from "./webview/provider-factory.js";
 import { isUrlExcluded as checkUrlExcluded } from "./webview/methods/shared/url-utils.js";
@@ -23,7 +22,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // SETTINGS
   // ==========================================
 
   /**
@@ -37,7 +35,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // LIFECYCLE METHODS (delegated to LifecycleManager)
   // ==========================================
 
   /**
@@ -102,7 +99,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // MESSAGE METHODS (delegated to MessageSender)
   // ==========================================
 
   /**
@@ -116,7 +112,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // SYNC METHODS (delegated to ConversationSyncer)
   // ==========================================
 
   /**
@@ -168,7 +163,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // PENDING ARCHIVE METHODS (delegated to PendingArchiveHandler)
   // ==========================================
 
   /**
@@ -181,7 +175,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // PROVIDER HELPERS
   // ==========================================
 
   /**
@@ -234,7 +227,6 @@ class WebviewManagerClass {
   }
 
   // ==========================================
-  // INTERNAL ACCESS (for advanced use cases)
   // ==========================================
 
   /**

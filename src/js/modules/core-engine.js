@@ -3,7 +3,6 @@ import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
 import { AppState } from "./app-state.js";
 import { ProtocolHandler } from "./protocol-handler.js";
-// SyncHandler artık WebviewManager içine entegre edildi
 import { RelayManager } from "./relay-manager.js";
 import { CommandManager } from "./command-manager.js";
 import { CommandExecutor } from "./command-executor.js";
@@ -34,15 +33,12 @@ class CoreEngineClass {
     await FileManager.ensureDirs("all");
     AppState.init("ai1");
     LogManager.init();
-    // Settings already loaded via SettingsManager
     await CommandManager.init();
     
-    // Start periodic webview cleanup (every 10 minutes)
     setInterval(() => {
       try {
         WebviewManager.cleanupInactiveWebviews();
       } catch (err) {
-        // Cleanup error - silent
       }
     }, 10 * 60 * 1000);
     CommandExecutor.init(this);
@@ -64,7 +60,6 @@ class CoreEngineClass {
       );
     }
 
-    // AssistantManager başlat
     try {
       AssistantManager.init(this);
       this.assistant = AssistantManager;
@@ -86,10 +81,8 @@ class CoreEngineClass {
     );
     WebviewManager.initSyncer(this);
     
-    // SlotController başlat
     await SlotController.init();
     
-    // SlotController event'lerini dinle - TrafficManager entegrasyonu
     SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }) => {
       const webview = SlotController.getWebview(slot);
       if (webview) {
@@ -104,7 +97,6 @@ class CoreEngineClass {
     
     this.initialized = true;
 
-    // Initialize previous settings snapshot for comparison
     this._previousSettings = JSON.parse(JSON.stringify(this.settings));
 
     try {
@@ -112,8 +104,6 @@ class CoreEngineClass {
         const { settings } = payload;
         if (!settings) return;
 
-        // Settings değişikliklerini SlotController otomatik olarak handle ediyor
-        // Burada sadece WebviewManager'a settings'i geçiyoruz
         this.useSettings(settings);
         this._previousSettings = JSON.parse(JSON.stringify(settings));
       });
@@ -139,7 +129,6 @@ class CoreEngineClass {
   async setConnection(provider, connected, opts = {}) {
     if (!provider) return { success: false, message: "no-provider" };
 
-    // Sadece ai1 ve ai2 slotları için connection yönetimi yapılır
     if (provider !== "ai1" && provider !== "ai2") {
       return { success: false, message: "invalid-provider" };
     }
@@ -154,12 +143,10 @@ class CoreEngineClass {
       `setConnection ${provider} => ${now} (force=${force}, prev=${prev})`,
     );
 
-    // Skip if no change and not forced
     if (!force && prev === now) {
       return { success: true, message: "no-change" };
     }
 
-    // Delegate to SlotController
     let result;
     if (now) {
       result = await SlotController.connect(provider, { force });
@@ -180,7 +167,6 @@ class CoreEngineClass {
     if (settings) {
       this.settings = settings;
       WebviewManager.setSettings(this.settings);
-      // Navigasyon _settingsSub callback'inde yapılıyor, burada tekrar yapmaya gerek yok
     }
     return this.settings;
   }
@@ -638,9 +624,7 @@ class CoreEngineClass {
    * FIX: Unregister webview - senkronize olarak her iki manager'dan da kaldır
    */
   unregisterWebview(provider) {
-    // SlotController'dan kaldır (bu disconnect da yapar)
     SlotController.unregisterWebview(provider);
-    // WebviewManager'dan da kaldır
     WebviewManager.detach(provider, { cleanupDom: false, skipTrafficStop: true });
   }
 

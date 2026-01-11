@@ -17,7 +17,6 @@
  * @property {object | undefined} [aiHint] - AI debugging ipucu
  */
 
-// Log Yöneticisi - Olay (event) kaydetme sistemi
 class LogManagerClass {
   constructor() {
     /** @type {LogEntry[]} */
@@ -46,7 +45,6 @@ class LogManagerClass {
   async init() {
     if (this._initialized) return;
     
-    // Session ID'yi main process'ten al (senkronize olması için)
     try {
       const mainSessionId = await window.electronAPI?.getSessionId?.();
       this.sessionId = mainSessionId || this.generateSessionId();
@@ -62,7 +60,6 @@ class LogManagerClass {
       `Yeni oturum başlatıldı: ${this.sessionId}`,
     );
 
-    // Console log forwarding'i dinle
     this.setupConsoleLogListener();
   }
 
@@ -75,18 +72,15 @@ class LogManagerClass {
 
     try {
       window.electronAPI?.onConsoleLogForward?.((data) => {
-        // Console loglarını LogManager'a ekle (UI'da görünsün)
-        // Ama dosyaya tekrar yazmayı önle (zaten console-logger yazdı)
         this.addEventInternal(
           data.source,
           data.level,
           data.message,
           { context: data.context },
-          false // shouldPersist = false
+          false
         );
       });
     } catch (err) {
-      // Silent fail
     }
   }
 
@@ -186,24 +180,21 @@ class LogManagerClass {
    * @param {boolean} shouldPersist - Dosyaya yazılsın mı?
    */
   addEventInternal(source, type, message, meta = null, shouldPersist = true) {
-    // Throttling (aynı log 2 saniye içinde tekrar edilemez, error hariç)
     const key = `${source}|${type}|${message}`;
     const nowTs = Date.now();
     const last = this.lastThrottle.get(key);
     if (type !== "error" && last && nowTs - last < 2000) return;
     this.lastThrottle.set(key, nowTs);
 
-    // Correlation ID'yi meta'dan çıkar
     const correlationId = meta?.correlationId || null;
     const context = meta?.context || null;
     
-    // Meta'yı temizle (correlationId ve context ayrı alanlar)
-    const cleanMeta = meta ? { ...meta } : undefined;
+    let cleanMeta = meta ? { ...meta } : undefined;
     if (cleanMeta) {
       delete cleanMeta.correlationId;
       delete cleanMeta.context;
       if (Object.keys(cleanMeta).length === 0) {
-        // Boş meta'yı undefined yap
+        cleanMeta = undefined;
       }
     }
 
@@ -261,7 +252,6 @@ class LogManagerClass {
    */
   persist(entry) {
     try {
-      // Don't persist logs until session is initialized
       if (!this.sessionId) return;
 
       const line = JSON.stringify(entry);
@@ -271,7 +261,6 @@ class LogManagerClass {
         context: entry.context,
       });
     } catch (error) {
-      // Log persist error - silent to prevent infinite loop
     }
   }
 
@@ -283,7 +272,6 @@ class LogManagerClass {
   onUpdate(listener) {
     if (typeof listener !== "function")
       return () => {
-        /* noop */
       };
     this.listeners.push(listener);
     return () => {
@@ -378,13 +366,10 @@ class LogManagerClass {
     };
     
     for (const log of this.logs) {
-      // By type
       stats.byType[log.type] = (stats.byType[log.type] || 0) + 1;
       
-      // By source
       stats.bySource[log.source] = (stats.bySource[log.source] || 0) + 1;
       
-      // Counters
       if (log.type === 'error') stats.errors++;
       if (log.type === 'warning') stats.warnings++;
     }
@@ -401,7 +386,6 @@ class LogManagerClass {
   }
 
   // ============================================================================
-  // LEGACY API (Geriye uyumluluk için)
   // ============================================================================
 
   LoggerNewSession() {

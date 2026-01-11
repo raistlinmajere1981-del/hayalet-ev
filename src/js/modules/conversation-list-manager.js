@@ -1,7 +1,6 @@
 import { CoreEngine } from "./core-engine.js";
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
-// FIX: Import SlotEvent for proper state change subscription
 import { SlotController, SlotEvent } from "./slot-controller.js";
 
 class ConversationListManagerClass {
@@ -33,8 +32,6 @@ class ConversationListManagerClass {
       }
     });
 
-    // FIX: SlotController state değişikliklerini dinle (bağlantı durumu için)
-    // Bağlantı durumu değiştiğinde liste enabled/disabled durumunu güncelle
     if (!this._slotControllerSub) {
       this._slotControllerSub = SlotController.on(SlotEvent.STATE_CHANGED, () => {
         this.renderAll({ silent: true });
@@ -78,7 +75,6 @@ class ConversationListManagerClass {
       if (options.forceSelectId) {
         this.updateSelection(options.forceSelectId, { silent: true });
       }
-      // After refresh from sync, notify analyze page to update messages (unless skipped)
       if (!options.skipNotify) {
         window.dispatchEvent(
           new CustomEvent("conversation-selected", {
@@ -116,10 +112,6 @@ class ConversationListManagerClass {
     const hasAccount = !!slot.accountId;
     const isConnected = SlotController.isConnected(provider);
 
-    // Gating (doc/settings-rebuild.txt):
-    // - empty slot: list disabled + empty
-    // - assigned but disconnected: list disabled
-    // - assigned + connected: list enabled
     select.disabled = !hasAccount || !isConnected;
 
     const currentVal = options.silent
@@ -152,7 +144,6 @@ class ConversationListManagerClass {
       select.appendChild(option);
     }
 
-    // Keep selection if possible
     select.value = currentVal;
     if (select.selectedIndex === -1) {
       select.value = "new";

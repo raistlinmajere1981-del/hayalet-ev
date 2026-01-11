@@ -1,4 +1,3 @@
-// Arşiv sayfası controller'ı (`archives/index.json` okuma/yazma işlemleri)
 import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
@@ -18,7 +17,6 @@ export class ArchivesController {
     await this.loadIndex();
     this.applyNames();
 
-    // Realtime settings sync
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(() => {
         this.applyNames();
@@ -120,7 +118,6 @@ export class ArchivesController {
 
   async deleteEntry(entry) {
     if (!entry) return;
-    // Confirm
     if (
       !confirm(
         `'${entry.title || entry.id}' kaydını kalıcı olarak silmek istediğinize emin misiniz?`,
@@ -152,7 +149,6 @@ export class ArchivesController {
       this.renderList();
       await ConversationListManager.refresh({ silent: true });
 
-      // If active was deleted, ensure UI shows 'new' selection
       if (isActive) {
         this.fillForm(null);
         this.setStatus("Sohbet silindi, yeni sohbet seçildi", "success");
@@ -217,7 +213,6 @@ export class ArchivesController {
   }
 
   applyNames() {
-    // New UI gating: update nicknames and enable/disable based on slot assignment
     const settings = SettingsManager.getSnapshot();
     const ai1Assigned = !!settings?.slots?.ai1?.accountId;
     const ai2Assigned = !!settings?.slots?.ai2?.accountId;
@@ -233,7 +228,6 @@ export class ArchivesController {
     if (labelAi1) labelAi1.textContent = ai1Name;
     if (labelAi2) labelAi2.textContent = ai2Name;
 
-    // Disable radio if slot empty
     if (radioAi1) radioAi1.disabled = !ai1Assigned;
     if (radioAi2) radioAi2.disabled = !ai2Assigned;
   }

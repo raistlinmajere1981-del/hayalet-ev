@@ -19,7 +19,7 @@ class LifecycleManagerClass {
   constructor() {
     this.webviews = {};
     this._lastActivity = {};
-    this._inactivityThreshold = 30 * 60 * 1000; // 30 dakika
+    this._inactivityThreshold = 30 * 60 * 1000;
   }
 
   /**
@@ -84,19 +84,16 @@ class LifecycleManagerClass {
       const cfg = ProviderRegistry.get(providerId);
       const defaultPage = cfg?.baseUrl || "";
 
-      // Detach edilmiş webview'ı geri yükle
       if (webview.getAttribute?.("data-detached")) {
         webview.removeAttribute("data-detached");
         if (webview.style) webview.style.display = "";
       }
 
-      // URL kontrolü - gereksiz reload'ları önle
       const currentSrc = webview.getAttribute("src") || "";
       let currentUrl = "";
       try {
         currentUrl = (webview.getURL?.() || "").split("?")[0].split("#")[0];
       } catch (_err) {
-        // webview henüz hazır değil
       }
       
       const targetUrl = defaultPage.split("?")[0].split("#")[0];
@@ -119,10 +116,8 @@ class LifecycleManagerClass {
         );
       }
 
-      // Webview logger kurulumu (main process)
       this._setupWebviewLogger(webview, provider, providerId);
       
-      // onReady callback - dom-ready sonrası çağrılır
       if (onReady && typeof onReady === "function") {
         const handleReady = () => {
           try {
@@ -168,20 +163,17 @@ class LifecycleManagerClass {
     const webview = this.webviews[provider];
     
     try {
-      // TrafficManager'dan ayır (skipTrafficStop=true ise SlotController hallediyor)
       if (!skipTrafficStop) {
         TrafficManager.stop(provider, { force: true });
         TrafficManager.detachWebview(provider);
       }
       
-      // DOM temizliği
       if (webview && cleanupDom) {
         webview.setAttribute("data-detached", "1");
         if (webview.style) webview.style.display = "none";
         webview.removeAttribute("src");
       }
     } catch (_err) {
-      /* noop */
     } finally {
       delete this.webviews[provider];
       LogManager.addEvent(
@@ -203,15 +195,12 @@ class LifecycleManagerClass {
     if (!webview) return;
     
     try {
-      // TrafficManager'dan ayır
       TrafficManager.detachWebview(provider);
       
-      // DOM'dan kaldır
       if (webview.parentNode) {
         webview.parentNode.removeChild(webview);
       }
       
-      // Referansları temizle
       delete this.webviews[provider];
       delete this._lastActivity[provider];
       
@@ -249,7 +238,6 @@ class LifecycleManagerClass {
       const lastActivity = this._lastActivity[provider] || 0;
       const inactive = (now - lastActivity) > this._inactivityThreshold;
       
-      // Görünür veya bağlı ise temizleme
       const isVisible = AppState.getState()?.provider === provider;
       const isConnected = SlotController.isConnected(provider);
       
@@ -283,11 +271,9 @@ class LifecycleManagerClass {
             }
           })
           .catch(() => {
-            // Silent fail - logger kurulumu kritik değil
           });
       }
     } catch (_err) {
-      // Webview henüz hazır değil
     }
   }
 

@@ -10,7 +10,6 @@
  * - logger/log-reader.js: Log okuma ve sorgulama
  */
 
-// Alt modüllerden re-export
 export {
   generateSessionId,
   initLogSystem,
@@ -52,7 +51,6 @@ export {
   calculateLogStats,
 } from "./logger/log-reader.js";
 
-// Session ve writer importları
 import {
   initLogSystem,
   getSessionId,
@@ -69,7 +67,6 @@ import {
 import { calculateLogStats } from "./logger/log-reader.js";
 
 // ============================================
-// MAIN WINDOW REFERENCE (IPC forwarding)
 // ============================================
 
 let mainWindowRef = null;
@@ -101,12 +98,10 @@ function forwardToLogManager(level, source, message, context = null) {
       timestamp: new Date().toISOString(),
     });
   } catch (_err) {
-    // Silent fail
   }
 }
 
 // ============================================
-// CORRELATION ID
 // ============================================
 
 let correlationCounter = 0;
@@ -124,7 +119,6 @@ export function generateCorrelationId(prefix = "op") {
 }
 
 // ============================================
-// CONSOLE INTERCEPTORS
 // ============================================
 
 /**
@@ -176,7 +170,6 @@ export function interceptMainConsole() {
  * @param {Electron.WebContents} webContents
  */
 export function setupRendererLogger(webContents) {
-  // Console mesajlarını yakala (yeni Event object API)
   webContents.on("console-message", (event) => {
     const { level, message, line, sourceId } = event;
     const levelMap = {
@@ -195,19 +188,16 @@ export function setupRendererLogger(webContents) {
     
     writeLog(levelName, "RENDERER", [fullMessage], null, isError || isWarn);
 
-    // LogManager'a da gönder
     const logType = isError ? "error" : isWarn ? "warning" : "info";
     forwardToLogManager(logType, "renderer", fullMessage);
   });
 
-  // JavaScript hataları (uncaught exceptions)
   webContents.on("render-process-gone", (_event, details) => {
     const msg = `Renderer process crashed: ${JSON.stringify(details)}`;
     writeErrorLog("FATAL", "RENDERER", [msg]);
     forwardToLogManager("error", "renderer", msg);
   });
 
-  // Preload script hataları
   webContents.on("preload-error", (_event, preloadPath, error) => {
     const msg = `Preload script error: ${preloadPath} - ${error.stack || error}`;
     writeErrorLog("PRELOAD-ERROR", "RENDERER", [msg]);
@@ -226,7 +216,6 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
 
   const source = `WEBVIEW-${slot.toUpperCase()}`;
 
-  // Console mesajlarını yakala (yeni Event object API)
   webviewContents.on("console-message", (event) => {
     const { level, message, line, sourceId } = event;
     const levelMap = {
@@ -246,12 +235,10 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
 
     writeLog(levelName, source, [fullMessage], context, isError || isWarn);
 
-    // LogManager'a da gönder
     const logType = isError ? "error" : isWarn ? "warning" : "info";
     forwardToLogManager(logType, `webview-${slot}`, fullMessage, context);
   });
 
-  // Webview crash
   webviewContents.on("render-process-gone", (_event, details) => {
     const msg = `Webview crashed: ${JSON.stringify(details)}`;
     const context = { provider, slot };
@@ -259,9 +246,8 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
     forwardToLogManager("error", `webview-${slot}`, msg, context);
   });
 
-  // Did-fail-load
   webviewContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
-    if (errorCode === -3) return; // Aborted loads, ignore
+    if (errorCode === -3) return;
     const msg = `Load failed: ${errorDescription} (${errorCode}) - ${validatedURL}`;
     const context = { provider, slot, errorCode, url: validatedURL };
     writeErrorLog("LOAD-ERROR", source, [msg], context);
@@ -269,22 +255,3 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
   });
 }
 
-// ============================================
-// SESSION SUMMARY WRAPPER
-// ============================================
-
-/**
- * Session özeti yaz (uygulama kapanırken çağrılır)
- * @param {string} [endReason='normal'] - Kapanış nedeni
- */
-export async function writeSessionSummaryWithStats(endReason = "normal") {
-  const stats = await calculateLogStats();
-  const chunkIndex = getCurrentChunkIndex();
-  await writeSessionSummary(
-    stats.totalLogs,
-    stats.errorCount,
-    stats.warnCount,
-    chunkIndex,
-    endReason
-  );
-}

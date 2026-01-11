@@ -145,7 +145,6 @@ export async function copyToAssets(
     let candidate;
 
     if (accountInfo && accountInfo.email && accountInfo.provider) {
-      // Requirement: "hesap email-provider" (@ yerine "at")
       const safeEmail = String(accountInfo.email)
         .trim()
         .replace(/@/g, "at")
@@ -170,7 +169,6 @@ export async function copyToAssets(
       }
     }
 
-    // Requirement: when updating human avatar (role=user), delete existing src/assets/user.* first
     if (String(role).toLowerCase() === "user") {
       try {
         const entries = await readdir(assetsDir);
@@ -180,7 +178,6 @@ export async function copyToAssets(
           }
         }
       } catch (e) {
-        // non-fatal
       }
     }
 

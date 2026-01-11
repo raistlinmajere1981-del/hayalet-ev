@@ -106,7 +106,6 @@ class CommandManagerClass {
         try {
           cleaned[key] = JSON.parse(JSON.stringify(value));
         } catch (e) {
-          /* noop */
         }
       });
       return cleaned;
@@ -189,8 +188,6 @@ class CommandManagerClass {
       this.markFailed(job.id, message);
       job._deferred.reject(err);
     } finally {
-      // FIX: Clean up deferred references to prevent memory leak
-      // The promise has been resolved/rejected, so we can safely clear these
       this._cleanupJobReferences(job);
       
       this.processing = false;
@@ -206,11 +203,8 @@ class CommandManagerClass {
    */
   _cleanupJobReferences(job) {
     if (!job) return;
-    // Clear deferred object - promise is already settled
     job._deferred = null;
-    // Clear the done promise reference
     job.done = null;
-    // Clear the runner function reference
     job.run = null;
   }
 
@@ -221,7 +215,6 @@ class CommandManagerClass {
     const mover = window.electronAPI?.commandMove;
     if (typeof mover === "function") {
       mover(id, "done").catch?.(() => {
-        /* noop */
       });
     }
     LogManager.addEvent("command", "info", `Komut tamamlandı (${id})`);
@@ -236,7 +229,6 @@ class CommandManagerClass {
     const mover = window.electronAPI?.commandMove;
     if (typeof mover === "function") {
       mover(id, "failed").catch?.(() => {
-        /* noop */
       });
     }
     LogManager.addEvent("command", "error", `Komut hatası (${id}): ${reason}`);
@@ -278,7 +270,6 @@ class CommandManagerClass {
     LogManager.addEvent("command", "info", "Komut kuyruğu temizlendi");
   }
 
-  // Eski API sarmalayıcısı (priority parametresi artık kullanılmıyor; FIFO devam ediyor)
   CommandManagerEnqueue(
     target,
     command,

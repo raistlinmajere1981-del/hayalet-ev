@@ -16,16 +16,6 @@ export function normalizeUrl(url) {
 }
 
 /**
- * İki URL'in aynı olup olmadığını kontrol et (normalized comparison)
- * @param {string} url1 - İlk URL
- * @param {string} url2 - İkinci URL
- * @returns {boolean} - URL'ler eşit mi?
- */
-export function areUrlsEqual(url1, url2) {
-  return normalizeUrl(url1) === normalizeUrl(url2);
-}
-
-/**
  * URL'in exclude listesinde olup olmadığını kontrol et
  * @param {string} url - Kontrol edilecek URL
  * @param {string[]} excludedUrls - Exclude edilmiş URL listesi (wildcard destekler)
@@ -39,7 +29,6 @@ export function isUrlExcluded(url, excludedUrls) {
   for (const excluded of excludedUrls) {
     const normalizedExcluded = normalizeUrl(excluded);
 
-    // Wildcard desteği
     if (excluded.includes("*")) {
       const pattern = normalizedExcluded.replace(/\*/g, ".*");
       const regex = new RegExp(`^${pattern}$`);
@@ -52,31 +41,3 @@ export function isUrlExcluded(url, excludedUrls) {
   return false;
 }
 
-/**
- * URL'den domain çıkar
- * @param {string} url - URL
- * @returns {string} - Domain (hostname)
- */
-export function extractDomain(url) {
-  if (!url) return "";
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname;
-  } catch {
-    // URL parse edilemezse basit regex ile dene
-    const match = url.match(/^(?:https?:\/\/)?([^/:]+)/);
-    return match ? match[1] : "";
-  }
-}
-
-/**
- * URL'in belirli bir domain'e ait olup olmadığını kontrol et
- * @param {string} url - Kontrol edilecek URL
- * @param {string} domain - Domain
- * @returns {boolean}
- */
-export function isUrlFromDomain(url, domain) {
-  if (!url || !domain) return false;
-  const urlDomain = extractDomain(url);
-  return urlDomain === domain || urlDomain.endsWith(`.${domain}`);
-}

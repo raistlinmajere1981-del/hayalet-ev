@@ -1,5 +1,3 @@
-// Loading Tracker - Webview yüklenme durumunu izler
-// import { LogManager } from "../log-manager.js";
 import { SettingsManager } from "../settings-manager.js";
 import { ProviderRegistry } from "../webview/provider-registry.js";
 
@@ -17,7 +15,6 @@ export class LoadingTracker {
   async scrollToBottom(provider, webview) {
     if (!webview || webview.isDestroyed?.()) return false;
     
-    // Get provider from slot
     const settings = SettingsManager.getSnapshot();
     const accountId = settings.slots?.[provider]?.accountId;
     const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
@@ -45,7 +42,6 @@ export class LoadingTracker {
           try {
             const el = document.querySelector(sel);
             if (el) {
-              // Check if this element itself is scrollable
               const style = getComputedStyle(el);
               const gap = el.scrollHeight - el.clientHeight;
               const isScrollable = gap > 12 && (style.overflowY === 'auto' || style.overflowY === 'scroll');
@@ -54,7 +50,6 @@ export class LoadingTracker {
                 return el;
               }
               
-              // If not scrollable, look for scrollable child
               const scrollableChild = el.querySelector('[class*="overflow-y"]');
               if (scrollableChild) {
                 const childStyle = getComputedStyle(scrollableChild);
@@ -64,7 +59,6 @@ export class LoadingTracker {
                 }
               }
               
-              // Return element anyway if no better option
               return el;
             }
           } catch (_) { /* noop */ }
@@ -80,7 +74,6 @@ export class LoadingTracker {
           if (style.overflowY === 'hidden') return;
           const gap = el.scrollHeight - el.clientHeight;
           if (gap > 8 && el.clientHeight > 120) {
-            // Prioritize elements with overflow-y: auto or scroll
             const priority = (style.overflowY === 'auto' || style.overflowY === 'scroll') ? gap * 2 : gap;
             candidates.push({ el, gap, priority });
           }
@@ -108,7 +101,6 @@ export class LoadingTracker {
         const clientHeight = scroller.clientHeight;
         const maxScroll = scrollHeight - clientHeight;
         
-        // Try multiple scroll methods for maximum compatibility
         const scrollMethods = [
           () => { scroller.scrollTop = maxScroll; },
           () => { scroller.scrollTop = scrollHeight; },
@@ -121,10 +113,9 @@ export class LoadingTracker {
         ];
         
         let bestScrollTop = scroller.scrollTop || 0;
-        const maxAttempts = 12; // Increased attempts
+        const maxAttempts = 12;
         
         for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-          // Try each method
           for (const method of scrollMethods) {
             try {
               method();
@@ -135,24 +126,21 @@ export class LoadingTracker {
             } catch (_) { void 0; }
           }
           
-          // Check if we reached bottom
           const currentTop = scroller.scrollTop || 0;
           const currentHeight = scroller.scrollHeight || 0;
           const currentClient = scroller.clientHeight || 0;
           const gap = Math.abs(currentHeight - currentTop - currentClient);
           
           if (gap < 8) {
-            return true; // Success!
+            return true;
           }
           
-          // Small delay between attempts (not ideal but may help with dynamic content)
           if (attempt < maxAttempts - 1) {
             const start = Date.now();
             while (Date.now() - start < 10) { /* busy wait 10ms */ }
           }
         }
         
-        // Final check
         const finalTop = scroller.scrollTop || 0;
         const finalHeight = scroller.scrollHeight || 0;
         const finalClient = scroller.clientHeight || 0;
@@ -184,7 +172,6 @@ export class LoadingTracker {
     let indicator = viewState.status?.loading || "busy";
     let event = null;
 
-    // Check for href change - start loading
     if (currentHref && currentHref !== viewState.lastHref) {
       viewState.lastHref = currentHref;
       this.startLoading(viewState, now);
@@ -195,7 +182,6 @@ export class LoadingTracker {
       };
     }
 
-    // Check if loading should end
     if (viewState.loadingActive) {
       const result = await this.checkLoadingEnd(
         provider,
@@ -250,8 +236,6 @@ export class LoadingTracker {
     }
 
     const scroll = data.scroll || {};
-    // const sendState = data.sendState || "missing";
-    // const voiceMode = !!data.voiceMode;
 
     const scrollGap = (scroll.scrollHeight || 0) - (scroll.clientHeight || 0);
     const hasScroll = scrollGap > 12;
@@ -259,12 +243,10 @@ export class LoadingTracker {
       scroll.lastChange && scroll.lastChange !== viewState.lastScrollChange;
     const loadingElapsed = now - viewState.loadingStartTime;
 
-    // Update scroll change time
     if (scrollChanged) {
       viewState.lastScrollChange = scroll.lastChange;
     }
 
-    // Check 1: Maximum timeout
     if (loadingElapsed > this.config.loading.maxWaitForScrollMs) {
       return {
         shouldEnd: true,
@@ -273,23 +255,19 @@ export class LoadingTracker {
       };
     }
 
-    // Check 2: No scroll yet - keep waiting
     if (!hasScroll) {
       return { shouldEnd: false, reason: null, newState: viewState };
     }
 
-    // Check 3: Scroll appeared - start tracking
     if (hasScroll && !viewState.loadingScrollAppeared) {
       viewState.loadingScrollAppeared = true;
       viewState.lastScrollChange = scroll.lastChange || now;
     }
 
-    // Check 4: Auto-scroll and track scroll changes
     if (viewState.loadingScrollAppeared) {
       const atBottom = scroll.atBottom || false;
       const timeSinceLastScroll = now - (viewState.lastAutoScrollAt || 0);
 
-      // Auto-scroll every second if not at bottom
       if (
         !atBottom &&
         timeSinceLastScroll >= this.config.loading.autoScrollIntervalMs
@@ -306,7 +284,6 @@ export class LoadingTracker {
         }
       }
 
-      // Check 5: No scroll change for timeout period
       if (viewState.lastScrollChange > 0) {
         const timeSinceLastScrollChange = now - viewState.lastScrollChange;
         if (

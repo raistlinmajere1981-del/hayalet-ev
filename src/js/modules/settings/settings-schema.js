@@ -1,7 +1,3 @@
-// Settings schema + normalization
-// - code uses `user`, UI uses "kullanıcı"
-// - defaults: user.nickname="Kullanıcı", messageMethod="injection", fileMethod="dragdrop"
-// - connection state is runtime (AppState), not persisted
 
 function isPlainObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
@@ -40,13 +36,13 @@ export function defaultSettings() {
       lastConnected: null,
     },
     logging: {
-      level: "info",              // error, warning, info, debug
-      verboseModules: [],         // Bu modüller debug seviyesinde loglanır
-      silentModules: [],          // Bu modüller susturulur
-      persistLevel: "info",       // Bu seviye ve üstü dosyaya yazılır
-      maxMemoryLogs: 200,         // Bellekte tutulacak maksimum log
-      enableStateSnapshots: true, // Periyodik state snapshot
-      snapshotInterval: 60000,    // State snapshot aralığı (ms)
+      level: "info",
+      verboseModules: [],
+      silentModules: [],
+      persistLevel: "info",
+      maxMemoryLogs: 200,
+      enableStateSnapshots: true,
+      snapshotInterval: 60000,
     },
   };
   return defaults;
@@ -73,23 +69,19 @@ function normalizeLegacy(raw) {
   const r = raw;
   const out = {};
 
-  // user
   if (isPlainObject(r.user)) {
     out.user = r.user;
   }
 
-  // integrations.googledrive
   const gd = r?.integrations?.googledrive;
   if (isPlainObject(gd)) {
     out.integrations = { googledrive: gd };
   }
 
-  // accounts
   if (Array.isArray(r.accounts)) {
     out.accounts = r.accounts;
   }
 
-  // slots
   const slots = {};
   ["ai1", "ai2"].forEach((slot) => {
     const slotData = r?.slots?.[slot];
@@ -116,12 +108,10 @@ export function normalizeSettings(raw) {
   const legacyNormalized = normalizeLegacy(raw);
   const merged = mergeDefaults(legacyNormalized, defaults);
 
-  // Ensure arrays/ids
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
   }
 
-  // Ensure slot ids are null or string
   for (const slot of ["ai1", "ai2"]) {
     const id = merged.slots?.[slot]?.accountId;
     if (id === "" || typeof id === "undefined") {
@@ -138,7 +128,6 @@ export function normalizeSettings(raw) {
     }
   }
 
-  // Keep google drive keys stable
   if (!isPlainObject(merged.integrations)) {
     merged.integrations = defaults.integrations;
   }
@@ -146,7 +135,6 @@ export function normalizeSettings(raw) {
     merged.integrations.googledrive = defaults.integrations.googledrive;
   }
 
-  // Ensure assistants config
   if (!isPlainObject(merged.assistants)) {
     merged.assistants = defaults.assistants;
   }
@@ -157,7 +145,6 @@ export function normalizeSettings(raw) {
     merged.assistants.preferredMode = "terminal";
   }
 
-  // Ensure logging config
   if (!isPlainObject(merged.logging)) {
     merged.logging = defaults.logging;
   }
@@ -187,7 +174,6 @@ export function normalizeSettings(raw) {
 }
 
 export function getChangedPaths(prev, next) {
-  // Fast path
   if (!prev) {
     return ["*"];
   }

@@ -279,7 +279,6 @@ export function matchErrorPattern(errorMessage, provider = null) {
   for (const pattern of ERROR_PATTERNS) {
     const regex = new RegExp(pattern.pattern, 'i');
     if (regex.test(errorMessage)) {
-      // Provider placeholder'larını değiştir
       const hint = { ...pattern };
       
       if (provider) {
@@ -298,24 +297,6 @@ export function matchErrorPattern(errorMessage, provider = null) {
   }
   
   return null;
-}
-
-/**
- * Tüm pattern'leri getir (debugging için)
- * @returns {ErrorHint[]}
- */
-export function getAllPatterns() {
-  return [...ERROR_PATTERNS];
-}
-
-/**
- * Yeni pattern ekle (runtime)
- * @param {ErrorHint} pattern
- */
-export function addPattern(pattern) {
-  if (pattern && pattern.pattern && pattern.suggestion) {
-    ERROR_PATTERNS.push(pattern);
-  }
 }
 
 export { ERROR_PATTERNS };

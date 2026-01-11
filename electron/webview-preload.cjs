@@ -1,6 +1,5 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-// Global slot storage (accessible from setupProvider and IPC handler)
 let __global_hayalet_slot = null;
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -73,26 +72,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 function setupProvider() {
-  // Try to get slot from multiple sources (in order of preference):
-  // 1. __global_hayalet_slot (set by hayalet-set-provider IPC)
-  // 2. window.__hayalet_slot (backup)
-  // 3. URL hash (e.g., #ai1 or #ai2)
   let slot = __global_hayalet_slot;
 
   if (!slot) {
     try {
       slot = window.__hayalet_slot || null;
     } catch (_) {
-      /* noop */
     }
   }
 
   if (!slot) {
     const hash = window.location.hash || "";
-    slot = hash.substring(1); // Remove the # character
+    slot = hash.substring(1);
   }
 
-  // Only set up provider tracking if we have a valid slot
   if (!slot || (slot !== "ai1" && slot !== "ai2")) {
     console.log(
       "[Hayalet-Preload] No valid provider slot found. Hash:",
@@ -127,7 +120,6 @@ function setupProvider() {
         thinkingState,
       });
     } catch (e) {
-      /* noop */
     }
   }
 
@@ -228,17 +220,14 @@ function setupProvider() {
 
 setupProvider();
 
-// Receive providerId from host and apply provider config (filters / telemetry)
 ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
   try {
-    // Handle both old format (string) and new format (object with providerId and slot)
     const providerId =
       typeof payload === "string" ? payload : payload?.providerId;
     const slot = typeof payload === "object" ? payload?.slot : null;
 
     if (!providerId) return;
 
-    // First, fetch the provider config
     const cfg = await ipcRenderer.invoke("get-provider-config", providerId);
     if (!cfg) {
       console.error(
@@ -248,7 +237,6 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
       return;
     }
 
-    // expose a minimal provider config to the guest page scripts
     try {
       try {
         window.__hayalet_provider_config = cfg;
@@ -263,13 +251,11 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
       );
     }
 
-    // Store slot information globally if provided and setup provider tracking
     if (slot) {
       try {
         __global_hayalet_slot = slot;
         window.__hayalet_slot = slot;
         console.log("[Hayalet-Preload] Slot set via IPC:", slot);
-        // Re-run setupProvider now that we have BOTH slot info AND provider config
         setupProvider();
       } catch (err) {
         console.warn("[Hayalet-Preload] Failed to set slot:", err);
@@ -286,11 +272,9 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
               try {
                 document.querySelectorAll(sel).forEach((n) => n.remove());
               } catch (_) {
-                /* noop */
               }
             });
           } catch (_) {
-            /* noop */
           }
         };
         applyFilters();
@@ -301,11 +285,9 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
             mo.observe(moTarget, { childList: true, subtree: true });
           }
         } catch (_) {
-          /* noop */
         }
       }
     } catch (_) {
-      /* noop */
     }
 
     // --- Telemetry: intercept fetch and XHR for configured endpoints ---
@@ -334,7 +316,6 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
               }
               if (cur != null) out.push(cur);
             } catch (_) {
-              /* noop */
             }
           });
           return out;
@@ -343,7 +324,6 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
         }
       };
 
-      // Wrap fetch
       try {
         const _fetch = window.fetch;
         window.fetch = async function (...args) {
@@ -380,11 +360,9 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
                       .catch(() => {});
                   }
                 } catch (_) {
-                  /* noop */
                 }
               }
             } catch (_) {
-              /* noop */
             }
             return res;
           } catch (err) {
@@ -392,10 +370,8 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
           }
         };
       } catch (_) {
-        /* noop */
       }
 
-      // Wrap XHR
       try {
         const OrigXHR = window.XMLHttpRequest;
         function WrappedXHR() {
@@ -430,16 +406,13 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
                           } catch (_) {}
                         }
                       } catch (_) {
-                        /* noop */
                       }
                     }
                   }
                 } catch (_) {
-                  /* noop */
                 }
               }
             } catch (_) {
-              /* noop */
             }
             if (typeof _onready === "function")
               return _onready.apply(this, arguments);
@@ -450,13 +423,10 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
           WrappedXHR.prototype = OrigXHR.prototype;
           window.XMLHttpRequest = WrappedXHR;
         } catch (_) {
-          /* noop */
         }
       } catch (_) {
-        /* noop */
       }
     } catch (_) {
-      /* noop */
     }
   } catch (err) {
     try {

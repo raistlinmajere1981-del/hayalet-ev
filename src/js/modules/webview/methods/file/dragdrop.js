@@ -10,7 +10,6 @@ import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 export async function attachFiles(webview, { files }) {
   await waitForDomReady(webview);
 
-  // Validate files
   const validation = validateFiles(files);
   if (!validation.valid) {
     return createErrorResponse(validation.message);
@@ -23,7 +22,6 @@ export async function attachFiles(webview, { files }) {
       return { success: false, message: 'Dosya listesi boş' };
     }
 
-    // Convert base64 to File objects
     function base64ToUint8(base64) {
       const binary = atob(base64);
       const len = binary.length;
@@ -41,11 +39,9 @@ export async function attachFiles(webview, { files }) {
       dataTransfer.items.add(f);
     });
 
-    // Clean up drag overlays from config
     const cleanupDragOverlay = () => {
       const config = window.__hayalet_provider_config;
       
-      // Default overlay selectors
       let overlaySelectors = [
         '[data-dnd-overlay]',
         '[data-testid*="drop"]',
@@ -56,7 +52,6 @@ export async function attachFiles(webview, { files }) {
         '.dnd-active-overlay'
       ];
       
-      // Use config overlay selectors if available
       if (
         Array.isArray(config?.filters?.dragOverlaySelectors) &&
         config.filters.dragOverlaySelectors.length
@@ -64,7 +59,6 @@ export async function attachFiles(webview, { files }) {
         overlaySelectors = config.filters.dragOverlaySelectors;
       }
 
-      // Default critical selectors
       let criticalSelectors = [
         'textarea',
         'input[type="text"]',
@@ -73,7 +67,6 @@ export async function attachFiles(webview, { files }) {
         '[data-message-author-role]'
       ];
       
-      // Use config critical selectors if available
       if (config?.criticalSelectors) {
         criticalSelectors = config.criticalSelectors;
       }
@@ -90,7 +83,6 @@ export async function attachFiles(webview, { files }) {
         });
       };
 
-      // Remove non-critical overlays
       overlaySelectors.forEach((selector) => {
         document.querySelectorAll(selector).forEach((overlay) => {
           if (isCritical(overlay)) return;
@@ -104,9 +96,7 @@ export async function attachFiles(webview, { files }) {
             const textContent = overlay.textContent?.toLowerCase() || '';
             let containsDragText = false;
             
-            // Default text matchers
             let textMatchers = ['sürükleyin', 'drop', 'dosya', 'file'];
-            // Use config text matchers if available
             if (config?.filters?.dragTextMatchers) {
               textMatchers = config.filters.dragTextMatchers;
             }
@@ -130,12 +120,10 @@ export async function attachFiles(webview, { files }) {
       });
     };
 
-    // Clean up overlays before drop
     cleanupDragOverlay();
 
-    // Find upload target from config
     const config = window.__hayalet_provider_config;
-    let uploadTargets = ['textarea', 'form']; // default fallback
+    let uploadTargets = ['textarea', 'form'];
     
     if (config?.uploadTargetSelectors) {
       uploadTargets = config.uploadTargetSelectors;
@@ -143,7 +131,6 @@ export async function attachFiles(webview, { files }) {
       uploadTargets = [config.selectors.inputField];
     }
 
-    // Helper: deep querySelector that also searches open shadow roots
     function querySelectorDeep(selector) {
       try {
         const direct = document.querySelector(selector);
@@ -166,15 +153,12 @@ export async function attachFiles(webview, { files }) {
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    // Find target element (retry a bit because Gemini mounts drop targets asynchronously)
     let target = null;
     for (let attempt = 0; attempt < 8 && !target; attempt++) {
       for (const selector of uploadTargets) {
         try {
           const el = querySelectorDeep(selector);
           if (el) {
-            // IMPORTANT: Some providers (Gemini) listen for drop events on the dropzone element itself,
-            // not on the surrounding <form>. Prefer the matched element.
             target = el;
             break;
           }
@@ -185,7 +169,6 @@ export async function attachFiles(webview, { files }) {
       }
     }
 
-    // Fallback to document body
     if (!target) {
       target = document.body;
     }
@@ -194,7 +177,6 @@ export async function attachFiles(webview, { files }) {
       return { success: false, message: 'Drop hedefi bulunamadı' };
     }
 
-    // Some apps require coordinates/effects to accept a drop.
     let cx = 10;
     let cy = 10;
     try {
@@ -210,7 +192,6 @@ export async function attachFiles(webview, { files }) {
       dataTransfer.effectAllowed = 'all';
     } catch (_) {}
 
-    // Create and dispatch drag events
     const dragEnterEvent = new DragEvent('dragenter', {
       bubbles: true,
       cancelable: true,
@@ -238,7 +219,6 @@ export async function attachFiles(webview, { files }) {
       dataTransfer: dataTransfer
     });
 
-    // Some apps attach listeners on parent containers; dispatch to a small chain.
     const targets = [];
     if (target) targets.push(target);
     if (target?.parentElement) targets.push(target.parentElement);
@@ -251,7 +231,6 @@ export async function attachFiles(webview, { files }) {
       }
     }
 
-    // Dispatch events in sequence
     return new Promise((resolve) => {
       dispatchAll(dragEnterEvent);
 
@@ -260,7 +239,6 @@ export async function attachFiles(webview, { files }) {
         setTimeout(() => {
           dispatchAll(dropEvent);
 
-          // Give the app time to process the drop and render previews
           setTimeout(() => {
             const previewSelectors = [
               'uploader-file-preview',

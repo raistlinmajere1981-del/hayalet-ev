@@ -14,7 +14,6 @@
 import { LogManager } from "./log-manager.js";
 import { createDefaultHandler } from "./commands/utils.js";
 
-// Handler imports
 import { deviceManagerHandler } from "./commands/device-commands.js";
 import { screenshotManagerHandler, takeScreenshotHandler } from "./commands/screenshot-commands.js";
 import { 
@@ -29,7 +28,6 @@ import { listFilesHandler } from "./commands/file-commands.js";
 import { aiaiChatStartHandler, aiaiChatStopHandler } from "./commands/ai-chat-commands.js";
 
 // ============================================
-// COMMAND LIST
 // ============================================
 
 const COMMAND_LIST = [
@@ -50,15 +48,12 @@ const COMMAND_LIST = [
 ];
 
 // ============================================
-// HANDLERS REGISTRY
 // ============================================
 
 const handlers = {};
 
-// Default handler'ları kaydet
 COMMAND_LIST.forEach((name) => {
   const key = name.toLowerCase();
-  // Özel handler'lar hariç default handler kullan
   if (!["whispermanager", "devicemanager", "screenshotmanager", "takescreenshot", 
        "windowmanager", "minimize", "maximize", "restore", "restart",
        "listfiles", "aiaichatstart", "aiaichatstop"].includes(key)) {
@@ -66,7 +61,6 @@ COMMAND_LIST.forEach((name) => {
   }
 });
 
-// Özel handler'ları kaydet
 handlers.devicemanager = deviceManagerHandler;
 handlers.screenshotmanager = screenshotManagerHandler;
 handlers.takescreenshot = takeScreenshotHandler;
@@ -81,7 +75,6 @@ handlers.aiaichatstart = aiaiChatStartHandler;
 handlers.aiaichatstop = aiaiChatStopHandler;
 
 // ============================================
-// PUBLIC API
 // ============================================
 
 export const ServerCommands = {

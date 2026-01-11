@@ -18,7 +18,6 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
  */
 export function buildProbeScript(provider) {
   const settings = SettingsManager.getSnapshot();
-  // Get provider from slot
   const accountId = settings.slots?.[provider]?.accountId;
   const account = accountId ? settings.accounts?.find(acc => acc.id === accountId) : null;
   const providerId = account?.provider || "";

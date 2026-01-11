@@ -74,7 +74,6 @@ class MessageSenderClass {
       throw new Error(`Webview for provider "${provider}" not found.`);
     }
 
-    // URL exclusion kontrolü
     const currentUrl = webview.getURL?.() || "";
     if (this.isUrlExcluded(provider, currentUrl)) {
       LogManager.addEvent(
@@ -85,7 +84,6 @@ class MessageSenderClass {
       throw new Error(`URL excluded from operations: ${currentUrl}`);
     }
 
-    // Provider kontrolü
     const providerId = this.getProviderIdForSlot(provider);
     if (!providerId) {
       throw new Error(
@@ -108,7 +106,6 @@ class MessageSenderClass {
 
     await waitForDomReady(webview);
 
-    // Metod konfigürasyonları
     const messageMethodName = this._settings?.slots?.[provider]?.messageMethod;
     if (!messageMethodName) {
       throw new Error(`messageMethod is not configured for slot "${provider}"`);
@@ -119,7 +116,6 @@ class MessageSenderClass {
       throw new Error(`fileMethod is not configured for slot "${provider}"`);
     }
 
-    // Fonksiyonları çöz
     const messageFn = messageMethodName === "xdotools"
       ? providerModule.sendMessage_xdotools
       : providerModule.sendMessage;
@@ -146,11 +142,9 @@ class MessageSenderClass {
       `Methods: messageMethod=${messageMethodName}, fileMethod=${fileMethodName}`,
     );
 
-    // Webview'a focus
     try {
       webview.focus?.();
     } catch (_e) {
-      /* noop */
     }
 
     const isLinkBased = ["tmpfile", "catbox", "uguu", "googledrive"].includes(fileMethodName);
@@ -158,7 +152,6 @@ class MessageSenderClass {
     let finalMessage = text || "";
     let fileResult = null;
 
-    // STEP 1: Link-based dosya yükleme (önce link al, mesaja ekle)
     if (attachments?.length > 0 && isLinkBased) {
       fileResult = await this._handleLinkBasedUpload(
         webview, provider, attachments, fileFn, fileMethodName
@@ -174,14 +167,12 @@ class MessageSenderClass {
       }
     }
 
-    // STEP 2: Non-link-based dosya yükleme (injection, dragdrop)
     if (attachments?.length > 0 && !isLinkBased) {
       fileResult = await this._handleDirectUpload(
         webview, provider, attachments, fileFn, fileMethodName
       );
     }
 
-    // STEP 3: Mesajı input alanına yaz
     if (finalMessage.trim().length > 0) {
       LogManager.addEvent(
         `webview-${provider}`,
@@ -194,7 +185,6 @@ class MessageSenderClass {
       }
     }
 
-    // STEP 4: Send button'un aktif olmasını bekle
     LogManager.addEvent(
       `webview-${provider}`,
       "info",
@@ -202,7 +192,6 @@ class MessageSenderClass {
     );
     await TrafficManager.waitForSendEnabled(provider, 20000);
 
-    // STEP 5: Send button'a tıkla
     LogManager.addEvent(
       `webview-${provider}`,
       "info",

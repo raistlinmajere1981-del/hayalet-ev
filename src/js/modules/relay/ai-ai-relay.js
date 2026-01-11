@@ -133,7 +133,6 @@ export class AIAIRelay extends BaseRelay {
     try {
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 
-      // Son assistant mesajını bul
       const lastAssistant = [...syncResult.messages]
         .reverse()
         .find((m) => m.role === "assistant" && (m.text || "").trim());
@@ -142,13 +141,11 @@ export class AIAIRelay extends BaseRelay {
       
       const text = lastAssistant.text.trim();
 
-      // Protokol session aktifse özel akış
       if (this._session?.type === "protocol") {
         await this._handleProtocolFlow(provider, text);
         return;
       }
 
-      // Basit relay akışı
       await this._handleSimpleRelayFlow(provider, text);
 
     } catch (err) {
@@ -164,15 +161,12 @@ export class AIAIRelay extends BaseRelay {
     const s = this._session;
     const [ai1, ai2] = s.providers;
 
-    // AI1'den yanıt bekliyoruz
     if (s.state === "sent-to-ai1" && provider === ai1) {
-      // Duplicate kontrolü
       if (s.lastTexts[ai1] === text) return;
       s.lastTexts[ai1] = text;
 
       this._log("info", `Protocol session ${s.id}: ${ai1} replied`, { excerpt: text.slice(0, 200) });
 
-      // AI2'ye forward et (protokol + AI1 yanıtı ile)
       const baseMsg = s.protocolPayload?.message || "";
       const forwardText = `${baseMsg}\n\n[${ai1}]: ${text}`;
       s.state = "sent-to-ai2";
@@ -191,9 +185,7 @@ export class AIAIRelay extends BaseRelay {
       return;
     }
 
-    // AI2'den yanıt geldi, relay aktif
     if ((s.state === "sent-to-ai2" || s.state === "relay-active") && provider === ai2) {
-      // Duplicate kontrolü
       if (s.lastTexts[ai2] === text) return;
       s.lastTexts[ai2] = text;
       
@@ -215,9 +207,7 @@ export class AIAIRelay extends BaseRelay {
       return;
     }
 
-    // AI1'den yanıt geldi (relay aktifken)
     if (s.state === "relay-active" && provider === ai1) {
-      // Duplicate kontrolü
       if (s.lastTexts[ai1] === text) return;
       s.lastTexts[ai1] = text;
       
@@ -243,14 +233,11 @@ export class AIAIRelay extends BaseRelay {
    * @private
    */
   async _handleSimpleRelayFlow(provider, text) {
-    // Duplicate kontrolü
     if (this._lastTexts[provider] === text) return;
     this._lastTexts[provider] = text;
 
-    // Hedef provider'ı belirle
     const target = this._determineTarget(provider);
     
-    // Hedef bağlı değilse atla
     if (!SlotController.isConnected(target)) {
       this._log("info", `Relay skipped: target ${target} not connected`);
       return;

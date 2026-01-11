@@ -67,7 +67,6 @@ export async function renderMessages(provider, callbacks = {}) {
     const json = JSON.parse(decodeBase64(base64));
     let items = Array.isArray(json) ? json : [];
     
-    // Filter by count
     const limitVal = filter?.value;
     if (limitVal && limitVal !== "all") {
       const n = parseInt(limitVal, 10);
@@ -76,7 +75,6 @@ export async function renderMessages(provider, callbacks = {}) {
       }
     }
     
-    // Render each message
     items.forEach((msg) => {
       const bubble = createMessageBubble(msg, provider, folder, callbacks);
       container.appendChild(bubble);
@@ -86,7 +84,6 @@ export async function renderMessages(provider, callbacks = {}) {
       container.innerHTML = '<div class="message-placeholder">Mesaj bulunamadı.</div>';
     }
     
-    // Find last assistant message
     const lastAssistant = [...items]
       .reverse()
       .find((m) => m.role === "assistant" && (m.text || "").trim());
@@ -112,19 +109,16 @@ function createMessageBubble(msg, provider, folder, callbacks) {
   const bubble = document.createElement("div");
   bubble.className = `msg-bubble ${msg.role === "assistant" ? "msg-ai" : "msg-user"}`;
   
-  // Meta (author)
   const meta = document.createElement("div");
   meta.className = "msg-meta";
   meta.textContent = msg.author || msg.role || "";
   bubble.appendChild(meta);
   
-  // Text content
   const text = document.createElement("div");
   text.className = "msg-text";
   text.textContent = msg.text || "";
   bubble.appendChild(text);
   
-  // Attachments
   if (Array.isArray(msg.attachments) && msg.attachments.length && msg.role !== "assistant") {
     const attWrap = document.createElement("div");
     attWrap.className = "msg-attachments";
@@ -140,14 +134,12 @@ function createMessageBubble(msg, provider, folder, callbacks) {
     bubble.appendChild(attWrap);
   }
   
-  // Context menu
   if (callbacks.onContextMenu) {
     bubble.addEventListener("contextmenu", (e) => {
       callbacks.onContextMenu(e, { provider, text: msg.text || "" });
     });
   }
   
-  // Double click (read modal)
   if (callbacks.onDoubleClick) {
     bubble.addEventListener("dblclick", () => {
       callbacks.onDoubleClick({ provider, text: msg.text || "" });

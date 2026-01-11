@@ -1,5 +1,3 @@
-// Thinking Tracker - AI düşünme (response generation) durumunu izler
-// import { LogManager } from "../log-manager.js";
 
 export class ThinkingTracker {
   constructor(config) {
@@ -15,15 +13,11 @@ export class ThinkingTracker {
    * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
   handleProbe(provider, viewState, data, now) {
-    // const stopVisible = !!data.stopVisible;
-    // const sendState = data.sendState || "missing";
-    // const voiceMode = !!data.voiceMode;
     const lastSend = data.lastSend || 0;
 
     let event = null;
     let indicator = viewState.status?.thinking || "idle";
 
-    // Check if send was triggered
     if (lastSend > viewState.lastSendSeen) {
       this.startThinking(viewState, now, lastSend);
       indicator = "busy";
@@ -33,7 +27,6 @@ export class ThinkingTracker {
       };
     }
 
-    // Check if thinking should end
     if (viewState.status?.thinking === "busy") {
       const result = this.checkThinkingEnd(provider, viewState, data, now);
       if (result.shouldEnd) {
@@ -76,7 +69,6 @@ export class ThinkingTracker {
     const stopVisible = !!data.stopVisible;
     const voiceMode = !!data.voiceMode;
 
-    // If not thinking, nothing to check
     if (viewState.status.thinking !== "busy") {
       return { shouldEnd: false, newState: viewState };
     }
@@ -102,7 +94,6 @@ export class ThinkingTracker {
       return { shouldEnd: false, newState: viewState };
     }
 
-    // Check if we should end thinking based on provider-specific rules
     const shouldEndThinking =
       provider === "ai1"
         ? sendState === "enabled" || sendState === "disabled"

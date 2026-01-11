@@ -5,7 +5,6 @@ const PROVIDERS = ["ai1", "ai2"];
 function resolveProvider(name = "", settings = {}) {
   const lowered = name.toLowerCase();
   
-  // Yeni settings yapısı: slots.ai1/ai2.accountId üzerinden account'u bul
   const getAccountNickname = (slot) => {
     const accountId = settings.slots?.[slot]?.accountId;
     if (!accountId) return "";
@@ -285,7 +284,6 @@ class WhisperManagerClass {
     try {
       window.dispatchEvent(new CustomEvent("whisper-updated"));
     } catch (e) {
-      /* noop */
     }
   }
 }

@@ -1,10 +1,8 @@
 export * from "./scraper.js";
 
-// Message methods from new location
 export { sendMessage } from "../../methods/message/injection.js";
 export { sendMessage as sendMessage_xdotools } from "../../methods/message/xdotools.js";
 
-// File methods from new location
 export { attachFiles as attachFiles_dragdrop } from "../../methods/file/dragdrop.js";
 export { attachFiles as attachFiles_injection } from "../../methods/file/injection.js";
 export { attachFiles as attachFiles_xdotools } from "../../methods/file/xdotools.js";

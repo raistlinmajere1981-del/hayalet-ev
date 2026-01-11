@@ -56,7 +56,6 @@ export async function listPlugins(projectRoot) {
   for (const dir of dirs) {
     if (dir.isDirectory()) {
       try {
-        // Yeni yapı: .claude-plugin/plugin.json
         const manifestPath = join(pluginsDir, dir.name, ".claude-plugin", "plugin.json");
         if (existsSync(manifestPath)) {
           const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));

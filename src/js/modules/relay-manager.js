@@ -30,11 +30,9 @@ class RelayManagerClass {
   init(coreEngine) {
     this.coreEngine = coreEngine;
 
-    // Relay instance'larını oluştur
     this._aiaiRelay = new AIAIRelay(coreEngine);
     this._aiAsistanRelay = new AIAsistanRelay(coreEngine);
 
-    // TrafficManager subscription'ı yönet
     if (this._trafficUnsubscribe) {
       this._trafficUnsubscribe();
     }
@@ -44,7 +42,6 @@ class RelayManagerClass {
   }
 
   // ==========================================
-  // PUBLIC API - Orchestrator Methods
   // ==========================================
 
   /**
@@ -72,7 +69,6 @@ class RelayManagerClass {
   }
 
   // ==========================================
-  // AI-AI RELAY METHODS
   // ==========================================
 
   /**
@@ -80,7 +76,6 @@ class RelayManagerClass {
    * @param {Object} opts - { providers: ['ai1', 'ai2'] }
    */
   async startSession(opts = {}) {
-    // AI-Asistan session aktifse durdur
     if (this._aiAsistanRelay?.isActive) {
       LogManager.addEvent("relay", "info", "Stopping AI-Asistan session for AI-AI relay");
       await this._aiAsistanRelay.stop();
@@ -103,7 +98,6 @@ class RelayManagerClass {
    * @param {Object} opts - { providers, protocolPayload, attachments }
    */
   async startProtocolSession(opts = {}) {
-    // AI-Asistan session aktifse durdur
     if (this._aiAsistanRelay?.isActive) {
       LogManager.addEvent("relay", "info", "Stopping AI-Asistan session for protocol relay");
       await this._aiAsistanRelay.stop();
@@ -122,7 +116,6 @@ class RelayManagerClass {
   }
 
   // ==========================================
-  // AI-ASISTAN RELAY METHODS
   // ==========================================
 
   /**
@@ -130,7 +123,6 @@ class RelayManagerClass {
    * @param {Object} opts - { aiSlot: 'ai1' | 'ai2', assistantManager: AssistantManager }
    */
   async startAsistanSession(opts = {}) {
-    // AI-AI session aktifse durdur
     if (this._aiaiRelay?.isActive) {
       LogManager.addEvent("relay", "info", "Stopping AI-AI session for AI-Asistan relay");
       await this._aiaiRelay.stop();
@@ -149,7 +141,6 @@ class RelayManagerClass {
   }
 
   // ==========================================
-  // INTERNAL - Traffic Update Handler
   // ==========================================
 
   /**
@@ -164,7 +155,6 @@ class RelayManagerClass {
       const state = snapshot?.state || {};
       const currentThinking = state.thinkingState || "idle";
 
-      // Hangi relay bu provider'ı yönetiyor?
       let activeRelay = null;
       let thinkingComplete = false;
 
@@ -176,7 +166,6 @@ class RelayManagerClass {
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
       }
 
-      // Thinking tamamlandıysa ilgili relay'e bildir
       if (activeRelay && thinkingComplete) {
         const syncResult = await WebviewManager.syncConversation(provider);
         await activeRelay.handleThinkingComplete(provider, syncResult);
@@ -194,7 +183,6 @@ class RelayManagerClass {
   }
 
   // ==========================================
-  // INTERNAL - UI Indicator
   // ==========================================
 
   /**
@@ -206,7 +194,6 @@ class RelayManagerClass {
       const el = document.getElementById("relay-indicator");
       if (!el) return;
 
-      // AI-Asistan session kontrolü
       if (this._aiAsistanRelay?.isActive) {
         const count = this._aiAsistanRelay.forwardCount || 0;
         el.textContent = `asistan relay aktif (${count})`;
@@ -215,7 +202,6 @@ class RelayManagerClass {
         return;
       }
 
-      // AI-AI session kontrolü
       if (this._aiaiRelay?.isActive) {
         const count = this._aiaiRelay.forwardCount || 0;
         el.textContent = `relay aktif (${count})`;
@@ -224,17 +210,14 @@ class RelayManagerClass {
         return;
       }
 
-      // Hiçbir relay aktif değil
       el.textContent = "relay pasif";
       el.classList.remove("relay-active");
       el.classList.remove("relay-asistan");
     } catch (e) {
-      /* noop */
     }
   }
 
   // ==========================================
-  // GETTERS - Relay Access
   // ==========================================
 
   /**

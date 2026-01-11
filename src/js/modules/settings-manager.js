@@ -1,7 +1,3 @@
-// Central SettingsManager (renderer)
-// - Single source of truth in renderer
-// - Persists via electronAPI (main)
-// - Publishes realtime updates via emitter + BroadcastChannel
 
 import {
   defaultSettings,
@@ -46,7 +42,6 @@ class SettingsManagerClass {
         return;
       }
       
-      // Avoid loops: only accept if payload differs
       if (msg.payload && typeof msg.payload === "object") {
         const next = normalizeSettings(msg.payload);
         const changedPaths = getChangedPaths(this._settings, next);
@@ -63,7 +58,6 @@ class SettingsManagerClass {
     return this._settings;
   }
 
-  // Backwards compatible getter
   get settings() {
     return this._settings;
   }
@@ -100,7 +94,6 @@ class SettingsManagerClass {
   }
 
   subscribe(listener) {
-    // listener(payload: {settings, changedPaths})
     return this._emitter.on(listener);
   }
 

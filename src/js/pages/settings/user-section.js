@@ -1,5 +1,3 @@
-// User (nickname + avatar) section controller
-// UI: "kullanıcı", code: "user"
 
 export class UserSection {
   constructor(settingsManager, fileManager) {
@@ -33,7 +31,6 @@ export class UserSection {
     const nicknameEl = /** @type {HTMLInputElement|null} */ (
       document.getElementById("settings-user-nickname")
     );
-    // Don't update input if user is currently typing
     if (nicknameEl && document.activeElement !== nicknameEl) {
       nicknameEl.value = user.nickname || "Kullanıcı";
     }

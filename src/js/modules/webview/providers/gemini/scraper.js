@@ -2,7 +2,6 @@ export function scrapeMessages() {
   const config = window.__hayalet_provider_config || {};
   const { scrapeSelectors = {}, roleSelectors = {} } = config;
 
-  // Use preferred selector if available, otherwise fallback
   const preferredSel = scrapeSelectors.preferred || ".message-content";
   const fallbackSel =
     scrapeSelectors.fallback ||
@@ -13,16 +12,14 @@ export function scrapeMessages() {
     ? preferred
     : Array.from(document.querySelectorAll(fallbackSel));
 
-  // Filter out nested nodes to get the top-level message containers
   const nodes = base.filter(
     (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n)),
   );
 
   const result = [];
   nodes.forEach((node, idx) => {
-    let role = "assistant"; // Default role
+    let role = "assistant";
 
-    // Determine role based on selectors from config
     if (roleSelectors.user && node.matches(roleSelectors.user)) {
       role = "user";
     } else if (
@@ -31,7 +28,6 @@ export function scrapeMessages() {
     ) {
       role = "assistant";
     } else {
-      // Fallback for when the node itself doesn't match, but a child does
       if (roleSelectors.user && node.querySelector(roleSelectors.user)) {
         role = "user";
       } else if (
@@ -43,7 +39,6 @@ export function scrapeMessages() {
     }
 
     let textContent = "";
-    // Extract text using a specific text selector if provided
     if (roleSelectors.text) {
       const textNodes = Array.from(node.querySelectorAll(roleSelectors.text));
       textContent = textNodes
@@ -52,7 +47,6 @@ export function scrapeMessages() {
         .trim();
     }
 
-    // Fallback to the node's innerText if the specific selector yields no text
     if (!textContent) {
       textContent = (node.innerText || "").trim();
     }

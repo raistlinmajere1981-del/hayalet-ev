@@ -95,10 +95,3 @@ export async function persistDraft(message, files) {
   }
 }
 
-/**
- * Draft path'i getir (test için)
- * @returns {string}
- */
-export function getDraftPath() {
-  return draftPath;
-}

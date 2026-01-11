@@ -34,7 +34,6 @@ export function normalizeHref(href) {
 export function attachWebviewEvents(provider, webviewEl, callbacks) {
   if (!provider || !webviewEl) return;
 
-  // If handlers already attached, skip
   if (webviewHandlers[provider]) {
     return;
   }
@@ -44,7 +43,6 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
   const ensureBridge = () => {
     const script = buildProbeScript(provider);
     webviewEl.executeJavaScript(script).catch(() => {
-      /* noop */
     });
   };
 
@@ -73,7 +71,6 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
     try {
       handleNavEvent(webviewEl.getURL?.(), "dom-ready");
     } catch (_e) {
-      /* noop */
     }
     onDomReady?.(provider);
   };
@@ -133,7 +130,6 @@ export function detachWebviewEvents(provider) {
     try { webviewEl.removeEventListener("dom-ready", l.domReady); } catch (_) { void 0; }
     try { webviewEl.removeEventListener("did-fail-load", l.failLoad); } catch (_) { void 0; }
   } catch (_err) {
-    /* noop */
   }
 
   delete webviewHandlers[provider];

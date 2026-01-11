@@ -1,9 +1,7 @@
 import { join } from "path";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
-// googledriveUpload moved to electron/googledrive-manager.js
 
-// Catbox upload proxy: receive base64 file and upload from main process to avoid webview/CORS issues
 export async function catboxUpload(_event, payload = {}) {
   try {
     const {
@@ -56,7 +54,6 @@ export async function catboxUpload(_event, payload = {}) {
   }
 }
 
-// Uguu upload proxy
 export async function uguuUpload(_event, payload = {}) {
   try {
     const {
@@ -109,7 +106,6 @@ export async function uguuUpload(_event, payload = {}) {
   }
 }
 
-// Archive sync: persist conversation messages and update index.json
 export async function archiveSync(_event, payload = {}) {
   try {
     const provider = payload?.provider;
@@ -221,7 +217,6 @@ export async function archiveSync(_event, payload = {}) {
       "utf-8",
     );
 
-    // Update index.json
     if (existing) {
       try {
         existing.webUrl = webUrl;

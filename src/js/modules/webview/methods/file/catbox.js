@@ -16,13 +16,11 @@ import {
 export async function attachFiles(webview, { files }) {
   console.log("[attachFiles-catbox] called", files && files.length);
 
-  // Validate files
   const validation = validateFiles(files);
   if (!validation.valid) {
     return createErrorResponse(validation.message);
   }
 
-  // Check service availability
   if (!isServiceAvailable("CATBOX")) {
     return createErrorResponse("Catbox servisi mevcut değil");
   }

@@ -9,7 +9,6 @@ export async function sendMessage(webview, { message }) {
   const injectScript = `(function() {
     const message = ${safeMessage};
 
-    // Get selectors from runtime config
     const config = window.__hayalet_provider_config;
     if (!config || !config.selectors) {
       return { success: false, message: 'Provider config bulunamadı' };
@@ -28,7 +27,6 @@ export async function sendMessage(webview, { message }) {
 
     const inputType = config.inputType || 'direct';
 
-    // For character-by-character input (e.g., Grok), just clear and focus
     if (inputType === 'character-by-character') {
       textarea.focus();
       if (typeof textarea.value !== 'undefined') textarea.value = '';
@@ -41,10 +39,8 @@ export async function sendMessage(webview, { message }) {
       };
     }
 
-    // Check if element is contenteditable div (like Gemini)
     if (textarea.contentEditable === 'true') {
       textarea.focus();
-      // Use textContent instead of innerHTML to avoid breaking Quill editor
       textarea.textContent = message;
       textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
       return {
@@ -55,7 +51,6 @@ export async function sendMessage(webview, { message }) {
       };
     }
 
-    // Standard textarea/input element handling
     textarea.value = message;
     if (typeof textarea.textContent !== 'undefined') {
       textarea.textContent = message;
@@ -78,7 +73,6 @@ export async function sendMessage(webview, { message }) {
     return { success: false, message: result?.message || "Mesaj eklenemedi" };
   }
 
-  // Character-by-character input for providers with inputType 'character-by-character' (e.g., Grok)
   if (result.inputType === "character-by-character") {
     const fullText = ` ${message}`;
     try {

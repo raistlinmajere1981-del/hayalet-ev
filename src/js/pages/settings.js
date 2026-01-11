@@ -1,4 +1,3 @@
-// Settings page orchestrator (delegates to sub-sections)
 import { SettingsManager } from "../modules/settings-manager.js";
 import { FileManager } from "../modules/file-manager.js";
 import { UserSection } from "./settings/user-section.js";
@@ -19,10 +18,8 @@ export class SettingsController {
   }
 
   async init() {
-    // Load settings first
     await this.settingsManager.load();
 
-    // Initialize sections
     this.sections.user = new UserSection(this.settingsManager, FileManager);
     this.sections.googledrive = new GoogleDriveSection(this.settingsManager);
     this.sections.accounts = new AccountsSection(this.settingsManager);
@@ -33,10 +30,8 @@ export class SettingsController {
     this.sections.accounts.init();
     this.sections.slots.init();
 
-    // Subscribe to settings changes from other pages
     this._unsubscribe = this.settingsManager.subscribe((payload) => {
       const { changedPaths } = payload;
-      // Incremental update: re-render only changed sections
       if (
         changedPaths.includes("*") ||
         changedPaths.some((p) => p.startsWith("user"))
@@ -54,7 +49,7 @@ export class SettingsController {
         changedPaths.some((p) => p.startsWith("accounts"))
       ) {
         this.sections.accounts?.render();
-        this.sections.slots?.render(); // slots dropdown depends on accounts
+        this.sections.slots?.render();
       }
       if (
         changedPaths.includes("*") ||

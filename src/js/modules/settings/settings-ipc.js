@@ -1,8 +1,6 @@
-// IPC wrapper: isolates window.electronAPI dependency.
-
 import { LogManager } from "../log-manager.js";
 
-export function getElectronAPI() {
+function getElectronAPI() {
   return typeof window !== "undefined" ? window.electronAPI : null;
 }
 

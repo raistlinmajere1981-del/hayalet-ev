@@ -1,5 +1,3 @@
-// Send Tracker - Gönder butonu durumunu izler
-// import { LogManager } from "../log-manager.js";
 
 export class SendTracker {
   constructor(config) {
@@ -27,9 +25,9 @@ export class SendTracker {
    */
   getSendStatus(sendState) {
     if (sendState === "enabled") {
-      return "idle"; // Green - ready to send
+      return "idle";
     } else {
-      return "busy"; // Red - disabled/missing/not ready
+      return "busy";
     }
   }
 

@@ -36,7 +36,6 @@ export function checkUrlExclusion(slotState, url) {
  * @param {Function} onUrlChange - URL değiştiğinde çağrılacak callback
  */
 export function setupUrlChangeHandler(slotState, slot, _correlationId, onUrlChange) {
-  // Önceki handler'ı temizle
   clearUrlChangeHandler(slot);
 
   const webview = slotState.webview;
@@ -68,7 +67,6 @@ export function clearUrlChangeHandler(slot) {
     webview?.removeEventListener?.("did-navigate", handler);
     webview?.removeEventListener?.("did-navigate-in-page", handler);
   } catch (_e) {
-    // Already removed
   }
   delete urlChangeHandlers[slot];
 }
@@ -144,7 +142,6 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
   const webview = slotState.webview;
   if (!webview) return;
 
-  // URL belirtilmemişse default URL kullan
   let targetUrl = url;
   if (!targetUrl) {
     targetUrl = slotState.providerConfig?.baseUrl;
@@ -155,12 +152,10 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
     return;
   }
 
-  // Mevcut URL ile aynıysa skip
   let currentUrl = "";
   try {
     currentUrl = webview.getURL?.() || webview.getAttribute?.("src") || "";
   } catch (_e) {
-    // Webview not ready
   }
   
   if (normalizeUrl(currentUrl) === normalizeUrl(targetUrl)) {

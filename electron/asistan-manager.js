@@ -7,7 +7,6 @@ import { spawn } from "child_process";
 import { pathToFileURL } from "url";
 import http from "http";
 
-// Dynamic import for config
 async function getProviderConfig(providerId) {
   try {
     const configPath = pathToFileURL(
@@ -27,10 +26,10 @@ async function getProviderConfig(providerId) {
 function checkPort(port) {
   return new Promise((resolve) => {
     const req = http.get(`http://localhost:${port}`, (res) => {
-      resolve(true); // Port'ta bir şey var
+      resolve(true);
     });
     req.on("error", () => {
-      resolve(false); // Port boş veya erişilemez
+      resolve(false);
     });
     req.setTimeout(1000, () => {
       req.destroy();
@@ -106,7 +105,6 @@ export class AssistantManager {
 
     const port = config.webPort;
     
-    // Port zaten kullanılıyor mu kontrol et (önceki oturum?)
     const portInUse = await checkPort(port);
     if (portInUse) {
       console.log(`[AssistantManager] Port ${port} already in use, assuming server is running`);
@@ -118,7 +116,6 @@ export class AssistantManager {
     }
 
     return new Promise((resolve, reject) => {
-      // Komutu parse et ve port'u yerleştir
       const commandStr = config.webStartCommand.replace("{port}", port);
       const parts = commandStr.split(" ");
       const command = parts[0];
@@ -131,38 +128,32 @@ export class AssistantManager {
         shell: true,
         env: {
           ...process.env,
-          BROWSER: "none", // Browser açmayı engelle
+          BROWSER: "none",
           NO_BROWSER: "true"
         },
         detached: false
       });
 
-      // Stdout log
       this.webProcess.stdout.on("data", (data) => {
         const output = data.toString();
         console.log(`[AssistantManager] ${config.id}:`, output);
       });
 
-      // Stderr log
       this.webProcess.stderr.on("data", (data) => {
         const output = data.toString();
-        // "Server is running" gibi bilgiler stderr'e gelebilir
         console.log(`[AssistantManager] ${config.id} stderr:`, output);
       });
 
-      // Process exit
       this.webProcess.on("exit", (code, signal) => {
         console.log(`[AssistantManager] Web server exited (code: ${code}, signal: ${signal})`);
         this.handleProcessExit(code);
       });
 
-      // Process error
       this.webProcess.on("error", (error) => {
         console.error("[AssistantManager] Web server spawn error:", error);
         reject(error);
       });
 
-      // Server'ın başlamasını bekle
       waitForServer(port, 30000).then((ready) => {
         if (ready && this.webProcess && !this.webProcess.killed) {
           this.isConnected = true;
@@ -194,13 +185,10 @@ export class AssistantManager {
         const pid = this.webProcess.pid;
         console.log(`[AssistantManager] Killing web server (PID: ${pid})`);
         
-        // Önce SIGTERM gönder
         this.webProcess.kill("SIGTERM");
         
-        // SIGTERM'in işlemesi için bekle
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Hala yaşıyorsa SIGKILL
         if (this.webProcess && !this.webProcess.killed) {
           this.webProcess.kill("SIGKILL");
         }
@@ -236,7 +224,6 @@ export class AssistantManager {
           this.webProcess.kill("SIGKILL");
         }
       } catch (error) {
-        // Already dead
       }
     }
     
@@ -266,5 +253,4 @@ export class AssistantManager {
   }
 }
 
-// Singleton instance
 export const assistantManager = new AssistantManager();

@@ -60,7 +60,6 @@ export class AIAsistanRelay extends BaseRelay {
     this._active = true;
     this._prevThinking = "idle";
 
-    // AssistantManager'dan output event'lerini dinle
     assistantManager.on("assistant-output", this._boundAsistanOutput);
 
     this._log("info", `AI-Asistan relay started: ${aiSlot} <-> Asistan`, {
@@ -68,7 +67,6 @@ export class AIAsistanRelay extends BaseRelay {
       aiSlot,
     });
 
-    // Protocol dosyasını oku ve AI'ye gönder
     await this._sendAsistanProtocolToAI(aiSlot);
 
     this._dispatchEvent("relay-changed", { active: true, type: "asistan" });
@@ -83,7 +81,6 @@ export class AIAsistanRelay extends BaseRelay {
     const sessionId = this._session?.id;
     const forwardCount = this._forwardCount;
 
-    // Event listener'ı kaldır
     if (this._assistantManager && this._boundAsistanOutput) {
       this._assistantManager.off("assistant-output", this._boundAsistanOutput);
     }
@@ -120,7 +117,6 @@ export class AIAsistanRelay extends BaseRelay {
       if (provider !== this._aiSlot) return;
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 
-      // Son assistant mesajını bul
       const lastAssistant = [...syncResult.messages]
         .reverse()
         .find((m) => m.role === "assistant" && (m.text || "").trim());
@@ -157,22 +153,16 @@ export class AIAsistanRelay extends BaseRelay {
   _onAsistanOutput(data) {
     if (!this._active) return;
 
-    // Output'u buffer'a ekle
     this._outputBuffer = (this._outputBuffer || "") + data;
 
-    // Stop komutu kontrolü
     if (this._containsStopCommand(this._outputBuffer)) {
       this._log("info", "AI-Asistan relay: Stop command detected");
       this.stop();
       return;
     }
 
-    // Satır tamamlandığında AI'ye forward et
-    // Not: Bu basit bir implementasyon - gerçek kullanımda
-    // daha gelişmiş bir buffer/flush mekanizması gerekebilir
     if (this._outputBuffer.includes("\n")) {
       const lines = this._outputBuffer.split("\n");
-      // Son satır hariç hepsini gönder (tamamlanmamış olabilir)
       const completeLines = lines.slice(0, -1).join("\n");
       this._outputBuffer = lines[lines.length - 1];
 
@@ -213,7 +203,6 @@ export class AIAsistanRelay extends BaseRelay {
           const decoder = new TextDecoder("utf-8");
           const protocolText = decoder.decode(bytes);
 
-          // AI'ye protokolü gönder
           await this.coreEngine.sendMessage({
             provider: aiSlot,
             text: protocolText,

@@ -3,6 +3,7 @@ export const config = {
   name: "Gemini",
   baseUrl: "https://gemini.google.com",
   loginUrl: "https://gemini.google.com/",
+  lastVerified: "2026-01-11",
   selectors: {
     sendButton: "button.send-button",
     stopButton: ".blue-circle.stop-icon",
@@ -14,16 +15,12 @@ export const config = {
   inputType: "character-by-character",
   scrollerSelectors: [".chat-history"],
   scrapeSelectors: {
-    // A single selector for both user and assistant messages to get them in order
     preferred: ".message-content",
-    // Fallback selectors if the preferred one fails
     fallback: ".user-query-bubble-with-background, .markdown-main-panel",
   },
-  // We need to identify user and assistant messages within the scraped elements
   roleSelectors: {
     user: ".user-query-bubble-with-background",
     assistant: ".markdown-main-panel",
-    // A selector to get the text content from a message element
     text: ".query-text",
   },
   fileInputSelectors: [

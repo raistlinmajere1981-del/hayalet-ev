@@ -47,7 +47,6 @@ class PendingArchiveHandlerClass {
 
       const history = syncResult?.messages || [];
       
-      // Son user mesajının indeksini bul
       const lastUserIdx = [...history]
         .reverse()
         .findIndex((m) => m.role === "user");
@@ -87,7 +86,6 @@ class PendingArchiveHandlerClass {
         },
       );
 
-      // Async işlem - Promise.resolve ile sarmalayarak hata yönetimi
       Promise.resolve(FileManager.commandArchiveCopy(entry.jobId, targetDir))
         .then((result) => {
           if (result?.success) {
@@ -98,7 +96,6 @@ class PendingArchiveHandlerClass {
               { jobId: entry.jobId },
             );
 
-            // Cleanup işlemi
             this._cleanup(entry);
           } else {
             LogManager.addEvent(
@@ -180,7 +177,6 @@ class PendingArchiveHandlerClass {
       return this._pendingArchives[provider]?.length || 0;
     }
     
-    // Tüm provider'lar için toplam
     return Object.values(this._pendingArchives)
       .reduce((sum, list) => sum + (list?.length || 0), 0);
   }
