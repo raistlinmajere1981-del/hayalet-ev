@@ -1,3 +1,4 @@
+import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
 import { AppState } from "./app-state.js";
 
@@ -87,7 +88,7 @@ class WhisperManagerClass {
     const provider = resolveProvider(userName);
     const whenTs = this.parseWhen(when);
     const rec = {
-      id: `whisper-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: generateUniqueId("whisper"),
       user: provider,
       text,
       when: whenTs,

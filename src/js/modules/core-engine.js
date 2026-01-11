@@ -13,6 +13,7 @@ import { ServerCommands } from "./server-commands.js";
 import { WindowManager } from "./window-manager.js";
 import { AssistantManager } from "./asistan-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
+import { getFilename, generateUniqueId } from "../constants/index.js";
 
 class CoreEngineClass {
   constructor() {
@@ -197,10 +198,10 @@ class CoreEngineClass {
     const attachmentItems = attachments.map((a) => {
       const name =
         typeof a === "string"
-          ? a.split(/[/\\]/).pop()
+          ? getFilename(a)
           : a.name ||
-            a.path?.split(/[/\\]/).pop() ||
-            a.commandPath?.split(/[/\\]/).pop();
+            getFilename(a.path || "") ||
+            getFilename(a.commandPath || "");
       const path =
         typeof a === "string" ? a : a.path || a.commandPath || a.name;
       return { name, path };
@@ -212,7 +213,7 @@ class CoreEngineClass {
     for (const provider of list) {
       const jobId =
         jobIds?.[provider] ||
-        `cmd-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        generateUniqueId("cmd");
       /** @type {{ staged: any[], temp: any[], commandDir: string }} */
       let staged = { staged: [], temp: [], commandDir: "" };
       if (hasAttachments) {
@@ -234,7 +235,7 @@ class CoreEngineClass {
           (s && s.name) ||
           (s && s.renamedName) ||
           (s && s.originalName) ||
-          ((s && s.commandPath) || "").split(/[/\\]/).pop(),
+          getFilename((s && s.commandPath) || ""),
       }));
       jobs.push({
         id: jobId,
@@ -357,7 +358,7 @@ class CoreEngineClass {
     }
 
     const attachments = (payload.attachments || []).map((att) => ({
-      name: att.name || att.path?.split(/[/\\]/).pop(),
+      name: att.name || getFilename(att.path || ""),
       path: att.path || att,
     }));
     if (

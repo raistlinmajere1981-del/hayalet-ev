@@ -1,3 +1,5 @@
+import { getFilename } from "../../constants/index.js";
+
 /**
  * UploadHandler - Analyze sayfası dosya yükleme işlemleri
  * 
@@ -76,8 +78,7 @@ export async function addUploadFiles(currentFiles) {
     if (!paths.length) return currentFiles;
     
     const newEntries = paths.map((p) => {
-      const parts = String(p).split(/[/\\]/);
-      const name = parts.pop() || "dosya";
+      const name = getFilename(String(p)) || "dosya";
       return { name, path: p };
     });
     

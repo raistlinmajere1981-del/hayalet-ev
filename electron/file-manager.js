@@ -139,7 +139,7 @@ export async function copyToAssets(
     if (!existsSync(assetsDir)) {
       await mkdir(assetsDir, { recursive: true });
     }
-    const baseName = srcPath.split(/[/\\]/).pop() || "avatar";
+    const baseName = basename(srcPath) || "avatar";
     const parts = baseName.split(".");
     const ext = parts.length > 1 ? "." + parts.pop() : "";
     let candidate;

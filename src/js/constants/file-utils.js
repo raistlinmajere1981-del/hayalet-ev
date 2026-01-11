@@ -61,3 +61,12 @@ export function getMimeTypeFromPath(filePath) {
   const ext = getExtension(filePath);
   return getMimeType(ext);
 }
+
+/**
+ * Benzersiz ID oluştur
+ * @param {string} prefix - ID prefix'i (örn: "cmd", "relay", "whisper")
+ * @returns {string} Benzersiz ID
+ */
+export function generateUniqueId(prefix = "id") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}

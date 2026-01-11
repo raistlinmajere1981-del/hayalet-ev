@@ -1,6 +1,6 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
-import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath } from "./constants/index.js";
+import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename } from "./constants/index.js";
 import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
@@ -120,7 +120,7 @@ function ensureElectronApiFallback() {
     commandStageAttachments: async (payload) => ({
       success: true,
       staged: (payload.files || []).map((p) => ({
-        name: p.split("/").pop(),
+        name: getFilename(p),
         path: p,
       })),
       temp: [],

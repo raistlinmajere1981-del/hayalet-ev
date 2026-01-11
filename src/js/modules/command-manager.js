@@ -1,3 +1,4 @@
+import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
 
 /**
@@ -131,7 +132,7 @@ class CommandManagerClass {
     const deferred = this.defer();
     /** @type {CommandJob} */
     const job = {
-      id: item.id || `cmd-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: item.id || generateUniqueId("cmd"),
       provider: item.provider || item.target || "default",
       command:
         item.command || item.payload?.command || item.meta?.command || "",

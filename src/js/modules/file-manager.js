@@ -1,5 +1,5 @@
 import { LogManager } from "./log-manager.js";
-import { getExtension, getMimeType } from "../constants/index.js";
+import { getExtension, getMimeType, getFilename, generateUniqueId } from "../constants/index.js";
 
 class FileManagerClass {
   constructor() {
@@ -53,7 +53,7 @@ class FileManagerClass {
             const base =
               entry?.name ||
               entry?.originalName ||
-              (entry?.path || "").split(/[/\\]/).pop();
+              getFilename(entry?.path || "");
             const ext = getExtension(base);
             const mimeType = getMimeType(ext);
             results.push({ name: base, base64: data, mimeType });
@@ -71,7 +71,7 @@ class FileManagerClass {
     }
 
     for (const entry of filterNames) {
-      const base = entry?.name || (entry?.path || "").split(/[/\\]/).pop();
+      const base = entry?.name || getFilename(entry?.path || "");
       const path = entry?.path || entry?.tempPath || entry?.commandPath;
       if (!base || !path) continue;
       try {
@@ -228,7 +228,7 @@ class FileManagerClass {
       return "";
     }
     const cleanTag = (tag || "shot").replace(/[^\w.-]+/g, "_");
-    const filename = `${cleanTag}-${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+    const filename = generateUniqueId(cleanTag) + "." + ext;
     return `${baseDir}/screenshots/${filename}`;
   }
 
