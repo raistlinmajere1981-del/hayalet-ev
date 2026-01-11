@@ -3,7 +3,6 @@
  * 
  * Bu modül tüm relay tiplerini yönetir ve koordine eder:
  * - AIAIRelay: İki AI arasındaki iletişim
- * - AIAsistanRelay: AI ile Asistan arasındaki iletişim
  * 
  * Gelecekte yeni relay tipleri kolayca eklenebilir.
  */
@@ -12,13 +11,11 @@ import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
 import { AIAIRelay } from "./relay/ai-ai-relay.js";
-import { AIAsistanRelay } from "./relay/ai-asistan-relay.js";
 
 class RelayManagerClass {
   constructor() {
     this.coreEngine = null;
     this._aiaiRelay = null;
-    this._aiAsistanRelay = null;
     this._boundUpdate = this._onTrafficUpdate.bind(this);
     this._trafficUnsubscribe = null;
   }
@@ -31,14 +28,13 @@ class RelayManagerClass {
     this.coreEngine = coreEngine;
 
     this._aiaiRelay = new AIAIRelay(coreEngine);
-    this._aiAsistanRelay = new AIAsistanRelay(coreEngine);
 
     if (this._trafficUnsubscribe) {
       this._trafficUnsubscribe();
     }
     this._trafficUnsubscribe = TrafficManager.onUpdate(this._boundUpdate);
 
-    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI and AI-Asistan relays");
+    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI relay");
   }
 
   // ==========================================
@@ -49,7 +45,7 @@ class RelayManagerClass {
    * @returns {boolean}
    */
   isActive() {
-    return this._aiaiRelay?.isActive || this._aiAsistanRelay?.isActive || false;
+    return this._aiaiRelay?.isActive || false;
   }
 
   /**
@@ -60,14 +56,6 @@ class RelayManagerClass {
     return this._aiaiRelay?.isActive || false;
   }
 
-  /**
-   * AI-Asistan relay aktif mi?
-   * @returns {boolean}
-   */
-  isAsistanSessionActive() {
-    return this._aiAsistanRelay?.isActive || false;
-  }
-
   // ==========================================
   // ==========================================
 
@@ -76,13 +64,7 @@ class RelayManagerClass {
    * @param {Object} opts - { providers: ['ai1', 'ai2'] }
    */
   async startSession(opts = {}) {
-    if (this._aiAsistanRelay?.isActive) {
-      LogManager.addEvent("relay", "info", "Stopping AI-Asistan session for AI-AI relay");
-      await this._aiAsistanRelay.stop();
-    }
-
     await this._aiaiRelay.start(opts);
-    this._updateIndicator();
   }
 
   /**
@@ -90,7 +72,6 @@ class RelayManagerClass {
    */
   async stopSession() {
     await this._aiaiRelay.stop();
-    this._updateIndicator();
   }
 
   /**
@@ -98,13 +79,7 @@ class RelayManagerClass {
    * @param {Object} opts - { providers, protocolPayload, attachments }
    */
   async startProtocolSession(opts = {}) {
-    if (this._aiAsistanRelay?.isActive) {
-      LogManager.addEvent("relay", "info", "Stopping AI-Asistan session for protocol relay");
-      await this._aiAsistanRelay.stop();
-    }
-
     await this._aiaiRelay.startProtocolSession(opts);
-    this._updateIndicator();
   }
 
   /**
@@ -112,32 +87,6 @@ class RelayManagerClass {
    */
   async stopProtocolSession() {
     await this._aiaiRelay.stopProtocolSession();
-    this._updateIndicator();
-  }
-
-  // ==========================================
-  // ==========================================
-
-  /**
-   * AI-Asistan relay oturumu başlat
-   * @param {Object} opts - { aiSlot: 'ai1' | 'ai2', assistantManager: AssistantManager }
-   */
-  async startAsistanSession(opts = {}) {
-    if (this._aiaiRelay?.isActive) {
-      LogManager.addEvent("relay", "info", "Stopping AI-AI session for AI-Asistan relay");
-      await this._aiaiRelay.stop();
-    }
-
-    await this._aiAsistanRelay.start(opts);
-    this._updateIndicator();
-  }
-
-  /**
-   * AI-Asistan relay oturumunu durdur
-   */
-  async stopAsistanSession() {
-    await this._aiAsistanRelay.stop();
-    this._updateIndicator();
   }
 
   // ==========================================
@@ -158,10 +107,7 @@ class RelayManagerClass {
       let activeRelay = null;
       let thinkingComplete = false;
 
-      if (this._aiAsistanRelay?.handlesProvider(provider)) {
-        activeRelay = this._aiAsistanRelay;
-        thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
-      } else if (this._aiaiRelay?.handlesProvider(provider)) {
+      if (this._aiaiRelay?.handlesProvider(provider)) {
         activeRelay = this._aiaiRelay;
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
       }
@@ -169,7 +115,6 @@ class RelayManagerClass {
       if (activeRelay && thinkingComplete) {
         const syncResult = await WebviewManager.syncConversation(provider);
         await activeRelay.handleThinkingComplete(provider, syncResult);
-        this._updateIndicator();
       }
 
     } catch (err) {
@@ -186,54 +131,11 @@ class RelayManagerClass {
   // ==========================================
 
   /**
-   * UI göstergesini güncelle
-   * @private
-   */
-  _updateIndicator() {
-    try {
-      const el = document.getElementById("relay-indicator");
-      if (!el) return;
-
-      if (this._aiAsistanRelay?.isActive) {
-        const count = this._aiAsistanRelay.forwardCount || 0;
-        el.textContent = `asistan relay aktif (${count})`;
-        el.classList.add("relay-active");
-        el.classList.add("relay-asistan");
-        return;
-      }
-
-      if (this._aiaiRelay?.isActive) {
-        const count = this._aiaiRelay.forwardCount || 0;
-        el.textContent = `relay aktif (${count})`;
-        el.classList.add("relay-active");
-        el.classList.remove("relay-asistan");
-        return;
-      }
-
-      el.textContent = "relay pasif";
-      el.classList.remove("relay-active");
-      el.classList.remove("relay-asistan");
-    } catch (e) {
-    }
-  }
-
-  // ==========================================
-  // ==========================================
-
-  /**
    * AI-AI Relay instance'ına erişim
    * @returns {AIAIRelay}
    */
   get aiaiRelay() {
     return this._aiaiRelay;
-  }
-
-  /**
-   * AI-Asistan Relay instance'ına erişim
-   * @returns {AIAsistanRelay}
-   */
-  get aiAsistanRelay() {
-    return this._aiAsistanRelay;
   }
 }
 

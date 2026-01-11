@@ -7,7 +7,6 @@ import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
 import { ServerController } from "./pages/server.js";
 import { ArchivesController } from "./pages/archives.js";
-import { asistanPage } from "./pages/asistan.js";
 import { LogManager } from "./modules/log-manager.js";
 import { TrafficManager } from "./modules/traffic-manager.js";
 import { CoreEngine } from "./modules/core-engine.js";
@@ -21,7 +20,6 @@ import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
 import serverTemplate from "../pages/server.html?raw";
 import archivesTemplate from "../pages/archives.html?raw";
-import asistanTemplate from "../pages/asistan.html?raw";
 
 let currentPage = null;
 /**
@@ -156,12 +154,6 @@ function ensureElectronApiFallback() {
     googledriveStartAuth: async () => null,
     googledriveExchangeCode: async () => null,
     googledriveDisconnect: async () => null,
-    assistantConnect: async () => ({ success: false }),
-    assistantDisconnect: async () => ({ success: false }),
-    assistantSend: async () => ({ success: false }),
-    assistantStatus: async () => ({ isConnected: false }),
-    onAssistantOutput: () => {},
-    onAssistantDisconnected: () => {},
   };
 }
 
@@ -172,7 +164,7 @@ if (!window.electronAPI) {
 function injectPageTemplates() {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${archivesTemplate}${asistanTemplate}${settingsTemplate}${webviewTemplate}`;
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${archivesTemplate}${settingsTemplate}${webviewTemplate}`;
   }
 }
 
@@ -206,8 +198,6 @@ async function initApp() {
   controllers.whisper = new WhisperController();
   controllers.server = new ServerController();
   controllers.archives = new ArchivesController();
-  controllers.asistan = asistanPage;
-
   await controllers.entrance.init();
   await controllers.settings.init();
   await controllers.webview.init();
@@ -215,7 +205,6 @@ async function initApp() {
   await controllers.whisper.init();
   await controllers.server.init();
   await controllers.archives.init();
-  await controllers.asistan.init();
   await ConversationListManager.init();
 
   const ai1Webview = document.getElementById("ai1-webview");
@@ -232,15 +221,6 @@ async function initApp() {
   setupTopBarButtons();
   setupReportPanel();
 
-  window.addEventListener("beforeunload", async () => {
-    try {
-      if (controllers.asistan?.isConnected) {
-        await controllers.asistan.cleanup?.();
-      }
-    } catch (e) {
-      LogManager.addEvent("system", "error", `Asistan cleanup error: ${e?.message || e}`);
-    }
-  });
 
   showPage("entrance");
   updateIndicatorAvatars();
@@ -333,17 +313,10 @@ function setupWindowControls() {
 
 function setupTopBarButtons() {
   try {
-    const asistanBtn = document.getElementById("asistan-btn");
     const settingsBtn = document.getElementById("settings-btn");
     const archiveBtn = document.getElementById("archive-btn");
     const webviewBtn = document.getElementById("webview-btn");
     const menuToggle = document.getElementById("menu-toggle");
-
-    if (asistanBtn) {
-      asistanBtn.addEventListener("click", () => {
-        showPage("asistan");
-      });
-    }
 
     if (settingsBtn) {
       settingsBtn.addEventListener("click", () => {
@@ -389,7 +362,6 @@ function setActiveNavigation(pageName) {
 
   /** @type {Record<string, HTMLElement | null>} */
   const iconMap = {
-    asistan: document.getElementById("asistan-btn"),
     settings: document.getElementById("settings-btn"),
     archives: document.getElementById("archive-btn"),
     webview: document.getElementById("webview-btn"),
@@ -405,12 +377,6 @@ async function updateIndicatorAvatars() {
   const getAvatar = (provider) => AppState.getAvatar(provider);
 
   const map = {
-    user: {
-      el: document.getElementById("indicator-avatar-user"),
-      path: getAvatar("user"),
-      connected: true, // user her zaman aktif
-      nickname: AppState.getNickname("user"),
-    },
     ai1: {
       el: document.getElementById("indicator-avatar-ai1"),
       path: getAvatar("ai1"),
@@ -483,19 +449,15 @@ async function updateIndicatorAvatars() {
     /** @type {"empty"|"disconnected"|"connected"} */
     let slotState = "empty";
 
-    if (provider === "user") {
+    const settings = SettingsManager.getSnapshot();
+    const hasAccount = !!settings?.slots?.[provider]?.accountId;
+    const connected = SlotController.isConnected(provider);
+    if (!hasAccount) {
+      slotState = "empty";
+    } else if (connected) {
       slotState = "connected";
     } else {
-      const settings = SettingsManager.getSnapshot();
-      const hasAccount = !!settings?.slots?.[provider]?.accountId;
-      const connected = SlotController.isConnected(provider);
-      if (!hasAccount) {
-        slotState = "empty";
-      } else if (connected) {
-        slotState = "connected";
-      } else {
-        slotState = "disconnected";
-      }
+      slotState = "disconnected";
     }
 
     applyAvatar(el, null, slotState);

@@ -89,7 +89,6 @@ import {
   CONSOLE_LOG,
   ERROR_LOG,
 } from "./console-logger.js";
-import { assistantManager } from "./asistan-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -136,10 +135,6 @@ app.whenReady().then(async () => {
       initWindowManager({ mainWindow });
     } catch (e) {
     }
-    try {
-      assistantManager.setMainWindow(mainWindow);
-    } catch (e) {
-    }
   } catch (err) {
     console.error("CRITICAL: createAppWindow failed:", err);
     process.exit(1);
@@ -153,12 +148,6 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (assistantManager) {
-    assistantManager.disconnect().catch(err => {
-      console.error("Failed to disconnect assistant:", err);
-    });
-  }
-  
   if (process.platform !== "darwin") {
     app.quit();
   }
@@ -178,18 +167,6 @@ app.on("before-quit", async (event) => {
     await writeSessionSummary("normal");
   } catch (err) {
     console.error("Failed to write session summary:", err);
-  }
-  
-  if (assistantManager && assistantManager.isConnected) {
-    event.preventDefault();
-    try {
-      await assistantManager.disconnect();
-    } catch (err) {
-      console.error("Failed to disconnect assistant:", err);
-    }
-    setTimeout(() => {
-      app.quit();
-    }, 300);
   }
 });
 
@@ -423,39 +400,3 @@ ipcMain.handle("generate-correlation-id", async (event, prefix = "op") => {
   return generateCorrelationId(prefix);
 });
 
-ipcMain.handle("assistant-connect", async (event, provider) => {
-  try {
-    return await assistantManager.connect(provider);
-  } catch (err) {
-    console.error("[IPC] assistant-connect error:", err);
-    return { success: false, error: err.message };
-  }
-});
-
-ipcMain.handle("assistant-disconnect", async (event) => {
-  try {
-    await assistantManager.disconnect();
-    return { success: true };
-  } catch (err) {
-    console.error("[IPC] assistant-disconnect error:", err);
-    return { success: false, error: err.message };
-  }
-});
-
-ipcMain.handle("assistant-status", async (event) => {
-  try {
-    return assistantManager.getStatus();
-  } catch (err) {
-    console.error("[IPC] assistant-status error:", err);
-    return { isConnected: false };
-  }
-});
-
-ipcMain.handle("assistant-get-config", async (event, providerId) => {
-  try {
-    return await assistantManager.getProviderConfig(providerId);
-  } catch (err) {
-    console.error("[IPC] assistant-get-config error:", err);
-    return null;
-  }
-});

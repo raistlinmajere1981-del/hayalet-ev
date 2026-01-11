@@ -25,7 +25,6 @@ const CONFIG = {
     'whisper-manager.js',
     'googledrive-manager.js',
     'server-commands.js',
-    'asistan-manager.js',
   ],
   ignoreExports: [
     { name: 'uploadFile', file: 'provider-tools.js', reason: 'Template string içinde - yeni provider oluşturma template\'i' },

@@ -133,16 +133,6 @@ body {
   align-items: center;
   flex-wrap: wrap;
 }
-.relay-indicator {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-  text-align: center;
-}
-.relay-indicator.relay-active {
-  color: var(--success);
-  font-weight: 600;
-}
 .indicator-pair {
   font-size: 11px;
   color: var(--text-secondary);

@@ -11,7 +11,6 @@ import { FileManager } from "./file-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { ServerCommands } from "./server-commands.js";
 import { WindowManager } from "./window-manager.js";
-import { AssistantManager } from "./asistan-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { getFilename, generateUniqueId } from "../constants/index.js";
 
@@ -20,7 +19,6 @@ class CoreEngineClass {
     this.settings = null;
     this.initialized = false;
     this.relay = null;
-    this.assistant = null;
     this._settingsSub = null;
     this._previousSettings = null;
   }
@@ -58,17 +56,6 @@ class CoreEngineClass {
         "core",
         "warning",
         `RelayManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
-      );
-    }
-
-    try {
-      AssistantManager.init(this);
-      this.assistant = AssistantManager;
-    } catch (e) {
-      LogManager.addEvent(
-        "core",
-        "warning",
-        `AssistantManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
       );
     }
 

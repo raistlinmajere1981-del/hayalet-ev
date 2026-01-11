@@ -17,4 +17,4 @@ export const PROVIDERS = {
 
 export const PROVIDER_LIST = Object.values(PROVIDERS);
 
-export const SPECIAL_PAGES = ["asistan", "settings", "archives", "webview"];
+export const SPECIAL_PAGES = ["settings", "archives", "webview"];
