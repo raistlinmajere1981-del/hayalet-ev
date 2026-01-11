@@ -14,7 +14,6 @@ import {
 } from "../shared/upload-services.js";
 
 export async function attachFiles(webview, { files }) {
-  console.log("[attachFiles-tmpfile] called", files && files.length);
 
   const validation = validateFiles(files);
   if (!validation.valid) {

@@ -244,7 +244,6 @@ export const AssistantManager = {
 
 if (window.electronAPI?.onAssistantDisconnected) {
   window.electronAPI.onAssistantDisconnected((data) => {
-    console.log("[AssistantManager] Received disconnect event from main process");
     AssistantManager.isConnected = false;
     AssistantManager.currentProvider = null;
     AssistantManager.currentUrl = null;

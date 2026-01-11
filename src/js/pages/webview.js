@@ -372,7 +372,6 @@ export class WebviewController {
                     try {
                       window.__hayalet_slot = ${JSON.stringify(type)};
                       window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                      console.log('[Hayalet-Direct-Inject] Provider config set for slot:', ${JSON.stringify(type)}, 'provider:', ${JSON.stringify(providerId)});
                       return true;
                     } catch (e) {
                       console.error('[Hayalet-Direct-Inject] Failed:', e);

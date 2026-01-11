@@ -12,7 +12,6 @@ export async function attachFiles(webview, { files }) {
 
   // TODO: Implement actual XDotools integration
 
-  console.log("[attachFiles-xdotools] called but not implemented yet", files);
 
   return {
     success: false,

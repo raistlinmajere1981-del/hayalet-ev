@@ -7,7 +7,6 @@ import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 import { isServiceAvailable } from "../shared/upload-services.js";
 
 export async function attachFiles(webview, { files }) {
-  console.log("[attachFiles-googledrive] called", files && files.length);
 
   const validation = validateFiles(files);
   if (!validation.valid) {

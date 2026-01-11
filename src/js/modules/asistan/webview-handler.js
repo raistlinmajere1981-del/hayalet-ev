@@ -30,7 +30,6 @@ export class WebviewHandler {
 
       const onLoad = () => {
         this.isLoaded = true;
-        console.log("[WebviewHandler] Loaded:", url);
         cleanup();
         
         setTimeout(async () => {
@@ -146,7 +145,6 @@ export class WebviewHandler {
     `;
     
     const results = await this.executeScript(script);
-    console.log("[WebviewHandler] DOM Analysis:", JSON.stringify(results, null, 2));
     return results;
   }
 
@@ -198,7 +196,6 @@ export class WebviewHandler {
     }
 
     const inputInfo = await this.findInputElement();
-    console.log("[WebviewHandler] Input search result:", inputInfo);
     
     if (!inputInfo?.found) {
       await this.analyzeDOM();
@@ -258,7 +255,6 @@ export class WebviewHandler {
     `;
 
     const result = await this.executeScript(script);
-    console.log("[WebviewHandler] Send result:", result);
     
     if (!result?.success) {
       throw new Error(result?.error || "Mesaj gönderilemedi");
@@ -360,7 +356,6 @@ export class WebviewHandler {
     const pollInterval = 1000;
     const initialCount = this.lastMessageCount;
     
-    console.log("[WebviewHandler] Waiting for response, initial count:", initialCount);
 
     await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -368,13 +363,11 @@ export class WebviewHandler {
       const currentCount = await this.getMessageCount();
       
       if (currentCount > initialCount) {
-        console.log("[WebviewHandler] New message detected, count:", currentCount);
         
         let isThinking = await this.isThinking();
         let thinkingWaitCount = 0;
         
         while (isThinking && thinkingWaitCount < 300) {
-          console.log("[WebviewHandler] Still thinking...");
           await new Promise(resolve => setTimeout(resolve, pollInterval));
           isThinking = await this.isThinking();
           thinkingWaitCount++;
@@ -384,7 +377,6 @@ export class WebviewHandler {
         
         const response = await this.getLastResponse();
         if (response) {
-          console.log("[WebviewHandler] Response received, length:", response.length);
           return response;
         }
       }
