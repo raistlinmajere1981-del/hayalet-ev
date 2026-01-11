@@ -1,6 +1,6 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
-import { SLOTS, SLOT_LIST, SPECIAL_PAGES, getMimeTypeFromPath } from "./constants/index.js";
+import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath } from "./constants/index.js";
 import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
@@ -402,8 +402,6 @@ function setActiveNavigation(pageName) {
 }
 
 async function updateIndicatorAvatars() {
-  const settings = SettingsManager.getSnapshot();
-
   const getAvatar = (provider) => AppState.getAvatar(provider);
 
   const map = {

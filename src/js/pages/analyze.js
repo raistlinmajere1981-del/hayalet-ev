@@ -87,8 +87,6 @@ export class AnalyzeController {
   // ============================================
 
   applyAvatars() {
-    const settings = SettingsManager.getSnapshot();
-    
     ["ai1", "ai2"].forEach((provider) => {
       const path = AppState.getAvatar(provider);
       
@@ -144,8 +142,6 @@ export class AnalyzeController {
   // ============================================
 
   async updateConnectionStates() {
-    const settings = SettingsManager.getSnapshot();
-
     const composeInput = document.getElementById("compose-input");
     const uploadBtn = document.getElementById("upload-add-btn");
     const sendBtn = document.getElementById("compose-send-btn");

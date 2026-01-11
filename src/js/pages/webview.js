@@ -114,8 +114,6 @@ export class WebviewController {
 
   async setupWebviews() {
     try {
-      const settings = SettingsManager.getSnapshot();
-      
       const ai1WebviewEl = document.getElementById("ai1-webview");
       const ai2WebviewEl = document.getElementById("ai2-webview");
       

@@ -10,7 +10,6 @@
  */
 
 import { LogManager } from "./log-manager.js";
-import { SettingsManager } from "./settings-manager.js";
 import { AppState } from "./app-state.js";
 import { ProviderRegistry } from "./webview/provider-registry.js";
 import { LoadingTracker } from "./traffic/loading-tracker.js";
