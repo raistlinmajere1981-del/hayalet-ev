@@ -268,8 +268,8 @@ export class LoadingTracker {
     
     if (onDefaultPage) {
       // Default page'de scroll yok, send butonu bulunduğunda (aktif veya pasif) loading biter
-      // sendState: "idle" (aktif), "disabled" (pasif), "not-found" (bulunamadı)
-      const sendButtonFound = data.sendState === "idle" || data.sendState === "disabled";
+      // sendState: "enabled" (aktif), "disabled" (pasif), "missing" (bulunamadı)
+      const sendButtonFound = data.sendState === "enabled" || data.sendState === "disabled";
       
       if (sendButtonFound) {
         return {

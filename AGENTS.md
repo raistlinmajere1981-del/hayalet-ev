@@ -20,7 +20,7 @@
 - **Dependencies:** googleapis, konva, screenshot-desktop
 
 ### Version
-Current: `5.2.0`
+Current: `5.4.0`
 
 ---
 
@@ -49,6 +49,11 @@ electron/                    # Main process modules
 │   ├── session-manager.js  # Session lifecycle & meta
 │   ├── log-writer.js       # Log file writing & rotation
 │   └── log-reader.js       # Log querying & filtering
+├── database/               # SQLite veritabanı yönetimi
+│   ├── index.js            # DatabaseManager orchestrator
+│   ├── schema.js           # Tablo şemaları ve migration
+│   ├── queries.js          # Prepared statement'lar
+│   └── hash-utils.js       # Mesaj hash fonksiyonları (djb2)
 ├── settings-manager.js     # Settings persistence (JSON file)
 ├── file-manager.js         # File operations & archive management
 ├── command-manager.js      # Command queue system
@@ -57,6 +62,7 @@ electron/                    # Main process modules
 ├── screenshot-manager.js   # Screenshot capture
 ├── device-manager.js       # Device control actions
 ├── window-manager.js       # Window state management
+├── opencode-manager.js     # OpenCode server subprocess management
 └── log-manager.js          # Logging system
 
 src/js/modules/             # Renderer process modules
@@ -67,6 +73,11 @@ src/js/modules/             # Renderer process modules
 ├── command-executor.js     # Job execution logic
 ├── protocol-handler.js     # AI-AI communication protocol
 ├── catch-manager.js        # Command interception
+│
+├── database/               # Database facade (renderer side)
+│   ├── index.js            # DatabaseService orchestrator
+│   ├── conversation-store.js # Konuşma CRUD işlemleri
+│   └── message-store.js    # Mesaj CRUD ve sync işlemleri
 │
 ├── relay-manager.js        # Relay orchestrator (AI↔AI, AI↔Asistan)
 ├── relay/                  # Relay alt modülleri
@@ -98,7 +109,11 @@ src/js/modules/             # Renderer process modules
 │   │   │   ├── index.js        # Main provider logic
 │   │   │   └── scraper.js      # DOM scraping utilities
 │   │   ├── gemini/
-│   │   └── grok/
+│   │   ├── grok/
+│   │   └── opencode/           # Asistan provider (lokal server)
+│   │       ├── config.js       # OpenCode config, selectors, server commands
+│   │       ├── index.js        # Message sending logic
+│   │       └── scraper.js      # Conversation scraping
 │   └── methods/                # Injection methods
 │       ├── message/            # Message sending strategies
 │       │   ├── injection.js    # DOM injection method
@@ -135,6 +150,7 @@ src/js/pages/               # Page controllers
 │   ├── upload-handler.js   # File upload UI
 │   ├── context-menu.js     # Context menu & read modal
 │   └── draft-manager.js    # Draft persistence
+├── asistan.js              # Asistan page controller (OpenCode integration)
 ├── settings.js
 ├── webview.js
 └── ...
@@ -277,46 +293,82 @@ module-name/                # Alt modüller klasörü
 ### 1. Settings System
 - **Storage:** `./config/settings.json` (project root, portable across platforms)
 - **Schema:** Defined in `src/js/modules/settings/settings-schema.js`
-- **Structure:**
-  ```javascript
-  {
-    user: { nickname: "Kullanıcı", avatarPath: "", connected: false },
-    integrations: {
-      googledrive: {
-        clientId: "",
-        clientSecret: "",
-        authorizationCode: "",
-        connected: false,
-        account: ""
-      }
-    },
-    accounts: [
-      {
-        id: "uuid-123",
-        email: "user@example.com",
-        provider: "chatgpt",
-        nickname: "My ChatGPT",
-        avatarPath: "assets/user@example.com-chatgpt.png"
-      }
-    ],
-    slots: {
-      ai1: {
-        accountId: "uuid-123",
-        connected: false,
-        catchCommands: true,
-        messageMethod: "injection",
-        fileMethod: "dragdrop"
-      },
-      ai2: {
-        accountId: null,
-        connected: false,
-        catchCommands: true,
-        messageMethod: "injection",
-        fileMethod: "dragdrop"
-      }
+- **Auto-Init:** Uygulama açılışında dosya yoksa default değerlerle oluşturulur
+- **No Backup:** Settings güncellemesinde `.bak` dosyası oluşturulmaz
+
+#### Account ID Formatı (Deterministik)
+```
+{provider}_{sanitizedEmail}
+
+Örnekler:
+- chatgpt_user_at_gmail_com
+- grok_work_at_company_com
+- gemini_personal_at_outlook_com
+```
+
+**Özellikler:**
+- Aynı email+provider kombinasyonu silinip yeniden oluşturulsa bile aynı ID üretilir
+- Aynı email+provider ile ikinci hesap oluşturulamaz (duplicate prevention)
+- Aynı hesap iki farklı slota atanamaz (slot exclusivity)
+
+**Utility Fonksiyonları (`src/js/constants/file-utils.js`):**
+- `generateAccountId(email, provider)` → Deterministik account ID oluşturur
+- `sanitizeEmail(email)` → Email'i klasör adı için güvenli formata çevirir
+- `getAccountDataPath(accountId)` → Account ID'den data klasör yolu oluşturur
+
+#### Settings Structure
+```javascript
+{
+  user: { nickname: "Kullanıcı", avatarPath: "" },
+  integrations: {
+    googledrive: {
+      clientId: "",
+      clientSecret: "",
+      authorizationCode: "",
+      connected: false,
+      account: ""
     }
+  },
+  accounts: [
+    {
+      id: "chatgpt_user_at_gmail_com",  // Deterministik ID
+      email: "user@gmail.com",
+      provider: "chatgpt",
+      nickname: "My ChatGPT",
+      avatarPath: "assets/chatgpt_user_at_gmail_com.png"
+    }
+  ],
+  asistanAccounts: [
+    {
+      id: "opencode_opencode_at_opencode_com",
+      email: "opencode@opencode.com",
+      provider: "opencode",
+      nickname: "OpenCode",
+      isAsistan: true
+    }
+  ],
+  slots: {
+    ai1: {
+      accountId: "chatgpt_user_at_gmail_com",
+      catchCommands: true,
+      messageMethod: "injection",
+      fileMethod: "dragdrop"
+    },
+    ai2: {
+      accountId: null,
+      catchCommands: true,
+      messageMethod: "injection",
+      fileMethod: "dragdrop"
+    }
+  },
+  asistanSlot: {
+    accountId: "opencode_opencode_at_opencode_com",
+    catchCommands: false,
+    messageMethod: "injection",
+    fileMethod: "injection"
   }
-  ```
+}
+```
 - **Access:** Via `SettingsManager.load()` / `SettingsManager.save()`
 - **IPC Channels:** `load-settings`, `save-settings`
 
@@ -360,17 +412,211 @@ Asynchronous job queue for AI message sending:
 - **Relay:** `src/js/modules/relay-manager.js`
 - **Commands:** Special syntax like `@AI2[message]` to trigger inter-AI communication
 
-### 6. Archive System
-- **Location:** `archives/` directory
-- **Structure:** Each conversation creates a folder with metadata and message files
-- **Sync:** Google Drive integration via `googledrive-manager.js`
-- **Index:** `archives/index.json` tracks all conversations
+### 6. Asistan System (AI0 / OpenCode)
 
-### 7. Traffic Tracking
-Three types of activity tracking:
-- **Loading:** `traffic/loading-tracker.js` - Webview loading states
-- **Sending:** `traffic/send-tracker.js` - Message send progress
-- **Thinking:** `traffic/thinking-tracker.js` - AI response generation
+Asistan, AI1 ve AI2'nin teknik sorular sorabildiği yardımcı bir AI rolündedir. OpenCode lokal server üzerinden çalışır.
+
+**Mimari:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Hayalet-ev Electron                       │
+├─────────────────────────────────────────────────────────────┤
+│  AsistanController (src/js/pages/asistan.js)                │
+│       │                                                      │
+│       ├── OpenCode Server (subprocess)                       │
+│       │   └── opencode serve --port 4096 --cors ...          │
+│       │                                                      │
+│       ├── Webview (ai0)                                      │
+│       │   └── http://localhost:4096?project=hayalet-ev       │
+│       │                                                      │
+│       └── AI-Asistan Relay                                   │
+│           └── AI1/AI2 ↔ AI0 mesaj iletimi                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Bileşenler:**
+
+| Dosya | Rol |
+|-------|-----|
+| `electron/opencode-manager.js` | Server subprocess yönetimi (start/stop/cleanup) |
+| `src/js/pages/asistan.js` | Asistan sayfa controller |
+| `src/js/modules/relay/ai-asistan-relay.js` | AI↔Asistan mesaj relay |
+| `src/js/modules/webview/providers/opencode/config.js` | OpenCode DOM selectors |
+
+**OpenCode Server Lifecycle:**
+```javascript
+// Bağlan butonu → Server başlat
+const result = await window.electronAPI.opencodeStart({
+  port: 4096,
+  projectPath: "/home/raistlin/hayalet-ev"
+});
+// result.url → "http://localhost:4096?project=..."
+
+// Bağlantıyı Kes → Server durdur
+await window.electronAPI.opencodeStop();
+
+// App kapanırken → Otomatik cleanup (main.js performCleanup)
+```
+
+**Provider Config (opencode/config.js):**
+```javascript
+{
+  id: "opencode",
+  name: "OpenCode",
+  baseUrl: "http://localhost:4096",
+  isAsistan: true,
+  
+  selectors: {
+    // Base selector (aktif veya pasif buton)
+    sendButtonBase: 'button[type="submit"][icon="arrow-up"][data-component="icon-button"]',
+    // Aktif gönder butonu
+    sendButton: '...sendButtonBase...:not([disabled])',
+    // Pasif gönder butonu  
+    sendButtonDisabled: '...sendButtonBase...[disabled]',
+    // Stop butonu (thinking)
+    stopButton: 'button[type="submit"][icon="stop"][data-component="icon-button"]',
+    // Input alanı
+    inputField: '[data-component="prompt-input"][contenteditable="true"]',
+  }
+}
+```
+
+**IPC Channels:**
+- `opencode-start` → OpenCodeManager.start()
+- `opencode-stop` → OpenCodeManager.stop()
+- `opencode-status` → OpenCodeManager.getStatus()
+
+### 7. AI-Asistan Relay
+
+AI1 veya AI2 ile Asistan (AI0) arasında çift yönlü mesaj iletimi.
+
+**Akış:**
+```
+1. Kullanıcı "AI-Asistan Sohbet" butonuna tıklar
+2. Kaynak AI seçilir (ai1 veya ai2)
+3. Protokol dosyası okunur (protocol/AI-asistan.txt)
+4. Protokol kaynak AI'ye gönderilir
+5. AI cevap verir → Asistan'a iletilir
+6. Asistan cevap verir → AI'ye iletilir
+7. Döngü devam eder
+```
+
+**State Machine:**
+```
+idle → protocol-sent → ai-replied → relay-active
+                                         ↑↓
+                                    (mesaj döngüsü)
+```
+
+**Relay Göstergesi (Topbar):**
+```
+[AI1] ───yeşil─── [Asistan] ───mavi─── [AI2]
+           ╲                    ╱
+            ╲──sarı/turuncu───╱
+              (AI1-AI2 Relay)
+```
+
+| Çizgi | Kullanım | Renk |
+|-------|----------|------|
+| Sol (AI1 ↔ AI0) | AI1-Asistan Relay | Yeşil (#2ecc71) |
+| Sağ (AI0 ↔ AI2) | AI2-Asistan Relay | Mavi (#3498db) |
+| Alt (AI1 ↔ AI2) | AI-AI Relay | Sarı/Turuncu (#f1c40f) |
+
+**Thinking Glow:**
+AI düşünürken ilgili cluster yeşil parıltı ile vurgulanır:
+```css
+.indicator-cluster.thinking-active {
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+  animation: thinking-glow 1.5s ease-in-out infinite;
+}
+```
+
+### 8. Database System (SQLite)
+Konuşma ve mesaj verileri SQLite veritabanında saklanır. Her hesap için ayrı klasör ve veritabanı dosyası oluşturulur.
+
+**⚠️ Tüm database erişimleri `accountId` üzerinden yapılır (email+provider değil).**
+
+**Dosya Yapısı:**
+```
+data/
+└── {accountId}/                     # Hesap klasörü (örn: chatgpt_user_at_gmail_com/)
+    ├── database.db                  # SQLite veritabanı
+    ├── whisper.json                 # Whisper verileri
+    └── attachments/                 # Attachment dosyaları
+        └── {conversationId}/        # Konuşma klasörü
+            └── {messageId}/         # Mesaj klasörü
+                └── filename.ext     # Dosya
+```
+
+**Tablo Şemaları:**
+- `conversations` - Konuşma metadata (id, web_url, title, summary, message_count, timestamps)
+- `messages` - Mesajlar (id, conversation_id, role, author, content, content_hash, dom_index)
+- `attachments` - Ek dosya referansları (id, message_id, original_name, stored_path, mime_type)
+- `messages_fts` - Full-text search virtual table (FTS5)
+
+**Modül Yapısı:**
+```
+electron/database/
+├── index.js          # DatabaseManager orchestrator
+├── schema.js         # Tablo şemaları ve migration
+├── queries.js        # Prepared statement'lar
+└── hash-utils.js     # Mesaj hash fonksiyonları
+
+src/js/modules/database/
+├── index.js              # Renderer facade (DatabaseService)
+├── conversation-store.js # Konuşma CRUD işlemleri
+└── message-store.js      # Mesaj CRUD ve sync işlemleri
+```
+
+**IPC Kanalları:**
+| Kanal | Açıklama |
+|-------|----------|
+| `db-init-account` | Hesap için veritabanı ve klasörleri oluştur |
+| `db-get-conversations` | Konuşmaları listele |
+| `db-get-messages` | Mesajları getir |
+| `db-sync-messages` | Mesajları senkronize et (incremental) |
+| `db-save-attachment` | Attachment kaydet |
+| `db-delete-conversation` | Konuşmayı sil |
+| `db-search-messages` | Full-text arama (FTS5) |
+| `db-update-conversation` | Konuşma detaylarını güncelle |
+
+**Incremental Sync:**
+- Her mesaj için `content_hash` (djb2 algoritması) hesaplanır
+- Sync sırasında sadece yeni mesajlar (hash'i olmayan) eklenir
+- DOM'dan scrape edilen mesajlarda `contentHash` ve `domIndex` bulunur
+
+**Conversation ID Format:**
+```
+conv-{timestamp}-{random}
+Örnek: conv-1736799600000-a1b2c3
+```
+
+**Title Mantığı:**
+- Yeni konuşma oluşturulduğunda: `Sohbet001`, `Sohbet002`... formatında otomatik başlık
+- Mevcut konuşma sync olduğunda: Başlık değiştirilmez (manuel düzenlenebilir)
+
+### 9. Traffic Tracking
+Three types of activity tracking for AI1, AI2 and AI0 (Asistan):
+
+| Tracker | Dosya | Başlangıç | Bitiş |
+|---------|-------|-----------|-------|
+| Loading | `loading-tracker.js` | URL değişimi | Send button bulunduğunda (enabled/disabled) |
+| Thinking | `thinking-tracker.js` | Stop button görünür | Send button enabled/disabled |
+| Send | `send-tracker.js` | Mesaj gönderildiğinde | Durum değişikliği |
+
+**Probe Script (`probe-script-builder.js`):**
+- Her provider için config'den selector'ları alır
+- `sendButtonBase` varsa onu kullanır (disabled kontrolü script içinde)
+- `sendState`: `"enabled"` | `"disabled"` | `"missing"`
+
+**AI0 (Asistan) için özel:**
+- `sendButtonBase` selector'ı kullanılır (`:not([disabled])` olmadan)
+- Thinking bitiş koşulu: `sendState === "enabled" || sendState === "disabled"`
+
+**Thinking Glow UI:**
+- `traffic-manager.js` → `_updateClusterThinkingGlow(provider, status)`
+- Thinking `busy` → cluster'a `thinking-active` class eklenir
+- Yeşil parıltılı animasyon
 
 ### 8. Unified Log System
 Session bazlı, AI-debugging için optimize edilmiş log sistemi.
@@ -673,35 +919,62 @@ list_log_sessions --limit 5
 ```
 
 #### Application Testing with Logs
-Uygulama değişikliklerini test etmek için `npm run start` ile çalıştırıp log dosyalarını analiz edin:
+Uygulama değişikliklerini test etmek için `npm run start` ile çalıştırıp log dosyalarını analiz edin.
 
-```bash
-# 1. Uygulamayı başlat (arka planda)
-npm run start &
-APP_PID=$!
-
-# 2. Bir süre bekle (10-15 saniye)
-sleep 12
-
-# 3. Uygulamayı kapat
-kill $APP_PID 2>/dev/null
-pkill -f "electron" 2>/dev/null
-
-# 4. En son log klasörünü bul ve analiz et
-LATEST_LOG=$(ls -t logs/ | head -1)
-echo "Session: $LATEST_LOG"
-
-# 5. Log dosyalarını kontrol et
-ls -la "logs/$LATEST_LOG/"              # Dosya listesi
-cat "logs/$LATEST_LOG/meta.json"        # Session meta bilgisi
-cat "logs/$LATEST_LOG/error.log"        # Hatalar (boş olmalı)
-cat "logs/$LATEST_LOG/summary.json"     # Session özeti
-tail -30 "logs/$LATEST_LOG/console-001.log"     # Console logları
-tail -20 "logs/$LATEST_LOG/structured.jsonl"    # Structured eventler
+**Log Klasör Yapısı:**
+Her uygulama oturumu `logs/` altında tarih-saat formatında bir klasör oluşturur:
+```
+logs/
+└── DD-MM-YYYY_HH-MM-SS/           # Örnek: 13-01-2026_21-55-11
+    ├── meta.json                  # Session başlangıç bilgileri (platform, versions)
+    ├── console-001.log            # Ana console logları (tüm process'ler)
+    ├── structured.jsonl           # JSON formatında structured eventler
+    ├── summary.json               # Session özeti (kapanışta oluşur)
+    └── error.log                  # Sadece hatalar (opsiyonel, hata varsa oluşur)
 ```
 
+**Log Analizi Komutları:**
+```bash
+# 1. En son log session'ını bul (tarih sırasına göre)
+# NOT: ls -t yerine ls | sort -r kullan (tarih formatı DD-MM-YYYY_HH-MM-SS)
+LATEST_LOG=$(ls logs/ | sort -r | head -1)
+echo "Session: $LATEST_LOG"
+
+# 2. Tüm log dosyalarını listele
+ls -la "logs/$LATEST_LOG/"
+
+# 3. Her log dosyasını incele:
+
+# meta.json - Session başlangıç bilgileri
+cat "logs/$LATEST_LOG/meta.json"
+
+# console-001.log - Ana log dosyası (tüm aktiviteler)
+cat "logs/$LATEST_LOG/console-001.log"
+# veya son N satır:
+tail -50 "logs/$LATEST_LOG/console-001.log"
+
+# structured.jsonl - JSON formatında eventler (jq ile parse)
+cat "logs/$LATEST_LOG/structured.jsonl"
+# veya jq ile:
+cat "logs/$LATEST_LOG/structured.jsonl" | head -20
+
+# summary.json - Session özeti (uygulama düzgün kapandıysa)
+cat "logs/$LATEST_LOG/summary.json"
+
+# error.log - Sadece hatalar (dosya varsa)
+cat "logs/$LATEST_LOG/error.log" 2>/dev/null || echo "Hata yok"
+```
+
+**Kullanıcı Log Session Paylaştığında:**
+Kullanıcı log session path'i paylaştığında (örn: `/home/raistlin/hayalet-ev/logs/13-01-2026_21-55-11/`) bu 5 dosyayı sırayla kontrol et:
+1. `error.log` - Önce hataları kontrol et
+2. `console-001.log` - Ana aktivite logları
+3. `structured.jsonl` - Detaylı event bilgileri
+4. `meta.json` - Session bilgileri
+5. `summary.json` - Kapanış durumu
+
 **Başarılı Test Kriterleri:**
-- ✅ `error.log` boş veya sadece uyarılar içermeli
+- ✅ `error.log` boş veya sadece uyarılar içermeli (veya dosya yok)
 - ✅ `summary.json` → `endReason: "normal"` olmalı
 - ✅ `structured.jsonl` → Beklenen event'ler loglanmış olmalı
 - ✅ `console-001.log` → Kritik hata mesajı olmamalı
@@ -711,11 +984,17 @@ tail -20 "logs/$LATEST_LOG/structured.jsonl"    # Structured eventler
 # Sadece hataları filtrele
 grep -i "error\|fail\|exception" "logs/$LATEST_LOG/console-001.log"
 
+# Sync işlemlerini filtrele
+grep -i "sync\|database\|db" "logs/$LATEST_LOG/console-001.log"
+
 # Belirli bir modülün loglarını filtrele
-grep "webview\|slot" "logs/$LATEST_LOG/structured.jsonl" | jq .
+grep "webview\|slot" "logs/$LATEST_LOG/structured.jsonl"
 
 # Import/syntax hatalarını kontrol et
 grep -i "failed to resolve\|cannot find\|syntax" "logs/$LATEST_LOG/console-001.log"
+
+# Belirli bir zaman aralığındaki logları filtrele
+grep "21:55" "logs/$LATEST_LOG/console-001.log"
 ```
 
 ### Testing with MCP Server
@@ -997,6 +1276,6 @@ Use conventional commits (Turkish):
 
 ---
 
-**Last Updated:** 2026-01-11  
-**Version:** 5.3.0 (Modular Architecture Refactor)  
+**Last Updated:** 2026-01-14  
+**Version:** 5.4.0 (Unified Account ID System)  
 **Maintainer:** Raistlin Majere, Nexa, Gök

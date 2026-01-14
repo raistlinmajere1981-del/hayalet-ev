@@ -50,7 +50,15 @@ export const config = {
   scrapeSelectors: {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble, .markdown.prose",
+    // Mesaj container'ı (turn bazlı gruplama için)
+    messageWrapper: '[data-testid="conversation-turn"]',
+    // User mesaj container'ı
+    userWrapper: ".user-message-bubble-color",
+    // Assistant mesaj container'ı  
+    assistantWrapper: ".agent-turn",
   },
+  // Mesaj ID stratejisi: DOM'da benzersiz ID olmadığı için content hash kullanılır
+  messageIdStrategy: "content-hash",
   fileInputSelectors: ['input[type="file"][multiple]', 'input[type="file"]'],
   uploadTargetSelectors: [
     '[data-testid="upload-drop-target"]',

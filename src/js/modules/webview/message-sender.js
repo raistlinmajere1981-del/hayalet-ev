@@ -97,12 +97,17 @@ class MessageSenderClass {
 
     await waitForDomReady(webview);
 
-    const messageMethodName = this._settings?.slots?.[provider]?.messageMethod;
+    // ai0 (asistan) için asistanSlot'tan, diğerleri için slots'tan al
+    const slotConfig = provider === "ai0" 
+      ? this._settings?.asistanSlot 
+      : this._settings?.slots?.[provider];
+    
+    const messageMethodName = slotConfig?.messageMethod;
     if (!messageMethodName) {
       throw new Error(`messageMethod is not configured for slot "${provider}"`);
     }
     
-    const fileMethodName = this._settings?.slots?.[provider]?.fileMethod;
+    const fileMethodName = slotConfig?.fileMethod;
     if (!fileMethodName) {
       throw new Error(`fileMethod is not configured for slot "${provider}"`);
     }
@@ -271,7 +276,7 @@ class MessageSenderClass {
     const providerConfig = ProviderRegistry.get(providerId);
 
     if (!providerConfig?.selectors?.sendButton) {
-      throw new Error("Provider config veya sendButton selector bulunamadı");
+      throw new Error(`Provider config bulunamadı: providerId="${providerId}", provider="${provider}", hasConfig=${!!providerConfig}, hasSelectors=${!!providerConfig?.selectors}`);
     }
 
     const sendSel = JSON.stringify(providerConfig.selectors.sendButton);

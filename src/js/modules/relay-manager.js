@@ -3,19 +3,20 @@
  * 
  * Bu modül tüm relay tiplerini yönetir ve koordine eder:
  * - AIAIRelay: İki AI arasındaki iletişim
- * 
- * Gelecekte yeni relay tipleri kolayca eklenebilir.
+ * - AIAsistanRelay: AI ve Asistan (AI0) arasındaki iletişim
  */
 
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
 import { AIAIRelay } from "./relay/ai-ai-relay.js";
+import { AIAsistanRelay } from "./relay/ai-asistan-relay.js";
 
 class RelayManagerClass {
   constructor() {
     this.coreEngine = null;
     this._aiaiRelay = null;
+    this._aiAsistanRelay = null;
     this._boundUpdate = this._onTrafficUpdate.bind(this);
     this._trafficUnsubscribe = null;
   }
@@ -28,13 +29,14 @@ class RelayManagerClass {
     this.coreEngine = coreEngine;
 
     this._aiaiRelay = new AIAIRelay(coreEngine);
+    this._aiAsistanRelay = new AIAsistanRelay(coreEngine);
 
     if (this._trafficUnsubscribe) {
       this._trafficUnsubscribe();
     }
     this._trafficUnsubscribe = TrafficManager.onUpdate(this._boundUpdate);
 
-    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI relay");
+    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI and AI-Asistan relays");
   }
 
   // ==========================================
@@ -45,7 +47,7 @@ class RelayManagerClass {
    * @returns {boolean}
    */
   isActive() {
-    return this._aiaiRelay?.isActive || false;
+    return this._aiaiRelay?.isActive || this._aiAsistanRelay?.isActive || false;
   }
 
   /**
@@ -54,6 +56,22 @@ class RelayManagerClass {
    */
   isAIAIActive() {
     return this._aiaiRelay?.isActive || false;
+  }
+
+  /**
+   * AI-Asistan relay aktif mi?
+   * @returns {boolean}
+   */
+  isAIAsistanActive() {
+    return this._aiAsistanRelay?.isActive || false;
+  }
+
+  /**
+   * AI-Asistan relay kaynak slotunu döndür
+   * @returns {string|null}
+   */
+  getAIAsistanSourceSlot() {
+    return this._aiAsistanRelay?.sourceSlot || null;
   }
 
   // ==========================================
@@ -90,6 +108,30 @@ class RelayManagerClass {
   }
 
   // ==========================================
+  // AI-Asistan Relay Methods
+  // ==========================================
+
+  /**
+   * AI-Asistan relay oturumu başlat
+   * @param {string} sourceSlot - Kaynak AI slotu ('ai1' veya 'ai2')
+   */
+  async startAIAsistanSession(sourceSlot) {
+    // Önce diğer relay'leri durdur
+    if (this._aiaiRelay?.isActive) {
+      await this._aiaiRelay.stop();
+    }
+    
+    await this._aiAsistanRelay.start({ sourceSlot });
+  }
+
+  /**
+   * AI-Asistan relay oturumunu durdur
+   */
+  async stopAIAsistanSession() {
+    await this._aiAsistanRelay.stop();
+  }
+
+  // ==========================================
   // ==========================================
 
   /**
@@ -107,7 +149,13 @@ class RelayManagerClass {
       let activeRelay = null;
       let thinkingComplete = false;
 
-      if (this._aiaiRelay?.handlesProvider(provider)) {
+      // Önce AI-Asistan relay'i kontrol et
+      if (this._aiAsistanRelay?.handlesProvider(provider)) {
+        activeRelay = this._aiAsistanRelay;
+        thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
+      }
+      // Sonra AI-AI relay'i kontrol et
+      else if (this._aiaiRelay?.handlesProvider(provider)) {
         activeRelay = this._aiaiRelay;
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
       }
@@ -136,6 +184,14 @@ class RelayManagerClass {
    */
   get aiaiRelay() {
     return this._aiaiRelay;
+  }
+
+  /**
+   * AI-Asistan Relay instance'ına erişim
+   * @returns {AIAsistanRelay}
+   */
+  get aiAsistanRelay() {
+    return this._aiAsistanRelay;
   }
 }
 

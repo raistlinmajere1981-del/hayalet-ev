@@ -11,7 +11,7 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 
 /**
  * Settings değişikliklerini işle
- * @param {Object} slots - Slot state'leri { ai1: {...}, ai2: {...} }
+ * @param {Object} slots - Slot state'leri { ai0: {...}, ai1: {...}, ai2: {...} }
  * @param {Object} settings - Yeni settings objesi
  * @param {string[]} changedPaths - Değişen path'ler
  * @param {Function} syncSlotFn - Slot sync fonksiyonu
@@ -19,6 +19,7 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 export function handleSettingsChange(slots, settings, changedPaths, syncSlotFn) {
   if (!settings) return;
 
+  // AI1 ve AI2 için normal slot settings kontrolü
   ["ai1", "ai2"].forEach((slot) => {
     const slotPath = `slots.${slot}.accountId`;
     const accountChanged = changedPaths.includes("*") || 
@@ -28,6 +29,13 @@ export function handleSettingsChange(slots, settings, changedPaths, syncSlotFn) 
       syncSlotFn(slot, settings);
     }
   });
+
+  // AI0 (Asistan) için asistanSlot kontrolü
+  const asistanChanged = changedPaths.includes("*") || 
+                         changedPaths.some((p) => p.startsWith("asistanSlot") || p.startsWith("asistanAccounts"));
+  if (asistanChanged) {
+    syncSlotFn("ai0", settings);
+  }
 }
 
 /**
@@ -38,7 +46,7 @@ export function handleSettingsChange(slots, settings, changedPaths, syncSlotFn) 
  */
 export function syncWithSettings(slots, settings, syncSlotFn) {
   if (!settings) return;
-  ["ai1", "ai2"].forEach((slot) => {
+  ["ai0", "ai1", "ai2"].forEach((slot) => {
     syncSlotFn(slot, settings);
   });
 }
@@ -46,7 +54,7 @@ export function syncWithSettings(slots, settings, syncSlotFn) {
 /**
  * Tek bir slot'u settings ile senkronize et
  * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID (ai1/ai2)
+ * @param {string} slot - Slot ID (ai0/ai1/ai2)
  * @param {Object} settings - Settings objesi
  * @param {Object} states - State sabitleri { EMPTY, ASSIGNED, CONNECTED, CONNECTING }
  * @param {Object} events - Event sabitleri { ACCOUNT_ASSIGNED, ACCOUNT_REMOVED }
@@ -68,7 +76,9 @@ export function syncSlotWithSettings(
   disconnectFn,
   navigateFn
 ) {
-  const slotSettings = settings?.slots?.[slot];
+  // AI0 (Asistan) için asistanSlot ve asistanAccounts kullan
+  const isAsistan = slot === "ai0";
+  const slotSettings = isAsistan ? settings?.asistanSlot : settings?.slots?.[slot];
   const newAccountId = slotSettings?.accountId || null;
   const oldAccountId = slotState.accountId;
 
@@ -88,7 +98,9 @@ export function syncSlotWithSettings(
     return;
   }
 
-  const account = settings.accounts?.find((a) => a.id === newAccountId);
+  // Asistan için asistanAccounts, diğerleri için accounts kullan
+  const accountList = isAsistan ? settings.asistanAccounts : settings.accounts;
+  const account = accountList?.find((a) => a.id === newAccountId);
   const providerId = account?.provider || null;
   const providerConfig = providerId ? ProviderRegistry.get(providerId) : null;
 

@@ -109,7 +109,7 @@ class CoreEngineClass {
   /**
    * Set connection state for a provider slot
    * Delegates to SlotController for coordinated state management
-   * @param {string} provider - 'ai1' or 'ai2'
+   * @param {string} provider - 'ai0', 'ai1' or 'ai2'
    * @param {boolean} connected - Whether to connect or disconnect
    * @param {Object} opts - Options { force: boolean }
    * @returns {Promise<{ success: boolean, message?: string, correlationId?: string }>}
@@ -117,7 +117,7 @@ class CoreEngineClass {
   async setConnection(provider, connected, opts = {}) {
     if (!provider) return { success: false, message: "no-provider" };
 
-    if (provider !== "ai1" && provider !== "ai2") {
+    if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2") {
       return { success: false, message: "invalid-provider" };
     }
 

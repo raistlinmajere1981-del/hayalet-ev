@@ -1,4 +1,20 @@
+/**
+ * ChatGPT mesajlarını scrape et
+ * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number }>}
+ */
 export function scrapeMessages() {
+  // Hash fonksiyonu (djb2 algoritması) - fonksiyon içinde tanımlı olmalı
+  // çünkü toString() ile webview'a inject edildiğinde dış fonksiyonlar görünmez
+  function hashString(str) {
+    if (!str) return "0";
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = hash >>> 0;
+    }
+    return hash.toString(16);
+  }
+
   const preferredSel =
     (window.__hayalet_provider_config &&
       window.__hayalet_provider_config.scrapeSelectors?.preferred) ||
@@ -38,7 +54,9 @@ export function scrapeMessages() {
       const rect = node.getBoundingClientRect();
       role = rect.left > mid ? "user" : "assistant";
     }
-    result.push({ index: idx, role, text });
+    // Hash ekle (incremental sync için)
+    const contentHash = hashString(text);
+    result.push({ index: idx, role, text, contentHash, domIndex: idx });
   });
   return result;
 }

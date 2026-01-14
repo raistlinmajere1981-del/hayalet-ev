@@ -1,5 +1,5 @@
 import { join } from "path";
-import { readFile, writeFile, mkdir, copyFile } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 
 function getConfigDir() {
@@ -9,22 +9,87 @@ function getConfigDir() {
 const configDir = getConfigDir();
 const settingsPath = join(configDir, "settings.json");
 
+/**
+ * Default settings objesi
+ */
+function getDefaultSettings() {
+  return {
+    user: { nickname: "Kullanıcı", avatarPath: "" },
+    integrations: {
+      googledrive: {
+        clientId: "",
+        clientSecret: "",
+        authorizationCode: "",
+        connected: false,
+        account: "",
+      },
+    },
+    accounts: [],
+    asistanAccounts: [
+      {
+        id: "opencode_opencode_at_opencode_com",
+        email: "opencode@opencode.com",
+        provider: "opencode",
+        nickname: "OpenCode",
+        avatarPath: "src/assets/opencode.png",
+        isAsistan: true,
+      },
+    ],
+    slots: {
+      ai1: {
+        accountId: null,
+        catchCommands: true,
+        messageMethod: "injection",
+        fileMethod: "dragdrop",
+      },
+      ai2: {
+        accountId: null,
+        catchCommands: true,
+        messageMethod: "injection",
+        fileMethod: "dragdrop",
+      },
+    },
+    asistanSlot: {
+      accountId: "opencode_opencode_at_opencode_com",
+      catchCommands: false,
+      messageMethod: "injection",
+      fileMethod: "injection",
+    },
+    assistants: {
+      preferred: "rovodev",
+      preferredMode: "terminal",
+      lastConnected: null,
+    },
+    logging: {
+      level: "info",
+      verboseModules: [],
+      silentModules: [],
+      persistLevel: "info",
+      maxMemoryLogs: 200,
+      enableStateSnapshots: true,
+      snapshotInterval: 60000,
+    },
+  };
+}
 
 export async function loadSettings() {
   try {
+    // Config klasörünü oluştur
+    await mkdir(configDir, { recursive: true });
+
     if (existsSync(settingsPath)) {
       const data = await readFile(settingsPath, "utf-8");
       const parsed = JSON.parse(data);
       return parsed;
     }
     
-    const stub = {
-      user: { nickname: "Kullanıcı", avatarPath: "" },
-      integrations: { googledrive: {} },
-      accounts: [],
-      slots: { ai1: {}, ai2: {} },
-    };
-    return stub;
+    // Dosya yoksa default settings ile oluştur
+    const defaults = getDefaultSettings();
+    const jsonString = JSON.stringify(defaults, null, 2);
+    await writeFile(settingsPath, jsonString, { encoding: "utf-8", mode: 0o644 });
+    console.log("[Main:SettingsManager] Created default settings.json");
+    
+    return defaults;
   } catch (error) {
     console.error("[Main:SettingsManager] Error loading settings:", error);
     return null;
@@ -37,15 +102,6 @@ export async function saveSettings(eventOrSettings, maybeSettings) {
       typeof maybeSettings === "undefined" ? eventOrSettings : maybeSettings;
 
     await mkdir(configDir, { recursive: true });
-
-    const backupPath = `${settingsPath}.bak`;
-    if (existsSync(settingsPath)) {
-      try {
-        await copyFile(settingsPath, backupPath);
-      } catch (err) {
-        console.warn("[Main:SettingsManager] Backup failed (non-critical):", err);
-      }
-    }
 
     const jsonString = JSON.stringify(settings, null, 2);
     await writeFile(settingsPath, jsonString, { encoding: "utf-8", mode: 0o644 });

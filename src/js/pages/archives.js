@@ -60,8 +60,25 @@ export class ArchivesController {
 
   async loadIndex() {
     try {
-      const raw = await window.electronAPI?.readArchivesIndex?.();
-      this.entries = Array.isArray(raw) ? raw : [];
+      // Her slot için hesap bilgisini al ve DB'den konuşmaları çek
+      const ai1Account = AppState.getAccountForSlot("ai1");
+      const ai2Account = AppState.getAccountForSlot("ai2");
+
+      const [ai1Entries, ai2Entries] = await Promise.all([
+        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({
+          accountId: ai1Account.id,
+        }) : [],
+        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({
+          accountId: ai2Account.id,
+        }) : [],
+      ]);
+
+      // Provider bilgisini slot olarak ekle (ai1/ai2)
+      this.entries = [
+        ...(ai1Entries || []).map(e => ({ ...e, provider: "ai1" })),
+        ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2" })),
+      ];
+      
       this.renderList();
     } catch (err) {
       console.error("Arşiv okunamadı:", err);
@@ -127,15 +144,21 @@ export class ArchivesController {
     }
 
     try {
-      const folder = entry.folder || entry.path || "";
-      if (folder && window.electronAPI?.removeArchive) {
-        await window.electronAPI.removeArchive(folder);
+      // Slot'tan hesap bilgisini al
+      const accountInfo = AppState.getAccountForSlot(entry.provider);
+      if (!accountInfo?.id) {
+        this.setStatus("Hesap bilgisi bulunamadı", "error");
+        return;
       }
 
-      this.entries = this.entries.filter((e) => e.id !== entry.id);
-      const ok = await window.electronAPI?.writeArchivesIndex?.(this.entries);
-      if (!ok) {
-        this.setStatus("Arşiv güncellenemedi", "error");
+      // DB'den sil
+      const result = await window.electronAPI?.dbDeleteConversation?.({
+        accountId: accountInfo.id,
+        conversationId: entry.id,
+      });
+
+      if (!result?.success) {
+        this.setStatus(result?.error || "Sohbet silinemedi", "error");
         return;
       }
 
@@ -146,12 +169,13 @@ export class ArchivesController {
         this.selectedId = null;
       }
 
-      this.renderList();
+      // Listeyi yenile
+      await this.loadIndex();
       await ConversationListManager.refresh({ silent: true });
 
       if (isActive) {
         this.fillForm(null);
-        this.setStatus("Sohbet silindi, yeni sohbet seçildi", "success");
+        this.setStatus("Sohbet silindi", "success");
       } else {
         this.setStatus("Sohbet silindi", "success");
       }
@@ -172,27 +196,38 @@ export class ArchivesController {
       this.setStatus("Sohbet seçilmedi", "warning");
       return;
     }
-    const idx = this.entries.findIndex((e) => e.id === this.selectedId);
-    if (idx === -1) {
+    const entry = this.entries.find((e) => e.id === this.selectedId);
+    if (!entry) {
       this.setStatus("Kayıt bulunamadı", "error");
       return;
     }
-    const entry = this.entries[idx];
-    entry.title = this.titleEl.value || entry.title;
-    entry.summary = this.summaryEl.value || entry.summary;
-    entry.webUrl = this.webUrlEl.value || entry.webUrl;
-    delete entry.category;
-    entry.updatedAt = Date.now();
+
+    // Slot'tan hesap bilgisini al
+    const accountInfo = AppState.getAccountForSlot(entry.provider);
+    if (!accountInfo?.id) {
+      this.setStatus("Hesap bilgisi bulunamadı", "error");
+      return;
+    }
+
+    const newTitle = this.titleEl.value || entry.title;
+    const newSummary = this.summaryEl.value || entry.summary;
 
     try {
-      const ok = await window.electronAPI?.writeArchivesIndex?.(this.entries);
-      if (ok) {
+      // DB'de güncelle
+      const result = await window.electronAPI?.dbUpdateConversation?.({
+        accountId: accountInfo.id,
+        conversationId: entry.id,
+        title: newTitle,
+        summary: newSummary,
+      });
+
+      if (result?.success) {
         this.setStatus("Kaydedildi", "success");
         LogManager.addEvent("archives", "success", "Arşiv güncellendi");
         await ConversationListManager.refresh({ silent: true });
         await this.loadIndex();
       } else {
-        this.setStatus("Kaydedilemedi", "error");
+        this.setStatus(result?.error || "Kaydedilemedi", "error");
       }
     } catch (err) {
       console.error("Kaydetme hatası:", err);

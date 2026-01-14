@@ -93,3 +93,77 @@ webview {
   margin-bottom: 3px;
   padding: 2px 0;
 }
+
+/* ==========================================
+   Webview Overlay Stilleri
+   ========================================== */
+.webview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  margin: 10px;
+}
+
+.webview-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.webview-overlay .overlay-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.webview-overlay .overlay-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.webview-overlay .overlay-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 80%;
+}
+
+/* Connecting durumu için spinner animasyonu */
+.webview-overlay.connecting .overlay-icon {
+  animation: overlay-spin 1s linear infinite;
+}
+
+@keyframes overlay-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Farklı durumlar için border renkleri */
+.webview-overlay.empty {
+  border-color: var(--text-secondary);
+}
+
+.webview-overlay.disconnected {
+  border-color: var(--warning);
+}
+
+.webview-overlay.connecting {
+  border-color: var(--info);
+}
+
+.webview-overlay.error {
+  border-color: var(--error);
+}

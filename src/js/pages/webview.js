@@ -235,22 +235,35 @@ export class WebviewController {
     for (const provider of providers) {
       const state = this.getSlotState(settings, provider);
       const webviewEl = document.getElementById(`${provider}-webview`);
+      const overlayEl = document.getElementById(`${provider}-webview-overlay`);
 
       // URL display rule (doc): empty for non-assigned/non-connected
       const urlDisplay = document.getElementById(`${provider}-url-display`);
 
       if (!state.hasAccount) {
-        // Slot empty - webview gizle ve UI güncelle
+        // Slot empty - webview gizle, overlay göster
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
         if (webviewEl) webviewEl.style.display = "none";
+        if (overlayEl) {
+          overlayEl.classList.remove("hidden");
+          overlayEl.querySelector(".overlay-icon").textContent = "🔌";
+          overlayEl.querySelector(".overlay-title").textContent = "Hesap Atanmadı";
+          overlayEl.querySelector(".overlay-subtitle").textContent = "Settings'ten hesap atayın";
+        }
         continue;
       }
 
       if (!state.connected) {
-        // Slot assigned but disconnected - webview gizle ve UI güncelle
+        // Slot assigned but disconnected - webview gizle, overlay göster
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
+        if (overlayEl) {
+          overlayEl.classList.remove("hidden");
+          overlayEl.querySelector(".overlay-icon").textContent = "⏸️";
+          overlayEl.querySelector(".overlay-title").textContent = "Bağlantı Kesildi";
+          overlayEl.querySelector(".overlay-subtitle").textContent = "Bağlanmak için tıklayın";
+        }
         if (webviewEl) webviewEl.style.display = "none";
         continue;
       }
@@ -259,6 +272,11 @@ export class WebviewController {
       this.setDevtoolsEnabled(provider, true);
       
       // Webview'ı mount point'e taşı (eğer henüz taşınmadıysa)
+      // Bağlı durum - overlay'ı gizle
+      if (overlayEl) {
+        overlayEl.classList.add("hidden");
+      }
+
       const mountId = `${provider}-webview-mount`;
       const mountEl = document.getElementById(mountId);
       if (webviewEl && mountEl && !mountEl.contains(webviewEl)) {

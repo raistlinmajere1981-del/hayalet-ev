@@ -94,8 +94,10 @@ export class ThinkingTracker {
       return { shouldEnd: false, newState: viewState };
     }
 
+    // ai0 (asistan) ve ai1 için: send button enabled veya disabled olduğunda thinking biter
+    // ai2 için: send button enabled veya voice mode aktif olduğunda thinking biter
     const shouldEndThinking =
-      provider === "ai1"
+      provider === "ai0" || provider === "ai1"
         ? sendState === "enabled" || sendState === "disabled"
         : sendState === "enabled" || voiceMode;
 

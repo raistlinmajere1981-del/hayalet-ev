@@ -199,17 +199,27 @@ class ConversationSyncerClass {
         : [];
 
       const accountInfo = AppState.getAccountForSlot(provider);
-      const archiveResult = await window.electronAPI.archiveSync({
-        provider,
+      
+      if (!accountInfo?.id) {
+        LogManager.addEvent(
+          `webview-${provider}`,
+          "warning",
+          `Sync skipped: No account info for slot ${provider}`,
+        );
+        this._syncInProgress[provider] = false;
+        return { success: false, message: "No account assigned to slot" };
+      }
+      
+      // Database sync (incremental - sadece yeni mesajları ekler)
+      const syncResult = await window.electronAPI.dbSyncMessages({
+        accountId: accountInfo.id,
         webUrl,
         messages: normalized,
         authors,
-        updateIndex: newEntry,
-        accountInfo,
       });
 
-      if (!archiveResult?.success) {
-        throw new Error(archiveResult?.error || "Archive sync failed");
+      if (!syncResult?.success) {
+        throw new Error(syncResult?.error || "Database sync failed");
       }
 
       return {
@@ -219,7 +229,9 @@ class ConversationSyncerClass {
         commands,
         webUrl,
         newEntry,
-        meta: archiveResult.meta,
+        added: syncResult.added,
+        total: syncResult.total,
+        conversationId: syncResult.conversationId,
       };
     } catch (error) {
       LogManager.addEvent(
@@ -297,7 +309,7 @@ class ConversationSyncerClass {
       if (res.success) {
         await ConversationListManager.refresh({
           silent: true,
-          forceSelectId: res.meta?.id,
+          forceSelectId: res.conversationId,
         });
       }
 
@@ -368,15 +380,22 @@ class ConversationSyncerClass {
   }
 
   /**
-   * Archive durumunu getir
+   * Archive durumunu getir (DB'den)
    * @private
    */
   async _getArchiveStatus(provider, webUrl) {
     try {
-      const indexList = await window.electronAPI?.readArchivesIndex();
-      const existing = indexList.find(
-        (item) =>
-          item.provider === provider && normalizeUrl(item.webUrl) === webUrl,
+      const accountInfo = AppState.getAccountForSlot(provider);
+      if (!accountInfo?.id) {
+        return { existing: null, prevCount: 0, newEntry: true };
+      }
+
+      const conversations = await window.electronAPI?.dbGetConversations?.({
+        accountId: accountInfo.id,
+      });
+
+      const existing = (conversations || []).find(
+        (item) => normalizeUrl(item.webUrl) === webUrl,
       ) || null;
       
       return {
@@ -385,7 +404,7 @@ class ConversationSyncerClass {
         newEntry: !existing,
       };
     } catch (_error) {
-      return { existing: null, prevCount: 0, newEntry: false };
+      return { existing: null, prevCount: 0, newEntry: true };
     }
   }
 

@@ -12,13 +12,22 @@
     <link rel="stylesheet" href="/styles/analyze.css" />
     <link rel="stylesheet" href="/styles/server.css" />
     <link rel="stylesheet" href="/styles/whisper.css" />
+    <link rel="stylesheet" href="/styles/asistan.css" />
   </head>
   <body>
     <!-- Global Webview Container (always in DOM, hidden offscreen) -->
     <div id="global-webview-container" style="position: fixed; top: -99999px; left: -99999px; width: 1px; height: 1px; overflow: hidden;">
       <webview
+        id="ai0-webview"
+        partition="persist:ai0"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+      <webview
         id="ai1-webview"
-        partition="persist:ai1"
+        partition="persist:main"
         allowpopups
         spellcheck="false"
         webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
@@ -26,7 +35,7 @@
       ></webview>
       <webview
         id="ai2-webview"
-        partition="persist:ai2"
+        partition="persist:main"
         allowpopups
         spellcheck="false"
         webpreferences="spellcheck=false, backgroundThrottling=true, contextIsolation=true, nodeIntegration=false"
@@ -56,88 +65,146 @@
         </div>
         <div class="top-bar-center">
           <div class="indicators">
-            <div class="indicator-cluster">
-              <div class="indicator-avatar" id="indicator-avatar-ai1"></div>
-              <div class="indicator-inline">
-                <div class="indicator-pair">
-                  <span class="indicator-label">Loading</span>
-                  <div
-                    class="indicator-dot loading"
-                    id="ai1-loading-indicator"
-                    title="Yükleniyor"
-                  ></div>
+            <!-- Üst satır: AI1 - FlowLine - Asistan - FlowLine - AI2 -->
+            <div class="indicators-row">
+              <!-- AI1 Cluster -->
+              <div class="indicator-cluster" id="cluster-ai1">
+                <div class="indicator-avatar" id="indicator-avatar-ai1"></div>
+                <div class="indicator-inline">
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Loading</span>
+                    <div
+                      class="indicator-dot loading"
+                      id="ai1-loading-indicator"
+                      title="Yükleniyor"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Send</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai1-send-indicator"
+                      title="Gönder"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Thinking</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai1-thinking-indicator"
+                      title="Düşünüyor"
+                    ></div>
+                  </div>
+                  <div class="indicator-select-row">
+                    <select
+                      id="conversation-ai1"
+                      class="indicator-select"
+                    ></select>
+                    <button
+                      id="conversation-refresh-ai1"
+                      class="conv-refresh"
+                      title="Yenile"
+                    >
+                      ⟳
+                    </button>
+                  </div>
                 </div>
-                <div class="indicator-pair">
-                  <span class="indicator-label">Send</span>
-                  <div
-                    class="indicator-dot"
-                    id="ai1-send-indicator"
-                    title="Gönder"
-                  ></div>
+              </div>
+
+              <!-- AI1 ↔ AI0 Relay Flow Line (AI-Asistan) -->
+              <div class="relay-flow-line" id="relay-flow-ai1-ai0" title="AI1 ↔ Asistan Relay">
+                <div class="flow-track">
+                  <div class="flow-particle"></div>
                 </div>
-                <div class="indicator-pair">
-                  <span class="indicator-label">Thinking</span>
-                  <div
-                    class="indicator-dot"
-                    id="ai1-thinking-indicator"
-                    title="Düşünüyor"
-                  ></div>
+              </div>
+
+              <!-- Asistan (AI0) Cluster - Tek satır kompakt -->
+              <div class="indicator-cluster asistan-cluster" id="cluster-ai0">
+                <div class="indicator-avatar asistan-avatar" id="indicator-avatar-ai0"></div>
+                <div class="indicator-inline asistan-inline">
+                  <div class="indicator-pair">
+                    <span class="indicator-label">L</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai0-loading-indicator"
+                      title="Yükleniyor"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">S</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai0-send-indicator"
+                      title="Gönder"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">T</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai0-thinking-indicator"
+                      title="Düşünüyor"
+                    ></div>
+                  </div>
                 </div>
-                <div class="indicator-select-row">
-                  <select
-                    id="conversation-ai1"
-                    class="indicator-select"
-                  ></select>
-                  <button
-                    id="conversation-refresh-ai1"
-                    class="conv-refresh"
-                    title="Yenile"
-                  >
-                    ⟳
-                  </button>
+              </div>
+
+              <!-- AI0 ↔ AI2 Relay Flow Line (AI-Asistan) -->
+              <div class="relay-flow-line" id="relay-flow-ai0-ai2" title="Asistan ↔ AI2 Relay">
+                <div class="flow-track">
+                  <div class="flow-particle"></div>
+                </div>
+              </div>
+
+              <!-- AI2 Cluster -->
+              <div class="indicator-cluster" id="cluster-ai2">
+                <div class="indicator-avatar" id="indicator-avatar-ai2"></div>
+                <div class="indicator-inline">
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Loading</span>
+                    <div
+                      class="indicator-dot loading"
+                      id="ai2-loading-indicator"
+                      title="Yükleniyor"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Send</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai2-send-indicator"
+                      title="Gönder"
+                    ></div>
+                  </div>
+                  <div class="indicator-pair">
+                    <span class="indicator-label">Thinking</span>
+                    <div
+                      class="indicator-dot"
+                      id="ai2-thinking-indicator"
+                      title="Düşünüyor"
+                    ></div>
+                  </div>
+                  <div class="indicator-select-row">
+                    <select
+                      id="conversation-ai2"
+                      class="indicator-select"
+                    ></select>
+                    <button
+                      id="conversation-refresh-ai2"
+                      class="conv-refresh"
+                      title="Yenile"
+                    >
+                      ⟳
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="indicator-cluster">
-              <div class="indicator-avatar" id="indicator-avatar-ai2"></div>
-              <div class="indicator-inline">
-                <div class="indicator-pair">
-                  <span class="indicator-label">Loading</span>
-                  <div
-                    class="indicator-dot loading"
-                    id="ai2-loading-indicator"
-                    title="Yükleniyor"
-                  ></div>
-                </div>
-                <div class="indicator-pair">
-                  <span class="indicator-label">Send</span>
-                  <div
-                    class="indicator-dot"
-                    id="ai2-send-indicator"
-                    title="Gönder"
-                  ></div>
-                </div>
-                <div class="indicator-pair">
-                  <span class="indicator-label">Thinking</span>
-                  <div
-                    class="indicator-dot"
-                    id="ai2-thinking-indicator"
-                    title="Düşünüyor"
-                  ></div>
-                </div>
-                <div class="indicator-select-row">
-                  <select
-                    id="conversation-ai2"
-                    class="indicator-select"
-                  ></select>
-                  <button
-                    id="conversation-refresh-ai2"
-                    class="conv-refresh"
-                    title="Yenile"
-                  >
-                    ⟳
-                  </button>
-                </div>
+
+            <!-- Alt satır: AI1-AI2 arası akış çizgisi (Asistan altından geçer) -->
+            <div class="relay-flow-line-bottom" id="relay-flow-ai1-ai2" title="AI1 ↔ AI2 Relay">
+              <div class="flow-track-horizontal">
+                <div class="flow-particle"></div>
               </div>
             </div>
           </div>
@@ -175,6 +242,7 @@
         <button class="menu-item" data-page="analyze">🔍 Analiz Odası</button>
         <button class="menu-item" data-page="whisper">👂 Fısıltı Odası</button>
         <button class="menu-item" data-page="server">🖥️ Sunucu Odası</button>
+        <button class="menu-item" data-page="asistan">🤖 Asistan Odası</button>
       </div>
 
       <div class="main-content" id="main-content">

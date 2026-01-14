@@ -70,3 +70,39 @@ export function getMimeTypeFromPath(filePath) {
 export function generateUniqueId(prefix = "id") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+
+/**
+ * Email adresini dosya/klasör adı için güvenli formata çevir
+ * @param {string} email - Email adresi
+ * @returns {string} Sanitized email (örn: "user_at_gmail_com")
+ */
+export function sanitizeEmail(email) {
+  if (!email) return "";
+  return email
+    .toLowerCase()
+    .trim()
+    .replace(/@/g, "_at_")
+    .replace(/\./g, "_");
+}
+
+/**
+ * Email ve provider'dan deterministik account ID oluştur.
+ * Aynı email+provider her zaman aynı ID'yi üretir.
+ * @param {string} email - Kullanıcı email adresi
+ * @param {string} provider - AI provider (chatgpt, grok, gemini, opencode)
+ * @returns {string} Account ID (örn: "chatgpt_user_at_gmail_com")
+ */
+export function generateAccountId(email, provider) {
+  if (!email || !provider) return "";
+  return `${provider}_${sanitizeEmail(email)}`;
+}
+
+/**
+ * Account ID'den data klasör yolunu oluştur.
+ * @param {string} accountId - Account ID
+ * @returns {string} Klasör yolu (örn: "data/chatgpt_user_at_gmail_com")
+ */
+export function getAccountDataPath(accountId) {
+  if (!accountId) return "";
+  return `data/${accountId}`;
+}

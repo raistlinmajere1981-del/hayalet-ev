@@ -153,15 +153,254 @@ body {
   background: #666;
   display: inline-block;
 }
+#ai0-loading-indicator,
 #ai1-loading-indicator,
 #ai2-loading-indicator {
   background: red;
 }
+#ai0-send-indicator,
 #ai1-send-indicator,
 #ai2-send-indicator,
+#ai0-thinking-indicator,
 #ai1-thinking-indicator,
 #ai2-thinking-indicator {
   background: #666;
+}
+
+/* Asistan (AI0) Cluster - Kompakt stil */
+.indicator-cluster.asistan-cluster {
+  background: rgba(93, 78, 133, 0.15);
+  border: 1px solid rgba(93, 78, 133, 0.3);
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.asistan-avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.asistan-inline {
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.asistan-inline .indicator-pair {
+  gap: 4px;
+}
+
+.asistan-inline .indicator-label {
+  font-size: 9px;
+}
+
+.asistan-inline .indicator-dot {
+  width: 12px;
+  height: 12px;
+}
+
+/* Indicators Container */
+.indicators {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.indicators-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Asistan Cluster - Tek satır kompakt */
+.indicator-cluster.asistan-cluster {
+  flex-direction: row;
+  align-items: center;
+  padding: 4px 8px;
+  gap: 8px;
+}
+
+.indicator-cluster.asistan-cluster .indicator-inline {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.indicator-cluster.asistan-cluster .asistan-avatar {
+  width: 28px;
+  height: 28px;
+}
+
+/* Relay Flow Line - Avatar'lar arası akış göstergesi (AI-Asistan) */
+.relay-flow-line {
+  width: 50px;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.relay-flow-line .flow-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.relay-flow-line .flow-particle {
+  position: absolute;
+  width: 12px;
+  height: 100%;
+  background: transparent;
+  border-radius: 3px;
+  left: -12px;
+}
+
+/* AI1 ↔ AI0 Relay Aktif (Yeşil) */
+.relay-flow-line#relay-flow-ai1-ai0.active .flow-track {
+  height: 5px;
+  background: linear-gradient(90deg, 
+    rgba(46, 204, 113, 0.4) 0%, 
+    rgba(46, 204, 113, 0.6) 50%, 
+    rgba(46, 204, 113, 0.4) 100%);
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+
+.relay-flow-line#relay-flow-ai1-ai0.active .flow-particle {
+  background: linear-gradient(90deg, transparent, #2ecc71, #5dde9a, transparent);
+  animation: flow-left-right 1s ease-in-out infinite;
+}
+
+/* AI0 ↔ AI2 Relay Aktif (Mavi) */
+.relay-flow-line#relay-flow-ai0-ai2.active .flow-track {
+  height: 5px;
+  background: linear-gradient(90deg, 
+    rgba(52, 152, 219, 0.4) 0%, 
+    rgba(52, 152, 219, 0.6) 50%, 
+    rgba(52, 152, 219, 0.4) 100%);
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.relay-flow-line#relay-flow-ai0-ai2.active .flow-particle {
+  background: linear-gradient(90deg, transparent, #3498db, #5dade2, transparent);
+  animation: flow-left-right 1s ease-in-out infinite;
+}
+
+/* Alt Flow Line - AI1-AI2 arası (Asistan altından geçer) */
+.relay-flow-line-bottom {
+  width: 100%;
+  max-width: 450px;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-top: 2px;
+}
+
+.relay-flow-line-bottom .flow-track-horizontal {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.relay-flow-line-bottom .flow-particle {
+  position: absolute;
+  width: 20px;
+  height: 100%;
+  background: transparent;
+  border-radius: 3px;
+  left: -20px;
+}
+
+/* AI1 ↔ AI2 Relay Aktif (Sarı/Turuncu) */
+.relay-flow-line-bottom.active .flow-track-horizontal {
+  height: 5px;
+  background: linear-gradient(90deg, 
+    rgba(241, 196, 15, 0.3) 0%, 
+    rgba(230, 126, 34, 0.5) 50%, 
+    rgba(241, 196, 15, 0.3) 100%);
+  box-shadow: 0 0 12px rgba(241, 196, 15, 0.5);
+}
+
+.relay-flow-line-bottom.active .flow-particle {
+  background: linear-gradient(90deg, transparent, #f1c40f, #e67e22, #f1c40f, transparent);
+  animation: flow-left-right-wide 1.5s ease-in-out infinite;
+}
+
+/* Akış animasyonu - soldan sağa (dar çizgiler için) */
+@keyframes flow-left-right {
+  0% {
+    left: -12px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 12px);
+    opacity: 0;
+  }
+}
+
+/* Akış animasyonu - soldan sağa (geniş çizgi için) */
+@keyframes flow-left-right-wide {
+  0% {
+    left: -20px;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 20px);
+    opacity: 0;
+  }
+}
+
+/* Thinking durumunda pulse efekti ekle */
+.relay-flow-line.active.thinking .flow-track,
+.relay-flow-line-bottom.active.thinking .flow-track-horizontal {
+  animation: relay-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes relay-pulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Cluster'lar thinking durumunda glow efekti - AI düşünürken aktif */
+.indicator-cluster.thinking-active {
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+  animation: thinking-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes thinking-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.7);
+  }
 }
 .indicator-select-row {
   display: flex;

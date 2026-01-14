@@ -1,4 +1,4 @@
-import { getMimeTypeFromPath } from "../../constants/index.js";
+import { getMimeTypeFromPath, generateAccountId } from "../../constants/index.js";
 
 export class AccountsSection {
   constructor(settingsManager) {
@@ -169,7 +169,17 @@ export class AccountsSection {
       const settings = this.settingsManager.getSnapshot();
       const accounts = settings?.accounts || [];
 
-      const accountId = `acc-${provider}-${Date.now().toString(36)}`;
+      // Duplicate kontrolü: Aynı email+provider ile hesap var mı?
+      const existingAccount = accounts.find(
+        (a) => a.email.toLowerCase() === email.toLowerCase() && a.provider === provider
+      );
+      if (existingAccount) {
+        this.showFeedback("Bu email ve provider kombinasyonu zaten kayıtlı", "error");
+        return;
+      }
+
+      // Deterministik account ID oluştur (email+provider'dan)
+      const accountId = generateAccountId(email, provider);
 
       let finalAvatarPath = "";
       if (this._newAccountAvatarPath) {
@@ -190,6 +200,16 @@ export class AccountsSection {
         nickname,
         avatarPath: finalAvatarPath,
       };
+
+      // Hesap için veritabanını başlat (tablolar oluşturulur)
+      const dbResult = await window.electronAPI?.dbInitAccount?.({
+        accountId,
+      });
+      
+      if (!dbResult?.success) {
+        console.warn("DB init warning:", dbResult?.error);
+        // DB hatası kritik değil, devam et
+      }
 
       const updated = { ...settings, accounts: [...accounts, newAccount] };
       await this.settingsManager.save(updated);

@@ -36,7 +36,13 @@ export const config = {
   scrapeSelectors: {
     preferred: "[data-message-author-role]",
     fallback: ".message-bubble",
+    // User mesaj container'ı (border ve background ile ayırt edilir)
+    userWrapper: ".message-bubble.bg-surface-l1, .message-bubble.border-border-l1",
+    // Assistant mesaj container'ı (max-w-none sınıfı ile ayırt edilir)
+    assistantWrapper: ".message-bubble.max-w-none, .response-content-markdown",
   },
+  // Mesaj ID stratejisi: DOM'da benzersiz ID olmadığı için content hash kullanılır
+  messageIdStrategy: "content-hash",
   fileInputSelectors: [
     'input[data-testid="dmComposerAttachFileInput"]',
     'input[type="file"]',

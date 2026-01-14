@@ -34,19 +34,16 @@ import {
   commandCleanupJob,
   commandMove,
 } from "./command-manager.js";
+import { DatabaseManager } from "./database/index.js";
 import {
   fmTempPath,
   fmEnsureDirs,
   fmWriteFileAtomic,
-  fmArchiveWrite,
   ensureScope,
   readFileAsBase64,
   copyToAssets,
   copyFileTo,
-  removeArchive,
   deleteAsset,
-  readArchivesIndex,
-  writeArchivesIndex,
   generateTree,
   openPath,
 } from "./file-manager.js";
@@ -59,7 +56,7 @@ import {
   windowToggleFullscreen,
   appRestart,
 } from "./window-manager.js";
-import { catboxUpload, uguuUpload, archiveSync } from "./webview-manager.js";
+import { catboxUpload, uguuUpload } from "./webview-manager.js";
 import {
   googledriveStartAuth,
   googledriveExchangeCode,
@@ -67,6 +64,7 @@ import {
   googledriveUpload,
 } from "./googledrive-manager.js";
 import { ServerCommands } from "./server-commands.js";
+import { OpenCodeManager } from "./opencode-manager.js";
 import {
   initLogSystem,
   interceptMainConsole,
@@ -89,6 +87,7 @@ import {
   CONSOLE_LOG,
   ERROR_LOG,
 } from "./console-logger.js";
+import { SessionManager } from "./session-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -121,6 +120,13 @@ updateAppState({
 
 app.whenReady().then(async () => {
   try {
+    // Startup cache temizliği (login bilgileri korunur)
+    try {
+      await SessionManager.clearStartupCache();
+    } catch (e) {
+      console.warn("Startup cache temizliği başarısız:", e?.message);
+    }
+
     mainWindow = await createAppWindow({ __dirname });
 
     setMainWindow(mainWindow);
@@ -147,8 +153,39 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("window-all-closed", () => {
+// Cleanup tamamlandı mı flag'i
+let cleanupDone = false;
+
+/**
+ * Uygulama kapanmadan önce cleanup işlemlerini yap
+ */
+async function performCleanup() {
+  if (cleanupDone) return;
+  cleanupDone = true;
+  
+  console.log("[MAIN] Cleanup başlatılıyor...");
+  
+  // OpenCode server'ı kapat
+  try {
+    await OpenCodeManager.cleanup();
+    console.log("[MAIN] OpenCode server kapatıldı");
+  } catch (err) {
+    console.error("[MAIN] OpenCode cleanup failed:", err);
+  }
+  
+  // Session summary yaz
+  try {
+    await writeSessionSummary("normal");
+    console.log("[MAIN] Session summary yazıldı");
+  } catch (err) {
+    console.error("[MAIN] Failed to write session summary:", err);
+  }
+}
+
+app.on("window-all-closed", async () => {
   if (process.platform !== "darwin") {
+    // X butonu ile kapatıldığında cleanup yap
+    await performCleanup();
     app.quit();
   }
 });
@@ -159,15 +196,16 @@ ipcMain.on("window-toggle-fullscreen", windowToggleFullscreen);
 
 ipcMain.handle("app-restart", appRestart);
 
-app.on("will-quit", (event) => {
+app.on("will-quit", async () => {
+  // Database bağlantılarını kapat
+  DatabaseManager.closeAll();
+  // Cleanup henüz yapılmadıysa yap
+  await performCleanup();
 });
 
-app.on("before-quit", async (event) => {
-  try {
-    await writeSessionSummary("normal");
-  } catch (err) {
-    console.error("Failed to write session summary:", err);
-  }
+app.on("before-quit", async () => {
+  // Cleanup henüz yapılmadıysa yap
+  await performCleanup();
 });
 
 if (process.platform !== "win32") {
@@ -256,7 +294,6 @@ ipcMain.handle("show-open-dialog", async (event, options = {}) => {
 });
 
 ipcMain.handle("fm-write-file-atomic", fmWriteFileAtomic);
-ipcMain.handle("fm-archive-write", fmArchiveWrite);
 
 ipcMain.handle("read-file", readFileAsBase64);
 
@@ -278,9 +315,6 @@ ipcMain.handle("googledrive-upload", googledriveUpload);
 
 ipcMain.handle("uguu-upload", uguuUpload);
 
-ipcMain.handle("read-archives-index", readArchivesIndex);
-ipcMain.handle("write-archives-index", writeArchivesIndex);
-
 ipcMain.handle("whisper-load", whisperLoad);
 ipcMain.handle("whisper-save", whisperSave);
 
@@ -301,15 +335,24 @@ ipcMain.handle("command-move", commandMove);
 ipcMain.handle("capture-page", capturePageHandler);
 ipcMain.handle("screenshot-capture", screenshotCaptureHandler);
 
-ipcMain.handle("archive-sync", archiveSync);
+// ============================================================================
+// Database IPC Handlers
+// ============================================================================
+ipcMain.handle("db-init-account", (event, params) => DatabaseManager.initAccount(event, params));
+ipcMain.handle("db-get-conversations", (event, params) => DatabaseManager.getConversations(event, params));
+ipcMain.handle("db-get-messages", (event, params) => DatabaseManager.getMessages(event, params));
+ipcMain.handle("db-sync-messages", (event, params) => DatabaseManager.syncMessages(event, params));
+ipcMain.handle("db-save-attachment", (event, params) => DatabaseManager.saveAttachment(event, params));
+ipcMain.handle("db-get-attachments", (event, params) => DatabaseManager.getAttachments(event, params));
+ipcMain.handle("db-delete-conversation", (event, params) => DatabaseManager.deleteConversation(event, params));
+ipcMain.handle("db-search-messages", (event, params) => DatabaseManager.searchMessages(event, params));
+ipcMain.handle("db-update-conversation", (event, params) => DatabaseManager.updateConversationDetails(event, params));
 
 ipcMain.handle("append-log", appendLog);
 
 ipcMain.handle("copy-to-assets", copyToAssets);
 
 ipcMain.handle("copy-file-to", copyFileTo);
-
-ipcMain.handle("remove-archive", removeArchive);
 ipcMain.handle("delete-asset", deleteAsset);
 
 ipcMain.handle("open-path", openPath);
@@ -398,5 +441,33 @@ ipcMain.handle("setup-webview-logger", async (event, webviewId, slot, provider) 
 
 ipcMain.handle("generate-correlation-id", async (event, prefix = "op") => {
   return generateCorrelationId(prefix);
+});
+
+// =========================================================================
+// OpenCode Server IPC Handlers
+// =========================================================================
+
+ipcMain.handle("opencode-start", async (event, options = {}) => {
+  try {
+    return await OpenCodeManager.start(options);
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("opencode-stop", async () => {
+  try {
+    return await OpenCodeManager.stop();
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle("opencode-status", async () => {
+  try {
+    return OpenCodeManager.getStatus();
+  } catch (err) {
+    return { running: false, error: err.message };
+  }
 });
 

@@ -51,7 +51,15 @@ class WhisperManagerClass {
 
   async loadProvider(provider) {
     try {
-      const res = await window.electronAPI?.whisperLoad?.(provider);
+      // Slot'tan hesap bilgisini al
+      const accountInfo = AppState.getAccountForSlot(provider);
+      if (!accountInfo?.id) {
+        return { pending: [], done: [] };
+      }
+      
+      const res = await window.electronAPI?.whisperLoad?.({
+        accountId: accountInfo.id,
+      });
       if (res && typeof res === "object") {
         return {
           pending: Array.isArray(res.pending)
@@ -73,7 +81,16 @@ class WhisperManagerClass {
 
   async saveProvider(provider) {
     try {
-      await window.electronAPI?.whisperSave?.(provider, this.data[provider]);
+      // Slot'tan hesap bilgisini al
+      const accountInfo = AppState.getAccountForSlot(provider);
+      if (!accountInfo?.id) {
+        return;
+      }
+      
+      await window.electronAPI?.whisperSave?.({
+        accountId: accountInfo.id,
+        payload: this.data[provider],
+      });
     } catch (err) {
       const error = /** @type {Error} */ (err);
       LogManager.addEvent(

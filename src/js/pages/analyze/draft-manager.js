@@ -37,12 +37,8 @@ function decodeBase64(data) {
  */
 export async function initDraft() {
   try {
-    const dirs = await FileManager.ensureDirs("archives");
-    const baseDir = dirs?.archives || FileManager.getPath?.("archives") || "";
-    
-    if (!baseDir) return;
-    
-    draftPath = `${baseDir}/analyze-draft.json`;
+    // Draft dosyası data klasöründe tutulacak
+    draftPath = "data/analyze-draft.json";
   } catch (err) {
     LogManager.addEvent("analyze", "warning", `Draft yolu hazırlanamadı: ${err.message}`);
   }

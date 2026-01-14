@@ -7,9 +7,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
-  readArchivesIndex: () => ipcRenderer.invoke("read-archives-index"),
-  writeArchivesIndex: (entries) =>
-    ipcRenderer.invoke("write-archives-index", entries),
   commandInit: () => ipcRenderer.invoke("command-init"),
   commandWrite: (item) => ipcRenderer.invoke("command-write", item),
   commandMove: (id, status, reason) =>
@@ -29,8 +26,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("command-cleanup-job", payload),
   copyToAssets: (srcPath, role, accountInfo) =>
     ipcRenderer.invoke("copy-to-assets", srcPath, role, accountInfo),
-  removeArchive: (folderPath) =>
-    ipcRenderer.invoke("remove-archive", folderPath),
   deleteAsset: (assetPath) => ipcRenderer.invoke("delete-asset", assetPath),
   copyFileTo: (srcPath, destDir) =>
     ipcRenderer.invoke("copy-file-to", srcPath, destDir),
@@ -39,13 +34,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   fmTempPath: (prefix, ext) => ipcRenderer.invoke("fm-temp-path", prefix, ext),
   fmWriteFileAtomic: (payload) =>
     ipcRenderer.invoke("fm-write-file-atomic", payload),
-  fmArchiveWrite: (meta, files) =>
-    ipcRenderer.invoke("fm-archive-write", meta, files),
   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
   getProviderConfig: (providerId) =>
     ipcRenderer.invoke("get-provider-config", providerId),
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
-  archiveSync: (payload) => ipcRenderer.invoke("archive-sync", payload),
+  
+  // Database API
+  dbInitAccount: (params) => ipcRenderer.invoke("db-init-account", params),
+  dbGetConversations: (params) => ipcRenderer.invoke("db-get-conversations", params),
+  dbGetMessages: (params) => ipcRenderer.invoke("db-get-messages", params),
+  dbSyncMessages: (params) => ipcRenderer.invoke("db-sync-messages", params),
+  dbSaveAttachment: (params) => ipcRenderer.invoke("db-save-attachment", params),
+  dbGetAttachments: (params) => ipcRenderer.invoke("db-get-attachments", params),
+  dbDeleteConversation: (params) => ipcRenderer.invoke("db-delete-conversation", params),
+  dbSearchMessages: (params) => ipcRenderer.invoke("db-search-messages", params),
+  dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
+  
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
   getSessionId: () => ipcRenderer.invoke("get-session-id"),
   readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
@@ -62,9 +66,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogPaths: () => ipcRenderer.invoke("get-log-paths"),
   onConsoleLogForward: (callback) =>
     ipcRenderer.on("console-log-forward", (event, data) => callback(data)),
-  whisperLoad: (provider) => ipcRenderer.invoke("whisper-load", provider),
-  whisperSave: (provider, payload) =>
-    ipcRenderer.invoke("whisper-save", provider, payload),
+  whisperLoad: (params) => ipcRenderer.invoke("whisper-load", params),
+  whisperSave: (params) => ipcRenderer.invoke("whisper-save", params),
   capturePage: (type, region) =>
     ipcRenderer.invoke("capture-page", type, region),
   screenshotCapture: (options) =>
@@ -85,12 +88,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) =>
     ipcRenderer.invoke("generate-tree", basePath, options),
-  assistantConnect: (provider) =>
-    ipcRenderer.invoke("assistant-connect", provider),
-  assistantDisconnect: () => ipcRenderer.invoke("assistant-disconnect"),
-  assistantStatus: () => ipcRenderer.invoke("assistant-status"),
+  // OpenCode Server API
+  opencodeStart: (options) => ipcRenderer.invoke("opencode-start", options),
+  opencodeStop: () => ipcRenderer.invoke("opencode-stop"),
+  opencodeStatus: () => ipcRenderer.invoke("opencode-status"),
+  
+  // Legacy assistant aliases (opencode'a yönlendirilir)
+  assistantConnect: (provider, options) =>
+    ipcRenderer.invoke("opencode-start", options),
+  assistantDisconnect: () => ipcRenderer.invoke("opencode-stop"),
+  assistantStatus: () => ipcRenderer.invoke("opencode-status"),
   assistantGetConfig: (providerId) =>
-    ipcRenderer.invoke("assistant-get-config", providerId),
+    ipcRenderer.invoke("get-provider-config", providerId),
   onAssistantDisconnected: (callback) =>
     ipcRenderer.on("assistant-disconnected", (event, data) => callback(data)),
 });

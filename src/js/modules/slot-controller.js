@@ -108,6 +108,7 @@ const createSlotState = () => ({
 class SlotControllerClass {
   constructor() {
     this._slots = {
+      ai0: createSlotState(), // Asistan slotu
       ai1: createSlotState(),
       ai2: createSlotState(),
     };
@@ -276,6 +277,12 @@ class SlotControllerClass {
     if (!slotState.webview) {
       this._log(slot, "error", "Cannot connect: webview not registered", { correlationId });
       return { success: false, message: "webview-not-registered", correlationId };
+    }
+
+    // URL override desteği (OpenCode gibi dinamik URL gerektiren provider'lar için)
+    if (options.url) {
+      slotState._overrideUrl = options.url;
+      this._log(slot, "debug", `URL override set: ${options.url}`, { correlationId });
     }
 
     slotState.correlationId = correlationId;
@@ -520,7 +527,7 @@ class SlotControllerClass {
   // ============================================
 
   _isValidSlot(slot) {
-    return slot === "ai1" || slot === "ai2";
+    return slot === "ai0" || slot === "ai1" || slot === "ai2";
   }
 
   _generateCorrelationId(slot, operation) {

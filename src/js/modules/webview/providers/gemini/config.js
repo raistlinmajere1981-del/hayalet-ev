@@ -19,7 +19,11 @@ export const config = {
   scrapeSelectors: {
     preferred: ".message-content",
     fallback: ".user-query-bubble-with-background, .markdown-main-panel",
+    // Gemini'de benzersiz mesaj ID'si mevcut
+    messageId: '[id^="message-content-id-"]',
   },
+  // Gemini DOM'da benzersiz ID sağlıyor - önce DOM ID denenecek, yoksa hash
+  messageIdStrategy: "dom-id",
   roleSelectors: {
     user: ".user-query-bubble-with-background",
     assistant: ".markdown-main-panel",

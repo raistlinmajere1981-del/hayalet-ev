@@ -72,17 +72,26 @@ export class SlotsSection {
     const accounts = settings?.accounts || [];
     const slots = settings?.slots || {};
 
-    const ai1Provider =
-      accounts.find((a) => a.id === slots.ai1?.accountId)?.provider || "";
-    const ai2Provider =
-      accounts.find((a) => a.id === slots.ai2?.accountId)?.provider || "";
+    const ai1CurrentId = slots.ai1?.accountId;
+    const ai2CurrentId = slots.ai2?.accountId;
 
-    const ai1Accounts = ai1Provider
-      ? accounts.filter((a) => a.provider === ai1Provider)
-      : accounts;
-    const ai2Accounts = ai2Provider
-      ? accounts.filter((a) => a.provider === ai2Provider)
-      : accounts;
+    // AI1 dropdown: Diğer slotta seçili hesabı gösterme (kendi seçili hesabı hariç)
+    const ai1Accounts = accounts.filter((a) => {
+      // Zaten AI1'de seçili olan hesabı göster
+      if (a.id === ai1CurrentId) return true;
+      // AI2'de seçili hesabı gösterme
+      if (a.id === ai2CurrentId) return false;
+      return true;
+    });
+
+    // AI2 dropdown: Diğer slotta seçili hesabı gösterme (kendi seçili hesabı hariç)
+    const ai2Accounts = accounts.filter((a) => {
+      // Zaten AI2'de seçili olan hesabı göster
+      if (a.id === ai2CurrentId) return true;
+      // AI1'de seçili hesabı gösterme
+      if (a.id === ai1CurrentId) return false;
+      return true;
+    });
 
     const generateOptions = (accs) =>
       '<option value="">-- Hesap seç --</option>' +

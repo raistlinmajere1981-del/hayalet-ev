@@ -70,8 +70,8 @@ const defaultState = () => ({
 // ============================================
 class TrafficManagerClass {
   constructor() {
-    this.indicators = { ai1: {}, ai2: {} };
-    this.state = { ai1: defaultState(), ai2: defaultState() };
+    this.indicators = { ai0: {}, ai1: {}, ai2: {} };
+    this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState() };
     this.listeners = [];
     this.webviews = {};
     this.pollTimer = null;
@@ -121,14 +121,21 @@ class TrafficManagerClass {
 
   init() {
     this.cacheIndicators();
+    this.refreshIndicators("ai0");
     this.refreshIndicators("ai1");
     this.refreshIndicators("ai2");
   }
 
   cacheIndicators() {
+    // Asistan (AI0) göstergeleri
+    this.indicators.ai0.loading = document.getElementById("ai0-loading-indicator");
+    this.indicators.ai0.send = document.getElementById("ai0-send-indicator");
+    this.indicators.ai0.thinking = document.getElementById("ai0-thinking-indicator");
+    // AI1 göstergeleri
     this.indicators.ai1.loading = document.getElementById("ai1-loading-indicator");
     this.indicators.ai1.send = document.getElementById("ai1-send-indicator");
     this.indicators.ai1.thinking = document.getElementById("ai1-thinking-indicator");
+    // AI2 göstergeleri
     this.indicators.ai2.loading = document.getElementById("ai2-loading-indicator");
     this.indicators.ai2.send = document.getElementById("ai2-send-indicator");
     this.indicators.ai2.thinking = document.getElementById("ai2-thinking-indicator");
@@ -173,14 +180,15 @@ class TrafficManagerClass {
       const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
       const isOnDefaultPage = isDefaultPage(href, providerId);
       
-      // Default page'den çıkış = mesaj gönderiminden kaynaklı (yeni conversation oluşuyor)
-      // Bu durumda loading tetikleme - thinking tracker takip edecek
-      // Kullanıcı manuel link tıklasa bile sorun yok çünkü conversation page'de
-      // zaten thinking aktif olmayacak ve normal çalışacak
+      // Default page'den çıkış = mevcut bir konuşmaya geçiş
+      // Loading'i başlat ve sayfa yüklenince sync tetiklenecek
       if (wasOnDefaultPage && !isOnDefaultPage) {
         LogManager.addEvent("traffic", "debug", 
-          `Skipping loading trigger for ${provider}: default page exit (${previousHref} → ${href})`);
+          `Default page exit detected for ${provider}: ${previousHref} → ${href}`);
+        // Loading'i başlat - sayfa yüklenince otomatik sync tetiklenecek
+        this.loadingTracker.startLoading(viewState, Date.now());
         this.state[provider] = viewState;
+        this.setIndicator(provider, "loading", "busy");
         return;
       }
       
@@ -413,10 +421,32 @@ class TrafficManagerClass {
       dot.style.display = "inline-block";
       dot.style.backgroundColor = color;
     }
+    
+    // Thinking durumunda cluster'a glow efekti ekle/kaldır
+    if (kind === "thinking") {
+      this._updateClusterThinkingGlow(provider, status);
+    }
+    
     this.notifyListeners(provider);
 
     if (prevStatus !== status) {
       LogManager.addEvent("traffic", "debug", `setIndicator ${provider}:${kind} -> ${status}`);
+    }
+  }
+
+  /**
+   * Cluster'a thinking glow efekti ekle/kaldır
+   * @param {string} provider - ai0, ai1, ai2
+   * @param {string} status - busy veya idle
+   */
+  _updateClusterThinkingGlow(provider, status) {
+    const cluster = document.getElementById(`cluster-${provider}`);
+    if (!cluster) return;
+    
+    if (status === "busy") {
+      cluster.classList.add("thinking-active");
+    } else {
+      cluster.classList.remove("thinking-active");
     }
   }
 

@@ -2,6 +2,7 @@ import { CoreEngine } from "./core-engine.js";
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
+import { AppState } from "./app-state.js";
 
 class ConversationListManagerClass {
   constructor() {
@@ -58,7 +59,8 @@ class ConversationListManagerClass {
     const conversationId = select.value;
     this.currentSelections[provider] = conversationId;
 
-    const entry = this.entries.find((e) => e.id === conversationId);
+    // Hem ID hem provider eşleşmeli (aynı ID farklı provider'larda olabilir)
+    const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
     CoreEngine.navigateTo(provider, entry?.webUrl || null);
 
     if (!options.isInitial) {
@@ -74,7 +76,25 @@ class ConversationListManagerClass {
     options = { silent: false, forceSelectId: null, skipNotify: false },
   ) {
     try {
-      this.entries = (await window.electronAPI?.readArchivesIndex?.()) || [];
+      // Her slot için hesap bilgisini al ve DB'den konuşmaları çek
+      const ai1Account = AppState.getAccountForSlot("ai1");
+      const ai2Account = AppState.getAccountForSlot("ai2");
+
+      const [ai1Entries, ai2Entries] = await Promise.all([
+        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({
+          accountId: ai1Account.id,
+        }) : [],
+        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({
+          accountId: ai2Account.id,
+        }) : [],
+      ]);
+
+      // Provider bilgisini slot olarak ekle (ai1/ai2)
+      this.entries = [
+        ...(ai1Entries || []).map(e => ({ ...e, provider: "ai1", mtime: e.updatedAt || e.createdAt })),
+        ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2", mtime: e.updatedAt || e.createdAt })),
+      ];
+
       this.renderAll(options);
       if (options.forceSelectId) {
         this.updateSelection(options.forceSelectId, { silent: true });
@@ -155,8 +175,11 @@ class ConversationListManagerClass {
     this.currentSelections[provider] = select.value;
   }
 
-  updateSelection(conversationId, options = { silent: false }) {
-    const entry = this.entries.find((e) => e.id === conversationId);
+  updateSelection(conversationId, options = { silent: false, provider: null }) {
+    // Provider belirtilmişse ona göre, değilse ilk eşleşeni bul
+    const entry = options.provider 
+      ? this.entries.find((e) => e.id === conversationId && e.provider === options.provider)
+      : this.entries.find((e) => e.id === conversationId);
     if (!entry) return;
 
     const { provider } = entry;

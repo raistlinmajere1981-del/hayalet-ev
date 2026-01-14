@@ -24,7 +24,9 @@ export function buildProbeScript(provider) {
     return `// No config for provider: ${JSON.stringify(providerId)}`; 
   }
 
-  const sendSel = cfg.selectors.sendButton || "";
+  // sendButtonBase varsa onu kullan (disabled kontrolü script içinde yapılır)
+  // yoksa sendButton kullan (eski davranış)
+  const sendSel = cfg.selectors.sendButtonBase || cfg.selectors.sendButton || "";
   const stopSel = cfg.selectors.stopButton || "";
   const voiceSel = cfg.selectors.voiceButton || "";
   const scrollerSels = cfg.scrollerSelectors || [];

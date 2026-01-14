@@ -37,8 +37,14 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
   } catch (_e) {
   }
 
-  const targetUrl = slotState.providerConfig?.baseUrl || "";
+  // Override URL varsa onu kullan, yoksa provider config'den al
+  const targetUrl = slotState._overrideUrl || slotState.providerConfig?.baseUrl || "";
   const normalizedTarget = targetUrl.split("?")[0].split("#")[0];
+  
+  // Override URL kullanıldıysa temizle (tek seferlik)
+  if (slotState._overrideUrl) {
+    delete slotState._overrideUrl;
+  }
 
   const needsReload = (!currentSrc && !currentUrl) ||
                       (currentUrl && normalizedTarget && 
@@ -76,7 +82,8 @@ export async function detachWebview(slotState, slot, correlationId, logFn, emitF
 
   try {
     webview.setAttribute("data-detached", "1");
-    webview.style.display = "none";
+    // Webview'ı gizleme - overlay ile kontrol edilecek
+    // webview.style.display = "none";
     webview.removeAttribute("src");
     
     emitFn(slot, eventDetached, { correlationId });

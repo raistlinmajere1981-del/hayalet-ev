@@ -1,4 +1,20 @@
+/**
+ * Gemini mesajlarını scrape et
+ * Gemini'de DOM ID mevcut olduğu için önce onu kullanır, yoksa hash
+ * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number, domId?: string }>}
+ */
 export function scrapeMessages() {
+  // Hash fonksiyonu (djb2 algoritması) - fonksiyon içinde tanımlı olmalı
+  function hashString(str) {
+    if (!str) return "0";
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = hash >>> 0;
+    }
+    return hash.toString(16);
+  }
+
   const config = window.__hayalet_provider_config || {};
   const { scrapeSelectors = {}, roleSelectors = {} } = config;
 
@@ -6,6 +22,7 @@ export function scrapeMessages() {
   const fallbackSel =
     scrapeSelectors.fallback ||
     ".user-query-bubble-with-background, .markdown-main-panel";
+  const messageIdSel = scrapeSelectors.messageId || '[id^="message-content-id-"]';
 
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const base = preferred.length
@@ -63,7 +80,16 @@ export function scrapeMessages() {
 
     if (!textContent) return;
 
-    result.push({ index: idx, role, text: textContent });
+    // DOM ID'yi çıkarmayı dene (Gemini'de benzersiz ID var)
+    let domId = null;
+    const idElement = node.matches(messageIdSel) ? node : node.querySelector(messageIdSel);
+    if (idElement && idElement.id) {
+      domId = idElement.id;
+    }
+
+    // Hash ekle (fallback veya duplicate detection için)
+    const contentHash = hashString(textContent);
+    result.push({ index: idx, role, text: textContent, contentHash, domIndex: idx, domId });
   });
 
   return result;

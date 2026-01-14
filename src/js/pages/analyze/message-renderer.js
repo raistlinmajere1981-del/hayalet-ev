@@ -8,6 +8,7 @@
  */
 
 import { LogManager } from "../../modules/log-manager.js";
+import { AppState } from "../../modules/app-state.js";
 
 /**
  * Base64 encoded string'i decode et
@@ -63,15 +64,26 @@ export async function renderMessages(provider, callbacks = {}) {
   }
   
   try {
-    const base64 = await window.electronAPI?.readFile?.(`${folder}/history.json`);
+    // DB'den mesajları çek
+    const conversationId = selected?.value;
+    const accountInfo = AppState.getAccountForSlot(provider);
     
-    if (!base64) {
+    if (!accountInfo?.id) {
+      container.innerHTML = '<div class="message-placeholder">Hesap bilgisi bulunamadı.</div>';
+      return { lastMessage: "" };
+    }
+
+    const messages = await window.electronAPI?.dbGetMessages?.({
+      accountId: accountInfo.id,
+      conversationId,
+    });
+    
+    if (!messages || !messages.length) {
       container.innerHTML = '<div class="message-placeholder">Mesaj bulunamadı.</div>';
       return { lastMessage: "" };
     }
     
-    const json = JSON.parse(decodeBase64(base64));
-    let items = Array.isArray(json) ? json : [];
+    let items = messages;
     
     const limitVal = filter?.value;
     if (limitVal && limitVal !== "all") {
@@ -82,7 +94,7 @@ export async function renderMessages(provider, callbacks = {}) {
     }
     
     items.forEach((msg) => {
-      const bubble = createMessageBubble(msg, provider, folder, callbacks);
+      const bubble = createMessageBubble(msg, provider, conversationId, callbacks);
       container.appendChild(bubble);
     });
     

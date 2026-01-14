@@ -1,18 +1,20 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
-import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename } from "./constants/index.js";
+import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename, ASISTAN_SLOT } from "./constants/index.js";
 import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
 import { ServerController } from "./pages/server.js";
 import { ArchivesController } from "./pages/archives.js";
+import { AsistanController } from "./pages/asistan.js";
 import { LogManager } from "./modules/log-manager.js";
 import { TrafficManager } from "./modules/traffic-manager.js";
 import { CoreEngine } from "./modules/core-engine.js";
 import { SettingsManager } from "./modules/settings-manager.js";
 import { SlotController, SlotEvent } from "./modules/slot-controller.js";
 import { ConversationListManager } from "./modules/conversation-list-manager.js";
+import { RelayManager } from "./modules/relay-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
 import settingsTemplate from "../pages/settings.html?raw";
 import webviewTemplate from "../pages/webview.html?raw";
@@ -20,6 +22,7 @@ import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
 import serverTemplate from "../pages/server.html?raw";
 import archivesTemplate from "../pages/archives.html?raw";
+import asistanTemplate from "../pages/asistan.html?raw";
 
 let currentPage = null;
 /**
@@ -84,14 +87,6 @@ function ensureElectronApiFallback() {
       );
     },
 
-    archiveSync: async (_payload) => ({
-      success: true,
-      meta: { folder: "protocol", id: "protocol" },
-    }),
-    readArchivesIndex: async () => [],
-    writeArchivesIndex: async () => ({ success: true }),
-    removeArchive: async () => {
-    },
     openPath: async () => {
     },
 
@@ -101,7 +96,7 @@ function ensureElectronApiFallback() {
 
     fmEnsureDirs: async () => ({
       success: true,
-      paths: { commands: "commands", archives: "archives" },
+      paths: { commands: "commands" },
     }),
     fmTempPath: async (prefix, ext) => ({
       path: `${prefix}-${Date.now()}.${ext}`,
@@ -110,7 +105,6 @@ function ensureElectronApiFallback() {
       success: true,
       path: payload.path,
     }),
-    fmArchiveWrite: async () => ({ success: true, path: "protocol" }),
 
     commandInit: async () => ({ success: true }),
     commandWrite: async () => ({ success: true }),
@@ -130,8 +124,8 @@ function ensureElectronApiFallback() {
     commandMoveFailed: async () => {
     },
 
-    whisperLoad: async (_provider) => ({ pending: [], done: [] }),
-    whisperSave: async () => ({ success: true }),
+    whisperLoad: async (_params) => ({ pending: [], done: [] }),
+    whisperSave: async (_params) => ({ success: true }),
 
     getPreloadPath: async () => "",
     showOpenDialog: async () => null,
@@ -164,7 +158,7 @@ if (!window.electronAPI) {
 function injectPageTemplates() {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${archivesTemplate}${settingsTemplate}${webviewTemplate}`;
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}${settingsTemplate}${webviewTemplate}`;
   }
 }
 
@@ -198,6 +192,7 @@ async function initApp() {
   controllers.whisper = new WhisperController();
   controllers.server = new ServerController();
   controllers.archives = new ArchivesController();
+  controllers.asistan = new AsistanController();
   await controllers.entrance.init();
   await controllers.settings.init();
   await controllers.webview.init();
@@ -205,10 +200,16 @@ async function initApp() {
   await controllers.whisper.init();
   await controllers.server.init();
   await controllers.archives.init();
+  await controllers.asistan.init();
   await ConversationListManager.init();
 
+  // AI webview'lerini kaydet
+  const ai0Webview = document.getElementById("ai0-webview");
   const ai1Webview = document.getElementById("ai1-webview");
   const ai2Webview = document.getElementById("ai2-webview");
+  if (ai0Webview) {
+    CoreEngine.registerWebview(ASISTAN_SLOT, ai0Webview);
+  }
   if (ai1Webview) {
     CoreEngine.registerWebview(SLOTS.AI1, ai1Webview);
   }
@@ -224,10 +225,15 @@ async function initApp() {
 
   showPage("entrance");
   updateIndicatorAvatars();
-  AppState.subscribe(updateIndicatorAvatars);
+  updateRelayIndicator();
+  AppState.subscribe(() => {
+    updateIndicatorAvatars();
+    updateRelayIndicator();
+  });
 
   SlotController.on(SlotEvent.STATE_CHANGED, () => {
     updateIndicatorAvatars();
+    updateRelayIndicator();
   });
 
   LogManager.addEvent("system", "info", "Uygulama başlatıldı");
@@ -313,10 +319,17 @@ function setupWindowControls() {
 
 function setupTopBarButtons() {
   try {
+    const asistanBtn = document.getElementById("asistan-btn");
     const settingsBtn = document.getElementById("settings-btn");
     const archiveBtn = document.getElementById("archive-btn");
     const webviewBtn = document.getElementById("webview-btn");
     const menuToggle = document.getElementById("menu-toggle");
+
+    if (asistanBtn) {
+      asistanBtn.addEventListener("click", () => {
+        showPage("asistan");
+      });
+    }
 
     if (settingsBtn) {
       settingsBtn.addEventListener("click", () => {
@@ -362,6 +375,7 @@ function setActiveNavigation(pageName) {
 
   /** @type {Record<string, HTMLElement | null>} */
   const iconMap = {
+    asistan: document.getElementById("asistan-btn"),
     settings: document.getElementById("settings-btn"),
     archives: document.getElementById("archive-btn"),
     webview: document.getElementById("webview-btn"),
@@ -377,6 +391,13 @@ async function updateIndicatorAvatars() {
   const getAvatar = (provider) => AppState.getAvatar(provider);
 
   const map = {
+    ai0: {
+      el: document.getElementById("indicator-avatar-ai0"),
+      path: getAvatar("ai0"),
+      connected: SlotController.isConnected("ai0"),
+      nickname: AppState.getNickname("ai0"),
+      isAsistan: true,
+    },
     ai1: {
       el: document.getElementById("indicator-avatar-ai1"),
       path: getAvatar("ai1"),
@@ -443,15 +464,20 @@ async function updateIndicatorAvatars() {
     }
   };
 
-  Object.entries(map).forEach(([provider, { el, path }]) => {
+  Object.entries(map).forEach(([provider, { el, path, isAsistan }]) => {
     if (!el) return;
 
     /** @type {"empty"|"disconnected"|"connected"} */
     let slotState = "empty";
 
     const settings = SettingsManager.getSnapshot();
-    const hasAccount = !!settings?.slots?.[provider]?.accountId;
+    
+    // Asistan için asistanSlot, diğerleri için slots kullan
+    const hasAccount = isAsistan 
+      ? !!settings?.asistanSlot?.accountId
+      : !!settings?.slots?.[provider]?.accountId;
     const connected = SlotController.isConnected(provider);
+    
     if (!hasAccount) {
       slotState = "empty";
     } else if (connected) {
@@ -466,6 +492,9 @@ async function updateIndicatorAvatars() {
         if (uri) applyAvatar(el, uri, slotState);
       });
     }
+
+    // Asistan için conversation select yok
+    if (isAsistan) return;
 
     try {
       /** @type {HTMLSelectElement | null} */
@@ -501,6 +530,46 @@ async function updateIndicatorAvatars() {
     } catch (e) {
     }
   });
+}
+
+/**
+ * Relay göstergesini güncelle - Flow line animasyonları
+ * AI-AI: Alt çizgi sarı/turuncu, AI1-Asistan: Sol çizgi yeşil, AI2-Asistan: Sağ çizgi mavi
+ */
+function updateRelayIndicator() {
+  const flowAi1Ai0 = document.getElementById("relay-flow-ai1-ai0");
+  const flowAi0Ai2 = document.getElementById("relay-flow-ai0-ai2");
+  const flowAi1Ai2 = document.getElementById("relay-flow-ai1-ai2");
+  
+  if (!flowAi1Ai0 || !flowAi0Ai2 || !flowAi1Ai2) return;
+
+  // Tüm relay class'ları temizle (thinking-active hariç - o TrafficManager tarafından yönetilir)
+  flowAi1Ai0.classList.remove("active", "thinking");
+  flowAi0Ai2.classList.remove("active", "thinking");
+  flowAi1Ai2.classList.remove("active", "thinking");
+
+  // Relay durumunu kontrol et
+  const isAIAIActive = RelayManager.isAIAIActive();
+  const isAIAsistanActive = RelayManager.isAIAsistanActive();
+  const asistanSourceSlot = RelayManager.getAIAsistanSourceSlot();
+
+  if (isAIAIActive) {
+    // AI-AI Relay: Alt çizgi (AI1-AI2) sarı/turuncu animasyonlu
+    flowAi1Ai2.classList.add("active");
+    flowAi1Ai2.title = "AI1 ↔ AI2 Relay Aktif";
+  } else if (isAIAsistanActive && asistanSourceSlot === "ai1") {
+    // AI1-Asistan Relay: Sol çizgi yeşil animasyonlu
+    flowAi1Ai0.classList.add("active");
+    flowAi1Ai0.title = "AI1 ↔ Asistan Relay Aktif";
+  } else if (isAIAsistanActive && asistanSourceSlot === "ai2") {
+    // AI2-Asistan Relay: Sağ çizgi mavi animasyonlu
+    flowAi0Ai2.classList.add("active");
+    flowAi0Ai2.title = "Asistan ↔ AI2 Relay Aktif";
+  } else {
+    flowAi1Ai0.title = "";
+    flowAi0Ai2.title = "";
+    flowAi1Ai2.title = "";
+  }
 }
 
 function setupReportPanel() {

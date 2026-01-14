@@ -1,0 +1,131 @@
+/**
+ * Message Store - Mesaj CRUD ve Sync İşlemleri
+ *
+ * @module src/js/modules/database/message-store
+ */
+
+// ============================================================================
+// Hash Utility (Renderer-side)
+// ============================================================================
+
+/**
+ * String'den hash oluştur (djb2 algoritması)
+ * Main process ile aynı algoritma kullanılmalı
+ * @param {string} str
+ * @returns {string}
+ */
+export function hashString(str) {
+  if (!str) return "0";
+
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) + hash + str.charCodeAt(i);
+    hash = hash >>> 0; // Convert to unsigned 32-bit
+  }
+  return hash.toString(16);
+}
+
+// ============================================================================
+// Message Store
+// ============================================================================
+
+export const MessageStore = {
+  /**
+   * Mesajları listele
+   * @param {string} accountId - Account ID
+   * @param {string} conversationId
+   * @returns {Promise<Array>}
+   */
+  async list(accountId, conversationId) {
+    try {
+      if (!accountId || !conversationId) {
+        return [];
+      }
+
+      const result = await window.electronAPI?.dbGetMessages?.({
+        accountId,
+        conversationId,
+      });
+
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.error("[MessageStore] list error:", err);
+      return [];
+    }
+  },
+
+  /**
+   * Mesajları senkronize et (incremental sync)
+   * @param {Object} params
+   * @param {string} params.accountId - Account ID
+   * @param {string} params.webUrl - Konuşma URL'i
+   * @param {Array} params.messages - Scrape edilmiş mesajlar
+   * @param {Object} params.authors - { user: "...", assistant: "..." }
+   * @returns {Promise<{ success: boolean, conversationId?: string, added?: number, total?: number }>}
+   */
+  async sync(params) {
+    try {
+      const { accountId, webUrl, messages, authors } = params;
+
+      if (!accountId || !webUrl) {
+        return { success: false, error: "Missing required parameters" };
+      }
+
+      // Mesajlara hash ekle (eğer yoksa)
+      const messagesWithHash = messages.map((msg, index) => ({
+        ...msg,
+        index: msg.index ?? index,
+        contentHash: msg.contentHash || hashString(msg.text),
+      }));
+
+      const result = await window.electronAPI?.dbSyncMessages?.({
+        accountId,
+        webUrl,
+        messages: messagesWithHash,
+        authors,
+      });
+
+      return result || { success: false, error: "API not available" };
+    } catch (err) {
+      console.error("[MessageStore] sync error:", err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
+   * Mesajlarda arama yap (FTS5)
+   * @param {string} accountId - Account ID
+   * @param {string} query
+   * @param {number} limit
+   * @returns {Promise<Array>}
+   */
+  async search(accountId, query, limit = 50) {
+    try {
+      if (!accountId || !query) {
+        return [];
+      }
+
+      const result = await window.electronAPI?.dbSearchMessages?.({
+        accountId,
+        query,
+        limit,
+      });
+
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.error("[MessageStore] search error:", err);
+      return [];
+    }
+  },
+
+  /**
+   * Hash hesapla (utility)
+   * @param {string} content
+   * @returns {string}
+   */
+  hash(content) {
+    return hashString(content);
+  },
+};
+
+export default MessageStore;

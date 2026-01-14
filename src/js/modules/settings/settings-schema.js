@@ -3,6 +3,17 @@ function isPlainObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
+// Default Asistan hesabı (opencode)
+// ID formatı: {provider}_{sanitizedEmail}
+const DEFAULT_ASISTAN_ACCOUNT = {
+  id: "opencode_opencode_at_opencode_com",
+  email: "opencode@opencode.com",
+  provider: "opencode",
+  nickname: "OpenCode",
+  avatarPath: "src/assets/opencode.png",
+  isAsistan: true,
+};
+
 export function defaultSettings() {
   const defaults = {
     user: { nickname: "Kullanıcı", avatarPath: "" },
@@ -16,6 +27,8 @@ export function defaultSettings() {
       },
     },
     accounts: [],
+    // Asistan hesapları (AI0 için)
+    asistanAccounts: [DEFAULT_ASISTAN_ACCOUNT],
     slots: {
       ai1: {
         accountId: null,
@@ -29,6 +42,13 @@ export function defaultSettings() {
         messageMethod: "injection",
         fileMethod: "dragdrop",
       },
+    },
+    // Asistan slotu (AI0)
+    asistanSlot: {
+      accountId: "asistan-opencode-default",
+      catchCommands: false,
+      messageMethod: "injection",
+      fileMethod: "injection",
     },
     assistants: {
       preferred: "rovodev",
@@ -82,6 +102,11 @@ function normalizeLegacy(raw) {
     out.accounts = r.accounts;
   }
 
+  // Asistan hesapları
+  if (Array.isArray(r.asistanAccounts)) {
+    out.asistanAccounts = r.asistanAccounts;
+  }
+
   const slots = {};
   ["ai1", "ai2"].forEach((slot) => {
     const slotData = r?.slots?.[slot];
@@ -100,6 +125,19 @@ function normalizeLegacy(raw) {
   });
   out.slots = slots;
 
+  // Asistan slotu (AI0)
+  if (isPlainObject(r.asistanSlot)) {
+    out.asistanSlot = {
+      accountId: r.asistanSlot.accountId ?? null,
+      catchCommands:
+        typeof r.asistanSlot.catchCommands === "boolean"
+          ? r.asistanSlot.catchCommands
+          : false,
+      messageMethod: r.asistanSlot.messageMethod || "injection",
+      fileMethod: r.asistanSlot.fileMethod || "injection",
+    };
+  }
+
   return out;
 }
 
@@ -110,6 +148,13 @@ export function normalizeSettings(raw) {
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
+  }
+
+  // Asistan hesaplarını normalize et
+  if (!Array.isArray(merged.asistanAccounts)) {
+    merged.asistanAccounts = [DEFAULT_ASISTAN_ACCOUNT];
+  } else if (merged.asistanAccounts.length === 0) {
+    merged.asistanAccounts = [DEFAULT_ASISTAN_ACCOUNT];
   }
 
   for (const slot of ["ai1", "ai2"]) {
@@ -126,6 +171,23 @@ export function normalizeSettings(raw) {
     if (!merged.slots[slot].fileMethod) {
       merged.slots[slot].fileMethod = "dragdrop";
     }
+  }
+
+  // Asistan slotu (AI0) normalize et
+  if (!isPlainObject(merged.asistanSlot)) {
+    merged.asistanSlot = defaultSettings().asistanSlot;
+  }
+  if (merged.asistanSlot.accountId === "" || typeof merged.asistanSlot.accountId === "undefined") {
+    merged.asistanSlot.accountId = "opencode_opencode_at_opencode_com";
+  }
+  if (typeof merged.asistanSlot.catchCommands !== "boolean") {
+    merged.asistanSlot.catchCommands = false;
+  }
+  if (!merged.asistanSlot.messageMethod) {
+    merged.asistanSlot.messageMethod = "injection";
+  }
+  if (!merged.asistanSlot.fileMethod) {
+    merged.asistanSlot.fileMethod = "injection";
   }
 
   if (!isPlainObject(merged.integrations)) {

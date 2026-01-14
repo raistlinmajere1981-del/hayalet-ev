@@ -232,21 +232,6 @@ class FileManagerClass {
     return `${baseDir}/screenshots/${filename}`;
   }
 
-  async archiveWrite(meta = {}, files = []) {
-    try {
-      const res = await window.electronAPI?.fmArchiveWrite?.(meta, files);
-      if (!res?.success) throw new Error(res?.message || "archiveWrite failed");
-      return res.path;
-    } catch (err) {
-      const error = /** @type {Error} */ (err);
-      LogManager.addEvent(
-        "file",
-        "warning",
-        `archiveWrite başarısız: ${error.message}`,
-      );
-      return "";
-    }
-  }
 }
 
 export const FileManager = new FileManagerClass();

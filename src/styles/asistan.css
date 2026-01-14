@@ -1,0 +1,163 @@
+/* Asistan Sayfası Stilleri */
+
+.asistan-container {
+  width: 100%;
+  height: calc(100vh - 100px - 15px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+}
+
+/* Üst Kontrol Paneli */
+.asistan-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  gap: 20px;
+}
+
+.asistan-controls-left,
+.asistan-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.asistan-controls-left .control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.asistan-controls-left .control-group label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Webview Panel */
+.asistan-webview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Topbar'daki asistan status */
+.asistan-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.asistan-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--error);
+}
+
+.asistan-status .status-dot.connected {
+  background: var(--success);
+}
+
+.asistan-status .status-dot.connecting {
+  background: var(--warning);
+  animation: pulse 1s infinite;
+}
+
+.asistan-status .status-dot.loading {
+  background: var(--info, #3498db);
+  animation: pulse 0.8s infinite;
+}
+
+.asistan-status .status-dot.thinking {
+  background: var(--warning);
+  animation: pulse 0.5s infinite;
+}
+
+.asistan-status .status-dot.send-disabled {
+  background: var(--text-secondary);
+}
+
+.asistan-status .status-dot.error {
+  background: var(--error);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.asistan-status #asistan-status-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.asistan-webview-panel .webview-url-bar {
+  padding: 8px 15px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.asistan-webview-panel .webview-url-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: "Courier New", monospace;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: calc(1.4em * 2);
+  overflow: hidden;
+}
+
+.asistan-webview-panel .webview-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--bg-primary);
+}
+
+/* Relay butonu aktif durumu */
+#asistan-relay-btn.active {
+  background: var(--success);
+  color: var(--text-primary);
+}
+
+#asistan-relay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#asistan-relay-source:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form elemanları */
+.form-select.compact {
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 120px;
+}

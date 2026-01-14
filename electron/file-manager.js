@@ -22,7 +22,7 @@ export { ensureDir };
 export async function ensureScope(scope = "all") {
   try {
     const paths = PATHS();
-    const scopes = scope === "all" ? ["archives", "logs", "commands"] : [scope];
+    const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
     const resolved = {};
     for (const key of scopes) {
       const resolver = paths[key];
@@ -40,9 +40,8 @@ export async function ensureScope(scope = "all") {
 function PATHS() {
   const base = process.cwd();
   return {
-    archives: () => join(base, "archives"),
+    data: () => join(base, "data"),
     commands: () => join(base, "commands"),
-    whispers: () => join(base, "archives"),
     logs: () => join(base, "logs"),
   };
 }
@@ -64,7 +63,7 @@ export async function fmTempPath(event, prefix = "tmp", ext = "tmp") {
 export async function fmEnsureDirs(event, scope = "all") {
   try {
     const paths = PATHS();
-    const scopes = scope === "all" ? ["archives", "logs", "commands"] : [scope];
+    const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
     const resolved = {};
     for (const key of scopes) {
       const resolver = paths[key];
@@ -93,23 +92,6 @@ export async function fmWriteFileAtomic(event, payload) {
     await writeFile(tmpPath, buffer);
     await rename(tmpPath, targetPath);
     return { success: true, path: targetPath };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
-
-export async function fmArchiveWrite(event, meta = {}, files = []) {
-  try {
-    const baseDir = PATHS().archives();
-    await ensureDir(baseDir);
-    const tag = (meta.tag || "archive").replace(/[^\w.-]+/g, "_");
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const folder = join(baseDir, "manual");
-    await ensureDir(folder);
-    const target = join(folder, `${tag}-${stamp}.json`);
-    const payload = { meta, files, createdAt: Date.now() };
-    await writeFile(target, JSON.stringify(payload, null, 2), "utf-8");
-    return { success: true, path: target };
   } catch (error) {
     return { success: false, message: error.message };
   }
@@ -212,20 +194,6 @@ export async function copyFileTo(event, srcPath, destDir) {
   }
 }
 
-export async function removeArchive(event, folderPath) {
-  try {
-    if (!folderPath) throw new Error("folderPath missing");
-    const target = folderPath;
-    if (!existsSync(target)) {
-      return { success: true, message: "Folder not found" };
-    }
-    await rm(target, { recursive: true, force: true });
-    return { success: true };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
-
 export async function deleteAsset(event, assetPath) {
   try {
     if (!assetPath) throw new Error("assetPath missing");
@@ -237,31 +205,6 @@ export async function deleteAsset(event, assetPath) {
     return { success: true };
   } catch (error) {
     return { success: false, message: error.message };
-  }
-}
-
-export async function readArchivesIndex(event) {
-  try {
-    const indexPath = join(process.cwd(), "archives", "index.json");
-    if (!existsSync(indexPath)) return [];
-    const data = await readFile(indexPath, "utf-8");
-    return JSON.parse(data || "[]");
-  } catch (error) {
-    return [];
-  }
-}
-
-export async function writeArchivesIndex(event, entries) {
-  try {
-    const baseDir = join(process.cwd(), "archives");
-    const indexPath = join(baseDir, "index.json");
-    if (!existsSync(baseDir)) {
-      await mkdir(baseDir, { recursive: true });
-    }
-    await writeFile(indexPath, JSON.stringify(entries || [], null, 2), "utf-8");
-    return true;
-  } catch (error) {
-    return false;
   }
 }
 

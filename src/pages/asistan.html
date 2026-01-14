@@ -1,0 +1,50 @@
+<div class="page hidden" id="page-asistan">
+  <div class="asistan-container">
+    <!-- Üst Kontrol Paneli -->
+    <div class="asistan-topbar">
+      <div class="asistan-controls-left">
+        <div class="control-group">
+          <label for="asistan-provider-select">Provider</label>
+          <select id="asistan-provider-select" class="form-select compact">
+            <option value="opencode">OpenCode</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="asistan-connect-btn">Bağlan</button>
+        <div class="asistan-status">
+          <span class="status-dot" id="asistan-status-dot"></span>
+          <span id="asistan-status-text">Bağlı Değil</span>
+        </div>
+        <button class="btn btn-small btn-secondary" id="asistan-devtools-btn">
+          DevTools
+        </button>
+      </div>
+
+      <div class="asistan-controls-right">
+        <button class="btn btn-secondary" id="asistan-relay-btn" disabled>
+          AI-Asistan Sohbet
+        </button>
+        <select id="asistan-relay-source" class="form-select compact" disabled>
+          <option value="">Kaynak Seç</option>
+          <option value="ai1">AI1</option>
+          <option value="ai2">AI2</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Webview Paneli -->
+    <div class="asistan-webview-panel">
+      <div class="webview-url-bar">
+        <div class="webview-url-text" id="asistan-url-display">-</div>
+      </div>
+      <div class="webview-wrapper" id="ai0-webview-mount">
+        <!-- Overlay - webview üzerinde gösterilir -->
+        <div class="webview-overlay" id="ai0-webview-overlay">
+          <div class="overlay-icon">🤖</div>
+          <div class="overlay-title">Asistan Bağlı Değil</div>
+          <div class="overlay-subtitle">Bağlan butonuna tıklayın</div>
+        </div>
+        <!-- Webview will be mounted here dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
