@@ -50,6 +50,9 @@ export async function sendMessage(webview, { message }) {
     if (isProseMirror || textarea.contentEditable === 'true' || textarea.isContentEditable) {
       textarea.focus();
       
+      // Önce mevcut içeriği temizle
+      textarea.innerHTML = '';
+      
       // ProseMirror için her satırı ayrı <p> elementi olarak ekle
       // Bu newline'ları doğru şekilde korur
       const lines = message.split('\\n');
@@ -81,6 +84,8 @@ export async function sendMessage(webview, { message }) {
     // Standard textarea için value kullan - newline'lar otomatik korunur
     textarea.focus();
     
+    // Önce mevcut içeriği temizle
+    textarea.value = '';
     
     textarea.value = message;
 
