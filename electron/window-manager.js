@@ -1,5 +1,113 @@
-import { BrowserWindow, session } from 'electron';
+import { BrowserWindow, session, Tray, Menu, nativeImage } from 'electron';
 import { join } from 'path';
+
+// ============================================
+// Tray Management
+// ============================================
+
+let _tray = null;
+
+/**
+ * System tray oluştur
+ * @param {Object} options - { iconPath, mainWindow }
+ */
+export function createTray(options = {}) {
+  const { iconPath, mainWindow } = options;
+  
+  if (_tray) {
+    return _tray;
+  }
+
+  try {
+    // Icon oluştur
+    const icon = nativeImage.createFromPath(iconPath);
+    _tray = new Tray(icon.resize({ width: 22, height: 22 }));
+    
+    // Context menu
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Göster',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Tam Ekran',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.setFullScreen(!mainWindow.isFullScreen());
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Çıkış',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.destroy();
+          }
+          require('electron').app.quit();
+        }
+      }
+    ]);
+
+    _tray.setToolTip('Hayalet-ev');
+    _tray.setContextMenu(contextMenu);
+
+    // Çift tıklama - pencereyi göster ve tam ekran yap
+    _tray.on('double-click', () => {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.maximize();
+        mainWindow.focus();
+      }
+    });
+
+    // Tek tıklama - pencereyi göster
+    _tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.focus();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    });
+
+    return _tray;
+  } catch (err) {
+    console.error('[WindowManager] Tray oluşturma hatası:', err);
+    return null;
+  }
+}
+
+/**
+ * Pencereyi system tray'e küçült
+ */
+export function minimizeToTray() {
+  try {
+    if (_mainWindow) {
+      _mainWindow.hide();
+    }
+  } catch (err) {
+    console.error('[WindowManager] minimizeToTray hatası:', err);
+  }
+}
+
+/**
+ * Tray'i temizle
+ */
+export function destroyTray() {
+  if (_tray) {
+    _tray.destroy();
+    _tray = null;
+  }
+}
 
 export async function createWindow(options = {}) {
   const { __dirname = process.cwd(), isDev = (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) } = options;

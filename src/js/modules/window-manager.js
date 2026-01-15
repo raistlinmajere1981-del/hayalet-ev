@@ -5,6 +5,13 @@ function minimizeToTaskbar() {
   }
 }
 
+function minimizeToTray() {
+  try {
+    window.electronAPI?.windowMinimizeToTray?.();
+  } catch (err) {
+  }
+}
+
 function toggleFullscreen() {
   try {
     window.electronAPI?.windowToggleFullscreen?.();
@@ -62,6 +69,7 @@ function setWindowState(state) {
 
 export const WindowManager = {
   minimizeToTaskbar,
+  minimizeToTray,
   toggleFullscreen,
   closeApp,
   setWindowState,

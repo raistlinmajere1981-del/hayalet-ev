@@ -297,11 +297,13 @@ function showPage(pageName) {
 }
 
 function setupWindowControls() {
+  const minimizeToTrayBtn = document.getElementById("window-minimize-to-tray");
   const minimizeBtn = document.getElementById("window-minimize");
   const fullscreenBtn = document.getElementById("window-fullscreen");
   const closeBtn = document.getElementById("window-close");
   const topBar = document.querySelector(".top-bar");
 
+  minimizeToTrayBtn?.addEventListener("click", () => WindowManager.minimizeToTray());
   minimizeBtn?.addEventListener("click", () => WindowManager.apply("minimize"));
   fullscreenBtn?.addEventListener("click", () =>
     WindowManager.apply("fullscreen"),

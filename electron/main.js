@@ -54,6 +54,9 @@ import {
   windowMinimize,
   windowClose,
   windowToggleFullscreen,
+  createTray,
+  minimizeToTray,
+  destroyTray,
   appRestart,
 } from "./window-manager.js";
 import { catboxUpload, uguuUpload } from "./webview-manager.js";
@@ -147,6 +150,14 @@ app.whenReady().then(async () => {
       initWindowManager({ mainWindow });
     } catch (e) {
     }
+    
+    // System tray oluştur
+    try {
+      const iconPath = join(__dirname, '../src/assets/icon.png');
+      createTray({ iconPath, mainWindow });
+    } catch (e) {
+      console.error("Tray oluşturma hatası:", e);
+    }
   } catch (err) {
     console.error("CRITICAL: createAppWindow failed:", err);
     process.exit(1);
@@ -199,6 +210,7 @@ app.on("window-all-closed", async () => {
 ipcMain.on("window-minimize", windowMinimize);
 ipcMain.on("window-close", windowClose);
 ipcMain.on("window-toggle-fullscreen", windowToggleFullscreen);
+ipcMain.on("window-minimize-to-tray", minimizeToTray);
 
 ipcMain.handle("app-restart", appRestart);
 

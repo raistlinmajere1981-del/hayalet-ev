@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowMinimize: () => ipcRenderer.send("window-minimize"),
   windowToggleFullscreen: () => ipcRenderer.send("window-toggle-fullscreen"),
   windowClose: () => ipcRenderer.send("window-close"),
+  windowMinimizeToTray: () => ipcRenderer.send("window-minimize-to-tray"),
   appRestart: () => ipcRenderer.invoke("app-restart"),
   deviceAction: (action, payload) =>
     ipcRenderer.invoke("device-action", action, payload),
