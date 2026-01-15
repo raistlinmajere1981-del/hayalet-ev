@@ -94,12 +94,15 @@ export class ThinkingTracker {
       return { shouldEnd: false, newState: viewState };
     }
 
-    // ai0 (asistan) ve ai1 için: send button enabled veya disabled olduğunda thinking biter
-    // ai2 için: send button enabled veya voice mode aktif olduğunda thinking biter
+    // Thinking bitiş koşulları:
+    // 1. Stop button kaybolmuş (yukarıda kontrol edildi)
+    // 2. Send button görünür (enabled veya disabled)
+    // 3. Veya voice mode aktif (bazı provider'larda)
+    // 
+    // Not: ChatGPT thinking bittiğinde önce disabled send button gösteriyor,
+    // sonra enabled oluyor. Bu yüzden disabled da geçerli bitiş durumu.
     const shouldEndThinking =
-      provider === "ai0" || provider === "ai1"
-        ? sendState === "enabled" || sendState === "disabled"
-        : sendState === "enabled" || voiceMode;
+      sendState === "enabled" || sendState === "disabled" || voiceMode;
 
     if (shouldEndThinking) {
       return {

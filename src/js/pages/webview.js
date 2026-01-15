@@ -374,7 +374,9 @@ export class WebviewController {
         }
 
         // Provider config'i doğrudan inject et (daha güvenilir)
-        const cfg = providerId ? ProviderRegistry.get(providerId) : null;
+        // FIX: providerId'yi her dom-ready'de dinamik olarak al (hesap değişikliği için)
+        const currentProviderId = AppState.getProviderIdForSlot(type) || providerId;
+        const cfg = currentProviderId ? ProviderRegistry.get(currentProviderId) : null;
         if (cfg) {
           try {
             const configScript = `
@@ -393,7 +395,7 @@ export class WebviewController {
             this.addLog(
               type,
               "debug",
-              `Provider config injected for ${providerId}`,
+              `Provider config injected for ${currentProviderId}`,
             );
           } catch (error) {
             // executeJavaScript hatası - webview henüz hazır değil

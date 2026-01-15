@@ -17,10 +17,7 @@ import { SlotController, SlotState } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ProviderRegistry } from "../modules/webview/provider-registry.js";
 import { RelayManager } from "../modules/relay-manager.js";
-
-// OpenCode default değerleri
-const OPENCODE_PORT = 4096;
-const OPENCODE_PROJECT_PATH = "/home/raistlin/hayalet-ev";
+import { OPENCODE_DEFAULTS } from "../modules/webview/providers/opencode/config.js";
 
 export class AsistanController {
   constructor() {
@@ -161,8 +158,8 @@ export class AsistanController {
       this._updateStatusUI("connecting", "Server başlatılıyor...");
       
       const result = await window.electronAPI.opencodeStart({
-        port: OPENCODE_PORT,
-        projectPath: OPENCODE_PROJECT_PATH,
+        port: OPENCODE_DEFAULTS.port,
+        projectPath: null,
       });
       
       if (result.success) {

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   loadSettings: () => ipcRenderer.invoke("load-settings"),
   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
+  showMessageBox: (options) => ipcRenderer.invoke("show-message-box", options),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   commandInit: () => ipcRenderer.invoke("command-init"),
   commandWrite: (item) => ipcRenderer.invoke("command-write", item),

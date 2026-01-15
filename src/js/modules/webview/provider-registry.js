@@ -22,12 +22,27 @@ const allProviders = {
 };
 
 export const ProviderRegistry = {
+  /**
+   * Provider config'i getir (AI + Asistan)
+   * @param {string} id - Provider ID (chatgpt, grok, gemini, opencode)
+   * @returns {Object|null}
+   */
   get(id) {
     return allProviders[id] || null;
   },
+  
+  /**
+   * Sadece ana AI provider'ları getir
+   * @returns {Object[]}
+   */
   getAll() {
     return Object.values(providers);
   },
+  
+  /**
+   * Sadece ana AI provider ID'leri getir
+   * @returns {string[]}
+   */
   getIds() {
     return Object.keys(providers);
   },

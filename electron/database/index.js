@@ -173,6 +173,9 @@ export const DatabaseManager = {
       const rows = conn.queries.getConversations.all();
 
       // Archives sayfası formatına dönüştür
+      // folder: tam yol olarak data/{accountId}/attachments/{conversationId}
+      const attachmentsBase = getAttachmentsPath(accountId);
+      
       return rows.map((row) => ({
         id: row.id,
         value: row.id,
@@ -182,8 +185,8 @@ export const DatabaseManager = {
         messageCount: row.message_count,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        // Eski format uyumluluğu
-        folder: row.id,
+        // Tam yol: data/{accountId}/attachments/{conversationId}
+        folder: path.join(attachmentsBase, row.id),
         label: row.title || "İsimsiz Konuşma",
       }));
     } catch (err) {

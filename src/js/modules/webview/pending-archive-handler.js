@@ -73,6 +73,8 @@ class PendingArchiveHandlerClass {
    */
   _processEntry(entry, provider, messageIndex) {
     try {
+      // entry.folder artık tam yol: data/{accountId}/attachments/{conversationId}
+      // Hedef: data/{accountId}/attachments/{conversationId}/msg-{index}
       const targetDir = `${entry.folder}/msg-${Math.max(0, messageIndex)}`;
       
       LogManager.addEvent(

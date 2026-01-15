@@ -6,13 +6,14 @@
  * - Port kontrolü
  * - Graceful shutdown
  * - Process state tracking
+ * 
+ * Config değerleri: src/js/modules/webview/providers/opencode/config.js
  */
 
 import { spawn } from "child_process";
+import { OPENCODE_DEFAULTS } from "../src/js/modules/webview/providers/opencode/config.js";
 
-// Default değerler
-const DEFAULT_PORT = 4096;
-const DEFAULT_CORS = "http://localhost:5173";
+// Timeout değerleri
 const STARTUP_TIMEOUT = 10000; // 10 saniye
 const SHUTDOWN_TIMEOUT = 5000; // 5 saniye
 
@@ -33,7 +34,7 @@ export const OpenCodeManager = {
   _state: {
     running: false,
     pid: null,
-    port: DEFAULT_PORT,
+    port: OPENCODE_DEFAULTS.port,
     projectPath: null,
     error: null,
   },
@@ -54,8 +55,8 @@ export const OpenCodeManager = {
    * @returns {Promise<{success: boolean, url?: string, error?: string}>}
    */
   async start(options = {}) {
-    const port = options.port || DEFAULT_PORT;
-    const cors = options.cors || DEFAULT_CORS;
+    const port = options.port || OPENCODE_DEFAULTS.port;
+    const cors = options.cors || OPENCODE_DEFAULTS.cors;
     const projectPath = options.projectPath || null;
 
     // Zaten çalışıyorsa
@@ -178,9 +179,9 @@ export const OpenCodeManager = {
     return new Promise((resolve, reject) => {
       const args = ["serve", "--port", String(port), "--cors", cors];
       
-      console.log("[OPENCODE]", "debug", "Server başlatılıyor", { command: "opencode", args });
+      console.log("[OPENCODE]", "debug", "Server başlatılıyor", { command: OPENCODE_DEFAULTS.command, args });
       
-      this._process = spawn("opencode", args, {
+      this._process = spawn(OPENCODE_DEFAULTS.command, args, {
         stdio: ["ignore", "pipe", "pipe"],
         detached: false,
       });
@@ -308,7 +309,7 @@ export const OpenCodeManager = {
     this._state = {
       running: false,
       pid: null,
-      port: DEFAULT_PORT,
+      port: OPENCODE_DEFAULTS.port,
       projectPath: null,
       error: null,
     };

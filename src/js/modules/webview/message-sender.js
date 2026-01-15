@@ -97,6 +97,27 @@ class MessageSenderClass {
 
     await waitForDomReady(webview);
 
+    // Provider config'i webview'e inject et (her send öncesi)
+    const providerConfig = ProviderRegistry.get(providerId);
+    if (providerConfig) {
+      try {
+        const configScript = `
+          (function() {
+            window.__hayalet_slot = ${JSON.stringify(provider)};
+            window.__hayalet_provider_config = ${JSON.stringify(providerConfig)};
+            return true;
+          })();
+        `;
+        await webview.executeJavaScript(configScript);
+      } catch (err) {
+        LogManager.addEvent(
+          `webview-${provider}`,
+          "warning",
+          `Config injection failed: ${err.message}`,
+        );
+      }
+    }
+
     // ai0 (asistan) için asistanSlot'tan, diğerleri için slots'tan al
     const slotConfig = provider === "ai0" 
       ? this._settings?.asistanSlot 

@@ -1,7 +1,6 @@
-import { EntranceHallController } from "./pages/entrance.js";
+import { EntranceHallController } from "./pages/entrance/index.js";
 import { AppState } from "./modules/app-state.js";
 import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename, ASISTAN_SLOT } from "./constants/index.js";
-import { SettingsController } from "./pages/settings.js";
 import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
@@ -16,7 +15,6 @@ import { SlotController, SlotEvent } from "./modules/slot-controller.js";
 import { ConversationListManager } from "./modules/conversation-list-manager.js";
 import { RelayManager } from "./modules/relay-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
-import settingsTemplate from "../pages/settings.html?raw";
 import webviewTemplate from "../pages/webview.html?raw";
 import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
@@ -158,7 +156,7 @@ if (!window.electronAPI) {
 function injectPageTemplates() {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}${settingsTemplate}${webviewTemplate}`;
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}${webviewTemplate}`;
   }
 }
 
@@ -186,7 +184,6 @@ async function initApp() {
   }
 
   controllers.entrance = new EntranceHallController();
-  controllers.settings = new SettingsController();
   controllers.webview = new WebviewController();
   controllers.analyze = new AnalyzeController();
   controllers.whisper = new WhisperController();
@@ -194,7 +191,6 @@ async function initApp() {
   controllers.archives = new ArchivesController();
   controllers.asistan = new AsistanController();
   await controllers.entrance.init();
-  await controllers.settings.init();
   await controllers.webview.init();
   await controllers.analyze.init();
   await controllers.whisper.init();
@@ -320,26 +316,12 @@ function setupWindowControls() {
 function setupTopBarButtons() {
   try {
     const asistanBtn = document.getElementById("asistan-btn");
-    const settingsBtn = document.getElementById("settings-btn");
-    const archiveBtn = document.getElementById("archive-btn");
     const webviewBtn = document.getElementById("webview-btn");
     const menuToggle = document.getElementById("menu-toggle");
 
     if (asistanBtn) {
       asistanBtn.addEventListener("click", () => {
         showPage("asistan");
-      });
-    }
-
-    if (settingsBtn) {
-      settingsBtn.addEventListener("click", () => {
-        showPage("settings");
-      });
-    }
-
-    if (archiveBtn) {
-      archiveBtn.addEventListener("click", () => {
-        showPage("archives");
       });
     }
 
@@ -376,8 +358,6 @@ function setActiveNavigation(pageName) {
   /** @type {Record<string, HTMLElement | null>} */
   const iconMap = {
     asistan: document.getElementById("asistan-btn"),
-    settings: document.getElementById("settings-btn"),
-    archives: document.getElementById("archive-btn"),
     webview: document.getElementById("webview-btn"),
   };
   Object.values(iconMap).forEach((btn) => btn?.classList.remove("active"));
