@@ -21,6 +21,7 @@
     "test:smoke:verbose": "node .rovodev/scripts/smoke-test.js --verbose --screenshot",
     "pre-commit": "node .rovodev/scripts/pre-commit.js",
     "edit-lines": "node .rovodev/scripts/edit-lines.js",
+    "file": "node .rovodev/scripts/file-ops.js",
     "lint:unused": "node .rovodev/scripts/find-unused.js",
     "analyze": "node .rovodev/scripts/analyze-project.js",
     "analyze:json": "node .rovodev/scripts/analyze-project.js --json",
