@@ -327,8 +327,19 @@ npm run diagram:simple          # Basitleştirilmiş diagram
 npm run diagram -- --module=webview  # Tek modül odaklı
 npm run diagram -- --format=dot      # Graphviz DOT formatı
 
+# === Dosya İşlemleri ===
+npm run file -- delete file1.js file2.js   # Çoklu dosya silme
+npm run file -- delete-dir folder --force  # Klasör silme
+npm run file -- move src.js dest/          # Taşıma
+npm run file -- copy src.js dest.js        # Kopyalama
+npm run file -- list dir -r                # Listeleme (recursive)
+npm run file -- find "*.md" docs/          # Dosya arama
+npm run file -- clean-empty .              # Boş klasörleri temizle
+
 # === Yardımcı ===
 npm run edit-lines -- AGENTS.md --show 100 120  # Satır bazlı düzenleme
+npm run bootstrap                               # Session context oluştur
+npm run cache:update                            # Cache güncelle
 ```
 
 ### Satır Bazlı Dosya Düzenleme
@@ -363,6 +374,36 @@ chmod +x .git/hooks/pre-commit
 # veya her commit öncesi manuel çalıştır
 npm run pre-commit
 ```
+
+### Dosya İşlemleri (Tool Kısıtlamalarını Aşar)
+
+AI agent'lar için `delete_file` gibi tool'lar sınırlı. Bu script toplu işlemleri destekler:
+
+```bash
+# Çoklu dosya silme
+npm run file -- delete old1.js old2.js old3.js
+
+# Klasör silme (boş)
+npm run file -- delete-dir old-folder
+
+# Klasör silme (dolu - dikkatli kullan!)
+npm run file -- delete-dir old-folder --force
+
+# Taşıma (move_file yerine)
+npm run file -- move scripts/old.js .rovodev/scripts/
+
+# Boş klasörleri toplu temizle
+npm run file -- clean-empty .
+
+# Dosya arama
+npm run file -- find "*.test.js" src/
+```
+
+**Avantajları:**
+- Çoklu dosya desteği (tek komutta N dosya)
+- Klasör silme (tool ile yapılamaz)
+- Boş klasör temizliği
+- Glob pattern ile arama
 
 ---
 

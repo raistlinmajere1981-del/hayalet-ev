@@ -4,7 +4,7 @@
 ## 📦 Proje Bilgisi
 - **Ad:** hayalet-ev v5.4.0
 - **Branch:** master
-- **Uncommitted:** 8 dosya
+- **Uncommitted:** 1 dosya
 
 ## 📊 Yapı Özeti
 - `src/js/modules/`: 77 dosya, 9,922 satır
@@ -78,11 +78,11 @@
 - src/js/modules/slot/index.js
 
 ## 🔄 Son Commit'ler
+- e4192db feat: Dosya işlemleri script'i eklendi (file-ops.js)
+- 018508c refactor: AI asistan klasörlerini merkezi yapıya taşı
+- a817fd4 feat: Session context optimizasyonu - token tasarrufu
 - 366304f feat: Proje analiz ve diagram araçları eklendi
 - 1e7e76b feat: AI agent geliştirme araçları eklendi
-- 2adeadc chore: .rovodev/AGENTS.md silindi - içerik kök AGENTS.md'de mevcut
-- 6908358 docs: AGENTS.md hiyerarşik yapıya geçiş ve AI agent talimatları
-- 083a343 refactor: console.log'ları LogManager'a entegre et
 
 ## 📚 Detaylı Rehberler
 - `AGENTS.md` - Ana geliştirme rehberi
