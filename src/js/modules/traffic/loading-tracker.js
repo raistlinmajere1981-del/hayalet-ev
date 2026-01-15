@@ -173,35 +173,21 @@ export class LoadingTracker {
    * @param {number} now - Current timestamp
    * @param {Object} webview - Webview element
    * @param {string} currentHref - Current URL
-   * @param {boolean} [isThinking=false] - AI thinking durumunda mı?
    * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
-  async handleProbe(provider, viewState, data, now, webview, currentHref, isThinking = false) {
+  async handleProbe(provider, viewState, data, now, webview, currentHref) {
     let indicator = viewState.status?.loading || "busy";
     let event = null;
 
     if (currentHref && currentHref !== viewState.lastHref) {
-      const previousHref = viewState.lastHref;
       viewState.lastHref = currentHref;
       
-      // Default page'den conversation page'e geçiş kontrolü
-      // Thinking aktifken URL değişimi = mesaj gönderiminden kaynaklı, loading tetikleme
-      const providerId = AppState.getProviderIdForSlot(provider) || "";
-      const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
-      const isOnDefaultPage = isDefaultPage(currentHref, providerId);
-      
-      // Thinking aktifken ve default page'den çıkıyorsak (mesaj gönderildi),
-      // loading tetikleme - sadece thinking tracker takip etsin
-      const skipLoadingTrigger = isThinking && wasOnDefaultPage && !isOnDefaultPage;
-      
-      if (!skipLoadingTrigger) {
-        this.startLoading(viewState, now);
-        indicator = "busy";
-        event = {
-          type: "loading-started",
-          message: `loading started for ${provider}: ${currentHref}`,
-        };
-      }
+      this.startLoading(viewState, now);
+      indicator = "busy";
+      event = {
+        type: "loading-started",
+        message: `loading started for ${provider}: ${currentHref}`,
+      };
     }
 
     if (viewState.loadingActive) {

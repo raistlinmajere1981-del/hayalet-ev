@@ -351,10 +351,7 @@ class TrafficManagerClass {
     const now = Date.now();
     const webview = this.webviews[provider];
 
-    // Önce mevcut thinking durumunu kontrol et (loading tracker'a geçirmek için)
-    const currentThinkingStatus = viewState.status?.thinking === "busy";
-
-    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref, currentThinkingStatus);
+    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
     viewState = loadingResult.newState;
     this.setIndicator(provider, "loading", loadingResult.indicator);
     if (loadingResult.event) {
