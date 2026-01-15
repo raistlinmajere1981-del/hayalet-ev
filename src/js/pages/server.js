@@ -5,6 +5,7 @@ import { AppState } from "../modules/app-state.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
+import { getCommandGuideText } from "../constants/command-guides.js";
 
 export class ServerController {
   constructor() {
@@ -36,6 +37,7 @@ export class ServerController {
     this.reclaimBtn = document.getElementById("server-reclaim-btn");
     this.commandSelect = document.getElementById("server-command-select");
     this.commandText = document.getElementById("server-command-text");
+    this.commandGuide = document.getElementById("server-command-guide");
 
     this.delegateBtn?.addEventListener("click", () => this.assignControl());
     this.reclaimBtn?.addEventListener("click", () => this.reclaimControl());
@@ -48,10 +50,14 @@ export class ServerController {
     document
       .getElementById("server-command-send")
       ?.addEventListener("click", () => this.handleManualSend());
+    
+    // Komut seçildiğinde kılavuzu göster
+    this.commandSelect?.addEventListener("change", () => this.updateCommandGuide());
 
     this.renderControllerOptions();
     this.populateCommandDropdown();
     this.updateControlButtons();
+    this.updateCommandGuide();
 
     AppState.subscribe(() => {
       this.renderControllerOptions();
@@ -130,6 +136,16 @@ export class ServerController {
       opt.textContent = cmd;
       this.commandSelect.appendChild(opt);
     });
+  }
+
+  updateCommandGuide() {
+    if (!this.commandGuide || !this.commandSelect) return;
+    const selected = this.commandSelect.value;
+    if (!selected) {
+      this.commandGuide.value = "";
+      return;
+    }
+    this.commandGuide.value = getCommandGuideText(selected);
   }
 
   addCommandToTextarea() {

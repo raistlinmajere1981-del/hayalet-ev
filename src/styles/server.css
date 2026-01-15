@@ -93,3 +93,41 @@
   font-weight: 700;
   color: var(--text-primary);
 }
+
+/* Komut Kılavuzu */
+.command-guide {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.command-guide label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.guide-text {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  resize: none;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  cursor: default;
+}
+
+.guide-text:focus {
+  outline: none;
+  border-color: var(--accent-secondary);
+}
+
+.guide-text::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
