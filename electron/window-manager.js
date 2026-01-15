@@ -20,8 +20,13 @@ export function setTrayIconPath(iconPath) {
  * System tray oluştur ve göster
  */
 function showTray() {
-  if (_tray || !_trayIconPath || !_mainWindow) {
+  // Zaten varsa tekrar oluşturma
+  if (_tray) {
     return _tray;
+  }
+  
+  if (!_trayIconPath || !_mainWindow) {
+    return null;
   }
 
   try {
@@ -69,6 +74,7 @@ function showTray() {
       restoreFromTray();
     });
 
+    console.log('[WindowManager] Tray oluşturuldu');
     return _tray;
   } catch (err) {
     console.error('[WindowManager] Tray oluşturma hatası:', err);
@@ -81,7 +87,12 @@ function showTray() {
  */
 function hideTray() {
   if (_tray) {
-    _tray.destroy();
+    try {
+      _tray.destroy();
+      console.log('[WindowManager] Tray kaldırıldı');
+    } catch (err) {
+      console.error('[WindowManager] Tray destroy hatası:', err);
+    }
     _tray = null;
   }
 }
