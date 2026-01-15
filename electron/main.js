@@ -54,7 +54,7 @@ import {
   windowMinimize,
   windowClose,
   windowToggleFullscreen,
-  createTray,
+  setTrayIconPath,
   minimizeToTray,
   destroyTray,
   appRestart,
@@ -151,12 +151,12 @@ app.whenReady().then(async () => {
     } catch (e) {
     }
     
-    // System tray oluştur
+    // System tray icon path'i kaydet (lazy - sadece minimize edilince oluşur)
     try {
       const iconPath = join(__dirname, '../src/assets/icon.png');
-      createTray({ iconPath, mainWindow });
+      setTrayIconPath(iconPath);
     } catch (e) {
-      console.error("Tray oluşturma hatası:", e);
+      console.error("Tray icon path hatası:", e);
     }
   } catch (err) {
     console.error("CRITICAL: createAppWindow failed:", err);

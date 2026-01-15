@@ -6,40 +6,40 @@ import { join } from 'path';
 // ============================================
 
 let _tray = null;
+let _trayIconPath = null;
 
 /**
- * System tray oluştur
- * @param {Object} options - { iconPath, mainWindow }
+ * Tray için icon path'i kaydet (lazy initialization için)
+ * @param {string} iconPath - Icon dosya yolu
  */
-export function createTray(options = {}) {
-  const { iconPath, mainWindow } = options;
-  
-  if (_tray) {
+export function setTrayIconPath(iconPath) {
+  _trayIconPath = iconPath;
+}
+
+/**
+ * System tray oluştur ve göster
+ */
+function showTray() {
+  if (_tray || !_trayIconPath || !_mainWindow) {
     return _tray;
   }
 
   try {
-    // Icon oluştur
-    const icon = nativeImage.createFromPath(iconPath);
+    const icon = nativeImage.createFromPath(_trayIconPath);
     _tray = new Tray(icon.resize({ width: 22, height: 22 }));
     
-    // Context menu
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Göster',
-        click: () => {
-          if (mainWindow) {
-            mainWindow.show();
-            mainWindow.focus();
-          }
-        }
+        click: () => restoreFromTray()
       },
       {
         label: 'Tam Ekran',
         click: () => {
-          if (mainWindow) {
-            mainWindow.show();
-            mainWindow.setFullScreen(!mainWindow.isFullScreen());
+          if (_mainWindow) {
+            _mainWindow.show();
+            _mainWindow.setFullScreen(!_mainWindow.isFullScreen());
+            hideTray();
           }
         }
       },
@@ -47,36 +47,26 @@ export function createTray(options = {}) {
       {
         label: 'Çıkış',
         click: () => {
-          if (mainWindow) {
-            mainWindow.destroy();
+          if (_mainWindow) {
+            _mainWindow.destroy();
           }
           require('electron').app.quit();
         }
       }
     ]);
 
-    _tray.setToolTip('Hayalet-ev');
+    _tray.setToolTip('Hayalet-ev - Tıkla veya çift tıkla aç');
     _tray.setContextMenu(contextMenu);
 
-    // Çift tıklama - pencereyi göster ve tam ekran yap
+    // Çift tıklama - maximize et
     _tray.on('double-click', () => {
-      if (mainWindow) {
-        mainWindow.show();
-        mainWindow.maximize();
-        mainWindow.focus();
-      }
+      restoreFromTray();
+      _mainWindow?.maximize();
     });
 
-    // Tek tıklama - pencereyi göster
+    // Tek tıklama - göster
     _tray.on('click', () => {
-      if (mainWindow) {
-        if (mainWindow.isVisible()) {
-          mainWindow.focus();
-        } else {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      }
+      restoreFromTray();
     });
 
     return _tray;
@@ -87,11 +77,33 @@ export function createTray(options = {}) {
 }
 
 /**
+ * Tray'i gizle/kaldır
+ */
+function hideTray() {
+  if (_tray) {
+    _tray.destroy();
+    _tray = null;
+  }
+}
+
+/**
+ * Tray'den pencereyi geri getir
+ */
+function restoreFromTray() {
+  if (_mainWindow) {
+    _mainWindow.show();
+    _mainWindow.focus();
+  }
+  hideTray();
+}
+
+/**
  * Pencereyi system tray'e küçült
  */
 export function minimizeToTray() {
   try {
     if (_mainWindow) {
+      showTray();
       _mainWindow.hide();
     }
   } catch (err) {
@@ -100,13 +112,10 @@ export function minimizeToTray() {
 }
 
 /**
- * Tray'i temizle
+ * Tray'i temizle (export for cleanup)
  */
 export function destroyTray() {
-  if (_tray) {
-    _tray.destroy();
-    _tray = null;
-  }
+  hideTray();
 }
 
 export async function createWindow(options = {}) {
