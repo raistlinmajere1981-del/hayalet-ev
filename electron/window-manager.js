@@ -5,49 +5,54 @@ import { join } from 'path';
 // Tray Management
 // ============================================
 
-// Tray değişkenleri - _mainWindow ile birlikte alt kısımda yönetilir
+// Tray değişkenleri
 let _tray = null;
 let _trayIconPath = null;
+let _isMinimizedToTray = false;
 
 /**
- * Tray için icon path'i kaydet (lazy initialization için)
+ * Tray için icon path'i kaydet ve tray'i oluştur
  * @param {string} iconPath - Icon dosya yolu
  */
-export function setTrayIconPath(iconPath) {
+export function initTray(iconPath) {
   _trayIconPath = iconPath;
+  // Tray'i hemen oluştur ama gizli tut
+  createTrayInternal();
+}
+
+// Eski API uyumluluğu için
+export function setTrayIconPath(iconPath) {
+  initTray(iconPath);
 }
 
 /**
  * Pencereyi system tray'e küçült
  */
 export function minimizeToTray() {
-  console.log('[WindowManager] minimizeToTray çağrıldı, _mainWindow:', !!_mainWindow, '_tray:', !!_tray);
-  
   if (!_mainWindow) {
     console.error('[WindowManager] _mainWindow yok!');
     return;
   }
 
   try {
-    // Önce tray oluştur (yoksa)
+    // Tray yoksa oluştur
     if (!_tray) {
       createTrayInternal();
     }
     
-    // Pencereyi gizle
+    _isMinimizedToTray = true;
     _mainWindow.hide();
-    console.log('[WindowManager] Pencere gizlendi');
+    console.log('[WindowManager] Pencere tray\'e küçültüldü');
   } catch (err) {
     console.error('[WindowManager] minimizeToTray hatası:', err);
   }
 }
 
 /**
- * Internal: Tray oluştur
+ * Internal: Tray oluştur (bir kez, uygulama boyunca kalır)
  */
 function createTrayInternal() {
   if (_tray) {
-    console.log('[WindowManager] Tray zaten var, atlanıyor');
     return;
   }
   
@@ -60,51 +65,17 @@ function createTrayInternal() {
     const icon = nativeImage.createFromPath(_trayIconPath);
     _tray = new Tray(icon.resize({ width: 22, height: 22 }));
     
-    // Context menu
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Göster',
-        click: () => {
-          console.log('[WindowManager] Menu: Göster tıklandı');
-          restoreFromTray();
-        }
-      },
-      {
-        label: 'Tam Ekran',
-        click: () => {
-          console.log('[WindowManager] Menu: Tam Ekran tıklandı');
-          if (_mainWindow) {
-            restoreFromTray();
-            _mainWindow.setFullScreen(!_mainWindow.isFullScreen());
-          }
-        }
-      },
-      { type: 'separator' },
-      {
-        label: 'Çıkış',
-        click: () => {
-          console.log('[WindowManager] Menu: Çıkış tıklandı');
-          destroyTrayInternal();
-          if (_mainWindow) {
-            _mainWindow.destroy();
-          }
-          require('electron').app.quit();
-        }
-      }
-    ]);
-
-    _tray.setToolTip('Hayalet-ev');
-    _tray.setContextMenu(contextMenu);
+    updateTrayMenu();
 
     // Tek tıklama - pencereyi göster
     _tray.on('click', () => {
-      console.log('[WindowManager] Tray click event');
+      console.log('[WindowManager] Tray click');
       restoreFromTray();
     });
 
     // Çift tıklama - maximize
     _tray.on('double-click', () => {
-      console.log('[WindowManager] Tray double-click event');
+      console.log('[WindowManager] Tray double-click');
       restoreFromTray();
       _mainWindow?.maximize();
     });
@@ -116,45 +87,64 @@ function createTrayInternal() {
 }
 
 /**
- * Internal: Tray'i kaldır
+ * Tray menüsünü güncelle
  */
-function destroyTrayInternal() {
-  console.log('[WindowManager] destroyTrayInternal çağrıldı, _tray:', !!_tray);
+function updateTrayMenu() {
+  if (!_tray) return;
   
-  if (_tray) {
-    try {
-      _tray.removeAllListeners();
-      _tray.destroy();
-      console.log('[WindowManager] Tray destroy edildi');
-    } catch (err) {
-      console.error('[WindowManager] Tray destroy hatası:', err);
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Göster',
+      click: () => restoreFromTray()
+    },
+    {
+      label: 'Tam Ekran',
+      click: () => {
+        restoreFromTray();
+        _mainWindow?.setFullScreen(!_mainWindow?.isFullScreen());
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Çıkış',
+      click: () => {
+        _mainWindow?.destroy();
+        require('electron').app.quit();
+      }
     }
-    _tray = null;
-  }
+  ]);
+
+  _tray.setToolTip('Hayalet-ev');
+  _tray.setContextMenu(contextMenu);
 }
 
 /**
  * Tray'den pencereyi geri getir
  */
 function restoreFromTray() {
-  console.log('[WindowManager] restoreFromTray çağrıldı');
+  if (!_isMinimizedToTray) return;
   
-  // Önce tray'i kaldır
-  destroyTrayInternal();
+  _isMinimizedToTray = false;
   
-  // Sonra pencereyi göster
   if (_mainWindow) {
     _mainWindow.show();
     _mainWindow.focus();
-    console.log('[WindowManager] Pencere gösterildi');
+    console.log('[WindowManager] Pencere geri açıldı');
   }
 }
 
 /**
- * Tray'i temizle (export for cleanup)
+ * Tray'i temizle (uygulama kapanırken)
  */
 export function destroyTray() {
-  destroyTrayInternal();
+  if (_tray) {
+    try {
+      _tray.destroy();
+    } catch (err) {
+      // Sessizce geç
+    }
+    _tray = null;
+  }
 }
 
 export async function createWindow(options = {}) {
