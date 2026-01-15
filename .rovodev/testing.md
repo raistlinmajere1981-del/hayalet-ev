@@ -300,6 +300,64 @@ echo -e "\n=== Test Tamamlandı ==="
 
 ---
 
+---
+
+## 🛠️ Yardımcı Script'ler
+
+### npm Script'leri
+
+```bash
+# Smoke test (Electron çalışıyor olmalı)
+npm run test:smoke
+
+# Smoke test + otomatik Electron başlatma
+npm run test:smoke:auto
+
+# Detaylı test + screenshot
+npm run test:smoke:verbose
+
+# Pre-commit kontrolleri (lint + console.log yasağı)
+npm run pre-commit
+
+# Satır bazlı dosya düzenleme
+npm run edit-lines -- AGENTS.md --show 100 120
+```
+
+### Satır Bazlı Dosya Düzenleme
+
+AI agent'ların büyük dosyalarda `find_and_replace` hatası aldığında kullanması için:
+
+```bash
+# Satır aralığını göster
+node .rovodev/scripts/edit-lines.js AGENTS.md --show 100 150
+
+# Satır aralığını değiştir
+echo "yeni içerik" > /tmp/new.txt
+node .rovodev/scripts/edit-lines.js AGENTS.md 100 150 /tmp/new.txt
+
+# Satır aralığını sil
+node .rovodev/scripts/edit-lines.js AGENTS.md --delete 100 150
+
+# Satırdan sonra ekle
+node .rovodev/scripts/edit-lines.js AGENTS.md --insert 100 /tmp/insert.txt
+
+# Yedekli düzenleme
+node .rovodev/scripts/edit-lines.js AGENTS.md 100 150 /tmp/new.txt --backup
+```
+
+### Pre-commit Hook Kurulumu
+
+```bash
+# Manuel kurulum
+cp .rovodev/scripts/pre-commit.js .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
+# veya her commit öncesi manuel çalıştır
+npm run pre-commit
+```
+
+---
+
 ## 🔗 İlgili Rehberler
 
 - `.rovodev/logging.md` - Log sistemi ve kullanımı
