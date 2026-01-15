@@ -544,55 +544,18 @@ export class AsistanController {
     // Provider ID'yi al
     const providerId = AppState.getProviderIdForSlot("ai0") || "opencode";
 
-    // dom-ready event'inde provider config inject et
-    webviewEl.addEventListener("dom-ready", async () => {
+    // did-stop-loading event'inde provider config inject et (sayfa tam yüklendiğinde)
+    webviewEl.addEventListener("did-stop-loading", async () => {
       try {
-        // Webview'ın gerçekten hazır olduğunu doğrula
-        try {
-          if (typeof webviewEl.getWebContentsId !== "function") {
-            LogManager.addEvent("asistan", "debug", "Webview not fully attached yet");
-            return;
-          }
-          webviewEl.getWebContentsId();
-        } catch (_) {
-          LogManager.addEvent("asistan", "debug", "Webview not ready for script injection");
-          return;
-        }
-
-        // Provider config'i inject et
-        const cfg = ProviderRegistry.get(providerId);
-        if (cfg) {
-          try {
-            const configScript = `
-              (function() {
-                try {
-                  window.__hayalet_slot = "ai0";
-                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                  return true;
-                } catch (e) {
-                  console.error('[Hayalet-Direct-Inject] Failed:', e);
-                  return false;
-                }
-              })();
-            `;
-            await webviewEl.executeJavaScript(configScript);
-            LogManager.addEvent("asistan", "debug", `Provider config injected for ${providerId}`);
-          } catch (error) {
-            LogManager.addEvent("asistan", "warning", `Provider config injection failed: ${error.message}`);
-          }
-        } else {
-          LogManager.addEvent("asistan", "warning", `Provider config not found for ${providerId}`);
-        }
-      } catch (err) {
-        LogManager.addEvent("asistan", "warning", `dom-ready handler error: ${err.message}`);
+        if (typeof webviewEl.getWebContentsId !== "function") return;
+        webviewEl.getWebContentsId();
+      } catch (_) {
+        return;
       }
-    });
 
-    // did-navigate event'inde de config inject et (sayfa değişimlerinde)
-    webviewEl.addEventListener("did-navigate", async () => {
-      try {
-        const cfg = ProviderRegistry.get(providerId);
-        if (cfg) {
+      const cfg = ProviderRegistry.get(providerId);
+      if (cfg) {
+        try {
           const configScript = `
             (function() {
               try {
@@ -600,15 +563,15 @@ export class AsistanController {
                 window.__hayalet_provider_config = ${JSON.stringify(cfg)};
                 return true;
               } catch (e) {
+                console.error('[Hayalet-Config-Inject] Failed:', e);
                 return false;
               }
             })();
           `;
           await webviewEl.executeJavaScript(configScript);
-          LogManager.addEvent("asistan", "debug", `Provider config re-injected after navigation`);
+        } catch (_err) {
+          // Config injection başarısız - send() öncesi fallback devreye girecek
         }
-      } catch (_) {
-        // Sessizce devam et
       }
     });
 
@@ -624,7 +587,6 @@ export class AsistanController {
       }
     });
 
-    LogManager.addEvent("asistan", "debug", "Webview events setup completed");
   }
 
   onShow() {

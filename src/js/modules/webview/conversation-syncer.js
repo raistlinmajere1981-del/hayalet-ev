@@ -1,6 +1,6 @@
 /**
  * ConversationSyncer - Konuşma senkronizasyonu ve arşivleme
- * 
+ *
  * Bu modül webview'dan konuşma verilerini çeker ve arşivler:
  * - DOM scraping ile mesaj çıkarma
  * - Archive sistemiyle senkronizasyon
@@ -72,16 +72,12 @@ class ConversationSyncerClass {
           await this.syncProvider(provider, { from: "auto" });
         }
 
-        if (
-          state.loadingJustEnded &&
-          state.loadingEndedAt > this._lastLoadingEnded[provider]
-        ) {
+        if (state.loadingJustEnded && state.loadingEndedAt > this._lastLoadingEnded[provider]) {
           this._lastLoadingEnded[provider] = state.loadingEndedAt;
           await new Promise((resolve) => setTimeout(resolve, 2000));
           await this.syncProvider(provider, { from: "auto" });
         }
-      } catch (_err) {
-      }
+      } catch (_err) {}
     });
 
     LogManager.addEvent("sync", "info", "ConversationSyncer initialized");
@@ -121,17 +117,13 @@ class ConversationSyncerClass {
       LogManager.addEvent(
         `webview-${provider}`,
         "warning",
-        `URL excluded: ${currentUrl}, sync operation disabled`,
+        `URL excluded: ${currentUrl}, sync operation disabled`
       );
       return { success: false, message: "URL excluded from operations" };
     }
 
     if (this._syncInProgress[provider]) {
-      LogManager.addEvent(
-        `webview-${provider}`,
-        "info",
-        "sync skipped: already in progress",
-      );
+      LogManager.addEvent(`webview-${provider}`, "info", "sync skipped: already in progress");
       return { success: false, message: "sync-in-progress" };
     }
     this._syncInProgress[provider] = true;
@@ -141,24 +133,19 @@ class ConversationSyncerClass {
 
       const providerId = AppState.getProviderIdForSlot(provider);
       const providerModule = providerId ? getProvider(providerId) : null;
-      
+
       if (!providerModule || typeof providerModule.scrapeMessages !== "function") {
-        throw new Error(
-          `Provider module or scrapeMessages function for "${provider}" not found.`,
-        );
+        throw new Error(`Provider module or scrapeMessages function for "${provider}" not found.`);
       }
 
       const messages = await webview.executeJavaScript(
-        `(${providerModule.scrapeMessages.toString()})();`,
+        `(${providerModule.scrapeMessages.toString()})();`
       );
 
       const rawUrl = webview.getURL() || "";
       const webUrl = normalizeUrl(rawUrl);
 
-      const { existing, prevCount, newEntry } = await this._getArchiveStatus(
-        provider,
-        webUrl,
-      );
+      const { existing, prevCount, newEntry } = await this._getArchiveStatus(provider, webUrl);
 
       if (!messages || messages.length === 0) {
         this._syncInProgress[provider] = false;
@@ -184,10 +171,8 @@ class ConversationSyncerClass {
       }));
 
       const catchEnabled =
-        options.catchEnabled ??
-        this._settings?.slots?.[provider]?.catchCommands ??
-        true;
-      
+        options.catchEnabled ?? this._settings?.slots?.[provider]?.catchCommands ?? true;
+
       const commands = catchEnabled
         ? await CatchManager.catchCommands({
             provider,
@@ -199,17 +184,17 @@ class ConversationSyncerClass {
         : [];
 
       const accountInfo = AppState.getAccountForSlot(provider);
-      
+
       if (!accountInfo?.id) {
         LogManager.addEvent(
           `webview-${provider}`,
           "warning",
-          `Sync skipped: No account info for slot ${provider}`,
+          `Sync skipped: No account info for slot ${provider}`
         );
         this._syncInProgress[provider] = false;
         return { success: false, message: "No account assigned to slot" };
       }
-      
+
       // Database sync (incremental - sadece yeni mesajları ekler)
       const syncResult = await window.electronAPI.dbSyncMessages({
         accountId: accountInfo.id,
@@ -222,10 +207,16 @@ class ConversationSyncerClass {
         throw new Error(syncResult?.error || "Database sync failed");
       }
 
+      // Fetch messages with IDs from DB
+      const dbMessages = await window.electronAPI.dbGetMessages({
+        accountId: accountInfo.id,
+        conversationId: syncResult.conversationId,
+      });
+
       return {
         success: true,
         count: normalized.length,
-        messages: normalized,
+        messages: dbMessages || normalized,
         commands,
         webUrl,
         newEntry,
@@ -237,7 +228,7 @@ class ConversationSyncerClass {
       LogManager.addEvent(
         `webview-${provider}`,
         "error",
-        `Sync failed: ${error?.message || error}`,
+        `Sync failed: ${error?.message || error}`
       );
       return { success: false, message: error?.message || String(error) };
     } finally {
@@ -265,17 +256,17 @@ class ConversationSyncerClass {
       LogManager.addEvent(
         "sync",
         "info",
-        `syncProvider called for ${provider} (source=${opts.from || "manual"})`,
+        `syncProvider called for ${provider} (source=${opts.from || "manual"})`
       );
 
       const webview = this._resolveWebviewFn?.(provider);
       const res = await this.syncConversation(provider, webview);
-      
+
       this._lastSyncResult[provider] = res;
 
       const lastAfter = res.messages?.[res.messages.length - 1];
       const stableAfter = lastAfter && lastAfter.role && lastAfter.role !== "user";
-      
+
       if (stableAfter) {
         this._notifyStable(provider, res);
       }
@@ -290,7 +281,7 @@ class ConversationSyncerClass {
           LogManager.addEvent(
             "sync",
             "info",
-            `SyncProvider: last message is user for ${provider}, scheduling retry...`,
+            `SyncProvider: last message is user for ${provider}, scheduling retry...`
           );
           this._syncRetryCounts[provider] = tried + 1;
           this._syncRetryTimers[provider] = setTimeout(() => {
@@ -325,11 +316,7 @@ class ConversationSyncerClass {
       return res;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      LogManager.addEvent(
-        "sync",
-        "error",
-        `syncProvider error for ${provider}: ${message}`,
-      );
+      LogManager.addEvent("sync", "error", `syncProvider error for ${provider}: ${message}`);
       return { success: false, message };
     }
   }
@@ -342,20 +329,17 @@ class ConversationSyncerClass {
     try {
       const list = this._stableListeners[provider] || [];
       delete this._stableListeners[provider];
-      
+
       for (const cb of list) {
         try {
           cb(null, res);
-        } catch (_e) {
-        }
+        } catch (_e) {}
       }
 
       try {
         PendingArchiveHandler.processPending(provider, res);
-      } catch (_e) {
-      }
-    } catch (_e) {
-    }
+      } catch (_e) {}
+    } catch (_e) {}
   }
 
   /**
@@ -394,10 +378,9 @@ class ConversationSyncerClass {
         accountId: accountInfo.id,
       });
 
-      const existing = (conversations || []).find(
-        (item) => normalizeUrl(item.webUrl) === webUrl,
-      ) || null;
-      
+      const existing =
+        (conversations || []).find((item) => normalizeUrl(item.webUrl) === webUrl) || null;
+
       return {
         existing,
         prevCount: existing?.messageCount || 0,

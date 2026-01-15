@@ -10,6 +10,7 @@ export const TIMEOUTS = {
   THINKING_COOLDOWN: 5000,
   THINKING_DEADLINE: 45000,
   WEBVIEW_LOAD: 10000,
+  CLEANUP_INTERVAL: 10 * 60 * 1000, // 10 dakika - inactive webview cleanup
 };
 
 export const INTERVALS = {
@@ -19,6 +20,7 @@ export const INTERVALS = {
   STATE_SNAPSHOT: 60000,
   AUTO_SCROLL: 300,
   BACKOFF_MAX: 16000,
+  THINKING_TICK: 400, // Thinking state polling interval
 };
 
 export const DELAYS = {
@@ -26,4 +28,5 @@ export const DELAYS = {
   RETRY: 500,
   UI_UPDATE: 100,
   DEBOUNCE: 300,
+  STATE_CLEAR: 1500, // Loading/thinking just-ended state clear delay
 };

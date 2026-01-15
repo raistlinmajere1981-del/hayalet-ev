@@ -9,7 +9,7 @@ export function scrapeMessages() {
     if (!str) return "0";
     let hash = 5381;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = (hash << 5) + hash + str.charCodeAt(i);
       hash = hash >>> 0;
     }
     return hash.toString(16);
@@ -26,9 +26,7 @@ export function scrapeMessages() {
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const fallback = Array.from(document.querySelectorAll(fallbackSel));
   const base = preferred.length ? preferred : fallback;
-  const nodes = base.filter(
-    (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n)),
-  );
+  const nodes = base.filter((n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n)));
   const mid = window.innerWidth / 2;
   const result = [];
   nodes.forEach((node, idx) => {
@@ -56,6 +54,12 @@ export function scrapeMessages() {
     }
     // Hash ekle (incremental sync için)
     const contentHash = hashString(text);
+
+    const lastMsg = result[result.length - 1];
+    if (lastMsg && lastMsg.role === role && lastMsg.contentHash === contentHash) {
+      return;
+    }
+
     result.push({ index: idx, role, text, contentHash, domIndex: idx });
   });
   return result;

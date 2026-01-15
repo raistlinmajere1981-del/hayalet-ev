@@ -1,13 +1,5 @@
-import { join, dirname, basename } from "path";
-import {
-  mkdir,
-  writeFile,
-  rename,
-  readdir,
-  readFile,
-  copyFile,
-  rm,
-} from "fs/promises";
+import { join, dirname, basename, resolve } from "path";
+import { mkdir, writeFile, rename, readdir, readFile, copyFile, rm } from "fs/promises";
 import { existsSync } from "fs";
 import { shell } from "electron";
 
@@ -107,12 +99,7 @@ export async function readFileAsBase64(event, filePath) {
   }
 }
 
-export async function copyToAssets(
-  event,
-  srcPath,
-  role = "",
-  accountInfo = null,
-) {
+export async function copyToAssets(event, srcPath, role = "", accountInfo = null) {
   try {
     if (!srcPath || !existsSync(srcPath)) {
       throw new Error("Kaynak dosya bulunamadı");
@@ -159,8 +146,7 @@ export async function copyToAssets(
             await rm(join(assetsDir, name), { force: true });
           }
         }
-      } catch (e) {
-      }
+      } catch (e) {}
     }
 
     const destPath = join(assetsDir, candidate);
@@ -212,15 +198,10 @@ export async function generateTree(event, basePath = "", options = {}) {
   try {
     if (!basePath) basePath = process.cwd();
     const maxDepth = options.maxDepth ?? 10;
-    const excludePatterns = options.exclude || [
-      "node_modules",
-      "dist",
-      ".vite",
-    ];
+    const excludePatterns = options.exclude || ["node_modules", "dist", ".vite"];
     const isProject = basePath === "project" || basePath === ".";
     if (isProject) basePath = process.cwd();
-    if (!existsSync(basePath))
-      return { success: false, message: `Path not found: ${basePath}` };
+    if (!existsSync(basePath)) return { success: false, message: `Path not found: ${basePath}` };
     const shouldExclude = (name) =>
       excludePatterns.some((pattern) => {
         if (pattern.includes("*")) {
@@ -240,15 +221,9 @@ export async function generateTree(event, basePath = "", options = {}) {
           const isLast = idx === filtered.length - 1;
           const connector = isLast ? "└── " : "├── ";
           const nextPrefix = prefix + (isLast ? "    " : "│   ");
-          lines.push(
-            prefix + connector + entry.name + (entry.isDirectory() ? "/" : ""),
-          );
+          lines.push(prefix + connector + entry.name + (entry.isDirectory() ? "/" : ""));
           if (entry.isDirectory()) {
-            const childLines = await buildTree(
-              join(dir, entry.name),
-              depth + 1,
-              nextPrefix,
-            );
+            const childLines = await buildTree(join(dir, entry.name), depth + 1, nextPrefix);
             lines.push(...childLines);
           }
         }
@@ -281,7 +256,8 @@ export async function generateTree(event, basePath = "", options = {}) {
 export async function openPath(event, targetPath) {
   try {
     if (!targetPath) throw new Error("path eksik");
-    const res = await shell.openPath(targetPath);
+    const absolutePath = resolve(process.cwd(), targetPath);
+    const res = await shell.openPath(absolutePath);
     if (res) throw new Error(res);
     return { success: true };
   } catch (error) {

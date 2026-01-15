@@ -35,7 +35,6 @@ export async function attachFiles(webview, { files }) {
     const result = await window.electronAPI.googledriveUpload({
       files: payloadFiles,
     });
-    LogManager.addEvent("file-upload", "debug", "Google Drive IPC yanıtı alındı", { context: { success: result?.success } });
 
     if (!result?.success) {
       return {

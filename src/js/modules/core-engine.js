@@ -10,9 +10,8 @@ import { WhisperManager } from "./whisper-manager.js";
 import { FileManager } from "./file-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { ServerCommands } from "./server-commands.js";
-import { WindowManager } from "./window-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
-import { getFilename, generateUniqueId } from "../constants/index.js";
+import { getFilename, generateUniqueId, TIMEOUTS, decodeBase64 } from "../constants/index.js";
 
 class CoreEngineClass {
   constructor() {
@@ -21,6 +20,7 @@ class CoreEngineClass {
     this.relay = null;
     this._settingsSub = null;
     this._previousSettings = null;
+    this._cleanupInterval = null;
   }
 
   async init() {
@@ -34,12 +34,14 @@ class CoreEngineClass {
     LogManager.init();
     await CommandManager.init();
     
-    setInterval(() => {
+    // Inactive webview cleanup interval
+    this._cleanupInterval = setInterval(() => {
       try {
         WebviewManager.cleanupInactiveWebviews();
       } catch (err) {
+        LogManager.addEvent("core", "warning", `Cleanup error: ${err?.message || err}`);
       }
-    }, 10 * 60 * 1000);
+    }, TIMEOUTS.CLEANUP_INTERVAL);
     CommandExecutor.init(this);
     CommandManager.setExecutor((job) => CommandExecutor.executeJob(job));
     CommandManager.on("sent", ({ job }) =>
@@ -269,25 +271,6 @@ class CoreEngineClass {
     });
   }
 
-  _decodeBase64(base64) {
-    try {
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      const decoder = new TextDecoder("utf-8");
-      return decoder.decode(bytes);
-    } catch (err) {
-      LogManager.addEvent(
-        "core",
-        "warning",
-        `decode error: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
-      );
-      return "";
-    }
-  }
-
   async sendProtocol({
     room = "",
     scenario = "",
@@ -328,7 +311,7 @@ class CoreEngineClass {
       try {
         const base64 = await window.electronAPI.readFile(payload.protocolPath);
         if (base64) {
-          payload.message = this._decodeBase64(base64);
+          payload.message = decodeBase64(base64);
           LogManager.addEvent(
             "protocol",
             "info",
@@ -423,10 +406,6 @@ class CoreEngineClass {
       );
     }
     return res;
-  }
-
-  async window(action, payload) {
-    return WindowManager.apply(action, payload);
   }
 
   async whisper(op, args) {
@@ -573,34 +552,8 @@ class CoreEngineClass {
     return { success: true, jobId: job?.id, priority };
   }
 
-  syncProvider(provider, opts = {}) {
-    return WebviewManager.syncProvider(provider, opts);
-  }
-
-  navigateTo(provider, url) {
-    if (!provider) return;
-
-    // SlotController üzerinden navigate et
-    SlotController.navigate(provider, url);
-  }
-
   setActiveTargets(targets = []) {
     AppState.setChatTargets(targets);
-  }
-
-  registerWebview(provider, webview) {
-    // SlotController'a webview kaydet
-    SlotController.registerWebview(provider, webview);
-    // WebviewManager'a da kaydet (DOM operasyonları için)
-    WebviewManager.register(provider, webview);
-  }
-
-  /**
-   * FIX: Unregister webview - senkronize olarak her iki manager'dan da kaldır
-   */
-  unregisterWebview(provider) {
-    SlotController.unregisterWebview(provider);
-    WebviewManager.detach(provider, { cleanupDom: false, skipTrafficStop: true });
   }
 
   listCommands() {
@@ -608,10 +561,16 @@ class CoreEngineClass {
   }
 
   /**
-   * FIX: Cleanup method - settings subscription'ı temizle
+   * Cleanup method - tüm subscription ve interval'ları temizle
    * Uygulama kapanırken çağrılmalı
    */
   destroy() {
+    // Cleanup interval'ı durdur
+    if (this._cleanupInterval) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
+    }
+    // Settings subscription'ı iptal et
     if (this._settingsSub) {
       this._settingsSub();
       this._settingsSub = null;

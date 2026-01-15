@@ -25,12 +25,6 @@ export async function attachFiles(webview, { files }) {
     return createErrorResponse("Uguu servisi mevcut değil");
   }
 
-  try {
-    LogManager.addEvent("file-upload", "debug", "Uguu upload başlatılıyor", { context: { ipcAvailable: !!window?.electronAPI?.uguuUpload, fileCount: files.length } });
-  } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : String(e);
-    LogManager.addEvent("file-upload", "warning", `Uguu IPC check failed: ${errorMsg}`);
-  }
 
   try {
     const { uploadedLinks, uploadErrors } = await uploadMultipleFiles(

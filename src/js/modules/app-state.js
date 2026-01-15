@@ -1,4 +1,5 @@
 import { SettingsManager } from "./settings-manager.js";
+import { LogManager } from "./log-manager.js";
 
 class AppStateClass {
   constructor() {
@@ -135,6 +136,7 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
+        LogManager.addEvent("app-state", "error", `Listener error: ${err.message}`);
       }
     });
   }

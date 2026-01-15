@@ -267,28 +267,3 @@ export async function executeScript(code) {
   });
 }
 
-/**
- * Console loglarını al
- * @param {number} limit - Maksimum log sayısı
- * @returns {Promise<Array>} Console log'ları
- */
-export async function getConsoleLogs(limit = 50) {
-  return withConnection(async (ws) => {
-    // Console mesajlarını dinlemek için event handler kur
-    const logs = [];
-    
-    // Önce Console domain'ini etkinleştir
-    await sendCDPCommand(ws, "Console.enable");
-    
-    // Mevcut logları al (Runtime üzerinden)
-    const script = `
-      (function() {
-        // Bu basit bir yaklaşım - gerçek console logları CDP events ile gelir
-        return {
-          note: "Console logları CDP events üzerinden gelir. read_electron_logs tool'unu kullanın.",
-        };
-      })()
-    `;
-    return evaluateJS(ws, script);
-  });
-}

@@ -25,12 +25,6 @@ export async function attachFiles(webview, { files }) {
     return createErrorResponse("Catbox servisi mevcut değil");
   }
 
-  try {
-    LogManager.addEvent("file-upload", "debug", "Catbox upload başlatılıyor", { context: { ipcAvailable: !!window?.electronAPI?.catboxUpload, fileCount: files.length } });
-  } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : String(e);
-    LogManager.addEvent("file-upload", "warning", `Catbox IPC check failed: ${errorMsg}`);
-  }
 
   try {
     const { uploadedLinks, uploadErrors } = await uploadMultipleFiles(

@@ -18,6 +18,7 @@ import { SendTracker } from "./traffic/send-tracker.js";
 import { buildProbeScript } from "./traffic/probe-script-builder.js";
 import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } from "./traffic/webview-events.js";
 import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
+import { INTERVALS, DELAYS } from "../constants/index.js";
 
 // ============================================
 // ============================================
@@ -147,7 +148,6 @@ class TrafficManagerClass {
   attachWebview(provider, webviewEl) {
     if (!provider || !webviewEl) return;
     this.webviews[provider] = webviewEl;
-    LogManager.addEvent("traffic", "info", `attachWebview called for ${provider}`);
 
     if (hasHandlers(provider)) return;
 
@@ -163,7 +163,6 @@ class TrafficManagerClass {
     if (!provider) return;
     detachWebviewEvents(provider);
     this.setAllUnreachable(provider);
-    LogManager.addEvent("traffic", "info", `detachWebview called for ${provider}`);
   }
 
   _handleNavigation(provider, href) {
@@ -181,11 +180,7 @@ class TrafficManagerClass {
       const isOnDefaultPage = isDefaultPage(href, providerId);
       
       // Default page'den çıkış = mevcut bir konuşmaya geçiş
-      // Loading'i başlat ve sayfa yüklenince sync tetiklenecek
       if (wasOnDefaultPage && !isOnDefaultPage) {
-        LogManager.addEvent("traffic", "debug", 
-          `Default page exit detected for ${provider}: ${previousHref} → ${href}`);
-        // Loading'i başlat - sayfa yüklenince otomatik sync tetiklenecek
         this.loadingTracker.startLoading(viewState, Date.now());
         this.state[provider] = viewState;
         this.setIndicator(provider, "loading", "busy");
@@ -209,7 +204,6 @@ class TrafficManagerClass {
       backoffMs: TIMING_CONFIG.pollIntervalMs,
       nextProbeAt: Date.now(),
     };
-    LogManager.addEvent("traffic", "info", `TrafficManager.start called for ${provider}`);
     this.startPolling();
     this.setIndicator(provider, "loading", this.state[provider]?.status?.loading || "busy");
   }
@@ -220,7 +214,6 @@ class TrafficManagerClass {
     try {
       delete this._runners[provider];
       this.setAllUnreachable(provider);
-      LogManager.addEvent("traffic", "info", `TrafficManager.stop called for ${provider}`);
     } catch (err) {
       LogManager.addEvent("traffic", "error", `TrafficManager.stop error for ${provider}: ${err?.message || err}`);
     }
@@ -248,11 +241,11 @@ class TrafficManagerClass {
             if (ok) {
               runner.backoffMs = TIMING_CONFIG.pollIntervalMs;
             } else {
-              runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, 16000);
+              runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, INTERVALS.BACKOFF_MAX);
             }
             runner.nextProbeAt = Date.now() + (runner.backoffMs || TIMING_CONFIG.pollIntervalMs);
           } catch (_) {
-            runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, 16000);
+            runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, INTERVALS.BACKOFF_MAX);
             runner.nextProbeAt = Date.now() + (runner.backoffMs || TIMING_CONFIG.pollIntervalMs);
           }
         }
@@ -327,14 +320,12 @@ class TrafficManagerClass {
     }
 
     if (isStillLoading) {
-      LogManager.addEvent("traffic", "debug", `probe skipped for ${provider} because webview is still loading`);
       return;
     }
 
     const currentHref = normalizeHref(data.href);
 
     if (this.isUrlExcluded(provider, currentHref)) {
-      LogManager.addEvent("traffic", "debug", `URL excluded for ${provider}: ${currentHref}, probe skipped`);
       this.setIndicator(provider, "loading", "idle");
       this.setIndicator(provider, "thinking", "idle");
       this.setIndicator(provider, "send", "idle");
@@ -359,7 +350,7 @@ class TrafficManagerClass {
             this.loadingTracker.clearJustEnded(st);
             this.state[provider] = st;
           } catch (_) { void 0; }
-        }, 1500);
+        }, DELAYS.STATE_CLEAR);
       }
     }
 
@@ -375,7 +366,7 @@ class TrafficManagerClass {
             this.thinkingTracker.clearJustEnded(st);
             this.state[provider] = st;
           } catch (_) { void 0; }
-        }, 1500);
+        }, DELAYS.STATE_CLEAR);
       }
     }
 
@@ -410,7 +401,6 @@ class TrafficManagerClass {
       this.state[provider] = defaultState();
     }
     const viewState = this.state[provider];
-    const prevStatus = viewState?.status?.[kind];
     viewState.status = { ...viewState.status, [kind]: status };
     this.state[provider] = viewState;
     this.updateDerivedStates(provider);
@@ -429,9 +419,6 @@ class TrafficManagerClass {
     
     this.notifyListeners(provider);
 
-    if (prevStatus !== status) {
-      LogManager.addEvent("traffic", "debug", `setIndicator ${provider}:${kind} -> ${status}`);
-    }
   }
 
   /**
@@ -492,7 +479,7 @@ class TrafficManagerClass {
             resolve(false);
             return;
           }
-          setTimeout(tick, 400);
+          setTimeout(tick, INTERVALS.THINKING_TICK);
         };
         tick();
       });

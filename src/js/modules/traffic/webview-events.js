@@ -7,7 +7,6 @@
  * - DOM ready handling
  */
 
-import { LogManager } from "../log-manager.js";
 
 /**
  * Webview handler'larını saklamak için map
@@ -114,7 +113,6 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
   webviewEl.addEventListener("dom-ready", listeners.domReady);
   webviewEl.addEventListener("did-fail-load", listeners.failLoad);
 
-  LogManager.addEvent("traffic", "info", `Event listeners attached for ${provider}`);
 }
 
 /**
@@ -142,7 +140,6 @@ export function detachWebviewEvents(provider) {
   }
 
   delete webviewHandlers[provider];
-  LogManager.addEvent("traffic", "info", `Event listeners detached for ${provider}`);
 }
 
 /**

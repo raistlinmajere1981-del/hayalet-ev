@@ -12,12 +12,12 @@
  */
 
 // Schema versiyonu - migration için
-export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 1;
 
 /**
  * Tablo oluşturma SQL'leri
  */
-export const CREATE_TABLES_SQL = `
+const CREATE_TABLES_SQL = `
 -- Conversations tablosu
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 /**
  * FTS5 Full-Text Search tablosu
  */
-export const CREATE_FTS_SQL = `
+const CREATE_FTS_SQL = `
 -- FTS5 virtual table for message search
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
   content,
@@ -132,18 +132,3 @@ export function applySchema(db) {
   }
 }
 
-/**
- * Schema versiyonunu kontrol et
- * @param {import('better-sqlite3').Database} db - Database instance
- * @returns {number} - Mevcut schema versiyonu
- */
-export function getSchemaVersion(db) {
-  try {
-    const row = db.prepare(
-      "SELECT MAX(version) as version FROM schema_version"
-    ).get();
-    return row?.version || 0;
-  } catch {
-    return 0;
-  }
-}

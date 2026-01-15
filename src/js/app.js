@@ -1,7 +1,6 @@
-import { EntranceHallController } from "./pages/entrance/index.js";
+import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
 import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename, ASISTAN_SLOT } from "./constants/index.js";
-import { WebviewController } from "./pages/webview.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
 import { ServerController } from "./pages/server.js";
@@ -14,8 +13,9 @@ import { SettingsManager } from "./modules/settings-manager.js";
 import { SlotController, SlotEvent } from "./modules/slot-controller.js";
 import { ConversationListManager } from "./modules/conversation-list-manager.js";
 import { RelayManager } from "./modules/relay-manager.js";
+import { WindowManager } from "./modules/window-manager.js";
+import { WebviewManager } from "./modules/webview-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
-import webviewTemplate from "../pages/webview.html?raw";
 import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
 import serverTemplate from "../pages/server.html?raw";
@@ -156,7 +156,7 @@ if (!window.electronAPI) {
 function injectPageTemplates() {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}${webviewTemplate}`;
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}`;
   }
 }
 
@@ -184,14 +184,12 @@ async function initApp() {
   }
 
   controllers.entrance = new EntranceHallController();
-  controllers.webview = new WebviewController();
   controllers.analyze = new AnalyzeController();
   controllers.whisper = new WhisperController();
   controllers.server = new ServerController();
   controllers.archives = new ArchivesController();
   controllers.asistan = new AsistanController();
   await controllers.entrance.init();
-  await controllers.webview.init();
   await controllers.analyze.init();
   await controllers.whisper.init();
   await controllers.server.init();
@@ -204,13 +202,16 @@ async function initApp() {
   const ai1Webview = document.getElementById("ai1-webview");
   const ai2Webview = document.getElementById("ai2-webview");
   if (ai0Webview) {
-    CoreEngine.registerWebview(ASISTAN_SLOT, ai0Webview);
+    SlotController.registerWebview(ASISTAN_SLOT, ai0Webview);
+    WebviewManager.register(ASISTAN_SLOT, ai0Webview);
   }
   if (ai1Webview) {
-    CoreEngine.registerWebview(SLOTS.AI1, ai1Webview);
+    SlotController.registerWebview(SLOTS.AI1, ai1Webview);
+    WebviewManager.register(SLOTS.AI1, ai1Webview);
   }
   if (ai2Webview) {
-    CoreEngine.registerWebview(SLOTS.AI2, ai2Webview);
+    SlotController.registerWebview(SLOTS.AI2, ai2Webview);
+    WebviewManager.register(SLOTS.AI2, ai2Webview);
   }
 
   setupNavigation();
@@ -301,22 +302,21 @@ function setupWindowControls() {
   const closeBtn = document.getElementById("window-close");
   const topBar = document.querySelector(".top-bar");
 
-  minimizeBtn?.addEventListener("click", () => CoreEngine.window("minimize"));
+  minimizeBtn?.addEventListener("click", () => WindowManager.apply("minimize"));
   fullscreenBtn?.addEventListener("click", () =>
-    CoreEngine.window("fullscreen"),
+    WindowManager.apply("fullscreen"),
   );
-  closeBtn?.addEventListener("click", () => CoreEngine.window("close"));
+  closeBtn?.addEventListener("click", () => WindowManager.closeApp());
 
   topBar?.addEventListener("dblclick", (e) => {
     if (e.target instanceof Element && e.target.closest(".icon-btn")) return;
-    CoreEngine.window("fullscreen");
+    WindowManager.apply("fullscreen");
   });
 }
 
 function setupTopBarButtons() {
   try {
     const asistanBtn = document.getElementById("asistan-btn");
-    const webviewBtn = document.getElementById("webview-btn");
     const menuToggle = document.getElementById("menu-toggle");
 
     if (asistanBtn) {
@@ -325,15 +325,9 @@ function setupTopBarButtons() {
       });
     }
 
-    if (webviewBtn) {
-      webviewBtn.addEventListener("click", () => {
-        showPage("webview");
-      });
-    }
-
     if (menuToggle) {
       menuToggle.addEventListener("click", () => {
-        CoreEngine.window("toggleMenu");
+        WindowManager.apply("toggleMenu");
       });
     }
   } catch (error) {
@@ -358,7 +352,6 @@ function setActiveNavigation(pageName) {
   /** @type {Record<string, HTMLElement | null>} */
   const iconMap = {
     asistan: document.getElementById("asistan-btn"),
-    webview: document.getElementById("webview-btn"),
   };
   Object.values(iconMap).forEach((btn) => btn?.classList.remove("active"));
   const activeIcon = iconMap[pageName];
@@ -495,7 +488,7 @@ async function updateIndicatorAvatars() {
             const handler = async (ev) => {
               ev?.preventDefault();
               try {
-                await CoreEngine.syncProvider(provider, { from: "manual" });
+                await WebviewManager.syncProvider(provider, { from: "manual" });
               } catch (err) {
                 LogManager.addEvent("sync", "warning", `Manual sync failed: ${err?.message || err}`);
               }

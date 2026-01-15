@@ -1,4 +1,3 @@
-import { getMimeTypeFromPath } from "../../constants/index.js";
 import { LogManager } from "../../modules/log-manager.js";
 
 export class UserPanel {

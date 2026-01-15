@@ -87,7 +87,7 @@ export async function clearStartupCache() {
  * @param {string} partitionName - Partition adı
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export async function clearAllSessionData(partitionName) {
+async function clearAllSessionData(partitionName) {
   try {
     const ses = session.fromPartition(partitionName);
 
@@ -96,13 +96,11 @@ export async function clearAllSessionData(partitionName) {
     await ses.clearCache();
     await ses.clearAuthCache();
 
-    LogManager.log("session-manager", "info", `Tüm session verisi silindi: ${partitionName}`);
+    console.log(`[session-manager] Tüm session verisi silindi: ${partitionName}`);
 
     return { success: true };
   } catch (error) {
-    LogManager.log("session-manager", "error", `Session silme hatası: ${partitionName}`, {
-      error: error.message,
-    });
+    console.error(`[session-manager] Session silme hatası (${partitionName}):`, error.message);
 
     return { success: false, error: error.message };
   }
@@ -115,5 +113,4 @@ export const SessionManager = {
   PARTITIONS,
   clearStartupCache,
   clearPartitionCache,
-  clearAllSessionData,
 };

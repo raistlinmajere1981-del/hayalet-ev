@@ -33,16 +33,6 @@ export function generateId(prefix = "id") {
 }
 
 /**
- * Conversation ID oluştur
- * @param {number} sequence - Sıra numarası
- * @returns {string}
- */
-export function generateConversationId(sequence) {
-  const padded = String(sequence).padStart(4, "0");
-  return `conv-${padded}`;
-}
-
-/**
  * Message ID oluştur
  * @returns {string}
  */

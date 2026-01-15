@@ -104,6 +104,7 @@ const PATHS = {
   commands: () => join(process.cwd(), "commands"),
   whispers: () => join(process.cwd(), "archives"),
   logs: () => join(process.cwd(), "logs"),
+  providerConfig: (providerId) => join(__dirname, "..", "src", "js", "modules", "webview", "providers", providerId, "config.js"),
 };
 
 const { sessionId } = initLogSystem();
@@ -234,17 +235,7 @@ ipcMain.handle("get-preload-path", async (event, type) => {
 ipcMain.handle("get-provider-config", async (event, providerId) => {
   try {
     if (!providerId) return null;
-    const cfgPath = join(
-      __dirname,
-      "..",
-      "src",
-      "js",
-      "modules",
-      "webview",
-      "providers",
-      providerId,
-      "config.js",
-    );
+    const cfgPath = PATHS.providerConfig(providerId);
     if (!existsSync(cfgPath)) return null;
     const mod = await import(pathToFileURL(cfgPath).href);
     const cfg = mod?.config || mod?.default || mod;
@@ -313,10 +304,21 @@ ipcMain.handle("fm-write-file-atomic", fmWriteFileAtomic);
 ipcMain.handle("read-file", readFileAsBase64);
 
 ipcMain.handle("catbox-upload", catboxUpload);
+
+// Güvenilir Google OAuth domain'leri
+const ALLOWED_GOOGLE_AUTH_DOMAINS = ["accounts.google.com"];
+
 ipcMain.handle("googledrive-start-auth", async () => {
   const result = await googledriveStartAuth();
   if (result?.success && result?.url) {
     try {
+      // URL güvenlik kontrolü - sadece Google OAuth URL'lerine izin ver
+      const urlObj = new URL(result.url);
+      if (!ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
+        result.success = false;
+        result.message = "Güvenilmeyen URL: " + urlObj.hostname;
+        return result;
+      }
       await shell.openExternal(result.url);
     } catch (err) {
       result.message = "Tarayıcı açılamadı: " + (err?.message || "hata");

@@ -149,12 +149,20 @@ export class AnalyzeController {
     if (uploadBtn) uploadBtn.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
 
+    const ai1Connected = SlotController.isConnected("ai1");
+    const ai2Connected = SlotController.isConnected("ai2");
+    const ai1HasAccount = !!AppState.getAccountForSlot("ai1");
+    const ai2HasAccount = !!AppState.getAccountForSlot("ai2");
+
     ["ai1", "ai2"].forEach((slot) => {
-      const hasAccount = !!AppState.getAccountForSlot(slot);
-      const connected = SlotController.isConnected(slot);
+      const hasAccount = slot === "ai1" ? ai1HasAccount : ai2HasAccount;
+      const connected = slot === "ai1" ? ai1Connected : ai2Connected;
 
       this._updateSlotUI(slot, hasAccount, connected);
     });
+
+    // Tek AI bağlıysa layout'u ayarla
+    this._updateGridLayout(ai1Connected, ai2Connected);
 
     this._updateAIAIControls();
   }
@@ -191,6 +199,25 @@ export class AnalyzeController {
     if (filterCount) {
       filterCount.disabled = !hasAccount || !connected;
     }
+  }
+
+  _updateGridLayout(ai1Connected, ai2Connected) {
+    const grid = document.querySelector(".conversation-grid");
+    const cardAi1 = document.getElementById("card-ai1");
+    const cardAi2 = document.getElementById("card-ai2");
+    
+    if (!grid) return;
+    
+    const onlyAi1 = ai1Connected && !ai2Connected;
+    const onlyAi2 = !ai1Connected && ai2Connected;
+    const singleAi = onlyAi1 || onlyAi2;
+    
+    // Grid class'ını ayarla
+    grid.classList.toggle("single-ai", singleAi);
+    
+    // Bağlı olmayan kartı gizle
+    if (cardAi1) cardAi1.classList.toggle("hidden-slot", onlyAi2);
+    if (cardAi2) cardAi2.classList.toggle("hidden-slot", onlyAi1);
   }
 
   _updateAIAIControls() {
@@ -307,20 +334,16 @@ export class AnalyzeController {
 
     LogManager.addEvent("analyze", "info", "Gönderim başlatılıyor");
 
-    const humanName = AppState.getNickname("user");
-    const ts = this._formatTimestamp();
-    const userLine = msg ? `${humanName} : ${msg} [${ts}]` : "";
-
     const targets = [];
     const textByProvider = {};
     const archiveFolders = {};
 
     if (sendAi1) {
-      let text = userLine;
+      let text = msg;
       if (cross && sendAi2) {
         const otherName = AppState.getNickname("ai2");
         const otherMsg = (this.lastMessages.ai2 || "").trim();
-        text = otherMsg ? `${otherName} : ${otherMsg} | ${userLine}` : userLine;
+        text = otherMsg ? `${otherName} : ${otherMsg} | ${msg}` : msg;
       }
       textByProvider.ai1 = text;
       targets.push("ai1");
@@ -328,18 +351,18 @@ export class AnalyzeController {
     }
 
     if (sendAi2) {
-      let text = userLine;
+      let text = msg;
       if (cross && sendAi1) {
         const otherName = AppState.getNickname("ai1");
         const otherMsg = (this.lastMessages.ai1 || "").trim();
-        text = otherMsg ? `${otherName} : ${otherMsg} | ${userLine}` : userLine;
+        text = otherMsg ? `${otherName} : ${otherMsg} | ${msg}` : msg;
       }
       textByProvider.ai2 = text;
       targets.push("ai2");
       archiveFolders.ai2 = this._getConversationFolder("ai2");
     }
 
-    const texts = targets.map((p) => textByProvider[p] || userLine);
+    const texts = targets.map((p) => textByProvider[p] || msg);
     const allSame = texts.every((t) => t === texts[0]);
     const attachList = [...this.stagedFiles];
 
@@ -454,7 +477,6 @@ export class AnalyzeController {
   _getConversationFolder(provider) {
     const select = document.getElementById(`conversation-${provider}`);
     if (!select) {
-      LogManager.addEvent("analyze", "debug", `conversation-${provider} select element not found`);
       return "";
     }
     const opt = select.selectedOptions?.[0];
@@ -462,11 +484,6 @@ export class AnalyzeController {
       return "";
     }
     return opt.dataset?.folder || "";
-  }
-
-  _formatTimestamp() {
-    const d = new Date();
-    return d.toLocaleString("tr-TR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
   // ============================================

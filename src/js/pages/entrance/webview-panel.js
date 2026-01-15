@@ -1,13 +1,16 @@
-import { LogManager } from "../modules/log-manager.js";
-import { SettingsManager } from "../modules/settings-manager.js";
-import { CoreEngine } from "../modules/core-engine.js";
-import { TrafficManager } from "../modules/traffic-manager.js";
-import { AppState } from "../modules/app-state.js";
-import { ProviderRegistry } from "../modules/webview/provider-registry.js";
-import { WebviewManager } from "../modules/webview-manager.js";
-import { SlotController, SlotEvent } from "../modules/slot-controller.js";
+import { LogManager } from "../../modules/log-manager.js";
+import { SettingsManager } from "../../modules/settings-manager.js";
+import { AppState } from "../../modules/app-state.js";
+import { SlotController } from "../../modules/slot-controller.js";
+import { TrafficManager } from "../../modules/traffic-manager.js";
+import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
+import { WebviewManager } from "../../modules/webview-manager.js";
 
-export class WebviewController {
+/**
+ * Webview Panel Controller
+ * AI1 ve AI2 webview panellerini yönetir
+ */
+export class WebviewPanel {
   constructor() {
     this.ai1Webview = null;
     this.ai2Webview = null;
@@ -18,24 +21,32 @@ export class WebviewController {
     };
   }
 
-  async init() {
-    await this.loadSettings();
-    this.applyTitles();
+  init() {
+    this.setupEventListeners();
+  }
 
-    if (!this._unsubSettings) {
-      this._unsubSettings = SettingsManager.subscribe(
-        ({ settings, changedPaths }) => {
-          this.applyTitles();
-          this.applyWebviewGating(settings, changedPaths);
-        },
-      );
+  setupEventListeners() {
+    try {
+      const ai1DevtoolsBtn = document.getElementById("ai1-devtools-btn");
+      if (ai1DevtoolsBtn) {
+        ai1DevtoolsBtn.addEventListener("click", () => {
+          this.openDevTools("ai1");
+        });
+      }
+
+      const ai2DevtoolsBtn = document.getElementById("ai2-devtools-btn");
+      if (ai2DevtoolsBtn) {
+        ai2DevtoolsBtn.addEventListener("click", () => {
+          this.openDevTools("ai2");
+        });
+      }
+    } catch (err) {
+      const error = /** @type {Error} */ (err);
+      LogManager.addEvent("webview-panel", "error", `Event listener setup hatası: ${error.message}`);
     }
-    
-    if (!this._unsubSlotController) {
-      this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
-        this.applyWebviewGating(SettingsManager.getSnapshot(), ["*"]);
-      });
-    }
+  }
+
+  subscribeToTraffic() {
     if (!this.trafficUnsub) {
       this.trafficUnsub = TrafficManager.onUpdate(({ provider, state }) => {
         if (provider) {
@@ -47,11 +58,13 @@ export class WebviewController {
         }
       });
     }
-    this.setupEventListeners();
-    await this.setupWebviews();
-    this.applyWebviewGating(SettingsManager.getSnapshot(), ["*"]);
-    this.updateUrlDisplay("ai1", TrafficManager.state.ai1);
-    this.updateUrlDisplay("ai2", TrafficManager.state.ai2);
+  }
+
+  applyTitles() {
+    const ai1Title = document.getElementById("ai1-title");
+    const ai2Title = document.getElementById("ai2-title");
+    if (ai1Title) ai1Title.textContent = AppState.getNickname("ai1");
+    if (ai2Title) ai2Title.textContent = AppState.getNickname("ai2");
   }
 
   updateUrlDisplay(provider, state) {
@@ -72,46 +85,6 @@ export class WebviewController {
     }
   }
 
-  applyTitles() {
-    const chatTitle = document.getElementById("ai1-title");
-    const ai2Title = document.getElementById("ai2-title");
-    if (chatTitle) chatTitle.textContent = AppState.getNickname("ai1");
-    if (ai2Title) ai2Title.textContent = AppState.getNickname("ai2");
-  }
-
-  async loadSettings() {
-    const settings = await SettingsManager.load();
-    CoreEngine.useSettings(settings);
-  }
-
-  setupEventListeners() {
-    try {
-      const ai1DevtoolsBtn = document.getElementById("ai1-devtools-btn");
-
-      if (ai1DevtoolsBtn) {
-        ai1DevtoolsBtn.addEventListener("click", () => {
-          this.openDevTools("ai1");
-        });
-      }
-
-      const ai2DevtoolsBtn = document.getElementById("ai2-devtools-btn");
-
-      if (ai2DevtoolsBtn) {
-        ai2DevtoolsBtn.addEventListener("click", () => {
-          this.openDevTools("ai2");
-        });
-      }
-    } catch (err) {
-      const error = /** @type {Error} */ (err);
-      LogManager.addEvent("webview", "error", `Event listener setup hatası: ${error.message}`);
-      LogManager.addEvent(
-        "webview",
-        "error",
-        `Event listener hatası: ${error.message}`,
-      );
-    }
-  }
-
   async setupWebviews() {
     try {
       const ai1WebviewEl = document.getElementById("ai1-webview");
@@ -119,12 +92,14 @@ export class WebviewController {
       
       if (ai1WebviewEl && !this.ai1Webview) {
         this.ai1Webview = ai1WebviewEl;
-        CoreEngine.registerWebview("ai1", ai1WebviewEl);
+        SlotController.registerWebview("ai1", ai1WebviewEl);
+        WebviewManager.register("ai1", ai1WebviewEl);
       }
       
       if (ai2WebviewEl && !this.ai2Webview) {
         this.ai2Webview = ai2WebviewEl;
-        CoreEngine.registerWebview("ai2", ai2WebviewEl);
+        SlotController.registerWebview("ai2", ai2WebviewEl);
+        WebviewManager.register("ai2", ai2WebviewEl);
       }
       
       const ai1Mount = document.getElementById("ai1-webview-mount");
@@ -157,15 +132,10 @@ export class WebviewController {
             const preloadPath = await window.electronAPI.getPreloadPath("ai1");
             if (preloadPath) {
               ai1WebviewEl.setAttribute("preload", preloadPath);
-              this.addLog(
-                "ai1",
-                "info",
-                `Preload script ayarlandı: ${preloadPath}`,
-              );
+              this.addLog("ai1", "info", `Preload script ayarlandı: ${preloadPath}`);
             }
           } catch (error) {
-            const err = /** @type {Error} */ (error);
-            LogManager.addEvent("webview", "warning", `AI1 preload path ayarlanamadı: ${error.message}`);
+            LogManager.addEvent("webview-panel", "warning", `AI1 preload path ayarlanamadı: ${error.message}`);
             this.addLog("ai1", "warning", "Preload script ayarlanamadı...");
           }
         }
@@ -184,27 +154,16 @@ export class WebviewController {
             const preloadPath = await window.electronAPI.getPreloadPath("ai2");
             if (preloadPath) {
               ai2WebviewEl.setAttribute("preload", preloadPath);
-              this.addLog(
-                "ai2",
-                "info",
-                `Preload script ayarlandı: ${preloadPath}`,
-              );
+              this.addLog("ai2", "info", `Preload script ayarlandı: ${preloadPath}`);
             }
           } catch (error) {
-            const err = /** @type {Error} */ (error);
-            LogManager.addEvent("webview", "warning", `AI2 preload path ayarlanamadı: ${error.message}`);
+            LogManager.addEvent("webview-panel", "warning", `AI2 preload path ayarlanamadı: ${error.message}`);
             this.addLog("ai2", "warning", "Preload script ayarlanamadı...");
           }
         }
       }
     } catch (error) {
-      const err = /** @type {Error} */ (error);
-      LogManager.addEvent("webview", "error", `Webview setup hatası: ${error.message}`);
-      LogManager.addEvent(
-        "webview",
-        "error",
-        `Webview kurulum hatası: ${err.message}`,
-      );
+      LogManager.addEvent("webview-panel", "error", `Webview setup hatası: ${error.message}`);
     }
   }
 
@@ -226,8 +185,11 @@ export class WebviewController {
     btn.classList.toggle("disabled", !enabled);
   }
 
-  applyWebviewGating(settings, _changedPaths = []) {
+  applyGating(settings, _changedPaths = []) {
     if (!settings) settings = SettingsManager.getSnapshot();
+    
+    // Update titles
+    this.applyTitles();
 
     /** @type {Array<"ai1"|"ai2">} */
     const providers = ["ai1", "ai2"];
@@ -236,8 +198,6 @@ export class WebviewController {
       const state = this.getSlotState(settings, provider);
       const webviewEl = document.getElementById(`${provider}-webview`);
       const overlayEl = document.getElementById(`${provider}-webview-overlay`);
-
-      // URL display rule (doc): empty for non-assigned/non-connected
       const urlDisplay = document.getElementById(`${provider}-url-display`);
 
       if (!state.hasAccount) {
@@ -271,7 +231,6 @@ export class WebviewController {
       // Active (assigned + connected) - webview göster ve UI güncelle
       this.setDevtoolsEnabled(provider, true);
       
-      // Webview'ı mount point'e taşı (eğer henüz taşınmadıysa)
       // Bağlı durum - overlay'ı gizle
       if (overlayEl) {
         overlayEl.classList.add("hidden");
@@ -293,7 +252,7 @@ export class WebviewController {
         webviewEl.removeAttribute("data-detached");
       }
 
-      // If not set up yet, run setup (async) and let setup set src/preload
+      // If not set up yet, run setup
       if (provider === "ai1" && !this.ai1Webview) {
         void this.setupWebviews();
       }
@@ -306,20 +265,14 @@ export class WebviewController {
   setupWebviewEvents(type, webviewEl, providerId = null) {
     if (!webviewEl) return;
 
-    webviewEl.addEventListener("dom-ready", () => {
-      this.addLog(type, "info", "DOM hazır");
-    });
-
     webviewEl.addEventListener("did-start-loading", () => {
-      // FIX: Webview hazır değilse erken çık
       try {
         if (typeof webviewEl.getWebContentsId !== "function") return;
         webviewEl.getWebContentsId();
       } catch (_) {
-        return; // Webview henüz DOM'a attach olmamış
+        return;
       }
 
-      // FIX: Check if URL is excluded before logging
       let currentUrl = "";
       try {
         currentUrl = webviewEl.getURL?.() || "";
@@ -338,8 +291,7 @@ export class WebviewController {
       this.loadLogState[type] = state;
     });
 
-    webviewEl.addEventListener("did-stop-loading", () => {
-      // FIX: Webview hazır değilse erken çık
+    webviewEl.addEventListener("did-stop-loading", async () => {
       try {
         if (typeof webviewEl.getWebContentsId !== "function") return;
         webviewEl.getWebContentsId();
@@ -355,68 +307,41 @@ export class WebviewController {
         state.lastStop = now;
       }
       this.loadLogState[type] = state;
-    });
 
-    // Send providerId and slot into the guest preload once DOM ready so preload can fetch config
-    webviewEl.addEventListener("dom-ready", async () => {
+      // Provider config injection - sadece excluded olmayan sayfalarda
+      let currentUrl = "";
       try {
-        // FIX: Webview'ın gerçekten hazır olduğunu doğrula
-        try {
-          if (typeof webviewEl.getWebContentsId !== "function") {
-            this.addLog(type, "debug", "Webview not fully attached yet, skipping provider config injection");
-            return;
-          }
-          // getWebContentsId çağrısı webview hazır değilse hata fırlatır
-          webviewEl.getWebContentsId();
-        } catch (_) {
-          this.addLog(type, "debug", "Webview not ready for script injection");
-          return;
-        }
+        currentUrl = webviewEl.getURL?.() || "";
+      } catch (_) {
+        return;
+      }
+      
+      const isExcluded = WebviewManager?.isUrlExcluded?.(type, currentUrl);
+      if (isExcluded) return;
 
-        // Provider config'i doğrudan inject et (daha güvenilir)
-        // FIX: providerId'yi her dom-ready'de dinamik olarak al (hesap değişikliği için)
-        const currentProviderId = AppState.getProviderIdForSlot(type) || providerId;
-        const cfg = currentProviderId ? ProviderRegistry.get(currentProviderId) : null;
-        if (cfg) {
-          try {
-            const configScript = `
-              (function() {
-                try {
-                  window.__hayalet_slot = ${JSON.stringify(type)};
-                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                  return true;
-                } catch (e) {
-                  console.error('[Hayalet-Direct-Inject] Failed:', e);
-                  return false;
-                }
-              })();
-            `;
-            await webviewEl.executeJavaScript(configScript);
-            this.addLog(
-              type,
-              "debug",
-              `Provider config injected for ${currentProviderId}`,
-            );
-          } catch (error) {
-            // executeJavaScript hatası - webview henüz hazır değil
-            this.addLog(
-              type,
-              "warning",
-              `Provider config injection deferred: ${error.message}`,
-            );
-          }
+      const currentProviderId = AppState.getProviderIdForSlot(type) || providerId;
+      const cfg = currentProviderId ? ProviderRegistry.get(currentProviderId) : null;
+      if (cfg) {
+        try {
+          const configScript = `
+            (function() {
+              try {
+                window.__hayalet_slot = ${JSON.stringify(type)};
+                window.__hayalet_provider_config = ${JSON.stringify(cfg)};
+                return true;
+              } catch (e) {
+                console.error('[Hayalet-Config-Inject] Failed:', e);
+                return false;
+              }
+            })();
+          `;
+          await webviewEl.executeJavaScript(configScript);
+        } catch (_err) {
+          // Config injection başarısız - send() öncesi fallback devreye girecek
         }
-      } catch (err) {
-        const error = /** @type {Error} */ (err);
-        this.addLog(
-          type,
-          "warning",
-          `dom-ready handler error: ${error.message}`,
-        );
       }
     });
 
-    // Listen for provider telemetry messages from preload
     webviewEl.addEventListener("ipc-message", (event) => {
       try {
         if (!event || !event.channel) return;
@@ -436,12 +361,11 @@ export class WebviewController {
           }
         }
       } catch (error) {
-        LogManager.addEvent("webview", "warning", `IPC message handler hatası: ${error.message}`);
+        LogManager.addEvent("webview-panel", "warning", `IPC message handler hatası: ${error.message}`);
       }
     });
 
     webviewEl.addEventListener("did-fail-load", (event) => {
-      // -106 ERR_INVALID_URL, -105 ERR_NAME_NOT_RESOLVED
       if (event.errorCode !== -3 && event.errorCode !== -102) {
         this.addLog(
           type,
@@ -465,72 +389,19 @@ export class WebviewController {
       webview.openDevTools();
       this.addLog(type, "info", "DevTools açıldı");
     } catch (error) {
-      LogManager.addEvent("webview", "error", `DevTools açma hatası: ${error.message}`, { context: { type } });
+      LogManager.addEvent("webview-panel", "error", `DevTools açma hatası: ${error.message}`, { context: { type } });
       this.addLog(type, "error", `DevTools açma hatası: ${error.message}`);
     }
   }
 
   addLog(type, level, message) {
-    LogManager.addEvent(`webview-${type}`, level, message);
+    LogManager.addEvent(`webview-panel-${type}`, level, message);
   }
 
-  async onShow() {
-    await this.loadSettings();
-
-    const ai1WebviewEl = document.getElementById("ai1-webview");
-    const ai2WebviewEl = document.getElementById("ai2-webview");
-    
-    // Mount point'leri al (webview sayfası gösterildiğinde DOM'da olacaklar)
-    const ai1Mount = document.getElementById("ai1-webview-mount");
-    const ai2Mount = document.getElementById("ai2-webview-mount");
-    
-    // SlotController.isConnected() runtime bağlantı durumunu kontrol eder
-    const ai1Connected = SlotController.isConnected("ai1");
-    const ai2Connected = SlotController.isConnected("ai2");
-    
-    if (ai1WebviewEl) {
-      // Bağlıysa mount et ve göster
-      if (ai1Connected) {
-        // Mount point'e taşı (eğer henüz taşınmadıysa)
-        if (ai1Mount && !ai1Mount.contains(ai1WebviewEl)) {
-          ai1Mount.appendChild(ai1WebviewEl);
-          ai1WebviewEl.style.position = "relative";
-          ai1WebviewEl.style.top = "0";
-          ai1WebviewEl.style.left = "0";
-          ai1WebviewEl.style.width = "100%";
-          ai1WebviewEl.style.height = "100%";
-        }
-        ai1WebviewEl.style.display = "";
-        ai1WebviewEl.removeAttribute("data-detached");
-      } else {
-        ai1WebviewEl.style.display = "none";
-      }
+  destroy() {
+    if (this.trafficUnsub) {
+      this.trafficUnsub();
+      this.trafficUnsub = null;
     }
-    
-    if (ai2WebviewEl) {
-      // Bağlıysa mount et ve göster
-      if (ai2Connected) {
-        // Mount point'e taşı (eğer henüz taşınmadıysa)
-        if (ai2Mount && !ai2Mount.contains(ai2WebviewEl)) {
-          ai2Mount.appendChild(ai2WebviewEl);
-          ai2WebviewEl.style.position = "relative";
-          ai2WebviewEl.style.top = "0";
-          ai2WebviewEl.style.left = "0";
-        }
-        ai2WebviewEl.style.display = "";
-        ai2WebviewEl.removeAttribute("data-detached");
-      } else {
-        ai2WebviewEl.style.display = "none";
-      }
-    }
-
-    this.applyTitles();
-    this.applyWebviewGating(SettingsManager.getSnapshot(), ["*"]);
-  }
-
-  onHide() {
-    // Webview'ları gizleme - arka planda çalışmaya devam etsinler
-    // Sadece sayfa değişikliğinde webview sayfası gizlenecek, webview elementleri değil
-    // Don't cleanup subscriptions (keep them active across page changes)
   }
 }

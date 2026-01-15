@@ -1,14 +1,16 @@
-import { LogManager } from "../../modules/log-manager.js";
-import { SettingsManager } from "../../modules/settings-manager.js";
-import { AppState } from "../../modules/app-state.js";
-import { CoreEngine } from "../../modules/core-engine.js";
-import { SlotController, SlotEvent } from "../../modules/slot-controller.js";
-import { getMimeTypeFromPath } from "../../constants/index.js";
+import { LogManager } from "../modules/log-manager.js";
+import { SettingsManager } from "../modules/settings-manager.js";
+import { AppState } from "../modules/app-state.js";
+import { CoreEngine } from "../modules/core-engine.js";
+import { SlotController, SlotEvent } from "../modules/slot-controller.js";
+import { TrafficManager } from "../modules/traffic-manager.js";
+import { getMimeTypeFromPath } from "../constants/index.js";
 
-import { UserPanel } from "./user-panel.js";
-import { SlotPanel } from "./slot-panel.js";
-import { AccountPanel } from "./account-panel.js";
-import { WhisperPanel } from "./whisper-panel.js";
+import { UserPanel } from "./entrance/user-panel.js";
+import { SlotPanel } from "./entrance/slot-panel.js";
+import { AccountPanel } from "./entrance/account-panel.js";
+import { WhisperPanel } from "./entrance/whisper-panel.js";
+import { WebviewPanel } from "./entrance/webview-panel.js";
 
 export class EntranceHallController {
   constructor() {
@@ -20,6 +22,7 @@ export class EntranceHallController {
     this.slotPanelAi2 = new SlotPanel("ai2", SettingsManager);
     this.accountPanel = new AccountPanel(SettingsManager);
     this.whisperPanel = new WhisperPanel();
+    this.webviewPanel = new WebviewPanel();
   }
 
   async init() {
@@ -29,17 +32,26 @@ export class EntranceHallController {
     this.slotPanelAi2.init();
     this.accountPanel.init();
     this.whisperPanel.init();
+    this.webviewPanel.init();
 
     this.setupEventListeners();
     await this.loadUserSettings();
     await this.applyDefaultConnections();
     this.updateUI();
+    
+    // Setup webviews
+    await this.webviewPanel.setupWebviews();
+    this.webviewPanel.applyGating(SettingsManager.getSnapshot(), ["*"]);
+    this.webviewPanel.updateUrlDisplay("ai1", TrafficManager.state.ai1);
+    this.webviewPanel.updateUrlDisplay("ai2", TrafficManager.state.ai2);
+    this.webviewPanel.subscribeToTraffic();
 
     // Global listeners
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(
         ({ settings, changedPaths }) => {
           this.applySettingsToUI(settings, changedPaths);
+          this.webviewPanel.applyGating(settings, changedPaths);
           
           // Re-render sub-panels if needed
           if (changedPaths.includes("*") || changedPaths.some(p => p.startsWith("accounts"))) {
@@ -57,6 +69,7 @@ export class EntranceHallController {
     if (!this._unsubSlotController) {
       this._unsubSlotController = SlotController.on(SlotEvent.STATE_CHANGED, () => {
         this.updateUI();
+        this.webviewPanel.applyGating(SettingsManager.getSnapshot(), ["*"]);
       });
     }
   }
@@ -89,7 +102,6 @@ export class EntranceHallController {
   applySettingsToUI(settings, _changedPaths = []) {
     if (!settings) settings = SettingsManager.getSnapshot();
 
-    const userNickname = AppState.getNickname("user");
     const ai1Nickname = AppState.getNickname("ai1");
     const ai2Nickname = AppState.getNickname("ai2");
 
@@ -172,7 +184,6 @@ export class EntranceHallController {
   }
 
   async updateUserStatus(userType) {
-    const settings = SettingsManager.getSnapshot();
     const statusDot = document.getElementById(`${userType}-status-dot`);
     const statusText = document.getElementById(`${userType}-status-text`);
     const toggleBtn = document.getElementById(`${userType}-toggle-btn`);
@@ -248,8 +259,8 @@ export class EntranceHallController {
     try {
       await CoreEngine.setConnection("ai1", false, { force: true });
       await CoreEngine.setConnection("ai2", false, { force: true });
-    } catch (e) {
-      // ignore
+    } catch (_e) {
+      // Başlangıç bağlantı durumu ayarlanamadı - kritik değil
     }
     this.defaultsApplied = true;
   }

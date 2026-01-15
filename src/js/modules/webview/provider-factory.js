@@ -30,21 +30,3 @@ const allProviders = {
 export function getProvider(providerId) {
   return allProviders[providerId];
 }
-
-/**
- * Returns only AI provider module.
- * @param {string} providerId
- * @returns {any}
- */
-export function getAIProvider(providerId) {
-  return providers[providerId];
-}
-
-/**
- * Returns only Asistan provider module.
- * @param {string} providerId
- * @returns {any}
- */
-export function getAsistanProvider(providerId) {
-  return asistanProviders[providerId];
-}

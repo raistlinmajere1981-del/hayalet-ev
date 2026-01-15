@@ -82,8 +82,6 @@ export async function detachWebview(slotState, slot, correlationId, logFn, emitF
 
   try {
     webview.setAttribute("data-detached", "1");
-    // Webview'ı gizleme - overlay ile kontrol edilecek
-    // webview.style.display = "none";
     webview.removeAttribute("src");
     
     emitFn(slot, eventDetached, { correlationId });

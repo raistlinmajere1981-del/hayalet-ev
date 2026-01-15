@@ -21,4 +21,4 @@ export {
 } from "./slots.js";
 export { IPC } from "./ipc-channels.js";
 export { EVENTS, DOM_EVENTS } from "./events.js";
-export { getExtension, getFilename, getMimeType, getMimeTypeFromPath, generateUniqueId, sanitizeEmail, generateAccountId, getAccountDataPath } from "./file-utils.js";
+export { getExtension, getFilename, getMimeType, getMimeTypeFromPath, generateUniqueId, sanitizeEmail, generateAccountId, getAccountDataPath, decodeBase64 } from "./file-utils.js";

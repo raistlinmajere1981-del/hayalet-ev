@@ -1,4 +1,3 @@
-import { CoreEngine } from "./core-engine.js";
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
@@ -61,7 +60,7 @@ class ConversationListManagerClass {
 
     // Hem ID hem provider eşleşmeli (aynı ID farklı provider'larda olabilir)
     const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
-    CoreEngine.navigateTo(provider, entry?.webUrl || null);
+    SlotController.navigate(provider, entry?.webUrl || null);
 
     if (!options.isInitial) {
       LogManager.addEvent(

@@ -65,34 +65,3 @@ export function scrapeMessages() {
   return result;
 }
 
-/**
- * Aktif konuşma başlığını al
- */
-export function getConversationTitle() {
-  // Session title'ı bulmaya çalış
-  const titleEl = document.querySelector(
-    '[data-slot="session-title"], [data-component="session-header"] h1, header h1'
-  );
-  
-  if (titleEl) {
-    return (titleEl.innerText || titleEl.textContent || "").trim();
-  }
-  
-  return "OpenCode Conversation";
-}
-
-/**
- * Input alanının durumunu kontrol et
- */
-export function getInputState() {
-  const input = document.querySelector('[data-component="prompt-input"]');
-  const sendBtn = document.querySelector('button[type="submit"][data-component="icon-button"]:not([disabled])');
-  const stopBtn = document.querySelector('button[type="submit"][icon="stop"]');
-  
-  return {
-    hasInput: input !== null,
-    inputValue: input ? (input.innerText || input.textContent || "").trim() : "",
-    canSend: sendBtn !== null,
-    isThinking: stopBtn !== null,
-  };
-}

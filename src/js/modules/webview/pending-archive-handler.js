@@ -1,6 +1,6 @@
 /**
  * PendingArchiveHandler - Bekleyen arşiv işlemleri yönetimi
- * 
+ *
  * Bu modül AI yanıtı tamamlandığında işlenecek arşiv kopyalama işlemlerini yönetir:
  * - Pending archive kayıt
  * - Stable durumda işleme
@@ -9,6 +9,7 @@
 
 import { LogManager } from "../log-manager.js";
 import { FileManager } from "../file-manager.js";
+import { AppState } from "../app-state.js";
 
 class PendingArchiveHandlerClass {
   constructor() {
@@ -22,10 +23,10 @@ class PendingArchiveHandlerClass {
    */
   addPending(provider, entry) {
     if (!provider || !entry) return;
-    
+
     this._pendingArchives[provider] = this._pendingArchives[provider] || [];
     this._pendingArchives[provider].push(entry);
-    
+
     LogManager.addEvent("archive", "debug", "Pending archive registered", {
       jobId: entry.jobId,
       provider,
@@ -46,24 +47,19 @@ class PendingArchiveHandlerClass {
       delete this._pendingArchives[provider];
 
       const history = syncResult?.messages || [];
-      
-      const lastUserIdx = [...history]
-        .reverse()
-        .findIndex((m) => m.role === "user");
-      
-      const messageIndex = lastUserIdx === -1 
-        ? history.length 
-        : history.length - 1 - lastUserIdx;
+      const conversationId = syncResult?.conversationId;
+
+      const lastUserIdx = [...history].reverse().findIndex((m) => m.role === "user");
+
+      const messageIndex = lastUserIdx === -1 ? history.length : history.length - 1 - lastUserIdx;
+
+      const message = history[messageIndex];
 
       for (const entry of list) {
-        this._processEntry(entry, provider, messageIndex);
+        this._processEntry(entry, provider, message, conversationId);
       }
     } catch (e) {
-      LogManager.addEvent(
-        "archive",
-        "warning",
-        `processPending error: ${e?.message || String(e)}`,
-      );
+      LogManager.addEvent("archive", "warning", `processPending error: ${e?.message || String(e)}`);
     }
   }
 
@@ -71,57 +67,59 @@ class PendingArchiveHandlerClass {
    * Tek bir pending entry'yi işle
    * @private
    */
-  _processEntry(entry, provider, messageIndex) {
+  async _processEntry(entry, provider, message, conversationId) {
     try {
-      // entry.folder artık tam yol: data/{accountId}/attachments/{conversationId}
-      // Hedef: data/{accountId}/attachments/{conversationId}/msg-{index}
-      const targetDir = `${entry.folder}/msg-${Math.max(0, messageIndex)}`;
-      
+      const accountInfo = AppState.getAccountForSlot(provider);
+      if (!accountInfo?.id || !message?.id || !conversationId) {
+        LogManager.addEvent("archive", "warning", "Missing info for archive processing", {
+          jobId: entry.jobId,
+          accountId: accountInfo?.id,
+          messageId: message?.id,
+          conversationId,
+        });
+        return;
+      }
+
+      const stagedFiles = entry.stagedFiles || [];
+
       LogManager.addEvent(
         "archive",
         "info",
-        "Processing pending archive copy",
-        {
-          jobId: entry.jobId,
-          provider,
-          targetDir,
-        },
+        `Processing ${stagedFiles.length} attachments for message ${message.id}`,
+        { jobId: entry.jobId }
       );
 
-      Promise.resolve(FileManager.commandArchiveCopy(entry.jobId, targetDir))
-        .then((result) => {
-          if (result?.success) {
-            LogManager.addEvent(
-              "command",
-              "info",
-              `Arşiv kopyalandı (${targetDir})`,
-              { jobId: entry.jobId },
-            );
+      for (const file of stagedFiles) {
+        const filePath = file.commandPath || file.path;
+        if (!filePath) continue;
 
-            this._cleanup(entry);
-          } else {
-            LogManager.addEvent(
-              "command",
-              "warning",
-              `Arşiv kopyalanamadı (pending): ${result?.message || "bilinmiyor"}`,
-              { jobId: entry.jobId, targetDir },
-            );
-          }
-        })
-        .catch((err) => {
-          LogManager.addEvent(
-            "command",
-            "warning",
-            `Arşiv kopyalama hatası (pending): ${err?.message || String(err)}`,
-            { jobId: entry.jobId },
-          );
+        const res = await window.electronAPI.dbSaveAttachment({
+          accountId: accountInfo.id,
+          conversationId,
+          messageId: message.id,
+          filePath,
+          originalName: file.originalName || file.name,
+          mimeType: null,
         });
+
+        if (!res?.success) {
+          LogManager.addEvent("archive", "error", `Attachment save failed: ${res?.error}`, {
+            file: file.name,
+          });
+        }
+      }
+
+      LogManager.addEvent("archive", "info", "Attachments processed successfully", {
+        jobId: entry.jobId,
+      });
+
+      this._cleanup(entry);
     } catch (e) {
       LogManager.addEvent(
         "archive",
         "warning",
         `Pending archive processing error: ${e?.message || String(e)}`,
-        { jobId: entry.jobId },
+        { jobId: entry.jobId }
       );
     }
   }
@@ -138,7 +136,7 @@ class PendingArchiveHandlerClass {
         "command",
         "warning",
         `Arşiv sonrası temizlik hatası: ${e?.message || String(e)}`,
-        { jobId: entry.jobId },
+        { jobId: entry.jobId }
       );
     }
   }
@@ -178,9 +176,8 @@ class PendingArchiveHandlerClass {
     if (provider) {
       return this._pendingArchives[provider]?.length || 0;
     }
-    
-    return Object.values(this._pendingArchives)
-      .reduce((sum, list) => sum + (list?.length || 0), 0);
+
+    return Object.values(this._pendingArchives).reduce((sum, list) => sum + (list?.length || 0), 0);
   }
 }
 

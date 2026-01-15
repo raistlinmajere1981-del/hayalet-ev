@@ -97,24 +97,25 @@ class MessageSenderClass {
 
     await waitForDomReady(webview);
 
-    // Provider config'i webview'e inject et (her send öncesi)
+    // Provider config fallback - sadece config yoksa inject et
     const providerConfig = ProviderRegistry.get(providerId);
     if (providerConfig) {
       try {
-        const configScript = `
-          (function() {
-            window.__hayalet_slot = ${JSON.stringify(provider)};
-            window.__hayalet_provider_config = ${JSON.stringify(providerConfig)};
-            return true;
-          })();
-        `;
-        await webview.executeJavaScript(configScript);
-      } catch (err) {
-        LogManager.addEvent(
-          `webview-${provider}`,
-          "warning",
-          `Config injection failed: ${err.message}`,
-        );
+        const checkScript = `(function() { return !!window.__hayalet_provider_config; })();`;
+        const hasConfig = await webview.executeJavaScript(checkScript);
+        
+        if (!hasConfig) {
+          const configScript = `
+            (function() {
+              window.__hayalet_slot = ${JSON.stringify(provider)};
+              window.__hayalet_provider_config = ${JSON.stringify(providerConfig)};
+              return true;
+            })();
+          `;
+          await webview.executeJavaScript(configScript);
+        }
+      } catch (_err) {
+        // Config kontrolü veya injection başarısız - devam et
       }
     }
 

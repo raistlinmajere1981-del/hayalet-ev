@@ -106,3 +106,23 @@ export function getAccountDataPath(accountId) {
   if (!accountId) return "";
   return `data/${accountId}`;
 }
+
+/**
+ * Base64 string'i UTF-8 text'e decode et
+ * @param {string} base64 - Base64 encoded string
+ * @returns {string} Decoded UTF-8 text
+ */
+export function decodeBase64(base64) {
+  if (!base64) return "";
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const decoder = new TextDecoder("utf-8");
+    return decoder.decode(bytes);
+  } catch (_err) {
+    return "";
+  }
+}

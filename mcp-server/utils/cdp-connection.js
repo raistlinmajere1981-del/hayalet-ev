@@ -36,7 +36,7 @@ export async function discoverTargets() {
  * Ana pencere hedefini bul
  * @returns {Promise<Object|null>} Ana pencere hedefi veya null
  */
-export async function findMainWindow() {
+async function findMainWindow() {
   const targets = await discoverTargets();
   
   // Önce "page" tipinde hedef ara
@@ -52,7 +52,7 @@ export async function findMainWindow() {
  * @param {string} wsUrl - WebSocket debug URL'i
  * @returns {Promise<WebSocket>} Bağlı WebSocket instance
  */
-export function connectToTarget(wsUrl) {
+function connectToTarget(wsUrl) {
   return new Promise((resolve, reject) => {
     let resolved = false;
     const ws = new WebSocket(wsUrl);
