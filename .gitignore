@@ -40,6 +40,9 @@ archives/
 # Data directory (user databases and attachments)
 data/
 
+# User-specific assets (profile pictures etc.)
+src/assets/*@*.png
+
 # Commands (runtime data)
 commands/
 
