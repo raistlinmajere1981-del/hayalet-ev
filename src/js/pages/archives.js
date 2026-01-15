@@ -299,14 +299,7 @@ export class ArchivesController {
       return;
     }
 
-    // Hesap bilgisini al
-    const accountInfo = AppState.getAccountForSlot(entry.provider);
-    if (!accountInfo?.id) {
-      this.setStatus("Hesap bilgisi yok", "error");
-      return;
-    }
-
-    // Klasör yolunu oluştur veya entry'den al
+    // Klasör yolunu al
     const folder = entry.folder;
     if (!folder) {
       this.setStatus("Klasör bilgisi yok", "error");
@@ -314,12 +307,21 @@ export class ArchivesController {
     }
     
     try {
+      // Önce sohbet klasörünü dene
       const result = await window.electronAPI?.openPath?.(folder);
-      if (result?.error) {
-        // Klasör yoksa data klasörünü aç
-        const dataFolder = folder.split("/").slice(0, -2).join("/"); // data/{accountId}
-        await window.electronAPI?.openPath?.(dataFolder);
-        this.setStatus("Attachment klasörü henüz oluşturulmamış", "warning");
+      
+      if (!result?.success) {
+        // Klasör yoksa attachments ana klasörünü dene
+        const attachmentsFolder = folder.substring(0, folder.lastIndexOf("/"));
+        const result2 = await window.electronAPI?.openPath?.(attachmentsFolder);
+        
+        if (!result2?.success) {
+          // O da yoksa data/accountId klasörünü aç
+          const accountFolder = attachmentsFolder.substring(0, attachmentsFolder.lastIndexOf("/"));
+          await window.electronAPI?.openPath?.(accountFolder);
+        }
+        
+        this.setStatus("Sohbet klasörü henüz oluşturulmamış", "warning");
       }
     } catch (err) {
       this.setStatus("Klasör açılamadı", "error");
