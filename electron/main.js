@@ -92,6 +92,11 @@ import { SessionManager } from "./session-manager.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// CDP (Chrome DevTools Protocol) remote debugging için port ayarla
+// Bu sayede MCP server üzerinden Electron'a bağlanılabilir
+const CDP_PORT = process.env.CDP_PORT || 9222;
+app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
+
 let mainWindow;
 
 const PATHS = {
@@ -290,6 +295,16 @@ ipcMain.handle("show-open-dialog", async (event, options = {}) => {
     return res;
   } catch (err) {
     return { canceled: true, message: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle("show-message-box", async (event, options = {}) => {
+  try {
+    const win = mainWindow || null;
+    const res = await dialog.showMessageBox(win, options || {});
+    return res;
+  } catch (err) {
+    return { response: 0, message: err?.message || String(err) };
   }
 });
 

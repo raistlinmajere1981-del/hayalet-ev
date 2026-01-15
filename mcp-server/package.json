@@ -1,15 +1,16 @@
 {
   "name": "hayalet-ev-mcp",
-  "version": "1.0.0",
-  "description": "MCP Server for Hayalet-ev development workflows",
+  "version": "1.3.0",
+  "description": "MCP Server for Hayalet-ev development workflows with CDP support",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ws": "^8.18.0"
   },
-  "keywords": ["mcp", "electron", "hayalet-ev"],
+  "keywords": ["mcp", "electron", "hayalet-ev", "cdp", "devtools"],
   "author": "Raistlin Majere"
 }

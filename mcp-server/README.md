@@ -2,9 +2,11 @@
 
 Rovodev CLI için Hayalet-ev projesi özel MCP (Model Context Protocol) Server.
 
+**v1.3.0** - CDP (Chrome DevTools Protocol) desteği ile!
+
 ## Özellikler
 
-### 🔧 Tools (Fonksiyonlar)
+### 🔧 Temel Tool'lar
 
 1. **list_providers** - Mevcut AI provider'ları listele
    ```
@@ -34,6 +36,74 @@ Rovodev CLI için Hayalet-ev projesi özel MCP (Model Context Protocol) Server.
    ```
    
    **ÖNEMLİ:** Bu tool sayesinde AI, Electron'u çalıştırdıktan sonra runtime hatalarını görebilir!
+
+### 🎯 CDP Tool'ları (Chrome DevTools Protocol)
+
+Electron uygulamasına uzaktan bağlanıp kontrol etmek için güçlü araçlar:
+
+6. **check_electron_connection** - CDP bağlantı durumunu kontrol et
+   ```
+   Örnek: "Electron'a bağlanabiliyor muyum?"
+   ```
+
+7. **send_command_to_electron** - JavaScript kodu çalıştır
+   ```
+   Örnek: "Electron'da document.title'ı al"
+   Örnek: "window.location.href'i değiştir"
+   ```
+
+8. **take_cdp_screenshot** - Ekran görüntüsü al
+   ```
+   Örnek: "Electron penceresinin screenshot'ını al"
+   ```
+
+9. **get_electron_window_info** - Pencere bilgilerini al
+   ```
+   Örnek: "Electron penceresinin boyutları nedir?"
+   ```
+
+10. **click_element_by_selector** - CSS selector ile tıkla
+    ```
+    Örnek: "#submit-btn'e tıkla"
+    Örnek: ".nav-item:first-child'a tıkla"
+    ```
+
+11. **click_element_by_text** - Metin içeriğine göre tıkla
+    ```
+    Örnek: "'Gönder' yazısına tıkla"
+    Örnek: "button içinde 'Kaydet' yazana tıkla"
+    ```
+
+12. **fill_input_field** - Input alanına değer yaz
+    ```
+    Örnek: "#username input'una 'admin' yaz"
+    ```
+
+13. **get_page_dom_structure** - DOM yapısını al
+    ```
+    Örnek: "Sayfanın DOM yapısını göster"
+    ```
+
+14. **inspect_element** - Element bilgilerini incele
+    ```
+    Örnek: "#main-content elementini incele"
+    ```
+
+15. **query_elements** - Birden fazla elementi bul
+    ```
+    Örnek: "Sayfadaki tüm butonları bul"
+    ```
+
+16. **send_key_press** - Klavye tuşu gönder
+    ```
+    Örnek: "Enter tuşuna bas"
+    Örnek: "Ctrl+S gönder"
+    ```
+
+17. **scroll_page** - Sayfada scroll yap
+    ```
+    Örnek: "Sayfayı 500px aşağı kaydır"
+    ```
 
 ## Kurulum
 
