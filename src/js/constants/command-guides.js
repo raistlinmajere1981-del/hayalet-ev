@@ -150,6 +150,28 @@ Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hede
     ],
   },
 
+  AIAsistanChatStart: {
+    name: "AIAsistanChatStart",
+    description: `AI-Asistan relay oturumunu başlatır.
+
+Belirtilen AI (ai1 veya ai2) ile Asistan (AI0/OpenCode) arasında otomatik mesaj iletimi başlatır.
+Protokol dosyası (protocol/AI-asistan.txt) AI'ye gönderilir ve relay aktif olur.
+
+Akış:
+1. Protokol AI'ye gönderilir
+2. AI cevap verir → Asistan'a iletilir
+3. Asistan cevap verir → AI'ye iletilir
+4. Döngü devam eder (AIAsistanChatStop ile durdurulana kadar)`,
+    parameters: [
+      { name: "sourceSlot", type: "string", required: false, description: "Kaynak AI slotu: ai1 (varsayılan) veya ai2" },
+    ],
+    examples: [
+      { code: '++cmd:AIAsistanChatStart()', description: "AI1 ile Asistan arasında relay başlat" },
+      { code: '++cmd:AIAsistanChatStart(ai1)', description: "AI1 ↔ Asistan relay" },
+      { code: '++cmd:AIAsistanChatStart(ai2)', description: "AI2 ↔ Asistan relay" },
+    ],
+  },
+
   AIAsistanChatStop: {
     name: "AIAsistanChatStop",
     description: `AI-Asistan relay oturumunu durdurur. 
