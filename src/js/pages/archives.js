@@ -77,11 +77,6 @@ export class ArchivesController {
       this.copyUrl();
     });
 
-    // Klasör aç
-    document.getElementById("btn-open-folder")?.addEventListener("click", () => {
-      this.openFolder();
-    });
-
     // Sil butonu
     document.getElementById("btn-delete")?.addEventListener("click", () => {
       const entry = this.entries.find((e) => e.id === this.selectedId);
@@ -290,42 +285,6 @@ export class ArchivesController {
     }).catch(() => {
       this.setStatus("Kopyalama başarısız", "error");
     });
-  }
-
-  async openFolder() {
-    const entry = this._selectedEntry;
-    if (!entry) {
-      this.setStatus("Sohbet seçilmedi", "error");
-      return;
-    }
-
-    // Klasör yolunu al
-    const folder = entry.folder;
-    if (!folder) {
-      this.setStatus("Klasör bilgisi yok", "error");
-      return;
-    }
-    
-    try {
-      // Önce sohbet klasörünü dene
-      const result = await window.electronAPI?.openPath?.(folder);
-      
-      if (!result?.success) {
-        // Klasör yoksa attachments ana klasörünü dene
-        const attachmentsFolder = folder.substring(0, folder.lastIndexOf("/"));
-        const result2 = await window.electronAPI?.openPath?.(attachmentsFolder);
-        
-        if (!result2?.success) {
-          // O da yoksa data/accountId klasörünü aç
-          const accountFolder = attachmentsFolder.substring(0, attachmentsFolder.lastIndexOf("/"));
-          await window.electronAPI?.openPath?.(accountFolder);
-        }
-        
-        this.setStatus("Sohbet klasörü henüz oluşturulmamış", "warning");
-      }
-    } catch (err) {
-      this.setStatus("Klasör açılamadı", "error");
-    }
   }
 
   // ============================================
