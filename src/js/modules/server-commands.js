@@ -25,7 +25,7 @@ import {
 } from "./commands/window-commands.js";
 import { whisperManagerHandler } from "./commands/whisper-commands.js";
 import { listFilesHandler } from "./commands/file-commands.js";
-import { aiaiChatStartHandler, aiaiChatStopHandler } from "./commands/ai-chat-commands.js";
+import { aiaiChatStartHandler, aiaiChatStopHandler, aiAsistanChatStopHandler } from "./commands/ai-chat-commands.js";
 
 // ============================================
 // ============================================
@@ -42,6 +42,7 @@ const COMMAND_LIST = [
   "Restart",
   "AIAIChatStart",
   "AIAIChatStop",
+  "AIAsistanChatStop",
   "GetFile",
   "GetItDone",
   "ListFiles",
@@ -56,7 +57,7 @@ COMMAND_LIST.forEach((name) => {
   const key = name.toLowerCase();
   if (!["whispermanager", "devicemanager", "screenshotmanager", "takescreenshot", 
        "windowmanager", "minimize", "maximize", "restore", "restart",
-       "listfiles", "aiaichatstart", "aiaichatstop"].includes(key)) {
+       "listfiles", "aiaichatstart", "aiaichatstop", "aiasistanchatstop"].includes(key)) {
     handlers[key] = createDefaultHandler(name);
   }
 });
@@ -73,6 +74,7 @@ handlers.whispermanager = whisperManagerHandler;
 handlers.listfiles = listFilesHandler;
 handlers.aiaichatstart = aiaiChatStartHandler;
 handlers.aiaichatstop = aiaiChatStopHandler;
+handlers.aiasistanchatstop = aiAsistanChatStopHandler;
 
 // ============================================
 // ============================================

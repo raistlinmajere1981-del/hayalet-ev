@@ -150,6 +150,18 @@ Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hede
     ],
   },
 
+  AIAsistanChatStop: {
+    name: "AIAsistanChatStop",
+    description: `AI-Asistan relay oturumunu durdurur. 
+
+AI ve Asistan (AI0/OpenCode) arasındaki otomatik mesaj iletimini sonlandırır.
+Bu komut genellikle AI tarafından oturumu bitirmek istediğinde kullanılır.`,
+    parameters: [],
+    examples: [
+      { code: '++cmd:AIAsistanChatStop()', description: "AI-Asistan relay'ini durdur" },
+    ],
+  },
+
   GetFile: {
     name: "GetFile",
     description: "Belirtilen dosyayı okur ve içeriğini döndürür.",
