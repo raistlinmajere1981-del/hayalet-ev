@@ -48,16 +48,25 @@ export const COMMAND_GUIDES = {
 
   WhisperManager: {
     name: "WhisperManager",
-    description: "Fısıltı (whisper) mesajları yönetir. AI'lara gizli notlar ve hatırlatmalar ekler.",
+    description: `Fısıltı (whisper) mesajları yönetir. AI'lara zamanlı hatırlatmalar ve gizli notlar ekler.
+
+⏰ ALARM SİSTEMİ: when parametresi ile gelecekteki bir zamana mesaj planlanabilir.
+Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hedef AI'ya gönderir.`,
     parameters: [
-      { name: "user", type: "string", required: true, description: "Hedef: ai1, ai2 veya user" },
-      { name: "text", type: "string", required: true, description: "Fısıltı mesajı içeriği" },
-      { name: "when", type: "string", required: false, description: "Ne zaman gösterilecek (opsiyonel)" },
+      { name: "user", type: "string", required: true, description: "Hedef: ai1, ai2 veya nickname" },
+      { name: "text", type: "string", required: true, description: "Fısıltı/hatırlatma mesajı içeriği" },
+      { name: "when", type: "string", required: false, description: `Tetiklenme zamanı. Formatlar:
+    • Boş veya "" → Hemen tetiklenir
+    • "15.01.2026 14:30" → Türkçe format (GG.AA.YYYY SS:DD)
+    • "15/01/2026 14:30" → Alternatif format (GG/AA/YYYY SS:DD)
+    • "2026-01-15T14:30:00" → ISO format
+    • 1736945400000 → Unix timestamp (milisaniye)` },
     ],
     examples: [
-      { code: '++cmd:WhisperManager("ai1", "Kullanıcıya nazik ol", "")', description: "AI1'e fısıltı ekle" },
-      { code: '++cmd:WhisperManager("ai2", "Kısa cevaplar ver", "next")', description: "AI2'ye sonraki mesajda gösterilecek fısıltı" },
-      { code: '++cmd:WhisperManager("user", "Toplantı 14:00", "")', description: "Kullanıcıya hatırlatma" },
+      { code: '++cmd:WhisperManager("ai1", "Merhaba, nasılsın?", "")', description: "AI1'e hemen mesaj gönder" },
+      { code: '++cmd:WhisperManager("ai1", "Toplantı başlıyor!", "15.01.2026 14:00")', description: "15 Ocak 14:00'te AI1'e hatırlatma" },
+      { code: '++cmd:WhisperManager("ai2", "Raporu gönder", "15/01/2026 09:30")', description: "Sabah 09:30'da AI2'ye hatırlatma" },
+      { code: '++cmd:WhisperManager("ai1", "Günaydın!", "2026-01-16T08:00:00")', description: "ISO format ile zamanlama" },
     ],
   },
 
