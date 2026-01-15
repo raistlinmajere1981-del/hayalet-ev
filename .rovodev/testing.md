@@ -307,20 +307,28 @@ echo -e "\n=== Test Tamamlandı ==="
 ### npm Script'leri
 
 ```bash
-# Smoke test (Electron çalışıyor olmalı)
-npm run test:smoke
+# === Test ===
+npm run test:smoke              # Smoke test (Electron çalışıyor olmalı)
+npm run test:smoke:auto         # + otomatik Electron başlatma
+npm run test:smoke:verbose      # + detaylı + screenshot
 
-# Smoke test + otomatik Electron başlatma
-npm run test:smoke:auto
+# === Kod Kalitesi ===
+npm run pre-commit              # Lint + console.log yasağı
+npm run lint:unused             # Kullanılmayan export'ları bul
 
-# Detaylı test + screenshot
-npm run test:smoke:verbose
+# === Proje Analizi ===
+npm run analyze                 # Tam proje analizi
+npm run analyze -- --summary    # Sadece özet istatistikler
+npm run analyze:json            # JSON formatında çıktı
 
-# Pre-commit kontrolleri (lint + console.log yasağı)
-npm run pre-commit
+# === Diagram Oluşturma ===
+npm run diagram                 # Modül bağımlılık diagramı (Mermaid)
+npm run diagram:simple          # Basitleştirilmiş diagram
+npm run diagram -- --module=webview  # Tek modül odaklı
+npm run diagram -- --format=dot      # Graphviz DOT formatı
 
-# Satır bazlı dosya düzenleme
-npm run edit-lines -- AGENTS.md --show 100 120
+# === Yardımcı ===
+npm run edit-lines -- AGENTS.md --show 100 120  # Satır bazlı düzenleme
 ```
 
 ### Satır Bazlı Dosya Düzenleme
