@@ -9,6 +9,7 @@
 
 import { ConversationStore } from "./conversation-store.js";
 import { MessageStore } from "./message-store.js";
+import { LogManager } from "../log-manager.js";
 
 // ============================================================================
 // Database Service
@@ -25,7 +26,7 @@ export const DatabaseService = {
       const result = await window.electronAPI?.dbInitAccount?.({ accountId });
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      console.error("[DatabaseService] initAccount error:", err);
+      LogManager.addEvent("database", "error", `initAccount error: ${err.message}`, { context: { accountId } });
       return { success: false, error: err.message };
     }
   },
@@ -100,7 +101,7 @@ export const DatabaseService = {
       const result = await window.electronAPI?.dbSaveAttachment?.(params);
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      console.error("[DatabaseService] saveAttachment error:", err);
+      LogManager.addEvent("database", "error", `saveAttachment error: ${err.message}`, { context: { params } });
       return { success: false, error: err.message };
     }
   },
@@ -119,7 +120,7 @@ export const DatabaseService = {
       });
       return result || [];
     } catch (err) {
-      console.error("[DatabaseService] getAttachments error:", err);
+      LogManager.addEvent("database", "error", `getAttachments error: ${err.message}`, { context: { accountId, conversationId } });
       return [];
     }
   },

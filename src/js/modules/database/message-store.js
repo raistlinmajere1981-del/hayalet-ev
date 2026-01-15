@@ -4,6 +4,8 @@
  * @module src/js/modules/database/message-store
  */
 
+import { LogManager } from "../log-manager.js";
+
 // ============================================================================
 // Hash Utility (Renderer-side)
 // ============================================================================
@@ -49,7 +51,7 @@ export const MessageStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      console.error("[MessageStore] list error:", err);
+      LogManager.addEvent("database", "error", `MessageStore.list error: ${err.message}`, { context: { accountId, conversationId } });
       return [];
     }
   },
@@ -87,7 +89,7 @@ export const MessageStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      console.error("[MessageStore] sync error:", err);
+      LogManager.addEvent("database", "error", `MessageStore.sync error: ${err.message}`, { context: { webUrl: params.webUrl, accountId: params.accountId } });
       return { success: false, error: err.message };
     }
   },
@@ -113,7 +115,7 @@ export const MessageStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      console.error("[MessageStore] search error:", err);
+      LogManager.addEvent("database", "error", `MessageStore.search error: ${err.message}`, { context: { accountId, query } });
       return [];
     }
   },

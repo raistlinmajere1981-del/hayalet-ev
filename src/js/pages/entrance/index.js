@@ -73,7 +73,7 @@ export class EntranceHallController {
         }
       });
     } catch (error) {
-      console.error("Error setting up EntranceHall event listeners:", error);
+      LogManager.addEvent("entrance", "error", `Event listener setup hatası: ${error.message}`);
     }
   }
 
@@ -82,7 +82,7 @@ export class EntranceHallController {
       const settings = await SettingsManager.load();
       this.applySettingsToUI(settings, ["*"]);
     } catch (error) {
-      console.error("Error loading user settings:", error);
+      LogManager.addEvent("entrance", "error", `Settings yükleme hatası: ${error.message}`);
     }
   }
 
@@ -129,7 +129,7 @@ export class EntranceHallController {
         }
       }
     } catch (error) {
-      console.error(`Error loading avatar for ${userType}:`, error);
+      LogManager.addEvent("entrance", "error", `Avatar yükleme hatası: ${error.message}`, { context: { userType } });
     }
   }
 

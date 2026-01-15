@@ -5,6 +5,7 @@
 
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 import { isServiceAvailable } from "../shared/upload-services.js";
+import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
 
@@ -24,10 +25,9 @@ export async function attachFiles(webview, { files }) {
       base64: f.base64,
     }));
 
-    console.debug(
-      "[attachFiles-googledrive] payloadFiles preview",
-      payloadFiles.map((p) => ({ name: p.name, hasBase64: !!p.base64 })),
-    );
+    LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", { 
+      context: { fileCount: payloadFiles.length, files: payloadFiles.map((p) => ({ name: p.name, hasBase64: !!p.base64 })) } 
+    });
 
     if (!window.electronAPI?.googledriveUpload) {
       throw new Error("electronAPI.googledriveUpload not available");
@@ -35,7 +35,7 @@ export async function attachFiles(webview, { files }) {
     const result = await window.electronAPI.googledriveUpload({
       files: payloadFiles,
     });
-    console.debug("[attachFiles-googledrive] ipc response", result);
+    LogManager.addEvent("file-upload", "debug", "Google Drive IPC yanıtı alındı", { context: { success: result?.success } });
 
     if (!result?.success) {
       return {
@@ -51,10 +51,7 @@ export async function attachFiles(webview, { files }) {
       result.uploaded ||
       (result.data && result.data.uploadedLinks) ||
       [];
-    console.debug(
-      "[attachFiles-googledrive] normalized uploaded links",
-      uploaded,
-    );
+    LogManager.addEvent("file-upload", "info", `Google Drive upload tamamlandı: ${uploaded.length} dosya yüklendi`);
 
     return {
       success: true,
@@ -64,8 +61,8 @@ export async function attachFiles(webview, { files }) {
       injected: false,
     };
   } catch (err) {
-    console.error("[attachFiles-googledrive] error", err);
     const errorMsg = err instanceof Error ? err.message : "Google Drive hatası";
+    LogManager.addEvent("file-upload", "error", `Google Drive upload hatası: ${errorMsg}`);
     return createErrorResponse(
       errorMsg,
       [],

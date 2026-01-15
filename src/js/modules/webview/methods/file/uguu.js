@@ -12,6 +12,7 @@ import {
   uploadMultipleFiles,
   isServiceAvailable,
 } from "../shared/upload-services.js";
+import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
 
@@ -25,16 +26,10 @@ export async function attachFiles(webview, { files }) {
   }
 
   try {
-    console.log(
-      "[attachFiles-uguu] ipcAvailable:",
-      !!window?.electronAPI?.uguuUpload,
-    );
+    LogManager.addEvent("file-upload", "debug", "Uguu upload başlatılıyor", { context: { ipcAvailable: !!window?.electronAPI?.uguuUpload, fileCount: files.length } });
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e);
-    console.warn(
-      "[attachFiles-uguu] ipcAvailable check failed",
-      errorMsg,
-    );
+    LogManager.addEvent("file-upload", "warning", `Uguu IPC check failed: ${errorMsg}`);
   }
 
   try {
@@ -43,14 +38,12 @@ export async function attachFiles(webview, { files }) {
       files,
     );
 
-    console.log(
-      `[attachFiles-uguu] Upload completed: ${uploadedLinks.length} successful, ${uploadErrors.length} errors`,
-    );
+    LogManager.addEvent("file-upload", "info", `Uguu upload tamamlandı: ${uploadedLinks.length} başarılı, ${uploadErrors.length} hata`);
 
     return formatUploadResponse(uploadedLinks, uploadErrors, "Uguu");
   } catch (err) {
-    console.error("[attachFiles-uguu] general error", err);
     const errorMsg = err instanceof Error ? err.message : String(err);
+    LogManager.addEvent("file-upload", "error", `Uguu upload hatası: ${errorMsg}`);
     return createErrorResponse(errorMsg, [], "Uguu");
   }
 }

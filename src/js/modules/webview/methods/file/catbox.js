@@ -12,6 +12,7 @@ import {
   uploadMultipleFiles,
   isServiceAvailable,
 } from "../shared/upload-services.js";
+import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
 
@@ -25,16 +26,10 @@ export async function attachFiles(webview, { files }) {
   }
 
   try {
-    console.log(
-      "[attachFiles-catbox] ipcAvailable:",
-      !!window?.electronAPI?.catboxUpload,
-    );
+    LogManager.addEvent("file-upload", "debug", "Catbox upload başlatılıyor", { context: { ipcAvailable: !!window?.electronAPI?.catboxUpload, fileCount: files.length } });
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e);
-    console.warn(
-      "[attachFiles-catbox] ipcAvailable check failed",
-      errorMsg,
-    );
+    LogManager.addEvent("file-upload", "warning", `Catbox IPC check failed: ${errorMsg}`);
   }
 
   try {
@@ -43,14 +38,12 @@ export async function attachFiles(webview, { files }) {
       files,
     );
 
-    console.log(
-      `[attachFiles-catbox] Upload completed: ${uploadedLinks.length} successful, ${uploadErrors.length} errors`,
-    );
+    LogManager.addEvent("file-upload", "info", `Catbox upload tamamlandı: ${uploadedLinks.length} başarılı, ${uploadErrors.length} hata`);
 
     return formatUploadResponse(uploadedLinks, uploadErrors, "Catbox");
   } catch (err) {
-    console.error("[attachFiles-catbox] general error", err);
     const errorMsg = err instanceof Error ? err.message : String(err);
+    LogManager.addEvent("file-upload", "error", `Catbox upload hatası: ${errorMsg}`);
     return createErrorResponse(errorMsg, [], "Catbox");
   }
 }

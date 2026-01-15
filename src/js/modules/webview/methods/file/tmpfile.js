@@ -12,6 +12,7 @@ import {
   uploadMultipleFiles,
   isServiceAvailable,
 } from "../shared/upload-services.js";
+import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
 
@@ -30,14 +31,12 @@ export async function attachFiles(webview, { files }) {
       files,
     );
 
-    console.log(
-      `[attachFiles-tmpfile] Upload completed: ${uploadedLinks.length} successful, ${uploadErrors.length} errors`,
-    );
+    LogManager.addEvent("file-upload", "info", `Tmpfile upload tamamlandı: ${uploadedLinks.length} başarılı, ${uploadErrors.length} hata`);
 
     return formatUploadResponse(uploadedLinks, uploadErrors, "Tmpfile");
   } catch (err) {
-    console.error("[attachFiles-tmpfile] error", err);
     const errorMsg = err instanceof Error ? err.message : String(err);
+    LogManager.addEvent("file-upload", "error", `Tmpfile upload hatası: ${errorMsg}`);
     return createErrorResponse(errorMsg, [], "Tmpfile");
   }
 }

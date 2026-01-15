@@ -54,7 +54,7 @@ export class ArchivesController {
     try {
       await SettingsManager.load();
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      LogManager.addEvent("archives", "error", `Settings yükleme hatası: ${error.message}`);
     }
   }
 
@@ -81,7 +81,7 @@ export class ArchivesController {
       
       this.renderList();
     } catch (err) {
-      console.error("Arşiv okunamadı:", err);
+      LogManager.addEvent("archives", "error", `Arşiv okunamadı: ${err.message}`);
       this.entries = [];
     }
   }
@@ -180,7 +180,7 @@ export class ArchivesController {
         this.setStatus("Sohbet silindi", "success");
       }
     } catch (err) {
-      console.error("Error deleting entry:", err);
+      LogManager.addEvent("archives", "error", `Silme hatası: ${err.message}`);
       this.setStatus("Sohbet silinirken hata oluştu", "error");
     }
   }
@@ -230,7 +230,7 @@ export class ArchivesController {
         this.setStatus(result?.error || "Kaydedilemedi", "error");
       }
     } catch (err) {
-      console.error("Kaydetme hatası:", err);
+      LogManager.addEvent("archives", "error", `Kaydetme hatası: ${err.message}`);
       this.setStatus("Kaydedilemedi", "error");
     }
   }

@@ -1,4 +1,5 @@
 import { getMimeTypeFromPath, generateAccountId } from "../../constants/index.js";
+import { LogManager } from "../../modules/log-manager.js";
 
 export class AccountPanel {
   constructor(settingsManager) {
@@ -185,7 +186,7 @@ export class AccountPanel {
       this._newAccountAvatarPath = result.filePaths[0];
       await this.renderNewAccountAvatarPreview();
     } catch (err) {
-      console.error("Avatar browse error:", err);
+      LogManager.addEvent("entrance", "error", `Avatar browse hatası: ${err.message}`);
     }
   }
 
@@ -253,7 +254,7 @@ export class AccountPanel {
       this.cancelEdit(); // Reset form
       this.showFeedback("Hesap oluşturuldu", "success");
     } catch (err) {
-      console.error("Create account error:", err);
+      LogManager.addEvent("entrance", "error", `Hesap oluşturma hatası: ${err.message}`);
       this.showFeedback(`Hata: ${err.message}`, "error");
     }
   }
@@ -313,7 +314,7 @@ export class AccountPanel {
         this.showFeedback("Hesap güncellendi", "success");
 
     } catch (err) {
-        console.error("Update account error", err);
+        LogManager.addEvent("entrance", "error", `Hesap güncelleme hatası: ${err.message}`);
         this.showFeedback(`Güncelleme hatası: ${err.message}`, "error");
     }
   }

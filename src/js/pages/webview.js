@@ -103,7 +103,7 @@ export class WebviewController {
       }
     } catch (err) {
       const error = /** @type {Error} */ (err);
-      console.error("Error setting up webview event listeners:", error);
+      LogManager.addEvent("webview", "error", `Event listener setup hatası: ${error.message}`);
       LogManager.addEvent(
         "webview",
         "error",
@@ -165,7 +165,7 @@ export class WebviewController {
             }
           } catch (error) {
             const err = /** @type {Error} */ (error);
-            console.warn("Could not set preload path for AI1:", error);
+            LogManager.addEvent("webview", "warning", `AI1 preload path ayarlanamadı: ${error.message}`);
             this.addLog("ai1", "warning", "Preload script ayarlanamadı...");
           }
         }
@@ -192,14 +192,14 @@ export class WebviewController {
             }
           } catch (error) {
             const err = /** @type {Error} */ (error);
-            console.warn("Could not set preload path for AI2:", error);
+            LogManager.addEvent("webview", "warning", `AI2 preload path ayarlanamadı: ${error.message}`);
             this.addLog("ai2", "warning", "Preload script ayarlanamadı...");
           }
         }
       }
     } catch (error) {
       const err = /** @type {Error} */ (error);
-      console.error("Error setting up webviews:", error);
+      LogManager.addEvent("webview", "error", `Webview setup hatası: ${error.message}`);
       LogManager.addEvent(
         "webview",
         "error",
@@ -436,7 +436,7 @@ export class WebviewController {
           }
         }
       } catch (error) {
-        console.warn("ipc-message handler error", error);
+        LogManager.addEvent("webview", "warning", `IPC message handler hatası: ${error.message}`);
       }
     });
 
@@ -465,7 +465,7 @@ export class WebviewController {
       webview.openDevTools();
       this.addLog(type, "info", "DevTools açıldı");
     } catch (error) {
-      console.error(`Error opening DevTools for ${type}:`, error);
+      LogManager.addEvent("webview", "error", `DevTools açma hatası: ${error.message}`, { context: { type } });
       this.addLog(type, "error", `DevTools açma hatası: ${error.message}`);
     }
   }

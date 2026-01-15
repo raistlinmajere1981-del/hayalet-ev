@@ -1,4 +1,5 @@
 import { getMimeTypeFromPath } from "../../constants/index.js";
+import { LogManager } from "../../modules/log-manager.js";
 
 export class UserPanel {
   constructor(settingsManager) {
@@ -112,7 +113,7 @@ export class UserPanel {
       };
       await this.settingsManager.save(updated);
     } catch (err) {
-      console.error("Avatar error:", err);
+      LogManager.addEvent("entrance", "error", `User avatar hatası: ${err.message}`);
     }
   }
 
@@ -121,7 +122,7 @@ export class UserPanel {
     try {
         await window.electronAPI?.googledriveStartAuth?.();
     } catch (err) {
-        console.error("GDrive Auth Error", err);
+        LogManager.addEvent("entrance", "error", `GDrive auth hatası: ${err.message}`);
     }
   }
 
@@ -157,7 +158,7 @@ export class UserPanel {
             await this.settingsManager.save(updated);
             this.render();
         } catch (e) {
-            console.error(e);
+            LogManager.addEvent("entrance", "error", `GDrive disconnect hatası: ${e.message}`);
         }
     } else {
         const clientId = document.getElementById("gdrive-client-id").value.trim();
@@ -193,7 +194,7 @@ export class UserPanel {
                 this.render();
             }
         } catch (e) {
-            console.error(e);
+            LogManager.addEvent("entrance", "error", `GDrive code exchange hatası: ${e.message}`);
         }
     }
   }

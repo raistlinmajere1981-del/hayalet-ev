@@ -4,6 +4,8 @@
  * @module src/js/modules/database/conversation-store
  */
 
+import { LogManager } from "../log-manager.js";
+
 // ============================================================================
 // Conversation Store
 // ============================================================================
@@ -26,7 +28,7 @@ export const ConversationStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      console.error("[ConversationStore] list error:", err);
+      LogManager.addEvent("database", "error", `ConversationStore.list error: ${err.message}`, { context: { accountId } });
       return [];
     }
   },
@@ -42,7 +44,7 @@ export const ConversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.id === conversationId) || null;
     } catch (err) {
-      console.error("[ConversationStore] get error:", err);
+      LogManager.addEvent("database", "error", `ConversationStore.get error: ${err.message}`, { context: { accountId, conversationId } });
       return null;
     }
   },
@@ -64,7 +66,7 @@ export const ConversationStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      console.error("[ConversationStore] update error:", err);
+      LogManager.addEvent("database", "error", `ConversationStore.update error: ${err.message}`, { context: { accountId, conversationId, data } });
       return { success: false, error: err.message };
     }
   },
@@ -84,7 +86,7 @@ export const ConversationStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      console.error("[ConversationStore] delete error:", err);
+      LogManager.addEvent("database", "error", `ConversationStore.delete error: ${err.message}`, { context: { accountId, conversationId } });
       return { success: false, error: err.message };
     }
   },
@@ -100,7 +102,7 @@ export const ConversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.webUrl === webUrl) || null;
     } catch (err) {
-      console.error("[ConversationStore] findByUrl error:", err);
+      LogManager.addEvent("database", "error", `ConversationStore.findByUrl error: ${err.message}`, { context: { accountId, webUrl } });
       return null;
     }
   },
