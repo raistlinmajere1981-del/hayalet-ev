@@ -62,6 +62,10 @@ export const config = {
   ],
   // Supports exact URLs and wildcard patterns (e.g., "https://grok.com/auth/*")
   excludedUrls: [
+    "https://accounts.x.ai/sign-in?redirect=grok-com",
+    "https://accounts.x.ai/sign-in",
+    "https://accounts.x.ai/account",
+    "https://grok.com/sign-in",
     "https://grok.com/imagine/*",
     "https://grok.com/project",
     "https://accounts.x.ai/sign-in",

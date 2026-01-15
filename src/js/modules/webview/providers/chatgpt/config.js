@@ -97,6 +97,9 @@ export const config = {
   },
   // Supports exact URLs and wildcard patterns (e.g., "https://chatgpt.com/auth/*")
   excludedUrls: [
+    "https://auth.openai.com/email-verification",
+    "https://auth.openai.com/log-in-or-create-account",
+    "https://auth.openai.com/log-in/password",
     "https://chatgpt.com/auth/login",
     "https://chatgpt.com/images/*",
     "https://chatgpt.com/apps/*",

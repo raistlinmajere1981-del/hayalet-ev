@@ -37,6 +37,9 @@ temp/
 # Archives (user data - should not be in git)
 archives/
 
+# Data directory (user databases and attachments)
+data/
+
 # Commands (runtime data)
 commands/
 

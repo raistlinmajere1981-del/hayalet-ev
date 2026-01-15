@@ -292,16 +292,38 @@ export class ArchivesController {
     });
   }
 
-  openFolder() {
-    const folder = this._selectedEntry?.folder;
+  async openFolder() {
+    const entry = this._selectedEntry;
+    if (!entry) {
+      this.setStatus("Sohbet seçilmedi", "error");
+      return;
+    }
+
+    // Hesap bilgisini al
+    const accountInfo = AppState.getAccountForSlot(entry.provider);
+    if (!accountInfo?.id) {
+      this.setStatus("Hesap bilgisi yok", "error");
+      return;
+    }
+
+    // Klasör yolunu oluştur veya entry'den al
+    const folder = entry.folder;
     if (!folder) {
       this.setStatus("Klasör bilgisi yok", "error");
       return;
     }
     
-    window.electronAPI?.openPath?.(folder).catch(() => {
+    try {
+      const result = await window.electronAPI?.openPath?.(folder);
+      if (result?.error) {
+        // Klasör yoksa data klasörünü aç
+        const dataFolder = folder.split("/").slice(0, -2).join("/"); // data/{accountId}
+        await window.electronAPI?.openPath?.(dataFolder);
+        this.setStatus("Attachment klasörü henüz oluşturulmamış", "warning");
+      }
+    } catch (err) {
       this.setStatus("Klasör açılamadı", "error");
-    });
+    }
   }
 
   // ============================================
