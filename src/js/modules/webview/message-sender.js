@@ -14,7 +14,7 @@ import { AppState } from "../app-state.js";
 import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
 import { waitForDomReady } from "../../app.js";
-import { isUrlExcluded as checkUrlExcluded } from "./methods/shared/url-utils.js";
+import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 
 class MessageSenderClass {
   constructor() {
@@ -215,6 +215,14 @@ class MessageSenderClass {
       "info",
       "Triggering send button...",
     );
+    
+    // Default page'deyse, URL değişiminde loading tetiklemeyi atla
+    // (thinking tracker zaten takip edecek)
+    const urlBeforeSend = webview.getURL?.() || "";
+    if (isDefaultPage(urlBeforeSend, providerId)) {
+      TrafficManager.skipNextLoadingFor(provider);
+    }
+    
     await this._triggerSendButton(webview, provider, providerId);
 
     return {

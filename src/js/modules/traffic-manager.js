@@ -77,10 +77,26 @@ class TrafficManagerClass {
     this.webviews = {};
     this.pollTimer = null;
     this._runners = {};
+    this._skipNextLoading = { ai0: false, ai1: false, ai2: false };
 
     this.loadingTracker = new LoadingTracker(TIMING_CONFIG);
     this.thinkingTracker = new ThinkingTracker(TIMING_CONFIG);
     this.sendTracker = new SendTracker(TIMING_CONFIG);
+  }
+
+  /**
+   * Bir sonraki URL değişiminde loading tetiklemeyi atla
+   * Mesaj gönderiminde default page'den çıkışta kullanılır
+   * @param {string} provider - ai0, ai1, ai2
+   */
+  skipNextLoadingFor(provider) {
+    if (provider && Object.prototype.hasOwnProperty.call(this._skipNextLoading, provider)) {
+      this._skipNextLoading[provider] = true;
+      // 5 saniye sonra otomatik reset (güvenlik için)
+      setTimeout(() => {
+        this._skipNextLoading[provider] = false;
+      }, 5000);
+    }
   }
 
   // ============================================
@@ -179,11 +195,11 @@ class TrafficManagerClass {
       const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
       const isOnDefaultPage = isDefaultPage(href, providerId);
       
-      // Default page'den çıkış = mevcut bir konuşmaya geçiş
-      if (wasOnDefaultPage && !isOnDefaultPage) {
-        this.loadingTracker.startLoading(viewState, Date.now());
+      // Skip flag aktifse (mesaj gönderiminden kaynaklı URL değişimi)
+      if (this._skipNextLoading[provider] && wasOnDefaultPage && !isOnDefaultPage) {
+        this._skipNextLoading[provider] = false;
         this.state[provider] = viewState;
-        this.setIndicator(provider, "loading", "busy");
+        // Loading başlatma, sadece thinking tracker takip edecek
         return;
       }
       
