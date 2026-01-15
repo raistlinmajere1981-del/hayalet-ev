@@ -511,6 +511,102 @@ export const DatabaseManager = {
   },
 
   /**
+   * Attachment'larda arama yap
+   * @param {Object} event - IPC event
+   * @param {Object} params - { accountId, query, limit }
+   * @returns {Array}
+   */
+  searchAttachments(event, { accountId, query, limit = 50 }) {
+    try {
+      const conn = DatabaseManager.getConnection(accountId);
+      if (!conn) {
+        return [];
+      }
+
+      // Dosya adında LIKE araması
+      const searchPattern = `%${query}%`;
+      const rows = conn.db.prepare(`
+        SELECT 
+          a.id,
+          a.message_id,
+          a.conversation_id,
+          a.original_name,
+          a.stored_path,
+          a.mime_type,
+          a.size,
+          a.created_at,
+          c.title as conversation_title,
+          c.web_url
+        FROM attachments a
+        JOIN conversations c ON a.conversation_id = c.id
+        WHERE a.original_name LIKE ?
+        ORDER BY a.created_at DESC
+        LIMIT ?
+      `).all(searchPattern, limit);
+
+      return rows.map((row) => ({
+        id: row.id,
+        messageId: row.message_id,
+        conversationId: row.conversation_id,
+        conversationTitle: row.conversation_title || "İsimsiz Konuşma",
+        webUrl: row.web_url,
+        originalName: row.original_name,
+        storedPath: row.stored_path,
+        mimeType: row.mime_type,
+        size: row.size,
+        createdAt: row.created_at,
+      }));
+    } catch (err) {
+      console.error("[DB] searchAttachments hatası:", err);
+      return [];
+    }
+  },
+
+  /**
+   * Tüm hesaplarda arama yap (mesaj + attachment)
+   * @param {Object} event - IPC event
+   * @param {Object} params - { query, limit }
+   * @returns {{ messages: Array, attachments: Array }}
+   */
+  searchAllAccounts(event, { query, limit = 50 }) {
+    try {
+      // data/ klasöründeki tüm hesap klasörlerini bul
+      if (!fs.existsSync(DATA_DIR)) {
+        return { messages: [], attachments: [] };
+      }
+
+      const accountFolders = fs.readdirSync(DATA_DIR, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+      const allMessages = [];
+      const allAttachments = [];
+
+      for (const accountId of accountFolders) {
+        // Mesajlarda ara
+        const messages = this.searchMessages(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
+        allMessages.push(...messages.map(m => ({ ...m, accountId })));
+
+        // Attachment'larda ara
+        const attachments = this.searchAttachments(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
+        allAttachments.push(...attachments.map(a => ({ ...a, accountId })));
+      }
+
+      // Tarihe göre sırala ve limit uygula
+      allMessages.sort((a, b) => b.createdAt - a.createdAt);
+      allAttachments.sort((a, b) => b.createdAt - a.createdAt);
+
+      return {
+        messages: allMessages.slice(0, limit),
+        attachments: allAttachments.slice(0, limit),
+      };
+    } catch (err) {
+      console.error("[DB] searchAllAccounts hatası:", err);
+      return { messages: [], attachments: [] };
+    }
+  },
+
+  /**
    * Konuşma detayını güncelle
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId, conversationId, title, summary }

@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dbGetAttachments: (params) => ipcRenderer.invoke("db-get-attachments", params),
   dbDeleteConversation: (params) => ipcRenderer.invoke("db-delete-conversation", params),
   dbSearchMessages: (params) => ipcRenderer.invoke("db-search-messages", params),
+  dbSearchAttachments: (params) => ipcRenderer.invoke("db-search-attachments", params),
+  dbSearchAllAccounts: (params) => ipcRenderer.invoke("db-search-all-accounts", params),
   dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
   
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),

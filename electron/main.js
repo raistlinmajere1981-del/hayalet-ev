@@ -363,6 +363,8 @@ ipcMain.handle("db-save-attachment", (event, params) => DatabaseManager.saveAtta
 ipcMain.handle("db-get-attachments", (event, params) => DatabaseManager.getAttachments(event, params));
 ipcMain.handle("db-delete-conversation", (event, params) => DatabaseManager.deleteConversation(event, params));
 ipcMain.handle("db-search-messages", (event, params) => DatabaseManager.searchMessages(event, params));
+ipcMain.handle("db-search-attachments", (event, params) => DatabaseManager.searchAttachments(event, params));
+ipcMain.handle("db-search-all-accounts", (event, params) => DatabaseManager.searchAllAccounts(event, params));
 ipcMain.handle("db-update-conversation", (event, params) => DatabaseManager.updateConversationDetails(event, params));
 
 ipcMain.handle("append-log", appendLog);
