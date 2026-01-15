@@ -5,6 +5,7 @@ import { join } from 'path';
 // Tray Management
 // ============================================
 
+// Tray değişkenleri - _mainWindow ile birlikte alt kısımda yönetilir
 let _tray = null;
 let _trayIconPath = null;
 
@@ -17,34 +18,64 @@ export function setTrayIconPath(iconPath) {
 }
 
 /**
- * System tray oluştur ve göster
+ * Pencereyi system tray'e küçült
  */
-function showTray() {
-  // Zaten varsa tekrar oluşturma
+export function minimizeToTray() {
+  console.log('[WindowManager] minimizeToTray çağrıldı, _mainWindow:', !!_mainWindow, '_tray:', !!_tray);
+  
+  if (!_mainWindow) {
+    console.error('[WindowManager] _mainWindow yok!');
+    return;
+  }
+
+  try {
+    // Önce tray oluştur (yoksa)
+    if (!_tray) {
+      createTrayInternal();
+    }
+    
+    // Pencereyi gizle
+    _mainWindow.hide();
+    console.log('[WindowManager] Pencere gizlendi');
+  } catch (err) {
+    console.error('[WindowManager] minimizeToTray hatası:', err);
+  }
+}
+
+/**
+ * Internal: Tray oluştur
+ */
+function createTrayInternal() {
   if (_tray) {
-    return _tray;
+    console.log('[WindowManager] Tray zaten var, atlanıyor');
+    return;
   }
   
-  if (!_trayIconPath || !_mainWindow) {
-    return null;
+  if (!_trayIconPath) {
+    console.error('[WindowManager] Tray icon path yok!');
+    return;
   }
 
   try {
     const icon = nativeImage.createFromPath(_trayIconPath);
     _tray = new Tray(icon.resize({ width: 22, height: 22 }));
     
+    // Context menu
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Göster',
-        click: () => restoreFromTray()
+        click: () => {
+          console.log('[WindowManager] Menu: Göster tıklandı');
+          restoreFromTray();
+        }
       },
       {
         label: 'Tam Ekran',
         click: () => {
+          console.log('[WindowManager] Menu: Tam Ekran tıklandı');
           if (_mainWindow) {
-            _mainWindow.show();
+            restoreFromTray();
             _mainWindow.setFullScreen(!_mainWindow.isFullScreen());
-            hideTray();
           }
         }
       },
@@ -52,6 +83,8 @@ function showTray() {
       {
         label: 'Çıkış',
         click: () => {
+          console.log('[WindowManager] Menu: Çıkış tıklandı');
+          destroyTrayInternal();
           if (_mainWindow) {
             _mainWindow.destroy();
           }
@@ -60,36 +93,39 @@ function showTray() {
       }
     ]);
 
-    _tray.setToolTip('Hayalet-ev - Tıkla veya çift tıkla aç');
+    _tray.setToolTip('Hayalet-ev');
     _tray.setContextMenu(contextMenu);
 
-    // Çift tıklama - maximize et
+    // Tek tıklama - pencereyi göster
+    _tray.on('click', () => {
+      console.log('[WindowManager] Tray click event');
+      restoreFromTray();
+    });
+
+    // Çift tıklama - maximize
     _tray.on('double-click', () => {
+      console.log('[WindowManager] Tray double-click event');
       restoreFromTray();
       _mainWindow?.maximize();
     });
 
-    // Tek tıklama - göster
-    _tray.on('click', () => {
-      restoreFromTray();
-    });
-
     console.log('[WindowManager] Tray oluşturuldu');
-    return _tray;
   } catch (err) {
     console.error('[WindowManager] Tray oluşturma hatası:', err);
-    return null;
   }
 }
 
 /**
- * Tray'i gizle/kaldır
+ * Internal: Tray'i kaldır
  */
-function hideTray() {
+function destroyTrayInternal() {
+  console.log('[WindowManager] destroyTrayInternal çağrıldı, _tray:', !!_tray);
+  
   if (_tray) {
     try {
+      _tray.removeAllListeners();
       _tray.destroy();
-      console.log('[WindowManager] Tray kaldırıldı');
+      console.log('[WindowManager] Tray destroy edildi');
     } catch (err) {
       console.error('[WindowManager] Tray destroy hatası:', err);
     }
@@ -101,24 +137,16 @@ function hideTray() {
  * Tray'den pencereyi geri getir
  */
 function restoreFromTray() {
+  console.log('[WindowManager] restoreFromTray çağrıldı');
+  
+  // Önce tray'i kaldır
+  destroyTrayInternal();
+  
+  // Sonra pencereyi göster
   if (_mainWindow) {
     _mainWindow.show();
     _mainWindow.focus();
-  }
-  hideTray();
-}
-
-/**
- * Pencereyi system tray'e küçült
- */
-export function minimizeToTray() {
-  try {
-    if (_mainWindow) {
-      showTray();
-      _mainWindow.hide();
-    }
-  } catch (err) {
-    console.error('[WindowManager] minimizeToTray hatası:', err);
+    console.log('[WindowManager] Pencere gösterildi');
   }
 }
 
@@ -126,7 +154,7 @@ export function minimizeToTray() {
  * Tray'i temizle (export for cleanup)
  */
 export function destroyTray() {
-  hideTray();
+  destroyTrayInternal();
 }
 
 export async function createWindow(options = {}) {
