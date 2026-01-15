@@ -26,6 +26,7 @@ import {
 import { whisperManagerHandler } from "./commands/whisper-commands.js";
 import { listFilesHandler } from "./commands/file-commands.js";
 import { aiaiChatStartHandler, aiaiChatStopHandler, aiAsistanChatStartHandler, aiAsistanChatStopHandler } from "./commands/ai-chat-commands.js";
+import { MetaCommandManager } from "./meta-command-manager.js";
 
 // ============================================
 // ============================================
@@ -47,6 +48,10 @@ const COMMAND_LIST = [
   "GetFile",
   "GetItDone",
   "ListFiles",
+  // Meta komutlar
+  "DefineCommand",
+  "DeleteCommand",
+  "ListCustomCommands",
 ];
 
 // ============================================
@@ -78,6 +83,41 @@ handlers.aiaichatstop = aiaiChatStopHandler;
 handlers.aiasistanchatstart = aiAsistanChatStartHandler;
 handlers.aiasistanchatstop = aiAsistanChatStopHandler;
 
+// Meta komut handler'ları
+handlers.definecommand = async (payload) => {
+  const args = payload?.args || "";
+  // Format: DefineCommand(Name, "description", `code`)
+  // Parse: İlk virgüle kadar isim, sonra açıklama, sonra kod
+  const match = args.match(/^([A-Za-z0-9_]+)\s*,\s*"([^"]*)"\s*,\s*`([\s\S]*)`$/);
+  
+  if (!match) {
+    return { success: false, error: "Geçersiz format. Kullanım: DefineCommand(Name, \"açıklama\", `kod`)" };
+  }
+  
+  const [, name, description, code] = match;
+  const result = await MetaCommandManager.defineCommand(name, description, code, payload?.sender || "unknown");
+  return result;
+};
+
+handlers.deletecommand = async (payload) => {
+  const name = (payload?.args || "").trim();
+  if (!name) {
+    return { success: false, error: "Komut adı gerekli" };
+  }
+  const result = await MetaCommandManager.deleteCommand(name);
+  return result;
+};
+
+handlers.listcustomcommands = async () => {
+  const commands = MetaCommandManager.listCommands();
+  const names = Object.keys(commands);
+  return { 
+    success: true, 
+    message: names.length ? `Custom komutlar: ${names.join(", ")}` : "Henüz custom komut tanımlanmamış",
+    commands 
+  };
+};
+
 // ============================================
 // ============================================
 
@@ -92,8 +132,17 @@ export const ServerCommands = {
     const key = (commandName || "").toLowerCase();
     const handler = handlers[key];
     
+    // Önce sistem handler'larına bak
     if (handler) {
       return handler(payload);
+    }
+    
+    // Sonra custom komutlara bak
+    if (MetaCommandManager.hasCommand(commandName)) {
+      const argsStr = payload?.args || "";
+      // Argümanları parse et (virgülle ayrılmış)
+      const args = argsStr ? argsStr.split(",").map(s => s.trim().replace(/^["']|["']$/g, "")) : [];
+      return MetaCommandManager.runCommand(commandName, args);
     }
     
     LogManager.addEvent(
@@ -105,21 +154,22 @@ export const ServerCommands = {
   },
 
   /**
-   * Komut listesini getir
+   * Komut listesini getir (sistem + custom)
    * @returns {string[]}
    */
   list() {
-    return [...COMMAND_LIST];
+    const customCmds = MetaCommandManager.getCommandNames();
+    return [...COMMAND_LIST, ...customCmds];
   },
 
   /**
-   * Handler kaydetli mi kontrol et
+   * Handler kaydetli mi kontrol et (sistem + custom)
    * @param {string} commandName - Komut adı
    * @returns {boolean}
    */
   has(commandName) {
     const key = (commandName || "").toLowerCase();
-    return !!handlers[key];
+    return !!handlers[key] || MetaCommandManager.hasCommand(commandName);
   },
 
   /**

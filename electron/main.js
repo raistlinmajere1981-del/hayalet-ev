@@ -91,6 +91,7 @@ import {
   ERROR_LOG,
 } from "./console-logger.js";
 import { SessionManager } from "./session-manager.js";
+import { MetaCommandManager } from "./meta-command-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -378,6 +379,12 @@ ipcMain.handle("db-search-messages", (event, params) => DatabaseManager.searchMe
 ipcMain.handle("db-search-attachments", (event, params) => DatabaseManager.searchAttachments(event, params));
 ipcMain.handle("db-search-all-accounts", (event, params) => DatabaseManager.searchAllAccounts(event, params));
 ipcMain.handle("db-update-conversation", (event, params) => DatabaseManager.updateConversationDetails(event, params));
+
+// Meta Command IPC handlers
+ipcMain.handle("meta-define-command", (event, params) => MetaCommandManager.defineCommand(event, params));
+ipcMain.handle("meta-delete-command", (event, params) => MetaCommandManager.deleteCommand(event, params));
+ipcMain.handle("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
+ipcMain.handle("meta-get-command", (event, params) => MetaCommandManager.getCommand(event, params));
 
 ipcMain.handle("append-log", appendLog);
 

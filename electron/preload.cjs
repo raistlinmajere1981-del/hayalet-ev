@@ -52,6 +52,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dbSearchAttachments: (params) => ipcRenderer.invoke("db-search-attachments", params),
   dbSearchAllAccounts: (params) => ipcRenderer.invoke("db-search-all-accounts", params),
   dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
+
+  // Meta Command API
+  metaDefineCommand: (params) => ipcRenderer.invoke("meta-define-command", params),
+  metaDeleteCommand: (params) => ipcRenderer.invoke("meta-delete-command", params),
+  metaListCommands: () => ipcRenderer.invoke("meta-list-commands"),
+  metaGetCommand: (params) => ipcRenderer.invoke("meta-get-command", params),
   
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
   getSessionId: () => ipcRenderer.invoke("get-session-id"),

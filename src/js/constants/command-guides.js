@@ -219,6 +219,69 @@ Bu komut genellikle AI tarafından oturumu bitirmek istediğinde kullanılır.`,
       { code: '++cmd:ListFiles(./src)', description: "src klasöründeki dosyaları listele" },
     ],
   },
+
+  // ============================================
+  // Meta Komutlar - Dinamik Komut Tanımlama
+  // ============================================
+
+  DefineCommand: {
+    name: "DefineCommand",
+    description: `Yeni bir custom komut tanımlar. Komutlar kalıcı olarak kaydedilir ve uygulama yeniden başlatıldığında da kullanılabilir.
+
+⚠️ TAM YETKİ: Kod sistem düzeyinde çalışır, güvenlik kısıtlaması yoktur.
+
+Kod içinde kullanılabilir context:
+• context.LogManager - Log sistemi
+• context.AppState - Uygulama durumu
+• context.TrafficManager - AI durumları
+• context.SlotController - Slot yönetimi
+• context.WebviewManager - Webview kontrolü
+• context.RelayManager - Relay yönetimi
+• context.delay(ms) - Bekleme fonksiyonu
+• context.log(msg) - Kısa log fonksiyonu
+• context.error(msg) - Hata log fonksiyonu
+• args - Komut argümanları (array)`,
+    parameters: [
+      { name: "name", type: "string", required: true, description: "Komut adı (PascalCase önerilir)" },
+      { name: "description", type: "string", required: true, description: "Komut açıklaması (çift tırnak içinde)" },
+      { name: "code", type: "string", required: true, description: "JavaScript kodu (backtick içinde)" },
+    ],
+    examples: [
+      { 
+        code: '++cmd:DefineCommand(Merhaba, "Selamlama komutu", `context.log("Merhaba " + (args[0] || "Dünya")); return { success: true, message: "Selamlandı!" };`)', 
+        description: "Basit selamlama komutu" 
+      },
+      { 
+        code: '++cmd:DefineCommand(BekleVeLogla, "Bekleyip log atar", `await context.delay(1000); context.log("1 saniye geçti!"); return { success: true };`)', 
+        description: "Async bekleme komutu" 
+      },
+      { 
+        code: '++cmd:DefineCommand(SlotDurumu, "AI slot durumlarını gösterir", `const state = context.AppState.getState(); context.log(JSON.stringify(state.slots)); return { success: true, slots: state.slots };`)', 
+        description: "Slot durumunu sorgulama" 
+      },
+    ],
+  },
+
+  DeleteCommand: {
+    name: "DeleteCommand",
+    description: "Tanımlı bir custom komutu siler. Sistem komutları silinemez.",
+    parameters: [
+      { name: "name", type: "string", required: true, description: "Silinecek komut adı" },
+    ],
+    examples: [
+      { code: '++cmd:DeleteCommand(Merhaba)', description: "Merhaba komutunu sil" },
+      { code: '++cmd:DeleteCommand(BekleVeLogla)', description: "BekleVeLogla komutunu sil" },
+    ],
+  },
+
+  ListCustomCommands: {
+    name: "ListCustomCommands",
+    description: "Tanımlı tüm custom komutları listeler. Her komutun adı, açıklaması ve oluşturulma bilgisi gösterilir.",
+    parameters: [],
+    examples: [
+      { code: '++cmd:ListCustomCommands()', description: "Tüm custom komutları listele" },
+    ],
+  },
 };
 
 /**

@@ -15,6 +15,7 @@ import { ConversationListManager } from "./modules/conversation-list-manager.js"
 import { RelayManager } from "./modules/relay-manager.js";
 import { WindowManager } from "./modules/window-manager.js";
 import { WebviewManager } from "./modules/webview-manager.js";
+import { MetaCommandManager } from "./modules/meta-command-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
 import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
@@ -162,6 +163,9 @@ function injectPageTemplates() {
 
 async function initApp() {
   await CoreEngine.init();
+  
+  // Custom komutları yükle
+  await MetaCommandManager.loadCommands();
   try {
     document.documentElement.setAttribute("spellcheck", "false");
     document.body?.setAttribute("spellcheck", "false");

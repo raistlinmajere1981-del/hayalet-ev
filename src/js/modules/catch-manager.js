@@ -1,5 +1,6 @@
 import { LogManager } from "./log-manager.js";
 import { ServerCommands } from "./server-commands.js";
+import { MetaCommandManager } from "./meta-command-manager.js";
 
 class CatchManagerClass {
   /**
@@ -58,9 +59,15 @@ class CatchManagerClass {
 
     if (prefix === "cmd") {
       try {
-        const valid = (ServerCommands.list() || []).map((s) =>
+        // Sistem komutları + custom komutlar
+        const systemCmds = (ServerCommands.list() || []).map((s) =>
           String(s).toLowerCase(),
         );
+        const customCmds = MetaCommandManager.getCommandNames().map((s) =>
+          String(s).toLowerCase(),
+        );
+        const valid = [...systemCmds, ...customCmds];
+        
         const filtered = found.filter((f) =>
           valid.includes(String(f.command || "").toLowerCase()),
         );
@@ -83,6 +90,11 @@ class CatchManagerClass {
         );
         return found;
       }
+    }
+
+    // Meta komutlar - DefineCommand, DeleteCommand, ListCommands
+    if (prefix === "meta") {
+      return found; // Tüm meta komutları geçerli
     }
 
     return found;
