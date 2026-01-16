@@ -35,8 +35,8 @@ function formatTimestamp(timestamp) {
  */
 export async function renderMessages(provider, callbacks = {}) {
   const container = document.getElementById(`messages-${provider}`);
-  const select = document.getElementById(`conversation-${provider}`);
-  const filter = document.getElementById(`filter-count-${provider}`);
+  const select = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
+  const filter = document.getElementById(`filter-count-${provider}`) as HTMLSelectElement | null;
 
   if (!container) return { lastMessage: "" };
 

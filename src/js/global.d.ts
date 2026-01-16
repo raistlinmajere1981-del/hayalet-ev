@@ -20,7 +20,7 @@ declare global {
       readArchivesIndex: () => Promise<any[]>;
       writeArchivesIndex: (index: any[]) => Promise<{ success: boolean }>;
       removeArchive: (folderName: string) => Promise<void>;
-      openPath: (path: string) => Promise<void>;
+      openPath: (path: string) => Promise<{ success: boolean; message?: string }>;
       // commands
       commandInit: () => Promise<any>;
       commandWrite: (job: any) => Promise<any>;
@@ -83,6 +83,7 @@ declare global {
       setupWebviewLogger: (webContentsId: number, provider: string, providerId: string) => Promise<{ success: boolean }>;
       // database extras
       dbSaveAttachment: (params: any) => Promise<any>;
+      dbGetAttachments: (params: { conversationId: string }) => Promise<any[]>;
     };
 
     // Global helper functions attached in app.js

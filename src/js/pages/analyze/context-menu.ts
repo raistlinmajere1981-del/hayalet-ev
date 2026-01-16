@@ -83,7 +83,7 @@ function handleContextAction(action, payload, onAction) {
   }
   
   if (action === "prepend" || action === "append") {
-    const textarea = document.getElementById("compose-input");
+    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
     if (!textarea) return;
     
     const nickname = AppState.getNickname(payload.provider);
