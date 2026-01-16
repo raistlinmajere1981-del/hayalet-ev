@@ -70,6 +70,13 @@ declare global {
       googledriveStartAuth: () => Promise<any>;
       googledriveExchangeCode: (code: string) => Promise<any>;
       googledriveDisconnect: () => Promise<any>;
+      // database
+      dbGetConversations: (accountId: string, options?: any) => Promise<any[]>;
+      dbUpdateConversation: (accountId: string, conversation: any) => Promise<any>;
+      dbDeleteConversation: (accountId: string, conversationId: string) => Promise<any>;
+      dbGetMessages: (accountId: string, conversationId: string) => Promise<any[]>;
+      dbSyncMessages: (accountId: string, conversationId: string, messages: any[]) => Promise<any>;
+      dbSearchMessages: (accountId: string, query: string, options?: any) => Promise<any[]>;
     };
 
     // Global helper functions attached in app.js

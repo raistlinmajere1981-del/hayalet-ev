@@ -1,15 +1,35 @@
 const js = require("@eslint/js");
+const tseslint = require("typescript-eslint");
 
-module.exports = [
+module.exports = tseslint.config(
+  // === Global Ignores ===
   {
-    ignores: ["node_modules", "dist", "build", "*.min.js", "package-lock.json"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      "*.min.js",
+      "package-lock.json",
+      ".rovodev/scripts/**",
+      "mcp-server/**",
+    ],
   },
+
+  // === Base JS Config ===
   js.configs.recommended,
+
+  // === TypeScript Config (Renderer - src/js) ===
   {
+    files: ["src/js/**/*.{js,ts}"],
+    extends: [...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+      parserOptions: {
+        project: "./tsconfig.json",
+      },
       globals: {
+        // Browser globals
         console: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
@@ -23,38 +43,289 @@ module.exports = [
         sessionStorage: "readonly",
         btoa: "readonly",
         atob: "readonly",
-        TextEncoder: "readonly",
-        TextDecoder: "readonly",
+        FileReader: "readonly",
+        Blob: "readonly",
+        File: "readonly",
+        FormData: "readonly",
+        MutationObserver: "readonly",
+        ResizeObserver: "readonly",
+        IntersectionObserver: "readonly",
         CustomEvent: "readonly",
         Event: "readonly",
+        EventTarget: "readonly",
+        HTMLElement: "readonly",
         Element: "readonly",
-        Blob: "readonly",
-        FormData: "readonly",
-        FileReader: "readonly",
-        File: "readonly",
-        DataTransfer: "readonly",
+        Node: "readonly",
+        NodeList: "readonly",
+        DOMParser: "readonly",
+        XMLSerializer: "readonly",
+        Image: "readonly",
+        Audio: "readonly",
+        MediaRecorder: "readonly",
+        AudioContext: "readonly",
+        WebSocket: "readonly",
         AbortController: "readonly",
         URL: "readonly",
+        URLSearchParams: "readonly",
         alert: "readonly",
         confirm: "readonly",
         prompt: "readonly",
         Option: "readonly",
         BroadcastChannel: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        requestIdleCallback: "readonly",
+        cancelIdleCallback: "readonly",
+        getComputedStyle: "readonly",
+        performance: "readonly",
+        crypto: "readonly",
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
+        Headers: "readonly",
+        Request: "readonly",
+        Response: "readonly",
+      },
+    },
+    rules: {
+      // === TypeScript Specific ===
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "@typescript-eslint/no-explicit-any": "off", // Kademeli açılacak
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+      
+      // === General Rules ===
+      "no-unused-vars": "off", // TypeScript versiyonu kullanılıyor
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "prefer-const": "warn",
+      "no-undef": "off", // TypeScript bunu hallediyor
+    },
+  },
+
+  // === Electron Main Process Config (ESM) ===
+  {
+    files: ["electron/**/*.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        // Node.js globals
+        console: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setImmediate: "readonly",
+        clearImmediate: "readonly",
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        global: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        AbortController: "readonly",
+        AbortSignal: "readonly",
+        fetch: "readonly",
+        FormData: "readonly",
+        Blob: "readonly",
+        File: "readonly",
+        Headers: "readonly",
+        Request: "readonly",
+        Response: "readonly",
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
+        crypto: "readonly",
+        performance: "readonly",
       },
     },
     rules: {
       "no-unused-vars": [
         "warn",
         {
-          argsIgnorePattern: "^(_|e|err|error|evt|event)|^_",
-          varsIgnorePattern: "^(_|e|err|error|evt|event)|^_",
-          caughtErrorsIgnorePattern: "^(_|e|err|error)|^_", 
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
         },
       ],
-      "no-empty": ["error", { "allowEmptyCatch": true }],
+      "no-empty": ["error", { allowEmptyCatch: true }],
       "no-console": "off",
       "prefer-const": "warn",
       "no-undef": "error",
     },
   },
-];
+
+  // === Electron Preload (renderer context with Node access) ===
+  {
+    files: ["electron/preload.cjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "script",
+      globals: {
+        // Node.js
+        console: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        Buffer: "readonly",
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        // Browser (preload runs in renderer)
+        window: "readonly",
+        document: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        navigator: "readonly",
+        location: "readonly",
+        localStorage: "readonly",
+        sessionStorage: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
+        Blob: "readonly",
+        File: "readonly",
+        FileReader: "readonly",
+        FormData: "readonly",
+        AbortController: "readonly",
+        AbortSignal: "readonly",
+        Event: "readonly",
+        CustomEvent: "readonly",
+        HTMLElement: "readonly",
+        MutationObserver: "readonly",
+        performance: "readonly",
+        crypto: "readonly",
+        atob: "readonly",
+        btoa: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "prefer-const": "warn",
+      "no-undef": "error",
+    },
+  },
+
+  // === Webview Preload (browser context) ===
+  {
+    files: ["electron/webview-preload.cjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "script",
+      globals: {
+        // Node/Electron
+        console: "readonly",
+        process: "readonly",
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        // Browser (webview context)
+        window: "readonly",
+        document: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        MutationObserver: "readonly",
+        navigator: "readonly",
+        location: "readonly",
+        fetch: "readonly",
+        FormData: "readonly",
+        Blob: "readonly",
+        File: "readonly",
+        FileReader: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+        XMLHttpRequest: "readonly",
+        Event: "readonly",
+        CustomEvent: "readonly",
+        HTMLElement: "readonly",
+        Element: "readonly",
+        Node: "readonly",
+        NodeList: "readonly",
+        getComputedStyle: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        crypto: "readonly",
+        performance: "readonly",
+        atob: "readonly",
+        btoa: "readonly",
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
+        DataTransfer: "readonly",
+        DragEvent: "readonly",
+        ClipboardEvent: "readonly",
+        KeyboardEvent: "readonly",
+        MouseEvent: "readonly",
+        InputEvent: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "prefer-const": "warn",
+      "no-undef": "error",
+    },
+  },
+
+  // === Electron ESM Files ===
+  {
+    files: ["electron/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "prefer-const": "warn",
+    },
+  }
+);

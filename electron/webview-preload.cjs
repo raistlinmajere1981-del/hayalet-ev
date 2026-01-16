@@ -327,47 +327,43 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
       try {
         const _fetch = window.fetch;
         window.fetch = async function (...args) {
+          const res = await _fetch.apply(this, args);
           try {
-            const res = await _fetch.apply(this, args);
-            try {
-              const reqUrl =
-                typeof args[0] === "string"
-                  ? args[0]
-                  : (args[0] && args[0].url) || res.url;
-              if (matchesEndpoint(reqUrl)) {
-                try {
-                  const clone = res.clone();
-                  const ct =
-                    (clone.headers &&
-                      clone.headers.get &&
-                      clone.headers.get("content-type")) ||
-                    "";
-                  if (ct.includes("application/json")) {
-                    clone
-                      .json()
-                      .then((json) => {
-                        const toks = extractTokens(json);
-                        if (toks && toks.length) {
-                          try {
-                            ipcRenderer.sendToHost("provider-usage", {
-                              providerId,
-                              url: reqUrl,
-                              tokens: toks,
-                            });
-                          } catch (_) {}
-                        }
-                      })
-                      .catch(() => {});
-                  }
-                } catch (_) {
+            const reqUrl =
+              typeof args[0] === "string"
+                ? args[0]
+                : (args[0] && args[0].url) || res.url;
+            if (matchesEndpoint(reqUrl)) {
+              try {
+                const clone = res.clone();
+                const ct =
+                  (clone.headers &&
+                    clone.headers.get &&
+                    clone.headers.get("content-type")) ||
+                  "";
+                if (ct.includes("application/json")) {
+                  clone
+                    .json()
+                    .then((json) => {
+                      const toks = extractTokens(json);
+                      if (toks && toks.length) {
+                        try {
+                          ipcRenderer.sendToHost("provider-usage", {
+                            providerId,
+                            url: reqUrl,
+                            tokens: toks,
+                          });
+                        } catch (_) {}
+                      }
+                    })
+                    .catch(() => {});
                 }
+              } catch (_) {
               }
-            } catch (_) {
             }
-            return res;
-          } catch (err) {
-            throw err;
+          } catch (_) {
           }
+          return res;
         };
       } catch (_) {
       }

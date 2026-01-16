@@ -53,7 +53,7 @@ const defaultHandler = (name) => async (payload = {}) => {
 const parseArgs = (rawArgs = '') => {
   const args = typeof rawArgs === 'string' ? rawArgs : '';
   const parts = [];
-  const regex = /"([^\"]*)"|'([^']*)'|([^,\s]+)/g;
+  const regex = /"([^"]*)"|'([^']*)'|([^,\s]+)/g;
   let match;
   while ((match = regex.exec(args)) !== null) {
     const val = match[1] ?? match[2] ?? match[3] ?? '';
