@@ -87,8 +87,8 @@ class ConversationListManagerClass {
       const ai2Account = AppState.getAccountForSlot("ai2");
 
       const [ai1Entries, ai2Entries] = await Promise.all([
-        ai1Account?.id ? window.electronAPI?.dbGetConversations?.(ai1Account.id) : [],
-        ai2Account?.id ? window.electronAPI?.dbGetConversations?.(ai2Account.id) : [],
+        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai1Account.id }) : [],
+        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai2Account.id }) : [],
       ]);
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)

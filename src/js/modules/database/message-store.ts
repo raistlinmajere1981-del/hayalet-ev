@@ -44,7 +44,7 @@ export const MessageStore = {
         return [];
       }
 
-      const result = await window.electronAPI?.dbGetMessages?.(accountId, conversationId);
+      const result = await window.electronAPI?.dbGetMessages?.({ accountId, conversationId });
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
@@ -77,7 +77,11 @@ export const MessageStore = {
         contentHash: msg.contentHash || hashString(msg.text),
       }));
 
-      const result = await window.electronAPI?.dbSyncMessages?.(accountId, webUrl, messagesWithHash);
+      const result = await window.electronAPI?.dbSyncMessages?.({
+        accountId,
+        webUrl,
+        messages: messagesWithHash,
+      });
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
@@ -99,7 +103,7 @@ export const MessageStore = {
         return [];
       }
 
-      const result = await window.electronAPI?.dbSearchMessages?.(accountId, query, { limit });
+      const result = await window.electronAPI?.dbSearchMessages?.({ accountId, query, limit });
 
       return Array.isArray(result) ? result : [];
     } catch (err) {

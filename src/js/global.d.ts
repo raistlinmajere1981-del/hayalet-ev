@@ -71,12 +71,12 @@ declare global {
       googledriveExchangeCode: (code: string) => Promise<any>;
       googledriveDisconnect: () => Promise<any>;
       // database
-      dbGetConversations: (accountId: string, options?: any) => Promise<any[]>;
-      dbUpdateConversation: (accountId: string, conversation: any) => Promise<any>;
-      dbDeleteConversation: (accountId: string, conversationId: string) => Promise<any>;
-      dbGetMessages: (accountId: string, conversationId: string) => Promise<any[]>;
-      dbSyncMessages: (accountId: string, conversationId: string, messages: any[]) => Promise<any>;
-      dbSearchMessages: (accountId: string, query: string, options?: any) => Promise<any[]>;
+      dbGetConversations: (params: { accountId: string }) => Promise<any[]>;
+      dbUpdateConversation: (params: { accountId: string; conversationId: string; [key: string]: any }) => Promise<any>;
+      dbDeleteConversation: (params: { accountId: string; conversationId: string }) => Promise<any>;
+      dbGetMessages: (params: { accountId: string; conversationId: string }) => Promise<any[]>;
+      dbSyncMessages: (params: { accountId: string; webUrl: string; messages: any[] }) => Promise<any>;
+      dbSearchMessages: (params: { accountId: string; query: string; limit?: number }) => Promise<any[]>;
       // logging
       getSessionId: () => Promise<string>;
       onConsoleLogForward: (callback: (data: any) => void) => () => void;
