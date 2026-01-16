@@ -355,6 +355,24 @@ class ConversationSyncerClass {
   }
 
   /**
+   * Belirli bir provider için bekleyen tüm listener'ları iptal et
+   * @param {string} provider - Slot ID
+   */
+  cancelListeners(provider) {
+    if (this._stableListeners[provider]) {
+      LogManager.addEvent("sync", "info", `Canceling listeners for ${provider}`);
+      delete this._stableListeners[provider];
+    }
+
+    // Retry timer'larını da temizle
+    if (this._syncRetryTimers[provider]) {
+      clearTimeout(this._syncRetryTimers[provider]);
+      delete this._syncRetryTimers[provider];
+    }
+    delete this._syncRetryCounts[provider];
+  }
+
+  /**
    * Son sync sonucunu getir
    * @param {string} provider - Slot ID
    * @returns {Object|null}

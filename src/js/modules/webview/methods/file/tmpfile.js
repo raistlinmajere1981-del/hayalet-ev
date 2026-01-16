@@ -3,40 +3,35 @@
  * Provider-agnostic implementation
  */
 
-import {
-  validateFiles,
-  formatUploadResponse,
-  createErrorResponse,
-} from "../shared/file-utils.js";
-import {
-  uploadMultipleFiles,
-  isServiceAvailable,
-} from "../shared/upload-services.js";
+import { UploadManager } from "../../../upload-manager.js";
 import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
-
-  const validation = validateFiles(files);
+  const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return createErrorResponse(validation.message);
+    return UploadManager.createError(validation.message);
   }
 
-  if (!isServiceAvailable("TMPFILE")) {
-    return createErrorResponse("Tmpfiles servisi mevcut değil");
+  if (!UploadManager.isServiceAvailable("TMPFILE")) {
+    return UploadManager.createError("Tmpfile servisi mevcut değil");
   }
 
   try {
-    const { uploadedLinks, uploadErrors } = await uploadMultipleFiles(
+    const { uploadedLinks, uploadErrors } = await UploadManager.uploadMultipleFiles(
       "TMPFILE",
-      files,
+      files
     );
 
-    LogManager.addEvent("file-upload", "info", `Tmpfile upload tamamlandı: ${uploadedLinks.length} başarılı, ${uploadErrors.length} hata`);
+    LogManager.addEvent(
+      "file-upload",
+      "info",
+      `Tmpfile upload tamamlandı: ${uploadedLinks.length} başarılı, ${uploadErrors.length} hata`
+    );
 
-    return formatUploadResponse(uploadedLinks, uploadErrors, "Tmpfile");
+    return UploadManager.formatResponse(uploadedLinks, uploadErrors, "Tmpfile");
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     LogManager.addEvent("file-upload", "error", `Tmpfile upload hatası: ${errorMsg}`);
-    return createErrorResponse(errorMsg, [], "Tmpfile");
+    return UploadManager.createError(errorMsg, [], "Tmpfile");
   }
 }

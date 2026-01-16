@@ -3,69 +3,35 @@
  * Provider-agnostic implementation
  */
 
-import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
-import { isServiceAvailable } from "../shared/upload-services.js";
+import { UploadManager } from "../../../upload-manager.js";
 import { LogManager } from "../../../log-manager.js";
 
 export async function attachFiles(webview, { files }) {
-
-  const validation = validateFiles(files);
+  const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return createErrorResponse(validation.message);
-  }
-
-  if (!isServiceAvailable("GOOGLEDRIVE")) {
-    return createErrorResponse("Google Drive IPC servisi mevcut değil");
+    return UploadManager.createError(validation.message);
   }
 
   try {
-    const payloadFiles = files.map((f) => ({
-      name: f.name,
-      mimeType: f.mimeType,
-      base64: f.base64,
-    }));
-
-    LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", { 
-      context: { fileCount: payloadFiles.length, files: payloadFiles.map((p) => ({ name: p.name, hasBase64: !!p.base64 })) } 
+    LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", {
+      context: {
+        fileCount: files.length,
+        files: files.map((p) => ({ name: p.name, hasBase64: !!p.base64 })),
+      },
     });
 
-    if (!window.electronAPI?.googledriveUpload) {
-      throw new Error("electronAPI.googledriveUpload not available");
-    }
-    const result = await window.electronAPI.googledriveUpload({
-      files: payloadFiles,
-    });
+    const { uploadedLinks, errors } = await UploadManager.uploadGoogleDrive(files);
 
-    if (!result?.success) {
-      return {
-        success: false,
-        message: result?.message || "Google Drive yükleme başarısız",
-        errors: result?.errors,
-        injected: false,
-      };
-    }
+    LogManager.addEvent(
+      "file-upload",
+      "info",
+      `Google Drive upload tamamlandı: ${uploadedLinks.length} dosya yüklendi`
+    );
 
-    const uploaded =
-      result.uploadedLinks ||
-      result.uploaded ||
-      (result.data && result.data.uploadedLinks) ||
-      [];
-    LogManager.addEvent("file-upload", "info", `Google Drive upload tamamlandı: ${uploaded.length} dosya yüklendi`);
-
-    return {
-      success: true,
-      message: `${uploaded.length} dosya Google Drive'a yüklendi`,
-      uploadedLinks: Array.isArray(uploaded) ? uploaded : [],
-      errors: result.errors,
-      injected: false,
-    };
+    return UploadManager.formatResponse(uploadedLinks, errors, "Drive");
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "Google Drive hatası";
     LogManager.addEvent("file-upload", "error", `Google Drive upload hatası: ${errorMsg}`);
-    return createErrorResponse(
-      errorMsg,
-      [],
-      "Google Drive",
-    );
+    return UploadManager.createError(errorMsg, [], "Google Drive");
   }
 }

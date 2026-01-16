@@ -1,6 +1,6 @@
 /**
  * LifecycleManager - Webview yaşam döngüsü yönetimi
- * 
+ *
  * Bu modül webview'ların kayıt, bağlama, ayırma ve bellek yönetimini sağlar:
  * - register: Webview'ı kaydet
  * - attach: Webview'ı slot'a bağla
@@ -14,6 +14,8 @@ import { TrafficManager } from "../traffic-manager.js";
 import { AppState } from "../app-state.js";
 import { SlotController } from "../slot-controller.js";
 import { ProviderRegistry } from "./provider-registry.js";
+
+import { ConversationSyncer } from "./conversation-syncer.js";
 
 class LifecycleManagerClass {
   constructor() {
@@ -49,8 +51,9 @@ class LifecycleManagerClass {
    */
   resolve(provider) {
     if (this.webviews[provider]) return this.webviews[provider];
-    
-    const fallbackId = provider === "ai2" ? "ai2-webview" : "ai1-webview";
+
+    // Dinamik ID arama: önce provider-webview dene
+    const fallbackId = `${provider}-webview`;
     const found = document.getElementById(fallbackId);
     if (found) {
       this.webviews[provider] = found;
@@ -66,17 +69,17 @@ class LifecycleManagerClass {
    */
   attach(provider, webview, opts = {}) {
     if (!provider || !webview) return;
-    
+
     this.register(provider, webview);
-    
+
     const { providerId, onReady } = opts;
-    
+
     try {
       if (!providerId) {
         LogManager.addEvent(
           `webview-${provider}`,
           "warning",
-          "attach: no provider configured for slot",
+          "attach: no provider configured for slot"
         );
         return;
       }
@@ -89,35 +92,51 @@ class LifecycleManagerClass {
         if (webview.style) webview.style.display = "";
       }
 
-      const currentSrc = webview.getAttribute("src") || "";
-      let currentUrl = "";
-      try {
-        currentUrl = (webview.getURL?.() || "").split("?")[0].split("#")[0];
-      } catch (_err) {
-      }
-      
-      const targetUrl = defaultPage.split("?")[0].split("#")[0];
-      
-      const needsReload = (!currentSrc && !currentUrl) || 
-        (currentUrl && targetUrl && !currentUrl.startsWith(targetUrl) && !targetUrl.startsWith(currentUrl));
-      
-      if (defaultPage && needsReload) {
-        LogManager.addEvent(
-          `webview-${provider}`,
-          "info",
-          `attach: loading URL ${defaultPage}`,
-        );
-        webview.setAttribute("src", defaultPage);
-      } else if (currentUrl) {
-        LogManager.addEvent(
-          `webview-${provider}`,
-          "debug",
-          `attach: webview already loaded (${currentUrl}), skipping reload`,
-        );
+      // Lazy Loading Optimizasyonu
+      const isActive = AppState.getState()?.provider === provider;
+      const isUrgent = opts.urgent || false;
+
+      const loadWebview = () => {
+        const currentSrc = webview.getAttribute("src") || "";
+        let currentUrl = "";
+        try {
+          currentUrl = (webview.getURL?.() || "").split("?")[0].split("#")[0];
+        } catch (_err) {}
+
+        const targetUrl = defaultPage.split("?")[0].split("#")[0];
+
+        const needsReload =
+          (!currentSrc && !currentUrl) ||
+          (currentUrl &&
+            targetUrl &&
+            !currentUrl.startsWith(targetUrl) &&
+            !targetUrl.startsWith(currentUrl));
+
+        if (defaultPage && needsReload) {
+          LogManager.addEvent(`webview-${provider}`, "info", `attach: loading URL ${defaultPage}`);
+          webview.setAttribute("src", defaultPage);
+        } else if (currentUrl) {
+          LogManager.addEvent(
+            `webview-${provider}`,
+            "debug",
+            `attach: webview already loaded (${currentUrl}), skipping reload`
+          );
+        }
+
+        this._setupWebviewLogger(webview, provider, providerId);
+      };
+
+      if (isActive || isUrgent) {
+        loadWebview();
+      } else {
+        // Aktif değilse idle zamanında yükle
+        if ("requestIdleCallback" in window) {
+          window.requestIdleCallback(() => loadWebview(), { timeout: 2000 });
+        } else {
+          setTimeout(loadWebview, 100);
+        }
       }
 
-      this._setupWebviewLogger(webview, provider, providerId);
-      
       if (onReady && typeof onReady === "function") {
         const handleReady = () => {
           try {
@@ -125,30 +144,22 @@ class LifecycleManagerClass {
             LogManager.addEvent(
               `webview-${provider}`,
               "info",
-              "attach: onReady callback executed after dom-ready",
+              "attach: onReady callback executed after dom-ready"
             );
           } catch (err) {
             LogManager.addEvent(
               `webview-${provider}`,
               "error",
-              `attach: onReady callback error: ${err?.message || err}`,
+              `attach: onReady callback error: ${err?.message || err}`
             );
           }
         };
         webview.addEventListener("dom-ready", handleReady, { once: true });
       }
 
-      LogManager.addEvent(
-        `webview-${provider}`,
-        "info",
-        "attach: webview attached",
-      );
+      LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached");
     } catch (err) {
-      LogManager.addEvent(
-        `webview-${provider}`,
-        "error",
-        `attach error: ${err?.message || err}`,
-      );
+      LogManager.addEvent(`webview-${provider}`, "error", `attach error: ${err?.message || err}`);
     }
   }
 
@@ -159,15 +170,18 @@ class LifecycleManagerClass {
    */
   detach(provider, { cleanupDom = true, skipTrafficStop = false } = {}) {
     if (!provider) return;
-    
+
     const webview = this.webviews[provider];
-    
+
     try {
       if (!skipTrafficStop) {
         TrafficManager.stop(provider, { force: true });
         TrafficManager.detachWebview(provider);
       }
-      
+
+      // Listener temizliği (Memory Leak önlemi)
+      ConversationSyncer.cancelListeners(provider);
+
       if (webview && cleanupDom) {
         webview.setAttribute("data-detached", "1");
         if (webview.style) webview.style.display = "none";
@@ -179,7 +193,7 @@ class LifecycleManagerClass {
       LogManager.addEvent(
         `webview-${provider}`,
         "info",
-        `detached (cleanup=${!!cleanupDom}, skipTrafficStop=${!!skipTrafficStop})`,
+        `detached (cleanup=${!!cleanupDom}, skipTrafficStop=${!!skipTrafficStop})`
       );
     }
   }
@@ -190,30 +204,26 @@ class LifecycleManagerClass {
    */
   destroy(provider) {
     if (!provider) return;
-    
+
     const webview = this.webviews[provider];
     if (!webview) return;
-    
+
     try {
       TrafficManager.detachWebview(provider);
-      
+
       if (webview.parentNode) {
         webview.parentNode.removeChild(webview);
       }
-      
+
       delete this.webviews[provider];
       delete this._lastActivity[provider];
-      
-      LogManager.addEvent(
-        `webview-${provider}`,
-        "info",
-        "Webview destroyed to free memory",
-      );
+
+      LogManager.addEvent(`webview-${provider}`, "info", "Webview destroyed to free memory");
     } catch (err) {
       LogManager.addEvent(
         `webview-${provider}`,
         "error",
-        `Webview destroy failed: ${err?.message || err}`,
+        `Webview destroy failed: ${err?.message || err}`
       );
     }
   }
@@ -233,19 +243,19 @@ class LifecycleManagerClass {
   cleanupInactive() {
     const now = Date.now();
     const providers = Object.keys(this.webviews);
-    
+
     for (const provider of providers) {
       const lastActivity = this._lastActivity[provider] || 0;
-      const inactive = (now - lastActivity) > this._inactivityThreshold;
-      
+      const inactive = now - lastActivity > this._inactivityThreshold;
+
       const isVisible = AppState.getState()?.provider === provider;
       const isConnected = SlotController.isConnected(provider);
-      
+
       if (inactive && !isVisible && !isConnected) {
         LogManager.addEvent(
           `webview-${provider}`,
           "info",
-          `Detaching inactive webview (${Math.floor((now - lastActivity) / 60000)}min idle)`,
+          `Detaching inactive webview (${Math.floor((now - lastActivity) / 60000)}min idle)`
         );
         this.detach(provider, { cleanupDom: true, skipTrafficStop: false });
       }
@@ -260,21 +270,20 @@ class LifecycleManagerClass {
     try {
       const webContentsId = webview.getWebContentsId?.();
       if (webContentsId && window.electronAPI?.setupWebviewLogger) {
-        window.electronAPI.setupWebviewLogger(webContentsId, provider, providerId)
+        window.electronAPI
+          .setupWebviewLogger(webContentsId, provider, providerId)
           .then((result) => {
             if (result?.success) {
               LogManager.addEvent(
                 `webview-${provider}`,
                 "debug",
-                `Webview logger kuruldu (${providerId})`,
+                `Webview logger kuruldu (${providerId})`
               );
             }
           })
-          .catch(() => {
-          });
+          .catch(() => {});
       }
-    } catch (_err) {
-    }
+    } catch (_err) {}
   }
 
   /**
