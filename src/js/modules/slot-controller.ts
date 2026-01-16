@@ -245,7 +245,7 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  async connect(slot, options = {}) {
+  async connect(slot: string, options: { force?: boolean; url?: string; correlationId?: string } = {}) {
     if (!this._isValidSlot(slot)) {
       return { success: false, message: "invalid-slot" };
     }
@@ -350,7 +350,7 @@ class SlotControllerClass {
     }
   }
 
-  async disconnect(slot, options = {}) {
+  async disconnect(slot: string, options: { force?: boolean } = {}) {
     if (!this._isValidSlot(slot)) {
       return { success: false, message: "invalid-slot" };
     }
@@ -560,7 +560,7 @@ class SlotControllerClass {
     });
   }
 
-  _log(slot, level, message, context = {}) {
+  _log(slot: string, level: string, message: string, context: { correlationId?: string } = {}) {
     const prefix = context.correlationId ? `[${context.correlationId}] ` : "";
     LogManager.addEvent(`slot-${slot}`, level, `${prefix}${message}`);
   }
