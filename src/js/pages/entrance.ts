@@ -13,6 +13,16 @@ import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 
 export class EntranceHallController {
+  defaultsApplied: boolean;
+  userPanel: UserPanel;
+  slotPanelAi1: SlotPanel;
+  slotPanelAi2: SlotPanel;
+  accountPanel: AccountPanel;
+  whisperPanel: WhisperPanel;
+  webviewPanel: WebviewPanel;
+  _unsubSettings: (() => void) | null = null;
+  _unsubSlot: (() => void) | null = null;
+
   constructor() {
     this.defaultsApplied = false;
     

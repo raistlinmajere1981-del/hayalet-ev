@@ -11,6 +11,11 @@ import { WebviewManager } from "../../modules/webview-manager.js";
  * AI1 ve AI2 webview panellerini yönetir
  */
 export class WebviewPanel {
+  ai1Webview: HTMLElement | null;
+  ai2Webview: HTMLElement | null;
+  trafficUnsub: (() => void) | null;
+  loadLogState: Record<string, { lastStart: number; lastStop: number }>;
+
   constructor() {
     this.ai1Webview = null;
     this.ai2Webview = null;
