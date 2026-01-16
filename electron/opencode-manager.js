@@ -11,7 +11,7 @@
  */
 
 import { spawn } from "child_process";
-import { OPENCODE_DEFAULTS } from "../src/js/modules/webview/providers/opencode/config.js";
+import { OPENCODE_DEFAULTS } from "./opencode-config.js";
 
 // Timeout değerleri
 const STARTUP_TIMEOUT = 10000; // 10 saniye
