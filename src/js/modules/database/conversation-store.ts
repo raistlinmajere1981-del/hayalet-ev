@@ -22,9 +22,7 @@ export const ConversationStore = {
         return [];
       }
 
-      const result = await window.electronAPI?.dbGetConversations?.({
-        accountId,
-      });
+      const result = await window.electronAPI?.dbGetConversations?.(accountId);
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
@@ -58,8 +56,7 @@ export const ConversationStore = {
    */
   async update(accountId, conversationId, data) {
     try {
-      const result = await window.electronAPI?.dbUpdateConversation?.({
-        accountId,
+      const result = await window.electronAPI?.dbUpdateConversation?.(accountId, {
         conversationId,
         ...data,
       });
@@ -79,10 +76,7 @@ export const ConversationStore = {
    */
   async delete(accountId, conversationId) {
     try {
-      const result = await window.electronAPI?.dbDeleteConversation?.({
-        accountId,
-        conversationId,
-      });
+      const result = await window.electronAPI?.dbDeleteConversation?.(accountId, conversationId);
 
       return result || { success: false, error: "API not available" };
     } catch (err) {

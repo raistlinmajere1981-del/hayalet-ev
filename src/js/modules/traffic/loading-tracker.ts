@@ -3,7 +3,9 @@ import { AppState } from "../app-state.js";
 import { isDefaultPage } from "../webview/methods/shared/url-utils.js";
 
 export class LoadingTracker {
-  constructor(config) {
+  config: any;
+
+  constructor(config: any) {
     this.config = config;
   }
 

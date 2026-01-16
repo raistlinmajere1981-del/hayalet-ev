@@ -1,6 +1,8 @@
 
 export class SendTracker {
-  constructor(config) {
+  config: any;
+
+  constructor(config: any) {
     this.config = config;
   }
 

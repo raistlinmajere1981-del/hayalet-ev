@@ -1,6 +1,8 @@
 
 export class ThinkingTracker {
-  constructor(config) {
+  config: any;
+
+  constructor(config: any) {
     this.config = config;
   }
 
