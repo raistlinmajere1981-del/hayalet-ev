@@ -330,6 +330,100 @@ npm run cache:update
 npm run analyze -- --summary
 ```
 
+---
+
+## 🔷 TypeScript Entegrasyonu
+
+Proje "Incremental TypeScript" yaklaşımı kullanıyor: `.js` dosyaları TypeScript ile kontrol ediliyor, kademeli olarak `.ts`'e dönüştürülüyor.
+
+### Mevcut Durum
+
+| Kontrol | Komut | Açıklama |
+|---------|-------|----------|
+| ESLint + TS | `npm run lint` | Syntax + TypeScript kuralları |
+| Tip Kontrolü | `npm run check-types` | `tsc --checkJs` ile tip analizi |
+| Hızlı Kontrol | `npm run check` | lint + check-types |
+| Tam Kontrol | `npm run check:all` | lint + check-types + build |
+
+### Konfigürasyon Dosyaları
+
+| Dosya | Açıklama |
+|-------|----------|
+| `tsconfig.json` | Renderer (src/js) için TypeScript config |
+| `tsconfig.electron.json` | Electron (main process) için config |
+| `eslint.config.cjs` | ESLint + typescript-eslint entegrasyonu |
+| `src/js/global.d.ts` | Window.electronAPI tip tanımları |
+
+### Pre-commit Hook
+
+Her commit'te otomatik çalışır:
+1. **ESLint kontrolü** → Error varsa commit engellenir
+2. **TypeScript tip kontrolü** → Şimdilik uyarı (kademeli geçiş)
+3. **console.log kontrolü** → Renderer'da kullanım uyarısı
+
+### Güvenli .js → .ts Dönüşümü
+
+**⚠️ ÖNEMLİ:** Dosyaları manuel olarak yeniden adlandırmayın! Migration script kullanın:
+
+```bash
+# Mevcut durumu kontrol et
+npm run ts:check
+
+# Tek dosya dönüştür (backup alır, import'ları günceller)
+npm run ts:convert src/js/modules/my-module.js
+
+# Dönüşüm sonrası doğrulama
+npm run ts:validate
+
+# Sorun çıkarsa geri al
+node .rovodev/scripts/ts-migrate.js revert src/js/modules/my-module.ts
+```
+
+### Migration Script Özellikleri
+
+`ts-migrate.js` scripti şunları otomatik yapar:
+- ✅ Dönüşüm öncesi backup alır (`.ts-migrate-backup/`)
+- ✅ Dosyayı `.ts`'e yeniden adlandırır
+- ✅ Tüm import'ları günceller (`.js` → `.ts`)
+- ✅ Dönüşüm sonrası lint + type check çalıştırır
+- ✅ Sorun çıkarsa tek komutla geri alır
+
+### Dönüşüm Sırası Önerisi
+
+1. **Constants** (`src/js/constants/`) - Bağımlılığı az
+2. **Utils** (`src/js/modules/webview/methods/shared/`) - Yardımcı fonksiyonlar
+3. **Managers** (`src/js/modules/*-manager.js`) - Singleton servisler
+4. **Pages** (`src/js/pages/`) - UI logic
+5. **Core** (`core-engine.js`, `app.js`) - En son
+
+### Tip Tanımları Ekleme
+
+Yeni IPC metodu eklerken `src/js/global.d.ts`'i güncelle:
+
+```typescript
+// src/js/global.d.ts
+interface Window {
+  electronAPI?: {
+    // ... mevcut metodlar
+    myNewMethod: (param: string) => Promise<{ success: boolean }>;
+  };
+}
+```
+
+### Strict Mode Geçişi
+
+Şu an `strict: false`. Tip hataları düzeldikçe kademeli olarak aktif edilecek:
+
+```json
+// tsconfig.json - Sırayla aktif et:
+"noImplicitThis": true,     // ✅ Aktif
+"strictNullChecks": false,  // → true yap
+"noImplicitAny": false,     // → true yap
+"strict": false,            // → true yap (son adım)
+```
+
+---
+
 ## 🎯 CDP-Driven Development & Testing
 
 > **Detaylı rehber:** `.rovodev/cdp.md`
