@@ -1,22 +1,26 @@
 
 import { LogManager } from "../log-manager.js";
 
+type ListenerFn = (payload: any) => void;
+
 export class Emitter {
+  listeners: Set<ListenerFn>;
+
   constructor() {
     this.listeners = new Set();
   }
-  on(fn) {
+  on(fn: ListenerFn) {
     if (typeof fn === "function") this.listeners.add(fn);
     return () => this.off(fn);
   }
-  off(fn) {
+  off(fn: ListenerFn) {
     this.listeners.delete(fn);
   }
-  emit(payload) {
+  emit(payload: any) {
     for (const fn of Array.from(this.listeners)) {
       try {
         fn(payload);
-      } catch (err) {
+      } catch (err: any) {
         LogManager.addEvent("settings-events", "warning", "Listener error", { error: err.message });
       }
     }

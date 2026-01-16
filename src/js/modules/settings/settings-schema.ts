@@ -81,13 +81,13 @@ function mergeDefaults(obj, defaults) {
   return out;
 }
 
-function normalizeLegacy(raw) {
+function normalizeLegacy(raw: any): any {
   if (!raw || typeof raw !== "object") {
     return {};
   }
 
   const r = raw;
-  const out = {};
+  const out: any = {};
 
   if (isPlainObject(r.user)) {
     out.user = r.user;

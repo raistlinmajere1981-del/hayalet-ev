@@ -11,7 +11,12 @@
 import { LogManager } from "../log-manager.js";
 
 export class BaseRelay {
-  constructor(coreEngine) {
+  coreEngine: any;
+  _active: boolean;
+  _session: any;
+  _forwardCount: number;
+
+  constructor(coreEngine: any) {
     this.coreEngine = coreEngine;
     this._active = false;
     this._session = null;

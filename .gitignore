@@ -64,3 +64,4 @@ screenshots/
 !src/assets/*.png
 !src/assets/*.jpg
 !src/assets/*.jpeg
+.ts-migrate-backup/

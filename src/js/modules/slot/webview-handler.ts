@@ -111,7 +111,7 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
     return Promise.reject(new Error("Webview not available"));
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     if (!slotState._pendingLoad) {
       try {
         if (webview.getURL?.() && !webview.isLoading?.()) {

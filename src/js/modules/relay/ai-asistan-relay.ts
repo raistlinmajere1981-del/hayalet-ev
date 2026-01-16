@@ -21,7 +21,13 @@ import { SlotController } from "../slot-controller.js";
 const PROTOCOL_PATH = "protocol/AI-asistan.txt";
 
 export class AIAsistanRelay extends BaseRelay {
-  constructor(coreEngine) {
+  _sourceSlot: string | null;
+  _targetSlot: string;
+  _prevThinking: Record<string, string>;
+  _lastTexts: Record<string, string>;
+  _sessionState: string;
+
+  constructor(coreEngine: any) {
     super(coreEngine);
     // Kaynak AI slotu (ai1 veya ai2) ve hedef her zaman ai0 (asistan)
     this._sourceSlot = null;
@@ -56,7 +62,7 @@ export class AIAsistanRelay extends BaseRelay {
    * Protokolü okur ve AI'ye gönderir, ardından relay aktif olur
    * @param {Object} opts - { sourceSlot: 'ai1' | 'ai2' }
    */
-  async start(opts = {}) {
+  async start(opts: { sourceSlot?: string } = {}) {
     const source = opts.sourceSlot;
     
     if (!source || (source !== "ai1" && source !== "ai2")) {

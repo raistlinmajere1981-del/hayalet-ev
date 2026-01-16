@@ -10,7 +10,11 @@ import { BaseRelay } from "./base-relay.js";
 import { SlotController } from "../slot-controller.js";
 
 export class AIAIRelay extends BaseRelay {
-  constructor(coreEngine) {
+  _providers: string[];
+  _prevThinking: Record<string, string>;
+  _lastTexts: Record<string, string>;
+
+  constructor(coreEngine: any) {
     super(coreEngine);
     this._providers = ["ai1", "ai2"];
     this._prevThinking = { ai1: "idle", ai2: "idle" };
@@ -30,7 +34,7 @@ export class AIAIRelay extends BaseRelay {
    * Basit AI-AI relay oturumu başlat
    * @param {Object} opts - { providers: ['ai1', 'ai2'] }
    */
-  async start(opts = {}) {
+  async start(opts: { providers?: string[] } = {}) {
     this._providers = Array.isArray(opts.providers) && opts.providers.length
       ? opts.providers
       : ["ai1", "ai2"];
@@ -50,7 +54,7 @@ export class AIAIRelay extends BaseRelay {
    * 
    * @param {Object} opts - { providers, protocolPayload, attachments }
    */
-  async startProtocolSession(opts = {}) {
+  async startProtocolSession(opts: { providers?: string[]; protocolPayload?: any; attachments?: any[] } = {}) {
     try {
       if (!opts?.protocolPayload || !Array.isArray(opts.providers) || opts.providers.length < 2) {
         throw new Error("Invalid protocol session args");
