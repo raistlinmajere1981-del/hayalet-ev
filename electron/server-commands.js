@@ -123,7 +123,7 @@ handlers.devicemanager = async (payload = {}) => {
 
 handlers.screenshotmanager = async (payload = {}) => {
   try {
-    const { kind, selectorOrId, format } = parseScreenshotArgs(payload?.args || '');
+    const { kind: _kind, selectorOrId, format } = parseScreenshotArgs(payload?.args || '');
     const options = {};
     if (format) options.format = format;
     if (selectorOrId) options.region = selectorOrId;
@@ -165,7 +165,7 @@ handlers.windowmanager = async (payload = {}) => {
   }
 };
 
-handlers.restart = async (payload = {}) => {
+handlers.restart = async (_payload = {}) => {
   try {
     await appendLogLine(`[${nowStamp()}] Restart requested`);
     return { success: true, message: 'restart requested' };
@@ -175,7 +175,7 @@ handlers.restart = async (payload = {}) => {
   }
 };
 
-handlers.listfiles = async (payload = {}) => {
+handlers.listfiles = async (_payload = {}) => {
   try {
     if (!_mainWindow) return { success: false, message: 'no-main-window' };
     const baseDir = process.cwd();

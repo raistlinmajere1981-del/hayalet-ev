@@ -1,4 +1,4 @@
-import { ipcMain, app } from "electron";
+import { ipcMain, app as _app } from "electron";
 import {
   windowMinimize,
   windowClose,

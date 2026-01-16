@@ -87,7 +87,7 @@ export async function clearStartupCache() {
  * @param {string} partitionName - Partition adı
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function clearAllSessionData(partitionName) {
+async function _clearAllSessionData(partitionName) {
   try {
     const ses = session.fromPartition(partitionName);
 

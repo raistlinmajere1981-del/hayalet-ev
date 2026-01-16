@@ -23,7 +23,7 @@ import path from "path";
 import fs from "fs";
 import { applySchema } from "./schema.js";
 import { createQueries } from "./queries.js";
-import { hashString, generateId, generateMessageId, generateAttachmentId } from "./hash-utils.js";
+import { hashString, generateId as _generateId, generateMessageId, generateAttachmentId } from "./hash-utils.js";
 
 // ============================================================================
 // Constants

@@ -176,7 +176,7 @@ export async function commandArchiveCopy(event, payload = {}) {
 }
 
 export async function commandCleanupJob(event, payload = {}) {
-  const { jobId, tempPaths = [] } = payload;
+  const { jobId, tempPaths: _tempPaths = [] } = payload;
   if (!jobId) return { success: false, message: 'jobId eksik' };
   try {
     const { root } = await ensureCommandDirs();

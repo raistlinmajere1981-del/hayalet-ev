@@ -275,7 +275,7 @@ export const OpenCodeManager = {
    * @returns {Promise<void>}
    */
   _killProcess() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       if (!this._process) {
         resolve();
         return;

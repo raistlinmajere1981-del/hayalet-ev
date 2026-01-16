@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import { nativeImage, BrowserWindow } from 'electron';
 import screenshot from 'screenshot-desktop';
 
-export async function capturePageHandler(event, type = 'full', region = '') {
+export async function capturePageHandler(event, _type = 'full', region = '') {
   try {
     const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getAllWindows()[0];
     if (!win) throw new Error('Pencere bulunamadı');
@@ -40,7 +40,7 @@ export async function screenshotCaptureHandler(event, options = {}) {
     }
     const dataBuffer = useJpg ? img.toJPEG(90) : img.toPNG();
     const dataUrl = `data:image/${useJpg ? 'jpeg' : 'png'};base64,${dataBuffer.toString('base64')}`;
-    let savedPath = filePath;
+    const savedPath = filePath;
     if (filePath) {
       const targetDir = dirname(filePath);
       if (!existsSync(targetDir)) {

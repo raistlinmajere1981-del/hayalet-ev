@@ -64,7 +64,7 @@ export const MessageStore = {
    */
   async sync(params) {
     try {
-      const { accountId, webUrl, messages, authors } = params;
+      const { accountId, webUrl, messages, authors: _authors } = params;
 
       if (!accountId || !webUrl) {
         return { success: false, error: "Missing required parameters" };

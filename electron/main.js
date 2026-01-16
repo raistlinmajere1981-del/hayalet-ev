@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, ipcMain as _ipcMain, dialog, shell } from "electron";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { deviceActionHandler } from "./device-manager.js";
@@ -25,13 +25,13 @@ import {
   copyFileTo,
   deleteAsset,
   generateTree,
-  openPath,
+  openPath as _openPath,
 } from "./file-manager.js";
 import {
   createWindow as createAppWindow,
   initWindowManager,
   setTrayIconPath,
-  appRestart,
+  appRestart as _appRestart,
 } from "./window-manager.js";
 import { catboxUpload, uguuUpload } from "./webview-manager.js";
 import {
@@ -83,7 +83,7 @@ app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow;
 
-const { sessionId } = initLogSystem();
+const { sessionId: _sessionId } = initLogSystem();
 
 interceptMainConsole();
 

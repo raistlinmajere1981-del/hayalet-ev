@@ -54,17 +54,17 @@ export {
 import {
   initLogSystem,
   getSessionId,
-  writeSessionSummary,
+  writeSessionSummary as _writeSessionSummary,
 } from "./logger/session-manager.js";
 
 import {
   writeLog,
   writeErrorLog,
   updateLogPaths,
-  getCurrentChunkIndex,
+  getCurrentChunkIndex as _getCurrentChunkIndex,
 } from "./logger/log-writer.js";
 
-import { calculateLogStats } from "./logger/log-reader.js";
+import { calculateLogStats as _calculateLogStats } from "./logger/log-reader.js";
 
 // ============================================
 // ============================================
