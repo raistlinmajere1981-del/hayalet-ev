@@ -4,6 +4,35 @@ import { ConversationListManager } from "../modules/conversation-list-manager.js
 import { AppState } from "../modules/app-state.js";
 
 export class ArchivesController {
+  // State
+  entries: any[];
+  activeProvider: string;
+  selectedId: string | null;
+  searchQuery: string;
+  searchScope: string;
+  searchResults: { messages: any[]; attachments: any[] };
+  activeTab: string;
+  _searchTimeout: ReturnType<typeof setTimeout> | null;
+  _unsubSettings: (() => void) | null;
+
+  // DOM Elements
+  listEl: HTMLElement | null;
+  titleEl: HTMLInputElement | null;
+  summaryEl: HTMLTextAreaElement | null;
+  webUrlDisplayEl: HTMLElement | null;
+  statusEl: HTMLElement | null;
+  messageCountEl: HTMLElement | null;
+  detailEmptyEl: HTMLElement | null;
+  conversationFormEl: HTMLElement | null;
+  searchInputEl: HTMLInputElement | null;
+  clearSearchBtn: HTMLElement | null;
+  searchEmptyEl: HTMLElement | null;
+  messagesCountEl: HTMLElement | null;
+  filesCountEl: HTMLElement | null;
+  resultsMessagesEl: HTMLElement | null;
+  resultsFilesEl: HTMLElement | null;
+  _selectedEntry: any;
+
   constructor() {
     this.entries = [];
     this.activeProvider = "ai1";
@@ -13,6 +42,25 @@ export class ArchivesController {
     this.searchResults = { messages: [], attachments: [] };
     this.activeTab = "messages";
     this._searchTimeout = null;
+    this._unsubSettings = null;
+
+    // DOM Elements init
+    this.listEl = null;
+    this.titleEl = null;
+    this.summaryEl = null;
+    this.webUrlDisplayEl = null;
+    this.statusEl = null;
+    this.messageCountEl = null;
+    this.detailEmptyEl = null;
+    this.conversationFormEl = null;
+    this.searchInputEl = null;
+    this.clearSearchBtn = null;
+    this.searchEmptyEl = null;
+    this.messagesCountEl = null;
+    this.filesCountEl = null;
+    this.resultsMessagesEl = null;
+    this.resultsFilesEl = null;
+    this._selectedEntry = null;
   }
 
   async init() {
@@ -34,8 +82,8 @@ export class ArchivesController {
     this.listEl = document.getElementById("archives-list");
     
     // Detay formu
-    this.titleEl = document.getElementById("archive-title");
-    this.summaryEl = document.getElementById("archive-summary");
+    this.titleEl = document.getElementById("archive-title") as HTMLInputElement | null;
+    this.summaryEl = document.getElementById("archive-summary") as HTMLTextAreaElement | null;
     this.webUrlDisplayEl = document.getElementById("archive-weburl-display");
     this.statusEl = document.getElementById("archive-status");
     this.messageCountEl = document.getElementById("message-count");
@@ -43,7 +91,7 @@ export class ArchivesController {
     this.conversationFormEl = document.getElementById("conversation-form");
     
     // Arama
-    this.searchInputEl = document.getElementById("search-input");
+    this.searchInputEl = document.getElementById("search-input") as HTMLInputElement | null;
     this.clearSearchBtn = document.getElementById("btn-clear-search");
     this.searchEmptyEl = document.getElementById("search-empty");
     this.messagesCountEl = document.getElementById("messages-count");
@@ -56,9 +104,10 @@ export class ArchivesController {
     // Provider toggle
     document.getElementsByName("archives-provider").forEach((el) => {
       el.addEventListener("change", (e) => {
-        if (e.target.checked) {
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
           this.clearStatus();
-          this.activeProvider = e.target.value;
+          this.activeProvider = target.value;
           this.selectedId = null;
           this.renderList();
           this.fillForm(null);
@@ -85,7 +134,7 @@ export class ArchivesController {
 
     // Arama input (debounced)
     this.searchInputEl?.addEventListener("input", (e) => {
-      this.searchQuery = e.target.value;
+      this.searchQuery = (e.target as HTMLInputElement).value;
       this.clearSearchBtn?.classList.toggle("hidden", !this.searchQuery);
       
       clearTimeout(this._searchTimeout);
@@ -105,8 +154,9 @@ export class ArchivesController {
     // Arama scope toggle
     document.getElementsByName("search-scope").forEach((el) => {
       el.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          this.searchScope = e.target.value;
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
+          this.searchScope = target.value;
           if (this.searchQuery) this.performSearch();
         }
       });
@@ -115,7 +165,7 @@ export class ArchivesController {
     // Tab buttons
     document.querySelectorAll(".search-tabs .tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        this.switchTab(btn.dataset.tab);
+        this.switchTab((btn as HTMLElement).dataset.tab);
       });
     });
   }
@@ -347,8 +397,8 @@ export class ArchivesController {
     const { messages, attachments } = this.searchResults;
     
     // Sayaçları güncelle
-    if (this.messagesCountEl) this.messagesCountEl.textContent = messages.length;
-    if (this.filesCountEl) this.filesCountEl.textContent = attachments.length;
+    if (this.messagesCountEl) this.messagesCountEl.textContent = String(messages.length);
+    if (this.filesCountEl) this.filesCountEl.textContent = String(attachments.length);
 
     // Empty state
     const hasResults = messages.length > 0 || attachments.length > 0;
@@ -459,7 +509,7 @@ export class ArchivesController {
     // Provider'ı değiştir
     if (this.activeProvider !== targetProvider) {
       this.activeProvider = targetProvider;
-      const radio = document.querySelector(`input[name="archives-provider"][value="${targetProvider}"]`);
+      const radio = document.querySelector(`input[name="archives-provider"][value="${targetProvider}"]`) as HTMLInputElement | null;
       if (radio) radio.checked = true;
       await this.loadIndex();
     }
@@ -483,7 +533,7 @@ export class ArchivesController {
     
     // Tab butonlarını güncelle
     document.querySelectorAll(".search-tabs .tab-btn").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.tab === tab);
+      btn.classList.toggle("active", (btn as HTMLElement).dataset.tab === tab);
     });
 
     // Panel'leri güncelle
@@ -622,8 +672,8 @@ export class ArchivesController {
     if (labelAi1) labelAi1.textContent = ai1Name;
     if (labelAi2) labelAi2.textContent = ai2Name;
 
-    if (radioAi1) radioAi1.disabled = !ai1Assigned;
-    if (radioAi2) radioAi2.disabled = !ai2Assigned;
+    if (radioAi1) (radioAi1 as HTMLInputElement).disabled = !ai1Assigned;
+    if (radioAi2) (radioAi2 as HTMLInputElement).disabled = !ai2Assigned;
   }
 
   onShow() {

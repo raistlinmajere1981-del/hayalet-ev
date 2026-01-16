@@ -57,7 +57,7 @@ const COMMAND_LIST = [
 // ============================================
 // ============================================
 
-const handlers = {};
+const handlers: Record<string, (payload?: any) => Promise<any>> = {};
 
 COMMAND_LIST.forEach((name) => {
   const key = name.toLowerCase();
@@ -139,7 +139,7 @@ export const ServerCommands = {
     
     // Sonra custom komutlara bak
     if (MetaCommandManager.hasCommand(commandName)) {
-      const argsStr = payload?.args || "";
+      const argsStr = (payload as any)?.args || "";
       // Argümanları parse et (virgülle ayrılmış)
       const args = argsStr ? argsStr.split(",").map(s => s.trim().replace(/^["']|["']$/g, "")) : [];
       return MetaCommandManager.runCommand(commandName, args);

@@ -163,7 +163,7 @@ class RelayManagerClass {
       }
 
       if (activeRelay && thinkingComplete) {
-        const syncResult = await WebviewManager.syncConversation(provider);
+        const syncResult = await WebviewManager.syncConversation(provider, null, {});
         await activeRelay.handleThinkingComplete(provider, syncResult);
       }
 

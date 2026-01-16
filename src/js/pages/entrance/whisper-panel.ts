@@ -1,4 +1,7 @@
 export class WhisperPanel {
+    listEl: HTMLElement | null;
+    overdueWhispers: any[];
+
     constructor() {
         this.listEl = null;
         this.overdueWhispers = [];
@@ -29,7 +32,7 @@ export class WhisperPanel {
         const chatList = (await CoreEngine.whisper("list", { user: "ai1" })) || [];
         const ai2List = (await CoreEngine.whisper("list", { user: "ai2" })) || [];
         
-        const records = [...chatList, ...ai2List].filter(
+        const records = [...(Array.isArray(chatList) ? chatList : []), ...(Array.isArray(ai2List) ? ai2List : [])].filter(
             (rec) => !rec.done && (rec.when || 0) <= now,
         );
         
@@ -59,7 +62,7 @@ export class WhisperPanel {
                 <button class="icon-btn-text delete-btn" title="Sil">×</button>
             `;
 
-            row.querySelector(".delete-btn").addEventListener("click", async (e) => {
+            row.querySelector(".delete-btn")?.addEventListener("click", async (e) => {
                 e.stopPropagation();
                 await CoreEngine.whisper("remove", { user: rec.user, id: rec.id });
                 this.render();
@@ -78,11 +81,11 @@ export class WhisperPanel {
         this.render();
     }
 
-    handleListClick(ev) {
+    handleListClick(_ev: Event) {
         // Selection logic if needed
     }
 
-    escapeHtml(text) {
+    escapeHtml(text: string) {
         if (!text) return "";
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }

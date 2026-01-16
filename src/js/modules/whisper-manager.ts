@@ -34,7 +34,7 @@ class WhisperManagerClass {
     this.paused = false;
   }
 
-  async init(options = {}) {
+  async init(options: { settings?: any; sender?: (slot: string, text: string) => void } = {}) {
     this.settings = options.settings || {};
     if (typeof options.sender === "function") {
       this.sender = options.sender;
@@ -63,9 +63,7 @@ class WhisperManagerClass {
         return { pending: [], done: [] };
       }
       
-      const res = await window.electronAPI?.whisperLoad?.({
-        accountId: accountInfo.id,
-      });
+      const res = await window.electronAPI?.whisperLoad?.(accountInfo.id);
       if (res && typeof res === "object") {
         return {
           pending: Array.isArray(res.pending)
@@ -93,10 +91,7 @@ class WhisperManagerClass {
         return;
       }
       
-      await window.electronAPI?.whisperSave?.({
-        accountId: accountInfo.id,
-        payload: this.data[provider],
-      });
+      await window.electronAPI?.whisperSave?.(accountInfo.id, this.data[provider]);
     } catch (err) {
       const error = /** @type {Error} */ (err);
       LogManager.addEvent(
@@ -187,12 +182,8 @@ class WhisperManagerClass {
         this.markQueued(provider, rec.id);
         if (typeof this.sender === "function") {
           try {
-            const res = await this.sender({
-              provider,
-              record: rec,
-              message: msg,
-            });
-            sent = !!res?.success;
+            await this.sender(provider, msg);
+            sent = true;
             if (!sent) {
               this.markReady(provider, rec.id);
             }

@@ -22,6 +22,13 @@ import { initContextMenu, initReadModal, showContextMenu, showReadModal } from "
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 
 export class AnalyzeController {
+  stagedFiles: any[];
+  lastMessages: { ai1: string; ai2: string };
+  beforeUnloadHandler: (() => void) | null;
+  _unsubSettings: (() => void) | null;
+  _unsubSlotController: (() => void) | null;
+  _unsubAppState: (() => void) | null;
+
   constructor() {
     this.stagedFiles = [];
     this.lastMessages = { ai1: "", ai2: "" };
@@ -73,8 +80,9 @@ export class AnalyzeController {
     this._setupRelayListener();
 
     window.addEventListener("conversation-selected", (e) => {
-      if (e.detail?.provider) {
-        this._renderMessages(e.detail.provider);
+      const detail = (e as CustomEvent).detail;
+      if (detail?.provider) {
+        this._renderMessages(detail.provider);
       }
     });
   }
@@ -142,9 +150,9 @@ export class AnalyzeController {
   // ============================================
 
   async updateConnectionStates() {
-    const composeInput = document.getElementById("compose-input");
-    const uploadBtn = document.getElementById("upload-add-btn");
-    const sendBtn = document.getElementById("compose-send-btn");
+    const composeInput = document.getElementById("compose-input") as HTMLTextAreaElement | null;
+    const uploadBtn = document.getElementById("upload-add-btn") as HTMLButtonElement | null;
+    const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
     if (composeInput) composeInput.disabled = false;
     if (uploadBtn) uploadBtn.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
@@ -187,8 +195,8 @@ export class AnalyzeController {
     }
 
     if (sendToggle) {
-      sendToggle.disabled = !hasAccount || !connected;
-      if (!hasAccount || !connected) sendToggle.checked = false;
+      (sendToggle as HTMLInputElement).disabled = !hasAccount || !connected;
+      if (!hasAccount || !connected) (sendToggle as HTMLInputElement).checked = false;
     }
 
     if (messageArea) {
@@ -197,7 +205,7 @@ export class AnalyzeController {
     }
 
     if (filterCount) {
-      filterCount.disabled = !hasAccount || !connected;
+      (filterCount as HTMLInputElement).disabled = !hasAccount || !connected;
     }
   }
 
@@ -228,15 +236,15 @@ export class AnalyzeController {
     const bothAIsConnected = ai1Connected && ai2Connected;
     const aiChatEnabled = ai1Assigned && ai2Assigned && bothAIsConnected;
 
-    const aiChatBtn = document.getElementById("ai-chat-start");
+    const aiChatBtn = document.getElementById("ai-chat-start") as HTMLButtonElement | null;
     if (aiChatBtn) aiChatBtn.disabled = !aiChatEnabled;
 
-    const relayRadioAi1 = document.querySelector('input[name="relay-starter"][value="ai1"]');
-    const relayRadioAi2 = document.querySelector('input[name="relay-starter"][value="ai2"]');
+    const relayRadioAi1 = document.querySelector('input[name="relay-starter"][value="ai1"]') as HTMLInputElement | null;
+    const relayRadioAi2 = document.querySelector('input[name="relay-starter"][value="ai2"]') as HTMLInputElement | null;
     if (relayRadioAi1) relayRadioAi1.disabled = !aiChatEnabled;
     if (relayRadioAi2) relayRadioAi2.disabled = !aiChatEnabled;
 
-    const analyzeBtn = document.getElementById("compose-start-btn");
+    const analyzeBtn = document.getElementById("compose-start-btn") as HTMLButtonElement | null;
     if (analyzeBtn) analyzeBtn.disabled = !aiChatEnabled;
 
     this._updateCrossCheckboxState();
@@ -270,10 +278,10 @@ export class AnalyzeController {
   // ============================================
   // ============================================
 
-  async _renderMessages(provider) {
+  async _renderMessages(provider: "ai1" | "ai2") {
     const result = await renderMessages(provider, {
-      onContextMenu: (e, payload) => showContextMenu(e, payload, () => this.updateSendButtonState()),
-      onDoubleClick: (payload) => showReadModal(payload),
+      onContextMenu: (e: MouseEvent, payload: any) => showContextMenu(e, payload, () => this.updateSendButtonState()),
+      onDoubleClick: (payload: any) => showReadModal(payload),
     });
     this.lastMessages[provider] = result.lastMessage;
   }
@@ -305,7 +313,7 @@ export class AnalyzeController {
     await initDraft();
     const draft = await loadDraft();
     
-    const textarea = document.getElementById("compose-input");
+    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
     if (textarea) textarea.value = draft.message;
     this.stagedFiles = draft.files;
     this._renderUploadList();
@@ -315,7 +323,7 @@ export class AnalyzeController {
   }
 
   _persistDraft() {
-    const composeInput = document.getElementById("compose-input");
+    const composeInput = document.getElementById("compose-input") as HTMLTextAreaElement | null;
     const message = composeInput ? composeInput.value : "";
     persistDraft(message, this.stagedFiles);
   }
@@ -324,19 +332,19 @@ export class AnalyzeController {
   // ============================================
 
   handleSend() {
-    const msg = (document.getElementById("compose-input")?.value || "").trim();
+    const msg = ((document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value || "").trim();
     const hasFiles = this.stagedFiles.length > 0;
-    const sendAi1 = document.getElementById("send-ai1")?.checked;
-    const sendAi2 = document.getElementById("send-ai2")?.checked;
-    const cross = document.getElementById("send-cross")?.checked;
+    const sendAi1 = (document.getElementById("send-ai1") as HTMLInputElement | null)?.checked;
+    const sendAi2 = (document.getElementById("send-ai2") as HTMLInputElement | null)?.checked;
+    const cross = (document.getElementById("send-cross") as HTMLInputElement | null)?.checked;
 
     if ((!sendAi1 && !sendAi2) || (!msg && !hasFiles)) return;
 
     LogManager.addEvent("analyze", "info", "Gönderim başlatılıyor");
 
-    const targets = [];
-    const textByProvider = {};
-    const archiveFolders = {};
+    const targets: string[] = [];
+    const textByProvider: Record<string, string> = {};
+    const archiveFolders: Record<string, string> = {};
 
     if (sendAi1) {
       let text = msg;
@@ -379,7 +387,7 @@ export class AnalyzeController {
     sendFlow().finally(() => {
       this.stagedFiles = [];
       this._renderUploadList();
-      const composeInput = document.getElementById("compose-input");
+      const composeInput = document.getElementById("compose-input") as HTMLTextAreaElement | null;
       if (composeInput) composeInput.value = "";
     });
   }
@@ -417,7 +425,7 @@ export class AnalyzeController {
       return;
     }
 
-    const starter = document.querySelector('input[name="relay-starter"]:checked')?.value || "ai1";
+    const starter = (document.querySelector('input[name="relay-starter"]:checked') as HTMLInputElement | null)?.value || "ai1";
     await CoreEngine.sendProtocol({ room: "analyze", scenario: "ai-ai", targets, mode: "aiRelaySequential", context: { starter } });
     if (btn) btn.textContent = `${nickAi1} - ${nickAi2} Sohbet Bitir`;
   }
@@ -426,13 +434,13 @@ export class AnalyzeController {
   // ============================================
 
   updateSendButtonState() {
-    const btn = document.getElementById("compose-send-btn");
+    const btn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
     if (!btn) return;
 
-    const sendAi1 = document.getElementById("send-ai1")?.checked;
-    const sendAi2 = document.getElementById("send-ai2")?.checked;
+    const sendAi1 = (document.getElementById("send-ai1") as HTMLInputElement | null)?.checked;
+    const sendAi2 = (document.getElementById("send-ai2") as HTMLInputElement | null)?.checked;
     const hasTarget = sendAi1 || sendAi2;
-    const message = (document.getElementById("compose-input")?.value || "").trim();
+    const message = ((document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value || "").trim();
     const hasContent = message || this.stagedFiles.length > 0;
 
     btn.disabled = !hasTarget || !hasContent;
@@ -440,9 +448,9 @@ export class AnalyzeController {
   }
 
   _updateCrossCheckboxState() {
-    const cross = document.getElementById("send-cross");
-    const sendAi1 = document.getElementById("send-ai1");
-    const sendAi2 = document.getElementById("send-ai2");
+    const cross = document.getElementById("send-cross") as HTMLInputElement | null;
+    const sendAi1 = document.getElementById("send-ai1") as HTMLInputElement | null;
+    const sendAi2 = document.getElementById("send-ai2") as HTMLInputElement | null;
 
     if (cross && sendAi1 && sendAi2) {
       const bothChecked = sendAi1.checked && sendAi2.checked;
@@ -461,7 +469,8 @@ export class AnalyzeController {
         const nickAi1 = AppState.getNickname("ai1");
         const nickAi2 = AppState.getNickname("ai2");
         if (!btn) return;
-        const active = !!e?.detail?.active;
+        const detail = (e as CustomEvent).detail;
+        const active = !!detail?.active;
         btn.textContent = active ? `${nickAi1} - ${nickAi2} Sohbet Bitir` : `${nickAi1} - ${nickAi2} Sohbet Başlat`;
       });
     } catch (_e) { /* noop */ }
@@ -474,8 +483,8 @@ export class AnalyzeController {
     return list;
   }
 
-  _getConversationFolder(provider) {
-    const select = document.getElementById(`conversation-${provider}`);
+  _getConversationFolder(provider: string) {
+    const select = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
     if (!select) {
       return "";
     }

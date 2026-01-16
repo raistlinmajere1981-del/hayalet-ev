@@ -23,13 +23,14 @@ const callDevice = async (action, payload) => {
 };
 
 const DeviceManager = {
-  moveMouse: (x, y) => callDevice("move_mouse", [x, y]),
+  moveMouse: (x: number, y: number) => callDevice("move_mouse", [x, y]),
   click: (button = 1) => callDevice("click", [button]),
   clickHold: (button = 1) => callDevice("mousedown", [button]),
   clickRelease: (button = 1) => callDevice("mouseup", [button]),
-  key: (key) => callDevice("key", [key]),
-  write: (text) => callDevice("type", [text]),
-  copy: (text) => callDevice("copy", [text]),
+  rightClick: () => callDevice("click", [3]),
+  key: (key: string) => callDevice("key", [key]),
+  write: (text: string) => callDevice("type", [text]),
+  copy: (text: string) => callDevice("copy", [text]),
   paste: () => callDevice("paste", []),
 };
 

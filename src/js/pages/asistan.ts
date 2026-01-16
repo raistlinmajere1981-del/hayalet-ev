@@ -20,6 +20,28 @@ import { RelayManager } from "../modules/relay-manager.js";
 import { OPENCODE_DEFAULTS } from "../modules/webview/providers/opencode/config.js";
 
 export class AsistanController {
+  // Subscriptions
+  _unsubSettings: (() => void) | null;
+  _unsubSlot: (() => void) | null;
+  _unsubTraffic: (() => void) | null;
+  _unsubAppState: (() => void) | null;
+  
+  // State
+  _isRelayActive: boolean;
+  _isServerRunning: boolean;
+  
+  // DOM Elements
+  providerSelect: HTMLSelectElement | null;
+  connectBtn: HTMLButtonElement | null;
+  connectedList: HTMLElement | null;
+  relayBtn: HTMLButtonElement | null;
+  relaySourceSelect: HTMLSelectElement | null;
+  devtoolsBtn: HTMLButtonElement | null;
+  urlDisplay: HTMLElement | null;
+  titleEl: HTMLElement | null;
+  statusDot: HTMLElement | null;
+  statusText: HTMLElement | null;
+
   constructor() {
     this._unsubSettings = null;
     this._unsubSlot = null;
@@ -27,18 +49,30 @@ export class AsistanController {
     this._unsubAppState = null;
     this._isRelayActive = false;
     this._isServerRunning = false;
+    
+    // DOM Elements init
+    this.providerSelect = null;
+    this.connectBtn = null;
+    this.connectedList = null;
+    this.relayBtn = null;
+    this.relaySourceSelect = null;
+    this.devtoolsBtn = null;
+    this.urlDisplay = null;
+    this.titleEl = null;
+    this.statusDot = null;
+    this.statusText = null;
   }
 
   async init() {
     await SettingsManager.load();
     
     // DOM elementleri
-    this.providerSelect = document.getElementById("asistan-provider-select");
-    this.connectBtn = document.getElementById("asistan-connect-btn");
+    this.providerSelect = document.getElementById("asistan-provider-select") as HTMLSelectElement | null;
+    this.connectBtn = document.getElementById("asistan-connect-btn") as HTMLButtonElement | null;
     this.connectedList = document.getElementById("asistan-connected-list");
-    this.relayBtn = document.getElementById("asistan-relay-btn");
-    this.relaySourceSelect = document.getElementById("asistan-relay-source");
-    this.devtoolsBtn = document.getElementById("asistan-devtools-btn");
+    this.relayBtn = document.getElementById("asistan-relay-btn") as HTMLButtonElement | null;
+    this.relaySourceSelect = document.getElementById("asistan-relay-source") as HTMLSelectElement | null;
+    this.devtoolsBtn = document.getElementById("asistan-devtools-btn") as HTMLButtonElement | null;
     this.urlDisplay = document.getElementById("asistan-url-display");
     this.titleEl = document.getElementById("asistan-title");
     this.statusDot = document.getElementById("asistan-status-dot");
@@ -262,7 +296,7 @@ export class AsistanController {
   }
 
   _openDevTools() {
-    const webview = document.getElementById("ai0-webview");
+    const webview = document.getElementById("ai0-webview") as any;
     if (webview && typeof webview.openDevTools === "function") {
       webview.openDevTools();
     }

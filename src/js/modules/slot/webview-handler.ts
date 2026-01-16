@@ -17,6 +17,7 @@ import { TIMEOUTS } from "../../constants/index.js";
  * @param {Function} logFn - Log fonksiyonu
  * @param {Function} emitFn - Event emit fonksiyonu
  * @param {string} eventAttached - WEBVIEW_ATTACHED event adı
+ * @returns {Promise<{ needsLoad: boolean, targetUrl: string }>}
  */
 export async function attachWebview(slotState, slot, correlationId, logFn, emitFn, eventAttached) {
   const webview = slotState.webview;
@@ -28,6 +29,19 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
   if (webview.getAttribute?.("data-detached")) {
     webview.removeAttribute("data-detached");
   }
+  
+  // Webview'ı mount noktasına taşı (dom-ready event için görünür olması gerekli!)
+  const mountEl = document.getElementById(`${slot}-webview-mount`);
+  if (mountEl && !mountEl.contains(webview)) {
+    mountEl.appendChild(webview);
+    webview.style.position = "relative";
+    webview.style.top = "0";
+    webview.style.left = "0";
+    webview.style.width = "100%";
+    webview.style.height = "100%";
+    logFn(slot, "debug", "Webview moved to mount point", { correlationId });
+  }
+  
   webview.style.display = "";
 
   const currentSrc = webview.getAttribute("src") || "";
@@ -46,24 +60,23 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
     delete slotState._overrideUrl;
   }
 
-  const needsReload = (!currentSrc && !currentUrl) ||
-                      (currentUrl && normalizedTarget && 
-                       !currentUrl.startsWith(normalizedTarget) && 
-                       !normalizedTarget.startsWith(currentUrl));
+  const needsLoad = (!currentSrc && !currentUrl) ||
+                    (currentUrl && normalizedTarget && 
+                     !currentUrl.startsWith(normalizedTarget) && 
+                     !normalizedTarget.startsWith(currentUrl));
 
-  slotState._pendingLoad = false;
+  slotState._pendingLoad = needsLoad && !!targetUrl;
+  slotState._targetUrl = targetUrl;
 
-  if (targetUrl && needsReload) {
-    logFn(slot, "info", `Loading URL: ${targetUrl}`, { correlationId });
-    slotState._pendingLoad = true;
-    webview.setAttribute("src", targetUrl);
-  } else if (currentUrl) {
+  if (!needsLoad && currentUrl) {
     logFn(slot, "debug", `Webview already loaded: ${currentUrl}`, { correlationId });
   }
 
   slotState.lastActivity = Date.now();
   emitFn(slot, eventAttached, { correlationId });
   logFn(slot, "debug", "Webview attached", { correlationId });
+  
+  return { needsLoad: slotState._pendingLoad, targetUrl };
 }
 
 /**
@@ -98,6 +111,7 @@ const domReadyHandlers = {};
 
 /**
  * DOM ready olana kadar bekle
+ * Event listener'ları ÖNCE ekler, SONRA src set eder (race condition önleme)
  * @param {Object} slotState - Slot state objesi
  * @param {string} slot - Slot ID
  * @param {string} correlationId - İşlem correlation ID
@@ -112,6 +126,7 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
   }
 
   return new Promise<void>((resolve, reject) => {
+    // Yükleme gerekmiyorsa ve zaten yüklüyse hemen resolve et
     if (!slotState._pendingLoad) {
       try {
         if (webview.getURL?.() && !webview.isLoading?.()) {
@@ -122,8 +137,6 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
       } catch (_e) {
       }
     }
-
-    slotState._pendingLoad = false;
 
     const timeoutId = setTimeout(() => {
       clearDomReadyHandler(slot);
@@ -149,8 +162,17 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
 
     domReadyHandlers[slot] = { handler, errorHandler, webview, timeoutId };
 
+    // ÖNCE event listener'ları ekle
     webview.addEventListener("dom-ready", handler, { once: true });
     webview.addEventListener("did-fail-load", errorHandler, { once: true });
+
+    // SONRA src set et (race condition önleme)
+    if (slotState._pendingLoad && slotState._targetUrl) {
+      logFn(slot, "info", `Loading URL: ${slotState._targetUrl}`, { correlationId });
+      webview.setAttribute("src", slotState._targetUrl);
+      slotState._pendingLoad = false;
+      delete slotState._targetUrl;
+    }
   });
 }
 

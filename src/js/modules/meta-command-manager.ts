@@ -63,7 +63,7 @@ function compileCommand(name, code) {
     LogManager.addEvent("meta-command", "info", `Komut derlendi: ${name}`);
     return fn;
   } catch (err) {
-    LogManager.addEvent("meta-command", "error", `Komut derleme hatası (${name}): ${err.message}`);
+    LogManager.addEvent("meta-command", "error", `Komut derleme hatası (${name}): ${(err as Error).message}`);
     return null;
   }
 }
@@ -80,7 +80,7 @@ async function loadCommands() {
       // Tüm komutları derle
       _compiledHandlers = {};
       for (const [name, cmd] of Object.entries(_customCommands)) {
-        const handler = compileCommand(name, cmd.code);
+        const handler = compileCommand(name, (cmd as any).code);
         if (handler) {
           _compiledHandlers[name.toLowerCase()] = handler;
         }
@@ -89,7 +89,7 @@ async function loadCommands() {
       LogManager.addEvent("meta-command", "info", `${Object.keys(_customCommands).length} custom komut yüklendi`);
     }
   } catch (err) {
-    LogManager.addEvent("meta-command", "error", `loadCommands hatası: ${err.message}`);
+    LogManager.addEvent("meta-command", "error", `loadCommands hatası: ${(err as Error).message}`);
   }
 }
 
@@ -127,8 +127,8 @@ async function defineCommand(name, description, code, createdBy = "unknown") {
 
     return result || { success: false, error: "API hatası" };
   } catch (err) {
-    LogManager.addEvent("meta-command", "error", `defineCommand hatası: ${err.message}`);
-    return { success: false, error: err.message };
+    LogManager.addEvent("meta-command", "error", `defineCommand hatası: ${(err as Error).message}`);
+    return { success: false, error: (err as Error).message };
   }
 }
 
@@ -156,8 +156,8 @@ async function deleteCommand(name) {
 
     return result || { success: false, error: "API hatası" };
   } catch (err) {
-    LogManager.addEvent("meta-command", "error", `deleteCommand hatası: ${err.message}`);
-    return { success: false, error: err.message };
+    LogManager.addEvent("meta-command", "error", `deleteCommand hatası: ${(err as Error).message}`);
+    return { success: false, error: (err as Error).message };
   }
 }
 
@@ -201,8 +201,8 @@ async function runCommand(name, args = []) {
 
     return { success: true, result };
   } catch (err) {
-    LogManager.addEvent("meta-command", "error", `Çalıştırma hatası (${name}): ${err.message}`);
-    return { success: false, error: err.message };
+    LogManager.addEvent("meta-command", "error", `Çalıştırma hatası (${name}): ${(err as Error).message}`);
+    return { success: false, error: (err as Error).message };
   }
 }
 

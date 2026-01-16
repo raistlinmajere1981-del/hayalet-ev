@@ -349,9 +349,9 @@ class CoreEngineClass {
           context && typeof context === "object" && "starter" in context
             ? context.starter
             : null;
-        if (contextStarter && orderedTargets.includes(contextStarter)) {
+        if (contextStarter && orderedTargets.includes(contextStarter as string)) {
           orderedTargets = [
-            contextStarter,
+            contextStarter as string,
             ...orderedTargets.filter((t) => t !== contextStarter),
           ];
         }

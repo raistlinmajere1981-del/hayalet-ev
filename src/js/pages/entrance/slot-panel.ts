@@ -1,5 +1,8 @@
 export class SlotPanel {
-  constructor(slotId, settingsManager) {
+  slotId: string;
+  settingsManager: any;
+
+  constructor(slotId: string, settingsManager: any) {
     this.slotId = slotId; // "ai1" or "ai2"
     this.settingsManager = settingsManager;
   }
@@ -13,25 +16,25 @@ export class SlotPanel {
     // No more toggles - Settings are always visible
 
     // Account Select
-    const accSelect = document.getElementById(`${this.slotId}-account-select`);
+    const accSelect = document.getElementById(`${this.slotId}-account-select`) as HTMLSelectElement | null;
     accSelect?.addEventListener("change", (e) => {
-      this.updateSetting("accountId", e.target.value || null);
+      this.updateSetting("accountId", (e.target as HTMLSelectElement).value || null);
     });
 
     // Methods
-    const msgSelect = document.getElementById(`${this.slotId}-msg-method`);
+    const msgSelect = document.getElementById(`${this.slotId}-msg-method`) as HTMLSelectElement | null;
     msgSelect?.addEventListener("change", (e) => {
-      this.updateSetting("messageMethod", e.target.value);
+      this.updateSetting("messageMethod", (e.target as HTMLSelectElement).value);
     });
 
-    const fileSelect = document.getElementById(`${this.slotId}-file-method`);
+    const fileSelect = document.getElementById(`${this.slotId}-file-method`) as HTMLSelectElement | null;
     fileSelect?.addEventListener("change", (e) => {
-      this.updateSetting("fileMethod", e.target.value);
+      this.updateSetting("fileMethod", (e.target as HTMLSelectElement).value);
     });
 
-    const catchCheck = document.getElementById(`${this.slotId}-catch-check`);
+    const catchCheck = document.getElementById(`${this.slotId}-catch-check`) as HTMLInputElement | null;
     catchCheck?.addEventListener("change", (e) => {
-      this.updateSetting("catchCommands", e.target.checked);
+      this.updateSetting("catchCommands", (e.target as HTMLInputElement).checked);
     });
   }
 
@@ -51,24 +54,24 @@ export class SlotPanel {
     });
 
     // Render Account Select
-    const accSelect = document.getElementById(`${this.slotId}-account-select`);
+    const accSelect = document.getElementById(`${this.slotId}-account-select`) as HTMLSelectElement | null;
     if (accSelect) {
       const currentVal = slotSettings.accountId || "";
       accSelect.innerHTML = '<option value="">-- Hesap Seç --</option>' + 
-        availableAccounts.map(a => 
+        availableAccounts.map((a: any) => 
             `<option value="${a.id}">${a.nickname || a.email} (${a.provider})</option>`
         ).join("");
       accSelect.value = currentVal;
     }
 
     // Render Settings
-    const msgSelect = document.getElementById(`${this.slotId}-msg-method`);
+    const msgSelect = document.getElementById(`${this.slotId}-msg-method`) as HTMLSelectElement | null;
     if (msgSelect) msgSelect.value = slotSettings.messageMethod || "injection";
 
-    const fileSelect = document.getElementById(`${this.slotId}-file-method`);
+    const fileSelect = document.getElementById(`${this.slotId}-file-method`) as HTMLSelectElement | null;
     if (fileSelect) fileSelect.value = slotSettings.fileMethod || "dragdrop";
 
-    const catchCheck = document.getElementById(`${this.slotId}-catch-check`);
+    const catchCheck = document.getElementById(`${this.slotId}-catch-check`) as HTMLInputElement | null;
     if (catchCheck) catchCheck.checked = slotSettings.catchCommands ?? true;
   }
 

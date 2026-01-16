@@ -1,7 +1,9 @@
 import { LogManager } from "../../modules/log-manager.js";
 
 export class UserPanel {
-  constructor(settingsManager) {
+  settingsManager: any;
+
+  constructor(settingsManager: any) {
     this.settingsManager = settingsManager;
   }
 
@@ -12,7 +14,7 @@ export class UserPanel {
 
   setupListeners() {
     // Direct Nickname Edit (Blur & Enter)
-    const nickInput = document.getElementById("user-nickname-input");
+    const nickInput = document.getElementById("user-nickname-input") as HTMLInputElement | null;
     if (nickInput) {
         nickInput.addEventListener("blur", () => this.saveNickname());
         nickInput.addEventListener("keydown", (e) => {
@@ -30,7 +32,7 @@ export class UserPanel {
     // Google Drive - just auth buttons, no panel toggling anymore
     document.getElementById("gdrive-start-auth")?.addEventListener("click", () => this.startGDriveAuth());
     document.getElementById("gdrive-connect-btn")?.addEventListener("click", () => this.toggleGDriveConnection());
-    document.getElementById("gdrive-auth-code")?.addEventListener("change", (e) => this.saveGDriveCode(e.target.value));
+    document.getElementById("gdrive-auth-code")?.addEventListener("change", (e) => this.saveGDriveCode((e.target as HTMLInputElement).value));
   }
 
   async render() {
@@ -39,13 +41,13 @@ export class UserPanel {
     const gd = settings?.integrations?.googledrive || {};
 
     // User Nickname - Directly update input value
-    const nickInput = document.getElementById("user-nickname-input");
+    const nickInput = document.getElementById("user-nickname-input") as HTMLInputElement | null;
     if (nickInput && document.activeElement !== nickInput) {
         nickInput.value = user.nickname || "Kullanıcı";
     }
 
     // Google Drive Status
-    const gdStatus = document.getElementById("gdrive-status-dot");
+    const gdStatus = document.getElementById("gdrive-status-dot") as HTMLElement | null;
     const gdText = document.getElementById("gdrive-status-text");
     const gdBtn = document.getElementById("gdrive-connect-btn");
     
@@ -61,9 +63,9 @@ export class UserPanel {
         gdBtn.classList.toggle("btn-primary", !gd.connected);
     }
 
-    const clientIdEl = document.getElementById("gdrive-client-id");
-    const clientSecretEl = document.getElementById("gdrive-client-secret");
-    const authCodeEl = document.getElementById("gdrive-auth-code");
+    const clientIdEl = document.getElementById("gdrive-client-id") as HTMLInputElement | null;
+    const clientSecretEl = document.getElementById("gdrive-client-secret") as HTMLInputElement | null;
+    const authCodeEl = document.getElementById("gdrive-auth-code") as HTMLInputElement | null;
 
     if (clientIdEl) clientIdEl.value = gd.clientId || "";
     if (clientSecretEl) clientSecretEl.value = gd.clientSecret || "";
@@ -71,8 +73,8 @@ export class UserPanel {
   }
 
   async saveNickname() {
-    const input = document.getElementById("user-nickname-input");
-    const nick = input.value.trim();
+    const input = document.getElementById("user-nickname-input") as HTMLInputElement | null;
+    const nick = input?.value?.trim() || "";
     
     if (nick) {
         const current = this.settingsManager.getSnapshot();
@@ -160,9 +162,9 @@ export class UserPanel {
             LogManager.addEvent("entrance", "error", `GDrive disconnect hatası: ${e.message}`);
         }
     } else {
-        const clientId = document.getElementById("gdrive-client-id").value.trim();
-        const clientSecret = document.getElementById("gdrive-client-secret").value.trim();
-        const code = document.getElementById("gdrive-auth-code").value.trim();
+        const clientId = (document.getElementById("gdrive-client-id") as HTMLInputElement)?.value?.trim() || "";
+        const clientSecret = (document.getElementById("gdrive-client-secret") as HTMLInputElement)?.value?.trim() || "";
+        const code = (document.getElementById("gdrive-auth-code") as HTMLInputElement)?.value?.trim() || "";
 
         if (!clientId || !clientSecret || !code) return;
 

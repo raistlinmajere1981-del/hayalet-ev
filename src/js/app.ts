@@ -49,7 +49,7 @@ function ensureElectronApiFallback() {
     }
   };
 
-  window.electronAPI = {
+  (window as any).electronAPI = {
     loadSettings: async () => {
       try {
         const raw = localStorage.getItem(storageKey);
@@ -119,8 +119,7 @@ function ensureElectronApiFallback() {
     commandArchiveCopy: async () => ({ success: true }),
     commandCleanupJob: async () => {
     },
-    commandMoveFailed: async () => {
-    },
+    commandMoveFailed: async () => ({ success: true }),
 
     whisperLoad: async (_params) => ({ pending: [], done: [] }),
     whisperSave: async (_params) => ({ success: true }),

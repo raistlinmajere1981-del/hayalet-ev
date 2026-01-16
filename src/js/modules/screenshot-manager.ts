@@ -1,8 +1,15 @@
 import { LogManager } from "./log-manager.js";
 import { FileManager } from "./file-manager.js";
 
+interface ScreenshotOpts {
+  tag?: string;
+  format?: string;
+  hideCursor?: boolean;
+  allowRegionFallback?: boolean;
+}
+
 class ScreenshotManagerClass {
-  async captureRegion(selector, opts = {}) {
+  async captureRegion(selector: string | null, opts: ScreenshotOpts = {}) {
     const bounds = selector ? this.resolveRegion(selector) : null;
     const region = bounds
       ? `${Math.round(bounds.x)};${Math.round(bounds.y)}:${Math.round(bounds.width)};${Math.round(bounds.height)}`
@@ -30,7 +37,7 @@ class ScreenshotManagerClass {
     return this.persist(res, tag, opts.format);
   }
 
-  async captureWindow(windowId, opts = {}) {
+  async captureWindow(windowId: number, opts: ScreenshotOpts = {}) {
     const tag = opts.tag || `window-${windowId || "main"}`;
     let res = null;
     try {
@@ -51,7 +58,7 @@ class ScreenshotManagerClass {
     return this.persist(res, tag, opts.format);
   }
 
-  async captureSystem(_screenId = "", opts = {}) {
+  async captureSystem(_screenId = "", opts: ScreenshotOpts = {}) {
     const tag = opts.tag || "system";
     try {
       if (window.electronAPI?.screenshotCapture) {
@@ -84,7 +91,7 @@ class ScreenshotManagerClass {
     }
   }
 
-  resolveRegion(selector) {
+  resolveRegion(selector: string) {
     if (!selector) return null;
     const el = document.querySelector(selector);
     if (!el) return null;
@@ -92,7 +99,7 @@ class ScreenshotManagerClass {
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   }
 
-  async persist(result, tag = "shot", format = "png") {
+  async persist(result: { success?: boolean; dataUrl?: string; path?: string } | null, tag = "shot", format = "png") {
     if (!result?.success || !result.dataUrl) {
       return "";
     }

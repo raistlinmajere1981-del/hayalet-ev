@@ -176,15 +176,18 @@ export class WebviewPanel {
     const slot = settings?.slots?.[provider] || {};
     const hasAccount = !!slot.accountId;
     const connected = SlotController.isConnected(provider);
+    const connecting = SlotController.isTransitioning(provider);
     return {
       hasAccount,
       connected,
-      active: hasAccount && connected,
+      connecting,
+      // Webview aktif olmalı: bağlı VEYA bağlanıyor durumunda
+      active: hasAccount && (connected || connecting),
     };
   }
 
-  setDevtoolsEnabled(provider, enabled) {
-    const btn = document.getElementById(`${provider}-devtools-btn`);
+  setDevtoolsEnabled(provider: string, enabled: boolean) {
+    const btn = document.getElementById(`${provider}-devtools-btn`) as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = !enabled;
     btn.classList.toggle("disabled", !enabled);
@@ -219,7 +222,7 @@ export class WebviewPanel {
         continue;
       }
 
-      if (!state.connected) {
+      if (!state.connected && !state.connecting) {
         // Slot assigned but disconnected - webview gizle, overlay göster
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
@@ -230,6 +233,33 @@ export class WebviewPanel {
           overlayEl.querySelector(".overlay-subtitle").textContent = "Bağlanmak için tıklayın";
         }
         if (webviewEl) webviewEl.style.display = "none";
+        continue;
+      }
+
+      if (state.connecting) {
+        // Bağlanıyor - webview'ı göster ama overlay'da "Bağlanıyor" göster
+        this.setDevtoolsEnabled(provider, false);
+        if (overlayEl) {
+          overlayEl.classList.remove("hidden");
+          overlayEl.querySelector(".overlay-icon").textContent = "🔄";
+          overlayEl.querySelector(".overlay-title").textContent = "Bağlanıyor...";
+          overlayEl.querySelector(".overlay-subtitle").textContent = "Lütfen bekleyin";
+        }
+        // Webview'ı mount et ve GÖSTER (dom-ready için gerekli!)
+        const mountId = `${provider}-webview-mount`;
+        const mountEl = document.getElementById(mountId);
+        if (webviewEl && mountEl && !mountEl.contains(webviewEl)) {
+          mountEl.appendChild(webviewEl);
+          webviewEl.style.position = "relative";
+          webviewEl.style.top = "0";
+          webviewEl.style.left = "0";
+          webviewEl.style.width = "100%";
+          webviewEl.style.height = "100%";
+        }
+        if (webviewEl) {
+          webviewEl.style.display = "";
+          webviewEl.removeAttribute("data-detached");
+        }
         continue;
       }
 
@@ -304,7 +334,7 @@ export class WebviewPanel {
         return;
       }
 
-      const state = this.loadLogState[type] || { lastStop: 0 };
+      const state = this.loadLogState[type] || { lastStart: 0, lastStop: 0 };
       const now = Date.now();
 
       if (now - state.lastStop > 1200) {
@@ -391,7 +421,7 @@ export class WebviewPanel {
         return;
       }
 
-      webview.openDevTools();
+      (webview as any).openDevTools();
       this.addLog(type, "info", "DevTools açıldı");
     } catch (error) {
       LogManager.addEvent("webview-panel", "error", `DevTools açma hatası: ${error.message}`, { context: { type } });

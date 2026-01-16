@@ -21,7 +21,7 @@ export class EntranceHallController {
   whisperPanel: WhisperPanel;
   webviewPanel: WebviewPanel;
   _unsubSettings: (() => void) | null = null;
-  _unsubSlot: (() => void) | null = null;
+  _unsubSlotController: (() => void) | null = null;
 
   constructor() {
     this.defaultsApplied = false;
@@ -167,14 +167,19 @@ export class EntranceHallController {
 
     const hasAccount = !!settings?.slots?.[userType]?.accountId;
     if (!hasAccount) {
-      this.updateUserStatus(userType, false);
+      this.updateUserStatus(userType);
       LogManager.addEvent("entrance", "warning", `${userType} connect blocked: no account assigned`);
       return;
     }
 
-    await CoreEngine.setConnection(userType, true);
+    const result = await CoreEngine.setConnection(userType, true, {});
     this.updateUserStatus(userType);
-    LogManager.addEvent("entrance", "success", `${nickname} bağlandı`);
+    
+    if (result?.success) {
+      LogManager.addEvent("entrance", "success", `${nickname} bağlandı`);
+    } else {
+      LogManager.addEvent("entrance", "error", `${nickname} bağlantı hatası: ${result?.message || "bilinmeyen"}`);
+    }
   }
 
   async disconnectUser(userType) {
@@ -185,12 +190,14 @@ export class EntranceHallController {
     const nickname = AppState.getNickname(userType);
     LogManager.addEvent("entrance", "info", `${nickname} bağlantısı kesiliyor...`);
 
-    if (userType !== "user") {
-      await CoreEngine.setConnection(userType, false);
-    }
-
+    const result = await CoreEngine.setConnection(userType, false, {});
     this.updateUserStatus(userType);
-    LogManager.addEvent("entrance", "success", `${nickname} bağlantısı kesildi`);
+    
+    if (result?.success) {
+      LogManager.addEvent("entrance", "success", `${nickname} bağlantısı kesildi`);
+    } else {
+      LogManager.addEvent("entrance", "error", `${nickname} bağlantı kesme hatası: ${result?.message || "bilinmeyen"}`);
+    }
   }
 
   async updateUserStatus(userType) {
@@ -230,19 +237,20 @@ export class EntranceHallController {
     }
 
     if (toggleBtn) {
+      const btn = toggleBtn as HTMLButtonElement;
       if (!hasAccount) {
-        toggleBtn.textContent = "Hesap Seçin";
-        toggleBtn.disabled = true;
+        btn.textContent = "Hesap Seçin";
+        btn.disabled = true;
       } else if (connected) {
-        toggleBtn.textContent = "Bağlantıyı Kes";
-        toggleBtn.disabled = false;
-        toggleBtn.classList.remove("btn-primary");
-        toggleBtn.classList.add("btn-secondary");
+        btn.textContent = "Bağlantıyı Kes";
+        btn.disabled = false;
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-secondary");
       } else {
-        toggleBtn.textContent = "Bağlan";
-        toggleBtn.disabled = false;
-        toggleBtn.classList.remove("btn-secondary");
-        toggleBtn.classList.add("btn-primary");
+        btn.textContent = "Bağlan";
+        btn.disabled = false;
+        btn.classList.remove("btn-secondary");
+        btn.classList.add("btn-primary");
       }
     }
   }

@@ -35,8 +35,8 @@ function isSlotReady(slot) {
 function buildProtocolPayload({
   room = "",
   scenario = "",
-  targets = [],
-  context = {},
+  targets = [] as string[],
+  context = {} as { starter?: string },
 }) {
   const connected = (targets || []).filter((t) => isSlotReady(t));
 

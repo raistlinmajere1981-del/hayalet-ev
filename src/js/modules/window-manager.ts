@@ -26,7 +26,7 @@ function closeApp() {
   }
 }
 
-function setWindowState(state) {
+function setWindowState(state: string, _payload: any = {}) {
   const normalized = (state || "").toLowerCase();
   if (normalized === "fullscreen" || normalized === "full") {
     toggleFullscreen();

@@ -2,6 +2,18 @@ import { SettingsManager } from "./settings-manager.js";
 import { LogManager } from "./log-manager.js";
 
 class AppStateClass {
+  activeProvider: string | null;
+  activeConversations: Record<string, string | null>;
+  listeners: ((state: any) => void)[];
+  chat: {
+    activeTargets: string[];
+    titleByProvider: Record<string, string>;
+  };
+  asistanRelay: {
+    active: boolean;
+    sourceSlot: string | null;
+  };
+
   constructor() {
     this.activeProvider = null;
     this.activeConversations = {};
@@ -136,7 +148,7 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
-        LogManager.addEvent("app-state", "error", `Listener error: ${err.message}`);
+        LogManager.addEvent("app-state", "error", `Listener error: ${(err as Error).message}`);
       }
     });
   }

@@ -3,6 +3,16 @@ import { AppState } from "../modules/app-state.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 
 export class WhisperController {
+  pendingAi1: HTMLElement | null = null;
+  pendingAi2: HTMLElement | null = null;
+  doneAi1: HTMLElement | null = null;
+  doneAi2: HTMLElement | null = null;
+  nameAi1: HTMLElement | null = null;
+  nameAi2: HTMLElement | null = null;
+  _unsubAppState: (() => void) | null = null;
+  _unsubSettings: (() => void) | null = null;
+  updateHandler: (() => void) | null = null;
+
   async init() {
     await CoreEngine.init();
     this.pendingAi1 = document.getElementById("whisper-pending-ai1");
@@ -46,19 +56,23 @@ export class WhisperController {
   }
 
   async render() {
-    const pendingAi1 =
-      (await CoreEngine.whisper("list", { user: "ai1" })) || [];
-    const pendingAi2 =
-      (await CoreEngine.whisper("list", { user: "ai2" })) || [];
-    const doneAi1 = (await CoreEngine.whisper("done", { user: "ai1" })) || [];
-    const doneAi2 = (await CoreEngine.whisper("done", { user: "ai2" })) || [];
+    const pendingAi1Raw = await CoreEngine.whisper("list", { user: "ai1" });
+    const pendingAi2Raw = await CoreEngine.whisper("list", { user: "ai2" });
+    const doneAi1Raw = await CoreEngine.whisper("done", { user: "ai1" });
+    const doneAi2Raw = await CoreEngine.whisper("done", { user: "ai2" });
+    
+    const pendingAi1 = Array.isArray(pendingAi1Raw) ? pendingAi1Raw : [];
+    const pendingAi2 = Array.isArray(pendingAi2Raw) ? pendingAi2Raw : [];
+    const doneAi1 = Array.isArray(doneAi1Raw) ? doneAi1Raw : [];
+    const doneAi2 = Array.isArray(doneAi2Raw) ? doneAi2Raw : [];
+    
     this.fillList(this.pendingAi1, pendingAi1, "ai1");
     this.fillList(this.pendingAi2, pendingAi2, "ai2");
     this.fillList(this.doneAi1, doneAi1);
     this.fillList(this.doneAi2, doneAi2);
   }
 
-  fillList(container, items, provider = "") {
+  fillList(container: HTMLElement | null, items: any[], provider = "") {
     if (!container) return;
     container.innerHTML = "";
     if (!items.length) {
@@ -100,7 +114,7 @@ export class WhisperController {
   onHide() {
   }
 
-  formatDate(ts) {
+  formatDate(ts: number | undefined) {
     if (!ts) return "";
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return "";

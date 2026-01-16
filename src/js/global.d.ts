@@ -31,7 +31,7 @@ declare global {
       }) => Promise<{ staged: any[]; temp: string[]; commandDir: string }>;
       commandArchiveCopy: (payload: { jobId: string; targetDir: string }) => Promise<any>;
       commandCleanupJob: (payload: { jobId: string; tempPaths: string[] }) => Promise<void>;
-      commandMoveFailed: (payload: { jobId: string; tempPaths: string[] }) => Promise<void>;
+      commandMoveFailed: (payload: { jobId: string; tempPaths: string[] }) => Promise<{ success?: boolean; message?: string }>;
       // whispers
       whisperLoad: (provider: string) => Promise<{ pending: any[]; done: any[] }>;
       whisperSave: (provider: string, data: any) => Promise<{ success: boolean }>;
@@ -43,10 +43,14 @@ declare global {
       screenshotCapture: (options: any) => Promise<{ success: boolean; path?: string }>;
       // window controls
       windowMinimize: () => void;
+      windowMinimizeToTray: () => void;
       windowToggleFullscreen: () => void;
       windowClose: () => void;
       // app control
       appRestart: () => void;
+      // opencode server
+      opencodeStart: (params?: any) => Promise<{ success: boolean; url?: string; message?: string; error?: any; alreadyRunning?: boolean; existingServer?: any }>;
+      opencodeStop: () => Promise<{ success: boolean; message?: string }>;
       // device control
       deviceAction: (action: string, payload?: any) => Promise<any>;
       // file manager
@@ -61,7 +65,11 @@ declare global {
       generateTree: (
         scope: string,
         options: any
-      ) => Promise<{ success: boolean; path?: string; content?: string }>;
+      ) => Promise<{ success: boolean; path?: string; content?: string; message?: string; fileName?: string; lines?: number }>;
+      // meta commands
+      metaListCommands: () => Promise<{ success: boolean; commands?: Record<string, any>; message?: string }>;
+      metaDefineCommand: (params: { name: string; description: string; code: string; createdBy: string }) => Promise<{ success: boolean; command?: any; message?: string }>;
+      metaDeleteCommand: (params: { name: string }) => Promise<{ success: boolean; message?: string }>;
       // upload services
       fetchUrl: (url: string, options: any) => Promise<any>;
       catboxUpload: (options: any) => Promise<any>;
@@ -77,13 +85,24 @@ declare global {
       dbGetMessages: (params: { accountId: string; conversationId: string }) => Promise<any[]>;
       dbSyncMessages: (params: { accountId: string; webUrl: string; messages: any[]; authors?: any }) => Promise<any>;
       dbSearchMessages: (params: { accountId: string; query: string; limit?: number }) => Promise<any[]>;
+      dbSearchAllAccounts: (params: { query: string; limit?: number }) => Promise<any[]>;
+      dbSearchAttachments: (params: { accountId?: string; query: string; limit?: number }) => Promise<any[]>;
       // logging
       getSessionId: () => Promise<string>;
       onConsoleLogForward: (callback: (data: any) => void) => () => void;
       setupWebviewLogger: (webContentsId: number, provider: string, providerId: string) => Promise<{ success: boolean }>;
       // database extras
       dbSaveAttachment: (params: any) => Promise<any>;
-      dbGetAttachments: (params: { conversationId: string }) => Promise<any[]>;
+      dbGetAttachments: (params: { conversationId: string; accountId?: string }) => Promise<any[]>;
+      dbInitAccount: (params: { accountId: string }) => Promise<any>;
+      // dialog
+      showMessageBox: (options: any) => Promise<any>;
+      // upload services extra
+      tmpfileUpload: (options: any) => Promise<any>;
+      // file manager extra
+      fmEnsureDirs: (scope: string) => Promise<{ success: boolean; paths: Record<string, string>; message?: string }>;
+      commandStageAttachments: (payload: { jobId: string; files: string[] }) => Promise<{ success?: boolean; staged: any[]; temp: string[]; commandDir: string; message?: string }>;
+      fmArchiveWrite: (meta: any, files: any) => Promise<{ success: boolean; message?: string } | void>;
     };
 
     // Global helper functions attached in app.js

@@ -21,8 +21,8 @@ class ConversationListManagerClass {
   async init() {
     // DOM query'leri init sırasında yap - constructor'da sayfa henüz yüklenmemiş olabilir
     this.selects = {
-      ai1: document.getElementById("conversation-ai1"),
-      ai2: document.getElementById("conversation-ai2"),
+      ai1: document.getElementById("conversation-ai1") as HTMLSelectElement | null,
+      ai2: document.getElementById("conversation-ai2") as HTMLSelectElement | null,
     };
     
     await this.refresh({ silent: true });

@@ -10,9 +10,7 @@ class FileManagerClass {
 
   async ensureDirs(scope = "all") {
     try {
-      const res = /** @type {{ success: boolean; message?: string; paths?: Record<string, string> }} */ (
-        await window.electronAPI?.fmEnsureDirs?.(scope)
-      );
+      const res = await window.electronAPI?.fmEnsureDirs?.(scope) as { success: boolean; message?: string; paths?: Record<string, string> } | undefined;
       if (!res?.success) throw new Error(res?.message || "ensureDirs failed");
       if (res.paths && typeof res.paths === "object") {
         this.paths = { ...this.paths, ...res.paths };
@@ -102,9 +100,7 @@ class FileManagerClass {
         )
         .filter(Boolean),
     };
-    const stagedRes = /** @type {{ success?: boolean; message?: string; staged?: any[]; temp?: string[]; commandDir?: string }} */ (
-      await window.electronAPI?.commandStageAttachments?.(payload)
-    );
+    const stagedRes = await window.electronAPI?.commandStageAttachments?.(payload) as { success?: boolean; message?: string; staged?: any[]; temp?: string[]; commandDir?: string } | undefined;
     if (!stagedRes?.success) {
       LogManager.addEvent(
         "file",
@@ -155,12 +151,10 @@ class FileManagerClass {
     const tempPaths = (tempEntries || [])
       .map((t) => t.tempPath)
       .filter(Boolean);
-    const res = /** @type {{ success?: boolean; message?: string }} */ (
-      await window.electronAPI?.commandMoveFailed?.({
-        jobId,
-        tempPaths,
-      })
-    );
+    const res = await window.electronAPI?.commandMoveFailed?.({
+      jobId,
+      tempPaths,
+    }) as unknown as { success?: boolean; message?: string } | undefined;
     if (!res?.success) {
       LogManager.addEvent(
         "file",

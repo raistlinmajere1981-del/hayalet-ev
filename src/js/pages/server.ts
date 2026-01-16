@@ -8,11 +8,41 @@ import { ServerCommands } from "../modules/server-commands.js";
 import { getCommandGuideText } from "../constants/command-guides.js";
 
 export class ServerController {
+  // State
+  isDelegated: boolean;
+  availableControllers: { key: string; fallback: string }[];
+  unsubscribeTraffic: (() => void) | null;
+  logUnsubscribe: (() => void) | null;
+  _unsubSettings: (() => void) | null;
+  _unsubSlotController: (() => void) | null;
+
+  // DOM Elements
+  controllerSelect: HTMLSelectElement | null;
+  coreLog: HTMLElement | null;
+  aiLog: HTMLElement | null;
+  delegateBtn: HTMLButtonElement | null;
+  reclaimBtn: HTMLButtonElement | null;
+  commandSelect: HTMLSelectElement | null;
+  commandText: HTMLTextAreaElement | null;
+  commandGuide: HTMLElement | null;
+
   constructor() {
     this.isDelegated = false;
     this.availableControllers = [];
     this.unsubscribeTraffic = null;
     this.logUnsubscribe = null;
+    this._unsubSettings = null;
+    this._unsubSlotController = null;
+
+    // DOM Elements init
+    this.controllerSelect = null;
+    this.coreLog = null;
+    this.aiLog = null;
+    this.delegateBtn = null;
+    this.reclaimBtn = null;
+    this.commandSelect = null;
+    this.commandText = null;
+    this.commandGuide = null;
   }
 
   getProviderLabel(provider) {
@@ -30,13 +60,13 @@ export class ServerController {
       this._unsubSettings = SettingsManager.subscribe(() => {
       });
     }
-    this.controllerSelect = document.getElementById("server-controller-select");
+    this.controllerSelect = document.getElementById("server-controller-select") as HTMLSelectElement | null;
     this.coreLog = document.getElementById("server-core-log");
     this.aiLog = document.getElementById("server-ai-log");
-    this.delegateBtn = document.getElementById("server-delegate-btn");
-    this.reclaimBtn = document.getElementById("server-reclaim-btn");
-    this.commandSelect = document.getElementById("server-command-select");
-    this.commandText = document.getElementById("server-command-text");
+    this.delegateBtn = document.getElementById("server-delegate-btn") as HTMLButtonElement | null;
+    this.reclaimBtn = document.getElementById("server-reclaim-btn") as HTMLButtonElement | null;
+    this.commandSelect = document.getElementById("server-command-select") as HTMLSelectElement | null;
+    this.commandText = document.getElementById("server-command-text") as HTMLTextAreaElement | null;
     this.commandGuide = document.getElementById("server-command-guide");
 
     this.delegateBtn?.addEventListener("click", () => this.assignControl());
@@ -113,8 +143,8 @@ export class ServerController {
   updateControlButtons() {
     const hasConnectedAI =
       this.availableControllers && this.availableControllers.length > 0;
-    const delegateBtn = document.getElementById("server-delegate-btn");
-    const reclaimBtn = document.getElementById("server-reclaim-btn");
+    const delegateBtn = document.getElementById("server-delegate-btn") as HTMLButtonElement | null;
+    const reclaimBtn = document.getElementById("server-reclaim-btn") as HTMLButtonElement | null;
 
     if (delegateBtn) {
       delegateBtn.disabled = !hasConnectedAI;
@@ -142,10 +172,10 @@ export class ServerController {
     if (!this.commandGuide || !this.commandSelect) return;
     const selected = this.commandSelect.value;
     if (!selected) {
-      this.commandGuide.value = "";
+      (this.commandGuide as HTMLTextAreaElement).value = "";
       return;
     }
-    this.commandGuide.value = getCommandGuideText(selected);
+    (this.commandGuide as HTMLTextAreaElement).value = getCommandGuideText(selected);
   }
 
   addCommandToTextarea() {

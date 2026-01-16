@@ -144,7 +144,7 @@ class CommandManagerClass {
       meta: item.meta || {},
       payload: this.sanitizePayload(item.payload || {}),
       createdAt: Date.now(),
-      status: "queued",
+      status: "queued" as const,
       run: item.run || null,
       _deferred: deferred,
       done: deferred.promise,
@@ -286,7 +286,7 @@ class CommandManagerClass {
       {
         provider: target,
         command,
-        message: payload.message || "",
+        message: (payload as any).message || "",
         payload,
         run: executor || undefined,
       },

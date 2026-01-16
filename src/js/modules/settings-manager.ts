@@ -69,7 +69,7 @@ class SettingsManagerClass {
     return this._settings;
   }
 
-  async load(options = {}) {
+  async load(options: { force?: boolean } = {}) {
     const force = !!options.force;
     
     if (this._loaded && !force) {

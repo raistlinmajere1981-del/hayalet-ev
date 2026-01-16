@@ -47,12 +47,12 @@ class CommandExecutorClass {
         {
           provider: job.provider,
           duration,
-          errorCode: result?.code || "E_WEBVIEW_SEND",
+          errorCode: (result as any)?.code || "E_WEBVIEW_SEND",
         },
         job.id
       );
-      const err = new Error(result?.message || "E_WEBVIEW_SEND");
-      err.code = result?.code || "E_WEBVIEW_SEND";
+      const err = new Error(result?.message || "E_WEBVIEW_SEND") as Error & { code?: string };
+      err.code = (result as any)?.code || "E_WEBVIEW_SEND";
       throw err;
     }
     

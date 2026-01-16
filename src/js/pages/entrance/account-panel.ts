@@ -2,7 +2,11 @@ import { getMimeTypeFromPath, generateAccountId } from "../../constants/index.js
 import { LogManager } from "../../modules/log-manager.js";
 
 export class AccountPanel {
-  constructor(settingsManager) {
+  settingsManager: any;
+  _newAccountAvatarPath: string | null;
+  _editingAccountId: string | null;
+
+  constructor(settingsManager: any) {
     this.settingsManager = settingsManager;
     this._newAccountAvatarPath = null;
     this._editingAccountId = null;
@@ -126,9 +130,9 @@ export class AccountPanel {
     this._editingAccountId = account.id;
     this._newAccountAvatarPath = account.avatarPath; // Start with existing avatar
 
-    const emailEl = document.getElementById("new-account-email");
-    const providerEl = document.getElementById("new-account-provider");
-    const nicknameEl = document.getElementById("new-account-nickname");
+    const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
+    const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
+    const nicknameEl = document.getElementById("new-account-nickname") as HTMLInputElement | null;
     const btn = document.getElementById("settings-create-account");
     const cancelBtn = document.getElementById("settings-cancel-edit");
     const title = document.getElementById("account-form-title");
@@ -151,9 +155,9 @@ export class AccountPanel {
     this._editingAccountId = null;
     this._newAccountAvatarPath = null;
     
-    const emailEl = document.getElementById("new-account-email");
-    const providerEl = document.getElementById("new-account-provider");
-    const nicknameEl = document.getElementById("new-account-nickname");
+    const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
+    const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
+    const nicknameEl = document.getElementById("new-account-nickname") as HTMLInputElement | null;
     const btn = document.getElementById("settings-create-account");
     const cancelBtn = document.getElementById("settings-cancel-edit");
     const title = document.getElementById("account-form-title");
@@ -199,9 +203,9 @@ export class AccountPanel {
   }
 
   async createAccount() {
-    const emailEl = document.getElementById("new-account-email");
-    const providerEl = document.getElementById("new-account-provider");
-    const nicknameEl = document.getElementById("new-account-nickname");
+    const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
+    const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
+    const nicknameEl = document.getElementById("new-account-nickname") as HTMLInputElement | null;
 
     const email = emailEl?.value?.trim();
     const provider = providerEl?.value;
@@ -260,8 +264,8 @@ export class AccountPanel {
   }
 
   async updateAccount() {
-    const emailEl = document.getElementById("new-account-email");
-    const nicknameEl = document.getElementById("new-account-nickname");
+    const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
+    const nicknameEl = document.getElementById("new-account-nickname") as HTMLInputElement | null;
 
     const email = emailEl?.value?.trim();
     const nickname = nicknameEl?.value?.trim();
