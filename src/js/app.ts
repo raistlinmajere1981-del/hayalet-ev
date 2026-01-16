@@ -27,7 +27,7 @@ let currentPage = null;
 /**
  * @type {Object.<string, any>}
  */
-const controllers = {};
+const controllers: Record<string, any> = {};
 
 function ensureElectronApiFallback() {
   if (window.electronAPI) return;
@@ -86,8 +86,7 @@ function ensureElectronApiFallback() {
       );
     },
 
-    openPath: async () => {
-    },
+    openPath: async (_path: string) => ({ success: true }),
 
     appendLog: async (payload) => {
       console.debug("[appendLog]", payload);
@@ -253,7 +252,7 @@ export async function waitForDomReady(webview) {
 
 function setupNavigation() {
   try {
-    const menuItems = document.querySelectorAll(".menu-item");
+    const menuItems = document.querySelectorAll(".menu-item") as NodeListOf<HTMLElement>;
     if (menuItems.length === 0) {
       LogManager.addEvent("system", "warning", "No menu items found");
       return;
@@ -344,8 +343,8 @@ function setupTopBarButtons() {
 /**
  * @param {string} pageName
  */
-function setActiveNavigation(pageName) {
-  const menuItems = document.querySelectorAll(".menu-item");
+function setActiveNavigation(pageName: string) {
+  const menuItems = document.querySelectorAll(".menu-item") as NodeListOf<HTMLElement>;
   menuItems.forEach((mi) => mi.classList.remove("active"));
   if (!SPECIAL_PAGES.includes(pageName)) {
     menuItems.forEach((mi) => {
@@ -382,12 +381,14 @@ async function updateIndicatorAvatars() {
       path: getAvatar("ai1"),
       connected: SlotController.isConnected("ai1"),
       nickname: AppState.getNickname("ai1"),
+      isAsistan: false,
     },
     ai2: {
       el: document.getElementById("indicator-avatar-ai2"),
       path: getAvatar("ai2"),
       connected: SlotController.isConnected("ai2"),
       nickname: AppState.getNickname("ai2"),
+      isAsistan: false,
     },
   };
 
@@ -476,26 +477,23 @@ async function updateIndicatorAvatars() {
     if (isAsistan) return;
 
     try {
-      /** @type {HTMLSelectElement | null} */
-      const conv = document.getElementById(`conversation-${provider}`);
+      const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
       if (conv) {
         conv.disabled = slotState !== "connected";
         try {
-          /** @type {HTMLButtonElement | null} */
           const btn = document.getElementById(
             `conversation-refresh-${provider}`,
-          );
+          ) as (HTMLButtonElement & { __convRefreshHandler?: EventListener }) | null;
           if (btn) {
             btn.disabled = slotState !== "connected";
             if (btn.__convRefreshHandler) {
               btn.removeEventListener("click", btn.__convRefreshHandler);
             }
-            /** @param {MouseEvent} [ev] */
-            const handler = async (ev) => {
+            const handler = async (ev: MouseEvent) => {
               ev?.preventDefault();
               try {
                 await WebviewManager.syncProvider(provider, { from: "manual" });
-              } catch (err) {
+              } catch (err: any) {
                 LogManager.addEvent("sync", "warning", `Manual sync failed: ${err?.message || err}`);
               }
             };

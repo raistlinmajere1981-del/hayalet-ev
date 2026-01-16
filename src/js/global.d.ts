@@ -50,8 +50,8 @@ declare global {
       // device control
       deviceAction: (action: string, payload?: any) => Promise<any>;
       // file manager
-      fmEnsureDirs: (scope: string) => Promise<void>;
-      fmTempPath: (prefix: string, ext: string) => Promise<string>;
+      fmEnsureDirs: (scope: string) => Promise<{ success: boolean; paths: Record<string, string> }>;
+      fmTempPath: (prefix: string, ext: string) => Promise<{ path: string }>;
       fmWriteFileAtomic: (payload: any) => Promise<any>;
       fmArchiveWrite: (meta: any, files: any) => Promise<any>;
       // logging

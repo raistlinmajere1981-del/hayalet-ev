@@ -14,6 +14,13 @@ import { SlotController, SlotEvent } from "./slot-controller.js";
 import { getFilename, generateUniqueId, TIMEOUTS, decodeBase64 } from "../constants/index.js";
 
 class CoreEngineClass {
+  settings: any;
+  initialized: boolean;
+  relay: any;
+  _settingsSub: (() => void) | null;
+  _previousSettings: any;
+  _cleanupInterval: ReturnType<typeof setInterval> | null;
+
   constructor() {
     this.settings = null;
     this.initialized = false;
@@ -116,7 +123,7 @@ class CoreEngineClass {
    * @param {Object} opts - Options { force: boolean }
    * @returns {Promise<{ success: boolean, message?: string, correlationId?: string }>}
    */
-  async setConnection(provider, connected, opts = {}) {
+  async setConnection(provider: string, connected: boolean, opts: { force?: boolean } = {}) {
     if (!provider) return { success: false, message: "no-provider" };
 
     if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2") {
@@ -327,7 +334,7 @@ class CoreEngineClass {
       }
     }
 
-    const attachments = (payload.attachments || []).map((att) => ({
+    const attachments = ((payload as any).attachments || []).map((att: any) => ({
       name: att.name || getFilename(att.path || ""),
       path: att.path || att,
     }));
@@ -437,7 +444,7 @@ class CoreEngineClass {
     return WhisperManager.resume?.(runCheck);
   }
 
-  async enqueueWhisperJob(provider, record = {}, messageOverride = "") {
+  async enqueueWhisperJob(provider: string, record: { text?: string; id?: string; when?: any } = {}, messageOverride = "") {
     const text = messageOverride || record.text || "";
     const whisperId = record.id;
     const payload = {
@@ -474,7 +481,7 @@ class CoreEngineClass {
     return { success: true, jobId: job?.id };
   }
 
-  async handleCaughtCommand(commandName, payload = {}) {
+  async handleCaughtCommand(commandName: string, payload: { provider?: string; args?: string; source?: string; webUrl?: string; target?: string } = {}) {
     if (!commandName) return { success: false, message: "Komut adı yok" };
     const known = Array.isArray(ServerCommands.list())
       ? ServerCommands.list().some(
