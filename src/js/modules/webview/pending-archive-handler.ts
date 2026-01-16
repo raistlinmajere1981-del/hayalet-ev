@@ -12,6 +12,8 @@ import { FileManager } from "../file-manager.js";
 import { AppState } from "../app-state.js";
 
 class PendingArchiveHandlerClass {
+  _pendingArchives: Record<string, any[]>;
+
   constructor() {
     this._pendingArchives = {};
   }

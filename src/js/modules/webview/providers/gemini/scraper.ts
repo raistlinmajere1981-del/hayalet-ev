@@ -57,7 +57,7 @@ export function scrapeMessages() {
 
     let textContent = "";
     if (roleSelectors.text) {
-      const textNodes = Array.from(node.querySelectorAll(roleSelectors.text));
+      const textNodes = Array.from(node.querySelectorAll(roleSelectors.text)) as HTMLElement[];
       textContent = textNodes
         .map((t) => t.innerText)
         .join(" ")
@@ -69,7 +69,7 @@ export function scrapeMessages() {
     }
 
     if (!textContent) {
-      const imgs = Array.from(node.querySelectorAll("img"));
+      const imgs = Array.from(node.querySelectorAll("img")) as HTMLImageElement[];
       const alt = imgs
         .map((img) => (img.alt || "").trim())
         .filter(Boolean)

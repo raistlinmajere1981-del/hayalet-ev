@@ -18,6 +18,10 @@ import { ProviderRegistry } from "./provider-registry.js";
 import { ConversationSyncer } from "./conversation-syncer.js";
 
 class LifecycleManagerClass {
+  webviews: Record<string, any>;
+  _lastActivity: Record<string, number>;
+  _inactivityThreshold: number;
+
   constructor() {
     this.webviews = {};
     this._lastActivity = {};
@@ -67,7 +71,7 @@ class LifecycleManagerClass {
    * @param {HTMLElement} webview - Webview elementi
    * @param {Object} opts - { providerId, onReady }
    */
-  attach(provider, webview, opts = {}) {
+  attach(provider: string, webview: any, opts: { providerId?: string; onReady?: () => void; urgent?: boolean } = {}) {
     if (!provider || !webview) return;
 
     this.register(provider, webview);

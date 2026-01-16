@@ -18,6 +18,8 @@ import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import { PendingArchiveHandler } from "./webview/pending-archive-handler.js";
 
 class WebviewManagerClass {
+  settings: any;
+
   constructor() {
     this.settings = null;
   }

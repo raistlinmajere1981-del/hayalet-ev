@@ -25,7 +25,7 @@ export function scrapeMessages() {
     // Session turn bazlı scraping
     sessionTurns.forEach((turn) => {
       // Kullanıcı mesajı
-      const userMsg = turn.querySelector('[data-component="user-message"] [data-slot="user-message-text"]');
+      const userMsg = turn.querySelector('[data-component="user-message"] [data-slot="user-message-text"]') as HTMLElement | null;
       if (userMsg) {
         const text = (userMsg.innerText || userMsg.textContent || "").trim();
         if (text) {
@@ -37,7 +37,7 @@ export function scrapeMessages() {
     // Asistan response'ları (summary section içinde)
     const summaries = document.querySelectorAll('[data-slot="session-turn-summary-section"]');
     summaries.forEach((summary) => {
-      const markdown = summary.querySelector('[data-component="markdown"]');
+      const markdown = summary.querySelector('[data-component="markdown"]') as HTMLElement | null;
       if (markdown) {
         const text = (markdown.innerText || markdown.textContent || "").trim();
         if (text) {
@@ -48,14 +48,16 @@ export function scrapeMessages() {
   } else {
     // Fallback: Ayrı ayrı mesajları topla
     userMessages.forEach((node) => {
-      const text = (node.innerText || node.textContent || "").trim();
+      const el = node as HTMLElement;
+      const text = (el.innerText || el.textContent || "").trim();
       if (text) {
         result.push({ index: index++, role: "user", text });
       }
     });
 
     assistantMessages.forEach((node) => {
-      const text = (node.innerText || node.textContent || "").trim();
+      const el = node as HTMLElement;
+      const text = (el.innerText || el.textContent || "").trim();
       if (text) {
         result.push({ index: index++, role: "assistant", text });
       }

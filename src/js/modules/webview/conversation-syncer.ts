@@ -21,6 +21,19 @@ import { waitForDomReady } from "../../app.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
 
 class ConversationSyncerClass {
+  _settings: { catchEnabled?: boolean; slots?: Record<string, { catchCommands?: boolean }>; [key: string]: any } | null;
+  _syncInProgress: Record<string, boolean>;
+  _lastThinkingState: Record<string, string>;
+  _lastLoadingEnded: Record<string, number>;
+  _syncRetryTimers: Record<string, ReturnType<typeof setTimeout>>;
+  _syncRetryCounts: Record<string, number>;
+  _stableListeners: Record<string, ((err: any, result: any) => void)[]>;
+  _lastSyncResult: Record<string, { from?: string; [key: string]: any }>;
+  _trafficUnsubscribe: (() => void) | null;
+  _coreEngine: any;
+  _resolveWebviewFn: ((slot: string) => any) | null;
+  syncRetryLimit: number;
+
   constructor() {
     this._settings = null;
     this._syncInProgress = {};
@@ -106,7 +119,7 @@ class ConversationSyncerClass {
    * @param {Object} options - { catchEnabled }
    * @returns {Promise<Object>}
    */
-  async syncConversation(provider, webview, options = {}) {
+  async syncConversation(provider: string, webview: any, options: { catchEnabled?: boolean } = {}) {
     if (!webview) {
       LogManager.addEvent(`webview-${provider}`, "error", "Webview bulunamadı");
       return { success: false, message: "Webview bulunamadı" };
@@ -242,7 +255,7 @@ class ConversationSyncerClass {
    * @param {Object} opts - { from: 'auto' | 'manual' | 'retry' }
    * @returns {Promise<Object>}
    */
-  async syncProvider(provider, opts = {}) {
+  async syncProvider(provider: string, opts: { from?: string } = {}) {
     if (!provider) return { success: false, message: "no-provider" };
 
     if (opts?.from === "manual") {

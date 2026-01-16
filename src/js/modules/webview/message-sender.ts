@@ -17,6 +17,8 @@ import { waitForDomReady } from "../../app.js";
 import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 
 class MessageSenderClass {
+  _settings: any;
+
   constructor() {
     this._settings = null;
   }

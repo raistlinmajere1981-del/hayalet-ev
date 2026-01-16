@@ -75,11 +75,14 @@ declare global {
       dbUpdateConversation: (params: { accountId: string; conversationId: string; [key: string]: any }) => Promise<any>;
       dbDeleteConversation: (params: { accountId: string; conversationId: string }) => Promise<any>;
       dbGetMessages: (params: { accountId: string; conversationId: string }) => Promise<any[]>;
-      dbSyncMessages: (params: { accountId: string; webUrl: string; messages: any[] }) => Promise<any>;
+      dbSyncMessages: (params: { accountId: string; webUrl: string; messages: any[]; authors?: any }) => Promise<any>;
       dbSearchMessages: (params: { accountId: string; query: string; limit?: number }) => Promise<any[]>;
       // logging
       getSessionId: () => Promise<string>;
       onConsoleLogForward: (callback: (data: any) => void) => () => void;
+      setupWebviewLogger: (webContentsId: number, provider: string, providerId: string) => Promise<{ success: boolean }>;
+      // database extras
+      dbSaveAttachment: (params: any) => Promise<any>;
     };
 
     // Global helper functions attached in app.js
