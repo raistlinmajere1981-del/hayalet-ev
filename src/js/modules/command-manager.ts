@@ -1,32 +1,34 @@
 import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
 
-/**
- * @typedef {object} CommandJob
- * @property {string} id
- * @property {string} provider
- * @property {string} command
- * @property {string} message
- * @property {any[]} attachments
- * @property {string | null} sessionId
- * @property {object} meta
- * @property {object} payload
- * @property {number} createdAt
- * @property {'queued' | 'processing' | 'sent' | 'failed'} status
- * @property {Function | null} run
- * @property {any} _deferred
- * @property {Promise<any>} done
- * @property {any} [result]
- */
+interface CommandJob {
+  id: string;
+  provider: string;
+  target?: string;
+  command: string;
+  message: string;
+  attachments: any[];
+  sessionId: string | null;
+  meta: any;
+  payload: any;
+  createdAt: number;
+  status: 'queued' | 'processing' | 'sent' | 'failed';
+  run: (() => Promise<any>) | null;
+  _deferred: any;
+  done: Promise<any>;
+  result?: any;
+}
 
 class CommandManagerClass {
+  queue: CommandJob[];
+  processing: boolean;
+  executor: ((job: CommandJob) => Promise<any>) | null;
+  listeners: Record<string, ((...args: any[]) => void)[]>;
+
   constructor() {
-    /** @type {CommandJob[]} */
     this.queue = [];
     this.processing = false;
-    /** @type {((job: CommandJob) => Promise<any>) | null} */
     this.executor = null;
-    /** @type {Record<string, Function[]>} */
     this.listeners = { queued: [], sent: [], failed: [], status: [] };
   }
 
@@ -128,7 +130,7 @@ class CommandManagerClass {
    * @param {any} [item={}]
    * @returns {CommandJob}
    */
-  addJob(item = {}) {
+  addJob(item: Partial<CommandJob> & { target?: string } = {}) {
     const deferred = this.defer();
     /** @type {CommandJob} */
     const job = {

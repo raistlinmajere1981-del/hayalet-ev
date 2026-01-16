@@ -106,6 +106,13 @@ const createSlotState = () => ({
 // ============================================
 // ============================================
 class SlotControllerClass {
+  _slots: Record<string, any>;
+  _listeners: ((...args: any[]) => void)[];
+  _initialized: boolean;
+  _boundLog: typeof this._log;
+  _boundEmit: typeof this._emit;
+  _boundTransition: typeof this._transition;
+
   constructor() {
     this._slots = {
       ai0: createSlotState(), // Asistan slotu

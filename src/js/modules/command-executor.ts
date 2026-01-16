@@ -4,14 +4,13 @@ import { LogManager } from "./log-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 
 class CommandExecutorClass {
+  coreEngine: any;
+
   constructor() {
     this.coreEngine = null;
   }
 
-  /**
-   * @param {any} coreEngineInstance
-   */
-  init(coreEngineInstance) {
+  init(coreEngineInstance: any) {
     this.coreEngine = coreEngineInstance;
   }
 

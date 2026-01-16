@@ -4,6 +4,12 @@ import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
 
 class ConversationListManagerClass {
+  selects: Record<string, HTMLSelectElement | null>;
+  entries: any[];
+  currentSelections: Record<string, string>;
+  _settingsSub: (() => void) | null;
+  _slotControllerSub: (() => void) | null;
+
   constructor() {
     this.selects = { ai1: null, ai2: null };
     this.entries = [];
@@ -72,20 +78,17 @@ class ConversationListManagerClass {
   }
 
   async refresh(
-    options = { silent: false, forceSelectId: null, skipNotify: false },
+    options: { silent?: boolean; forceSelectId?: any; skipNotify?: boolean } = {},
   ) {
+    const { silent = false, forceSelectId = null, skipNotify = false } = options;
     try {
       // Her slot için hesap bilgisini al ve DB'den konuşmaları çek
       const ai1Account = AppState.getAccountForSlot("ai1");
       const ai2Account = AppState.getAccountForSlot("ai2");
 
       const [ai1Entries, ai2Entries] = await Promise.all([
-        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({
-          accountId: ai1Account.id,
-        }) : [],
-        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({
-          accountId: ai2Account.id,
-        }) : [],
+        ai1Account?.id ? window.electronAPI?.dbGetConversations?.(ai1Account.id) : [],
+        ai2Account?.id ? window.electronAPI?.dbGetConversations?.(ai2Account.id) : [],
       ]);
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)
@@ -94,11 +97,11 @@ class ConversationListManagerClass {
         ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2", mtime: e.updatedAt || e.createdAt })),
       ];
 
-      this.renderAll(options);
-      if (options.forceSelectId) {
-        this.updateSelection(options.forceSelectId, { silent: true });
+      this.renderAll({ silent });
+      if (forceSelectId) {
+        this.updateSelection(forceSelectId, { silent: true });
       }
-      if (!options.skipNotify) {
+      if (!skipNotify) {
         window.dispatchEvent(
           new CustomEvent("conversation-selected", {
             detail: { provider: "ai1" },
@@ -120,13 +123,13 @@ class ConversationListManagerClass {
     }
   }
 
-  renderAll(options = {}) {
+  renderAll(options: { silent?: boolean } = {}) {
     for (const provider in this.selects) {
       this.render(provider, options);
     }
   }
 
-  render(provider, options = {}) {
+  render(provider: string, options: { silent?: boolean } = {}) {
     const select = this.selects[provider];
     if (!select) return;
 
@@ -174,10 +177,11 @@ class ConversationListManagerClass {
     this.currentSelections[provider] = select.value;
   }
 
-  updateSelection(conversationId, options = { silent: false, provider: null }) {
+  updateSelection(conversationId: string, options: { silent?: boolean; provider?: string | null } = {}) {
+    const { silent = false, provider: targetProvider = null } = options;
     // Provider belirtilmişse ona göre, değilse ilk eşleşeni bul
-    const entry = options.provider 
-      ? this.entries.find((e) => e.id === conversationId && e.provider === options.provider)
+    const entry = targetProvider 
+      ? this.entries.find((e) => e.id === conversationId && e.provider === targetProvider)
       : this.entries.find((e) => e.id === conversationId);
     if (!entry) return;
 
@@ -186,7 +190,7 @@ class ConversationListManagerClass {
     if (select && select.value !== conversationId) {
       select.value = conversationId;
       this.currentSelections[provider] = conversationId;
-      if (!options.silent) {
+      if (!silent) {
         this.handleConversationChange(provider);
       }
     }

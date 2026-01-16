@@ -13,6 +13,12 @@ import { AIAIRelay } from "./relay/ai-ai-relay.js";
 import { AIAsistanRelay } from "./relay/ai-asistan-relay.js";
 
 class RelayManagerClass {
+  coreEngine: any;
+  _aiaiRelay: AIAIRelay | null;
+  _aiAsistanRelay: AIAsistanRelay | null;
+  _boundUpdate: typeof this._onTrafficUpdate;
+  _trafficUnsubscribe: (() => void) | null;
+
   constructor() {
     this.coreEngine = null;
     this._aiaiRelay = null;
@@ -21,11 +27,7 @@ class RelayManagerClass {
     this._trafficUnsubscribe = null;
   }
 
-  /**
-   * RelayManager'ı başlat
-   * @param {Object} coreEngine - CoreEngine instance
-   */
-  init(coreEngine) {
+  init(coreEngine: any) {
     this.coreEngine = coreEngine;
 
     this._aiaiRelay = new AIAIRelay(coreEngine);

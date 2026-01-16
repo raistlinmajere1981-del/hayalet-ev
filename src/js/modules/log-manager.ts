@@ -4,37 +4,40 @@
  * Merkezi olay kayıt sistemi. UI güncellemeleri ve dosya persistence sağlar.
  * Main process console-logger ile senkronize çalışır.
  * AI debugging için optimize edilmiş yapı.
- * 
- * @typedef {object} LogEntry
- * @property {string} timestamp - Zaman damgası
- * @property {string} source - Kaynak modül
- * @property {string} type - Log tipi (info, warning, error, debug, system)
- * @property {string} message - Log mesajı
- * @property {string | null} sessionId - Oturum ID
- * @property {string | null} [correlationId] - İşlem takip ID
- * @property {object | undefined} [context] - Ek bağlam bilgisi
- * @property {object | undefined} [meta] - Ek metadata
- * @property {object | undefined} [aiHint] - AI debugging ipucu
  */
 
+interface LogEntry {
+  timestamp: string;
+  source: string;
+  type: string;
+  message: string;
+  sessionId: string | null;
+  correlationId?: string | null;
+  context?: any;
+  meta?: any;
+  aiHint?: any;
+}
+
 class LogManagerClass {
+  logs: LogEntry[];
+  maxMemoryLogs: number;
+  listeners: ((entry: LogEntry) => void)[];
+  sessionId: string | null;
+  lastThrottle: Map<string, number>;
+  _consoleListenerSetup: boolean;
+  _initialized: boolean;
+  _activeOperations: Map<string, any>;
+  _correlationCounter: number;
+
   constructor() {
-    /** @type {LogEntry[]} */
     this.logs = [];
     this.maxMemoryLogs = 200;
-    /** @type {((entry: LogEntry) => void)[]} */
     this.listeners = [];
-    /** @type {string | null} */
     this.sessionId = null;
-    /** @type {Map<string, number>} */
     this.lastThrottle = new Map();
-    /** @type {boolean} */
     this._consoleListenerSetup = false;
-    /** @type {boolean} */
     this._initialized = false;
-    /** @type {Map<string, object>} */
     this._activeOperations = new Map();
-    /** @type {number} */
     this._correlationCounter = 0;
   }
 
@@ -301,7 +304,7 @@ class LogManagerClass {
    * @param {object} filter - Filtre kriterleri
    * @returns {LogEntry[]}
    */
-  filter(filter = {}) {
+  filter(filter: { source?: string; type?: string; correlationId?: string; contains?: string; since?: string | Date } = {}) {
     const { source, type, correlationId, contains, since } = filter;
     
     return this.logs.filter(entry => {
@@ -318,7 +321,7 @@ class LogManagerClass {
         return false;
       }
       if (since) {
-        const entryTime = new Date(entry.isoTimestamp || entry.timestamp);
+        const entryTime = new Date(entry.timestamp);
         const sinceTime = new Date(since);
         if (entryTime < sinceTime) {
           return false;

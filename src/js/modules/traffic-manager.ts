@@ -70,6 +70,17 @@ const defaultState = () => ({
 // ============================================
 // ============================================
 class TrafficManagerClass {
+  indicators: Record<string, any>;
+  state: Record<string, any>;
+  listeners: ((...args: any[]) => void)[];
+  webviews: Record<string, any>;
+  pollTimer: ReturnType<typeof setInterval> | null;
+  _runners: Record<string, any>;
+  _skipNextLoading: Record<string, boolean>;
+  loadingTracker: LoadingTracker;
+  thinkingTracker: ThinkingTracker;
+  sendTracker: SendTracker;
+
   constructor() {
     this.indicators = { ai0: {}, ai1: {}, ai2: {} };
     this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState() };

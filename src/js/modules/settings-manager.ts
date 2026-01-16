@@ -31,13 +31,20 @@ function setByPath(obj, path, value) {
 }
 
 class SettingsManagerClass {
+  _settings: any;
+  _loaded: boolean;
+  _emitter: Emitter;
+  _lastSaved: any;
+  _broadcast: any;
+  _stopBroadcast: () => void;
+
   constructor() {
     this._settings = defaultSettings();
     this._loaded = false;
     this._emitter = new Emitter();
     this._lastSaved = defaultSettings();
     this._broadcast = createSettingsBroadcast("hayalet-settings");
-    this._stopBroadcast = this._broadcast.on((msg) => {
+    this._stopBroadcast = this._broadcast.on((msg: any) => {
       if (!msg || msg.type !== "settings-changed") {
         return;
       }

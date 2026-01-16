@@ -2,6 +2,8 @@ import { LogManager } from "./log-manager.js";
 import { getExtension, getMimeType, getFilename, generateUniqueId } from "../constants/index.js";
 
 class FileManagerClass {
+  paths: Record<string, string>;
+
   constructor() {
     this.paths = {};
   }

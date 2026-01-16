@@ -17,6 +17,12 @@ function resolveProvider(name = "") {
 }
 
 class WhisperManagerClass {
+  data: Record<string, { pending: any[]; done: any[] }>;
+  timer: ReturnType<typeof setInterval> | null;
+  sender: ((slot: string, text: string) => void) | null;
+  settings: any;
+  paused: boolean;
+
   constructor() {
     this.data = {
       ai1: { pending: [], done: [] },

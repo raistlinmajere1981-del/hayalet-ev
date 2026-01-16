@@ -77,6 +77,9 @@ declare global {
       dbGetMessages: (accountId: string, conversationId: string) => Promise<any[]>;
       dbSyncMessages: (accountId: string, conversationId: string, messages: any[]) => Promise<any>;
       dbSearchMessages: (accountId: string, query: string, options?: any) => Promise<any[]>;
+      // logging
+      getSessionId: () => Promise<string>;
+      onConsoleLogForward: (callback: (data: any) => void) => () => void;
     };
 
     // Global helper functions attached in app.js
