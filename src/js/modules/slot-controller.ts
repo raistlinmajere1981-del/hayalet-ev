@@ -86,8 +86,25 @@ const CONFIG = {
 };
 
 // ============================================
+// Slot State Interface
 // ============================================
-const createSlotState = () => ({
+interface SlotStateData {
+  state: string;
+  accountId: string | null;
+  providerId: string | null;
+  providerConfig: unknown | null;
+  webview: HTMLElement | null;
+  webviewRegistered: boolean;
+  domReady: boolean;
+  currentUrl: string | null;
+  urlExcluded: boolean;
+  trafficStarted: boolean;
+  correlationId: string | null;
+  error: Error | null;
+  lastActivity: number;
+}
+
+const createSlotState = (): SlotStateData => ({
   state: SlotState.EMPTY,
   accountId: null,
   providerId: null,
@@ -133,14 +150,14 @@ class SlotControllerClass {
   async init() {
     if (this._initialized) return;
     
-    SettingsManager.subscribe(({ settings, changedPaths }) => {
-      handleSettingsChange(this._slots, settings, changedPaths, (slot, s) => {
+    SettingsManager.subscribe(({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
+      handleSettingsChange(this._slots, settings, changedPaths, (slot: string, s: SlotStateData) => {
         this._syncSlotWithSettings(slot, s);
       });
     });
     
     const settings = SettingsManager.getSnapshot();
-    syncWithSettings(this._slots, settings, (slot, s) => {
+    syncWithSettings(this._slots, settings, (slot: string, s: SlotStateData) => {
       this._syncSlotWithSettings(slot, s);
     });
     
@@ -151,38 +168,38 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  getState(slot) {
+  getState(slot: string) {
     if (!this._isValidSlot(slot)) return null;
     return { ...this._slots[slot] };
   }
 
-  isConnected(slot) {
+  isConnected(slot: string) {
     if (!this._isValidSlot(slot)) return false;
     return this._slots[slot].state === SlotState.CONNECTED;
   }
 
-  isAssigned(slot) {
+  isAssigned(slot: string) {
     if (!this._isValidSlot(slot)) return false;
     return this._slots[slot].state !== SlotState.EMPTY;
   }
 
-  isTransitioning(slot) {
+  isTransitioning(slot: string) {
     if (!this._isValidSlot(slot)) return false;
     const state = this._slots[slot].state;
     return state === SlotState.CONNECTING || state === SlotState.DISCONNECTING;
   }
 
-  isUrlExcluded(slot) {
+  isUrlExcluded(slot: string) {
     if (!this._isValidSlot(slot)) return false;
     return this._slots[slot].urlExcluded;
   }
 
-  getProviderId(slot) {
+  getProviderId(slot: string) {
     if (!this._isValidSlot(slot)) return null;
     return this._slots[slot].providerId;
   }
 
-  getWebview(slot) {
+  getWebview(slot: string) {
     if (!this._isValidSlot(slot)) return null;
     return this._slots[slot].webview;
   }
@@ -190,7 +207,7 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  registerWebview(slot, webview) {
+  registerWebview(slot: string, webview: HTMLElement) {
     if (!this._isValidSlot(slot) || !webview) return;
     
     const slotState = this._slots[slot];
@@ -202,7 +219,7 @@ class SlotControllerClass {
     this._emit(slot, SlotEvent.WEBVIEW_REGISTERED, { webview });
   }
 
-  unregisterWebview(slot) {
+  unregisterWebview(slot: string) {
     if (!this._isValidSlot(slot)) return;
     
     const slotState = this._slots[slot];
@@ -219,7 +236,7 @@ class SlotControllerClass {
     this._emit(slot, SlotEvent.WEBVIEW_DETACHED, {});
   }
 
-  recoverFromError(slot) {
+  recoverFromError(slot: string) {
     if (!this._isValidSlot(slot)) {
       return { success: false, message: "invalid-slot" };
     }
@@ -327,7 +344,7 @@ class SlotControllerClass {
         await this._startTraffic(slot, correlationId);
       }
 
-      setupUrlChangeHandler(slotState, slot, correlationId, (s, url) => {
+      setupUrlChangeHandler(slotState, slot, correlationId, (s: string, url: string) => {
         this._handleUrlChange(s, url);
       });
 
@@ -409,7 +426,7 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  navigate(slot, url = null) {
+  navigate(slot: string, url: string | null = null) {
     if (!this._isValidSlot(slot)) return;
     
     navigateWebview(
@@ -421,7 +438,7 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  subscribe(listener) {
+  subscribe(listener: (payload: unknown) => void) {
     if (typeof listener === "function") {
       this._listeners.push(listener);
     }
@@ -430,8 +447,8 @@ class SlotControllerClass {
     };
   }
 
-  on(eventType, listener) {
-    const wrapper = (payload) => {
+  on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void) {
+    const wrapper = (payload: { event?: string; slot?: string }) => {
       if (payload.event === eventType) {
         listener(payload);
       }
@@ -447,34 +464,34 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  _syncSlotWithSettings(slot, settings) {
+  _syncSlotWithSettings(slot: string, settings: SlotStateData) {
     syncSlotWithSettings(
       this._slots[slot], slot, settings,
       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
       this._boundLog, this._boundTransition, this._boundEmit,
-      (s, opts) => this.disconnect(s, opts),
-      (s) => this.navigate(s)
+      (s: string, opts: { force?: boolean }) => this.disconnect(s, opts),
+      (s: string) => this.navigate(s)
     );
   }
 
   // ============================================
   // ============================================
 
-  _handleUrlChange(slot, newUrl) {
+  _handleUrlChange(slot: string, newUrl: string) {
     handleUrlChange(
       this._slots[slot], slot, newUrl, SlotState.CONNECTED,
       this._boundLog, this._boundEmit,
       { URL_CHANGED: SlotEvent.URL_CHANGED, URL_EXCLUDED: SlotEvent.URL_EXCLUDED, URL_INCLUDED: SlotEvent.URL_INCLUDED },
-      (s, cid) => this._startTraffic(s, cid),
-      (s, cid) => this._stopTraffic(s, cid)
+      (s: string, cid: string) => this._startTraffic(s, cid),
+      (s: string, cid: string) => this._stopTraffic(s, cid)
     );
   }
 
   // ============================================
   // ============================================
 
-  async _startTraffic(slot, correlationId) {
+  async _startTraffic(slot: string, correlationId: string) {
     const slotState = this._slots[slot];
     if (!slotState.webview || slotState.trafficStarted) return;
 
@@ -487,7 +504,7 @@ class SlotControllerClass {
     }
   }
 
-  async _stopTraffic(slot, correlationId) {
+  async _stopTraffic(slot: string, correlationId: string) {
     const slotState = this._slots[slot];
     if (!slotState.trafficStarted) return;
 
@@ -503,21 +520,21 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  async _cleanupAfterError(slot, correlationId) {
+  async _cleanupAfterError(slot: string, correlationId: string) {
     await cleanupAfterError(
       this._slots[slot], slot, correlationId,
       this._boundLog,
       clearUrlChangeHandler,
       clearDomReadyHandler,
-      (s, cid) => this._stopTraffic(s, cid),
-      (s, cid) => detachWebview(this._slots[s], s, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED)
+      (s: string, cid: string) => this._stopTraffic(s, cid),
+      (s: string, cid: string) => detachWebview(this._slots[s], s, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED)
     );
   }
 
   // ============================================
   // ============================================
 
-  _transition(slot, newState) {
+  _transition(slot: string, newState: string) {
     const slotState = this._slots[slot];
     const oldState = slotState.state;
     
@@ -533,17 +550,17 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  _isValidSlot(slot) {
+  _isValidSlot(slot: string) {
     return slot === "ai0" || slot === "ai1" || slot === "ai2";
   }
 
-  _generateCorrelationId(slot, operation) {
+  _generateCorrelationId(slot: string, operation: string) {
     const timestamp = Date.now();
     const random = Math.random().toString(36).slice(2, 8);
     return `${slot}-${operation}-${timestamp}-${random}`;
   }
 
-  _emit(slot, event, data = {}) {
+  _emit(slot: string, event: string, data: Record<string, unknown> = {}) {
     const payload = {
       slot,
       event,
@@ -565,7 +582,7 @@ class SlotControllerClass {
     LogManager.addEvent(`slot-${slot}`, level, `${prefix}${message}`);
   }
 
-  _delay(ms) {
+  _delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
