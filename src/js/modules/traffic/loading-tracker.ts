@@ -2,20 +2,79 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 import { AppState } from "../app-state.js";
 import { isDefaultPage } from "../webview/methods/shared/url-utils.js";
 
-export class LoadingTracker {
-  config: any;
+// ============================================================================
+// Types
+// ============================================================================
 
-  constructor(config: any) {
+interface LoadingConfig {
+  loading: {
+    maxWaitForScrollMs: number;
+    autoScrollIntervalMs: number;
+    noScrollChangeTimeoutMs: number;
+  };
+}
+
+interface WebviewElement {
+  isDestroyed?: () => boolean;
+  getWebContentsId?: () => number;
+  isLoading?: () => boolean;
+  executeJavaScript: (script: string, userGesture?: boolean) => Promise<unknown>;
+}
+
+interface ViewState {
+  status?: { loading?: string };
+  lastHref?: string;
+  loadingActive?: boolean;
+  loadingStartTime?: number;
+  loadingScrollAppeared?: boolean;
+  lastScrollChange?: number;
+  lastAutoScrollAt?: number;
+  loadingJustEnded?: boolean;
+  loadingEndedAt?: number;
+}
+
+interface ProbeData {
+  scroll?: {
+    scrollHeight?: number;
+    clientHeight?: number;
+    lastChange?: number;
+    atBottom?: boolean;
+  };
+  sendState?: string;
+}
+
+interface LoadingEvent {
+  type: string;
+  message: string;
+}
+
+interface CheckResult {
+  shouldEnd: boolean;
+  reason: string | null;
+  newState: ViewState;
+}
+
+interface ProbeResult {
+  indicator: string;
+  newState: ViewState;
+  event: LoadingEvent | null;
+}
+
+// ============================================================================
+// LoadingTracker
+// ============================================================================
+
+export class LoadingTracker {
+  config: LoadingConfig;
+
+  constructor(config: LoadingConfig) {
     this.config = config;
   }
 
   /**
    * Scroll to bottom of the webview
-   * @param {string} provider - Provider identifier
-   * @param {Object} webview - Webview element
-   * @returns {Promise<boolean>} True if scrolled successfully
    */
-  async scrollToBottom(provider, webview) {
+  async scrollToBottom(provider: string, webview: WebviewElement): Promise<boolean> {
     if (!webview || webview.isDestroyed?.()) return false;
     
     // FIX: Webview'ın DOM'a attach olduğunu ve hazır olduğunu kontrol et
@@ -28,14 +87,15 @@ export class LoadingTracker {
     }
     
     const providerId = AppState.getProviderIdForSlot(provider) || "";
-    const cfg = providerId ? ProviderRegistry.get(providerId) : null;
-    const scrollerSelectors = cfg?.scrollerSelectors || [
+    const cfg = providerId ? ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini") : null;
+    const cfgWithSelectors = cfg as { scrollerSelectors?: string[]; contentContainers?: string[] } | null;
+    const scrollerSelectors = cfgWithSelectors?.scrollerSelectors || [
       "div.flex.h-full.flex-col.overflow-y-auto",
       "main div.overflow-y-auto",
       "main section.overflow-y-auto",
       'div[role="main"] .overflow-y-auto',
     ];
-    const contentContainers = cfg?.contentContainers || [
+    const contentContainers = cfgWithSelectors?.contentContainers || [
       "main",
       "section",
       "div",
@@ -169,15 +229,15 @@ export class LoadingTracker {
 
   /**
    * Handle probe data for loading tracking
-   * @param {string} provider - Provider identifier (ai1/ai2)
-   * @param {Object} viewState - Current state
-   * @param {Object} data - Probe data containing scroll info
-   * @param {number} now - Current timestamp
-   * @param {Object} webview - Webview element
-   * @param {string} currentHref - Current URL
-   * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
-  async handleProbe(provider, viewState, data, now, webview, currentHref) {
+  async handleProbe(
+    provider: string,
+    viewState: ViewState,
+    data: ProbeData,
+    now: number,
+    webview: WebviewElement,
+    currentHref: string
+  ): Promise<ProbeResult> {
     let indicator = viewState.status?.loading || "busy";
     let event = null;
 
@@ -220,10 +280,8 @@ export class LoadingTracker {
 
   /**
    * Initialize loading state for a provider
-   * @param {Object} viewState - The provider's state object
-   * @param {number} now - Current timestamp
    */
-  startLoading(viewState, now) {
+  startLoading(viewState: ViewState, now: number): ViewState {
     viewState.loadingActive = true;
     viewState.loadingStartTime = now;
     viewState.loadingScrollAppeared = false;
@@ -234,15 +292,15 @@ export class LoadingTracker {
 
   /**
    * Check if loading should end based on current state
-   * @param {string} provider - Provider identifier (ai1/ai2)
-   * @param {Object} viewState - Current state
-   * @param {Object} data - Probe data containing scroll, sendState, etc.
-   * @param {number} now - Current timestamp
-   * @param {Object} webview - Webview element for scrolling
-   * @param {string} [currentUrl] - Current URL for default page detection
-   * @returns {Object} { shouldEnd: boolean, reason: string, newState: Object }
    */
-  async checkLoadingEnd(provider, viewState, data, now, webview, currentUrl = "") {
+  async checkLoadingEnd(
+    provider: string,
+    viewState: ViewState,
+    data: ProbeData,
+    now: number,
+    webview: WebviewElement,
+    currentUrl = ""
+  ): Promise<CheckResult> {
     if (!viewState.loadingActive) {
       return { shouldEnd: false, reason: null, newState: viewState };
     }
@@ -345,11 +403,8 @@ export class LoadingTracker {
 
   /**
    * End loading state
-   * @param {Object} viewState - The provider's state object
-   * @param {number} now - Current timestamp
-   * @returns {Object} Updated state
    */
-  endLoading(viewState, now) {
+  endLoading(viewState: ViewState, now: number): ViewState {
     viewState.loadingActive = false;
     viewState.loadingJustEnded = true;
     viewState.loadingEndedAt = now;
@@ -358,10 +413,8 @@ export class LoadingTracker {
 
   /**
    * Clear the "just ended" flag after a delay
-   * @param {Object} viewState - The provider's state object
-   * @returns {Object} Updated state
    */
-  clearJustEnded(viewState) {
+  clearJustEnded(viewState: ViewState): ViewState {
     viewState.loadingJustEnded = false;
     return viewState;
   }

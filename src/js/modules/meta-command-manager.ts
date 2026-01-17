@@ -23,14 +23,45 @@ import { SlotController } from "./slot-controller.js";
 import { WebviewManager } from "./webview-manager.js";
 import { RelayManager } from "./relay-manager.js";
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface CustomCommand {
+  name: string;
+  description: string;
+  code: string;
+  createdAt?: number;
+  createdBy?: string;
+}
+
+interface CommandResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  result?: unknown;
+  command?: CustomCommand;
+  commands?: Record<string, CustomCommand>;
+}
+
+type CompiledHandler = (args: unknown[], context: Record<string, unknown>) => Promise<unknown>;
+
+// ============================================================================
+// State
+// ============================================================================
+
 // Runtime'da yüklenen custom komutlar
-let _customCommands = {};
-let _compiledHandlers = {};
+let _customCommands: Record<string, CustomCommand> = {};
+let _compiledHandlers: Record<string, CompiledHandler> = {};
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * Context objesi - custom komutlara geçirilir
  */
-function createContext() {
+function createContext(): Record<string, unknown> {
   return {
     LogManager,
     AppState,
@@ -39,19 +70,16 @@ function createContext() {
     WebviewManager,
     RelayManager,
     // Utility fonksiyonlar
-    delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-    log: (msg) => LogManager.addEvent("custom-cmd", "info", msg),
-    error: (msg) => LogManager.addEvent("custom-cmd", "error", msg),
+    delay: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+    log: (msg: string) => LogManager.addEvent("custom-cmd", "info", msg),
+    error: (msg: string) => LogManager.addEvent("custom-cmd", "error", msg),
   };
 }
 
 /**
  * Komut kodunu derle ve handler oluştur
- * @param {string} name - Komut adı
- * @param {string} code - JavaScript kodu
- * @returns {Function|null} - Derlenmiş handler veya null
  */
-function compileCommand(name, code) {
+function compileCommand(name: string, code: string): CompiledHandler | null {
   try {
     // Kodu Function constructor ile derle (güvenlik kısıtlaması yok - tam yetki)
     const fn = new Function("args", "context", `
@@ -71,16 +99,16 @@ function compileCommand(name, code) {
 /**
  * Custom komutları electron'dan yükle
  */
-async function loadCommands() {
+async function loadCommands(): Promise<void> {
   try {
-    const result = await window.electronAPI?.metaListCommands?.();
+    const result = await window.electronAPI?.metaListCommands?.() as CommandResult | undefined;
     if (result?.success && result.commands) {
       _customCommands = result.commands;
 
       // Tüm komutları derle
       _compiledHandlers = {};
       for (const [name, cmd] of Object.entries(_customCommands)) {
-        const handler = compileCommand(name, (cmd as any).code);
+        const handler = compileCommand(name, cmd.code);
         if (handler) {
           _compiledHandlers[name.toLowerCase()] = handler;
         }
@@ -95,13 +123,13 @@ async function loadCommands() {
 
 /**
  * Yeni komut tanımla
- * @param {string} name - Komut adı
- * @param {string} description - Açıklama
- * @param {string} code - JavaScript kodu
- * @param {string} createdBy - Oluşturan (ai1, ai2, user)
- * @returns {Promise<{success: boolean, message?: string, error?: string}>}
  */
-async function defineCommand(name, description, code, createdBy = "unknown") {
+async function defineCommand(
+  name: string,
+  description: string,
+  code: string,
+  createdBy = "unknown"
+): Promise<CommandResult> {
   try {
     // Önce kodu test et (derleme hatası var mı?)
     const testHandler = compileCommand(name, code);
@@ -117,7 +145,7 @@ async function defineCommand(name, description, code, createdBy = "unknown") {
       createdBy,
     });
 
-    if (result?.success) {
+    if (result?.success && result.command) {
       // Runtime cache'i güncelle
       _customCommands[name] = result.command;
       _compiledHandlers[name.toLowerCase()] = testHandler;
@@ -125,7 +153,7 @@ async function defineCommand(name, description, code, createdBy = "unknown") {
       LogManager.addEvent("meta-command", "info", `Komut tanımlandı: ${name}`);
     }
 
-    return result || { success: false, error: "API hatası" };
+    return (result as CommandResult) || { success: false, error: "API hatası" };
   } catch (err) {
     LogManager.addEvent("meta-command", "error", `defineCommand hatası: ${(err as Error).message}`);
     return { success: false, error: (err as Error).message };
@@ -134,10 +162,8 @@ async function defineCommand(name, description, code, createdBy = "unknown") {
 
 /**
  * Komutu sil
- * @param {string} name - Komut adı
- * @returns {Promise<{success: boolean, message?: string, error?: string}>}
  */
-async function deleteCommand(name) {
+async function deleteCommand(name: string): Promise<CommandResult> {
   try {
     const result = await window.electronAPI?.metaDeleteCommand?.({ name });
 
@@ -154,7 +180,7 @@ async function deleteCommand(name) {
       LogManager.addEvent("meta-command", "info", `Komut silindi: ${name}`);
     }
 
-    return result || { success: false, error: "API hatası" };
+    return (result as CommandResult) || { success: false, error: "API hatası" };
   } catch (err) {
     LogManager.addEvent("meta-command", "error", `deleteCommand hatası: ${(err as Error).message}`);
     return { success: false, error: (err as Error).message };
@@ -163,28 +189,22 @@ async function deleteCommand(name) {
 
 /**
  * Tüm custom komutları listele
- * @returns {Object} - { name: { description, code, createdAt, createdBy } }
  */
-function listCommands() {
+function listCommands(): Record<string, CustomCommand> {
   return { ..._customCommands };
 }
 
 /**
  * Custom komut var mı kontrol et
- * @param {string} name - Komut adı
- * @returns {boolean}
  */
-function hasCommand(name) {
+function hasCommand(name: string): boolean {
   return !!_compiledHandlers[name.toLowerCase()];
 }
 
 /**
  * Custom komutu çalıştır
- * @param {string} name - Komut adı
- * @param {Array} args - Argümanlar
- * @returns {Promise<{success: boolean, result?: any, error?: string}>}
  */
-async function runCommand(name, args = []) {
+async function runCommand(name: string, args: unknown[] = []): Promise<CommandResult> {
   const handler = _compiledHandlers[name.toLowerCase()];
 
   if (!handler) {
@@ -208,9 +228,8 @@ async function runCommand(name, args = []) {
 
 /**
  * Custom komut isimlerini döndür (ServerCommands için)
- * @returns {string[]}
  */
-function getCommandNames() {
+function getCommandNames(): string[] {
   return Object.keys(_customCommands);
 }
 

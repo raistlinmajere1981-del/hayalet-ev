@@ -90,7 +90,7 @@ class CoreEngineClass {
     }
     this.settings = await SettingsManager.load();
     WebviewManager.setSettings(this.settings);
-    await FileManager.ensureDirs("all");
+    await FileManager.ensureDirs("all" as unknown as Record<string, unknown>);
     AppState.init("ai1");
     LogManager.init();
     await CommandManager.init();
@@ -104,12 +104,12 @@ class CoreEngineClass {
       }
     }, TIMEOUTS.CLEANUP_INTERVAL);
     CommandExecutor.init(this);
-    CommandManager.setExecutor((job) => CommandExecutor.executeJob(job));
-    CommandManager.on("sent", ({ job }) =>
-      CommandExecutor.handleJobSuccess(job),
+    CommandManager.setExecutor((job: unknown) => CommandExecutor.executeJob(job as never));
+    CommandManager.on("sent", ({ job }: { job: unknown }) =>
+      CommandExecutor.handleJobSuccess(job as never),
     );
-    CommandManager.on("failed", ({ job, error }) =>
-      CommandExecutor.handleJobFailure(job, error),
+    CommandManager.on("failed", ({ job, error }: { job: unknown; error: unknown }) =>
+      CommandExecutor.handleJobFailure(job as never, error),
     );
     try {
       RelayManager.init(this);
@@ -122,19 +122,16 @@ class CoreEngineClass {
       );
     }
 
-    await WhisperManager.init({ settings: this.settings });
-    WhisperManager.setSender((payload) =>
-      this.enqueueWhisperJob(
-        payload?.provider,
-        payload?.record || {},
-        payload?.message,
-      ),
-    );
+    await WhisperManager.init({ settings: this.settings as Record<string, unknown> | undefined });
+    WhisperManager.setSender((slot: string, text: string) => {
+      void this.enqueueWhisperJob(slot, { text }, text);
+    });
     WebviewManager.initSyncer(this);
     
     await SlotController.init();
     
-    SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }) => {
+    SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }: { slot?: string }) => {
+      if (!slot) return;
       const webview = SlotController.getWebview(slot);
       if (webview) {
         TrafficManager.attachWebview(slot, webview);
@@ -142,7 +139,8 @@ class CoreEngineClass {
       }
     });
     
-    SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }) => {
+    SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }: { slot?: string }) => {
+      if (!slot) return;
       TrafficManager.stop(slot);
     });
     
@@ -253,15 +251,15 @@ class CoreEngineClass {
     const attachmentPaths = attachmentItems.map((a) => a.path).filter(Boolean);
     const hasAttachments = attachmentPaths.length > 0;
     /** @type {Array<any>} */
-    const jobs = [];
+    const jobs: unknown[] = [];
     for (const provider of list) {
       const jobId =
         jobIds?.[provider] ||
         generateUniqueId("cmd");
-      /** @type {{ staged: any[], temp: any[], commandDir: string }} */
-      let staged = { staged: [], temp: [], commandDir: "" };
+      let staged: { staged: unknown[]; temp: string[]; commandDir: string } = { staged: [], temp: [], commandDir: "" };
       if (hasAttachments) {
-        staged = await FileManager.stageCommandFiles(jobId, attachmentPaths);
+        const stageResult = await FileManager.stageCommandFiles(jobId, attachmentPaths.filter((p): p is string => typeof p === "string"));
+        staged = stageResult;
         LogManager.addEvent(
           "command",
           "info",
@@ -272,21 +270,23 @@ class CoreEngineClass {
           },
         );
       }
-      /** @type {Array<any>} */
-      const stagedEntries = ((staged && staged.staged) || []).map((s) => ({
-        ...s,
-        name:
-          (s && s.name) ||
-          (s && s.renamedName) ||
-          (s && s.originalName) ||
-          getFilename((s && s.commandPath) || ""),
-      }));
+      const stagedEntries = ((staged && staged.staged) || []).map((s) => {
+        const item = s as { name?: string; renamedName?: string; originalName?: string; commandPath?: string };
+        return {
+          ...item,
+          name:
+            item.name ||
+            item.renamedName ||
+            item.originalName ||
+            getFilename(item.commandPath || ""),
+        };
+      });
       jobs.push({
         id: jobId,
         provider,
         message: text || "",
         attachments: stagedEntries,
-        attachmentsMeta: { ...staged, staged: stagedEntries, temp: [] },
+        attachmentsMeta: { ...staged, staged: stagedEntries, temp: [] as string[] },
         meta: {
           targets: list,
           page,
@@ -295,7 +295,7 @@ class CoreEngineClass {
         },
       });
     }
-    CommandManager.enqueue(jobs);
+    CommandManager.enqueue(jobs as never[]);
     LogManager.addEvent(
       "command",
       "info",
@@ -471,11 +471,11 @@ class CoreEngineClass {
       case "add":
         return WhisperManager.WhisperManagerAdd(
           args?.user,
-          args?.text,
+          args?.text || "",
           args?.when,
         );
       case "remove":
-        return WhisperManager.WhisperManagerDelete(args?.user, args?.id);
+        return WhisperManager.WhisperManagerDelete(args?.user, args?.id || "");
       case "list":
         return WhisperManager.getRecords(args?.user);
       case "done":
@@ -501,7 +501,7 @@ class CoreEngineClass {
     messageOverride = ""
   ): Promise<{ success: boolean; jobId?: string }> {
     const text = messageOverride || record.text || "";
-    const whisperId = record.id;
+    const whisperId = record.id || "";
     const payload = {
       provider,
       whisperId,
@@ -513,7 +513,7 @@ class CoreEngineClass {
       "info",
       `Whisper kuyruğa alındı (${provider})`,
     );
-    const exec = async () => {
+    const exec = async (): Promise<void> => {
       const res = await this.sendMessage({ provider, text });
       if (!res?.success) {
         WhisperManager.markReady(provider, whisperId);
@@ -530,7 +530,7 @@ class CoreEngineClass {
       "WhisperSend",
       "whisper",
       payload,
-      exec,
+      exec as unknown as null,
       "normal",
     );
     return { success: true, jobId: job?.id };
@@ -593,14 +593,15 @@ class CoreEngineClass {
         webUrl: payload.webUrl || "",
       },
     );
+    const execFn = async (): Promise<void> => {
+      await ServerCommands.run(commandName, queuePayload);
+    };
     const job = CommandManager.CommandManagerEnqueue(
       payload.target || "core",
       commandName,
       "catch",
       queuePayload,
-      async () => {
-        await ServerCommands.run(commandName, queuePayload);
-      },
+      execFn as unknown as null,
       priority,
     );
     LogManager.addEvent(
@@ -618,7 +619,7 @@ class CoreEngineClass {
   }
 
   setActiveTargets(targets: string[] = []): void {
-    AppState.setChatTargets(targets);
+    AppState.setChatTargets(targets as never[]);
   }
 
   listCommands(): unknown[] {
