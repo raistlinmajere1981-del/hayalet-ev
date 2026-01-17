@@ -287,6 +287,7 @@ export function matchErrorPattern(errorMessage, provider = null) {
       }
       
       return {
+        pattern: pattern.pattern,
         category: hint.category,
         suggestion: hint.suggestion,
         checkFiles: hint.checkFiles,

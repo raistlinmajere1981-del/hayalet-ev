@@ -1,17 +1,26 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "lib": ["ESNext"],
-    "types": ["node"]
+    "types": ["node"],
+    "target": "ESNext",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "checkJs": true,
+    "allowJs": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false
   },
   "include": [
     "electron/**/*.js",
-    "electron/**/*.cjs",
     "electron/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "electron/preload.cjs",
+    "electron/webview-preload.cjs"
   ]
 }

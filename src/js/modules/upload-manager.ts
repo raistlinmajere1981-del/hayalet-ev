@@ -5,7 +5,21 @@
  * webview/methods/shared altındaki dağınık yapıyı replace eder.
  */
 
-const UPLOAD_SERVICES = {
+interface FilePayload {
+  name: string;
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
+interface UploadError {
+  file: string;
+  error: string;
+}
+
+type ServiceName = "CATBOX" | "UGUU" | "TMPFILE" | "GOOGLEDRIVE";
+
+const UPLOAD_SERVICES: Record<ServiceName, { ipcMethod: string; available: () => boolean }> = {
   CATBOX: {
     ipcMethod: "catboxUpload",
     available: () => !!window?.electronAPI?.catboxUpload,
@@ -27,10 +41,8 @@ const UPLOAD_SERVICES = {
 export const UploadManager = {
   /**
    * Servis kullanılabilir mi kontrol et
-   * @param {string} serviceName
-   * @returns {boolean}
    */
-  isServiceAvailable(serviceName) {
+  isServiceAvailable(serviceName: ServiceName): boolean {
     const service = UPLOAD_SERVICES[serviceName];
     if (!service) return false;
     try {
@@ -42,10 +54,8 @@ export const UploadManager = {
 
   /**
    * Dosyaları validate et
-   * @param {Array} files
-   * @returns {Object} { valid, message }
    */
-  validateFiles(files) {
+  validateFiles(files: FilePayload[]): { valid: boolean; message?: string } {
     if (!files?.length) {
       return { valid: false, message: "Aktarılacak dosya bulunamadı" };
     }
@@ -64,17 +74,15 @@ export const UploadManager = {
 
   /**
    * Çoklu dosya yükle
-   * @param {string} serviceName
-   * @param {Array} files
-   * @returns {Promise<Object>} { uploadedLinks, uploadErrors }
    */
-  async uploadMultipleFiles(serviceName, files) {
+  async uploadMultipleFiles(serviceName: ServiceName, files: FilePayload[]): Promise<{ uploadedLinks: string[]; uploadErrors: UploadError[] }> {
     const service = UPLOAD_SERVICES[serviceName];
     if (!service) {
       throw new Error(`Unknown service: ${serviceName}`);
     }
 
-    const ipcMethod = window?.electronAPI?.[service.ipcMethod];
+    const api = window?.electronAPI;
+    const ipcMethod = api?.[service.ipcMethod as keyof typeof api] as ((options: unknown) => Promise<{ success?: boolean; url?: string; message?: string }>) | undefined;
     if (!ipcMethod) {
       throw new Error(`IPC method not available: ${service.ipcMethod}`);
     }
@@ -111,10 +119,8 @@ export const UploadManager = {
 
   /**
    * Google Drive Upload (Batch)
-   * @param {Array} files
-   * @returns {Promise<Object>}
    */
-  async uploadGoogleDrive(files) {
+  async uploadGoogleDrive(files: FilePayload[]): Promise<{ uploadedLinks: string[]; errors: UploadError[] }> {
     if (!this.isServiceAvailable("GOOGLEDRIVE")) {
       throw new Error("Google Drive IPC servisi mevcut değil");
     }
@@ -149,7 +155,7 @@ export const UploadManager = {
   /**
    * Response formatla
    */
-  formatResponse(uploadedLinks, errors = [], serviceName = "") {
+  formatResponse(uploadedLinks: string[], errors: UploadError[] = [], serviceName = "") {
     if (!uploadedLinks.length) {
       return {
         success: false,
@@ -171,7 +177,7 @@ export const UploadManager = {
   /**
    * Hata response oluştur
    */
-  createError(message, errors = [], serviceName = "") {
+  createError(message: string, errors: UploadError[] = [], serviceName = "") {
     return {
       success: false,
       message: serviceName ? `${serviceName} hatası: ${message}` : message,

@@ -149,7 +149,7 @@ export async function listSessions() {
     sessions.sort((a, b) => {
       if (!a.startTime) return 1;
       if (!b.startTime) return -1;
-      return new Date(b.startTime) - new Date(a.startTime);
+      return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
     });
     
     return sessions;

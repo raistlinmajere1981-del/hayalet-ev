@@ -168,7 +168,8 @@ async function performCleanup() {
 
   // Session summary yaz
   try {
-    await writeSessionSummary("normal");
+    // writeSessionSummary(totalLogs, errorCount, warnCount, chunkIndex, endReason)
+    await writeSessionSummary(0, 0, 0, 0, "normal");
     console.log("[MAIN] Session summary yazıldı");
   } catch (err) {
     console.error("[MAIN] Failed to write session summary:", err);

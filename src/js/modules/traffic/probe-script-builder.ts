@@ -13,10 +13,8 @@ import { AppState } from "../app-state.js";
 
 /**
  * Provider için probe script'i oluştur
- * @param {string} provider - Slot ID (ai1/ai2)
- * @returns {string} - Çalıştırılacak JavaScript kodu
  */
-export function buildProbeScript(provider) {
+export function buildProbeScript(provider: string): string {
   const providerId = AppState.getProviderIdForSlot(provider) || "";
   const cfg = providerId ? ProviderRegistry.get(providerId) : null;
   

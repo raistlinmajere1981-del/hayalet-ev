@@ -4,7 +4,14 @@
  * Provider-agnostic implementation
  */
 
-export async function attachFiles(webview, { files }) {
+interface FilePayload {
+  name: string;
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
+export async function attachFiles(_webview: HTMLElement, { files }: { files: FilePayload[] }) {
 
   if (!files?.length) {
     return { success: false, message: "Aktarılacak dosya bulunamadı" };

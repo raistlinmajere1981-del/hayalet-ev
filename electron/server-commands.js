@@ -98,7 +98,7 @@ handlers.whispermanager = async (payload = {}) => {
     const pending = Array.isArray(current?.pending) ? current.pending : [];
     const rec = { user, text, when, ts: Date.now() };
     pending.push(rec);
-    const saveRes = await whisperSave(null, provider, { pending, done: current?.done || [] });
+    const saveRes = await whisperSave(null, { accountId: provider, payload: { pending, done: current?.done || [] } });
     await appendLogLine(`[${stamp}] WhisperManager added for ${provider}: ${argsLabel}`);
     return { success: !!saveRes?.success, command: 'WhisperManager', args: argsLabel, record: rec };
   } catch (err) {

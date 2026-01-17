@@ -115,9 +115,8 @@ class RelayManagerClass {
 
   /**
    * AI-Asistan relay oturumu başlat
-   * @param {string} sourceSlot - Kaynak AI slotu ('ai1' veya 'ai2')
    */
-  async startAIAsistanSession(sourceSlot) {
+  async startAIAsistanSession(sourceSlot: string) {
     // Önce diğer relay'leri durdur
     if (this._aiaiRelay?.isActive) {
       await this._aiaiRelay.stop();
@@ -140,7 +139,7 @@ class RelayManagerClass {
    * TrafficManager update'lerini işle
    * @private
    */
-  async _onTrafficUpdate(snapshot) {
+  async _onTrafficUpdate(snapshot: { provider?: string; state?: { thinkingState?: string } }) {
     try {
       const provider = snapshot?.provider;
       if (!provider) return;

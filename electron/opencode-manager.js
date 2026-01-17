@@ -52,7 +52,7 @@ export const OpenCodeManager = {
    * @param {number} [options.port=4096] - Server portu
    * @param {string} [options.cors] - CORS origin
    * @param {string} [options.projectPath] - Proje klasörü
-   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+   * @returns {Promise<{success: boolean, url?: string, error?: string, alreadyRunning?: boolean, existingServer?: boolean}>}
    */
   async start(options = {}) {
     const port = options.port || OPENCODE_DEFAULTS.port;
@@ -111,7 +111,7 @@ export const OpenCodeManager = {
 
   /**
    * OpenCode server'ı durdur
-   * @returns {Promise<{success: boolean, error?: string}>}
+   * @returns {Promise<{success: boolean, error?: string, alreadyStopped?: boolean}>}
    */
   async stop() {
     if (!this._process) {

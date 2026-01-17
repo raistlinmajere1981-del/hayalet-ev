@@ -180,8 +180,14 @@ export function interceptMainConsole() {
  * @param {Electron.WebContents} webContents
  */
 export function setupRendererLogger(webContents) {
-  webContents.on("console-message", (event) => {
-    const { level, message, line, sourceId } = event;
+  webContents.on("console-message", (/** @type {any} */ event, /** @type {any} */ level, /** @type {any} */ message, /** @type {any} */ line, /** @type {any} */ sourceId) => {
+    // Handle both old (separate params) and new (event object) API
+    const _level = typeof level === 'number' ? level : event?.level ?? 0;
+    const _message = typeof message === 'string' ? message : event?.message ?? '';
+    const _line = typeof line === 'number' ? line : event?.line ?? 0;
+    const _sourceId = typeof sourceId === 'string' ? sourceId : event?.sourceId ?? '';
+    
+    /** @type {Record<number, string>} */
     const levelMap = {
       0: "LOG",
       1: "WARN",
@@ -189,12 +195,12 @@ export function setupRendererLogger(webContents) {
       3: "DEBUG",
     };
 
-    const levelName = levelMap[level] || "LOG";
-    const source = sourceId ? ` (${sourceId}:${line})` : "";
-    const fullMessage = `${message}${source}`;
+    const levelName = levelMap[_level] || "LOG";
+    const source = _sourceId ? ` (${_sourceId}:${_line})` : "";
+    const fullMessage = `${_message}${source}`;
 
-    const isError = level === 2;
-    const isWarn = level === 1;
+    const isError = _level === 2;
+    const isWarn = _level === 1;
     
     writeLog(levelName, "RENDERER", [fullMessage], null, isError || isWarn);
 
@@ -226,8 +232,14 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
 
   const source = `WEBVIEW-${slot.toUpperCase()}`;
 
-  webviewContents.on("console-message", (event) => {
-    const { level, message, line, sourceId } = event;
+  webviewContents.on("console-message", (/** @type {any} */ event, /** @type {any} */ level, /** @type {any} */ message, /** @type {any} */ line, /** @type {any} */ sourceId) => {
+    // Handle both old (separate params) and new (event object) API
+    const _level = typeof level === 'number' ? level : event?.level ?? 0;
+    const _message = typeof message === 'string' ? message : event?.message ?? '';
+    const _line = typeof line === 'number' ? line : event?.line ?? 0;
+    const _sourceId = typeof sourceId === 'string' ? sourceId : event?.sourceId ?? '';
+    
+    /** @type {Record<number, string>} */
     const levelMap = {
       0: "LOG",
       1: "WARN",
@@ -235,13 +247,13 @@ export function setupWebviewLogger(webviewContents, slot, provider = "unknown") 
       3: "DEBUG",
     };
 
-    const levelName = levelMap[level] || "LOG";
-    const sourceInfo = sourceId ? ` (${sourceId}:${line})` : "";
-    const fullMessage = `[${provider}] ${message}${sourceInfo}`;
+    const levelName = levelMap[_level] || "LOG";
+    const sourceInfo = _sourceId ? ` (${_sourceId}:${_line})` : "";
+    const fullMessage = `[${provider}] ${_message}${sourceInfo}`;
 
     const context = { provider, slot, url: webviewContents.getURL?.() || "" };
-    const isError = level === 2;
-    const isWarn = level === 1;
+    const isError = _level === 2;
+    const isWarn = _level === 1;
 
     writeLog(levelName, source, [fullMessage], context, isError || isWarn);
 

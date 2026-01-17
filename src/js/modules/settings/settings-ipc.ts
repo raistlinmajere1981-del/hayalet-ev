@@ -13,7 +13,7 @@ export async function ipcLoadSettings() {
   return await api.loadSettings();
 }
 
-export async function ipcSaveSettings(settings) {
+export async function ipcSaveSettings(settings: Record<string, unknown>): Promise<boolean> {
   const api = getElectronAPI();
   if (!api?.saveSettings) {
     LogManager.addEvent("settings-ipc", "error", "electronAPI.saveSettings not available!");

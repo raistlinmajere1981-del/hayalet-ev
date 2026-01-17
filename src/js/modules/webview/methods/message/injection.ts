@@ -3,7 +3,19 @@
  * Provider-agnostic implementation using runtime config
  */
 
-export async function sendMessage(webview, { message }) {
+interface InjectResult {
+  success?: boolean;
+  message?: string;
+  inputType?: string;
+  providerId?: string;
+}
+
+interface WebviewElement extends HTMLElement {
+  executeJavaScript: (code: string) => Promise<InjectResult | undefined>;
+  sendInputEvent: (event: { type: string; keyCode: string }) => void;
+}
+
+export async function sendMessage(webview: WebviewElement, { message }: { message: string }) {
   // JSON.stringify ile mesajı güvenli hale getir - newline'lar korunur ("\n" olarak)
   const safeMessage = JSON.stringify(message);
 

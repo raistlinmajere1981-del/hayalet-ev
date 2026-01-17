@@ -6,10 +6,17 @@
 import { UploadManager } from "../../../upload-manager.js";
 import { LogManager } from "../../../log-manager.js";
 
-export async function attachFiles(webview, { files }) {
+interface FilePayload {
+  name: string;
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
+export async function attachFiles(_webview: HTMLElement, { files }: { files: FilePayload[] }) {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message);
+    return UploadManager.createError(validation.message || "Validation failed");
   }
 
   if (!UploadManager.isServiceAvailable("UGUU")) {

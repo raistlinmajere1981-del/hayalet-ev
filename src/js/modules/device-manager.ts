@@ -1,6 +1,6 @@
 import { LogManager } from "./log-manager.js";
 
-const callDevice = async (action, payload) => {
+const callDevice = async (action: string, payload: unknown) => {
   try {
     if (window?.electronAPI?.deviceAction) {
       return await window.electronAPI.deviceAction(action, payload);

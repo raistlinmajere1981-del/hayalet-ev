@@ -73,7 +73,7 @@ export const WindowManager = {
   toggleFullscreen,
   closeApp,
   setWindowState,
-  apply(action, payload = {}) {
+  apply(action: string, payload: Record<string, unknown> = {}) {
     switch (action) {
       case "minimize":
         minimizeToTaskbar();

@@ -2,6 +2,13 @@ import { PassThrough } from "stream";
 import { google } from "googleapis";
 import { loadSettings, saveSettings } from "./settings-manager.js";
 
+/**
+ * Güvenli nesne erişimi
+ * @param {any} obj - Kaynak nesne
+ * @param {string} path - Nokta ile ayrılmış yol (örn: "a.b.c")
+ * @param {any} def - Varsayılan değer
+ * @returns {any}
+ */
 function safeGet(obj, path, def = "") {
   try {
     return (
@@ -59,6 +66,7 @@ export async function googledriveStartAuth(event) {
 export async function googledriveExchangeCode(event, code) {
   try {
     if (!code) return { success: false, message: "Yetkilendirme kodu eksik" };
+    /** @type {any} */
     let settings = {};
     try {
       settings = (await loadSettings()) || {};

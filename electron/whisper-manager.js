@@ -41,7 +41,7 @@ export async function whisperLoad(event, { accountId }) {
  * Whisper verilerini kaydet (hesap bazlı)
  * @param {Object} event - IPC event
  * @param {Object} params - { accountId, payload }
- * @returns {Promise<{ success: boolean }>}
+ * @returns {Promise<{ success: boolean, message?: string }>}
  */
 export async function whisperSave(event, { accountId, payload }) {
   try {

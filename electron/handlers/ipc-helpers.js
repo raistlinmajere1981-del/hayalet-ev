@@ -1,9 +1,14 @@
 import { ipcMain } from "electron";
 
 /**
+ * @typedef {import('electron').IpcMainInvokeEvent} IpcMainInvokeEvent
+ * @typedef {(event: IpcMainInvokeEvent, ...args: any[]) => any} IpcHandler
+ */
+
+/**
  * Defensive IPC Handler Wrapper
- * @param {Function} handlerFn
- * @returns {Function}
+ * @param {IpcHandler} handlerFn
+ * @returns {(event: IpcMainInvokeEvent, ...args: any[]) => Promise<any>}
  */
 export const handleIPC =
   (handlerFn) =>
@@ -23,7 +28,7 @@ export const handleIPC =
 /**
  * Register handlers with defensive wrapper
  * @param {string} channel
- * @param {Function} handler
+ * @param {IpcHandler} handler
  */
 export const registerHandler = (channel, handler) => {
   ipcMain.handle(channel, handleIPC(handler));

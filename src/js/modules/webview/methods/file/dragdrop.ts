@@ -7,7 +7,14 @@
 import { waitForDomReady } from "../../../../app.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 
-export async function attachFiles(webview, { files }) {
+interface FilePayload {
+  name: string;
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
+export async function attachFiles(webview: HTMLElement, { files }: { files: FilePayload[] }) {
   await waitForDomReady(webview);
 
   const validation = validateFiles(files);

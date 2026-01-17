@@ -59,7 +59,7 @@ function saveCustomCommands(commands) {
  * Yeni custom komut tanımla
  * @param {Object} event - IPC event
  * @param {Object} params - { name, description, code, createdBy }
- * @returns {{ success: boolean, message?: string, error?: string }}
+ * @returns {{ success: boolean, message?: string, error?: string, command?: Object }}
  */
 export function defineCommand(event, { name, description, code, createdBy }) {
   try {
@@ -141,7 +141,7 @@ export function deleteCommand(event, { name }) {
 /**
  * Tüm custom komutları listele
  * @param {Object} event - IPC event
- * @returns {{ success: boolean, commands: Object }}
+ * @returns {{ success: boolean, commands: Object, error?: string }}
  */
 export function listCommands(event) {
   try {

@@ -16,6 +16,7 @@ const PARTITIONS = {
 };
 
 // Temizlenecek storage türleri (login bilgileri HARİÇ)
+/** @type {("cachestorage" | "serviceworkers")[]} */
 const CLEARABLE_STORAGES = [
   "cachestorage", // Service worker cache (~100-300 MB)
   "serviceworkers", // SW registrations

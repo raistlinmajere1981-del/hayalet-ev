@@ -31,10 +31,10 @@ export function createSettingsBroadcast(channelName = "hayalet-settings") {
   try {
     const bc = new BroadcastChannel(channelName);
     return {
-      post: (msg) => {
+      post: (msg: unknown) => {
         bc.postMessage(msg);
       },
-      on: (handler) => {
+      on: (handler: (data: unknown) => void) => {
         bc.onmessage = (e) => {
           handler?.(e?.data);
         };

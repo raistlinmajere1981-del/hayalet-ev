@@ -94,7 +94,7 @@ export const DatabaseManager = {
    * Hesap için veritabanını başlat
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId }
-   * @returns {{ success: boolean, error?: string }}
+   * @returns {{ success: boolean, error?: string, cached?: boolean, created?: boolean }}
    */
   initAccount(event, { accountId }) {
     try {
@@ -232,7 +232,7 @@ export const DatabaseManager = {
    * Mesajları senkronize et (incremental sync)
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId, webUrl, messages, authors }
-   * @returns {{ success: boolean, added: number, conversationId: string }}
+   * @returns {{ success: boolean, added?: number, conversationId?: string, total?: number, error?: string }}
    */
   syncMessages(event, { accountId, webUrl, messages, authors }) {
     try {
@@ -349,7 +349,7 @@ export const DatabaseManager = {
    * Attachment kaydet
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId, conversationId, messageId, filePath, originalName }
-   * @returns {{ success: boolean, attachmentId: string, storedPath: string }}
+   * @returns {{ success: boolean, attachmentId?: string, storedPath?: string, error?: string }}
    */
   saveAttachment(event, { accountId, conversationId, messageId, filePath, originalName, mimeType }) {
     try {
@@ -445,7 +445,7 @@ export const DatabaseManager = {
    * Konuşmayı sil
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId, conversationId }
-   * @returns {{ success: boolean }}
+   * @returns {{ success: boolean, error?: string }}
    */
   deleteConversation(event, { accountId, conversationId }) {
     try {
@@ -610,7 +610,7 @@ export const DatabaseManager = {
    * Konuşma detayını güncelle
    * @param {Object} event - IPC event
    * @param {Object} params - { accountId, conversationId, title, summary }
-   * @returns {{ success: boolean }}
+   * @returns {{ success: boolean, error?: string }}
    */
   updateConversationDetails(event, { accountId, conversationId, title, summary }) {
     try {

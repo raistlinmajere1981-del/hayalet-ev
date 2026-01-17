@@ -81,7 +81,7 @@ function ensureElectronApiFallback() {
       return Promise.all(
         paths.map(async (p) => ({
           path: p,
-          data: await window.electronAPI.readFile(p),
+          data: await window.electronAPI!.readFile(p),
         })),
       );
     },

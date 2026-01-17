@@ -3,7 +3,12 @@
  * System-level input simulation for message sending
  */
 
-export async function sendMessage(webview, { message }) {
+interface WebviewElement extends HTMLElement {
+  executeJavaScript: (code: string) => Promise<unknown>;
+  sendInputEvent: (event: { type: string; keyCode: string }) => void;
+}
+
+export async function sendMessage(webview: WebviewElement, { message }: { message: string }) {
   const fullText = ` ${message}`;
 
   const focusScript = `(function() {

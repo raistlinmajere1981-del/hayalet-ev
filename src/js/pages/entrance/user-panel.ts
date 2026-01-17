@@ -127,7 +127,7 @@ export class UserPanel {
     }
   }
 
-  async saveGDriveCode(code) {
+  async saveGDriveCode(code: string) {
     const trimmed = String(code || "").trim();
     if (!trimmed) return;
     const settings = this.settingsManager.getSnapshot();

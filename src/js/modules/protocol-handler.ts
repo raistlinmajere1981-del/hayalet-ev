@@ -4,10 +4,8 @@ import { LogManager } from "./log-manager.js";
 /**
  * Check if slot is ready for protocol communication
  * - Must be CONNECTED (not CONNECTING, DISCONNECTING, or ERROR)
- * @param {string} slot 
- * @returns {boolean}
  */
-function isSlotReady(slot) {
+function isSlotReady(slot: string): boolean {
   const state = SlotController.getState(slot);
   if (!state) return false;
   
