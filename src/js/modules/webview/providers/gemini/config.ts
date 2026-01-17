@@ -52,17 +52,16 @@ export const config = {
     '.ql-editor.textarea',
     'rich-textarea .ql-editor[contenteditable="true"]',
   ],
-  excludedUrls: [ 
-  ],
+  excludedUrls: [] as string[],
 
   filters: {
-    selectors: [],
-    hosts: [],
-    blockResourceTypes: [],
+    selectors: [] as string[],
+    hosts: [] as string[],
+    blockResourceTypes: [] as string[],
     dragTextMatchers: ["sürükleyin", "drop", "dosya", "file"],
   },
   telemetry: {
-    endpoints: [],
-    tokenPaths: [],
+    endpoints: [] as string[],
+    tokenPaths: [] as string[],
   },
 };

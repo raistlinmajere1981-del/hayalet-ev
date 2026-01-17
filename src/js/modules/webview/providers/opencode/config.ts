@@ -26,7 +26,7 @@ export const config = {
   command: OPENCODE_DEFAULTS.command,
   
   // Web sitesi değil, lokal server kullanıyoruz
-  loginUrl: null,
+  loginUrl: null as null,
   lastVerified: "2026-01-14",
   
   // Asistan provider olduğunu belirt
@@ -38,7 +38,7 @@ export const config = {
    * @param {number} port - Server portu (opsiyonel)
    * @returns {string} Tam URL
    */
-  getProjectUrl(projectPath = null, port = OPENCODE_DEFAULTS.port) {
+  getProjectUrl(projectPath: string | null = null, port = OPENCODE_DEFAULTS.port) {
     const baseUrl = `http://localhost:${port}`;
     if (projectPath) {
       return `${baseUrl}?project=${encodeURIComponent(projectPath)}`;
@@ -140,9 +140,9 @@ export const config = {
   contentContainers: ["div", "section", "article"],
   
   filters: {
-    selectors: [],
-    hosts: [],
-    blockResourceTypes: [],
+    selectors: [] as string[],
+    hosts: [] as string[],
+    blockResourceTypes: [] as string[],
     dragOverlaySelectors: [
       '[data-dnd-overlay]',
       '.drag-overlay',
@@ -155,10 +155,10 @@ export const config = {
   },
   
   // Hariç tutulan URL'ler (lokal server için geçerli değil)
-  excludedUrls: [],
+  excludedUrls: [] as string[],
 
   telemetry: {
-    endpoints: [],
-    tokenPaths: [],
+    endpoints: [] as string[],
+    tokenPaths: [] as string[],
   },
 };

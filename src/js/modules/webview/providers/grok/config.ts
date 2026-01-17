@@ -72,14 +72,14 @@ export const config = {
   ],
 
   filters: {
-    selectors: [],
-    hosts: [],
-    blockResourceTypes: [],
+    selectors: [] as string[],
+    hosts: [] as string[],
+    blockResourceTypes: [] as string[],
     dragOverlaySelectors: ["[data-overlay]", ".drag-overlay", ".drop-overlay"],
     dragTextMatchers: ["sürükleyin", "drop", "dosya", "file"],
   },
   telemetry: {
-    endpoints: [],
-    tokenPaths: [],
+    endpoints: [] as string[],
+    tokenPaths: [] as string[],
   },
 };

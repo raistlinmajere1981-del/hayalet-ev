@@ -16,7 +16,7 @@ import { LogManager } from "../log-manager.js";
  * @param {string} str
  * @returns {string}
  */
-export function hashString(str) {
+export function hashString(str: string): string {
   if (!str) return "0";
 
   let hash = 5381;
@@ -38,7 +38,7 @@ export const MessageStore = {
    * @param {string} conversationId
    * @returns {Promise<Array>}
    */
-  async list(accountId, conversationId) {
+  async list(accountId: string, conversationId: string) {
     try {
       if (!accountId || !conversationId) {
         return [];
@@ -62,7 +62,7 @@ export const MessageStore = {
    * @param {Object} params.authors - { user: "...", assistant: "..." }
    * @returns {Promise<{ success: boolean, conversationId?: string, added?: number, total?: number }>}
    */
-  async sync(params) {
+  async sync(params: { accountId: string; webUrl: string; messages: Array<{ role?: string; text?: string; index?: number; contentHash?: string }>; authors?: unknown }) {
     try {
       const { accountId, webUrl, messages, authors: _authors } = params;
 
@@ -71,7 +71,7 @@ export const MessageStore = {
       }
 
       // Mesajlara hash ekle (eğer yoksa)
-      const messagesWithHash = messages.map((msg, index) => ({
+      const messagesWithHash = messages.map((msg: { role?: string; text?: string; index?: number; contentHash?: string }, index: number) => ({
         ...msg,
         index: msg.index ?? index,
         contentHash: msg.contentHash || hashString(msg.text),
@@ -97,7 +97,7 @@ export const MessageStore = {
    * @param {number} limit
    * @returns {Promise<Array>}
    */
-  async search(accountId, query, limit = 50) {
+  async search(accountId: string, query: string, limit = 50) {
     try {
       if (!accountId || !query) {
         return [];
@@ -117,7 +117,7 @@ export const MessageStore = {
    * @param {string} content
    * @returns {string}
    */
-  hash(content) {
+  hash(content: string) {
     return hashString(content);
   },
 };

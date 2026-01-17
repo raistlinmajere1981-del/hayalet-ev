@@ -21,6 +21,13 @@ class CatchManagerClass {
     prevCount = 0,
     hasExisting = false,
     prefix = "cmd",
+  }: {
+    provider: string;
+    webUrl: string;
+    messages?: Array<{ role?: string; text?: string; index?: number }>;
+    prevCount?: number;
+    hasExisting?: boolean;
+    prefix?: string;
   }) {
     const list = Array.isArray(messages) ? messages : [];
     const startIndex = hasExisting
@@ -30,7 +37,7 @@ class CatchManagerClass {
       (msg) => msg?.role === "assistant" && (msg.index || 0) >= startIndex,
     );
 
-    const found = [];
+    const found: Array<{ provider: string; command: string; args: string; prefix: string; text: string; webUrl: string }> = [];
 
     targetMessages.forEach((msg) => {
       const text = msg.text || "";

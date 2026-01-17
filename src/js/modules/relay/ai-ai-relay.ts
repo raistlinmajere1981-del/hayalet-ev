@@ -26,7 +26,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} provider - AI slot
    * @returns {boolean}
    */
-  handlesProvider(provider) {
+  handlesProvider(provider: string) {
     return this._active && this._providers.includes(provider);
   }
 
@@ -133,7 +133,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} provider - AI slot (ai1 veya ai2)
    * @param {Object} syncResult - Conversation sync sonucu
    */
-  async handleThinkingComplete(provider, syncResult) {
+  async handleThinkingComplete(provider: string, syncResult: { messages?: Array<{ role: string; text?: string }> }) {
     try {
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 
@@ -161,7 +161,7 @@ export class AIAIRelay extends BaseRelay {
    * Protokol akışını yönet
    * @private
    */
-  async _handleProtocolFlow(provider, text) {
+  async _handleProtocolFlow(provider: string, text: string) {
     const s = this._session;
     const [ai1, ai2] = s.providers;
 
@@ -236,7 +236,7 @@ export class AIAIRelay extends BaseRelay {
    * Basit relay akışını yönet
    * @private
    */
-  async _handleSimpleRelayFlow(provider, text) {
+  async _handleSimpleRelayFlow(provider: string, text: string) {
     if (this._lastTexts[provider] === text) return;
     this._lastTexts[provider] = text;
 
@@ -273,7 +273,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} source - Kaynak AI slot
    * @returns {string} - Hedef AI slot
    */
-  _determineTarget(source) {
+  _determineTarget(source: string) {
     const idx = this._providers.indexOf(source);
     if (idx === -1) return this._providers[0];
     return this._providers[(idx + 1) % this._providers.length];
@@ -285,7 +285,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} thinkingState - Yeni thinking state
    * @returns {boolean} - Thinking tamamlandı mı?
    */
-  checkThinkingTransition(provider, thinkingState) {
+  checkThinkingTransition(provider: string, thinkingState: string) {
     const prev = this._prevThinking[provider] || "idle";
     this._prevThinking[provider] = thinkingState;
     return prev !== "idle" && thinkingState === "idle";

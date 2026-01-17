@@ -79,7 +79,7 @@ export class BaseRelay {
    * @param {string} _provider - AI slot
    * @returns {boolean}
    */
-  handlesProvider(_provider) {
+  handlesProvider(_provider: string) {
     return false;
   }
 
@@ -90,7 +90,7 @@ export class BaseRelay {
    * @param {string} message - Log mesajı
    * @param {Object} context - Ek context
    */
-  _log(level, message, context = {}) {
+  _log(level: string, message: string, context: Record<string, unknown> = {}) {
     LogManager.addEventWithContext(
       "relay",
       level,
@@ -106,7 +106,7 @@ export class BaseRelay {
    * @param {string} eventName - Event adı
    * @param {Object} detail - Event detayları
    */
-  _dispatchEvent(eventName, detail = {}) {
+  _dispatchEvent(eventName: string, detail: Record<string, unknown> = {}) {
     try {
       window.dispatchEvent(
         new CustomEvent(eventName, { 
@@ -128,7 +128,7 @@ export class BaseRelay {
    * @param {string[]} addClasses - Eklenecek CSS class'ları
    * @param {string[]} removeClasses - Kaldırılacak CSS class'ları
    */
-  _updateIndicatorElement(elementId, text, addClasses = [], removeClasses = []) {
+  _updateIndicatorElement(elementId: string, text: string, addClasses: string[] = [], removeClasses: string[] = []) {
     try {
       const el = document.getElementById(elementId);
       if (!el) return;
@@ -156,7 +156,7 @@ export class BaseRelay {
    * @param {string} prefix - ID prefix'i
    * @returns {string}
    */
-  _generateSessionId(prefix = "relay") {
+  _generateSessionId(prefix = "relay"): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 }

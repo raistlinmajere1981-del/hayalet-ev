@@ -11,11 +11,11 @@ import {
 import { ipcLoadSettings, ipcSaveSettings } from "./settings/settings-ipc.js";
 import { LogManager } from "./log-manager.js";
 
-function deepClone(obj) {
+function deepClone<T>(obj: T): T {
   return obj ? JSON.parse(JSON.stringify(obj)) : obj;
 }
 
-function setByPath(obj, path, value) {
+function setByPath(obj: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> {
   const parts = String(path || "")
     .split(".")
     .filter(Boolean);
@@ -92,7 +92,7 @@ class SettingsManagerClass {
     return await this.load({ force: true });
   }
 
-  get(path) {
+  get(path?: string) {
     if (!path) return this._settings;
     const parts = String(path).split(".");
     let cur = this._settings;
@@ -100,11 +100,11 @@ class SettingsManagerClass {
     return cur;
   }
 
-  subscribe(listener) {
+  subscribe(listener: (event: { settings: unknown; changedPaths: string[] }) => void) {
     return this._emitter.on(listener);
   }
 
-  async save(nextSettings) {
+  async save(nextSettings: Record<string, unknown>) {
     const next = normalizeSettings(nextSettings);
     const changedPaths = getChangedPaths(this._lastSaved, next);
     
@@ -121,13 +121,13 @@ class SettingsManagerClass {
     return true;
   }
 
-  async set(path, value) {
+  async set(path: string, value: unknown) {
     const next = deepClone(this._settings);
     setByPath(next, path, value);
     return await this.save(next);
   }
 
-  async patch(fnOrPartial) {
+  async patch(fnOrPartial: ((settings: Record<string, unknown>) => void) | Record<string, unknown>) {
     const next = deepClone(this._settings);
     if (typeof fnOrPartial === "function") {
       fnOrPartial(next);

@@ -16,7 +16,7 @@ export const ConversationStore = {
    * @param {string} accountId - Account ID
    * @returns {Promise<Array>}
    */
-  async list(accountId) {
+  async list(accountId: string) {
     try {
       if (!accountId) {
         return [];
@@ -37,7 +37,7 @@ export const ConversationStore = {
    * @param {string} conversationId
    * @returns {Promise<Object|null>}
    */
-  async get(accountId, conversationId) {
+  async get(accountId: string, conversationId: string) {
     try {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.id === conversationId) || null;
@@ -54,7 +54,7 @@ export const ConversationStore = {
    * @param {Object} data - { title?, summary? }
    * @returns {Promise<{ success: boolean }>}
    */
-  async update(accountId, conversationId, data) {
+  async update(accountId: string, conversationId: string, data: { title?: string; summary?: string }) {
     try {
       const result = await window.electronAPI?.dbUpdateConversation?.({
         accountId,
@@ -75,7 +75,7 @@ export const ConversationStore = {
    * @param {string} conversationId
    * @returns {Promise<{ success: boolean }>}
    */
-  async delete(accountId, conversationId) {
+  async delete(accountId: string, conversationId: string) {
     try {
       const result = await window.electronAPI?.dbDeleteConversation?.({ accountId, conversationId });
 
@@ -92,7 +92,7 @@ export const ConversationStore = {
    * @param {string} webUrl
    * @returns {Promise<Object|null>}
    */
-  async findByUrl(accountId, webUrl) {
+  async findByUrl(accountId: string, webUrl: string) {
     try {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.webUrl === webUrl) || null;

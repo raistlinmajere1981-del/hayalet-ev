@@ -27,7 +27,7 @@ export const ProviderRegistry = {
    * @param {string} id - Provider ID (chatgpt, grok, gemini, opencode)
    * @returns {Object|null}
    */
-  get(id) {
+  get(id: keyof typeof allProviders) {
     return allProviders[id] || null;
   },
   
@@ -48,7 +48,7 @@ export const ProviderRegistry = {
   },
   
   // Asistan provider'ları için metodlar
-  getAsistan(id) {
+  getAsistan(id: keyof typeof asistanProviders) {
     return asistanProviders[id] || null;
   },
   getAllAsistan() {
@@ -59,7 +59,7 @@ export const ProviderRegistry = {
   },
   
   // Tüm provider'lar (AI + Asistan)
-  getAny(id) {
+  getAny(id: keyof typeof allProviders) {
     return allProviders[id] || null;
   },
   getAllAny() {
@@ -70,7 +70,7 @@ export const ProviderRegistry = {
   },
   
   // Provider türünü kontrol et
-  isAsistan(id) {
+  isAsistan(id: string) {
     return id in asistanProviders;
   },
 };

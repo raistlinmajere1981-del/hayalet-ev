@@ -101,7 +101,7 @@ Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hede
   TakeScreenshot: {
     name: "TakeScreenshot",
     description: "ScreenshotManager için kısayol. Hızlıca ekran görüntüsü alır.",
-    parameters: [],
+    parameters: [] as { name: string; type: string; required: boolean; description: string }[],
     examples: [
       { code: '++cmd:TakeScreenshot()', description: "Hızlı ekran görüntüsü al" },
     ],
@@ -123,7 +123,7 @@ Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hede
   Restart: {
     name: "Restart",
     description: "Uygulamayı yeniden başlatır. Tüm oturumlar kapatılır ve uygulama yeniden açılır.",
-    parameters: [],
+    parameters: [] as { name: string; type: string; required: boolean; description: string }[],
     examples: [
       { code: '++cmd:Restart()', description: "Uygulamayı yeniden başlat" },
     ],
@@ -144,7 +144,7 @@ Sistem her dakika kontrol yapar ve zamanı gelen mesajları otomatik olarak hede
   AIAIChatStop: {
     name: "AIAIChatStop",
     description: "AI-AI sohbetini durdurur. Devam eden otomatik konuşmayı sonlandırır.",
-    parameters: [],
+    parameters: [] as { name: string; type: string; required: boolean; description: string }[],
     examples: [
       { code: '++cmd:AIAIChatStop()', description: "AI-AI sohbetini durdur" },
     ],
@@ -178,7 +178,7 @@ Akış:
 
 AI ve Asistan (AI0/OpenCode) arasındaki otomatik mesaj iletimini sonlandırır.
 Bu komut genellikle AI tarafından oturumu bitirmek istediğinde kullanılır.`,
-    parameters: [],
+    parameters: [] as { name: string; type: string; required: boolean; description: string }[],
     examples: [
       { code: '++cmd:AIAsistanChatStop()', description: "AI-Asistan relay'ini durdur" },
     ],
@@ -277,7 +277,7 @@ Kod içinde kullanılabilir context:
   ListCustomCommands: {
     name: "ListCustomCommands",
     description: "Tanımlı tüm custom komutları listeler. Her komutun adı, açıklaması ve oluşturulma bilgisi gösterilir.",
-    parameters: [],
+    parameters: [] as { name: string; type: string; required: boolean; description: string }[],
     examples: [
       { code: '++cmd:ListCustomCommands()', description: "Tüm custom komutları listele" },
     ],
@@ -289,7 +289,7 @@ Kod içinde kullanılabilir context:
  * @param {string} commandName - Komut adı
  * @returns {string} - Formatlanmış kılavuz metni
  */
-export function getCommandGuideText(commandName) {
+export function getCommandGuideText(commandName: keyof typeof COMMAND_GUIDES) {
   const guide = COMMAND_GUIDES[commandName];
   if (!guide) {
     return `"${commandName}" komutu için kılavuz bulunamadı.`;
@@ -301,7 +301,7 @@ export function getCommandGuideText(commandName) {
 
   if (guide.parameters && guide.parameters.length > 0) {
     text += `📋 Parametreler:\n`;
-    guide.parameters.forEach((p) => {
+    guide.parameters.forEach((p: { name: string; type: string; required: boolean; description: string }) => {
       const req = p.required ? "(zorunlu)" : "(opsiyonel)";
       text += `  • ${p.name} [${p.type}] ${req}\n    ${p.description}\n`;
     });
@@ -310,7 +310,7 @@ export function getCommandGuideText(commandName) {
 
   if (guide.examples && guide.examples.length > 0) {
     text += `💡 Örnek Kullanım:\n`;
-    guide.examples.forEach((ex, i) => {
+    guide.examples.forEach((ex: { code: string; description: string }, i: number) => {
       text += `  ${i + 1}. ${ex.description}\n`;
       text += `     ${ex.code}\n`;
     });
