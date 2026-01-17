@@ -1,5 +1,6 @@
 import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 
 interface CommandJob {
   id: string;
@@ -68,7 +69,7 @@ class CommandManagerClass {
       try {
         l(payload);
       } catch (err) {
-        LogManager.addEvent("command", "warning", `Listener error: ${err?.message || err}`);
+        LogManager.addEvent("command", "warning", `Listener error: ${getErrorMessage(err)}`);
       }
     });
   }

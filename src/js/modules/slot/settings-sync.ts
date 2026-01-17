@@ -53,7 +53,7 @@ interface SlotEvents {
 type LogFn = (slot: SlotId | string, level: LogLevel, message: string) => void;
 type TransitionFn = (slot: string, state: string) => void;
 type EmitFn = (slot: string, event: string, data: Record<string, unknown>) => void;
-type DisconnectFn = (slot: string, opts?: { force?: boolean }) => void;
+type DisconnectFn = (slot: string, opts?: { force?: boolean }) => void | Promise<unknown>;
 type NavigateFn = (slot: string) => void;
 type SyncSlotFn = (slot: string, settings: Settings) => void;
 

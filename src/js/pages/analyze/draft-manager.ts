@@ -8,6 +8,7 @@
  */
 
 import { LogManager } from "../../modules/log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { FileManager } from "../../modules/file-manager.js";
 
 let draftPath = "";
@@ -40,7 +41,7 @@ export async function initDraft() {
     // Draft dosyası data klasöründe tutulacak
     draftPath = "data/analyze-draft.json";
   } catch (err) {
-    LogManager.addEvent("analyze", "warning", `Draft yolu hazırlanamadı: ${err.message}`);
+    LogManager.addEvent("analyze", "warning", `Draft yolu hazırlanamadı: ${getErrorMessage(err)}`);
   }
 }
 
@@ -68,7 +69,7 @@ export async function loadDraft() {
       files: Array.isArray(parsed.files) ? parsed.files : [],
     };
   } catch (err) {
-    LogManager.addEvent("analyze", "warning", `Draft okunamadı: ${err.message}`);
+    LogManager.addEvent("analyze", "warning", `Draft okunamadı: ${getErrorMessage(err)}`);
     return { message: "", files: [] };
   }
 }
@@ -87,7 +88,7 @@ export async function persistDraft(message: string, files: unknown[]) {
     const json = JSON.stringify(payload, null, 2);
     await FileManager.writeFileAtomic(draftPath, json, "utf-8");
   } catch (err) {
-    LogManager.addEvent("analyze", "warning", `Draft yazılamadı: ${err.message}`);
+    LogManager.addEvent("analyze", "warning", `Draft yazılamadı: ${getErrorMessage(err)}`);
   }
 }
 

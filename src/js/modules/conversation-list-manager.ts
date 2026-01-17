@@ -1,4 +1,5 @@
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
@@ -118,7 +119,7 @@ class ConversationListManagerClass {
       LogManager.addEvent(
         "conversation",
         "error",
-        `Listeyi yenileme hatası: ${err.message}`,
+        `Listeyi yenileme hatası: ${getErrorMessage(err)}`,
       );
     }
   }

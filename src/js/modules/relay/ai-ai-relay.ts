@@ -8,6 +8,7 @@
 
 import { BaseRelay } from "./base-relay.js";
 import { SlotController } from "../slot-controller.js";
+import { getErrorMessage } from "../../types/index.js";
 
 export class AIAIRelay extends BaseRelay {
   _providers: string[];
@@ -96,7 +97,7 @@ export class AIAIRelay extends BaseRelay {
       this._dispatchEvent("relay-changed", { active: true, type: "ai-ai-protocol" });
 
     } catch (err) {
-      this._log("warning", `startProtocolSession error: ${err?.message || String(err)}`);
+      this._log("warning", `startProtocolSession error: ${getErrorMessage(err)}`);
       throw err;
     }
   }
@@ -153,7 +154,7 @@ export class AIAIRelay extends BaseRelay {
       await this._handleSimpleRelayFlow(provider, text);
 
     } catch (err) {
-      this._log("warning", `handleThinkingComplete error: ${err?.message || String(err)}`);
+      this._log("warning", `handleThinkingComplete error: ${getErrorMessage(err)}`);
     }
   }
 
@@ -184,7 +185,7 @@ export class AIAIRelay extends BaseRelay {
         });
         this._log("info", `Protocol session ${s.id}: forwarded ${ai1} -> ${ai2}`);
       } catch (e) {
-        this._log("warning", `Protocol session ${s.id}: forward to ${ai2} failed: ${e?.message || String(e)}`);
+        this._log("warning", `Protocol session ${s.id}: forward to ${ai2} failed: ${getErrorMessage(e)}`);
       }
       return;
     }
@@ -206,7 +207,7 @@ export class AIAIRelay extends BaseRelay {
           page: "relay",
         });
       } catch (e) {
-        this._log("warning", `Protocol session ${s.id}: forward ${ai2}->${ai1} failed: ${e?.message || String(e)}`);
+        this._log("warning", `Protocol session ${s.id}: forward ${ai2}->${ai1} failed: ${getErrorMessage(e)}`);
       }
       return;
     }
@@ -227,7 +228,7 @@ export class AIAIRelay extends BaseRelay {
           page: "relay",
         });
       } catch (e) {
-        this._log("warning", `Protocol session ${s.id}: forward ${ai1}->${ai2} failed: ${e?.message || String(e)}`);
+        this._log("warning", `Protocol session ${s.id}: forward ${ai1}->${ai2} failed: ${getErrorMessage(e)}`);
       }
     }
   }
@@ -260,7 +261,7 @@ export class AIAIRelay extends BaseRelay {
         page: "relay",
       });
     } catch (err) {
-      this._log("warning", `Relay forwarding failed: ${err?.message || String(err)}`, {
+      this._log("warning", `Relay forwarding failed: ${getErrorMessage(err)}`, {
         from: provider,
         to: target,
       });

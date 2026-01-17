@@ -1,5 +1,6 @@
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 
 type ListenerFn = (payload: any) => void;
 
@@ -21,7 +22,7 @@ export class Emitter {
       try {
         fn(payload);
       } catch (err: any) {
-        LogManager.addEvent("settings-events", "warning", "Listener error", { error: err.message });
+        LogManager.addEvent("settings-events", "warning", "Listener error", { error: getErrorMessage(err) });
       }
     }
   }
@@ -48,7 +49,7 @@ export function createSettingsBroadcast(channelName = "hayalet-settings") {
       },
     };
   } catch (err) {
-    LogManager.addEvent("settings-events", "warning", `Failed to create BroadcastChannel: ${channelName}`, { error: err.message });
+    LogManager.addEvent("settings-events", "warning", `Failed to create BroadcastChannel: ${channelName}`, { error: getErrorMessage(err) });
     return {
       post: () => {},
       on: () => () => {},

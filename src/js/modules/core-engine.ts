@@ -1,4 +1,5 @@
 import { SettingsManager } from "./settings-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
 import { AppState } from "./app-state.js";
@@ -100,7 +101,7 @@ class CoreEngineClass {
       try {
         WebviewManager.cleanupInactiveWebviews();
       } catch (err) {
-        LogManager.addEvent("core", "warning", `Cleanup error: ${err?.message || err}`);
+        LogManager.addEvent("core", "warning", `Cleanup error: ${getErrorMessage(err)}`);
       }
     }, TIMEOUTS.CLEANUP_INTERVAL);
     CommandExecutor.init(this);

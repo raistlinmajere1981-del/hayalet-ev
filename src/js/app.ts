@@ -1,6 +1,7 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
 import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename, ASISTAN_SLOT } from "./constants/index.js";
+import { getErrorMessage } from "./types/index.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
 import { ServerController } from "./pages/server.js";
@@ -265,7 +266,7 @@ function setupNavigation() {
       });
     });
   } catch (error) {
-    LogManager.addEvent("system", "error", `Navigation setup error: ${error?.message || error}`);
+    LogManager.addEvent("system", "error", `Navigation setup error: ${getErrorMessage(error)}`);
   }
 }
 
@@ -335,7 +336,7 @@ function setupTopBarButtons() {
       });
     }
   } catch (error) {
-    LogManager.addEvent("system", "error", `Top bar setup error: ${error?.message || error}`);
+    LogManager.addEvent("system", "error", `Top bar setup error: ${getErrorMessage(error)}`);
   }
 }
 
@@ -487,12 +488,12 @@ async function updateIndicatorAvatars() {
             if (btn.__convRefreshHandler) {
               btn.removeEventListener("click", btn.__convRefreshHandler);
             }
-            const handler = async (ev: MouseEvent) => {
+            const handler: EventListener = async (ev: Event) => {
               ev?.preventDefault();
               try {
                 await WebviewManager.syncProvider(provider, { from: "manual" });
-              } catch (err: any) {
-                LogManager.addEvent("sync", "warning", `Manual sync failed: ${err?.message || err}`);
+              } catch (err) {
+                LogManager.addEvent("sync", "warning", `Manual sync failed: ${getErrorMessage(err)}`);
               }
             };
             btn.__convRefreshHandler = handler;

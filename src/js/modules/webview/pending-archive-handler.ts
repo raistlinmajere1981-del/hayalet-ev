@@ -8,6 +8,7 @@
  */
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { FileManager } from "../file-manager.js";
 import { AppState } from "../app-state.js";
 
@@ -51,7 +52,7 @@ class PendingArchiveHandlerClass {
         this._processEntry(entry, provider, message, conversationId);
       }
     } catch (e) {
-      LogManager.addEvent("archive", "warning", `processPending error: ${e?.message || String(e)}`);
+      LogManager.addEvent("archive", "warning", `processPending error: ${getErrorMessage(e)}`);
     }
   }
 
@@ -111,7 +112,7 @@ class PendingArchiveHandlerClass {
       LogManager.addEvent(
         "archive",
         "warning",
-        `Pending archive processing error: ${e?.message || String(e)}`,
+        `Pending archive processing error: ${getErrorMessage(e)}`,
         { jobId: entry.jobId }
       );
     }
@@ -124,7 +125,7 @@ class PendingArchiveHandlerClass {
       LogManager.addEvent(
         "command",
         "warning",
-        `Arşiv sonrası temizlik hatası: ${e?.message || String(e)}`,
+        `Arşiv sonrası temizlik hatası: ${getErrorMessage(e)}`,
         { jobId: entry.jobId }
       );
     }

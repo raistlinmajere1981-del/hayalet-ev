@@ -121,3 +121,34 @@ export interface LogEntry {
   message: string;
   data?: unknown;
 }
+
+// ============================================================================
+// Error Handling Utilities
+// ============================================================================
+
+/** Error benzeri obje tipi */
+export interface ErrorLike {
+  message?: string;
+  name?: string;
+  stack?: string;
+}
+
+/**
+ * Unknown tipindeki error'dan güvenli şekilde mesaj çıkarır
+ * TypeScript'te catch bloklarında error tipi 'unknown' olduğu için bu helper gerekli
+ * 
+ * @param error - Herhangi bir tipte error
+ * @returns Error mesajı string olarak
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as ErrorLike).message);
+  }
+  return String(error);
+}

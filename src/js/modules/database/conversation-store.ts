@@ -5,6 +5,7 @@
  */
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 
 // ============================================================================
 // Conversation Store
@@ -26,7 +27,7 @@ export const ConversationStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      LogManager.addEvent("database", "error", `ConversationStore.list error: ${err.message}`, { context: { accountId } });
+      LogManager.addEvent("database", "error", `ConversationStore.list error: ${getErrorMessage(err)}`, { context: { accountId } });
       return [];
     }
   },
@@ -42,7 +43,7 @@ export const ConversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.id === conversationId) || null;
     } catch (err) {
-      LogManager.addEvent("database", "error", `ConversationStore.get error: ${err.message}`, { context: { accountId, conversationId } });
+      LogManager.addEvent("database", "error", `ConversationStore.get error: ${getErrorMessage(err)}`, { context: { accountId, conversationId } });
       return null;
     }
   },
@@ -64,8 +65,8 @@ export const ConversationStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      LogManager.addEvent("database", "error", `ConversationStore.update error: ${err.message}`, { context: { accountId, conversationId, data } });
-      return { success: false, error: err.message };
+      LogManager.addEvent("database", "error", `ConversationStore.update error: ${getErrorMessage(err)}`, { context: { accountId, conversationId, data } });
+      return { success: false, error: getErrorMessage(err) };
     }
   },
 
@@ -81,8 +82,8 @@ export const ConversationStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      LogManager.addEvent("database", "error", `ConversationStore.delete error: ${err.message}`, { context: { accountId, conversationId } });
-      return { success: false, error: err.message };
+      LogManager.addEvent("database", "error", `ConversationStore.delete error: ${getErrorMessage(err)}`, { context: { accountId, conversationId } });
+      return { success: false, error: getErrorMessage(err) };
     }
   },
 
@@ -97,7 +98,7 @@ export const ConversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c) => c.webUrl === webUrl) || null;
     } catch (err) {
-      LogManager.addEvent("database", "error", `ConversationStore.findByUrl error: ${err.message}`, { context: { accountId, webUrl } });
+      LogManager.addEvent("database", "error", `ConversationStore.findByUrl error: ${getErrorMessage(err)}`, { context: { accountId, webUrl } });
       return null;
     }
   },

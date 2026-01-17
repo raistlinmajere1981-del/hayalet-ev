@@ -7,6 +7,9 @@
  * - Hata sonrası temizlik
  */
 
+import { getErrorMessage } from "../../types/index.js";
+import type { SlotId } from "../../types/index.js";
+
 /**
  * Timeout'ları saklamak için map
  */
@@ -74,7 +77,7 @@ export function handleConnectError(
   slotState: SlotState,
   slot: string,
   correlationId: string,
-  error: Error,
+  error: unknown,
   errorState: string,
   logFn: LogFn,
   emitFn: EmitFn,
@@ -82,15 +85,16 @@ export function handleConnectError(
   connectFailedEvent: string,
   cleanupFn: CleanupFn
 ): { success: boolean; message: string; correlationId: string } {
-  logFn(slot, "error", `Connection failed: ${error.message}`, { correlationId });
+  const errorMsg = getErrorMessage(error);
+  logFn(slot, "error", `Connection failed: ${errorMsg}`, { correlationId });
   
-  slotState.error = error;
-  emitFn(slot, connectFailedEvent, { correlationId, error: error.message });
+  slotState.error = error instanceof Error ? error : new Error(errorMsg);
+  emitFn(slot, connectFailedEvent, { correlationId, error: errorMsg });
   
   cleanupFn(slot, correlationId);
   transitionFn(slot, errorState);
   
-  return { success: false, message: error.message, correlationId };
+  return { success: false, message: errorMsg, correlationId };
 }
 
 /**
@@ -101,8 +105,8 @@ export async function cleanupAfterError(
   slot: string,
   correlationId: string,
   logFn: LogFn,
-  clearUrlChangeHandlerFn: (slot: string) => void,
-  clearDomReadyHandlerFn: (slot: string) => void,
+  clearUrlChangeHandlerFn: (slot: SlotId | string) => void,
+  clearDomReadyHandlerFn: (slot: SlotId | string) => void,
   stopTrafficFn: (slot: string, correlationId: string) => Promise<void>,
   detachWebviewFn: (slot: string, correlationId: string) => Promise<void>
 ) {
@@ -121,6 +125,6 @@ export async function cleanupAfterError(
     slotState.domReady = false;
     slotState.trafficStarted = false;
   } catch (err) {
-    logFn(slot, "warning", `Cleanup warning: ${err.message}`, { correlationId });
+    logFn(slot, "warning", `Cleanup warning: ${getErrorMessage(err)}`, { correlationId });
   }
 }

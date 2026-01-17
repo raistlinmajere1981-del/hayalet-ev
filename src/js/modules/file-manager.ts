@@ -1,4 +1,5 @@
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { getExtension, getMimeType, getFilename, generateUniqueId } from "../constants/index.js";
 
 // ============================================================================
@@ -49,7 +50,7 @@ class FileManagerClass {
       return res.paths || {};
     } catch (err) {
       const error = /** @type {Error} */ (err);
-      LogManager.addEvent("file", "error", `ensureDirs hata: ${error.message}`);
+      LogManager.addEvent("file", "error", `ensureDirs hata: ${getErrorMessage(error)}`);
       return {};
     }
   }
@@ -96,7 +97,7 @@ class FileManagerClass {
         LogManager.addEvent(
           "file",
           "warning",
-          `Batch read başarısız, sequential fallback: ${error.message}`,
+          `Batch read başarısız, sequential fallback: ${getErrorMessage(error)}`,
         );
       }
     }
@@ -229,7 +230,7 @@ class FileManagerClass {
       LogManager.addEvent(
         "file",
         "error",
-        `writeFileAtomic hata: ${error.message}`,
+        `writeFileAtomic hata: ${getErrorMessage(error)}`,
       );
       return "";
     }
@@ -243,7 +244,7 @@ class FileManagerClass {
       return res?.path || "";
     } catch (err) {
       const error = /** @type {Error} */ (err);
-      LogManager.addEvent("file", "error", `tempPath hata: ${error.message}`);
+      LogManager.addEvent("file", "error", `tempPath hata: ${getErrorMessage(error)}`);
       return "";
     }
   }

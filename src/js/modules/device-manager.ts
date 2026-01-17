@@ -1,4 +1,5 @@
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 
 const callDevice = async (action: string, payload: unknown) => {
   try {
@@ -10,9 +11,9 @@ const callDevice = async (action: string, payload: unknown) => {
     LogManager.addEvent(
       "device",
       "error",
-      `deviceAction error: ${error?.message || error}`,
+      `deviceAction error: ${getErrorMessage(error)}`,
     );
-    return { success: false, message: error?.message || String(error) };
+    return { success: false, message: getErrorMessage(error) };
   }
   LogManager.addEvent(
     "device",

@@ -13,6 +13,7 @@
 
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import type { SlotId } from "../types/index.js";
 
 import {
@@ -419,7 +420,7 @@ class SlotControllerClass {
       slotState.trafficStarted = false;
       this._transition(slot, SlotState.ASSIGNED);
       
-      this._log(slot, "warning", `Disconnect completed with errors: ${error.message}`, { correlationId });
+      this._log(slot, "warning", `Disconnect completed with errors: ${getErrorMessage(error)}`, { correlationId });
       return { success: true, message: "disconnected-with-errors", correlationId };
     }
   }
@@ -471,7 +472,7 @@ class SlotControllerClass {
       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
       this._boundLog, this._boundTransition, this._boundEmit,
-      (s: string, opts: { force?: boolean }) => this.disconnect(s, opts),
+      (s: string, opts?: { force?: boolean }) => this.disconnect(s, opts),
       (s: string) => this.navigate(s)
     );
   }
@@ -501,7 +502,7 @@ class SlotControllerClass {
       this._emit(slot, SlotEvent.TRAFFIC_STARTED, { correlationId });
       this._log(slot, "debug", "Traffic started", { correlationId });
     } catch (err) {
-      this._log(slot, "warning", `Traffic start warning: ${err.message}`, { correlationId });
+      this._log(slot, "warning", `Traffic start warning: ${getErrorMessage(err)}`, { correlationId });
     }
   }
 
@@ -514,7 +515,7 @@ class SlotControllerClass {
       this._emit(slot, SlotEvent.TRAFFIC_STOPPED, { correlationId });
       this._log(slot, "debug", "Traffic stopped", { correlationId });
     } catch (err) {
-      this._log(slot, "warning", `Traffic stop warning: ${err.message}`, { correlationId });
+      this._log(slot, "warning", `Traffic stop warning: ${getErrorMessage(err)}`, { correlationId });
     }
   }
 
@@ -525,10 +526,10 @@ class SlotControllerClass {
     await cleanupAfterError(
       this._slots[slot], slot, correlationId,
       this._boundLog,
-      clearUrlChangeHandler,
-      clearDomReadyHandler,
+      (s: string) => clearUrlChangeHandler(s as SlotId),
+      (s: string) => clearDomReadyHandler(s as SlotId),
       (s: string, cid: string) => this._stopTraffic(s, cid),
-      (s: string, cid: string) => detachWebview(this._slots[s], s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED)
+      (s: string, cid: string) => detachWebview(this._slots[s], s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED as string)
     );
   }
 

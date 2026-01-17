@@ -9,6 +9,7 @@
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { AIAIRelay } from "./relay/ai-ai-relay.js";
 import { AIAsistanRelay } from "./relay/ai-asistan-relay.js";
 
@@ -153,8 +154,8 @@ class RelayManagerClass {
       LogManager.addEventWithContext(
         "relay",
         "warning",
-        `Traffic update handler error: ${err?.message || String(err)}`,
-        { provider: snapshot?.provider, error: err?.message || String(err) }
+        `Traffic update handler error: ${getErrorMessage(err)}`,
+        { provider: snapshot?.provider, error: getErrorMessage(err) }
       );
     }
   }

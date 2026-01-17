@@ -2,6 +2,7 @@ import { WebviewManager } from "./webview-manager.js";
 import { FileManager } from "./file-manager.js";
 import { LogManager } from "./log-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
+import { getErrorMessage } from "../types/index.js";
 
 interface CommandJob {
   id: string;
@@ -112,11 +113,10 @@ class CommandExecutorClass {
         );
       }
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "core",
         "warning",
-        `Sync/temizlik hatası: ${error.message}`,
+        `Sync/temizlik hatası: ${getErrorMessage(err)}`,
         {
           jobId: job.id,
         },

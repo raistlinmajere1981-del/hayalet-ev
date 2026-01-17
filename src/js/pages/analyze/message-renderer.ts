@@ -8,6 +8,7 @@
  */
 
 import { LogManager } from "../../modules/log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { AppState } from "../../modules/app-state.js";
 
 function formatTimestamp(timestamp: number | undefined): string {
@@ -234,6 +235,6 @@ async function openAttachmentByPath(filePath: string) {
       throw new Error(res?.message || "açılamadı");
     }
   } catch (err) {
-    LogManager.addEvent("analyze", "warning", `Dosya açılamadı: ${err.message}`);
+    LogManager.addEvent("analyze", "warning", `Dosya açılamadı: ${getErrorMessage(err)}`);
   }
 }

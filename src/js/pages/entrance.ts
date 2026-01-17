@@ -1,4 +1,5 @@
 import { LogManager } from "../modules/log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { CoreEngine } from "../modules/core-engine.js";
@@ -96,7 +97,7 @@ export class EntranceHallController {
         }
       });
     } catch (error) {
-      LogManager.addEvent("entrance", "error", `Event listener setup hatası: ${error.message}`);
+      LogManager.addEvent("entrance", "error", `Event listener setup hatası: ${getErrorMessage(error)}`);
     }
   }
 
@@ -105,7 +106,7 @@ export class EntranceHallController {
       const settings = await SettingsManager.load();
       this.applySettingsToUI(settings, ["*"] as string[]);
     } catch (error) {
-      LogManager.addEvent("entrance", "error", `Settings yükleme hatası: ${error.message}`);
+      LogManager.addEvent("entrance", "error", `Settings yükleme hatası: ${getErrorMessage(error)}`);
     }
   }
 
@@ -151,7 +152,7 @@ export class EntranceHallController {
         }
       }
     } catch (error) {
-      LogManager.addEvent("entrance", "error", `Avatar yükleme hatası: ${error.message}`, { context: { userType } });
+      LogManager.addEvent("entrance", "error", `Avatar yükleme hatası: ${getErrorMessage(error)}`, { context: { userType } });
     }
   }
 

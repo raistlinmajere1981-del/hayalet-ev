@@ -9,6 +9,7 @@
  */
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { CatchManager } from "../catch-manager.js";
 import { AppState } from "../app-state.js";
@@ -265,9 +266,9 @@ class ConversationSyncerClass {
       LogManager.addEvent(
         `webview-${provider}`,
         "error",
-        `Sync failed: ${error?.message || error}`
+        `Sync failed: ${getErrorMessage(error)}`
       );
-      return { success: false, message: error?.message || String(error) };
+      return { success: false, message: getErrorMessage(error) };
     } finally {
       this._syncInProgress[provider] = false;
     }
@@ -352,7 +353,7 @@ class ConversationSyncerClass {
 
       return res;
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? getErrorMessage(err) : String(err);
       LogManager.addEvent("sync", "error", `syncProvider error for ${provider}: ${message}`);
       return { success: false, message };
     }

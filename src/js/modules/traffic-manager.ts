@@ -10,6 +10,7 @@
  */
 
 import { LogManager } from "./log-manager.js";
+import { getErrorMessage } from "../types/index.js";
 import { AppState } from "./app-state.js";
 import { ProviderRegistry } from "./webview/provider-registry.js";
 import { LoadingTracker } from "./traffic/loading-tracker.js";
@@ -242,7 +243,7 @@ class TrafficManagerClass {
       delete this._runners[provider];
       this.setAllUnreachable(provider);
     } catch (err) {
-      LogManager.addEvent("traffic", "error", `TrafficManager.stop error for ${provider}: ${err?.message || err}`);
+      LogManager.addEvent("traffic", "error", `TrafficManager.stop error for ${provider}: ${getErrorMessage(err)}`);
     }
     if (Object.keys(this._runners).length === 0 && this.pollTimer) {
       try { clearTimeout(this.pollTimer); } catch (_) { void 0; }

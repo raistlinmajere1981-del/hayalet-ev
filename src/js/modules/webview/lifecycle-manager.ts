@@ -10,6 +10,7 @@
  */
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { AppState } from "../app-state.js";
 import { SlotController } from "../slot-controller.js";
@@ -139,7 +140,7 @@ class LifecycleManagerClass {
             LogManager.addEvent(
               `webview-${provider}`,
               "error",
-              `attach: onReady callback error: ${err?.message || err}`
+              `attach: onReady callback error: ${getErrorMessage(err)}`
             );
           }
         };
@@ -148,7 +149,7 @@ class LifecycleManagerClass {
 
       LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached");
     } catch (err) {
-      LogManager.addEvent(`webview-${provider}`, "error", `attach error: ${err?.message || err}`);
+      LogManager.addEvent(`webview-${provider}`, "error", `attach error: ${getErrorMessage(err)}`);
     }
   }
 
@@ -203,7 +204,7 @@ class LifecycleManagerClass {
       LogManager.addEvent(
         `webview-${provider}`,
         "error",
-        `Webview destroy failed: ${err?.message || err}`
+        `Webview destroy failed: ${getErrorMessage(err)}`
       );
     }
   }

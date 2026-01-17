@@ -1,4 +1,5 @@
 import { LogManager } from "../../modules/log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController } from "../../modules/slot-controller.js";
@@ -78,7 +79,7 @@ export class WebviewPanel {
       }
     } catch (err) {
       const error = /** @type {Error} */ (err);
-      LogManager.addEvent("webview-panel", "error", `Event listener setup hatası: ${error.message}`);
+      LogManager.addEvent("webview-panel", "error", `Event listener setup hatası: ${getErrorMessage(error)}`);
     }
   }
 
@@ -172,7 +173,7 @@ export class WebviewPanel {
             }
           } catch (err) {
             const error = err as Error;
-            LogManager.addEvent("webview-panel", "warning", `AI1 preload path ayarlanamadı: ${error.message}`);
+            LogManager.addEvent("webview-panel", "warning", `AI1 preload path ayarlanamadı: ${getErrorMessage(error)}`);
             this.addLog("ai1", "warning", "Preload script ayarlanamadı...");
           }
         }
@@ -195,14 +196,14 @@ export class WebviewPanel {
             }
           } catch (err) {
             const error = err as Error;
-            LogManager.addEvent("webview-panel", "warning", `AI2 preload path ayarlanamadı: ${error.message}`);
+            LogManager.addEvent("webview-panel", "warning", `AI2 preload path ayarlanamadı: ${getErrorMessage(error)}`);
             this.addLog("ai2", "warning", "Preload script ayarlanamadı...");
           }
         }
       }
     } catch (err) {
       const error = err as Error;
-      LogManager.addEvent("webview-panel", "error", `Webview setup hatası: ${error.message}`);
+      LogManager.addEvent("webview-panel", "error", `Webview setup hatası: ${getErrorMessage(error)}`);
     }
   }
 
@@ -440,7 +441,7 @@ export class WebviewPanel {
         }
       } catch (err) {
         const error = err as Error;
-        LogManager.addEvent("webview-panel", "warning", `IPC message handler hatası: ${error.message}`);
+        LogManager.addEvent("webview-panel", "warning", `IPC message handler hatası: ${getErrorMessage(error)}`);
       }
     });
 
@@ -469,8 +470,8 @@ export class WebviewPanel {
       this.addLog(type, "info", "DevTools açıldı");
     } catch (err) {
       const error = err as Error;
-      LogManager.addEvent("webview-panel", "error", `DevTools açma hatası: ${error.message}`, { context: { type } });
-      this.addLog(type, "error", `DevTools açma hatası: ${error.message}`);
+      LogManager.addEvent("webview-panel", "error", `DevTools açma hatası: ${getErrorMessage(error)}`, { context: { type } });
+      this.addLog(type, "error", `DevTools açma hatası: ${getErrorMessage(error)}`);
     }
   }
 

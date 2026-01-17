@@ -1,4 +1,5 @@
 import { LogManager } from "../../modules/log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 
 export class UserPanel {
   settingsManager: any;
@@ -114,7 +115,7 @@ export class UserPanel {
       };
       await this.settingsManager.save(updated);
     } catch (err) {
-      LogManager.addEvent("entrance", "error", `User avatar hatası: ${err.message}`);
+      LogManager.addEvent("entrance", "error", `User avatar hatası: ${getErrorMessage(err)}`);
     }
   }
 
@@ -123,7 +124,7 @@ export class UserPanel {
     try {
         await window.electronAPI?.googledriveStartAuth?.();
     } catch (err) {
-        LogManager.addEvent("entrance", "error", `GDrive auth hatası: ${err.message}`);
+        LogManager.addEvent("entrance", "error", `GDrive auth hatası: ${getErrorMessage(err)}`);
     }
   }
 
@@ -159,7 +160,7 @@ export class UserPanel {
             await this.settingsManager.save(updated);
             this.render();
         } catch (e) {
-            LogManager.addEvent("entrance", "error", `GDrive disconnect hatası: ${e.message}`);
+            LogManager.addEvent("entrance", "error", `GDrive disconnect hatası: ${getErrorMessage(e)}`);
         }
     } else {
         const clientId = (document.getElementById("gdrive-client-id") as HTMLInputElement)?.value?.trim() || "";
@@ -195,7 +196,7 @@ export class UserPanel {
                 this.render();
             }
         } catch (e) {
-            LogManager.addEvent("entrance", "error", `GDrive code exchange hatası: ${e.message}`);
+            LogManager.addEvent("entrance", "error", `GDrive code exchange hatası: ${getErrorMessage(e)}`);
         }
     }
   }

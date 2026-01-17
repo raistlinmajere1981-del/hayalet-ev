@@ -5,6 +5,7 @@
  */
 
 import { LogManager } from "../log-manager.js";
+import { getErrorMessage } from "../../types/index.js";
 
 // ============================================================================
 // Hash Utility (Renderer-side)
@@ -48,7 +49,7 @@ export const MessageStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      LogManager.addEvent("database", "error", `MessageStore.list error: ${err.message}`, { context: { accountId, conversationId } });
+      LogManager.addEvent("database", "error", `MessageStore.list error: ${getErrorMessage(err)}`, { context: { accountId, conversationId } });
       return [];
     }
   },
@@ -85,8 +86,8 @@ export const MessageStore = {
 
       return result || { success: false, error: "API not available" };
     } catch (err) {
-      LogManager.addEvent("database", "error", `MessageStore.sync error: ${err.message}`, { context: { webUrl: params.webUrl, accountId: params.accountId } });
-      return { success: false, error: err.message };
+      LogManager.addEvent("database", "error", `MessageStore.sync error: ${getErrorMessage(err)}`, { context: { webUrl: params.webUrl, accountId: params.accountId } });
+      return { success: false, error: getErrorMessage(err) };
     }
   },
 
@@ -107,7 +108,7 @@ export const MessageStore = {
 
       return Array.isArray(result) ? result : [];
     } catch (err) {
-      LogManager.addEvent("database", "error", `MessageStore.search error: ${err.message}`, { context: { accountId, query } });
+      LogManager.addEvent("database", "error", `MessageStore.search error: ${getErrorMessage(err)}`, { context: { accountId, query } });
       return [];
     }
   },

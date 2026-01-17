@@ -127,8 +127,9 @@ export class AsistanController {
     });
     
     // Slot durumu değişikliklerini dinle
-    this._unsubSlot = SlotController.subscribe((payload: { slot?: string; event?: string }) => {
-      if (payload.slot === "ai0") {
+    this._unsubSlot = SlotController.subscribe((payload: unknown) => {
+      const p = payload as { slot?: string; event?: string };
+      if (p.slot === "ai0") {
         this._updateConnectionUI();
       }
       // Bağlı AI listesini güncelle

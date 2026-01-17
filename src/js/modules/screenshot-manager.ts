@@ -1,5 +1,6 @@
 import { LogManager } from "./log-manager.js";
 import { FileManager } from "./file-manager.js";
+import { getErrorMessage } from "../types/index.js";
 
 interface ScreenshotOpts {
   tag?: string;
@@ -28,11 +29,10 @@ class ScreenshotManagerClass {
         res = await window.electronAPI.capturePage("region", region);
       }
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "warning",
-        `capturePage başarısız: ${error.message}`,
+        `capturePage başarısız: ${getErrorMessage(err)}`,
       );
     }
     if (!res?.success || !((res as any).dataUrl || res.data)) {
@@ -52,11 +52,10 @@ class ScreenshotManagerClass {
         res = await window.electronAPI.capturePage("window", "");
       }
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "warning",
-        `captureWindow fallback: ${error.message}`,
+        `captureWindow fallback: ${getErrorMessage(err)}`,
       );
     }
     if (!res?.success || !((res as any).dataUrl || res.data)) {
@@ -77,22 +76,20 @@ class ScreenshotManagerClass {
         return this.persist(res, tag, opts.format);
       }
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `captureSystem hata: ${error.message}`,
+        `captureSystem hata: ${getErrorMessage(err)}`,
       );
     }
     try {
       const res = await window.electronAPI?.capturePage?.("full", "");
       return this.persist(res as ScreenshotResult | null, tag, opts.format);
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `captureSystem fallback hata: ${error.message}`,
+        `captureSystem fallback hata: ${getErrorMessage(err)}`,
       );
       return "";
     }
@@ -124,11 +121,10 @@ class ScreenshotManagerClass {
       );
       return target;
     } catch (err) {
-      const error = /** @type {Error} */ (err);
       LogManager.addEvent(
         "screenshot",
         "error",
-        `Screenshot yazılamadı: ${error.message}`,
+        `Screenshot yazılamadı: ${getErrorMessage(err)}`,
       );
       return "";
     }
