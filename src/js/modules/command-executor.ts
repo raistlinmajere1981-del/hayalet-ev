@@ -31,7 +31,7 @@ class CommandExecutorClass {
 
   async executeJob(job: CommandJob) {
     const startTime = Date.now();
-    const hasAttachments = job.attachments?.length > 0;
+    const hasAttachments = (job.attachments?.length ?? 0) > 0;
     
     LogManager.addEventWithContext(
       "command",
@@ -48,7 +48,7 @@ class CommandExecutorClass {
 
     const result = await WebviewManager.send({
       provider: job.provider,
-      text: job.message,
+      text: job.message || "",
       attachments: job.attachments,
     });
 
@@ -108,7 +108,7 @@ class CommandExecutorClass {
       } else {
         await FileManager.commandCleanup(
           job.id,
-          job.attachmentsMeta?.temp || [],
+          (job.attachmentsMeta?.temp || []).map((t: string) => ({ tempPath: t })),
         );
       }
     } catch (err) {
@@ -127,7 +127,7 @@ class CommandExecutorClass {
   handleJobFailure(job: CommandJob, error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     TrafficManager.signal(job.provider, "error", errorMessage);
-    FileManager.commandFail(job.id, job.attachmentsMeta?.temp || []);
+    FileManager.commandFail(job.id, (job.attachmentsMeta?.temp || []).map((t: string) => ({ tempPath: t })));
     LogManager.addEvent(
       "command",
       "error",

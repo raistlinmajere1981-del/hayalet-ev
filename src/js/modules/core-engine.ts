@@ -89,8 +89,8 @@ class CoreEngineClass {
       return this.settings;
     }
     this.settings = await SettingsManager.load();
-    WebviewManager.setSettings(this.settings);
-    await FileManager.ensureDirs("all" as unknown as Record<string, unknown>);
+    WebviewManager.setSettings(this.settings as Record<string, unknown>);
+    await FileManager.ensureDirs("all");
     AppState.init("ai1");
     LogManager.init();
     await CommandManager.init();

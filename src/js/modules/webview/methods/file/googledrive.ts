@@ -16,7 +16,7 @@ interface FilePayload {
 export async function attachFiles(_webview: HTMLElement, { files }: { files: FilePayload[] }) {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message);
+    return UploadManager.createError(validation.message || "Validation failed");
   }
 
   try {

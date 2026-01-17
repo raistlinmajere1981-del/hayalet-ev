@@ -62,7 +62,7 @@ export class ThinkingTracker {
     let event = null;
     let indicator = viewState.status?.thinking || "idle";
 
-    if (lastSend > viewState.lastSendSeen) {
+    if (lastSend > (viewState.lastSendSeen || 0)) {
       this.startThinking(viewState, now, lastSend);
       indicator = "busy";
       event = {

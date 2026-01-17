@@ -59,7 +59,7 @@ export class EntranceHallController {
     // Global listeners
     if (!this._unsubSettings) {
       this._unsubSettings = SettingsManager.subscribe(
-        ({ settings, changedPaths }) => {
+        ({ settings, changedPaths }: { settings: any; changedPaths: string[] }) => {
           this.applySettingsToUI(settings, changedPaths);
           this.webviewPanel.applyGating(settings, changedPaths);
           
@@ -103,13 +103,13 @@ export class EntranceHallController {
   async loadUserSettings() {
     try {
       const settings = await SettingsManager.load();
-      this.applySettingsToUI(settings, ["*"]);
+      this.applySettingsToUI(settings, ["*"] as string[]);
     } catch (error) {
       LogManager.addEvent("entrance", "error", `Settings yükleme hatası: ${error.message}`);
     }
   }
 
-  applySettingsToUI(settings, _changedPaths = []) {
+  applySettingsToUI(settings: any, _changedPaths: string[] = []) {
     if (!settings) settings = SettingsManager.getSnapshot();
 
     const ai1Nickname = AppState.getNickname("ai1");
@@ -123,7 +123,7 @@ export class EntranceHallController {
     if (ai1NickEl) ai1NickEl.textContent = ai1Nickname;
     if (ai2NickEl) ai2NickEl.textContent = ai2Nickname;
 
-    const getAvatar = (provider) => AppState.getAvatar(provider);
+    const getAvatar = (provider: string) => AppState.getAvatar(provider);
     this.updateAvatar("user", getAvatar("user"));
     this.updateAvatar("ai1", getAvatar("ai1"));
     this.updateAvatar("ai2", getAvatar("ai2"));
@@ -131,7 +131,7 @@ export class EntranceHallController {
     this.updateUI();
   }
 
-  async updateAvatar(userType, avatarPath) {
+  async updateAvatar(userType: string, avatarPath: string | null) {
     const avatarElement = document.getElementById(`${userType}-avatar`);
     if (!avatarElement) return;
 
@@ -155,7 +155,7 @@ export class EntranceHallController {
     }
   }
 
-  async connectUser(userType) {
+  async connectUser(userType: string) {
     const settings = await SettingsManager.load();
     const currentlyConnected = SlotController.isConnected(userType);
 
@@ -182,7 +182,7 @@ export class EntranceHallController {
     }
   }
 
-  async disconnectUser(userType) {
+  async disconnectUser(userType: string) {
     if (userType === "user") return;
     const currentlyConnected = SlotController.isConnected(userType);
     if (!currentlyConnected) return;
@@ -200,7 +200,7 @@ export class EntranceHallController {
     }
   }
 
-  async updateUserStatus(userType) {
+  async updateUserStatus(userType: string) {
     const statusDot = document.getElementById(`${userType}-status-dot`);
     const statusText = document.getElementById(`${userType}-status-text`);
     const toggleBtn = document.getElementById(`${userType}-toggle-btn`);

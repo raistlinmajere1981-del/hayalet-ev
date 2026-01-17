@@ -36,7 +36,7 @@ class RelayManagerClass {
     if (this._trafficUnsubscribe) {
       this._trafficUnsubscribe();
     }
-    this._trafficUnsubscribe = TrafficManager.onUpdate(this._boundUpdate);
+    this._trafficUnsubscribe = TrafficManager.onUpdate(this._boundUpdate as (snapshot: { provider: string; state: unknown }) => void);
 
     LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI and AI-Asistan relays");
   }
@@ -79,34 +79,20 @@ class RelayManagerClass {
   // ==========================================
   // ==========================================
 
-  /**
-   * Basit AI-AI relay oturumu başlat
-   * @param {Object} opts - { providers: ['ai1', 'ai2'] }
-   */
   async startSession(opts = {}) {
-    await this._aiaiRelay.start(opts);
+    await this._aiaiRelay?.start(opts);
   }
 
-  /**
-   * AI-AI relay oturumunu durdur
-   */
   async stopSession() {
-    await this._aiaiRelay.stop();
+    await this._aiaiRelay?.stop();
   }
 
-  /**
-   * Protokol tabanlı AI-AI oturumu başlat
-   * @param {Object} opts - { providers, protocolPayload, attachments }
-   */
   async startProtocolSession(opts = {}) {
-    await this._aiaiRelay.startProtocolSession(opts);
+    await this._aiaiRelay?.startProtocolSession(opts);
   }
 
-  /**
-   * Protokol oturumunu durdur
-   */
   async stopProtocolSession() {
-    await this._aiaiRelay.stopProtocolSession();
+    await this._aiaiRelay?.stopProtocolSession();
   }
 
   // ==========================================
@@ -122,14 +108,11 @@ class RelayManagerClass {
       await this._aiaiRelay.stop();
     }
     
-    await this._aiAsistanRelay.start({ sourceSlot });
+    await this._aiAsistanRelay?.start({ sourceSlot });
   }
 
-  /**
-   * AI-Asistan relay oturumunu durdur
-   */
   async stopAIAsistanSession() {
-    await this._aiAsistanRelay.stop();
+    await this._aiAsistanRelay?.stop();
   }
 
   // ==========================================

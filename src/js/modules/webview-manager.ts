@@ -33,8 +33,8 @@ class WebviewManagerClass {
    */
   setSettings(settings: Record<string, unknown>) {
     this.settings = settings;
-    MessageSender.setSettings(settings);
-    ConversationSyncer.setSettings(settings);
+    MessageSender.setSettings(settings as any);
+    ConversationSyncer.setSettings(settings as any);
   }
 
   // ==========================================
@@ -111,7 +111,7 @@ class WebviewManagerClass {
    */
   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
-    return MessageSender.send({ provider, text, attachments, webview });
+    return MessageSender.send({ provider, text, attachments: attachments as any[], webview: webview as any });
   }
 
   // ==========================================
@@ -122,7 +122,7 @@ class WebviewManagerClass {
    * @param {Object} coreEngine - CoreEngine instance
    */
   initSyncer(coreEngine: unknown) {
-    ConversationSyncer.init(coreEngine, (provider: string) => this.resolveWebview(provider));
+    ConversationSyncer.init(coreEngine as any, ((provider: string) => this.resolveWebview(provider)) as any);
   }
 
   /**

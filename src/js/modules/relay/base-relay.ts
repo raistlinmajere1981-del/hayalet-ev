@@ -70,7 +70,7 @@ export class BaseRelay {
    * @param {string} _provider - AI slot (ai1 veya ai2)
    * @param {Object} _syncResult - Conversation sync sonucu
    */
-  async handleThinkingComplete(_provider, _syncResult) {
+  async handleThinkingComplete(_provider: string, _syncResult: any) {
     throw new Error("handleThinkingComplete() must be implemented by subclass");
   }
 

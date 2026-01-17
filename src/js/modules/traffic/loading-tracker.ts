@@ -221,7 +221,8 @@ export class LoadingTracker {
     })();`;
     
     try {
-      return await webview.executeJavaScript(script, true);
+      const result = await webview.executeJavaScript?.(script, true);
+      return typeof result === "boolean" ? result : false;
     } catch (_) {
       return false;
     }
@@ -306,7 +307,7 @@ export class LoadingTracker {
     }
 
     const scroll = data.scroll || {};
-    const loadingElapsed = now - viewState.loadingStartTime;
+    const loadingElapsed = now - (viewState.loadingStartTime || now);
 
     // Default page kontrolü - scroll yerine send button varlığı ile loading sonlandır
     const providerId = AppState.getProviderIdForSlot(provider) || "";
@@ -383,8 +384,8 @@ export class LoadingTracker {
         }
       }
 
-      if (viewState.lastScrollChange > 0) {
-        const timeSinceLastScrollChange = now - viewState.lastScrollChange;
+      if ((viewState.lastScrollChange || 0) > 0) {
+        const timeSinceLastScrollChange = now - (viewState.lastScrollChange || 0);
         if (
           timeSinceLastScrollChange >=
           this.config.loading.noScrollChangeTimeoutMs

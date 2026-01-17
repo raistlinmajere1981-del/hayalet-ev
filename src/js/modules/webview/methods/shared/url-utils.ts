@@ -56,7 +56,7 @@ export function isDefaultPage(url: string, providerId: string): boolean {
  * @param {string[]} excludedUrls - Exclude edilmiş URL listesi (wildcard destekler)
  * @returns {boolean} - URL exclude edilmiş mi?
  */
-export function isUrlExcluded(url, excludedUrls) {
+export function isUrlExcluded(url: string, excludedUrls: string[]) {
   if (!url || !excludedUrls?.length) return false;
 
   const normalizedUrl = normalizeUrl(url);

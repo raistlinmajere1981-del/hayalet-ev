@@ -45,7 +45,7 @@ export class ServerController {
     this.commandGuide = null;
   }
 
-  getProviderLabel(provider) {
+  getProviderLabel(provider: string | null) {
     if (!provider) return "AI";
     if (provider === "ai1" || provider === "ai2" || provider === "user") {
       return AppState.getNickname(provider);
@@ -135,7 +135,7 @@ export class ServerController {
         const opt = document.createElement("option");
         opt.value = p.key;
         opt.textContent = AppState.getNickname(p.key);
-        this.controllerSelect.appendChild(opt);
+        this.controllerSelect?.appendChild(opt);
       });
     }
   }
@@ -164,7 +164,7 @@ export class ServerController {
       const opt = document.createElement("option");
       opt.value = cmd;
       opt.textContent = cmd;
-      this.commandSelect.appendChild(opt);
+      this.commandSelect?.appendChild(opt);
     });
   }
 
@@ -250,16 +250,16 @@ export class ServerController {
     }
   }
 
-  handleLogEntry(entry) {
+  handleLogEntry(entry: any) {
     if (!entry) return;
     this.renderLogs();
   }
 
   renderLogs() {
     const recent = LogManager.getRecent ? LogManager.getRecent(200) : [];
-    const aiList = [];
-    const coreList = [];
-    recent.forEach((entry) => {
+    const aiList: string[] = [];
+    const coreList: string[] = [];
+    recent.forEach((entry: any) => {
       if (!entry) return;
       const src = entry.source || "";
       if (src === "command-catch") {
@@ -285,7 +285,7 @@ export class ServerController {
     this.renderLogColumn(this.coreLog, coreList);
   }
 
-  renderLogColumn(el, list = []) {
+  renderLogColumn(el: HTMLElement | null, list: string[] = []) {
     if (!el) return;
     el.innerHTML = "";
     [...list]

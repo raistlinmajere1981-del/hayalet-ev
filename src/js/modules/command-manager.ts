@@ -15,7 +15,7 @@ interface CommandJob {
   status: 'queued' | 'processing' | 'sent' | 'failed';
   run: (() => Promise<any>) | null;
   _deferred: any;
-  done: Promise<any>;
+  done: Promise<any> | null;
   result?: any;
 }
 
@@ -47,19 +47,11 @@ class CommandManagerClass {
     }
   }
 
-  /**
-   * @param {(job: CommandJob) => Promise<any>} fn
-   */
-  setExecutor(fn) {
+  setExecutor(fn: ((job: CommandJob) => Promise<any>) | null) {
     this.executor = typeof fn === "function" ? fn : null;
   }
 
-  /**
-   * @param {string} event
-   * @param {Function} listener
-   * @returns {() => void}
-   */
-  on(event, listener) {
+  on(event: string, listener: (...args: any[]) => void) {
     if (!this.listeners[event]) this.listeners[event] = [];
     if (typeof listener === "function") {
       this.listeners[event].push(listener);
@@ -71,11 +63,7 @@ class CommandManagerClass {
     };
   }
 
-  /**
-   * @param {string} event
-   * @param {any} payload
-   */
-  emit(event, payload) {
+  emit(event: string, payload: any) {
     (this.listeners[event] || []).forEach((l) => {
       try {
         l(payload);
@@ -103,7 +91,7 @@ class CommandManagerClass {
     try {
       return JSON.parse(JSON.stringify(rest));
     } catch {
-      const cleaned = {};
+      const cleaned: Record<string, any> = {};
       Object.entries(rest || {}).forEach(([key, value]) => {
         if (typeof value === "function") return;
         try {
@@ -115,11 +103,7 @@ class CommandManagerClass {
     }
   }
 
-  /**
-   * @param {any[]} [items=[]]
-   * @returns {CommandJob[]}
-   */
-  enqueue(items = []) {
+  enqueue(items: any[] = []) {
     const list = Array.isArray(items) ? items : [items];
     const jobs = list.map((item) => this.addJob(item));
     this.processNext();
@@ -200,21 +184,14 @@ class CommandManagerClass {
     }
   }
 
-  /**
-   * FIX: Clean up job references after completion to prevent memory leak
-   * @param {CommandJob} job
-   */
-  _cleanupJobReferences(job) {
+  _cleanupJobReferences(job: CommandJob | null) {
     if (!job) return;
     job._deferred = null;
     job.done = null;
     job.run = null;
   }
 
-  /**
-   * @param {string} id
-   */
-  markDone(id) {
+  markDone(id: string) {
     const mover = window.electronAPI?.commandMove;
     if (typeof mover === "function") {
       mover(id, "done").catch?.(() => {
@@ -224,11 +201,7 @@ class CommandManagerClass {
     return true;
   }
 
-  /**
-   * @param {string} id
-   * @param {string} [reason='']
-   */
-  markFailed(id, reason = "") {
+  markFailed(id: string, reason = "") {
     const mover = window.electronAPI?.commandMove;
     if (typeof mover === "function") {
       mover(id, "failed").catch?.(() => {
@@ -238,10 +211,7 @@ class CommandManagerClass {
     return false;
   }
 
-  /**
-   * @param {CommandJob} job
-   */
-  persist(job) {
+  persist(job: CommandJob) {
     const writer = window.electronAPI?.commandWrite;
     if (typeof writer === "function") {
       const safeJob = {
@@ -274,12 +244,11 @@ class CommandManagerClass {
   }
 
   CommandManagerEnqueue(
-    target,
-    command,
+    target: string,
+    command: string,
     _mode = "default",
-    payload = {},
-    /** @type {Function | null | undefined} */
-    executor = null,
+    payload: Record<string, any> = {},
+    executor: (() => Promise<any>) | null = null,
     _priority = "normal",
   ) {
     const [job] = this.enqueue([
@@ -289,7 +258,7 @@ class CommandManagerClass {
         message: (payload as any).message || "",
         payload,
         run: executor || undefined,
-      },
+      } as any,
     ]);
     return job;
   }

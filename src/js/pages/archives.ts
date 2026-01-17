@@ -302,7 +302,7 @@ export class ArchivesController {
 
     try {
       // Slot'tan hesap bilgisini al
-      const accountInfo = AppState.getAccountForSlot(entry.provider);
+      const accountInfo = AppState.getAccountForSlot(entry.provider || "");
       if (!accountInfo?.id) {
         this.setStatus("Hesap bilgisi bulunamadı", "error");
         return;
@@ -501,7 +501,7 @@ export class ArchivesController {
         <div class="file-result">
           <span class="file-icon">${icon}</span>
           <div class="file-info">
-            <div class="file-name">${this.escapeHtml(file.originalName)}</div>
+            <div class="file-name">${this.escapeHtml(file.originalName || "")}</div>
             <div class="file-meta">
               ${this.escapeHtml(file.conversationTitle || "İsimsiz Sohbet")} · ${size}
               ${this.searchScope === "all" ? ` · ${accountLabel}` : ""}
@@ -652,7 +652,7 @@ export class ArchivesController {
     }
 
     // Slot'tan hesap bilgisini al
-    const accountInfo = AppState.getAccountForSlot(entry.provider);
+    const accountInfo = AppState.getAccountForSlot(entry.provider || "");
     if (!accountInfo?.id) {
       this.setStatus("Hesap bilgisi bulunamadı", "error");
       return;

@@ -5,7 +5,7 @@
 export function scrapeMessages() {
   // Hash fonksiyonu (djb2 algoritması) - fonksiyon içinde tanımlı olmalı
   // çünkü toString() ile webview'a inject edildiğinde dış fonksiyonlar görünmez
-  function hashString(str) {
+  function hashString(str: string) {
     if (!str) return "0";
     let hash = 5381;
     for (let i = 0; i < str.length; i++) {
@@ -28,7 +28,7 @@ export function scrapeMessages() {
   const base = preferred.length ? preferred : fallback;
   const nodes = base.filter((n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n)));
   const mid = window.innerWidth / 2;
-  const result = [];
+  const result: { index: number; role: string; text: string; contentHash: string; domIndex: number }[] = [];
   nodes.forEach((node, idx) => {
     const roleNode = node.getAttribute("data-message-author-role")
       ? node

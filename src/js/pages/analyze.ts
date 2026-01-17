@@ -175,7 +175,7 @@ export class AnalyzeController {
     this._updateAIAIControls();
   }
 
-  _updateSlotUI(slot, hasAccount, connected) {
+  _updateSlotUI(slot: string, hasAccount: boolean, connected: boolean) {
     const card = document.getElementById(`card-${slot}`);
     const status = document.getElementById(`status-${slot}`);
     const sendToggle = document.getElementById(`send-${slot}`);
@@ -209,7 +209,7 @@ export class AnalyzeController {
     }
   }
 
-  _updateGridLayout(ai1Connected, ai2Connected) {
+  _updateGridLayout(ai1Connected: boolean, ai2Connected: boolean) {
     const grid = document.querySelector(".conversation-grid");
     const cardAi1 = document.getElementById("card-ai1");
     const cardAi2 = document.getElementById("card-ai2");

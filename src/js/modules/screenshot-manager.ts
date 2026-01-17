@@ -35,7 +35,7 @@ class ScreenshotManagerClass {
         `capturePage başarısız: ${error.message}`,
       );
     }
-    if (!res?.success || !(res.dataUrl || res.data)) {
+    if (!res?.success || !((res as any).dataUrl || res.data)) {
       res = await this.captureSystem("", {
         ...opts,
         allowRegionFallback: false,
@@ -59,7 +59,7 @@ class ScreenshotManagerClass {
         `captureWindow fallback: ${error.message}`,
       );
     }
-    if (!res?.success || !(res.dataUrl || res.data)) {
+    if (!res?.success || !((res as any).dataUrl || res.data)) {
       res = await this.captureSystem("", opts);
     }
     return this.persist(res as ScreenshotResult, tag, opts.format);
@@ -86,7 +86,7 @@ class ScreenshotManagerClass {
     }
     try {
       const res = await window.electronAPI?.capturePage?.("full", "");
-      return this.persist(res, tag, opts.format);
+      return this.persist(res as ScreenshotResult | null, tag, opts.format);
     } catch (err) {
       const error = /** @type {Error} */ (err);
       LogManager.addEvent(

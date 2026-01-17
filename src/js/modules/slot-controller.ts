@@ -152,15 +152,15 @@ class SlotControllerClass {
     if (this._initialized) return;
     
     SettingsManager.subscribe(({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
-      handleSettingsChange(this._slots, settings, changedPaths, (slot: string, s: SlotStateData) => {
+      handleSettingsChange(this._slots, settings as any, changedPaths, ((slot: string, s: SlotStateData) => {
         this._syncSlotWithSettings(slot, s);
-      });
+      }) as any);
     });
     
     const settings = SettingsManager.getSnapshot();
-    syncWithSettings(this._slots, settings, (slot: string, s: SlotStateData) => {
+    syncWithSettings(this._slots, settings as any, ((slot: string, s: SlotStateData) => {
       this._syncSlotWithSettings(slot, s);
-    });
+    }) as any);
     
     this._initialized = true;
     LogManager.addEvent("slot-controller", "info", "SlotController initialized");
@@ -467,7 +467,7 @@ class SlotControllerClass {
 
   _syncSlotWithSettings(slot: string, settings: SlotStateData) {
     syncSlotWithSettings(
-      this._slots[slot], slot, settings,
+      this._slots[slot], slot, settings as any,
       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
       this._boundLog, this._boundTransition, this._boundEmit,

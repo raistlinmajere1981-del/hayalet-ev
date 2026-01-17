@@ -89,7 +89,7 @@ function compileCommand(name: string, code: string): CompiledHandler | null {
     `);
 
     LogManager.addEvent("meta-command", "info", `Komut derlendi: ${name}`);
-    return fn;
+    return fn as CompiledHandler;
   } catch (err) {
     LogManager.addEvent("meta-command", "error", `Komut derleme hatası (${name}): ${(err as Error).message}`);
     return null;

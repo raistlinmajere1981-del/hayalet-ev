@@ -10,12 +10,7 @@
 import { LogManager } from "../../modules/log-manager.js";
 import { AppState } from "../../modules/app-state.js";
 
-/**
- * Unix timestamp'i okunabilir formata çevir
- * @param {number} timestamp - Unix timestamp (ms)
- * @returns {string}
- */
-function formatTimestamp(timestamp) {
+function formatTimestamp(timestamp: number | undefined): string {
   if (!timestamp) return "";
   const d = new Date(timestamp);
   return d.toLocaleString("tr-TR", {
@@ -27,13 +22,12 @@ function formatTimestamp(timestamp) {
   });
 }
 
-/**
- * Mesajları render et
- * @param {string} provider - Slot ID (ai1/ai2)
- * @param {Object} callbacks - { onContextMenu, onDoubleClick }
- * @returns {Promise<{lastMessage: string}>}
- */
-export async function renderMessages(provider, callbacks = {}) {
+interface RenderCallbacks {
+  onContextMenu?: (e: MouseEvent, data: { provider: string; text: string }) => void;
+  onDoubleClick?: (data: { provider: string; text: string }) => void;
+}
+
+export async function renderMessages(provider: string, callbacks: RenderCallbacks = {}): Promise<{ lastMessage: string }> {
   const container = document.getElementById(`messages-${provider}`);
   const select = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
   const filter = document.getElementById(`filter-count-${provider}`) as HTMLSelectElement | null;
@@ -82,7 +76,7 @@ export async function renderMessages(provider, callbacks = {}) {
     }
 
     // Conversation attachments'larını DB'den al
-    const attachmentsByMessage = {};
+    const attachmentsByMessage: Record<string, any[]> = {};
     try {
       const attachments = await window.electronAPI?.dbGetAttachments?.({
         accountId: accountInfo.id,
@@ -90,7 +84,7 @@ export async function renderMessages(provider, callbacks = {}) {
       });
       if (attachments && attachments.length) {
         // messageId'ye göre grupla (DB camelCase döndürüyor)
-        attachments.forEach((att) => {
+        attachments.forEach((att: { messageId: string }) => {
           if (!attachmentsByMessage[att.messageId]) {
             attachmentsByMessage[att.messageId] = [];
           }
@@ -113,7 +107,7 @@ export async function renderMessages(provider, callbacks = {}) {
       }
     }
 
-    items.forEach((msg) => {
+    items.forEach((msg: { id: string; role: string; content?: string; text?: string; author?: string; createdAt?: number }) => {
       const msgAttachments = attachmentsByMessage[msg.id] || [];
       const bubble = createMessageBubble(
         msg,
@@ -142,16 +136,29 @@ export async function renderMessages(provider, callbacks = {}) {
   }
 }
 
-/**
- * Tek bir mesaj bubble'ı oluştur
- * @param {Object} msg - Mesaj objesi (DB'den: content, created_at, role, author, id)
- * @param {string} provider - Slot ID
- * @param {string} attachmentsBasePath - Attachments klasör base yolu
- * @param {Array} msgAttachments - Bu mesaja ait attachments (DB'den)
- * @param {Object} callbacks - { onContextMenu, onDoubleClick }
- * @returns {HTMLElement}
- */
-function createMessageBubble(msg, provider, attachmentsBasePath, msgAttachments, callbacks) {
+interface MessageData {
+  id: string;
+  role: string;
+  content?: string;
+  text?: string;
+  author?: string;
+  createdAt?: number;
+}
+
+interface AttachmentData {
+  messageId: string;
+  originalName?: string;
+  storedName?: string;
+  storedPath?: string;
+}
+
+function createMessageBubble(
+  msg: MessageData,
+  provider: string,
+  attachmentsBasePath: string,
+  msgAttachments: AttachmentData[],
+  callbacks: RenderCallbacks
+): HTMLElement {
   const bubble = document.createElement("div");
   bubble.className = `msg-bubble ${msg.role === "assistant" ? "msg-ai" : "msg-user"}`;
 
@@ -188,7 +195,7 @@ function createMessageBubble(msg, provider, attachmentsBasePath, msgAttachments,
     const attWrap = document.createElement("div");
     attWrap.className = "msg-attachments";
 
-    msgAttachments.forEach((att) => {
+    msgAttachments.forEach((att: AttachmentData) => {
       const link = document.createElement("button");
       link.className = "attachment-link";
       link.textContent = `📎 ${att.originalName || att.storedName || "dosya"}`;
@@ -205,24 +212,20 @@ function createMessageBubble(msg, provider, attachmentsBasePath, msgAttachments,
 
   if (callbacks.onContextMenu) {
     bubble.addEventListener("contextmenu", (e) => {
-      callbacks.onContextMenu(e, { provider, text: messageText });
+      callbacks.onContextMenu?.(e, { provider, text: messageText });
     });
   }
 
   if (callbacks.onDoubleClick) {
     bubble.addEventListener("dblclick", () => {
-      callbacks.onDoubleClick({ provider, text: messageText });
+      callbacks.onDoubleClick?.({ provider, text: messageText });
     });
   }
 
   return bubble;
 }
 
-/**
- * Dosyayı sistemde uygun uygulama ile aç
- * @param {string} filePath - Dosya yolu
- */
-async function openAttachmentByPath(filePath) {
+async function openAttachmentByPath(filePath: string) {
   if (!filePath) return;
 
   try {

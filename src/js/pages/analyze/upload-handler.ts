@@ -9,12 +9,12 @@ import { getFilename } from "../../constants/index.js";
  * - Upload list render
  */
 
-/**
- * Upload list'i render et
- * @param {Array} stagedFiles - Seçilen dosyalar listesi
- * @param {Function} onRemove - Dosya kaldırma callback'i
- */
-export function renderUploadList(stagedFiles, onRemove) {
+interface StagedFile {
+  name: string;
+  path: string;
+}
+
+export function renderUploadList(stagedFiles: StagedFile[], onRemove: (name: string) => void) {
   const box = document.getElementById("upload-list");
   const info = document.querySelector(".files-header div");
   
@@ -30,7 +30,7 @@ export function renderUploadList(stagedFiles, onRemove) {
   
   if (info) info.textContent = `${stagedFiles.length} dosya eklendi.`;
   
-  stagedFiles.forEach((file) => {
+  stagedFiles.forEach((file: StagedFile) => {
     const row = document.createElement("div");
     row.className = "upload-item";
     
@@ -49,12 +49,7 @@ export function renderUploadList(stagedFiles, onRemove) {
   });
 }
 
-/**
- * Dosya seçim dialog'unu aç ve dosyaları ekle
- * @param {Array} currentFiles - Mevcut staged files
- * @returns {Promise<Array>} - Güncellenmiş staged files
- */
-export async function addUploadFiles(currentFiles) {
+export async function addUploadFiles(currentFiles: StagedFile[]): Promise<StagedFile[]> {
   try {
     const selection = await window.electronAPI?.showOpenDialog?.({
       properties: ["openFile", "multiSelections"],
@@ -77,7 +72,7 @@ export async function addUploadFiles(currentFiles) {
     
     if (!paths.length) return currentFiles;
     
-    const newEntries = paths.map((p) => {
+    const newEntries = paths.map((p: string) => {
       const name = getFilename(String(p)) || "dosya";
       return { name, path: p };
     });
@@ -88,12 +83,6 @@ export async function addUploadFiles(currentFiles) {
   }
 }
 
-/**
- * Dosyayı listeden kaldır
- * @param {Array} currentFiles - Mevcut staged files
- * @param {string} name - Kaldırılacak dosya adı
- * @returns {Array} - Güncellenmiş staged files
- */
-export function removeUploadFile(currentFiles, name) {
-  return currentFiles.filter((f) => f.name !== name);
+export function removeUploadFile(currentFiles: StagedFile[], name: string): StagedFile[] {
+  return currentFiles.filter((f: StagedFile) => f.name !== name);
 }

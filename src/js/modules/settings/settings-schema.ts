@@ -1,5 +1,5 @@
 
-function isPlainObject(v) {
+function isPlainObject(v: unknown): v is Record<string, any> {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
@@ -68,7 +68,7 @@ export function defaultSettings() {
   return defaults;
 }
 
-function mergeDefaults(obj, defaults) {
+function mergeDefaults(obj: any, defaults: Record<string, any>): Record<string, any> {
   if (!isPlainObject(obj)) return JSON.parse(JSON.stringify(defaults));
   const out = JSON.parse(JSON.stringify(defaults));
   for (const [k, v] of Object.entries(obj)) {
@@ -107,7 +107,7 @@ function normalizeLegacy(raw: any): any {
     out.asistanAccounts = r.asistanAccounts;
   }
 
-  const slots = {};
+  const slots: Record<string, any> = {};
   ["ai1", "ai2"].forEach((slot) => {
     const slotData = r?.slots?.[slot];
     if (!isPlainObject(slotData)) {
@@ -141,7 +141,7 @@ function normalizeLegacy(raw: any): any {
   return out;
 }
 
-export function normalizeSettings(raw) {
+export function normalizeSettings(raw: any) {
   const defaults = defaultSettings();
   const legacyNormalized = normalizeLegacy(raw);
   const merged = mergeDefaults(legacyNormalized, defaults);
@@ -235,13 +235,13 @@ export function normalizeSettings(raw) {
   return merged;
 }
 
-export function getChangedPaths(prev, next) {
+export function getChangedPaths(prev: any, next: any): string[] {
   if (!prev) {
     return ["*"];
   }
-  const changed = [];
+  const changed: string[] = [];
 
-  const walk = (a, b, path) => {
+  const walk = (a: any, b: any, path: string) => {
     if (a === b) return;
     const aObj = isPlainObject(a);
     const bObj = isPlainObject(b);

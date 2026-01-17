@@ -89,7 +89,7 @@ export class AccountPanel {
     }
   }
 
-  async renderAccountAvatar(accountId, avatarPath) {
+  async renderAccountAvatar(accountId: string, avatarPath: string | null) {
     const previewEl = document.getElementById(`account-avatar-${accountId}`);
     if (!previewEl) return;
 
@@ -126,9 +126,9 @@ export class AccountPanel {
     }
   }
 
-  startEdit(account) {
+  startEdit(account: { id: string; email: string; provider: string; nickname?: string; avatarPath?: string }) {
     this._editingAccountId = account.id;
-    this._newAccountAvatarPath = account.avatarPath; // Start with existing avatar
+    this._newAccountAvatarPath = account.avatarPath ?? null; // Start with existing avatar
 
     const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
     const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
@@ -221,7 +221,7 @@ export class AccountPanel {
       const accounts = settings?.accounts || [];
 
       const existingAccount = accounts.find(
-        (a) => a.email.toLowerCase() === email.toLowerCase() && a.provider === provider
+        (a: { email: string; provider: string }) => a.email.toLowerCase() === email.toLowerCase() && a.provider === provider
       );
       if (existingAccount) {
         this.showFeedback("Bu hesap zaten kayıtlı", "error");
@@ -278,7 +278,7 @@ export class AccountPanel {
     try {
         const settings = this.settingsManager.getSnapshot();
         const accounts = settings?.accounts || [];
-        const accountIndex = accounts.findIndex(a => a.id === this._editingAccountId);
+        const accountIndex = accounts.findIndex((a: { id: string }) => a.id === this._editingAccountId);
 
         if (accountIndex === -1) {
             this.showFeedback("Düzenlenen hesap bulunamadı", "error");
@@ -323,7 +323,7 @@ export class AccountPanel {
     }
   }
 
-  async deleteAccount(accountId) {
+  async deleteAccount(accountId: string) {
     const result = await window.electronAPI?.showMessageBox?.({
       type: "question",
       buttons: ["İptal", "Sil"],
@@ -339,7 +339,7 @@ export class AccountPanel {
       const settings = this.settingsManager.getSnapshot();
       const accounts = settings?.accounts || [];
       
-      const updatedAccounts = accounts.filter((a) => a.id !== accountId);
+      const updatedAccounts = accounts.filter((a: { id: string }) => a.id !== accountId);
       
       // Cleanup slots using this account
       const slots = { ...settings.slots };
@@ -359,14 +359,14 @@ export class AccountPanel {
     }
   }
 
-  escapeHtml(text) {
+  escapeHtml(text: string | null | undefined) {
     if (!text) return "";
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
 
-  showFeedback(message, type = "info") {
+  showFeedback(message: string, type = "info") {
     // We can use a global feedback or one specific to the account section
     const statusEl = document.getElementById("account-status-msg");
     if (!statusEl) return;

@@ -43,12 +43,12 @@ class AppStateClass {
     this.notify();
   }
 
-  setActiveProvider(provider) {
+  setActiveProvider(provider: string) {
     this.activeProvider = provider;
     this.notify();
   }
 
-  setActiveConversation(provider, conversationId) {
+  setActiveConversation(provider: string, conversationId: string | null) {
     this.activeConversations[provider] = conversationId;
     this.notify();
   }
@@ -57,28 +57,28 @@ class AppStateClass {
     return SettingsManager.getSnapshot();
   }
 
-  getAccountForSlot(slot) {
+  getAccountForSlot(slot: string) {
     const settings = this.getSettings();
     
     // AI0 (Asistan) için asistanSlot ve asistanAccounts kullan
     if (slot === "ai0") {
       const accountId = settings.asistanSlot?.accountId;
       if (!accountId) return null;
-      return settings.asistanAccounts?.find((acc) => acc.id === accountId) || null;
+      return settings.asistanAccounts?.find((acc: { id: string }) => acc.id === accountId) || null;
     }
     
     // AI1/AI2 için normal slots ve accounts kullan
     const accountId = settings.slots?.[slot]?.accountId;
     if (!accountId) return null;
-    return settings.accounts?.find((acc) => acc.id === accountId) || null;
+    return settings.accounts?.find((acc: { id: string }) => acc.id === accountId) || null;
   }
 
-  getProviderIdForSlot(slot) {
+  getProviderIdForSlot(slot: string) {
     const account = this.getAccountForSlot(slot);
     return account?.provider || null;
   }
 
-  getAvatar(provider) {
+  getAvatar(provider: string) {
     const settings = this.getSettings();
     if (provider === "user") {
       return settings.user?.avatarPath || "";
@@ -87,7 +87,7 @@ class AppStateClass {
     return account?.avatarPath || "";
   }
 
-  getNickname(provider) {
+  getNickname(provider: string) {
     const settings = this.getSettings();
     if (provider === "user") {
       return settings.user?.nickname || "Kullanıcı";
@@ -103,7 +103,7 @@ class AppStateClass {
     this.notify();
   }
 
-  setChatTitle(provider, title) {
+  setChatTitle(provider: string, title: string) {
     this.chat.titleByProvider = {
       ...this.chat.titleByProvider,
       [provider]: title || "",
@@ -112,7 +112,7 @@ class AppStateClass {
   }
 
   // Asistan relay durumunu ayarla
-  setAsistanRelay(active, sourceSlot = null) {
+  setAsistanRelay(active: boolean, sourceSlot: string | null = null) {
     this.asistanRelay = {
       active: !!active,
       sourceSlot: active ? sourceSlot : null,
@@ -133,7 +133,7 @@ class AppStateClass {
     };
   }
 
-  subscribe(listener) {
+  subscribe(listener: (state: ReturnType<AppStateClass["getState"]>) => void) {
     if (typeof listener === "function") {
       this.listeners.push(listener);
     }

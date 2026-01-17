@@ -113,7 +113,7 @@ export async function attachWebview(
                      !currentUrl.startsWith(normalizedTarget) && 
                      !normalizedTarget.startsWith(currentUrl));
 
-  slotState._pendingLoad = needsLoad && !!targetUrl;
+  slotState._pendingLoad = !!(needsLoad && targetUrl);
   slotState._targetUrl = targetUrl;
 
   if (!needsLoad && currentUrl) {

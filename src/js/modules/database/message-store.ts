@@ -74,7 +74,7 @@ export const MessageStore = {
       const messagesWithHash = messages.map((msg: { role?: string; text?: string; index?: number; contentHash?: string }, index: number) => ({
         ...msg,
         index: msg.index ?? index,
-        contentHash: msg.contentHash || hashString(msg.text),
+        contentHash: msg.contentHash || hashString(msg.text || ""),
       }));
 
       const result = await window.electronAPI?.dbSyncMessages?.({

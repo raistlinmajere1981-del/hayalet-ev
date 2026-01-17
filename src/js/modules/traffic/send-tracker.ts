@@ -40,7 +40,7 @@ export class SendTracker {
    * @returns {boolean} True if send was just triggered
    */
   isSendTriggered(viewState: { lastSendSeen?: number }, lastSendTime: number) {
-    return lastSendTime > viewState.lastSendSeen;
+    return lastSendTime > (viewState.lastSendSeen || 0);
   }
 
   /**

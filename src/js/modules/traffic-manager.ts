@@ -178,7 +178,7 @@ class TrafficManagerClass {
 
     if (hasHandlers(provider)) return;
 
-    attachWebviewEvents(provider, webviewEl, {
+    attachWebviewEvents(provider, webviewEl as any, {
       onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
       onDomReady: () => {},
       onFailLoad: (prov: string) => this.setAllUnreachable(prov),

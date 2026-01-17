@@ -28,32 +28,17 @@ class LifecycleManagerClass {
     this._inactivityThreshold = 30 * 60 * 1000;
   }
 
-  /**
-   * Webview'ı kaydet
-   * @param {string} provider - Slot ID (ai1/ai2)
-   * @param {HTMLElement} webview - Webview elementi
-   */
-  register(provider, webview) {
+  register(provider: string, webview: HTMLElement) {
     if (!provider || !webview) return;
     this.webviews[provider] = webview;
     this._lastActivity[provider] = Date.now();
   }
 
-  /**
-   * Kayıtlı webview'ı getir
-   * @param {string} provider - Slot ID
-   * @returns {HTMLElement|null}
-   */
-  get(provider) {
+  get(provider: string): HTMLElement | null {
     return this.webviews[provider] || null;
   }
 
-  /**
-   * Webview'ı çöz - önce cache'den, yoksa DOM'dan
-   * @param {string} provider - Slot ID
-   * @returns {HTMLElement|null}
-   */
-  resolve(provider) {
+  resolve(provider: string): HTMLElement | null {
     if (this.webviews[provider]) return this.webviews[provider];
 
     // Dinamik ID arama: önce provider-webview dene
@@ -167,12 +152,7 @@ class LifecycleManagerClass {
     }
   }
 
-  /**
-   * Webview'ı slot'tan ayır
-   * @param {string} provider - Slot ID
-   * @param {Object} opts - { cleanupDom, skipTrafficStop }
-   */
-  detach(provider, { cleanupDom = true, skipTrafficStop = false } = {}) {
+  detach(provider: string, { cleanupDom = true, skipTrafficStop = false } = {}) {
     if (!provider) return;
 
     const webview = this.webviews[provider];
@@ -202,11 +182,7 @@ class LifecycleManagerClass {
     }
   }
 
-  /**
-   * Webview'ı tamamen yok et (bellek temizliği)
-   * @param {string} provider - Slot ID
-   */
-  destroy(provider) {
+  destroy(provider: string) {
     if (!provider) return;
 
     const webview = this.webviews[provider];
@@ -232,11 +208,7 @@ class LifecycleManagerClass {
     }
   }
 
-  /**
-   * Webview'ı aktif olarak işaretle
-   * @param {string} provider - Slot ID
-   */
-  markActive(provider) {
+  markActive(provider: string) {
     if (!provider) return;
     this._lastActivity[provider] = Date.now();
   }
@@ -266,11 +238,7 @@ class LifecycleManagerClass {
     }
   }
 
-  /**
-   * Webview logger kurulumu (internal)
-   * @private
-   */
-  _setupWebviewLogger(webview, provider, providerId) {
+  _setupWebviewLogger(webview: any, provider: string, providerId: string) {
     try {
       const webContentsId = webview.getWebContentsId?.();
       if (webContentsId && window.electronAPI?.setupWebviewLogger) {
@@ -298,12 +266,7 @@ class LifecycleManagerClass {
     return { ...this.webviews };
   }
 
-  /**
-   * Belirli bir provider kayıtlı mı?
-   * @param {string} provider - Slot ID
-   * @returns {boolean}
-   */
-  has(provider) {
+  has(provider: string): boolean {
     return !!this.webviews[provider];
   }
 }

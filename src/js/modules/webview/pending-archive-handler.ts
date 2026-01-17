@@ -18,12 +18,7 @@ class PendingArchiveHandlerClass {
     this._pendingArchives = {};
   }
 
-  /**
-   * Bekleyen arşiv ekle
-   * @param {string} provider - Slot ID (ai1/ai2)
-   * @param {Object} entry - { jobId, folder, temp }
-   */
-  addPending(provider, entry) {
+  addPending(provider: string, entry: { jobId: string; folder?: string; temp?: string[]; stagedFiles?: any[] }) {
     if (!provider || !entry) return;
 
     this._pendingArchives[provider] = this._pendingArchives[provider] || [];
@@ -36,12 +31,7 @@ class PendingArchiveHandlerClass {
     });
   }
 
-  /**
-   * Bekleyen arşivleri işle (sync stable olunca çağrılır)
-   * @param {string} provider - Slot ID
-   * @param {Object} syncResult - Sync sonucu (messages array içerir)
-   */
-  processPending(provider, syncResult) {
+  processPending(provider: string, syncResult: { messages?: any[]; conversationId?: string }) {
     try {
       const list = this._pendingArchives[provider] || [];
       if (!list.length) return;
@@ -65,11 +55,12 @@ class PendingArchiveHandlerClass {
     }
   }
 
-  /**
-   * Tek bir pending entry'yi işle
-   * @private
-   */
-  async _processEntry(entry, provider, message, conversationId) {
+  async _processEntry(
+    entry: { jobId: string; temp?: string[]; stagedFiles?: any[] },
+    provider: string,
+    message: { id?: string } | undefined,
+    conversationId: string | undefined
+  ) {
     try {
       const accountInfo = AppState.getAccountForSlot(provider);
       if (!accountInfo?.id || !message?.id || !conversationId) {
@@ -95,7 +86,7 @@ class PendingArchiveHandlerClass {
         const filePath = file.commandPath || file.path;
         if (!filePath) continue;
 
-        const res = await window.electronAPI.dbSaveAttachment({
+        const res = await window.electronAPI?.dbSaveAttachment({
           accountId: accountInfo.id,
           conversationId,
           messageId: message.id,
@@ -126,13 +117,9 @@ class PendingArchiveHandlerClass {
     }
   }
 
-  /**
-   * Entry için cleanup işlemi
-   * @private
-   */
-  _cleanup(entry) {
+  _cleanup(entry: { jobId: string; temp?: string[] }) {
     try {
-      FileManager.commandCleanup(entry.jobId, entry.temp || []);
+      FileManager.commandCleanup(entry.jobId, (entry.temp || []).map((t: string) => ({ tempPath: t })));
     } catch (e) {
       LogManager.addEvent(
         "command",
@@ -143,11 +130,7 @@ class PendingArchiveHandlerClass {
     }
   }
 
-  /**
-   * Provider için bekleyen arşivleri temizle
-   * @param {string} provider - Slot ID
-   */
-  clearPending(provider) {
+  clearPending(provider: string) {
     if (provider) {
       delete this._pendingArchives[provider];
     }
@@ -160,21 +143,11 @@ class PendingArchiveHandlerClass {
     this._pendingArchives = {};
   }
 
-  /**
-   * Provider için bekleyen arşiv var mı?
-   * @param {string} provider - Slot ID
-   * @returns {boolean}
-   */
-  hasPending(provider) {
+  hasPending(provider: string): boolean {
     return (this._pendingArchives[provider]?.length || 0) > 0;
   }
 
-  /**
-   * Bekleyen arşiv sayısı
-   * @param {string} provider - Slot ID (optional, all if not provided)
-   * @returns {number}
-   */
-  getPendingCount(provider) {
+  getPendingCount(provider?: string): number {
     if (provider) {
       return this._pendingArchives[provider]?.length || 0;
     }

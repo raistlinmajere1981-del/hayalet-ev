@@ -639,7 +639,7 @@ export class AsistanController {
               }
             })();
           `;
-          await webviewEl.executeJavaScript(configScript);
+          await webviewEl.executeJavaScript?.(configScript);
         } catch (_err) {
           // Config injection başarısız - send() öncesi fallback devreye girecek
         }

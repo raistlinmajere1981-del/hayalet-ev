@@ -19,7 +19,7 @@ export async function attachFiles(webview: HTMLElement, { files }: { files: File
 
   const validation = validateFiles(files);
   if (!validation.valid) {
-    return createErrorResponse(validation.message);
+    return createErrorResponse(validation.message || "Validation failed");
   }
 
   const filesPayload = JSON.stringify(files);
@@ -110,7 +110,7 @@ export async function attachFiles(webview: HTMLElement, { files }: { files: File
     };
   })();`;
 
-  const result = await webview.executeJavaScript(injectScript);
+  const result = await webview.executeJavaScript?.(injectScript);
   return {
     success: !!result?.success,
     message: result?.message || "Dosya inject denemesi yapıldı",
