@@ -105,7 +105,7 @@ export async function listLogSessions(logDir, args) {
   sessions.sort((a, b) => {
     if (a.startTime === "unknown") return 1;
     if (b.startTime === "unknown") return -1;
-    return new Date(b.startTime) - new Date(a.startTime);
+    return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
   });
   
   const limited = sessions.slice(0, limit);

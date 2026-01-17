@@ -12,7 +12,7 @@ const CDP_HOST = process.env.CDP_HOST || "localhost";
 
 /**
  * Electron debug endpoint'lerini keşfet
- * @returns {Promise<Array>} Mevcut hedefler listesi
+ * @returns {Promise<any[]>} Mevcut hedefler listesi
  */
 export async function discoverTargets() {
   try {
@@ -20,7 +20,7 @@ export async function discoverTargets() {
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    return await response.json();
+    return /** @type {any[]} */ (await response.json());
   } catch (error) {
     if (error.code === "ECONNREFUSED") {
       throw new Error(

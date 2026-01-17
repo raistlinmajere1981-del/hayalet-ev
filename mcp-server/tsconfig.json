@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext"],
+    "types": ["node"],
+    "noEmit": true,
+    "skipLibCheck": true,
+    "checkJs": true,
+    "allowJs": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "index.js",
+    "tools/*.js",
+    "utils/*.js"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
