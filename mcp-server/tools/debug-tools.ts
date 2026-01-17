@@ -68,6 +68,32 @@ const ERROR_PATTERNS: ErrorPattern[] = [
   },
 ];
 
+/** Match result interface */
+interface MatchResult {
+  category: string;
+  suggestion: string;
+  checkFiles: string[];
+  severity: "high" | "medium" | "low";
+}
+
+/**
+ * Error pattern'i eşleştir (internal helper, dışarıdan da kullanılabilir)
+ */
+export function matchErrorPattern(errorMessage: string, provider: string | null = null): MatchResult | null {
+  for (const p of ERROR_PATTERNS) {
+    if (p.pattern.test(errorMessage)) {
+      return {
+        category: p.category,
+        suggestion: p.suggestion,
+        checkFiles: p.checkFiles(provider || undefined),
+        severity: p.severity,
+      };
+    }
+  }
+  
+  return null;
+}
+
 /**
  * Hata mesajını analiz et ve ipucu ver
  */
