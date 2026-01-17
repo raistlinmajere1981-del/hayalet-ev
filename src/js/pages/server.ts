@@ -175,7 +175,7 @@ export class ServerController {
       (this.commandGuide as HTMLTextAreaElement).value = "";
       return;
     }
-    (this.commandGuide as HTMLTextAreaElement).value = getCommandGuideText(selected);
+    (this.commandGuide as HTMLTextAreaElement).value = getCommandGuideText(selected as Parameters<typeof getCommandGuideText>[0]);
   }
 
   addCommandToTextarea() {

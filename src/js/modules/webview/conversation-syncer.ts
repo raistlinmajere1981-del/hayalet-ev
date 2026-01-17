@@ -73,7 +73,7 @@ class ConversationSyncerClass {
     this._trafficUnsubscribe = TrafficManager.onUpdate(async (snapshot) => {
       try {
         const provider = snapshot?.provider;
-        const state = snapshot?.state || {};
+        const state = (snapshot?.state || {}) as { thinkingState?: string; loadingJustEnded?: boolean; loadingEndedAt?: number };
         if (!provider) return;
 
         const currentThinking = state.thinkingState || "idle";
@@ -85,7 +85,7 @@ class ConversationSyncerClass {
           await this.syncProvider(provider, { from: "auto" });
         }
 
-        if (state.loadingJustEnded && state.loadingEndedAt > this._lastLoadingEnded[provider]) {
+        if (state.loadingJustEnded && state.loadingEndedAt && state.loadingEndedAt > this._lastLoadingEnded[provider]) {
           this._lastLoadingEnded[provider] = state.loadingEndedAt;
           await new Promise((resolve) => setTimeout(resolve, 2000));
           await this.syncProvider(provider, { from: "auto" });

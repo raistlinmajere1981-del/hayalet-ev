@@ -28,7 +28,7 @@ export function normalizeUrl(url: string): string {
 export function isDefaultPage(url: string, providerId: string): boolean {
   if (!url || !providerId) return false;
   
-  const config = ProviderRegistry.get(providerId);
+  const config = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
   if (!config?.baseUrl) return false;
   
   const normalizedUrl = normalizeUrl(url);
@@ -39,8 +39,9 @@ export function isDefaultPage(url: string, providerId: string): boolean {
   
   // Bazı provider'lar /app veya benzeri path kullanabilir
   // Örn: gemini.google.com/app
-  if (config.defaultPaths) {
-    for (const path of config.defaultPaths) {
+  const configWithPaths = config as { defaultPaths?: string[]; baseUrl: string };
+  if (configWithPaths.defaultPaths) {
+    for (const path of configWithPaths.defaultPaths) {
       const fullPath = normalizeUrl(`${config.baseUrl}${path}`);
       if (normalizedUrl === fullPath) return true;
     }

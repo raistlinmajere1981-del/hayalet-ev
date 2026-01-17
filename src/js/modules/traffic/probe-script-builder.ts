@@ -24,9 +24,10 @@ export function buildProbeScript(provider: string): string {
 
   // sendButtonBase varsa onu kullan (disabled kontrolü script içinde yapılır)
   // yoksa sendButton kullan (eski davranış)
-  const sendSel = cfg.selectors.sendButtonBase || cfg.selectors.sendButton || "";
-  const stopSel = cfg.selectors.stopButton || "";
-  const voiceSel = cfg.selectors.voiceButton || "";
+  const selectors = cfg.selectors as { sendButtonBase?: string; sendButton?: string; stopButton?: string; voiceButton?: string };
+  const sendSel = selectors.sendButtonBase || selectors.sendButton || "";
+  const stopSel = selectors.stopButton || "";
+  const voiceSel = selectors.voiceButton || "";
   const scrollerSels = cfg.scrollerSelectors || [];
   const contentContainers = cfg.contentContainers || [
     "main",

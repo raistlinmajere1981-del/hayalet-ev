@@ -8,19 +8,76 @@
  */
 
 import { normalizeUrl, isUrlExcluded as checkUrlExcluded } from "../webview/methods/shared/url-utils.js";
+import type { SlotId, LogLevel } from "../../types/index.js";
+import type { BaseProviderConfig } from "../../types/provider.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/** Webview element tipi */
+type WebviewElement = HTMLElement & {
+  getURL?: () => string;
+  loadURL?: (url: string) => Promise<void>;
+  isLoading?: () => boolean;
+  src: string;
+  addEventListener: (type: string, listener: EventListener, options?: AddEventListenerOptions) => void;
+  removeEventListener: (type: string, listener: EventListener) => void;
+};
+
+/** Slot state - url-handler için gerekli alanlar */
+interface UrlHandlerSlotState {
+  webview: WebviewElement | null;
+  providerConfig: BaseProviderConfig | null;
+  state: string;
+  currentUrl: string;
+  urlExcluded: boolean;
+  trafficStarted: boolean;
+  correlationId: string;
+}
+
+/** URL change handler bilgisi */
+interface UrlChangeHandlerInfo {
+  handler: (event: { url?: string }) => void;
+  webview: WebviewElement;
+}
+
+/** URL change event sabitleri */
+interface UrlEvents {
+  URL_CHANGED: string;
+  URL_EXCLUDED: string;
+  URL_INCLUDED: string;
+}
+
+/** Log fonksiyonu tipi */
+type LogFn = (slot: SlotId, level: LogLevel, message: string) => void;
+
+/** Event emit fonksiyonu tipi */
+type EmitFn = (slot: SlotId, event: string, data: Record<string, unknown>) => void;
+
+/** Traffic kontrol fonksiyonu tipi */
+type TrafficFn = (slot: SlotId, correlationId: string) => void;
+
+/** URL change callback tipi */
+type UrlChangeCallback = (slot: SlotId, url: string) => void;
+
+// ============================================================================
+// State
+// ============================================================================
 
 /**
  * URL change handler'larını saklamak için map
  */
-const urlChangeHandlers = {};
+const urlChangeHandlers: Record<string, UrlChangeHandlerInfo> = {};
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * URL'in excluded olup olmadığını kontrol et
- * @param {Object} slotState - Slot state objesi
- * @param {string} url - Kontrol edilecek URL
- * @returns {boolean}
  */
-export function checkUrlExclusion(slotState, url) {
+export function checkUrlExclusion(slotState: UrlHandlerSlotState, url: string): boolean {
   const config = slotState.providerConfig;
   
   if (!config?.excludedUrls?.length || !url) return false;
@@ -30,18 +87,19 @@ export function checkUrlExclusion(slotState, url) {
 
 /**
  * URL change handler'ı kur
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} _correlationId - İşlem correlation ID (kullanılmıyor ama tutarlılık için)
- * @param {Function} onUrlChange - URL değiştiğinde çağrılacak callback
  */
-export function setupUrlChangeHandler(slotState, slot, _correlationId, onUrlChange) {
+export function setupUrlChangeHandler(
+  slotState: UrlHandlerSlotState,
+  slot: SlotId,
+  _correlationId: string,
+  onUrlChange: UrlChangeCallback
+): void {
   clearUrlChangeHandler(slot);
 
   const webview = slotState.webview;
   if (!webview) return;
 
-  const handler = (event) => {
+  const handler = (event: { url?: string }): void => {
     const url = event?.url || "";
     if (url && url !== "about:blank" && !url.startsWith("data:")) {
       onUrlChange(slot, url);
@@ -50,50 +108,41 @@ export function setupUrlChangeHandler(slotState, slot, _correlationId, onUrlChan
 
   urlChangeHandlers[slot] = { handler, webview };
 
-  webview.addEventListener("did-navigate", handler);
-  webview.addEventListener("did-navigate-in-page", handler);
+  webview.addEventListener("did-navigate", handler as EventListener);
+  webview.addEventListener("did-navigate-in-page", handler as EventListener);
 }
 
 /**
  * URL change handler'ı temizle
- * @param {string} slot - Slot ID
  */
-export function clearUrlChangeHandler(slot) {
+export function clearUrlChangeHandler(slot: SlotId): void {
   const handlers = urlChangeHandlers[slot];
   if (!handlers) return;
 
   const { handler, webview } = handlers;
   try {
-    webview?.removeEventListener?.("did-navigate", handler);
-    webview?.removeEventListener?.("did-navigate-in-page", handler);
+    webview?.removeEventListener?.("did-navigate", handler as EventListener);
+    webview?.removeEventListener?.("did-navigate-in-page", handler as EventListener);
   } catch (_e) {
+    // Ignore cleanup errors
   }
   delete urlChangeHandlers[slot];
 }
 
 /**
  * URL değişikliğini işle
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} newUrl - Yeni URL
- * @param {string} connectedState - CONNECTED state değeri
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {Object} events - Event sabitleri { URL_CHANGED, URL_EXCLUDED, URL_INCLUDED }
- * @param {Function} startTrafficFn - Traffic başlatma fonksiyonu
- * @param {Function} stopTrafficFn - Traffic durdurma fonksiyonu
  */
 export function handleUrlChange(
-  slotState, 
-  slot, 
-  newUrl, 
-  connectedState,
-  logFn, 
-  emitFn, 
-  events,
-  startTrafficFn,
-  stopTrafficFn
-) {
+  slotState: UrlHandlerSlotState, 
+  slot: SlotId, 
+  newUrl: string, 
+  connectedState: string,
+  logFn: LogFn, 
+  emitFn: EmitFn, 
+  events: UrlEvents,
+  startTrafficFn: TrafficFn,
+  stopTrafficFn: TrafficFn
+): void {
   if (slotState.state !== connectedState) return;
 
   const normalizedNew = normalizeUrl(newUrl);
@@ -125,15 +174,16 @@ export function handleUrlChange(
 
 /**
  * Webview'ı belirtilen URL'e navigate et
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string|null} url - Hedef URL (null ise provider baseUrl kullanılır)
- * @param {string} connectedState - CONNECTED state değeri
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {string} navigatedEvent - WEBVIEW_NAVIGATED event adı
  */
-export function navigate(slotState, slot, url, connectedState, logFn, emitFn, navigatedEvent) {
+export function navigate(
+  slotState: UrlHandlerSlotState,
+  slot: SlotId,
+  url: string | null,
+  connectedState: string,
+  logFn: LogFn,
+  emitFn: EmitFn,
+  navigatedEvent: string
+): void {
   if (slotState.state !== connectedState) {
     logFn(slot, "warning", "Cannot navigate: not connected");
     return;
@@ -142,7 +192,7 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
   const webview = slotState.webview;
   if (!webview) return;
 
-  let targetUrl = url;
+  let targetUrl: string | undefined = url ?? undefined;
   if (!targetUrl) {
     targetUrl = slotState.providerConfig?.baseUrl;
   }
@@ -156,6 +206,7 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
   try {
     currentUrl = webview.getURL?.() || webview.getAttribute?.("src") || "";
   } catch (_e) {
+    // Ignore errors
   }
   
   if (normalizeUrl(currentUrl) === normalizeUrl(targetUrl)) {
@@ -166,7 +217,7 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
 
   try {
     if (typeof webview.loadURL === "function") {
-      webview.loadURL(targetUrl).catch((err) => {
+      webview.loadURL(targetUrl).catch((err: Error) => {
         logFn(slot, "warning", `Navigation warning: ${err.message}`);
       });
     } else {
@@ -174,6 +225,7 @@ export function navigate(slotState, slot, url, connectedState, logFn, emitFn, na
     }
     emitFn(slot, navigatedEvent, { url: targetUrl });
   } catch (err) {
-    logFn(slot, "error", `Navigation error: ${err.message}`);
+    const error = err as Error;
+    logFn(slot, "error", `Navigation error: ${error.message}`);
   }
 }

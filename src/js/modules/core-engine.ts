@@ -12,13 +12,67 @@ import { TrafficManager } from "./traffic-manager.js";
 import { ServerCommands } from "./server-commands.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { getFilename, generateUniqueId, TIMEOUTS, decodeBase64 } from "../constants/index.js";
+import type { AppSettings } from "../types/settings.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/** Bağlantı sonucu */
+interface ConnectionResult {
+  success: boolean;
+  message?: string;
+  correlationId?: string;
+}
+
+/** Batch gönderim parametreleri */
+interface SendBatchParams {
+  targets?: string[];
+  text?: string;
+  page?: string;
+  archiveFolders?: Record<string, string>;
+  attachments?: (string | AttachmentInput)[];
+  jobIds?: Record<string, string>;
+}
+
+/** Attachment girişi */
+interface AttachmentInput {
+  name?: string;
+  path?: string;
+  commandPath?: string;
+}
+
+/** Protokol gönderim parametreleri */
+interface SendProtocolParams {
+  room?: string;
+  scenario?: string;
+  targets?: string[];
+  context?: Record<string, unknown>;
+  mode?: string | null;
+}
+
+/** Whisper kayıt bilgisi */
+interface WhisperRecord {
+  text?: string;
+  id?: string;
+  when?: unknown;
+}
+
+/** Caught command payload */
+interface CaughtCommandPayload {
+  provider?: string;
+  args?: string;
+  source?: string;
+  webUrl?: string;
+  target?: string;
+}
 
 class CoreEngineClass {
-  settings: any;
+  settings: AppSettings | null;
   initialized: boolean;
-  relay: any;
+  relay: typeof RelayManager | null;
   _settingsSub: (() => void) | null;
-  _previousSettings: any;
+  _previousSettings: AppSettings | null;
   _cleanupInterval: ReturnType<typeof setInterval> | null;
 
   constructor() {
@@ -30,7 +84,7 @@ class CoreEngineClass {
     this._cleanupInterval = null;
   }
 
-  async init() {
+  async init(): Promise<AppSettings | null> {
     if (this.initialized) {
       return this.settings;
     }
@@ -101,8 +155,8 @@ class CoreEngineClass {
         const { settings } = payload;
         if (!settings) return;
 
-        this.useSettings(settings);
-        this._previousSettings = JSON.parse(JSON.stringify(settings));
+        this.useSettings(settings as AppSettings);
+        this._previousSettings = JSON.parse(JSON.stringify(settings)) as AppSettings;
       });
     } catch (err) {
       LogManager.addEvent(
@@ -118,12 +172,12 @@ class CoreEngineClass {
   /**
    * Set connection state for a provider slot
    * Delegates to SlotController for coordinated state management
-   * @param {string} provider - 'ai0', 'ai1' or 'ai2'
-   * @param {boolean} connected - Whether to connect or disconnect
-   * @param {Object} opts - Options { force: boolean }
-   * @returns {Promise<{ success: boolean, message?: string, correlationId?: string }>}
    */
-  async setConnection(provider: string, connected: boolean, opts: { force?: boolean } = {}) {
+  async setConnection(
+    provider: string,
+    connected: boolean,
+    opts: { force?: boolean } = {}
+  ): Promise<ConnectionResult> {
     if (!provider) return { success: false, message: "no-provider" };
 
     if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2") {
@@ -154,13 +208,13 @@ class CoreEngineClass {
     return result;
   }
 
-  async ensureReady() {
+  async ensureReady(): Promise<void> {
     if (!this.initialized) {
       await this.init();
     }
   }
 
-  useSettings(settings) {
+  useSettings(settings: AppSettings | null): AppSettings | null {
     if (settings) {
       this.settings = settings;
       WebviewManager.setSettings(this.settings);
@@ -169,13 +223,7 @@ class CoreEngineClass {
   }
 
   /**
-   * @param {Object} options
-   * @param {any[]} [options.targets=[]]
-   * @param {string} [options.text='']
-   * @param {string} [options.page='generic']
-   * @param {Object} [options.archiveFolders={}]
-   * @param {any[]} [options.attachments=[]]
-   * @param {Object} [options.jobIds={}]
+   * Batch mesaj gönderimi
    */
   async sendBatch({
     targets = [],
@@ -184,14 +232,14 @@ class CoreEngineClass {
     archiveFolders = {},
     attachments = [],
     jobIds = {},
-  } = {}) {
+  }: SendBatchParams = {}): Promise<{ success: boolean; message?: string }> {
     await this.ensureReady();
     const list = Array.isArray(targets)
       ? targets.filter(Boolean)
       : [targets].filter(Boolean);
     if (!list.length) return { success: false, message: "Hedef yok" };
 
-    const attachmentItems = attachments.map((a) => {
+    const attachmentItems = attachments.map((a: string | AttachmentInput) => {
       const name =
         typeof a === "string"
           ? getFilename(a)
@@ -261,16 +309,16 @@ class CoreEngineClass {
     return { success: true };
   }
 
-  async sendMessage(p) {
+  async sendMessage(p: { provider?: string; text?: string; page?: string } | null): Promise<{ success: boolean; message?: string }> {
     const { provider = "ai1", text = "", page = "generic" } = p || {};
     return this.sendBatch({
-      targets: [/** @type {any} */ (provider)],
+      targets: [provider],
       text,
       page,
     });
   }
 
-  async sendToTargets(p) {
+  async sendToTargets(p: { targets?: string[]; text?: string; page?: string } | null): Promise<{ success: boolean; message?: string }> {
     return this.sendBatch({
       targets: p?.targets,
       text: p?.text || "",
@@ -284,7 +332,7 @@ class CoreEngineClass {
     targets = [],
     context = {},
     mode = null,
-  } = {}) {
+  }: SendProtocolParams = {}): Promise<{ success: boolean; message?: string }> {
     await this.ensureReady();
     /** @type {any} */
     const payload = ProtocolHandler.buildPayload({
@@ -415,7 +463,10 @@ class CoreEngineClass {
     return res;
   }
 
-  async whisper(op, args) {
+  async whisper(
+    op: string,
+    args?: { user?: string; text?: string; when?: unknown; id?: string }
+  ): Promise<unknown> {
     switch (op) {
       case "add":
         return WhisperManager.WhisperManagerAdd(
@@ -436,15 +487,19 @@ class CoreEngineClass {
     }
   }
 
-  pauseWhispers() {
-    return WhisperManager.pause?.();
+  pauseWhispers(): void {
+    WhisperManager.pause?.();
   }
 
-  resumeWhispers(runCheck = false) {
-    return WhisperManager.resume?.(runCheck);
+  resumeWhispers(runCheck = false): void {
+    WhisperManager.resume?.(runCheck);
   }
 
-  async enqueueWhisperJob(provider: string, record: { text?: string; id?: string; when?: any } = {}, messageOverride = "") {
+  async enqueueWhisperJob(
+    provider: string,
+    record: WhisperRecord = {},
+    messageOverride = ""
+  ): Promise<{ success: boolean; jobId?: string }> {
     const text = messageOverride || record.text || "";
     const whisperId = record.id;
     const payload = {
@@ -481,7 +536,10 @@ class CoreEngineClass {
     return { success: true, jobId: job?.id };
   }
 
-  async handleCaughtCommand(commandName: string, payload: { provider?: string; args?: string; source?: string; webUrl?: string; target?: string } = {}) {
+  async handleCaughtCommand(
+    commandName: string,
+    payload: CaughtCommandPayload = {}
+  ): Promise<{ success: boolean; message?: string; jobId?: string; priority?: string }> {
     if (!commandName) return { success: false, message: "Komut adı yok" };
     const known = Array.isArray(ServerCommands.list())
       ? ServerCommands.list().some(
@@ -559,11 +617,11 @@ class CoreEngineClass {
     return { success: true, jobId: job?.id, priority };
   }
 
-  setActiveTargets(targets = []) {
+  setActiveTargets(targets: string[] = []): void {
     AppState.setChatTargets(targets);
   }
 
-  listCommands() {
+  listCommands(): unknown[] {
     return CommandManager.list();
   }
 
@@ -571,7 +629,7 @@ class CoreEngineClass {
    * Cleanup method - tüm subscription ve interval'ları temizle
    * Uygulama kapanırken çağrılmalı
    */
-  destroy() {
+  destroy(): void {
     // Cleanup interval'ı durdur
     if (this._cleanupInterval) {
       clearInterval(this._cleanupInterval);

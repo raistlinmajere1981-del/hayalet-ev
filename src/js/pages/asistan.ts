@@ -90,7 +90,7 @@ export class AsistanController {
     });
     
     // Slot durumu değişikliklerini dinle
-    this._unsubSlot = SlotController.subscribe((payload) => {
+    this._unsubSlot = SlotController.subscribe((payload: { slot?: string; event?: string }) => {
       if (payload.slot === "ai0") {
         this._updateConnectionUI();
       }
@@ -106,7 +106,7 @@ export class AsistanController {
     });
     
     // Traffic güncellemelerini dinle
-    this._unsubTraffic = TrafficManager.onUpdate((snapshot) => {
+    this._unsubTraffic = TrafficManager.onUpdate((snapshot: { ai0?: unknown; [key: string]: unknown }) => {
       if (snapshot?.ai0) {
         this._updateTrafficUI(snapshot.ai0);
       }
@@ -270,7 +270,7 @@ export class AsistanController {
     const providerId = this.providerSelect?.value;
     if (!providerId) return;
     
-    const provider = ProviderRegistry.getAsistan(providerId);
+    const provider = ProviderRegistry.getAsistan(providerId as "opencode");
     if (!provider) return;
     
     // Provider değişikliğini settings'e kaydet

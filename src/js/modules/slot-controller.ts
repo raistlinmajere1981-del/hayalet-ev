@@ -13,6 +13,7 @@
 
 import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
+import type { SlotId } from "../types/index.js";
 
 import {
   attachWebview,
@@ -480,11 +481,11 @@ class SlotControllerClass {
 
   _handleUrlChange(slot: string, newUrl: string) {
     handleUrlChange(
-      this._slots[slot], slot, newUrl, SlotState.CONNECTED,
+      this._slots[slot], slot as SlotId, newUrl, SlotState.CONNECTED,
       this._boundLog, this._boundEmit,
       { URL_CHANGED: SlotEvent.URL_CHANGED, URL_EXCLUDED: SlotEvent.URL_EXCLUDED, URL_INCLUDED: SlotEvent.URL_INCLUDED },
-      (s: string, cid: string) => this._startTraffic(s, cid),
-      (s: string, cid: string) => this._stopTraffic(s, cid)
+      (s: SlotId, cid: string) => this._startTraffic(s, cid),
+      (s: SlotId, cid: string) => this._stopTraffic(s, cid)
     );
   }
 
@@ -527,7 +528,7 @@ class SlotControllerClass {
       clearUrlChangeHandler,
       clearDomReadyHandler,
       (s: string, cid: string) => this._stopTraffic(s, cid),
-      (s: string, cid: string) => detachWebview(this._slots[s], s, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED)
+      (s: string, cid: string) => detachWebview(this._slots[s], s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED)
     );
   }
 

@@ -20,11 +20,11 @@ function setByPath(obj: Record<string, unknown>, path: string, value: unknown): 
     .split(".")
     .filter(Boolean);
   if (!parts.length) return obj;
-  let cur = obj;
+  let cur: Record<string, unknown> = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const p = parts[i];
     if (!cur[p] || typeof cur[p] !== "object") cur[p] = {};
-    cur = cur[p];
+    cur = cur[p] as Record<string, unknown>;
   }
   cur[parts[parts.length - 1]] = value;
   return obj;

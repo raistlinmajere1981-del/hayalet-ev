@@ -190,8 +190,8 @@ class LogManagerClass {
     if (type !== "error" && last && nowTs - last < 2000) return;
     this.lastThrottle.set(key, nowTs);
 
-    const correlationId = meta?.correlationId || null;
-    const context = meta?.context || null;
+    const correlationId = (meta?.correlationId as string | null) || null;
+    const context = meta?.context ?? null;
     
     let cleanMeta = meta ? { ...meta } : undefined;
     if (cleanMeta) {

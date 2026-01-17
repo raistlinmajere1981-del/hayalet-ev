@@ -88,7 +88,7 @@ class LifecycleManagerClass {
         return;
       }
 
-      const cfg = ProviderRegistry.get(providerId);
+      const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
       const defaultPage = cfg?.baseUrl || "";
 
       if (webview.getAttribute?.("data-detached")) {

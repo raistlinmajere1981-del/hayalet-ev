@@ -8,18 +8,65 @@
  */
 
 import { TIMEOUTS } from "../../constants/index.js";
+import type { SlotId, LogLevel } from "../../types/index.js";
+import type { BaseProviderConfig } from "../../types/provider.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/** Webview element tipi */
+type WebviewElement = HTMLElement & {
+  getURL?: () => string;
+  loadURL?: (url: string) => Promise<void>;
+  isLoading?: () => boolean;
+  src: string;
+  style: CSSStyleDeclaration;
+  addEventListener: (type: string, listener: EventListener, options?: AddEventListenerOptions) => void;
+  removeEventListener: (type: string, listener: EventListener) => void;
+};
+
+/** Slot state - webview-handler için gerekli alanlar */
+interface WebviewHandlerSlotState {
+  webview: WebviewElement | null;
+  providerConfig: BaseProviderConfig | null;
+  lastActivity: number;
+  _overrideUrl?: string;
+  _pendingLoad?: boolean;
+  _targetUrl?: string;
+}
+
+/** Attach sonucu */
+interface AttachResult {
+  needsLoad: boolean;
+  targetUrl: string;
+}
+
+/** DOM ready handler bilgisi */
+interface DomReadyHandlerInfo {
+  handler: () => void;
+  errorHandler: (event: { errorCode?: number; errorDescription?: string }) => void;
+  webview: WebviewElement;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
+/** Log fonksiyonu tipi */
+type LogFn = (slot: SlotId, level: LogLevel, message: string, meta?: Record<string, unknown>) => void;
+
+/** Event emit fonksiyonu tipi */
+type EmitFn = (slot: SlotId, event: string, data: Record<string, unknown>) => void;
 
 /**
  * Webview'ı slot'a bağla
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID (ai1/ai2)
- * @param {string} correlationId - İşlem correlation ID
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {string} eventAttached - WEBVIEW_ATTACHED event adı
- * @returns {Promise<{ needsLoad: boolean, targetUrl: string }>}
  */
-export async function attachWebview(slotState, slot, correlationId, logFn, emitFn, eventAttached) {
+export async function attachWebview(
+  slotState: WebviewHandlerSlotState,
+  slot: SlotId,
+  correlationId: string,
+  logFn: LogFn,
+  emitFn: EmitFn,
+  eventAttached: string
+): Promise<AttachResult> {
   const webview = slotState.webview;
   
   if (!webview) {
@@ -49,6 +96,7 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
   try {
     currentUrl = (webview.getURL?.() || "").split("?")[0].split("#")[0];
   } catch (_e) {
+    // Ignore errors
   }
 
   // Override URL varsa onu kullan, yoksa provider config'den al
@@ -76,19 +124,20 @@ export async function attachWebview(slotState, slot, correlationId, logFn, emitF
   emitFn(slot, eventAttached, { correlationId });
   logFn(slot, "debug", "Webview attached", { correlationId });
   
-  return { needsLoad: slotState._pendingLoad, targetUrl };
+  return { needsLoad: slotState._pendingLoad ?? false, targetUrl };
 }
 
 /**
  * Webview'ı slot'tan ayır
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} correlationId - İşlem correlation ID
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {string} eventDetached - WEBVIEW_DETACHED event adı
  */
-export async function detachWebview(slotState, slot, correlationId, logFn, emitFn, eventDetached) {
+export async function detachWebview(
+  slotState: WebviewHandlerSlotState,
+  slot: SlotId,
+  correlationId: string,
+  logFn: LogFn,
+  emitFn: EmitFn,
+  eventDetached: string
+): Promise<void> {
   const webview = slotState.webview;
 
   if (!webview) return;
@@ -100,25 +149,30 @@ export async function detachWebview(slotState, slot, correlationId, logFn, emitF
     emitFn(slot, eventDetached, { correlationId });
     logFn(slot, "debug", "Webview detached", { correlationId });
   } catch (err) {
-    logFn(slot, "warning", `Webview detach warning: ${err.message}`, { correlationId });
+    const error = err as Error;
+    logFn(slot, "warning", `Webview detach warning: ${error.message}`, { correlationId });
   }
 }
+
+// ============================================================================
+// State
+// ============================================================================
 
 /**
  * DOM ready handler'larını saklamak için map
  */
-const domReadyHandlers = {};
+const domReadyHandlers: Record<string, DomReadyHandlerInfo> = {};
 
 /**
  * DOM ready olana kadar bekle
  * Event listener'ları ÖNCE ekler, SONRA src set eder (race condition önleme)
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} correlationId - İşlem correlation ID
- * @param {Function} logFn - Log fonksiyonu
- * @returns {Promise<void>}
  */
-export function waitForDomReady(slotState, slot, correlationId, logFn) {
+export function waitForDomReady(
+  slotState: WebviewHandlerSlotState,
+  slot: SlotId,
+  correlationId: string,
+  logFn: LogFn
+): Promise<void> {
   const webview = slotState.webview;
 
   if (!webview) {
@@ -135,6 +189,7 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
           return;
         }
       } catch (_e) {
+        // Ignore errors
       }
     }
 
@@ -143,14 +198,14 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
       reject(new Error("DOM ready timeout"));
     }, TIMEOUTS.DOM_READY);
 
-    const handler = () => {
+    const handler = (): void => {
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
       logFn(slot, "debug", "DOM ready event received", { correlationId });
       resolve();
     };
 
-    const errorHandler = (event) => {
+    const errorHandler = (event: { errorCode?: number; errorDescription?: string }): void => {
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
       if (event?.errorCode !== -3 && event?.errorCode !== -102) {
@@ -164,7 +219,7 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
 
     // ÖNCE event listener'ları ekle
     webview.addEventListener("dom-ready", handler, { once: true });
-    webview.addEventListener("did-fail-load", errorHandler, { once: true });
+    webview.addEventListener("did-fail-load", errorHandler as EventListener, { once: true });
 
     // SONRA src set et (race condition önleme)
     if (slotState._pendingLoad && slotState._targetUrl) {
@@ -178,9 +233,8 @@ export function waitForDomReady(slotState, slot, correlationId, logFn) {
 
 /**
  * DOM ready handler'ı temizle
- * @param {string} slot - Slot ID
  */
-export function clearDomReadyHandler(slot) {
+export function clearDomReadyHandler(slot: SlotId): void {
   const handlers = domReadyHandlers[slot];
   if (!handlers) return;
 
@@ -188,18 +242,17 @@ export function clearDomReadyHandler(slot) {
   try {
     if (timeoutId) clearTimeout(timeoutId);
     webview?.removeEventListener?.("dom-ready", handler);
-    webview?.removeEventListener?.("did-fail-load", errorHandler);
+    webview?.removeEventListener?.("did-fail-load", errorHandler as EventListener);
   } catch (_e) {
+    // Ignore cleanup errors
   }
   delete domReadyHandlers[slot];
 }
 
 /**
  * Webview'ın mevcut URL'ini al
- * @param {Object} slotState - Slot state objesi
- * @returns {string}
  */
-export function getCurrentUrl(slotState) {
+export function getCurrentUrl(slotState: WebviewHandlerSlotState | null): string {
   const webview = slotState?.webview;
   if (!webview) return "";
   try {

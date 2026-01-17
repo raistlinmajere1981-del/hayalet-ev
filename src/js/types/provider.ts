@@ -4,7 +4,7 @@
  * @module src/js/types/provider
  */
 
-import type { ProviderId, AsistanProviderId, AllProviderId } from "./common.js";
+import type { AllProviderId } from "./common.js";
 
 // ============================================================================
 // Selector Types

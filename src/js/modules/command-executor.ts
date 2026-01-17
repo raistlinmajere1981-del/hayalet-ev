@@ -93,9 +93,8 @@ class CommandExecutorClass {
         WebviewManager.addPendingArchive(job.provider, {
           jobId: job.id,
           folder,
-          stagedFiles,
           temp: job.attachmentsMeta?.temp || [],
-        });
+        } as { jobId: string; folder: string; temp?: string[]; stagedFiles?: unknown[] });
         LogManager.addEvent(
           "archive",
           "info",
