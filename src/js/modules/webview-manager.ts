@@ -31,7 +31,7 @@ class WebviewManagerClass {
    * Ayarları güncelle ve alt modüllere dağıt
    * @param {Object} settings - Uygulama ayarları
    */
-  setSettings(settings) {
+  setSettings(settings: Record<string, unknown>) {
     this.settings = settings;
     MessageSender.setSettings(settings);
     ConversationSyncer.setSettings(settings);
@@ -45,7 +45,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @param {HTMLElement} webview - Webview elementi
    */
-  register(provider, webview) {
+  register(provider: string, webview: HTMLElement) {
     LifecycleManager.register(provider, webview);
   }
 
@@ -55,7 +55,7 @@ class WebviewManagerClass {
    * @param {HTMLElement} webview - Webview elementi
    * @param {Object} opts - { onReady }
    */
-  attach(provider, webview, opts = {}) {
+  attach(provider: string, webview: HTMLElement, opts: Record<string, unknown> = {}) {
     const providerId = AppState.getProviderIdForSlot(provider);
     LifecycleManager.attach(provider, webview, { ...opts, providerId });
   }
@@ -65,7 +65,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @param {Object} opts - { cleanupDom, skipTrafficStop }
    */
-  detach(provider, opts = {}) {
+  detach(provider: string, opts: Record<string, unknown> = {}) {
     LifecycleManager.detach(provider, opts);
   }
 
@@ -74,7 +74,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @returns {HTMLElement|null}
    */
-  resolveWebview(provider) {
+  resolveWebview(provider: string) {
     return LifecycleManager.resolve(provider);
   }
 
@@ -82,7 +82,7 @@ class WebviewManagerClass {
    * Webview'ı tamamen yok et
    * @param {string} provider - Slot ID
    */
-  destroyWebview(provider) {
+  destroyWebview(provider: string) {
     LifecycleManager.destroy(provider);
   }
 
@@ -90,7 +90,7 @@ class WebviewManagerClass {
    * Webview'ı aktif olarak işaretle
    * @param {string} provider - Slot ID
    */
-  markActive(provider) {
+  markActive(provider: string) {
     LifecycleManager.markActive(provider);
   }
 
@@ -109,7 +109,7 @@ class WebviewManagerClass {
    * @param {Object} opts - { provider, text, attachments }
    * @returns {Promise<Object>}
    */
-  async send({ provider, text, attachments = [] }) {
+  async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
     return MessageSender.send({ provider, text, attachments, webview });
   }
@@ -121,8 +121,8 @@ class WebviewManagerClass {
    * ConversationSyncer'ı başlat
    * @param {Object} coreEngine - CoreEngine instance
    */
-  initSyncer(coreEngine) {
-    ConversationSyncer.init(coreEngine, (provider) => this.resolveWebview(provider));
+  initSyncer(coreEngine: unknown) {
+    ConversationSyncer.init(coreEngine, (provider: string) => this.resolveWebview(provider));
   }
 
   /**
@@ -132,7 +132,7 @@ class WebviewManagerClass {
    * @param {Object} options - { catchEnabled }
    * @returns {Promise<Object>}
    */
-  async syncConversation(provider, webview, options = {}) {
+  async syncConversation(provider: string, webview: HTMLElement | null, options: Record<string, unknown> = {}) {
     const targetWebview = webview || this.resolveWebview(provider);
     return ConversationSyncer.syncConversation(provider, targetWebview, options);
   }
@@ -143,7 +143,7 @@ class WebviewManagerClass {
    * @param {Object} opts - { from }
    * @returns {Promise<Object>}
    */
-  async syncProvider(provider, opts = {}) {
+  async syncProvider(provider: string, opts: Record<string, unknown> = {}) {
     return ConversationSyncer.syncProvider(provider, opts);
   }
 
@@ -152,7 +152,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @param {Function} callback - Callback
    */
-  addStableListener(provider, callback) {
+  addStableListener(provider: string, callback: () => void) {
     ConversationSyncer.addStableListener(provider, callback);
   }
 
@@ -161,7 +161,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @returns {Object|null}
    */
-  getLastSyncResult(provider) {
+  getLastSyncResult(provider: string) {
     return ConversationSyncer.getLastSyncResult(provider);
   }
 
@@ -173,7 +173,7 @@ class WebviewManagerClass {
    * @param {string} provider - Slot ID
    * @param {Object} entry - { jobId, folder, temp }
    */
-  addPendingArchive(provider, entry) {
+  addPendingArchive(provider: string, entry: { jobId: string; folder: string; temp?: string[] }) {
     PendingArchiveHandler.addPending(provider, entry);
   }
 
@@ -185,7 +185,7 @@ class WebviewManagerClass {
    * @param {string} providerSlot - Slot ID
    * @returns {Object|null}
    */
-  getProviderModule(providerSlot) {
+  getProviderModule(providerSlot: string) {
     const providerId = AppState.getProviderIdForSlot(providerSlot);
     return providerId ? getProvider(providerId) : null;
   }
@@ -196,7 +196,7 @@ class WebviewManagerClass {
    * @param {string} url - URL
    * @returns {boolean}
    */
-  isUrlExcluded(providerSlot, url) {
+  isUrlExcluded(providerSlot: string, url: string) {
     const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 

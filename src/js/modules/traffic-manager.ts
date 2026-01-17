@@ -100,7 +100,7 @@ class TrafficManagerClass {
    * Mesaj gönderiminde default page'den çıkışta kullanılır
    * @param {string} provider - ai0, ai1, ai2
    */
-  skipNextLoadingFor(provider) {
+  skipNextLoadingFor(provider: string) {
     if (provider && Object.prototype.hasOwnProperty.call(this._skipNextLoading, provider)) {
       this._skipNextLoading[provider] = true;
       // 5 saniye sonra otomatik reset (güvenlik için)
@@ -113,7 +113,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  isUrlExcluded(providerSlot, url) {
+  isUrlExcluded(providerSlot: string, url: string) {
     const providerId = AppState.getProviderIdForSlot(providerSlot) || "";
     if (!providerId || !url) return false;
 
@@ -126,7 +126,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  onUpdate(listener) {
+  onUpdate(listener: (snapshot: { provider: string; state: unknown }) => void) {
     if (typeof listener !== "function") return () => {};
     this.listeners.push(listener);
     return () => {
@@ -134,7 +134,7 @@ class TrafficManagerClass {
     };
   }
 
-  notifyListeners(provider) {
+  notifyListeners(provider: string) {
     const snapshot = { provider, state: this.state[provider] };
     this.listeners.forEach((listener) => {
       try {
@@ -172,27 +172,27 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  attachWebview(provider, webviewEl) {
+  attachWebview(provider: string, webviewEl: HTMLElement & { isDestroyed?: () => boolean; getWebContentsId?: () => number; isLoading?: () => boolean; getWebContents?: () => { isLoading?: () => boolean }; executeJavaScript?: (script: string) => Promise<unknown> }) {
     if (!provider || !webviewEl) return;
     this.webviews[provider] = webviewEl;
 
     if (hasHandlers(provider)) return;
 
     attachWebviewEvents(provider, webviewEl, {
-      onNavigation: (prov, href) => this._handleNavigation(prov, href),
+      onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
       onDomReady: () => {},
-      onFailLoad: (prov) => this.setAllUnreachable(prov),
+      onFailLoad: (prov: string) => this.setAllUnreachable(prov),
       buildProbeScript,
     });
   }
 
-  detachWebview(provider) {
+  detachWebview(provider: string) {
     if (!provider) return;
     detachWebviewEvents(provider);
     this.setAllUnreachable(provider);
   }
 
-  _handleNavigation(provider, href) {
+  _handleNavigation(provider: string, href: string) {
     if (this.isUrlExcluded(provider, href)) return;
 
     const viewState = this.state[provider] || defaultState();
@@ -223,7 +223,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  async start(provider) {
+  async start(provider: string) {
     if (!provider) return;
     if (this._runners[provider]) return;
     this._runners[provider] = {
@@ -235,7 +235,7 @@ class TrafficManagerClass {
     this.setIndicator(provider, "loading", this.state[provider]?.status?.loading || "busy");
   }
 
-  async stop(provider, { force: _force = false } = {}) {
+  async stop(provider: string, { force: _force = false } = {}) {
     if (!provider) return;
     if (!this._runners[provider]) return;
     try {
@@ -284,7 +284,7 @@ class TrafficManagerClass {
     loop();
   }
 
-  async probe(provider) {
+  async probe(provider: string) {
     if (!provider) return;
     const webview = this.webviews[provider];
     if (!webview || webview.isDestroyed?.()) return;
@@ -334,7 +334,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  async handleProbe(provider, data, isStillLoading = false) {
+  async handleProbe(provider: string, data: { error?: string; href?: string; sendState?: string; thinkingState?: string; thinkingText?: string; messageCount?: number } | null, isStillLoading = false) {
     if (!this.state[provider]) {
       this.state[provider] = defaultState();
     }
@@ -402,7 +402,7 @@ class TrafficManagerClass {
     return true;
   }
 
-  logEvent(event) {
+  logEvent(event: { message: string }) {
     try {
       LogManager.addEvent("traffic", "info", event.message);
     } catch (_) { /* noop */ }
@@ -411,7 +411,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  refreshIndicators(provider) {
+  refreshIndicators(provider: string) {
     if (!provider) return;
     const st = this.state[provider] || defaultState();
     this.setIndicator(provider, "loading", st.status.loading);
@@ -419,7 +419,7 @@ class TrafficManagerClass {
     this.setIndicator(provider, "send", st.status.send);
   }
 
-  setIndicator(provider, kind, status) {
+  setIndicator(provider: string, kind: string, status: string) {
     if (!provider) return;
     if (!this.state[provider]) {
       this.state[provider] = defaultState();
@@ -431,7 +431,7 @@ class TrafficManagerClass {
 
     const dot = this.indicators[provider]?.[kind];
     if (dot) {
-      const color = STATUS_COLORS[status] || STATUS_COLORS.busy;
+      const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.busy;
       dot.style.display = "inline-block";
       dot.style.backgroundColor = color;
     }
@@ -450,7 +450,7 @@ class TrafficManagerClass {
    * @param {string} provider - ai0, ai1, ai2
    * @param {string} status - busy veya idle
    */
-  _updateClusterThinkingGlow(provider, status) {
+  _updateClusterThinkingGlow(provider: string, status: string) {
     const cluster = document.getElementById(`cluster-${provider}`);
     if (!cluster) return;
     
@@ -461,7 +461,7 @@ class TrafficManagerClass {
     }
   }
 
-  setAllUnreachable(provider) {
+  setAllUnreachable(provider: string) {
     this.setIndicator(provider, "loading", "idle");
     this.setIndicator(provider, "thinking", "idle");
     this.setIndicator(provider, "send", "busy");
@@ -470,7 +470,7 @@ class TrafficManagerClass {
     this.state[provider] = st;
   }
 
-  updateDerivedStates(provider) {
+  updateDerivedStates(provider: string) {
     const st = this.state[provider] || defaultState();
     st.readyState = st.status.loading === "idle" ? "ready" : "loading";
     st.sendState = st.status.send === "idle" ? "enabled" : st.status.send === "busy" ? "disabled" : "not-found";
@@ -481,7 +481,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  waitForSendEnabled(provider, timeout = 4000, interval = 100) {
+  waitForSendEnabled(provider: string, timeout = 4000, interval = 100) {
     return this.sendTracker.waitForSendEnabled(
       () => this.state[provider] || defaultState(),
       timeout,
@@ -489,7 +489,7 @@ class TrafficManagerClass {
     );
   }
 
-  waitForThinkingCoolDown(provider, coolDownMs = 5000, timeoutMs = 45000) {
+  waitForThinkingCoolDown(provider: string, coolDownMs = 5000, timeoutMs = 45000) {
     const deadline = Date.now() + timeoutMs;
     const waitIdle = () =>
       new Promise((resolve) => {
@@ -518,7 +518,7 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
-  signal(channel, status, message = "") {
+  signal(channel: string, status: string, message = "") {
     if (status === "error") {
       LogManager.addEvent("traffic", "error", `[${channel}] ${message || status}`);
     }
