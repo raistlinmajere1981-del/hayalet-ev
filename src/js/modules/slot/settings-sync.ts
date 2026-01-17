@@ -8,15 +8,68 @@
  */
 
 import { ProviderRegistry } from "../webview/provider-registry.js";
+import type { SlotId, LogLevel } from "../../types/index.js";
+import type { BaseProviderConfig } from "../../types/provider.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SlotState {
+  accountId: string | null;
+  providerId: string | null;
+  providerConfig: BaseProviderConfig | null;
+  state: string;
+}
+
+interface SlotSettings {
+  accountId?: string;
+}
+
+interface Account {
+  id: string;
+  provider?: string;
+}
+
+interface Settings {
+  slots?: Record<string, SlotSettings>;
+  accounts?: Account[];
+  asistanSlot?: SlotSettings;
+  asistanAccounts?: Account[];
+}
+
+interface SlotStates {
+  EMPTY: string;
+  ASSIGNED: string;
+  CONNECTED: string;
+  CONNECTING: string;
+}
+
+interface SlotEvents {
+  ACCOUNT_ASSIGNED: string;
+  ACCOUNT_REMOVED: string;
+}
+
+type LogFn = (slot: SlotId | string, level: LogLevel, message: string) => void;
+type TransitionFn = (slot: string, state: string) => void;
+type EmitFn = (slot: string, event: string, data: Record<string, unknown>) => void;
+type DisconnectFn = (slot: string, opts?: { force?: boolean }) => void;
+type NavigateFn = (slot: string) => void;
+type SyncSlotFn = (slot: string, settings: Settings) => void;
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * Settings değişikliklerini işle
- * @param {Object} slots - Slot state'leri { ai0: {...}, ai1: {...}, ai2: {...} }
- * @param {Object} settings - Yeni settings objesi
- * @param {string[]} changedPaths - Değişen path'ler
- * @param {Function} syncSlotFn - Slot sync fonksiyonu
  */
-export function handleSettingsChange(slots, settings, changedPaths, syncSlotFn) {
+export function handleSettingsChange(
+  _slots: Record<string, SlotState>,
+  settings: Settings | null,
+  changedPaths: string[],
+  syncSlotFn: SyncSlotFn
+): void {
   if (!settings) return;
 
   // AI1 ve AI2 için normal slot settings kontrolü
@@ -33,18 +86,19 @@ export function handleSettingsChange(slots, settings, changedPaths, syncSlotFn) 
   // AI0 (Asistan) için asistanSlot kontrolü
   const asistanChanged = changedPaths.includes("*") || 
                          changedPaths.some((p) => p.startsWith("asistanSlot") || p.startsWith("asistanAccounts"));
-  if (asistanChanged) {
+  if (asistanChanged && settings) {
     syncSlotFn("ai0", settings);
   }
 }
 
 /**
  * Tüm slotları settings ile senkronize et
- * @param {Object} slots - Slot state'leri
- * @param {Object} settings - Settings objesi
- * @param {Function} syncSlotFn - Slot sync fonksiyonu
  */
-export function syncWithSettings(slots, settings, syncSlotFn) {
+export function syncWithSettings(
+  _slots: Record<string, SlotState>,
+  settings: Settings | null,
+  syncSlotFn: SyncSlotFn
+): void {
   if (!settings) return;
   ["ai0", "ai1", "ai2"].forEach((slot) => {
     syncSlotFn(slot, settings);
@@ -53,38 +107,30 @@ export function syncWithSettings(slots, settings, syncSlotFn) {
 
 /**
  * Tek bir slot'u settings ile senkronize et
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID (ai0/ai1/ai2)
- * @param {Object} settings - Settings objesi
- * @param {Object} states - State sabitleri { EMPTY, ASSIGNED, CONNECTED, CONNECTING }
- * @param {Object} events - Event sabitleri { ACCOUNT_ASSIGNED, ACCOUNT_REMOVED }
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} transitionFn - State transition fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {Function} disconnectFn - Disconnect fonksiyonu
- * @param {Function} navigateFn - Navigate fonksiyonu
  */
 export function syncSlotWithSettings(
-  slotState,
-  slot,
-  settings,
-  states,
-  events,
-  logFn,
-  transitionFn,
-  emitFn,
-  disconnectFn,
-  navigateFn
-) {
+  slotState: SlotState,
+  slot: string,
+  settings: Settings | null,
+  states: SlotStates,
+  events: SlotEvents,
+  logFn: LogFn,
+  transitionFn: TransitionFn,
+  emitFn: EmitFn,
+  disconnectFn: DisconnectFn,
+  navigateFn: NavigateFn
+): void {
+  if (!settings) return;
+
   // AI0 (Asistan) için asistanSlot ve asistanAccounts kullan
   const isAsistan = slot === "ai0";
-  const slotSettings = isAsistan ? settings?.asistanSlot : settings?.slots?.[slot];
+  const slotSettings = isAsistan ? settings.asistanSlot : settings.slots?.[slot];
   const newAccountId = slotSettings?.accountId || null;
   const oldAccountId = slotState.accountId;
 
   if (newAccountId === oldAccountId) return;
 
-  logFn(slot, "info", `Account changed: ${oldAccountId} -> ${newAccountId}`);
+  logFn(slot as SlotId, "info", `Account changed: ${oldAccountId} -> ${newAccountId}`);
 
   if (!newAccountId) {
     if (slotState.state === states.CONNECTED || slotState.state === states.CONNECTING) {
@@ -102,14 +148,16 @@ export function syncSlotWithSettings(
   const accountList = isAsistan ? settings.asistanAccounts : settings.accounts;
   const account = accountList?.find((a) => a.id === newAccountId);
   const providerId = account?.provider || null;
-  const providerConfig = providerId ? ProviderRegistry.get(providerId) : null;
+  const providerConfig = providerId 
+    ? ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini") as BaseProviderConfig | null
+    : null;
 
   slotState.accountId = newAccountId;
   slotState.providerId = providerId;
   slotState.providerConfig = providerConfig;
 
   if (slotState.state === states.CONNECTED) {
-    logFn(slot, "info", "Account changed while connected - will navigate to new provider");
+    logFn(slot as SlotId, "info", "Account changed while connected - will navigate to new provider");
     navigateFn(slot);
   } else if (slotState.state === states.EMPTY) {
     transitionFn(slot, states.ASSIGNED);

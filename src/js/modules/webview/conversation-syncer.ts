@@ -19,19 +19,48 @@ import { getProvider } from "./provider-factory.js";
 import { normalizeUrl, isUrlExcluded as checkUrlExcluded } from "./methods/shared/url-utils.js";
 import { waitForDomReady } from "../../app.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
+import type { AppSettings } from "../../types/settings.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WebviewElement {
+  getURL?: () => string;
+  executeJavaScript: (script: string) => Promise<unknown>;
+}
+
+interface SyncResult {
+  success: boolean;
+  message?: string;
+  conversationId?: string;
+  commands?: { command: string; [key: string]: unknown }[];
+  [key: string]: unknown;
+}
+
+interface CoreEngine {
+  handleCaughtCommand: (command: string, payload: Record<string, unknown>) => Promise<unknown>;
+}
+
+type ResolveWebviewFn = (slot: string) => WebviewElement | null;
+type StableCallback = (err: Error | null, result: SyncResult | null) => void;
+
+// ============================================================================
+// ConversationSyncerClass
+// ============================================================================
 
 class ConversationSyncerClass {
-  _settings: { catchEnabled?: boolean; slots?: Record<string, { catchCommands?: boolean }>; [key: string]: any } | null;
+  _settings: AppSettings | null;
   _syncInProgress: Record<string, boolean>;
   _lastThinkingState: Record<string, string>;
   _lastLoadingEnded: Record<string, number>;
   _syncRetryTimers: Record<string, ReturnType<typeof setTimeout>>;
   _syncRetryCounts: Record<string, number>;
-  _stableListeners: Record<string, ((err: any, result: any) => void)[]>;
-  _lastSyncResult: Record<string, { from?: string; [key: string]: any }>;
+  _stableListeners: Record<string, StableCallback[]>;
+  _lastSyncResult: Record<string, SyncResult>;
   _trafficUnsubscribe: (() => void) | null;
-  _coreEngine: any;
-  _resolveWebviewFn: ((slot: string) => any) | null;
+  _coreEngine: CoreEngine | null;
+  _resolveWebviewFn: ResolveWebviewFn | null;
   syncRetryLimit: number;
 
   constructor() {
@@ -51,18 +80,15 @@ class ConversationSyncerClass {
 
   /**
    * Ayarları güncelle
-   * @param {Object} settings - Uygulama ayarları
    */
-  setSettings(settings) {
+  setSettings(settings: AppSettings | null): void {
     this._settings = settings;
   }
 
   /**
    * Syncer'ı başlat
-   * @param {Object} coreEngine - CoreEngine instance
-   * @param {Function} resolveWebviewFn - Webview resolve fonksiyonu
    */
-  init(coreEngine, resolveWebviewFn) {
+  init(coreEngine: CoreEngine, resolveWebviewFn: ResolveWebviewFn): void {
     this._coreEngine = coreEngine;
     this._resolveWebviewFn = resolveWebviewFn;
 
@@ -98,15 +124,12 @@ class ConversationSyncerClass {
 
   /**
    * URL excluded mı kontrol et
-   * @param {string} providerSlot - Slot ID
-   * @param {string} url - Kontrol edilecek URL
-   * @returns {boolean}
    */
-  isUrlExcluded(providerSlot, url) {
+  isUrlExcluded(providerSlot: string, url: string): boolean {
     const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 
-    const cfg = ProviderRegistry.get(providerId);
+    const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
     if (!cfg?.excludedUrls?.length) return false;
 
     return checkUrlExcluded(url, cfg.excludedUrls);
@@ -177,14 +200,15 @@ class ConversationSyncerClass {
         ai: AppState.getNickname(provider),
       };
 
-      const normalized = messages.map((m) => ({
+      const normalized = messages.map((m: { role?: string; [key: string]: unknown }) => ({
         ...m,
         author: m.role === "assistant" ? authors.ai : authors.user,
         ts: Date.now(),
       }));
 
+      const slots = this._settings?.slots as Record<string, { catchCommands?: boolean }> | undefined;
       const catchEnabled =
-        options.catchEnabled ?? this._settings?.slots?.[provider]?.catchCommands ?? true;
+        options.catchEnabled ?? slots?.[provider]?.catchCommands ?? true;
 
       const commands = catchEnabled
         ? await CatchManager.catchCommands({
@@ -209,7 +233,7 @@ class ConversationSyncerClass {
       }
 
       // Database sync (incremental - sadece yeni mesajları ekler)
-      const syncResult = await window.electronAPI.dbSyncMessages({
+      const syncResult = await window.electronAPI?.dbSyncMessages?.({
         accountId: accountInfo.id,
         webUrl,
         messages: normalized,
@@ -221,7 +245,7 @@ class ConversationSyncerClass {
       }
 
       // Fetch messages with IDs from DB
-      const dbMessages = await window.electronAPI.dbGetMessages({
+      const dbMessages = await window.electronAPI?.dbGetMessages?.({
         accountId: accountInfo.id,
         conversationId: syncResult.conversationId,
       });
@@ -317,7 +341,7 @@ class ConversationSyncerClass {
         });
       }
 
-      if (res.commands?.length > 0 && this._coreEngine) {
+      if (res.commands && res.commands.length > 0 && this._coreEngine) {
         for (const cmd of res.commands) {
           await this._coreEngine.handleCaughtCommand(cmd.command, {
             ...cmd,
@@ -338,7 +362,7 @@ class ConversationSyncerClass {
    * Stable durumunu bildir
    * @private
    */
-  _notifyStable(provider, res) {
+  _notifyStable(provider: string, res: SyncResult): void {
     try {
       const list = this._stableListeners[provider] || [];
       delete this._stableListeners[provider];
@@ -357,10 +381,8 @@ class ConversationSyncerClass {
 
   /**
    * Stable listener ekle
-   * @param {string} provider - Slot ID
-   * @param {Function} callback - Callback fonksiyonu
    */
-  addStableListener(provider, callback) {
+  addStableListener(provider: string, callback: StableCallback): void {
     if (!this._stableListeners[provider]) {
       this._stableListeners[provider] = [];
     }
@@ -369,9 +391,8 @@ class ConversationSyncerClass {
 
   /**
    * Belirli bir provider için bekleyen tüm listener'ları iptal et
-   * @param {string} provider - Slot ID
    */
-  cancelListeners(provider) {
+  cancelListeners(provider: string): void {
     if (this._stableListeners[provider]) {
       LogManager.addEvent("sync", "info", `Canceling listeners for ${provider}`);
       delete this._stableListeners[provider];
@@ -387,10 +408,8 @@ class ConversationSyncerClass {
 
   /**
    * Son sync sonucunu getir
-   * @param {string} provider - Slot ID
-   * @returns {Object|null}
    */
-  getLastSyncResult(provider) {
+  getLastSyncResult(provider: string): SyncResult | null {
     return this._lastSyncResult[provider] || null;
   }
 
@@ -398,7 +417,7 @@ class ConversationSyncerClass {
    * Archive durumunu getir (DB'den)
    * @private
    */
-  async _getArchiveStatus(provider, webUrl) {
+  async _getArchiveStatus(provider: string, webUrl: string): Promise<{ existing: unknown; prevCount: number; newEntry: boolean }> {
     try {
       const accountInfo = AppState.getAccountForSlot(provider);
       if (!accountInfo?.id) {

@@ -7,18 +7,65 @@
  * - DOM ready handling
  */
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WebviewElement {
+  getWebContentsId?: () => number;
+  getURL?: () => string;
+  isLoading?: () => boolean;
+  executeJavaScript: (script: string) => Promise<unknown>;
+  addEventListener: (type: string, listener: EventListener) => void;
+  removeEventListener: (type: string, listener: EventListener) => void;
+}
+
+interface NavigationEvent {
+  url?: string;
+}
+
+interface WebviewCallbacks {
+  onNavigation: (provider: string, href: string) => void;
+  onDomReady?: (provider: string) => void;
+  onFailLoad: (provider: string) => void;
+  buildProbeScript: (provider: string) => string;
+}
+
+interface WebviewListeners {
+  didStartLoading: (e: NavigationEvent) => void;
+  didStartNavigation: (e: NavigationEvent) => void;
+  willNavigate: (e: NavigationEvent) => void;
+  didNavigate: (e: NavigationEvent) => void;
+  didNavigateInPage: (e: NavigationEvent) => void;
+  domReady: () => void;
+  failLoad: () => void;
+}
+
+interface WebviewHandler {
+  handleNavEvent: (url: string | undefined, eventType: string) => void;
+  domReadyHandler: () => void;
+  failLoadHandler: () => void;
+  listeners: WebviewListeners;
+  webviewEl: WebviewElement;
+}
+
+// ============================================================================
+// State
+// ============================================================================
 
 /**
  * Webview handler'larını saklamak için map
  */
-const webviewHandlers = {};
+const webviewHandlers: Record<string, WebviewHandler> = {};
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * URL'i normalize et (query string ve hash'i kaldır)
- * @param {string} href - URL
- * @returns {string}
  */
-export function normalizeHref(href) {
+export function normalizeHref(href: string | undefined): string {
   if (!href) return "";
   const clean = href.split("?")[0].split("#")[0];
   return clean;
@@ -26,11 +73,12 @@ export function normalizeHref(href) {
 
 /**
  * Webview'a event listener'ları ekle
- * @param {string} provider - Slot ID
- * @param {HTMLElement} webviewEl - Webview elementi
- * @param {Object} callbacks - { onNavigation, onDomReady, onFailLoad, buildProbeScript }
  */
-export function attachWebviewEvents(provider, webviewEl, callbacks) {
+export function attachWebviewEvents(
+  provider: string,
+  webviewEl: WebviewElement,
+  callbacks: WebviewCallbacks
+): void {
   if (!provider || !webviewEl) return;
 
   if (webviewHandlers[provider]) {
@@ -39,7 +87,7 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
 
   const { onNavigation, onDomReady, onFailLoad, buildProbeScript } = callbacks;
 
-  const ensureBridge = () => {
+  const ensureBridge = (): void => {
     // FIX: Webview'ın hazır olduğunu doğrula
     try {
       if (typeof webviewEl.getWebContentsId !== "function") return;
@@ -51,10 +99,11 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
     
     const script = buildProbeScript(provider);
     webviewEl.executeJavaScript(script).catch(() => {
+      // Ignore
     });
   };
 
-  const handleNavEvent = (url, _eventType) => {
+  const handleNavEvent = (url: string | undefined, _eventType: string): void => {
     let href = "";
     if (url) {
       href = normalizeHref(url);
@@ -74,25 +123,26 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
     onNavigation(provider, href);
   };
 
-  const domReadyHandler = () => {
+  const domReadyHandler = (): void => {
     ensureBridge();
     try {
       handleNavEvent(webviewEl.getURL?.(), "dom-ready");
     } catch (_e) {
+      // Ignore
     }
     onDomReady?.(provider);
   };
 
-  const failLoadHandler = () => {
+  const failLoadHandler = (): void => {
     onFailLoad(provider);
   };
 
-  const listeners = {
-    didStartLoading: (e) => handleNavEvent(e?.url, "did-start-loading"),
-    didStartNavigation: (e) => handleNavEvent(e?.url, "did-start-navigation"),
-    willNavigate: (e) => handleNavEvent(e?.url, "will-navigate"),
-    didNavigate: (e) => handleNavEvent(e?.url, "did-navigate"),
-    didNavigateInPage: (e) => handleNavEvent(e?.url, "did-navigate-in-page"),
+  const listeners: WebviewListeners = {
+    didStartLoading: (e: NavigationEvent) => handleNavEvent(e?.url, "did-start-loading"),
+    didStartNavigation: (e: NavigationEvent) => handleNavEvent(e?.url, "did-start-navigation"),
+    willNavigate: (e: NavigationEvent) => handleNavEvent(e?.url, "will-navigate"),
+    didNavigate: (e: NavigationEvent) => handleNavEvent(e?.url, "did-navigate"),
+    didNavigateInPage: (e: NavigationEvent) => handleNavEvent(e?.url, "did-navigate-in-page"),
     domReady: domReadyHandler,
     failLoad: failLoadHandler,
   };
@@ -105,21 +155,20 @@ export function attachWebviewEvents(provider, webviewEl, callbacks) {
     webviewEl,
   };
 
-  webviewEl.addEventListener("did-start-loading", listeners.didStartLoading);
-  webviewEl.addEventListener("did-start-navigation", listeners.didStartNavigation);
-  webviewEl.addEventListener("will-navigate", listeners.willNavigate);
-  webviewEl.addEventListener("did-navigate", listeners.didNavigate);
-  webviewEl.addEventListener("did-navigate-in-page", listeners.didNavigateInPage);
-  webviewEl.addEventListener("dom-ready", listeners.domReady);
-  webviewEl.addEventListener("did-fail-load", listeners.failLoad);
+  webviewEl.addEventListener("did-start-loading", listeners.didStartLoading as EventListener);
+  webviewEl.addEventListener("did-start-navigation", listeners.didStartNavigation as EventListener);
+  webviewEl.addEventListener("will-navigate", listeners.willNavigate as EventListener);
+  webviewEl.addEventListener("did-navigate", listeners.didNavigate as EventListener);
+  webviewEl.addEventListener("did-navigate-in-page", listeners.didNavigateInPage as EventListener);
+  webviewEl.addEventListener("dom-ready", listeners.domReady as EventListener);
+  webviewEl.addEventListener("did-fail-load", listeners.failLoad as EventListener);
 
 }
 
 /**
  * Webview'dan event listener'ları kaldır
- * @param {string} provider - Slot ID
  */
-export function detachWebviewEvents(provider) {
+export function detachWebviewEvents(provider: string): void {
   if (!provider) return;
 
   const handlers = webviewHandlers[provider];
@@ -129,14 +178,15 @@ export function detachWebviewEvents(provider) {
   const l = handlers.listeners || {};
 
   try {
-    try { webviewEl.removeEventListener("did-start-loading", l.didStartLoading); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("did-start-navigation", l.didStartNavigation); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("will-navigate", l.willNavigate); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("did-navigate", l.didNavigate); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("did-navigate-in-page", l.didNavigateInPage); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("dom-ready", l.domReady); } catch (_) { void 0; }
-    try { webviewEl.removeEventListener("did-fail-load", l.failLoad); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("did-start-loading", l.didStartLoading as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("did-start-navigation", l.didStartNavigation as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("will-navigate", l.willNavigate as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("did-navigate", l.didNavigate as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("did-navigate-in-page", l.didNavigateInPage as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("dom-ready", l.domReady as EventListener); } catch (_) { void 0; }
+    try { webviewEl.removeEventListener("did-fail-load", l.failLoad as EventListener); } catch (_) { void 0; }
   } catch (_err) {
+    // Ignore
   }
 
   delete webviewHandlers[provider];
@@ -144,9 +194,7 @@ export function detachWebviewEvents(provider) {
 
 /**
  * Provider için handler kayıtlı mı?
- * @param {string} provider - Slot ID
- * @returns {boolean}
  */
-export function hasHandlers(provider) {
+export function hasHandlers(provider: string): boolean {
   return !!webviewHandlers[provider];
 }

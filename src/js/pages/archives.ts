@@ -3,14 +3,49 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { AppState } from "../modules/app-state.js";
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ArchiveEntry {
+  id: string;
+  title?: string;
+  summary?: string;
+  webUrl?: string;
+  messageCount?: number;
+  provider?: string;
+}
+
+interface MessageResult {
+  conversationId: string;
+  conversationTitle?: string;
+  accountId?: string;
+  snippet?: string;
+  content?: string;
+}
+
+interface FileResult {
+  storedPath?: string;
+  originalName?: string;
+  mimeType?: string;
+  size?: number;
+  conversationTitle?: string;
+  accountId?: string;
+  conversationId?: string;
+}
+
+// ============================================================================
+// ArchivesController
+// ============================================================================
+
 export class ArchivesController {
   // State
-  entries: any[];
+  entries: ArchiveEntry[];
   activeProvider: string;
   selectedId: string | null;
   searchQuery: string;
   searchScope: string;
-  searchResults: { messages: any[]; attachments: any[] };
+  searchResults: { messages: MessageResult[]; attachments: FileResult[] };
   activeTab: string;
   _searchTimeout: ReturnType<typeof setTimeout> | null;
   _unsubSettings: (() => void) | null;
@@ -31,7 +66,7 @@ export class ArchivesController {
   filesCountEl: HTMLElement | null;
   resultsMessagesEl: HTMLElement | null;
   resultsFilesEl: HTMLElement | null;
-  _selectedEntry: any;
+  _selectedEntry: ArchiveEntry | null;
 
   constructor() {
     this.entries = [];
@@ -63,7 +98,7 @@ export class ArchivesController {
     this._selectedEntry = null;
   }
 
-  async init() {
+  async init(): Promise<void> {
     await this.loadSettings();
     this.cacheElements();
     this.bindEvents();
@@ -77,7 +112,7 @@ export class ArchivesController {
     }
   }
 
-  cacheElements() {
+  cacheElements(): void {
     // Liste
     this.listEl = document.getElementById("archives-list");
     
@@ -100,7 +135,7 @@ export class ArchivesController {
     this.resultsFilesEl = document.getElementById("results-files");
   }
 
-  bindEvents() {
+  bindEvents(): void {
     // Provider toggle
     document.getElementsByName("archives-provider").forEach((el) => {
       el.addEventListener("change", (e) => {
@@ -137,7 +172,7 @@ export class ArchivesController {
       this.searchQuery = (e.target as HTMLInputElement).value;
       this.clearSearchBtn?.classList.toggle("hidden", !this.searchQuery);
       
-      clearTimeout(this._searchTimeout);
+      if (this._searchTimeout) clearTimeout(this._searchTimeout);
       this._searchTimeout = setTimeout(() => {
         this.performSearch();
       }, 300);
@@ -145,9 +180,9 @@ export class ArchivesController {
 
     // Arama temizle
     this.clearSearchBtn?.addEventListener("click", () => {
-      this.searchInputEl.value = "";
+      if (this.searchInputEl) this.searchInputEl.value = "";
       this.searchQuery = "";
-      this.clearSearchBtn.classList.add("hidden");
+      this.clearSearchBtn?.classList.add("hidden");
       this.clearSearchResults();
     });
 
@@ -165,20 +200,21 @@ export class ArchivesController {
     // Tab buttons
     document.querySelectorAll(".search-tabs .tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        this.switchTab((btn as HTMLElement).dataset.tab);
+        this.switchTab((btn as HTMLElement).dataset.tab || "messages");
       });
     });
   }
 
-  async loadSettings() {
+  async loadSettings(): Promise<void> {
     try {
       await SettingsManager.load();
-    } catch (error) {
+    } catch (err) {
+      const error = err as Error;
       LogManager.addEvent("archives", "error", `Settings yükleme hatası: ${error.message}`);
     }
   }
 
-  async loadIndex() {
+  async loadIndex(): Promise<void> {
     try {
       // Her slot için hesap bilgisini al ve DB'den konuşmaları çek
       const ai1Account = AppState.getAccountForSlot("ai1");
@@ -200,13 +236,14 @@ export class ArchivesController {
       ];
       
       this.renderList();
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent("archives", "error", `Arşiv okunamadı: ${err.message}`);
       this.entries = [];
     }
   }
 
-  renderList() {
+  renderList(): void {
     if (!this.listEl) return;
     const items = this.entries.filter(
       (e) => e.provider === this.activeProvider,
@@ -249,11 +286,11 @@ export class ArchivesController {
       }
       item.appendChild(titleWrap);
       item.appendChild(removeBtn);
-      this.listEl.appendChild(item);
+      this.listEl?.appendChild(item);
     });
   }
 
-  async deleteEntry(entry) {
+  async deleteEntry(entry: ArchiveEntry | null): Promise<void> {
     if (!entry) return;
     if (
       !confirm(
@@ -299,13 +336,14 @@ export class ArchivesController {
       } else {
         this.setStatus("Sohbet silindi", "success");
       }
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent("archives", "error", `Silme hatası: ${err.message}`);
       this.setStatus("Sohbet silinirken hata oluştu", "error");
     }
   }
 
-  fillForm(entry) {
+  fillForm(entry: ArchiveEntry | null): void {
     // Form görünürlüğü
     if (entry) {
       this.detailEmptyEl?.classList.add("hidden");
@@ -319,13 +357,13 @@ export class ArchivesController {
     if (this.titleEl) this.titleEl.value = entry?.title || "";
     if (this.summaryEl) this.summaryEl.value = entry?.summary || "";
     if (this.webUrlDisplayEl) this.webUrlDisplayEl.textContent = entry?.webUrl || "-";
-    if (this.messageCountEl) this.messageCountEl.textContent = entry?.messageCount || "0";
+    if (this.messageCountEl) this.messageCountEl.textContent = String(entry?.messageCount ?? 0);
     
     // Seçili entry'yi sakla
     this._selectedEntry = entry;
   }
 
-  copyUrl() {
+  copyUrl(): void {
     const url = this._selectedEntry?.webUrl;
     if (!url) return;
     
@@ -341,7 +379,7 @@ export class ArchivesController {
   // Arama Fonksiyonları
   // ============================================
 
-  async performSearch() {
+  async performSearch(): Promise<void> {
     if (!this.searchQuery || this.searchQuery.length < 2) {
       this.clearSearchResults();
       return;
@@ -384,16 +422,17 @@ export class ArchivesController {
         };
       }
 
-      this.searchResults = results || { messages: [], attachments: [] };
+      this.searchResults = (results as { messages: MessageResult[]; attachments: FileResult[] }) || { messages: [], attachments: [] };
       this.renderSearchResults();
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent("archives", "error", `Arama hatası: ${err.message}`);
       this.searchResults = { messages: [], attachments: [] };
       this.renderSearchResults();
     }
   }
 
-  renderSearchResults() {
+  renderSearchResults(): void {
     const { messages, attachments } = this.searchResults;
     
     // Sayaçları güncelle
@@ -437,7 +476,7 @@ export class ArchivesController {
     }
   }
 
-  renderMessageResult(msg) {
+  renderMessageResult(msg: MessageResult): string {
     const snippet = this.highlightSnippet(msg.snippet || msg.content || "", this.searchQuery);
     const accountLabel = this.getAccountLabel(msg.accountId);
     
@@ -452,10 +491,10 @@ export class ArchivesController {
     `;
   }
 
-  renderFileResult(file) {
+  renderFileResult(file: FileResult): string {
     const icon = this.getFileIcon(file.mimeType);
     const size = this.formatFileSize(file.size);
-    const accountLabel = this.getAccountLabel(file.accountId);
+    const accountLabel = this.getAccountLabel(file.accountId || "");
     
     return `
       <div class="result-item" data-stored-path="${this.escapeHtml(file.storedPath || "")}">
@@ -473,12 +512,13 @@ export class ArchivesController {
     `;
   }
 
-  async navigateToResult(result, type) {
+  async navigateToResult(result: MessageResult | FileResult, type: string): Promise<void> {
     if (type === "file") {
       // Dosyayı aç
-      if (result.storedPath) {
+      const fileResult = result as FileResult;
+      if (fileResult.storedPath) {
         try {
-          await window.electronAPI?.openPath?.(result.storedPath);
+          await window.electronAPI?.openPath?.(fileResult.storedPath);
         } catch (err) {
           this.setStatus("Dosya açılamadı", "error");
         }
@@ -528,7 +568,7 @@ export class ArchivesController {
     }
   }
 
-  switchTab(tab) {
+  switchTab(tab: string): void {
     this.activeTab = tab;
     
     // Tab butonlarını güncelle
@@ -541,7 +581,7 @@ export class ArchivesController {
     this.resultsFilesEl?.classList.toggle("active", tab === "files");
   }
 
-  clearSearchResults() {
+  clearSearchResults(): void {
     this.searchResults = { messages: [], attachments: [] };
     if (this.messagesCountEl) this.messagesCountEl.textContent = "0";
     if (this.filesCountEl) this.filesCountEl.textContent = "0";
@@ -554,7 +594,7 @@ export class ArchivesController {
   // Yardımcı Fonksiyonlar
   // ============================================
 
-  highlightSnippet(text, query) {
+  highlightSnippet(text: string, query: string): string {
     if (!text || !query) return this.escapeHtml(text || "");
     
     const escaped = this.escapeHtml(text);
@@ -564,20 +604,20 @@ export class ArchivesController {
     return escaped.replace(regex, "<mark>$1</mark>");
   }
 
-  escapeHtml(text) {
+  escapeHtml(text: string): string {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
 
-  getAccountLabel(accountId) {
+  getAccountLabel(accountId: string | undefined): string {
     if (!accountId) return "";
     // accountId: chatgpt_user_at_gmail_com → ChatGPT
     const provider = accountId.split("_")[0];
     return provider.charAt(0).toUpperCase() + provider.slice(1);
   }
 
-  getFileIcon(mimeType) {
+  getFileIcon(mimeType: string | undefined): string {
     if (!mimeType) return "📄";
     if (mimeType.startsWith("image/")) return "🖼️";
     if (mimeType.startsWith("video/")) return "🎬";
@@ -588,7 +628,7 @@ export class ArchivesController {
     return "📄";
   }
 
-  formatFileSize(bytes) {
+  formatFileSize(bytes: number | undefined): string {
     if (!bytes) return "0 B";
     const units = ["B", "KB", "MB", "GB"];
     let i = 0;
@@ -600,7 +640,7 @@ export class ArchivesController {
     return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
-  async saveSelected() {
+  async saveSelected(): Promise<void> {
     if (!this.selectedId) {
       this.setStatus("Sohbet seçilmedi", "warning");
       return;
@@ -618,8 +658,8 @@ export class ArchivesController {
       return;
     }
 
-    const newTitle = this.titleEl.value || entry.title;
-    const newSummary = this.summaryEl.value || entry.summary;
+    const newTitle = this.titleEl?.value || entry.title;
+    const newSummary = this.summaryEl?.value || entry.summary;
 
     try {
       // DB'de güncelle
@@ -636,30 +676,32 @@ export class ArchivesController {
         await ConversationListManager.refresh({ silent: true });
         await this.loadIndex();
       } else {
-        this.setStatus(result?.error || "Kaydedilemedi", "error");
+        this.setStatus((result as { error?: string })?.error || "Kaydedilemedi", "error");
       }
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent("archives", "error", `Kaydetme hatası: ${err.message}`);
       this.setStatus("Kaydedilemedi", "error");
     }
   }
 
-  setStatus(text, type = "info") {
+  setStatus(text: string, type = "info"): void {
     if (!this.statusEl) return;
     this.statusEl.textContent = text;
     this.statusEl.className = `form-hint ${type}`;
   }
 
-  clearStatus() {
+  clearStatus(): void {
     if (!this.statusEl) return;
     this.statusEl.textContent = "";
     this.statusEl.className = "form-hint";
   }
 
-  applyNames() {
+  applyNames(): void {
     const settings = SettingsManager.getSnapshot();
-    const ai1Assigned = !!settings?.slots?.ai1?.accountId;
-    const ai2Assigned = !!settings?.slots?.ai2?.accountId;
+    const slots = settings?.slots as Record<string, { accountId?: string }> | undefined;
+    const ai1Assigned = !!slots?.ai1?.accountId;
+    const ai2Assigned = !!slots?.ai2?.accountId;
 
     const ai1Name = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
     const ai2Name = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
@@ -676,13 +718,13 @@ export class ArchivesController {
     if (radioAi2) (radioAi2 as HTMLInputElement).disabled = !ai2Assigned;
   }
 
-  onShow() {
+  onShow(): void {
     this.loadSettings().then(() => this.applyNames());
     this.loadIndex();
     this.clearStatus();
   }
 
-  onHide() {
+  onHide(): void {
     this.clearStatus();
     try {
       this._unsubSettings?.();

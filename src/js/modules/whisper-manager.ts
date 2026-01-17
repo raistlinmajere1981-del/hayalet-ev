@@ -2,9 +2,36 @@ import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
 import { AppState } from "./app-state.js";
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WhisperRecord {
+  id: string;
+  user: string;
+  text: string;
+  when: number;
+  createdAt: number;
+  done: boolean;
+  queued: boolean;
+  queuedAt?: number;
+  doneAt?: number;
+}
+
+interface WhisperData {
+  pending: WhisperRecord[];
+  done: WhisperRecord[];
+}
+
+type SenderFn = (slot: string, text: string) => void | Promise<void>;
+
+// ============================================================================
+// Constants & Helpers
+// ============================================================================
+
 const PROVIDERS = ["ai1", "ai2"];
 
-function resolveProvider(name = "") {
+function resolveProvider(name = ""): string {
   const lowered = name.toLowerCase();
   
   const nick1 = AppState.getNickname("ai1").toLowerCase();
@@ -16,11 +43,15 @@ function resolveProvider(name = "") {
   return PROVIDERS.includes(lowered) ? lowered : "ai1";
 }
 
+// ============================================================================
+// WhisperManagerClass
+// ============================================================================
+
 class WhisperManagerClass {
-  data: Record<string, { pending: any[]; done: any[] }>;
+  data: Record<string, WhisperData>;
   timer: ReturnType<typeof setInterval> | null;
-  sender: ((slot: string, text: string) => void) | null;
-  settings: any;
+  sender: SenderFn | null;
+  settings: Record<string, unknown>;
   paused: boolean;
 
   constructor() {
@@ -34,7 +65,7 @@ class WhisperManagerClass {
     this.paused = false;
   }
 
-  async init(options: { settings?: any; sender?: (slot: string, text: string) => void } = {}) {
+  async init(options: { settings?: Record<string, unknown>; sender?: SenderFn } = {}): Promise<void> {
     this.settings = options.settings || {};
     if (typeof options.sender === "function") {
       this.sender = options.sender;
@@ -45,17 +76,17 @@ class WhisperManagerClass {
     }
   }
 
-  setSender(fn) {
+  setSender(fn: SenderFn): void {
     this.sender = fn;
   }
 
-  async loadAll() {
+  async loadAll(): Promise<void> {
     for (const p of PROVIDERS) {
       this.data[p] = await this.loadProvider(p);
     }
   }
 
-  async loadProvider(provider) {
+  async loadProvider(provider: string): Promise<WhisperData> {
     try {
       // Slot'tan hesap bilgisini al
       const accountInfo = AppState.getAccountForSlot(provider);
@@ -72,18 +103,18 @@ class WhisperManagerClass {
           done: Array.isArray(res.done) ? res.done : [],
         };
       }
-    } catch (err) {
-      const error = /** @type {Error} */ (err);
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent(
         "whisper",
         "warning",
-        `Whisper yüklenemedi (${provider}): ${error.message}`,
+        `Whisper yüklenemedi (${provider}): ${err.message}`,
       );
     }
     return { pending: [], done: [] };
   }
 
-  async saveProvider(provider) {
+  async saveProvider(provider: string): Promise<void> {
     try {
       // Slot'tan hesap bilgisini al
       const accountInfo = AppState.getAccountForSlot(provider);
@@ -92,17 +123,17 @@ class WhisperManagerClass {
       }
       
       await window.electronAPI?.whisperSave?.(accountInfo.id, this.data[provider]);
-    } catch (err) {
-      const error = /** @type {Error} */ (err);
+    } catch (e) {
+      const err = e as Error;
       LogManager.addEvent(
         "whisper",
         "error",
-        `Whisper kaydedilemedi (${provider}): ${error.message}`,
+        `Whisper kaydedilemedi (${provider}): ${err.message}`,
       );
     }
   }
 
-  WhisperManagerAdd(userName, text, when) {
+  WhisperManagerAdd(userName: string | undefined, text: string, when: unknown): WhisperRecord {
     const provider = resolveProvider(userName);
     const whenTs = this.parseWhen(when);
     const rec = {
@@ -122,7 +153,7 @@ class WhisperManagerClass {
     return rec;
   }
 
-  WhisperManagerDone(userName, whisperId) {
+  WhisperManagerDone(userName: string | undefined, whisperId: string): boolean {
     const provider = resolveProvider(userName);
     const idx = this.data[provider].pending.findIndex(
       (r) => r.id === whisperId,
@@ -140,7 +171,7 @@ class WhisperManagerClass {
     return true;
   }
 
-  WhisperManagerDelete(userName, whisperId) {
+  WhisperManagerDelete(userName: string | undefined, whisperId: string | undefined): boolean {
     const provider = resolveProvider(userName);
     const before = this.data[provider].pending.length;
     this.data[provider].pending = this.data[provider].pending.filter(
@@ -155,7 +186,7 @@ class WhisperManagerClass {
     return false;
   }
 
-  WhisperManagerClear(userName) {
+  WhisperManagerClear(userName: string | undefined): boolean {
     const provider = resolveProvider(userName);
     this.data[provider].pending = [];
     this.saveProvider(provider);
@@ -168,7 +199,7 @@ class WhisperManagerClass {
     return true;
   }
 
-  WhisperManagerCheck() {
+  WhisperManagerCheck(): boolean {
     if (this.paused) return false;
     const now = Date.now();
     PROVIDERS.forEach((provider) => {
@@ -187,12 +218,12 @@ class WhisperManagerClass {
             if (!sent) {
               this.markReady(provider, rec.id);
             }
-          } catch (err) {
-            const error = /** @type {Error} */ (err);
+          } catch (e) {
+            const err = e as Error;
             LogManager.addEvent(
               "whisper",
               "error",
-              `Whisper gönderilemedi (${provider}): ${error.message}`,
+              `Whisper gönderilemedi (${provider}): ${err.message}`,
             );
             this.markReady(provider, rec.id);
           }
@@ -207,17 +238,17 @@ class WhisperManagerClass {
     return true;
   }
 
-  getRecords(provider) {
+  getRecords(provider: string | undefined): WhisperRecord[] {
     const p = resolveProvider(provider);
     return [...(this.data[p]?.pending || [])];
   }
 
-  getDoneRecords(provider) {
+  getDoneRecords(provider: string | undefined): WhisperRecord[] {
     const p = resolveProvider(provider);
     return [...(this.data[p]?.done || [])];
   }
 
-  parseWhen(raw) {
+  parseWhen(raw: unknown): number {
     if (!raw) return Date.now();
     if (raw instanceof Date) return raw.getTime();
     if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -241,11 +272,11 @@ class WhisperManagerClass {
     return Number.isFinite(parsed) ? parsed : Date.now();
   }
 
-  sortPending(provider) {
+  sortPending(provider: string): void {
     this.data[provider].pending.sort((a, b) => (a.when || 0) - (b.when || 0));
   }
 
-  markQueued(provider, whisperId) {
+  markQueued(provider: string, whisperId: string): void {
     const rec = (this.data[provider]?.pending || []).find(
       (r) => r.id === whisperId,
     );
@@ -256,7 +287,7 @@ class WhisperManagerClass {
     }
   }
 
-  markReady(provider, whisperId) {
+  markReady(provider: string, whisperId: string): void {
     const rec = (this.data[provider]?.pending || []).find(
       (r) => r.id === whisperId,
     );
@@ -266,9 +297,9 @@ class WhisperManagerClass {
     }
   }
 
-  catch() {
+  catch(): (WhisperRecord & { provider: string })[] {
     const now = Date.now();
-    const due = [];
+    const due: (WhisperRecord & { provider: string })[] = [];
     PROVIDERS.forEach((provider) => {
       const list = (this.data[provider]?.pending || []).filter(
         (r) => !r.queued && (r.when || 0) <= now,
@@ -278,21 +309,22 @@ class WhisperManagerClass {
     return due;
   }
 
-  pause() {
+  pause(): void {
     this.paused = true;
   }
 
-  resume(runCheck = false) {
+  resume(runCheck = false): void {
     this.paused = false;
     if (runCheck) {
       this.WhisperManagerCheck();
     }
   }
 
-  notify() {
+  notify(): void {
     try {
       window.dispatchEvent(new CustomEvent("whisper-updated"));
-    } catch (e) {
+    } catch (_e) {
+      // Ignore
     }
   }
 }
