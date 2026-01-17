@@ -66,10 +66,11 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
       return { lastMessage: "" };
     }
 
+    type MessageItem = { id: string; role: string; content?: string; text?: string; author?: string; createdAt?: number };
     const messages = await window.electronAPI?.dbGetMessages?.({
       accountId: accountInfo.id,
       conversationId,
-    });
+    }) as MessageItem[] | undefined;
 
     if (!messages || !messages.length) {
       container.innerHTML = '<div class="message-placeholder">Mesaj bulunamadı.</div>';
@@ -82,10 +83,10 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
       const attachments = await window.electronAPI?.dbGetAttachments?.({
         accountId: accountInfo.id,
         conversationId,
-      });
+      }) as Array<{ messageId: string }> | undefined;
       if (attachments && attachments.length) {
         // messageId'ye göre grupla (DB camelCase döndürüyor)
-        attachments.forEach((att: { messageId: string }) => {
+        attachments.forEach((att) => {
           if (!attachmentsByMessage[att.messageId]) {
             attachmentsByMessage[att.messageId] = [];
           }
@@ -108,7 +109,7 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
       }
     }
 
-    items.forEach((msg: { id: string; role: string; content?: string; text?: string; author?: string; createdAt?: number }) => {
+    items.forEach((msg) => {
       const msgAttachments = attachmentsByMessage[msg.id] || [];
       const bubble = createMessageBubble(
         msg,

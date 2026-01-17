@@ -143,12 +143,12 @@ export const UploadManager = {
       throw new Error(result?.message || "Google Drive yükleme başarısız");
     }
 
-    const uploaded =
-      result.uploadedLinks || result.uploaded || (result.data && result.data.uploadedLinks) || [];
+    const r = result as { uploadedLinks?: string[]; uploaded?: string[]; data?: { uploadedLinks?: string[] }; errors?: string[] };
+    const uploaded = r.uploadedLinks || r.uploaded || (r.data && r.data.uploadedLinks) || [];
 
     return {
       uploadedLinks: Array.isArray(uploaded) ? uploaded : [],
-      errors: result.errors || [],
+      errors: (r.errors || []) as unknown as UploadError[],
     };
   },
 

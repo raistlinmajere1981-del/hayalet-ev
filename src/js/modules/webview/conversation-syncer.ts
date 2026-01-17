@@ -427,14 +427,14 @@ class ConversationSyncerClass {
 
       const conversations = await window.electronAPI?.dbGetConversations?.({
         accountId: accountInfo.id,
-      });
+      }) as Array<{ webUrl?: string; messageCount?: number }> | undefined;
 
       const existing =
-        (conversations || []).find((item) => normalizeUrl(item.webUrl) === webUrl) || null;
+        (conversations || []).find((item) => normalizeUrl(item.webUrl as string) === webUrl) || null;
 
       return {
         existing,
-        prevCount: existing?.messageCount || 0,
+        prevCount: (existing?.messageCount || 0) as number,
         newEntry: !existing,
       };
     } catch (_error) {

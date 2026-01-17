@@ -143,11 +143,11 @@ async function defineCommand(
       description,
       code,
       createdBy,
-    });
+    }) as { success?: boolean; command?: string; error?: string } | undefined;
 
     if (result?.success && result.command) {
       // Runtime cache'i güncelle
-      _customCommands[name] = result.command;
+      _customCommands[name] = result.command as unknown as CustomCommand;
       _compiledHandlers[name.toLowerCase()] = testHandler;
 
       LogManager.addEvent("meta-command", "info", `Komut tanımlandı: ${name}`);
@@ -165,7 +165,7 @@ async function defineCommand(
  */
 async function deleteCommand(name: string): Promise<CommandResult> {
   try {
-    const result = await window.electronAPI?.metaDeleteCommand?.({ name });
+    const result = await window.electronAPI?.metaDeleteCommand?.({ name }) as { success?: boolean; error?: string } | undefined;
 
     if (result?.success) {
       // Runtime cache'den kaldır

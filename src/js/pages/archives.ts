@@ -227,13 +227,13 @@ export class ArchivesController {
         ai2Account?.id ? window.electronAPI?.dbGetConversations?.({
           accountId: ai2Account.id,
         }) : [],
-      ]);
+      ]) as [Record<string, unknown>[] | undefined, Record<string, unknown>[] | undefined];
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)
       this.entries = [
         ...(ai1Entries || []).map(e => ({ ...e, provider: "ai1" })),
         ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2" })),
-      ];
+      ] as ArchiveEntry[];
       
       this.renderList();
     } catch (e) {
@@ -414,7 +414,7 @@ export class ArchivesController {
             query: this.searchQuery,
             limit: 50,
           }),
-        ]);
+        ]) as [Record<string, unknown>[] | undefined, Record<string, unknown>[] | undefined];
 
         results = {
           messages: (messages || []).map(m => ({ ...m, accountId: accountInfo.id })),

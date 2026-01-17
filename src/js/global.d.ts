@@ -1,123 +1,164 @@
-// Tell TypeScript that we're augmenting the global Window interface
+/**
+ * Global Type Declarations
+ * Window.electronAPI ve diğer global type tanımları
+ */
+
+import type { ProviderConfig } from "./types/provider.js";
+
 export {};
 
 declare global {
   interface Window {
-    // This is the API exposed by electron/preload.cjs
-    electronAPI?: {
-      // settings
-      loadSettings: () => Promise<any>;
-      saveSettings: (settings: any) => Promise<boolean>;
-      createAccount: (accountData: any) => Promise<any>;
-      assignAccountToSlot: (slot: string, accountId: string) => Promise<any>;
-      // files
-      readFile: (path: string) => Promise<string | null>; // returns base64
-      readFilesMulti: (paths: string[]) => Promise<Array<{ path: string; data: string | null }>>;
-      showOpenDialog: (options: any) => Promise<any>;
-      copyToAssets: (sourcePath: string, roleName: string, accountInfo?: any) => Promise<{ path: string } | null>;
-      // archives
-      archiveSync: (payload: any) => Promise<any>;
-      readArchivesIndex: () => Promise<any[]>;
-      writeArchivesIndex: (index: any[]) => Promise<{ success: boolean }>;
-      removeArchive: (folderName: string) => Promise<void>;
-      openPath: (path: string) => Promise<{ success: boolean; message?: string }>;
-      // commands
-      commandInit: () => Promise<any>;
-      commandWrite: (job: any) => Promise<any>;
-      commandMove: (jobId: string, state: 'done' | 'failed') => Promise<any>;
-      commandStageAttachments: (payload: {
-        jobId: string;
-        files: string[];
-      }) => Promise<{ staged: any[]; temp: string[]; commandDir: string }>;
-      commandArchiveCopy: (payload: { jobId: string; targetDir: string }) => Promise<any>;
-      commandCleanupJob: (payload: { jobId: string; tempPaths: string[] }) => Promise<void>;
-      commandMoveFailed: (payload: { jobId: string; tempPaths: string[] }) => Promise<{ success?: boolean; message?: string }>;
-      // whispers
-      whisperLoad: (provider: string) => Promise<{ pending: any[]; done: any[] }>;
-      whisperSave: (provider: string, data: any) => Promise<{ success: boolean }>;
-      // screenshots
-      capturePage: (
-        type: 'region' | 'full' | 'window',
-        payload: any
-      ) => Promise<{ success: boolean; data?: string }>;
-      screenshotCapture: (options: any) => Promise<{ success: boolean; path?: string }>;
-      // window controls
-      windowMinimize: () => void;
-      windowMinimizeToTray: () => void;
-      windowToggleFullscreen: () => void;
-      windowClose: () => void;
-      // app control
-      appRestart: () => void;
-      // opencode server
-      opencodeStart: (params?: any) => Promise<{ success: boolean; url?: string; message?: string; error?: any; alreadyRunning?: boolean; existingServer?: any }>;
-      opencodeStop: () => Promise<{ success: boolean; message?: string }>;
-      // device control
-      deviceAction: (action: string, payload?: any) => Promise<any>;
-      // file manager
-      fmEnsureDirs: (scope: string) => Promise<{ success: boolean; paths: Record<string, string> }>;
-      fmTempPath: (prefix: string, ext: string) => Promise<{ path: string }>;
-      fmWriteFileAtomic: (payload: any) => Promise<any>;
-      fmArchiveWrite: (meta: any, files: any) => Promise<any>;
-      // logging
-      appendLog: (payload: any) => Promise<void>;
-      // misc
-      getPreloadPath: (provider: string) => Promise<string>;
-      generateTree: (
-        scope: string,
-        options: any
-      ) => Promise<{ success: boolean; path?: string; content?: string; message?: string; fileName?: string; lines?: number }>;
-      // meta commands
-      metaListCommands: () => Promise<{ success: boolean; commands?: Record<string, any>; message?: string }>;
-      metaDefineCommand: (params: { name: string; description: string; code: string; createdBy: string }) => Promise<{ success: boolean; command?: any; message?: string }>;
-      metaDeleteCommand: (params: { name: string }) => Promise<{ success: boolean; message?: string }>;
-      // upload services
-      fetchUrl: (url: string, options: any) => Promise<any>;
-      catboxUpload: (options: any) => Promise<any>;
-      uguuUpload: (options: any) => Promise<any>;
-      googledriveUpload: (options: any) => Promise<any>;
-      googledriveStartAuth: () => Promise<any>;
-      googledriveExchangeCode: (code: string) => Promise<any>;
-      googledriveDisconnect: () => Promise<any>;
-      // database
-      dbGetConversations: (params: { accountId: string }) => Promise<any[]>;
-      dbUpdateConversation: (params: { accountId: string; conversationId: string; [key: string]: any }) => Promise<any>;
-      dbDeleteConversation: (params: { accountId: string; conversationId: string }) => Promise<any>;
-      dbGetMessages: (params: { accountId: string; conversationId: string }) => Promise<any[]>;
-      dbSyncMessages: (params: { accountId: string; webUrl: string; messages: any[]; authors?: any }) => Promise<any>;
-      dbSearchMessages: (params: { accountId: string; query: string; limit?: number }) => Promise<any[]>;
-      dbSearchAllAccounts: (params: { query: string; limit?: number }) => Promise<any[]>;
-      dbSearchAttachments: (params: { accountId?: string; query: string; limit?: number }) => Promise<any[]>;
-      // logging
-      getSessionId: () => Promise<string>;
-      onConsoleLogForward: (callback: (data: any) => void) => () => void;
-      setupWebviewLogger: (webContentsId: number, provider: string, providerId: string) => Promise<{ success: boolean }>;
-      // database extras
-      dbSaveAttachment: (params: any) => Promise<any>;
-      dbGetAttachments: (params: { conversationId: string; accountId?: string }) => Promise<any[]>;
-      dbInitAccount: (params: { accountId: string }) => Promise<any>;
-      // dialog
-      showMessageBox: (options: any) => Promise<any>;
-      // upload services extra
-      tmpfileUpload: (options: any) => Promise<any>;
-      // file manager extra
-      fmEnsureDirs: (scope: string) => Promise<{ success: boolean; paths: Record<string, string>; message?: string }>;
-      commandStageAttachments: (payload: { jobId: string; files: string[] }) => Promise<{ success?: boolean; staged: any[]; temp: string[]; commandDir: string; message?: string }>;
-      fmArchiveWrite: (meta: any, files: any) => Promise<{ success: boolean; message?: string } | void>;
-    };
+    /**
+     * Electron preload tarafından expose edilen API
+     * @see electron/preload.cjs
+     */
+    electronAPI?: ElectronAPI;
 
-    // Global helper functions attached in app.js
-    updateChatListOnNewEntry?: (provider: string, selectedId: string, options?: any) => Promise<void>;
+    // Global Helper Functions (app.js'de tanımlı)
+    updateChatListOnNewEntry?: (
+      provider: string,
+      selectedId: string,
+      options?: { scroll?: boolean }
+    ) => Promise<void>;
     refreshAnalyzeMessages?: (provider: string) => Promise<void>;
-    
-    // Custom properties
+
+    // Custom Properties
     __hayalet_settings_unsub?: () => void;
-    __hayalet_provider_config?: any;
+    __hayalet_provider_config?: ProviderConfig;
   }
-  
-  // Extend HTMLElement for webview
+
+  /**
+   * Generic IPC Result type
+   */
+  interface IPCResult<T = unknown> {
+    success: boolean;
+    data?: T;
+    error?: string;
+    message?: string;
+    [key: string]: unknown;
+  }
+
+  /**
+   * Electron IPC API Interface
+   * Preload script tarafından expose edilen tüm metodlar
+   */
+  interface ElectronAPI {
+    // Settings
+    loadSettings: () => Promise<Record<string, unknown>>;
+    saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
+    createAccount: (accountData: Record<string, unknown>) => Promise<unknown>;
+    assignAccountToSlot: (slot: string, accountId: string) => Promise<IPCResult>;
+
+    // File Operations
+    readFile: (path: string) => Promise<string | null>;
+    readFilesMulti: (paths: string[]) => Promise<Array<{ path: string; data: string | null }>>;
+    readDirectoryFiles: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
+    showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>;
+    showMessageBox: (options: Record<string, unknown>) => Promise<{ response: number; checkboxChecked: boolean }>;
+    copyToAssets: (srcPath: string, role: string, accountInfo?: Record<string, unknown> | null) => Promise<{ path: string } | null>;
+    deleteAsset: (assetPath: string) => Promise<IPCResult>;
+    copyFileTo: (srcPath: string, destDir: string) => Promise<IPCResult & { path?: string }>;
+    openPath: (path: string) => Promise<IPCResult>;
+
+    // File Manager
+    fmEnsureDirs: (scope: string) => Promise<IPCResult & { paths: Record<string, string> }>;
+    fmTempPath: (prefix: string, ext: string) => Promise<{ path: string }>;
+    fmWriteFileAtomic: (payload: Record<string, unknown>) => Promise<IPCResult & { path?: string }>;
+    fmArchiveWrite: (meta: Record<string, unknown>, files: Array<Record<string, unknown>>) => Promise<IPCResult | void>;
+
+    // Commands
+    commandInit: () => Promise<{ jobs: Array<Record<string, unknown>> }>;
+    commandWrite: (item: Record<string, unknown>) => Promise<IPCResult>;
+    commandMove: (id: string, status: string, reason?: string) => Promise<IPCResult>;
+    commandPaths: () => Promise<Record<string, string>>;
+    commandStageAttachments: (payload: Record<string, unknown>) => Promise<IPCResult & { staged: Array<Record<string, unknown>>; temp: string[]; commandDir: string }>;
+    commandStageTemp: (payload: Record<string, unknown>) => Promise<IPCResult & { staged: string[] }>;
+    commandCleanupTemp: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    commandMoveFailed: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    commandArchiveCopy: (payload: Record<string, unknown>) => Promise<IPCResult & { path?: string }>;
+    commandCleanupJob: (payload: Record<string, unknown>) => Promise<IPCResult>;
+
+    // Database
+    dbGetConversations: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbSaveConversation: (conversation: Record<string, unknown>) => Promise<IPCResult & { id?: string }>;
+    dbUpdateConversation: (conversation: Record<string, unknown>) => Promise<IPCResult>;
+    dbDeleteConversation: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    dbGetMessages: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbSyncMessages: (payload: Record<string, unknown>) => Promise<IPCResult & { count?: number; added?: number; total?: number; conversationId?: string }>;
+    dbSearchMessages: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbSaveAttachment: (payload: Record<string, unknown>) => Promise<IPCResult>;
+
+    // Archives
+    archiveSync: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    readArchivesIndex: () => Promise<Array<Record<string, unknown>>>;
+    writeArchivesIndex: (index: Array<Record<string, unknown>>) => Promise<IPCResult>;
+    removeArchive: (folderName: string) => Promise<void>;
+
+    // Screenshots
+    screenshot: (options?: Record<string, unknown>) => Promise<IPCResult & { path?: string; base64?: string }>;
+    screenshotCapture: (options?: Record<string, unknown> | string) => Promise<IPCResult & { path?: string; base64?: string; data?: string }>;
+    capturePage: (type?: string, region?: unknown) => Promise<IPCResult & { data?: string }>;
+
+    // Device Control
+    deviceAction: (action: string, payload?: Record<string, unknown> | unknown) => Promise<IPCResult>;
+
+    // Whisper
+    whisperLoad: (params?: Record<string, unknown>, extra?: unknown) => Promise<IPCResult & { text?: string }>;
+    whisperSave: (accountId: string, data: unknown) => Promise<IPCResult>;
+
+    // Google Drive
+    googledriveStartAuth: () => Promise<IPCResult & { authUrl?: string }>;
+    googledriveExchangeCode: (code: string) => Promise<IPCResult>;
+    googledriveUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string; uploadedLinks?: string[]; uploaded?: number; errors?: string[] }>;
+    googledriveDisconnect: () => Promise<IPCResult>;
+
+    // Upload Services
+    catboxUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
+    uguuUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
+    tmpfileUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
+
+    // Window Management
+    windowMinimize: () => void;
+    windowToggleFullscreen: () => void;
+    windowClose: () => void;
+    windowMinimizeToTray: () => void;
+    appRestart: () => Promise<void>;
+
+    // Logging
+    logWrite: (payload: Record<string, unknown>) => Promise<IPCResult>;
+    getSessionId: () => Promise<string>;
+    onConsoleLogForward: (callback: (data: { level: string; source?: string; message?: string; context?: unknown; args?: unknown[] }) => void) => () => void;
+
+    // Webview
+    setupWebviewLogger: (webContentsId: number, ...args: unknown[]) => Promise<IPCResult>;
+    getPreloadPath: (type: string) => Promise<string>;
+    getProviderConfig: (providerId: string) => Promise<Record<string, unknown>>;
+
+    // Provider/Tree
+    generateTree: (basePath: string, options?: Record<string, unknown>) => Promise<IPCResult & { path?: string; fileName?: string; lines?: number }>;
+
+    // OpenCode/Assistant
+    opencodeStart: (options?: Record<string, unknown>) => Promise<IPCResult>;
+    opencodeStop: () => Promise<IPCResult>;
+    opencodeStatus: () => Promise<{ running: boolean; port?: number }>;
+    assistantConnect: (provider: string, options?: Record<string, unknown>) => Promise<IPCResult>;
+    assistantDisconnect: () => Promise<IPCResult>;
+    assistantStatus: () => Promise<{ connected: boolean }>;
+    assistantGetConfig: (providerId: string) => Promise<Record<string, unknown>>;
+    onAssistantDisconnected: (callback: () => void) => () => void;
+
+    // Meta Commands
+    metaCommand: (command: string, args?: Record<string, unknown>) => Promise<IPCResult & { command?: string }>;
+
+    // Index signature for any other methods not explicitly defined
+    [key: string]: ((...args: unknown[]) => unknown) | undefined;
+  }
+
+  // Webview Element Extensions
   interface HTMLElement {
     getWebContentsId?(): number;
-    send?(channel: string, ...args: any[]): void;
-    executeJavaScript?(code: string): Promise<any>;
+    send?(channel: string, ...args: unknown[]): void;
+    executeJavaScript?(code: string): Promise<unknown>;
   }
 }

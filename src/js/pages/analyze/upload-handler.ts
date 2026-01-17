@@ -57,22 +57,22 @@ export async function addUploadFiles(currentFiles: StagedFile[]): Promise<Staged
     
     if (!selection) return currentFiles;
     
-    let paths = [];
+    let paths: string[] = [];
     if (typeof selection === "string") {
       paths = [selection];
     } else if (Array.isArray(selection)) {
-      paths = selection;
+      paths = selection as string[];
     } else if (selection && Array.isArray(selection.filePaths)) {
       paths = selection.filePaths;
-    } else if (selection && typeof selection.path === "string") {
-      paths = [selection.path];
+    } else if (selection && typeof (selection as unknown as { path?: string }).path === "string") {
+      paths = [(selection as unknown as { path: string }).path];
     } else {
       paths = [];
     }
     
     if (!paths.length) return currentFiles;
     
-    const newEntries = paths.map((p: string) => {
+    const newEntries = paths.map((p) => {
       const name = getFilename(String(p)) || "dosya";
       return { name, path: p };
     });

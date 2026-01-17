@@ -282,7 +282,7 @@ export async function attachFiles(webview: HTMLElement, { files }: { files: File
     });
   })();`;
 
-  const result = await webview.executeJavaScript?.(dropScript);
+  const result = await webview.executeJavaScript?.(dropScript) as { success?: boolean; message?: string; count?: number } | undefined;
   return {
     success: !!result?.success,
     message: result?.message || "Dosya drag-drop denemesi yapıldı",

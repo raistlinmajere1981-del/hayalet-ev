@@ -24,7 +24,7 @@ export function scrapeMessages(): ScrapedMessage[] {
     return hash.toString(16);
   }
 
-  const config = window.__hayalet_provider_config || {};
+  const config = (window.__hayalet_provider_config || {}) as { scrapeSelectors?: Record<string, string>; roleSelectors?: Record<string, string> };
   const { scrapeSelectors = {}, roleSelectors = {} } = config;
 
   const preferredSel = scrapeSelectors.preferred || ".message-content";
@@ -74,7 +74,7 @@ export function scrapeMessages(): ScrapedMessage[] {
     }
 
     if (!textContent) {
-      textContent = (node.innerText || "").trim();
+      textContent = ((node as HTMLElement).innerText || "").trim();
     }
 
     if (!textContent) {

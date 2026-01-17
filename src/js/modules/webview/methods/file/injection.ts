@@ -110,7 +110,7 @@ export async function attachFiles(webview: HTMLElement, { files }: { files: File
     };
   })();`;
 
-  const result = await webview.executeJavaScript?.(injectScript);
+  const result = await webview.executeJavaScript?.(injectScript) as { success?: boolean; message?: string; count?: number } | undefined;
   return {
     success: !!result?.success,
     message: result?.message || "Dosya inject denemesi yapıldı",

@@ -224,7 +224,7 @@ class FileManagerClass {
       if (!res?.success) {
         throw new Error(res?.message || "writeFileAtomic failed");
       }
-      return res.path;
+      return res.path || "";
     } catch (err) {
       const error = /** @type {Error} */ (err);
       LogManager.addEvent(

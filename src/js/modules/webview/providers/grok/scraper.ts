@@ -43,7 +43,7 @@ export function scrapeMessages(): ScrapedMessage[] {
       ? node
       : node.closest("[data-message-author-role]");
     const roleAttr = roleNode?.getAttribute("data-message-author-role") || "";
-    let text = (node.innerText || "").trim();
+    let text = ((node as HTMLElement).innerText || "").trim();
     if (!text) {
       const imgs = Array.from(node.querySelectorAll("img")) as HTMLImageElement[];
       const alt = imgs

@@ -77,9 +77,9 @@ class LogManagerClass {
     try {
       window.electronAPI?.onConsoleLogForward?.((data) => {
         this.addEventInternal(
-          data.source,
+          data.source || "console",
           data.level,
-          data.message,
+          data.message || "",
           { context: data.context },
           false
         );
