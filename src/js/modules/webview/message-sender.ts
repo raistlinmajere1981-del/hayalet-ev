@@ -15,9 +15,55 @@ import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
 import { waitForDomReady } from "../../app.js";
 import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
+import type { AppSettings } from "../../types/settings.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WebviewElement {
+  getURL?: () => string;
+  executeJavaScript: (script: string) => Promise<unknown>;
+  focus?: () => void;
+}
+
+interface FileEntry {
+  name?: string;
+  path?: string;
+}
+
+interface UploadedLink {
+  name: string;
+  url: string;
+}
+
+interface FileResult {
+  success: boolean;
+  message?: string;
+  uploadedLinks?: UploadedLink[];
+}
+
+interface SendOptions {
+  provider: string;
+  text?: string;
+  attachments?: FileEntry[];
+  webview: WebviewElement;
+}
+
+interface SendResult {
+  success: boolean;
+  message: string;
+  files: FileResult | null;
+}
+
+type FileFn = (webview: WebviewElement, opts: { files: unknown[]; provider: string }) => Promise<FileResult>;
+
+// ============================================================================
+// MessageSenderClass
+// ============================================================================
 
 class MessageSenderClass {
-  _settings: any;
+  _settings: AppSettings | null;
 
   constructor() {
     this._settings = null;
@@ -25,33 +71,27 @@ class MessageSenderClass {
 
   /**
    * Ayarları güncelle
-   * @param {Object} settings - Uygulama ayarları
    */
-  setSettings(settings) {
+  setSettings(settings: AppSettings | null): void {
     this._settings = settings;
   }
 
   /**
    * Slot için provider modülünü getir
-   * @param {string} providerSlot - Slot ID
-   * @returns {Object|null}
    */
-  getProviderModule(providerSlot) {
+  getProviderModule(providerSlot: string): Record<string, unknown> | null {
     const providerId = AppState.getProviderIdForSlot(providerSlot);
     return providerId ? getProvider(providerId) : null;
   }
 
   /**
    * URL excluded mı kontrol et
-   * @param {string} providerSlot - Slot ID
-   * @param {string} url - Kontrol edilecek URL
-   * @returns {boolean}
    */
-  isUrlExcluded(providerSlot, url) {
+  isUrlExcluded(providerSlot: string, url: string): boolean {
     const providerId = AppState.getProviderIdForSlot(providerSlot);
     if (!providerId || !url) return false;
 
-    const cfg = ProviderRegistry.get(providerId);
+    const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
     if (!cfg?.excludedUrls?.length) return false;
 
     return checkUrlExcluded(url, cfg.excludedUrls);
@@ -59,10 +99,8 @@ class MessageSenderClass {
 
   /**
    * Mesaj ve dosya gönder
-   * @param {Object} opts - { provider, text, attachments, webview }
-   * @returns {Promise<Object>}
    */
-  async send({ provider, text, attachments = [], webview }) {
+  async send({ provider, text, attachments = [], webview }: SendOptions): Promise<SendResult> {
     if (!webview) {
       throw new Error(`Webview for provider "${provider}" not found.`);
     }
@@ -97,7 +135,7 @@ class MessageSenderClass {
       `Using provider: ${providerId} for slot: ${provider}`,
     );
 
-    await waitForDomReady(webview);
+    await waitForDomReady(webview as unknown as HTMLElement & { isLoading?: () => boolean });
 
     // Provider config fallback - sadece config yoksa inject et
     const providerConfig = ProviderRegistry.get(providerId);
@@ -122,9 +160,11 @@ class MessageSenderClass {
     }
 
     // ai0 (asistan) için asistanSlot'tan, diğerleri için slots'tan al
+    const slots = this._settings?.slots as Record<string, { messageMethod?: string; fileMethod?: string }> | undefined;
+    const asistanSlot = this._settings?.asistanSlot as { messageMethod?: string; fileMethod?: string } | undefined;
     const slotConfig = provider === "ai0" 
-      ? this._settings?.asistanSlot 
-      : this._settings?.slots?.[provider];
+      ? asistanSlot
+      : slots?.[provider];
     
     const messageMethodName = slotConfig?.messageMethod;
     if (!messageMethodName) {
@@ -174,7 +214,7 @@ class MessageSenderClass {
 
     if (attachments?.length > 0 && isLinkBased) {
       fileResult = await this._handleLinkBasedUpload(
-        webview, provider, attachments, fileFn, fileMethodName
+        webview, provider, attachments, fileFn as FileFn, fileMethodName
       );
       
       if (fileResult?.uploadedLinks?.length) {
@@ -189,7 +229,7 @@ class MessageSenderClass {
 
     if (attachments?.length > 0 && !isLinkBased) {
       fileResult = await this._handleDirectUpload(
-        webview, provider, attachments, fileFn, fileMethodName
+        webview, provider, attachments, fileFn as FileFn, fileMethodName
       );
     }
 
@@ -199,7 +239,7 @@ class MessageSenderClass {
         "info",
         `Adding message to input field using ${messageMethodName}`,
       );
-      const sendResult = await messageFn(webview, { message: finalMessage });
+      const sendResult = await (messageFn as (wv: WebviewElement, opts: { message: string }) => Promise<{ success?: boolean; message?: string }>)(webview, { message: finalMessage });
       if (!sendResult?.success) {
         throw new Error(sendResult?.message || "Mesaj metin alanına yazılamadı.");
       }
@@ -238,7 +278,13 @@ class MessageSenderClass {
    * Link-based dosya yükleme (catbox, uguu, googledrive, tmpfile)
    * @private
    */
-  async _handleLinkBasedUpload(webview, provider, attachments, fileFn, fileMethodName) {
+  async _handleLinkBasedUpload(
+    webview: WebviewElement,
+    provider: string,
+    attachments: FileEntry[],
+    fileFn: FileFn,
+    fileMethodName: string
+  ): Promise<FileResult | null> {
     const files = await FileManager.readUploadFiles(attachments);
     if (files.length === 0) return null;
 
@@ -277,7 +323,13 @@ class MessageSenderClass {
    * Direct dosya yükleme (injection, dragdrop, xdotools)
    * @private
    */
-  async _handleDirectUpload(webview, provider, attachments, fileFn, fileMethodName) {
+  async _handleDirectUpload(
+    webview: WebviewElement,
+    provider: string,
+    attachments: FileEntry[],
+    fileFn: FileFn,
+    fileMethodName: string
+  ): Promise<FileResult | null> {
     const files = await FileManager.readUploadFiles(attachments);
     if (files.length === 0) return null;
 
@@ -304,8 +356,8 @@ class MessageSenderClass {
    * Send button'a tıkla
    * @private
    */
-  async _triggerSendButton(webview, provider, providerId) {
-    const providerConfig = ProviderRegistry.get(providerId);
+  async _triggerSendButton(webview: WebviewElement, provider: string, providerId: string): Promise<void> {
+    const providerConfig = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
 
     if (!providerConfig?.selectors?.sendButton) {
       throw new Error(`Provider config bulunamadı: providerId="${providerId}", provider="${provider}", hasConfig=${!!providerConfig}, hasSelectors=${!!providerConfig?.selectors}`);
@@ -339,7 +391,7 @@ class MessageSenderClass {
         return { success: true, message: 'send clicked' };
       })();`;
 
-      const res = await webview.executeJavaScript(script);
+      const res = await webview.executeJavaScript(script) as { success?: boolean; retry?: boolean; message?: string; debug?: Record<string, unknown> } | null;
       
       if (res?.success) {
         return; // Başarılı
@@ -349,7 +401,7 @@ class MessageSenderClass {
         LogManager.addEvent(
           `webview-${provider}`,
           "warning",
-          `Send button trigger failed: ${res?.message}, debug: ${JSON.stringify(res?.debug || {})}`,
+          `Send button trigger failed: ${res?.message || "unknown"}, debug: ${JSON.stringify(res?.debug || {})}`,
         );
         throw new Error("Send butonu tetiklenemedi");
       }
