@@ -2,10 +2,10 @@
  * DatabaseManager - Ana orchestrator
  *
  * Her hesap için ayrı SQLite veritabanı ve attachment yönetimi.
- * 
+ *
  * Account ID formatı: {provider}_{sanitizedEmail}
  * Örnek: chatgpt_user_at_gmail_com
- * 
+ *
  * Dosya yapısı:
  * data/
  * └── {accountId}/                  # Hesap klasörü (örn: chatgpt_user_at_gmail_com/)
@@ -21,9 +21,24 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import { applySchema } from "./schema.js";
-import { createQueries } from "./queries.js";
-import { hashString, generateId as _generateId, generateMessageId, generateAttachmentId } from "./hash-utils.js";
+import { applySchema } from "./schema.ts";
+import { createQueries } from "./queries.ts";
+import {
+  hashString,
+  generateId as _generateId,
+  generateMessageId,
+  generateAttachmentId,
+} from "./hash-utils.ts";
+import type { IpcMainInvokeEvent } from "electron";
+import type {
+  DbConnection,
+  Conversation,
+  Message,
+  Attachment,
+  SyncMessagesParams,
+  SyncMessagesResult,
+  IpcResult,
+} from "../types/index.ts";
 
 // ============================================================================
 // Constants
@@ -35,8 +50,7 @@ const DATA_DIR = "./data";
 // Connection Pool
 // ============================================================================
 
-/** @type {Map<string, { db: Database.Database, queries: ReturnType<typeof createQueries> }>} */
-const connectionPool = new Map();
+const connectionPool = new Map<string, DbConnection>();
 
 // ============================================================================
 // Helper Functions
@@ -44,36 +58,29 @@ const connectionPool = new Map();
 
 /**
  * Account ID'den klasör yolunu oluştur
- * @param {string} accountId - Account ID (örn: chatgpt_user_at_gmail_com)
- * @returns {string}
  */
-function getAccountFolderPath(accountId) {
+function getAccountFolderPath(accountId: string): string {
   return path.join(DATA_DIR, accountId);
 }
 
 /**
  * Account ID'den veritabanı dosya yolunu oluştur
- * @param {string} accountId
- * @returns {string}
  */
-function getDatabasePath(accountId) {
+function getDatabasePath(accountId: string): string {
   return path.join(getAccountFolderPath(accountId), "database.db");
 }
 
 /**
  * Account ID'den attachments klasör yolunu oluştur
- * @param {string} accountId
- * @returns {string}
  */
-function getAttachmentsPath(accountId) {
+function getAttachmentsPath(accountId: string): string {
   return path.join(getAccountFolderPath(accountId), "attachments");
 }
 
 /**
  * Hesap dizinlerinin var olduğundan emin ol
- * @param {string} accountId
  */
-function ensureAccountDirectories(accountId) {
+function ensureAccountDirectories(accountId: string): void {
   const accountFolder = getAccountFolderPath(accountId);
   const attachmentsFolder = getAttachmentsPath(accountId);
   
@@ -89,14 +96,21 @@ function ensureAccountDirectories(accountId) {
 // Database Manager
 // ============================================================================
 
+interface InitAccountResult {
+  success: boolean;
+  error?: string;
+  cached?: boolean;
+  created?: boolean;
+}
+
 export const DatabaseManager = {
   /**
    * Hesap için veritabanını başlat
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId }
-   * @returns {{ success: boolean, error?: string, cached?: boolean, created?: boolean }}
    */
-  initAccount(event, { accountId }) {
+  initAccount(
+    _event: IpcMainInvokeEvent | null,
+    { accountId }: { accountId: string }
+  ): InitAccountResult {
     try {
       if (!accountId) {
         return { success: false, error: "Account ID gerekli" };
@@ -141,10 +155,8 @@ export const DatabaseManager = {
 
   /**
    * Hesap için veritabanı bağlantısını al
-   * @param {string} accountId - Account ID
-   * @returns {{ db: Database.Database, queries: ReturnType<typeof createQueries> } | null}
    */
-  getConnection(accountId) {
+  getConnection(accountId: string): DbConnection | null {
     if (!connectionPool.has(accountId)) {
       // Otomatik olarak bağlantı kur
       const result = this.initAccount(null, { accountId });
@@ -159,24 +171,24 @@ export const DatabaseManager = {
 
   /**
    * Konuşmaları getir
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId }
-   * @returns {Array}
    */
-  getConversations(event, { accountId }) {
+  getConversations(
+    _event: IpcMainInvokeEvent | null,
+    { accountId }: { accountId: string }
+  ) {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
         return [];
       }
 
-      const rows = conn.queries.getConversations.all();
+      const rows = conn.queries.getConversations.all() as Conversation[];
 
       // Archives sayfası formatına dönüştür
       // folder: tam yol olarak data/{accountId}/attachments/{conversationId}
       const attachmentsBase = getAttachmentsPath(accountId);
       
-      return rows.map((row) => ({
+      return rows.map((row: Conversation) => ({
         id: row.id,
         value: row.id,
         webUrl: row.web_url,
@@ -197,21 +209,21 @@ export const DatabaseManager = {
 
   /**
    * Konuşma mesajlarını getir
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, conversationId }
-   * @returns {Array}
    */
-  getMessages(event, { accountId, conversationId }) {
+  getMessages(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ) {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
         return [];
       }
 
-      const rows = conn.queries.getMessages.all(conversationId);
+      const rows = conn.queries.getMessages.all(conversationId) as Message[];
 
       // Analyze sayfası formatına dönüştür
-      return rows.map((row, index) => ({
+      return rows.map((row: Message, index: number) => ({
         id: row.id,
         index: index,
         role: row.role,
@@ -230,11 +242,11 @@ export const DatabaseManager = {
 
   /**
    * Mesajları senkronize et (incremental sync)
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, webUrl, messages, authors }
-   * @returns {{ success: boolean, added?: number, conversationId?: string, total?: number, error?: string }}
    */
-  syncMessages(event, { accountId, webUrl, messages, authors }) {
+  syncMessages(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, webUrl, messages, authors }: SyncMessagesParams
+  ): SyncMessagesResult {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -266,18 +278,18 @@ export const DatabaseManager = {
           updated_at: now,
         });
 
-        conversation = { id: conversationId };
+        conversation = { id: conversationId } as Partial<Conversation>;
       } else {
-        conversationId = conversation.id;
+        conversationId = (conversation as Conversation).id;
       }
 
       // Mevcut mesaj hash'lerini al
       const existingHashes = new Set(
-        queries.getMessageHashes.all(conversationId).map((r) => r.content_hash)
+        (queries.getMessageHashes.all(conversationId) as Array<{ content_hash: string }>).map((r) => r.content_hash)
       );
 
       // Yeni mesajları filtrele
-      const newMessages = [];
+      const newMessages: Array<SyncMessagesParams["messages"][0] & { contentHash: string }> = [];
       for (const msg of messages) {
         const contentHash = msg.contentHash || hashString(msg.text);
 
@@ -291,7 +303,7 @@ export const DatabaseManager = {
 
       // Yeni mesajları ekle (transaction içinde)
       if (newMessages.length > 0) {
-        const insertMany = db.transaction((msgs) => {
+        const insertMany = db.transaction((msgs: typeof newMessages) => {
           for (const msg of msgs) {
             const messageId = generateMessageId();
 
@@ -299,7 +311,7 @@ export const DatabaseManager = {
               id: messageId,
               conversation_id: conversationId,
               role: msg.role,
-              author: msg.author || authors?.[msg.role] || null,
+              author: msg.author || (authors as Record<string, string | undefined>)?.[msg.role] || null,
               content: msg.text,
               dom_index: msg.index ?? msg.domIndex ?? null,
               dom_id: msg.domId || null,
@@ -313,21 +325,21 @@ export const DatabaseManager = {
       }
 
       // Konuşma metadata'sını güncelle
-      const messageCount = queries.getMessageCount.get(conversationId)?.count || 0;
-      const lastMessage = queries.getLastMessage.get(conversationId);
+      const messageCount = (queries.getMessageCount.get(conversationId) as { count: number } | undefined)?.count || 0;
+      const lastMessage = queries.getLastMessage.get(conversationId) as Message | undefined;
 
       // Title: Mevcut başlık varsa değiştirme, yoksa "Sohbet001" formatında ata
-      let title = conversation.title || "";
+      let title = (conversation as Conversation).title || "";
       if (!title) {
         // Mevcut konuşma sayısını al ve bir sonraki numarayı oluştur
-        const convCount = queries.getConversationCount.get()?.count || 0;
+        const convCount = (queries.getConversationCount.get() as { count: number } | undefined)?.count || 0;
         title = `Sohbet${String(convCount).padStart(3, "0")}`;
       }
 
       queries.updateConversation.run({
         id: conversationId,
         title,
-        summary: conversation.summary || "",
+        summary: (conversation as Conversation).summary || "",
         message_count: messageCount,
         last_message_id: lastMessage?.id || null,
         updated_at: now,
@@ -347,11 +359,25 @@ export const DatabaseManager = {
 
   /**
    * Attachment kaydet
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, conversationId, messageId, filePath, originalName }
-   * @returns {{ success: boolean, attachmentId?: string, storedPath?: string, error?: string }}
    */
-  saveAttachment(event, { accountId, conversationId, messageId, filePath, originalName, mimeType }) {
+  saveAttachment(
+    _event: IpcMainInvokeEvent | null,
+    {
+      accountId,
+      conversationId,
+      messageId,
+      filePath,
+      originalName,
+      mimeType,
+    }: {
+      accountId: string;
+      conversationId: string;
+      messageId: string;
+      filePath: string;
+      originalName: string;
+      mimeType?: string;
+    }
+  ): { success: boolean; attachmentId?: string; storedPath?: string; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -412,20 +438,20 @@ export const DatabaseManager = {
 
   /**
    * Konuşmadaki attachment'ları getir
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, conversationId }
-   * @returns {Array}
    */
-  getAttachments(event, { accountId, conversationId }) {
+  getAttachments(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ) {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
         return [];
       }
 
-      const rows = conn.queries.getAttachmentsByConversation.all(conversationId);
+      const rows = conn.queries.getAttachmentsByConversation.all(conversationId) as Attachment[];
 
-      return rows.map((row) => ({
+      return rows.map((row: Attachment) => ({
         id: row.id,
         messageId: row.message_id,
         originalName: row.original_name,
@@ -443,11 +469,11 @@ export const DatabaseManager = {
 
   /**
    * Konuşmayı sil
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, conversationId }
-   * @returns {{ success: boolean, error?: string }}
    */
-  deleteConversation(event, { accountId, conversationId }) {
+  deleteConversation(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ): IpcResult {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -467,17 +493,17 @@ export const DatabaseManager = {
       return { success: true };
     } catch (err) {
       console.error("[DB] deleteConversation hatası:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   },
 
   /**
    * Mesajlarda arama yap (FTS5)
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, query, limit }
-   * @returns {Array}
    */
-  searchMessages(event, { accountId, query, limit = 50 }) {
+  searchMessages(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
+  ) {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -491,9 +517,20 @@ export const DatabaseManager = {
         .map((term) => `"${term}"`)
         .join(" ");
 
-      const rows = conn.queries.searchMessages.all(ftsQuery, limit);
+      interface SearchMessageRow {
+        id: string;
+        conversation_id: string;
+        conversation_title: string;
+        web_url: string;
+        role: string;
+        author: string;
+        content: string;
+        snippet: string;
+        created_at: number;
+      }
+      const rows = conn.queries.searchMessages.all(ftsQuery, limit) as SearchMessageRow[];
 
-      return rows.map((row) => ({
+      return rows.map((row: SearchMessageRow) => ({
         id: row.id,
         conversationId: row.conversation_id,
         conversationTitle: row.conversation_title,
@@ -512,11 +549,11 @@ export const DatabaseManager = {
 
   /**
    * Attachment'larda arama yap
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, query, limit }
-   * @returns {Array}
    */
-  searchAttachments(event, { accountId, query, limit = 50 }) {
+  searchAttachments(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
+  ) {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -525,6 +562,18 @@ export const DatabaseManager = {
 
       // Dosya adında LIKE araması
       const searchPattern = `%${query}%`;
+      interface SearchAttachmentRow {
+        id: string;
+        message_id: string;
+        conversation_id: string;
+        original_name: string;
+        stored_path: string;
+        mime_type: string | null;
+        size: number;
+        created_at: number;
+        conversation_title: string | null;
+        web_url: string;
+      }
       const rows = conn.db.prepare(`
         SELECT 
           a.id,
@@ -542,9 +591,9 @@ export const DatabaseManager = {
         WHERE a.original_name LIKE ?
         ORDER BY a.created_at DESC
         LIMIT ?
-      `).all(searchPattern, limit);
+      `).all(searchPattern, limit) as SearchAttachmentRow[];
 
-      return rows.map((row) => ({
+      return rows.map((row: SearchAttachmentRow) => ({
         id: row.id,
         messageId: row.message_id,
         conversationId: row.conversation_id,
@@ -564,11 +613,11 @@ export const DatabaseManager = {
 
   /**
    * Tüm hesaplarda arama yap (mesaj + attachment)
-   * @param {Object} event - IPC event
-   * @param {Object} params - { query, limit }
-   * @returns {{ messages: Array, attachments: Array }}
    */
-  searchAllAccounts(event, { query, limit = 50 }) {
+  searchAllAccounts(
+    event: IpcMainInvokeEvent | null,
+    { query, limit = 50 }: { query: string; limit?: number }
+  ) {
     try {
       // data/ klasöründeki tüm hesap klasörlerini bul
       if (!fs.existsSync(DATA_DIR)) {
@@ -608,11 +657,21 @@ export const DatabaseManager = {
 
   /**
    * Konuşma detayını güncelle
-   * @param {Object} event - IPC event
-   * @param {Object} params - { accountId, conversationId, title, summary }
-   * @returns {{ success: boolean, error?: string }}
    */
-  updateConversationDetails(event, { accountId, conversationId, title, summary }) {
+  updateConversationDetails(
+    _event: IpcMainInvokeEvent | null,
+    {
+      accountId,
+      conversationId,
+      title,
+      summary,
+    }: {
+      accountId: string;
+      conversationId: string;
+      title?: string;
+      summary?: string;
+    }
+  ): IpcResult {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
@@ -624,26 +683,27 @@ export const DatabaseManager = {
         return { success: false, error: "Konuşma bulunamadı" };
       }
 
+      const conv = conversation as Conversation;
       conn.queries.updateConversation.run({
         id: conversationId,
-        title: title ?? conversation.title,
-        summary: summary ?? conversation.summary,
-        message_count: conversation.message_count,
-        last_message_id: conversation.last_message_id,
+        title: title ?? conv.title,
+        summary: summary ?? conv.summary,
+        message_count: conv.message_count,
+        last_message_id: conv.last_message_id,
         updated_at: Date.now(),
       });
 
       return { success: true };
     } catch (err) {
       console.error("[DB] updateConversationDetails hatası:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   },
 
   /**
    * Tüm bağlantıları kapat (uygulama kapanırken)
    */
-  closeAll() {
+  closeAll(): void {
     for (const [key, { db }] of connectionPool) {
       try {
         db.close();
@@ -657,9 +717,8 @@ export const DatabaseManager = {
 
   /**
    * Veritabanını optimize et
-   * @param {string} accountId
    */
-  optimize(accountId) {
+  optimize(accountId: string): void {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (conn) {

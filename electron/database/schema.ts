@@ -1,15 +1,17 @@
 /**
  * Database Schema - Tablo şemaları ve migration
- * 
+ *
  * Her hesap için ayrı SQLite dosyası:
  * data/{accountId}/database.db
- * 
+ *
  * Tablolar:
  * - conversations: Konuşma metadata'sı
  * - messages: Mesajlar
  * - attachments: Ek dosya referansları
  * - messages_fts: Full-text search (FTS5)
  */
+
+import type Database from "better-sqlite3";
 
 // Schema versiyonu - migration için
 const SCHEMA_VERSION = 1;
@@ -106,9 +108,8 @@ END;
 
 /**
  * Schema'yı veritabanına uygula
- * @param {import('better-sqlite3').Database} db - Database instance
  */
-export function applySchema(db) {
+export function applySchema(db: Database.Database): void {
   // Ana tabloları oluştur
   db.exec(CREATE_TABLES_SQL);
   

@@ -1,6 +1,6 @@
 /**
  * LogWriter - Log yazma işlemleri
- * 
+ *
  * Bu modül log dosyalarına yazma işlemlerini yönetir:
  * - Log mesajı formatlama
  * - Dosyaya yazma (chunk rotation ile)
@@ -10,20 +10,21 @@
 
 import { appendFile } from "fs/promises";
 import { join } from "path";
-import { ensureSessionDir, getSessionDir, getAppState } from "./session-manager.js";
+import { ensureSessionDir, getSessionDir, getAppState } from "./session-manager.ts";
+import type { LogLevel, LogSource, LogContext, StructuredLogEntry } from "../types/index.ts";
 
 let currentChunkIndex = 1;
 let currentChunkLines = 0;
 const MAX_CHUNK_LINES = 10000;
 
-let CONSOLE_LOG = null;
-let ERROR_LOG = null;
-let STRUCTURED_LOG = null;
+let CONSOLE_LOG: string | null = null;
+let ERROR_LOG: string | null = null;
+let STRUCTURED_LOG: string | null = null;
 
 /**
  * Log dosya yollarını güncelle
  */
-export function updateLogPaths() {
+export function updateLogPaths(): void {
   const sessionDir = getSessionDir();
   if (!sessionDir) return;
   
@@ -34,13 +35,13 @@ export function updateLogPaths() {
 
 /**
  * Log mesajını formatla
- * @param {string} level - Log seviyesi
- * @param {string} source - Kaynak (MAIN, RENDERER, WEBVIEW-AI1, etc.)
- * @param {any[]} args - Log argümanları
- * @param {object} [context] - Ek bağlam bilgisi
- * @returns {string}
  */
-export function formatLog(level, source, args, context = null) {
+export function formatLog(
+  level: LogLevel | string,
+  source: LogSource | string,
+  args: unknown[],
+  context: LogContext | null = null
+): string {
   const timestamp = new Date().toISOString();
   const message = args
     .map((arg) => {
@@ -76,13 +77,14 @@ export function formatLog(level, source, args, context = null) {
 
 /**
  * Log dosyasına yaz (chunk rotation ile)
- * @param {string} level - Log seviyesi
- * @param {string} source - Kaynak
- * @param {any[]} args - Log argümanları
- * @param {object} [context] - Ek bağlam
- * @param {boolean} [isError=false] - Error log'a da yaz
  */
-export async function writeLog(level, source, args, context = null, isError = false) {
+export async function writeLog(
+  level: LogLevel | string,
+  source: LogSource | string,
+  args: unknown[],
+  context: LogContext | null = null,
+  isError: boolean = false
+): Promise<void> {
   try {
     await ensureSessionDir();
     updateLogPaths();
@@ -109,12 +111,13 @@ export async function writeLog(level, source, args, context = null, isError = fa
 
 /**
  * Sadece error log'a yaz
- * @param {string} level - Log seviyesi
- * @param {string} source - Kaynak
- * @param {any[]} args - Log argümanları
- * @param {object} [context] - Ek bağlam
  */
-export async function writeErrorLog(level, source, args, context = null) {
+export async function writeErrorLog(
+  level: LogLevel | string,
+  source: LogSource | string,
+  args: unknown[],
+  context: LogContext | null = null
+): Promise<void> {
   try {
     await ensureSessionDir();
     updateLogPaths();
@@ -129,9 +132,8 @@ export async function writeErrorLog(level, source, args, context = null) {
 
 /**
  * Structured log yaz (JSONL format)
- * @param {object} entry - Log girdisi
  */
-export async function writeStructuredLog(entry) {
+export async function writeStructuredLog(entry: StructuredLogEntry): Promise<void> {
   try {
     await ensureSessionDir();
     updateLogPaths();
@@ -146,7 +148,7 @@ export async function writeStructuredLog(entry) {
 /**
  * State snapshot yaz
  */
-export async function writeStateSnapshot() {
+export async function writeStateSnapshot(): Promise<void> {
   try {
     await ensureSessionDir();
     const sessionDir = getSessionDir();
@@ -165,21 +167,22 @@ export async function writeStateSnapshot() {
 }
 
 // ============================================
+// Getters
 // ============================================
 
-export function getConsoleLogPath() {
+export function getConsoleLogPath(): string | null {
   return CONSOLE_LOG;
 }
 
-export function getErrorLogPath() {
+export function getErrorLogPath(): string | null {
   return ERROR_LOG;
 }
 
-export function getStructuredLogPath() {
+export function getStructuredLogPath(): string | null {
   return STRUCTURED_LOG;
 }
 
-export function getCurrentChunkIndex() {
+export function getCurrentChunkIndex(): number {
   return currentChunkIndex;
 }
 

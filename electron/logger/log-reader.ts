@@ -1,6 +1,6 @@
 /**
  * LogReader - Log okuma ve sorgulama işlemleri
- * 
+ *
  * Bu modül log dosyalarını okuma ve sorgulama işlemlerini yönetir:
  * - Console logları okuma
  * - Error logları okuma
@@ -11,15 +11,14 @@
 import { readFile, readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { getSessionDir, getLogDir, getSessionId } from "./session-manager.js";
-import { getErrorLogPath } from "./log-writer.js";
+import { getSessionDir, getLogDir, getSessionId } from "./session-manager.ts";
+import { getErrorLogPath } from "./log-writer.ts";
+import type { LogQueryParams, SessionMeta, SessionSummary, StructuredLogEntry } from "../types/index.ts";
 
 /**
  * Console loglarını oku
- * @param {number} [tail=100] - Son N satır
- * @returns {Promise<string>}
  */
-export async function readConsoleLogs(tail = 100) {
+export async function readConsoleLogs(tail: number = 100): Promise<string> {
   try {
     const sessionDir = getSessionDir();
     if (!sessionDir || !existsSync(sessionDir)) {
@@ -31,7 +30,7 @@ export async function readConsoleLogs(tail = 100) {
       .filter(f => f.startsWith("console-") && f.endsWith(".log"))
       .sort();
     
-    let allLines = [];
+    let allLines: string[] = [];
     for (const file of consoleFiles) {
       const content = await readFile(join(sessionDir, file), "utf-8");
       allLines = allLines.concat(content.split("\n").filter(l => l.trim()));
@@ -45,10 +44,8 @@ export async function readConsoleLogs(tail = 100) {
 
 /**
  * Error loglarını oku
- * @param {number} [tail=100] - Son N satır
- * @returns {Promise<string>}
  */
-export async function readErrorLogs(tail = 100) {
+export async function readErrorLogs(tail: number = 100): Promise<string> {
   try {
     const errorLog = getErrorLogPath();
     if (!errorLog || !existsSync(errorLog)) {
@@ -63,19 +60,26 @@ export async function readErrorLogs(tail = 100) {
   }
 }
 
+interface AllLogsResult {
+  sessionId: string | null;
+  console: string;
+  error: string;
+  structured: StructuredLogEntry[];
+  meta: SessionMeta | null;
+  summary: SessionSummary | null;
+}
+
 /**
  * Tüm logları oku (session bazlı)
- * @param {string} [targetSessionId] - Hedef session (null = aktif session)
- * @returns {Promise<object>}
  */
-export async function readAllLogs(targetSessionId = null) {
+export async function readAllLogs(targetSessionId: string | null = null): Promise<AllLogsResult> {
   const logDir = getLogDir();
   const sessionId = targetSessionId || getSessionId();
-  const sessionDir = targetSessionId 
-    ? join(logDir, targetSessionId) 
+  const sessionDir = targetSessionId
+    ? join(logDir!, targetSessionId)
     : getSessionDir();
-  
-  const result = {
+
+  const result: AllLogsResult = {
     sessionId,
     console: "",
     error: "",
@@ -137,10 +141,8 @@ export async function readAllLogs(targetSessionId = null) {
 
 /**
  * Logları sorgula
- * @param {object} query - Sorgu parametreleri
- * @returns {Promise<string[]>}
  */
-export async function queryLogs(query = {}) {
+export async function queryLogs(query: LogQueryParams = {}): Promise<string[]> {
   const {
     type = "all",
     source = null,
@@ -153,7 +155,7 @@ export async function queryLogs(query = {}) {
   
   try {
     const logs = await readAllLogs(sessionId);
-    let lines = [];
+    let lines: string[] = [];
     
     if (type === "console" || type === "all") {
       lines = lines.concat(logs.console.split("\n"));
@@ -198,9 +200,12 @@ export async function queryLogs(query = {}) {
 
 /**
  * Log istatistiklerini hesapla (session summary için)
- * @returns {Promise<{totalLogs: number, errorCount: number, warnCount: number}>}
  */
-export async function calculateLogStats() {
+export async function calculateLogStats(): Promise<{
+  totalLogs: number;
+  errorCount: number;
+  warnCount: number;
+}> {
   let totalLogs = 0;
   let errorCount = 0;
   let warnCount = 0;

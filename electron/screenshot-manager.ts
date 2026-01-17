@@ -1,10 +1,21 @@
 import { dirname } from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { nativeImage, BrowserWindow } from 'electron';
+import { nativeImage, BrowserWindow, IpcMainInvokeEvent } from 'electron';
 import screenshot from 'screenshot-desktop';
 
-export async function capturePageHandler(event, _type = 'full', region = '') {
+interface CaptureResult {
+  success: boolean;
+  dataUrl?: string;
+  path?: string | null;
+  message?: string;
+}
+
+export async function capturePageHandler(
+  event: IpcMainInvokeEvent,
+  _type: string = 'full',
+  region: string = ''
+): Promise<CaptureResult> {
   try {
     const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getAllWindows()[0];
     if (!win) throw new Error('Pencere bulunamadı');
@@ -21,16 +32,26 @@ export async function capturePageHandler(event, _type = 'full', region = '') {
     const dataUrl = img.toDataURL();
     return { success: true, dataUrl };
   } catch (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: (error as Error).message };
   }
 }
 
-export async function screenshotCaptureHandler(event, options = {}) {
+interface ScreenshotOptions {
+  region?: string;
+  hideCursor?: boolean;
+  filePath?: string;
+  format?: string;
+}
+
+export async function screenshotCaptureHandler(
+  _event: IpcMainInvokeEvent | null,
+  options: ScreenshotOptions = {}
+): Promise<CaptureResult> {
   const { region = '', hideCursor = false, filePath = '', format = 'png' } = options || {};
   try {
     const useJpg = (format || '').toLowerCase() === 'jpg' || (format || '').toLowerCase() === 'jpeg';
-    const buffer = await screenshot({ format: useJpg ? 'jpg' : 'png', cursor: !hideCursor });
-    let img = nativeImage.createFromBuffer(buffer);
+    const buffer = await screenshot({ format: useJpg ? 'jpg' : 'png' } as Parameters<typeof screenshot>[0]);
+    let img = nativeImage.createFromBuffer(Buffer.from(buffer));
     if (region) {
       const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
       if (match) {
@@ -50,6 +71,6 @@ export async function screenshotCaptureHandler(event, options = {}) {
     }
     return { success: true, dataUrl, path: savedPath || null };
   } catch (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: (error as Error).message };
   }
 }

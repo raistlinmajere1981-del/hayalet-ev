@@ -1,11 +1,12 @@
 import { join } from "path";
 import { existsSync } from "fs";
 import { pathToFileURL } from "url";
-import { registerHandler } from "./ipc-helpers.js";
+import { registerHandler } from "./ipc-helpers.ts";
+import type { ProviderConfig } from "../types/index.ts";
 
-export function setupProviderHandlers(__dirname) {
+export function setupProviderHandlers(__dirname: string): void {
   const PATHS = {
-    providerConfig: (providerId) =>
+    providerConfig: (providerId: string) =>
       join(
         __dirname,
         "..",
@@ -23,7 +24,7 @@ export function setupProviderHandlers(__dirname) {
     return `file://${join(__dirname, "webview-preload.cjs")}`;
   });
 
-  registerHandler("get-provider-config", async (event, providerId) => {
+  registerHandler("get-provider-config", async (_event, providerId: string) => {
     if (!providerId) return null;
     const cfgPath = PATHS.providerConfig(providerId);
     if (!existsSync(cfgPath)) return null;

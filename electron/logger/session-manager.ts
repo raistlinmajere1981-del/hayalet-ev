@@ -1,6 +1,6 @@
 /**
  * SessionManager - Log session yönetimi
- * 
+ *
  * Bu modül log session'larını yönetir:
  * - Session ID oluşturma
  * - Session dizini oluşturma
@@ -11,20 +11,20 @@
 import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import type { AppState, SessionMeta, SessionSummary, SessionListItem } from "../types/index.ts";
 
-let LOG_DIR = null;
-let SESSION_ID = null;
-let SESSION_DIR = null;
+let LOG_DIR: string | null = null;
+let SESSION_ID: string | null = null;
+let SESSION_DIR: string | null = null;
 
-let appStateSnapshot = {};
+let appStateSnapshot: AppState = {};
 
 /**
  * Session ID oluştur (LogManager ile aynı format)
- * @returns {string}
  */
-export function generateSessionId() {
+export function generateSessionId(): string {
   const now = new Date();
-  const pad = (n) => n.toString().padStart(2, "0");
+  const pad = (n: number) => n.toString().padStart(2, "0");
   const day = pad(now.getDate());
   const month = pad(now.getMonth() + 1);
   const year = now.getFullYear();
@@ -36,10 +36,10 @@ export function generateSessionId() {
 
 /**
  * Log sistemini başlat
- * @param {string} [sessionId] - Opsiyonel session ID
- * @returns {{ sessionId: string, logDir: string, sessionDir: string }}
  */
-export function initLogSystem(sessionId = null) {
+export function initLogSystem(
+  sessionId: string | null = null
+): { sessionId: string; logDir: string; sessionDir: string } {
   LOG_DIR = join(process.cwd(), "logs");
   SESSION_ID = sessionId || generateSessionId();
   SESSION_DIR = join(LOG_DIR, SESSION_ID);
@@ -50,13 +50,13 @@ export function initLogSystem(sessionId = null) {
 /**
  * Session dizinini ve meta dosyasını oluştur
  */
-export async function ensureSessionDir() {
+export async function ensureSessionDir(): Promise<void> {
   if (!SESSION_DIR) initLogSystem();
-  
-  if (!existsSync(SESSION_DIR)) {
-    await mkdir(SESSION_DIR, { recursive: true });
-    
-    const meta = {
+
+  if (!existsSync(SESSION_DIR!)) {
+    await mkdir(SESSION_DIR!, { recursive: true });
+
+    const meta: SessionMeta = {
       sessionId: SESSION_ID,
       startTime: new Date().toISOString(),
       platform: process.platform,
@@ -66,7 +66,7 @@ export async function ensureSessionDir() {
     };
     
     await writeFile(
-      join(SESSION_DIR, "meta.json"),
+      join(SESSION_DIR!, "meta.json"),
       JSON.stringify(meta, null, 2)
     );
   }
@@ -74,21 +74,22 @@ export async function ensureSessionDir() {
 
 /**
  * Session özeti yaz (uygulama kapanırken çağrılır)
- * @param {number} totalLogs - Toplam log sayısı
- * @param {number} errorCount - Hata sayısı
- * @param {number} warnCount - Uyarı sayısı
- * @param {number} chunkIndex - Chunk index
- * @param {string} [endReason='normal'] - Kapanış nedeni
  */
-export async function writeSessionSummary(totalLogs, errorCount, warnCount, chunkIndex, endReason = "normal") {
+export async function writeSessionSummary(
+  totalLogs: number,
+  errorCount: number,
+  warnCount: number,
+  chunkIndex: number,
+  endReason: string = "normal"
+): Promise<void> {
   try {
     await ensureSessionDir();
-    
-    const summary = {
-      sessionId: SESSION_ID,
-      startTime: appStateSnapshot.startTime || new Date().toISOString(),
+
+    const summary: SessionSummary = {
+      sessionId: SESSION_ID!,
+      startTime: (appStateSnapshot.startTime as string) || new Date().toISOString(),
       endTime: new Date().toISOString(),
-      endReason,
+      endReason: endReason as SessionSummary["endReason"],
       stats: {
         totalLogs,
         errors: errorCount,
@@ -97,20 +98,20 @@ export async function writeSessionSummary(totalLogs, errorCount, warnCount, chun
       },
       lastState: appStateSnapshot,
     };
-    
+
     await writeFile(
-      join(SESSION_DIR, "summary.json"),
+      join(SESSION_DIR!, "summary.json"),
       JSON.stringify(summary, null, 2)
     );
   } catch (_err) {
+    // Ignore errors
   }
 }
 
 /**
  * Mevcut session'ları listele
- * @returns {Promise<object[]>}
  */
-export async function listSessions() {
+export async function listSessions(): Promise<SessionListItem[]> {
   try {
     if (!LOG_DIR) initLogSystem();
     if (!existsSync(LOG_DIR)) return [];
@@ -160,9 +161,8 @@ export async function listSessions() {
 
 /**
  * Log dosyalarını temizle
- * @param {string} [targetSessionId] - Hedef session (null = aktif session)
  */
-export async function clearLogs(targetSessionId = null) {
+export async function clearLogs(targetSessionId: string | null = null): Promise<void> {
   try {
     const sessionDir = targetSessionId 
       ? join(LOG_DIR, targetSessionId) 
@@ -181,9 +181,8 @@ export async function clearLogs(targetSessionId = null) {
 
 /**
  * Uygulama durumunu güncelle
- * @param {object} state - Uygulama durumu
  */
-export function updateAppState(state) {
+export function updateAppState(state: Partial<AppState>): void {
   appStateSnapshot = {
     ...appStateSnapshot,
     ...state,
@@ -193,24 +192,24 @@ export function updateAppState(state) {
 
 /**
  * Son state snapshot'ı al
- * @returns {object}
  */
-export function getAppState() {
+export function getAppState(): AppState {
   return { ...appStateSnapshot };
 }
 
 // ============================================
+// Getters
 // ============================================
 
-export function getSessionId() {
+export function getSessionId(): string | null {
   return SESSION_ID;
 }
 
-export function getSessionDir() {
+export function getSessionDir(): string | null {
   return SESSION_DIR;
 }
 
-export function getLogDir() {
+export function getLogDir(): string | null {
   return LOG_DIR;
 }
 

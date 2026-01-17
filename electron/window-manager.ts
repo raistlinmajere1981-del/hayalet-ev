@@ -1,4 +1,4 @@
-import { BrowserWindow, session, Tray, Menu, nativeImage } from 'electron';
+import { BrowserWindow, session, Tray, Menu, nativeImage, app } from 'electron';
 import { join } from 'path';
 
 // ============================================
@@ -6,29 +6,30 @@ import { join } from 'path';
 // ============================================
 
 // Tray değişkenleri
-let _tray = null;
-let _trayIconPath = null;
-let _isMinimizedToTray = false;
+let _tray: Tray | null = null;
+let _trayIconPath: string | null = null;
+let _isMinimizedToTray: boolean = false;
+let _mainWindow: BrowserWindow | null = null;
+let _isQuitting: boolean = false;
 
 /**
  * Tray için icon path'i kaydet ve tray'i oluştur
- * @param {string} iconPath - Icon dosya yolu
  */
-export function initTray(iconPath) {
+export function initTray(iconPath: string): void {
   _trayIconPath = iconPath;
   // Tray'i hemen oluştur ama gizli tut
   createTrayInternal();
 }
 
 // Eski API uyumluluğu için
-export function setTrayIconPath(iconPath) {
+export function setTrayIconPath(iconPath: string): void {
   initTray(iconPath);
 }
 
 /**
  * Pencereyi system tray'e küçült
  */
-export function minimizeToTray() {
+export function minimizeToTray(): void {
   if (!_mainWindow) {
     console.error('[WindowManager] _mainWindow yok!');
     return;
@@ -51,7 +52,7 @@ export function minimizeToTray() {
 /**
  * Internal: Tray oluştur (bir kez, uygulama boyunca kalır)
  */
-function createTrayInternal() {
+function createTrayInternal(): void {
   if (_tray) {
     return;
   }
@@ -147,7 +148,12 @@ export function destroyTray() {
   }
 }
 
-export async function createWindow(options = {}) {
+interface CreateWindowOptions {
+  __dirname?: string;
+  isDev?: boolean;
+}
+
+export async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserWindow> {
   const { __dirname = process.cwd(), isDev = (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) } = options;
 
   if (isDev) {
@@ -211,37 +217,41 @@ export async function createWindow(options = {}) {
   return win;
 }
 
-let _mainWindow = null;
+interface WindowManagerOptions {
+  mainWindow?: BrowserWindow | null;
+}
 
-export function initWindowManager(opts = {}) {
+export function initWindowManager(opts: WindowManagerOptions = {}): void {
   _mainWindow = opts.mainWindow || _mainWindow;
 }
 
-export function windowMinimize() {
+export function windowMinimize(): void {
   try {
     _mainWindow?.minimize();
-  } catch (err) {
+  } catch (_err) {
+    // Ignore
   }
 }
 
-export function windowClose() {
+export function windowClose(): void {
   try {
     _mainWindow?.close();
-  } catch (err) {
+  } catch (_err) {
+    // Ignore
   }
 }
 
-export function windowToggleFullscreen() {
+export function windowToggleFullscreen(): void {
   try {
     if (!_mainWindow) return;
     const isFull = _mainWindow.isFullScreen();
     _mainWindow.setFullScreen(!isFull);
-  } catch (err) {
+  } catch (_err) {
+    // Ignore
   }
 }
 
-import { app } from 'electron';
-export async function appRestart() {
+export async function appRestart(): Promise<{ success: boolean; message?: string }> {
   try {
     if (!app.isPackaged) {
       if (_mainWindow) {
@@ -254,6 +264,6 @@ export async function appRestart() {
     app.quit();
     return { success: true };
   } catch (err) {
-    return { success: false, message: err?.message };
+    return { success: false, message: (err as Error)?.message };
   }
 }

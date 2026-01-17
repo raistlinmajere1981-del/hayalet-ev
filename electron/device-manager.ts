@@ -1,16 +1,29 @@
 import { spawnSync } from 'child_process';
+import type { IpcMainInvokeEvent } from 'electron';
 
-function run(cmd, cmdArgs) {
+interface RunResult {
+  success: boolean;
+  stdout?: string;
+  stderr?: string;
+  code?: number | null;
+  message?: string;
+}
+
+function run(cmd: string, cmdArgs: string[]): RunResult {
   try {
     const res = spawnSync(cmd, cmdArgs, { encoding: 'utf8' });
     const ok = res.status === 0 || res.status === null;
     return { success: ok, stdout: res.stdout || '', stderr: res.stderr || '', code: res.status };
   } catch (err) {
-    return { success: false, message: err?.message || String(err) };
+    return { success: false, message: (err as Error)?.message || String(err) };
   }
 }
 
-export async function deviceActionHandler(event, action, payload) {
+export async function deviceActionHandler(
+  _event: IpcMainInvokeEvent,
+  action: string,
+  payload: string | string[]
+): Promise<RunResult> {
   try {
     const act = String(action || '').toLowerCase();
     const args = Array.isArray(payload) ? payload : typeof payload === 'string' ? [payload] : [];
@@ -71,6 +84,6 @@ export async function deviceActionHandler(event, action, payload) {
 
     return { success: false, message: 'unknown action' };
   } catch (err) {
-    return { success: false, message: err?.message || String(err) };
+    return { success: false, message: (err as Error)?.message || String(err) };
   }
 }

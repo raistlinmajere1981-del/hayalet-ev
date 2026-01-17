@@ -1,6 +1,6 @@
 /**
  * Main Process Log Manager
- * 
+ *
  * Renderer LogManager'dan gelen structured logları dosyaya yazar.
  * Console-logger ile entegre çalışır.
  * Session bazlı dizin yapısı kullanır.
@@ -11,14 +11,27 @@ import { appendFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { getSessionId, getSessionDir, getLogDir } from './console-logger.js';
 import { matchErrorPattern } from './error-patterns.js';
+import type { IpcMainInvokeEvent } from 'electron';
+
+interface LogPayload {
+  sessionId?: string;
+  line?: string;
+  context?: Record<string, unknown>;
+}
+
+interface AppendLogResult {
+  success: boolean;
+  message?: string;
+  hint?: object | null;
+}
 
 /**
  * Renderer'dan gelen log girdisini dosyaya yaz
- * @param {Electron.IpcMainInvokeEvent} event
- * @param {object} payload - { sessionId, line, context }
- * @returns {Promise<{ success: boolean, message?: string, hint?: object }>}
  */
-export async function appendLog(event, payload) {
+export async function appendLog(
+  _event: IpcMainInvokeEvent,
+  payload: LogPayload
+): Promise<AppendLogResult> {
   try {
     const { sessionId, line, context } = payload || {};
     
@@ -65,7 +78,7 @@ export async function appendLog(event, payload) {
       hint: entry.aiHint || null,
     };
   } catch (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: (error as Error).message };
   }
 }
 

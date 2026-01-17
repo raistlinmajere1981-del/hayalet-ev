@@ -2,8 +2,20 @@ import { join, dirname, basename, resolve } from "path";
 import { mkdir, writeFile, rename, readdir, readFile, copyFile, rm } from "fs/promises";
 import { existsSync } from "fs";
 import { shell } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
 
-async function ensureDir(dirPath) {
+interface PathResolvers {
+  [key: string]: () => string;
+}
+
+interface ResultBase {
+  success: boolean;
+  message?: string;
+  path?: string;
+  [key: string]: unknown;
+}
+
+async function ensureDir(dirPath: string): Promise<void> {
   if (!existsSync(dirPath)) {
     await mkdir(dirPath, { recursive: true });
   }
@@ -11,11 +23,11 @@ async function ensureDir(dirPath) {
 
 export { ensureDir };
 
-export async function ensureScope(scope = "all") {
+export async function ensureScope(scope: string = "all"): Promise<ResultBase> {
   try {
     const paths = PATHS();
     const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
-    const resolved = {};
+    const resolved: Record<string, string> = {};
     for (const key of scopes) {
       const resolver = paths[key];
       if (!resolver) continue;
@@ -25,11 +37,11 @@ export async function ensureScope(scope = "all") {
     }
     return { success: true, ...resolved };
   } catch (err) {
-    return { success: false, message: err?.message || String(err) };
+    return { success: false, message: (err as Error)?.message || String(err) };
   }
 }
 
-function PATHS() {
+function PATHS(): PathResolvers {
   const base = process.cwd();
   return {
     data: () => join(base, "data"),
@@ -38,7 +50,11 @@ function PATHS() {
   };
 }
 
-export async function fmTempPath(event, prefix = "tmp", ext = "tmp") {
+export async function fmTempPath(
+  _event: IpcMainInvokeEvent,
+  prefix: string = "tmp",
+  ext: string = "tmp"
+): Promise<ResultBase> {
   try {
     const cleanPrefix = (prefix || "tmp").replace(/[^\w.-]+/g, "_");
     const cleanExt = (ext || "").toString().replace(/^[.]+/, "");
@@ -52,11 +68,11 @@ export async function fmTempPath(event, prefix = "tmp", ext = "tmp") {
   }
 }
 
-export async function fmEnsureDirs(event, scope = "all") {
+export async function fmEnsureDirs(_event: IpcMainInvokeEvent, scope: string = "all"): Promise<ResultBase> {
   try {
     const paths = PATHS();
     const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
-    const resolved = {};
+    const resolved: Record<string, string> = {};
     for (const key of scopes) {
       const resolver = paths[key];
       if (!resolver) continue;
@@ -66,11 +82,11 @@ export async function fmEnsureDirs(event, scope = "all") {
     }
     return { success: true, ...resolved };
   } catch (err) {
-    return { success: false, message: err?.message || String(err) };
+    return { success: false, message: (err as Error)?.message || String(err) };
   }
 }
 
-export async function fmWriteFileAtomic(event, payload) {
+export async function fmWriteFileAtomic(_event: IpcMainInvokeEvent, payload: { path: string; data: string; encoding?: BufferEncoding }): Promise<ResultBase> {
   try {
     const { path: targetPath, data, encoding = "utf-8" } = payload || {};
     if (!targetPath) throw new Error("path eksik");
@@ -89,7 +105,7 @@ export async function fmWriteFileAtomic(event, payload) {
   }
 }
 
-export async function readFileAsBase64(event, filePath) {
+export async function readFileAsBase64(_event: IpcMainInvokeEvent, filePath: string): Promise<string | null> {
   try {
     if (!filePath || !existsSync(filePath)) return null;
     const buffer = await readFile(filePath);
@@ -99,7 +115,7 @@ export async function readFileAsBase64(event, filePath) {
   }
 }
 
-export async function copyToAssets(event, srcPath, role = "", accountInfo = null) {
+export async function copyToAssets(_event: IpcMainInvokeEvent, srcPath: string, _role: string = "", accountInfo: { email?: string; provider?: string } | null = null): Promise<ResultBase> {
   try {
     if (!srcPath || !existsSync(srcPath)) {
       throw new Error("Kaynak dosya bulunamadı");
@@ -122,9 +138,9 @@ export async function copyToAssets(event, srcPath, role = "", accountInfo = null
         .trim()
         .replace(/[^a-z0-9_-]/gi, "");
       candidate = `${safeEmail}-${safeProvider}${ext}`;
-    } else if (role) {
+    } else if (_role) {
       const safeRole =
-        String(role)
+        String(_role)
           .toLowerCase()
           .replace(/[^a-z0-9_-]+/g, "") || "avatar";
       candidate = `${safeRole}${ext}`;
@@ -138,7 +154,7 @@ export async function copyToAssets(event, srcPath, role = "", accountInfo = null
       }
     }
 
-    if (String(role).toLowerCase() === "user") {
+    if (String(_role).toLowerCase() === "user") {
       try {
         const entries = await readdir(assetsDir);
         for (const name of entries) {
@@ -157,7 +173,7 @@ export async function copyToAssets(event, srcPath, role = "", accountInfo = null
   }
 }
 
-export async function copyFileTo(event, srcPath, destDir) {
+export async function copyFileTo(_event: IpcMainInvokeEvent, srcPath: string, destDir: string): Promise<ResultBase> {
   try {
     if (!srcPath || !destDir) throw new Error("Parametre eksik");
     if (!existsSync(srcPath)) throw new Error("Kaynak dosya yok");
@@ -180,7 +196,7 @@ export async function copyFileTo(event, srcPath, destDir) {
   }
 }
 
-export async function deleteAsset(event, assetPath) {
+export async function deleteAsset(_event: IpcMainInvokeEvent, assetPath: string): Promise<ResultBase> {
   try {
     if (!assetPath) throw new Error("assetPath missing");
     const target = assetPath;
@@ -194,7 +210,16 @@ export async function deleteAsset(event, assetPath) {
   }
 }
 
-export async function generateTree(event, basePath = "", options = {}) {
+interface GenerateTreeOptions {
+  maxDepth?: number;
+  exclude?: string[];
+}
+
+export async function generateTree(
+  _event: IpcMainInvokeEvent,
+  basePath: string = "",
+  options: GenerateTreeOptions = {}
+): Promise<ResultBase & { tree?: string }> {
   try {
     if (!basePath) basePath = process.cwd();
     const maxDepth = options.maxDepth ?? 10;
@@ -202,7 +227,7 @@ export async function generateTree(event, basePath = "", options = {}) {
     const isProject = basePath === "project" || basePath === ".";
     if (isProject) basePath = process.cwd();
     if (!existsSync(basePath)) return { success: false, message: `Path not found: ${basePath}` };
-    const shouldExclude = (name) =>
+    const shouldExclude = (name: string): boolean =>
       excludePatterns.some((pattern) => {
         if (pattern.includes("*")) {
           const regex = new RegExp(pattern.replace(/\*/g, ".*"));
@@ -210,11 +235,11 @@ export async function generateTree(event, basePath = "", options = {}) {
         }
         return name === pattern;
       });
-    const buildTree = async (dir, depth = 0, prefix = "") => {
+    const buildTree = async (dir: string, depth: number = 0, prefix: string = ""): Promise<string[]> => {
       if (depth > maxDepth) return [];
       try {
         const entries = await readdir(dir, { withFileTypes: true });
-        const lines = [];
+        const lines: string[] = [];
         const filtered = entries.filter((e) => !shouldExclude(e.name));
         for (let idx = 0; idx < filtered.length; idx++) {
           const entry = filtered[idx];
@@ -223,7 +248,7 @@ export async function generateTree(event, basePath = "", options = {}) {
           const nextPrefix = prefix + (isLast ? "    " : "│   ");
           lines.push(prefix + connector + entry.name + (entry.isDirectory() ? "/" : ""));
           if (entry.isDirectory()) {
-            const childLines = await buildTree(join(dir, entry.name), depth + 1, nextPrefix);
+            const childLines: string[] = await buildTree(join(dir, entry.name), depth + 1, nextPrefix);
             lines.push(...childLines);
           }
         }
@@ -253,7 +278,7 @@ export async function generateTree(event, basePath = "", options = {}) {
   }
 }
 
-export async function openPath(event, targetPath) {
+export async function openPath(targetPath: string): Promise<ResultBase> {
   try {
     if (!targetPath) throw new Error("path eksik");
     const absolutePath = resolve(process.cwd(), targetPath);
@@ -261,6 +286,6 @@ export async function openPath(event, targetPath) {
     if (res) throw new Error(res);
     return { success: true };
   } catch (error) {
-    return { success: false, message: error.message };
+    return { success: false, message: (error as Error).message };
   }
 }

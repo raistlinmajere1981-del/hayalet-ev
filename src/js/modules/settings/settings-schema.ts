@@ -86,7 +86,7 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
     return {};
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const r = raw as any;
   const out: Record<string, unknown> = {};
 
@@ -145,7 +145,7 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
 export function normalizeSettings(raw: unknown) {
   const defaults = defaultSettings();
   const legacyNormalized = normalizeLegacy(raw);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const merged = mergeDefaults(legacyNormalized, defaults) as any;
 
   if (!Array.isArray(merged.accounts)) {

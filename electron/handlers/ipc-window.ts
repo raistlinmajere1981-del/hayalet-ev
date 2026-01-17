@@ -1,14 +1,14 @@
-import { ipcMain, app as _app } from "electron";
+import { ipcMain } from "electron";
 import {
   windowMinimize,
   windowClose,
   windowToggleFullscreen,
   minimizeToTray,
   appRestart,
-} from "../window-manager.js";
-import { registerHandler } from "./ipc-helpers.js";
+} from "../window-manager.ts";
+import { registerHandler } from "./ipc-helpers.ts";
 
-export function setupWindowHandlers() {
+export function setupWindowHandlers(): void {
   ipcMain.on("window-minimize", windowMinimize);
   ipcMain.on("window-close", windowClose);
   ipcMain.on("window-toggle-fullscreen", windowToggleFullscreen);

@@ -11,8 +11,21 @@
     "checkJs": true,
     "allowJs": true,
     "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false
+    "noImplicitThis": true,
+    "strictFunctionTypes": true,
+    "noImplicitAny": true,
+    "strictNullChecks": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@electron/*": ["electron/*"],
+      "@electron/types": ["electron/types/index.ts"]
+    }
   },
   "include": [
     "electron/**/*.js",

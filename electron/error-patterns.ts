@@ -1,22 +1,20 @@
 /**
  * Error Pattern Database for Hayalet-ev
- * 
+ *
  * Bilinen hata pattern'leri ve çözüm ipuçları.
  * AI debugging için otomatik hint sistemi.
  */
 
-/**
- * @typedef {object} ErrorHint
- * @property {string} pattern - Regex pattern
- * @property {string} category - Hata kategorisi
- * @property {string} suggestion - Çözüm önerisi
- * @property {string[]} checkFiles - Kontrol edilecek dosyalar
- * @property {string[]} relatedDocs - İlgili dokümantasyon
- * @property {string} [severity] - Önem derecesi: low, medium, high, critical
- */
+export interface ErrorHint {
+  pattern: string;
+  category: string;
+  suggestion: string;
+  checkFiles: string[];
+  relatedDocs: string[];
+  severity?: "low" | "medium" | "high" | "critical";
+}
 
-/** @type {ErrorHint[]} */
-const ERROR_PATTERNS = [
+const ERROR_PATTERNS: ErrorHint[] = [
   // DOM/Selector Hataları
   {
     pattern: "Cannot read propert(?:y|ies) ['\"]?click['\"]? of (?:null|undefined)",
@@ -265,13 +263,22 @@ const ERROR_PATTERNS = [
   },
 ];
 
+export interface MatchedHint {
+  pattern: string;
+  category: string;
+  suggestion: string;
+  checkFiles: string[];
+  relatedDocs: string[];
+  severity: "low" | "medium" | "high" | "critical";
+}
+
 /**
  * Hata mesajını pattern database ile eşleştir
- * @param {string} errorMessage - Hata mesajı
- * @param {string} [provider] - Provider adı (opsiyonel, checkFiles için placeholder)
- * @returns {ErrorHint | null}
  */
-export function matchErrorPattern(errorMessage, provider = null) {
+export function matchErrorPattern(
+  errorMessage: string | null | undefined,
+  provider: string | null = null
+): MatchedHint | null {
   if (!errorMessage || typeof errorMessage !== 'string') {
     return null;
   }

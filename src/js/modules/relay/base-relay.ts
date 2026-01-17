@@ -11,7 +11,7 @@
 import { LogManager } from "../log-manager.js";
 
 /** CoreEngine interface - relay'lerin ihtiyaç duyduğu metodlar */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type CoreEngineRef = any;
 
 /** Relay session bilgisi - esnek yapı, alt sınıflar genişletebilir */

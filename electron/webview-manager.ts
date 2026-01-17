@@ -1,4 +1,23 @@
-export async function catboxUpload(_event, payload = {}) {
+import type { IpcMainInvokeEvent } from "electron";
+
+interface UploadPayload {
+  name?: string;
+  mimeType?: string;
+  base64?: string;
+}
+
+interface UploadResult {
+  success: boolean;
+  status?: number;
+  statusText?: string;
+  data?: string;
+  message?: string;
+}
+
+export async function catboxUpload(
+  _event: IpcMainInvokeEvent,
+  payload: UploadPayload = {}
+): Promise<UploadResult> {
   try {
     const {
       name,
@@ -46,11 +65,14 @@ export async function catboxUpload(_event, payload = {}) {
       data: text,
     };
   } catch (err) {
-    return { success: false, message: err?.message || "catbox upload failed" };
+    return { success: false, message: (err as Error)?.message || "catbox upload failed" };
   }
 }
 
-export async function uguuUpload(_event, payload = {}) {
+export async function uguuUpload(
+  _event: IpcMainInvokeEvent,
+  payload: UploadPayload = {}
+): Promise<UploadResult> {
   try {
     const {
       name,
@@ -98,7 +120,7 @@ export async function uguuUpload(_event, payload = {}) {
       data: text,
     };
   } catch (err) {
-    return { success: false, message: err?.message || "uguu upload failed" };
+    return { success: false, message: (err as Error)?.message || "uguu upload failed" };
   }
 }
 

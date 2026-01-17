@@ -1,14 +1,16 @@
 /**
  * Unified Console Logger for Hayalet-ev (Orchestrator)
- * 
+ *
  * Tüm console output'larını (main + renderer + webview) dosyaya yazar.
  * Session bazlı log dosyaları oluşturur.
- * 
+ *
  * Alt modüller:
- * - logger/session-manager.js: Session yönetimi
- * - logger/log-writer.js: Log yazma işlemleri
- * - logger/log-reader.js: Log okuma ve sorgulama
+ * - logger/session-manager.ts: Session yönetimi
+ * - logger/log-writer.ts: Log yazma işlemleri
+ * - logger/log-reader.ts: Log okuma ve sorgulama
  */
+
+import type { BrowserWindow } from "electron";
 
 export {
   generateSessionId,
@@ -25,7 +27,7 @@ export {
   SESSION_ID,
   SESSION_DIR,
   LOG_DIR,
-} from "./logger/session-manager.js";
+} from "./logger/session-manager.ts";
 
 export {
   formatLog,
@@ -41,7 +43,7 @@ export {
   CONSOLE_LOG,
   ERROR_LOG,
   STRUCTURED_LOG,
-} from "./logger/log-writer.js";
+} from "./logger/log-writer.ts";
 
 export {
   readConsoleLogs,
@@ -49,44 +51,45 @@ export {
   readAllLogs,
   queryLogs,
   calculateLogStats,
-} from "./logger/log-reader.js";
+} from "./logger/log-reader.ts";
 
 import {
   initLogSystem,
   getSessionId,
   writeSessionSummary as _writeSessionSummary,
-} from "./logger/session-manager.js";
+} from "./logger/session-manager.ts";
 
 import {
   writeLog,
   writeErrorLog,
   updateLogPaths,
   getCurrentChunkIndex as _getCurrentChunkIndex,
-} from "./logger/log-writer.js";
+} from "./logger/log-writer.ts";
 
-import { calculateLogStats as _calculateLogStats } from "./logger/log-reader.js";
+import { calculateLogStats as _calculateLogStats } from "./logger/log-reader.ts";
 
 // ============================================
+// State
 // ============================================
 
-let mainWindowRef = null;
+let mainWindowRef: BrowserWindow | null = null;
 
 /**
  * Main window referansını ayarla (IPC için gerekli)
- * @param {Electron.BrowserWindow} win
  */
-export function setMainWindow(win) {
+export function setMainWindow(win: BrowserWindow | null): void {
   mainWindowRef = win;
 }
 
 /**
  * LogManager'a IPC üzerinden log gönder
- * @param {string} level - Log seviyesi
- * @param {string} source - Kaynak
- * @param {string} message - Mesaj
- * @param {object} [context] - Bağlam
  */
-function forwardToLogManager(level, source, message, context = null) {
+function forwardToLogManager(
+  level: string,
+  source: string,
+  message: string,
+  context: Record<string, unknown> | null = null
+): void {
   // FIX: Daha kapsamlı hazırlık kontrolü - webContents tam hazır olmalı
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   
@@ -112,16 +115,15 @@ function forwardToLogManager(level, source, message, context = null) {
 }
 
 // ============================================
+// Correlation ID
 // ============================================
 
 let correlationCounter = 0;
 
 /**
  * Benzersiz correlation ID oluştur
- * @param {string} [prefix='op'] - ID prefix'i
- * @returns {string}
  */
-export function generateCorrelationId(prefix = "op") {
+export function generateCorrelationId(prefix: string = "op"): string {
   correlationCounter++;
   const timestamp = Date.now().toString(36);
   const counter = correlationCounter.toString(36).padStart(4, "0");
@@ -129,12 +131,13 @@ export function generateCorrelationId(prefix = "op") {
 }
 
 // ============================================
+// Console Interception
 // ============================================
 
 /**
  * Main process console'unu intercept et
  */
-export function interceptMainConsole() {
+export function interceptMainConsole(): void {
   if (!getSessionId()) initLogSystem();
   updateLogPaths();
 
@@ -177,18 +180,17 @@ export function interceptMainConsole() {
 
 /**
  * Renderer process loglarını dinle
- * @param {Electron.WebContents} webContents
  */
-export function setupRendererLogger(webContents) {
-  webContents.on("console-message", (/** @type {any} */ event, /** @type {any} */ level, /** @type {any} */ message, /** @type {any} */ line, /** @type {any} */ sourceId) => {
+export function setupRendererLogger(webContents: Electron.WebContents): void {
+  webContents.on("console-message", (event: unknown, level: unknown, message: unknown, line: unknown, sourceId: unknown) => {
     // Handle both old (separate params) and new (event object) API
-    const _level = typeof level === 'number' ? level : event?.level ?? 0;
-    const _message = typeof message === 'string' ? message : event?.message ?? '';
-    const _line = typeof line === 'number' ? line : event?.line ?? 0;
-    const _sourceId = typeof sourceId === 'string' ? sourceId : event?.sourceId ?? '';
-    
-    /** @type {Record<number, string>} */
-    const levelMap = {
+    const _event = event as Record<string, unknown>;
+    const _level = typeof level === 'number' ? level : (_event?.level as number) ?? 0;
+    const _message = typeof message === 'string' ? message : (_event?.message as string) ?? '';
+    const _line = typeof line === 'number' ? line : (_event?.line as number) ?? 0;
+    const _sourceId = typeof sourceId === 'string' ? sourceId : (_event?.sourceId as string) ?? '';
+
+    const levelMap: Record<number, string> = {
       0: "LOG",
       1: "WARN",
       2: "ERROR",
@@ -223,24 +225,25 @@ export function setupRendererLogger(webContents) {
 
 /**
  * Webview loglarını dinle
- * @param {Electron.WebContents} webviewContents - Webview webContents
- * @param {string} slot - Slot adı (ai1, ai2)
- * @param {string} [provider] - Provider adı (chatgpt, gemini, etc.)
  */
-export function setupWebviewLogger(webviewContents, slot, provider = "unknown") {
+export function setupWebviewLogger(
+  webviewContents: Electron.WebContents | null,
+  slot: string,
+  provider: string = "unknown"
+): void {
   if (!webviewContents) return;
 
   const source = `WEBVIEW-${slot.toUpperCase()}`;
 
-  webviewContents.on("console-message", (/** @type {any} */ event, /** @type {any} */ level, /** @type {any} */ message, /** @type {any} */ line, /** @type {any} */ sourceId) => {
+  webviewContents.on("console-message", (event: unknown, level: unknown, message: unknown, line: unknown, sourceId: unknown) => {
     // Handle both old (separate params) and new (event object) API
-    const _level = typeof level === 'number' ? level : event?.level ?? 0;
-    const _message = typeof message === 'string' ? message : event?.message ?? '';
-    const _line = typeof line === 'number' ? line : event?.line ?? 0;
-    const _sourceId = typeof sourceId === 'string' ? sourceId : event?.sourceId ?? '';
-    
-    /** @type {Record<number, string>} */
-    const levelMap = {
+    const _event = event as Record<string, unknown>;
+    const _level = typeof level === 'number' ? level : (_event?.level as number) ?? 0;
+    const _message = typeof message === 'string' ? message : (_event?.message as string) ?? '';
+    const _line = typeof line === 'number' ? line : (_event?.line as number) ?? 0;
+    const _sourceId = typeof sourceId === 'string' ? sourceId : (_event?.sourceId as string) ?? '';
+
+    const levelMap: Record<number, string> = {
       0: "LOG",
       1: "WARN",
       2: "ERROR",

@@ -36,7 +36,7 @@ interface SettingsBroadcast {
   post: (msg: unknown) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type SettingsData = any;
 
 class SettingsManagerClass {

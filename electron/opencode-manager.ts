@@ -11,36 +11,39 @@
  */
 
 import { spawn } from "child_process";
-import { OPENCODE_DEFAULTS } from "./opencode-config.js";
+import { OPENCODE_DEFAULTS } from "./opencode-config.ts";
+import type { IpcMainInvokeEvent } from "electron";
 
 // Timeout değerleri
 const STARTUP_TIMEOUT = 10000; // 10 saniye
 const SHUTDOWN_TIMEOUT = 5000; // 5 saniye
 
-/**
- * @typedef {Object} OpenCodeState
- * @property {boolean} running - Server çalışıyor mu
- * @property {number|null} pid - Process ID
- * @property {number} port - Kullanılan port
- * @property {string|null} projectPath - Açık proje yolu
- * @property {string|null} error - Son hata mesajı
- */
+interface OpenCodeOptions {
+  port?: number;
+  cors?: string;
+  projectPath?: string;
+}
+
+interface OpenCodeState {
+  running: boolean;
+  pid: number | null;
+  port: number;
+  projectPath: string | null;
+  error: string | null;
+}
 
 export const OpenCodeManager = {
-  /** @type {import("child_process").ChildProcess|null} */
-  _process: null,
-  
-  /** @type {OpenCodeState} */
+  _process: null as import("child_process").ChildProcess | null,
+
   _state: {
     running: false,
     pid: null,
     port: OPENCODE_DEFAULTS.port,
     projectPath: null,
     error: null,
-  },
-  
-  /** @type {Function[]} */
-  _statusListeners: [],
+  } as OpenCodeState,
+
+  _statusListeners: [] as Array<(state: OpenCodeState) => void>,
 
   // =========================================================================
   // Public API
@@ -48,13 +51,14 @@ export const OpenCodeManager = {
 
   /**
    * OpenCode server'ı başlat
-   * @param {Object} options - Başlatma seçenekleri
-   * @param {number} [options.port=4096] - Server portu
-   * @param {string} [options.cors] - CORS origin
-   * @param {string} [options.projectPath] - Proje klasörü
-   * @returns {Promise<{success: boolean, url?: string, error?: string, alreadyRunning?: boolean, existingServer?: boolean}>}
    */
-  async start(options = {}) {
+  async start(options: OpenCodeOptions = {}): Promise<{
+    success: boolean;
+    url?: string;
+    error?: string;
+    alreadyRunning?: boolean;
+    existingServer?: boolean;
+  }> {
     const port = options.port || OPENCODE_DEFAULTS.port;
     const cors = options.cors || OPENCODE_DEFAULTS.cors;
     const projectPath = options.projectPath || null;
@@ -144,7 +148,7 @@ export const OpenCodeManager = {
    * Durum değişikliği dinleyicisi ekle
    * @param {Function} callback
    */
-  onStatusChange(callback) {
+  onStatusChange(callback: (state: OpenCodeState) => void) {
     this._statusListeners.push(callback);
   },
 
@@ -152,7 +156,7 @@ export const OpenCodeManager = {
    * Dinleyiciyi kaldır
    * @param {Function} callback
    */
-  removeStatusListener(callback) {
+  removeStatusListener(callback: (state: OpenCodeState) => void) {
     this._statusListeners = this._statusListeners.filter(cb => cb !== callback);
   },
 
@@ -175,7 +179,7 @@ export const OpenCodeManager = {
    * @param {string} cors
    * @returns {Promise<void>}
    */
-  _spawnServer(port, cors) {
+  _spawnServer(port: number, cors: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const args = ["serve", "--port", String(port), "--cors", cors];
       
@@ -219,7 +223,7 @@ export const OpenCodeManager = {
       });
 
       // Spawn başarılı
-      resolve();
+      resolve(undefined);
     });
   },
 
@@ -228,7 +232,7 @@ export const OpenCodeManager = {
    * @param {number} port
    * @returns {Promise<void>}
    */
-  async _waitForServer(port) {
+  async _waitForServer(port: number) {
     const startTime = Date.now();
     // OpenCode server 127.0.0.1'de dinliyor
     const url = `http://127.0.0.1:${port}`;
@@ -258,7 +262,7 @@ export const OpenCodeManager = {
    * @param {number} port
    * @returns {Promise<boolean>}
    */
-  async _isPortInUse(port) {
+  async _isPortInUse(port: number) {
     try {
       await fetch(`http://127.0.0.1:${port}`, { 
         method: "GET", 
@@ -274,10 +278,10 @@ export const OpenCodeManager = {
    * Process'i öldür
    * @returns {Promise<void>}
    */
-  _killProcess() {
+  _killProcess(): Promise<void> {
     return new Promise((resolve, _reject) => {
       if (!this._process) {
-        resolve();
+        resolve(undefined);
         return;
       }
 
@@ -292,7 +296,7 @@ export const OpenCodeManager = {
       this._process.on("close", () => {
         clearTimeout(timeout);
         this._process = null;
-        resolve();
+        resolve(undefined);
       });
 
       // Önce SIGTERM dene
@@ -321,7 +325,7 @@ export const OpenCodeManager = {
    * @param {number} port
    * @returns {string}
    */
-  _getProjectUrl(projectPath, port) {
+  _getProjectUrl(projectPath: string | null, port: number) {
     const baseUrl = `http://localhost:${port}`;
     if (projectPath) {
       return `${baseUrl}?project=${encodeURIComponent(projectPath)}`;
@@ -348,7 +352,7 @@ export const OpenCodeManager = {
    * @param {number} ms
    * @returns {Promise<void>}
    */
-  _sleep(ms) {
+  _sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   },
 };

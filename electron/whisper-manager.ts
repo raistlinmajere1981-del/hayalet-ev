@@ -1,23 +1,27 @@
 import { join } from 'path';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
+import type { IpcMainInvokeEvent } from 'electron';
+
+interface WhisperData {
+  pending: unknown[];
+  done: unknown[];
+}
 
 /**
  * Account ID'den klasör yolunu oluştur
- * @param {string} accountId - Account ID (örn: chatgpt_user_at_gmail_com)
- * @returns {string}
  */
-function getAccountPath(accountId) {
+function getAccountPath(accountId: string): string {
   return join(process.cwd(), 'data', accountId);
 }
 
 /**
  * Whisper verilerini yükle (hesap bazlı)
- * @param {Object} event - IPC event
- * @param {Object} params - { accountId }
- * @returns {Promise<{ pending: Array, done: Array }>}
  */
-export async function whisperLoad(event, { accountId }) {
+export async function whisperLoad(
+  _event: IpcMainInvokeEvent,
+  { accountId }: { accountId: string }
+): Promise<WhisperData> {
   try {
     if (!accountId) {
       return { pending: [], done: [] };
@@ -39,11 +43,11 @@ export async function whisperLoad(event, { accountId }) {
 
 /**
  * Whisper verilerini kaydet (hesap bazlı)
- * @param {Object} event - IPC event
- * @param {Object} params - { accountId, payload }
- * @returns {Promise<{ success: boolean, message?: string }>}
  */
-export async function whisperSave(event, { accountId, payload }) {
+export async function whisperSave(
+  _event: IpcMainInvokeEvent,
+  { accountId, payload }: { accountId: string; payload?: WhisperData }
+): Promise<{ success: boolean; message?: string }> {
   try {
     if (!accountId) {
       return { success: false, message: 'Account ID gerekli' };

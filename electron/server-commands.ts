@@ -1,17 +1,18 @@
 import { join } from 'path';
 import { mkdir, appendFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { deviceActionHandler } from './device-manager.js';
-import { screenshotCaptureHandler } from './screenshot-manager.js';
-import { whisperLoad, whisperSave } from './whisper-manager.js';
+import { deviceActionHandler } from './device-manager.ts';
+import { screenshotCaptureHandler } from './screenshot-manager.ts';
+import { whisperLoad, whisperSave } from './whisper-manager.ts';
+import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
 
-let _mainWindow = null;
+let _mainWindow: BrowserWindow | null = null;
 
 function nowStamp() {
   return new Date().toLocaleString('tr-TR');
 }
 
-async function appendLogLine(line) {
+async function appendLogLine(line: string): Promise<void> {
   try {
     const baseDir = join(process.cwd(), 'logs');
     if (!existsSync(baseDir)) {
@@ -40,9 +41,21 @@ const COMMAND_LIST = [
   'ListFiles',
 ];
 
-const handlers = {};
+interface CommandPayload {
+  args?: string;
+  provider?: string;
+  source?: string;
+  sender?: string;
+  [key: string]: unknown;
+}
 
-const defaultHandler = (name) => async (payload = {}) => {
+interface ServerCommandsOptions {
+  mainWindow?: BrowserWindow | null;
+}
+
+const handlers: Record<string, (payload: CommandPayload) => Promise<unknown>> = {};
+
+const defaultHandler = (name: string) => async (payload: CommandPayload = {}) => {
   const stamp = nowStamp();
   const info = payload?.args ? ` | args: ${payload.args}` : '';
   const line = `[${stamp}] server-command INFO ${name}${info}`;
@@ -87,14 +100,14 @@ COMMAND_LIST.forEach((name) => {
   handlers[name.toLowerCase()] = defaultHandler(name);
 });
 
-handlers.whispermanager = async (payload = {}) => {
+handlers.whispermanager = async (payload: CommandPayload = {}) => {
   const stamp = nowStamp();
   const providerRaw = payload?.provider || 'AI';
   const provider = payload?.source === 'manual' ? (payload?.sender || 'user') : providerRaw;
   const { user, text, when } = parseWhisperArgs(payload?.args, provider);
   const argsLabel = payload?.args || `"${user}","${text}","${when}"`;
   try {
-    const current = await whisperLoad(null, provider).catch(() => ({ pending: [], done: [] }));
+    const current = await whisperLoad(null as unknown as IpcMainInvokeEvent, { accountId: provider }).catch(() => ({ pending: [] as unknown[], done: [] as unknown[] }));
     const pending = Array.isArray(current?.pending) ? current.pending : [];
     const rec = { user, text, when, ts: Date.now() };
     pending.push(rec);
@@ -107,7 +120,7 @@ handlers.whispermanager = async (payload = {}) => {
   }
 };
 
-handlers.devicemanager = async (payload = {}) => {
+handlers.devicemanager = async (payload: CommandPayload = {}) => {
   try {
     const parts = parseArgs(payload?.args || '');
     const action = (parts[0] || '').toLowerCase();
@@ -121,14 +134,13 @@ handlers.devicemanager = async (payload = {}) => {
   }
 };
 
-handlers.screenshotmanager = async (payload = {}) => {
+handlers.screenshotmanager = async (payload: CommandPayload = {}) => {
   try {
     const { kind: _kind, selectorOrId, format } = parseScreenshotArgs(payload?.args || '');
-    const options = {};
+    const options: { format?: string; region?: string } = {};
     if (format) options.format = format;
     if (selectorOrId) options.region = selectorOrId;
-    const fakeEvent = { sender: _mainWindow?.webContents };
-    const res = await screenshotCaptureHandler(fakeEvent, options);
+    const res = await screenshotCaptureHandler(null, options);
     if (res?.success) {
       await appendLogLine(`[${nowStamp()}] ScreenshotManager saved ${res.path || 'in-memory'}`);
       return { success: true, path: res.path || null, dataUrl: res.dataUrl || null };
@@ -142,7 +154,7 @@ handlers.screenshotmanager = async (payload = {}) => {
 
 handlers.takescreenshot = handlers.screenshotmanager;
 
-handlers.windowmanager = async (payload = {}) => {
+handlers.windowmanager = async (payload: CommandPayload = {}) => {
   try {
     const { action } = parseWindowArgs(payload?.args || '');
     if (!_mainWindow) return { success: false, message: 'no-window' };
@@ -165,7 +177,7 @@ handlers.windowmanager = async (payload = {}) => {
   }
 };
 
-handlers.restart = async (_payload = {}) => {
+handlers.restart = async (_payload: CommandPayload = {}) => {
   try {
     await appendLogLine(`[${nowStamp()}] Restart requested`);
     return { success: true, message: 'restart requested' };
@@ -175,7 +187,7 @@ handlers.restart = async (_payload = {}) => {
   }
 };
 
-handlers.listfiles = async (_payload = {}) => {
+handlers.listfiles = async (_payload: CommandPayload = {}) => {
   try {
     if (!_mainWindow) return { success: false, message: 'no-main-window' };
     const baseDir = process.cwd();
@@ -187,10 +199,10 @@ handlers.listfiles = async (_payload = {}) => {
 };
 
 export const ServerCommands = {
-  init(opts = {}) {
+  init(opts: ServerCommandsOptions = {}): void {
     _mainWindow = opts.mainWindow || null;
   },
-  async run(event, commandName, payload = {}) {
+  async run(_event: IpcMainInvokeEvent | null, commandName: string, payload: CommandPayload = {}): Promise<unknown> {
     const key = (commandName || '').toLowerCase();
     const handler = handlers[key];
     if (handler) return handler(payload);

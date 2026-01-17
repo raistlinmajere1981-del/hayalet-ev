@@ -1,12 +1,13 @@
 /**
  * Database Queries - Prepared statement'lar
- * 
+ *
  * Tüm veritabanı sorguları bu modülde tanımlıdır.
  * createQueries() fonksiyonu prepared statement'ları döndürür.
  * Ayrıca yardımcı fonksiyonlar da export edilir.
  */
 
-// Hash utils - prepared statements için gerekli değil, sadece createQueries export ediliyor
+import type Database from "better-sqlite3";
+import type { PreparedQueries } from "../types/index.ts";
 
 // ============================================
 // Prepared Statements Factory
@@ -14,10 +15,8 @@
 
 /**
  * Prepared statement'ları oluştur
- * @param {import('better-sqlite3').Database} db
- * @returns {Object} - Prepared statement koleksiyonu
  */
-export function createQueries(db) {
+export function createQueries(db: Database.Database): PreparedQueries {
   return {
     // Conversation queries
     getConversations: db.prepare(`

@@ -65,3 +65,4 @@ screenshots/
 !src/assets/*.jpg
 !src/assets/*.jpeg
 .ts-migrate-backup/
+dist-electron/

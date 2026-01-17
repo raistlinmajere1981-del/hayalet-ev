@@ -1,20 +1,40 @@
 import { PassThrough } from "stream";
+import type { IpcMainInvokeEvent } from "electron";
 import { google } from "googleapis";
-import { loadSettings, saveSettings } from "./settings-manager.js";
+import { loadSettings, saveSettings } from "./settings-manager.ts";
+
+interface GoogleDriveConfig {
+  clientId?: string;
+  clientSecret?: string;
+  tokens?: unknown;
+  connected?: boolean;
+  account?: string;
+}
+
+interface Settings {
+  integrations?: {
+    googledrive?: GoogleDriveConfig;
+  };
+  [key: string]: unknown;
+}
+
+interface UploadPayload {
+  files?: Array<{
+    name?: string;
+    mimeType?: string;
+    base64?: string;
+  }>;
+}
 
 /**
  * Güvenli nesne erişimi
- * @param {any} obj - Kaynak nesne
- * @param {string} path - Nokta ile ayrılmış yol (örn: "a.b.c")
- * @param {any} def - Varsayılan değer
- * @returns {any}
  */
-function safeGet(obj, path, def = "") {
+function safeGet(obj: unknown, path: string, def: unknown = ""): unknown {
   try {
     return (
       path
         .split(".")
-        .reduce((s, k) => (s && s[k] !== undefined ? s[k] : undefined), obj) ??
+        .reduce((s: Record<string, unknown>, k: string) => (s && s[k] !== undefined ? s[k] as Record<string, unknown> : undefined) as Record<string, unknown>, obj as Record<string, unknown>) ??
       def
     );
   } catch {
@@ -22,15 +42,17 @@ function safeGet(obj, path, def = "") {
   }
 }
 
-export async function googledriveStartAuth(event) {
+export async function googledriveStartAuth(
+  _event: IpcMainInvokeEvent
+): Promise<{ success: boolean; authUrl?: string; message?: string }> {
   try {
-    let settings = {};
+    let settings: Settings = {};
     try {
-      settings = (await loadSettings()) || {};
-    } catch (err) {
+      settings = ((await loadSettings()) as unknown as Settings) || {};
+    } catch (_err) {
       settings = {};
     }
-    const gconf = safeGet(settings, "integrations.googledrive", {});
+    const gconf = safeGet(settings, "integrations.googledrive", {}) as GoogleDriveConfig;
     const clientId = gconf.clientId || process.env.GOOGLE_CLIENT_ID || "";
     const clientSecret =
       gconf.clientSecret || process.env.GOOGLE_CLIENT_SECRET || "";
@@ -57,23 +79,25 @@ export async function googledriveStartAuth(event) {
       ],
     });
     
-    return { success: true, url: authUrl };
+    return { success: true, authUrl };
   } catch (err) {
     return { success: false, message: err?.message || "auth start failed" };
   }
 }
 
-export async function googledriveExchangeCode(event, code) {
+export async function googledriveExchangeCode(
+  _event: IpcMainInvokeEvent,
+  code: string
+): Promise<{ success: boolean; account?: string; message?: string }> {
   try {
     if (!code) return { success: false, message: "Yetkilendirme kodu eksik" };
-    /** @type {any} */
-    let settings = {};
+    let settings: Settings = {};
     try {
-      settings = (await loadSettings()) || {};
-    } catch (err) {
+      settings = ((await loadSettings()) as unknown as Settings) || {};
+    } catch (_err) {
       settings = {};
     }
-    const gconf = safeGet(settings, "integrations.googledrive", {});
+    const gconf = safeGet(settings, "integrations.googledrive", {}) as GoogleDriveConfig;
     const clientId = gconf.clientId || process.env.GOOGLE_CLIENT_ID || "";
     const clientSecret =
       gconf.clientSecret || process.env.GOOGLE_CLIENT_SECRET || "";
@@ -117,12 +141,14 @@ export async function googledriveExchangeCode(event, code) {
   }
 }
 
-export async function googledriveDisconnect(event) {
+export async function googledriveDisconnect(
+  _event: IpcMainInvokeEvent
+): Promise<{ success: boolean; message?: string }> {
   try {
-    let settings = {};
+    let settings: Settings = {};
     try {
-      settings = (await loadSettings()) || {};
-    } catch (err) {
+      settings = ((await loadSettings()) as unknown as Settings) || {};
+    } catch (_err) {
       settings = {};
     }
     if (settings.integrations && settings.integrations.googledrive) {
@@ -130,8 +156,9 @@ export async function googledriveDisconnect(event) {
       delete settings.integrations.googledrive.connected;
       delete settings.integrations.googledrive.account;
       try {
-        await saveSettings(settings);
-      } catch (err) {
+        await saveSettings(null, settings);
+      } catch (_err) {
+        // Ignore
       }
     }
     return { success: true };
@@ -140,17 +167,20 @@ export async function googledriveDisconnect(event) {
   }
 }
 
-export async function googledriveUpload(event, payload = {}) {
+export async function googledriveUpload(
+  _event: IpcMainInvokeEvent,
+  payload: UploadPayload = {}
+): Promise<{ success: boolean; uploadedLinks?: unknown[]; errors?: unknown[]; message?: string }> {
   try {
     const files = Array.isArray(payload?.files) ? payload.files : [];
     if (!files.length) return { success: false, message: "Dosya yok" };
-    let settings = {};
+    let settings: Settings = {};
     try {
-      settings = (await loadSettings()) || {};
-    } catch (e) {
+      settings = ((await loadSettings()) as unknown as Settings) || {};
+    } catch (_e) {
       settings = {};
     }
-    const gconf = safeGet(settings, "integrations.googledrive", {});
+    const gconf = safeGet(settings, "integrations.googledrive", {}) as GoogleDriveConfig;
     const clientId = gconf.clientId || process.env.GOOGLE_CLIENT_ID || "";
     const clientSecret =
       gconf.clientSecret || process.env.GOOGLE_CLIENT_SECRET || "";
@@ -178,7 +208,7 @@ export async function googledriveUpload(event, payload = {}) {
           (file.mimeType || "").startsWith("text") ||
           name.endsWith(".txt") ||
           name.endsWith(".md");
-        const resource = { name };
+        const resource: { name: string; mimeType?: string } = { name };
         if (isText) resource.mimeType = "application/vnd.google-apps.document";
         const media = {
           mimeType: file.mimeType || "application/octet-stream",

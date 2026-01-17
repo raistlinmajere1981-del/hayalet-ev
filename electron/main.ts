@@ -1,10 +1,10 @@
 import { app, BrowserWindow, ipcMain as _ipcMain, dialog, shell } from "electron";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { deviceActionHandler } from "./device-manager.js";
-import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.js";
-import { appendLog } from "./log-manager.js";
-import { whisperLoad, whisperSave } from "./whisper-manager.js";
+import { deviceActionHandler } from "./device-manager.ts";
+import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
+import { appendLog } from "./log-manager.ts";
+import { whisperLoad, whisperSave } from "./whisper-manager.ts";
 import {
   commandInit,
   commandWrite,
@@ -16,8 +16,8 @@ import {
   commandArchiveCopy,
   commandCleanupJob,
   commandMove,
-} from "./command-manager.js";
-import { DatabaseManager } from "./database/index.js";
+} from "./command-manager.ts";
+import { DatabaseManager } from "./database/index.ts";
 import {
   fmWriteFileAtomic,
   readFileAsBase64,
@@ -26,22 +26,22 @@ import {
   deleteAsset,
   generateTree,
   openPath as _openPath,
-} from "./file-manager.js";
+} from "./file-manager.ts";
 import {
   createWindow as createAppWindow,
   initWindowManager,
   setTrayIconPath,
   appRestart as _appRestart,
-} from "./window-manager.js";
-import { catboxUpload, uguuUpload } from "./webview-manager.js";
+} from "./window-manager.ts";
+import { catboxUpload, uguuUpload } from "./webview-manager.ts";
 import {
   googledriveStartAuth,
   googledriveExchangeCode,
   googledriveDisconnect,
   googledriveUpload,
-} from "./googledrive-manager.js";
-import { ServerCommands } from "./server-commands.js";
-import { OpenCodeManager } from "./opencode-manager.js";
+} from "./googledrive-manager.ts";
+import { ServerCommands } from "./server-commands.ts";
+import { OpenCodeManager } from "./opencode-manager.ts";
 import {
   initLogSystem,
   interceptMainConsole,
@@ -57,22 +57,23 @@ import {
   queryLogs,
   listSessions,
   writeStateSnapshot,
+  writeStateSnapshot as _writeStateSnapshot,
   writeSessionSummary,
   updateAppState,
   getAppState,
   generateCorrelationId,
   CONSOLE_LOG,
   ERROR_LOG,
-} from "./console-logger.js";
-import { SessionManager } from "./session-manager.js";
-import { MetaCommandManager } from "./meta-command-manager.js";
+} from "./console-logger.ts";
+import { SessionManager } from "./session-manager.ts";
+import { MetaCommandManager } from "./meta-command-manager.ts";
 
 // Handler Setup Imports
-import { setupFsHandlers } from "./handlers/ipc-fs.js";
-import { setupWindowHandlers } from "./handlers/ipc-window.js";
-import { setupProviderHandlers } from "./handlers/ipc-provider.js";
-import { setupSettingsHandlers } from "./handlers/ipc-settings.js";
-import { registerHandler } from "./handlers/ipc-helpers.js";
+import { setupFsHandlers } from "./handlers/ipc-fs.ts";
+import { setupWindowHandlers } from "./handlers/ipc-window.ts";
+import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
+import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
+import { registerHandler } from "./handlers/ipc-helpers.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -81,7 +82,7 @@ const __dirname = dirname(__filename);
 const CDP_PORT = process.env.CDP_PORT || 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
-let mainWindow;
+let mainWindow: BrowserWindow | null = null;
 
 const { sessionId: _sessionId } = initLogSystem();
 
@@ -212,9 +213,9 @@ if (process.platform !== "win32") {
 
 registerHandler("device-action", deviceActionHandler);
 
-registerHandler("show-message-box", async (event, options = {}) => {
+registerHandler("show-message-box", async (_event, options: Electron.MessageBoxOptions) => {
   const win = mainWindow || null;
-  return await dialog.showMessageBox(win, options || {});
+  return await dialog.showMessageBox(win, options);
 });
 
 registerHandler("fm-write-file-atomic", fmWriteFileAtomic);
@@ -224,19 +225,17 @@ registerHandler("catbox-upload", catboxUpload);
 // Güvenilir Google OAuth domain'leri
 const ALLOWED_GOOGLE_AUTH_DOMAINS = ["accounts.google.com"];
 
-registerHandler("googledrive-start-auth", async () => {
-  const result = await googledriveStartAuth();
-  if (result?.success && result?.url) {
+registerHandler("googledrive-start-auth", async (event) => {
+  const result = await googledriveStartAuth(event);
+  if (result?.success && result?.authUrl) {
     try {
-      const urlObj = new URL(result.url);
+      const urlObj = new URL(result.authUrl);
       if (!ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
-        result.success = false;
-        result.message = "Güvenilmeyen URL: " + urlObj.hostname;
-        return result;
+        return { ...result, success: false, message: "Güvenilmeyen URL: " + urlObj.hostname };
       }
-      await shell.openExternal(result.url);
+      await shell.openExternal(result.authUrl);
     } catch (err) {
-      result.message = "Tarayıcı açılamadı: " + (err?.message || "hata");
+      return { ...result, message: "Tarayıcı açılamadı: " + ((err as Error)?.message || "hata") };
     }
   }
   return result;
@@ -268,43 +267,49 @@ registerHandler("capture-page", capturePageHandler);
 registerHandler("screenshot-capture", screenshotCaptureHandler);
 
 // Database IPC Handlers
-registerHandler("db-init-account", (event, params) => DatabaseManager.initAccount(event, params));
-registerHandler("db-get-conversations", (event, params) =>
+registerHandler("db-init-account", (event, params: { accountId: string }) => 
+  DatabaseManager.initAccount(event, params)
+);
+registerHandler("db-get-conversations", (event, params: { accountId: string }) =>
   DatabaseManager.getConversations(event, params)
 );
-registerHandler("db-get-messages", (event, params) => DatabaseManager.getMessages(event, params));
-registerHandler("db-sync-messages", (event, params) => DatabaseManager.syncMessages(event, params));
-registerHandler("db-save-attachment", (event, params) =>
+registerHandler("db-get-messages", (event, params: { accountId: string; conversationId: string }) => 
+  DatabaseManager.getMessages(event, params)
+);
+registerHandler("db-sync-messages", (event, params: { accountId: string; webUrl: string; messages: unknown[] }) => 
+  DatabaseManager.syncMessages(event, params as Parameters<typeof DatabaseManager.syncMessages>[1])
+);
+registerHandler("db-save-attachment", (event, params: { accountId: string; conversationId: string; messageId: string; filePath: string; originalName: string; mimeType?: string }) =>
   DatabaseManager.saveAttachment(event, params)
 );
-registerHandler("db-get-attachments", (event, params) =>
+registerHandler("db-get-attachments", (event, params: { accountId: string; conversationId: string }) =>
   DatabaseManager.getAttachments(event, params)
 );
-registerHandler("db-delete-conversation", (event, params) =>
+registerHandler("db-delete-conversation", (event, params: { accountId: string; conversationId: string }) =>
   DatabaseManager.deleteConversation(event, params)
 );
-registerHandler("db-search-messages", (event, params) =>
+registerHandler("db-search-messages", (event, params: { accountId: string; query: string; limit?: number }) =>
   DatabaseManager.searchMessages(event, params)
 );
-registerHandler("db-search-attachments", (event, params) =>
+registerHandler("db-search-attachments", (event, params: { accountId: string; query: string; limit?: number }) =>
   DatabaseManager.searchAttachments(event, params)
 );
-registerHandler("db-search-all-accounts", (event, params) =>
+registerHandler("db-search-all-accounts", (event, params: { query: string; limit?: number }) =>
   DatabaseManager.searchAllAccounts(event, params)
 );
-registerHandler("db-update-conversation", (event, params) =>
+registerHandler("db-update-conversation", (event, params: { accountId: string; conversationId: string; title?: string; summary?: string }) =>
   DatabaseManager.updateConversationDetails(event, params)
 );
 
 // Meta Command IPC handlers
-registerHandler("meta-define-command", (event, params) =>
+registerHandler("meta-define-command", (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
   MetaCommandManager.defineCommand(event, params)
 );
-registerHandler("meta-delete-command", (event, params) =>
+registerHandler("meta-delete-command", (event, params: { name: string }) =>
   MetaCommandManager.deleteCommand(event, params)
 );
 registerHandler("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
-registerHandler("meta-get-command", (event, params) =>
+registerHandler("meta-get-command", (event, params: { name: string }) =>
   MetaCommandManager.getCommand(event, params)
 );
 
@@ -315,8 +320,8 @@ registerHandler("copy-file-to", copyFileTo);
 registerHandler("delete-asset", deleteAsset);
 registerHandler("generate-tree", generateTree);
 
-registerHandler("read-console-logs", async (event, tail = 100) => await readConsoleLogs(tail));
-registerHandler("read-error-logs", async (event, tail = 100) => await readErrorLogs(tail));
+registerHandler("read-console-logs", async (_event, tail: number = 100) => await readConsoleLogs(tail));
+registerHandler("read-error-logs", async (_event, tail: number = 100) => await readErrorLogs(tail));
 
 registerHandler("get-log-paths", async () => {
   return {
@@ -330,7 +335,7 @@ registerHandler("get-log-paths", async () => {
 registerHandler("get-session-id", async () => getSessionId());
 registerHandler(
   "read-all-logs",
-  async (event, targetSessionId = null) => await readAllLogs(targetSessionId)
+  async (_event, targetSessionId: string | null = null) => await readAllLogs(targetSessionId)
 );
 registerHandler("query-logs", async (event, query = {}) => await queryLogs(query));
 registerHandler("list-sessions", async () => await listSessions());
@@ -342,7 +347,7 @@ registerHandler("write-state-snapshot", async () => {
   return { success: true };
 });
 
-registerHandler("setup-webview-logger", async (event, webviewId, slot, provider) => {
+registerHandler("setup-webview-logger", async (_event, webviewId: number, slot: string, provider: string) => {
   const { webContents } = await import("electron");
   const wc = webContents.fromId(webviewId);
   if (wc) {
@@ -352,14 +357,14 @@ registerHandler("setup-webview-logger", async (event, webviewId, slot, provider)
   return { success: false, error: "WebContents not found" };
 });
 
-registerHandler("generate-correlation-id", async (event, prefix = "op") => {
+registerHandler("generate-correlation-id", async (_event, prefix: string = "op") => {
   return generateCorrelationId(prefix);
 });
 
 // OpenCode Server IPC Handlers
 registerHandler(
   "opencode-start",
-  async (event, options = {}) => await OpenCodeManager.start(options)
+  async (_event, options: { port?: number; cors?: string; projectPath?: string } = {}) => await OpenCodeManager.start(options)
 );
 registerHandler("opencode-stop", async () => await OpenCodeManager.stop());
 registerHandler("opencode-status", async () => OpenCodeManager.getStatus());

@@ -51,7 +51,7 @@ interface CommandJob {
 }
 
 /** Event listener tipi - esnek payload */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type CommandEventListener = (payload: any) => void;
 
 class CommandManagerClass {

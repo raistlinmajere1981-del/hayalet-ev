@@ -1,15 +1,27 @@
 /**
  * Meta Command Manager - Electron Main Process
- * 
+ *
  * AI'ların dinamik olarak yeni komutlar tanımlamasını sağlar.
  * Komutlar config/custom-commands.json dosyasında kalıcı olarak saklanır.
- * 
+ *
  * Güvenlik: Yok - Tam sistem erişimi ile JavaScript kodu çalıştırılabilir.
  */
 
 import fs from "fs";
 import path from "path";
 import { app } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
+
+interface CustomCommand {
+  name: string;
+  description: string;
+  code: string;
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+}
+
+type CommandsMap = Record<string, CustomCommand>;
 
 const CONFIG_DIR = path.join(app.getAppPath(), "config");
 const COMMANDS_FILE = path.join(CONFIG_DIR, "custom-commands.json");
@@ -17,7 +29,7 @@ const COMMANDS_FILE = path.join(CONFIG_DIR, "custom-commands.json");
 /**
  * Config klasörünü oluştur (yoksa)
  */
-function ensureConfigDir() {
+function ensureConfigDir(): void {
   if (!fs.existsSync(CONFIG_DIR)) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
   }
@@ -25,9 +37,8 @@ function ensureConfigDir() {
 
 /**
  * Tüm custom komutları yükle
- * @returns {Object} - { commandName: { name, description, code, createdAt, createdBy } }
  */
-export function loadCustomCommands() {
+export function loadCustomCommands(): CommandsMap {
   try {
     ensureConfigDir();
     if (!fs.existsSync(COMMANDS_FILE)) {
@@ -43,9 +54,8 @@ export function loadCustomCommands() {
 
 /**
  * Custom komutları kaydet
- * @param {Object} commands - Komut objesi
  */
-function saveCustomCommands(commands) {
+function saveCustomCommands(commands: CommandsMap): void {
   try {
     ensureConfigDir();
     fs.writeFileSync(COMMANDS_FILE, JSON.stringify(commands, null, 2), "utf-8");
@@ -55,13 +65,20 @@ function saveCustomCommands(commands) {
   }
 }
 
+interface DefineCommandResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  command?: CustomCommand;
+}
+
 /**
  * Yeni custom komut tanımla
- * @param {Object} event - IPC event
- * @param {Object} params - { name, description, code, createdBy }
- * @returns {{ success: boolean, message?: string, error?: string, command?: Object }}
  */
-export function defineCommand(event, { name, description, code, createdBy }) {
+export function defineCommand(
+  _event: IpcMainInvokeEvent,
+  { name, description, code, createdBy }: { name: string; description?: string; code: string; createdBy?: string }
+): DefineCommandResult {
   try {
     if (!name || typeof name !== "string") {
       return { success: false, error: "Komut adı gerekli" };
@@ -99,17 +116,17 @@ export function defineCommand(event, { name, description, code, createdBy }) {
     };
   } catch (err) {
     console.error("[MetaCommand] defineCommand hatası:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: (err as Error).message };
   }
 }
 
 /**
  * Custom komutu sil
- * @param {Object} event - IPC event
- * @param {Object} params - { name }
- * @returns {{ success: boolean, message?: string, error?: string }}
  */
-export function deleteCommand(event, { name }) {
+export function deleteCommand(
+  _event: IpcMainInvokeEvent,
+  { name }: { name: string }
+): { success: boolean; message?: string; error?: string } {
   try {
     if (!name || typeof name !== "string") {
       return { success: false, error: "Komut adı gerekli" };
@@ -134,32 +151,32 @@ export function deleteCommand(event, { name }) {
     return { success: true, message: `Komut silindi: ${key}` };
   } catch (err) {
     console.error("[MetaCommand] deleteCommand hatası:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: (err as Error).message };
   }
 }
 
 /**
  * Tüm custom komutları listele
- * @param {Object} event - IPC event
- * @returns {{ success: boolean, commands: Object, error?: string }}
  */
-export function listCommands(event) {
+export function listCommands(
+  _event: IpcMainInvokeEvent
+): { success: boolean; commands: CommandsMap; error?: string } {
   try {
     const commands = loadCustomCommands();
     return { success: true, commands };
   } catch (err) {
     console.error("[MetaCommand] listCommands hatası:", err);
-    return { success: false, commands: {}, error: err.message };
+    return { success: false, commands: {}, error: (err as Error).message };
   }
 }
 
 /**
  * Tek bir custom komutu getir
- * @param {Object} event - IPC event
- * @param {Object} params - { name }
- * @returns {{ success: boolean, command?: Object, error?: string }}
  */
-export function getCommand(event, { name }) {
+export function getCommand(
+  _event: IpcMainInvokeEvent,
+  { name }: { name: string }
+): { success: boolean; command?: CustomCommand; error?: string } {
   try {
     if (!name) {
       return { success: false, error: "Komut adı gerekli" };
@@ -179,7 +196,7 @@ export function getCommand(event, { name }) {
     return { success: true, command: commands[key] };
   } catch (err) {
     console.error("[MetaCommand] getCommand hatası:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: (err as Error).message };
   }
 }
 

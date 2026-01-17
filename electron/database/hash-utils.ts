@@ -1,21 +1,19 @@
 /**
  * Hash Utils - Mesaj içerik hash'i oluşturma
- * 
+ *
  * Incremental sync için content hash karşılaştırması yapılır.
  * djb2 algoritması kullanılır - hızlı ve collision oranı düşük.
  */
 
 /**
  * String'den hash oluştur (djb2 algoritması)
- * @param {string} str - Hash'lenecek string
- * @returns {string} - Hex formatında hash
  */
-export function hashString(str) {
+export function hashString(str: string | null | undefined): string {
   if (!str) return "0";
-  
+
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = (hash << 5) + hash + str.charCodeAt(i);
     hash = hash >>> 0; // Convert to unsigned 32-bit
   }
   return hash.toString(16);
@@ -23,10 +21,8 @@ export function hashString(str) {
 
 /**
  * Mesaj için benzersiz ID oluştur
- * @param {string} prefix - ID prefix'i (conv, msg, att)
- * @returns {string} - Benzersiz ID
  */
-export function generateId(prefix = "id") {
+export function generateId(prefix: string = "id"): string {
   const timestamp = Date.now();
   const random = Math.random().toString(16).slice(2, 10);
   return `${prefix}-${timestamp}-${random}`;
@@ -34,16 +30,14 @@ export function generateId(prefix = "id") {
 
 /**
  * Message ID oluştur
- * @returns {string}
  */
-export function generateMessageId() {
+export function generateMessageId(): string {
   return generateId("msg");
 }
 
 /**
  * Attachment ID oluştur
- * @returns {string}
  */
-export function generateAttachmentId() {
+export function generateAttachmentId(): string {
   return generateId("att");
 }
