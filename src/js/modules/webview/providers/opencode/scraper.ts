@@ -4,8 +4,14 @@
  * DOM'dan mesajları çeker ve yapılandırılmış formata dönüştürür
  */
 
-export function scrapeMessages() {
-  const result = [];
+interface ScrapedMessage {
+  index: number;
+  role: "user" | "assistant";
+  text: string;
+}
+
+export function scrapeMessages(): ScrapedMessage[] {
+  const result: ScrapedMessage[] = [];
   let index = 0;
 
   // Kullanıcı mesajlarını bul

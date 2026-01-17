@@ -47,7 +47,7 @@ export class SlotPanel {
     const otherSlot = this.slotId === "ai1" ? "ai2" : "ai1";
     const otherAccountId = settings.slots?.[otherSlot]?.accountId;
     
-    const availableAccounts = accounts.filter(a => {
+    const availableAccounts = accounts.filter((a: { id: string }) => {
         if (a.id === slotSettings.accountId) return true; // Show self
         if (a.id === otherAccountId) return false; // Hide other
         return true;
@@ -75,7 +75,7 @@ export class SlotPanel {
     if (catchCheck) catchCheck.checked = slotSettings.catchCommands ?? true;
   }
 
-  async updateSetting(key, value) {
+  async updateSetting(key: string, value: unknown) {
     const settings = this.settingsManager.getSnapshot();
     const slots = settings.slots || {};
     

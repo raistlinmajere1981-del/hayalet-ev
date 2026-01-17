@@ -3,6 +3,21 @@ import { FileManager } from "./file-manager.js";
 import { LogManager } from "./log-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 
+interface CommandJob {
+  id: string;
+  provider: string;
+  message?: string;
+  attachments?: unknown[];
+  attachmentsMeta?: {
+    staged?: unknown[];
+    temp?: string[];
+  };
+  meta?: {
+    archiveFolders?: Record<string, string>;
+    attachments?: unknown[];
+  };
+}
+
 class CommandExecutorClass {
   coreEngine: any;
 
@@ -14,7 +29,7 @@ class CommandExecutorClass {
     this.coreEngine = coreEngineInstance;
   }
 
-  async executeJob(job) {
+  async executeJob(job: CommandJob) {
     const startTime = Date.now();
     const hasAttachments = job.attachments?.length > 0;
     
@@ -67,7 +82,7 @@ class CommandExecutorClass {
     return result;
   }
 
-  async handleJobSuccess(job) {
+  async handleJobSuccess(job: CommandJob) {
     TrafficManager.signal(job.provider, "sent", job.message || "");
     try {
       const folder = job.meta?.archiveFolders?.[job.provider];
@@ -110,7 +125,7 @@ class CommandExecutorClass {
     }
   }
 
-  handleJobFailure(job, error) {
+  handleJobFailure(job: CommandJob, error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     TrafficManager.signal(job.provider, "error", errorMessage);
     FileManager.commandFail(job.id, job.attachmentsMeta?.temp || []);

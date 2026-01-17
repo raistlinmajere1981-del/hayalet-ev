@@ -3,9 +3,18 @@
  * Gemini'de DOM ID mevcut olduğu için önce onu kullanır, yoksa hash
  * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number, domId?: string }>}
  */
-export function scrapeMessages() {
+interface ScrapedMessage {
+  index: number;
+  role: string;
+  text: string;
+  contentHash: string;
+  domIndex: number;
+  domId?: string | null;
+}
+
+export function scrapeMessages(): ScrapedMessage[] {
   // Hash fonksiyonu (djb2 algoritması) - fonksiyon içinde tanımlı olmalı
-  function hashString(str) {
+  function hashString(str: string): string {
     if (!str) return "0";
     let hash = 5381;
     for (let i = 0; i < str.length; i++) {
@@ -33,7 +42,7 @@ export function scrapeMessages() {
     (n, i, arr) => !arr.some((o, j) => i !== j && o.contains(n)),
   );
 
-  const result = [];
+  const result: ScrapedMessage[] = [];
   nodes.forEach((node, idx) => {
     let role = "assistant";
 

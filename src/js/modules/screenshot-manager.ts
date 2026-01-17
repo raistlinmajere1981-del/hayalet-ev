@@ -8,6 +8,13 @@ interface ScreenshotOpts {
   allowRegionFallback?: boolean;
 }
 
+interface ScreenshotResult {
+  success?: boolean;
+  dataUrl?: string;
+  data?: string;
+  path?: string;
+}
+
 class ScreenshotManagerClass {
   async captureRegion(selector: string | null, opts: ScreenshotOpts = {}) {
     const bounds = selector ? this.resolveRegion(selector) : null;
@@ -28,13 +35,13 @@ class ScreenshotManagerClass {
         `capturePage başarısız: ${error.message}`,
       );
     }
-    if (!res?.success || !res.dataUrl) {
+    if (!res?.success || !(res.dataUrl || res.data)) {
       res = await this.captureSystem("", {
         ...opts,
         allowRegionFallback: false,
       });
     }
-    return this.persist(res, tag, opts.format);
+    return this.persist(res as ScreenshotResult, tag, opts.format);
   }
 
   async captureWindow(windowId: number, opts: ScreenshotOpts = {}) {
@@ -52,10 +59,10 @@ class ScreenshotManagerClass {
         `captureWindow fallback: ${error.message}`,
       );
     }
-    if (!res?.success || !res.dataUrl) {
+    if (!res?.success || !(res.dataUrl || res.data)) {
       res = await this.captureSystem("", opts);
     }
-    return this.persist(res, tag, opts.format);
+    return this.persist(res as ScreenshotResult, tag, opts.format);
   }
 
   async captureSystem(_screenId = "", opts: ScreenshotOpts = {}) {
@@ -99,15 +106,16 @@ class ScreenshotManagerClass {
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
   }
 
-  async persist(result: { success?: boolean; dataUrl?: string; path?: string } | null, tag = "shot", format = "png") {
-    if (!result?.success || !result.dataUrl) {
+  async persist(result: ScreenshotResult | null, tag = "shot", format = "png") {
+    const dataUrl = result?.dataUrl || result?.data;
+    if (!result?.success || !dataUrl) {
       return "";
     }
     try {
       const ext = (format || "png").toLowerCase() === "jpg" ? "jpg" : "png";
       const target = await FileManager.screenshotPath(tag, ext);
       if (!target) return "";
-      const base64 = (result.dataUrl.split(",")[1] || "").trim();
+      const base64 = (dataUrl.split(",")[1] || "").trim();
       await FileManager.writeFileAtomic(target, base64, "base64");
       LogManager.addEvent(
         "screenshot",

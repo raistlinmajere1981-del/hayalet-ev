@@ -6,7 +6,14 @@
 import { UploadManager } from "../../../upload-manager.js";
 import { LogManager } from "../../../log-manager.js";
 
-export async function attachFiles(webview, { files }) {
+interface FilePayload {
+  name: string;
+  path?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
+export async function attachFiles(_webview: HTMLElement, { files }: { files: FilePayload[] }) {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
     return UploadManager.createError(validation.message);
@@ -16,7 +23,7 @@ export async function attachFiles(webview, { files }) {
     LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", {
       context: {
         fileCount: files.length,
-        files: files.map((p) => ({ name: p.name, hasBase64: !!p.base64 })),
+        files: files.map((p: FilePayload) => ({ name: p.name, hasBase64: !!p.base64 })),
       },
     });
 

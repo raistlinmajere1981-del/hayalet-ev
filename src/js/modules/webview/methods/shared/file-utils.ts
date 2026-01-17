@@ -8,7 +8,19 @@
  * @param {Array} files - Files to validate
  * @returns {Object} Validation result
  */
-export function validateFiles(files) {
+interface FilePayload {
+  name: string;
+  base64?: string;
+  path?: string;
+  mimeType?: string;
+}
+
+interface UploadError {
+  file: string;
+  error: string;
+}
+
+export function validateFiles(files: FilePayload[]): { valid: boolean; message?: string } {
   if (!files?.length) {
     return { valid: false, message: "Aktarılacak dosya bulunamadı" };
   }
@@ -33,8 +45,8 @@ export function validateFiles(files) {
  * @returns {Object} Formatted response
  */
 export function formatUploadResponse(
-  uploadedLinks,
-  errors = [],
+  uploadedLinks: string[],
+  errors: UploadError[] = [],
   serviceName = "",
 ) {
   if (!uploadedLinks.length) {
@@ -62,7 +74,7 @@ export function formatUploadResponse(
  * @param {string} serviceName - Service name (optional)
  * @returns {Object} Standardized error response
  */
-export function createErrorResponse(message, errors = [], serviceName = "") {
+export function createErrorResponse(message: string, errors: UploadError[] = [], serviceName = "") {
   return {
     success: false,
     message: serviceName ? `${serviceName} hatası: ${message}` : message,

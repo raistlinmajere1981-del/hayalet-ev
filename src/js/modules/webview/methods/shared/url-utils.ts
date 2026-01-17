@@ -12,7 +12,7 @@ import { ProviderRegistry } from "../../provider-registry.js";
  * @param {string} url - Normalize edilecek URL
  * @returns {string} - Normalize edilmiş URL
  */
-export function normalizeUrl(url) {
+export function normalizeUrl(url: string): string {
   if (!url) return "";
   return url.split("?")[0].split("#")[0].replace(/\/+$/, "");
 }
@@ -25,7 +25,7 @@ export function normalizeUrl(url) {
  * @param {string} providerId - Provider ID (chatgpt, grok, gemini)
  * @returns {boolean} - URL default page mi?
  */
-export function isDefaultPage(url, providerId) {
+export function isDefaultPage(url: string, providerId: string): boolean {
   if (!url || !providerId) return false;
   
   const config = ProviderRegistry.get(providerId);

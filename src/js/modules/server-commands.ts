@@ -128,7 +128,7 @@ export const ServerCommands = {
    * @param {Object} payload - Komut payload'ı
    * @returns {Promise<Object>}
    */
-  async run(commandName, payload = {}) {
+  async run(commandName: string, payload: Record<string, unknown> = {}) {
     const key = (commandName || "").toLowerCase();
     const handler = handlers[key];
     
@@ -141,7 +141,7 @@ export const ServerCommands = {
     if (MetaCommandManager.hasCommand(commandName)) {
       const argsStr = (payload as any)?.args || "";
       // Argümanları parse et (virgülle ayrılmış)
-      const args = argsStr ? argsStr.split(",").map(s => s.trim().replace(/^["']|["']$/g, "")) : [];
+      const args = argsStr ? argsStr.split(",").map((s: string) => s.trim().replace(/^["']|["']$/g, "")) : [];
       return MetaCommandManager.runCommand(commandName, args);
     }
     
@@ -167,7 +167,7 @@ export const ServerCommands = {
    * @param {string} commandName - Komut adı
    * @returns {boolean}
    */
-  has(commandName) {
+  has(commandName: string) {
     const key = (commandName || "").toLowerCase();
     return !!handlers[key] || MetaCommandManager.hasCommand(commandName);
   },
@@ -177,7 +177,7 @@ export const ServerCommands = {
    * @param {string} commandName - Komut adı
    * @param {Function} handler - Handler fonksiyonu
    */
-  register(commandName, handler) {
+  register(commandName: string, handler: (payload?: unknown) => Promise<unknown>) {
     if (typeof handler === "function") {
       handlers[commandName.toLowerCase()] = handler;
     }

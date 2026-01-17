@@ -7,7 +7,7 @@
  * @param {string} filePath - Dosya yolu
  * @returns {string} Extension (lowercase, noktasız)
  */
-export function getExtension(filePath) {
+export function getExtension(filePath: string): string {
   if (!filePath) return "";
   return filePath.split(".").pop()?.toLowerCase() || "";
 }
@@ -17,7 +17,7 @@ export function getExtension(filePath) {
  * @param {string} filePath - Dosya yolu
  * @returns {string} Dosya adı
  */
-export function getFilename(filePath) {
+export function getFilename(filePath: string): string {
   if (!filePath) return "";
   return filePath.split(/[/\\]/).pop() || "";
 }
@@ -27,8 +27,8 @@ export function getFilename(filePath) {
  * @param {string} ext - Extension (png, jpg, etc.)
  * @returns {string} MIME type
  */
-export function getMimeType(ext) {
-  const mimeTypes = {
+export function getMimeType(ext: string): string {
+  const mimeTypes: Record<string, string> = {
     png: "image/png",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
@@ -57,7 +57,7 @@ export function getMimeType(ext) {
  * @param {string} filePath - Dosya yolu
  * @returns {string} MIME type
  */
-export function getMimeTypeFromPath(filePath) {
+export function getMimeTypeFromPath(filePath: string): string {
   const ext = getExtension(filePath);
   return getMimeType(ext);
 }
@@ -76,7 +76,7 @@ export function generateUniqueId(prefix = "id") {
  * @param {string} email - Email adresi
  * @returns {string} Sanitized email (örn: "user_at_gmail_com")
  */
-export function sanitizeEmail(email) {
+export function sanitizeEmail(email: string): string {
   if (!email) return "";
   return email
     .toLowerCase()
@@ -92,7 +92,7 @@ export function sanitizeEmail(email) {
  * @param {string} provider - AI provider (chatgpt, grok, gemini, opencode)
  * @returns {string} Account ID (örn: "chatgpt_user_at_gmail_com")
  */
-export function generateAccountId(email, provider) {
+export function generateAccountId(email: string, provider: string): string {
   if (!email || !provider) return "";
   return `${provider}_${sanitizeEmail(email)}`;
 }
@@ -102,7 +102,7 @@ export function generateAccountId(email, provider) {
  * @param {string} accountId - Account ID
  * @returns {string} Klasör yolu (örn: "data/chatgpt_user_at_gmail_com")
  */
-export function getAccountDataPath(accountId) {
+export function getAccountDataPath(accountId: string): string {
   if (!accountId) return "";
   return `data/${accountId}`;
 }
@@ -112,7 +112,7 @@ export function getAccountDataPath(accountId) {
  * @param {string} base64 - Base64 encoded string
  * @returns {string} Decoded UTF-8 text
  */
-export function decodeBase64(base64) {
+export function decodeBase64(base64: string): string {
   if (!base64) return "";
   try {
     const binary = atob(base64);

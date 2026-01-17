@@ -17,7 +17,7 @@ let draftPath = "";
  * @param {string} data - Base64 encoded string
  * @returns {string}
  */
-function decodeBase64(data) {
+function decodeBase64(data: string): string {
   try {
     const binary = atob(data);
     const bytes = new Uint8Array(binary.length);
@@ -79,7 +79,7 @@ export async function loadDraft() {
  * @param {Array} files - Staged files
  * @returns {Promise<void>}
  */
-export async function persistDraft(message, files) {
+export async function persistDraft(message: string, files: unknown[]) {
   if (!draftPath) return;
   
   try {

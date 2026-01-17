@@ -31,11 +31,11 @@ class ConversationListManagerClass {
   }
 
   subscribeToSettings() {
-    this._settingsSub = SettingsManager.subscribe(({ changedPaths }) => {
+    this._settingsSub = SettingsManager.subscribe(({ changedPaths }: { changedPaths: string[] }) => {
       const slotAccountPaths = ["slots.ai1.accountId", "slots.ai2.accountId"];
       const slotChanged =
         changedPaths.includes("*") ||
-        changedPaths.some((p) => slotAccountPaths.some((path) => p === path));
+        changedPaths.some((p: string) => slotAccountPaths.some((path) => p === path));
 
       if (slotChanged) {
         this.renderAll({ silent: true });
@@ -57,7 +57,7 @@ class ConversationListManagerClass {
     }
   }
 
-  handleConversationChange(provider, options = { isInitial: false }) {
+  handleConversationChange(provider: string, options = { isInitial: false }) {
     const select = this.selects[provider];
     if (!select) return;
 

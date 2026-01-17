@@ -24,9 +24,7 @@ const allProviders = {
 /**
  * Returns the provider module for the given provider ID.
  * Searches in all providers (AI + Asistan).
- * @param {string} providerId - The ID of the provider (e.g., 'chatgpt', 'grok', 'gemini', 'opencode').
- * @returns {any} - The provider module.
  */
-export function getProvider(providerId) {
+export function getProvider(providerId: keyof typeof allProviders) {
   return allProviders[providerId];
 }
