@@ -68,12 +68,12 @@ export function defaultSettings() {
   return defaults;
 }
 
-function mergeDefaults(obj: any, defaults: Record<string, any>): Record<string, any> {
-  if (!isPlainObject(obj)) return JSON.parse(JSON.stringify(defaults));
-  const out = JSON.parse(JSON.stringify(defaults));
-  for (const [k, v] of Object.entries(obj)) {
+function mergeDefaults(obj: unknown, defaults: Record<string, unknown>): Record<string, unknown> {
+  if (!isPlainObject(obj)) return JSON.parse(JSON.stringify(defaults)) as Record<string, unknown>;
+  const out = JSON.parse(JSON.stringify(defaults)) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
     if (isPlainObject(v) && isPlainObject(out[k])) {
-      out[k] = mergeDefaults(v, out[k]);
+      out[k] = mergeDefaults(v, out[k] as Record<string, unknown>);
     } else {
       out[k] = v;
     }
@@ -81,13 +81,14 @@ function mergeDefaults(obj: any, defaults: Record<string, any>): Record<string, 
   return out;
 }
 
-function normalizeLegacy(raw: any): any {
+function normalizeLegacy(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== "object") {
     return {};
   }
 
-  const r = raw;
-  const out: any = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  const out: Record<string, unknown> = {};
 
   if (isPlainObject(r.user)) {
     out.user = r.user;
@@ -107,7 +108,7 @@ function normalizeLegacy(raw: any): any {
     out.asistanAccounts = r.asistanAccounts;
   }
 
-  const slots: Record<string, any> = {};
+  const slots: Record<string, Record<string, unknown>> = {};
   ["ai1", "ai2"].forEach((slot) => {
     const slotData = r?.slots?.[slot];
     if (!isPlainObject(slotData)) {
@@ -141,10 +142,11 @@ function normalizeLegacy(raw: any): any {
   return out;
 }
 
-export function normalizeSettings(raw: any) {
+export function normalizeSettings(raw: unknown) {
   const defaults = defaultSettings();
   const legacyNormalized = normalizeLegacy(raw);
-  const merged = mergeDefaults(legacyNormalized, defaults);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const merged = mergeDefaults(legacyNormalized, defaults) as any;
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
@@ -235,13 +237,13 @@ export function normalizeSettings(raw: any) {
   return merged;
 }
 
-export function getChangedPaths(prev: any, next: any): string[] {
+export function getChangedPaths(prev: unknown, next: unknown): string[] {
   if (!prev) {
     return ["*"];
   }
   const changed: string[] = [];
 
-  const walk = (a: any, b: any, path: string) => {
+  const walk = (a: unknown, b: unknown, path: string) => {
     if (a === b) return;
     const aObj = isPlainObject(a);
     const bObj = isPlainObject(b);

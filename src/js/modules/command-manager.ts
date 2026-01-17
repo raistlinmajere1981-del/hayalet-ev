@@ -2,29 +2,63 @@ import { generateUniqueId } from "../constants/index.js";
 import { LogManager } from "./log-manager.js";
 import { getErrorMessage } from "../types/index.js";
 
+/** Attachment dosya bilgisi */
+interface CommandAttachment {
+  path: string;
+  name?: string;
+  type?: string;
+  size?: number;
+}
+
+/** Command meta bilgileri */
+interface CommandMeta {
+  source?: string;
+  priority?: number;
+  retryCount?: number;
+  [key: string]: unknown;
+}
+
+/** Deferred promise yapısı */
+interface DeferredPromise<T = unknown> {
+  resolve: (value: T) => void;
+  reject: (reason?: unknown) => void;
+  promise: Promise<T>;
+}
+
+/** Command job result */
+interface CommandResult {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+}
+
 interface CommandJob {
   id: string;
   provider: string;
   target?: string;
   command: string;
   message: string;
-  attachments: any[];
+  attachments: CommandAttachment[];
   sessionId: string | null;
-  meta: any;
-  payload: any;
+  meta: CommandMeta;
+  payload: Record<string, unknown>;
   createdAt: number;
   status: 'queued' | 'processing' | 'sent' | 'failed';
-  run: (() => Promise<any>) | null;
-  _deferred: any;
-  done: Promise<any> | null;
-  result?: any;
+  run: (() => Promise<CommandResult>) | null;
+  _deferred: DeferredPromise<CommandResult> | null;
+  done: Promise<CommandResult> | null;
+  result?: CommandResult;
 }
+
+/** Event listener tipi - esnek payload */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CommandEventListener = (payload: any) => void;
 
 class CommandManagerClass {
   queue: CommandJob[];
   processing: boolean;
-  executor: ((job: CommandJob) => Promise<any>) | null;
-  listeners: Record<string, ((...args: any[]) => void)[]>;
+  executor: ((job: CommandJob) => Promise<CommandResult>) | null;
+  listeners: Record<string, CommandEventListener[]>;
 
   constructor() {
     this.queue = [];
@@ -48,11 +82,11 @@ class CommandManagerClass {
     }
   }
 
-  setExecutor(fn: ((job: CommandJob) => Promise<any>) | null) {
+  setExecutor(fn: ((job: CommandJob) => Promise<CommandResult>) | null) {
     this.executor = typeof fn === "function" ? fn : null;
   }
 
-  on(event: string, listener: (...args: any[]) => void) {
+  on(event: string, listener: CommandEventListener) {
     if (!this.listeners[event]) this.listeners[event] = [];
     if (typeof listener === "function") {
       this.listeners[event].push(listener);
@@ -64,7 +98,7 @@ class CommandManagerClass {
     };
   }
 
-  emit(event: string, payload: any) {
+  emit(event: string, payload: CommandJob | CommandResult | unknown) {
     (this.listeners[event] || []).forEach((l) => {
       try {
         l(payload);
@@ -74,13 +108,14 @@ class CommandManagerClass {
     });
   }
 
-  defer() {
-    let resolve, reject;
-    const promise = new Promise((res, rej) => {
+  defer(): DeferredPromise<CommandResult> {
+    let resolve: ((value: CommandResult) => void) | undefined;
+    let reject: ((reason?: unknown) => void) | undefined;
+    const promise = new Promise<CommandResult>((res, rej) => {
       resolve = res;
       reject = rej;
     });
-    return { promise, resolve, reject };
+    return { promise, resolve: resolve!, reject: reject! };
   }
 
   /**
@@ -104,7 +139,7 @@ class CommandManagerClass {
     }
   }
 
-  enqueue(items: any[] = []) {
+  enqueue(items: Partial<CommandJob>[] = []) {
     const list = Array.isArray(items) ? items : [items];
     const jobs = list.map((item) => this.addJob(item));
     this.processNext();
@@ -117,17 +152,17 @@ class CommandManagerClass {
    */
   addJob(item: Partial<CommandJob> & { target?: string } = {}) {
     const deferred = this.defer();
-    /** @type {CommandJob} */
-    const job = {
+    const payloadObj = (item.payload || {}) as Record<string, unknown>;
+    const metaObj = (item.meta || {}) as CommandMeta;
+    const job: CommandJob = {
       id: item.id || generateUniqueId("cmd"),
       provider: item.provider || item.target || "default",
-      command:
-        item.command || item.payload?.command || item.meta?.command || "",
-      message: item.message || item.payload?.message || item.command || "",
+      command: String(item.command || payloadObj.command || metaObj.command || ""),
+      message: String(item.message || payloadObj.message || item.command || ""),
       attachments: item.attachments || [],
       sessionId: item.sessionId || null,
-      meta: item.meta || {},
-      payload: this.sanitizePayload(item.payload || {}),
+      meta: metaObj,
+      payload: this.sanitizePayload(payloadObj),
       createdAt: Date.now(),
       status: "queued" as const,
       run: item.run || null,
@@ -163,18 +198,18 @@ class CommandManagerClass {
         job.status = "sent";
         this.emit("sent", { job, result: res });
       } else {
-        job.result = null;
+        job.result = { success: true, message: "No executor" };
         job.status = "sent";
-        this.emit("sent", { job, result: null });
+        this.emit("sent", { job, result: job.result });
       }
       this.markDone(job.id);
-      job._deferred.resolve(job);
+      job._deferred?.resolve(job.result);
     } catch (err) {
       job.status = "failed";
       this.emit("failed", { job, error: err });
       const message = err instanceof Error ? err.message : "unknown error";
       this.markFailed(job.id, message);
-      job._deferred.reject(err);
+      job._deferred?.reject(err);
     } finally {
       this._cleanupJobReferences(job);
       

@@ -10,13 +10,43 @@
 
 import { LogManager } from "../log-manager.js";
 
+/** CoreEngine interface - relay'lerin ihtiyaç duyduğu metodlar */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CoreEngineRef = any;
+
+/** Relay session bilgisi - esnek yapı, alt sınıflar genişletebilir */
+interface RelaySession {
+  id: string;
+  startedAt?: number;
+  createdAt?: number;
+  sourceSlot?: string;
+  targetSlot?: string;
+  mode?: string;
+  type?: string;
+  providers?: string[];
+  state?: string;
+  lastTexts?: Record<string, string>;
+  forwardCount?: number;
+  protocolPayload?: unknown;
+  attachments?: unknown[];
+  [key: string]: unknown;
+}
+
+/** Sync result interface */
+interface SyncResult {
+  success?: boolean;
+  messages?: Array<{ role?: string; text?: string; [key: string]: unknown }>;
+  count?: number;
+  [key: string]: unknown;
+}
+
 export class BaseRelay {
-  coreEngine: any;
+  coreEngine: CoreEngineRef;
   _active: boolean;
-  _session: any;
+  _session: RelaySession | null;
   _forwardCount: number;
 
-  constructor(coreEngine: any) {
+  constructor(coreEngine: CoreEngineRef) {
     this.coreEngine = coreEngine;
     this._active = false;
     this._session = null;
@@ -70,7 +100,7 @@ export class BaseRelay {
    * @param {string} _provider - AI slot (ai1 veya ai2)
    * @param {Object} _syncResult - Conversation sync sonucu
    */
-  async handleThinkingComplete(_provider: string, _syncResult: any) {
+  async handleThinkingComplete(_provider: string, _syncResult: SyncResult) {
     throw new Error("handleThinkingComplete() must be implemented by subclass");
   }
 

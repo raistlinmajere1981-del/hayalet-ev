@@ -78,11 +78,12 @@ export class AIAIRelay extends BaseRelay {
       
       this._providers = [...providers];
       this._active = true;
-      this._lastTexts = this._session.lastTexts;
+      this._lastTexts = this._session?.lastTexts || {};
 
       const first = providers[0];
-      const message = this._session.protocolPayload.message || "";
-      const attachments = this._session.attachments || [];
+      const protocolPayload = this._session?.protocolPayload as Record<string, unknown> | undefined;
+      const message = String(protocolPayload?.message || "");
+      const attachments = (this._session?.attachments || []) as unknown[];
 
       this._log("info", `Protocol session ${id}: sending to ${first}`);
 
@@ -90,7 +91,7 @@ export class AIAIRelay extends BaseRelay {
         targets: [first],
         text: message,
         page: "protocol-relay",
-        attachments,
+        attachments: attachments as string[],
       });
 
       this._log("info", `Protocol session ${id}: sent to ${first}`);
@@ -164,6 +165,8 @@ export class AIAIRelay extends BaseRelay {
    */
   async _handleProtocolFlow(provider: string, text: string) {
     const s = this._session;
+    if (!s || !s.providers || !s.lastTexts) return;
+    
     const [ai1, ai2] = s.providers;
 
     if (s.state === "sent-to-ai1" && provider === ai1) {
@@ -172,7 +175,8 @@ export class AIAIRelay extends BaseRelay {
 
       this._log("info", `Protocol session ${s.id}: ${ai1} replied`, { excerpt: text.slice(0, 200) });
 
-      const baseMsg = s.protocolPayload?.message || "";
+      const protocolPayload = s.protocolPayload as Record<string, unknown> | undefined;
+      const baseMsg = String(protocolPayload?.message || "");
       const forwardText = `${baseMsg}\n\n[${ai1}]: ${text}`;
       s.state = "sent-to-ai2";
 
@@ -181,7 +185,7 @@ export class AIAIRelay extends BaseRelay {
           targets: [ai2],
           text: forwardText,
           page: "protocol-relay",
-          attachments: s.attachments,
+          attachments: (s.attachments || []) as string[],
         });
         this._log("info", `Protocol session ${s.id}: forwarded ${ai1} -> ${ai2}`);
       } catch (e) {

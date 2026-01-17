@@ -30,12 +30,21 @@ function setByPath(obj: Record<string, unknown>, path: string, value: unknown): 
   return obj;
 }
 
+/** Settings broadcast interface */
+interface SettingsBroadcast {
+  on: (callback: (msg: unknown) => void) => () => void;
+  post: (msg: unknown) => void;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SettingsData = any;
+
 class SettingsManagerClass {
-  _settings: any;
+  _settings: SettingsData;
   _loaded: boolean;
   _emitter: Emitter;
-  _lastSaved: any;
-  _broadcast: any;
+  _lastSaved: SettingsData;
+  _broadcast: SettingsBroadcast;
   _stopBroadcast: () => void;
 
   constructor() {
@@ -44,7 +53,8 @@ class SettingsManagerClass {
     this._emitter = new Emitter();
     this._lastSaved = defaultSettings();
     this._broadcast = createSettingsBroadcast("hayalet-settings");
-    this._stopBroadcast = this._broadcast.on((msg: any) => {
+    this._stopBroadcast = this._broadcast.on((data) => {
+      const msg = data as { type?: string; payload?: unknown };
       if (!msg || msg.type !== "settings-changed") {
         return;
       }
