@@ -23,7 +23,7 @@ import serverTemplate from "../pages/server.html?raw";
 import archivesTemplate from "../pages/archives.html?raw";
 import asistanTemplate from "../pages/asistan.html?raw";
 
-let currentPage = null;
+let currentPage: string | null = null;
 /**
  * @type {Object.<string, any>}
  */
@@ -36,7 +36,7 @@ function ensureElectronApiFallback() {
    * @param {Response} resp
    * @returns {Promise<string|null>}
    */
-  const toBase64 = async (resp) => {
+  const toBase64 = async (resp: Response): Promise<string | null> => {
     try {
       const buf = await resp.arrayBuffer();
       let binary = "";
@@ -58,7 +58,7 @@ function ensureElectronApiFallback() {
         return null;
       }
     },
-    saveSettings: async (settings) => {
+    saveSettings: async (settings: unknown) => {
       try {
         localStorage.setItem(storageKey, JSON.stringify(settings));
         return true;
@@ -67,7 +67,7 @@ function ensureElectronApiFallback() {
       }
     },
 
-    readFile: async (path) => {
+    readFile: async (path: string): Promise<string | null> => {
       try {
         const resp = await fetch(path);
         if (!resp.ok) return null;
@@ -77,7 +77,7 @@ function ensureElectronApiFallback() {
         return null;
       }
     },
-    readFilesMulti: (paths) => {
+    readFilesMulti: (paths: string[]) => {
       return Promise.all(
         paths.map(async (p) => ({
           path: p,
@@ -88,7 +88,7 @@ function ensureElectronApiFallback() {
 
     openPath: async (_path: string) => ({ success: true }),
 
-    appendLog: async (payload) => {
+    appendLog: async (payload: unknown) => {
       console.debug("[appendLog]", payload);
     },
 
@@ -96,10 +96,10 @@ function ensureElectronApiFallback() {
       success: true,
       paths: { commands: "commands" },
     }),
-    fmTempPath: async (prefix, ext) => ({
+    fmTempPath: async (prefix: string, ext: string) => ({
       path: `${prefix}-${Date.now()}.${ext}`,
     }),
-    fmWriteFileAtomic: async (payload) => ({
+    fmWriteFileAtomic: async (payload: { path: string }) => ({
       success: true,
       path: payload.path,
     }),
@@ -107,13 +107,13 @@ function ensureElectronApiFallback() {
     commandInit: async () => ({ success: true }),
     commandWrite: async () => ({ success: true }),
     commandMove: async () => ({ success: true }),
-    commandStageAttachments: async (payload) => ({
+    commandStageAttachments: async (payload: { files?: string[] }) => ({
       success: true,
-      staged: (payload.files || []).map((p) => ({
+      staged: (payload.files || []).map((p: string) => ({
         name: getFilename(p),
         path: p,
       })),
-      temp: [],
+      temp: [] as string[],
       commandDir: "commands",
     }),
     commandArchiveCopy: async () => ({ success: true }),
@@ -121,30 +121,30 @@ function ensureElectronApiFallback() {
     },
     commandMoveFailed: async () => ({ success: true }),
 
-    whisperLoad: async (_params) => ({ pending: [], done: [] }),
-    whisperSave: async (_params) => ({ success: true }),
+    whisperLoad: async (_params: unknown) => ({ pending: [] as unknown[], done: [] as unknown[] }),
+    whisperSave: async (_params: unknown) => ({ success: true }),
 
-    getPreloadPath: async () => "",
-    showOpenDialog: async () => null,
-    copyToAssets: async (p) => ({ path: String(p) }),
-    capturePage: async () => ({ success: false }),
-    screenshotCapture: async () => ({ success: false }),
-    windowMinimize: () => {
+    getPreloadPath: async (): Promise<string> => "",
+    showOpenDialog: async (): Promise<null> => null,
+    copyToAssets: async (p: string) => ({ path: String(p) }),
+    capturePage: async (): Promise<{ success: boolean }> => ({ success: false }),
+    screenshotCapture: async (): Promise<{ success: boolean }> => ({ success: false }),
+    windowMinimize: (): void => {
     },
-    windowToggleFullscreen: () => {
+    windowToggleFullscreen: (): void => {
     },
-    windowClose: () => {
+    windowClose: (): void => {
     },
-    appRestart: () => {
+    appRestart: (): void => {
     },
-    generateTree: async () => ({ success: false }),
-    fetchUrl: async () => null,
-    catboxUpload: async () => null,
-    uguuUpload: async () => null,
-    googledriveUpload: async () => null,
-    googledriveStartAuth: async () => null,
-    googledriveExchangeCode: async () => null,
-    googledriveDisconnect: async () => null,
+    generateTree: async (): Promise<{ success: boolean }> => ({ success: false }),
+    fetchUrl: async (): Promise<null> => null,
+    catboxUpload: async (): Promise<null> => null,
+    uguuUpload: async (): Promise<null> => null,
+    googledriveUpload: async (): Promise<null> => null,
+    googledriveStartAuth: async (): Promise<null> => null,
+    googledriveExchangeCode: async (): Promise<null> => null,
+    googledriveDisconnect: async (): Promise<null> => null,
   };
 }
 
@@ -238,7 +238,7 @@ async function initApp() {
   LogManager.addEvent("system", "info", "Uygulama başlatıldı");
 }
 
-export async function waitForDomReady(webview) {
+export async function waitForDomReady(webview: HTMLElement & { isLoading?: () => boolean }) {
   if (!webview) return;
   try {
     if (typeof webview.isLoading === "function" && !webview.isLoading()) return;
@@ -272,7 +272,7 @@ function setupNavigation() {
 /**
  * @param {string} pageName
  */
-function showPage(pageName) {
+function showPage(pageName: string) {
   const previousPage = currentPage;
   if (
     previousPage &&
@@ -358,14 +358,14 @@ function setActiveNavigation(pageName: string) {
     asistan: document.getElementById("asistan-btn"),
   };
   Object.values(iconMap).forEach((btn) => btn?.classList.remove("active"));
-  const activeIcon = iconMap[pageName];
+  const activeIcon = iconMap[pageName as keyof typeof iconMap];
   if (activeIcon) {
     activeIcon.classList.add("active");
   }
 }
 
 async function updateIndicatorAvatars() {
-  const getAvatar = (provider) => AppState.getAvatar(provider);
+  const getAvatar = (provider: string) => AppState.getAvatar(provider);
 
   const map = {
     ai0: {
@@ -395,7 +395,7 @@ async function updateIndicatorAvatars() {
    * @param {string | undefined} filePath
    * @returns {Promise<string | null>}
    */
-  const buildDataUrl = async (filePath) => {
+  const buildDataUrl = async (filePath: string | undefined): Promise<string | null> => {
     if (!filePath || !window.electronAPI?.readFile) return null;
     try {
       const data = await window.electronAPI.readFile(filePath);
@@ -413,7 +413,7 @@ async function updateIndicatorAvatars() {
    * @param {string | null} src
    * @param {boolean} connected
    */
-  const applyAvatar = (el, src, slotState) => {
+  const applyAvatar = (el: HTMLElement | null, src: string | null, slotState: "empty" | "disconnected" | "connected") => {
     if (!el) return;
     if (src) {
       el.style.backgroundImage = `url('${src}')`;
@@ -425,7 +425,7 @@ async function updateIndicatorAvatars() {
       el.textContent = "";
     }
 
-    const cluster = el.closest(".indicator-cluster");
+    const cluster = el.closest(".indicator-cluster") as HTMLElement | null;
     if (!cluster) return;
 
     if (slotState === "empty") {
@@ -446,8 +446,7 @@ async function updateIndicatorAvatars() {
   Object.entries(map).forEach(([provider, { el, path, isAsistan }]) => {
     if (!el) return;
 
-    /** @type {"empty"|"disconnected"|"connected"} */
-    let slotState = "empty";
+    let slotState: "empty" | "disconnected" | "connected" = "empty";
 
     const settings = SettingsManager.getSnapshot();
     
