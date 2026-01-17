@@ -67,6 +67,7 @@ import {
 } from "./console-logger.ts";
 import { SessionManager } from "./session-manager.ts";
 import { MetaCommandManager } from "./meta-command-manager.ts";
+import type { LogQueryParams } from "./types/index.ts";
 
 // Handler Setup Imports
 import { setupFsHandlers } from "./handlers/ipc-fs.ts";
@@ -105,8 +106,8 @@ app.whenReady().then(async () => {
     // Startup cache temizliği (login bilgileri korunur)
     try {
       await SessionManager.clearStartupCache();
-    } catch (e) {
-      console.warn("Startup cache temizliği başarısız:", e?.message);
+    } catch (e: unknown) {
+      console.warn("Startup cache temizliği başarısız:", (e as Error)?.message);
     }
 
     mainWindow = await createAppWindow({ __dirname });
@@ -135,7 +136,7 @@ app.whenReady().then(async () => {
     } catch (e) {
       console.error("Tray icon path hatası:", e);
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("CRITICAL: createAppWindow failed:", err);
     process.exit(1);
   }
@@ -163,7 +164,7 @@ async function performCleanup() {
   try {
     await OpenCodeManager.cleanup();
     console.log("[MAIN] OpenCode server kapatıldı");
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[MAIN] OpenCode cleanup failed:", err);
   }
 
@@ -172,7 +173,7 @@ async function performCleanup() {
     // writeSessionSummary(totalLogs, errorCount, warnCount, chunkIndex, endReason)
     await writeSessionSummary(0, 0, 0, 0, "normal");
     console.log("[MAIN] Session summary yazıldı");
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("[MAIN] Failed to write session summary:", err);
   }
 }
@@ -214,8 +215,10 @@ if (process.platform !== "win32") {
 registerHandler("device-action", deviceActionHandler);
 
 registerHandler("show-message-box", async (_event, options: Electron.MessageBoxOptions) => {
-  const win = mainWindow || null;
-  return await dialog.showMessageBox(win, options);
+  if (!mainWindow) {
+    return { response: 0, checkboxChecked: false };
+  }
+  return await dialog.showMessageBox(mainWindow, options);
 });
 
 registerHandler("fm-write-file-atomic", fmWriteFileAtomic);
@@ -234,7 +237,7 @@ registerHandler("googledrive-start-auth", async (event) => {
         return { ...result, success: false, message: "Güvenilmeyen URL: " + urlObj.hostname };
       }
       await shell.openExternal(result.authUrl);
-    } catch (err) {
+    } catch (err: unknown) {
       return { ...result, message: "Tarayıcı açılamadı: " + ((err as Error)?.message || "hata") };
     }
   }
@@ -337,7 +340,7 @@ registerHandler(
   "read-all-logs",
   async (_event, targetSessionId: string | null = null) => await readAllLogs(targetSessionId)
 );
-registerHandler("query-logs", async (event, query = {}) => await queryLogs(query));
+registerHandler("query-logs", async (_event, query: LogQueryParams = {}) => await queryLogs(query));
 registerHandler("list-sessions", async () => await listSessions());
 
 registerHandler("get-app-state", async () => getAppState());

@@ -36,7 +36,7 @@ export async function ensureScope(scope: string = "all"): Promise<ResultBase> {
       resolved[key] = p;
     }
     return { success: true, ...resolved };
-  } catch (err) {
+  } catch (err: unknown) {
     return { success: false, message: (err as Error)?.message || String(err) };
   }
 }
@@ -63,8 +63,8 @@ export async function fmTempPath(
     await ensureDir(baseDir);
     const fullPath = join(baseDir, filename);
     return { success: true, path: fullPath };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -81,7 +81,7 @@ export async function fmEnsureDirs(_event: IpcMainInvokeEvent, scope: string = "
       resolved[key] = p;
     }
     return { success: true, ...resolved };
-  } catch (err) {
+  } catch (err: unknown) {
     return { success: false, message: (err as Error)?.message || String(err) };
   }
 }
@@ -100,8 +100,8 @@ export async function fmWriteFileAtomic(_event: IpcMainInvokeEvent, payload: { p
     await writeFile(tmpPath, buffer);
     await rename(tmpPath, targetPath);
     return { success: true, path: targetPath };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -110,7 +110,7 @@ export async function readFileAsBase64(_event: IpcMainInvokeEvent, filePath: str
     if (!filePath || !existsSync(filePath)) return null;
     const buffer = await readFile(filePath);
     return buffer.toString("base64");
-  } catch (err) {
+  } catch (err: unknown) {
     return null;
   }
 }
@@ -168,8 +168,8 @@ export async function copyToAssets(_event: IpcMainInvokeEvent, srcPath: string, 
     const destPath = join(assetsDir, candidate);
     await copyFile(srcPath, destPath);
     return { success: true, path: destPath, fileName: candidate };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -191,8 +191,8 @@ export async function copyFileTo(_event: IpcMainInvokeEvent, srcPath: string, de
     const target = join(destDir, candidate);
     await copyFile(srcPath, target);
     return { success: true, path: target, name: candidate };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -205,8 +205,8 @@ export async function deleteAsset(_event: IpcMainInvokeEvent, assetPath: string)
     }
     await rm(target, { force: true });
     return { success: true };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -253,7 +253,7 @@ export async function generateTree(
           }
         }
         return lines;
-      } catch (err) {
+      } catch (err: unknown) {
         return [];
       }
     };
@@ -273,8 +273,8 @@ export async function generateTree(
       fileName: `tree-${timestamp}.txt`,
       lines: lines.length,
     };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
 
@@ -285,7 +285,7 @@ export async function openPath(targetPath: string): Promise<ResultBase> {
     const res = await shell.openPath(absolutePath);
     if (res) throw new Error(res);
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     return { success: false, message: (error as Error).message };
   }
 }

@@ -106,10 +106,10 @@ export const OpenCodeManager = {
       this._notifyListeners();
       
       return { success: true, url };
-    } catch (error) {
-      this._state.error = error.message;
-      console.log("[OPENCODE]", "error", "Server başlatılamadı", { error: error.message });
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      this._state.error = (error as Error).message;
+      console.log("[OPENCODE]", "error", "Server başlatılamadı", { error: (error as Error).message });
+      return { success: false, error: (error as Error).message };
     }
   },
 
@@ -130,9 +130,9 @@ export const OpenCodeManager = {
       console.log("[OPENCODE]", "info", "Server durduruldu");
       this._notifyListeners();
       return { success: true };
-    } catch (error) {
-      console.log("[OPENCODE]", "error", "Server durdurulamadı", { error: error.message });
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      console.log("[OPENCODE]", "error", "Server durdurulamadı", { error: (error as Error).message });
+      return { success: false, error: (error as Error).message };
     }
   },
 
@@ -190,7 +190,7 @@ export const OpenCodeManager = {
         detached: false,
       });
 
-      this._state.pid = this._process.pid;
+      this._state.pid = this._process.pid ?? null;
 
       // Stdout log
       this._process.stdout?.on("data", (data) => {
@@ -217,8 +217,8 @@ export const OpenCodeManager = {
 
       // Hata durumunda
       this._process.on("error", (err) => {
-        console.log("[OPENCODE]", "error", "Process hatası", { error: err.message });
-        this._state.error = err.message;
+        console.log("[OPENCODE]", "error", "Process hatası", { error: (err as Error).message });
+        this._state.error = (err as Error).message;
         reject(err);
       });
 
@@ -247,7 +247,7 @@ export const OpenCodeManager = {
         // Status 200, 404, 405 vb. olabilir - önemli olan yanıt vermesi
         console.log("[OPENCODE]", "debug", "Server yanıt verdi", { status: response.status });
         return;
-      } catch (err) {
+      } catch (err: unknown) {
         // Connection refused veya timeout - henüz hazır değil
         console.log("[OPENCODE]", "debug", "Server henüz hazır değil, bekleniyor...");
       }
@@ -341,8 +341,8 @@ export const OpenCodeManager = {
     this._statusListeners.forEach(cb => {
       try {
         cb(state);
-      } catch (err) {
-        console.log("[OPENCODE]", "error", "Status listener hatası", { error: err.message });
+      } catch (err: unknown) {
+        console.log("[OPENCODE]", "error", "Status listener hatası", { error: (err as Error).message });
       }
     });
   },

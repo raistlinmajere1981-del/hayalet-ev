@@ -20,7 +20,7 @@ async function appendLogLine(line: string): Promise<void> {
     }
     const path = join(baseDir, 'server-commands.log');
     await appendFile(path, line + '\n', 'utf-8');
-  } catch (err) {
+  } catch (err: unknown) {
   }
 }
 
@@ -111,12 +111,12 @@ handlers.whispermanager = async (payload: CommandPayload = {}) => {
     const pending = Array.isArray(current?.pending) ? current.pending : [];
     const rec = { user, text, when, ts: Date.now() };
     pending.push(rec);
-    const saveRes = await whisperSave(null, { accountId: provider, payload: { pending, done: current?.done || [] } });
+    const saveRes = await whisperSave(null as unknown as IpcMainInvokeEvent, { accountId: provider, payload: { pending, done: current?.done || [] } });
     await appendLogLine(`[${stamp}] WhisperManager added for ${provider}: ${argsLabel}`);
     return { success: !!saveRes?.success, command: 'WhisperManager', args: argsLabel, record: rec };
-  } catch (err) {
-    await appendLogLine(`[${stamp}] WhisperManager error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'WhisperManager error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${stamp}] WhisperManager error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'WhisperManager error' };
   }
 };
 
@@ -125,12 +125,12 @@ handlers.devicemanager = async (payload: CommandPayload = {}) => {
     const parts = parseArgs(payload?.args || '');
     const action = (parts[0] || '').toLowerCase();
     const params = parts.slice(1);
-    const res = await deviceActionHandler(null, action, params);
+    const res = await deviceActionHandler(null as unknown as IpcMainInvokeEvent, action, params);
     await appendLogLine(`[${nowStamp()}] DeviceManager ${action} -> ${JSON.stringify(res)}`);
     return { success: !!res?.success, result: res };
-  } catch (err) {
-    await appendLogLine(`[${nowStamp()}] DeviceManager error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'DeviceManager error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${nowStamp()}] DeviceManager error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'DeviceManager error' };
   }
 };
 
@@ -146,9 +146,9 @@ handlers.screenshotmanager = async (payload: CommandPayload = {}) => {
       return { success: true, path: res.path || null, dataUrl: res.dataUrl || null };
     }
     return { success: false, message: res?.message || 'screenshot failed' };
-  } catch (err) {
-    await appendLogLine(`[${nowStamp()}] ScreenshotManager error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'ScreenshotManager error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${nowStamp()}] ScreenshotManager error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'ScreenshotManager error' };
   }
 };
 
@@ -171,9 +171,9 @@ handlers.windowmanager = async (payload: CommandPayload = {}) => {
     }
     await appendLogLine(`[${nowStamp()}] WindowManager action=${action} -> ${result}`);
     return { success: !!result, action, executed: result };
-  } catch (err) {
-    await appendLogLine(`[${nowStamp()}] WindowManager error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'WindowManager error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${nowStamp()}] WindowManager error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'WindowManager error' };
   }
 };
 
@@ -181,9 +181,9 @@ handlers.restart = async (_payload: CommandPayload = {}) => {
   try {
     await appendLogLine(`[${nowStamp()}] Restart requested`);
     return { success: true, message: 'restart requested' };
-  } catch (err) {
-    await appendLogLine(`[${nowStamp()}] Restart error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'Restart error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${nowStamp()}] Restart error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'Restart error' };
   }
 };
 
@@ -192,9 +192,9 @@ handlers.listfiles = async (_payload: CommandPayload = {}) => {
     if (!_mainWindow) return { success: false, message: 'no-main-window' };
     const baseDir = process.cwd();
     return { success: true, command: 'ListFiles', path: baseDir, fileName: 'root', lines: 0 };
-  } catch (err) {
-    await appendLogLine(`[${nowStamp()}] ListFiles error: ${err?.message || err}`);
-    return { success: false, message: err?.message || 'ListFiles error' };
+  } catch (err: unknown) {
+    await appendLogLine(`[${nowStamp()}] ListFiles error: ${(err as Error)?.message || err}`);
+    return { success: false, message: (err as Error)?.message || 'ListFiles error' };
   }
 };
 

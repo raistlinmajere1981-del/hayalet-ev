@@ -46,6 +46,10 @@ export async function appendLog(
       sessionDir = join(logDir, sessionId);
     }
     
+    if (!sessionDir) {
+      return { success: false, message: 'Session dizini bulunamadı' };
+    }
+    
     if (!existsSync(sessionDir)) {
       await mkdir(sessionDir, { recursive: true });
     }

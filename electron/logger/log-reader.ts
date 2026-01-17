@@ -37,8 +37,8 @@ export async function readConsoleLogs(tail: number = 100): Promise<string> {
     }
     
     return allLines.slice(-tail).join("\n");
-  } catch (err) {
-    return `Failed to read logs: ${err.message}`;
+  } catch (err: unknown) {
+    return `Failed to read logs: ${(err as Error).message}`;
   }
 }
 
@@ -55,8 +55,8 @@ export async function readErrorLogs(tail: number = 100): Promise<string> {
     const content = await readFile(errorLog, "utf-8");
     const lines = content.split("\n").filter(l => l.trim());
     return lines.slice(-tail).join("\n");
-  } catch (err) {
-    return `Failed to read error logs: ${err.message}`;
+  } catch (err: unknown) {
+    return `Failed to read error logs: ${(err as Error).message}`;
   }
 }
 
@@ -89,7 +89,7 @@ export async function readAllLogs(targetSessionId: string | null = null): Promis
   };
   
   try {
-    if (!existsSync(sessionDir)) {
+    if (!sessionDir || !existsSync(sessionDir)) {
       return { ...result, error: "Session not found" };
     }
     
@@ -132,8 +132,8 @@ export async function readAllLogs(targetSessionId: string | null = null): Promis
     if (existsSync(summaryPath)) {
       result.summary = JSON.parse(await readFile(summaryPath, "utf-8"));
     }
-  } catch (err) {
-    result.error = `Failed to read logs: ${err.message}`;
+  } catch (err: unknown) {
+    result.error = `Failed to read logs: ${(err as Error).message}`;
   }
   
   return result;
@@ -193,8 +193,8 @@ export async function queryLogs(query: LogQueryParams = {}): Promise<string[]> {
     }
     
     return filtered.slice(-tail);
-  } catch (err) {
-    return [`Query error: ${err.message}`];
+  } catch (err: unknown) {
+    return [`Query error: ${(err as Error).message}`];
   }
 }
 

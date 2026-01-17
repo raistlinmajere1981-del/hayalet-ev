@@ -57,7 +57,7 @@ export async function ensureSessionDir(): Promise<void> {
     await mkdir(SESSION_DIR!, { recursive: true });
 
     const meta: SessionMeta = {
-      sessionId: SESSION_ID,
+      sessionId: SESSION_ID!,
       startTime: new Date().toISOString(),
       platform: process.platform,
       nodeVersion: process.version,
@@ -114,15 +114,15 @@ export async function writeSessionSummary(
 export async function listSessions(): Promise<SessionListItem[]> {
   try {
     if (!LOG_DIR) initLogSystem();
-    if (!existsSync(LOG_DIR)) return [];
+    if (!LOG_DIR || !existsSync(LOG_DIR)) return [];
     
     const entries = await readdir(LOG_DIR, { withFileTypes: true });
     const sessions = [];
     
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        const metaPath = join(LOG_DIR, entry.name, "meta.json");
-        const summaryPath = join(LOG_DIR, entry.name, "summary.json");
+        const metaPath = join(LOG_DIR!, entry.name, "meta.json");
+        const summaryPath = join(LOG_DIR!, entry.name, "summary.json");
         
         let meta = null;
         let summary = null;
@@ -165,10 +165,10 @@ export async function listSessions(): Promise<SessionListItem[]> {
 export async function clearLogs(targetSessionId: string | null = null): Promise<void> {
   try {
     const sessionDir = targetSessionId 
-      ? join(LOG_DIR, targetSessionId) 
+      ? (LOG_DIR ? join(LOG_DIR, targetSessionId) : null)
       : SESSION_DIR;
     
-    if (existsSync(sessionDir)) {
+    if (sessionDir && existsSync(sessionDir)) {
       await rm(sessionDir, { recursive: true, force: true });
     }
   } catch (err) {

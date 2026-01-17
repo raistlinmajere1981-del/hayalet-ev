@@ -116,9 +116,9 @@ export function applySchema(db: Database.Database): void {
   // FTS5 tablosunu oluştur
   try {
     db.exec(CREATE_FTS_SQL);
-  } catch (err) {
+  } catch (err: unknown) {
     // FTS5 desteklenmiyorsa devam et (bazı sistemlerde olmayabilir)
-    console.warn("[DB] FTS5 oluşturulamadı (desteklenmiyor olabilir):", err.message);
+    console.warn("[DB] FTS5 oluşturulamadı (desteklenmiyor olabilir):", (err as Error).message);
   }
   
   // Schema version kaydet

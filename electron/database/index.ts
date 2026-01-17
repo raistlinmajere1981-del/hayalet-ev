@@ -147,9 +147,9 @@ export const DatabaseManager = {
       console.log(`[DB] ${isNew ? "Oluşturuldu" : "Açıldı"}: ${dbPath}`);
 
       return { success: true, created: isNew };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] initAccount hatası:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   },
 
@@ -201,7 +201,7 @@ export const DatabaseManager = {
         folder: path.join(attachmentsBase, row.id),
         label: row.title || "İsimsiz Konuşma",
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] getConversations hatası:", err);
       return [];
     }
@@ -234,7 +234,7 @@ export const DatabaseManager = {
         domId: row.dom_id,
         createdAt: row.created_at,
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] getMessages hatası:", err);
       return [];
     }
@@ -351,9 +351,9 @@ export const DatabaseManager = {
         added: newMessages.length,
         total: messageCount,
       };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] syncMessages hatası:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   },
 
@@ -430,9 +430,9 @@ export const DatabaseManager = {
         attachmentId,
         storedPath,
       };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] saveAttachment hatası:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as Error).message };
     }
   },
 
@@ -461,7 +461,7 @@ export const DatabaseManager = {
         size: row.size,
         createdAt: row.created_at,
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] getAttachments hatası:", err);
       return [];
     }
@@ -491,7 +491,7 @@ export const DatabaseManager = {
       conn.queries.deleteConversation.run(conversationId);
 
       return { success: true };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] deleteConversation hatası:", err);
       return { success: false, error: (err as Error).message };
     }
@@ -541,7 +541,7 @@ export const DatabaseManager = {
         snippet: row.snippet,
         createdAt: row.created_at,
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] searchMessages hatası:", err);
       return [];
     }
@@ -605,7 +605,7 @@ export const DatabaseManager = {
         size: row.size,
         createdAt: row.created_at,
       }));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] searchAttachments hatası:", err);
       return [];
     }
@@ -649,7 +649,7 @@ export const DatabaseManager = {
         messages: allMessages.slice(0, limit),
         attachments: allAttachments.slice(0, limit),
       };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] searchAllAccounts hatası:", err);
       return { messages: [], attachments: [] };
     }
@@ -694,7 +694,7 @@ export const DatabaseManager = {
       });
 
       return { success: true };
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] updateConversationDetails hatası:", err);
       return { success: false, error: (err as Error).message };
     }
@@ -708,7 +708,7 @@ export const DatabaseManager = {
       try {
         db.close();
         console.log(`[DB] Kapatıldı: ${key}`);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[DB] Kapatma hatası (${key}):`, err);
       }
     }
@@ -726,7 +726,7 @@ export const DatabaseManager = {
         conn.db.exec("ANALYZE");
         console.log(`[DB] Optimize edildi: ${accountId}`);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[DB] Optimize hatası:", err);
     }
   },

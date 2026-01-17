@@ -7,8 +7,10 @@ export function setupFsHandlers(mainWindow: BrowserWindow | null): void {
   registerHandler("fm-ensure-dirs", fmEnsureDirs);
   registerHandler("open-path", async (_event, path) => openPath(path as string));
 
-  registerHandler("show-open-dialog", async (event, options = {}) => {
-    const win = mainWindow || null;
-    return await dialog.showOpenDialog(win, options || {});
+  registerHandler("show-open-dialog", async (_event, options = {}) => {
+    if (!mainWindow) {
+      return { canceled: true, filePaths: [] };
+    }
+    return await dialog.showOpenDialog(mainWindow, options || {});
   });
 }

@@ -80,8 +80,8 @@ export async function googledriveStartAuth(
     });
     
     return { success: true, authUrl };
-  } catch (err) {
-    return { success: false, message: err?.message || "auth start failed" };
+  } catch (err: unknown) {
+    return { success: false, message: (err as Error)?.message || "auth start failed" };
   }
 }
 
@@ -124,7 +124,7 @@ export async function googledriveExchangeCode(
       const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
       const me = (await oauth2.userinfo.get()).data;
       accountEmail = me?.email || "";
-    } catch (err) {
+    } catch (err: unknown) {
     }
 
     settings.integrations.googledrive.connected = true;
@@ -132,12 +132,12 @@ export async function googledriveExchangeCode(
 
     try {
       await saveSettings(settings);
-    } catch (err) {
+    } catch (err: unknown) {
     }
 
     return { success: true, account: accountEmail };
-  } catch (err) {
-    return { success: false, message: err?.message || "exchange failed" };
+  } catch (err: unknown) {
+    return { success: false, message: (err as Error)?.message || "exchange failed" };
   }
 }
 
@@ -162,8 +162,8 @@ export async function googledriveDisconnect(
       }
     }
     return { success: true };
-  } catch (err) {
-    return { success: false, message: err?.message || "disconnect failed" };
+  } catch (err: unknown) {
+    return { success: false, message: (err as Error)?.message || "disconnect failed" };
   }
 }
 
@@ -226,17 +226,17 @@ export async function googledriveUpload(
             fileId,
             requestBody: { role: "reader", type: "anyone" },
           });
-        } catch (err) {
+        } catch (err: unknown) {
         }
         let url = "";
         if (isText)
           url = `https://docs.google.com/document/d/${fileId}/export?format=pdf`;
         else url = `https://drive.google.com/uc?export=view&id=${fileId}`;
         uploadedLinks.push({ name, url, id: fileId });
-      } catch (err) {
+      } catch (err: unknown) {
         errors.push({
           name: file?.name || "file",
-          message: err?.message || err,
+          message: (err as Error)?.message || err,
         });
       }
     }
@@ -247,7 +247,7 @@ export async function googledriveUpload(
       uploadedLinks,
       errors: errors.length ? errors : undefined,
     };
-  } catch (err) {
-    return { success: false, message: err?.message || "upload failed" };
+  } catch (err: unknown) {
+    return { success: false, message: (err as Error)?.message || "upload failed" };
   }
 }

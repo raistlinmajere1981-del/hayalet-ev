@@ -36,7 +36,7 @@ export async function whisperLoad(
     
     const data = await readFile(filePath, 'utf-8');
     return JSON.parse(data || '{"pending":[],"done":[]}');
-  } catch (error) {
+  } catch (error: unknown) {
     return { pending: [], done: [] };
   }
 }
@@ -62,7 +62,7 @@ export async function whisperSave(
     
     await writeFile(filePath, JSON.stringify(payload || { pending: [], done: [] }, null, 2), 'utf-8');
     return { success: true };
-  } catch (error) {
-    return { success: false, message: error.message };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
   }
 }
