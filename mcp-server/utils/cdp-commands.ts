@@ -5,15 +5,68 @@
  * yüksek seviye komutlar.
  */
 
+import WebSocket from "ws";
 import { withConnection, evaluateJS, sendCDPCommand } from "./cdp-connection.js";
+
+/** Click result */
+interface ClickResult {
+  success: boolean;
+  error?: string;
+  tagName?: string;
+  id?: string;
+  className?: string;
+  textContent?: string;
+}
+
+/** Element info */
+interface ElementInfo {
+  exists: boolean;
+  selector: string;
+  tagName?: string;
+  id?: string;
+  className?: string;
+  visible?: boolean;
+  bounds?: { x: number; y: number; width: number; height: number };
+  disabled?: boolean;
+  textContent?: string;
+}
+
+/** Element list item */
+interface ElementListItem {
+  index: number;
+  tagName: string;
+  id?: string;
+  className?: string;
+  textContent?: string;
+  visible: boolean;
+}
+
+/** Window info */
+interface WindowInfo {
+  title: string;
+  url: string;
+  innerWidth: number;
+  innerHeight: number;
+  outerWidth: number;
+  outerHeight: number;
+  devicePixelRatio: number;
+  scrollX: number;
+  scrollY: number;
+}
+
+/** Key modifiers */
+interface KeyModifiers {
+  ctrl?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+}
 
 /**
  * Selector ile element'e tıkla
- * @param {string} selector - CSS selector
- * @returns {Promise<Object>} Sonuç
  */
-export async function clickBySelector(selector) {
-  return withConnection(async (ws) => {
+export async function clickBySelector(selector: string): Promise<ClickResult> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const el = document.querySelector(${JSON.stringify(selector)});
@@ -22,18 +75,15 @@ export async function clickBySelector(selector) {
         return { success: true, tagName: el.tagName, id: el.id, className: el.className };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<ClickResult>;
   });
 }
 
 /**
  * Metin içeriğine göre element'e tıkla
- * @param {string} text - Aranacak metin
- * @param {string} tagName - Opsiyonel tag filtresi (button, a, div vb.)
- * @returns {Promise<Object>} Sonuç
  */
-export async function clickByText(text, tagName = "*") {
-  return withConnection(async (ws) => {
+export async function clickByText(text: string, tagName = "*"): Promise<ClickResult> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const xpath = "//${tagName}[contains(text(), ${JSON.stringify(text)})]";
@@ -44,19 +94,19 @@ export async function clickByText(text, tagName = "*") {
         return { success: true, tagName: el.tagName, textContent: el.textContent.substring(0, 50) };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<ClickResult>;
   });
 }
 
 /**
  * Input alanına değer yaz
- * @param {string} selector - CSS selector
- * @param {string} value - Yazılacak değer
- * @param {boolean} clear - Önce mevcut değeri temizle
- * @returns {Promise<Object>} Sonuç
  */
-export async function fillInput(selector, value, clear = true) {
-  return withConnection(async (ws) => {
+export async function fillInput(
+  selector: string, 
+  value: string, 
+  clear = true
+): Promise<{ success: boolean; error?: string; newValue?: string }> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const el = document.querySelector(${JSON.stringify(selector)});
@@ -72,17 +122,15 @@ export async function fillInput(selector, value, clear = true) {
         return { success: true, newValue: el.value };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<{ success: boolean; error?: string; newValue?: string }>;
   });
 }
 
 /**
  * Sayfa yapısını al (debug için)
- * @param {number} maxDepth - Maksimum derinlik
- * @returns {Promise<Object>} DOM yapısı
  */
-export async function getPageStructure(maxDepth = 3) {
-  return withConnection(async (ws) => {
+export async function getPageStructure(maxDepth = 3): Promise<Record<string, unknown>> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         function getStructure(el, depth, maxDepth) {
@@ -111,17 +159,15 @@ export async function getPageStructure(maxDepth = 3) {
         };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<Record<string, unknown>>;
   });
 }
 
 /**
  * Element'in varlığını kontrol et
- * @param {string} selector - CSS selector
- * @returns {Promise<Object>} Element bilgisi
  */
-export async function checkElement(selector) {
-  return withConnection(async (ws) => {
+export async function checkElement(selector: string): Promise<ElementInfo> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const el = document.querySelector(${JSON.stringify(selector)});
@@ -141,18 +187,15 @@ export async function checkElement(selector) {
         };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<ElementInfo>;
   });
 }
 
 /**
  * Tüm eşleşen elementleri bul
- * @param {string} selector - CSS selector
- * @param {number} limit - Maksimum sonuç sayısı
- * @returns {Promise<Array>} Element listesi
  */
-export async function findElements(selector, limit = 20) {
-  return withConnection(async (ws) => {
+export async function findElements(selector: string, limit = 20): Promise<ElementListItem[]> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const elements = Array.from(document.querySelectorAll(${JSON.stringify(selector)})).slice(0, ${limit});
@@ -166,32 +209,28 @@ export async function findElements(selector, limit = 20) {
         }));
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<ElementListItem[]>;
   });
 }
 
 /**
  * Screenshot al (CDP üzerinden)
- * @param {string} format - "png" veya "jpeg"
- * @param {number} quality - JPEG kalitesi (1-100)
- * @returns {Promise<string>} Base64 encoded image
  */
-export async function takeScreenshot(format = "png", quality = 80) {
-  return withConnection(async (ws) => {
+export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
+  return withConnection(async (ws: WebSocket) => {
     const result = await sendCDPCommand(ws, "Page.captureScreenshot", {
       format,
       quality: format === "jpeg" ? quality : undefined,
     });
-    return result.data; // Base64 encoded
+    return result.data as string; // Base64 encoded
   });
 }
 
 /**
  * Pencere boyutunu al
- * @returns {Promise<Object>} Pencere boyutları
  */
-export async function getWindowInfo() {
-  return withConnection(async (ws) => {
+export async function getWindowInfo(): Promise<WindowInfo> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         return {
@@ -207,37 +246,37 @@ export async function getWindowInfo() {
         };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<WindowInfo>;
   });
 }
 
 /**
  * Belirli bir konuma scroll yap
- * @param {number} x - X koordinatı
- * @param {number} y - Y koordinatı
- * @param {string} behavior - "smooth" veya "instant"
- * @returns {Promise<Object>} Yeni scroll pozisyonu
  */
-export async function scrollTo(x = 0, y = 0, behavior = "smooth") {
-  return withConnection(async (ws) => {
+export async function scrollTo(
+  x = 0, 
+  y = 0, 
+  behavior: "smooth" | "instant" = "smooth"
+): Promise<{ scrollX: number; scrollY: number }> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         window.scrollTo({ top: ${y}, left: ${x}, behavior: ${JSON.stringify(behavior)} });
         return { scrollX: window.scrollX, scrollY: window.scrollY };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<{ scrollX: number; scrollY: number }>;
   });
 }
 
 /**
  * Keyboard event gönder
- * @param {string} key - Tuş adı (Enter, Escape, Tab vb.)
- * @param {Object} modifiers - { ctrl, alt, shift, meta }
- * @returns {Promise<Object>} Sonuç
  */
-export async function pressKey(key, modifiers = {}) {
-  return withConnection(async (ws) => {
+export async function pressKey(
+  key: string, 
+  modifiers: KeyModifiers = {}
+): Promise<{ success: boolean; key: string; target?: string }> {
+  return withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const event = new KeyboardEvent("keydown", {
@@ -252,18 +291,15 @@ export async function pressKey(key, modifiers = {}) {
         return { success: true, key: ${JSON.stringify(key)}, target: document.activeElement?.tagName };
       })()
     `;
-    return evaluateJS(ws, script);
+    return evaluateJS(ws, script) as Promise<{ success: boolean; key: string; target?: string }>;
   });
 }
 
 /**
  * Arbitrary JavaScript çalıştır
- * @param {string} code - JavaScript kodu
- * @returns {Promise<any>} Çalıştırma sonucu
  */
-export async function executeScript(code) {
-  return withConnection(async (ws) => {
+export async function executeScript(code: string): Promise<unknown> {
+  return withConnection(async (ws: WebSocket) => {
     return evaluateJS(ws, code);
   });
 }
-

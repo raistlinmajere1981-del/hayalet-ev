@@ -6,12 +6,25 @@ import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 
+/** Log filter options */
+interface LogFilters {
+  source?: string;
+  level?: string;
+  contains?: string;
+  correlationId?: string;
+  tail?: number;
+}
+
+/** Session info result */
+interface SessionInfo {
+  meta: Record<string, unknown> | null;
+  summary: Record<string, unknown> | null;
+}
+
 /**
  * En son session'ı bul
- * @param {string} logDir - Log dizini
- * @returns {Promise<string|null>}
  */
-export async function findLatestSession(logDir) {
+export async function findLatestSession(logDir: string): Promise<string | null> {
   try {
     if (!existsSync(logDir)) return null;
     
@@ -30,12 +43,12 @@ export async function findLatestSession(logDir) {
 
 /**
  * Session loglarını oku
- * @param {string} logDir - Log dizini
- * @param {string} sessionId - Session ID
- * @param {string} type - console, error, structured
- * @returns {Promise<string>}
  */
-export async function readSessionLogs(logDir, sessionId, type = "console") {
+export async function readSessionLogs(
+  logDir: string, 
+  sessionId: string, 
+  type: "console" | "error" | "structured" = "console"
+): Promise<string> {
   const sessionDir = join(logDir, sessionId);
   
   if (!existsSync(sessionDir)) {
@@ -71,17 +84,15 @@ export async function readSessionLogs(logDir, sessionId, type = "console") {
     
     return content || "Console log dosyası bulunamadı";
   } catch (err) {
-    return `Log okuma hatası: ${err.message}`;
+    const error = err as Error;
+    return `Log okuma hatası: ${error.message}`;
   }
 }
 
 /**
  * Logları filtrele
- * @param {string} content - Log içeriği
- * @param {object} filters - Filtre parametreleri
- * @returns {string[]}
  */
-export function filterLogs(content, filters = {}) {
+export function filterLogs(content: string, filters: LogFilters = {}): string[] {
   const { source, level, contains, correlationId, tail = 50 } = filters;
   
   let lines = content.split("\n").filter(l => l.trim());
@@ -110,26 +121,24 @@ export function filterLogs(content, filters = {}) {
 
 /**
  * Session meta ve summary bilgilerini oku
- * @param {string} logDir - Log dizini
- * @param {string} sessionId - Session ID
- * @returns {Promise<{meta: object|null, summary: object|null}>}
  */
-export async function readSessionInfo(logDir, sessionId) {
+export async function readSessionInfo(logDir: string, sessionId: string): Promise<SessionInfo> {
   const sessionDir = join(logDir, sessionId);
   const metaPath = join(sessionDir, "meta.json");
   const summaryPath = join(sessionDir, "summary.json");
   
-  let meta = null;
-  let summary = null;
+  let meta: Record<string, unknown> | null = null;
+  let summary: Record<string, unknown> | null = null;
   
   try {
     if (existsSync(metaPath)) {
-      meta = JSON.parse(await readFile(metaPath, "utf-8"));
+      meta = JSON.parse(await readFile(metaPath, "utf-8")) as Record<string, unknown>;
     }
     if (existsSync(summaryPath)) {
-      summary = JSON.parse(await readFile(summaryPath, "utf-8"));
+      summary = JSON.parse(await readFile(summaryPath, "utf-8")) as Record<string, unknown>;
     }
   } catch {
+    // Ignore parse errors
   }
   
   return { meta, summary };

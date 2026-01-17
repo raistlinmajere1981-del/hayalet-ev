@@ -276,7 +276,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: TOOL_DEFINITIONS };
 });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> => {
   const { name, arguments: args } = request.params;
 
   try {
@@ -300,7 +301,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return await listLogSessions(LOG_DIR, args);
 
       case "get_error_hints":
-        return await getErrorHints(LOG_DIR, args);
+        return await getErrorHints(args || {});
 
       case "get_session_summary":
         return await getSessionSummary(LOG_DIR, args);
@@ -345,7 +346,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       default:
         throw new Error(`Bilinmeyen tool: ${name}`);
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -359,7 +360,8 @@ async function main() {
   console.error("Hayalet-ev MCP Server v1.3.0 başlatıldı (CDP desteği ile)");
 }
 
-main().catch((error) => {
+main().catch((err) => {
+  const error = err as Error;
   console.error("Server hatası:", error);
   process.exit(1);
 });

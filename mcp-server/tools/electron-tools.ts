@@ -7,13 +7,24 @@ import { promisify } from "util";
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import type { ToolResult } from "../types/index.js";
 
 const execAsync = promisify(exec);
+
+/** Plugin info */
+interface PluginInfo {
+  name: string;
+  version: string;
+  description: string;
+}
 
 /**
  * test_electron handler
  */
-export async function testElectron(projectRoot, args) {
+export async function testElectron(
+  projectRoot: string, 
+  args?: { timeout?: number }
+): Promise<ToolResult> {
   const timeout = args?.timeout || 5;
   
   try {
@@ -26,41 +37,56 @@ export async function testElectron(projectRoot, args) {
       content: [
         {
           type: "text",
-          text: `Electron test başlatıldı.\n\nÇıktı:\n${stdout}\n${stderr ? `Hatalar:\n${stderr}` : ""}`,
+          text: `Electron test sonucu:\n\nStdout:\n${stdout}\n\nStderr:\n${stderr}`,
         },
       ],
     };
-  } catch (error) {
+  } catch (err) {
+    const error = err as Error & { code?: string; killed?: boolean };
     if (error.killed) {
       return {
         content: [
           {
             type: "text",
-            text: `✅ Electron ${timeout} saniye çalıştı ve kapatıldı.`,
+            text: `✅ Electron ${timeout} saniye boyunca çalıştı (timeout ile durduruldu)`,
           },
         ],
       };
     }
-    throw error;
+    return {
+      content: [{ type: "text", text: `❌ Electron test hatası: ${error.message}` }],
+      isError: true,
+    };
   }
 }
 
 /**
  * list_plugins handler
  */
-export async function listPlugins(projectRoot) {
+export async function listPlugins(projectRoot: string): Promise<ToolResult> {
   const pluginsDir = join(projectRoot, "plugins");
+  const plugins: PluginInfo[] = [];
+  
+  if (!existsSync(pluginsDir)) {
+    return {
+      content: [{ type: "text", text: "Plugin dizini bulunamadı" }],
+    };
+  }
+  
   const dirs = await readdir(pluginsDir, { withFileTypes: true });
-  const plugins = [];
   
   for (const dir of dirs) {
     if (dir.isDirectory()) {
+      const manifestPath = join(pluginsDir, dir.name, ".claude-plugin", "plugin.json");
       try {
-        const manifestPath = join(pluginsDir, dir.name, ".claude-plugin", "plugin.json");
         if (existsSync(manifestPath)) {
-          const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+          const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
+            name?: string;
+            version?: string;
+            description?: string;
+          };
           plugins.push({
-            name: dir.name,
+            name: manifest.name || dir.name,
             version: manifest.version || "unknown",
             description: manifest.description || "No description",
           });

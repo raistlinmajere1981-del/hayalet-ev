@@ -7,18 +7,20 @@
     "types": ["node"],
     "noEmit": true,
     "skipLibCheck": true,
-    "checkJs": true,
-    "allowJs": true,
+    "checkJs": false,
+    "allowJs": false,
     "strict": false,
     "noImplicitAny": false,
     "strictNullChecks": false,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "declaration": true
   },
   "include": [
-    "index.js",
-    "tools/*.js",
-    "utils/*.js"
+    "index.ts",
+    "tools/*.ts",
+    "utils/*.ts",
+    "types/*.ts"
   ],
   "exclude": [
     "node_modules"

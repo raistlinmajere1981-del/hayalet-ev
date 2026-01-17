@@ -1,4 +1,10 @@
 /**
+ * CDP Tools - TypeScript
+ */
+
+import type { ToolResult } from "../types/index.js";
+
+/**
  * CDP (Chrome DevTools Protocol) MCP Tools
  * 
  * Electron uygulamasını uzaktan kontrol etmek için tool handler'lar.
@@ -26,7 +32,7 @@ import {
 /**
  * Electron bağlantı durumunu kontrol et
  */
-export async function checkElectronConnection() {
+export async function checkElectronConnection(): Promise<ToolResult> {
   try {
     const status = await checkConnection();
     
@@ -61,7 +67,7 @@ export async function checkElectronConnection() {
         }],
       };
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -72,8 +78,8 @@ export async function checkElectronConnection() {
 /**
  * Electron'a komut gönder (JavaScript çalıştır)
  */
-export async function sendCommandToElectron(args) {
-  const { command, description } = args;
+export async function sendCommandToElectron(args: Record<string, unknown> = {}): Promise<ToolResult> {
+  const { command, description } = args as { command?: string; description?: string };
   
   if (!command) {
     return {
@@ -96,7 +102,7 @@ ${JSON.stringify(result, null, 2)}
 \`\`\``,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Komut hatası: ${error.message}` }],
       isError: true,
@@ -107,8 +113,8 @@ ${JSON.stringify(result, null, 2)}
 /**
  * Electron penceresinin ekran görüntüsünü al
  */
-export async function takeCdpScreenshot(args) {
-  const { format = "png", quality = 80, savePath } = args;
+export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<ToolResult> {
+  const { format = "png", quality = 80, savePath } = args as { format?: string; quality?: number; savePath?: string };
   
   try {
     const base64Data = await takeScreenshot(format, quality);
@@ -138,7 +144,7 @@ export async function takeCdpScreenshot(args) {
 **Kullanım:** Dosyaya kaydetmek için \`savePath\` parametresi ekleyin.`,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Screenshot hatası: ${error.message}` }],
       isError: true,
@@ -149,7 +155,7 @@ export async function takeCdpScreenshot(args) {
 /**
  * Electron pencere bilgilerini al
  */
-export async function getElectronWindowInfo() {
+export async function getElectronWindowInfo(): Promise<ToolResult> {
   try {
     const info = await getWindowInfo();
     
@@ -166,7 +172,7 @@ export async function getElectronWindowInfo() {
 - **Scroll Pozisyonu:** (${info.scrollX}, ${info.scrollY})`,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -177,8 +183,8 @@ export async function getElectronWindowInfo() {
 /**
  * CSS selector ile elemente tıkla
  */
-export async function clickElementBySelector(args) {
-  const { selector } = args;
+export async function clickElementBySelector(args: Record<string, unknown>): Promise<ToolResult> {
+  const { selector } = args as { selector?: string };
   
   if (!selector) {
     return {
@@ -205,7 +211,7 @@ export async function clickElementBySelector(args) {
         isError: true,
       };
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Tıklama hatası: ${error.message}` }],
       isError: true,
@@ -216,8 +222,8 @@ export async function clickElementBySelector(args) {
 /**
  * Metin içeriğine göre elemente tıkla
  */
-export async function clickElementByText(args) {
-  const { text, tagName = "*" } = args;
+export async function clickElementByText(args: Record<string, unknown>): Promise<ToolResult> {
+  const { text, tagName = "*" } = args as { text?: string; tagName?: string };
   
   if (!text) {
     return {
@@ -245,7 +251,7 @@ export async function clickElementByText(args) {
         isError: true,
       };
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Tıklama hatası: ${error.message}` }],
       isError: true,
@@ -256,8 +262,8 @@ export async function clickElementByText(args) {
 /**
  * Input alanına değer yaz
  */
-export async function fillInputField(args) {
-  const { selector, value, clear = true } = args;
+export async function fillInputField(args: Record<string, unknown>): Promise<ToolResult> {
+  const { selector, value, clear = true } = args as { selector?: string; value?: string; clear?: boolean };
   
   if (!selector || value === undefined) {
     return {
@@ -284,7 +290,7 @@ export async function fillInputField(args) {
         isError: true,
       };
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Input hatası: ${error.message}` }],
       isError: true,
@@ -295,8 +301,8 @@ export async function fillInputField(args) {
 /**
  * Sayfa yapısını al (DOM tree)
  */
-export async function getPageDomStructure(args) {
-  const { maxDepth = 3 } = args;
+export async function getPageDomStructure(args: Record<string, unknown>): Promise<ToolResult> {
+  const { maxDepth = 3 } = args as { maxDepth?: number };
   
   try {
     const structure = await getPageStructure(maxDepth);
@@ -315,7 +321,7 @@ ${JSON.stringify(structure.body, null, 2)}
 \`\`\``,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -326,8 +332,8 @@ ${JSON.stringify(structure.body, null, 2)}
 /**
  * Element bul ve bilgilerini göster
  */
-export async function inspectElement(args) {
-  const { selector } = args;
+export async function inspectElement(args: Record<string, unknown>): Promise<ToolResult> {
+  const { selector } = args as { selector?: string };
   
   if (!selector) {
     return {
@@ -361,7 +367,7 @@ export async function inspectElement(args) {
         content: [{ type: "text", text: `❌ Element bulunamadı: \`${selector}\`` }],
       };
     }
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -372,8 +378,8 @@ export async function inspectElement(args) {
 /**
  * Birden fazla elementi bul
  */
-export async function queryElements(args) {
-  const { selector, limit = 20 } = args;
+export async function queryElements(args: Record<string, unknown>): Promise<ToolResult> {
+  const { selector, limit = 20 } = args as { selector?: string; limit?: number };
   
   if (!selector) {
     return {
@@ -405,7 +411,7 @@ export async function queryElements(args) {
 ${list}`,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
       isError: true,
@@ -416,8 +422,8 @@ ${list}`,
 /**
  * Klavye tuşu gönder
  */
-export async function sendKeyPress(args) {
-  const { key, ctrl = false, alt = false, shift = false, meta = false } = args;
+export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolResult> {
+  const { key, ctrl = false, alt = false, shift = false, meta = false } = args as { key?: string; ctrl?: boolean; alt?: boolean; shift?: boolean; meta?: boolean };
   
   if (!key) {
     return {
@@ -444,7 +450,7 @@ export async function sendKeyPress(args) {
 **Hedef element:** <${result.target?.toLowerCase() || "unknown"}>`,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Tuş hatası: ${error.message}` }],
       isError: true,
@@ -455,8 +461,8 @@ export async function sendKeyPress(args) {
 /**
  * Sayfada scroll yap
  */
-export async function scrollPage(args) {
-  const { x = 0, y = 0, behavior = "smooth" } = args;
+export async function scrollPage(args: Record<string, unknown>): Promise<ToolResult> {
+  const { x = 0, y = 0, behavior = "smooth" } = args as { x?: number; y?: number; behavior?: "smooth" | "instant" };
   
   try {
     const result = await scrollTo(x, y, behavior);
@@ -469,7 +475,7 @@ export async function scrollPage(args) {
 **Yeni pozisyon:** (${result.scrollX}, ${result.scrollY})`,
       }],
     };
-  } catch (error) {
+  } catch (err) { const error = err as Error;
     return {
       content: [{ type: "text", text: `❌ Scroll hatası: ${error.message}` }],
       isError: true,
