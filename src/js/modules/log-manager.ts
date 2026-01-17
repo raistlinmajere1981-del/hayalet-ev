@@ -8,14 +8,15 @@
 
 interface LogEntry {
   timestamp: string;
+  isoTimestamp?: string;
   source: string;
   type: string;
   message: string;
   sessionId: string | null;
   correlationId?: string | null;
-  context?: any;
-  meta?: any;
-  aiHint?: any;
+  context?: unknown;
+  meta?: Record<string, unknown>;
+  aiHint?: unknown;
 }
 
 class LogManagerClass {
@@ -93,7 +94,7 @@ class LogManagerClass {
    */
   generateSessionId() {
     const now = new Date();
-    const pad = (n) => n.toString().padStart(2, "0");
+    const pad = (n: number) => n.toString().padStart(2, "0");
     const day = pad(now.getDate());
     const month = pad(now.getMonth() + 1);
     const year = now.getFullYear();
@@ -121,7 +122,7 @@ class LogManagerClass {
    * @param {object} [initialContext] - Başlangıç bağlamı
    * @returns {string} Correlation ID
    */
-  startOperation(operationName, initialContext = {}) {
+  startOperation(operationName: string, initialContext: Record<string, unknown> = {}) {
     const correlationId = this.generateCorrelationId(operationName);
     
     this._activeOperations.set(correlationId, {
@@ -147,7 +148,7 @@ class LogManagerClass {
    * @param {'success' | 'error' | 'cancelled'} [status='success'] - Sonuç durumu
    * @param {object} [result] - Sonuç verisi
    */
-  endOperation(correlationId, status = 'success', result = null) {
+  endOperation(correlationId: string, status: 'success' | 'error' | 'cancelled' = 'success', result: unknown = null) {
     const operation = this._activeOperations.get(correlationId);
     if (!operation) return;
     
@@ -170,7 +171,7 @@ class LogManagerClass {
    * @param {string} message - Mesaj
    * @param {object | null} [meta=null] - Ek metadata
    */
-  addEvent(source, type, message, meta = null) {
+  addEvent(source: string, type: string, message: string, meta: Record<string, unknown> | null = null) {
     this.addEventInternal(source, type, message, meta, true);
   }
 
@@ -182,7 +183,7 @@ class LogManagerClass {
    * @param {object | null} meta
    * @param {boolean} shouldPersist - Dosyaya yazılsın mı?
    */
-  addEventInternal(source, type, message, meta = null, shouldPersist = true) {
+  addEventInternal(source: string, type: string, message: string, meta: Record<string, unknown> | null = null, shouldPersist = true) {
     const key = `${source}|${type}|${message}`;
     const nowTs = Date.now();
     const last = this.lastThrottle.get(key);
@@ -245,7 +246,7 @@ class LogManagerClass {
    * @param {object} context - Bağlam (provider, slot, url, action, selector, etc.)
    * @param {string} [correlationId] - İşlem ID
    */
-  addEventWithContext(source, type, message, context, correlationId = null) {
+  addEventWithContext(source: string, type: string, message: string, context: Record<string, unknown>, correlationId: string | null = null) {
     this.addEvent(source, type, message, { context, correlationId });
   }
 
@@ -253,7 +254,7 @@ class LogManagerClass {
    * Log girdisini dosyaya yaz
    * @param {LogEntry} entry
    */
-  persist(entry) {
+  persist(entry: LogEntry) {
     try {
       if (!this.sessionId) return;
 
@@ -272,7 +273,7 @@ class LogManagerClass {
    * @param {(entry: LogEntry) => void} listener
    * @returns {() => void} Unsubscribe fonksiyonu
    */
-  onUpdate(listener) {
+  onUpdate(listener: (entry: LogEntry) => void) {
     if (typeof listener !== "function")
       return () => {
       };
@@ -360,7 +361,7 @@ class LogManagerClass {
    * @returns {object}
    */
   getStats() {
-    const stats = {
+    const stats: { total: number; byType: Record<string, number>; bySource: Record<string, number>; errors: number; warnings: number } = {
       total: this.logs.length,
       byType: {},
       bySource: {},
@@ -400,7 +401,7 @@ class LogManagerClass {
    * @param {string} type
    * @param {string} message
    */
-  LoggerAddEvent(source, type, message) {
+  LoggerAddEvent(source: string, type: string, message: string) {
     return this.addEvent(source, type, message);
   }
 
