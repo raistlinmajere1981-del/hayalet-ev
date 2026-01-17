@@ -9,13 +9,32 @@
 
 import { AppState } from "../../modules/app-state.js";
 
-let contextMenuEl = null;
-let readModalEl = null;
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ContextPayload {
+  provider: string;
+  text?: string;
+}
+
+type ActionCallback = () => void;
+
+// ============================================================================
+// State
+// ============================================================================
+
+let contextMenuEl: HTMLDivElement | null = null;
+let readModalEl: HTMLElement | null = null;
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * Context menu'yu başlat
  */
-export function initContextMenu() {
+export function initContextMenu(): void {
   contextMenuEl = document.createElement("div");
   contextMenuEl.className = "msg-context hidden";
   contextMenuEl.innerHTML = `
@@ -31,7 +50,7 @@ export function initContextMenu() {
 /**
  * Read modal'ı başlat
  */
-export function initReadModal() {
+export function initReadModal(): void {
   readModalEl = document.getElementById("read-modal");
   const closeBtn = document.getElementById("read-modal-close");
   closeBtn?.addEventListener("click", hideReadModal);
@@ -39,11 +58,8 @@ export function initReadModal() {
 
 /**
  * Context menu'yu göster
- * @param {MouseEvent} event - Mouse event
- * @param {Object} payload - { provider, text }
- * @param {Function} onAction - Action callback
  */
-export function showContextMenu(event, payload, onAction) {
+export function showContextMenu(event: MouseEvent, payload: ContextPayload, onAction?: ActionCallback): void {
   event.preventDefault();
   
   if (!contextMenuEl) return;
@@ -56,7 +72,8 @@ export function showContextMenu(event, payload, onAction) {
   
   contextMenuEl.querySelectorAll("button").forEach((btn) => {
     btn.onclick = (e) => {
-      const action = e.currentTarget.dataset.action;
+      const target = e.currentTarget as HTMLButtonElement;
+      const action = target.dataset.action || "";
       handleContextAction(action, payload, onAction);
       hideContextMenu();
     };
@@ -66,17 +83,14 @@ export function showContextMenu(event, payload, onAction) {
 /**
  * Context menu'yu gizle
  */
-function hideContextMenu() {
+function hideContextMenu(): void {
   contextMenuEl?.classList.add("hidden");
 }
 
 /**
  * Context action'ı işle
- * @param {string} action - Action tipi (read, prepend, append)
- * @param {Object} payload - { provider, text }
- * @param {Function} onAction - Ek action callback
  */
-function handleContextAction(action, payload, onAction) {
+function handleContextAction(action: string, payload: ContextPayload, onAction?: ActionCallback): void {
   if (action === "read") {
     showReadModal(payload);
     return;
@@ -102,9 +116,8 @@ function handleContextAction(action, payload, onAction) {
 
 /**
  * Read modal'ı göster
- * @param {Object} payload - { provider, text }
  */
-export function showReadModal(payload) {
+export function showReadModal(payload: ContextPayload): void {
   if (!readModalEl) return;
   
   const body = document.getElementById("read-modal-body");
@@ -119,6 +132,6 @@ export function showReadModal(payload) {
 /**
  * Read modal'ı gizle
  */
-function hideReadModal() {
+function hideReadModal(): void {
   readModalEl?.classList.add("hidden");
 }

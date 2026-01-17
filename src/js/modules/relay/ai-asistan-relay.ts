@@ -17,6 +17,18 @@
 import { BaseRelay } from "./base-relay.js";
 import { SlotController } from "../slot-controller.js";
 
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SyncResult {
+  messages?: { role?: string; text?: string }[];
+}
+
+interface CoreEngine {
+  sendMessage: (opts: { provider: string; text: string; page: string }) => Promise<unknown>;
+}
+
 // AI-Asistan protokol dosyası yolu
 const PROTOCOL_PATH = "protocol/AI-asistan.txt";
 
@@ -26,8 +38,9 @@ export class AIAsistanRelay extends BaseRelay {
   _prevThinking: Record<string, string>;
   _lastTexts: Record<string, string>;
   _sessionState: string;
+  declare coreEngine: CoreEngine;
 
-  constructor(coreEngine: any) {
+  constructor(coreEngine: CoreEngine) {
     super(coreEngine);
     // Kaynak AI slotu (ai1 veya ai2) ve hedef her zaman ai0 (asistan)
     this._sourceSlot = null;
@@ -41,28 +54,24 @@ export class AIAsistanRelay extends BaseRelay {
 
   /**
    * Bu relay bu provider'ı yönetiyor mu?
-   * @param {string} provider - AI slot
-   * @returns {boolean}
    */
-  handlesProvider(provider) {
+  handlesProvider(provider: string): boolean {
     if (!this._active) return false;
     return provider === this._sourceSlot || provider === this._targetSlot;
   }
 
   /**
    * Kaynak slot'u döndür
-   * @returns {string|null}
    */
-  get sourceSlot() {
+  get sourceSlot(): string | null {
     return this._sourceSlot;
   }
 
   /**
    * AI-Asistan relay oturumu başlat
    * Protokolü okur ve AI'ye gönderir, ardından relay aktif olur
-   * @param {Object} opts - { sourceSlot: 'ai1' | 'ai2' }
    */
-  async start(opts: { sourceSlot?: string } = {}) {
+  async start(opts: { sourceSlot?: string } = {}): Promise<void> {
     const source = opts.sourceSlot;
     
     if (!source || (source !== "ai1" && source !== "ai2")) {
@@ -111,9 +120,8 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Protokol dosyasını oku ve AI'ye gönder
    * @private
-   * @param {string} aiSlot - Hedef AI slotu
    */
-  async _sendProtocolToAI(aiSlot) {
+  async _sendProtocolToAI(aiSlot: string): Promise<void> {
     try {
       // Protokol dosyasını oku
       const protocol = await this._loadProtocol();
@@ -139,7 +147,8 @@ export class AIAsistanRelay extends BaseRelay {
 
       this._log("info", `Protocol sent to ${aiSlot}`);
 
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._log("warning", `Failed to send protocol: ${err?.message || String(err)}`);
       // Protokol gönderilemese de relay'i aktif tut
       this._sessionState = "relay-active";
@@ -149,9 +158,8 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Protokol dosyasını yükle
    * @private
-   * @returns {Promise<string|null>}
    */
-  async _loadProtocol() {
+  async _loadProtocol(): Promise<string | null> {
     try {
       // electronAPI üzerinden dosya oku (base64 olarak döner)
       if (window.electronAPI?.readFile) {
@@ -170,7 +178,8 @@ export class AIAsistanRelay extends BaseRelay {
       }
       
       return null;
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._log("warning", `Protocol load error: ${err?.message || String(err)}`);
       return null;
     }
@@ -179,10 +188,8 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Base64 string'i UTF-8 text'e decode et
    * @private
-   * @param {string} base64 - Base64 encoded string
-   * @returns {string}
    */
-  _decodeBase64(base64) {
+  _decodeBase64(base64: string): string {
     try {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
@@ -191,7 +198,8 @@ export class AIAsistanRelay extends BaseRelay {
       }
       const decoder = new TextDecoder("utf-8");
       return decoder.decode(bytes);
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._log("warning", `Base64 decode error: ${err?.message || String(err)}`);
       return "";
     }
@@ -200,7 +208,7 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Relay oturumunu durdur
    */
-  async stop() {
+  async stop(): Promise<void> {
     const sessionId = this._session?.id;
     const source = this._sourceSlot;
     
@@ -222,10 +230,8 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * AI thinking tamamlandığında çağrılır
    * State machine'e göre akışı yönetir
-   * @param {string} provider - AI slot (ai0, ai1 veya ai2)
-   * @param {Object} syncResult - Conversation sync sonucu
    */
-  async handleThinkingComplete(provider, syncResult) {
+  async handleThinkingComplete(provider: string, syncResult: SyncResult | null): Promise<void> {
     try {
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 
@@ -241,7 +247,8 @@ export class AIAsistanRelay extends BaseRelay {
       // State machine'e göre işle
       await this._handleStateMachine(provider, text);
 
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._log("warning", `handleThinkingComplete error: ${err?.message || String(err)}`);
     }
   }
@@ -249,10 +256,8 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * State machine ile relay akışını yönet
    * @private
-   * @param {string} provider - Mesajı gönderen slot
-   * @param {string} text - Mesaj içeriği
    */
-  async _handleStateMachine(provider, text) {
+  async _handleStateMachine(provider: string, text: string): Promise<void> {
     // Aynı mesajı tekrar iletme
     if (this._lastTexts[provider] === text) return;
     this._lastTexts[provider] = text;
@@ -288,9 +293,9 @@ export class AIAsistanRelay extends BaseRelay {
    * Mesajı hedef slot'a ilet
    * @private
    */
-  async _forwardMessage(from, to, text) {
+  async _forwardMessage(from: string, to: string | null, text: string): Promise<boolean> {
     // Hedef bağlı mı kontrol et
-    if (!SlotController.isConnected(to)) {
+    if (!to || !SlotController.isConnected(to)) {
       this._log("info", `Forward skipped: target ${to} not connected`);
       return false;
     }
@@ -308,7 +313,8 @@ export class AIAsistanRelay extends BaseRelay {
         page: "ai-asistan-relay",
       });
       return true;
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._log("warning", `AI-Asistan Relay forwarding failed: ${err?.message || String(err)}`, {
         from,
         to,
@@ -321,7 +327,7 @@ export class AIAsistanRelay extends BaseRelay {
    * Normal relay akışını yönet (relay-active state)
    * @private
    */
-  async _handleRelayFlow(provider, text) {
+  async _handleRelayFlow(provider: string, text: string): Promise<void> {
     // Hedefi belirle
     let target;
     if (provider === this._sourceSlot) {
@@ -340,11 +346,8 @@ export class AIAsistanRelay extends BaseRelay {
 
   /**
    * Thinking state değişimini takip et
-   * @param {string} provider - AI slot
-   * @param {string} thinkingState - Yeni thinking state
-   * @returns {boolean} - Thinking tamamlandı mı?
    */
-  checkThinkingTransition(provider, thinkingState) {
+  checkThinkingTransition(provider: string, thinkingState: string): boolean {
     const prev = this._prevThinking[provider] || "idle";
     this._prevThinking[provider] = thinkingState;
     return prev !== "idle" && thinkingState === "idle";

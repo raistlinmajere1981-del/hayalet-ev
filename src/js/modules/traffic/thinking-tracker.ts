@@ -1,20 +1,62 @@
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ThinkingConfig {
+  thinking: {
+    stopButtonDetectionTimeoutMs: number;
+  };
+}
+
+interface ViewState {
+  status?: {
+    thinking?: string;
+  };
+  lastSendSeen?: number;
+  stopButtonLastSeen?: number;
+  stopButtonDisappearedAt?: number;
+  thinkingJustEnded?: boolean;
+  thinkingEndedAt?: number;
+}
+
+interface ProbeData {
+  stopVisible?: boolean;
+  sendState?: string;
+  voiceMode?: boolean;
+  lastSend?: number;
+}
+
+interface ThinkingEvent {
+  type: string;
+  message: string;
+}
+
+interface ProbeResult {
+  indicator: string;
+  newState: ViewState;
+  event: ThinkingEvent | null;
+}
+
+interface CheckResult {
+  shouldEnd: boolean;
+  newState: ViewState;
+}
+
+// ============================================================================
+// ThinkingTracker
+// ============================================================================
 
 export class ThinkingTracker {
-  config: any;
+  config: ThinkingConfig;
 
-  constructor(config: any) {
+  constructor(config: ThinkingConfig) {
     this.config = config;
   }
 
   /**
    * Handle probe data for thinking tracking
-   * @param {string} provider - Provider identifier (ai1/ai2)
-   * @param {Object} viewState - Current state
-   * @param {Object} data - Probe data containing stopVisible, sendState, voiceMode, lastSend
-   * @param {number} now - Current timestamp
-   * @returns {Object} { indicator: string, newState: Object, event: Object|null }
    */
-  handleProbe(provider, viewState, data, now) {
+  handleProbe(provider: string, viewState: ViewState, data: ProbeData, now: number): ProbeResult {
     const lastSend = data.lastSend || 0;
 
     let event = null;
@@ -46,12 +88,8 @@ export class ThinkingTracker {
 
   /**
    * Start thinking state when send button is triggered
-   * @param {Object} viewState - The provider's state object
-   * @param {number} now - Current timestamp
-   * @param {number} lastSendTime - The timestamp of the send event
-   * @returns {Object} Updated state
    */
-  startThinking(viewState, now, lastSendTime) {
+  startThinking(viewState: ViewState, now: number, lastSendTime: number): ViewState {
     viewState.lastSendSeen = lastSendTime;
     viewState.stopButtonLastSeen = now;
     viewState.stopButtonDisappearedAt = 0;
@@ -60,18 +98,13 @@ export class ThinkingTracker {
 
   /**
    * Check if thinking should end based on stop button visibility and send state
-   * @param {string} provider - Provider identifier (ai1/ai2)
-   * @param {Object} viewState - Current state
-   * @param {Object} data - Probe data containing stopVisible, sendState, voiceMode
-   * @param {number} now - Current timestamp
-   * @returns {Object} { shouldEnd: boolean, newState: Object }
    */
-  checkThinkingEnd(provider, viewState, data, now) {
+  checkThinkingEnd(_provider: string, viewState: ViewState, data: ProbeData, now: number): CheckResult {
     const sendState = data.sendState || "missing";
     const stopVisible = !!data.stopVisible;
     const voiceMode = !!data.voiceMode;
 
-    if (viewState.status.thinking !== "busy") {
+    if (viewState.status?.thinking !== "busy") {
       return { shouldEnd: false, newState: viewState };
     }
 
@@ -83,11 +116,11 @@ export class ThinkingTracker {
     }
 
     // Stop button disappeared - start countdown
-    if (viewState.stopButtonDisappearedAt === 0) {
+    if (!viewState.stopButtonDisappearedAt) {
       viewState.stopButtonDisappearedAt = now;
     }
 
-    const timeSinceDisappeared = now - viewState.stopButtonDisappearedAt;
+    const timeSinceDisappeared = now - (viewState.stopButtonDisappearedAt || 0);
     const shouldCheckEndThinking =
       timeSinceDisappeared >=
       this.config.thinking.stopButtonDetectionTimeoutMs;
@@ -118,11 +151,8 @@ export class ThinkingTracker {
 
   /**
    * End thinking state
-   * @param {Object} viewState - The provider's state object
-   * @param {number} now - Current timestamp
-   * @returns {Object} Updated state
    */
-  endThinking(viewState, now) {
+  endThinking(viewState: ViewState, now: number): ViewState {
     viewState.thinkingJustEnded = true;
     viewState.thinkingEndedAt = now;
     return viewState;
@@ -130,10 +160,8 @@ export class ThinkingTracker {
 
   /**
    * Clear the "just ended" flag after a delay
-   * @param {Object} viewState - The provider's state object
-   * @returns {Object} Updated state
    */
-  clearJustEnded(viewState) {
+  clearJustEnded(viewState: ViewState): ViewState {
     viewState.thinkingJustEnded = false;
     return viewState;
   }

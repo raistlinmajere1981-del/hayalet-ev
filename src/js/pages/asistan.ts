@@ -18,6 +18,43 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { ProviderRegistry } from "../modules/webview/provider-registry.js";
 import { RelayManager } from "../modules/relay-manager.js";
 import { OPENCODE_DEFAULTS } from "../modules/webview/providers/opencode/config.js";
+import type { AppSettings } from "../types/settings.js";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WebviewElement extends HTMLElement {
+  getWebContentsId?: () => number;
+  getURL?: () => string;
+  openDevTools?: () => void;
+  executeJavaScript?: (script: string) => Promise<unknown>;
+}
+
+interface SlotStateInfo {
+  state?: string;
+  accountId?: string | null;
+  currentUrl?: string;
+  error?: string;
+}
+
+interface TrafficState {
+  state?: {
+    status?: {
+      loading?: string;
+      thinking?: string;
+      send?: string;
+    };
+  };
+}
+
+interface ServerResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  alreadyRunning?: boolean;
+  existingServer?: boolean;
+}
 
 export class AsistanController {
   // Subscriptions
@@ -63,7 +100,7 @@ export class AsistanController {
     this.statusText = null;
   }
 
-  async init() {
+  async init(): Promise<void> {
     await SettingsManager.load();
     
     // DOM elementleri
@@ -120,7 +157,7 @@ export class AsistanController {
     LogManager.addEvent("asistan", "info", "AsistanController initialized");
   }
 
-  _populateProviderSelect() {
+  _populateProviderSelect(): void {
     if (!this.providerSelect) return;
     
     this.providerSelect.innerHTML = "";
@@ -130,20 +167,22 @@ export class AsistanController {
       const opt = document.createElement("option");
       opt.value = provider.id;
       opt.textContent = provider.name;
-      this.providerSelect.appendChild(opt);
+      this.providerSelect!.appendChild(opt);
     });
     
     // Settings'den seçili provider'ı al
-    const settings = SettingsManager.getSnapshot();
-    const account = settings.asistanAccounts?.find(
-      (acc) => acc.id === settings.asistanSlot?.accountId
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const asistanAccounts = settings?.asistanAccounts as { id: string; provider?: string }[] | undefined;
+    const asistanSlot = settings?.asistanSlot as { accountId?: string } | undefined;
+    const account = asistanAccounts?.find(
+      (acc) => acc.id === asistanSlot?.accountId
     );
     if (account?.provider && this.providerSelect.querySelector(`option[value="${account.provider}"]`)) {
       this.providerSelect.value = account.provider;
     }
   }
 
-  _setupEventListeners() {
+  _setupEventListeners(): void {
     // Bağlan/Bağlantıyı Kes butonu
     this.connectBtn?.addEventListener("click", () => this._toggleConnection());
     
@@ -160,8 +199,8 @@ export class AsistanController {
     this.relaySourceSelect?.addEventListener("change", () => this._onRelaySourceChange());
   }
 
-  async _toggleConnection() {
-    const slotState = SlotController.getState("ai0");
+  async _toggleConnection(): Promise<void> {
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     
     if (slotState?.state === SlotState.CONNECTED || this._isServerRunning) {
       // Bağlantıyı kes
@@ -184,19 +223,18 @@ export class AsistanController {
 
   /**
    * OpenCode server'ı başlat
-   * @returns {Promise<{success: boolean, url?: string, error?: string}>}
    */
-  async _startOpenCodeServer() {
+  async _startOpenCodeServer(): Promise<ServerResult> {
     try {
       // UI'ı güncelle
       this._updateStatusUI("connecting", "Server başlatılıyor...");
       
-      const result = await window.electronAPI.opencodeStart({
+      const result = await window.electronAPI?.opencodeStart?.({
         port: OPENCODE_DEFAULTS.port,
         projectPath: null,
-      });
+      }) as ServerResult | undefined;
       
-      if (result.success) {
+      if (result?.success) {
         this._isServerRunning = true;
         LogManager.addEvent("asistan", "info", "OpenCode server başlatıldı", { 
           url: result.url,
@@ -206,9 +244,10 @@ export class AsistanController {
         return result;
       } else {
         this._isServerRunning = false;
-        return { success: false, error: result.error };
+        return { success: false, error: result?.error };
       }
-    } catch (err) {
+    } catch (e) {
+      const err = e as Error;
       this._isServerRunning = false;
       LogManager.addEvent("asistan", "error", "OpenCode server başlatma hatası", { error: err.message });
       return { success: false, error: err.message };
@@ -217,19 +256,19 @@ export class AsistanController {
 
   /**
    * OpenCode server'ı durdur
-   * @returns {Promise<{success: boolean, error?: string}>}
    */
-  async _stopOpenCodeServer() {
+  async _stopOpenCodeServer(): Promise<ServerResult> {
     try {
-      const result = await window.electronAPI.opencodeStop();
+      const result = await window.electronAPI?.opencodeStop?.() as ServerResult | undefined;
       this._isServerRunning = false;
       
-      if (result.success) {
+      if (result?.success) {
         LogManager.addEvent("asistan", "info", "OpenCode server durduruldu");
       }
       
-      return result;
-    } catch (err) {
+      return result || { success: false };
+    } catch (e) {
+      const err = e as Error;
       this._isServerRunning = false;
       LogManager.addEvent("asistan", "error", "OpenCode server durdurma hatası", { error: err.message });
       return { success: false, error: err.message };
@@ -238,19 +277,16 @@ export class AsistanController {
 
   /**
    * Hata mesajı göster
-   * @param {string} message
    */
-  _showError(message) {
+  _showError(message: string): void {
     const overlayEl = document.getElementById("ai0-webview-overlay");
     this._updateOverlay(overlayEl, "error", "❌", "Bağlantı Hatası", message);
   }
 
   /**
    * Status UI'ını güncelle (loading durumları için)
-   * @param {string} state - "idle" | "connecting" | "connected" | "error"
-   * @param {string} message
    */
-  _updateStatusUI(state, message) {
+  _updateStatusUI(state: string, message: string): void {
     if (this.statusDot) {
       this.statusDot.classList.remove("connected", "connecting", "error");
       if (state === "connected") {
@@ -266,7 +302,7 @@ export class AsistanController {
     }
   }
 
-  async _onProviderChange() {
+  async _onProviderChange(): Promise<void> {
     const providerId = this.providerSelect?.value;
     if (!providerId) return;
     
@@ -274,17 +310,19 @@ export class AsistanController {
     if (!provider) return;
     
     // Provider değişikliğini settings'e kaydet
-    const settings = SettingsManager.getSnapshot();
-    const account = settings.asistanAccounts?.find((acc) => acc.provider === providerId);
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const asistanAccounts = settings?.asistanAccounts as { id: string; provider?: string }[] | undefined;
+    const account = asistanAccounts?.find((acc) => acc.provider === providerId);
     
-    if (account) {
+    if (account && settings) {
+      const asistanSlot = settings.asistanSlot as { accountId?: string } | undefined;
       await SettingsManager.save({
         ...settings,
         asistanSlot: {
-          ...settings.asistanSlot,
+          ...asistanSlot,
           accountId: account.id,
         },
-      });
+      } as unknown as Record<string, unknown>);
     }
     
     // Başlığı güncelle
@@ -295,14 +333,14 @@ export class AsistanController {
     LogManager.addEvent("asistan", "info", `Provider değiştirildi: ${provider.name}`);
   }
 
-  _openDevTools() {
-    const webview = document.getElementById("ai0-webview") as any;
+  _openDevTools(): void {
+    const webview = document.getElementById("ai0-webview") as WebviewElement | null;
     if (webview && typeof webview.openDevTools === "function") {
       webview.openDevTools();
     }
   }
 
-  async _toggleRelay() {
+  async _toggleRelay(): Promise<void> {
     const sourceSlot = this.relaySourceSelect?.value;
     
     if (this._isRelayActive) {
@@ -339,7 +377,7 @@ export class AsistanController {
     this._updateRelayControls();
   }
 
-  _onRelaySourceChange() {
+  _onRelaySourceChange(): void {
     // Kaynak değiştiğinde ve relay aktifse, relay'i yeniden başlat
     if (this._isRelayActive) {
       this._toggleRelay(); // Önce durdur
@@ -347,8 +385,8 @@ export class AsistanController {
     }
   }
 
-  _updateConnectionUI() {
-    const slotState = SlotController.getState("ai0");
+  _updateConnectionUI(): void {
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const isConnected = slotState?.state === SlotState.CONNECTED;
     const isConnecting = slotState?.state === SlotState.CONNECTING;
     const isError = slotState?.state === SlotState.ERROR;
@@ -439,7 +477,7 @@ export class AsistanController {
   /**
    * Overlay içeriğini güncelle
    */
-  _updateOverlay(overlayEl, stateClass, icon, title, subtitle) {
+  _updateOverlay(overlayEl: HTMLElement | null, stateClass: string, icon: string, title: string, subtitle: string): void {
     if (!overlayEl) return;
     
     overlayEl.classList.add(stateClass);
@@ -453,7 +491,7 @@ export class AsistanController {
     if (subtitleEl) subtitleEl.textContent = subtitle;
   }
 
-  _updateConnectedAIList() {
+  _updateConnectedAIList(): void {
     if (!this.connectedList) return;
     
     const badges = [];
@@ -477,7 +515,7 @@ export class AsistanController {
     }
   }
 
-  _updateRelayControls() {
+  _updateRelayControls(): void {
     const hasConnectedAI = SlotController.isConnected("ai1") || SlotController.isConnected("ai2");
     const isAsistanConnected = SlotController.isConnected("ai0");
     const canRelay = hasConnectedAI && isAsistanConnected;
@@ -514,13 +552,13 @@ export class AsistanController {
 
   /**
    * Traffic durumuna göre UI güncellemeleri
-   * @param {Object} trafficState - ai0 için traffic durumu
    */
-  _updateTrafficUI(trafficState) {
-    if (!trafficState?.state?.status) return;
+  _updateTrafficUI(trafficState: TrafficState | unknown): void {
+    const state = trafficState as TrafficState;
+    if (!state?.state?.status) return;
     
-    const { loading, thinking, send } = trafficState.state.status;
-    const slotState = SlotController.getState("ai0");
+    const { loading, thinking, send } = state.state.status;
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const isConnected = slotState?.state === SlotState.CONNECTED;
     
     // Bağlı değilse traffic UI gösterme
@@ -563,16 +601,15 @@ export class AsistanController {
     }
   }
 
-  _onSettingsChange(_settings) {
+  _onSettingsChange(_settings: unknown): void {
     // Settings değiştiğinde UI'ı güncelle
     this._populateProviderSelect();
   }
 
   /**
    * Webview event listener'larını kur ve provider config inject et
-   * @param {HTMLElement} webviewEl - Webview elementi
    */
-  _setupWebviewEvents(webviewEl) {
+  _setupWebviewEvents(webviewEl: WebviewElement): void {
     if (!webviewEl) return;
 
     // Provider ID'yi al
@@ -587,7 +624,7 @@ export class AsistanController {
         return;
       }
 
-      const cfg = ProviderRegistry.get(providerId);
+      const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
       if (cfg) {
         try {
           const configScript = `
@@ -623,17 +660,17 @@ export class AsistanController {
 
   }
 
-  onShow() {
+  onShow(): void {
     this._updateConnectionUI();
     this._updateConnectedAIList();
     this._updateRelayControls();
   }
 
-  onHide() {
+  onHide(): void {
     // Sayfa gizlendiğinde temizlik
   }
 
-  async destroy() {
+  async destroy(): Promise<void> {
     // OpenCode server'ı kapat
     if (this._isServerRunning) {
       await this._stopOpenCodeServer();
