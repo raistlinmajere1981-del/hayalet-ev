@@ -286,62 +286,62 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
         return await listProviders(PROJECT_ROOT);
 
       case "add_provider":
-        return await addProvider(PROJECT_ROOT, args);
+        return await addProvider(PROJECT_ROOT, args ?? {});
 
       case "test_electron":
-        return await testElectron(PROJECT_ROOT, args);
+        return await testElectron(PROJECT_ROOT, args ?? {});
 
       case "list_plugins":
         return await listPlugins(PROJECT_ROOT);
 
       case "read_electron_logs":
-        return await readElectronLogs(LOG_DIR, args);
+        return await readElectronLogs(LOG_DIR, args ?? {});
 
       case "list_log_sessions":
-        return await listLogSessions(LOG_DIR, args);
+        return await listLogSessions(LOG_DIR, args ?? {});
 
       case "get_error_hints":
-        return await getErrorHints(args || {});
+        return await getErrorHints(args ?? {});
 
       case "get_session_summary":
-        return await getSessionSummary(LOG_DIR, args);
+        return await getSessionSummary(LOG_DIR, args ?? {});
 
       // === CDP Tool'ları ===
       case "check_electron_connection":
         return await checkElectronConnection();
 
       case "send_command_to_electron":
-        return await sendCommandToElectron(args);
+        return await sendCommandToElectron(args ?? {});
 
       case "take_cdp_screenshot":
-        return await takeCdpScreenshot(args);
+        return await takeCdpScreenshot(args ?? {});
 
       case "get_electron_window_info":
         return await getElectronWindowInfo();
 
       case "click_element_by_selector":
-        return await clickElementBySelector(args);
+        return await clickElementBySelector(args ?? {});
 
       case "click_element_by_text":
-        return await clickElementByText(args);
+        return await clickElementByText(args ?? {});
 
       case "fill_input_field":
-        return await fillInputField(args);
+        return await fillInputField(args ?? {});
 
       case "get_page_dom_structure":
-        return await getPageDomStructure(args);
+        return await getPageDomStructure(args ?? {});
 
       case "inspect_element":
-        return await inspectElement(args);
+        return await inspectElement(args ?? {});
 
       case "query_elements":
-        return await queryElements(args);
+        return await queryElements(args ?? {});
 
       case "send_key_press":
-        return await sendKeyPress(args);
+        return await sendKeyPress(args ?? {});
 
       case "scroll_page":
-        return await scrollPage(args);
+        return await scrollPage(args ?? {});
 
       default:
         throw new Error(`Bilinmeyen tool: ${name}`);

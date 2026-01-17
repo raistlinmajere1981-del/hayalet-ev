@@ -202,7 +202,7 @@ export async function clickElementBySelector(args: Record<string, unknown>): Pro
           type: "text",
           text: `✅ Tıklama başarılı
 
-**Element:** <${result.tagName.toLowerCase()}${result.id ? ` id="${result.id}"` : ""}${result.className ? ` class="${result.className}"` : ""}>`,
+**Element:** <${result.tagName?.toLowerCase() ?? "unknown"}${result.id ? ` id="${result.id}"` : ""}${result.className ? ` class="${result.className}"` : ""}>`,
         }],
       };
     } else {
@@ -241,7 +241,7 @@ export async function clickElementByText(args: Record<string, unknown>): Promise
           type: "text",
           text: `✅ Tıklama başarılı
 
-**Element:** <${result.tagName.toLowerCase()}>
+**Element:** <${result.tagName?.toLowerCase() ?? "unknown"}>
 **İçerik:** "${result.textContent}"`,
         }],
       };
@@ -357,8 +357,8 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
 **Class:** ${info.className || "(yok)"}
 **Görünür:** ${info.visible ? "Evet" : "Hayır"}
 **Devre dışı:** ${info.disabled ? "Evet" : "Hayır"}
-**Boyut:** ${info.bounds.width}x${info.bounds.height}
-**Pozisyon:** (${Math.round(info.bounds.x)}, ${Math.round(info.bounds.y)})
+**Boyut:** ${info.bounds?.width ?? 0}x${info.bounds?.height ?? 0}
+**Pozisyon:** (${Math.round(info.bounds?.x ?? 0)}, ${Math.round(info.bounds?.y ?? 0)})
 **İçerik:** "${info.textContent || "(boş)"}"`,
         }],
       };
