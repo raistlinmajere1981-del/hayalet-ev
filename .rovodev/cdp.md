@@ -263,17 +263,16 @@ read_electron_logs --type error
 
 ```
 mcp-server/
-├── index.js                    # Orchestrator, tool tanımları
+├── index.ts                    # Orchestrator, tool tanımları
 ├── tools/
-│   ├── provider-tools.js       # list_providers, add_provider
-│   ├── electron-tools.js       # test_electron, list_plugins
-│   ├── log-tools.js            # read_electron_logs, list_log_sessions
-│   ├── debug-tools.js          # get_error_hints
-│   └── cdp-tools.js            # CDP tool handlers (12 tool)
+│   ├── electron-tools.ts       # test_electron, list_plugins
+│   ├── log-tools.ts            # read_electron_logs, list_log_sessions, get_session_summary
+│   ├── debug-tools.ts          # get_error_hints
+│   └── cdp-tools.ts            # CDP tool handlers (12 tool)
 └── utils/
-    ├── log-utils.js            # Log okuma utilities
-    ├── cdp-connection.js       # WebSocket bağlantı yönetimi
-    └── cdp-commands.js         # UI otomasyon komutları
+    ├── log-utils.ts            # Log okuma utilities
+    ├── cdp-connection.ts       # WebSocket bağlantı yönetimi
+    └── cdp-commands.ts         # UI otomasyon komutları
 ```
 
 ### Environment Variables
@@ -370,7 +369,7 @@ node index.js
 
 # Use Rovodev to test tools
 acli rovodev
-# Then: "Hayalet-ev'de provider'ları listele"
+# Then: "Hayalet-ev'de logları oku"
 ```
 
 ---

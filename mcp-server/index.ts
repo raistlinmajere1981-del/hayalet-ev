@@ -4,10 +4,10 @@
  * Hayalet-ev MCP Server (Orchestrator)
  * 
  * Alt modüller:
- * - tools/provider-tools.js: Provider yönetim araçları
  * - tools/electron-tools.js: Electron test ve plugin araçları
  * - tools/log-tools.js: Log okuma ve sorgulama araçları
  * - tools/debug-tools.js: Hata analizi ve debugging araçları
+ * - tools/cdp-tools.js: Chrome DevTools Protocol araçları
  * - utils/log-utils.js: Log yardımcı fonksiyonları
  */
 
@@ -20,7 +20,6 @@ import {
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { listProviders, addProvider } from "./tools/provider-tools.js";
 import { testElectron, listPlugins } from "./tools/electron-tools.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "./tools/log-tools.js";
 import { getErrorHints } from "./tools/debug-tools.js";
@@ -47,7 +46,7 @@ const LOG_DIR = join(PROJECT_ROOT, "logs");
 const server = new Server(
   {
     name: "hayalet-ev-mcp",
-    version: "1.3.0",
+    version: "1.4.0",
   },
   {
     capabilities: {
@@ -57,24 +56,7 @@ const server = new Server(
 );
 
 const TOOL_DEFINITIONS = [
-  // === Mevcut Tool'lar ===
-  {
-    name: "list_providers",
-    description: "Hayalet-ev'deki mevcut AI provider'ları listele",
-    inputSchema: { type: "object", properties: {} },
-  },
-  {
-    name: "add_provider",
-    description: "Hayalet-ev'e yeni AI provider ekle",
-    inputSchema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Provider adı (örn: perplexity, ollama)" },
-        url: { type: "string", description: "Provider URL'i" },
-      },
-      required: ["name", "url"],
-    },
-  },
+  // === Electron & Plugin Tool'ları ===
   {
     name: "test_electron",
     description: "Hayalet-ev Electron uygulamasını test et",
@@ -282,12 +264,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
 
   try {
     switch (name) {
-      case "list_providers":
-        return await listProviders(PROJECT_ROOT);
-
-      case "add_provider":
-        return await addProvider(PROJECT_ROOT, args ?? {});
-
       case "test_electron":
         return await testElectron(PROJECT_ROOT, args ?? {});
 
@@ -357,7 +333,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Hayalet-ev MCP Server v1.3.0 başlatıldı (CDP desteği ile)");
+  console.error("Hayalet-ev MCP Server v1.4.0 başlatıldı (CDP desteği ile)");
 }
 
 main().catch((err) => {

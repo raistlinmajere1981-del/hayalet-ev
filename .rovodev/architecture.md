@@ -129,18 +129,17 @@ src/js/pages/               # Page controllers
 ├── webview.js
 └── ...
 
-mcp-server/                 # MCP Protocol Server (v1.3.0)
-├── index.js                # Server orchestrator (20 tool)
+mcp-server/                 # MCP Protocol Server (v1.4.0)
+├── index.ts                # Server orchestrator (18 tool)
 ├── tools/                  # Tool handler'ları
-│   ├── provider-tools.js   # list_providers, add_provider
-│   ├── electron-tools.js   # test_electron, list_plugins
-│   ├── log-tools.js        # read_electron_logs, list_log_sessions
-│   ├── debug-tools.js      # get_error_hints
-│   └── cdp-tools.js        # CDP tool handlers (12 tool) - UI otomasyon
+│   ├── electron-tools.ts   # test_electron, list_plugins
+│   ├── log-tools.ts        # read_electron_logs, list_log_sessions, get_session_summary
+│   ├── debug-tools.ts      # get_error_hints
+│   └── cdp-tools.ts        # CDP tool handlers (12 tool) - UI otomasyon
 └── utils/                  # Yardımcı fonksiyonlar
-    ├── log-utils.js        # Log reading utilities
-    ├── cdp-connection.js   # WebSocket bağlantı yönetimi (CDP)
-    └── cdp-commands.js     # UI otomasyon komutları (CDP)
+    ├── log-utils.ts        # Log reading utilities
+    ├── cdp-connection.ts   # WebSocket bağlantı yönetimi (CDP)
+    └── cdp-commands.ts     # UI otomasyon komutları (CDP)
 ```
 
 ---
