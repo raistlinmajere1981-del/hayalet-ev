@@ -11,8 +11,8 @@
     "allowJs": true,
     "noEmit": true,
     
-    // === Strict Ayarları (Kademeli Açılacak) ===
-    "strict": false,
+    // === Strict Ayarları ===
+    "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "noImplicitThis": true,
