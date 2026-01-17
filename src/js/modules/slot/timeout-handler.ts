@@ -10,16 +10,12 @@
 /**
  * Timeout'ları saklamak için map
  */
-const timeouts = {};
+const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
 /**
  * Timeout başlat
- * @param {string} slot - Slot ID
- * @param {string} operation - İşlem adı (connect, etc.)
- * @param {number} ms - Timeout süresi (ms)
- * @param {Function} callback - Timeout olduğunda çağrılacak fonksiyon
  */
-export function startTimeout(slot, operation, ms, callback) {
+export function startTimeout(slot: string, operation: string, ms: number, callback: () => void) {
   const key = `${slot}-${operation}`;
   clearTimeout(slot, operation);
   timeouts[key] = setTimeout(callback, ms);
@@ -27,10 +23,8 @@ export function startTimeout(slot, operation, ms, callback) {
 
 /**
  * Timeout'u temizle
- * @param {string} slot - Slot ID
- * @param {string} operation - İşlem adı
  */
-export function clearTimeout(slot, operation) {
+export function clearTimeout(slot: string, operation: string) {
   const key = `${slot}-${operation}`;
   if (timeouts[key]) {
     globalThis.clearTimeout(timeouts[key]);
@@ -38,28 +32,31 @@ export function clearTimeout(slot, operation) {
   }
 }
 
+interface SlotState {
+  error?: Error | null;
+  trafficStarted?: boolean;
+  webview?: unknown;
+  domReady?: boolean;
+}
+
+type LogFn = (slot: string, level: string, message: string, context?: Record<string, unknown>) => void;
+type EmitFn = (slot: string, event: string, data: Record<string, unknown>) => void;
+type TransitionFn = (slot: string, state: string) => void;
+type CleanupFn = (slot: string, correlationId: string) => void;
+
 /**
  * Bağlantı timeout'unu işle
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} correlationId - İşlem correlation ID
- * @param {string} errorState - ERROR state değeri
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {Function} transitionFn - State transition fonksiyonu
- * @param {string} connectFailedEvent - CONNECT_FAILED event adı
- * @param {Function} cleanupFn - Cleanup fonksiyonu
  */
 export function handleConnectTimeout(
-  slotState,
-  slot,
-  correlationId,
-  errorState,
-  logFn,
-  emitFn,
-  transitionFn,
-  connectFailedEvent,
-  cleanupFn
+  slotState: SlotState,
+  slot: string,
+  correlationId: string,
+  errorState: string,
+  logFn: LogFn,
+  emitFn: EmitFn,
+  transitionFn: TransitionFn,
+  connectFailedEvent: string,
+  cleanupFn: CleanupFn
 ) {
   logFn(slot, "error", "Connection timeout", { correlationId });
   
@@ -72,30 +69,19 @@ export function handleConnectTimeout(
 
 /**
  * Bağlantı hatasını işle
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} correlationId - İşlem correlation ID
- * @param {Error} error - Hata objesi
- * @param {string} errorState - ERROR state değeri
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} emitFn - Event emit fonksiyonu
- * @param {Function} transitionFn - State transition fonksiyonu
- * @param {string} connectFailedEvent - CONNECT_FAILED event adı
- * @param {Function} cleanupFn - Cleanup fonksiyonu
- * @returns {{ success: boolean, message: string, correlationId: string }}
  */
 export function handleConnectError(
-  slotState,
-  slot,
-  correlationId,
-  error,
-  errorState,
-  logFn,
-  emitFn,
-  transitionFn,
-  connectFailedEvent,
-  cleanupFn
-) {
+  slotState: SlotState,
+  slot: string,
+  correlationId: string,
+  error: Error,
+  errorState: string,
+  logFn: LogFn,
+  emitFn: EmitFn,
+  transitionFn: TransitionFn,
+  connectFailedEvent: string,
+  cleanupFn: CleanupFn
+): { success: boolean; message: string; correlationId: string } {
   logFn(slot, "error", `Connection failed: ${error.message}`, { correlationId });
   
   slotState.error = error;
@@ -109,24 +95,16 @@ export function handleConnectError(
 
 /**
  * Hata sonrası temizlik yap
- * @param {Object} slotState - Slot state objesi
- * @param {string} slot - Slot ID
- * @param {string} correlationId - İşlem correlation ID
- * @param {Function} logFn - Log fonksiyonu
- * @param {Function} clearUrlChangeHandlerFn - URL change handler temizleme fonksiyonu
- * @param {Function} clearDomReadyHandlerFn - DOM ready handler temizleme fonksiyonu
- * @param {Function} stopTrafficFn - Traffic durdurma fonksiyonu
- * @param {Function} detachWebviewFn - Webview detach fonksiyonu
  */
 export async function cleanupAfterError(
-  slotState,
-  slot,
-  correlationId,
-  logFn,
-  clearUrlChangeHandlerFn,
-  clearDomReadyHandlerFn,
-  stopTrafficFn,
-  detachWebviewFn
+  slotState: SlotState,
+  slot: string,
+  correlationId: string,
+  logFn: LogFn,
+  clearUrlChangeHandlerFn: (slot: string) => void,
+  clearDomReadyHandlerFn: (slot: string) => void,
+  stopTrafficFn: (slot: string, correlationId: string) => Promise<void>,
+  detachWebviewFn: (slot: string, correlationId: string) => Promise<void>
 ) {
   try {
     clearUrlChangeHandlerFn(slot);
