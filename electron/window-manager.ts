@@ -10,7 +10,7 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
-let _isQuitting: boolean = false;
+const _isQuitting: boolean = false;
 
 /**
  * Tray için icon path'i kaydet ve tray'i oluştur
@@ -110,7 +110,7 @@ function updateTrayMenu() {
       label: 'Çıkış',
       click: () => {
         _mainWindow?.destroy();
-        require('electron').app.quit();
+        app.quit();
       }
     }
   ]);

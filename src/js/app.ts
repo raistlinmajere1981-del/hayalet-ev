@@ -17,6 +17,8 @@ import { RelayManager } from "./modules/relay-manager.js";
 import { WindowManager } from "./modules/window-manager.js";
 import { WebviewManager } from "./modules/webview-manager.js";
 import { MetaCommandManager } from "./modules/meta-command-manager.js";
+import { SplashScreen } from "./ui/splash-screen.js";
+import { ThemeManager } from "./ui/theme-manager.js";
 import entranceTemplate from "../pages/entrance.html?raw";
 import analyzeTemplate from "../pages/analyze.html?raw";
 import whisperTemplate from "../pages/whisper.html?raw";
@@ -161,10 +163,16 @@ function injectPageTemplates() {
 }
 
 async function initApp() {
+  // Splash screen progress updates
+  SplashScreen.update(10, 'Ayarlar yükleniyor...');
+  
   await CoreEngine.init();
+  SplashScreen.update(30, 'Komutlar yükleniyor...');
   
   // Custom komutları yükle
   await MetaCommandManager.loadCommands();
+  SplashScreen.update(40, 'Arayüz hazırlanıyor...');
+  
   try {
     document.documentElement.setAttribute("spellcheck", "false");
     document.body?.setAttribute("spellcheck", "false");
@@ -172,6 +180,7 @@ async function initApp() {
   }
   injectPageTemplates();
   TrafficManager.init();
+  SplashScreen.update(50, 'Modüller başlatılıyor...');
 
   try {
     if (!window.__hayalet_settings_unsub) {
@@ -223,6 +232,8 @@ async function initApp() {
   setupReportPanel();
 
 
+  SplashScreen.update(90, 'Son hazırlıklar...');
+  
   showPage("entrance");
   updateIndicatorAvatars();
   updateRelayIndicator();
@@ -236,7 +247,11 @@ async function initApp() {
     updateRelayIndicator();
   });
 
-  LogManager.addEvent("system", "info", "Uygulama başlatıldı");
+  LogManager.addEvent("system", "info", "Uygulama başlatıldı", { visibility: 2 });
+  
+  // Splash screen'i gizle (min 2sn bekler)
+  SplashScreen.complete();
+  await SplashScreen.hide();
 }
 
 export async function waitForDomReady(webview: HTMLElement & { isLoading?: () => boolean }) {
@@ -252,19 +267,12 @@ export async function waitForDomReady(webview: HTMLElement & { isLoading?: () =>
 
 function setupNavigation() {
   try {
-    const menuItems = document.querySelectorAll(".menu-item") as NodeListOf<HTMLElement>;
-    if (menuItems.length === 0) {
-      LogManager.addEvent("system", "warning", "No menu items found");
-      return;
-    }
-    menuItems.forEach((item) => {
-      item.addEventListener("click", () => {
-        const page = item.dataset.page;
-        if (page) {
-          showPage(page);
-        }
-      });
-    });
+    // Listen for custom navigation events (from other parts of the app)
+    document.addEventListener("navigate-page", ((e: CustomEvent<{ page: string }>) => {
+      if (e.detail?.page) {
+        showPage(e.detail.page);
+      }
+    }) as EventListener);
   } catch (error) {
     LogManager.addEvent("system", "error", `Navigation setup error: ${getErrorMessage(error)}`);
   }
@@ -322,7 +330,7 @@ function setupWindowControls() {
 function setupTopBarButtons() {
   try {
     const asistanBtn = document.getElementById("asistan-btn");
-    const menuToggle = document.getElementById("menu-toggle");
+    const themeToggle = document.getElementById("theme-toggle");
 
     if (asistanBtn) {
       asistanBtn.addEventListener("click", () => {
@@ -330,11 +338,39 @@ function setupTopBarButtons() {
       });
     }
 
-    if (menuToggle) {
-      menuToggle.addEventListener("click", () => {
-        WindowManager.apply("toggleMenu");
+    // Theme toggle in topbar - window üzerinden erişim (Vite HMR uyumluluğu için)
+    type TMMgr = typeof ThemeManager;
+    const TM = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
+    if (themeToggle) {
+      // Set initial icon
+      themeToggle.textContent = TM.getIcon();
+      
+      themeToggle.addEventListener("click", () => {
+        const tm = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
+        tm.toggle();
+        themeToggle.textContent = tm.getIcon();
+      });
+
+      // Listen for theme changes from other sources
+      TM.onChange(() => {
+        const tm = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
+        themeToggle.textContent = tm.getIcon();
       });
     }
+
+    // Page navigation buttons in topbar
+    const navButtons = document.querySelectorAll(".topbar-nav-btn") as NodeListOf<HTMLElement>;
+    navButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const page = btn.dataset.page;
+        if (page) {
+          showPage(page);
+          // Update active state
+          navButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        }
+      });
+    });
   } catch (error) {
     LogManager.addEvent("system", "error", `Top bar setup error: ${getErrorMessage(error)}`);
   }
@@ -549,64 +585,8 @@ function updateRelayIndicator() {
 }
 
 function setupReportPanel() {
-  const reportToggle = document.getElementById("report-toggle");
-  const reportPanel = document.getElementById("report-panel");
-  const modal = document.getElementById("report-modal");
-  const modalBody = document.getElementById("report-modal-body");
-  const modalClose = document.getElementById("report-modal-close");
-
-  reportToggle?.addEventListener("click", () => openModal());
-
-  const openModal = () => {
-    if (!modal) return;
-    if (modalBody) {
-      modalBody.innerHTML = "";
-      const all = LogManager.getAll();
-      [...all].reverse().forEach((entry) => {
-        const line = document.createElement("div");
-        line.className = "log-entry";
-        line.textContent = `[${entry.timestamp}] [${entry.source}] ${entry.message}`;
-        modalBody.appendChild(line);
-      });
-    }
-    modal.classList.remove("hidden");
-  };
-
-  const closeModal = () => {
-    if (!modal) return;
-    modal.classList.add("hidden");
-  };
-
-  reportPanel?.addEventListener("dblclick", openModal);
-  modal?.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
-  });
-  modalClose?.addEventListener("click", closeModal);
-
-  LogManager.onUpdate((entry) => {
-    const reportContent = document.getElementById("report-content");
-    if (!reportContent) return;
-
-    const logEntry = document.createElement("div");
-    logEntry.className = "log-entry";
-    logEntry.textContent = `[${entry.timestamp}] [${entry.source}] ${entry.message}`;
-    if (reportContent.firstChild) {
-      reportContent.insertBefore(logEntry, reportContent.firstChild);
-    } else {
-      reportContent.appendChild(logEntry);
-    }
-    reportContent.scrollTop = 0;
-
-    if (modalBody && !modal?.classList.contains("hidden")) {
-      const modalLine = logEntry.cloneNode(true);
-      if (modalBody.firstChild) {
-        modalBody.insertBefore(modalLine, modalBody.firstChild);
-      } else {
-        modalBody.appendChild(modalLine);
-      }
-      modalBody.scrollTop = 0;
-    }
-  });
+  // Report panel artık entrance.ts tarafından yönetiliyor
+  // Bu fonksiyon geriye dönük uyumluluk için boş bırakıldı
 }
 
 export { currentPage, showPage };

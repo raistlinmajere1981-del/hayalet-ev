@@ -42,6 +42,7 @@ import {
 } from "./googledrive-manager.ts";
 import { ServerCommands } from "./server-commands.ts";
 import { OpenCodeManager } from "./opencode-manager.ts";
+import { OpenCodeSSEServer } from "./opencode-sse-server.ts";
 import {
   initLogSystem,
   interceptMainConsole,
@@ -49,6 +50,8 @@ import {
   setupWebviewLogger,
   setMainWindow,
   getSessionId,
+  getEarlyLogs,
+  clearEarlyLogs,
   getSessionDir,
   getLogDir,
   readConsoleLogs,
@@ -74,6 +77,7 @@ import { setupFsHandlers } from "./handlers/ipc-fs.ts";
 import { setupWindowHandlers } from "./handlers/ipc-window.ts";
 import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
 import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
+import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { registerHandler } from "./handlers/ipc-helpers.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -101,6 +105,28 @@ updateAppState({
   nodeVersion: process.version,
 });
 
+// Single instance lock - ikinci kopyanın açılmasını engelle
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Başka bir instance zaten çalışıyor, bu instance'ı kapat
+  console.log("Another instance is already running. Exiting...");
+  app.quit();
+} else {
+  // İkinci instance açılmaya çalışıldığında mevcut pencereyi ön plana getir
+  app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
+    if (mainWindow) {
+      // Minimize edilmişse restore et
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      // Pencereyi ön plana getir
+      mainWindow.focus();
+      console.log("Second instance attempted - focused existing window");
+    }
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     // Startup cache temizliği (login bilgileri korunur)
@@ -121,6 +147,7 @@ app.whenReady().then(async () => {
     setupWindowHandlers();
     setupProviderHandlers(__dirname);
     setupSettingsHandlers();
+    setupDatabaseHandlers();
 
     try {
       ServerCommands?.init?.({ mainWindow });
@@ -166,6 +193,14 @@ async function performCleanup() {
     console.log("[MAIN] OpenCode server kapatıldı");
   } catch (err: unknown) {
     console.error("[MAIN] OpenCode cleanup failed:", err);
+  }
+
+  // SSE Server'ı kapat
+  try {
+    await OpenCodeSSEServer.stop();
+    console.log("[MAIN] SSE Server kapatıldı");
+  } catch (err: unknown) {
+    console.error("[MAIN] SSE Server cleanup failed:", err);
   }
 
   // Session summary yaz
@@ -269,40 +304,7 @@ registerHandler("command-move", commandMove);
 registerHandler("capture-page", capturePageHandler);
 registerHandler("screenshot-capture", screenshotCaptureHandler);
 
-// Database IPC Handlers
-registerHandler("db-init-account", (event, params: { accountId: string }) => 
-  DatabaseManager.initAccount(event, params)
-);
-registerHandler("db-get-conversations", (event, params: { accountId: string }) =>
-  DatabaseManager.getConversations(event, params)
-);
-registerHandler("db-get-messages", (event, params: { accountId: string; conversationId: string }) => 
-  DatabaseManager.getMessages(event, params)
-);
-registerHandler("db-sync-messages", (event, params: { accountId: string; webUrl: string; messages: unknown[] }) => 
-  DatabaseManager.syncMessages(event, params as Parameters<typeof DatabaseManager.syncMessages>[1])
-);
-registerHandler("db-save-attachment", (event, params: { accountId: string; conversationId: string; messageId: string; filePath: string; originalName: string; mimeType?: string }) =>
-  DatabaseManager.saveAttachment(event, params)
-);
-registerHandler("db-get-attachments", (event, params: { accountId: string; conversationId: string }) =>
-  DatabaseManager.getAttachments(event, params)
-);
-registerHandler("db-delete-conversation", (event, params: { accountId: string; conversationId: string }) =>
-  DatabaseManager.deleteConversation(event, params)
-);
-registerHandler("db-search-messages", (event, params: { accountId: string; query: string; limit?: number }) =>
-  DatabaseManager.searchMessages(event, params)
-);
-registerHandler("db-search-attachments", (event, params: { accountId: string; query: string; limit?: number }) =>
-  DatabaseManager.searchAttachments(event, params)
-);
-registerHandler("db-search-all-accounts", (event, params: { query: string; limit?: number }) =>
-  DatabaseManager.searchAllAccounts(event, params)
-);
-registerHandler("db-update-conversation", (event, params: { accountId: string; conversationId: string; title?: string; summary?: string }) =>
-  DatabaseManager.updateConversationDetails(event, params)
-);
+// Database IPC Handlers - Moved to handlers/ipc-database.ts
 
 // Meta Command IPC handlers
 registerHandler("meta-define-command", (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
@@ -336,6 +338,14 @@ registerHandler("get-log-paths", async () => {
 });
 
 registerHandler("get-session-id", async () => getSessionId());
+
+// Erken logları al (UI hazır olmadan önce oluşanlar)
+registerHandler("get-early-logs", async () => {
+  const logs = getEarlyLogs();
+  clearEarlyLogs(); // Alındıktan sonra temizle
+  return logs;
+});
+
 registerHandler(
   "read-all-logs",
   async (_event, targetSessionId: string | null = null) => await readAllLogs(targetSessionId)
@@ -371,3 +381,14 @@ registerHandler(
 );
 registerHandler("opencode-stop", async () => await OpenCodeManager.stop());
 registerHandler("opencode-status", async () => OpenCodeManager.getStatus());
+
+// OpenCode SSE Server IPC Handlers
+registerHandler(
+  "opencode-sse-start",
+  async (_event, config: { port?: number; host?: string; corsOrigin?: string } = {}) => await OpenCodeSSEServer.start(config)
+);
+registerHandler("opencode-sse-stop", async () => await OpenCodeSSEServer.stop());
+registerHandler("opencode-sse-status", async () => OpenCodeSSEServer.getStatus());
+registerHandler("opencode-sse-session", async () => OpenCodeSSEServer.getSession());
+registerHandler("opencode-sse-start-session", async () => OpenCodeSSEServer.startSession());
+registerHandler("opencode-sse-end-session", async () => OpenCodeSSEServer.endSession());

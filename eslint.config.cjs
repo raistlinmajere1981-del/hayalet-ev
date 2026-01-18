@@ -7,11 +7,11 @@ module.exports = tseslint.config(
     ignores: [
       "node_modules/**",
       "dist/**",
+      "dist-electron/**",
       "build/**",
       "*.min.js",
       "package-lock.json",
       ".rovodev/scripts/**",
-      "mcp-server/**",
     ],
   },
 
@@ -296,12 +296,55 @@ module.exports = tseslint.config(
     },
   },
 
-  // === Electron ESM Files ===
+  // === Electron TypeScript Files ===
   {
-    files: ["electron/**/*.mjs"],
+    files: ["electron/**/*.ts"],
+    extends: [...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
+      parserOptions: {
+        project: "./tsconfig.electron.json",
+      },
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        Buffer: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        URL: "readonly",
+        fetch: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^(_|e|err|error|evt|event)",
+          varsIgnorePattern: "^(_|e|err|error|evt|event)",
+          caughtErrorsIgnorePattern: "^(_|e|err|error)",
+        },
+      ],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-console": "off",
+      "prefer-const": "warn",
+    },
+  },
+
+  // === MCP Server TypeScript Files ===
+  {
+    files: ["mcp-server/**/*.ts"],
+    extends: [...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      parserOptions: {
+        project: "./mcp-server/tsconfig.json",
+      },
       globals: {
         console: "readonly",
         process: "readonly",
@@ -315,7 +358,7 @@ module.exports = tseslint.config(
       },
     },
     rules: {
-      "no-unused-vars": [
+      "@typescript-eslint/no-unused-vars": [
         "warn",
         {
           argsIgnorePattern: "^(_|e|err|error|evt|event)",

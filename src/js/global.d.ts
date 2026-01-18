@@ -80,13 +80,13 @@ declare global {
     commandCleanupJob: (payload: Record<string, unknown>) => Promise<IPCResult>;
 
     // Database
-    dbGetConversations: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbGetConversations: (payload: Record<string, unknown>) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
     dbSaveConversation: (conversation: Record<string, unknown>) => Promise<IPCResult & { id?: string }>;
     dbUpdateConversation: (conversation: Record<string, unknown>) => Promise<IPCResult>;
     dbDeleteConversation: (payload: Record<string, unknown>) => Promise<IPCResult>;
-    dbGetMessages: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbGetMessages: (payload: Record<string, unknown>) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
     dbSyncMessages: (payload: Record<string, unknown>) => Promise<IPCResult & { count?: number; added?: number; total?: number; conversationId?: string }>;
-    dbSearchMessages: (payload: Record<string, unknown>) => Promise<Array<Record<string, unknown>>>;
+    dbSearchMessages: (payload: Record<string, unknown>) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
     dbSaveAttachment: (payload: Record<string, unknown>) => Promise<IPCResult>;
 
     // Archives
@@ -128,7 +128,8 @@ declare global {
     // Logging
     logWrite: (payload: Record<string, unknown>) => Promise<IPCResult>;
     getSessionId: () => Promise<string>;
-    onConsoleLogForward: (callback: (data: { level: string; source?: string; message?: string; context?: unknown; args?: unknown[] }) => void) => () => void;
+    getEarlyLogs: () => Promise<Array<{ level: string; source: string; message: string; timestamp: string; visibility: 1 | 2 | 3 }>>;
+    onConsoleLogForward: (callback: (data: { level: string; source?: string; message?: string; context?: unknown; args?: unknown[]; visibility?: 1 | 2 | 3 }) => void) => () => void;
 
     // Webview
     setupWebviewLogger: (webContentsId: number, ...args: unknown[]) => Promise<IPCResult>;
@@ -142,6 +143,14 @@ declare global {
     opencodeStart: (options?: Record<string, unknown>) => Promise<IPCResult>;
     opencodeStop: () => Promise<IPCResult>;
     opencodeStatus: () => Promise<{ running: boolean; port?: number }>;
+
+    // OpenCode SSE Server
+    opencodeSSEStart: (config?: { port?: number; host?: string; corsOrigin?: string }) => Promise<{ success: boolean; url?: string; error?: string }>;
+    opencodeSSEStop: () => Promise<{ success: boolean }>;
+    opencodeSSEStatus: () => Promise<{ running: boolean; url: string | null; clients: number }>;
+    opencodeSSESession: () => Promise<{ session: unknown | null }>;
+    opencodeSSEStartSession: () => Promise<unknown>;
+    opencodeSSEEndSession: () => Promise<void>;
     assistantConnect: (provider: string, options?: Record<string, unknown>) => Promise<IPCResult>;
     assistantDisconnect: () => Promise<IPCResult>;
     assistantStatus: () => Promise<{ connected: boolean }>;

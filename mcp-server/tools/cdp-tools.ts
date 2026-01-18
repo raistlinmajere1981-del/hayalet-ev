@@ -12,7 +12,7 @@ import type { ToolResult } from "../types/index.js";
 
 import {
   checkConnection,
-  discoverTargets,
+  discoverTargets as _discoverTargets,
 } from "../utils/cdp-connection.js";
 
 import {

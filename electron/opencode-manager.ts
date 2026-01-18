@@ -12,7 +12,7 @@
 
 import { spawn } from "child_process";
 import { OPENCODE_DEFAULTS } from "./opencode-config.ts";
-import type { IpcMainInvokeEvent } from "electron";
+// IpcMainInvokeEvent - gelecekte kullanılabilir
 
 // Timeout değerleri
 const STARTUP_TIMEOUT = 10000; // 10 saniye

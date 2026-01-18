@@ -1,16 +1,16 @@
 # Hayalet-ev Project Context
-> Auto-generated: 2026-01-15 | Regenerate: `npm run bootstrap`
+> Auto-generated: 2026-01-17 | Regenerate: `npm run bootstrap`
 
 ## 📦 Proje Bilgisi
 - **Ad:** hayalet-ev v5.4.0
 - **Branch:** master
-- **Uncommitted:** 1 dosya
+- **Uncommitted:** Yok ✓
 
 ## 📊 Yapı Özeti
-- `src/js/modules/`: 77 dosya, 9,922 satır
-- `src/js/pages/`: 15 dosya, 3,138 satır
-- `electron/`: 25 dosya, 4,750 satır
-- `mcp-server/`: 9 dosya, 1,712 satır
+- `src/js/modules/`: 0 dosya, 0 satır
+- `src/js/pages/`: 0 dosya, 0 satır
+- `electron/`: 2 dosya, 552 satır
+- `mcp-server/`: 0 dosya, 0 satır
 
 ## 🗺️ Modül Haritası
 
@@ -66,23 +66,23 @@
 - `npm run bootstrap - Bu context dosyasını yenile`
 
 ## 📝 Son Değişen Dosyalar (7 gün)
-- src/js/app.js
-- src/js/constants/index.js
-- src/js/constants/slots.js
-- src/js/constants/events.js
-- src/js/constants/file-utils.js
-- src/js/constants/timeouts.js
-- src/js/constants/ipc-channels.js
-- src/js/modules/traffic-manager.js
-- src/js/modules/slot/settings-sync.js
-- src/js/modules/slot/index.js
+- mcp-server/node_modules/esbuild/install.js
+- mcp-server/node_modules/esbuild/lib/main.js
+- mcp-server/node_modules/ws/index.js
+- mcp-server/node_modules/ws/lib/websocket-server.js
+- mcp-server/node_modules/ws/lib/constants.js
+- mcp-server/node_modules/ws/lib/buffer-util.js
+- mcp-server/node_modules/ws/lib/validation.js
+- mcp-server/node_modules/ws/lib/extension.js
+- mcp-server/node_modules/ws/lib/stream.js
+- mcp-server/node_modules/ws/lib/limiter.js
 
 ## 🔄 Son Commit'ler
-- e4192db feat: Dosya işlemleri script'i eklendi (file-ops.js)
-- 018508c refactor: AI asistan klasörlerini merkezi yapıya taşı
-- a817fd4 feat: Session context optimizasyonu - token tasarrufu
-- 366304f feat: Proje analiz ve diagram araçları eklendi
-- 1e7e76b feat: AI agent geliştirme araçları eklendi
+- b642838 docs: AGENTS.md sadeleştirildi (524 → 228 satır)
+- d9095b0 refactor(mcp): Provider yönetim komutları kaldırıldı
+- 19d898d docs: TypeScript bölümünü güncelle - dönüşüm tamamlandı
+- 16c62df feat(typescript): MCP Server strict mode aktif edildi
+- da5e5d6 feat(typescript): Faz 6-7 tamamlandı - strictNullChecks + strict: true
 
 ## 📚 Detaylı Rehberler
 - `AGENTS.md` - Ana geliştirme rehberi

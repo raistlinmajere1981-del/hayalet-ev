@@ -47,7 +47,7 @@ export async function screenshotCaptureHandler(
   _event: IpcMainInvokeEvent | null,
   options: ScreenshotOptions = {}
 ): Promise<CaptureResult> {
-  const { region = '', hideCursor = false, filePath = '', format = 'png' } = options || {};
+  const { region = '', hideCursor: _hideCursor = false, filePath = '', format = 'png' } = options || {};
   try {
     const useJpg = (format || '').toLowerCase() === 'jpg' || (format || '').toLowerCase() === 'jpeg';
     const buffer = await screenshot({ format: useJpg ? 'jpg' : 'png' } as Parameters<typeof screenshot>[0]);

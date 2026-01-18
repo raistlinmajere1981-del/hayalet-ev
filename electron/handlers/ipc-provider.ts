@@ -2,7 +2,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { pathToFileURL } from "url";
 import { registerHandler } from "./ipc-helpers.ts";
-import type { ProviderConfig } from "../types/index.ts";
+import type { ProviderConfig as _ProviderConfig } from "../types/index.ts";
 
 export function setupProviderHandlers(__dirname: string): void {
   const PATHS = {

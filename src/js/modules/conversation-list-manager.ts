@@ -87,15 +87,19 @@ class ConversationListManagerClass {
       const ai1Account = AppState.getAccountForSlot("ai1");
       const ai2Account = AppState.getAccountForSlot("ai2");
 
-      const [ai1Entries, ai2Entries] = await Promise.all([
-        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai1Account.id }) : [],
-        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai2Account.id }) : [],
+      const [ai1Result, ai2Result] = await Promise.all([
+        ai1Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai1Account.id }) : { data: [] },
+        ai2Account?.id ? window.electronAPI?.dbGetConversations?.({ accountId: ai2Account.id }) : { data: [] },
       ]);
+
+      // DB sonuçlarını validate et - { success, data } formatından data'yı çıkar
+      const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
+      const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)
       this.entries = [
-        ...(ai1Entries || []).map(e => ({ ...e, provider: "ai1", mtime: e.updatedAt || e.createdAt })),
-        ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2", mtime: e.updatedAt || e.createdAt })),
+        ...ai1Entries.map(e => ({ ...e, provider: "ai1", mtime: e.updatedAt || e.createdAt })),
+        ...ai2Entries.map(e => ({ ...e, provider: "ai2", mtime: e.updatedAt || e.createdAt })),
       ];
 
       this.renderAll({ silent });

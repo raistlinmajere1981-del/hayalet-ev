@@ -2,6 +2,7 @@ import { LogManager } from "../modules/log-manager.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { AppState } from "../modules/app-state.js";
+import { ButtonStates } from "../ui/button-states.js";
 
 // ============================================================================
 // Types
@@ -220,19 +221,23 @@ export class ArchivesController {
       const ai1Account = AppState.getAccountForSlot("ai1");
       const ai2Account = AppState.getAccountForSlot("ai2");
 
-      const [ai1Entries, ai2Entries] = await Promise.all([
+      const [ai1Result, ai2Result] = await Promise.all([
         ai1Account?.id ? window.electronAPI?.dbGetConversations?.({
           accountId: ai1Account.id,
-        }) : [],
+        }) : { data: [] },
         ai2Account?.id ? window.electronAPI?.dbGetConversations?.({
           accountId: ai2Account.id,
-        }) : [],
-      ]) as [Record<string, unknown>[] | undefined, Record<string, unknown>[] | undefined];
+        }) : { data: [] },
+      ]);
+
+      // DB sonuçlarını validate et - { success, data } formatından data'yı çıkar
+      const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
+      const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)
       this.entries = [
-        ...(ai1Entries || []).map(e => ({ ...e, provider: "ai1" })),
-        ...(ai2Entries || []).map(e => ({ ...e, provider: "ai2" })),
+        ...ai1Entries.map(e => ({ ...e, provider: "ai1" })),
+        ...ai2Entries.map(e => ({ ...e, provider: "ai2" })),
       ] as ArchiveEntry[];
       
       this.renderList();
@@ -300,10 +305,20 @@ export class ArchivesController {
       return;
     }
 
+    const deleteBtn = document.getElementById("btn-delete") as HTMLButtonElement | null;
+
     try {
+      // Loading state
+      if (deleteBtn) {
+        ButtonStates.setLoading(deleteBtn, "Siliniyor...");
+      }
+
       // Slot'tan hesap bilgisini al
       const accountInfo = AppState.getAccountForSlot(entry.provider || "");
       if (!accountInfo?.id) {
+        if (deleteBtn) {
+          ButtonStates.setError(deleteBtn, "Hata!", 1500);
+        }
         this.setStatus("Hesap bilgisi bulunamadı", "error");
         return;
       }
@@ -315,11 +330,19 @@ export class ArchivesController {
       });
 
       if (!result?.success) {
+        if (deleteBtn) {
+          ButtonStates.setError(deleteBtn, "Hata!", 1500);
+        }
         this.setStatus(result?.error || "Sohbet silinemedi", "error");
         return;
       }
 
-      LogManager.addEvent("archives", "info", `Sohbet silindi: ${entry.id}`);
+      // Success state
+      if (deleteBtn) {
+        ButtonStates.setSuccess(deleteBtn, "Silindi!", 1500);
+      }
+
+      LogManager.addEvent("archives", "success", `Sohbet silindi: ${entry.id}`, { showToast: false });
 
       const isActive = this.selectedId === entry.id;
       if (isActive) {
@@ -338,6 +361,9 @@ export class ArchivesController {
       }
     } catch (e) {
       const err = e as Error;
+      if (deleteBtn) {
+        ButtonStates.setError(deleteBtn, "Hata!", 1500);
+      }
       LogManager.addEvent("archives", "error", `Silme hatası: ${err.message}`);
       this.setStatus("Sohbet silinirken hata oluştu", "error");
     }
@@ -641,6 +667,8 @@ export class ArchivesController {
   }
 
   async saveSelected(): Promise<void> {
+    const saveBtn = document.getElementById("archive-save") as HTMLButtonElement | null;
+    
     if (!this.selectedId) {
       this.setStatus("Sohbet seçilmedi", "warning");
       return;
@@ -658,6 +686,11 @@ export class ArchivesController {
       return;
     }
 
+    // Loading state
+    if (saveBtn) {
+      ButtonStates.setLoading(saveBtn, "Kaydediliyor...");
+    }
+
     const newTitle = this.titleEl?.value || entry.title;
     const newSummary = this.summaryEl?.value || entry.summary;
 
@@ -671,15 +704,24 @@ export class ArchivesController {
       });
 
       if (result?.success) {
+        if (saveBtn) {
+          ButtonStates.setSuccess(saveBtn, "Kaydedildi!", 1500);
+        }
         this.setStatus("Kaydedildi", "success");
-        LogManager.addEvent("archives", "success", "Arşiv güncellendi");
+        LogManager.addEvent("archives", "success", "Arşiv güncellendi", { showToast: false });
         await ConversationListManager.refresh({ silent: true });
         await this.loadIndex();
       } else {
+        if (saveBtn) {
+          ButtonStates.setError(saveBtn, "Hata!", 1500);
+        }
         this.setStatus((result as { error?: string })?.error || "Kaydedilemedi", "error");
       }
     } catch (e) {
       const err = e as Error;
+      if (saveBtn) {
+        ButtonStates.setError(saveBtn, "Hata!", 1500);
+      }
       LogManager.addEvent("archives", "error", `Kaydetme hatası: ${err.message}`);
       this.setStatus("Kaydedilemedi", "error");
     }

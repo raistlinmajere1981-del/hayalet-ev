@@ -122,6 +122,7 @@ export function sendCDPCommand(
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const id = cdpCommandId++;
+    // eslint-disable-next-line prefer-const
     let timeoutId: NodeJS.Timeout;
     
     const messageHandler = (data: WebSocket.RawData): void => {
