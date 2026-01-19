@@ -15,6 +15,13 @@ import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { getErrorMessage } from "../types/index.js";
 import type { SlotId } from "../types/index.js";
+import { 
+  SlotStateMachine, 
+  SlotStates, 
+  createSlotStateMachine,
+  type SlotStateType,
+  type TransitionResult,
+} from "./slot/state-machine.js";
 
 import {
   attachWebview,
@@ -92,6 +99,7 @@ const CONFIG = {
 // ============================================
 interface SlotStateData {
   state: string;
+  stateMachine: SlotStateMachine; // Robust state machine
   accountId: string | null;
   providerId: string | null;
   providerConfig: unknown | null;
@@ -106,8 +114,9 @@ interface SlotStateData {
   lastActivity: number;
 }
 
-const createSlotState = (): SlotStateData => ({
+const createSlotState = (slotId: string): SlotStateData => ({
   state: SlotState.EMPTY,
+  stateMachine: createSlotStateMachine(slotId, SlotStates.EMPTY),
   accountId: null,
   providerId: null,
   providerConfig: null,
@@ -134,9 +143,9 @@ class SlotControllerClass {
 
   constructor() {
     this._slots = {
-      ai0: createSlotState(), // Asistan slotu
-      ai1: createSlotState(),
-      ai2: createSlotState(),
+      ai0: createSlotState("ai0"), // Asistan slotu
+      ai1: createSlotState("ai1"),
+      ai2: createSlotState("ai2"),
     };
     this._listeners = [];
     this._initialized = false;
@@ -164,7 +173,7 @@ class SlotControllerClass {
     }) as any);
     
     this._initialized = true;
-    LogManager.addEvent("slot-controller", "info", "SlotController initialized");
+    LogManager.addEvent("slot-controller", "info", "SlotController initialized", { visibility: 2 });
   }
 
   // ============================================
@@ -213,6 +222,12 @@ class SlotControllerClass {
     if (!this._isValidSlot(slot) || !webview) return;
     
     const slotState = this._slots[slot];
+    
+    // Zaten aynı webview register edilmişse tekrar log yazma
+    if (slotState.webviewRegistered && slotState.webview === webview) {
+      return; // Çift register'u önle
+    }
+    
     slotState.webview = webview;
     slotState.webviewRegistered = true;
     slotState.lastActivity = Date.now();
@@ -312,7 +327,13 @@ class SlotControllerClass {
     }
 
     slotState.correlationId = correlationId;
-    this._transition(slot, SlotState.CONNECTING);
+    
+    // State transition - başarısız olursa devam etme
+    const transitionResult = this._transition(slot, SlotState.CONNECTING);
+    if (!transitionResult.success) {
+      this._log(slot, "error", `Invalid state transition blocked: ${slotState.state} → connecting. ${transitionResult.error}`, { correlationId });
+      return { success: false, message: "invalid-state-transition", correlationId, error: transitionResult.error };
+    }
     this._emit(slot, SlotEvent.CONNECT_START, { correlationId });
 
     startTimeout(slot, "connect", CONFIG.connectTimeoutMs, () => {
@@ -369,7 +390,7 @@ class SlotControllerClass {
     }
   }
 
-  async disconnect(slot: string, options: { force?: boolean } = {}) {
+  async disconnect(slot: string, _options: { force?: boolean } = {}) {
     if (!this._isValidSlot(slot)) {
       return { success: false, message: "invalid-slot" };
     }
@@ -383,7 +404,10 @@ class SlotControllerClass {
       return { success: true, message: "not-assigned", correlationId };
     }
 
-    if (slotState.state === SlotState.ASSIGNED && !options.force) {
+    // ASSIGNED durumunda zaten bağlı değil - disconnect gereksiz
+    // force=true olsa bile ASSIGNED'dan DISCONNECTING'e geçiş geçersiz
+    if (slotState.state === SlotState.ASSIGNED) {
+      this._log(slot, "debug", "Already disconnected (ASSIGNED state)", { correlationId });
       return { success: true, message: "already-disconnected", correlationId };
     }
 
@@ -391,7 +415,12 @@ class SlotControllerClass {
       return { success: false, message: "disconnect-in-progress", correlationId };
     }
 
-    this._transition(slot, SlotState.DISCONNECTING);
+    // State transition - başarısız olursa devam etme
+    const transitionResult = this._transition(slot, SlotState.DISCONNECTING);
+    if (!transitionResult.success) {
+      this._log(slot, "error", `Invalid state transition blocked: ${slotState.state} → disconnecting. ${transitionResult.error}`, { correlationId });
+      return { success: false, message: "invalid-state-transition", correlationId, error: transitionResult.error };
+    }
     this._emit(slot, SlotEvent.DISCONNECT_START, { correlationId });
 
     try {
@@ -536,17 +565,65 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  _transition(slot: string, newState: string) {
+  /**
+   * State transition with validation
+   * @returns TransitionResult with success status and details
+   */
+  _transition(slot: string, newState: string, reason?: string): TransitionResult {
     const slotState = this._slots[slot];
     const oldState = slotState.state;
     
-    if (oldState === newState) return;
+    // State machine ile geçerlilik kontrolü ve geçiş
+    const result = slotState.stateMachine.transition(
+      newState as SlotStateType,
+      {
+        correlationId: slotState.correlationId || undefined,
+        reason,
+      }
+    );
     
-    slotState.state = newState;
-    slotState.lastActivity = Date.now();
+    if (result.success) {
+      // Legacy state alanını da güncelle (backward compatibility)
+      slotState.state = newState;
+      slotState.lastActivity = Date.now();
+      
+      if (!result.wasNoOp) {
+        this._emit(slot, SlotEvent.STATE_CHANGED, { 
+          oldState, 
+          newState,
+          validated: true,
+        });
+      }
+    } else {
+      // Geçersiz transition - hata logla ama crash etme
+      this._log(slot, "error", `Invalid state transition blocked: ${oldState} → ${newState}. ${result.error}`);
+    }
     
-    this._log(slot, "debug", `State: ${oldState} → ${newState}`);
-    this._emit(slot, SlotEvent.STATE_CHANGED, { oldState, newState });
+    return result;
+  }
+
+  /**
+   * State machine üzerinden mevcut state'i al
+   */
+  getStateMachineState(slot: string): SlotStateType | null {
+    if (!this._isValidSlot(slot)) return null;
+    return this._slots[slot].stateMachine.state;
+  }
+
+  /**
+   * State machine debug bilgisini al
+   */
+  getStateMachineDebugInfo(slot: string) {
+    if (!this._isValidSlot(slot)) return null;
+    return this._slots[slot].stateMachine.getDebugInfo();
+  }
+
+  /**
+   * Belirli bir state'e geçiş yapılabilir mi kontrol et
+   */
+  canTransitionTo(slot: string, targetState: string): boolean {
+    if (!this._isValidSlot(slot)) return false;
+    return this._slots[slot].stateMachine.canTransitionTo(targetState as SlotStateType);
   }
 
   // ============================================
