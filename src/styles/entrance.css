@@ -26,11 +26,12 @@
 
 /* === SLOT GRID === */
 .slot-grid {
-  flex: 1;
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  min-height: 0;
+  min-height: 200px;
+  overflow: hidden;
 }
 
 /* === SLOT CARD === */
@@ -270,9 +271,14 @@
 
 /* === CONTROL PANEL (Accordion) === */
 .control-panel-accordion {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   background: var(--color-bg-secondary);
   border-top: var(--border-1) solid var(--color-border);
+}
+
+/* Accordion açıkken içerik için minimum yükseklik */
+.control-panel-accordion:has(.accordion-content.open) {
+  min-height: 250px;
 }
 
 /* Accordion Toggle Button */
@@ -318,15 +324,16 @@
   transform: rotate(180deg);
 }
 
-/* Accordion Content */
-.accordion-content {
-  max-height: 0;
+/* Accordion Content - design system override */
+.control-panel-accordion .accordion-content {
+  display: block !important;
+  height: 0;
   overflow: hidden;
-  transition: max-height var(--duration-normal) var(--ease-out);
+  transition: height var(--duration-normal) var(--ease-out);
 }
 
-.accordion-content.open {
-  max-height: 45vh;
+.control-panel-accordion .accordion-content.open {
+  height: 210px;
   overflow-y: auto;
 }
 
