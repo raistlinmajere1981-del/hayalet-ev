@@ -15,9 +15,8 @@ import { CatchManager } from "../catch-manager.js";
 import { AppState } from "../app-state.js";
 import { SlotController } from "../slot-controller.js";
 import { ConversationListManager } from "../conversation-list-manager.js";
-import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
-import { normalizeUrl, isUrlExcluded as checkUrlExcluded } from "./methods/shared/url-utils.js";
+import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { waitForDomReady } from "../../app.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
 import type { AppSettings } from "../../types/settings.js";
@@ -120,20 +119,15 @@ class ConversationSyncerClass {
       } catch (_err) {}
     });
 
-    LogManager.addEvent("sync", "info", "ConversationSyncer initialized");
+    LogManager.addEvent("sync", "info", "ConversationSyncer initialized", { visibility: 2 });
   }
 
   /**
    * URL excluded mı kontrol et
+   * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
    */
   isUrlExcluded(providerSlot: string, url: string): boolean {
-    const providerId = AppState.getProviderIdForSlot(providerSlot);
-    if (!providerId || !url) return false;
-
-    const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
-    if (!cfg?.excludedUrls?.length) return false;
-
-    return checkUrlExcluded(url, cfg.excludedUrls);
+    return isSlotUrlExcluded(providerSlot, url);
   }
 
   /**
@@ -159,8 +153,20 @@ class ConversationSyncerClass {
       return { success: false, message: "URL excluded from operations" };
     }
 
+    // Default page kontrolü - ana sayfada sync yapma
+    const providerId = AppState.getProviderIdForSlot(provider);
+    if (providerId && isDefaultPage(currentUrl, providerId)) {
+      LogManager.addEvent(
+        `webview-${provider}`,
+        "info",
+        `Default page, sync skipped: ${currentUrl}`,
+        { visibility: 3 }
+      );
+      return { success: false, message: "default-page" };
+    }
+
     if (this._syncInProgress[provider]) {
-      LogManager.addEvent(`webview-${provider}`, "info", "sync skipped: already in progress");
+      LogManager.addEvent(`webview-${provider}`, "info", "sync skipped: already in progress", { visibility: 3 });
       return { success: false, message: "sync-in-progress" };
     }
     this._syncInProgress[provider] = true;
@@ -339,6 +345,7 @@ class ConversationSyncerClass {
         await ConversationListManager.refresh({
           silent: true,
           forceSelectId: res.conversationId,
+          provider, // Sadece bu provider için mesaj listesini güncelle
         });
       }
 
@@ -395,7 +402,7 @@ class ConversationSyncerClass {
    */
   cancelListeners(provider: string): void {
     if (this._stableListeners[provider]) {
-      LogManager.addEvent("sync", "info", `Canceling listeners for ${provider}`);
+      LogManager.addEvent("sync", "info", `Canceling listeners for ${provider}`, { visibility: 3 });
       delete this._stableListeners[provider];
     }
 

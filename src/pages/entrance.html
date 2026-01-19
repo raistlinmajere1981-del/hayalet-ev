@@ -1,245 +1,236 @@
 <div class="page hidden" id="page-entrance">
-  <div class="entrance-container">
-    
-    <!-- UPPER DECK: WEBVIEW PANELS -->
-    <div class="webview-deck">
-      <!-- AI1 Webview Panel -->
-      <div class="webview-panel">
-        <div class="webview-header">
-          <div class="webview-title">
-            <h3 id="ai1-title"></h3>
+  <div class="entrance-page">
+
+    <!-- SLOT CARDS GRID -->
+    <div class="slot-grid">
+      
+      <!-- AI1 SLOT CARD -->
+      <div class="slot-card" data-slot="ai1">
+        <div class="slot-header">
+          <div class="slot-avatar-wrapper">
+            <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
+            <span class="slot-status-dot" id="ai1-status-dot"></span>
           </div>
-          <div class="webview-controls">
-            <button class="btn btn-small btn-secondary" id="ai1-devtools-btn">
-              DevTools
-            </button>
+          <div class="slot-info">
+            <span class="slot-nickname" id="ai1-nickname">AI1</span>
+            <select id="ai1-account-select" class="slot-provider-select"></select>
+          </div>
+          <div class="slot-settings-inline">
+            <select id="ai1-msg-method" class="select-mini" title="Mesaj Metodu">
+              <option value="injection">JS</option>
+              <option value="xdotools">Xdo</option>
+            </select>
+            <select id="ai1-file-method" class="select-mini" title="Dosya Metodu">
+              <option value="dragdrop">D&D</option>
+              <option value="injection">JS</option>
+              <option value="xdotools">Xdo</option>
+              <option value="uguu">Uguu</option>
+              <option value="catbox">Catbox</option>
+              <option value="googledrive">GDrive</option>
+            </select>
+            <label class="checkbox-mini" title="Komut Yakalama">
+              <input type="checkbox" id="ai1-catch-check">
+              <span>📥</span>
+            </label>
+          </div>
+          <div class="slot-actions">
+            <button class="btn btn-primary btn-sm slot-connect-btn" id="ai1-toggle-btn">Bağlan</button>
+            <button class="btn btn-ghost btn-icon btn-sm" id="ai1-devtools-btn" title="DevTools">🔧</button>
           </div>
         </div>
-        <div class="webview-url-bar">
-          <div class="webview-url-text" id="ai1-url-display">-</div>
+        <div class="slot-url-bar">
+          <div class="slot-url" id="ai1-url-display">-</div>
         </div>
-        <div class="webview-wrapper" id="ai1-webview-mount">
-          <!-- Overlay - webview üzerinde gösterilir -->
+        <div class="slot-webview-container" id="ai1-webview-mount">
+          <!-- Overlay -->
           <div class="webview-overlay" id="ai1-webview-overlay">
             <div class="overlay-icon">🔌</div>
-            <div class="overlay-title">Hesap Atanmadı</div>
-            <div class="overlay-subtitle">Settings'ten hesap atayın</div>
+            <div class="overlay-title">Hesap Seçilmedi</div>
+            <div class="overlay-subtitle">Yukarıdan hesap seçin ve bağlanın</div>
           </div>
           <!-- Webview will be mounted here dynamically -->
         </div>
       </div>
 
-      <!-- AI2 Webview Panel -->
-      <div class="webview-panel">
-        <div class="webview-header">
-          <div class="webview-title">
-            <h3 id="ai2-title"></h3>
+      <!-- AI2 SLOT CARD -->
+      <div class="slot-card" data-slot="ai2">
+        <div class="slot-header">
+          <div class="slot-avatar-wrapper">
+            <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
+            <span class="slot-status-dot" id="ai2-status-dot"></span>
           </div>
-          <div class="webview-controls">
-            <button class="btn btn-small btn-secondary" id="ai2-devtools-btn">
-              DevTools
-            </button>
+          <div class="slot-info">
+            <span class="slot-nickname" id="ai2-nickname">AI2</span>
+            <select id="ai2-account-select" class="slot-provider-select"></select>
+          </div>
+          <div class="slot-settings-inline">
+            <select id="ai2-msg-method" class="select-mini" title="Mesaj Metodu">
+              <option value="injection">JS</option>
+              <option value="xdotools">Xdo</option>
+            </select>
+            <select id="ai2-file-method" class="select-mini" title="Dosya Metodu">
+              <option value="dragdrop">D&D</option>
+              <option value="injection">JS</option>
+              <option value="xdotools">Xdo</option>
+              <option value="uguu">Uguu</option>
+              <option value="catbox">Catbox</option>
+              <option value="googledrive">GDrive</option>
+            </select>
+            <label class="checkbox-mini" title="Komut Yakalama">
+              <input type="checkbox" id="ai2-catch-check">
+              <span>📥</span>
+            </label>
+          </div>
+          <div class="slot-actions">
+            <button class="btn btn-primary btn-sm slot-connect-btn" id="ai2-toggle-btn">Bağlan</button>
+            <button class="btn btn-ghost btn-icon btn-sm" id="ai2-devtools-btn" title="DevTools">🔧</button>
           </div>
         </div>
-        <div class="webview-url-bar">
-          <div class="webview-url-text" id="ai2-url-display">-</div>
+        <div class="slot-url-bar">
+          <div class="slot-url" id="ai2-url-display">-</div>
         </div>
-        <div class="webview-wrapper" id="ai2-webview-mount">
-          <!-- Overlay - webview üzerinde gösterilir -->
+        <div class="slot-webview-container" id="ai2-webview-mount">
+          <!-- Overlay -->
           <div class="webview-overlay" id="ai2-webview-overlay">
             <div class="overlay-icon">🔌</div>
-            <div class="overlay-title">Hesap Atanmadı</div>
-            <div class="overlay-subtitle">Settings'ten hesap atayın</div>
+            <div class="overlay-title">Hesap Seçilmedi</div>
+            <div class="overlay-subtitle">Yukarıdan hesap seçin ve bağlanın</div>
           </div>
           <!-- Webview will be mounted here dynamically -->
         </div>
       </div>
+
     </div>
 
-    <!-- LOWER DECK: DASHBOARD -->
-    <div class="dashboard-deck">
-      <!-- AGENT & USER CARDS -->
-      <div class="users-grid">
-        
-        <!-- AI1 CARD (2 columns) -->
-        <div class="dashboard-card slot-card" id="user-ai1">
-          <!-- Left: Avatar & Info -->
-          <div class="slot-card-left">
-            <div class="slot-avatar-wrapper">
-              <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
+    <!-- CONTROL PANEL (Accordion) -->
+    <div class="control-panel-accordion">
+      <button class="accordion-toggle" id="settings-accordion-toggle">
+        <span class="accordion-icon">⚙️</span>
+        <span class="accordion-title">Ayarlar</span>
+        <span class="accordion-badges">
+          <span class="panel-badge" id="account-count">0</span>
+          <span class="panel-badge" id="whisper-count">0</span>
+        </span>
+        <span class="accordion-chevron">▼</span>
+      </button>
+      
+      <div class="accordion-content" id="settings-accordion-content">
+        <div class="accordion-panels">
+          
+          <!-- USER SETTINGS -->
+          <div class="panel-item" data-panel="user">
+            <div class="panel-header">
+              <span class="panel-icon">👤</span>
+              <span class="panel-title">Kullanıcı & Drive</span>
             </div>
-            <span class="slot-name" id="ai1-nickname">AI1</span>
-            <div class="connection-status">
-              <span class="status-dot" id="ai1-status-dot"></span>
-              <span id="ai1-status-text">Bağlı Değil</span>
+            <div class="panel-content">
+              <div class="user-settings-grid">
+                <div class="user-avatar-section">
+                  <div class="user-avatar-wrapper" id="user-avatar-edit-btn" title="Avatarı Değiştir">
+                    <div class="avatar-placeholder img-cover" id="user-avatar"></div>
+                    <div class="user-edit-overlay">📷</div>
+                  </div>
+                  <input type="text" id="user-nickname-input" class="input input-sm" value="Kullanıcı" placeholder="Takma Ad">
+                </div>
+                <div class="gdrive-settings">
+                  <div class="form-field">
+                    <label class="form-label">Google Drive</label>
+                    <div class="connection-status">
+                      <span class="status-dot" id="gdrive-status-dot"></span>
+                      <span id="gdrive-status-text">Bağlı Değil</span>
+                    </div>
+                  </div>
+                  <div class="form-field">
+                    <input type="text" id="gdrive-client-id" class="input input-sm" placeholder="Client ID">
+                  </div>
+                  <div class="form-field">
+                    <input type="text" id="gdrive-client-secret" class="input input-sm" placeholder="Client Secret">
+                  </div>
+                  <div class="form-field">
+                    <input type="text" id="gdrive-auth-code" class="input input-sm" placeholder="Auth Code">
+                  </div>
+                  <div class="btn-group-inline">
+                    <button class="btn btn-secondary btn-sm" id="gdrive-start-auth">Auth URL</button>
+                    <button class="btn btn-primary btn-sm" id="gdrive-connect-btn">Bağlan</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button class="btn-compact primary" id="ai1-toggle-btn">Bağlan</button>
           </div>
-          <!-- Right: Settings -->
-          <div class="slot-card-right">
-            <div class="slot-setting-row">
-              <label>Hesap</label>
-              <select id="ai1-account-select" class="compact-select"></select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Mesaj</label>
-              <select id="ai1-msg-method" class="compact-select">
-                <option value="injection">JS Injection</option>
-                <option value="xdotools">Xdotools</option>
-              </select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Dosya</label>
-              <select id="ai1-file-method" class="compact-select">
-                <option value="dragdrop">Drag & Drop</option>
-                <option value="injection">JS Injection</option>
-                <option value="xdotools">Xdotools</option>
-                <option value="uguu">Uguu</option>
-                <option value="tmpfile">Tmpfile</option>
-                <option value="catbox">Catbox</option>
-                <option value="googledrive">Google Drive</option>
-              </select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Catch</label>
-              <input type="checkbox" id="ai1-catch-check">
-            </div>
-          </div>
-        </div>
 
-        <!-- USER CENTER CARD (2 columns) -->
-        <div class="dashboard-card slot-card" id="user-card">
-          <!-- Left: Avatar & Info -->
-          <div class="slot-card-left">
-            <div class="slot-avatar-wrapper" id="user-avatar-edit-btn" title="Avatarı Değiştir">
-              <div class="avatar-placeholder img-cover" id="user-avatar"></div>
-              <div class="user-edit-overlay">📷</div>
+          <!-- ACCOUNTS -->
+          <div class="panel-item" data-panel="accounts">
+            <div class="panel-header">
+              <span class="panel-icon">📋</span>
+              <span class="panel-title">Hesap Yönetimi</span>
             </div>
-            <input type="text" id="user-nickname-input" class="slot-name-input" value="Kullanıcı" spellcheck="false">
-            <div class="connection-status">
-              <span class="status-dot" id="gdrive-status-dot"></span>
-              <span id="gdrive-status-text">Google Drive</span>
+            <div class="panel-content">
+              <div class="accounts-container">
+                <div class="account-list" id="account-list">
+                  <!-- Dynamic Content -->
+                </div>
+                <div class="account-form">
+                  <div class="account-form-header">
+                    <span>Yeni Hesap</span>
+                    <span id="account-status-msg" class="form-hint"></span>
+                  </div>
+                  <div class="account-form-body">
+                    <input type="text" id="new-account-email" class="input input-sm" placeholder="Email">
+                    <input type="text" id="new-account-nickname" class="input input-sm" placeholder="Takma Ad">
+                    <select id="new-account-provider" class="select">
+                      <option value="chatgpt">ChatGPT</option>
+                      <option value="gemini">Gemini</option>
+                      <option value="grok">Grok</option>
+                    </select>
+                    <div class="account-form-avatar-row">
+                      <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
+                      <button class="btn btn-ghost btn-sm" id="new-account-avatar-browse">📷 Avatar</button>
+                    </div>
+                    <div class="account-form-actions">
+                      <button class="btn btn-primary btn-sm" id="settings-create-account">Ekle</button>
+                      <button class="btn btn-danger btn-sm hidden" id="settings-cancel-edit">İptal</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <!-- Right: Drive Settings -->
-          <div class="slot-card-right">
-            <div class="slot-setting-row">
-              <label>Client ID</label>
-              <input type="text" id="gdrive-client-id" class="compact-input" placeholder="Client ID">
-            </div>
-            <div class="slot-setting-row">
-              <label>Secret</label>
-              <input type="text" id="gdrive-client-secret" class="compact-input" placeholder="Client Secret">
-            </div>
-            <div class="slot-setting-row">
-              <label>Code</label>
-              <input type="text" id="gdrive-auth-code" class="compact-input" placeholder="Auth Code">
-            </div>
-            <div class="slot-setting-row slot-setting-buttons">
-              <button class="btn-compact" id="gdrive-start-auth">Auth</button>
-              <button class="btn-compact primary" id="gdrive-connect-btn">Bağlan</button>
-            </div>
-          </div>
-        </div>
 
-        <!-- AI2 CARD (2 columns) -->
-        <div class="dashboard-card slot-card" id="user-ai2">
-          <!-- Left: Avatar & Info -->
-          <div class="slot-card-left">
-            <div class="slot-avatar-wrapper">
-              <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
+          <!-- WHISPER QUEUE -->
+          <div class="panel-item" data-panel="whisper">
+            <div class="panel-header">
+              <span class="panel-icon">🎤</span>
+              <span class="panel-title">Bekleyen Komutlar</span>
             </div>
-            <span class="slot-name" id="ai2-nickname">AI2</span>
-            <div class="connection-status">
-              <span class="status-dot" id="ai2-status-dot"></span>
-              <span id="ai2-status-text">Bağlı Değil</span>
-            </div>
-            <button class="btn-compact primary" id="ai2-toggle-btn">Bağlan</button>
-          </div>
-          <!-- Right: Settings -->
-          <div class="slot-card-right">
-            <div class="slot-setting-row">
-              <label>Hesap</label>
-              <select id="ai2-account-select" class="compact-select"></select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Mesaj</label>
-              <select id="ai2-msg-method" class="compact-select">
-                <option value="injection">JS Injection</option>
-                <option value="xdotools">Xdotools</option>
-              </select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Dosya</label>
-              <select id="ai2-file-method" class="compact-select">
-                <option value="dragdrop">Drag & Drop</option>
-                <option value="injection">JS Injection</option>
-                <option value="xdotools">Xdotools</option>
-                <option value="uguu">Uguu</option>
-                <option value="tmpfile">Tmpfile</option>
-                <option value="catbox">Catbox</option>
-                <option value="googledrive">Google Drive</option>
-              </select>
-            </div>
-            <div class="slot-setting-row">
-              <label>Catch</label>
-              <input type="checkbox" id="ai2-catch-check">
+            <div class="panel-content">
+              <div class="whisper-container">
+                <div class="whisper-header">
+                  <button class="btn btn-ghost btn-sm" id="whisper-clear-btn">🗑️ Temizle</button>
+                </div>
+                <div class="whisper-list" id="whisper-pending-list">
+                  <!-- Dynamic Content -->
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- CONSOLE GRID (3 columns) -->
-      <div class="console-grid">
-        
-        <!-- WHISPER PANEL -->
-        <div class="console-panel">
-           <div class="panel-header">
-             <span class="panel-title">Bekleyen Komutlar</span>
-             <button class="icon-btn-text" id="whisper-clear-btn" title="Temizle">🗑️</button>
-           </div>
-           <div class="panel-body" id="whisper-pending-list">
-             <!-- Dynamic Content -->
-           </div>
-        </div>
+          <!-- REPORT PANEL -->
+          <div class="panel-item" data-panel="report">
+            <div class="panel-header">
+              <span class="panel-icon">📊</span>
+              <span class="panel-title">Canlı Rapor</span>
+              <button class="btn btn-ghost btn-xs" id="report-modal-open" title="Tam Ekran">⛶</button>
+            </div>
+            <div class="panel-content">
+              <div class="report-container">
+                <div class="report-content" id="entrance-report-content">
+                  <div class="log-entry">Sistem başlatıldı...</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <!-- ACCOUNTS LIST PANEL (Middle) -->
-        <div class="console-panel">
-          <div class="panel-header">
-             <span class="panel-title">Hesaplar</span>
-             <span id="account-status-msg" style="font-size: 0.7rem;"></span>
-          </div>
-          <div class="panel-body" id="account-list">
-             <!-- Dynamic Content -->
-          </div>
         </div>
-
-        <!-- ADD ACCOUNT PANEL (2 columns inside) -->
-        <div class="console-panel console-panel-add">
-          <div class="panel-header">
-             <span class="panel-title">Hesap Ekle</span>
-          </div>
-          <div class="account-form-two-col">
-             <!-- Left Column: Inputs -->
-             <div class="account-form-inputs">
-               <input type="text" id="new-account-email" class="compact-input" placeholder="Email">
-               <input type="text" id="new-account-nickname" class="compact-input" placeholder="Takma Ad">
-               <select id="new-account-provider" class="compact-input">
-                 <option value="chatgpt">ChatGPT</option>
-                 <option value="gemini">Gemini</option>
-                 <option value="grok">Grok</option>
-               </select>
-             </div>
-             <!-- Right Column: Avatar & Buttons -->
-             <div class="account-form-avatar">
-               <div class="avatar-preview-box" id="new-account-avatar-preview" title="Avatar Önizleme"></div>
-               <button class="btn-compact" id="new-account-avatar-browse">📷 Resim</button>
-               <button class="btn-compact primary" id="settings-create-account">Ekle</button>
-               <button class="btn-compact danger hidden" id="settings-cancel-edit">İptal</button>
-             </div>
-          </div>
-        </div>
-
       </div>
     </div>
 

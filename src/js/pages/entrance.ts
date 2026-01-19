@@ -6,6 +6,7 @@ import { CoreEngine } from "../modules/core-engine.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
+import { ButtonStates } from "../ui/button-states.js";
 
 import { UserPanel } from "./entrance/user-panel.js";
 import { SlotPanel } from "./entrance/slot-panel.js";
@@ -46,6 +47,7 @@ export class EntranceHallController {
     this.webviewPanel.init();
 
     this.setupEventListeners();
+    this.setupReportPanel();
     await this.loadUserSettings();
     await this.applyDefaultConnections();
     this.updateUI();
@@ -87,6 +89,7 @@ export class EntranceHallController {
 
   setupEventListeners() {
     try {
+      // Slot connect/disconnect buttons
       ["ai1", "ai2"].forEach((u) => {
         const btn = document.getElementById(`${u}-toggle-btn`);
         if (btn) {
@@ -96,9 +99,87 @@ export class EntranceHallController {
           });
         }
       });
+
+      // Settings accordion toggle
+      const accordionToggle = document.getElementById("settings-accordion-toggle");
+      const accordionContent = document.getElementById("settings-accordion-content");
+      if (accordionToggle && accordionContent) {
+        accordionToggle.addEventListener("click", () => {
+          const isOpen = accordionContent.classList.contains("open");
+          accordionContent.classList.toggle("open");
+          accordionToggle.setAttribute("aria-expanded", String(!isOpen));
+        });
+      }
     } catch (error) {
       LogManager.addEvent("entrance", "error", `Event listener setup hatası: ${getErrorMessage(error)}`);
     }
+  }
+
+  setupReportPanel() {
+    // Report modal açma butonu
+    const reportModalOpen = document.getElementById("report-modal-open");
+    const modal = document.getElementById("report-modal");
+    const modalBody = document.getElementById("report-modal-body");
+    const modalClose = document.getElementById("report-modal-close");
+    const entranceReportContent = document.getElementById("entrance-report-content");
+
+    const createLogElement = (entry: { timestamp: string; source: string; message: string; visibility?: number }, showVisibility = false) => {
+      const line = document.createElement("div");
+      line.className = "log-entry";
+      const visibilityBadge = showVisibility ? `[L${entry.visibility || 3}] ` : "";
+      line.textContent = `[${entry.timestamp}] ${visibilityBadge}[${entry.source}] ${entry.message}`;
+      if (entry.visibility === 1) line.classList.add("log-toast");
+      else if (entry.visibility === 2) line.classList.add("log-panel");
+      return line;
+    };
+
+    const openModal = () => {
+      if (!modal || !modalBody) return;
+      modalBody.innerHTML = "";
+      const all = LogManager.getVerboseLogs();
+      [...all].reverse().forEach((entry) => {
+        modalBody.appendChild(createLogElement(entry, true));
+      });
+      modal.classList.remove("hidden");
+    };
+
+    const closeModal = () => modal?.classList.add("hidden");
+
+    reportModalOpen?.addEventListener("click", openModal);
+    modal?.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+    modalClose?.addEventListener("click", closeModal);
+
+    // Başlangıçta panel loglarını yükle
+    if (entranceReportContent) {
+      entranceReportContent.innerHTML = "";
+      const panelLogs = LogManager.getPanelLogs();
+      [...panelLogs].reverse().forEach((entry) => {
+        entranceReportContent.appendChild(createLogElement(entry));
+      });
+    }
+
+    // Canlı log dinleyicisi
+    LogManager.onUpdate((entry) => {
+      // Panel: Sadece visibility 1 ve 2
+      if (entranceReportContent && entry.visibility <= 2) {
+        const logEntry = createLogElement(entry);
+        if (entranceReportContent.firstChild) {
+          entranceReportContent.insertBefore(logEntry, entranceReportContent.firstChild);
+        } else {
+          entranceReportContent.appendChild(logEntry);
+        }
+      }
+
+      // Modal: Tüm loglar - açıksa canlı güncelle
+      if (modalBody && !modal?.classList.contains("hidden")) {
+        const modalLine = createLogElement(entry, true);
+        if (modalBody.firstChild) {
+          modalBody.insertBefore(modalLine, modalBody.firstChild);
+        } else {
+          modalBody.appendChild(modalLine);
+        }
+      }
+    });
   }
 
   async loadUserSettings() {
@@ -163,24 +244,42 @@ export class EntranceHallController {
     if (currentlyConnected) return;
     if (userType === "user") return;
 
+    const toggleBtn = document.getElementById(`${userType}-toggle-btn`) as HTMLButtonElement | null;
     const nickname = AppState.getNickname(userType);
-    LogManager.addEvent("entrance", "info", `${nickname} bağlanıyor...`);
+    
+    // Loading state
+    if (toggleBtn) {
+      ButtonStates.setLoading(toggleBtn, "Bağlanıyor...");
+    }
+    
+    LogManager.addEvent("entrance", "info", `${nickname} bağlanıyor...`, { showToast: false });
 
     const hasAccount = !!settings?.slots?.[userType]?.accountId;
     if (!hasAccount) {
+      if (toggleBtn) {
+        ButtonStates.setError(toggleBtn, "Hesap Yok!", 1500);
+      }
       this.updateUserStatus(userType);
       LogManager.addEvent("entrance", "warning", `${userType} connect blocked: no account assigned`);
       return;
     }
 
     const result = await CoreEngine.setConnection(userType, true, {});
-    this.updateUserStatus(userType);
     
     if (result?.success) {
-      LogManager.addEvent("entrance", "success", `${nickname} bağlandı`);
+      if (toggleBtn) {
+        ButtonStates.setSuccess(toggleBtn, "Bağlandı!", 1500);
+      }
+      LogManager.addEvent("entrance", "success", `${nickname} bağlandı`, { visibility: 1 });
     } else {
-      LogManager.addEvent("entrance", "error", `${nickname} bağlantı hatası: ${result?.message || "bilinmeyen"}`);
+      if (toggleBtn) {
+        ButtonStates.setError(toggleBtn, "Hata!", 1500);
+      }
+      LogManager.addEvent("entrance", "error", `${nickname} bağlantı hatası: ${result?.message || "bilinmeyen"}`, { visibility: 1 });
     }
+    
+    // UI'ı güncelle (buton normal haline döner)
+    setTimeout(() => this.updateUserStatus(userType), 1600);
   }
 
   async disconnectUser(userType: string) {
@@ -188,17 +287,32 @@ export class EntranceHallController {
     const currentlyConnected = SlotController.isConnected(userType);
     if (!currentlyConnected) return;
 
+    const toggleBtn = document.getElementById(`${userType}-toggle-btn`) as HTMLButtonElement | null;
     const nickname = AppState.getNickname(userType);
-    LogManager.addEvent("entrance", "info", `${nickname} bağlantısı kesiliyor...`);
+    
+    // Loading state
+    if (toggleBtn) {
+      ButtonStates.setLoading(toggleBtn, "Kesiliyor...");
+    }
+    
+    LogManager.addEvent("entrance", "info", `${nickname} bağlantısı kesiliyor...`, { showToast: false });
 
     const result = await CoreEngine.setConnection(userType, false, {});
-    this.updateUserStatus(userType);
     
     if (result?.success) {
+      if (toggleBtn) {
+        ButtonStates.setSuccess(toggleBtn, "Kesildi!", 1500);
+      }
       LogManager.addEvent("entrance", "success", `${nickname} bağlantısı kesildi`);
     } else {
-      LogManager.addEvent("entrance", "error", `${nickname} bağlantı kesme hatası: ${result?.message || "bilinmeyen"}`);
+      if (toggleBtn) {
+        ButtonStates.setError(toggleBtn, "Hata!", 1500);
+      }
+      LogManager.addEvent("entrance", "error", `${nickname} bağlantı kesme hatası: ${result?.message || "bilinmeyen"}`, { visibility: 1 });
     }
+    
+    // UI'ı güncelle (buton normal haline döner)
+    setTimeout(() => this.updateUserStatus(userType), 1600);
   }
 
   async updateUserStatus(userType: string) {
@@ -274,13 +388,13 @@ export class EntranceHallController {
   }
 
   async applyDefaultConnections() {
-    if (this.defaultsApplied) return;
-    try {
-      await CoreEngine.setConnection("ai1", false, { force: true });
-      await CoreEngine.setConnection("ai2", false, { force: true });
-    } catch (_e) {
-      // Başlangıç bağlantı durumu ayarlanamadı - kritik değil
-    }
+    // NOT: Bu fonksiyon artık gereksiz. SlotController.init() içindeki
+    // syncWithSettings() zaten tüm slotları doğru state'e getiriyor.
+    // Çift disconnect çağrısını önlemek için bu fonksiyon devre dışı.
+    // 
+    // Eski kod referans için:
+    // await CoreEngine.setConnection("ai1", false, { force: true });
+    // await CoreEngine.setConnection("ai2", false, { force: true });
     this.defaultsApplied = true;
   }
 }

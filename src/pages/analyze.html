@@ -48,18 +48,13 @@
     </div>
 
     <div class="compose-row">
-      <div class="compose-area">
-        <textarea
-          class="form-input large"
-          id="compose-input"
-          placeholder="Mesaj yaz..."
-          spellcheck="false"
-        ></textarea>
-
-        <div class="compose-actions">
-          <button class="btn btn-secondary" id="compose-start-btn">
-            Analiz Sohbeti
-          </button>
+      <!-- Sol sidebar: Analiz ve AI-AI kontrolleri -->
+      <div class="compose-sidebar">
+        <button class="btn btn-secondary btn-sm" id="compose-start-btn">
+          📝 Analiz Sohbeti
+        </button>
+        
+        <div class="ai-chat-group">
           <div class="relay-controls">
             <label class="checkbox-label"
               ><input type="radio" name="relay-starter" value="ai1" checked />
@@ -70,10 +65,22 @@
               <span id="relay-ai2-label">AI2</span></label
             >
           </div>
-          <button class="btn btn-secondary" id="ai-chat-start">
-            AI-AI Sohbeti
+          <button class="btn btn-secondary btn-sm" id="ai-chat-start">
+            🔄 AI-AI Sohbeti
           </button>
+        </div>
+      </div>
 
+      <!-- Orta: Metin alanı ve gönder kontrolleri -->
+      <div class="compose-area">
+        <textarea
+          class="form-input large"
+          id="compose-input"
+          placeholder="Mesaj yaz..."
+          spellcheck="false"
+        ></textarea>
+
+        <div class="compose-actions">
           <div class="send-controls">
             <label class="checkbox-label"
               ><input type="checkbox" id="send-ai1" checked />
@@ -87,9 +94,13 @@
               ><input type="checkbox" id="send-cross" /> Çaprazla</label
             >
           </div>
-          <button class="btn btn-primary" id="compose-send-btn">Gönder</button>
+          <button class="btn btn-primary btn-sm" id="compose-send-btn">
+            <span class="btn-text">Gönder</span>
+          </button>
         </div>
       </div>
+
+      <!-- Sağ: Dosya paneli -->
       <div class="compose-files">
         <div class="file-box" id="upload-list">Henüz dosya yok.</div>
         <div class="files-header">

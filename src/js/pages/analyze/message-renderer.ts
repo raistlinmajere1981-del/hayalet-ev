@@ -67,12 +67,15 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
     }
 
     type MessageItem = { id: string; role: string; content?: string; text?: string; author?: string; createdAt?: number };
-    const messages = await window.electronAPI?.dbGetMessages?.({
+    const messagesResult = await window.electronAPI?.dbGetMessages?.({
       accountId: accountInfo.id,
       conversationId,
-    }) as MessageItem[] | undefined;
+    });
+    
+    // DB sonucu { success, data } formatında geliyor
+    const messages = (messagesResult?.data || []) as MessageItem[];
 
-    if (!messages || !messages.length) {
+    if (!messages.length) {
       container.innerHTML = '<div class="message-placeholder">Mesaj bulunamadı.</div>';
       return { lastMessage: "" };
     }

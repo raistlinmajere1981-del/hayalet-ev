@@ -338,23 +338,27 @@ function setupTopBarButtons() {
       });
     }
 
-    // Theme toggle in topbar - window üzerinden erişim (Vite HMR uyumluluğu için)
-    type TMMgr = typeof ThemeManager;
-    const TM = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
+    // Theme toggle in topbar
     if (themeToggle) {
       // Set initial icon
-      themeToggle.textContent = TM.getIcon();
+      themeToggle.textContent = ThemeManager.getIcon();
       
       themeToggle.addEventListener("click", () => {
-        const tm = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
-        tm.toggle();
-        themeToggle.textContent = tm.getIcon();
+        // Doğrudan DOM'u güncelle - Vite HMR sorunlarını bypass et
+        const root = document.documentElement;
+        const currentTheme = root.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "dark" ? "light" : "dark";
+        
+        root.setAttribute("data-theme", newTheme);
+        localStorage.setItem("hayalet-ev-theme", newTheme);
+        themeToggle.textContent = newTheme === "dark" ? "🌙" : "☀️";
+        
+        LogManager.addEvent("theme", "info", `Tema değiştirildi: ${newTheme}`, { visibility: 3 });
       });
 
-      // Listen for theme changes from other sources
-      TM.onChange(() => {
-        const tm = ((window as Record<string, unknown>).__ThemeManager as TMMgr) || ThemeManager;
-        themeToggle.textContent = tm.getIcon();
+      // Listen for theme changes from other sources (system preference etc.)
+      ThemeManager.onChange(() => {
+        themeToggle.textContent = ThemeManager.getIcon();
       });
     }
 
@@ -591,6 +595,10 @@ function setupReportPanel() {
 
 export { currentPage, showPage };
 
-setTimeout(() => {
+// DOM hazır olduğunda initApp'i çağır
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => initApp());
+} else {
+  // DOM zaten hazır
   initApp();
-}, 0);
+}

@@ -79,9 +79,9 @@ class ConversationListManagerClass {
   }
 
   async refresh(
-    options: { silent?: boolean; forceSelectId?: any; skipNotify?: boolean } = {},
+    options: { silent?: boolean; forceSelectId?: any; skipNotify?: boolean; provider?: string } = {},
   ) {
-    const { silent = false, forceSelectId = null, skipNotify = false } = options;
+    const { silent = false, forceSelectId = null, skipNotify = false, provider = null } = options;
     try {
       // Her slot için hesap bilgisini al ve DB'den konuşmaları çek
       const ai1Account = AppState.getAccountForSlot("ai1");
@@ -107,16 +107,16 @@ class ConversationListManagerClass {
         this.updateSelection(forceSelectId, { silent: true });
       }
       if (!skipNotify) {
-        window.dispatchEvent(
-          new CustomEvent("conversation-selected", {
-            detail: { provider: "ai1" },
-          }),
-        );
-        window.dispatchEvent(
-          new CustomEvent("conversation-selected", {
-            detail: { provider: "ai2" },
-          }),
-        );
+        // Provider belirtilmişse sadece o provider için event dispatch et
+        // Belirtilmemişse her iki provider için de dispatch et
+        const providers = provider ? [provider] : ["ai1", "ai2"];
+        for (const p of providers) {
+          window.dispatchEvent(
+            new CustomEvent("conversation-selected", {
+              detail: { provider: p },
+            }),
+          );
+        }
       }
     } catch (error) {
       const err = /** @type {Error} */ (error);
