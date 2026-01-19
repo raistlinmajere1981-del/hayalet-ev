@@ -124,6 +124,39 @@ AI siteleri DOM yapılarını sık değiştiriyor. Selector değişikliği yapma
 | ErrorBoundary | `src/js/modules/error-boundary.ts` | Global hata yakalama |
 | URL Utils | `src/js/modules/webview/methods/shared/url-utils.ts` | Merkezi URL validation (`isSlotUrlExcluded`) |
 
+### IPC API Quick Reference (ÖNEMLİ!)
+
+> **Tam tanımlar:** `src/js/global.d.ts`
+
+Renderer'da `window.electronAPI.*` metodları kullanılır. **Dikkat:** Metod isimlerini doğru kullan!
+
+| Kategori | Metod | Açıklama |
+|----------|-------|----------|
+| **Settings** | `loadSettings()` | Ayarları yükle (❌ `getSettings` değil!) |
+| | `saveSettings(settings)` | Ayarları kaydet |
+| | `createAccount(data)` | Yeni hesap oluştur |
+| | `assignAccountToSlot(slot, accountId)` | Hesabı slota ata |
+| **Database** | `dbGetConversations({ accountId })` | Konuşmaları getir → `{ success, data: [...] }` |
+| | `dbGetMessages({ accountId, conversationId })` | Mesajları getir → `{ success, data: [...] }` |
+| | `dbSyncMessages({ ... })` | Mesajları senkronize et |
+| | `dbSaveConversation(conv)` | Konuşma kaydet |
+| **Window** | `windowMinimize()` | Pencereyi küçült |
+| | `windowMaximize()` | Pencereyi büyüt |
+| | `windowClose()` | Pencereyi kapat |
+
+```typescript
+// ❌ YANLIŞ - metod yok!
+const settings = await window.electronAPI?.getSettings?.();
+
+// ✅ DOĞRU
+const settings = await window.electronAPI?.loadSettings?.();
+const accounts = settings?.accounts || [];
+
+// Database sonuçları { success, data } formatında döner
+const result = await window.electronAPI?.dbGetConversations?.({ accountId });
+const conversations = result?.data || [];  // ❌ result direkt array değil!
+```
+
 ### Log Sistemi (ZORUNLU)
 
 > **Detaylı rehber:** `.rovodev/logging.md`

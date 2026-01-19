@@ -3,13 +3,28 @@
  * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number }>}
  */
 export function scrapeMessages() {
+  // Text normalization - hash tutarlılığı için
+  // Whitespace normalize, line ending fix, trim
+  function normalizeText(str: string): string {
+    if (!str) return "";
+    return str
+      .replace(/\r\n/g, "\n")           // Windows line endings → Unix
+      .replace(/\r/g, "\n")             // Old Mac line endings → Unix
+      .replace(/[\t ]+/g, " ")          // Multiple spaces/tabs → single space
+      .replace(/ *\n */g, "\n")         // Spaces around newlines → just newline
+      .replace(/\n{3,}/g, "\n\n")       // 3+ newlines → 2 newlines
+      .trim();                          // Leading/trailing whitespace
+  }
+
   // Hash fonksiyonu (djb2 algoritması) - fonksiyon içinde tanımlı olmalı
   // çünkü toString() ile webview'a inject edildiğinde dış fonksiyonlar görünmez
   function hashString(str: string) {
     if (!str) return "0";
+    // Normalize before hashing for consistency
+    const normalized = normalizeText(str);
     let hash = 5381;
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) + hash + str.charCodeAt(i);
+    for (let i = 0; i < normalized.length; i++) {
+      hash = (hash << 5) + hash + normalized.charCodeAt(i);
       hash = hash >>> 0;
     }
     return hash.toString(16);
@@ -54,11 +69,6 @@ export function scrapeMessages() {
     }
     // Hash ekle (incremental sync için)
     const contentHash = hashString(text);
-
-    const lastMsg = result[result.length - 1];
-    if (lastMsg && lastMsg.role === role && lastMsg.contentHash === contentHash) {
-      return;
-    }
 
     result.push({ index: idx, role, text, contentHash, domIndex: idx });
   });

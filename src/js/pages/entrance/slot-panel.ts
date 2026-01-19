@@ -15,6 +15,13 @@ export class SlotPanel {
   setupListeners() {
     // No more toggles - Settings are always visible
 
+    // Diğer slot'ta hesap değiştiğinde bu slot'un listesini güncelle
+    window.addEventListener("slot-account-changed", ((e: CustomEvent) => {
+      if (e.detail.slot !== this.slotId) {
+        this.render(); // Diğer slot değiştiyse bu slot'u güncelle
+      }
+    }) as EventListener);
+
     // Account Select
     const accSelect = document.getElementById(`${this.slotId}-account-select`) as HTMLSelectElement | null;
     accSelect?.addEventListener("change", (e) => {
@@ -91,6 +98,14 @@ export class SlotPanel {
     };
     
     await this.settingsManager.save(updated);
+    
+    // Hesap değiştiğinde her iki slot'un listesini güncelle
+    if (key === "accountId") {
+      window.dispatchEvent(new CustomEvent("slot-account-changed", { 
+        detail: { slot: this.slotId, accountId: value } 
+      }));
+    }
+    
     this.render(); 
   }
 }
