@@ -194,7 +194,92 @@ export class OpenCodeEventParser {
       case "session.idle":
         return {
           type: "status.change",
-          data: { status: "idle" },
+          data: { status: "idle", sessionId: event.properties?.sessionId || event.sessionId },
+          timestamp,
+        };
+
+      // Session compacted (CodeNomad)
+      case "session.compacted":
+        return {
+          type: "session.compacted",
+          data: {
+            sessionId: (event.properties as Record<string, unknown>)?.sessionId || event.sessionId,
+            info: event.properties,
+          },
+          timestamp,
+        };
+
+      // Session error (CodeNomad)
+      case "session.error":
+        return {
+          type: "session.error",
+          data: {
+            sessionId: (event.properties as Record<string, unknown>)?.sessionId || event.sessionId,
+            error: (event.properties as Record<string, unknown>)?.error || event.error || "Unknown error",
+          },
+          timestamp,
+        };
+
+      // Message removed (CodeNomad)
+      case "message.removed":
+        return {
+          type: "message.removed",
+          data: {
+            sessionId: (event.properties as Record<string, unknown>)?.sessionID,
+            messageId: (event.properties as Record<string, unknown>)?.messageID,
+          },
+          timestamp,
+        };
+
+      // Message part removed (CodeNomad)
+      case "message.part.removed":
+        return {
+          type: "message.part.removed",
+          data: {
+            sessionId: (event.properties as Record<string, unknown>)?.sessionID,
+            messageId: (event.properties as Record<string, unknown>)?.messageID,
+            partId: (event.properties as Record<string, unknown>)?.partID,
+          },
+          timestamp,
+        };
+
+      // Permission events (CodeNomad style)
+      case "permission.updated":
+      case "permission.asked":
+        return this._handlePermissionRequest(event, timestamp);
+
+      case "permission.replied":
+        return {
+          type: "permission.resolved",
+          data: {
+            permissionId: (event.properties as Record<string, unknown>)?.id || event.permissionId,
+            approved: (event.properties as Record<string, unknown>)?.approved,
+          },
+          timestamp,
+        };
+
+      // Question events (CodeNomad)
+      case "question.asked":
+        return {
+          type: "question.ask",
+          data: {
+            questionId: (event.properties as Record<string, unknown>)?.id,
+            sessionId: (event.properties as Record<string, unknown>)?.sessionID,
+            question: (event.properties as Record<string, unknown>)?.text || (event.properties as Record<string, unknown>)?.question,
+            options: (event.properties as Record<string, unknown>)?.options,
+          },
+          timestamp,
+        };
+
+      case "question.replied":
+      case "question.rejected":
+        return {
+          type: "question.answered",
+          data: {
+            questionId: (event.properties as Record<string, unknown>)?.id,
+            answer: (event.properties as Record<string, unknown>)?.answer,
+            rejected: event.type === "question.rejected",
+          },
           timestamp,
         };
 
@@ -288,7 +373,9 @@ export class OpenCodeEventParser {
       type: "message.delta",
       data: {
         id: msg?.id || event.messageId,
-        content: this._extractTextFromParts(msg?.parts || []),
+        role: msg?.role || (event.role as string) || "assistant",
+        // Kümülatif içerik - SSE server'da delta hesaplanacak
+        fullContent: this._extractTextFromParts(msg?.parts || []),
         parts: msg?.parts || [],
       },
       timestamp,
@@ -304,6 +391,7 @@ export class OpenCodeEventParser {
       type: "message.completed",
       data: {
         id: msg?.id || event.messageId,
+        role: msg?.role || (event.role as string) || "assistant",
         content: this._extractTextFromParts(msg?.parts || []),
         parts: msg?.parts || [],
         metadata: msg?.metadata,
@@ -447,26 +535,54 @@ export class OpenCodeEventParser {
     const part = props.part as Record<string, unknown> || {};
     const partType = part.type as string;
     
+
     // Text part
     if (partType === "text") {
       const text = part.text as string || "";
       // Boş text'i atla
       if (!text.trim()) return null;
       
+      // Message info'dan role ve session bilgisi al
+      const messageInfo = props.message as Record<string, unknown> || {};
+      const role = messageInfo.role as string || "assistant";
+      const sessionId = part.sessionID as string || messageInfo.sessionID as string || props.sessionID as string;
+      const messageId = part.messageID as string || messageInfo.id as string || props.messageId as string || event.messageId as string;
+      
       return {
-        type: "message.delta",
+        type: "message.part.updated",
         data: {
-          id: props.messageId || event.messageId,
-          content: text,
-          delta: text,
+          messageId,
+          sessionId,
+          role,
+          partType: "text",
+          // Kümülatif içerik
+          fullContent: text,
         },
         timestamp,
       };
     }
     
-    // Step-start, step-finish gibi metadata part'larını atla
-    if (partType === "step-start" || partType === "step-finish") {
+    // Step-start: Atla (sadece başlangıç sinyali)
+    if (partType === "step-start") {
       return null;
+    }
+    
+    // Step-finish: Streaming bitiş sinyali - SSE-Server'a ilet
+    if (partType === "step-finish") {
+      const reason = part.reason as string || "unknown";
+      const messageId = part.messageID as string || props.messageId as string || event.messageId as string;
+      const sessionId = part.sessionID as string || props.sessionID as string;
+      
+      return {
+        type: "message.part.updated",
+        data: {
+          messageId,
+          sessionId,
+          partType: "step-finish",
+          reason,
+        },
+        timestamp,
+      };
     }
     
     // Thinking/Reasoning part
