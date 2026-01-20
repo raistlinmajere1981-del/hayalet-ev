@@ -1,0 +1,309 @@
+/**
+ * Design System - Modal Components
+ * 
+ * Dialog and overlay components.
+ */
+
+/* === MODAL OVERLAY === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg-overlay);
+  backdrop-filter: blur(4px);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  animation: modal-overlay-in var(--duration-normal) var(--ease-out);
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-overlay.modal-closing {
+  animation: modal-overlay-out var(--duration-fast) var(--ease-in) forwards;
+}
+
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* === MODAL CONTAINER === */
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - var(--space-8));
+  background: var(--color-bg-secondary);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-modal);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modal-in var(--duration-normal) var(--ease-out);
+}
+
+.modal-closing .modal {
+  animation: modal-out var(--duration-fast) var(--ease-in) forwards;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+}
+
+/* === MODAL SIZES === */
+.modal-sm {
+  max-width: 400px;
+}
+
+.modal-lg {
+  max-width: 700px;
+}
+
+.modal-xl {
+  max-width: 900px;
+}
+
+.modal-full {
+  max-width: calc(100vw - var(--space-8));
+  max-height: calc(100vh - var(--space-8));
+}
+
+/* === MODAL SECTIONS === */
+.modal-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--border-1) solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: var(--transition-colors);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.modal-body {
+  flex: 1;
+  padding: var(--space-5);
+  overflow-y: auto;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.modal-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: var(--border-1) solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* === CONFIRM DIALOG === */
+.modal-confirm .modal-body {
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.modal-confirm-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+}
+
+.modal-confirm-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2);
+}
+
+.modal-confirm-message {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* === DRAWER (Side Panel) === */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg-overlay);
+  z-index: 8999;
+  animation: modal-overlay-in var(--duration-normal) var(--ease-out);
+}
+
+.drawer-overlay.hidden {
+  display: none;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 400px;
+  background: var(--color-bg-secondary);
+  border-left: var(--border-1) solid var(--color-border);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  z-index: 9000;
+  animation: drawer-in var(--duration-normal) var(--ease-out);
+}
+
+.drawer.drawer-left {
+  right: auto;
+  left: 0;
+  border-left: none;
+  border-right: var(--border-1) solid var(--color-border);
+  animation-name: drawer-in-left;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes drawer-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.drawer.drawer-closing {
+  animation: drawer-out var(--duration-fast) var(--ease-in) forwards;
+}
+
+.drawer.drawer-left.drawer-closing {
+  animation-name: drawer-out-left;
+}
+
+@keyframes drawer-out {
+  to { transform: translateX(100%); }
+}
+
+@keyframes drawer-out-left {
+  to { transform: translateX(-100%); }
+}
+
+.drawer-header {
+  padding: var(--space-4);
+  border-bottom: var(--border-1) solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.drawer-footer {
+  padding: var(--space-4);
+  border-top: var(--border-1) solid var(--color-border);
+}
+
+/* === LEGACY MODAL SUPPORT === */
+.report-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 2000;
+}
+
+.report-modal.hidden {
+  display: none;
+}
+
+.report-modal-content {
+  width: min(980px, 95vw);
+  max-height: 88vh;
+  background: var(--color-bg-secondary);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.report-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-1) solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.report-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3-5) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}

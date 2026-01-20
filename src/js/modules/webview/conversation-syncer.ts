@@ -252,7 +252,7 @@ class ConversationSyncerClass {
       }
 
       // Fetch messages with IDs from DB
-      const dbMessages = await window.electronAPI?.dbGetMessages?.({
+      const dbMessagesResult = await window.electronAPI?.dbGetMessages?.({
         accountId: accountInfo.id,
         conversationId: syncResult.conversationId,
       });
@@ -260,7 +260,7 @@ class ConversationSyncerClass {
       return {
         success: true,
         count: normalized.length,
-        messages: dbMessages || normalized,
+        messages: dbMessagesResult?.data ?? normalized,
         commands,
         webUrl,
         newEntry,

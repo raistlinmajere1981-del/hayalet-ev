@@ -133,9 +133,20 @@ export function syncSlotWithSettings(
   logFn(slot as SlotId, "info", `Account changed: ${oldAccountId} -> ${newAccountId}`);
 
   if (!newAccountId) {
+    // Sadece CONNECTED veya CONNECTING durumunda disconnect çağır
+    // ASSIGNED veya EMPTY durumunda disconnect gereksiz ve hata üretir
     if (slotState.state === states.CONNECTED || slotState.state === states.CONNECTING) {
       disconnectFn(slot, { force: true });
     }
+    
+    // Zaten EMPTY durumundaysa sadece cleanup yap
+    if (slotState.state === states.EMPTY) {
+      slotState.accountId = null;
+      slotState.providerId = null;
+      slotState.providerConfig = null;
+      return;
+    }
+    
     slotState.accountId = null;
     slotState.providerId = null;
     slotState.providerConfig = null;

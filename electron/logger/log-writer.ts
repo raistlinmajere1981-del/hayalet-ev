@@ -131,7 +131,7 @@ export async function writeErrorLog(
 }
 
 /**
- * Structured log yaz (JSONL format)
+ * Structured log yaz (JSONL format + console log'a da yaz)
  */
 export async function writeStructuredLog(entry: StructuredLogEntry): Promise<void> {
   try {
@@ -140,7 +140,32 @@ export async function writeStructuredLog(entry: StructuredLogEntry): Promise<voi
     
     if (!STRUCTURED_LOG) return;
     
+    // JSONL dosyasına yaz (detaylı analiz için)
     await appendFile(STRUCTURED_LOG, JSON.stringify(entry) + "\n");
+    
+    // Console log'a da okunabilir formatta yaz (birleşik log)
+    if (CONSOLE_LOG) {
+      const visibility = entry.visibility ? `[L${entry.visibility}]` : "";
+      const source = entry.source || "unknown";
+      const type = entry.type || "info";
+      const message = entry.message || "";
+      const timestamp = entry.isoTimestamp || new Date().toISOString();
+      
+      let logLine = `[${timestamp}] [${type.toUpperCase()}] ${visibility} [RENDERER] [${source}] ${message}`;
+      
+      if (entry.meta && Object.keys(entry.meta).length > 0) {
+        logLine += ` | meta: ${JSON.stringify(entry.meta)}`;
+      }
+      
+      await appendFile(CONSOLE_LOG, logLine + "\n");
+      
+      currentChunkLines++;
+      if (currentChunkLines >= MAX_CHUNK_LINES) {
+        currentChunkIndex++;
+        currentChunkLines = 0;
+        updateLogPaths();
+      }
+    }
   } catch (_err) {
   }
 }

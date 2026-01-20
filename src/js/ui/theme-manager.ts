@@ -251,5 +251,5 @@ if (typeof document !== 'undefined') {
   }
   
   // Expose to window for consistent access across Vite HMR reloads
-  (window as Record<string, unknown>).__ThemeManager = ThemeManager;
+  (window as unknown as Record<string, unknown>).__ThemeManager = ThemeManager;
 }

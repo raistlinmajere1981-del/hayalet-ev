@@ -171,15 +171,16 @@ export const DatabaseManager = {
 
   /**
    * Konuşmaları getir
+   * @returns {{ success: boolean, data?: Array, error?: string }}
    */
   getConversations(
     _event: IpcMainInvokeEvent | null,
     { accountId }: { accountId: string }
-  ) {
+  ): { success: boolean; data?: unknown[]; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
-        return [];
+        return { success: false, error: "Veritabanı bağlantısı kurulamadı", data: [] };
       }
 
       const rows = conn.queries.getConversations.all() as Conversation[];
@@ -188,7 +189,7 @@ export const DatabaseManager = {
       // folder: tam yol olarak data/{accountId}/attachments/{conversationId}
       const attachmentsBase = getAttachmentsPath(accountId);
       
-      return rows.map((row: Conversation) => ({
+      const data = rows.map((row: Conversation) => ({
         id: row.id,
         value: row.id,
         webUrl: row.web_url,
@@ -201,29 +202,32 @@ export const DatabaseManager = {
         folder: path.join(attachmentsBase, row.id),
         label: row.title || "İsimsiz Konuşma",
       }));
+      
+      return { success: true, data };
     } catch (err: unknown) {
       console.error("[DB] getConversations hatası:", err);
-      return [];
+      return { success: false, error: (err as Error).message, data: [] };
     }
   },
 
   /**
    * Konuşma mesajlarını getir
+   * @returns {{ success: boolean, data?: Array, error?: string }}
    */
   getMessages(
     _event: IpcMainInvokeEvent | null,
     { accountId, conversationId }: { accountId: string; conversationId: string }
-  ) {
+  ): { success: boolean; data?: unknown[]; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
-        return [];
+        return { success: false, error: "Veritabanı bağlantısı kurulamadı", data: [] };
       }
 
       const rows = conn.queries.getMessages.all(conversationId) as Message[];
 
       // Analyze sayfası formatına dönüştür
-      return rows.map((row: Message, index: number) => ({
+      const data = rows.map((row: Message, index: number) => ({
         id: row.id,
         index: index,
         role: row.role,
@@ -234,9 +238,11 @@ export const DatabaseManager = {
         domId: row.dom_id,
         createdAt: row.created_at,
       }));
+      
+      return { success: true, data };
     } catch (err: unknown) {
       console.error("[DB] getMessages hatası:", err);
-      return [];
+      return { success: false, error: (err as Error).message, data: [] };
     }
   },
 
@@ -438,20 +444,21 @@ export const DatabaseManager = {
 
   /**
    * Konuşmadaki attachment'ları getir
+   * @returns {{ success: boolean, data?: Array, error?: string }}
    */
   getAttachments(
     _event: IpcMainInvokeEvent | null,
     { accountId, conversationId }: { accountId: string; conversationId: string }
-  ) {
+  ): { success: boolean; data?: unknown[]; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
-        return [];
+        return { success: false, error: "Veritabanı bağlantısı kurulamadı", data: [] };
       }
 
       const rows = conn.queries.getAttachmentsByConversation.all(conversationId) as Attachment[];
 
-      return rows.map((row: Attachment) => ({
+      const data = rows.map((row: Attachment) => ({
         id: row.id,
         messageId: row.message_id,
         originalName: row.original_name,
@@ -461,9 +468,11 @@ export const DatabaseManager = {
         size: row.size,
         createdAt: row.created_at,
       }));
+      
+      return { success: true, data };
     } catch (err: unknown) {
       console.error("[DB] getAttachments hatası:", err);
-      return [];
+      return { success: false, error: (err as Error).message, data: [] };
     }
   },
 
@@ -499,15 +508,16 @@ export const DatabaseManager = {
 
   /**
    * Mesajlarda arama yap (FTS5)
+   * @returns {{ success: boolean, data?: Array, error?: string }}
    */
   searchMessages(
     _event: IpcMainInvokeEvent | null,
     { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
-  ) {
+  ): { success: boolean; data?: unknown[]; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
-        return [];
+        return { success: false, error: "Veritabanı bağlantısı kurulamadı", data: [] };
       }
 
       // FTS5 sorgusu için query'yi hazırla
@@ -530,7 +540,7 @@ export const DatabaseManager = {
       }
       const rows = conn.queries.searchMessages.all(ftsQuery, limit) as SearchMessageRow[];
 
-      return rows.map((row: SearchMessageRow) => ({
+      const data = rows.map((row: SearchMessageRow) => ({
         id: row.id,
         conversationId: row.conversation_id,
         conversationTitle: row.conversation_title,
@@ -541,23 +551,26 @@ export const DatabaseManager = {
         snippet: row.snippet,
         createdAt: row.created_at,
       }));
+      
+      return { success: true, data };
     } catch (err: unknown) {
       console.error("[DB] searchMessages hatası:", err);
-      return [];
+      return { success: false, error: (err as Error).message, data: [] };
     }
   },
 
   /**
    * Attachment'larda arama yap
+   * @returns {{ success: boolean, data?: Array, error?: string }}
    */
   searchAttachments(
     _event: IpcMainInvokeEvent | null,
     { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
-  ) {
+  ): { success: boolean; data?: unknown[]; error?: string } {
     try {
       const conn = DatabaseManager.getConnection(accountId);
       if (!conn) {
-        return [];
+        return { success: false, error: "Veritabanı bağlantısı kurulamadı", data: [] };
       }
 
       // Dosya adında LIKE araması
@@ -593,7 +606,7 @@ export const DatabaseManager = {
         LIMIT ?
       `).all(searchPattern, limit) as SearchAttachmentRow[];
 
-      return rows.map((row: SearchAttachmentRow) => ({
+      const data = rows.map((row: SearchAttachmentRow) => ({
         id: row.id,
         messageId: row.message_id,
         conversationId: row.conversation_id,
@@ -605,40 +618,47 @@ export const DatabaseManager = {
         size: row.size,
         createdAt: row.created_at,
       }));
+      
+      return { success: true, data };
     } catch (err: unknown) {
       console.error("[DB] searchAttachments hatası:", err);
-      return [];
+      return { success: false, error: (err as Error).message, data: [] };
     }
   },
 
   /**
    * Tüm hesaplarda arama yap (mesaj + attachment)
+   * @returns {{ success: boolean, data?: { messages: Array, attachments: Array }, error?: string }}
    */
   searchAllAccounts(
     event: IpcMainInvokeEvent | null,
     { query, limit = 50 }: { query: string; limit?: number }
-  ) {
+  ): { success: boolean; data?: { messages: unknown[]; attachments: unknown[] }; error?: string } {
     try {
       // data/ klasöründeki tüm hesap klasörlerini bul
       if (!fs.existsSync(DATA_DIR)) {
-        return { messages: [], attachments: [] };
+        return { success: true, data: { messages: [], attachments: [] } };
       }
 
       const accountFolders = fs.readdirSync(DATA_DIR, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => dirent.name);
 
-      const allMessages = [];
-      const allAttachments = [];
+      const allMessages: Array<Record<string, unknown> & { createdAt: number }> = [];
+      const allAttachments: Array<Record<string, unknown> & { createdAt: number }> = [];
 
       for (const accountId of accountFolders) {
         // Mesajlarda ara
-        const messages = this.searchMessages(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
-        allMessages.push(...messages.map(m => ({ ...m, accountId })));
+        const messagesResult = this.searchMessages(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
+        if (messagesResult.success && messagesResult.data) {
+          allMessages.push(...messagesResult.data.map((m) => ({ ...(m as Record<string, unknown>), accountId, createdAt: (m as Record<string, unknown>).createdAt as number })));
+        }
 
         // Attachment'larda ara
-        const attachments = this.searchAttachments(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
-        allAttachments.push(...attachments.map(a => ({ ...a, accountId })));
+        const attachmentsResult = this.searchAttachments(event, { accountId, query, limit: Math.ceil(limit / accountFolders.length) });
+        if (attachmentsResult.success && attachmentsResult.data) {
+          allAttachments.push(...attachmentsResult.data.map((a) => ({ ...(a as Record<string, unknown>), accountId, createdAt: (a as Record<string, unknown>).createdAt as number })));
+        }
       }
 
       // Tarihe göre sırala ve limit uygula
@@ -646,12 +666,15 @@ export const DatabaseManager = {
       allAttachments.sort((a, b) => b.createdAt - a.createdAt);
 
       return {
-        messages: allMessages.slice(0, limit),
-        attachments: allAttachments.slice(0, limit),
+        success: true,
+        data: {
+          messages: allMessages.slice(0, limit),
+          attachments: allAttachments.slice(0, limit),
+        },
       };
     } catch (err: unknown) {
       console.error("[DB] searchAllAccounts hatası:", err);
-      return { messages: [], attachments: [] };
+      return { success: false, error: (err as Error).message, data: { messages: [], attachments: [] } };
     }
   },
 

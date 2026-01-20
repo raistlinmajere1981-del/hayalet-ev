@@ -18,6 +18,7 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { ProviderRegistry } from "../modules/webview/provider-registry.js";
 import { RelayManager } from "../modules/relay-manager.js";
 import { OPENCODE_DEFAULTS } from "../modules/webview/providers/opencode/config.js";
+// ButtonStates kullanılmıyor - direkt buton manipülasyonu yapılıyor
 import type { AppSettings } from "../types/settings.js";
 
 // ============================================================================
@@ -25,6 +26,7 @@ import type { AppSettings } from "../types/settings.js";
 // ============================================================================
 
 interface WebviewElement extends HTMLElement {
+  src?: string;
   getWebContentsId?: () => number;
   getURL?: () => string;
   openDevTools?: () => void;
@@ -155,7 +157,7 @@ export class AsistanController {
     this._updateConnectedAIList();
     this._updateRelayControls();
     
-    LogManager.addEvent("asistan", "info", "AsistanController initialized");
+    LogManager.addEvent("asistan", "info", "AsistanController initialized", { visibility: 2 });
   }
 
   _populateProviderSelect(): void {
@@ -198,26 +200,162 @@ export class AsistanController {
     
     // Relay kaynak seçimi
     this.relaySourceSelect?.addEventListener("change", () => this._onRelaySourceChange());
+    
+    // UI Mode Toggle - sadece panel visibility değişir, sunucu Bağlan butonuyla başlar
+    const nativeModeBtn = document.getElementById("ui-mode-native");
+    const webviewModeBtn = document.getElementById("ui-mode-webview");
+    const nativePanel = document.getElementById("asistan-native-panel");
+    const webviewPanel = document.getElementById("asistan-webview-panel");
+    
+    nativeModeBtn?.addEventListener("click", () => {
+      // Bağlıyken mod değiştirmeye izin verme
+      if (this._isConnected()) {
+        LogManager.addEvent("asistan", "warn", "Mod değiştirmek için önce bağlantıyı kesin", { visibility: 1 });
+        return;
+      }
+      
+      nativeModeBtn.classList.add("active");
+      webviewModeBtn?.classList.remove("active");
+      nativePanel?.classList.remove("hidden");
+      webviewPanel?.classList.add("hidden");
+    });
+    
+    webviewModeBtn?.addEventListener("click", () => {
+      // Bağlıyken mod değiştirmeye izin verme
+      if (this._isConnected()) {
+        LogManager.addEvent("asistan", "warn", "Mod değiştirmek için önce bağlantıyı kesin", { visibility: 1 });
+        return;
+      }
+      
+      webviewModeBtn.classList.add("active");
+      nativeModeBtn?.classList.remove("active");
+      webviewPanel?.classList.remove("hidden");
+      nativePanel?.classList.add("hidden");
+    });
+  }
+
+  /**
+   * Bağlantı durumunu kontrol et
+   */
+  _isConnected(): boolean {
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    return slotState?.state === SlotState.CONNECTED || 
+           this._isServerRunning || 
+           this._isSSEServerRunning;
   }
 
   async _toggleConnection(): Promise<void> {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     
-    if (slotState?.state === SlotState.CONNECTED || this._isServerRunning) {
-      // Bağlantıyı kes
-      await this._stopOpenCodeServer();
-      await SlotController.disconnect("ai0");
-      LogManager.addEvent("asistan", "info", "Asistan bağlantısı kesildi");
+    if (slotState?.state === SlotState.CONNECTED || this._isServerRunning || this._isSSEServerRunning) {
+      // Bağlantıyı kes - direkt buton güncelle (ButtonStates kullanma)
+      if (this.connectBtn) {
+        this.connectBtn.textContent = "Kesiliyor...";
+        this.connectBtn.disabled = true;
+        this.connectBtn.classList.remove("btn-danger", "btn-primary");
+        this.connectBtn.classList.add("btn-primary");
+      }
+      
+      const nativeModeBtn = document.getElementById("ui-mode-native");
+      const isNativeMode = nativeModeBtn?.classList.contains("active");
+      
+      try {
+        if (isNativeMode) {
+          // Native modda SSE Server'ı durdur
+          if (this._isSSEServerRunning) {
+            await this._stopSSEServer();
+          }
+        } else {
+          // Webview modda slot'u disconnect et
+          LogManager.addEvent("asistan", "debug", "Webview disconnect başlatılıyor", { 
+            slotState: slotState?.state,
+            visibility: 3
+          });
+          
+          if (slotState?.state === SlotState.CONNECTED) {
+            await SlotController.disconnect("ai0");
+          }
+        }
+        
+        // OpenCode server'ı durdur (her iki modda da)
+        LogManager.addEvent("asistan", "debug", "OpenCode server durduruluyor", { visibility: 3 });
+        await this._stopOpenCodeServer();
+        
+        // Flag'leri sıfırla
+        this._isServerRunning = false;
+        
+        // Başarılı - kısa süre "Kesildi!" göster
+        if (this.connectBtn) {
+          this.connectBtn.textContent = "Kesildi!";
+          this.connectBtn.disabled = false;
+        }
+        LogManager.addEvent("asistan", "success", "Asistan bağlantısı kesildi", { 
+          mode: isNativeMode ? "native" : "webview",
+          visibility: 1 
+        });
+      } catch (err) {
+        const error = err as Error;
+        LogManager.addEvent("asistan", "error", "Bağlantı kesme hatası", { 
+          error: error.message,
+          visibility: 1 
+        });
+        
+        // Hata olsa bile flag'leri sıfırla
+        this._isServerRunning = false;
+        if (this.connectBtn) {
+          this.connectBtn.textContent = "Hata!";
+          this.connectBtn.disabled = false;
+        }
+      }
+      
+      // UI'ı güncelle (1 saniye sonra normal duruma dön)
+      setTimeout(() => this._updateConnectionUI(), 1000);
     } else if (slotState?.state === SlotState.ASSIGNED || slotState?.state === SlotState.EMPTY) {
-      // Bağlan - önce server'ı başlat, sonra webview'ı yönlendir
+      // Bağlan - direkt buton güncelle (ButtonStates kullanma)
+      if (this.connectBtn) {
+        this.connectBtn.textContent = "Başlatılıyor...";
+        this.connectBtn.disabled = true;
+        this.connectBtn.classList.remove("btn-danger");
+        this.connectBtn.classList.add("btn-primary");
+      }
+      
       const result = await this._startOpenCodeServer();
       if (result.success) {
-        // SlotController'a URL'i ilet
-        await SlotController.connect("ai0", { url: result.url });
-        LogManager.addEvent("asistan", "info", "Asistan bağlantısı başlatıldı", { url: result.url });
+        const nativeModeBtn = document.getElementById("ui-mode-native");
+        const isNativeMode = nativeModeBtn?.classList.contains("active");
+        
+        if (isNativeMode) {
+          // Native mode: SSE Server + Native webview kullan, ai0 slot'a bağlanma
+          await this._startSSEServer();
+        } else {
+          // Webview mode: ai0 slot'a bağlan (OpenCode Web UI)
+          await SlotController.connect("ai0", { url: result.url });
+        }
+        
+        // Başarılı - kısa süre "Bağlandı!" göster
+        if (this.connectBtn) {
+          this.connectBtn.textContent = "Bağlandı!";
+          this.connectBtn.disabled = false;
+        }
+        LogManager.addEvent("asistan", "success", "Asistan bağlantısı başlatıldı", { 
+          url: result.url, 
+          mode: isNativeMode ? "native" : "webview",
+          visibility: 1 
+        });
+        
+        // UI'ı güncelle (1 saniye sonra "Bağlantıyı Kes" moduna geç)
+        setTimeout(() => this._updateConnectionUI(), 1000);
       } else {
-        LogManager.addEvent("asistan", "error", "OpenCode server başlatılamadı", { error: result.error });
+        // Hata
+        if (this.connectBtn) {
+          this.connectBtn.textContent = "Hata!";
+          this.connectBtn.disabled = false;
+        }
+        LogManager.addEvent("asistan", "error", "OpenCode server başlatılamadı", { error: result.error, visibility: 1 });
         this._showError(result.error || "Server başlatılamadı");
+        
+        // UI'ı güncelle (1 saniye sonra normal duruma dön)
+        setTimeout(() => this._updateConnectionUI(), 1000);
       }
     }
   }
@@ -264,7 +402,7 @@ export class AsistanController {
       this._isServerRunning = false;
       
       if (result?.success) {
-        LogManager.addEvent("asistan", "info", "OpenCode server durduruldu");
+        LogManager.addEvent("asistan", "info", "OpenCode server durduruldu", { visibility: 2 });
       }
       
       return result || { success: false };
@@ -273,6 +411,100 @@ export class AsistanController {
       this._isServerRunning = false;
       LogManager.addEvent("asistan", "error", "OpenCode server durdurma hatası", { error: err.message });
       return { success: false, error: err.message };
+    }
+  }
+
+  // =========================================================================
+  // SSE Server (Native UI için)
+  // =========================================================================
+
+  /** @type {boolean} */
+  private _isSSEServerRunning = false;
+
+  /**
+   * SSE Server'u başlat
+   */
+  async _startSSEServer(): Promise<void> {
+    if (this._isSSEServerRunning) return;
+    
+    try {
+      // 1. SSE Server'ı başlat
+      const result = await window.electronAPI?.opencodeSSEStart?.();
+      if (result?.success) {
+        this._isSSEServerRunning = true;
+        LogManager.addEvent("asistan", "info", `SSE Server başlatıldı: ${result.url}`, { visibility: 2 });
+        
+        // 2. OpenCode'a bağlan (SSE bridge)
+        const connectResult = await window.electronAPI?.opencodeSSEConnect?.();
+        if (connectResult?.success) {
+          LogManager.addEvent("asistan", "info", `OpenCode bağlantısı kuruldu: ${connectResult.sessionId}`, { visibility: 2 });
+        } else {
+          LogManager.addEvent("asistan", "warn", `OpenCode bağlantısı kurulamadı: ${connectResult?.error}`, { visibility: 2 });
+        }
+        
+        // 3. Placeholder'ı gizle, webview'ı göster
+        const placeholder = document.getElementById("native-panel-placeholder");
+        const nativeWebview = document.getElementById("opencode-native-webview") as WebviewElement | null;
+        
+        if (placeholder) {
+          placeholder.classList.add("hidden");
+        }
+        
+        if (nativeWebview) {
+          nativeWebview.classList.remove("hidden");
+          // Server URL'ini query param olarak gönder
+          const serverUrl = result.url || "http://127.0.0.1:4097";
+          const baseOrigin = window.location.origin;
+          const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}`;
+          
+          LogManager.addEvent("asistan", "debug", `Native webview URL: ${srcUrl}`, { visibility: 3 });
+          
+          // Webview DOM'a eklendikten sonra URL'i set et
+          requestAnimationFrame(() => {
+            if (nativeWebview.src !== srcUrl) {
+              nativeWebview.src = srcUrl;
+            }
+          });
+        }
+      } else {
+        LogManager.addEvent("asistan", "error", `SSE Server başlatılamadı: ${result?.error}`, { visibility: 1 });
+      }
+    } catch (e) {
+      const err = e as Error;
+      LogManager.addEvent("asistan", "error", `SSE Server hatası: ${err.message}`, { visibility: 1 });
+    }
+  }
+
+  /**
+   * SSE Server'u durdur
+   */
+  async _stopSSEServer(): Promise<void> {
+    if (!this._isSSEServerRunning) return;
+    
+    try {
+      // Önce OpenCode bağlantısını kes
+      await window.electronAPI?.opencodeSSEDisconnect?.();
+      
+      // Sonra SSE Server'ı durdur
+      await window.electronAPI?.opencodeSSEStop?.();
+      this._isSSEServerRunning = false;
+      LogManager.addEvent("asistan", "info", "SSE Server durduruldu", { visibility: 2 });
+      
+      // Webview'ı gizle, placeholder'ı göster
+      const placeholder = document.getElementById("native-panel-placeholder");
+      const nativeWebview = document.getElementById("opencode-native-webview") as WebviewElement | null;
+      
+      if (nativeWebview) {
+        nativeWebview.classList.add("hidden");
+        nativeWebview.src = "about:blank";
+      }
+      
+      if (placeholder) {
+        placeholder.classList.remove("hidden");
+      }
+    } catch (e) {
+      const err = e as Error;
+      LogManager.addEvent("asistan", "error", `SSE Server durdurma hatası: ${err.message}`);
     }
   }
 
@@ -335,9 +567,18 @@ export class AsistanController {
   }
 
   _openDevTools(): void {
-    const webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    // Mode'a göre doğru webview'i seç
+    const nativeModeBtn = document.getElementById("ui-mode-native");
+    const isNativeMode = nativeModeBtn?.classList.contains("active");
+    
+    const webviewId = isNativeMode ? "opencode-native-webview" : "ai0-webview";
+    const webview = document.getElementById(webviewId) as WebviewElement | null;
+    
     if (webview && typeof webview.openDevTools === "function") {
       webview.openDevTools();
+      LogManager.addEvent("asistan", "info", `DevTools açıldı: ${webviewId}`, { visibility: 2 });
+    } else {
+      LogManager.addEvent("asistan", "warn", `Webview bulunamadı: ${webviewId}`, { visibility: 1 });
     }
   }
 
@@ -372,34 +613,40 @@ export class AsistanController {
       await RelayManager.startAIAsistanSession(sourceSlot);
       this._isRelayActive = true;
       AppState.setAsistanRelay(true, sourceSlot);
-      LogManager.addEvent("asistan", "info", `AI-Asistan relay başlatıldı: ${sourceSlot} ↔ ai0`);
+      LogManager.addEvent("asistan", "info", `AI-Asistan relay başlatıldı: ${sourceSlot} ↔ ai0`, { visibility: 2 });
     }
     
     this._updateRelayControls();
   }
 
-  _onRelaySourceChange(): void {
+  async _onRelaySourceChange(): Promise<void> {
     // Kaynak değiştiğinde ve relay aktifse, relay'i yeniden başlat
     if (this._isRelayActive) {
-      this._toggleRelay(); // Önce durdur
-      this._toggleRelay(); // Sonra yeni kaynakla başlat
+      await this._toggleRelay(); // Önce durdur
+      await this._toggleRelay(); // Sonra yeni kaynakla başlat
     }
   }
 
   _updateConnectionUI(): void {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-    const isConnected = slotState?.state === SlotState.CONNECTED;
+    const nativeModeBtn = document.getElementById("ui-mode-native");
+    const isNativeMode = nativeModeBtn?.classList.contains("active");
+    
+    // Native modda SSE server durumu, webview modda slot durumu
+    const isConnected = isNativeMode 
+      ? this._isSSEServerRunning 
+      : slotState?.state === SlotState.CONNECTED;
     const isConnecting = slotState?.state === SlotState.CONNECTING;
     const isError = slotState?.state === SlotState.ERROR;
     const hasAccount = !!slotState?.accountId;
     
-    // Webview ve overlay elementleri
+    // Webview ve overlay elementleri (sadece webview modda kullanılır)
     const webviewEl = document.getElementById("ai0-webview");
     const mountEl = document.getElementById("ai0-webview-mount");
     const overlayEl = document.getElementById("ai0-webview-overlay");
     
-    // Webview her zaman mount edilir
-    if (webviewEl && mountEl && !mountEl.contains(webviewEl)) {
+    // Webview modda webview mount edilir
+    if (!isNativeMode && webviewEl && mountEl && !mountEl.contains(webviewEl)) {
       mountEl.appendChild(webviewEl);
       webviewEl.style.cssText = "position: relative; top: 0; left: 0; width: 100%; height: 100%;";
     }
@@ -410,40 +657,47 @@ export class AsistanController {
       webviewEl.dataset.eventsSetup = "true";
     }
     
-    // Overlay sınıflarını temizle
-    if (overlayEl) {
+    // Webview modda overlay sınıflarını temizle
+    if (!isNativeMode && overlayEl) {
       overlayEl.classList.remove("hidden", "empty", "disconnected", "connecting", "error");
-    }
-    
-    // Overlay durumunu güncelle
-    if (!hasAccount) {
-      this._updateOverlay(overlayEl, "empty", "🤖", "Asistan Seçilmedi", "Provider seçip bağlanın");
-    } else if (isConnecting) {
-      this._updateOverlay(overlayEl, "connecting", "🔄", "Bağlanıyor...", "Lütfen bekleyin");
-    } else if (isError) {
-      this._updateOverlay(overlayEl, "error", "❌", "Bağlantı Hatası", slotState?.error || "Tekrar deneyin");
-    } else if (!isConnected) {
-      this._updateOverlay(overlayEl, "disconnected", "⚡", "Asistan Bağlı Değil", "Bağlan butonuna tıklayın");
-    } else {
-      // CONNECTED - overlay gizle
-      if (overlayEl) {
+      
+      // Overlay durumunu güncelle
+      if (!hasAccount) {
+        this._updateOverlay(overlayEl, "empty", "🤖", "Asistan Seçilmedi", "Provider seçip bağlanın");
+      } else if (isConnecting) {
+        this._updateOverlay(overlayEl, "connecting", "🔄", "Bağlanıyor...", "Lütfen bekleyin");
+      } else if (isError) {
+        this._updateOverlay(overlayEl, "error", "❌", "Bağlantı Hatası", slotState?.error || "Tekrar deneyin");
+      } else if (!isConnected) {
+        this._updateOverlay(overlayEl, "disconnected", "⚡", "Asistan Bağlı Değil", "Bağlan butonuna tıklayın");
+      } else {
+        // CONNECTED - overlay gizle
         overlayEl.classList.add("hidden");
-      }
-      if (webviewEl) {
-        webviewEl.removeAttribute("data-detached");
+        if (webviewEl) {
+          webviewEl.removeAttribute("data-detached");
+        }
       }
     }
     
     // Buton metnini güncelle
     if (this.connectBtn) {
+      const isDisconnectMode = isConnected || this._isServerRunning;
+      
+      // Inline style'ları temizle (ButtonStates'ten kalan olabilir)
+      this.connectBtn.style.opacity = "";
+      this.connectBtn.style.transform = "";
+      this.connectBtn.style.transition = "";
+      
       if (isConnecting) {
         this.connectBtn.textContent = "Bağlanıyor...";
         this.connectBtn.disabled = true;
-      } else if (isConnected) {
+        this.connectBtn.classList.remove("btn-danger", "btn-primary");
+        this.connectBtn.classList.add("btn-primary");
+      } else if (isDisconnectMode) {
         this.connectBtn.textContent = "Bağlantıyı Kes";
         this.connectBtn.disabled = false;
-        this.connectBtn.classList.add("btn-danger");
         this.connectBtn.classList.remove("btn-primary");
+        this.connectBtn.classList.add("btn-danger");
       } else {
         this.connectBtn.textContent = "Bağlan";
         this.connectBtn.disabled = false;
@@ -454,7 +708,7 @@ export class AsistanController {
     
     // DevTools butonu durumu
     if (this.devtoolsBtn) {
-      this.devtoolsBtn.disabled = !isConnected;
+      this.devtoolsBtn.disabled = !isConnected && !this._isSSEServerRunning;
     }
     
     // Status dot ve text
@@ -462,16 +716,36 @@ export class AsistanController {
       this.statusDot.classList.toggle("connected", isConnected);
     }
     if (this.statusText) {
-      this.statusText.textContent = isConnected ? "Bağlı" : (isConnecting ? "Bağlanıyor..." : "Bağlı Değil");
+      if (isNativeMode) {
+        this.statusText.textContent = this._isSSEServerRunning ? "Native UI Bağlı" : "Bağlı Değil";
+      } else {
+        this.statusText.textContent = isConnected ? "Bağlı" : (isConnecting ? "Bağlanıyor..." : "Bağlı Değil");
+      }
     }
     
     // URL display
     if (this.urlDisplay) {
-      if (slotState?.currentUrl) {
+      if (isNativeMode && this._isSSEServerRunning) {
+        this.urlDisplay.textContent = "Native UI (SSE: http://127.0.0.1:4097)";
+      } else if (slotState?.currentUrl) {
         this.urlDisplay.textContent = slotState.currentUrl;
       } else {
         this.urlDisplay.textContent = "-";
       }
+    }
+    
+    // UI Mode butonlarını bağlıyken disable et
+    const nativeBtn = document.getElementById("ui-mode-native") as HTMLButtonElement | null;
+    const webviewBtn = document.getElementById("ui-mode-webview") as HTMLButtonElement | null;
+    const isBusy = isConnected || this._isServerRunning || this._isSSEServerRunning;
+    
+    if (nativeBtn) {
+      nativeBtn.disabled = isBusy;
+      nativeBtn.classList.toggle("disabled", isBusy);
+    }
+    if (webviewBtn) {
+      webviewBtn.disabled = isBusy;
+      webviewBtn.classList.toggle("disabled", isBusy);
     }
   }
 
@@ -665,6 +939,7 @@ export class AsistanController {
     this._updateConnectionUI();
     this._updateConnectedAIList();
     this._updateRelayControls();
+    // SSE Server sayfa girişinde başlatılmaz, bağlan butonu ile aktifleşir
   }
 
   onHide(): void {
@@ -675,6 +950,11 @@ export class AsistanController {
     // OpenCode server'ı kapat
     if (this._isServerRunning) {
       await this._stopOpenCodeServer();
+    }
+    
+    // SSE Server'ı kapat
+    if (this._isSSEServerRunning) {
+      await this._stopSSEServer();
     }
     
     // Relay'i durdur

@@ -179,7 +179,7 @@ class WhisperManagerClass {
     );
     if (before !== this.data[provider].pending.length) {
       this.saveProvider(provider);
-      LogManager.addEvent("whisper", "info", `Whisper silindi (${provider})`);
+      LogManager.addEvent("whisper", "info", `Whisper silindi (${provider})`, { visibility: 1 });
       this.notify();
       return true;
     }

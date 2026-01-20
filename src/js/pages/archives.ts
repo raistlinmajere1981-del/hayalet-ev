@@ -287,7 +287,7 @@ export class ArchivesController {
       });
 
       if (entry.id === this.selectedId) {
-        item.classList.add("selected");
+        item.classList.add("active");
       }
       item.appendChild(titleWrap);
       item.appendChild(removeBtn);

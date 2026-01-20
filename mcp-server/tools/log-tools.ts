@@ -21,13 +21,16 @@ interface LogReadArgs {
 
 /**
  * read_electron_logs handler
+ * 
+ * NOT: Default olarak "console" logları okur - artık tüm loglar (main + renderer) birleşik.
+ * Structured loglar JSON analizi için hâlâ mevcut.
  */
 export async function readElectronLogs(
   logDir: string, 
   args?: LogReadArgs
 ): Promise<ToolResult> {
   const { 
-    type = "all", 
+    type = "console",  // Default: console (birleşik log - main + renderer)
     tail = 50, 
     source, 
     level, 
@@ -57,21 +60,82 @@ export async function readElectronLogs(
     };
   }
   
-  // Structured logs
+  // Structured logs (default - en detaylı log kaynağı)
   if (type === "structured") {
     const content = await readSessionLogs(logDir, sessionId, "structured");
-    const lines = content.split("\n").filter(l => l.trim()).slice(-tail);
+    let lines = content.split("\n").filter(l => l.trim());
+    
+    // Filtreleme
+    if (source) {
+      lines = lines.filter(l => {
+        try {
+          const json = JSON.parse(l);
+          return json.source?.toLowerCase().includes(source.toLowerCase());
+        } catch { return false; }
+      });
+    }
+    if (level) {
+      lines = lines.filter(l => {
+        try {
+          const json = JSON.parse(l);
+          return json.type === level;
+        } catch { return false; }
+      });
+    }
+    if (contains) {
+      lines = lines.filter(l => l.toLowerCase().includes(contains.toLowerCase()));
+    }
+    if (correlationId) {
+      lines = lines.filter(l => l.includes(correlationId));
+    }
+    
+    // Son N satır
+    lines = lines.slice(-tail);
+    
+    // Okunabilir format
+    const formatted = lines.map(l => {
+      try {
+        const json = JSON.parse(l);
+        const vis = json.visibility ? `[L${json.visibility}]` : '';
+        return `[${json.timestamp}] ${vis} [${json.source}] ${json.message}`;
+      } catch { return l; }
+    });
+    
+    const filterInfo = [
+      source && `source=${source}`,
+      level && `level=${level}`,
+      contains && `contains="${contains}"`,
+      correlationId && `correlationId=${correlationId}`,
+    ].filter(Boolean).join(", ");
+    
     return {
       content: [{ 
         type: "text", 
-        text: `📗 Structured Logs (Session: ${sessionId})\n\n${lines.join("\n")}`,
+        text: `📗 Structured Logs (Session: ${sessionId})${filterInfo ? `\nFiltre: ${filterInfo}` : ""}\n\n${formatted.join("\n") || "Log bulunamadı"}`,
       }],
     };
   }
   
-  // Console logs (default)
+  // Console logs (default - birleşik main + renderer)
   const content = await readSessionLogs(logDir, sessionId, "console");
-  const filtered = filterLogs(content, { source, level, contains, correlationId, tail });
+  let lines = content.split("\n").filter(l => l.trim());
+  
+  // Filtreleme
+  if (source) {
+    lines = lines.filter(l => l.toLowerCase().includes(`[${source.toLowerCase()}]`));
+  }
+  if (level) {
+    lines = lines.filter(l => l.toLowerCase().includes(`[${level.toLowerCase()}]`));
+  }
+  if (contains) {
+    lines = lines.filter(l => l.toLowerCase().includes(contains.toLowerCase()));
+  }
+  if (correlationId) {
+    lines = lines.filter(l => l.includes(correlationId));
+  }
+  
+  // Son N satır
+  lines = lines.slice(-tail);
   
   const filterInfo = [
     source && `source=${source}`,
@@ -83,7 +147,7 @@ export async function readElectronLogs(
   return {
     content: [{ 
       type: "text", 
-      text: `📘 Console Logs (Session: ${sessionId})${filterInfo ? `\nFiltre: ${filterInfo}` : ""}\n\n${filtered.join("\n") || "Log bulunamadı"}`,
+      text: `📘 Birleşik Loglar (Session: ${sessionId})${filterInfo ? `\nFiltre: ${filterInfo}` : ""}\n\n${lines.join("\n") || "Log bulunamadı"}`,
     }],
   };
 }

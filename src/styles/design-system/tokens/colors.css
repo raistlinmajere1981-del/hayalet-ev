@@ -1,0 +1,62 @@
+/**
+ * Design System - Color Tokens
+ * 
+ * Primitive color values - theme-agnostic base palette.
+ * These are referenced by theme files for semantic mapping.
+ */
+
+:root {
+  /* === PRIMITIVE COLORS === */
+  
+  /* Gray Scale (Tokyo Night inspired) */
+  --color-gray-50: #f5f5f7;
+  --color-gray-100: #e5e5e7;
+  --color-gray-200: #d2d2d7;
+  --color-gray-300: #a9b1d6;
+  --color-gray-400: #9aa5ce;
+  --color-gray-500: #565f89;
+  --color-gray-600: #414868;
+  --color-gray-700: #3b4261;
+  --color-gray-800: #24283b;
+  --color-gray-900: #1f2335;
+  --color-gray-950: #1a1b26;
+
+  /* Purple Accent (Brand) */
+  --color-purple-300: #9580b8;
+  --color-purple-400: #7d6d99;
+  --color-purple-500: #5d4e85;
+  --color-purple-600: #4a3d6b;
+
+  /* Semantic Colors */
+  --color-green-400: #9ece6a;
+  --color-green-500: #6ab04c;
+  --color-green-600: #4CAF50;
+  
+  --color-yellow-400: #e0af68;
+  --color-yellow-500: #f9ca24;
+  
+  --color-red-400: #f7768e;
+  --color-red-500: #eb4d4b;
+  
+  --color-blue-400: #7dcfff;
+  --color-blue-500: #7ed6df;
+  --color-blue-600: #4b90ff;
+
+  --color-cyan-400: #73daca;
+  --color-cyan-500: #2ac3de;
+
+  /* === LEGACY COMPATIBILITY === */
+  /* These map to the original main.css variables for backward compatibility */
+  --legacy-bg-primary: var(--color-gray-900);
+  --legacy-bg-secondary: var(--color-gray-800);
+  --legacy-bg-tertiary: #2f354b;
+  --legacy-text-primary: #e0e0e0;
+  --legacy-text-secondary: #a0a0b0;
+  --legacy-accent-primary: var(--color-purple-500);
+  --legacy-accent-secondary: var(--color-purple-400);
+  --legacy-success: var(--color-green-500);
+  --legacy-warning: var(--color-yellow-500);
+  --legacy-error: var(--color-red-500);
+  --legacy-info: var(--color-blue-500);
+  --legacy-border-color: #3a4055;
+}

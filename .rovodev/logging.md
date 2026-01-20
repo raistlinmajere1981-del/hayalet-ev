@@ -2,22 +2,92 @@
 
 Bu rehber, AI agent'ların Hayalet-ev projesinde log eklemesi ve test süreçlerinde log analizi yapması için gerekli talimatları içerir.
 
-## 🎯 AI Agent'lar İçin Log Kuralları
+---
 
-### ⚠️ ZORUNLU: console.log Kullanma!
+## 🚨 KRİTİK: Log Dosyalarını Okuma
+
+**`structured.jsonl` dosyası asıl logların bulunduğu dosyadır!**
+
+```bash
+# ✅ DOĞRU - Detaylı loglar (visibility, correlationId, context dahil)
+cat logs/SESSION_ID/structured.jsonl | tail -50
+
+# veya MCP tool ile:
+read_electron_logs --type structured --tail 100
+
+# ⚠️ EKSIK - Sadece main process console çıktıları
+cat logs/SESSION_ID/console-001.log
+```
+
+| Dosya | İçerik | Kullanım |
+|-------|--------|----------|
+| `structured.jsonl` | **TÜM loglar** (JSON format, visibility dahil) | ✅ Ana analiz dosyası |
+| `console-001.log` | Main process console çıktıları | Debug için |
+| `error.log` | Sadece error/warning logları | Hızlı hata kontrolü |
+| `summary.json` | Session özeti | Genel durum |
+
+---
+
+## 🎯 3 Seviyeli Visibility Sistemi
+
+Loglar 3 seviyede kategorize edilir:
+
+| Seviye | Ad | Görünüm | Kullanım |
+|--------|-----|---------|----------|
+| **1** | Toast | Toast + Panel + Modal | Kullanıcı bildirimleri (bağlantı, hata, başarı) |
+| **2** | Panel | Panel + Modal | Süreç durumu (init, db, sync) |
+| **3** | Verbose | Sadece Modal | Debug (state, traffic, probe) |
+
+### Visibility Kullanımı
+
+```typescript
+// Yeni API (tercih edilen)
+LogManager.toast("entrance", "success", "AI1 bağlandı");     // Seviye 1
+LogManager.panel("system", "info", "Uygulama başlatıldı");    // Seviye 2
+LogManager.verbose("traffic", "debug", "Probe completed");  // Seviye 3
+
+// Manuel visibility
+LogManager.addEvent("source", "info", "mesaj", { visibility: 1 });
+```
+
+### Otomatik Visibility (_inferVisibility)
+
+Visibility belirtilmezse otomatik belirlenir:
+
+**Seviye 1 (Toast):**
+- `type: "success"` → Her zaman toast
+- `type: "error"` + kaynak: entrance, asistan, server, analyze, whisper
+
+**Seviye 2 (Panel):**
+- Kaynaklar: system, slot-controller, relay, core, db, sync, lifecycle
+- `type: "warning"` → Her zaman panel
+
+**Seviye 3 (Verbose):**
+- `type: "debug"` → Her zaman verbose
+- Kaynaklar: traffic, probe, state-machine, slot-ai*, renderer, toast, modal
+- **Default** → Bilinmeyen kaynaklar verbose
+
+---
+
+## ⚠️ ZORUNLU: console.log Kullanma!
 
 Renderer process'te (`src/js/`) **kesinlikle** `console.log`, `console.error`, `console.warn` kullanma. Bunun yerine `LogManager` kullan.
 
-```javascript
+```typescript
 // ❌ YANLIŞ - Kullanma!
 console.log("Mesaj gönderildi");
 console.error("Hata oluştu:", error);
 
 // ✅ DOĞRU - LogManager kullan
-import { LogManager } from "./modules/log-manager.js";
+import { LogManager } from "./modules/log-manager.ts";
 
 LogManager.addEvent("webview", "info", "Mesaj gönderildi");
 LogManager.addEvent("webview", "error", `Hata oluştu: ${error.message}`);
+
+// ✅ DAHA İYİ - Visibility ile
+LogManager.toast("entrance", "success", "Bağlandı");  // Kullanıcıya göster
+LogManager.panel("db", "info", "Database açıldı");     // Panel'de göster
+LogManager.verbose("traffic", "debug", "State changed"); // Sadece debug
 ```
 
 ### İstisna: executeJavaScript İçi
@@ -41,39 +111,37 @@ webview.executeJavaScript(`
 
 ### Import
 
-```javascript
-import { LogManager } from "./modules/log-manager.js";
-// veya göreceli path
-import { LogManager } from "../log-manager.js";
+```typescript
+import { LogManager } from "./modules/log-manager.ts";
 ```
 
-### Temel Kullanım
+### Metodlar
 
-```javascript
-// Basit log
-LogManager.addEvent(source, type, message);
-
-// Context ile log (tercih edilen)
-LogManager.addEvent(source, type, message, { context: { key: value } });
-```
+| Metod | Visibility | Kullanım |
+|-------|------------|----------|
+| `toast(source, type, message, meta?)` | 1 | Kullanıcı bildirimleri |
+| `panel(source, type, message, meta?)` | 2 | Süreç durumu |
+| `verbose(source, type, message, meta?)` | 3 | Debug |
+| `addEvent(source, type, message, meta?)` | Otomatik | Genel kullanım |
 
 ### Parametreler
 
 | Parametre | Tip | Açıklama | Örnekler |
 |-----------|-----|----------|----------|
-| `source` | string | Log kaynağı/modülü | `"webview"`, `"database"`, `"entrance"`, `"file-upload"`, `"relay"`, `"traffic"` |
-| `type` | string | Log seviyesi | `"info"`, `"warning"`, `"error"`, `"debug"` |
-| `message` | string | Log mesajı | `"Mesaj gönderildi"`, `"Sync tamamlandı"` |
-| `meta` | object | Ek bilgiler | `{ context: { provider: "chatgpt", url: "..." } }` |
+| `source` | string | Log kaynağı/modülü | `"entrance"`, `"slot-controller"`, `"traffic"` |
+| `type` | string | Log tipi | `"info"`, `"success"`, `"warning"`, `"error"`, `"debug"` |
+| `message` | string | Log mesajı | `"Bağlantı başarılı"` |
+| `meta` | object | Ek bilgiler | `{ visibility: 1, correlationId: "...", context: {...} }` |
 
-### Log Seviyeleri
+### Log Tipleri
 
-| Seviye | Kullanım | Örnek |
-|--------|----------|-------|
-| `error` | Kritik hatalar, işlem başarısız | `"Database bağlantı hatası"` |
-| `warning` | Uyarılar, potansiyel sorunlar | `"Selector bulunamadı, fallback kullanılıyor"` |
-| `info` | Genel bilgi, işlem tamamlandı | `"3 dosya yüklendi"` |
-| `debug` | Detaylı debug bilgisi | `"IPC yanıtı alındı"` |
+| Tip | Kullanım | Default Visibility |
+|-----|----------|--------------------|
+| `success` | İşlem başarılı | 1 (Toast) |
+| `error` | Kritik hata | 1 veya 2 (kaynağa göre) |
+| `warning` | Uyarı | 2 (Panel) |
+| `info` | Genel bilgi | 2 veya 3 (kaynağa göre) |
+| `debug` | Debug detayı | 3 (Verbose) |
 
 ---
 
@@ -167,23 +235,26 @@ LATEST_LOG=$(ls logs/ | sort -r | head -1)
 echo "Session: $LATEST_LOG"
 ```
 
-**3. Log dosyalarını incele:**
+**3. Log dosyalarını incele (ÖNEMLİ: structured.jsonl kullan!):**
 
 ```bash
-# Önce hataları kontrol et (en önemli)
+# ✅ ASİL LOGLAR - structured.jsonl
+cat "logs/$LATEST_LOG/structured.jsonl" | tail -50
+
+# JSON formatında okunabilir gösterim
+cat "logs/$LATEST_LOG/structured.jsonl" | tail -20 | jq .
+
+# Sadece seviye 1-2 logları (panel görünümü)
+cat "logs/$LATEST_LOG/structured.jsonl" | jq 'select(.visibility <= 2)'
+
+# Sadece hatalar
+cat "logs/$LATEST_LOG/structured.jsonl" | jq 'select(.type == "error")'
+
+# Belirli kaynak
+cat "logs/$LATEST_LOG/structured.jsonl" | jq 'select(.source | contains("slot"))'
+
+# Hızlı hata kontrolü
 cat "logs/$LATEST_LOG/error.log" 2>/dev/null || echo "Hata yok ✅"
-
-# Ana log dosyasını incele
-cat "logs/$LATEST_LOG/console-001.log"
-
-# Son N satırı göster
-tail -50 "logs/$LATEST_LOG/console-001.log"
-
-# Belirli bir pattern ara
-grep -i "error\|fail\|exception" "logs/$LATEST_LOG/console-001.log"
-
-# Belirli bir modülü filtrele
-grep "webview\|database" "logs/$LATEST_LOG/console-001.log"
 ```
 
 **4. Session özetini kontrol et:**
@@ -196,28 +267,30 @@ cat "logs/$LATEST_LOG/summary.json"
 
 - ✅ `error.log` boş veya sadece bilinen uyarılar içermeli
 - ✅ `summary.json` → `endReason: "normal"` olmalı
-- ✅ Beklenen işlemler `console-001.log`'da görünmeli
-- ✅ Kritik hata mesajı olmamalı
+- ✅ Beklenen işlemler `structured.jsonl`'da görünmeli
+- ✅ Çift işlem (duplicate) olmamalı (correlationId kontrolü)
+- ✅ Visibility seviyeleri doğru olmalı
 
 ### MCP Server ile Log Okuma
 
-CDP bağlantısı aktifken MCP tool'larını kullan:
-
 ```bash
-# Tüm logları oku
-read_electron_logs --type all --tail 100
+# ✅ ÖNERİLEN - Structured loglar (detaylı, visibility dahil)
+read_electron_logs --type structured --tail 100
 
 # Sadece hataları göster
 read_electron_logs --type error
 
 # Belirli bir kaynağı filtrele
-read_electron_logs --source "WEBVIEW-*" --type error
+read_electron_logs --type structured --source "slot"
 
 # Session listesi
 list_log_sessions --limit 5
 
 # Session özeti
 get_session_summary
+
+# Console logları (main process, daha az detaylı)
+read_electron_logs --type console --tail 50
 ```
 
 ---

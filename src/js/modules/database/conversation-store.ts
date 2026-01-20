@@ -25,7 +25,7 @@ export const ConversationStore = {
 
       const result = await window.electronAPI?.dbGetConversations?.({ accountId });
 
-      return Array.isArray(result) ? result : [];
+      return result?.data ?? [];
     } catch (err) {
       LogManager.addEvent("database", "error", `ConversationStore.list error: ${getErrorMessage(err)}`, { context: { accountId } });
       return [];

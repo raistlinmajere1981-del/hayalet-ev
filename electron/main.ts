@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain as _ipcMain, dialog, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { deviceActionHandler } from "./device-manager.ts";
@@ -25,13 +25,11 @@ import {
   copyFileTo,
   deleteAsset,
   generateTree,
-  openPath as _openPath,
 } from "./file-manager.ts";
 import {
   createWindow as createAppWindow,
   initWindowManager,
   setTrayIconPath,
-  appRestart as _appRestart,
 } from "./window-manager.ts";
 import { catboxUpload, uguuUpload } from "./webview-manager.ts";
 import {
@@ -40,7 +38,6 @@ import {
   googledriveDisconnect,
   googledriveUpload,
 } from "./googledrive-manager.ts";
-import { ServerCommands } from "./server-commands.ts";
 import { OpenCodeManager } from "./opencode-manager.ts";
 import { OpenCodeSSEServer } from "./opencode-sse-server.ts";
 import {
@@ -60,7 +57,6 @@ import {
   queryLogs,
   listSessions,
   writeStateSnapshot,
-  writeStateSnapshot as _writeStateSnapshot,
   writeSessionSummary,
   updateAppState,
   getAppState,
@@ -89,7 +85,7 @@ app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow: BrowserWindow | null = null;
 
-const { sessionId: _sessionId } = initLogSystem();
+initLogSystem();
 
 interceptMainConsole();
 
@@ -149,9 +145,6 @@ app.whenReady().then(async () => {
     setupSettingsHandlers();
     setupDatabaseHandlers();
 
-    try {
-      ServerCommands?.init?.({ mainWindow });
-    } catch (e) {}
     try {
       initWindowManager({ mainWindow });
     } catch (e) {}
@@ -287,8 +280,7 @@ registerHandler("uguu-upload", uguuUpload);
 registerHandler("whisper-load", whisperLoad);
 registerHandler("whisper-save", whisperSave);
 
-registerHandler("server-command-run", ServerCommands.run);
-registerHandler("server-command-list", ServerCommands.list);
+// server-command-run ve server-command-list kaldırıldı (preload'da expose edilmiyordu)
 
 registerHandler("command-init", commandInit);
 registerHandler("command-write", commandWrite);
@@ -392,3 +384,5 @@ registerHandler("opencode-sse-status", async () => OpenCodeSSEServer.getStatus()
 registerHandler("opencode-sse-session", async () => OpenCodeSSEServer.getSession());
 registerHandler("opencode-sse-start-session", async () => OpenCodeSSEServer.startSession());
 registerHandler("opencode-sse-end-session", async () => OpenCodeSSEServer.endSession());
+registerHandler("opencode-sse-connect", async () => await OpenCodeSSEServer.connectToOpenCode());
+registerHandler("opencode-sse-disconnect", async () => OpenCodeSSEServer.disconnectFromOpenCode());

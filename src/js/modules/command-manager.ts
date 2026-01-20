@@ -276,7 +276,7 @@ class CommandManagerClass {
   clearQueue() {
     this.queue = [];
     this.processing = false;
-    LogManager.addEvent("command", "info", "Komut kuyruğu temizlendi");
+    LogManager.addEvent("command", "info", "Komut kuyruğu temizlendi", { visibility: 2 });
   }
 
   CommandManagerEnqueue(

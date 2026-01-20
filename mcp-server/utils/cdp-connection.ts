@@ -7,7 +7,7 @@
 
 import WebSocket from "ws";
 
-const CDP_PORT = process.env.CDP_PORT || 9222;
+const CDP_PORT = process.env.CDP_PORT || 9223;
 const CDP_HOST = process.env.CDP_HOST || "localhost";
 
 /** CDP Target interface */
@@ -44,19 +44,44 @@ interface EvaluateResult {
  */
 export async function discoverTargets(): Promise<CDPTarget[]> {
   try {
-    const response = await fetch(`http://${CDP_HOST}:${CDP_PORT}/json`);
+    // 5 saniye timeout ile fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`http://${CDP_HOST}:${CDP_PORT}/json`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     return (await response.json()) as CDPTarget[];
   } catch (error) {
-    const err = error as NodeJS.ErrnoException;
-    if (err.code === "ECONNREFUSED") {
+    const err = error as Error & { code?: string };
+    
+    // Timeout hatası
+    if (err.name === "AbortError") {
+      throw new Error(
+        `Electron bağlantı zaman aşımı (5s). Port ${CDP_PORT} açık mı kontrol edin.`
+      );
+    }
+    
+    // Connection refused
+    if (err.code === "ECONNREFUSED" || err.message.includes("ECONNREFUSED")) {
       throw new Error(
         `Electron'a bağlanılamadı (port ${CDP_PORT}). ` +
         `Uygulama --remote-debugging-port=${CDP_PORT} ile başlatıldığından emin olun.`
       );
     }
+    
+    // fetch failed (genel ağ hatası)
+    if (err.message.includes("fetch failed")) {
+      throw new Error(
+        `Electron'a bağlanılamadı (port ${CDP_PORT}). Uygulama çalışıyor mu?`
+      );
+    }
+    
     throw error;
   }
 }

@@ -6,6 +6,7 @@ import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { getCommandGuideText } from "../constants/command-guides.js";
+import { ButtonStates } from "../ui/button-states.js";
 
 export class ServerController {
   // State
@@ -190,31 +191,70 @@ export class ServerController {
   async assignControl() {
     const controller = this.controllerSelect?.value || "ai1";
     if (!controller) return;
-    await CoreEngine.sendProtocol({
-      room: "server",
-      scenario: "takecontrol",
-      targets: [controller],
-    });
-    this.isDelegated = true;
-    this.updateControlButtons();
+    
+    // Loading state
+    if (this.delegateBtn) {
+      ButtonStates.setLoading(this.delegateBtn, "Devrediliyor...");
+    }
+    
+    try {
+      await CoreEngine.sendProtocol({
+        room: "server",
+        scenario: "takecontrol",
+        targets: [controller],
+      });
+      this.isDelegated = true;
+      
+      if (this.delegateBtn) {
+        ButtonStates.setSuccess(this.delegateBtn, "Devredildi!", 1500);
+      }
+      LogManager.addEvent("server", "success", `Kontrol ${AppState.getNickname(controller)}'e devredildi`);
+    } catch (e) {
+      if (this.delegateBtn) {
+        ButtonStates.setError(this.delegateBtn, "Hata!", 1500);
+      }
+      LogManager.addEvent("server", "error", "Kontrol devretme hatası");
+    }
+    
+    setTimeout(() => this.updateControlButtons(), 1600);
   }
 
   async reclaimControl() {
     const controller = this.controllerSelect?.value || "ai1";
-    LogManager.addEvent("server", "info", "Kontrol devralındı (insan)");
-    LogManager.addEvent("server", "info", "Kontrol insana devralındı");
-    this.isDelegated = false;
-    this.updateControlButtons();
-    await CoreEngine.sendBatch({
-      targets: [controller],
-      text: "Kontrol Devralındı",
-      page: "server",
-    });
+    
+    // Loading state
+    if (this.reclaimBtn) {
+      ButtonStates.setLoading(this.reclaimBtn, "Devralınıyor...");
+    }
+    
+    try {
+      await CoreEngine.sendBatch({
+        targets: [controller],
+        text: "Kontrol Devralındı",
+        page: "server",
+      });
+      
+      this.isDelegated = false;
+      
+      if (this.reclaimBtn) {
+        ButtonStates.setSuccess(this.reclaimBtn, "Devralındı!", 1500);
+      }
+      LogManager.addEvent("server", "success", "Kontrol insana devralındı", { visibility: 1 });
+    } catch (e) {
+      if (this.reclaimBtn) {
+        ButtonStates.setError(this.reclaimBtn, "Hata!", 1500);
+      }
+      LogManager.addEvent("server", "error", "Kontrol devralma hatası", { visibility: 1 });
+    }
+    
+    setTimeout(() => this.updateControlButtons(), 1600);
   }
 
   async handleManualSend() {
     const text = (this.commandText?.value || "").trim();
     if (!text) return;
+    
+    const sendBtn = document.getElementById("server-command-send") as HTMLButtonElement | null;
     const provider = this.controllerSelect?.value || "ai1";
     const regex = /\+\+cmd:([A-Za-z0-9_]+)\((.*?)\)/g;
     const matches = [];
@@ -223,16 +263,37 @@ export class ServerController {
       matches.push({ name: m[1], args: (m[2] || "").trim() });
     }
     if (!matches.length) {
+      if (sendBtn) {
+        ButtonStates.setError(sendBtn, "Komut Yok!", 1500);
+      }
       LogManager.addEvent("server", "warning", "Komut bulunamadı");
       return;
     }
-    matches.forEach(async (cmd) => {
-      await CoreEngine.handleCaughtCommand(cmd.name, {
-        provider,
-        args: cmd.args,
-        source: "manual",
-      });
-    });
+    
+    // Loading state
+    if (sendBtn) {
+      ButtonStates.setLoading(sendBtn, "Gönderiliyor...");
+    }
+    
+    try {
+      for (const cmd of matches) {
+        await CoreEngine.handleCaughtCommand(cmd.name, {
+          provider,
+          args: cmd.args,
+          source: "manual",
+        });
+      }
+      
+      if (sendBtn) {
+        ButtonStates.setSuccess(sendBtn, "Gönderildi!", 1500);
+      }
+      LogManager.addEvent("server", "success", `${matches.length} komut gönderildi`, { showToast: false });
+    } catch (e) {
+      if (sendBtn) {
+        ButtonStates.setError(sendBtn, "Hata!", 1500);
+      }
+      LogManager.addEvent("server", "error", "Komut gönderme hatası");
+    }
   }
 
   onShow() {

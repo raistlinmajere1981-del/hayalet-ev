@@ -39,7 +39,7 @@ class RelayManagerClass {
     }
     this._trafficUnsubscribe = TrafficManager.onUpdate(this._boundUpdate as (snapshot: { provider: string; state: unknown }) => void);
 
-    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI and AI-Asistan relays");
+    LogManager.addEvent("relay", "info", "RelayManager initialized with AI-AI and AI-Asistan relays", { visibility: 2 });
   }
 
   // ==========================================

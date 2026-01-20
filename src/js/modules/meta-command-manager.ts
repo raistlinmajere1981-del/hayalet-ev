@@ -114,7 +114,7 @@ async function loadCommands(): Promise<void> {
         }
       }
 
-      LogManager.addEvent("meta-command", "info", `${Object.keys(_customCommands).length} custom komut yüklendi`);
+      LogManager.addEvent("meta-command", "info", `${Object.keys(_customCommands).length} custom komut yüklendi`, { visibility: 2 });
     }
   } catch (err) {
     LogManager.addEvent("meta-command", "error", `loadCommands hatası: ${(err as Error).message}`);

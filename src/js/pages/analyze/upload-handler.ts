@@ -55,21 +55,11 @@ export async function addUploadFiles(currentFiles: StagedFile[]): Promise<Staged
       properties: ["openFile", "multiSelections"],
     });
     
+    // Dialog iptal edildi veya sonuç yok
     if (!selection) return currentFiles;
+    if (selection.canceled) return currentFiles;
     
-    let paths: string[] = [];
-    if (typeof selection === "string") {
-      paths = [selection];
-    } else if (Array.isArray(selection)) {
-      paths = selection as string[];
-    } else if (selection && Array.isArray(selection.filePaths)) {
-      paths = selection.filePaths;
-    } else if (selection && typeof (selection as unknown as { path?: string }).path === "string") {
-      paths = [(selection as unknown as { path: string }).path];
-    } else {
-      paths = [];
-    }
-    
+    const paths = selection.filePaths || [];
     if (!paths.length) return currentFiles;
     
     const newEntries = paths.map((p) => {

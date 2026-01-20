@@ -75,10 +75,62 @@ import { calculateLogStats as _calculateLogStats } from "./logger/log-reader.ts"
 let mainWindowRef: BrowserWindow | null = null;
 
 /**
+ * Erken loglar - UI hazır olmadan önce oluşan loglar
+ * Renderer hazır olduğunda bu loglar IPC ile gönderilir
+ */
+interface EarlyLog {
+  level: string;
+  source: string;
+  message: string;
+  timestamp: string;
+  visibility: 1 | 2 | 3;
+}
+
+const earlyLogs: EarlyLog[] = [];
+const MAX_EARLY_LOGS = 100;
+
+/**
+ * Log visibility seviyesini belirle
+ * 1 = toast (error, warning)
+ * 2 = panel (info, system)
+ * 3 = verbose (debug)
+ */
+function inferVisibility(level: string, source: string): 1 | 2 | 3 {
+  if (level === 'error' || level === 'warning') return 1;
+  if (level === 'debug') return 3;
+  
+  // Sistem ve DB logları panel seviyesinde
+  const panelSources = ['DB', 'session-manager', 'MAIN', 'WindowManager', 'OPENCODE'];
+  if (panelSources.some(s => source.includes(s))) return 2;
+  
+  return 2; // Default panel
+}
+
+/**
  * Main window referansını ayarla (IPC için gerekli)
  */
 export function setMainWindow(win: BrowserWindow | null): void {
   mainWindowRef = win;
+}
+
+/**
+ * Renderer'a hazır olduğunu bildir - erken logları temizle
+ */
+// Not: setRendererReady gelecekte erken logları temizlemek için kullanılacak
+// export function setRendererReady(): void { }
+
+/**
+ * Erken logları al (IPC handler için)
+ */
+export function getEarlyLogs(): EarlyLog[] {
+  return [...earlyLogs];
+}
+
+/**
+ * Erken logları temizle
+ */
+export function clearEarlyLogs(): void {
+  earlyLogs.length = 0;
 }
 
 /**
@@ -90,27 +142,49 @@ function forwardToLogManager(
   message: string,
   context: Record<string, unknown> | null = null
 ): void {
+  const visibility = inferVisibility(level, source);
+  const timestamp = new Date().toISOString();
+  
   // FIX: Daha kapsamlı hazırlık kontrolü - webContents tam hazır olmalı
-  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) {
+    // Erken log olarak sakla
+    if (earlyLogs.length < MAX_EARLY_LOGS) {
+      earlyLogs.push({ level, source, message, timestamp, visibility });
+    }
+    return;
+  }
   
   const webContents = mainWindowRef.webContents;
-  if (!webContents || webContents.isDestroyed()) return;
+  if (!webContents || webContents.isDestroyed()) {
+    if (earlyLogs.length < MAX_EARLY_LOGS) {
+      earlyLogs.push({ level, source, message, timestamp, visibility });
+    }
+    return;
+  }
   
   // WebContents'in IPC mesajı alabilecek durumda olup olmadığını kontrol et
-  // isLoading() true ise veya henüz did-finish-load olmadıysa mesaj göndermeyiz
   try {
     // Sadece hazır olan pencereye gönder
-    if (webContents.isLoading()) return;
+    if (webContents.isLoading()) {
+      if (earlyLogs.length < MAX_EARLY_LOGS) {
+        earlyLogs.push({ level, source, message, timestamp, visibility });
+      }
+      return;
+    }
     
     webContents.send("console-log-forward", {
       level,
       source,
       message,
       context,
-      timestamp: new Date().toISOString(),
+      timestamp,
+      visibility,
     });
   } catch (_err) {
     // Sessizce geç - IPC henüz hazır değil
+    if (earlyLogs.length < MAX_EARLY_LOGS) {
+      earlyLogs.push({ level, source, message, timestamp, visibility });
+    }
   }
 }
 
@@ -182,27 +256,28 @@ export function interceptMainConsole(): void {
  * Renderer process loglarını dinle
  */
 export function setupRendererLogger(webContents: Electron.WebContents): void {
-  webContents.on("console-message", (event: unknown, level: unknown, message: unknown, line: unknown, sourceId: unknown) => {
-    // Handle both old (separate params) and new (event object) API
-    const _event = event as Record<string, unknown>;
-    const _level = typeof level === 'number' ? level : (_event?.level as number) ?? 0;
-    const _message = typeof message === 'string' ? message : (_event?.message as string) ?? '';
-    const _line = typeof line === 'number' ? line : (_event?.line as number) ?? 0;
-    const _sourceId = typeof sourceId === 'string' ? sourceId : (_event?.sourceId as string) ?? '';
-
+  // Yeni Event<WebContentsConsoleMessageEventParams> API kullanımı
+  webContents.on("console-message", (details) => {
+    // Event objesinden değerleri al (yeni API)
+    // level: 0=verbose, 1=info, 2=warning, 3=error
+    const level = Number(details.level);
+    const message = details.message as string;
+    const line = (details as unknown as { line?: number }).line ?? 0;
+    const sourceId = details.sourceId as string | undefined;
+    
     const levelMap: Record<number, string> = {
       0: "LOG",
-      1: "WARN",
-      2: "ERROR",
-      3: "DEBUG",
+      1: "INFO",
+      2: "WARN",
+      3: "ERROR",
     };
 
-    const levelName = levelMap[_level] || "LOG";
-    const source = _sourceId ? ` (${_sourceId}:${_line})` : "";
-    const fullMessage = `${_message}${source}`;
+    const levelName = levelMap[level] || "LOG";
+    const source = sourceId ? ` (${sourceId}:${line})` : "";
+    const fullMessage = `${message}${source}`;
 
-    const isError = _level === 2;
-    const isWarn = _level === 1;
+    const isError = level === 3;
+    const isWarn = level === 2;
     
     writeLog(levelName, "RENDERER", [fullMessage], null, isError || isWarn);
 
@@ -235,28 +310,29 @@ export function setupWebviewLogger(
 
   const source = `WEBVIEW-${slot.toUpperCase()}`;
 
-  webviewContents.on("console-message", (event: unknown, level: unknown, message: unknown, line: unknown, sourceId: unknown) => {
-    // Handle both old (separate params) and new (event object) API
-    const _event = event as Record<string, unknown>;
-    const _level = typeof level === 'number' ? level : (_event?.level as number) ?? 0;
-    const _message = typeof message === 'string' ? message : (_event?.message as string) ?? '';
-    const _line = typeof line === 'number' ? line : (_event?.line as number) ?? 0;
-    const _sourceId = typeof sourceId === 'string' ? sourceId : (_event?.sourceId as string) ?? '';
-
+  // Yeni Event<WebContentsConsoleMessageEventParams> API kullanımı
+  webviewContents.on("console-message", (details) => {
+    // Event objesinden değerleri al (yeni API)
+    // level: 0=verbose, 1=info, 2=warning, 3=error
+    const level = Number(details.level);
+    const message = String(details.message);
+    const line = (details as unknown as { line?: number }).line ?? 0;
+    const sourceId = details.sourceId ? String(details.sourceId) : undefined;
+    
     const levelMap: Record<number, string> = {
       0: "LOG",
-      1: "WARN",
-      2: "ERROR",
-      3: "DEBUG",
+      1: "INFO",
+      2: "WARN",
+      3: "ERROR",
     };
 
-    const levelName = levelMap[_level] || "LOG";
-    const sourceInfo = _sourceId ? ` (${_sourceId}:${_line})` : "";
-    const fullMessage = `[${provider}] ${_message}${sourceInfo}`;
+    const levelName = levelMap[level] || "LOG";
+    const sourceInfo = sourceId ? ` (${sourceId}:${line})` : "";
+    const fullMessage = `[${provider}] ${message}${sourceInfo}`;
 
     const context = { provider, slot, url: webviewContents.getURL?.() || "" };
-    const isError = _level === 2;
-    const isWarn = _level === 1;
+    const isError = level === 3;
+    const isWarn = level === 2;
 
     writeLog(levelName, source, [fullMessage], context, isError || isWarn);
 

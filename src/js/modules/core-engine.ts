@@ -12,6 +12,7 @@ import { FileManager } from "./file-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { ServerCommands } from "./server-commands.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
+import { ErrorBoundary } from "./error-boundary.js";
 import { getFilename, generateUniqueId, TIMEOUTS, decodeBase64 } from "../constants/index.js";
 import type { AppSettings } from "../types/settings.js";
 
@@ -75,6 +76,11 @@ class CoreEngineClass {
   _settingsSub: (() => void) | null;
   _previousSettings: AppSettings | null;
   _cleanupInterval: ReturnType<typeof setInterval> | null;
+  // Memory leak fix: Event listener unsubscribe references
+  _commandSentUnsub: (() => void) | null;
+  _commandFailedUnsub: (() => void) | null;
+  _slotTrafficStartedUnsub: (() => void) | null;
+  _slotTrafficStoppedUnsub: (() => void) | null;
 
   constructor() {
     this.settings = null;
@@ -83,12 +89,21 @@ class CoreEngineClass {
     this._settingsSub = null;
     this._previousSettings = null;
     this._cleanupInterval = null;
+    // Memory leak fix: Initialize unsubscribe references
+    this._commandSentUnsub = null;
+    this._commandFailedUnsub = null;
+    this._slotTrafficStartedUnsub = null;
+    this._slotTrafficStoppedUnsub = null;
   }
 
   async init(): Promise<AppSettings | null> {
     if (this.initialized) {
       return this.settings;
     }
+    
+    // Initialize error boundary first (catches all subsequent errors)
+    ErrorBoundary.init();
+    
     this.settings = await SettingsManager.load();
     WebviewManager.setSettings(this.settings as Record<string, unknown>);
     await FileManager.ensureDirs("all");
@@ -106,10 +121,11 @@ class CoreEngineClass {
     }, TIMEOUTS.CLEANUP_INTERVAL);
     CommandExecutor.init(this);
     CommandManager.setExecutor((job: unknown) => CommandExecutor.executeJob(job as never));
-    CommandManager.on("sent", ({ job }: { job: unknown }) =>
+    // Memory leak fix: Store unsubscribe references
+    this._commandSentUnsub = CommandManager.on("sent", ({ job }: { job: unknown }) =>
       CommandExecutor.handleJobSuccess(job as never),
     );
-    CommandManager.on("failed", ({ job, error }: { job: unknown; error: unknown }) =>
+    this._commandFailedUnsub = CommandManager.on("failed", ({ job, error }: { job: unknown; error: unknown }) =>
       CommandExecutor.handleJobFailure(job as never, error),
     );
     try {
@@ -131,7 +147,8 @@ class CoreEngineClass {
     
     await SlotController.init();
     
-    SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }: { slot?: string }) => {
+    // Memory leak fix: Store unsubscribe references for SlotController events
+    this._slotTrafficStartedUnsub = SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }: { slot?: string }) => {
       if (!slot) return;
       const webview = SlotController.getWebview(slot);
       if (webview) {
@@ -140,7 +157,7 @@ class CoreEngineClass {
       }
     });
     
-    SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }: { slot?: string }) => {
+    this._slotTrafficStoppedUnsub = SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }: { slot?: string }) => {
       if (!slot) return;
       TrafficManager.stop(slot);
     });
@@ -642,8 +659,26 @@ class CoreEngineClass {
       this._settingsSub();
       this._settingsSub = null;
     }
+    // Memory leak fix: Cleanup CommandManager event listeners
+    if (this._commandSentUnsub) {
+      this._commandSentUnsub();
+      this._commandSentUnsub = null;
+    }
+    if (this._commandFailedUnsub) {
+      this._commandFailedUnsub();
+      this._commandFailedUnsub = null;
+    }
+    // Memory leak fix: Cleanup SlotController event listeners
+    if (this._slotTrafficStartedUnsub) {
+      this._slotTrafficStartedUnsub();
+      this._slotTrafficStartedUnsub = null;
+    }
+    if (this._slotTrafficStoppedUnsub) {
+      this._slotTrafficStoppedUnsub();
+      this._slotTrafficStoppedUnsub = null;
+    }
     this.initialized = false;
-    LogManager.addEvent("core", "info", "CoreEngine destroyed");
+    LogManager.addEvent("core", "info", "CoreEngine destroyed", { visibility: 2 });
   }
 }
 

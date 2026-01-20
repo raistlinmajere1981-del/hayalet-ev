@@ -98,7 +98,7 @@ export class AccountPanel {
       try {
         const data = await window.electronAPI?.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Avatar">`;
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Avatar" class="img-cover">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">👤</div>';
       }
@@ -118,7 +118,7 @@ export class AccountPanel {
       try {
         const data = await window.electronAPI?.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Preview">`;
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${data}" alt="Preview" class="img-cover">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
       }

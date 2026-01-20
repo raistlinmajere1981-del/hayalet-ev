@@ -61,6 +61,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
   getSessionId: () => ipcRenderer.invoke("get-session-id"),
+  getEarlyLogs: () => ipcRenderer.invoke("get-early-logs"),
   readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
   queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
   listSessions: () => ipcRenderer.invoke("list-sessions"),
@@ -102,6 +103,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeStart: (options) => ipcRenderer.invoke("opencode-start", options),
   opencodeStop: () => ipcRenderer.invoke("opencode-stop"),
   opencodeStatus: () => ipcRenderer.invoke("opencode-status"),
+
+  // OpenCode SSE Server
+  opencodeSSEStart: (config) => ipcRenderer.invoke("opencode-sse-start", config),
+  opencodeSSEStop: () => ipcRenderer.invoke("opencode-sse-stop"),
+  opencodeSSEStatus: () => ipcRenderer.invoke("opencode-sse-status"),
+  opencodeSSESession: () => ipcRenderer.invoke("opencode-sse-session"),
+  opencodeSSEStartSession: () => ipcRenderer.invoke("opencode-sse-start-session"),
+  opencodeSSEEndSession: () => ipcRenderer.invoke("opencode-sse-end-session"),
+  opencodeSSEConnect: () => ipcRenderer.invoke("opencode-sse-connect"),
+  opencodeSSEDisconnect: () => ipcRenderer.invoke("opencode-sse-disconnect"),
   
   // Legacy assistant aliases (opencode'a yönlendirilir)
   assistantConnect: (provider, options) =>

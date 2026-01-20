@@ -147,7 +147,7 @@ class LifecycleManagerClass {
         webview.addEventListener("dom-ready", handleReady, { once: true });
       }
 
-      LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached");
+      LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached", { visibility: 2 });
     } catch (err) {
       LogManager.addEvent(`webview-${provider}`, "error", `attach error: ${getErrorMessage(err)}`);
     }
@@ -199,7 +199,7 @@ class LifecycleManagerClass {
       delete this.webviews[provider];
       delete this._lastActivity[provider];
 
-      LogManager.addEvent(`webview-${provider}`, "info", "Webview destroyed to free memory");
+      LogManager.addEvent(`webview-${provider}`, "info", "Webview destroyed to free memory", { visibility: 2 });
     } catch (err) {
       LogManager.addEvent(
         `webview-${provider}`,

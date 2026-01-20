@@ -47,12 +47,9 @@ declare global {
     // Settings
     loadSettings: () => Promise<Record<string, unknown>>;
     saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
-    createAccount: (accountData: Record<string, unknown>) => Promise<unknown>;
-    assignAccountToSlot: (slot: string, accountId: string) => Promise<IPCResult>;
 
     // File Operations
     readFile: (path: string) => Promise<string | null>;
-    readFilesMulti: (paths: string[]) => Promise<Array<{ path: string; data: string | null }>>;
     readDirectoryFiles: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
     showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>;
     showMessageBox: (options: Record<string, unknown>) => Promise<{ response: number; checkboxChecked: boolean }>;
@@ -81,7 +78,6 @@ declare global {
 
     // Database
     dbGetConversations: (payload: Record<string, unknown>) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
-    dbSaveConversation: (conversation: Record<string, unknown>) => Promise<IPCResult & { id?: string }>;
     dbUpdateConversation: (conversation: Record<string, unknown>) => Promise<IPCResult>;
     dbDeleteConversation: (payload: Record<string, unknown>) => Promise<IPCResult>;
     dbGetMessages: (payload: Record<string, unknown>) => Promise<IPCResult & { data?: Array<Record<string, unknown>> }>;
@@ -116,7 +112,6 @@ declare global {
     // Upload Services
     catboxUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
     uguuUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
-    tmpfileUpload: (payload: Record<string, unknown>) => Promise<IPCResult & { url?: string }>;
 
     // Window Management
     windowMinimize: () => void;
@@ -147,10 +142,12 @@ declare global {
     // OpenCode SSE Server
     opencodeSSEStart: (config?: { port?: number; host?: string; corsOrigin?: string }) => Promise<{ success: boolean; url?: string; error?: string }>;
     opencodeSSEStop: () => Promise<{ success: boolean }>;
-    opencodeSSEStatus: () => Promise<{ running: boolean; url: string | null; clients: number }>;
+    opencodeSSEStatus: () => Promise<{ running: boolean; url: string | null; clients: number; openCodeConnected: boolean }>;
     opencodeSSESession: () => Promise<{ session: unknown | null }>;
     opencodeSSEStartSession: () => Promise<unknown>;
     opencodeSSEEndSession: () => Promise<void>;
+    opencodeSSEConnect: () => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+    opencodeSSEDisconnect: () => Promise<void>;
     assistantConnect: (provider: string, options?: Record<string, unknown>) => Promise<IPCResult>;
     assistantDisconnect: () => Promise<IPCResult>;
     assistantStatus: () => Promise<{ connected: boolean }>;

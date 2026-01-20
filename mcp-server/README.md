@@ -2,7 +2,16 @@
 
 Rovodev CLI için Hayalet-ev projesi özel MCP (Model Context Protocol) Server.
 
-**v1.3.0** - CDP (Chrome DevTools Protocol) desteği ile!
+**v1.7.0** - CDP + Filesystem + Dev Tools + Recycle Bin + Diff desteği ile!
+
+## 🎯 Özellikler
+
+- **51 Tool** - Dosya, geliştirme ve Electron kontrolü
+- **Provider Validation** - AI selector'larını canlı test et
+- **Recycle Bin** - Silinen dosyalar geri alınabilir
+- **Diff** - Dosya/içerik karşılaştırma
+- **Undo/Backup** - İşlem geri alma ve yedekleme
+- **CDP** - Electron canlı kontrol
 
 ## Özellikler
 
@@ -98,6 +107,199 @@ Electron uygulamasına uzaktan bağlanıp kontrol etmek için güçlü araçlar:
     ```
     Örnek: "Enter tuşuna bas"
     Örnek: "Ctrl+S gönder"
+    ```
+
+### 📁 Filesystem Tool'ları
+
+Local dosya sistemi ile etkileşim için araçlar:
+
+17. **fs_open_files** - Dosyaları aç (collapsed view ile)
+    ```
+    Örnek: "src/js/app.ts dosyasını aç"
+    Örnek: "Birden fazla dosya aç: index.ts, types.ts"
+    ```
+
+18. **fs_create_file** - Yeni dosya oluştur
+    ```
+    Örnek: "src/utils/helper.ts dosyası oluştur"
+    ```
+
+19. **fs_delete_file** - Dosya sil
+    ```
+    Örnek: "tmp.txt dosyasını sil"
+    ```
+
+20. **fs_move_file** - Dosya taşı/yeniden adlandır
+    ```
+    Örnek: "old.ts'i new.ts olarak yeniden adlandır"
+    ```
+
+21. **fs_expand_code_chunks** - Kod sembollerini genişlet
+    ```
+    Örnek: "CoreEngine class'ını göster"
+    Örnek: "parseConfig fonksiyonunu genişlet"
+    Örnek: "MyClass/myMethod nested sembolünü bul"
+    ```
+
+22. **fs_find_and_replace** - Dosyada bul/değiştir
+    ```
+    Örnek: "config.ts'de 'localhost' yerine '127.0.0.1' yaz"
+    ```
+
+23. **fs_grep** - Dosyalarda ara (regex + glob)
+    ```
+    Örnek: "Projede 'TODO' içeren satırları bul"
+    Örnek: "*.test.ts dosyalarında 'describe' ara"
+    ```
+
+24. **fs_expand_folder** - Klasör yapısını göster
+    ```
+    Örnek: "src klasörünün yapısını göster"
+    ```
+
+25. **fs_bash** - Shell komutu çalıştır
+    ```
+    Örnek: "npm run lint çalıştır"
+    Örnek: "git status"
+    ```
+
+26. **fs_create_plan** - Teknik plan oluştur
+    ```
+    Örnek: "Bu değişiklik için plan oluştur"
+    ```
+
+### 🛠️ Dev Tool'ları
+
+Geliştirme workflow'ları için araçlar (eski npm scriptlerinin yerine):
+
+27. **dev_analyze_project** - Proje analizi
+    ```
+    Örnek: "Proje istatistiklerini göster"
+    Modlar: summary, deps, modules, full
+    ```
+
+28. **dev_bootstrap_context** - Session context üret
+    ```
+    Örnek: "Yeni session için context oluştur"
+    (.rovodev/context.md dosyasını günceller)
+    ```
+
+29. **dev_find_unused** - Kullanılmayan export'ları bul
+    ```
+    Örnek: "Dead code var mı kontrol et"
+    ```
+
+30. **dev_generate_diagram** - Bağımlılık diagramı
+    ```
+    Örnek: "Modül bağımlılık diagramı oluştur"
+    Formatlar: mermaid, dot
+    ```
+
+31. **dev_update_cache** - Proje cache güncelle
+    ```
+    Örnek: "Cache'i güncelle"
+    ```
+
+32. **dev_edit_lines** - Satır bazlı düzenleme
+    ```
+    Örnek: "100-150 arası satırları göster"
+    İşlemler: show, replace, delete, insert
+    ```
+
+33. **dev_git_diff** - Git değişikliklerini göster
+    ```
+    Örnek: "Staged değişiklikleri göster"
+    ```
+
+34. **dev_lint_file** - Tek dosyada ESLint çalıştır
+    ```
+    Örnek: "src/app.ts dosyasını lint et"
+    ```
+
+35. **dev_search_symbol** - Projede sembol ara
+    ```
+    Örnek: "CoreEngine class'ını bul"
+    Tipler: function, class, interface, type, const
+    ```
+
+36. **dev_test_run** - Test çalıştır
+    ```
+    Örnek: "utils testlerini çalıştır"
+    ```
+
+### 🗑️ Recycle Bin Tool'ları
+
+37. **fs_trash_list** - Çöp kutusunu listele
+    ```
+    Örnek: "Silinen dosyaları göster"
+    ```
+
+38. **fs_restore** - Çöp kutusundan geri yükle
+    ```
+    Örnek: "Son silinen dosyayı geri al"
+    ```
+
+39. **fs_trash_empty** - Çöp kutusunu boşalt
+    ```
+    Örnek: "7 günden eski dosyaları sil"
+    ```
+
+40. **fs_backup** - Dosya yedeği al
+    ```
+    Örnek: "config.ts'in yedeğini al"
+    ```
+
+41. **fs_undo** - Son işlemi geri al
+    ```
+    Örnek: "Son silme işlemini geri al"
+    ```
+
+42. **fs_history** - İşlem geçmişini göster
+    ```
+    Örnek: "Son 10 işlemi listele"
+    ```
+
+### 📊 Diff Tool'ları
+
+43. **fs_diff** - İki dosyayı karşılaştır
+    ```
+    Örnek: "package.json ile package.json.bak karşılaştır"
+    ```
+
+44. **fs_diff_content** - İki içeriği karşılaştır
+    ```
+    Örnek: "Eski ve yeni kodu karşılaştır"
+    ```
+
+45. **fs_show** - Dosya içeriğini göster
+    ```
+    Örnek: "50-100 arası satırları göster"
+    ```
+
+### 🔍 Provider Tool'ları
+
+AI provider (ChatGPT, Gemini, Grok) selector'larını doğrulama araçları:
+
+46. **list_provider_webviews** - Provider ve webview listesi
+    ```
+    Örnek: "Hangi provider'lar bağlı?"
+    ```
+
+47. **list_provider_selectors** - Config'deki selector'ları listele
+    ```
+    Örnek: "ChatGPT config'indeki selector'ları göster"
+    ```
+
+48. **validate_provider_selectors** - Selector'ları canlı test et
+    ```
+    Örnek: "ChatGPT selector'larını doğrula"
+    Çıktı: ✅ inputField (1 element), ❌ stopButton
+    ```
+
+49. **inspect_provider_element** - Webview'da element inspect et
+    ```
+    Örnek: "ChatGPT'de kullanıcı mesaj balonunu inspect et"
+    Çıktı: Tag, Class, Attributes, Pozisyon
     ```
 
 17. **scroll_page** - Sayfada scroll yap

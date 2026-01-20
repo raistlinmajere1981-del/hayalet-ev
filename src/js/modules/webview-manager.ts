@@ -8,9 +8,8 @@
  * - PendingArchiveHandler: Bekleyen arşiv işlemleri
  */
 
-import { ProviderRegistry } from "./webview/provider-registry.js";
 import { getProvider } from "./webview/provider-factory.js";
-import { isUrlExcluded as checkUrlExcluded } from "./webview/methods/shared/url-utils.js";
+import { isSlotUrlExcluded } from "./webview/methods/shared/url-utils.js";
 import { LifecycleManager } from "./webview/lifecycle-manager.js";
 import { MessageSender } from "./webview/message-sender.js";
 import { AppState } from "./app-state.js";
@@ -192,18 +191,13 @@ class WebviewManagerClass {
 
   /**
    * URL excluded mı kontrol et
+   * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
    * @param {string} providerSlot - Slot ID
    * @param {string} url - URL
    * @returns {boolean}
    */
   isUrlExcluded(providerSlot: string, url: string) {
-    const providerId = AppState.getProviderIdForSlot(providerSlot);
-    if (!providerId || !url) return false;
-
-    const cfg = ProviderRegistry.get(providerId);
-    if (!cfg?.excludedUrls?.length) return false;
-
-    return checkUrlExcluded(url, cfg.excludedUrls);
+    return isSlotUrlExcluded(providerSlot, url);
   }
 
   // ==========================================

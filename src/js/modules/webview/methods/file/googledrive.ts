@@ -20,7 +20,7 @@ export async function attachFiles(_webview: HTMLElement, { files }: { files: Fil
   }
 
   try {
-    LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", {
+    LogManager.addEvent("file-upload", "debug", "Google Drive upload başlatılıyor", { visibility: 3,
       context: {
         fileCount: files.length,
         files: files.map((p: FilePayload) => ({ name: p.name, hasBase64: !!p.base64 })),

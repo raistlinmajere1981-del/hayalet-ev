@@ -62,46 +62,7 @@ class FileManagerClass {
   async readUploadFiles(filterNames: (FileEntry | string)[] = []): Promise<ReadResult[]> {
     const results: ReadResult[] = [];
 
-    if (window.electronAPI?.readFilesMulti) {
-      try {
-        const paths = filterNames
-          .map((entry) => {
-            if (typeof entry === "string") return entry;
-            return entry?.path || entry?.tempPath || entry?.commandPath || null;
-          })
-          .filter((p): p is string => Boolean(p));
-
-        if (paths.length) {
-          const batchData = await window.electronAPI.readFilesMulti(paths);
-
-          for (let i = 0; i < filterNames.length && i < batchData.length; i++) {
-            const entry = filterNames[i];
-            const item = batchData[i];
-            // item could be string (base64) or object { path, data }
-            const data = typeof item === "string" ? item : (item as { data?: string | null })?.data;
-            if (!data) continue;
-
-            const entryObj = typeof entry === "string" ? { path: entry } : entry;
-            const base =
-              entryObj?.name ||
-              entryObj?.originalName ||
-              getFilename(entryObj?.path || "");
-            const ext = getExtension(base);
-            const mimeType = getMimeType(ext);
-            results.push({ name: base, base64: data, mimeType });
-          }
-          return results;
-        }
-      } catch (err) {
-        const error = err as Error;
-        LogManager.addEvent(
-          "file",
-          "warning",
-          `Batch read başarısız, sequential fallback: ${getErrorMessage(error)}`,
-        );
-      }
-    }
-
+    // Sequential read (batch read kaldırıldı - readFilesMulti implement değil)
     for (const entry of filterNames) {
       const entryObj = typeof entry === "string" ? { path: entry } : entry;
       const base = entryObj?.name || getFilename(entryObj?.path || "");

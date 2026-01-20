@@ -247,10 +247,17 @@ export interface LogQueryParams {
  */
 export interface StructuredLogEntry {
   timestamp: string;
-  level: LogLevel;
+  isoTimestamp?: string;
+  level?: LogLevel;
+  type?: string;
   source: LogSource;
   message: string;
   context?: LogContext;
+  sessionId?: string;
+  correlationId?: string | null;
+  visibility?: number;
+  meta?: Record<string, unknown>;
+  aiHint?: Record<string, unknown>;
 }
 
 // ============================================================================

@@ -83,11 +83,12 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
     // Conversation attachments'larını DB'den al
     const attachmentsByMessage: Record<string, any[]> = {};
     try {
-      const attachments = await window.electronAPI?.dbGetAttachments?.({
+      const attachmentsResult = await window.electronAPI?.dbGetAttachments?.({
         accountId: accountInfo.id,
         conversationId,
-      }) as Array<{ messageId: string }> | undefined;
-      if (attachments && attachments.length) {
+      }) as { data?: Array<{ messageId: string }> } | undefined;
+      const attachments = attachmentsResult?.data ?? [];
+      if (attachments.length) {
         // messageId'ye göre grupla (DB camelCase döndürüyor)
         attachments.forEach((att) => {
           if (!attachmentsByMessage[att.messageId]) {

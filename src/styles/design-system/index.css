@@ -1,0 +1,34 @@
+/**
+ * Hayalet-ev Design System
+ * 
+ * A cohesive design system for building consistent UI.
+ * Import this file to get all design tokens, themes, and components.
+ * 
+ * @version 1.1.0
+ * @author Hayalet-ev Team
+ */
+
+/* === DESIGN TOKENS === */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/shadows.css';
+@import './tokens/borders.css';
+@import './tokens/animations.css';
+
+/* === THEMES === */
+@import './themes/theme-base.css';
+@import './themes/theme-dark.css';
+@import './themes/theme-light.css';
+
+/* === COMPONENTS === */
+@import './components/buttons.css';
+@import './components/inputs.css';
+@import './components/cards.css';
+@import './components/toast.css';
+@import './components/modals.css';
+@import './components/loaders.css';
+@import './components/indicators.css';
+@import './components/splash.css';
+@import './components/accordion.css';
+@import './components/navigation.css';

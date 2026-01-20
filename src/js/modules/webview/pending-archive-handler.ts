@@ -25,7 +25,7 @@ class PendingArchiveHandlerClass {
     this._pendingArchives[provider] = this._pendingArchives[provider] || [];
     this._pendingArchives[provider].push(entry);
 
-    LogManager.addEvent("archive", "debug", "Pending archive registered", {
+    LogManager.addEvent("archive", "debug", "Pending archive registered", { visibility: 3,
       jobId: entry.jobId,
       provider,
       folder: entry.folder,

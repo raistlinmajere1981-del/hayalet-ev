@@ -54,7 +54,8 @@ export async function appendLog(
       await mkdir(sessionDir, { recursive: true });
     }
     
-    const logPath = join(sessionDir, 'structured.jsonl');
+    const structuredLogPath = join(sessionDir, 'structured.jsonl');
+    const consoleLogPath = join(sessionDir, 'console-001.log');
     
     let entry;
     try {
@@ -75,7 +76,23 @@ export async function appendLog(
       entry = { raw: line, timestamp: new Date().toISOString() };
     }
     
-    await appendFile(logPath, JSON.stringify(entry) + '\n', 'utf-8');
+    // Structured log (JSONL - detaylı analiz için)
+    await appendFile(structuredLogPath, JSON.stringify(entry) + '\n', 'utf-8');
+    
+    // Console log (okunabilir format - birleşik log)
+    const visibility = entry.visibility ? `[L${entry.visibility}]` : '';
+    const source = entry.source || 'unknown';
+    const type = entry.type || 'info';
+    const message = entry.message || entry.raw || '';
+    const timestamp = entry.isoTimestamp || new Date().toISOString();
+    
+    let consoleLine = `[${timestamp}] [${type.toUpperCase()}] ${visibility} [RENDERER] [${source}] ${message}`;
+    
+    if (entry.meta && Object.keys(entry.meta).length > 0) {
+      consoleLine += ` | meta: ${JSON.stringify(entry.meta)}`;
+    }
+    
+    await appendFile(consoleLogPath, consoleLine + '\n', 'utf-8');
     
     return { 
       success: true,

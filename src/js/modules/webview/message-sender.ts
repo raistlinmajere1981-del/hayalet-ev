@@ -14,7 +14,7 @@ import { AppState } from "../app-state.js";
 import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
 import { waitForDomReady } from "../../app.js";
-import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
+import { isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import type { AppSettings } from "../../types/settings.js";
 
 // ============================================================================
@@ -86,15 +86,10 @@ class MessageSenderClass {
 
   /**
    * URL excluded mı kontrol et
+   * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
    */
   isUrlExcluded(providerSlot: string, url: string): boolean {
-    const providerId = AppState.getProviderIdForSlot(providerSlot);
-    if (!providerId || !url) return false;
-
-    const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
-    if (!cfg?.excludedUrls?.length) return false;
-
-    return checkUrlExcluded(url, cfg.excludedUrls);
+    return isSlotUrlExcluded(providerSlot, url);
   }
 
   /**

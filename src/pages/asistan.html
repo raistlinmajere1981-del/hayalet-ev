@@ -17,6 +17,18 @@
         <button class="btn btn-small btn-secondary" id="asistan-devtools-btn">
           DevTools
         </button>
+        <!-- UI Mode Toggle -->
+        <div class="control-group ui-mode-toggle">
+          <label>UI Modu</label>
+          <div class="toggle-buttons">
+            <button class="toggle-btn active" id="ui-mode-native" title="Native UI (SSE)">
+              Native
+            </button>
+            <button class="toggle-btn" id="ui-mode-webview" title="OpenCode Webview">
+              Webview
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="asistan-controls-right">
@@ -31,8 +43,24 @@
       </div>
     </div>
 
-    <!-- Webview Paneli -->
-    <div class="asistan-webview-panel">
+    <!-- Native UI Panel (OpenCode SSE) -->
+    <div class="asistan-native-panel" id="asistan-native-panel">
+      <div class="native-panel-placeholder" id="native-panel-placeholder">
+        <div class="placeholder-icon">🤖</div>
+        <div class="placeholder-title">Native UI</div>
+        <div class="placeholder-subtitle">Bağlan butonuna tıklayın</div>
+      </div>
+      <webview 
+        id="opencode-native-webview"
+        src="about:blank"
+        class="opencode-native-webview hidden"
+        partition="persist:native-ui"
+        webpreferences="contextIsolation=yes, nodeIntegration=no"
+      ></webview>
+    </div>
+
+    <!-- Webview Paneli (Eski OpenCode Webview) -->
+    <div class="asistan-webview-panel hidden" id="asistan-webview-panel">
       <div class="webview-url-bar">
         <div class="webview-url-text" id="asistan-url-display">-</div>
       </div>

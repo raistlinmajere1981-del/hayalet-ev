@@ -14,3 +14,6 @@ export * from "./commands.js";
 export * from "./database.js";
 export * from "./traffic.js";
 export * from "./relay.js";
+
+// === IPC Types ===
+export * from "./ipc-channels.js";

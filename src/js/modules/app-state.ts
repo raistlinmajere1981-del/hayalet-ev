@@ -60,6 +60,9 @@ class AppStateClass {
   getAccountForSlot(slot: string) {
     const settings = this.getSettings();
     
+    // Null check fix: Early return if settings is null/undefined
+    if (!settings) return null;
+    
     // AI0 (Asistan) için asistanSlot ve asistanAccounts kullan
     if (slot === "ai0") {
       const accountId = settings.asistanSlot?.accountId;
@@ -80,6 +83,8 @@ class AppStateClass {
 
   getAvatar(provider: string) {
     const settings = this.getSettings();
+    // Null check fix: Return empty string if settings is null
+    if (!settings) return "";
     if (provider === "user") {
       return settings.user?.avatarPath || "";
     }
@@ -89,6 +94,10 @@ class AppStateClass {
 
   getNickname(provider: string) {
     const settings = this.getSettings();
+    // Null check fix: Return default value if settings is null
+    if (!settings) {
+      return provider === "user" ? "Kullanıcı" : provider.toUpperCase();
+    }
     if (provider === "user") {
       return settings.user?.nickname || "Kullanıcı";
     }

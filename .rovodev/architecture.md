@@ -1,133 +1,162 @@
 ## 🏗️ Architecture Overview
 
+> **Last Updated:** 2026-01-18 | **Version:** 5.4.0
+
 ### Process Architecture
 ```
-Main Process (electron/main.js)
+Main Process (electron/main.ts)
 ├── Renderer Process (src/index.html)
-│   └── CoreEngine (src/js/modules/core-engine.js)
+│   └── CoreEngine (src/js/modules/core-engine.ts)
 ├── AI Provider Webviews (isolated contexts)
 │   ├── ChatGPT webview
 │   ├── Gemini webview
-│   └── Grok webview
-└── IPC Bridge (electron/preload.cjs)
+│   ├── Grok webview
+│   └── OpenCode webview (Asistan)
+├── IPC Bridge (electron/preload.cjs)
+└── MCP Server (mcp-server/ - AI asistan entegrasyonu)
 ```
 
 ### Module Structure
 ```
 electron/                    # Main process modules
-├── main.js                 # Application entry point & IPC handlers
+├── main.ts                 # Application entry point & IPC handlers
 ├── preload.cjs             # Main window preload (exposes electronAPI)
 ├── webview-preload.cjs     # Webview preload (AI provider injection)
-├── console-logger.js       # Unified logging orchestrator
+├── console-logger.ts       # Unified logging orchestrator
 ├── logger/                 # Logging alt modülleri
-│   ├── session-manager.js  # Session lifecycle & meta
-│   ├── log-writer.js       # Log file writing & rotation
-│   └── log-reader.js       # Log querying & filtering
+│   ├── session-manager.ts  # Session lifecycle & meta
+│   ├── log-writer.ts       # Log file writing & rotation
+│   └── log-reader.ts       # Log querying & filtering
 ├── database/               # SQLite veritabanı yönetimi
-│   ├── index.js            # DatabaseManager orchestrator
-│   ├── schema.js           # Tablo şemaları ve migration
-│   ├── queries.js          # Prepared statement'lar
-│   └── hash-utils.js       # Mesaj hash fonksiyonları (djb2)
-├── settings-manager.js     # Settings persistence (JSON file)
-├── file-manager.js         # File operations & archive management
-├── command-manager.js      # Command queue system
-├── googledrive-manager.js  # Google Drive sync
-├── whisper-manager.js      # Voice input handling
-├── screenshot-manager.js   # Screenshot capture
-├── device-manager.js       # Device control actions
-├── window-manager.js       # Window state management
-├── opencode-manager.js     # OpenCode server subprocess management
-└── log-manager.js          # Logging system
+│   ├── index.ts            # DatabaseManager orchestrator (tutarlı hata formatı)
+│   ├── schema.ts           # Tablo şemaları ve migration
+│   ├── queries.ts          # Prepared statement'lar
+│   └── hash-utils.ts       # Mesaj hash fonksiyonları (djb2)
+├── handlers/               # Modüler IPC handlers
+│   ├── ipc-database.ts     # Database IPC handlers
+│   ├── ipc-fs.ts           # File system handlers
+│   ├── ipc-window.ts       # Window handlers
+│   ├── ipc-settings.ts     # Settings handlers
+│   ├── ipc-provider.ts     # Provider handlers
+│   └── ipc-helpers.ts      # Shared handler utilities
+├── settings-manager.ts     # Settings persistence (JSON file)
+├── file-manager.ts         # File operations & archive management
+├── command-manager.ts      # Command queue system
+├── googledrive-manager.ts  # Google Drive sync
+├── whisper-manager.ts      # Voice input handling
+├── screenshot-manager.ts   # Screenshot capture
+├── device-manager.ts       # Device control actions
+├── window-manager.ts       # Window state management
+├── opencode-manager.ts     # OpenCode server subprocess management
+└── log-manager.ts          # Logging system
 
 src/js/modules/             # Renderer process modules
-├── core-engine.js          # Central coordinator (singleton)
-├── app-state.js            # Global state management
-├── settings-manager.js     # Settings UI & sync
-├── command-manager.js      # Command queue client
-├── command-executor.js     # Job execution logic
-├── protocol-handler.js     # AI-AI communication protocol
-├── catch-manager.js        # Command interception
+├── core-engine.ts          # Central coordinator (singleton, memory leak fixed)
+├── app-state.ts            # Global state management (null-safe getters)
+├── settings-manager.ts     # Settings UI & sync
+├── command-manager.ts      # Command queue client
+├── command-executor.ts     # Job execution logic
+├── protocol-handler.ts     # AI-AI communication protocol
+├── catch-manager.ts        # Command interception
+├── error-boundary.ts       # Global hata yakalama (NEW)
+├── ipc-client.ts           # Type-safe IPC wrapper (NEW)
 │
 ├── database/               # Database facade (renderer side)
-│   ├── index.js            # DatabaseService orchestrator
-│   ├── conversation-store.js # Konuşma CRUD işlemleri
-│   └── message-store.js    # Mesaj CRUD ve sync işlemleri
+│   ├── index.ts            # DatabaseService orchestrator
+│   ├── conversation-store.ts # Konuşma CRUD işlemleri
+│   └── message-store.ts    # Mesaj CRUD ve sync işlemleri
 │
-├── relay-manager.js        # Relay orchestrator (AI↔AI, AI↔Asistan)
+├── relay-manager.ts        # Relay orchestrator (AI↔AI, AI↔Asistan)
 ├── relay/                  # Relay alt modülleri
-│   ├── base-relay.js       # Abstract base class for all relays
-│   ├── ai-ai-relay.js      # AI-to-AI communication relay
-│   ├── ai-asistan-relay.js # AI-to-Asistan communication relay
-│   └── index.js            # Barrel export
+│   ├── base-relay.ts       # Abstract base class for all relays
+│   ├── ai-ai-relay.ts      # AI-to-AI communication relay
+│   ├── ai-asistan-relay.ts # AI-to-Asistan communication relay
+│   └── index.ts            # Barrel export
 │
-├── slot-controller.js      # Slot lifecycle orchestrator
+├── slot-controller.ts      # Slot lifecycle orchestrator (state machine integrated)
 ├── slot/                   # Slot alt modülleri
-│   ├── webview-handler.js  # Webview attach/detach/dom-ready
-│   ├── url-handler.js      # URL change tracking & exclusion
-│   ├── timeout-handler.js  # Timeout & error management
-│   ├── settings-sync.js    # Settings synchronization
-│   └── index.js            # Barrel export
+│   ├── state-machine.ts    # Robust state machine (NEW - transition validation)
+│   ├── webview-handler.ts  # Webview attach/detach/dom-ready
+│   ├── url-handler.ts      # URL change tracking & exclusion
+│   ├── timeout-handler.ts  # Timeout & error management
+│   ├── settings-sync.ts    # Settings synchronization
+│   └── index.ts            # Barrel export
 │
-├── webview-manager.js      # Webview facade (send, sync, lifecycle)
+├── webview-manager.ts      # Webview facade (send, sync, lifecycle)
 ├── webview/                # Webview alt modülleri
-│   ├── lifecycle-manager.js    # Register, attach, detach, destroy
-│   ├── message-sender.js       # Message & file sending
-│   ├── conversation-syncer.js  # DOM scraping & archive sync
-│   ├── pending-archive-handler.js # Pending archive operations
-│   ├── provider-registry.js    # Provider configuration registry
-│   ├── provider-factory.js     # Provider instantiation
-│   ├── index.js                # Barrel export
+│   ├── lifecycle-manager.ts    # Register, attach, detach, destroy
+│   ├── message-sender.ts       # Message & file sending
+│   ├── conversation-syncer.ts  # DOM scraping & archive sync
+│   ├── pending-archive-handler.ts # Pending archive operations
+│   ├── provider-registry.ts    # Provider configuration registry
+│   ├── provider-factory.ts     # Provider instantiation (lazy loading support)
+│   ├── index.ts                # Barrel export
 │   ├── providers/
 │   │   ├── chatgpt/
-│   │   │   ├── config.js       # Provider config & DOM selectors
-│   │   │   ├── index.js        # Main provider logic
-│   │   │   └── scraper.js      # DOM scraping utilities
+│   │   │   ├── config.ts       # Provider config & DOM selectors
+│   │   │   ├── index.ts        # Main provider logic
+│   │   │   └── scraper.ts      # DOM scraping utilities
 │   │   ├── gemini/
 │   │   ├── grok/
 │   │   └── opencode/           # Asistan provider (lokal server)
-│   │       ├── config.js       # OpenCode config, selectors, server commands
-│   │       ├── index.js        # Message sending logic
-│   │       └── scraper.js      # Conversation scraping
+│   │       ├── config.ts       # OpenCode config, selectors, server commands
+│   │       ├── index.ts        # Message sending logic
+│   │       └── scraper.ts      # Conversation scraping
 │   └── methods/                # Injection methods
 │       ├── message/            # Message sending strategies
-│       │   ├── injection.js    # DOM injection method
-│       │   └── xdotools.js     # X11 automation fallback
-│       └── file/               # File upload strategies
-│           ├── dragdrop.js     # Drag & drop simulation
-│           ├── injection.js    # Direct DOM injection
-│           ├── googledrive.js  # Google Drive links
-│           ├── catbox.js       # Catbox.moe upload
-│           └── uguu.js         # Uguu.se upload
+│       │   ├── injection.ts    # DOM injection method
+│       │   └── xdotools.ts     # X11 automation fallback
+│       ├── file/               # File upload strategies
+│       │   ├── dragdrop.ts     # Drag & drop simulation
+│       │   ├── injection.ts    # Direct DOM injection
+│       │   ├── googledrive.ts  # Google Drive links
+│       │   ├── catbox.ts       # Catbox.moe upload
+│       │   └── uguu.ts         # Uguu.se upload
+│       └── shared/             # Shared utilities
+│           ├── file-utils.ts   # File processing utilities
+│           └── url-utils.ts    # URL validation (isSlotUrlExcluded - merkezi)
 │
-├── traffic-manager.js      # Traffic orchestrator (loading/thinking/send)
+├── traffic-manager.ts      # Traffic orchestrator (race-condition fixed)
 ├── traffic/                # Traffic alt modülleri
-│   ├── loading-tracker.js  # Page loading state tracking
-│   ├── thinking-tracker.js # AI thinking state tracking
-│   ├── send-tracker.js     # Send button state tracking
-│   ├── probe-script-builder.js # Webview probe script generator
-│   └── webview-events.js   # Webview navigation events
+│   ├── loading-tracker.ts  # Page loading state tracking
+│   ├── thinking-tracker.ts # AI thinking state tracking
+│   ├── send-tracker.ts     # Send button state tracking
+│   ├── probe-script-builder.ts # Webview probe script generator
+│   └── webview-events.ts   # Webview navigation events
 │
-├── server-commands.js      # Server command dispatcher
+├── server-commands.ts      # Server command dispatcher
 └── commands/               # Command handler'ları
-    ├── utils.js            # Shared utilities
-    ├── device-commands.js  # DeviceManager handler
-    ├── screenshot-commands.js # Screenshot handlers
-    ├── window-commands.js  # Window control handlers
-    ├── whisper-commands.js # WhisperManager handler
-    ├── file-commands.js    # File operation handlers
-    └── ai-chat-commands.js # AI-AI chat handlers
+    ├── utils.ts            # Shared utilities
+    ├── device-commands.ts  # DeviceManager handler
+    ├── screenshot-commands.ts # Screenshot handlers
+    ├── window-commands.ts  # Window control handlers
+    ├── whisper-commands.ts # WhisperManager handler
+    ├── file-commands.ts    # File operation handlers
+    └── ai-chat-commands.ts # AI-AI chat handlers
+
+src/js/types/               # TypeScript tip tanımları (NEW)
+├── index.ts                # Barrel export
+├── ipc-channels.ts         # IPC channel tip tanımları (NEW)
+├── common.ts               # Ortak tipler
+├── provider.ts             # Provider tipleri
+├── settings.ts             # Settings tipleri
+├── commands.ts             # Command tipleri
+├── database.ts             # Database tipleri
+├── traffic.ts              # Traffic tipleri
+└── relay.ts                # Relay tipleri
 
 src/js/pages/               # Page controllers
-├── analyze.js              # Analyze page orchestrator
+├── analyze.ts              # Analyze page orchestrator
 ├── analyze/                # Analyze alt modülleri
-│   ├── message-renderer.js # Message bubble rendering
-│   ├── upload-handler.js   # File upload UI
-│   ├── context-menu.js     # Context menu & read modal
-│   └── draft-manager.js    # Draft persistence
-├── asistan.js              # Asistan page controller (OpenCode integration)
-├── settings.js
-├── webview.js
-└── ...
+│   ├── message-renderer.ts # Message bubble rendering
+│   ├── upload-handler.ts   # File upload UI
+│   ├── context-menu.ts     # Context menu & read modal
+│   └── draft-manager.ts    # Draft persistence
+├── asistan.ts              # Asistan page controller (OpenCode integration)
+├── entrance.ts             # Entrance Hall page
+├── archives.ts             # Archives management page
+├── server.ts               # Server room page
+└── whisper.ts              # Whisper room page
 
 mcp-server/                 # MCP Protocol Server (v1.4.0)
 ├── index.ts                # Server orchestrator (18 tool)

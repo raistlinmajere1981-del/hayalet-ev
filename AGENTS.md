@@ -338,6 +338,26 @@ dev_search_symbol      # Projede sembol ara
 dev_test_run           # Test çalıştır
 ```
 
+### Provider Tools (Selector Doğrulama)
+
+AI provider selector'larını canlı test etmek için araçlar:
+
+```
+list_provider_webviews       # Provider ve webview listesi
+list_provider_selectors      # Config'deki selector'ları listele
+validate_provider_selectors  # Selector'ları canlı webview'da test et
+inspect_provider_element     # Webview'da element inspect et
+```
+
+**Kullanım örneği:**
+```bash
+# ChatGPT selector'larını doğrula
+validate_provider_selectors provider=chatgpt
+
+# Belirli element inspect et
+inspect_provider_element provider=chatgpt selector='[data-message-author-role="user"]'
+```
+
 ### MCP Server Logging
 MCP tool çağrıları ve hatalar `mcp-server/logs/mcp-server.log` dosyasına kaydedilir.
 

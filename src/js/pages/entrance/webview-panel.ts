@@ -192,7 +192,7 @@ export class WebviewPanel {
             const preloadPath = await window.electronAPI.getPreloadPath("ai2");
             if (preloadPath) {
               ai2WebviewEl.setAttribute("preload", preloadPath);
-              this.addLog("ai2", "info", `Preload script ayarlandı: ${preloadPath}`);
+              this.addLog("ai2", "info", `Preload script ayarlandı: ${preloadPath}`, { visibility: 2 });
             }
           } catch (err) {
             const error = err as Error;
@@ -364,7 +364,7 @@ export class WebviewPanel {
       const now = Date.now();
 
       if (!isExcluded && now - state.lastStart > 1200) {
-        this.addLog(type, "info", "Sayfa yükleniyor...");
+        this.addLog(type, "info", "Sayfa yükleniyor...", { visibility: 3 });
         state.lastStart = now;
       }
       this.loadLogState[type] = state;
@@ -382,7 +382,7 @@ export class WebviewPanel {
       const now = Date.now();
 
       if (now - state.lastStop > 1200) {
-        this.addLog(type, "info", "Sayfa yükleme tamamlandı");
+        this.addLog(type, "info", "Sayfa yükleme tamamlandı", { visibility: 3 });
         state.lastStop = now;
       }
       this.loadLogState[type] = state;
@@ -475,8 +475,8 @@ export class WebviewPanel {
     }
   }
 
-  addLog(type: SlotType, level: LogLevel, message: string): void {
-    LogManager.addEvent(`webview-panel-${type}`, level, message);
+  addLog(type: SlotType, level: LogLevel, message: string, meta?: Record<string, unknown>): void {
+    LogManager.addEvent(`webview-panel-${type}`, level, message, meta || null);
   }
 
   destroy(): void {

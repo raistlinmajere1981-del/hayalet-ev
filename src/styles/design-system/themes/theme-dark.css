@@ -1,0 +1,36 @@
+/**
+ * Design System - Dark Theme
+ * 
+ * Tokyo Night inspired dark color scheme.
+ * This is the default theme for Hayalet-ev.
+ */
+
+[data-theme="dark"] {
+  /* === BACKGROUND COLORS === */
+  --color-bg-primary: #1f2335;
+  --color-bg-secondary: #24283b;
+  --color-bg-tertiary: #2f354b;
+  --color-bg-elevated: #1a1b26;
+  --color-bg-overlay: rgba(0, 0, 0, 0.6);
+  --color-bg-hover: rgba(255, 255, 255, 0.05);
+  --color-bg-active: rgba(255, 255, 255, 0.1);
+
+  /* === TEXT COLORS === */
+  --color-text-primary: #c0caf5;
+  --color-text-secondary: #a9b1d6;
+  --color-text-muted: #565f89;
+  --color-text-inverse: #1a1b26;
+
+  /* === ACCENT COLORS === */
+  --color-accent: #7d6d99;
+  --color-accent-hover: #9580b8;
+  --color-accent-muted: #5d4e85;
+
+  /* === BORDER COLORS === */
+  --color-border: #3b4261;
+  --color-border-hover: #414868;
+  --color-border-focus: var(--color-accent);
+
+  /* === SHADOWS (Dark optimized) === */
+  --shadow-color: rgba(0, 0, 0, 0.4);
+}

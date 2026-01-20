@@ -1,0 +1,28 @@
+{
+  "operations": [
+    {
+      "id": "mkjsvxefqnysj",
+      "type": "backup",
+      "timestamp": "2026-01-18T13:57:13.047Z",
+      "files": [
+        {
+          "path": "/home/raistlin/hayalet-ev/tmp_rovodev_test.txt",
+          "backupPath": "/home/raistlin/hayalet-ev/tmp_rovodev_test.2026-01-18T13-57-13.bak.txt"
+        }
+      ],
+      "canUndo": false
+    },
+    {
+      "id": "mkjsv8qqswui5",
+      "type": "delete",
+      "timestamp": "2026-01-18T13:56:41.090Z",
+      "files": [
+        {
+          "path": "/home/raistlin/hayalet-ev/tmp_rovodev_test.txt",
+          "backupPath": "/home/raistlin/hayalet-ev/.rovodev/trash/2026-01-18T13-56-41-089Z__tmp_rovodev_test.txt"
+        }
+      ],
+      "canUndo": true
+    }
+  ]
+}

@@ -47,7 +47,7 @@ export const MessageStore = {
 
       const result = await window.electronAPI?.dbGetMessages?.({ accountId, conversationId });
 
-      return Array.isArray(result) ? result : [];
+      return result?.data ?? [];
     } catch (err) {
       LogManager.addEvent("database", "error", `MessageStore.list error: ${getErrorMessage(err)}`, { context: { accountId, conversationId } });
       return [];
@@ -106,7 +106,7 @@ export const MessageStore = {
 
       const result = await window.electronAPI?.dbSearchMessages?.({ accountId, query, limit });
 
-      return Array.isArray(result) ? result : [];
+      return result?.data ?? [];
     } catch (err) {
       LogManager.addEvent("database", "error", `MessageStore.search error: ${getErrorMessage(err)}`, { context: { accountId, query } });
       return [];

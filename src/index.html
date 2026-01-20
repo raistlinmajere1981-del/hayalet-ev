@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,6 +13,22 @@
     <link rel="stylesheet" href="/styles/asistan.css" />
   </head>
   <body>
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash">
+      <div class="splash-content">
+        <div class="splash-logo-container">
+          <img src="/assets/logo.jpg" alt="Hayalet Ev" class="splash-logo" id="splash-logo" />
+          <div class="splash-logo-glow"></div>
+        </div>
+        <h1 class="splash-title">Hayalet Ev</h1>
+        <p class="splash-version">v5.4.0</p>
+        <div class="splash-loader">
+          <div class="splash-progress" id="splash-progress"></div>
+        </div>
+        <p class="splash-status" id="splash-status">Başlatılıyor...</p>
+      </div>
+    </div>
+
     <!-- Global Webview Container (always in DOM, hidden offscreen) -->
     <div id="global-webview-container" style="position: fixed; top: -99999px; left: -99999px; width: 1px; height: 1px; overflow: hidden;">
       <webview
@@ -53,13 +69,14 @@
             />
             <span class="logo-text">Hayalet Ev</span>
           </div>
-          <button
-            class="icon-btn menu-toggle"
-            id="menu-toggle"
-            title="Menüyü gizle/göster"
-          >
-            ≡
-          </button>
+          <nav class="topbar-nav">
+            <button class="topbar-nav-btn active" data-page="entrance" title="Giriş Salonu">🏠</button>
+            <button class="topbar-nav-btn" data-page="analyze" title="Analiz Odası">🔍</button>
+            <button class="topbar-nav-btn" data-page="asistan" title="Asistan Odası">🤖</button>
+            <button class="topbar-nav-btn" data-page="server" title="Sunucu Odası">🖥️</button>
+            <button class="topbar-nav-btn" data-page="archives" title="Arşiv Odası">📁</button>
+            <button class="topbar-nav-btn" data-page="whisper" title="Fısıltı Odası">👂</button>
+          </nav>
         </div>
         <div class="top-bar-center">
           <div class="indicators">
@@ -210,6 +227,13 @@
         <div class="top-bar-right">
           <button
             class="icon-btn"
+            id="theme-toggle"
+            title="Tema Değiştir"
+          >
+            🌙
+          </button>
+          <button
+            class="icon-btn"
             id="window-minimize-to-tray"
             title="System Tray'e Küçült"
           >
@@ -229,31 +253,8 @@
         </div>
       </div>
 
-      <!-- Side Menu -->
-      <div class="side-menu" id="side-menu">
-        <button class="menu-item active" data-page="entrance">
-          🏠 Giriş Salonu
-        </button>
-        <button class="menu-item" data-page="analyze">🔍 Analiz Odası</button>
-        <button class="menu-item" data-page="whisper">👂 Fısıltı Odası</button>
-        <button class="menu-item" data-page="server">🖥️ Sunucu Odası</button>
-        <button class="menu-item" data-page="archives">📁 Arşiv Odası</button>
-        <button class="menu-item" data-page="asistan">🤖 Asistan Odası</button>
-      </div>
-
       <div class="main-content" id="main-content">
         <div id="pages-container"></div>
-      </div>
-
-      <!-- Report Panel -->
-      <div class="report-panel" id="report-panel">
-        <div class="report-header">
-          <span>Rapor</span>
-          <button class="icon-btn-small" id="report-toggle">📊</button>
-        </div>
-        <div class="report-content" id="report-content">
-          <div class="log-entry">Sistem başlatıldı...</div>
-        </div>
       </div>
 
       <!-- Rapor Okuma Modu -->

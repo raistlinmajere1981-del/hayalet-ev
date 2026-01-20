@@ -1,5 +1,14 @@
-Hayalet Ev Diagram v5-3
+Hayalet Ev Diagram (v5.4.0)
 Amaç : "HayaletEv-Amac.txt" dosyasında belirtilen temel yaklaşımlar doğrultusunda, tüm modüllerin birbirine tam entegrasyonlu, davranışları tanımlı, gelecek geliştirmelere açık bir masaüstü analiz, sohbet, masaüstü kontrolü ve eğlence ortamı oluşturmak.
+
+Teknoloji Yığını :
+- Runtime: Electron 39+ (Node.js ESM modules)
+- Dil: TypeScript (strict mode)
+- Build: Vite 7.3
+- Mimari: Multi-process (Main + Renderer + Webviews)
+- Storage: SQLite (better-sqlite3) + Google Drive API
+- MCP Server: Model Context Protocol server (AI asistan entegrasyonu)
+
 Genel Detaylar :
 - Tasarımda kullanılan DOM objeleri için inspect bilgileri, tasarım aşamasına başlamadan listelenecek ve güncel inspect verileri temin edilecek.
 - Yazışmalarda, açıklamalarda, speckit dökümanlarında Türkçe, modül/klasör/fonksiyon adlarında İngilizce kullanılacak.
@@ -8,13 +17,27 @@ Genel Detaylar :
 - Bu dökümanda belirtilmeyen ama önemli olan her olayda LogManager üzerinden kayıt ekleme özelliği eklenir.
 - Tasarım aşamalarında her başarılı test sonrası "node_modules" ve "backup" klasörleri hariç bütün klasör ve dosyalar /backup klasörüne yedeklenir. Her yedek klasörü içine, bu aşamada eklenen ve test edilen detayları kısaca açıklayan bir detay metni dosyası eklenir.
 - Uygulamada default olarak nicknameler AI1, AI2, User olarak belirlenir ve kullanılır. Uygulama genelinde butonlarda ve arabirimde kullanılan AI nickname settings kayıtları güncellendiğinde kaydedilen nickname kullanılmaya başlanır.
-- Uygulamada chatgpt, grok ve gemini'a özel bütün işlemler ayrı klasörlerde tutulur, settings'de seçilen "provider" seçimine göre ilgili fonksiyon ve modüller kullanılır. (Şuan chatgpt, grok ve gemini aktif)
+- Uygulamada chatgpt, grok, gemini ve opencode provider'larına özel bütün işlemler ayrı klasörlerde tutulur, settings'de seçilen "provider" seçimine göre ilgili fonksiyon ve modüller kullanılır. (Şuan chatgpt, grok, gemini ve opencode aktif)
 - Her sohbet tipi için (analiz, chat, sunucu vb) o sohbet türüne ve aktif kullanıcı sayısına özel bir protokol metni oluşturulur, ayrı ayrı /protocol klasörüne kaydedilir. Bu klasöre her sohbet türü için bir adet odanın görselini içeren resim dosyası eklenir.  Bu dosyalar, analyze.jpg, chat.jpg, server.jpg olarak manuel eklenir.
 - Sohbet başlat butonları ("AI-AI Sohbeti Başlat", "Analiz Sohbeti Başlat", "Kontrol Sende" vs.) bu dosyaları uygun duruma göre protokol dosyasını seçip, oda resmi ile birlikte otomatik olarak bağlı AI'lere gönderir. Tasarım ve test sürecinde bu protokoller geliştirilir.
 - Analiz Sayfası Protokolleri : analyze-user-AI-AI.txt, analyze-user-AI.txt, analyze-AI-AI.txt
 - Sohbet sayfası protokolleri : chat-user-AI-AI.txt, chat-user-AI.txt, chat-AI-AI.txt
 - Sunucu sayfası protokolleri : takecontrol.txt
 - AI-AI sohbet başlat protokolleri ile "relay mode" devreye girer, bu modda core-engine her AI'nin mesajını otomatik olarak diğer AI'ye gönderir. Relay kullanıcının sohbet durdur butonunu tıklaması yada AI'lerin "+cmd:AIAIChatStop()" mesajını göndermesi ile pasif olur.
+
+Proses Mimarisi :
+```
+Main Process (electron/main.ts)
+├── Renderer Process (src/index.html → CoreEngine)
+│   └── CoreEngine (src/js/modules/core-engine.ts)
+├── AI Provider Webviews (isolated contexts)
+│   ├── ChatGPT webview
+│   ├── Gemini webview
+│   ├── Grok webview
+│   └── OpenCode webview (Asistan)
+├── IPC Bridge (electron/preload.cjs)
+└── MCP Server (mcp-server/ - AI asistan entegrasyonu)
+```
 
 CoreEngine : Kullanıcılar ve modüller arası bütün işlemlerden sorumludur.
 - CoreEngine bir orchestrator; hem router, hem de tek yazma yetkili "beyin".
@@ -27,17 +50,22 @@ CoreEngine : Kullanıcılar ve modüller arası bütün işlemlerden sorumludur.
 - Bazı event'ler (AIAIChatStop gibi kritik komutlar) "yüksek öncelikli" olarak işaretlenebilir, böylece command kuyruğunda en öne alınır.
 - AppState ile subscription mekanizması kullanarak bağlantı durumlarını real-time takip eder ve ilgili modülleri tetikler.
 - ProviderRegistry ile dinamik provider yönetimi yapar.
+- ErrorBoundary ile global hata yakalama ve güvenli hata yönetimi sağlar.
+- SlotController ile slot lifecycle ve state machine yönetimi yapar.
 Giriş kanalları:
     • UI olayları (butonlar, inputlar, oda geçişleri)
     • AI mesajları (Catch → CoreEngine)
     • Whisper tetiklemeleri (WhisperManager → CoreEngine)
     • Sistem olayları (TrafficManager sinyalleri, hata durumları)
+    • SlotController event'leri (TRAFFIC_STARTED, TRAFFIC_STOPPED, STATE_CHANGED)
 Ek bileşenler :
-- AppState : aktif provider, aktif sohbet, aktif oda, control mode gibi global durumlar.
+- AppState : aktif provider, aktif sohbet, aktif oda, control mode gibi global durumlar. Null-safe getter metodları ile.
 - SettingsContext : kullanıcıların ve genel ayarların (nickname, avatar, API key, dosya ve mesaj ekleme metodları) paylaşan context.
-- ProviderRegistry : Tüm provider'ların (chatgpt, grok, gemini) kayıtlı olduğu ve yönetildiği merkezi registry.
-- ProviderFactory : Dinamik olarak provider oluşturma işlemlerini gerçekleştiren factory.
+- ProviderRegistry : Tüm provider'ların (chatgpt, grok, gemini, opencode) kayıtlı olduğu ve yönetildiği merkezi registry.
+- ProviderFactory : Dinamik olarak provider oluşturma işlemlerini gerçekleştiren factory. Lazy loading desteği (getProviderAsync).
 - ConversationListManager : Sohbet listesi yönetimi, güncelleme ve senkronizasyon işlemlerinden sorumlu.
+- ErrorBoundary : Global hata yakalama (unhandledrejection, error), async fonksiyon wrapping, hata history tracking.
+- SlotController : Slot lifecycle yönetimi (ai0, ai1, ai2). State machine ile robust state geçişleri (EMPTY → ASSIGNED → CONNECTING → CONNECTED).
 Ana Komutlar :	++cmd:DeviceManager()
 				++cmd:CommandManager()
 				++cmd:WebviewManager()
@@ -112,7 +140,64 @@ Dosya Gönderme Yöntemleri (/methods/file/):
 	- googledrive.js : Google Drive API (api ile upload ve link paylaşımı)
 	- xdotools.js : Xdotools ile dosya simülasyonu
 Ortak Shared İşlevler (/methods/shared/):
-	- shared.js : Provider'lar arasında ortak kullanılan utility fonksiyonları
+	- file-utils.ts : Dosya işleme utility fonksiyonları
+	- url-utils.ts : URL işleme ve validation fonksiyonları (isSlotUrlExcluded, normalizeUrl, isDefaultPage)
+
+SlotController : Slot lifecycle yönetimi için merkezi orchestrator.
+- 3 slot destekler: ai0 (Asistan), ai1, ai2
+- State machine ile robust state geçişleri (EMPTY → ASSIGNED → CONNECTING → CONNECTED → DISCONNECTING → ERROR)
+- Her slot için: accountId, providerId, webview, currentUrl, trafficStarted bilgileri tutulur.
+- Transition validation ile geçersiz state geçişleri engellenir.
+- Event sistemi: STATE_CHANGED, TRAFFIC_STARTED, TRAFFIC_STOPPED, DOM_READY, URL_CHANGED
+Alt Modüller (/slot/):
+	- state-machine.ts : Robust state machine (SlotStates, transition validation, history tracking)
+	- webview-handler.ts : Webview attach/detach/dom-ready
+	- url-handler.ts : URL change tracking & exclusion (isSlotUrlExcluded kullanır)
+	- timeout-handler.ts : Timeout & error management
+	- settings-sync.ts : Settings synchronization
+
+DatabaseManager : SQLite veritabanı yönetimi (electron/database/).
+- Her hesap için ayrı SQLite veritabanı (data/{accountId}/conversations.db)
+- Konuşma ve mesaj CRUD işlemleri
+- FTS5 ile tam metin arama desteği
+- Attachment yönetimi ve dosya depolama
+- Tutarlı hata döndürme yapısı: { success: boolean, data?: T[], error?: string }
+Alt Modüller:
+	- schema.ts : Tablo şemaları ve migration
+	- queries.ts : Prepared statement'lar
+	- hash-utils.ts : Mesaj hash fonksiyonları (djb2)
+Fonksiyonlar :	initAccount(accountId)
+			getConversations(accountId)
+			getMessages(accountId, conversationId)
+			syncMessages(accountId, webUrl, messages)
+			saveAttachment(accountId, conversationId, messageId, filePath, originalName)
+			searchMessages(accountId, query, limit)
+			searchAllAccounts(query, limit)
+
+RelayManager : AI↔AI ve AI↔Asistan iletişim yönetimi.
+- Relay modları: ai-ai (AI1↔AI2), ai-asistan (AI↔OpenCode)
+- Mesaj forwarding ve duplicate detection (lastTexts kontrolü)
+- Otomatik relay başlatma/durdurma
+Alt Modüller (/relay/):
+	- base-relay.ts : Abstract base class
+	- ai-ai-relay.ts : AI-to-AI communication relay
+	- ai-asistan-relay.ts : AI-to-Asistan communication relay
+Fonksiyonlar :	startRelay(mode)
+			stopRelay()
+			forwardMessage(from, to, text)
+
+IPC Sistemi : Main process ve Renderer arasında type-safe iletişim.
+- Typed IPC Layer: IPCChannelMap ile channel → params → result mapping
+- IPC Client: IPC.invoke(), IPC.safeInvoke(), IPC.send(), IPC.on()
+- Modüler handler yapısı (electron/handlers/)
+Alt Modüller:
+	- ipc-channels.ts : Tüm IPC kanalları için tip tanımları
+	- ipc-client.ts : Type-safe IPC wrapper (renderer side)
+	- handlers/ipc-database.ts : Database IPC handlers
+	- handlers/ipc-fs.ts : File system handlers
+	- handlers/ipc-window.ts : Window handlers
+	- handlers/ipc-settings.ts : Settings handlers
+	- handlers/ipc-provider.ts : Provider handlers
 
 QueryManager : AI'lerin "++cmd:" komutları ile gönderdikleri arama sorgularında, kayıtlı arşivler üzerinde istenen kayıtları bulmak, gerektiğinde istenen metni yada kayıtlı messages.json dosyasını gönderme işlemlerinden sorumlu.
 Fonksiyonlar :	QueryManagerSearch(text)
@@ -177,23 +262,28 @@ Fonksiyonlar :  TrafficManagerSignal(kanal, durum, mesaj)
 		- Send buton durumunu inspect kayıtları ile izler.
 
 Provider Yapısı :
-Her AI provider'ı (ChatGPT, Grok, Gemini) için ayrı modüller:
+Her AI provider'ı (ChatGPT, Grok, Gemini, OpenCode) için ayrı modüller:
 	- /providers/chatgpt/ : ChatGPT özel entegrasyonu
-		- config.js : Webview URL, selector'lar, excludedUrls
-		- index.js : Ana provider mantığı
-		- scraper.js : Mesaj yakalama ve parse etme
+		- config.ts : Webview URL, selector'lar, excludedUrls
+		- index.ts : Ana provider mantığı
+		- scraper.ts : Mesaj yakalama ve parse etme
 	- /providers/grok/ : Grok özel entegrasyonu
-		- config.js : Webview URL, selector'lar, excludedUrls
-		- index.js : Ana provider mantığı
-		- scraper.js : Mesaj yakalama ve parse etme
+		- config.ts : Webview URL, selector'lar, excludedUrls
+		- index.ts : Ana provider mantığı
+		- scraper.ts : Mesaj yakalama ve parse etme
 	- /providers/gemini/ : Gemini özel entegrasyonu
-		- config.js : Webview URL, selector'lar, excludedUrls
-		- index.js : Ana provider mantığı
-		- scraper.js : Mesaj yakalama ve parse etme
+		- config.ts : Webview URL, selector'lar, excludedUrls
+		- index.ts : Ana provider mantığı
+		- scraper.ts : Mesaj yakalama ve parse etme
+	- /providers/opencode/ : OpenCode (Asistan) entegrasyonu
+		- config.ts : Server URL, selector'lar, server commands
+		- index.ts : Ana provider mantığı
+		- scraper.ts : Konuşma scraping
 Dinamik Provider Yönetimi :
 - ProviderRegistry ile tüm provider'lar kaydedilir ve yönetilir.
-- ProviderFactory ile runtime'da provider'lar oluşturulur.
+- ProviderFactory ile runtime'da provider'lar oluşturulur. Lazy loading desteği (getProviderAsync).
 - Her AI slot (ai1, ai2) için settings'de providerId belirtilir (chatgpt, grok, gemini).
+- Asistan slotu (ai0) için opencode provider'ı kullanılır.
 
 Hesap (Account) Sistemi :
 - Uygulamada çoklu hesap desteği bulunur. Her provider için birden fazla hesap tanımlanabilir.
@@ -353,6 +443,44 @@ Sohbet Odası Statik varlıklar:
         - assets/chat/bubbles/left-normal.png
         - assets/chat/bubbles/right-normal.png
         - assets/chat/bubbles/center.png
+
+MCP Server : Model Context Protocol server (mcp-server/).
+- AI asistanlar (Claude, GPT vb.) ile entegrasyon için 18+ tool sağlar
+- CDP (Chrome DevTools Protocol) üzerinden Electron uygulamasını kontrol eder
+- WebSocket bağlantısı ile gerçek zamanlı iletişim
+Tools:
+	- Electron Tools: test_electron, list_plugins
+	- Log Tools: read_electron_logs, list_log_sessions, get_session_summary, get_error_hints
+	- CDP Tools (12 tool): check_electron_connection, send_command_to_electron, take_cdp_screenshot,
+	  get_electron_window_info, click_element_by_selector, click_element_by_text, fill_input_field,
+	  get_page_dom_structure, inspect_element, query_elements, send_key_press, scroll_page
+Alt Modüller:
+	- tools/electron-tools.ts : Electron test ve plugin araçları
+	- tools/log-tools.ts : Log okuma ve session araçları
+	- tools/debug-tools.ts : Hata debugging araçları
+	- tools/cdp-tools.ts : CDP UI otomasyon araçları
+	- utils/cdp-connection.ts : WebSocket bağlantı yönetimi
+	- utils/cdp-commands.ts : UI otomasyon komutları
+
+ErrorBoundary : Global hata yakalama ve yönetimi.
+- Renderer process'te oluşan hataları yakalar ve güvenli şekilde işler
+- Kritik hataların tüm uygulamayı etkilemesini önler
+- Hata history tracking (son 50 hata)
+Fonksiyonlar :	ErrorBoundary.init() - Global handler'ları kur
+			ErrorBoundary.wrap(fn, source, operation) - Async fonksiyonu güvenli çalıştır
+			ErrorBoundary.wrapSync(fn, source, operation) - Sync fonksiyonu güvenli çalıştır
+			ErrorBoundary.safeCallback(fn, source) - Event handler'ları wrap et
+			ErrorBoundary.onError(callback) - Hata callback'i ekle
+			ErrorBoundary.getRecentErrors() - Son hataları getir
+
+Console Logger : Birleşik loglama orchestrator'ı (electron/console-logger.ts).
+- Session bazlı log yönetimi
+- Log rotation ve chunk'lama (10K satır/chunk)
+- Çoklu log seviyesi: debug, info, warning, error
+Alt Modüller (/logger/):
+	- session-manager.ts : Session lifecycle & meta
+	- log-writer.ts : Log file writing & rotation
+	- log-reader.ts : Log querying & filtering
 
 Senaryolar :
 

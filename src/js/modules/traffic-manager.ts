@@ -12,13 +12,12 @@
 import { LogManager } from "./log-manager.js";
 import { getErrorMessage } from "../types/index.js";
 import { AppState } from "./app-state.js";
-import { ProviderRegistry } from "./webview/provider-registry.js";
 import { LoadingTracker } from "./traffic/loading-tracker.js";
 import { ThinkingTracker } from "./traffic/thinking-tracker.js";
 import { SendTracker } from "./traffic/send-tracker.js";
 import { buildProbeScript } from "./traffic/probe-script-builder.js";
 import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } from "./traffic/webview-events.js";
-import { isUrlExcluded as checkUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
+import { isSlotUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
 import { INTERVALS, DELAYS } from "../constants/index.js";
 
 // ============================================
@@ -114,14 +113,9 @@ class TrafficManagerClass {
   // ============================================
   // ============================================
 
+  /** @deprecated Use isSlotUrlExcluded from url-utils.ts directly */
   isUrlExcluded(providerSlot: string, url: string) {
-    const providerId = AppState.getProviderIdForSlot(providerSlot) || "";
-    if (!providerId || !url) return false;
-
-    const cfg = ProviderRegistry.get(providerId);
-    if (!cfg?.excludedUrls?.length) return false;
-
-    return checkUrlExcluded(url, cfg.excludedUrls);
+    return isSlotUrlExcluded(providerSlot, url);
   }
 
   // ============================================
@@ -231,6 +225,7 @@ class TrafficManagerClass {
       startedAt: Date.now(),
       backoffMs: TIMING_CONFIG.pollIntervalMs,
       nextProbeAt: Date.now(),
+      probing: false, // Race condition fix: probe lock flag
     };
     this.startPolling();
     this.setIndicator(provider, "loading", this.state[provider]?.status?.loading || "busy");
@@ -264,7 +259,11 @@ class TrafficManagerClass {
           const runner = this._runners[provider];
           if (!runner) continue;
           if (now < (runner.nextProbeAt || 0)) continue;
+          // Race condition fix: Skip if already probing this provider
+          if (runner.probing) continue;
+          
           try {
+            runner.probing = true; // Lock
             const ok = await this.probe(provider);
             if (ok) {
               runner.backoffMs = TIMING_CONFIG.pollIntervalMs;
@@ -275,6 +274,8 @@ class TrafficManagerClass {
           } catch (_) {
             runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, INTERVALS.BACKOFF_MAX);
             runner.nextProbeAt = Date.now() + (runner.backoffMs || TIMING_CONFIG.pollIntervalMs);
+          } finally {
+            runner.probing = false; // Unlock
           }
         }
       } catch (_err) {

@@ -3,9 +3,13 @@
  * 
  * Bu modül daha önce farklı dosyalarda (slot-controller, webview-manager, traffic-manager, app.js)
  * tekrarlanan URL fonksiyonlarını tek bir yerde toplar.
+ * 
+ * NOT: isSlotUrlExcluded fonksiyonu slot-aware URL kontrolü için merkezi çözümdür.
+ * Tüm modüller kendi wrapper metodları yerine bu fonksiyonu kullanmalıdır.
  */
 
 import { ProviderRegistry } from "../../provider-registry.js";
+import { AppState } from "../../../app-state.js";
 
 /**
  * URL'i normalize et (query string ve hash kaldır, trailing slash temizle)
@@ -74,5 +78,37 @@ export function isUrlExcluded(url: string, excludedUrls: string[]) {
   }
 
   return false;
+}
+
+/**
+ * Slot-aware URL exclusion kontrolü (MERKEZİ FONKSİYON)
+ * 
+ * Bu fonksiyon tüm modüllerde tekrar eden isUrlExcluded wrapper metodlarının
+ * yerine kullanılmalıdır. Provider config'i otomatik olarak çözer.
+ * 
+ * @param {string} providerSlot - Slot ID (ai0, ai1, ai2)
+ * @param {string} url - Kontrol edilecek URL
+ * @returns {boolean} - URL excluded mı?
+ * 
+ * @example
+ * // Eski kullanım (her modülde tekrar):
+ * // const providerId = AppState.getProviderIdForSlot(slot);
+ * // const cfg = ProviderRegistry.get(providerId);
+ * // return checkUrlExcluded(url, cfg.excludedUrls);
+ * 
+ * // Yeni kullanım (merkezi):
+ * import { isSlotUrlExcluded } from "./url-utils.js";
+ * if (isSlotUrlExcluded("ai1", currentUrl)) return;
+ */
+export function isSlotUrlExcluded(providerSlot: string, url: string): boolean {
+  if (!providerSlot || !url) return false;
+  
+  const providerId = AppState.getProviderIdForSlot(providerSlot);
+  if (!providerId) return false;
+  
+  const cfg = ProviderRegistry.get(providerId as "opencode" | "chatgpt" | "grok" | "gemini");
+  if (!cfg?.excludedUrls?.length) return false;
+  
+  return isUrlExcluded(url, cfg.excludedUrls);
 }
 

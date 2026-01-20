@@ -15,6 +15,7 @@ import { LogManager } from "../modules/log-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
+import { ButtonStates } from "../ui/button-states.js";
 
 import { renderMessages } from "./analyze/message-renderer.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
@@ -28,6 +29,7 @@ export class AnalyzeController {
   _unsubSettings: (() => void) | null;
   _unsubSlotController: (() => void) | null;
   _unsubAppState: (() => void) | null;
+  _boundActions: boolean;
 
   constructor() {
     this.stagedFiles = [];
@@ -36,6 +38,7 @@ export class AnalyzeController {
     this._unsubSettings = null;
     this._unsubSlotController = null;
     this._unsubAppState = null;
+    this._boundActions = false;
   }
 
   // ============================================
@@ -113,7 +116,7 @@ export class AnalyzeController {
             return;
           }
           const mime = getMimeTypeFromPath(path);
-          el.innerHTML = `<img src="data:${mime};base64,${data}" alt="${provider} avatar" />`;
+          el.innerHTML = `<img src="data:${mime};base64,${data}" alt="${provider} avatar" class="img-cover" />`;
         })
         .catch(() => {
           el.textContent = "";
@@ -254,6 +257,10 @@ export class AnalyzeController {
   // ============================================
 
   bindActions() {
+    // Guard: Event listener'ları sadece bir kez bağla
+    if (this._boundActions) return;
+    this._boundActions = true;
+
     document.getElementById("ai-chat-start")?.addEventListener("click", () => this.handleAIAIControl());
     document.getElementById("compose-start-btn")?.addEventListener("click", () => this.handleAnalyzeStart());
     document.getElementById("compose-send-btn")?.addEventListener("click", () => this.handleSend());
@@ -294,8 +301,16 @@ export class AnalyzeController {
   }
 
   async handleUploadClick() {
-    this.stagedFiles = await addUploadFiles(this.stagedFiles);
-    this._renderUploadList();
+    const btn = document.getElementById("upload-add-btn") as HTMLButtonElement | null;
+    if (btn?.disabled) return;
+    if (btn) btn.disabled = true;
+    
+    try {
+      this.stagedFiles = await addUploadFiles(this.stagedFiles);
+      this._renderUploadList();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   _renderUploadList() {
@@ -337,10 +352,16 @@ export class AnalyzeController {
     const sendAi1 = (document.getElementById("send-ai1") as HTMLInputElement | null)?.checked;
     const sendAi2 = (document.getElementById("send-ai2") as HTMLInputElement | null)?.checked;
     const cross = (document.getElementById("send-cross") as HTMLInputElement | null)?.checked;
+    const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
 
     if ((!sendAi1 && !sendAi2) || (!msg && !hasFiles)) return;
 
-    LogManager.addEvent("analyze", "info", "Gönderim başlatılıyor");
+    // Loading state
+    if (sendBtn) {
+      ButtonStates.setLoading(sendBtn, "Gönderiliyor...");
+    }
+
+    LogManager.addEvent("analyze", "info", "Gönderim başlatılıyor", { visibility: 2 });
 
     const targets: string[] = [];
     const textByProvider: Record<string, string> = {};
@@ -375,12 +396,25 @@ export class AnalyzeController {
     const attachList = [...this.stagedFiles];
 
     const sendFlow = async () => {
-      if (allSame) {
-        await CoreEngine.sendBatch({ targets, text: texts[0], attachments: attachList, page: "analyze", archiveFolders });
-      } else {
-        for (const provider of targets) {
-          await CoreEngine.sendBatch({ targets: [provider], text: textByProvider[provider], attachments: attachList, page: "analyze", archiveFolders });
+      try {
+        if (allSame) {
+          await CoreEngine.sendBatch({ targets, text: texts[0], attachments: attachList, page: "analyze", archiveFolders });
+        } else {
+          for (const provider of targets) {
+            await CoreEngine.sendBatch({ targets: [provider], text: textByProvider[provider], attachments: attachList, page: "analyze", archiveFolders });
+          }
         }
+        // Success state
+        if (sendBtn) {
+          ButtonStates.setSuccess(sendBtn, "Gönderildi!", 1500);
+        }
+        LogManager.addEvent("analyze", "success", "Mesaj gönderildi", { visibility: 1 });
+      } catch (error) {
+        // Error state
+        if (sendBtn) {
+          ButtonStates.setError(sendBtn, "Hata!", 1500);
+        }
+        LogManager.addEvent("analyze", "error", `Gönderim hatası: ${error}`, { visibility: 1 });
       }
     };
 
@@ -389,6 +423,9 @@ export class AnalyzeController {
       this._renderUploadList();
       const composeInput = document.getElementById("compose-input") as HTMLTextAreaElement | null;
       if (composeInput) composeInput.value = "";
+      
+      // Reset button after animation completes
+      setTimeout(() => this.updateSendButtonState(), 1600);
     });
   }
 

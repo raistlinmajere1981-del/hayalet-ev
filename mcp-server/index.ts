@@ -73,6 +73,13 @@ import {
   DEV_TOOL_DEFINITIONS,
 } from "./tools/dev-tools.js";
 import {
+  listProviderWebviews,
+  listProviderSelectors,
+  validateSelectors,
+  inspectProviderElementTool,
+  PROVIDER_TOOL_DEFINITIONS,
+} from "./tools/provider-tools.js";
+import {
   logToolCall,
   logToolError,
   logError,
@@ -302,7 +309,7 @@ const TOOL_DEFINITIONS = [
 ];
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS] };
+  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS, ...PROVIDER_TOOL_DEFINITIONS] };
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -663,6 +670,134 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
         const statusIcon = result.success ? "✅" : "❌";
         const summary = `${statusIcon} ${result.passed} passed, ${result.failed} failed`;
         output = `${summary}\n\n${output}`;
+        return { content: [{ type: "text", text: output }] };
+      }
+
+      // === Provider Tool'ları ===
+      case "list_provider_webviews": {
+        const result = await listProviderWebviews(PROJECT_ROOT);
+        let output = "📋 Provider ve Webview Listesi\n\n";
+        output += "**Providers:**\n";
+        for (const p of result.providers) {
+          output += `- ${p.name} (${p.id}) ${p.hasConfig ? "✅" : "❌"}\n`;
+        }
+        output += "\n**Bağlı Webviews:**\n";
+        if (result.connected.length === 0) {
+          output += "- Bağlı webview yok (Electron çalışıyor mu?)\n";
+        } else {
+          for (const w of result.connected) {
+            output += `- ${w.provider}: ${w.title}\n  ${w.url}\n`;
+          }
+        }
+        return { content: [{ type: "text", text: output }] };
+      }
+
+      case "list_provider_selectors": {
+        const result = listProviderSelectors(PROJECT_ROOT, (args as { provider: string }).provider);
+        if (!result.found) {
+          return { content: [{ type: "text", text: `❌ Provider config bulunamadı: ${result.provider}` }] };
+        }
+        let output = `📋 ${result.provider} Selector Listesi\n`;
+        output += `URL: ${result.config?.baseUrl}\n`;
+        output += `Son Doğrulama: ${result.config?.lastVerified || "Bilinmiyor"}\n`;
+        output += `Toplam: ${result.summary.total} selector\n\n`;
+        
+        for (const [category, sels] of Object.entries(result.grouped)) {
+          output += `**${category}** (${sels.length}):\n`;
+          for (const sel of sels) {
+            output += `  - ${sel.key}: \`${sel.selector.slice(0, 60)}${sel.selector.length > 60 ? "..." : ""}\`\n`;
+          }
+          output += "\n";
+        }
+        return { content: [{ type: "text", text: output }] };
+      }
+
+      case "validate_provider_selectors": {
+        const result = await validateSelectors(
+          PROJECT_ROOT,
+          (args as { provider: string }).provider,
+          (args as { categories?: string[] }).categories
+        );
+        
+        if (!result.connected) {
+          return { content: [{ type: "text", text: `❌ ${result.error}` }] };
+        }
+        
+        let output = `📊 ${result.provider} Selector Doğrulama\n`;
+        output += `URL: ${result.url}\n`;
+        output += `Tarih: ${result.timestamp}\n`;
+        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        
+        // Sonuçları kategoriye göre grupla
+        const grouped: Record<string, typeof result.results> = {};
+        for (const r of result.results) {
+          if (!grouped[r.category]) grouped[r.category] = [];
+          grouped[r.category].push(r);
+        }
+        
+        for (const [category, results] of Object.entries(grouped)) {
+          output += `**${category}:**\n`;
+          for (const r of results) {
+            const icon = r.found ? "✅" : "❌";
+            const countInfo = r.found ? ` (${r.count} element)` : "";
+            output += `${icon} ${r.key}${countInfo}\n`;
+            if (!r.found && r.error) {
+              output += `   Hata: ${r.error}\n`;
+            }
+          }
+          output += "\n";
+        }
+        
+        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        output += `Özet: ${result.summary.valid}/${result.summary.total} geçerli (${result.summary.successRate})\n`;
+        
+        return { content: [{ type: "text", text: output }] };
+      }
+
+      case "inspect_provider_element": {
+        const result = await inspectProviderElementTool(
+          PROJECT_ROOT,
+          (args as { provider: string }).provider,
+          (args as { selector: string }).selector,
+          {
+            includeStyles: (args as { include_styles?: boolean }).include_styles,
+            includeParent: (args as { include_parent?: boolean }).include_parent,
+            includeChildren: (args as { include_children?: boolean }).include_children,
+          }
+        );
+        
+        if (!result.found) {
+          return { content: [{ type: "text", text: `❌ Element bulunamadı: ${result.selector}\n${result.error || ""}` }] };
+        }
+        
+        let output = `📋 Element Inspect: ${result.provider}\n`;
+        output += `Selector: \`${result.selector}\`\n`;
+        output += `Bulunan: ${result.count} element\n\n`;
+        
+        for (let i = 0; i < (result.elements?.length || 0); i++) {
+          const el = result.elements![i];
+          output += `**Element #${i + 1}:**\n`;
+          output += `  Tag: ${el.tagName}\n`;
+          if (el.id) output += `  ID: ${el.id}\n`;
+          if (el.className) output += `  Class: ${(el.className as string).slice(0, 80)}...\n`;
+          if (el.textContent) output += `  Text: "${(el.textContent as string).slice(0, 50)}..."\n`;
+          if (el.isVisible !== undefined) output += `  Görünür: ${el.isVisible ? "✅" : "❌"}\n`;
+          if (el.boundingRect) {
+            const rect = el.boundingRect as { x: number; y: number; width: number; height: number };
+            output += `  Konum: ${rect.x}, ${rect.y} | Boyut: ${rect.width}x${rect.height}\n`;
+          }
+          if (el.attributes) {
+            const attrs = Object.entries(el.attributes as Record<string, string>).slice(0, 5);
+            if (attrs.length > 0) {
+              output += `  Attributes:\n`;
+              for (const [k, v] of attrs) {
+                output += `    ${k}="${(v as string).slice(0, 40)}"\n`;
+              }
+            }
+          }
+          output += "\n";
+        }
+        
         return { content: [{ type: "text", text: output }] };
       }
 
