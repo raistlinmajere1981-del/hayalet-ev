@@ -592,11 +592,61 @@ const MessageRenderer = {
     div.setAttribute('data-status', status || 'complete');
 
     const avatarInitial = message.role === 'user' ? 'U' : 'AI';
-    const authorName = message.role === 'user' ? 'Sen' : 'OpenCode';
+    const authorName = message.role === 'user' ? 'You' : 'OpenCode';
     const time = message.timestamp ? this._formatTime(message.timestamp) : '';
     
     // Status indicator HTML
     const statusIndicator = this._createStatusIndicator(status);
+    
+    // Agent/Model info for assistant messages
+    const metaInfo = message.role === 'assistant' ? `
+      <div class="message-meta">
+        <span class="agent-info">Agent: Sisyphus</span> • 
+        <span class="model-info">Model: opencode/glm-4.7-free</span>
+      </div>
+    ` : '';
+    
+    // Action buttons (CodeNomad style) - different for user vs assistant
+    const actionButtons = message.role === 'user' ? `
+      <div class="message-actions">
+        <button class="message-action-btn" title="Revert" onclick="MessageRenderer._handleRevert('${message.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+          Revert
+        </button>
+        <button class="message-action-btn" title="Fork" onclick="MessageRenderer._handleFork('${message.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <circle cx="18" cy="6" r="3"></circle>
+            <path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"></path>
+            <path d="M12 12v3"></path>
+          </svg>
+          Fork
+        </button>
+        <button class="message-action-btn" title="Copy" onclick="MessageRenderer._handleCopy('${message.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy
+        </button>
+        ${time ? `<span class="message-time">${time}</span>` : ''}
+      </div>
+    ` : `
+      <div class="message-actions">
+        <button class="message-action-btn" title="Copy" onclick="MessageRenderer._handleCopy('${message.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy
+        </button>
+        ${time ? `<span class="message-time">${time}</span>` : ''}
+      </div>
+    `;
 
     // Use text container for content to preserve tool cards on updates
     div.innerHTML = `
@@ -604,7 +654,6 @@ const MessageRenderer = {
       <div class="message-content">
         <div class="message-header">
           <span class="message-author">${authorName}</span>
-          ${time ? `<span class="message-time">${time}</span>` : ''}
           ${statusIndicator}
         </div>
         <div class="message-body" data-raw-content="${this._escapeHtml(message.content)}">
@@ -612,7 +661,9 @@ const MessageRenderer = {
             ${this._renderMarkdown(message.content)}
           </div>
         </div>
+        ${metaInfo}
       </div>
+      ${actionButtons}
     `;
 
     // Add retry button for error state
@@ -622,6 +673,50 @@ const MessageRenderer = {
     }
 
     return div;
+  },
+  
+  /**
+   * Handle Revert action
+   * @param {string} messageId
+   */
+  _handleRevert(messageId) {
+    console.log('[MessageRenderer] Revert:', messageId);
+    // TODO: Implement revert functionality
+  },
+  
+  /**
+   * Handle Fork action
+   * @param {string} messageId
+   */
+  _handleFork(messageId) {
+    console.log('[MessageRenderer] Fork:', messageId);
+    // TODO: Implement fork functionality
+  },
+  
+  /**
+   * Handle Copy action
+   * @param {string} messageId
+   */
+  _handleCopy(messageId) {
+    const element = this._messageElements.get(messageId);
+    if (!element) return;
+    
+    const body = element.querySelector('.message-body');
+    const content = body?.getAttribute('data-raw-content') || body?.textContent || '';
+    
+    navigator.clipboard.writeText(content).then(() => {
+      // Show brief feedback
+      const btn = element.querySelector('.message-action-btn[title="Copy"]');
+      if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 1500);
+      }
+    }).catch(err => {
+      console.error('[MessageRenderer] Copy failed:', err);
+    });
   },
 
   /**

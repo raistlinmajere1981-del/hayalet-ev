@@ -1,10 +1,14 @@
 /**
  * ChatGPT mesajlarını scrape et
+ * 
+ * NOT: normalizeText ve hashString fonksiyonları webview injection sınırlaması
+ * nedeniyle inline tanımlanmıştır. Tek kaynak (single source of truth):
+ * @see ../shared/scraper-helpers.ts
+ * 
  * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number }>}
  */
 export function scrapeMessages() {
-  // Text normalization - hash tutarlılığı için
-  // Whitespace normalize, line ending fix, trim
+  // Text normalization - hash tutarlılığı için (kaynak: scraper-helpers.ts)
   function normalizeText(str: string): string {
     if (!str) return "";
     return str

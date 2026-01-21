@@ -14,7 +14,7 @@ const ToolRenderer = {
   // =========================================================================
 
   /**
-   * Tool call kartı oluştur
+   * Tool call kartı oluştur (CodeNomad Style)
    * @param {object} toolCall
    * @param {string} toolCall.toolId - Tool ID
    * @param {string} toolCall.toolName - Tool adı
@@ -22,6 +22,7 @@ const ToolRenderer = {
    * @param {object} [toolCall.input] - Input parametreleri
    * @param {string} [toolCall.output] - Output
    * @param {string} [toolCall.error] - Hata mesajı
+   * @param {string} [toolCall.description] - Tool açıklaması
    * @returns {HTMLElement}
    */
   createToolCard(toolCall) {
@@ -29,13 +30,25 @@ const ToolRenderer = {
     div.className = `tool-card ${toolCall.status}`;
     div.setAttribute('data-tool-id', toolCall.toolId);
 
+    // Wrench icon for tool indicator
+    const wrenchIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+    </svg>`;
+
     div.innerHTML = `
       <div class="tool-header" onclick="ToolRenderer.toggleCollapse('${toolCall.toolId}')">
-        <div class="tool-icon">
-          ${this._getStatusIcon(toolCall.status)}
-        </div>
-        <span class="tool-name">${this._escapeHtml(toolCall.toolName)}</span>
-        <span class="tool-status">${this._getStatusText(toolCall.status)}</span>
+        <div class="tool-icon">${wrenchIcon}</div>
+        <span class="tool-label">Tool Call</span>
+        <span class="tool-name-badge">${this._escapeHtml(toolCall.toolName)}</span>
+        <div class="tool-header-spacer"></div>
+        <span class="tool-status ${toolCall.status}">${this._getStatusText(toolCall.status)}</span>
+        <button class="tool-copy-btn" onclick="event.stopPropagation(); ToolRenderer.copyOutput('${toolCall.toolId}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy
+        </button>
         <div class="tool-toggle">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"></polyline>
@@ -43,6 +56,7 @@ const ToolRenderer = {
         </div>
       </div>
       <div class="tool-body">
+        ${toolCall.description ? this._renderDescription(toolCall.description) : ''}
         ${toolCall.input ? this._renderInput(toolCall.input) : ''}
         <div class="tool-output-container">
           ${toolCall.output ? this._renderOutput(toolCall.output) : ''}
@@ -53,6 +67,69 @@ const ToolRenderer = {
 
     this._toolElements.set(toolCall.toolId, div);
     return div;
+  },
+  
+  /**
+   * Tool description render (collapsible)
+   * @param {string} description
+   * @returns {string}
+   */
+  _renderDescription(description) {
+    return `
+      <div class="tool-description" onclick="ToolRenderer.toggleDescription(this)">
+        <div class="tool-description-toggle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="tool-description-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+            <polyline points="13 2 13 9 20 9"></polyline>
+          </svg>
+        </div>
+        <span class="tool-description-text">${this._escapeHtml(description)}</span>
+        <div class="tool-description-edit">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+      </div>
+    `;
+  },
+  
+  /**
+   * Toggle description collapse
+   * @param {HTMLElement} element
+   */
+  toggleDescription(element) {
+    element.classList.toggle('collapsed');
+  },
+  
+  /**
+   * Copy tool output to clipboard
+   * @param {string} toolId
+   */
+  copyOutput(toolId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+    
+    const output = element.querySelector('.tool-output');
+    const content = output?.textContent || '';
+    
+    navigator.clipboard.writeText(content).then(() => {
+      const btn = element.querySelector('.tool-copy-btn');
+      if (btn) {
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+        }, 1500);
+      }
+    }).catch(err => {
+      console.error('[ToolRenderer] Copy failed:', err);
+    });
   },
 
   /**
@@ -182,7 +259,7 @@ const ToolRenderer = {
   },
 
   /**
-   * Input render
+   * Input render (CodeNomad Style with header)
    * @param {object} input
    * @returns {string}
    */
@@ -190,26 +267,55 @@ const ToolRenderer = {
     const inputStr = typeof input === 'string' ? input : JSON.stringify(input, null, 2);
     return `
       <div class="tool-section">
-        <span class="tool-section-label">Input</span>
+        <div class="tool-section-header">
+          <span class="tool-section-label">INPUT</span>
+        </div>
         <div class="tool-input">${this._escapeHtml(inputStr)}</div>
       </div>
     `;
   },
 
   /**
-   * Output render
+   * Output render (CodeNomad Style with header and Copy button)
    * @param {string} output
    * @returns {string}
    */
   _renderOutput(output) {
     return `
       <div class="tool-section">
-        <span class="tool-section-label">Output</span>
+        <div class="tool-section-header">
+          <span class="tool-section-label">OUTPUT</span>
+          <button class="tool-section-copy" onclick="ToolRenderer._copySection(this)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          </button>
+        </div>
         <div class="tool-output" data-raw-content="${this._escapeHtml(output)}">
           ${this._parseAnsi(this._escapeHtml(output))}
         </div>
       </div>
     `;
+  },
+  
+  /**
+   * Copy section content
+   * @param {HTMLElement} btn
+   */
+  _copySection(btn) {
+    const section = btn.closest('.tool-section');
+    const output = section?.querySelector('.tool-output, .tool-input');
+    const content = output?.getAttribute('data-raw-content') || output?.textContent || '';
+    
+    navigator.clipboard.writeText(content).then(() => {
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!`;
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+      }, 1500);
+    });
   },
 
   /**

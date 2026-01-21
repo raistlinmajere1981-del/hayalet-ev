@@ -1,6 +1,11 @@
 import { EntranceHallController } from "./pages/entrance.js";
 import { AppState } from "./modules/app-state.js";
-import { SLOTS, SPECIAL_PAGES, getMimeTypeFromPath, getFilename, ASISTAN_SLOT } from "./constants/index.js";
+import { getMimeTypeFromPath, getFilename } from "./constants/index.js";
+
+// Slot sabitleri (inline - sadece bu dosyada kullanılıyor)
+const SLOTS = { AI1: "ai1", AI2: "ai2" };
+const ASISTAN_SLOT = "ai0";
+const SPECIAL_PAGES = ["settings", "archives", "webview", "asistan"];
 import { getErrorMessage } from "./types/index.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";

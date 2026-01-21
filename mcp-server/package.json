@@ -10,8 +10,8 @@
     "start:built": "node dist/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "ws": "^8.18.0"
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",

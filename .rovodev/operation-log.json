@@ -1,6 +1,18 @@
 {
   "operations": [
     {
+      "id": "mkn6dqwkf40qq",
+      "type": "delete",
+      "timestamp": "2026-01-20T22:38:17.972Z",
+      "files": [
+        {
+          "path": "tmp_rovodev_screenshot.png",
+          "backupPath": "/home/raistlin/hayalet-ev/.rovodev/trash/2026-01-20T22-38-17-971Z__tmp_rovodev_screenshot.png"
+        }
+      ],
+      "canUndo": true
+    },
+    {
       "id": "mkjsvxefqnysj",
       "type": "backup",
       "timestamp": "2026-01-18T13:57:13.047Z",

@@ -5,7 +5,6 @@ import { AppState } from "../modules/app-state.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ServerCommands } from "../modules/server-commands.js";
-import { getCommandGuideText } from "../constants/command-guides.js";
 import { ButtonStates } from "../ui/button-states.js";
 
 export class ServerController {
@@ -172,11 +171,8 @@ export class ServerController {
   updateCommandGuide() {
     if (!this.commandGuide || !this.commandSelect) return;
     const selected = this.commandSelect.value;
-    if (!selected) {
-      (this.commandGuide as HTMLTextAreaElement).value = "";
-      return;
-    }
-    (this.commandGuide as HTMLTextAreaElement).value = getCommandGuideText(selected as Parameters<typeof getCommandGuideText>[0]);
+    // Command guide kaldırıldı - komut adı göster
+    (this.commandGuide as HTMLTextAreaElement).value = selected ? `Komut: ${selected}` : "";
   }
 
   addCommandToTextarea() {

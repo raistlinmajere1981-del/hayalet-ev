@@ -1,5 +1,10 @@
 /**
  * Grok mesajlarını scrape et
+ * 
+ * NOT: normalizeText ve hashString fonksiyonları webview injection sınırlaması
+ * nedeniyle inline tanımlanmıştır. Tek kaynak (single source of truth):
+ * @see ../shared/scraper-helpers.ts
+ * 
  * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number }>}
  */
 interface ScrapedMessage {

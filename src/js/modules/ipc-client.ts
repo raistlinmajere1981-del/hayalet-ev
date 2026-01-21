@@ -137,34 +137,3 @@ class IPCClientClass {
  */
 export const IPC = new IPCClientClass();
 
-// ============================================================================
-// Convenience Functions (Legacy Support)
-// ============================================================================
-
-/**
- * Legacy support: Doğrudan invoke
- * @deprecated IPC.invoke() kullanın
- */
-export async function ipcInvoke<T extends IPCChannel>(
-  channel: T,
-  params?: IPCParams<T>
-): Promise<IPCResult<T>> {
-  const client = IPC as unknown as { api: { invoke: (c: string, p?: unknown) => Promise<unknown> } };
-  return client.api.invoke(channel, params) as Promise<IPCResult<T>>;
-}
-
-/**
- * Legacy support: Safe invoke
- * @deprecated IPC.safeInvoke() kullanın
- */
-export async function ipcSafeInvoke<T extends IPCChannel>(
-  channel: T,
-  params?: IPCParams<T>
-): Promise<IPCResult<T> | null> {
-  try {
-    const client = IPC as unknown as { api: { invoke: (c: string, p?: unknown) => Promise<unknown> } };
-    return await client.api.invoke(channel, params) as IPCResult<T>;
-  } catch {
-    return null;
-  }
-}

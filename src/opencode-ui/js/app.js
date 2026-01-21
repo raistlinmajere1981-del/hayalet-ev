@@ -69,6 +69,15 @@ const OpenCodeApp = {
       MessageRenderer.init(messagesList, { reactive: true });
       console.log('[OpenCode] MessageRenderer initialized with reactive mode');
     }
+    
+    // Sidebar toggle butonlarını ayarla
+    this._initSidebars();
+    
+    // Command palette
+    this._initCommandPalette();
+    
+    // Collapsible sections
+    this._initCollapsibleSections();
 
     // Prompt Handler
     const promptInput = document.getElementById('prompt-input');
@@ -473,6 +482,126 @@ const OpenCodeApp = {
     }
 
     this._updateStatus('processing', 'İşleniyor...');
+  },
+
+  // =========================================================================
+  // UI Components - Sidebars & Panels
+  // =========================================================================
+
+  /**
+   * Sidebar toggle butonlarını ayarla
+   */
+  _initSidebars() {
+    // Sol sidebar toggle (hamburger menü)
+    const menuBtn = document.getElementById('btn-menu');
+    const leftSidebar = document.getElementById('sidebar-left');
+    if (menuBtn && leftSidebar) {
+      menuBtn.addEventListener('click', () => {
+        leftSidebar.classList.toggle('collapsed');
+        leftSidebar.classList.toggle('open');
+      });
+    }
+    
+    // Sağ sidebar toggle
+    const rightToggleBtn = document.getElementById('btn-toggle-right-sidebar');
+    const rightSidebar = document.getElementById('sidebar-right');
+    if (rightToggleBtn && rightSidebar) {
+      rightToggleBtn.addEventListener('click', () => {
+        rightSidebar.classList.toggle('collapsed');
+        rightSidebar.classList.toggle('open');
+      });
+    }
+    
+    // Action bar butonları
+    const panelBtns = ['btn-panel-status', 'btn-panel-actions', 'btn-panel-trash'];
+    panelBtns.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          // Aktif butonu değiştir
+          document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      }
+    });
+  },
+
+  /**
+   * Command palette'i başlat
+   */
+  _initCommandPalette() {
+    const paletteBtn = document.getElementById('btn-command-palette');
+    const paletteModal = document.getElementById('command-palette-modal');
+    
+    if (paletteBtn && paletteModal) {
+      // Açma
+      paletteBtn.addEventListener('click', () => {
+        paletteModal.classList.remove('hidden');
+        const input = paletteModal.querySelector('.palette-input');
+        if (input) input.focus();
+      });
+      
+      // Kapatma (overlay click veya Escape)
+      paletteModal.addEventListener('click', (e) => {
+        if (e.target === paletteModal) {
+          paletteModal.classList.add('hidden');
+        }
+      });
+      
+      document.addEventListener('keydown', (e) => {
+        // Ctrl+Shift+P ile aç/kapat
+        if (e.ctrlKey && e.shiftKey && e.key === 'P') {
+          e.preventDefault();
+          paletteModal.classList.toggle('hidden');
+          if (!paletteModal.classList.contains('hidden')) {
+            const input = paletteModal.querySelector('.palette-input');
+            if (input) input.focus();
+          }
+        }
+        // Escape ile kapat
+        if (e.key === 'Escape' && !paletteModal.classList.contains('hidden')) {
+          paletteModal.classList.add('hidden');
+        }
+      });
+    }
+  },
+
+  /**
+   * Collapsible section'ları başlat
+   */
+  _initCollapsibleSections() {
+    document.querySelectorAll('.panel-section .section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.closest('.panel-section');
+        if (section) {
+          section.classList.toggle('collapsed');
+        }
+      });
+    });
+  },
+
+  /**
+   * Connection status'u güncelle
+   * @param {string} status - connected, processing, error, warning
+   * @param {string} text - Gösterilecek metin
+   */
+  _updateConnectionStatus(status, text) {
+    const statusEl = document.getElementById('connection-status');
+    if (!statusEl) return;
+    
+    // Remove all status classes
+    statusEl.classList.remove('connected', 'processing', 'error', 'warning');
+    
+    // Add current status class
+    if (status) {
+      statusEl.classList.add(status);
+    }
+    
+    // Update text
+    const textEl = statusEl.querySelector('.status-text');
+    if (textEl) {
+      textEl.textContent = text || status;
+    }
   },
 
   // =========================================================================

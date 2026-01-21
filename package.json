@@ -27,11 +27,11 @@
     "git-status": "git status",
     "git-diff": "git diff",
     "drive-push": "node .rovodev/scripts/sync-to-drive.js",
-    "update:check": "npx npm-check-updates",
-    "update:safe": "npx npm-check-updates -u --target minor && npm install",
-    "update:deps": "npx npm-check-updates -u --reject electron,electron-builder && npm install",
-    "update:full": "npx npm-check-updates -u && npm install",
-    "update:interactive": "npx npm-check-updates -i --format group"
+    "update:check": "npx npm-check-updates && echo '\n--- MCP Server ---' && cd mcp-server && npx npm-check-updates",
+    "update:safe": "npx npm-check-updates -u --target minor && npm install && cd mcp-server && npx npm-check-updates -u --target minor && npm install",
+    "update:deps": "npx npm-check-updates -u --reject electron,electron-builder && npm install && cd mcp-server && npx npm-check-updates -u && npm install",
+    "update:full": "npx npm-check-updates -u && npm install && cd mcp-server && npx npm-check-updates -u && npm install",
+    "update:interactive": "npx npm-check-updates -i --format group && cd mcp-server && npx npm-check-updates -i --format group"
   },
   "keywords": [
     "electron",
