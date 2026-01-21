@@ -26,10 +26,11 @@
 
 /* === SLOT GRID === */
 .slot-grid {
-  flex: 1 1 auto;
+  flex: 0 0 auto; /* Sabit yükseklik, esnek değil */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
+  height: 280px; /* Webview alanı için sabit yükseklik */
   min-height: 200px;
   overflow: hidden;
 }
@@ -122,7 +123,8 @@
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
   cursor: pointer;
-  max-width: 150px;
+  min-width: 180px;
+  max-width: 220px;
 }
 
 .slot-provider-select:focus {
@@ -131,52 +133,86 @@
 }
 
 .slot-settings-inline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-2);
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   border-left: var(--border-1) solid var(--color-border);
   border-right: var(--border-1) solid var(--color-border);
   margin: 0 var(--space-2);
 }
 
-.select-mini {
-  padding: var(--space-1) var(--space-1-5);
+.slot-settings-inline .catch-label {
+  grid-column: 1 / -1; /* Son satırda tam genişlik */
+  justify-self: start;
+}
+
+/* Setting Group (Label + Select) */
+.setting-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.setting-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Method Select (wider than mini) */
+.select-method {
+  padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   background: var(--color-bg-primary);
   border: var(--border-1) solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
-  min-width: 50px;
+  min-width: 100px;
 }
 
-.select-mini:focus {
+.select-method:focus {
   border-color: var(--color-accent);
   outline: none;
 }
 
-.checkbox-mini {
+/* Catch Label (checkbox with text) */
+.catch-label {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   cursor: pointer;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--duration-fast), color var(--duration-fast);
 }
 
-.checkbox-mini input {
+.catch-label:hover {
+  background: var(--color-bg-hover);
+}
+
+.catch-label input {
   width: 14px;
   height: 14px;
   accent-color: var(--color-accent);
 }
 
-.checkbox-mini span {
-  opacity: 0.6;
-  transition: opacity var(--duration-fast);
+.catch-label span {
+  white-space: nowrap;
+  transition: color var(--duration-fast);
 }
 
-.checkbox-mini:has(input:checked) span {
-  opacity: 1;
+.catch-label:has(input:checked) {
+  color: var(--color-text-primary);
+}
+
+.catch-label:has(input:checked) span {
+  color: var(--color-success);
 }
 
 .slot-actions {
@@ -271,14 +307,13 @@
 
 /* === CONTROL PANEL (Accordion) === */
 .control-panel-accordion {
-  flex: 0 0 auto;
+  flex: 1 1 auto; /* Kalan tüm alanı kapla */
   background: var(--color-bg-secondary);
   border-top: var(--border-1) solid var(--color-border);
-}
-
-/* Accordion açıkken içerik için minimum yükseklik */
-.control-panel-accordion:has(.accordion-content.open) {
-  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Accordion Toggle Button */
@@ -329,11 +364,12 @@
   display: block !important;
   height: 0;
   overflow: hidden;
-  transition: height var(--duration-normal) var(--ease-out);
+  transition: flex var(--duration-normal) var(--ease-out);
 }
 
 .control-panel-accordion .accordion-content.open {
-  height: 210px;
+  flex: 1 1 auto;
+  height: auto;
   overflow-y: auto;
 }
 
@@ -342,6 +378,8 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-2);
   padding: var(--space-2);
+  height: 100%;
+  min-height: 0;
 }
 
 /* Panel Item */

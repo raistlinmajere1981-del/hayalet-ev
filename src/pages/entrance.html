@@ -7,35 +7,45 @@
       <!-- AI1 SLOT CARD -->
       <div class="slot-card" data-slot="ai1">
         <div class="slot-header">
-          <div class="slot-avatar-wrapper">
-            <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
-            <span class="slot-status-dot" id="ai1-status-dot"></span>
+          <!-- Üst Satır: Avatar, Nickname, Hesap Seç, Butonlar -->
+          <div class="slot-header-row">
+            <div class="slot-avatar-wrapper">
+              <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
+              <span class="slot-status-dot" id="ai1-status-dot"></span>
+            </div>
+            <div class="slot-info">
+              <span class="slot-nickname" id="ai1-nickname">AI1</span>
+              <select id="ai1-account-select" class="slot-provider-select"></select>
+            </div>
+            <div class="slot-actions">
+              <button class="btn btn-primary btn-sm slot-connect-btn" id="ai1-toggle-btn">Hesap Seçin</button>
+              <button class="btn btn-ghost btn-icon btn-sm" id="ai1-devtools-btn" title="DevTools">🔧</button>
+            </div>
           </div>
-          <div class="slot-info">
-            <span class="slot-nickname" id="ai1-nickname">AI1</span>
-            <select id="ai1-account-select" class="slot-provider-select"></select>
-          </div>
-          <div class="slot-settings-inline">
-            <select id="ai1-msg-method" class="select-mini" title="Mesaj Metodu">
-              <option value="injection">JS</option>
-              <option value="xdotools">Xdo</option>
-            </select>
-            <select id="ai1-file-method" class="select-mini" title="Dosya Metodu">
-              <option value="dragdrop">D&D</option>
-              <option value="injection">JS</option>
-              <option value="xdotools">Xdo</option>
-              <option value="uguu">Uguu</option>
-              <option value="catbox">Catbox</option>
-              <option value="googledrive">GDrive</option>
-            </select>
-            <label class="checkbox-mini" title="Komut Yakalama">
+          <!-- Alt Satır: Metodlar ve Catch -->
+          <div class="slot-settings-row">
+            <div class="setting-group">
+              <label class="setting-label">Mesaj:</label>
+              <select id="ai1-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
+                <option value="injection">Injection</option>
+                <option value="xdotools">XdoTools</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">Dosya:</label>
+              <select id="ai1-file-method" class="select-method" title="Dosya Gönderme Metodu">
+                <option value="dragdrop">Drag & Drop</option>
+                <option value="injection">Injection</option>
+                <option value="xdotools">XdoTools</option>
+                <option value="uguu">Uguu</option>
+                <option value="catbox">Catbox</option>
+                <option value="googledrive">Google Drive</option>
+              </select>
+            </div>
+            <label class="catch-label" title="AI komutlarını yakala ve işle">
               <input type="checkbox" id="ai1-catch-check">
-              <span>📥</span>
+              <span>Komutları Yakala</span>
             </label>
-          </div>
-          <div class="slot-actions">
-            <button class="btn btn-primary btn-sm slot-connect-btn" id="ai1-toggle-btn">Bağlan</button>
-            <button class="btn btn-ghost btn-icon btn-sm" id="ai1-devtools-btn" title="DevTools">🔧</button>
           </div>
         </div>
         <div class="slot-url-bar">
@@ -55,35 +65,45 @@
       <!-- AI2 SLOT CARD -->
       <div class="slot-card" data-slot="ai2">
         <div class="slot-header">
-          <div class="slot-avatar-wrapper">
-            <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
-            <span class="slot-status-dot" id="ai2-status-dot"></span>
+          <!-- Üst Satır: Avatar, Nickname, Hesap Seç, Butonlar -->
+          <div class="slot-header-row">
+            <div class="slot-avatar-wrapper">
+              <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
+              <span class="slot-status-dot" id="ai2-status-dot"></span>
+            </div>
+            <div class="slot-info">
+              <span class="slot-nickname" id="ai2-nickname">AI2</span>
+              <select id="ai2-account-select" class="slot-provider-select"></select>
+            </div>
+            <div class="slot-actions">
+              <button class="btn btn-primary btn-sm slot-connect-btn" id="ai2-toggle-btn">Hesap Seçin</button>
+              <button class="btn btn-ghost btn-icon btn-sm" id="ai2-devtools-btn" title="DevTools">🔧</button>
+            </div>
           </div>
-          <div class="slot-info">
-            <span class="slot-nickname" id="ai2-nickname">AI2</span>
-            <select id="ai2-account-select" class="slot-provider-select"></select>
-          </div>
-          <div class="slot-settings-inline">
-            <select id="ai2-msg-method" class="select-mini" title="Mesaj Metodu">
-              <option value="injection">JS</option>
-              <option value="xdotools">Xdo</option>
-            </select>
-            <select id="ai2-file-method" class="select-mini" title="Dosya Metodu">
-              <option value="dragdrop">D&D</option>
-              <option value="injection">JS</option>
-              <option value="xdotools">Xdo</option>
-              <option value="uguu">Uguu</option>
-              <option value="catbox">Catbox</option>
-              <option value="googledrive">GDrive</option>
-            </select>
-            <label class="checkbox-mini" title="Komut Yakalama">
+          <!-- Alt Satır: Metodlar ve Catch -->
+          <div class="slot-settings-row">
+            <div class="setting-group">
+              <label class="setting-label">Mesaj:</label>
+              <select id="ai2-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
+                <option value="injection">Injection</option>
+                <option value="xdotools">XdoTools</option>
+              </select>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">Dosya:</label>
+              <select id="ai2-file-method" class="select-method" title="Dosya Gönderme Metodu">
+                <option value="dragdrop">Drag & Drop</option>
+                <option value="injection">Injection</option>
+                <option value="xdotools">XdoTools</option>
+                <option value="uguu">Uguu</option>
+                <option value="catbox">Catbox</option>
+                <option value="googledrive">Google Drive</option>
+              </select>
+            </div>
+            <label class="catch-label" title="AI komutlarını yakala ve işle">
               <input type="checkbox" id="ai2-catch-check">
-              <span>📥</span>
+              <span>Komutları Yakala</span>
             </label>
-          </div>
-          <div class="slot-actions">
-            <button class="btn btn-primary btn-sm slot-connect-btn" id="ai2-toggle-btn">Bağlan</button>
-            <button class="btn btn-ghost btn-icon btn-sm" id="ai2-devtools-btn" title="DevTools">🔧</button>
           </div>
         </div>
         <div class="slot-url-bar">

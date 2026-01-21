@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenCode - Workspace Seçimi</title>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/entrance.css">
+</head>
+<body>
+  <div id="app" class="entrance-app">
+    <!-- ============================================
+         Top Right Actions
+         ============================================ -->
+    <div class="entrance-actions">
+      <button class="btn btn-icon" id="btn-terminal" title="Terminal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ============================================
+         Main Content
+         ============================================ -->
+    <main class="entrance-main">
+      <!-- Logo & Title -->
+      <div class="entrance-header">
+        <div class="entrance-logo">
+          <svg width="160" height="160" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Hexagon outline -->
+            <path d="M100 10L178.66 55V145L100 190L21.34 145V55L100 10Z" 
+                  stroke="url(#logoGradient)" stroke-width="3" fill="none"/>
+            <!-- Inner hexagon -->
+            <path d="M100 35L155 67.5V132.5L100 165L45 132.5V67.5L100 35Z" 
+                  stroke="url(#logoGradient)" stroke-width="2" fill="none" opacity="0.5"/>
+            <!-- OC Letters -->
+            <text x="100" y="115" text-anchor="middle" 
+                  fill="url(#logoGradient)" font-family="monospace" font-size="48" font-weight="bold">OC</text>
+            <!-- Circuit lines -->
+            <circle cx="100" cy="35" r="4" fill="#00d9ff"/>
+            <circle cx="155" cy="67.5" r="4" fill="#00d9ff"/>
+            <circle cx="155" cy="132.5" r="4" fill="#00d9ff"/>
+            <circle cx="100" cy="165" r="4" fill="#00d9ff"/>
+            <circle cx="45" cy="132.5" r="4" fill="#00d9ff"/>
+            <circle cx="45" cy="67.5" r="4" fill="#00d9ff"/>
+            <defs>
+              <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00d9ff"/>
+                <stop offset="100%" stop-color="#0099cc"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="entrance-title">OpenCode</h1>
+        <p class="entrance-subtitle">Select a folder to start coding with AI</p>
+      </div>
+
+      <!-- Recent Folders Section -->
+      <section class="entrance-section">
+        <div class="section-header">
+          <h2 class="section-title">Recent Folders</h2>
+          <span class="section-count" id="folder-count">0 folders available</span>
+        </div>
+        
+        <div class="folder-list" id="folder-list">
+          <!-- Recent folders will be populated here -->
+          <div class="folder-item" data-path="/home/raistlin/hayalet-ev">
+            <div class="folder-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="folder-info">
+              <span class="folder-name">hayalet-ev</span>
+              <span class="folder-path">/home/raistlin/hayalet-ev</span>
+              <span class="folder-time">2m ago</span>
+            </div>
+            <div class="folder-actions">
+              <button class="btn btn-icon btn-sm" title="Terminal'de Aç">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="4 17 10 11 4 5"></polyline>
+                  <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+              </button>
+              <button class="btn btn-icon btn-sm" title="Listeden Kaldır">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Browse for Folder Section -->
+      <section class="entrance-section">
+        <div class="section-header">
+          <h2 class="section-title">Browse for Folder</h2>
+          <span class="section-desc">Select any folder on your computer</span>
+        </div>
+        
+        <button class="browse-button" id="btn-browse">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <line x1="12" y1="11" x2="12" y2="17"></line>
+            <line x1="9" y1="14" x2="15" y2="14"></line>
+          </svg>
+          <span>Browse Folders</span>
+          <kbd>Ctrl+N</kbd>
+        </button>
+      </section>
+
+      <!-- Advanced Settings -->
+      <section class="entrance-section collapsible">
+        <div class="section-header clickable" id="advanced-toggle">
+          <div class="section-header-left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Advanced Settings</span>
+          </div>
+          <svg class="collapse-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </div>
+        
+        <div class="section-content" id="advanced-content">
+          <!-- OpenCode Binary Path -->
+          <div class="setting-item">
+            <label class="setting-label">OpenCode Binary Path</label>
+            <div class="setting-input-group">
+              <input type="text" class="setting-input" id="opencode-path" 
+                     value="/home/raistlin/.nvm/versions/node/v22.22.0/bin/opencode" readonly>
+              <button class="btn btn-sm" id="btn-change-path">Change</button>
+            </div>
+          </div>
+          
+          <!-- Default Port -->
+          <div class="setting-item">
+            <label class="setting-label">Default Port</label>
+            <input type="number" class="setting-input" id="default-port" value="4096">
+          </div>
+          
+          <!-- Auto-connect -->
+          <div class="setting-item">
+            <label class="setting-label">
+              <input type="checkbox" id="auto-connect" checked>
+              <span>Auto-connect on folder select</span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================================
+         Footer Shortcuts
+         ============================================ -->
+    <footer class="entrance-footer">
+      <div class="shortcut-bar">
+        <span class="shortcut"><kbd>↑</kbd> <kbd>↓</kbd> Navigate</span>
+        <span class="shortcut"><kbd>Enter</kbd> Select</span>
+        <span class="shortcut"><kbd>Del</kbd> Remove</span>
+        <span class="shortcut"><kbd>Ctrl+N</kbd> Browse</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/entrance.js"></script>
+</body>
+</html>

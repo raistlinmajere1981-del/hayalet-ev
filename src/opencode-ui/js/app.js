@@ -32,6 +32,11 @@ const OpenCodeApp = {
 
     // URL parametrelerinden server URL'ini al
     this._parseUrlParams();
+    
+    // Workspace kontrolü - yoksa entrance sayfasına yönlendir
+    if (!this._checkWorkspace()) {
+      return;
+    }
 
     // UI bileşenlerini başlat
     this._initComponents();
@@ -57,6 +62,38 @@ const OpenCodeApp = {
     if (serverUrl) {
       this._serverUrl = serverUrl;
     }
+    
+    // Workspace parametresini al
+    const workspace = params.get('workspace');
+    if (workspace) {
+      this._workspace = workspace;
+      sessionStorage.setItem('opencode-workspace', workspace);
+    } else {
+      // Session storage'dan kontrol et
+      this._workspace = sessionStorage.getItem('opencode-workspace');
+    }
+  },
+
+  /**
+   * Workspace kontrolü - yoksa entrance sayfasına yönlendir
+   * @returns {boolean} true if workspace exists
+   */
+  _checkWorkspace() {
+    // Workspace varsa devam et
+    if (this._workspace) {
+      console.log('[OpenCode] Workspace:', this._workspace);
+      return true;
+    }
+    
+    // Entrance sayfasındaysak yönlendirme yapma
+    if (window.location.pathname.includes('entrance.html')) {
+      return false;
+    }
+    
+    // Workspace yoksa entrance sayfasına yönlendir
+    console.log('[OpenCode] No workspace, redirecting to entrance...');
+    window.location.href = 'entrance.html';
+    return false;
   },
 
   /**
