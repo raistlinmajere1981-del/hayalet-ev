@@ -218,10 +218,14 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
  */
 export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
   return withConnection(async (ws: WebSocket) => {
+    // Page domain'ini etkinleştir (screenshot için gerekli)
+    await sendCDPCommand(ws, "Page.enable", {}, 5000);
+    
+    // Screenshot al (daha uzun timeout - büyük sayfalar için)
     const result = await sendCDPCommand(ws, "Page.captureScreenshot", {
       format,
       quality: format === "jpeg" ? quality : undefined,
-    });
+    }, 30000);
     return result.data as string; // Base64 encoded
   });
 }
