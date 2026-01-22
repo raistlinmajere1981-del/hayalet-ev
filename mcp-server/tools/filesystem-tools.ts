@@ -36,6 +36,7 @@ import {
   showFileContent,
   getFileSummary,
 } from "../utils/diff-utils.js";
+import { logToolError } from "../utils/mcp-logger.js";
 import type {
   FileContent,
   GrepResult,
@@ -66,14 +67,19 @@ export async function openFiles(filePaths: string[]): Promise<{ files: FileConte
 // İçerik boyutu limitleri
 const MAX_CONTENT_SIZE = 500 * 1024; // 500KB - çok büyük içerikler chunk'lanmalı
 const WARN_CONTENT_SIZE = 100 * 1024; // 100KB - uyarı eşiği
+const BASH_THRESHOLD = 10 * 1024; // 10KB üzeri içerikler bash ile yazılır (token limit için)
 
 /**
  * create_file - Yeni dosya oluştur
+ * 
+ * Büyük dosyalar (>10KB) için otomatik olarak bash heredoc kullanır.
+ * Bu, LLM output token limitini aşmayı önler.
  */
 export async function createFile(
   filePath: string,
   initialContent: string = "",
-  overwrite: boolean = false
+  overwrite: boolean = false,
+  projectRoot?: string
 ): Promise<{ success: boolean; message: string }> {
   const progress = createProgress({ operation: "Dosya oluşturma", quiet: true });
   
@@ -86,7 +92,7 @@ export async function createFile(
       progress.fail("İçerik çok büyük");
       return { 
         success: false, 
-        message: `İçerik çok büyük (${(contentSize / 1024).toFixed(1)}KB). Maksimum: ${MAX_CONTENT_SIZE / 1024}KB. Dosyayı parçalar halinde oluşturun veya fs_bash ile echo/cat kullanın.` 
+        message: `İçerik çok büyük (${(contentSize / 1024).toFixed(1)}KB). Maksimum: ${MAX_CONTENT_SIZE / 1024}KB. Dosyayı parçalar halinde oluşturun.` 
       };
     }
     
@@ -106,7 +112,20 @@ export async function createFile(
     const dir = dirname(filePath);
     await mkdir(dir, { recursive: true });
     
-    // Dosyayı yaz
+    // Büyük içerikler için bash heredoc kullan (token limit aşımını önler)
+    if (contentSize > BASH_THRESHOLD && projectRoot) {
+      progress.update(2, "Bash heredoc ile yazılıyor...");
+      const result = await createFileWithBash(filePath, initialContent, projectRoot);
+      if (result.success) {
+        progress.done(`${(contentSize / 1024).toFixed(1)}KB yazıldı (bash)`);
+        return { success: true, message: `Dosya oluşturuldu: ${filePath} (${(contentSize / 1024).toFixed(1)}KB, bash mode)` };
+      } else {
+        // Bash başarısız olursa normal yönteme geri dön
+        progress.update(2, "Normal yazma moduna geçiliyor...");
+      }
+    }
+    
+    // Dosyayı normal yöntemle yaz
     progress.update(2, "Dosya yazılıyor...");
     await writeFile(filePath, initialContent, "utf-8");
     
@@ -120,11 +139,67 @@ export async function createFile(
   } catch (error) {
     const err = error as Error;
     progress.fail(err.message);
+    logToolError("fs_create_file", err, { filePath, contentSize: Buffer.byteLength(initialContent, "utf-8") });
     return { 
       success: false, 
       message: `Dosya oluşturma hatası: ${err.message}\nYol: ${filePath}\nİçerik boyutu: ${Buffer.byteLength(initialContent, "utf-8")} byte` 
     };
   }
+}
+
+/**
+ * Bash heredoc ile dosya oluştur
+ * Token limit sorunlarını aşmak için kullanılır
+ */
+async function createFileWithBash(
+  filePath: string,
+  content: string,
+  projectRoot: string
+): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    // Benzersiz bir EOF marker oluştur (içerikte olmamasını garanti et)
+    let eofMarker = "HAYALET_EOF";
+    let counter = 0;
+    while (content.includes(eofMarker)) {
+      counter++;
+      eofMarker = `HAYALET_EOF_${counter}`;
+    }
+    
+    // Heredoc komutu oluştur
+    const command = `cat << '${eofMarker}' > "${filePath}"
+${content}
+${eofMarker}`;
+    
+    const child = spawn("bash", ["-c", command], {
+      cwd: projectRoot,
+      env: { ...process.env },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    
+    let stderr = "";
+    
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+    
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        resolve({ success: false, error: stderr || `Exit code: ${code}` });
+      }
+    });
+    
+    child.on("error", (err) => {
+      resolve({ success: false, error: err.message });
+    });
+    
+    // 30 saniye timeout
+    setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve({ success: false, error: "Timeout" });
+    }, 30000);
+  });
 }
 
 /**
@@ -143,6 +218,7 @@ export async function deleteFile(filePath: string, projectRoot: string, permanen
     }
     return { success: false, message: `Dosya bulunamadı: ${filePath}` };
   } catch (error) {
+    logToolError("fs_delete_file", error as Error, { filePath });
     return { success: false, message: `Hata: ${(error as Error).message}` };
   }
 }
@@ -162,6 +238,7 @@ export async function moveFile(
     await rename(filePath, newPath);
     return { success: true, message: `Dosya taşındı: ${filePath} → ${newPath}` };
   } catch (error) {
+    logToolError("fs_move_file", error as Error, { filePath, newPath });
     return { success: false, message: `Hata: ${(error as Error).message}` };
   }
 }
@@ -191,6 +268,7 @@ export async function expandCodeChunks(
     const fileContent = await readFile(filePath, "utf-8");
     return { content: addLineNumbers(fileContent) };
   } catch (error) {
+    logToolError("fs_expand_code_chunks", error as Error, { filePath, lineRanges, patterns });
     return { content: "", error: (error as Error).message };
   }
 }
@@ -262,6 +340,7 @@ export async function expandFolder(
     const structure = formatFolderStructure(entries);
     return { structure: `${folderPath}/\n${structure}` };
   } catch (error) {
+    logToolError("fs_expand_folder", error as Error, { folderPath, maxDepth });
     return { structure: "", error: (error as Error).message };
   }
 }

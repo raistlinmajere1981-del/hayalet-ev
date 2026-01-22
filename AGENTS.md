@@ -369,7 +369,7 @@ cat mcp-server/logs/mcp-server.log | tail -20
 cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
 ```
 
-**Not:** `fs_create_file` için maksimum içerik boyutu 500KB. Daha büyük dosyalar için `fs_bash` ile `echo` veya `cat` kullanın.
+**Not:** `fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
 
 ### Progress Göstergesi
 Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:

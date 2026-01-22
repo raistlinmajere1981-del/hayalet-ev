@@ -6,6 +6,7 @@ import { readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { findLatestSession, readSessionLogs, filterLogs, readSessionInfo } from "../utils/log-utils.js";
+import { logToolError } from "../utils/mcp-logger.js";
 import type { ToolResult } from "../types/index.js";
 
 /** Log read arguments */
@@ -201,6 +202,7 @@ export async function listLogSessions(
     };
   } catch (err) {
     const error = err as Error;
+    logToolError("list_log_sessions", error, { limit });
     return {
       content: [{ type: "text", text: `❌ Session listesi okunamadı: ${error.message}` }],
       isError: true,

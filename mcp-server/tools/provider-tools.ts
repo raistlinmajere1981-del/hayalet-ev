@@ -24,6 +24,7 @@ import {
   type ProviderValidationResult,
 } from "../utils/selector-validator.js";
 import { createProgress } from "../utils/progress.js";
+import { logToolError } from "../utils/mcp-logger.js";
 
 // ============================================
 // Tool Implementations
@@ -180,6 +181,7 @@ export async function validateSelectors(
     
   } catch (error) {
     progress.fail((error as Error).message);
+    logToolError("validate_provider_selectors", error as Error, { provider, categories });
     return {
       provider,
       url: "",
@@ -254,6 +256,7 @@ export async function inspectProviderElementTool(
     
   } catch (error) {
     progress.fail((error as Error).message);
+    logToolError("inspect_provider_element", error as Error, { provider, selector });
     return {
       provider,
       selector,

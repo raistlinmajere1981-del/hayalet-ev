@@ -389,7 +389,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
         const result = await createFile(
           (args as { file_path: string }).file_path,
           (args as { initial_content?: string }).initial_content ?? "",
-          (args as { overwrite?: boolean }).overwrite ?? false
+          (args as { overwrite?: boolean }).overwrite ?? false,
+          PROJECT_ROOT // Büyük dosyalar için bash heredoc kullanımı
         );
         return { content: [{ type: "text", text: result.message }] };
       }

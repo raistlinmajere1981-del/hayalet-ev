@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { logToolError } from "../utils/mcp-logger.js";
 import type { ToolResult } from "../types/index.js";
 
 const execAsync = promisify(exec);
@@ -53,6 +54,7 @@ export async function testElectron(
         ],
       };
     }
+    logToolError("test_electron", error, { timeout });
     return {
       content: [{ type: "text", text: `❌ Electron test hatası: ${error.message}` }],
       isError: true,

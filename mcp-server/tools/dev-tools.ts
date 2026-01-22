@@ -16,6 +16,7 @@ import { join, relative, extname, basename } from "path";
 import { execSync } from "child_process";
 import { createHash } from "crypto";
 import { createProgress } from "../utils/progress.js";
+import { logToolError } from "../utils/mcp-logger.js";
 
 // ============================================
 // Shared Configuration
@@ -630,6 +631,7 @@ export function gitDiff(projectRoot: string, options: { staged?: boolean; file?:
       stats: statMatch ? { additions: parseInt(statMatch[1]), deletions: parseInt(statMatch[2]) } : undefined,
     };
   } catch (error) {
+    logToolError("dev_git_diff", error as Error, { staged: options.staged, file: options.file });
     return { success: false, diff: (error as Error).message };
   }
 }
@@ -670,6 +672,7 @@ export function lintFile(projectRoot: string, filePath: string, fix: boolean = f
     }
   } catch (error) {
     progress.fail((error as Error).message);
+    logToolError("dev_lint_file", error as Error, { filePath, fix });
     return { success: false, output: (error as Error).message, errorCount: 0, warningCount: 0 };
   }
 }
@@ -798,6 +801,7 @@ export function testRun(projectRoot: string, options: { file?: string; grep?: st
     }
   } catch (error) {
     progress.fail((error as Error).message);
+    logToolError("dev_test_run", error as Error, { file: options.file, grep: options.grep, timeout: options.timeout });
     return { success: false, output: (error as Error).message, passed: 0, failed: 0 };
   }
 }

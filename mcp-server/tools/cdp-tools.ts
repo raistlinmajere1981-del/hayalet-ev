@@ -29,6 +29,19 @@ import {
   executeScript,
 } from "../utils/cdp-commands.js";
 
+import { logToolError } from "../utils/mcp-logger.js";
+
+/**
+ * CDP hatalarını logla ve hata sonucu döndür
+ */
+function cdpError(toolName: string, error: Error, message?: string): ToolResult {
+  logToolError(toolName, error, {});
+  return {
+    content: [{ type: "text", text: `❌ ${message || error.message}` }],
+    isError: true,
+  };
+}
+
 /**
  * Electron bağlantı durumunu kontrol et
  */
@@ -67,11 +80,8 @@ export async function checkElectronConnection(): Promise<ToolResult> {
         }],
       };
     }
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("check_electron_connection", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -102,11 +112,8 @@ ${JSON.stringify(result, null, 2)}
 \`\`\``,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Komut hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("send_command_to_electron", err as Error, `Komut hatası: ${(err as Error).message}`);
   }
 }
 
@@ -144,11 +151,8 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
 **Kullanım:** Dosyaya kaydetmek için \`savePath\` parametresi ekleyin.`,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Screenshot hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("take_cdp_screenshot", err as Error, `Screenshot hatası: ${(err as Error).message}`);
   }
 }
 
@@ -172,11 +176,8 @@ export async function getElectronWindowInfo(): Promise<ToolResult> {
 - **Scroll Pozisyonu:** (${info.scrollX}, ${info.scrollY})`,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("get_electron_window_info", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -211,11 +212,8 @@ export async function clickElementBySelector(args: Record<string, unknown>): Pro
         isError: true,
       };
     }
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Tıklama hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("click_element_by_selector", err as Error, `Tıklama hatası: ${(err as Error).message}`);
   }
 }
 
@@ -251,11 +249,8 @@ export async function clickElementByText(args: Record<string, unknown>): Promise
         isError: true,
       };
     }
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Tıklama hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("click_element_by_text", err as Error, `Tıklama hatası: ${(err as Error).message}`);
   }
 }
 
@@ -290,11 +285,8 @@ export async function fillInputField(args: Record<string, unknown>): Promise<Too
         isError: true,
       };
     }
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Input hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("fill_input_field", err as Error, `Input hatası: ${(err as Error).message}`);
   }
 }
 
@@ -321,11 +313,8 @@ ${JSON.stringify(structure.body, null, 2)}
 \`\`\``,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("get_page_dom_structure", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -367,11 +356,8 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
         content: [{ type: "text", text: `❌ Element bulunamadı: \`${selector}\`` }],
       };
     }
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("inspect_element", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -411,11 +397,8 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
 ${list}`,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("query_elements", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -450,11 +433,8 @@ export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolR
 **Hedef element:** <${result.target?.toLowerCase() || "unknown"}>`,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Tuş hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("send_key_press", err as Error, `Tuş hatası: ${(err as Error).message}`);
   }
 }
 
@@ -475,10 +455,7 @@ export async function scrollPage(args: Record<string, unknown>): Promise<ToolRes
 **Yeni pozisyon:** (${result.scrollX}, ${result.scrollY})`,
       }],
     };
-  } catch (err) { const error = err as Error;
-    return {
-      content: [{ type: "text", text: `❌ Scroll hatası: ${error.message}` }],
-      isError: true,
-    };
+  } catch (err) {
+    return cdpError("scroll_page", err as Error, `Scroll hatası: ${(err as Error).message}`);
   }
 }
