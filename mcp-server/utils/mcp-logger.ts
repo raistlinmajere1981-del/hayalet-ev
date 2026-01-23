@@ -1,24 +1,29 @@
 /**
- * MCP Server Logger
+ * MCP Server Logger - Session Based
  * 
- * Tool çağrılarını ve hataları log'a kaydeder.
- * Log dosyası: mcp-server/logs/mcp-server.log
+ * Her MCP server başlatıldığında yeni session oluşturur.
+ * Log dosyaları: mcp-server/logs/SESSION_ID/
+ *   - mcp.log: Tüm loglar
+ *   - error.log: Sadece hatalar
  */
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, renameSync, unlinkSync } from "fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const LOG_DIR = join(__dirname, "..", "logs");
-const LOG_FILE = join(LOG_DIR, "mcp-server.log");
-const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB
+const LOG_BASE_DIR = join(__dirname, "..", "logs");
 
-// Ensure log directory exists
-if (!existsSync(LOG_DIR)) {
-  mkdirSync(LOG_DIR, { recursive: true });
-}
+// Session ayarları
+const MAX_SESSION_AGE_DAYS = 7; // 7 günden eski session'ları sil
+const SESSION_ID = generateSessionId();
+const SESSION_DIR = join(LOG_BASE_DIR, SESSION_ID);
+const LOG_FILE = join(SESSION_DIR, "mcp.log");
+const ERROR_FILE = join(SESSION_DIR, "error.log");
+
+// Session klasörünü oluştur
+ensureSessionDir();
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -36,12 +41,84 @@ interface LogEntry {
 }
 
 /**
+ * Session ID oluştur (timestamp bazlı)
+ */
+function generateSessionId(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hour = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  const second = String(now.getSeconds()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}_${hour}-${minute}-${second}`;
+}
+
+/**
+ * Session klasörünü oluştur ve eski session'ları temizle
+ */
+function ensureSessionDir(): void {
+  try {
+    // Base log klasörünü oluştur
+    if (!existsSync(LOG_BASE_DIR)) {
+      mkdirSync(LOG_BASE_DIR, { recursive: true });
+    }
+    
+    // Session klasörünü oluştur
+    if (!existsSync(SESSION_DIR)) {
+      mkdirSync(SESSION_DIR, { recursive: true });
+    }
+    
+    // Eski session'ları temizle
+    cleanOldSessions();
+  } catch {
+    // Silent fail
+  }
+}
+
+/**
+ * 7 günden eski session'ları sil
+ */
+function cleanOldSessions(): void {
+  try {
+    const now = Date.now();
+    const maxAge = MAX_SESSION_AGE_DAYS * 24 * 60 * 60 * 1000;
+    
+    const entries = readdirSync(LOG_BASE_DIR, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      // Sadece session klasörlerini kontrol et (YYYY-MM-DD formatında)
+      if (!entry.isDirectory() || !entry.name.match(/^\d{4}-\d{2}-\d{2}/)) {
+        continue;
+      }
+      
+      const sessionPath = join(LOG_BASE_DIR, entry.name);
+      const stats = statSync(sessionPath);
+      
+      if (now - stats.mtimeMs > maxAge) {
+        rmSync(sessionPath, { recursive: true, force: true });
+      }
+    }
+  } catch {
+    // Silent fail
+  }
+}
+
+/**
  * Log bir entry yaz
  */
 function writeLog(entry: LogEntry): void {
   try {
     const line = JSON.stringify(entry) + "\n";
+    
+    // Ana log dosyasına yaz
     appendFileSync(LOG_FILE, line, "utf-8");
+    
+    // Hata ise error.log'a da yaz
+    if (entry.level === "error") {
+      appendFileSync(ERROR_FILE, line, "utf-8");
+    }
   } catch {
     // Silent fail - logging hatası uygulamayı durdurmamalı
   }
@@ -158,13 +235,30 @@ function truncateArgs(args: unknown, maxLength: number = 1000): unknown {
 }
 
 /**
+ * Mevcut session ID'yi döndür
+ */
+export function getCurrentSessionId(): string {
+  return SESSION_ID;
+}
+
+/**
+ * Session klasör yolunu döndür
+ */
+export function getSessionDir(): string {
+  return SESSION_DIR;
+}
+
+/**
  * Log dosyasını oku (son N satır)
  */
-export function readLogs(tail: number = 50): string[] {
+export function readLogs(tail: number = 50, sessionId?: string): string[] {
   try {
-    if (!existsSync(LOG_FILE)) return [];
+    const targetSession = sessionId || SESSION_ID;
+    const logFile = join(LOG_BASE_DIR, targetSession, "mcp.log");
     
-    const content = readFileSync(LOG_FILE, "utf-8");
+    if (!existsSync(logFile)) return [];
+    
+    const content = readFileSync(logFile, "utf-8");
     const lines = content.trim().split("\n");
     
     return lines.slice(-tail);
@@ -174,28 +268,47 @@ export function readLogs(tail: number = 50): string[] {
 }
 
 /**
- * Log dosyası boyutunu kontrol et ve gerekirse rotate et
+ * Tüm session'ları listele
  */
-export function rotateLogsIfNeeded(): void {
+export function listSessions(): Array<{ id: string; date: Date; size: number }> {
   try {
-    if (!existsSync(LOG_FILE)) return;
+    const entries = readdirSync(LOG_BASE_DIR, { withFileTypes: true });
+    const sessions: Array<{ id: string; date: Date; size: number }> = [];
     
-    const stats = statSync(LOG_FILE);
-    if (stats.size > MAX_LOG_SIZE) {
-      const backupFile = LOG_FILE + ".old";
-      
-      // Eski backup'ı sil
-      if (existsSync(backupFile)) {
-        unlinkSync(backupFile);
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !entry.name.match(/^\d{4}-\d{2}-\d{2}/)) {
+        continue;
       }
       
-      // Mevcut log'u backup yap
-      renameSync(LOG_FILE, backupFile);
+      const sessionPath = join(LOG_BASE_DIR, entry.name);
+      const logFile = join(sessionPath, "mcp.log");
+      
+      let size = 0;
+      if (existsSync(logFile)) {
+        size = statSync(logFile).size;
+      }
+      
+      const stats = statSync(sessionPath);
+      
+      sessions.push({
+        id: entry.name,
+        date: stats.mtime,
+        size,
+      });
     }
+    
+    // Tarihe göre sırala (en yeni önce)
+    return sessions.sort((a, b) => b.date.getTime() - a.date.getTime());
   } catch {
-    // Silent fail
+    return [];
   }
 }
 
-// Startup'ta log rotation kontrol et
-rotateLogsIfNeeded();
+/**
+ * Session başlangıç logu
+ */
+writeLog({
+  timestamp: new Date().toISOString(),
+  level: "info",
+  message: `MCP Server session başlatıldı: ${SESSION_ID}`,
+});
