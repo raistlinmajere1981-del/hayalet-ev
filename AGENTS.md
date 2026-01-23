@@ -271,6 +271,16 @@ npm run lint           # Kod kontrolü
 npm run pre-commit     # Commit öncesi kontrol
 ```
 
+### Unused Kontrolleri (Knip)
+```bash
+npm run knip           # Temel analiz
+npm run knip:strict    # Derin analiz (tüm kategoriler)
+npm run knip:fix       # Otomatik düzeltme
+npm run knip:watch     # İzleme modu
+```
+
+**Knip** kullanılmayan dosyalar, export'lar, bağımlılıklar ve type'ları tespit eder.
+
 ### Test Timeout Süreleri
 | Komut | Timeout | Açıklama |
 |-------|---------|----------|
