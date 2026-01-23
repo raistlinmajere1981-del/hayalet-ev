@@ -1,10 +1,10 @@
-import { dialog, BrowserWindow } from "electron";
+import { BrowserWindow } from "electron";
 import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { fmTempPath, fmEnsureDirs, openPath } from "../file-manager.ts";
 import { registerHandler } from "./ipc-helpers.ts";
 
-export function setupFsHandlers(mainWindow: BrowserWindow | null): void {
+export function setupFsHandlers(_mainWindow: BrowserWindow | null): void {
   registerHandler("fm-temp-path", (event, prefix, ext) => fmTempPath(event, prefix as string, ext as string));
   registerHandler("fm-ensure-dirs", fmEnsureDirs);
   registerHandler("open-path", async (_event, path) => openPath(path as string));
