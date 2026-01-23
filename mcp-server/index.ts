@@ -62,7 +62,6 @@ import {
 import {
   analyzeProject,
   bootstrapContext,
-  findUnused,
   generateDiagram,
   updateCache,
   editLines,
@@ -574,25 +573,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
       case "dev_bootstrap_context": {
         const result = await bootstrapContext(PROJECT_ROOT, args as { print?: boolean; full?: boolean });
         return { content: [{ type: "text", text: result.content }] };
-      }
-
-      case "dev_find_unused": {
-        const result = await findUnused(PROJECT_ROOT);
-        let output = `🔍 Kullanılmayan Export Analizi\n\n`;
-        output += `Toplam: ${result.totalExports} export, ${result.totalUnused} kullanılmayan\n\n`;
-        if (result.unusedExports.length > 0) {
-          output += "Kullanılmayanlar:\n";
-          for (const item of result.unusedExports.slice(0, 20)) {
-            output += `- ${item.file}: ${item.export}\n`;
-          }
-          if (result.unusedExports.length > 20) {
-            output += `... ve ${result.unusedExports.length - 20} daha\n`;
-          }
-        }
-        if (result.safeModulesSkipped.length > 0) {
-          output += `\n⚠️ ${result.safeModulesSkipped.length} safe modül atlandı (IPC çağrıları)\n`;
-        }
-        return { content: [{ type: "text", text: output }] };
       }
 
       case "dev_generate_diagram": {

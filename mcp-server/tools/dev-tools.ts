@@ -270,86 +270,7 @@ export async function bootstrapContext(
 }
 
 // ============================================
-// Tool 3: Find Unused Exports
-// ============================================
-
-interface UnusedResult {
-  unusedExports: Array<{ file: string; export: string; safe: boolean }>;
-  totalExports: number;
-  totalUnused: number;
-  safeModulesSkipped: string[];
-}
-
-export async function findUnused(projectRoot: string): Promise<UnusedResult> {
-  const progress = createProgress({ operation: "Unused export analizi" });
-  
-  progress.update(0, "Dosyalar toplanıyor...");
-  const allFiles: string[] = [];
-  for (const srcDir of CONFIG.srcDirs) {
-    const files = await getAllFiles(srcDir, projectRoot);
-    allFiles.push(...files);
-  }
-
-  progress.update(1, `${allFiles.length} dosya bulundu, analiz ediliyor...`);
-  
-  // Collect all exports
-  const exportMap: Map<string, { file: string; name: string }[]> = new Map();
-  const allImports: Set<string> = new Set();
-  const safeSkipped: string[] = [];
-
-  for (const file of allFiles) {
-    const fileName = basename(file);
-    
-    // Skip safe modules
-    if (CONFIG.safeModules.some(safe => fileName.includes(safe.replace(".ts", "").replace(".js", "")))) {
-      safeSkipped.push(file);
-      continue;
-    }
-
-    try {
-      const content = readFileSync(join(projectRoot, file), "utf-8");
-      
-      // Find exports
-      const exportMatches = [...content.matchAll(/export\s+(?:async\s+)?(?:function|const|let|var|class|interface|type)\s+(\w+)/g)];
-      for (const match of exportMatches) {
-        const name = match[1];
-        if (!exportMap.has(name)) {
-          exportMap.set(name, []);
-        }
-        exportMap.get(name)!.push({ file, name });
-      }
-      
-      // Find imports
-      const importMatches = [...content.matchAll(/import\s+\{([^}]+)\}\s+from/g)];
-      for (const match of importMatches) {
-        const names = match[1].split(",").map(n => n.trim().split(" as ")[0].trim());
-        names.forEach(n => allImports.add(n));
-      }
-    } catch { /* ignore */ }
-  }
-
-  // Find unused
-  progress.update(2, "Kullanılmayanlar belirleniyor...");
-  const unused: Array<{ file: string; export: string; safe: boolean }> = [];
-  for (const [name, locations] of exportMap) {
-    if (!allImports.has(name)) {
-      for (const loc of locations) {
-        unused.push({ file: loc.file, export: name, safe: false });
-      }
-    }
-  }
-
-  progress.done(`${unused.length} kullanılmayan export bulundu`);
-  return {
-    unusedExports: unused.slice(0, 50), // Limit output
-    totalExports: exportMap.size,
-    totalUnused: unused.length,
-    safeModulesSkipped: safeSkipped,
-  };
-}
-
-// ============================================
-// Tool 4: Generate Diagram
+// Tool 3: Generate Diagram
 // ============================================
 
 interface DiagramResult {
@@ -844,14 +765,6 @@ export const DEV_TOOL_DEFINITIONS = [
           default: false,
         },
       },
-    },
-  },
-  {
-    name: "dev_find_unused",
-    description: "Kullanılmayan export'ları tespit et. Safe modules (IPC üzerinden çağrılan) atlanır.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
     },
   },
   {

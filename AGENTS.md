@@ -35,7 +35,7 @@ Current: `5.4.0`
 | Prefix | Açıklama | Örnek |
 |--------|----------|-------|
 | `fs_*` | Dosya işlemleri | `fs_open_files`, `fs_grep`, `fs_bash` |
-| `dev_*` | Geliştirme araçları | `dev_analyze_project`, `dev_find_unused` |
+| `dev_*` | Geliştirme araçları | `dev_analyze_project`, `dev_generate_diagram` |
 | CDP tools | Electron kontrolü | `check_electron_connection`, `take_cdp_screenshot` |
 
 ### ❌ KULLANMA
@@ -51,7 +51,7 @@ mcp__hayalet_ev__invoke_tool ile:
 - fs_open_files, fs_create_file, fs_delete_file, fs_move_file
 - fs_expand_code_chunks, fs_find_and_replace, fs_grep
 - fs_expand_folder, fs_bash, fs_create_plan
-- dev_analyze_project, dev_bootstrap_context, dev_find_unused
+- dev_analyze_project, dev_bootstrap_context, dev_generate_diagram
 - dev_generate_diagram, dev_update_cache, dev_edit_lines
 ```
 
@@ -328,7 +328,6 @@ fs_diff_content      # İki içeriği karşılaştır
 ```
 dev_analyze_project    # Proje analizi
 dev_bootstrap_context  # Context üret
-dev_find_unused        # Unused exports
 dev_generate_diagram   # Bağımlılık diagramı
 dev_update_cache       # Cache güncelle
 dev_edit_lines         # Satır bazlı düzenleme
@@ -498,7 +497,6 @@ Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
 
 Progress destekleyen tool'lar:
 - `dev_analyze_project`
-- `dev_find_unused`
 - `dev_lint_file`
 - `dev_test_run`
 - `fs_create_file`
