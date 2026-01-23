@@ -524,6 +524,21 @@ Progress destekleyen tool'lar:
 
 ---
 
+## 🚀 Özel Protokoller
+
+| Komut | Dosya | Açıklama |
+|-------|-------|----------|
+| `ULTRATHINK` | `.rovodev/ultrathink.md` | Derin analiz modu - kısa cevaplar yerine çok boyutlu analiz |
+
+**Kullanım:** Herhangi bir sorudan önce `ULTRATHINK:` yazın.
+
+**Örnek:**
+```
+ULTRATHINK: Bu mimarinin avantajları ve dezavantajları neler?
+```
+
+---
+
 ## 🔗 Quick Links
 
 - `.rovodev/context.md` - **YENİ SESSION İÇİN ÖNCE BUNU OKU**
@@ -532,6 +547,7 @@ Progress destekleyen tool'lar:
 - `.rovodev/cdp.md` - CDP tool'ları
 - `.rovodev/logging.md` - Log sistemi
 - `.rovodev/testing.md` - Test workflow'ları
+- `.rovodev/ultrathink.md` - ULTRATHINK protokol detayları
 
 ---
 
