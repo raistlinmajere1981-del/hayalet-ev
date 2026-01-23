@@ -467,6 +467,26 @@ web_search query="..." categories="news" time_range="month"
 - Teknik terimler için **İngilizce** sorgu (daha fazla sonuç)
 - Türkçe kaynak gerekirse `language="tr-TR"` ekle
 
+### Timeout Konfigürasyonu
+
+Tüm timeout değerleri merkezi olarak `mcp-server/utils/timeouts.ts` dosyasında tanımlıdır.
+
+| Kategori | İşlem | Timeout |
+|----------|-------|---------|
+| **CDP** | Target discovery | 10s |
+| | WebSocket bağlantı | 10s |
+| | Komut (varsayılan) | 15s |
+| | Screenshot | 15s |
+| **Web** | Arama API | 15s |
+| | Sayfa fetch | 15s |
+| | URL kontrol | 10s |
+| **Filesystem** | Bash komutu | 30s |
+| **Dev** | ESLint | 120s |
+| | Test çalıştırma | 120s |
+| **Electron** | Test | 10s |
+
+**Minimum timeout:** 10 saniye (tüm değerler bu sınırın üstünde)
+
 ### Progress Göstergesi
 Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
 

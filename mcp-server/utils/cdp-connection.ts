@@ -6,6 +6,7 @@
  */
 
 import WebSocket from "ws";
+import { CDP_TIMEOUTS } from "./timeouts.js";
 
 const CDP_PORT = process.env.CDP_PORT || 9223;
 const CDP_HOST = process.env.CDP_HOST || "localhost";
@@ -44,9 +45,9 @@ interface EvaluateResult {
  */
 export async function discoverTargets(): Promise<CDPTarget[]> {
   try {
-    // 5 saniye timeout ile fetch
+    // Target discovery timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), CDP_TIMEOUTS.TARGET_DISCOVERY);
     
     const response = await fetch(`http://${CDP_HOST}:${CDP_PORT}/json`, {
       signal: controller.signal,
@@ -122,14 +123,14 @@ function connectToTarget(wsUrl: string): Promise<WebSocket> {
       }
     });
     
-    // 10 saniye timeout
+    // WebSocket bağlantı timeout
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
         ws.terminate();
         reject(new Error("WebSocket bağlantı zaman aşımı"));
       }
-    }, 10000);
+    }, CDP_TIMEOUTS.WEBSOCKET_CONNECT);
   });
 }
 
@@ -143,7 +144,7 @@ export function sendCDPCommand(
   ws: WebSocket, 
   method: string, 
   params: Record<string, unknown> = {}, 
-  timeout = 15000
+  timeout: number = CDP_TIMEOUTS.COMMAND_DEFAULT
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const id = cdpCommandId++;

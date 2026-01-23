@@ -7,11 +7,11 @@
 
 import { fetchAndParse, truncateText, type ScrapedContent } from "../utils/web-scraper.js";
 import { logToolError } from "../utils/mcp-logger.js";
+import { WEB_TIMEOUTS } from "../utils/timeouts.js";
 import type { ToolResult } from "../types/index.js";
 
 // SearXNG yapılandırması (host network mode için 8080 portu)
 const SEARXNG_URL = process.env.SEARXNG_URL || "http://localhost:8080";
-const DEFAULT_TIMEOUT = 15000;
 
 // ============================================
 // Types
@@ -86,7 +86,7 @@ export async function webSearch(options: {
 
     // Fetch with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+    const timeoutId = setTimeout(() => controller.abort(), WEB_TIMEOUTS.SEARCH_API);
 
     const response = await fetch(url, {
       signal: controller.signal,

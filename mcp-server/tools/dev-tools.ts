@@ -17,6 +17,7 @@ import { execSync } from "child_process";
 import { createHash } from "crypto";
 import { createProgress } from "../utils/progress.js";
 import { logToolError } from "../utils/mcp-logger.js";
+import { DEV_TIMEOUTS } from "../utils/timeouts.js";
 
 // ============================================
 // Shared Configuration
@@ -649,7 +650,7 @@ export function lintFile(projectRoot: string, filePath: string, fix: boolean = f
     progress.update(0, `${filePath} lint ediliyor...`);
     
     try {
-      const output = execSync(cmd, { cwd: projectRoot, encoding: "utf-8", timeout: 120000 });
+      const output = execSync(cmd, { cwd: projectRoot, encoding: "utf-8", timeout: DEV_TIMEOUTS.LINT });
       progress.done("Hata bulunamadı");
       return { success: true, output: output || "✅ Hata bulunamadı", errorCount: 0, warningCount: 0 };
     } catch (err) {
@@ -763,7 +764,7 @@ export function testRun(projectRoot: string, options: { file?: string; grep?: st
       if (options.grep) cmd += ` -t "${options.grep}"`;
     }
     
-    const timeout = options.timeout || 120000; // Default 2 dakika
+    const timeout = options.timeout || DEV_TIMEOUTS.TEST;
     progress.update(0, `${cmd} çalıştırılıyor...`);
     
     try {
@@ -1006,7 +1007,7 @@ export const DEV_TOOL_DEFINITIONS = [
         timeout: {
           type: "integer",
           description: "Timeout (ms)",
-          default: 120000,
+          default: DEV_TIMEOUTS.TEST,
         },
       },
     },

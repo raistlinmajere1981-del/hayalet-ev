@@ -21,6 +21,7 @@ import {
   addLineNumbers,
 } from "../utils/file-utils.js";
 import { createProgress } from "../utils/progress.js";
+import { FS_TIMEOUTS } from "../utils/timeouts.js";
 import {
   moveToTrash,
   listTrash,
@@ -194,11 +195,11 @@ ${eofMarker}`;
       resolve({ success: false, error: err.message });
     });
     
-    // 30 saniye timeout
+    // Bash heredoc timeout
     setTimeout(() => {
       child.kill("SIGTERM");
       resolve({ success: false, error: "Timeout" });
-    }, 30000);
+    }, FS_TIMEOUTS.BASH_HEREDOC);
   });
 }
 
@@ -351,7 +352,7 @@ export async function expandFolder(
 export async function executeBash(
   command: string | number,
   workspacePath: string,
-  timeout: number = 30000
+  timeout: number = FS_TIMEOUTS.BASH_DEFAULT
 ): Promise<BashResult> {
   return new Promise((resolve) => {
     // PID ile log alma (şimdilik desteklenmiyor)

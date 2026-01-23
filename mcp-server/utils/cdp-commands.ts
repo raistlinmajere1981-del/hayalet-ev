@@ -7,6 +7,7 @@
 
 import WebSocket from "ws";
 import { withConnection, evaluateJS, sendCDPCommand } from "./cdp-connection.js";
+import { CDP_TIMEOUTS } from "./timeouts.js";
 
 /** Click result */
 interface ClickResult {
@@ -222,17 +223,17 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
 export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
   return withConnection(async (ws: WebSocket) => {
     // Pencereyi öne getir (çift monitör/arka plan sorunu için gerekli)
-    await sendCDPCommand(ws, "Page.bringToFront", {}, 5000);
+    await sendCDPCommand(ws, "Page.bringToFront", {}, CDP_TIMEOUTS.COMMAND_FAST);
     
     // Page domain'ini etkinleştir
-    await sendCDPCommand(ws, "Page.enable", {}, 5000);
+    await sendCDPCommand(ws, "Page.enable", {}, CDP_TIMEOUTS.COMMAND_FAST);
     
     // Screenshot al
     const result = await sendCDPCommand(ws, "Page.captureScreenshot", {
       format,
       quality: format === "jpeg" ? quality : undefined,
       fromSurface: true, // Compositor surface'den al (daha güvenilir)
-    }, 15000);
+    }, CDP_TIMEOUTS.SCREENSHOT);
     return result.data as string; // Base64 encoded
   });
 }

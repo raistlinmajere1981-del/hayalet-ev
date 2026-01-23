@@ -8,6 +8,7 @@ import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { logToolError } from "../utils/mcp-logger.js";
+import { ELECTRON_TIMEOUTS } from "../utils/timeouts.js";
 import type { ToolResult } from "../types/index.js";
 
 const execAsync = promisify(exec);
@@ -26,7 +27,7 @@ export async function testElectron(
   projectRoot: string, 
   args?: { timeout?: number }
 ): Promise<ToolResult> {
-  const timeout = args?.timeout || 5;
+  const timeout = args?.timeout || (ELECTRON_TIMEOUTS.TEST_DEFAULT / 1000);
   
   try {
     const { stdout, stderr } = await execAsync("npm run start", {

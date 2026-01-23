@@ -5,6 +5,7 @@
 
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
+import { WEB_TIMEOUTS } from "./timeouts.js";
 
 // Kaldırılacak elementler (noise)
 const REMOVE_SELECTORS = [
@@ -79,7 +80,7 @@ export interface FetchOptions {
 }
 
 const DEFAULT_OPTIONS: FetchOptions = {
-  timeout: 15000,
+  timeout: WEB_TIMEOUTS.PAGE_FETCH,
   maxLength: 50000, // ~50KB metin
   includeLinks: true,
   userAgent: "Mozilla/5.0 (compatible; Hayalet-ev/1.0; +https://github.com/)",
@@ -366,7 +367,7 @@ export function truncateText(text: string, maxLength: number, suffix = "..."): s
 /**
  * URL'in erişilebilir olup olmadığını kontrol et
  */
-export async function checkUrlAccessible(url: string, timeout = 5000): Promise<boolean> {
+export async function checkUrlAccessible(url: string, timeout = WEB_TIMEOUTS.URL_CHECK): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
