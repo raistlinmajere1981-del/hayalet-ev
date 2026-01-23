@@ -48,8 +48,7 @@ commands/
 
 # Config directory (contains settings and sensitive data)
 config/
-!config/searxng/
-!config/searxng/**
+!config/searxng_settings.yml
 
 # Settings (may contain sensitive data - legacy, now in config/)
 settings.json
