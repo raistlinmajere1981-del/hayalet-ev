@@ -372,16 +372,100 @@ cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
 **Not:** `fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
 
 ### Web Tools (Arama ve İçerik)
+
+**Araçlar:**
 ```
-web_search             # SearXNG ile web araması (Google, Bing, DuckDuckGo)
+web_search             # SearXNG ile web araması (Google, Bing, DuckDuckGo, GitHub, StackOverflow)
 web_fetch              # URL'den sayfa içeriği çek (temiz markdown)
-web_search_and_fetch   # Arama yap + ilk N sonucun içeriğini çek
+web_search_and_fetch   # Arama yap + ilk N sonucun içeriğini çek (detaylı araştırma)
 ```
 
 **Kurulum:** SearXNG gerektirir:
 ```bash
-docker compose -f docker-compose.searxng.yml up -d
+sudo docker compose -f docker-compose.searxng.yml up -d
 ```
+
+#### 🎯 Web Search Kullanım Stratejisi
+
+**MUTLAKA KULLAN - Bu durumlarda web search zorunlu:**
+
+| Durum | Neden | Örnek Sorgu |
+|-------|-------|-------------|
+| Spesifik hata mesajı | Güncel çözümler değişir | `"ECONNREFUSED" Docker Node.js solution` |
+| Versiyon-spesifik soru | API'ler değişir | `React 19 useOptimistic example` |
+| "Güncel/en son/2024/2025" içeren sorular | Eski bilgi geçersiz | `TypeScript 5.4 new features` |
+| Bilinmeyen kütüphane/teknoloji | Yerleşik bilgi yetersiz | `Bun runtime vs Node.js` |
+| Best practices sorusu | Standartlar değişir | `Docker security best practices 2025` |
+| Performans karşılaştırması | Benchmark'lar güncellenir | `Vite vs Webpack build speed` |
+
+**KULLANMA - Bu durumlarda gereksiz:**
+
+| Durum | Neden |
+|-------|-------|
+| Temel syntax soruları | Yerleşik bilgi yeterli |
+| Proje-spesifik kod analizi | Cevap projede, internette değil |
+| Basit algoritma soruları | Değişmeyen bilgi |
+| Bu projenin kendi dosyaları hakkında | `fs_grep`, `fs_open_files` kullan |
+
+#### 🔍 Arama Stratejisi
+
+```
+1. HIZLI KONTROL (emin değilsen):
+   web_search query="konu" limit=5
+   → Link listesi al, genel fikir edin
+
+2. DETAYLI ARAŞTIRMA (çözüm gerekiyorsa):
+   web_search_and_fetch query="konu" fetch_count=3
+   → Tam içerik çek, analiz et
+
+3. BİLİNEN KAYNAK (dokümantasyon):
+   web_fetch url="https://docs.example.com/api"
+   → Direkt içerik çek
+```
+
+#### 📝 Etkili Sorgu Yazma
+
+```bash
+# ❌ KÖTÜ - çok genel
+web_search query="React error"
+
+# ✅ İYİ - spesifik hata + context
+web_search query="React useEffect cleanup function memory leak"
+
+# ✅ İYİ - versiyon belirt
+web_search query="Node.js 20 fetch API native"
+
+# ✅ İYİ - çözüm odaklı
+web_search query="Docker container cannot connect to host network solution"
+```
+
+#### 🏷️ Kategori ve Engine Seçimi
+
+```bash
+# Kod/programlama soruları
+web_search query="..." categories="it" engines="github,stackoverflow"
+
+# Genel bilgi
+web_search query="..." categories="general"
+
+# Akademik/bilimsel
+web_search query="..." categories="science" engines="google scholar"
+
+# Haberler/güncel
+web_search query="..." categories="news" time_range="month"
+```
+
+#### ⚡ Performans İpuçları
+
+| Parametre | Hızlı Kontrol | Detaylı Araştırma |
+|-----------|---------------|-------------------|
+| `limit` | 3-5 | 10 |
+| `fetch_count` | - | 2-3 |
+| `max_content_length` | - | 10000 |
+
+**Dil Stratejisi:**
+- Teknik terimler için **İngilizce** sorgu (daha fazla sonuç)
+- Türkçe kaynak gerekirse `language="tr-TR"` ekle
 
 ### Progress Göstergesi
 Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
