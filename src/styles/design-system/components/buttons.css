@@ -1,244 +1,267 @@
 /**
- * Design System - Button Components
- * 
- * Unified button styles with variants and states.
+ * Hayalet-ev Design System - Button Components
+ * Modern buttons with action animations
+ * @version 3.0.0
  */
 
 /* === BASE BUTTON === */
 .btn {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  height: var(--btn-height);
+  padding: 0 var(--space-4);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  line-height: var(--leading-normal);
+  line-height: 1;
   text-decoration: none;
-  border: var(--border-1) solid transparent;
-  border-radius: var(--radius-button);
-  cursor: pointer;
-  transition: var(--transition-button);
-  min-width: 80px;
-  height: 36px;
   white-space: nowrap;
-  user-select: none;
-  -webkit-user-select: none;
+  border: var(--border-1) solid transparent;
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  position: relative;
+  overflow: hidden;
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
-/* === BUTTON VARIANTS === */
+.btn:disabled,
+.btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
-/* Primary - Accent colored */
+/* === SIZE VARIANTS === */
+.btn-xs {
+  height: var(--btn-height-xs);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-btn-sm);
+}
+
+.btn-sm {
+  height: var(--btn-height-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn-lg {
+  height: 48px;
+  padding: 0 var(--space-6);
+  font-size: var(--text-base);
+}
+
+.btn-icon {
+  width: var(--btn-height);
+  padding: 0;
+}
+
+.btn-sm.btn-icon {
+  width: var(--btn-height-sm);
+}
+
+/* === PRIMARY BUTTON === */
 .btn-primary {
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-  border-color: var(--color-accent);
+  background: var(--accent-gradient);
+  color: var(--text-inverse);
+  border-color: transparent;
+  box-shadow: var(--glow-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
+  filter: brightness(1.1);
+  box-shadow: var(--glow-cyan-lg);
   transform: translateY(-1px);
 }
 
 .btn-primary:active:not(:disabled) {
+  filter: brightness(0.95);
   transform: translateY(0);
 }
 
-/* Secondary - Subtle */
+/* === SECONDARY BUTTON === */
 .btn-secondary {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+  backdrop-filter: var(--glass-blur);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--color-bg-hover);
-  border-color: var(--color-border-hover);
+  background: var(--bg-glass-hover);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
-/* Ghost - Transparent */
+/* === GHOST BUTTON === */
 .btn-ghost {
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   border-color: transparent;
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: var(--hover-overlay);
+  color: var(--text-primary);
 }
 
-/* Danger - Destructive actions */
-.btn-danger {
+/* === OUTLINE BUTTON === */
+.btn-outline {
   background: transparent;
-  color: var(--color-error);
-  border-color: var(--color-error);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-accent-muted);
+}
+
+/* === DANGER BUTTON === */
+.btn-danger {
+  background: var(--color-error);
+  color: white;
+  border-color: transparent;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--color-error);
-  color: var(--color-text-inverse);
+  background: var(--red-500);
+  box-shadow: var(--glow-error);
 }
 
-/* Success */
+/* === SUCCESS BUTTON === */
 .btn-success {
   background: var(--color-success);
-  color: var(--color-text-inverse);
-  border-color: var(--color-success);
+  color: var(--text-inverse);
+  border-color: transparent;
 }
 
-/* === BUTTON SIZES === */
-
-.btn-xs {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-xs);
-  height: 24px;
-  min-width: 60px;
+.btn-success:hover:not(:disabled) {
+  background: var(--emerald-500);
+  box-shadow: var(--glow-success);
 }
 
-.btn-sm {
-  padding: var(--space-1-5) var(--space-3);
-  font-size: var(--text-sm);
-  height: 32px;
-  min-width: 70px;
-}
+/* === ACTION STATE ANIMATIONS === */
 
-.btn-lg {
-  padding: var(--space-3) var(--space-6);
-  font-size: var(--text-md);
-  height: 44px;
-  min-width: 100px;
-}
-
-/* === BUTTON STATES === */
-
-/* Disabled */
-.btn:disabled,
-.btn.btn-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Loading state */
+.btn.is-loading {
+  color: transparent;
   pointer-events: none;
-  transform: none !important;
 }
 
-/* Loading */
-.btn-loading {
-  pointer-events: none;
-  color: transparent !important;
-}
-
-.btn-loading::after {
+.btn.is-loading::after {
   content: '';
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: btn-spin 0.6s linear infinite;
+  animation: btn-loading 0.6s linear infinite;
 }
 
-.btn-loading.btn-primary::after {
-  border-color: var(--color-text-inverse);
+.btn-primary.is-loading::after {
+  border-color: var(--text-inverse);
   border-right-color: transparent;
 }
 
-@keyframes btn-spin {
-  to { transform: rotate(360deg); }
+/* Success state */
+.btn.is-success {
+  animation: success-pulse 0.6s ease-out;
 }
 
-/* Success State (temporary) */
-.btn.btn-state-success {
-  background: var(--color-success) !important;
-  border-color: var(--color-success) !important;
-  color: var(--color-text-inverse) !important;
-  animation: btn-success-pop var(--duration-fast) var(--ease-bounce);
+.btn.is-success::before {
+  content: '✓';
+  position: absolute;
+  font-size: var(--text-lg);
 }
 
-@keyframes btn-success-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+.btn-primary.is-success {
+  background: var(--color-success);
 }
 
-/* Error State (temporary) */
-.btn.btn-state-error {
-  background: var(--color-error) !important;
-  border-color: var(--color-error) !important;
-  color: var(--color-text-inverse) !important;
-  animation: btn-shake var(--duration-fast) var(--ease-out);
+/* Error state */
+.btn.is-error {
+  animation: shake 0.5s ease-out;
 }
 
-@keyframes btn-shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+.btn-primary.is-error {
+  background: var(--color-error);
 }
 
-/* === ICON BUTTON === */
-.btn-icon {
+/* === ICON BUTTONS === */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
-  min-width: 36px;
   padding: 0;
-  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  transition: var(--transition-fast);
 }
 
-.btn-icon.btn-sm {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+.icon-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
 }
 
-.btn-icon.btn-lg {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* === BUTTON GROUP === */
 .btn-group {
   display: inline-flex;
-  gap: 0;
-}
-
-.btn-group .btn {
-  border-radius: 0;
-}
-
-.btn-group .btn:first-child {
-  border-radius: var(--radius-button) 0 0 var(--radius-button);
-}
-
-.btn-group .btn:last-child {
-  border-radius: 0 var(--radius-button) var(--radius-button) 0;
-}
-
-.btn-group .btn:not(:last-child) {
-  border-right-width: 0;
-}
-
-/* === BUTTON CONTENT === */
-.btn-content {
-  display: inline-flex;
-  align-items: center;
   gap: var(--space-2);
 }
 
-.btn-text {
-  /* Text wrapper for loading state */
+.btn-group-attached {
+  display: inline-flex;
 }
 
-.btn-icon-left,
-.btn-icon-right {
-  flex-shrink: 0;
-  font-size: 1.1em;
+.btn-group-attached .btn {
+  border-radius: 0;
+}
+
+.btn-group-attached .btn:first-child {
+  border-radius: var(--radius-btn) 0 0 var(--radius-btn);
+}
+
+.btn-group-attached .btn:last-child {
+  border-radius: 0 var(--radius-btn) var(--radius-btn) 0;
+}
+
+/* === CLOSE BUTTON === */
+.btn-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-close:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }

@@ -1,11 +1,10 @@
 /**
  * Hayalet-ev Design System
  * 
- * A cohesive design system for building consistent UI.
- * Import this file to get all design tokens, themes, and components.
+ * A modern, glassmorphism-based design system
+ * with 3 theme palettes: Obsidian, Midnight, Aurora
  * 
- * @version 1.1.0
- * @author Hayalet-ev Team
+ * @version 3.0.0
  */
 
 /* === DESIGN TOKENS === */
@@ -18,8 +17,9 @@
 
 /* === THEMES === */
 @import './themes/theme-base.css';
-@import './themes/theme-dark.css';
-@import './themes/theme-light.css';
+@import './themes/theme-obsidian.css';
+@import './themes/theme-midnight.css';
+@import './themes/theme-aurora.css';
 
 /* === COMPONENTS === */
 @import './components/buttons.css';

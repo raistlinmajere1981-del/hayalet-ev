@@ -323,6 +323,39 @@ export class OpenCodeEventParser {
           timestamp,
         };
 
+      // Step Events (Token Tracking - CodeNomad pattern)
+      case "step.start":
+        return {
+          type: "step.start",
+          data: {
+            stepId: (event.properties as Record<string, unknown>)?.stepId || event.stepId || `step-${timestamp}`,
+            sessionId: (event.properties as Record<string, unknown>)?.sessionID || event.sessionId,
+            messageId: (event.properties as Record<string, unknown>)?.messageID || event.messageId,
+          },
+          timestamp,
+        };
+
+      case "step.finish":
+      case "step.end":
+        return {
+          type: "step.finish",
+          data: {
+            stepId: (event.properties as Record<string, unknown>)?.stepId || event.stepId,
+            sessionId: (event.properties as Record<string, unknown>)?.sessionID || event.sessionId,
+            messageId: (event.properties as Record<string, unknown>)?.messageID || event.messageId,
+            inputTokens: (event.properties as Record<string, unknown>)?.inputTokens || 
+                         (event.properties as Record<string, unknown>)?.input_tokens || 
+                         event.inputTokens || 0,
+            outputTokens: (event.properties as Record<string, unknown>)?.outputTokens || 
+                          (event.properties as Record<string, unknown>)?.output_tokens || 
+                          event.outputTokens || 0,
+            cost: (event.properties as Record<string, unknown>)?.cost || 
+                  (event.properties as Record<string, unknown>)?.totalCost || 
+                  event.cost || 0,
+          },
+          timestamp,
+        };
+
       // Error
       case "error":
         return {

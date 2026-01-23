@@ -67,6 +67,7 @@
  * @property {string} [text] - Text content (for text parts)
  * @property {ToolCallData} [toolCall] - Tool call data (for tool parts)
  * @property {ThinkingData} [thinking] - Thinking data (for thinking parts)
+ * @property {StepData} [step] - Step data (for step parts)
  * @property {number} createdAt - Creation timestamp
  * @property {number} updatedAt - Last update timestamp
  */

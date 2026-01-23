@@ -230,6 +230,14 @@ const MessageRenderer = {
       }
     });
 
+    // Handle step parts (token tracking cards)
+    const stepParts = parts.filter(p => p.type === 'step');
+    stepParts.forEach(part => {
+      if (part.step) {
+        this._updateStepCard(body, part);
+      }
+    });
+
     // Handle retry button for error state (append at end)
     if (record.status === 'error') {
       let retryBtn = body.querySelector('.message-retry-btn');
@@ -265,6 +273,213 @@ const MessageRenderer = {
     }
   },
 
+
+  // =========================================================================
+  // Step Card Rendering (Token Tracking - FAZ 4)
+  // =========================================================================
+
+  /**
+   * Update or create step card
+   * @param {HTMLElement} body - Message body element
+   * @param {Object} part - Step part from store
+   */
+  _updateStepCard(body, part) {
+    const step = part.step;
+    if (!step || !step.stepId) return;
+
+    let stepCard = body.querySelector(`[data-step-id="${step.stepId}"]`);
+
+    if (!stepCard) {
+      // Create new step card
+      stepCard = document.createElement('div');
+      stepCard.className = 'step-card';
+      stepCard.setAttribute('data-step-id', step.stepId);
+      stepCard.setAttribute('data-expanded', 'false');
+      body.appendChild(stepCard);
+    }
+
+    // Update step card content based on status
+    if (step.status === 'start') {
+      stepCard.innerHTML = this._renderStepCardStart(step);
+      stepCard.classList.remove('completed');
+      stepCard.classList.add('running');
+    } else if (step.status === 'finish') {
+      stepCard.innerHTML = this._renderStepCardFinish(step);
+      stepCard.classList.remove('running');
+      stepCard.classList.add('completed');
+    }
+  },
+
+  /**
+   * Render step card for start status (running)
+   * @param {Object} step
+   * @returns {string}
+   */
+  _renderStepCardStart(step) {
+    return `
+      <div class="step-card-header" onclick="MessageRenderer._toggleStepCard(this)">
+        <div class="step-card-icon running">
+          <div class="step-spinner"></div>
+        </div>
+        <span class="step-card-title">Step çalışıyor...</span>
+        <span class="step-card-toggle">▶</span>
+      </div>
+      <div class="step-card-content" style="display: none;">
+        <div class="step-meta">
+          <span class="step-meta-item">ID: ${this._escapeHtml(step.stepId)}</span>
+          <span class="step-meta-item">Başlangıç: ${this._formatTime(step.startedAt)}</span>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Render step card for finish status (completed with tokens)
+   * @param {Object} step
+   * @returns {string}
+   */
+  _renderStepCardFinish(step) {
+    const inputTokens = step.inputTokens || 0;
+    const outputTokens = step.outputTokens || 0;
+    const totalTokens = inputTokens + outputTokens;
+    const cost = step.cost || 0;
+    const duration = step.finishedAt && step.startedAt 
+      ? ((step.finishedAt - step.startedAt) / 1000).toFixed(1) 
+      : '?';
+    const startTime = this._formatTime(step.startedAt);
+    const endTime = this._formatTime(step.finishedAt);
+
+    // Tooltip data for badges
+    const tokenTooltip = `Input: ${inputTokens.toLocaleString()} | Output: ${outputTokens.toLocaleString()}`;
+    const costTooltip = `Tahmini maliyet: $${cost.toFixed(6)}`;
+    const durationTooltip = `${startTime} - ${endTime}`;
+
+    return `
+      <div class="step-card-header" onclick="MessageRenderer._toggleStepCard(this)">
+        <div class="step-card-icon completed">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <span class="step-card-title">Step tamamlandı</span>
+        <span class="step-card-summary">
+          <span class="token-badge" title="${tokenTooltip}">${this._formatTokenCount(totalTokens)} tokens</span>
+          <span class="cost-badge" title="${costTooltip}">$${cost.toFixed(4)}</span>
+          <span class="duration-badge" title="${durationTooltip}">${duration}s</span>
+        </span>
+        <span class="step-card-toggle">▶</span>
+      </div>
+      <div class="step-card-content">
+        <div class="step-token-breakdown">
+          <div class="token-row">
+            <span class="token-label">Input tokens:</span>
+            <span class="token-value input">${inputTokens.toLocaleString()}</span>
+          </div>
+          <div class="token-row">
+            <span class="token-label">Output tokens:</span>
+            <span class="token-value output">${outputTokens.toLocaleString()}</span>
+          </div>
+          <div class="token-row total">
+            <span class="token-label">Toplam:</span>
+            <span class="token-value">${totalTokens.toLocaleString()}</span>
+          </div>
+          <div class="token-row cost">
+            <span class="token-label">Maliyet:</span>
+            <span class="token-value">$${cost.toFixed(6)}</span>
+          </div>
+        </div>
+        <div class="step-actions">
+          <button class="step-copy-btn" onclick="MessageRenderer._copyStepStats(event, ${inputTokens}, ${outputTokens}, ${cost})" title="İstatistikleri kopyala">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Kopyala
+          </button>
+        </div>
+        <div class="step-meta">
+          <span class="step-meta-item">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            ${duration}s
+          </span>
+          <span class="step-meta-item">${startTime} → ${endTime}</span>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Copy step statistics to clipboard
+   * @param {Event} event
+   * @param {number} inputTokens
+   * @param {number} outputTokens
+   * @param {number} cost
+   */
+  _copyStepStats(event, inputTokens, outputTokens, cost) {
+    event.stopPropagation();
+    
+    const stats = `Token Kullanımı:\n- Input: ${inputTokens.toLocaleString()}\n- Output: ${outputTokens.toLocaleString()}\n- Toplam: ${(inputTokens + outputTokens).toLocaleString()}\n- Maliyet: $${cost.toFixed(6)}`;
+    
+    navigator.clipboard.writeText(stats).then(() => {
+      const btn = event.currentTarget;
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Kopyalandı!
+      `;
+      btn.classList.add('copied');
+      
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.classList.remove('copied');
+      }, 1500);
+    });
+  },
+
+  /**
+   * Toggle step card expand/collapse with smooth animation
+   * @param {HTMLElement} header
+   */
+  _toggleStepCard(header) {
+    const card = header.closest('.step-card');
+    if (!card) return;
+
+    const isExpanded = card.getAttribute('data-expanded') === 'true';
+
+    // Toggle state - CSS handles the animation via max-height/opacity
+    card.setAttribute('data-expanded', isExpanded ? 'false' : 'true');
+  },
+
+  /**
+   * Format token count (1.5K, 12K, etc)
+   * @param {number} count
+   * @returns {string}
+   */
+  _formatTokenCount(count) {
+    if (!count || count === 0) return '0';
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+    return count.toString();
+  },
+
+  /**
+   * Format timestamp to time string
+   * @param {number} timestamp
+   * @returns {string}
+   */
+  _formatTime(timestamp) {
+    if (!timestamp) return '?';
+    return new Date(timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  },
+
+  // =========================================================================
+  // Thinking Block Rendering
+  // =========================================================================
 
   /**
    * Update thinking block from store part
@@ -598,13 +813,8 @@ const MessageRenderer = {
     // Status indicator HTML
     const statusIndicator = this._createStatusIndicator(status);
     
-    // Agent/Model info for assistant messages
-    const metaInfo = message.role === 'assistant' ? `
-      <div class="message-meta">
-        <span class="agent-info">Agent: Sisyphus</span> • 
-        <span class="model-info">Model: opencode/glm-4.7-free</span>
-      </div>
-    ` : '';
+    // Agent/Model info for assistant messages (dynamic from AgentModelSelector)
+    const metaInfo = message.role === 'assistant' ? this._getAgentModelMetaHtml() : '';
     
     // Action buttons (CodeNomad style) - different for user vs assistant
     const actionButtons = message.role === 'user' ? `
@@ -676,21 +886,152 @@ const MessageRenderer = {
   },
   
   /**
-   * Handle Revert action
+   * Handle Revert action - Reverts conversation to this message and resends
+   * Backend-first approach: API call first, then local state update
    * @param {string} messageId
    */
-  _handleRevert(messageId) {
+  async _handleRevert(messageId) {
     console.log('[MessageRenderer] Revert:', messageId);
-    // TODO: Implement revert functionality
+    
+    if (typeof MessageStore === 'undefined' || typeof SessionStore === 'undefined') {
+      console.error('[MessageRenderer] Stores not available for revert');
+      return;
+    }
+
+    const sessionId = SessionStore.getCurrentSessionId();
+    if (!sessionId) return;
+
+    // Get the message to revert to
+    const message = MessageStore.getMessage(messageId);
+    if (!message || message.role !== 'user') {
+      console.warn('[MessageRenderer] Can only revert to user messages');
+      return;
+    }
+
+    // Get the content BEFORE any modifications
+    const content = MessageStore.getMessageContent(messageId);
+    if (!content) {
+      console.warn('[MessageRenderer] No content to revert');
+      return;
+    }
+
+    // Backend-first: Call API to revert conversation
+    if (typeof APIClient !== 'undefined' && APIClient.revertConversation) {
+      try {
+        const result = await APIClient.revertConversation(messageId);
+        if (!result.success) {
+          console.error('[MessageRenderer] Backend revert failed:', result.error);
+          this._showNotification('Revert işlemi başarısız oldu', 'error');
+          return;
+        }
+        console.log('[MessageRenderer] Backend revert successful');
+      } catch (err) {
+        console.error('[MessageRenderer] Backend revert error:', err);
+        this._showNotification('Revert işlemi başarısız: ' + err.message, 'error');
+        return;
+      }
+    }
+
+    // Local state update: Remove messages after this one
+    const messages = MessageStore.getSessionMessages(sessionId);
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    
+    if (messageIndex === -1) return;
+
+    // Remove all messages after this one
+    const messagesToRemove = messages.slice(messageIndex + 1);
+    messagesToRemove.forEach(m => {
+      MessageStore.removeMessage(m.id);
+    });
+
+    // Remove the original message (it will be re-added when resent)
+    MessageStore.removeMessage(messageId);
+
+    // Resend the message
+    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp._handleSendMessage) {
+      OpenCodeApp._handleSendMessage(content);
+    }
   },
   
   /**
-   * Handle Fork action
+   * Handle Fork action - Creates a new conversation branch from this point
+   * Backend-first approach: Get server-generated session ID
    * @param {string} messageId
    */
-  _handleFork(messageId) {
+  async _handleFork(messageId) {
     console.log('[MessageRenderer] Fork:', messageId);
-    // TODO: Implement fork functionality
+    
+    if (typeof MessageStore === 'undefined' || typeof SessionStore === 'undefined') {
+      console.error('[MessageRenderer] Stores not available for fork');
+      return;
+    }
+
+    const sessionId = SessionStore.getCurrentSessionId();
+    if (!sessionId) return;
+
+    // Get the message
+    const message = MessageStore.getMessage(messageId);
+    if (!message) return;
+
+    let forkSessionId = null;
+
+    // Backend-first: Get server-generated session ID
+    if (typeof APIClient !== 'undefined' && APIClient.forkConversation) {
+      try {
+        const result = await APIClient.forkConversation(messageId);
+        if (!result.success) {
+          console.error('[MessageRenderer] Backend fork failed:', result.error);
+          this._showNotification('Fork işlemi başarısız oldu', 'error');
+          return;
+        }
+        // Use server-generated session ID
+        forkSessionId = result.sessionId;
+        console.log('[MessageRenderer] Backend fork successful, new session:', forkSessionId);
+      } catch (err) {
+        console.error('[MessageRenderer] Backend fork error:', err);
+        this._showNotification('Fork işlemi başarısız: ' + err.message, 'error');
+        return;
+      }
+    } else {
+      // Fallback: Generate local ID if no API available
+      forkSessionId = `ses_fork_${Date.now()}`;
+      console.warn('[MessageRenderer] No API available, using local fork ID:', forkSessionId);
+    }
+
+    // Get messages to copy
+    const messages = MessageStore.getSessionMessages(sessionId);
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    
+    if (messageIndex === -1) return;
+
+    const messagesToCopy = messages.slice(0, messageIndex + 1);
+    
+    // Create new session with parent reference
+    SessionStore.upsertSession(forkSessionId, {
+      title: `Fork from ${sessionId.substring(0, 8)}`,
+      parentId: sessionId,
+    });
+
+    // Copy messages to new session
+    messagesToCopy.forEach((m, i) => {
+      const content = MessageStore.getMessageContent(m.id);
+      const newId = `${forkSessionId}_msg_${i}`;
+      
+      MessageStore.upsertMessage({
+        id: newId,
+        sessionId: forkSessionId,
+        role: m.role,
+        status: 'complete',
+        parts: [{ type: 'text', text: content }],
+        createdAt: m.createdAt,
+      });
+    });
+
+    // Switch to the new session
+    SessionStore.setCurrentSession(forkSessionId);
+    
+    this._showNotification('Yeni dal oluşturuldu', 'success');
+    console.log('[MessageRenderer] Forked to new session:', forkSessionId);
   },
   
   /**
@@ -921,6 +1262,197 @@ const MessageRenderer = {
     }).catch(err => {
       console.error('Kopyalama hatası:', err);
     });
+  },
+  
+  /**
+   * Get dynamic Agent/Model meta HTML for assistant messages
+   * @returns {string}
+   */
+  _getAgentModelMetaHtml() {
+    // Try to get from AgentModelSelector (dynamic)
+    if (window.AgentModelSelector) {
+      const agent = window.AgentModelSelector.getCurrentAgent();
+      const modelInfo = window.AgentModelSelector.getCurrentModel();
+      
+      const agentName = agent?.name || 'coder';
+      const modelName = modelInfo?.model?.name || modelInfo?.model?.id || 'default';
+      const modelKey = modelInfo?.model 
+        ? `${modelInfo.model.providerId}/${modelInfo.model.id}` 
+        : '';
+      
+      return `
+        <div class="message-meta">
+          <span class="agent-info" title="Current Agent">Agent: ${this._escapeHtml(agentName)}</span> • 
+          <span class="model-info" title="${this._escapeHtml(modelKey)}">Model: ${this._escapeHtml(modelName)}</span>
+        </div>
+      `;
+    }
+    
+    // Fallback - try to get from session info
+    const session = window.SessionStore?.getCurrentSession?.();
+    if (session?.agent || session?.model) {
+      const agentName = session.agent || 'coder';
+      const modelName = session.model || 'default';
+      
+      return `
+        <div class="message-meta">
+          <span class="agent-info">Agent: ${this._escapeHtml(agentName)}</span> • 
+          <span class="model-info">Model: ${this._escapeHtml(modelName)}</span>
+        </div>
+      `;
+    }
+    
+    // Last resort - minimal display
+    return `
+      <div class="message-meta">
+        <span class="agent-info">Agent: coder</span>
+      </div>
+    `;
+  },
+  
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} str
+   * @returns {string}
+   */
+  _escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  /**
+   * Show notification toast
+   * @param {string} message
+   * @param {'success' | 'error' | 'info'} type
+   */
+  _showNotification(message, type = 'info') {
+    // Try OpenCodeApp toast first
+    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp._showToast) {
+      OpenCodeApp._showToast(message, type);
+      return;
+    }
+    // Fallback to console
+    const logFn = type === 'error' ? console.error : type === 'success' ? console.log : console.info;
+    logFn(`[MessageRenderer] ${type.toUpperCase()}: ${message}`);
+  },
+
+  // =========================================================================
+  // Smart Scroll Management
+  // =========================================================================
+
+  /** @type {boolean} Auto-scroll enabled */
+  _autoScrollEnabled: true,
+
+  /** @type {number} Timestamp when user last scrolled */
+  _userScrollIntentUntil: 0,
+
+  /** @type {IntersectionObserver | null} */
+  _scrollObserver: null,
+
+  /** @type {HTMLElement | null} */
+  _scrollSentinel: null,
+
+  /**
+   * Initialize smart scroll management
+   * @param {HTMLElement} container - Messages container
+   */
+  initSmartScroll(container) {
+    if (!container) return;
+
+    // Create bottom sentinel element
+    this._scrollSentinel = document.createElement('div');
+    this._scrollSentinel.className = 'scroll-sentinel';
+    this._scrollSentinel.style.height = '1px';
+    container.appendChild(this._scrollSentinel);
+
+    // Create IntersectionObserver to detect if user is at bottom
+    this._scrollObserver = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        // If sentinel is visible, user is at bottom - enable auto-scroll
+        if (entry.isIntersecting) {
+          this._autoScrollEnabled = true;
+        }
+      },
+      {
+        root: container,
+        threshold: 0.1,
+      }
+    );
+
+    this._scrollObserver.observe(this._scrollSentinel);
+
+    // Detect user scroll intent
+    container.addEventListener('wheel', () => this._handleUserScrollIntent(), { passive: true });
+    container.addEventListener('touchmove', () => this._handleUserScrollIntent(), { passive: true });
+    container.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home'].includes(e.key)) {
+        this._handleUserScrollIntent();
+      }
+    });
+
+    console.log('[MessageRenderer] Smart scroll initialized');
+  },
+
+  /**
+   * Handle user scroll intent - disable auto-scroll temporarily
+   */
+  _handleUserScrollIntent() {
+    this._autoScrollEnabled = false;
+    this._userScrollIntentUntil = Date.now() + 3000; // Disable for 3 seconds
+  },
+
+  /**
+   * Scroll to bottom if auto-scroll is enabled
+   * @param {HTMLElement} container
+   * @param {boolean} [force=false] - Force scroll even if auto-scroll disabled
+   */
+  scrollToBottomIfEnabled(container, force = false) {
+    if (!container) return;
+
+    // Check if user scroll intent has expired
+    if (Date.now() > this._userScrollIntentUntil) {
+      this._autoScrollEnabled = true;
+    }
+
+    if (force || this._autoScrollEnabled) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
+  },
+
+  /**
+   * Force scroll to bottom (for new messages from user)
+   * @param {HTMLElement} container
+   */
+  scrollToBottom(container) {
+    this.scrollToBottomIfEnabled(container, true);
+    this._autoScrollEnabled = true;
+  },
+
+  /**
+   * Check if auto-scroll is currently enabled
+   * @returns {boolean}
+   */
+  isAutoScrollEnabled() {
+    return this._autoScrollEnabled;
+  },
+
+  /**
+   * Cleanup scroll observer
+   */
+  destroySmartScroll() {
+    if (this._scrollObserver) {
+      this._scrollObserver.disconnect();
+      this._scrollObserver = null;
+    }
+    if (this._scrollSentinel) {
+      this._scrollSentinel.remove();
+      this._scrollSentinel = null;
+    }
   }
 };
 

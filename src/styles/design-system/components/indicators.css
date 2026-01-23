@@ -1,80 +1,312 @@
 /**
- * Design System - Indicator Components
- * 
- * Status indicators, badges, and dots.
+ * Hayalet-ev Design System - Indicator Components
+ * Status dots and indicator clusters
+ * @version 3.0.0
  */
 
-/* === STATUS DOT === */
+/* === INDICATOR CLUSTER === */
+.indicator-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Genişletilmiş AI1/AI2 cluster */
+.indicator-cluster-wide {
+  flex: 1;
+  max-width: 320px;
+  padding: var(--space-2) var(--space-4);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Merkez Asistan cluster */
+.indicator-cluster-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-2);
+  background: var(--color-accent-muted);
+  border: var(--border-1) solid var(--color-accent);
+  border-radius: var(--radius-lg);
+}
+
+/* Asistan cluster - AI1/AI2 formatında ama kompakt */
+.indicator-cluster-asistan {
+  flex: 0 0 auto;
+  padding: var(--space-1-5) var(--space-3);
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--color-accent-muted);
+  border: var(--border-1) solid var(--color-accent);
+}
+
+.indicator-cluster-asistan .indicator-content {
+  gap: var(--space-1);
+}
+
+.indicator-cluster-asistan .indicator-dots-row {
+  gap: var(--space-2);
+}
+
+/* Orta boy avatar (Asistan için) */
+.indicator-avatar-md {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background-color: var(--bg-elevated);
+  border: 2px solid var(--color-accent);
+}
+
+/* === INDICATOR AVATAR === */
+.indicator-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* Büyük avatar (AI1/AI2 için %200) */
+.indicator-avatar-lg {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+  background-color: var(--bg-elevated);
+  border: 2px solid var(--border-default);
+}
+
+.indicator-avatar.asistan-avatar {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+}
+
+/* === INDICATOR CONTENT === */
+.indicator-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+  flex: 1;
+}
+
+/* === INDICATOR DOTS ROW (3 yanyana) === */
+.indicator-dots-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+.indicator-dots-row.asistan-dots {
+  gap: var(--space-2);
+  justify-content: center;
+  flex: none;
+}
+
+/* Her dot item (label üstte + dot altta) */
+.indicator-dot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.indicator-dot-item .indicator-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.indicator-dot-label {
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* === LEGACY - INDICATOR INLINE === */
+.indicator-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.indicator-inline.asistan-inline {
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+/* === LEGACY - INDICATOR PAIR === */
+.indicator-pair {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.indicator-label {
+  font-size: 9px;
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+/* === INDICATOR DOT === */
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-inactive);
+  transition: var(--transition-fast);
+}
+
+/* Loading state - amber (no pulse, no glow) */
+.indicator-dot.loading,
+.indicator-dot.is-loading {
+  background: var(--dot-loading);
+  box-shadow: none;
+}
+
+/* Loading state - busy pulse (only when red) */
+.indicator-dot.loading.is-busy,
+.indicator-dot.is-loading.is-busy {
+  background: var(--color-error);
+  animation: dot-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--color-error);
+}
+
+/* Send state - cyan (no pulse) */
+.indicator-dot.send,
+.indicator-dot.is-send {
+  background: var(--dot-send);
+  box-shadow: 0 0 8px var(--dot-send);
+}
+
+/* Thinking state - green (no pulse, no glow) */
+.indicator-dot.thinking,
+.indicator-dot.is-thinking {
+  background: var(--dot-thinking);
+  box-shadow: none;
+}
+
+/* Thinking state - busy pulse (only when red) */
+.indicator-dot.thinking.is-busy,
+.indicator-dot.is-thinking.is-busy {
+  background: var(--color-error);
+  animation: dot-pulse 0.8s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--color-error);
+}
+
+/* Active state */
+.indicator-dot.active {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+/* === INDICATOR SELECT ROW === */
+.indicator-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.indicator-select {
+  height: 20px;
+  padding: 0 var(--space-1);
+  font-size: 9px;
+  background: var(--bg-input);
+  border: var(--border-1) solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 1;
+  min-width: 60px;
+}
+
+.indicator-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* === CONVERSATION REFRESH === */
+.conv-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.conv-refresh:hover {
+  background: var(--hover-overlay);
+  color: var(--color-accent);
+}
+
+/* === STATUS DOT (Simple) === */
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-indicator-disconnected);
+  background: var(--dot-inactive);
   flex-shrink: 0;
-  transition: background-color var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.status-dot-sm {
-  width: 6px;
-  height: 6px;
-}
-
-.status-dot-lg {
-  width: 12px;
-  height: 12px;
-}
-
-/* Status variants */
 .status-dot.connected,
-.status-dot-connected {
-  background: var(--color-indicator-connected);
-  box-shadow: 0 0 8px var(--glow-success);
+.status-dot.success {
+  background: var(--color-success);
+  box-shadow: var(--glow-success);
 }
 
-.status-dot.loading,
-.status-dot-loading {
-  background: var(--color-indicator-loading);
-  animation: status-pulse 1s ease-in-out infinite;
-}
-
-.status-dot.thinking,
-.status-dot-thinking {
-  background: var(--color-indicator-thinking);
-  animation: status-pulse 1.5s ease-in-out infinite;
-}
-
-.status-dot.sending,
-.status-dot-sending {
-  background: var(--color-indicator-sending);
-  animation: status-pulse 0.8s ease-in-out infinite;
-}
-
-.status-dot.error,
-.status-dot-error {
+.status-dot.error {
   background: var(--color-error);
-  box-shadow: 0 0 8px var(--glow-error);
+  box-shadow: var(--glow-error);
 }
 
-.status-dot.warning,
-.status-dot-warning {
+.status-dot.warning {
   background: var(--color-warning);
 }
 
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.9); }
+/* === SLOT STATUS DOT === */
+.slot-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-indicator-disconnected);
+  border: 2px solid var(--bg-elevated);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
-/* === INDICATOR DOT (Legacy) === */
-.indicator-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: var(--border-1) solid var(--color-border);
-  background: var(--color-indicator-disconnected);
-  display: inline-block;
-  transition: background-color var(--duration-fast) var(--ease-out);
+.slot-status-dot.connected {
+  background: var(--color-indicator-connected);
+  box-shadow: var(--glow-success);
 }
 
 /* === BADGE === */
@@ -84,46 +316,11 @@
   justify-content: center;
   padding: var(--space-0-5) var(--space-2);
   font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  line-height: 1;
+  font-weight: var(--font-bold);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
   border-radius: var(--radius-badge);
-  white-space: nowrap;
 }
 
-/* Badge variants */
-.badge-default {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-secondary);
-}
-
-.badge-primary {
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-}
-
-.badge-success {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.badge-warning {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.badge-error {
-  background: var(--color-error-bg);
-  color: var(--color-error);
-}
-
-.badge-info {
-  background: var(--color-info-bg);
-  color: var(--color-info);
-}
-
-/* Provider badges (Legacy) */
 .badge.chatgpt {
   background: #10a37f;
   color: white;
@@ -135,180 +332,11 @@
 }
 
 .badge.grok {
-  background: #ffffff;
+  background: #fff;
   color: black;
 }
 
-.badge.ai1 {
-  color: #81C784;
-  border: var(--border-1) solid #81C784;
-  background: transparent;
-}
-
-.badge.ai2 {
-  color: #64B5F6;
-  border: var(--border-1) solid #64B5F6;
-  background: transparent;
-}
-
-/* === NOTIFICATION BADGE === */
-.notification-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 var(--space-1);
-  font-size: 10px;
-  font-weight: var(--font-bold);
+.badge.opencode {
+  background: var(--violet-500);
   color: white;
-  background: var(--color-error);
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.notification-badge:empty {
-  min-width: 10px;
-  height: 10px;
-  padding: 0;
-}
-
-/* === CONNECTION STATUS === */
-.connection-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-.connection-status .status-dot {
-  width: 8px;
-  height: 8px;
-}
-
-/* === INDICATOR CLUSTER (Legacy) === */
-.indicator-cluster {
-  display: flex;
-  flex-direction: row;
-  gap: var(--space-2-5);
-  padding: var(--space-1) var(--space-2-5);
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-lg);
-  align-items: center;
-  width: fit-content;
-}
-
-.indicator-cluster.disconnected {
-  opacity: 0.45;
-  filter: grayscale(1);
-}
-
-.indicator-cluster.thinking-active {
-  box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
-  animation: thinking-glow 1.5s ease-in-out infinite;
-}
-
-@keyframes thinking-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(46, 204, 113, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(46, 204, 113, 0.7); }
-}
-
-.indicator-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--color-bg-tertiary);
-  background-size: cover;
-  background-position: center;
-  border: var(--border-1) solid var(--color-border);
-  display: inline-block;
-  flex: 0 0 28px;
-  min-width: 28px;
-  min-height: 28px;
-  transition: opacity var(--duration-fast) var(--ease-out),
-              filter var(--duration-fast) var(--ease-out);
-}
-
-.indicator-avatar.connected {
-  filter: none;
-  opacity: 1;
-}
-
-.indicator-avatar.avatar-placeholder {
-  background-image: none !important;
-  background-color: rgba(255, 255, 255, 0.03);
-  border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.04);
-  opacity: 0.7;
-  filter: grayscale(1);
-}
-
-.indicator-inline {
-  display: flex;
-  gap: var(--space-2-5);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.indicator-pair {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.indicator-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-/* === PROGRESS INDICATOR === */
-.progress {
-  width: 100%;
-  height: 8px;
-  background: var(--color-bg-tertiary);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  background: var(--color-accent);
-  border-radius: var(--radius-full);
-  transition: width var(--duration-normal) var(--ease-out);
-}
-
-.progress-bar-success {
-  background: var(--color-success);
-}
-
-.progress-bar-warning {
-  background: var(--color-warning);
-}
-
-.progress-bar-error {
-  background: var(--color-error);
-}
-
-/* Progress with label */
-.progress-labeled {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.progress-labeled .progress {
-  flex: 1;
-}
-
-.progress-label {
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--color-text-secondary);
-  min-width: 40px;
-  text-align: right;
 }

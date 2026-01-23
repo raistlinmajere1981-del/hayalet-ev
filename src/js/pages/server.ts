@@ -170,9 +170,8 @@ export class ServerController {
 
   updateCommandGuide() {
     if (!this.commandGuide || !this.commandSelect) return;
-    const selected = this.commandSelect.value;
-    // Command guide kaldırıldı - komut adı göster
-    (this.commandGuide as HTMLTextAreaElement).value = selected ? `Komut: ${selected}` : "";
+    // Guide içeriği kaldırıldı - placeholder gösterilecek
+    (this.commandGuide as HTMLTextAreaElement).value = "";
   }
 
   addCommandToTextarea() {

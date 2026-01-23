@@ -1,0 +1,88 @@
+/**
+ * Hayalet-ev Design System - Aurora Theme
+ * Light theme - Teal/Sky accents
+ * Northern lights inspired
+ * @version 3.0.0
+ */
+
+[data-theme="aurora"] {
+  /* === BACKGROUNDS === */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: rgba(241, 245, 249, 0.8);
+  --bg-overlay: rgba(15, 23, 42, 0.5);
+  
+  /* === TEXT === */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverse: #f8fafc;
+  
+  /* === BORDERS === */
+  --border-default: rgba(148, 163, 184, 0.4);
+  --border-subtle: rgba(203, 213, 225, 0.5);
+  --border-glass: rgba(0, 0, 0, 0.06);
+  --border-focus: var(--teal-500);
+  
+  /* === ACCENT - TEAL === */
+  --color-accent: var(--teal-500);
+  --color-accent-hover: var(--teal-400);
+  --color-accent-active: var(--teal-600);
+  --color-accent-muted: rgba(20, 184, 166, 0.15);
+  --accent-gradient: linear-gradient(135deg, var(--teal-400) 0%, var(--sky-400) 100%);
+  
+  /* === STATUS === */
+  --color-success: var(--emerald-500);
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-warning: var(--amber-500);
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-error: var(--red-500);
+  --color-error-bg: rgba(239, 68, 68, 0.1);
+  --color-info: var(--sky-500);
+  
+  /* === INTERACTIVE === */
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --active-overlay: rgba(0, 0, 0, 0.08);
+  --focus-ring: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--teal-500);
+  
+  /* === SHADOWS & GLOWS === */
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: 0 10px 40px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --glow-accent: var(--glow-teal-sm);
+  
+  /* === SCROLLBAR === */
+  --scrollbar-track: var(--bg-elevated);
+  --scrollbar-thumb: var(--slate-300);
+  --scrollbar-thumb-hover: var(--slate-400);
+  
+  /* === RELAY === */
+  --relay-particle-color: var(--teal-500);
+  --relay-track-color: rgba(20, 184, 166, 0.2);
+  
+  /* === INDICATORS === */
+  --dot-inactive: var(--slate-300);
+  --dot-loading: var(--amber-500);
+  --dot-send: var(--teal-500);
+  --dot-thinking: var(--emerald-500);
+
+  /* === LEGACY ALIASES === */
+  --color-bg-primary: var(--bg-app);
+  --color-bg-secondary: var(--bg-surface);
+  --color-bg-tertiary: var(--bg-elevated);
+  --color-bg-hover: var(--hover-overlay);
+  --color-bg-active: var(--active-overlay);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border-default);
+  --color-danger: var(--color-error);
+  --color-indicator-connected: var(--color-success);
+  --color-indicator-disconnected: var(--slate-300);
+}

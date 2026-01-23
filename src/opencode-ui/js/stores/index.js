@@ -14,12 +14,14 @@
  * @typedef {typeof window.MessageStore} MessageStoreType
  * @typedef {typeof window.SessionStore} SessionStoreType  
  * @typedef {typeof window.StoreBridge} StoreBridgeType
+ * @typedef {typeof window.InstanceStore} InstanceStoreType
  */
 
 // Verify all stores are loaded
 function verifyStores() {
   const missing = [];
   
+  if (typeof window.InstanceStore === 'undefined') missing.push('InstanceStore');
   if (typeof window.MessageStore === 'undefined') missing.push('MessageStore');
   if (typeof window.SessionStore === 'undefined') missing.push('SessionStore');
   if (typeof window.StoreBridge === 'undefined') missing.push('StoreBridge');
@@ -43,6 +45,7 @@ function initStores() {
   // This is handled by MessageRenderer.init() subscribing to MessageStore
   
   console.log('[Stores] Initialized', {
+    instances: window.InstanceStore.getStats(),
     messages: window.MessageStore.getStats(),
     sessions: window.SessionStore.getStats(),
   });

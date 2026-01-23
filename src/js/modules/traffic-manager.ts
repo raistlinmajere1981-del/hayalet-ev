@@ -436,6 +436,15 @@ class TrafficManagerClass {
       const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.busy;
       dot.style.display = "inline-block";
       dot.style.backgroundColor = color;
+      
+      // Loading ve thinking için sadece busy (kırmızı) durumunda pulse animasyonu
+      if (kind === "loading" || kind === "thinking") {
+        if (status === "busy") {
+          dot.classList.add("is-busy");
+        } else {
+          dot.classList.remove("is-busy");
+        }
+      }
     }
     
     // Thinking durumunda cluster'a glow efekti ekle/kaldır

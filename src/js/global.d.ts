@@ -43,15 +43,56 @@ declare global {
    * Electron IPC API Interface
    * Preload script tarafından expose edilen tüm metodlar
    */
+  // OpenCode Config Types
+  interface OpenCodeRecentFolder {
+    path: string;
+    name: string;
+    lastAccessed: number;
+  }
+
+  interface OpenCodeBinary {
+    path: string;
+    version?: string;
+    lastUsed: number;
+  }
+
+  interface OpenCodePreferences {
+    defaultPort: number;
+    autoConnect: boolean;
+    showThinkingBlocks: boolean;
+    diffViewMode: "split" | "unified";
+    toolOutputExpansion: "expanded" | "collapsed";
+  }
+
+  interface OpenCodeConfig {
+    recentFolders: OpenCodeRecentFolder[];
+    opencodeBinaries: OpenCodeBinary[];
+    preferences: OpenCodePreferences;
+    lastUsedBinary?: string;
+    lastWorkspace?: string;
+  }
+
   interface ElectronAPI {
     // Settings
     loadSettings: () => Promise<Record<string, unknown>>;
     saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
 
+    // OpenCode Config
+    loadOpencodeConfig: () => Promise<OpenCodeConfig>;
+    saveOpencodeConfig: (config: OpenCodeConfig) => Promise<boolean>;
+    opcAddRecentFolder: (path: string, name?: string) => Promise<OpenCodeConfig>;
+    opcRemoveRecentFolder: (path: string) => Promise<OpenCodeConfig>;
+    opcAddBinary: (path: string, version?: string) => Promise<OpenCodeConfig>;
+    opcRemoveBinary: (path: string) => Promise<OpenCodeConfig>;
+    opcUpdatePreferences: (updates: Partial<OpenCodePreferences>) => Promise<OpenCodeConfig>;
+    opcRecordWorkspaceLaunch: (folderPath: string, binaryPath?: string) => Promise<OpenCodeConfig>;
+
     // File Operations
     readFile: (path: string) => Promise<string | null>;
     readDirectoryFiles: (dirPath: string) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;
     showOpenDialog: (options: Record<string, unknown>) => Promise<{ canceled: boolean; filePaths: string[] }>;
+    openTerminal: (path: string) => Promise<{ success: boolean; error?: string }>;
+    shellOpenPath: (path: string) => Promise<string>;
     showMessageBox: (options: Record<string, unknown>) => Promise<{ response: number; checkboxChecked: boolean }>;
     copyToAssets: (srcPath: string, role: string, accountInfo?: Record<string, unknown> | null) => Promise<{ path: string } | null>;
     deleteAsset: (assetPath: string) => Promise<IPCResult>;

@@ -319,6 +319,201 @@
   color: var(--text-muted);
 }
 
+/* Agent Selector */
+.agent-selector {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.agent-selector:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.agent-selector:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-icon {
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.agent-info {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+}
+
+.agent-name {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Agent Dropdown Popup */
+.agent-dropdown-popup {
+  z-index: 2000;
+  max-height: 300px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-dropdown-list {
+  overflow-y: auto;
+  max-height: 260px;
+  padding: var(--space-xs);
+}
+
+.agent-dropdown-item {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.agent-dropdown-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.agent-dropdown-item.selected {
+  background: rgba(88, 166, 255, 0.15);
+}
+
+.agent-dropdown-item.selected:hover {
+  background: rgba(88, 166, 255, 0.25);
+}
+
+.agent-item-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.agent-item-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.agent-item-badge {
+  display: inline-block;
+  margin-left: var(--space-xs);
+  padding: 2px 6px;
+  font-size: 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.agent-dropdown-empty {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Model Dropdown Popup */
+.model-dropdown-popup {
+  z-index: 2000;
+  max-height: 350px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.model-dropdown-search {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.model-search-input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.model-search-input:focus {
+  border-color: var(--accent);
+}
+
+.model-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.model-dropdown-list {
+  overflow-y: auto;
+  max-height: 280px;
+  padding: var(--space-xs);
+}
+
+.model-dropdown-item {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.model-dropdown-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.model-dropdown-item.selected {
+  background: rgba(88, 166, 255, 0.15);
+}
+
+.model-dropdown-item.selected:hover {
+  background: rgba(88, 166, 255, 0.25);
+}
+
+.model-item-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.model-item-id {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.model-dropdown-empty {
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 /* ============================================
  * Right Sidebar - Action Bar
  * ============================================ */
@@ -613,4 +808,76 @@
   .app-layout {
     grid-template-columns: 1fr;
   }
+}
+
+/* ============================================
+ * Quick Actions Panel
+ * ============================================ */
+
+.quick-actions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.quick-action-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.quick-action-btn .icon {
+  font-size: 1.2em;
+}
+
+/* ============================================
+ * Trash Panel
+ * ============================================ */
+
+.trash-panel {
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.trash-panel .placeholder-text {
+  margin-bottom: var(--space-md);
+}
+
+/* ============================================
+ * New Session Button
+ * ============================================ */
+
+.btn-new-session {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--accent-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-new-session:hover {
+  background: var(--accent-hover);
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }

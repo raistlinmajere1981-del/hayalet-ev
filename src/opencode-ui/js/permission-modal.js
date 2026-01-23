@@ -88,14 +88,22 @@ const PermissionModal = {
         <div class="permission-details"></div>
       </div>
       <div class="permission-footer">
-        <button class="permission-btn permission-btn-deny">
-          <span class="btn-icon">✕</span>
-          Reddet
-        </button>
-        <button class="permission-btn permission-btn-approve">
-          <span class="btn-icon">✓</span>
-          Onayla
-        </button>
+        <label class="permission-auto-approve">
+          <input type="checkbox" id="permission-auto-approve-check">
+          <span>Bu oturumda benzer işlemleri otomatik onayla</span>
+        </label>
+        <div class="permission-buttons">
+          <button class="permission-btn permission-btn-deny" title="Reddet (D)">
+            <span class="btn-icon">✕</span>
+            <span class="btn-text">Reddet</span>
+            <kbd class="btn-kbd">D</kbd>
+          </button>
+          <button class="permission-btn permission-btn-approve" title="Onayla (A)">
+            <span class="btn-icon">✓</span>
+            <span class="btn-text">Onayla</span>
+            <kbd class="btn-kbd">A</kbd>
+          </button>
+        </div>
       </div>
     `;
 

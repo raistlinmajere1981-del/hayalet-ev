@@ -10,7 +10,13 @@
   <link rel="stylesheet" href="styles/entrance.css">
 </head>
 <body>
-  <div id="app" class="entrance-app">
+  <!-- Loading Overlay - Config yüklenene kadar gösterilir -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Yükleniyor...</p>
+  </div>
+
+  <div id="app" class="entrance-app" style="opacity: 0; pointer-events: none;">
     <!-- ============================================
          Top Right Actions
          ============================================ -->
@@ -27,36 +33,10 @@
          Main Content
          ============================================ -->
     <main class="entrance-main">
-      <!-- Logo & Title -->
+      <!-- Title -->
       <div class="entrance-header">
-        <div class="entrance-logo">
-          <svg width="160" height="160" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Hexagon outline -->
-            <path d="M100 10L178.66 55V145L100 190L21.34 145V55L100 10Z" 
-                  stroke="url(#logoGradient)" stroke-width="3" fill="none"/>
-            <!-- Inner hexagon -->
-            <path d="M100 35L155 67.5V132.5L100 165L45 132.5V67.5L100 35Z" 
-                  stroke="url(#logoGradient)" stroke-width="2" fill="none" opacity="0.5"/>
-            <!-- OC Letters -->
-            <text x="100" y="115" text-anchor="middle" 
-                  fill="url(#logoGradient)" font-family="monospace" font-size="48" font-weight="bold">OC</text>
-            <!-- Circuit lines -->
-            <circle cx="100" cy="35" r="4" fill="#00d9ff"/>
-            <circle cx="155" cy="67.5" r="4" fill="#00d9ff"/>
-            <circle cx="155" cy="132.5" r="4" fill="#00d9ff"/>
-            <circle cx="100" cy="165" r="4" fill="#00d9ff"/>
-            <circle cx="45" cy="132.5" r="4" fill="#00d9ff"/>
-            <circle cx="45" cy="67.5" r="4" fill="#00d9ff"/>
-            <defs>
-              <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#00d9ff"/>
-                <stop offset="100%" stop-color="#0099cc"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <h1 class="entrance-title">OpenCode</h1>
-        <p class="entrance-subtitle">Select a folder to start coding with AI</p>
+        <h1 class="entrance-title">Workspace Seçimi</h1>
+        <p class="entrance-subtitle">AI ile kodlamaya başlamak için bir klasör seçin</p>
       </div>
 
       <!-- Recent Folders Section -->
@@ -68,33 +48,6 @@
         
         <div class="folder-list" id="folder-list">
           <!-- Recent folders will be populated here -->
-          <div class="folder-item" data-path="/home/raistlin/hayalet-ev">
-            <div class="folder-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </div>
-            <div class="folder-info">
-              <span class="folder-name">hayalet-ev</span>
-              <span class="folder-path">/home/raistlin/hayalet-ev</span>
-              <span class="folder-time">2m ago</span>
-            </div>
-            <div class="folder-actions">
-              <button class="btn btn-icon btn-sm" title="Terminal'de Aç">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="4 17 10 11 4 5"></polyline>
-                  <line x1="12" y1="19" x2="20" y2="19"></line>
-                </svg>
-              </button>
-              <button class="btn btn-icon btn-sm" title="Listeden Kaldır">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- Browse for Folder Section -->
@@ -172,6 +125,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="js/directory-browser.js"></script>
   <script src="js/entrance.js"></script>
 </body>
 </html>

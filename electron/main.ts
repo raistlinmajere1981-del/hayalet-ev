@@ -74,6 +74,7 @@ import { setupWindowHandlers } from "./handlers/ipc-window.ts";
 import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
 import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
+import { setupOpencodeHandlers } from "./handlers/ipc-opencode.ts";
 import { registerHandler } from "./handlers/ipc-helpers.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -144,6 +145,7 @@ app.whenReady().then(async () => {
     setupProviderHandlers(__dirname);
     setupSettingsHandlers();
     setupDatabaseHandlers();
+    setupOpencodeHandlers();
 
     try {
       initWindowManager({ mainWindow });

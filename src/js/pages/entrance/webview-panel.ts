@@ -269,9 +269,9 @@ export class WebviewPanel {
           const icon = overlayEl.querySelector(".overlay-icon");
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (icon) icon.textContent = "⏸️";
-          if (title) title.textContent = "Bağlantı Kesildi";
-          if (subtitle) subtitle.textContent = "Bağlanmak için tıklayın";
+          if (icon) icon.textContent = "⏸";
+          if (title) title.textContent = "Bağlı Değil";
+          if (subtitle) subtitle.textContent = "";
         }
         if (webviewEl) webviewEl.style.display = "none";
         continue;

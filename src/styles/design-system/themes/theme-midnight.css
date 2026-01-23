@@ -1,0 +1,88 @@
+/**
+ * Hayalet-ev Design System - Midnight Theme
+ * Secondary dark theme - Violet/Purple accents
+ * Tokyo Night inspired
+ * @version 3.0.0
+ */
+
+[data-theme="midnight"] {
+  /* === BACKGROUNDS === */
+  --bg-app: #0f0d1a;
+  --bg-surface: #16131f;
+  --bg-elevated: #1e1a2e;
+  --bg-glass: rgba(22, 19, 31, 0.85);
+  --bg-glass-hover: rgba(22, 19, 31, 0.95);
+  --bg-input: rgba(22, 19, 31, 0.6);
+  --bg-overlay: rgba(0, 0, 0, 0.75);
+  
+  /* === TEXT === */
+  --text-primary: #e8e6f0;
+  --text-secondary: #c4bfdb;
+  --text-tertiary: #9690b0;
+  --text-muted: #6b6488;
+  --text-inverse: #0f0d1a;
+  
+  /* === BORDERS === */
+  --border-default: rgba(107, 100, 136, 0.4);
+  --border-subtle: rgba(75, 70, 100, 0.4);
+  --border-glass: rgba(255, 255, 255, 0.06);
+  --border-focus: var(--violet-400);
+  
+  /* === ACCENT - VIOLET === */
+  --color-accent: var(--violet-400);
+  --color-accent-hover: var(--violet-300);
+  --color-accent-active: var(--violet-500);
+  --color-accent-muted: var(--violet-alpha-20);
+  --accent-gradient: linear-gradient(135deg, var(--violet-400) 0%, var(--pink-400) 100%);
+  
+  /* === STATUS === */
+  --color-success: var(--emerald-400);
+  --color-success-bg: rgba(52, 211, 153, 0.15);
+  --color-warning: var(--amber-400);
+  --color-warning-bg: rgba(251, 191, 36, 0.15);
+  --color-error: var(--rose-400);
+  --color-error-bg: rgba(251, 113, 133, 0.15);
+  --color-info: var(--violet-400);
+  
+  /* === INTERACTIVE === */
+  --hover-overlay: rgba(255, 255, 255, 0.04);
+  --active-overlay: rgba(255, 255, 255, 0.08);
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--violet-400);
+  
+  /* === SHADOWS & GLOWS === */
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-dropdown: 0 10px 40px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  --glow-accent: var(--glow-violet-md);
+  
+  /* === SCROLLBAR === */
+  --scrollbar-track: var(--bg-surface);
+  --scrollbar-thumb: #3d3654;
+  --scrollbar-thumb-hover: #4d4466;
+  
+  /* === RELAY === */
+  --relay-particle-color: var(--violet-400);
+  --relay-track-color: rgba(167, 139, 250, 0.15);
+  
+  /* === INDICATORS === */
+  --dot-inactive: #4d4466;
+  --dot-loading: var(--amber-400);
+  --dot-send: var(--violet-400);
+  --dot-thinking: var(--pink-400);
+
+  /* === LEGACY ALIASES === */
+  --color-bg-primary: var(--bg-app);
+  --color-bg-secondary: var(--bg-surface);
+  --color-bg-tertiary: var(--bg-elevated);
+  --color-bg-hover: var(--hover-overlay);
+  --color-bg-active: var(--active-overlay);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border-default);
+  --color-danger: var(--color-error);
+  --color-indicator-connected: var(--color-success);
+  --color-indicator-disconnected: #4d4466;
+}

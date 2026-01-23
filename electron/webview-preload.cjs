@@ -69,6 +69,27 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) =>
     ipcRenderer.invoke("generate-tree", basePath, options),
+  
+  // OpenCode Native UI - Config & Filesystem
+  loadOpencodeConfig: () => ipcRenderer.invoke("opc-load-config"),
+  saveOpencodeConfig: (config) => ipcRenderer.invoke("opc-save-config", config),
+  opcAddRecentFolder: (path, name) => ipcRenderer.invoke("opc-add-recent-folder", path, name),
+  opcRemoveRecentFolder: (path) => ipcRenderer.invoke("opc-remove-recent-folder", path),
+  opcAddBinary: (path, version) => ipcRenderer.invoke("opc-add-binary", path, version),
+  opcRemoveBinary: (path) => ipcRenderer.invoke("opc-remove-binary", path),
+  opcUpdatePreferences: (updates) => ipcRenderer.invoke("opc-update-preferences", updates),
+  opcRecordLaunch: (folderPath, binaryPath) => ipcRenderer.invoke("opc-record-launch", folderPath, binaryPath),
+  opcOpenFolderDialog: (options) => ipcRenderer.invoke("opc-open-folder-dialog", options),
+  opcOpenFileDialog: (options) => ipcRenderer.invoke("opc-open-file-dialog", options),
+  opcListFilesystem: (path, options) => ipcRenderer.invoke("opc-list-filesystem", path, options),
+  opcValidatePath: (path) => ipcRenderer.invoke("opc-validate-path", path),
+  opcGetHomePath: () => ipcRenderer.invoke("opc-get-home-path"),
+  opcJoinPath: (...segments) => ipcRenderer.invoke("opc-join-path", ...segments),
+  opcPathInfo: (path) => ipcRenderer.invoke("opc-path-info", path),
+  
+  // OpenCode CLI Integration (Agent & Model Lists)
+  opcListModels: () => ipcRenderer.invoke("opc-list-models"),
+  opcListAgents: () => ipcRenderer.invoke("opc-list-agents"),
 });
 
 function setupProvider() {

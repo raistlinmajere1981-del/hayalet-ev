@@ -367,8 +367,38 @@ function setupTopBarButtons() {
       });
     }
 
-    // Page navigation buttons in topbar
-    const navButtons = document.querySelectorAll(".topbar-nav-btn") as NodeListOf<HTMLElement>;
+    // Side navigation overlay hover handling
+    const sideNavOverlay = document.getElementById("side-nav-overlay");
+    const sideNavTrigger = document.querySelector(".side-nav-trigger");
+    const sideNavMenu = document.querySelector(".side-nav-menu");
+    
+    if (sideNavOverlay && sideNavTrigger && sideNavMenu) {
+      // Trigger zone'a girildiğinde menüyü aç
+      sideNavTrigger.addEventListener("mouseenter", () => {
+        sideNavOverlay.classList.add("is-open");
+      });
+      
+      // Menüden çıkıldığında kapat
+      sideNavMenu.addEventListener("mouseleave", () => {
+        sideNavOverlay.classList.remove("is-open");
+      });
+      
+      // Trigger'dan direkt dışarı çıkıldığında (menüye girmeden)
+      sideNavTrigger.addEventListener("mouseleave", (e) => {
+        const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
+        if (!relatedTarget || !sideNavMenu.contains(relatedTarget)) {
+          // Kısa gecikme ile kapat (menüye geçiş için zaman tanı)
+          setTimeout(() => {
+            if (!sideNavOverlay.matches(":hover")) {
+              sideNavOverlay.classList.remove("is-open");
+            }
+          }, 100);
+        }
+      });
+    }
+
+    // Page navigation buttons in side overlay
+    const navButtons = document.querySelectorAll(".side-nav-btn") as NodeListOf<HTMLElement>;
     navButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         const page = btn.dataset.page;

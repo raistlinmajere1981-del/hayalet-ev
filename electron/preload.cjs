@@ -95,10 +95,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowClose: () => ipcRenderer.send("window-close"),
   windowMinimizeToTray: () => ipcRenderer.send("window-minimize-to-tray"),
   appRestart: () => ipcRenderer.invoke("app-restart"),
+  openTerminal: (path) => ipcRenderer.invoke("open-terminal", path),
+  shellOpenPath: (path) => ipcRenderer.invoke("shell-open-path", path),
   deviceAction: (action, payload) =>
     ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) =>
     ipcRenderer.invoke("generate-tree", basePath, options),
+  // OpenCode Config API
+  loadOpencodeConfig: () => ipcRenderer.invoke("load-opencode-config"),
+  saveOpencodeConfig: (config) => ipcRenderer.invoke("save-opencode-config", config),
+  opcAddRecentFolder: (path, name) => ipcRenderer.invoke("opencode-add-recent-folder", path, name),
+  opcRemoveRecentFolder: (path) => ipcRenderer.invoke("opencode-remove-recent-folder", path),
+  opcAddBinary: (path, version) => ipcRenderer.invoke("opencode-add-binary", path, version),
+  opcRemoveBinary: (path) => ipcRenderer.invoke("opencode-remove-binary", path),
+  opcUpdatePreferences: (updates) => ipcRenderer.invoke("opencode-update-preferences", updates),
+  opcRecordWorkspaceLaunch: (folderPath, binaryPath) => ipcRenderer.invoke("opencode-record-workspace-launch", folderPath, binaryPath),
+
   // OpenCode Server API
   opencodeStart: (options) => ipcRenderer.invoke("opencode-start", options),
   opencodeStop: () => ipcRenderer.invoke("opencode-stop"),
@@ -123,6 +135,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("get-provider-config", providerId),
   onAssistantDisconnected: (callback) =>
     ipcRenderer.on("assistant-disconnected", (event, data) => callback(data)),
+  
+  // OpenCode CLI Integration (Agent & Model Lists)
+  opcListModels: () => ipcRenderer.invoke("opc-list-models"),
+  opcListAgents: () => ipcRenderer.invoke("opc-list-agents"),
+  
+  // OpenCode Filesystem (Directory Browser)
+  opcOpenFolderDialog: (options) => ipcRenderer.invoke("opc-open-folder-dialog", options),
+  opcOpenFileDialog: (options) => ipcRenderer.invoke("opc-open-file-dialog", options),
+  opcListFilesystem: (path, options) => ipcRenderer.invoke("opc-list-filesystem", path, options),
+  opcValidatePath: (path) => ipcRenderer.invoke("opc-validate-path", path),
+  opcGetHomePath: () => ipcRenderer.invoke("opc-get-home-path"),
+  opcJoinPath: (...segments) => ipcRenderer.invoke("opc-join-path", ...segments),
+  opcPathInfo: (path) => ipcRenderer.invoke("opc-path-info", path),
 });
 
 try {

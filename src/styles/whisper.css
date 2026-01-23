@@ -1,75 +1,242 @@
+/**
+ * Hayalet-ev - Whisper Page Styles
+ * Voice command management interface
+ * @version 3.0.0
+ */
+
+/* === PAGE LAYOUT === */
+.whisper-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--topbar-height));
+  padding: var(--space-4);
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+/* === WHISPER GRID === */
 .whisper-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  padding: 10px 0;
+  gap: var(--space-3);
+  height: calc(100vh - var(--topbar-height));
+  padding: var(--space-3);
+  overflow: hidden;
 }
+
 .whisper-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-rows: auto 1fr 1fr;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow: hidden;
 }
+
+/* === WHISPER HEADER === */
 .whisper-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
 }
+
 .whisper-name {
-  font-weight: 700;
+  font-size: var(--text-md);
+  font-weight: var(--font-bold);
   color: var(--text-primary);
 }
+
+/* === PANEL === */
 .panel {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 10px;
-}
-.panel h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-.whisper-list {
-  width: 100%;
-  min-height: 200px;
-  max-height: 200px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 8px;
-  color: var(--text-primary);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-card);
+  backdrop-filter: var(--glass-blur);
+  padding: var(--space-3);
+  overflow: hidden;
 }
+
+.panel h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+/* === WHISPER LIST === */
+.whisper-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .whisper-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
   align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 6px 8px;
+  gap: var(--space-3);
+  background: var(--bg-elevated);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  transition: var(--transition-fast);
 }
+
+.whisper-row:hover {
+  background: var(--hover-overlay);
+  border-color: var(--color-accent);
+}
+
 .whisper-text {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 .whisper-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
+  transition: var(--transition-fast);
 }
+
+.whisper-remove:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
 .whisper-empty {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* === WHISPER CONTROLS === */
+.whisper-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-card);
+  backdrop-filter: var(--glass-blur);
+}
+
+.whisper-controls .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.whisper-controls label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   color: var(--text-secondary);
-  opacity: 0.9;
+}
+
+.whisper-controls .input {
+  height: var(--input-height);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-input);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.whisper-controls .input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.whisper-controls .btn-group {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* === STATUS INDICATOR === */
+.whisper-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.whisper-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot-inactive);
+}
+
+.whisper-status.recording .status-dot {
+  background: var(--color-error);
+  animation: dot-pulse 1s ease-in-out infinite;
+}
+
+.whisper-status.processing .status-dot {
+  background: var(--color-warning);
+  animation: dot-pulse 0.5s ease-in-out infinite;
+}
+
+.whisper-status.ready .status-dot {
+  background: var(--color-success);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 900px) {
+  .whisper-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .whisper-list {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 600px) {
+  .whisper-page {
+    padding: var(--space-3);
+  }
+  
+  .whisper-controls .btn-group {
+    flex-direction: column;
+  }
+  
+  .whisper-controls .btn-group .btn {
+    width: 100%;
+  }
 }

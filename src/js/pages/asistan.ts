@@ -452,9 +452,27 @@ export class AsistanController {
         
         if (nativeWebview) {
           nativeWebview.classList.remove("hidden");
+          
+          // Preload path'i Electron API'den al ve webview'a ayarla
+          try {
+            const preloadPath = await window.electronAPI?.getPreloadPath?.("webview");
+            if (preloadPath) {
+              // preloadPath zaten file:// ile başlıyorsa tekrar ekleme
+              const fullPreloadPath = preloadPath.startsWith("file://") ? preloadPath : `file://${preloadPath}`;
+              nativeWebview.setAttribute("preload", fullPreloadPath);
+              LogManager.addEvent("asistan", "debug", `Native webview preload: ${fullPreloadPath}`, { visibility: 3 });
+            }
+          } catch (preloadErr) {
+            LogManager.addEvent("asistan", "warn", `Preload path alınamadı: ${(preloadErr as Error).message}`, { visibility: 2 });
+          }
+          
+          // Native UI bridge'i kur (Electron API erişimi için)
+          this._setupNativeUIBridge(nativeWebview);
+          
           // Server URL'ini query param olarak gönder
           const serverUrl = result.url || "http://127.0.0.1:4097";
           const baseOrigin = window.location.origin;
+          // Doğrudan index.html yükle (entrance.html yerine)
           const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}`;
           
           LogManager.addEvent("asistan", "debug", `Native webview URL: ${srcUrl}`, { visibility: 3 });
@@ -799,7 +817,7 @@ export class AsistanController {
     if (this.relayBtn) {
       this.relayBtn.disabled = !canRelay;
       this.relayBtn.classList.toggle("active", this._isRelayActive);
-      this.relayBtn.textContent = this._isRelayActive ? "Relay Durdur" : "AI-Asistan Sohbet";
+      this.relayBtn.textContent = this._isRelayActive ? "Relay Durdur" : "AI-Asistan Sohbeti";
     }
     
     // Kaynak seçici
@@ -933,6 +951,185 @@ export class AsistanController {
       }
     });
 
+  }
+
+  /**
+   * Native UI webview için Electron API bridge kurulumu
+   * executeJavaScript ile API fonksiyonlarını inject eder ve console.log ile iletişim kurar
+   */
+  _nativeBridgeSetup = false; // Flag to prevent duplicate setup
+
+  _setupNativeUIBridge(webviewEl: WebviewElement): void {
+    if (!webviewEl) return;
+    
+    // Prevent duplicate setup
+    if (this._nativeBridgeSetup) {
+      LogManager.addEvent("asistan", "debug", "Native UI bridge already setup, skipping", { visibility: 3 });
+      return;
+    }
+    this._nativeBridgeSetup = true;
+
+    // did-finish-load event'inde API bridge'i inject et
+    webviewEl.addEventListener("did-finish-load", async () => {
+      LogManager.addEvent("asistan", "debug", "Native webview loaded, injecting API bridge", { visibility: 3 });
+      
+      // Inject API bridge script
+      const bridgeScript = `
+        (function() {
+          if (window.__nativeUIBridgeReady) return;
+          window.__nativeUIBridgeReady = true;
+          
+          // Request ID counter
+          let requestId = 0;
+          const pendingRequests = new Map();
+          
+          // Listen for responses
+          window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'electron-api-response') {
+              const { requestId: respId, result, error } = event.data;
+              const pending = pendingRequests.get(respId);
+              if (pending) {
+                pendingRequests.delete(respId);
+                if (error) {
+                  pending.reject(new Error(error));
+                } else {
+                  pending.resolve(result);
+                }
+              }
+            }
+          });
+          
+          // Create API proxy
+          window.__nativeUIRequest = function(method, ...args) {
+            return new Promise((resolve, reject) => {
+              const id = ++requestId;
+              pendingRequests.set(id, { resolve, reject });
+              
+              // Timeout after 15 seconds
+              setTimeout(() => {
+                if (pendingRequests.has(id)) {
+                  pendingRequests.delete(id);
+                  reject(new Error('Request timeout: ' + method));
+                }
+              }, 15000);
+              
+              // Signal to host via console (will be intercepted)
+              console.log('__NATIVE_UI_REQUEST__:' + JSON.stringify({ requestId: id, method, args }));
+            });
+          };
+          
+          // Expose electronAPI-like interface
+          window.electronAPI = {
+            loadOpencodeConfig: () => window.__nativeUIRequest('loadOpencodeConfig'),
+            saveOpencodeConfig: (config) => window.__nativeUIRequest('saveOpencodeConfig', config),
+            opcAddRecentFolder: (path, name) => window.__nativeUIRequest('opcAddRecentFolder', path, name),
+            opcRemoveRecentFolder: (path) => window.__nativeUIRequest('opcRemoveRecentFolder', path),
+            opcUpdatePreferences: (updates) => window.__nativeUIRequest('opcUpdatePreferences', updates),
+            showOpenDialog: (options) => window.__nativeUIRequest('showOpenDialog', options),
+            openTerminal: (path) => window.__nativeUIRequest('openTerminal', path),
+            shellOpenPath: (path) => window.__nativeUIRequest('shellOpenPath', path),
+            // Agent & Model Lists
+            opcListModels: () => window.__nativeUIRequest('opcListModels'),
+            opcListAgents: () => window.__nativeUIRequest('opcListAgents'),
+          };
+          
+          console.log('[NativeUI] API bridge injected');
+        })();
+      `;
+      
+      try {
+        await webviewEl.executeJavaScript?.(bridgeScript);
+        LogManager.addEvent("asistan", "info", "Native UI API bridge injected", { visibility: 2 });
+      } catch (err) {
+        LogManager.addEvent("asistan", "error", `Failed to inject API bridge: ${(err as Error).message}`, { visibility: 2 });
+      }
+    });
+
+    // console-message event'ini dinle (webview'dan gelen API istekleri)
+    webviewEl.addEventListener("console-message", async (event: Event) => {
+      const consoleEvent = event as Event & { message: string; level: number };
+      const { message } = consoleEvent;
+      
+      // Check if this is an API request
+      if (!message?.startsWith('__NATIVE_UI_REQUEST__:')) return;
+      
+      try {
+        const jsonStr = message.substring('__NATIVE_UI_REQUEST__:'.length);
+        const { requestId, method, args } = JSON.parse(jsonStr) as { requestId: number; method: string; args: unknown[] };
+        
+        LogManager.addEvent("asistan", "debug", `Native UI API request: ${method}`, { requestId, visibility: 3 });
+        
+        let result: unknown;
+        
+        // Map method names to Electron API calls
+        switch (method) {
+          case "loadOpencodeConfig":
+            result = await window.electronAPI?.loadOpencodeConfig?.();
+            break;
+          case "saveOpencodeConfig":
+            result = await window.electronAPI?.saveOpencodeConfig?.(args[0] as Parameters<NonNullable<typeof window.electronAPI.saveOpencodeConfig>>[0]);
+            break;
+          case "opcAddRecentFolder":
+            result = await window.electronAPI?.opcAddRecentFolder?.(args[0] as string, args[1] as string | undefined);
+            break;
+          case "opcRemoveRecentFolder":
+            result = await window.electronAPI?.opcRemoveRecentFolder?.(args[0] as string);
+            break;
+          case "opcUpdatePreferences":
+            result = await window.electronAPI?.opcUpdatePreferences?.(args[0] as Parameters<NonNullable<typeof window.electronAPI.opcUpdatePreferences>>[0]);
+            break;
+          case "showOpenDialog":
+            result = await window.electronAPI?.showOpenDialog?.(args[0] as Parameters<NonNullable<typeof window.electronAPI.showOpenDialog>>[0]);
+            break;
+          case "openTerminal":
+            result = await window.electronAPI?.openTerminal?.(args[0] as string);
+            break;
+          case "shellOpenPath":
+            result = await window.electronAPI?.shellOpenPath?.(args[0] as string);
+            break;
+          case "opcListModels":
+            result = await window.electronAPI?.opcListModels?.();
+            break;
+          case "opcListAgents":
+            result = await window.electronAPI?.opcListAgents?.();
+            break;
+          default:
+            throw new Error(`Unknown API method: ${method}`);
+        }
+        
+        // Send response back to webview
+        const responseScript = `
+          window.postMessage({
+            type: 'electron-api-response',
+            requestId: ${requestId},
+            result: ${JSON.stringify(result)}
+          }, '*');
+        `;
+        await webviewEl.executeJavaScript?.(responseScript);
+        
+      } catch (err) {
+        const error = err as Error;
+        LogManager.addEvent("asistan", "error", `Native UI API error: ${error.message}`, { visibility: 2 });
+        
+        // Try to extract requestId and send error response
+        try {
+          const jsonStr = message.substring('__NATIVE_UI_REQUEST__:'.length);
+          const { requestId } = JSON.parse(jsonStr) as { requestId: number };
+          const errorScript = `
+            window.postMessage({
+              type: 'electron-api-response',
+              requestId: ${requestId},
+              error: ${JSON.stringify(error.message)}
+            }, '*');
+          `;
+          await webviewEl.executeJavaScript?.(errorScript);
+        } catch (_) {
+          // Ignore
+        }
+      }
+    });
+    
+    LogManager.addEvent("asistan", "debug", "Native UI bridge listeners setup", { visibility: 3 });
   }
 
   onShow(): void {

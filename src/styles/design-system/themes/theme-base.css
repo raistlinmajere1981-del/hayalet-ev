@@ -1,82 +1,89 @@
 /**
- * Design System - Base Theme
- * 
- * Semantic color mappings that are overridden by specific themes.
- * These variables are used throughout the application.
+ * Hayalet-ev Design System - Theme Base
+ * Tema bağımsız değişken tanımları ve fallback'ler
+ * @version 3.0.0
  */
 
-/* === THEME TRANSITION === */
-.theme-transitioning,
-.theme-transitioning * {
-  transition: 
-    background-color var(--theme-transition, 200ms) var(--ease-out),
-    border-color var(--theme-transition, 200ms) var(--ease-out),
-    color var(--theme-transition, 200ms) var(--ease-out),
-    fill var(--theme-transition, 200ms) var(--ease-out),
-    stroke var(--theme-transition, 200ms) var(--ease-out) !important;
-}
-
 :root {
-  /* === BACKGROUND COLORS === */
-  --color-bg-primary: var(--color-gray-900);
-  --color-bg-secondary: var(--color-gray-800);
-  --color-bg-tertiary: var(--color-gray-600);
-  --color-bg-elevated: var(--color-gray-950);
-  --color-bg-overlay: rgba(0, 0, 0, 0.5);
-  --color-bg-hover: rgba(255, 255, 255, 0.05);
-  --color-bg-active: rgba(255, 255, 255, 0.1);
-
-  /* === TEXT COLORS === */
-  --color-text-primary: var(--color-gray-300);
-  --color-text-secondary: var(--color-gray-400);
-  --color-text-muted: var(--color-gray-500);
-  --color-text-inverse: var(--color-gray-900);
-  --color-text-link: var(--color-blue-400);
-  --color-text-link-hover: var(--color-blue-500);
-
-  /* === ACCENT COLORS === */
-  --color-accent: var(--color-purple-400);
-  --color-accent-hover: var(--color-purple-300);
-  --color-accent-muted: var(--color-purple-500);
-
-  /* === SEMANTIC COLORS === */
-  --color-success: var(--color-green-500);
-  --color-success-bg: rgba(106, 176, 76, 0.15);
-  --color-warning: var(--color-yellow-500);
-  --color-warning-bg: rgba(249, 202, 36, 0.15);
-  --color-error: var(--color-red-500);
-  --color-error-bg: rgba(235, 77, 75, 0.15);
-  --color-info: var(--color-blue-500);
-  --color-info-bg: rgba(126, 214, 223, 0.15);
-
-  /* === BORDER COLORS === */
-  --color-border: var(--color-gray-700);
-  --color-border-hover: var(--color-gray-600);
-  --color-border-focus: var(--color-accent);
-  --color-border-error: var(--color-error);
-
-  /* === COMPONENT SPECIFIC === */
-  --color-input-bg: var(--color-bg-tertiary);
-  --color-input-border: var(--color-border);
-  --color-input-focus-ring: rgba(125, 109, 153, 0.3);
+  /* === SEMANTIC COLOR ALIASES === */
+  /* Temalar bu değişkenleri override eder */
   
-  --color-button-primary-bg: var(--color-accent);
-  --color-button-primary-text: white;
-  --color-button-primary-hover: var(--color-accent-hover);
+  /* Background */
+  --bg-app: var(--slate-900);
+  --bg-surface: var(--slate-800);
+  --bg-elevated: var(--slate-700);
+  --bg-glass: rgba(15, 23, 42, 0.8);
+  --bg-glass-hover: rgba(15, 23, 42, 0.9);
+  --bg-input: rgba(15, 23, 42, 0.6);
+  --bg-overlay: rgba(0, 0, 0, 0.7);
   
-  --color-button-secondary-bg: var(--color-bg-tertiary);
-  --color-button-secondary-text: var(--color-text-primary);
-  --color-button-secondary-border: var(--color-border);
+  /* Text */
+  --text-primary: var(--slate-100);
+  --text-secondary: var(--slate-300);
+  --text-tertiary: var(--slate-400);
+  --text-muted: var(--slate-500);
+  --text-inverse: var(--slate-900);
+  
+  /* Border */
+  --border-default: rgba(71, 85, 105, 0.5);
+  --border-subtle: rgba(51, 65, 85, 0.5);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-focus: var(--cyan-400);
+  
+  /* Accent */
+  --color-accent: var(--cyan-400);
+  --color-accent-hover: var(--cyan-300);
+  --color-accent-active: var(--cyan-500);
+  --color-accent-muted: var(--cyan-alpha-20);
+  --accent-gradient: linear-gradient(135deg, var(--cyan-400) 0%, var(--teal-400) 100%);
+  
+  /* Status */
+  --color-success: var(--emerald-400);
+  --color-success-bg: var(--emerald-alpha-20);
+  --color-warning: var(--amber-400);
+  --color-warning-bg: var(--amber-alpha-20);
+  --color-error: var(--red-400);
+  --color-error-bg: var(--red-alpha-20);
+  --color-info: var(--blue-400);
+  
+  /* Interactive */
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --active-overlay: rgba(255, 255, 255, 0.1);
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--color-accent);
+  
+  /* Shadows & Glows */
+  --glow-accent: var(--glow-cyan-md);
+  
+  /* Scrollbar */
+  --scrollbar-track: var(--bg-surface);
+  --scrollbar-thumb: var(--slate-600);
+  --scrollbar-thumb-hover: var(--slate-500);
+  
+  /* Relay flow */
+  --relay-particle-color: var(--color-accent);
+  --relay-track-color: rgba(34, 211, 238, 0.15);
+  
+  /* Indicator dots */
+  --dot-inactive: var(--slate-600);
+  --dot-loading: var(--amber-400);
+  --dot-send: var(--cyan-400);
+  --dot-thinking: var(--emerald-400);
 
-  /* === INDICATOR COLORS === */
-  --color-indicator-loading: var(--color-red-500);
-  --color-indicator-thinking: var(--color-yellow-500);
-  --color-indicator-sending: var(--color-blue-500);
-  --color-indicator-connected: var(--color-green-600);
-  --color-indicator-disconnected: var(--color-gray-600);
-}
-
-/* === UTILITY CLASSES === */
-.hidden {
-  display: none !important;
+  /* === LEGACY ALIASES === */
+  /* Eski CSS dosyalarıyla uyumluluk için */
+  --color-bg-primary: var(--bg-app);
+  --color-bg-secondary: var(--bg-surface);
+  --color-bg-tertiary: var(--bg-elevated);
+  --color-bg-hover: var(--hover-overlay);
+  --color-bg-active: var(--active-overlay);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border-default);
+  --color-accent-muted: var(--color-accent-muted);
+  --color-danger: var(--color-error);
+  --color-indicator-connected: var(--color-success);
+  --color-indicator-disconnected: var(--slate-600);
 }

@@ -13,16 +13,21 @@ const EntranceApp = {
     defaultPort: 4096,
     autoConnect: true,
   },
+  _configLoaded: false,
+  _pendingRequests: new Map(), // postMessage request tracking
+  _requestId: 0,
 
   /**
    * Initialize the entrance app
    */
-  init() {
+  async init() {
     console.log('[Entrance] Initializing...');
     
-    // Load settings and recent folders
-    this._loadSettings();
-    this._loadRecentFolders();
+    // Setup postMessage bridge for host communication
+    this._setupHostBridge();
+    
+    // Load settings and recent folders (async)
+    await this._loadConfig();
     
     // Setup event listeners
     this._setupEventListeners();
@@ -32,23 +37,173 @@ const EntranceApp = {
     this._renderFolderList();
     this._updateUI();
     
+    // Hide loading overlay and show app
+    this._showApp();
+    
     console.log('[Entrance] Initialized');
   },
 
   /**
-   * Load settings from localStorage or defaults
+   * Loading overlay'i kaldır ve app'i göster
    */
-  _loadSettings() {
+  _showApp() {
+    const overlay = document.getElementById('loading-overlay');
+    const app = document.getElementById('app');
+    
+    if (overlay) {
+      overlay.classList.add('hidden');
+    }
+    
+    if (app) {
+      app.classList.add('ready');
+    }
+    
+    console.log('[Entrance] App ready');
+  },
+
+  /**
+   * Setup postMessage bridge for Electron API access via host
+   */
+  _setupHostBridge() {
+    // Listen for responses from host
+    window.addEventListener('message', (event) => {
+      // Validate origin - accept same origin or parent
+      if (event.data && event.data.type === 'electron-api-response') {
+        const { requestId, result, error } = event.data;
+        const pending = this._pendingRequests.get(requestId);
+        if (pending) {
+          this._pendingRequests.delete(requestId);
+          if (error) {
+            pending.reject(new Error(error));
+          } else {
+            pending.resolve(result);
+          }
+        }
+      }
+    });
+    
+    console.log('[Entrance] Host bridge initialized');
+  },
+
+  /**
+   * Call Electron API via host postMessage bridge
+   */
+  _callHostAPI(method, ...args) {
+    return new Promise((resolve, reject) => {
+      const requestId = ++this._requestId;
+      
+      // Store pending request
+      this._pendingRequests.set(requestId, { resolve, reject });
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (this._pendingRequests.has(requestId)) {
+          this._pendingRequests.delete(requestId);
+          reject(new Error(`Request timeout: ${method}`));
+        }
+      }, 10000);
+      
+      // Send to parent/host
+      const message = {
+        type: 'electron-api-request',
+        requestId,
+        method,
+        args
+      };
+      
+      // Try parent window first (if in iframe), then use postMessage to self for webview
+      if (window.parent !== window) {
+        window.parent.postMessage(message, '*');
+      } else {
+        // In webview - use ipcRenderer.sendToHost if available, otherwise postMessage
+        if (window.electronAPI?.sendToHost) {
+          window.electronAPI.sendToHost('electron-api-request', message);
+        } else {
+          // Fallback - try native postMessage (won't work in webview without preload)
+          window.postMessage(message, '*');
+        }
+      }
+    });
+  },
+
+  /**
+   * Load config from Electron API (with localStorage fallback)
+   */
+  async _loadConfig() {
+    try {
+      // Try direct Electron API first
+      if (window.electronAPI?.loadOpencodeConfig) {
+        const config = await window.electronAPI.loadOpencodeConfig();
+        console.log('[Entrance] Loaded config from Electron API:', config);
+        this._applyConfig(config);
+        return;
+      }
+      
+      // Try host bridge (for webview context)
+      try {
+        const config = await this._callHostAPI('loadOpencodeConfig');
+        console.log('[Entrance] Loaded config via host bridge:', config);
+        this._applyConfig(config);
+        return;
+      } catch (bridgeError) {
+        console.warn('[Entrance] Host bridge not available:', bridgeError.message);
+      }
+    } catch (e) {
+      console.warn('[Entrance] Failed to load Electron config:', e);
+    }
+    
+    // Fallback to localStorage
+    this._loadSettingsFromLocalStorage();
+    this._loadRecentFolders();
+  },
+
+  /**
+   * Apply loaded config to state
+   */
+  _applyConfig(config) {
+    if (!config) return;
+    
+    this._configLoaded = true;
+    
+    // Load recent folders
+    this._recentFolders = (config.recentFolders || []).map(f => ({
+      name: f.name,
+      path: f.path,
+      lastUsed: f.lastAccessed || Date.now(),
+    }));
+    
+    // Load settings/preferences
+    if (config.preferences) {
+      this._settings.defaultPort = config.preferences.defaultPort || 4096;
+      this._settings.autoConnect = config.preferences.autoConnect !== false;
+    }
+    
+    if (config.lastUsedBinary) {
+      this._settings.opencodePath = config.lastUsedBinary;
+    }
+    
+    this._updateSettingsUI();
+  },
+
+  /**
+   * Load settings from localStorage (fallback)
+   */
+  _loadSettingsFromLocalStorage() {
     try {
       const saved = localStorage.getItem('opencode-entrance-settings');
       if (saved) {
         this._settings = { ...this._settings, ...JSON.parse(saved) };
       }
     } catch (e) {
-      console.warn('[Entrance] Failed to load settings:', e);
+      console.warn('[Entrance] Failed to load settings from localStorage:', e);
     }
-    
-    // Update UI with settings
+    this._updateSettingsUI();
+  },
+
+  /**
+   * Update settings UI elements
+   */
+  _updateSettingsUI() {
     const pathInput = document.getElementById('opencode-path');
     const portInput = document.getElementById('default-port');
     const autoConnectInput = document.getElementById('auto-connect');
@@ -67,13 +222,27 @@ const EntranceApp = {
   },
 
   /**
-   * Save settings to localStorage
+   * Save settings to localStorage and Electron config
    */
-  _saveSettings() {
+  async _saveSettings() {
+    // Try Electron API first
+    if (this._configLoaded && window.electronAPI?.opcUpdatePreferences) {
+      try {
+        await window.electronAPI.opcUpdatePreferences({
+          defaultPort: this._settings.defaultPort,
+          autoConnect: this._settings.autoConnect,
+        });
+        console.log('[Entrance] Settings saved via Electron API');
+      } catch (e) {
+        console.warn('[Entrance] Failed to save settings via Electron:', e);
+      }
+    }
+    
+    // Also save to localStorage as backup
     try {
       localStorage.setItem('opencode-entrance-settings', JSON.stringify(this._settings));
     } catch (e) {
-      console.warn('[Entrance] Failed to save settings:', e);
+      console.warn('[Entrance] Failed to save settings to localStorage:', e);
     }
   },
 
@@ -89,17 +258,7 @@ const EntranceApp = {
     } catch (e) {
       console.warn('[Entrance] Failed to load recent folders:', e);
     }
-    
-    // Add demo folder if empty
-    if (this._recentFolders.length === 0) {
-      this._recentFolders = [
-        {
-          name: 'hayalet-ev',
-          path: '/home/raistlin/hayalet-ev',
-          lastUsed: Date.now() - 120000, // 2 minutes ago
-        }
-      ];
-    }
+    // Note: No demo folders - empty state handled by _renderFolderList()
   },
 
   /**
@@ -116,20 +275,43 @@ const EntranceApp = {
   /**
    * Add folder to recent list
    */
-  addRecentFolder(path, name) {
-    // Remove if exists
-    this._recentFolders = this._recentFolders.filter(f => f.path !== path);
+  async addRecentFolder(path, name) {
+    const folderName = name || path.split('/').pop() || path.split('\\').pop() || 'Workspace';
     
-    // Add to top
+    // Try direct Electron API first
+    if (this._configLoaded && window.electronAPI?.opcAddRecentFolder) {
+      try {
+        const config = await window.electronAPI.opcAddRecentFolder(path, folderName);
+        console.log('[Entrance] Folder added via Electron API:', path);
+        this._applyConfig(config);
+        this._renderFolderList();
+        return;
+      } catch (e) {
+        console.warn('[Entrance] Direct API add folder error:', e);
+      }
+    }
+    
+    // Try host bridge
+    if (this._configLoaded) {
+      try {
+        const config = await this._callHostAPI('opcAddRecentFolder', path, folderName);
+        console.log('[Entrance] Folder added via host bridge:', path);
+        this._applyConfig(config);
+        this._renderFolderList();
+        return;
+      } catch (bridgeError) {
+        console.warn('[Entrance] Host bridge add folder error:', bridgeError.message);
+      }
+    }
+    
+    // Fallback to localStorage
+    this._recentFolders = this._recentFolders.filter(f => f.path !== path);
     this._recentFolders.unshift({
-      name: name || path.split('/').pop(),
+      name: folderName,
       path,
       lastUsed: Date.now(),
     });
-    
-    // Keep only last 10
     this._recentFolders = this._recentFolders.slice(0, 10);
-    
     this._saveRecentFolders();
     this._renderFolderList();
   },
@@ -137,7 +319,28 @@ const EntranceApp = {
   /**
    * Remove folder from recent list
    */
-  removeRecentFolder(path) {
+  async removeRecentFolder(path) {
+    // Try Electron API first
+    if (this._configLoaded && window.electronAPI?.opcRemoveRecentFolder) {
+      try {
+        const config = await window.electronAPI.opcRemoveRecentFolder(path);
+        console.log('[Entrance] Folder removed via Electron API:', path);
+        
+        if (config && config.recentFolders) {
+          this._recentFolders = config.recentFolders.map(f => ({
+            name: f.name,
+            path: f.path,
+            lastUsed: f.lastAccessed || Date.now(),
+          }));
+        }
+        this._renderFolderList();
+        return;
+      } catch (e) {
+        console.warn('[Entrance] Failed to remove folder via Electron:', e);
+      }
+    }
+    
+    // Fallback to localStorage
     this._recentFolders = this._recentFolders.filter(f => f.path !== path);
     this._saveRecentFolders();
     this._renderFolderList();
@@ -153,12 +356,24 @@ const EntranceApp = {
       browseBtn.addEventListener('click', () => this._handleBrowse());
     }
     
+    // Terminal button
+    const terminalBtn = document.getElementById('btn-terminal');
+    if (terminalBtn) {
+      terminalBtn.addEventListener('click', () => this._handleOpenTerminal());
+    }
+    
     // Advanced settings toggle
     const advancedToggle = document.getElementById('advanced-toggle');
     const advancedSection = advancedToggle?.closest('.entrance-section');
     if (advancedToggle && advancedSection) {
       advancedToggle.addEventListener('click', () => {
         advancedSection.classList.toggle('collapsed');
+        // Scroll into view when expanded
+        if (!advancedSection.classList.contains('collapsed')) {
+          setTimeout(() => {
+            advancedSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 100);
+        }
       });
       // Start collapsed
       advancedSection.classList.add('collapsed');
@@ -350,33 +565,178 @@ const EntranceApp = {
 
   /**
    * Handle browse button click
+   * Uses native Electron dialog, custom directory browser, or file input fallback
    */
   async _handleBrowse() {
     console.log('[Entrance] Browse clicked');
     
-    // In Electron context, this would open a folder dialog
-    // For now, show an alert
-    if (window.electronAPI?.selectFolder) {
+    // Try native Electron folder dialog first (best UX)
+    if (window.electronAPI?.opcOpenFolderDialog) {
       try {
-        const result = await window.electronAPI.selectFolder();
-        if (result && result.path) {
-          this.addRecentFolder(result.path, result.name);
-          if (this._settings.autoConnect) {
-            this._selectFolder(result.path);
-          }
+        const defaultPath = this._recentFolders[0]?.path || undefined;
+        const selectedPath = await window.electronAPI.opcOpenFolderDialog({
+          title: 'Workspace Klasörü Seçin',
+          defaultPath,
+          buttonLabel: 'Seç',
+        });
+        
+        if (selectedPath) {
+          console.log('[Entrance] Native dialog selected:', selectedPath);
+          this._handleFolderSelected(selectedPath);
+          return;
         }
+        // User cancelled - do nothing
+        return;
       } catch (e) {
-        console.error('[Entrance] Browse error:', e);
+        console.warn('[Entrance] Native folder dialog error:', e);
       }
-    } else {
-      // Demo mode - prompt for path
-      const path = prompt('Enter folder path:');
-      if (path) {
-        this.addRecentFolder(path);
+    }
+    
+    // Try legacy showOpenDialog (backward compatibility)
+    if (window.electronAPI?.showOpenDialog) {
+      try {
+        const result = await window.electronAPI.showOpenDialog({
+          properties: ['openDirectory'],
+          title: 'Workspace Klasörü Seçin',
+          buttonLabel: 'Seç'
+        });
+        console.log('[Entrance] Dialog result (legacy):', result);
+        this._handleBrowseResult(result);
+        return;
+      } catch (e) {
+        console.warn('[Entrance] Legacy dialog error:', e);
+      }
+    }
+    
+    // Try host bridge (for webview context)
+    try {
+      const result = await this._callHostAPI('showOpenDialog', {
+        properties: ['openDirectory'],
+        title: 'Workspace Klasörü Seçin',
+        buttonLabel: 'Seç'
+      });
+      console.log('[Entrance] Dialog result (bridge):', result);
+      this._handleBrowseResult(result);
+      return;
+    } catch (bridgeError) {
+      console.warn('[Entrance] Host bridge dialog error:', bridgeError.message);
+    }
+    
+    // Fallback: Custom directory browser dialog
+    if (window.DirectoryBrowser) {
+      console.log('[Entrance] Opening custom directory browser');
+      window.DirectoryBrowser.open({
+        title: 'Workspace Klasörü Seçin',
+        description: 'AI ile kodlamaya başlamak için bir klasör seçin',
+        defaultPath: this._recentFolders[0]?.path,
+        onSelect: (path) => {
+          console.log('[Entrance] Directory browser selected:', path);
+          this._handleFolderSelected(path);
+        },
+      });
+      return;
+    }
+    
+    // Last resort: webkitdirectory input
+    this._handleBrowseFallback();
+  },
+  
+  /**
+   * Handle folder selection (from any source)
+   */
+  _handleFolderSelected(selectedPath) {
+    if (!selectedPath) return;
+    
+    const folderName = selectedPath.split('/').pop() || selectedPath.split('\\').pop() || 'Workspace';
+    console.log('[Entrance] Folder selected:', selectedPath, folderName);
+    
+    // Add to recent folders
+    this.addRecentFolder(selectedPath, folderName);
+    
+    // Auto-connect if setting is enabled
+    if (this._settings.autoConnect) {
+      this._selectFolder(selectedPath);
+    }
+  },
+
+  /**
+   * Handle browse result from dialog
+   */
+  _handleBrowseResult(result) {
+    if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+      const selectedPath = result.filePaths[0];
+      const folderName = selectedPath.split('/').pop() || selectedPath.split('\\').pop() || 'Workspace';
+      
+      console.log('[Entrance] Selected folder:', selectedPath, folderName);
+      
+      // Add to recent folders and re-render
+      this.addRecentFolder(selectedPath, folderName);
+      this._renderFolderList();
+      
+      // Only auto-connect if setting is enabled
+      if (this._settings.autoConnect) {
+        this._selectFolder(selectedPath);
+      }
+    }
+  },
+
+  /**
+   * Fallback browse using webkitdirectory input
+   */
+  _handleBrowseFallback() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.webkitdirectory = true;
+    input.style.display = 'none';
+    
+    input.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        // webkitRelativePath contains the folder name
+        const relativePath = files[0].webkitRelativePath;
+        const folderName = relativePath.split('/')[0];
+        // Note: Browser security limits us to just the folder name, not full path
+        // In production, this would need backend support
+        const path = folderName;
+        this.addRecentFolder(path, folderName);
+        this._renderFolderList();
         if (this._settings.autoConnect) {
           this._selectFolder(path);
         }
       }
+      input.remove();
+    });
+    
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  /**
+   * Handle terminal button click
+   */
+  async _handleOpenTerminal() {
+    console.log('[Entrance] Terminal clicked');
+    
+    // Get current selected folder or use default
+    const selectedFolder = this._recentFolders[this._selectedIndex];
+    const path = selectedFolder?.path || process.cwd?.() || '.';
+    
+    if (window.electronAPI?.openTerminal) {
+      try {
+        await window.electronAPI.openTerminal(path);
+      } catch (e) {
+        console.error('[Entrance] Terminal error:', e);
+        alert('Terminal açılamadı: ' + e.message);
+      }
+    } else if (window.electronAPI?.shellOpenPath) {
+      // Alternative: Open folder in file manager
+      try {
+        await window.electronAPI.shellOpenPath(path);
+      } catch (e) {
+        console.error('[Entrance] Shell open error:', e);
+      }
+    } else {
+      alert(`Terminal: ${path}\n\nBu özellik Electron ortamında çalışır.`);
     }
   },
 

@@ -7,8 +7,8 @@
       <!-- AI1 SLOT CARD -->
       <div class="slot-card" data-slot="ai1">
         <div class="slot-header">
-          <!-- Üst Satır: Avatar, Nickname, Hesap Seç, Butonlar -->
-          <div class="slot-header-row">
+          <!-- Üst Satır: Avatar, Info, Metodlar, Actions -->
+          <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
               <span class="slot-status-dot" id="ai1-status-dot"></span>
@@ -17,35 +17,35 @@
               <span class="slot-nickname" id="ai1-nickname">AI1</span>
               <select id="ai1-account-select" class="slot-provider-select"></select>
             </div>
+            <!-- Metodlar (üstte mesaj, altta dosya) -->
+            <div class="slot-methods-column">
+              <div class="setting-group">
+                <label class="setting-label">Mesaj:</label>
+                <select id="ai1-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
+                  <option value="injection">Injection</option>
+                  <option value="xdotools">XdoTools</option>
+                </select>
+              </div>
+              <div class="setting-group">
+                <label class="setting-label">Dosya:</label>
+                <select id="ai1-file-method" class="select-method" title="Dosya Gönderme Metodu">
+                  <option value="dragdrop">Drag & Drop</option>
+                  <option value="injection">Injection</option>
+                  <option value="xdotools">XdoTools</option>
+                  <option value="uguu">Uguu</option>
+                  <option value="catbox">Catbox</option>
+                  <option value="googledrive">Google Drive</option>
+                </select>
+              </div>
+            </div>
             <div class="slot-actions">
+              <label class="catch-label" title="AI komutlarını yakala ve işle">
+                <input type="checkbox" id="ai1-catch-check">
+                <span>Komutları Yakala</span>
+              </label>
               <button class="btn btn-primary btn-sm slot-connect-btn" id="ai1-toggle-btn">Hesap Seçin</button>
               <button class="btn btn-ghost btn-icon btn-sm" id="ai1-devtools-btn" title="DevTools">🔧</button>
             </div>
-          </div>
-          <!-- Alt Satır: Metodlar ve Catch -->
-          <div class="slot-settings-row">
-            <div class="setting-group">
-              <label class="setting-label">Mesaj:</label>
-              <select id="ai1-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
-                <option value="injection">Injection</option>
-                <option value="xdotools">XdoTools</option>
-              </select>
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">Dosya:</label>
-              <select id="ai1-file-method" class="select-method" title="Dosya Gönderme Metodu">
-                <option value="dragdrop">Drag & Drop</option>
-                <option value="injection">Injection</option>
-                <option value="xdotools">XdoTools</option>
-                <option value="uguu">Uguu</option>
-                <option value="catbox">Catbox</option>
-                <option value="googledrive">Google Drive</option>
-              </select>
-            </div>
-            <label class="catch-label" title="AI komutlarını yakala ve işle">
-              <input type="checkbox" id="ai1-catch-check">
-              <span>Komutları Yakala</span>
-            </label>
           </div>
         </div>
         <div class="slot-url-bar">
@@ -65,8 +65,8 @@
       <!-- AI2 SLOT CARD -->
       <div class="slot-card" data-slot="ai2">
         <div class="slot-header">
-          <!-- Üst Satır: Avatar, Nickname, Hesap Seç, Butonlar -->
-          <div class="slot-header-row">
+          <!-- Üst Satır: Avatar, Info, Metodlar, Actions -->
+          <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
               <span class="slot-status-dot" id="ai2-status-dot"></span>
@@ -75,35 +75,35 @@
               <span class="slot-nickname" id="ai2-nickname">AI2</span>
               <select id="ai2-account-select" class="slot-provider-select"></select>
             </div>
+            <!-- Metodlar (üstte mesaj, altta dosya) -->
+            <div class="slot-methods-column">
+              <div class="setting-group">
+                <label class="setting-label">Mesaj:</label>
+                <select id="ai2-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
+                  <option value="injection">Injection</option>
+                  <option value="xdotools">XdoTools</option>
+                </select>
+              </div>
+              <div class="setting-group">
+                <label class="setting-label">Dosya:</label>
+                <select id="ai2-file-method" class="select-method" title="Dosya Gönderme Metodu">
+                  <option value="dragdrop">Drag & Drop</option>
+                  <option value="injection">Injection</option>
+                  <option value="xdotools">XdoTools</option>
+                  <option value="uguu">Uguu</option>
+                  <option value="catbox">Catbox</option>
+                  <option value="googledrive">Google Drive</option>
+                </select>
+              </div>
+            </div>
             <div class="slot-actions">
+              <label class="catch-label" title="AI komutlarını yakala ve işle">
+                <input type="checkbox" id="ai2-catch-check">
+                <span>Komutları Yakala</span>
+              </label>
               <button class="btn btn-primary btn-sm slot-connect-btn" id="ai2-toggle-btn">Hesap Seçin</button>
               <button class="btn btn-ghost btn-icon btn-sm" id="ai2-devtools-btn" title="DevTools">🔧</button>
             </div>
-          </div>
-          <!-- Alt Satır: Metodlar ve Catch -->
-          <div class="slot-settings-row">
-            <div class="setting-group">
-              <label class="setting-label">Mesaj:</label>
-              <select id="ai2-msg-method" class="select-method" title="Mesaj Gönderme Metodu">
-                <option value="injection">Injection</option>
-                <option value="xdotools">XdoTools</option>
-              </select>
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">Dosya:</label>
-              <select id="ai2-file-method" class="select-method" title="Dosya Gönderme Metodu">
-                <option value="dragdrop">Drag & Drop</option>
-                <option value="injection">Injection</option>
-                <option value="xdotools">XdoTools</option>
-                <option value="uguu">Uguu</option>
-                <option value="catbox">Catbox</option>
-                <option value="googledrive">Google Drive</option>
-              </select>
-            </div>
-            <label class="catch-label" title="AI komutlarını yakala ve işle">
-              <input type="checkbox" id="ai2-catch-check">
-              <span>Komutları Yakala</span>
-            </label>
           </div>
         </div>
         <div class="slot-url-bar">
@@ -127,10 +127,6 @@
       <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="true">
         <span class="accordion-icon">⚙️</span>
         <span class="accordion-title">Ayarlar</span>
-        <span class="accordion-badges">
-          <span class="panel-badge" id="account-count">0</span>
-          <span class="panel-badge" id="whisper-count">0</span>
-        </span>
         <span class="accordion-chevron">▼</span>
       </button>
       
@@ -140,39 +136,33 @@
           <!-- USER SETTINGS -->
           <div class="panel-item" data-panel="user">
             <div class="panel-header">
-              <span class="panel-icon">👤</span>
-              <span class="panel-title">Kullanıcı & Drive</span>
+              <span class="panel-title">KULLANICI & DRiVE</span>
             </div>
             <div class="panel-content">
-              <div class="user-settings-grid">
-                <div class="user-avatar-section">
+              <div class="user-settings-column">
+                <!-- Avatar - Nickname -->
+                <div class="user-avatar-row">
                   <div class="user-avatar-wrapper" id="user-avatar-edit-btn" title="Avatarı Değiştir">
                     <div class="avatar-placeholder img-cover" id="user-avatar"></div>
                     <div class="user-edit-overlay">📷</div>
                   </div>
                   <input type="text" id="user-nickname-input" class="input input-sm" value="Kullanıcı" placeholder="Takma Ad">
                 </div>
-                <div class="gdrive-settings">
-                  <div class="form-field">
-                    <label class="form-label">Google Drive</label>
-                    <div class="connection-status">
-                      <span class="status-dot" id="gdrive-status-dot"></span>
-                      <span id="gdrive-status-text">Bağlı Değil</span>
-                    </div>
-                  </div>
-                  <div class="form-field">
-                    <input type="text" id="gdrive-client-id" class="input input-sm" placeholder="Client ID">
-                  </div>
-                  <div class="form-field">
-                    <input type="text" id="gdrive-client-secret" class="input input-sm" placeholder="Client Secret">
-                  </div>
-                  <div class="form-field">
-                    <input type="text" id="gdrive-auth-code" class="input input-sm" placeholder="Auth Code">
-                  </div>
-                  <div class="btn-group-inline">
-                    <button class="btn btn-secondary btn-sm" id="gdrive-start-auth">Auth URL</button>
-                    <button class="btn btn-primary btn-sm" id="gdrive-connect-btn">Bağlan</button>
-                  </div>
+                <!-- Google Drive - Status (sadece dot) -->
+                <div class="gdrive-status-row">
+                  <label class="form-label">Google Drive</label>
+                  <span class="status-dot" id="gdrive-status-dot" title="Bağlantı Durumu"></span>
+                </div>
+                <!-- Client ID -->
+                <input type="text" id="gdrive-client-id" class="input input-sm" placeholder="Client ID">
+                <!-- Client Secret -->
+                <input type="text" id="gdrive-client-secret" class="input input-sm" placeholder="Client Secret">
+                <!-- Auth Code -->
+                <input type="text" id="gdrive-auth-code" class="input input-sm" placeholder="Auth Code">
+                <!-- Auth URL - Bağlan butonları -->
+                <div class="btn-group-inline">
+                  <button class="btn btn-secondary btn-sm" id="gdrive-start-auth">Auth URL</button>
+                  <button class="btn btn-primary btn-sm" id="gdrive-connect-btn">Bağlan</button>
                 </div>
               </div>
             </div>
@@ -181,8 +171,7 @@
           <!-- ACCOUNTS -->
           <div class="panel-item" data-panel="accounts">
             <div class="panel-header">
-              <span class="panel-icon">📋</span>
-              <span class="panel-title">Hesap Yönetimi</span>
+              <span class="panel-title">HESAP YÖNETİMİ</span>
             </div>
             <div class="panel-content">
               <div class="accounts-container">
@@ -205,8 +194,6 @@
                     <div class="account-form-avatar-row">
                       <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
                       <button class="btn btn-ghost btn-sm" id="new-account-avatar-browse">📷 Avatar</button>
-                    </div>
-                    <div class="account-form-actions">
                       <button class="btn btn-primary btn-sm" id="settings-create-account">Ekle</button>
                       <button class="btn btn-danger btn-sm hidden" id="settings-cancel-edit">İptal</button>
                     </div>
@@ -219,8 +206,7 @@
           <!-- WHISPER QUEUE -->
           <div class="panel-item" data-panel="whisper">
             <div class="panel-header">
-              <span class="panel-icon">🎤</span>
-              <span class="panel-title">Bekleyen Komutlar</span>
+              <span class="panel-title">BEKLEYEN KOMUTLAR</span>
             </div>
             <div class="panel-content">
               <div class="whisper-container">
@@ -237,8 +223,7 @@
           <!-- REPORT PANEL -->
           <div class="panel-item" data-panel="report">
             <div class="panel-header">
-              <span class="panel-icon">📊</span>
-              <span class="panel-title">Canlı Rapor</span>
+              <span class="panel-title">CANLI RAPOR</span>
               <button class="btn btn-ghost btn-xs" id="report-modal-open" title="Tam Ekran">⛶</button>
             </div>
             <div class="panel-content">

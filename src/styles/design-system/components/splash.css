@@ -1,222 +1,135 @@
 /**
- * Design System - Splash Screen Component
- * 
- * Full-screen loading splash with logo, progress, and status.
+ * Hayalet-ev Design System - Splash Screen
+ * Centered card modal (NOT fullscreen)
+ * @version 3.0.0
  */
 
 /* === SPLASH CONTAINER === */
 .splash {
   position: fixed;
   inset: 0;
-  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-primary);
-  transition: opacity var(--duration-slow) var(--ease-out),
-              transform var(--duration-slow) var(--ease-out);
+  background: var(--bg-overlay);
+  backdrop-filter: var(--blur-lg);
+  z-index: 10000;
+  animation: backdrop-enter var(--duration-normal) var(--ease-out);
 }
 
 .splash.hidden {
   display: none;
 }
 
-/* === SPLASH CONTENT === */
+.splash.splash-hiding {
+  animation: fade-out var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* === SPLASH CARD === */
 .splash-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-8);
-  text-align: center;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-12);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-2xl);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-modal);
+  animation: modal-enter var(--duration-slow) var(--ease-out);
+  min-width: 320px;
+  max-width: 400px;
 }
 
-/* === LOGO CONTAINER === */
+/* === LOGO === */
 .splash-logo-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .splash-logo {
-  width: 100%;
-  height: 100%;
+  width: 80px;
+  height: 80px;
   border-radius: var(--radius-xl);
   object-fit: cover;
-  animation: splash-pulse 2s ease-in-out infinite;
-  box-shadow: var(--shadow-lg);
+  animation: pulse-scale 2s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
 }
 
 .splash-logo-glow {
   position: absolute;
-  inset: -15px;
-  background: radial-gradient(
-    circle,
-    var(--color-accent) 0%,
-    transparent 70%
-  );
-  opacity: 0.25;
-  filter: blur(25px);
-  animation: splash-glow 2s ease-in-out infinite;
-  z-index: -1;
-  border-radius: 50%;
+  inset: -10px;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-2xl);
+  opacity: 0.3;
+  filter: blur(20px);
+  animation: glow-pulse 2s ease-in-out infinite;
 }
 
-@keyframes splash-pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.03);
-  }
-}
-
-@keyframes splash-glow {
-  0%, 100% {
-    opacity: 0.2;
-    transform: scale(0.95);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(1.05);
-  }
-}
-
-/* === TITLE & VERSION === */
+/* === TITLE === */
 .splash-title {
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
+  text-align: center;
   margin: 0;
-  letter-spacing: var(--tracking-tight);
 }
 
 .splash-version {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin: 0;
-  margin-top: calc(var(--space-1) * -1);
+  color: var(--text-muted);
+  margin: calc(var(--space-2) * -1) 0 0 0;
 }
 
-/* === PROGRESS BAR === */
+/* === LOADER === */
 .splash-loader {
-  width: 220px;
+  width: 200px;
   height: 4px;
-  background: var(--color-bg-tertiary);
+  background: var(--bg-elevated);
   border-radius: var(--radius-full);
   overflow: hidden;
-  margin-top: var(--space-2);
 }
 
 .splash-progress {
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    var(--color-accent-muted) 0%,
-    var(--color-accent) 50%,
-    var(--color-accent-hover) 100%
-  );
+  background: var(--accent-gradient);
   border-radius: var(--radius-full);
   width: 0%;
   transition: width var(--duration-normal) var(--ease-out);
 }
 
-/* Indeterminate progress animation */
 .splash-progress.indeterminate {
   width: 30%;
-  animation: splash-progress-indeterminate 1.5s ease-in-out infinite;
-}
-
-@keyframes splash-progress-indeterminate {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(400%);
-  }
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
 }
 
 /* === STATUS TEXT === */
 .splash-status {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
+  text-align: center;
   margin: 0;
-  min-height: 1.5em;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-/* === HIDE ANIMATION === */
-.splash.splash-hiding {
-  opacity: 0;
-  transform: scale(1.05);
-  pointer-events: none;
-}
-
-/* Alternative fade-up animation */
-.splash.splash-hiding.fade-up {
-  transform: translateY(-20px);
-}
-
-/* === DARK/LIGHT THEME ADJUSTMENTS === */
-[data-theme="light"] .splash {
-  background: var(--color-bg-primary);
-}
-
-[data-theme="light"] .splash-logo-glow {
-  opacity: 0.15;
-}
-
-[data-theme="light"] .splash-logo {
-  box-shadow: var(--shadow-xl);
+  min-height: 20px;
 }
 
 /* === RESPONSIVE === */
 @media (max-width: 480px) {
-  .splash-logo-container {
-    width: 100px;
-    height: 100px;
+  .splash-content {
+    margin: var(--space-4);
+    padding: var(--space-8);
+    min-width: auto;
   }
-
-  .splash-title {
-    font-size: var(--text-xl);
+  
+  .splash-logo {
+    width: 64px;
+    height: 64px;
   }
-
+  
   .splash-loader {
-    width: 180px;
-  }
-}
-
-/* === OPTIONAL: Particles background effect === */
-.splash-particles {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.splash-particle {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--color-accent);
-  border-radius: 50%;
-  opacity: 0.3;
-  animation: splash-particle-float 8s ease-in-out infinite;
-}
-
-@keyframes splash-particle-float {
-  0%, 100% {
-    transform: translateY(0) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.3;
-  }
-  90% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: translateY(-100vh) translateX(50px);
-    opacity: 0;
+    width: 160px;
   }
 }

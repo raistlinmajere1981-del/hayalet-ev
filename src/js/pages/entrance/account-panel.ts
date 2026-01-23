@@ -63,19 +63,19 @@ export class AccountPanel {
       }
       
       item.innerHTML = `
-        <div id="account-avatar-${this.escapeHtml(acc.id)}" class="account-mini-avatar">
+        <div id="account-avatar-${this.escapeHtml(acc.id)}" class="account-avatar-2row">
           <div class="avatar-placeholder img-cover"></div>
         </div>
-        <div class="account-info-compact">
-          <div class="account-nick">${this.escapeHtml(acc.nickname || acc.email)}</div>
-          <div class="account-sub">
-             <span class="badge ${acc.provider}">${this.escapeHtml(acc.provider)}</span>
-             <span style="opacity: 0.7;">${this.escapeHtml(acc.email)}</span>
+        <div class="account-info-grid">
+          <div class="account-info-top">
+            <span class="account-nick">${this.escapeHtml(acc.nickname || acc.email)}</span>
+            <span class="account-provider">${acc.provider}</span>
+            <div class="account-actions">
+              <button class="btn btn-ghost btn-xs edit-btn" title="Düzenle" data-id="${this.escapeHtml(acc.id)}">✎</button>
+              <button class="btn btn-ghost btn-xs delete-btn" title="Sil" data-id="${this.escapeHtml(acc.id)}">×</button>
+            </div>
           </div>
-        </div>
-        <div style="display: flex; gap: 4px;">
-           <button class="icon-btn-text edit-btn" title="Düzenle" data-id="${this.escapeHtml(acc.id)}">✎</button>
-           <button class="icon-btn-text delete-btn" title="Sil" data-id="${this.escapeHtml(acc.id)}">×</button>
+          <div class="account-email">${this.escapeHtml(acc.email)}</div>
         </div>
       `;
 

@@ -18,11 +18,17 @@ const StoreBridge = {
   /** @type {string | null} Current streaming message ID */
   _currentMessageId: null,
 
+  /** @type {Map<string, string | null>} Instance ID -> Current message ID (per-instance streaming) */
+  _currentMessageByInstance: new Map(),
+
   /** @type {Map<string, string>} Temp ID -> Real ID mapping */
   _pendingIdReplacements: new Map(),
 
   /** @type {Set<string>} Message IDs to ignore (user message echoes) */
   _ignoredMessageIds: new Set(),
+
+  /** @type {Map<string, string>} Instance ID -> Last user message (per-instance echo filtering) */
+  _lastUserMessageByInstance: new Map(),
 
   /** @type {boolean} Debug mode */
   _debug: false,
@@ -35,69 +41,105 @@ const StoreBridge = {
    * Handle SSE event and dispatch to appropriate store
    * @param {string} eventType - SSE event type
    * @param {Object} data - Event data
+   * @param {string} [instanceId] - Instance ID (optional, defaults to active instance)
    */
-  handleEvent(eventType, data) {
+  handleEvent(eventType, data, instanceId) {
+    // Resolve instance ID: explicit param > data.instanceId > active instance
+    const resolvedInstanceId = instanceId 
+      || data?.instanceId 
+      || (typeof InstanceStore !== 'undefined' ? InstanceStore.getActiveInstanceId() : null);
+    
+    // Inject instanceId into data for downstream handlers
+    const enrichedData = { ...data, instanceId: resolvedInstanceId };
+    
     if (this._debug) {
-      console.log('[StoreBridge] Event:', eventType, data);
+      console.log('[StoreBridge] Event:', eventType, enrichedData);
     }
 
     switch (eventType) {
       // Message events
       case 'message.delta':
       case 'message.part.updated':
-        this._handleMessageDelta(data);
+        this._handleMessageDelta(enrichedData);
         break;
 
       case 'message.start':
       case 'message.created':
-        this._handleMessageStart(data);
+        this._handleMessageStart(enrichedData);
         break;
 
       case 'message.end':
       case 'message.completed':
-        this._handleMessageCompleted(data);
+        this._handleMessageCompleted(enrichedData);
         break;
 
       // Tool events
       case 'tool.start':
-        this._handleToolStart(data);
+        this._handleToolStart(enrichedData);
         break;
 
       case 'tool.output':
-        this._handleToolOutput(data);
+        this._handleToolOutput(enrichedData);
         break;
 
       case 'tool.end':
-        this._handleToolEnd(data);
+        this._handleToolEnd(enrichedData);
         break;
 
       // Thinking events
       case 'thinking.start':
-        this._handleThinkingStart(data);
+        this._handleThinkingStart(enrichedData);
         break;
 
       case 'thinking.delta':
-        this._handleThinkingDelta(data);
+        this._handleThinkingDelta(enrichedData);
         break;
 
       case 'thinking.end':
-        this._handleThinkingEnd(data);
+        this._handleThinkingEnd(enrichedData);
         break;
 
       // Session events
       case 'session.started':
-        this._handleSessionStarted(data);
+        this._handleSessionStarted(enrichedData);
         break;
 
       case 'session.stopped':
       case 'session.idle':
       case 'session.completed':
-        this._handleSessionIdle(data);
+        this._handleSessionIdle(enrichedData);
         break;
 
       // Status events
       case 'status.change':
-        this._handleStatusChange(data);
+        this._handleStatusChange(enrichedData);
+        break;
+
+      // Permission events
+      case 'permission.requested':
+        this._handlePermissionRequested(enrichedData);
+        break;
+
+      case 'permission.resolved':
+        this._handlePermissionResolved(enrichedData);
+        break;
+
+      // Question events
+      case 'question.requested':
+        this._handleQuestionRequested(enrichedData);
+        break;
+
+      case 'question.answered':
+        this._handleQuestionAnswered(enrichedData);
+        break;
+
+      // Step events (token tracking)
+      case 'step.start':
+        this._handleStepStart(enrichedData);
+        break;
+
+      case 'step.finish':
+        this._handleStepFinish(enrichedData);
         break;
 
       default:
@@ -326,7 +368,7 @@ const StoreBridge = {
    * @param {Object} data
    */
   _handleToolEnd(data) {
-    const { toolId, status, output, messageId } = data || {};
+    const { toolId, status, output, messageId, diff, filePath } = data || {};
     
     const targetMessageId = messageId || this._currentMessageId;
     
@@ -348,17 +390,39 @@ const StoreBridge = {
     const existingPart = message.parts[partId];
     
     if (existingPart?.toolCall) {
+      const toolCall = existingPart.toolCall;
+      const toolName = toolCall.toolName?.toLowerCase() || '';
+      
       MessageStore.addOrUpdatePart({
         messageId: targetMessageId,
         partId,
         type: 'tool',
         toolCall: {
-          ...existingPart.toolCall,
+          ...toolCall,
           status: status === 'error' ? 'error' : 'success',
-          output: output ?? existingPart.toolCall.output,
+          output: output ?? toolCall.output,
           completedAt: Date.now(),
         },
       });
+
+      // Diff Viewer: Check if this is a file write tool with diff data
+      const isWriteTool = ['write', 'file_write', 'writefile', 'edit'].includes(toolName);
+      const hasDiffData = diff || (output && (output.includes('@@') || output.includes('+++') || output.includes('---')));
+      
+      if (isWriteTool && hasDiffData && typeof ToolRenderer !== 'undefined') {
+        const filename = filePath || toolCall.input?.file_path || toolCall.input?.path || 'unknown';
+        
+        ToolRenderer.addDiffViewer(toolId, {
+          filename,
+          oldContent: diff?.oldContent || '',
+          newContent: diff?.newContent || '',
+          unifiedDiff: diff?.unifiedDiff || output,
+        });
+        
+        if (this._debug) {
+          console.log('[StoreBridge] Diff viewer added for tool:', toolId, filename);
+        }
+      }
     }
   },
 
@@ -549,6 +613,226 @@ const StoreBridge = {
         this._currentMessageId = null;
         SessionStore.updateStatus('idle');
         break;
+    }
+  },
+
+  // ===========================================================================
+  // Permission Event Handlers
+  // ===========================================================================
+
+  /**
+   * Handle permission requested event
+   * @param {Object} data
+   */
+  _handlePermissionRequested(data) {
+    const { permission, messageId, toolCallId } = data || {};
+    
+    if (!permission?.id) {
+      console.warn('[StoreBridge] permission.requested missing permission.id:', data);
+      return;
+    }
+
+    const targetMessageId = messageId || this._currentMessageId;
+    const partId = toolCallId ? `tool-${toolCallId}` : null;
+
+    // Add to MessageStore permission queue
+    MessageStore.upsertPermission({
+      id: permission.id,
+      messageId: targetMessageId,
+      partId,
+      permission: {
+        id: permission.id,
+        type: permission.type || 'unknown',
+        title: permission.title || 'Permission Required',
+        description: permission.description || '',
+        metadata: permission.metadata || {},
+        risk: permission.risk || 'medium',
+      },
+    });
+
+    // Update session status to waiting
+    SessionStore.updateStatus('waiting');
+
+    if (this._debug) {
+      console.log('[StoreBridge] Permission requested:', permission.id, 'for tool:', toolCallId);
+    }
+  },
+
+  /**
+   * Handle permission resolved event
+   * @param {Object} data
+   */
+  _handlePermissionResolved(data) {
+    const { permissionId, approved } = data || {};
+    
+    if (!permissionId) return;
+
+    // Remove from queue
+    MessageStore.removePermission(permissionId);
+
+    // Update status if no more pending permissions/questions
+    if (MessageStore.getPermissionQueue().length === 0 && 
+        MessageStore.getQuestionQueue().length === 0) {
+      SessionStore.updateStatus('processing');
+    }
+
+    if (this._debug) {
+      console.log('[StoreBridge] Permission resolved:', permissionId, approved ? 'approved' : 'denied');
+    }
+  },
+
+  // ===========================================================================
+  // Question Event Handlers
+  // ===========================================================================
+
+  /**
+   * Handle question requested event
+   * @param {Object} data
+   */
+  _handleQuestionRequested(data) {
+    const { question, messageId } = data || {};
+    
+    if (!question?.id) {
+      console.warn('[StoreBridge] question.requested missing question.id:', data);
+      return;
+    }
+
+    const targetMessageId = messageId || this._currentMessageId;
+
+    // Add to MessageStore question queue
+    MessageStore.upsertQuestion({
+      id: question.id,
+      messageId: targetMessageId,
+      question: {
+        id: question.id,
+        text: question.text || question.question || '',
+        type: question.type || 'text',
+        options: question.options || [],
+        default: question.default,
+      },
+    });
+
+    // Update session status to waiting
+    SessionStore.updateStatus('waiting');
+
+    if (this._debug) {
+      console.log('[StoreBridge] Question requested:', question.id);
+    }
+  },
+
+  /**
+   * Handle question answered event
+   * @param {Object} data
+   */
+  _handleQuestionAnswered(data) {
+    const { questionId } = data || {};
+    
+    if (!questionId) return;
+
+    // Remove from queue
+    MessageStore.removeQuestion(questionId);
+
+    // Update status if no more pending
+    if (MessageStore.getPermissionQueue().length === 0 && 
+        MessageStore.getQuestionQueue().length === 0) {
+      SessionStore.updateStatus('processing');
+    }
+
+    if (this._debug) {
+      console.log('[StoreBridge] Question answered:', questionId);
+    }
+  },
+
+  // ===========================================================================
+  // Step Event Handlers (Token Tracking)
+  // ===========================================================================
+
+  /**
+   * Handle step start event
+   * @param {Object} data
+   */
+  _handleStepStart(data) {
+    const { stepId, messageId } = data || {};
+    
+    const targetMessageId = messageId || this._currentMessageId;
+    if (!targetMessageId) return;
+
+    // Ensure message exists
+    if (!MessageStore.hasMessage(targetMessageId)) {
+      const sessionId = SessionStore.getCurrentSessionId() || 'default';
+      MessageStore.upsertMessage({
+        id: targetMessageId,
+        sessionId,
+        role: 'assistant',
+        status: 'streaming',
+      });
+    }
+
+    // Add step part to message
+    MessageStore.addOrUpdatePart({
+      messageId: targetMessageId,
+      partId: `step-${stepId || Date.now()}`,
+      type: 'step',
+      step: {
+        stepId: stepId || `step-${Date.now()}`,
+        status: 'start',
+        startedAt: Date.now(),
+      },
+    });
+
+    if (this._debug) {
+      console.log('[StoreBridge] Step started:', stepId);
+    }
+  },
+
+  /**
+   * Handle step finish event (includes token usage)
+   * @param {Object} data
+   */
+  _handleStepFinish(data) {
+    const { stepId, messageId, inputTokens, outputTokens, cost } = data || {};
+    
+    const targetMessageId = messageId || this._currentMessageId;
+    if (!targetMessageId) return;
+
+    const message = MessageStore.getMessage(targetMessageId);
+    if (!message) return;
+
+    // Find step part
+    const stepPartId = message.partIds.find(id => {
+      const part = message.parts[id];
+      return part?.type === 'step' && part?.step?.stepId === stepId;
+    }) || `step-${stepId}`;
+
+    const existingPart = message.parts[stepPartId];
+
+    // Update step part with token info
+    MessageStore.addOrUpdatePart({
+      messageId: targetMessageId,
+      partId: stepPartId,
+      type: 'step',
+      step: {
+        stepId: stepId || existingPart?.step?.stepId,
+        status: 'finish',
+        startedAt: existingPart?.step?.startedAt,
+        finishedAt: Date.now(),
+        inputTokens: inputTokens || 0,
+        outputTokens: outputTokens || 0,
+        cost: cost || 0,
+      },
+    });
+
+    // Update session usage
+    const sessionId = message.sessionId;
+    if (sessionId && (inputTokens || outputTokens || cost)) {
+      SessionStore.updateSessionUsage(sessionId, {
+        tokens: (inputTokens || 0) + (outputTokens || 0),
+        cost: cost || 0,
+      });
+    }
+
+    if (this._debug) {
+      console.log('[StoreBridge] Step finished:', stepId, { inputTokens, outputTokens, cost });
     }
   },
 

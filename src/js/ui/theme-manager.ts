@@ -1,18 +1,23 @@
 /**
  * Theme Manager
  *
- * Manages application theme (dark/light) with persistence.
- * Integrates with the design system CSS variables.
+ * Manages application themes with 3 palettes:
+ * - Obsidian (dark, cyan accents)
+ * - Midnight (dark, violet accents)
+ * - Aurora (light, teal accents)
  *
  * @example
  * ```typescript
  * import { ThemeManager } from './ui/theme-manager';
  *
  * // Set theme
- * ThemeManager.set('light');
+ * ThemeManager.set('midnight');
  *
- * // Toggle between dark/light
- * ThemeManager.toggle();
+ * // Cycle through themes
+ * ThemeManager.next();
+ *
+ * // Get available themes
+ * ThemeManager.getAvailableThemes();
  *
  * // Listen for changes
  * const unsubscribe = ThemeManager.onChange((theme) => {
@@ -27,9 +32,16 @@ import { LogManager } from '../modules/log-manager';
 // Types
 // ============================================================================
 
-export type ThemeId = 'dark' | 'light';
+export type ThemeId = 'obsidian' | 'midnight' | 'aurora';
 
 type ThemeChangeCallback = (theme: ThemeId) => void;
+
+interface ThemeInfo {
+  id: ThemeId;
+  name: string;
+  icon: string;
+  isDark: boolean;
+}
 
 interface ThemeConfig {
   storageKey: string;
@@ -39,12 +51,39 @@ interface ThemeConfig {
 }
 
 // ============================================================================
+// Theme Definitions
+// ============================================================================
+
+export const THEMES: Record<ThemeId, ThemeInfo> = {
+  obsidian: {
+    id: 'obsidian',
+    name: 'Obsidian',
+    icon: '🌑',
+    isDark: true,
+  },
+  midnight: {
+    id: 'midnight',
+    name: 'Midnight',
+    icon: '🌙',
+    isDark: true,
+  },
+  aurora: {
+    id: 'aurora',
+    name: 'Aurora',
+    icon: '❄️',
+    isDark: false,
+  },
+};
+
+const THEME_ORDER: ThemeId[] = ['obsidian', 'midnight', 'aurora'];
+
+// ============================================================================
 // Configuration
 // ============================================================================
 
 const CONFIG: ThemeConfig = {
   storageKey: 'hayalet-ev-theme',
-  defaultTheme: 'dark',
+  defaultTheme: 'obsidian',
   attribute: 'data-theme',
   transitionDuration: 200,
 };
@@ -62,16 +101,23 @@ let isInitialized = false;
 // ============================================================================
 
 /**
+ * Validate if a string is a valid theme ID
+ */
+function isValidTheme(theme: string): theme is ThemeId {
+  return theme in THEMES;
+}
+
+/**
  * Get stored theme from localStorage
  */
 function getStoredTheme(): ThemeId | null {
   try {
     const stored = localStorage.getItem(CONFIG.storageKey);
-    if (stored === 'dark' || stored === 'light') {
+    if (stored && isValidTheme(stored)) {
       return stored;
     }
   } catch {
-    // localStorage might not be available
+    // localStorage not available
   }
   return null;
 }
@@ -83,7 +129,7 @@ function storeTheme(theme: ThemeId): void {
   try {
     localStorage.setItem(CONFIG.storageKey, theme);
   } catch {
-    // localStorage might not be available
+    // localStorage not available
   }
 }
 
@@ -94,21 +140,37 @@ function applyTheme(theme: ThemeId, animate: boolean = true): void {
   const root = document.documentElement;
 
   if (animate) {
-    // Add transition class for smooth color changes
-    root.style.setProperty('--theme-transition', `${CONFIG.transitionDuration}ms`);
-    root.classList.add('theme-transitioning');
-  }
-
-  // Set theme attribute
-  root.setAttribute(CONFIG.attribute, theme);
-
-  if (animate) {
-    // Remove transition class after animation
+    root.style.transition = `background-color ${CONFIG.transitionDuration}ms ease, color ${CONFIG.transitionDuration}ms ease`;
     setTimeout(() => {
-      root.classList.remove('theme-transitioning');
-      root.style.removeProperty('--theme-transition');
+      root.style.transition = '';
     }, CONFIG.transitionDuration);
   }
+
+  root.setAttribute(CONFIG.attribute, theme);
+
+  // Update theme dropdown UI if exists
+  updateThemeDropdownUI(theme);
+}
+
+/**
+ * Update theme dropdown UI elements
+ */
+function updateThemeDropdownUI(theme: ThemeId): void {
+  const themeInfo = THEMES[theme];
+  
+  // Update current theme display
+  const currentIcon = document.getElementById('theme-current-icon');
+  const currentName = document.getElementById('theme-current-name');
+  
+  if (currentIcon) currentIcon.textContent = themeInfo.icon;
+  if (currentName) currentName.textContent = themeInfo.name;
+  
+  // Update active state in dropdown menu
+  const menuItems = document.querySelectorAll('.theme-dropdown-item');
+  menuItems.forEach((item) => {
+    const itemTheme = item.getAttribute('data-theme');
+    item.classList.toggle('is-active', itemTheme === theme);
+  });
 }
 
 /**
@@ -118,8 +180,44 @@ function notifyListeners(theme: ThemeId): void {
   listeners.forEach((callback) => {
     try {
       callback(theme);
-    } catch (error) {
-      LogManager.addEvent('ThemeManager', 'error', 'Listener callback error', { error });
+    } catch (err) {
+      LogManager.addEvent('ThemeManager', 'error', 'Listener error', { error: err });
+    }
+  });
+}
+
+/**
+ * Setup dropdown event listeners
+ */
+function setupDropdownListeners(): void {
+  const dropdown = document.getElementById('theme-dropdown');
+  const btn = document.getElementById('theme-dropdown-btn');
+  const menu = document.getElementById('theme-dropdown-menu');
+
+  if (!dropdown || !btn || !menu) return;
+
+  // Toggle dropdown
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('is-open');
+  });
+
+  // Close on outside click
+  document.addEventListener('click', () => {
+    dropdown.classList.remove('is-open');
+  });
+
+  // Theme selection
+  menu.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest('.theme-dropdown-item') as HTMLElement;
+    
+    if (item) {
+      const theme = item.getAttribute('data-theme');
+      if (theme && isValidTheme(theme)) {
+        ThemeManager.set(theme);
+        dropdown.classList.remove('is-open');
+      }
     }
   });
 }
@@ -130,24 +228,31 @@ function notifyListeners(theme: ThemeId): void {
 
 export const ThemeManager = {
   /**
-   * Current theme
+   * Current theme ID
    */
   get current(): ThemeId {
     return currentTheme;
   },
 
   /**
-   * Check if dark theme is active
+   * Current theme info object
    */
-  get isDark(): boolean {
-    return currentTheme === 'dark';
+  get currentInfo(): ThemeInfo {
+    return THEMES[currentTheme];
   },
 
   /**
-   * Check if light theme is active
+   * Check if current theme is dark
+   */
+  get isDark(): boolean {
+    return THEMES[currentTheme].isDark;
+  },
+
+  /**
+   * Check if current theme is light
    */
   get isLight(): boolean {
-    return currentTheme === 'light';
+    return !THEMES[currentTheme].isDark;
   },
 
   /**
@@ -166,15 +271,12 @@ export const ThemeManager = {
     // Apply theme without animation on init
     applyTheme(currentTheme, false);
 
-    // Listen for system preference changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', (e) => {
-      // Only auto-switch if user hasn't set a preference
-      if (!getStoredTheme()) {
-        const newTheme: ThemeId = e.matches ? 'dark' : 'light';
-        ThemeManager.set(newTheme, false); // Don't store auto-detected theme
-      }
-    });
+    // Setup dropdown listeners after DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupDropdownListeners);
+    } else {
+      setupDropdownListeners();
+    }
 
     isInitialized = true;
     LogManager.addEvent('ThemeManager', 'info', 'Initialized', { theme: currentTheme, visibility: 2 });
@@ -182,11 +284,11 @@ export const ThemeManager = {
 
   /**
    * Set theme
-   * @param theme - Theme to set ('dark' or 'light')
+   * @param theme - Theme ID to set
    * @param persist - Whether to persist to localStorage (default: true)
    */
   set(theme: ThemeId, persist: boolean = true): void {
-    if (theme !== 'dark' && theme !== 'light') {
+    if (!isValidTheme(theme)) {
       LogManager.addEvent('ThemeManager', 'warn', 'Invalid theme', { theme });
       return;
     }
@@ -207,11 +309,42 @@ export const ThemeManager = {
   },
 
   /**
-   * Toggle between dark and light theme
+   * Cycle to next theme
+   */
+  next(): void {
+    const currentIndex = THEME_ORDER.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % THEME_ORDER.length;
+    ThemeManager.set(THEME_ORDER[nextIndex]);
+  },
+
+  /**
+   * Cycle to previous theme
+   */
+  prev(): void {
+    const currentIndex = THEME_ORDER.indexOf(currentTheme);
+    const prevIndex = (currentIndex - 1 + THEME_ORDER.length) % THEME_ORDER.length;
+    ThemeManager.set(THEME_ORDER[prevIndex]);
+  },
+
+  /**
+   * Toggle between dark themes (obsidian/midnight) or to light (aurora)
    */
   toggle(): void {
-    const newTheme: ThemeId = currentTheme === 'dark' ? 'light' : 'dark';
-    ThemeManager.set(newTheme);
+    ThemeManager.next();
+  },
+
+  /**
+   * Get all available themes
+   */
+  getAvailableThemes(): ThemeInfo[] {
+    return THEME_ORDER.map((id) => THEMES[id]);
+  },
+
+  /**
+   * Get theme info by ID
+   */
+  getTheme(id: ThemeId): ThemeInfo {
+    return THEMES[id];
   },
 
   /**
@@ -230,14 +363,14 @@ export const ThemeManager = {
    * Get theme icon emoji
    */
   getIcon(): string {
-    return currentTheme === 'dark' ? '🌙' : '☀️';
+    return THEMES[currentTheme].icon;
   },
 
   /**
-   * Get opposite theme
+   * Get theme name
    */
-  getOpposite(): ThemeId {
-    return currentTheme === 'dark' ? 'light' : 'dark';
+  getName(): string {
+    return THEMES[currentTheme].name;
   },
 };
 
@@ -249,7 +382,7 @@ if (typeof document !== 'undefined') {
   } else {
     ThemeManager.init();
   }
-  
+
   // Expose to window for consistent access across Vite HMR reloads
   (window as unknown as Record<string, unknown>).__ThemeManager = ThemeManager;
 }

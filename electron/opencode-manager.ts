@@ -457,6 +457,43 @@ export const OpenCodeManager = {
     }
   },
 
+  /**
+   * Session context'sıkıştır (compact)
+   * Token sayısını azaltmak için eski mesajları özetler
+   */
+  async compactSession(sessionId?: string): Promise<ApiResponse<{ tokens?: number }>> {
+    const sid = sessionId || this._state.sessionId;
+    
+    if (!sid) {
+      return { success: false, error: "Session ID gerekli" };
+    }
+
+    try {
+      // OpenCode API'de compact endpoint'i varsa kullan
+      const response = await fetch(`${this._getApiUrl()}/session/${sid}/compact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        // Compact endpoint yoksa başarılı dön (opsiyonel özellik)
+        if (response.status === 404) {
+          console.log("[OPENCODE-API]", "warn", "Compact endpoint bulunamadı");
+          return { success: true, data: { tokens: 0 } };
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json() as { tokens?: number; compactedTokens?: number };
+      console.log("[OPENCODE-API]", "info", "Session compact edildi", { sessionId: sid, tokens: data.tokens });
+      return { success: true, data: { tokens: data.tokens || data.compactedTokens || 0 } };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "compactSession hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
   // =========================================================================
   // SSE Event Subscription
   // =========================================================================

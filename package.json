@@ -44,7 +44,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.2",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.0.10",
     "@types/screenshot-desktop": "^1.15.0",
     "concurrently": "^9.2.1",
     "depcheck": "^1.4.7",
@@ -52,12 +52,13 @@
     "electron-builder": "^26.5.0",
     "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.1",
     "vite": "^7.3.1",
-    "wait-on": "^9.0.3"
+    "wait-on": "^9.0.3",
+    "ws": "^8.19.0"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",

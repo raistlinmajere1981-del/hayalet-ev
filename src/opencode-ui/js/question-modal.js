@@ -195,13 +195,19 @@ const QuestionModal = {
         `;
 
       case 'select':
-        const options = (question.options || []).map(opt => `
-          <div class="select-option ${question.default === opt.value ? 'selected' : ''}" data-value="${this._escapeHtml(opt.value)}">
-            <span class="option-radio"></span>
+      case 'multi-select':
+        const isMulti = question.type === 'multi-select';
+        const defaultValues = isMulti ? (question.default || []) : [question.default];
+        const options = (question.options || []).map((opt, idx) => `
+          <div class="select-option ${defaultValues.includes(opt.value) ? 'selected' : ''}" data-value="${this._escapeHtml(opt.value)}">
+            <span class="option-indicator">${isMulti ? '☐' : '○'}</span>
+            <span class="option-number">${idx + 1}</span>
             <span class="option-label">${this._escapeHtml(opt.label)}</span>
+            ${opt.description ? `<span class="option-desc">${this._escapeHtml(opt.description)}</span>` : ''}
           </div>
         `).join('');
-        return `<div class="question-select">${options}</div>`;
+        const hint = isMulti ? '<div class="select-hint">Space veya tıkla: Seç/Bırak • Enter: Gönder • 1-9: Hızlı seçim</div>' : '';
+        return `<div class="question-select ${isMulti ? 'multi-select' : ''}">${options}${hint}</div>`;
 
       case 'text':
       default:
@@ -324,15 +330,141 @@ const QuestionModal = {
 
   /**
    * Handle keyboard shortcuts
+   * CodeNomad pattern: 1-4 for options, Enter to submit, Escape to skip
    * @param {KeyboardEvent} e
    */
   _handleKeydown(e) {
     if (!this._isVisible) return;
 
+    // Escape = Skip
     if (e.key === 'Escape') {
       e.preventDefault();
       this._handleSkip();
+      return;
     }
+
+    // Skip number shortcuts if typing in input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    // Number keys 1-9 for option selection
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= 9) {
+      e.preventDefault();
+      this._selectOptionByIndex(num - 1);
+      return;
+    }
+
+    // Enter = Submit (when not in text input)
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this._handleSubmit();
+      return;
+    }
+
+    // Arrow keys for navigation
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      this._navigateOptions(e.key === 'ArrowUp' ? -1 : 1);
+      return;
+    }
+
+    // Space to toggle selection (for multi-select)
+    if (e.key === ' ') {
+      e.preventDefault();
+      this._toggleCurrentSelection();
+      return;
+    }
+  },
+
+  /**
+   * Select option by index (0-based)
+   * @param {number} index
+   */
+  _selectOptionByIndex(index) {
+    const container = this._modal?.querySelector('.question-input-container');
+    if (!container) return;
+
+    // For select type
+    const options = container.querySelectorAll('.select-option');
+    if (options.length > index) {
+      const option = options[index];
+      
+      // Check if multi-select
+      if (container.querySelector('.question-select.multi-select')) {
+        option.classList.toggle('selected');
+        this._updateMultiSelectAnswer();
+      } else {
+        options.forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        this._currentAnswer = option.getAttribute('data-value');
+      }
+      return;
+    }
+
+    // For confirm type
+    const confirmBtns = container.querySelectorAll('.confirm-btn');
+    if (confirmBtns.length > index) {
+      confirmBtns.forEach(b => b.classList.remove('selected'));
+      confirmBtns[index].classList.add('selected');
+      this._currentAnswer = confirmBtns[index].getAttribute('data-value');
+    }
+  },
+
+  /**
+   * Navigate options with arrow keys
+   * @param {number} direction - -1 for up, 1 for down
+   */
+  _navigateOptions(direction) {
+    const container = this._modal?.querySelector('.question-input-container');
+    if (!container) return;
+
+    const options = container.querySelectorAll('.select-option, .confirm-btn');
+    if (options.length === 0) return;
+
+    // Find currently focused/selected option
+    let currentIndex = -1;
+    options.forEach((opt, i) => {
+      if (opt.classList.contains('focused') || opt.classList.contains('selected')) {
+        currentIndex = i;
+      }
+    });
+
+    // Calculate new index
+    let newIndex = currentIndex + direction;
+    if (newIndex < 0) newIndex = options.length - 1;
+    if (newIndex >= options.length) newIndex = 0;
+
+    // Update focus
+    options.forEach(o => o.classList.remove('focused'));
+    options[newIndex].classList.add('focused');
+    options[newIndex].scrollIntoView({ block: 'nearest' });
+  },
+
+  /**
+   * Toggle selection for focused option (multi-select)
+   */
+  _toggleCurrentSelection() {
+    const container = this._modal?.querySelector('.question-input-container');
+    if (!container) return;
+
+    const focused = container.querySelector('.select-option.focused, .confirm-btn.focused');
+    if (focused) {
+      focused.click();
+    }
+  },
+
+  /**
+   * Update answer for multi-select
+   */
+  _updateMultiSelectAnswer() {
+    const container = this._modal?.querySelector('.question-input-container');
+    if (!container) return;
+
+    const selected = container.querySelectorAll('.select-option.selected');
+    const values = Array.from(selected).map(el => el.getAttribute('data-value'));
+    this._currentAnswer = values;
   },
 
   // ===========================================================================

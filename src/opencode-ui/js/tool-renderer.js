@@ -26,19 +26,47 @@ const ToolRenderer = {
    * @returns {HTMLElement}
    */
   createToolCard(toolCall) {
+    // Check if ToolRendererRegistry has a custom renderer for this tool
+    if (typeof ToolRendererRegistry !== 'undefined' && ToolRendererRegistry.has(toolCall.toolName)) {
+      const customRenderer = ToolRendererRegistry.get(toolCall.toolName);
+      if (customRenderer?.renderCard) {
+        const element = customRenderer.renderCard(toolCall);
+        this._toolElements.set(toolCall.toolId, element);
+        return element;
+      }
+    }
+
+    // Default rendering (fallback)
     const div = document.createElement('div');
     div.className = `tool-card ${toolCall.status}`;
     div.setAttribute('data-tool-id', toolCall.toolId);
 
-    // Wrench icon for tool indicator
-    const wrenchIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    // Get custom icon/label from registry or use defaults
+    const registry = typeof ToolRendererRegistry !== 'undefined' ? ToolRendererRegistry.get(toolCall.toolName) : null;
+    const toolIcon = registry?.icon || `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
     </svg>`;
+    const toolLabel = registry?.label || 'Tool Call';
+
+    // Use custom input/output renderers if available
+    const inputHtml = registry?.renderInput 
+      ? registry.renderInput(toolCall.input, toolCall)
+      : (toolCall.input ? this._renderInput(toolCall.input) : '');
+    
+    const outputHtml = registry?.renderOutput
+      ? registry.renderOutput(toolCall.output, toolCall)
+      : (toolCall.output ? this._renderOutput(toolCall.output) : '');
+
+    // Check for auto-collapse
+    const shouldCollapse = registry?.shouldAutoCollapse?.(toolCall) ?? false;
+    if (shouldCollapse) {
+      div.classList.add('collapsed');
+    }
 
     div.innerHTML = `
       <div class="tool-header" onclick="ToolRenderer.toggleCollapse('${toolCall.toolId}')">
-        <div class="tool-icon">${wrenchIcon}</div>
-        <span class="tool-label">Tool Call</span>
+        <div class="tool-icon">${toolIcon}</div>
+        <span class="tool-label">${toolLabel}</span>
         <span class="tool-name-badge">${this._escapeHtml(toolCall.toolName)}</span>
         <div class="tool-header-spacer"></div>
         <span class="tool-status ${toolCall.status}">${this._getStatusText(toolCall.status)}</span>
@@ -57,9 +85,9 @@ const ToolRenderer = {
       </div>
       <div class="tool-body">
         ${toolCall.description ? this._renderDescription(toolCall.description) : ''}
-        ${toolCall.input ? this._renderInput(toolCall.input) : ''}
+        ${inputHtml}
         <div class="tool-output-container">
-          ${toolCall.output ? this._renderOutput(toolCall.output) : ''}
+          ${outputHtml}
           ${toolCall.error ? this._renderError(toolCall.error) : ''}
         </div>
       </div>
@@ -249,6 +277,11 @@ const ToolRenderer = {
    * @returns {string}
    */
   _getStatusText(status) {
+    // Config'den al
+    if (typeof OpenCodeConfig !== 'undefined') {
+      return OpenCodeConfig.getStatusText(status);
+    }
+    // Fallback
     const texts = {
       pending: 'Bekliyor',
       running: 'Çalışıyor',
@@ -419,46 +452,26 @@ const ToolRenderer = {
         case 29: styles.strikethrough = false; break;
 
         // Standard foreground colors (30-37)
-        case 30: styles.fg = '#000000'; break;
-        case 31: styles.fg = '#cd3131'; break;
-        case 32: styles.fg = '#0dbc79'; break;
-        case 33: styles.fg = '#e5e510'; break;
-        case 34: styles.fg = '#2472c8'; break;
-        case 35: styles.fg = '#bc3fbc'; break;
-        case 36: styles.fg = '#11a8cd'; break;
-        case 37: styles.fg = '#e5e5e5'; break;
+        case 30: case 31: case 32: case 33: case 34: case 35: case 36: case 37:
+          styles.fg = this._getAnsiColor(code);
+          break;
         case 39: styles.fg = null; break; // Default fg
 
         // Standard background colors (40-47)
-        case 40: styles.bg = '#000000'; break;
-        case 41: styles.bg = '#cd3131'; break;
-        case 42: styles.bg = '#0dbc79'; break;
-        case 43: styles.bg = '#e5e510'; break;
-        case 44: styles.bg = '#2472c8'; break;
-        case 45: styles.bg = '#bc3fbc'; break;
-        case 46: styles.bg = '#11a8cd'; break;
-        case 47: styles.bg = '#e5e5e5'; break;
+        case 40: case 41: case 42: case 43: case 44: case 45: case 46: case 47:
+          styles.bg = this._getAnsiColor(code - 10); // Map 40-47 to 30-37
+          break;
         case 49: styles.bg = null; break; // Default bg
 
         // Bright foreground colors (90-97)
-        case 90: styles.fg = '#666666'; break;
-        case 91: styles.fg = '#f14c4c'; break;
-        case 92: styles.fg = '#23d18b'; break;
-        case 93: styles.fg = '#f5f543'; break;
-        case 94: styles.fg = '#3b8eea'; break;
-        case 95: styles.fg = '#d670d6'; break;
-        case 96: styles.fg = '#29b8db'; break;
-        case 97: styles.fg = '#ffffff'; break;
+        case 90: case 91: case 92: case 93: case 94: case 95: case 96: case 97:
+          styles.fg = this._getAnsiColor(code);
+          break;
 
         // Bright background colors (100-107)
-        case 100: styles.bg = '#666666'; break;
-        case 101: styles.bg = '#f14c4c'; break;
-        case 102: styles.bg = '#23d18b'; break;
-        case 103: styles.bg = '#f5f543'; break;
-        case 104: styles.bg = '#3b8eea'; break;
-        case 105: styles.bg = '#d670d6'; break;
-        case 106: styles.bg = '#29b8db'; break;
-        case 107: styles.bg = '#ffffff'; break;
+        case 100: case 101: case 102: case 103: case 104: case 105: case 106: case 107:
+          styles.bg = this._getAnsiColor(code - 10); // Map 100-107 to 90-97
+          break;
 
         // 256 color mode (38;5;n or 48;5;n)
         case 38:
@@ -479,12 +492,39 @@ const ToolRenderer = {
   },
 
   /**
+   * Get ANSI color from config or fallback
+   * @param {number} code - ANSI color code (30-37, 90-97)
+   * @returns {string}
+   */
+  _getAnsiColor(code) {
+    // Try config first
+    if (typeof OpenCodeConfig !== 'undefined') {
+      const color = OpenCodeConfig.getAnsiColor(code);
+      if (color) return color;
+    }
+    // Fallback to built-in defaults
+    return this._defaultAnsiColors[code] || '#e5e5e5';
+  },
+
+  /** @type {Object<number, string>} Default ANSI colors */
+  _defaultAnsiColors: {
+    30: '#000000', 31: '#cd3131', 32: '#0dbc79', 33: '#e5e510',
+    34: '#2472c8', 35: '#bc3fbc', 36: '#11a8cd', 37: '#e5e5e5',
+    90: '#666666', 91: '#f14c4c', 92: '#23d18b', 93: '#f5f543',
+    94: '#3b8eea', 95: '#d670d6', 96: '#29b8db', 97: '#ffffff',
+  },
+
+  /**
    * Convert 256 color index to hex
    * @param {number} n
    * @returns {string}
    */
   _get256Color(n) {
-    // Standard colors (0-15)
+    // Standard colors (0-15) - use _getAnsiColor for consistency
+    if (n < 8) return this._getAnsiColor(30 + n);
+    if (n < 16) return this._getAnsiColor(90 + (n - 8));
+
+    // Legacy standard array for any edge cases
     const standard = [
       '#000000', '#cd3131', '#0dbc79', '#e5e510', '#2472c8', '#bc3fbc', '#11a8cd', '#e5e5e5',
       '#666666', '#f14c4c', '#23d18b', '#f5f543', '#3b8eea', '#d670d6', '#29b8db', '#ffffff',
@@ -552,6 +592,604 @@ const ToolRenderer = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  },
+
+  // =========================================================================
+  // Inline Permission Approval (FAZ 4)
+  // =========================================================================
+
+  /**
+   * Tool card'a inline permission approval ekle
+   * @param {string} toolId - Tool ID
+   * @param {object} permission - Permission bilgisi
+   * @param {string} permission.permissionId - Permission ID
+   * @param {string} permission.description - Açıklama
+   * @param {'low' | 'medium' | 'high'} permission.risk - Risk seviyesi
+   */
+  addInlinePermission(toolId, permission) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const body = element.querySelector('.tool-body');
+    if (!body) return;
+
+    // Mevcut permission varsa kaldır
+    const existing = body.querySelector('.tool-permission');
+    if (existing) existing.remove();
+
+    const riskClass = permission.risk === 'high' ? 'danger' : permission.risk === 'medium' ? 'warning' : 'info';
+    const riskText = permission.risk === 'high' ? 'Yüksek Risk' : permission.risk === 'medium' ? 'Orta Risk' : 'Düşük Risk';
+
+    const permissionHtml = `
+      <div class="tool-permission" data-permission-id="${permission.permissionId}">
+        <div class="tool-permission-header">
+          <span class="tool-permission-icon">⚠️</span>
+          <span class="tool-permission-title">Onay Gerekiyor</span>
+          <span class="tool-permission-risk ${riskClass}">${riskText}</span>
+        </div>
+        <div class="tool-permission-description">${this._escapeHtml(permission.description)}</div>
+        <div class="tool-permission-actions">
+          <button class="btn btn-success btn-sm" onclick="ToolRenderer._handlePermissionApprove('${toolId}', '${permission.permissionId}')">
+            <span class="kbd-hint">A</span> Onayla
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="ToolRenderer._handlePermissionDeny('${toolId}', '${permission.permissionId}')">
+            <span class="kbd-hint">D</span> Reddet
+          </button>
+          <label class="tool-permission-auto">
+            <input type="checkbox" id="auto-approve-${toolId}">
+            <span>Bu oturumda otomatik onayla</span>
+          </label>
+        </div>
+      </div>
+    `;
+
+    body.insertAdjacentHTML('afterbegin', permissionHtml);
+
+    // Keyboard shortcuts
+    this._setupPermissionKeyboard(toolId, permission.permissionId);
+  },
+
+  /**
+   * Permission keyboard shortcuts
+   * @param {string} toolId
+   * @param {string} permissionId
+   */
+  _setupPermissionKeyboard(toolId, permissionId) {
+    const handler = (e) => {
+      if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this._handlePermissionApprove(toolId, permissionId);
+        document.removeEventListener('keydown', handler);
+      } else if (e.key.toLowerCase() === 'd' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this._handlePermissionDeny(toolId, permissionId);
+        document.removeEventListener('keydown', handler);
+      }
+    };
+    document.addEventListener('keydown', handler);
+
+    // Store handler reference for cleanup
+    this._permissionHandlers = this._permissionHandlers || new Map();
+    this._permissionHandlers.set(toolId, handler);
+  },
+
+  /**
+   * Permission onay handler
+   * @param {string} toolId
+   * @param {string} permissionId
+   */
+  async _handlePermissionApprove(toolId, permissionId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    // Auto-approve checkbox kontrolü
+    const autoApprove = element.querySelector(`#auto-approve-${toolId}`)?.checked || false;
+    if (autoApprove) {
+      // Session'da bu tool için auto-approve kaydet
+      this._autoApprovedTools = this._autoApprovedTools || new Set();
+      const toolName = element.querySelector('.tool-name-badge')?.textContent;
+      if (toolName) this._autoApprovedTools.add(toolName);
+    }
+
+    // Permission UI'yı kaldır
+    this._removePermissionUI(toolId);
+
+    // API'ye gönder
+    if (typeof APIClient !== 'undefined') {
+      try {
+        await APIClient.respondToPermission(permissionId, true);
+      } catch (err) {
+        console.error('[ToolRenderer] Permission approve failed:', err);
+      }
+    }
+  },
+
+  /**
+   * Permission reddet handler
+   * @param {string} toolId
+   * @param {string} permissionId
+   */
+  async _handlePermissionDeny(toolId, permissionId) {
+    // Permission UI'yı kaldır
+    this._removePermissionUI(toolId);
+
+    // API'ye gönder
+    if (typeof APIClient !== 'undefined') {
+      try {
+        await APIClient.respondToPermission(permissionId, false);
+      } catch (err) {
+        console.error('[ToolRenderer] Permission deny failed:', err);
+      }
+    }
+  },
+
+  /**
+   * Permission UI'yı kaldır
+   * @param {string} toolId
+   */
+  _removePermissionUI(toolId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const permissionEl = element.querySelector('.tool-permission');
+    if (permissionEl) {
+      permissionEl.remove();
+    }
+
+    // Keyboard handler'u temizle
+    if (this._permissionHandlers?.has(toolId)) {
+      document.removeEventListener('keydown', this._permissionHandlers.get(toolId));
+      this._permissionHandlers.delete(toolId);
+    }
+  },
+
+  /**
+   * Tool auto-approve kontrolu
+   * @param {string} toolName
+   * @returns {boolean}
+   */
+  isAutoApproved(toolName) {
+    return this._autoApprovedTools?.has(toolName) || false;
+  },
+
+  // =========================================================================
+  // Inline Question Support (FAZ 4)
+  // =========================================================================
+
+  /**
+   * Tool card'a inline question ekle
+   * @param {string} toolId - Tool ID
+   * @param {object} question - Question bilgisi
+   * @param {string} question.questionId - Question ID
+   * @param {string} question.text - Soru metni
+   * @param {'text' | 'select' | 'confirm'} question.type - Soru tipi
+   * @param {Array<{label: string, value: string}>} [question.options] - Seçenekler
+   * @param {string} [question.default] - Default değer
+   */
+  addInlineQuestion(toolId, question) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const body = element.querySelector('.tool-body');
+    if (!body) return;
+
+    // Mevcut question varsa kaldır
+    const existing = body.querySelector('.tool-question');
+    if (existing) existing.remove();
+
+    let inputHtml = '';
+    
+    if (question.type === 'select' && question.options?.length) {
+      inputHtml = `
+        <div class="tool-question-options">
+          ${question.options.map((opt, i) => `
+            <label class="tool-question-option">
+              <input type="radio" name="q-${question.questionId}" value="${this._escapeHtml(opt.value)}" ${i === 0 ? 'checked' : ''}>
+              <span>${this._escapeHtml(opt.label)}</span>
+            </label>
+          `).join('')}
+        </div>
+      `;
+    } else if (question.type === 'confirm') {
+      inputHtml = `
+        <div class="tool-question-confirm">
+          <button class="btn btn-success btn-sm" onclick="ToolRenderer._handleQuestionAnswer('${toolId}', '${question.questionId}', 'yes')">
+            <span class="kbd-hint">Y</span> Evet
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="ToolRenderer._handleQuestionAnswer('${toolId}', '${question.questionId}', 'no')">
+            <span class="kbd-hint">N</span> Hayır
+          </button>
+        </div>
+      `;
+    } else {
+      inputHtml = `
+        <input type="text" class="tool-question-input" 
+               placeholder="Cevabınızı yazın..." 
+               value="${this._escapeHtml(question.default || '')}"
+               onkeydown="if(event.key==='Enter') ToolRenderer._submitQuestionInput('${toolId}', '${question.questionId}', this)">
+      `;
+    }
+
+    const questionHtml = `
+      <div class="tool-question" data-question-id="${question.questionId}">
+        <div class="tool-question-header">
+          <span class="tool-question-icon">❓</span>
+          <span class="tool-question-title">Soru</span>
+        </div>
+        <div class="tool-question-text">${this._escapeHtml(question.text)}</div>
+        ${inputHtml}
+        ${question.type !== 'confirm' ? `
+          <div class="tool-question-actions">
+            <button class="btn btn-primary btn-sm" onclick="ToolRenderer._submitQuestionFromButton('${toolId}', '${question.questionId}')">
+              <span class="kbd-hint">Enter</span> Gönder
+            </button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    body.insertAdjacentHTML('afterbegin', questionHtml);
+
+    // Focus input if text type
+    if (question.type === 'text') {
+      const input = body.querySelector('.tool-question-input');
+      if (input) setTimeout(() => input.focus(), 100);
+    }
+
+    // Keyboard shortcuts for confirm
+    if (question.type === 'confirm') {
+      this._setupQuestionKeyboard(toolId, question.questionId);
+    }
+  },
+
+  /**
+   * Question keyboard shortcuts (Y/N for confirm)
+   * @param {string} toolId
+   * @param {string} questionId
+   */
+  _setupQuestionKeyboard(toolId, questionId) {
+    const handler = (e) => {
+      if (e.key.toLowerCase() === 'y' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this._handleQuestionAnswer(toolId, questionId, 'yes');
+        document.removeEventListener('keydown', handler);
+      } else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        this._handleQuestionAnswer(toolId, questionId, 'no');
+        document.removeEventListener('keydown', handler);
+      }
+    };
+    document.addEventListener('keydown', handler);
+
+    this._questionHandlers = this._questionHandlers || new Map();
+    this._questionHandlers.set(toolId, handler);
+  },
+
+  /**
+   * Submit question from input field
+   * @param {string} toolId
+   * @param {string} questionId
+   * @param {HTMLInputElement} input
+   */
+  _submitQuestionInput(toolId, questionId, input) {
+    const answer = input.value.trim();
+    if (answer) {
+      this._handleQuestionAnswer(toolId, questionId, answer);
+    }
+  },
+
+  /**
+   * Submit question from button (reads input or selected option)
+   * @param {string} toolId
+   * @param {string} questionId
+   */
+  _submitQuestionFromButton(toolId, questionId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const questionEl = element.querySelector('.tool-question');
+    if (!questionEl) return;
+
+    // Check for text input
+    const textInput = questionEl.querySelector('.tool-question-input');
+    if (textInput) {
+      const answer = textInput.value.trim();
+      if (answer) {
+        this._handleQuestionAnswer(toolId, questionId, answer);
+      }
+      return;
+    }
+
+    // Check for radio selection
+    const selectedRadio = questionEl.querySelector('input[type="radio"]:checked');
+    if (selectedRadio) {
+      this._handleQuestionAnswer(toolId, questionId, selectedRadio.value);
+    }
+  },
+
+  /**
+   * Handle question answer
+   * @param {string} toolId
+   * @param {string} questionId
+   * @param {string} answer
+   */
+  async _handleQuestionAnswer(toolId, questionId, answer) {
+    // Remove question UI
+    this._removeQuestionUI(toolId);
+
+    // Send to API
+    if (typeof APIClient !== 'undefined') {
+      try {
+        await APIClient.respondToQuestion(questionId, answer);
+      } catch (err) {
+        console.error('[ToolRenderer] Question answer failed:', err);
+      }
+    }
+
+    // Remove from store
+    if (typeof MessageStore !== 'undefined') {
+      MessageStore.removeQuestion(questionId);
+    }
+  },
+
+  /**
+   * Question UI'yı kaldır
+   * @param {string} toolId
+   */
+  _removeQuestionUI(toolId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const questionEl = element.querySelector('.tool-question');
+    if (questionEl) {
+      questionEl.remove();
+    }
+
+    // Keyboard handler'ı temizle
+    if (this._questionHandlers?.has(toolId)) {
+      document.removeEventListener('keydown', this._questionHandlers.get(toolId));
+      this._questionHandlers.delete(toolId);
+    }
+  },
+
+  // =========================================================================
+  // Diff Viewer (FAZ 4 - file_write tool için)
+  // =========================================================================
+
+  /**
+   * Tool card'a diff viewer ekle
+   * @param {string} toolId - Tool ID
+   * @param {object} diff - Diff bilgisi
+   * @param {string} diff.filename - Dosya adı
+   * @param {string} diff.oldContent - Eski içerik
+   * @param {string} diff.newContent - Yeni içerik
+   * @param {string} [diff.unifiedDiff] - Unified diff formatı (opsiyonel)
+   */
+  addDiffViewer(toolId, diff) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const outputContainer = element.querySelector('.tool-output-container');
+    if (!outputContainer) return;
+
+    // Mevcut diff varsa kaldır
+    const existing = outputContainer.querySelector('.diff-viewer');
+    if (existing) existing.remove();
+
+    const lines = diff.unifiedDiff 
+      ? this._parseUnifiedDiff(diff.unifiedDiff)
+      : this._generateDiff(diff.oldContent, diff.newContent);
+
+    const diffHtml = `
+      <div class="diff-viewer">
+        <div class="diff-header">
+          <span class="diff-filename">📄 ${this._escapeHtml(diff.filename)}</span>
+          <div class="diff-actions">
+            <button class="btn btn-sm" onclick="ToolRenderer._toggleDiffView('${toolId}')" title="View mode">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+            <button class="btn btn-sm" onclick="ToolRenderer._copyDiff('${toolId}')" title="Copy diff">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="diff-content" data-raw-diff="${this._escapeHtml(diff.unifiedDiff || '')}">
+          ${lines.map((line, i) => this._renderDiffLine(line, i)).join('')}
+        </div>
+      </div>
+    `;
+
+    outputContainer.insertAdjacentHTML('beforeend', diffHtml);
+  },
+
+  /**
+   * Unified diff parse et
+   * @param {string} unifiedDiff
+   * @returns {Array<{type: 'added' | 'removed' | 'context', content: string, lineNumber: number}>}
+   */
+  _parseUnifiedDiff(unifiedDiff) {
+    const lines = unifiedDiff.split('\n');
+    const result = [];
+    let lineNumber = 0;
+
+    for (const line of lines) {
+      // Skip diff headers
+      if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('@@')) {
+        continue;
+      }
+
+      if (line.startsWith('+')) {
+        result.push({ type: 'added', content: line.slice(1), lineNumber: ++lineNumber });
+      } else if (line.startsWith('-')) {
+        result.push({ type: 'removed', content: line.slice(1), lineNumber });
+      } else {
+        result.push({ type: 'context', content: line.slice(1) || line, lineNumber: ++lineNumber });
+      }
+    }
+
+    return result;
+  },
+
+  /**
+   * Basit diff üret (line-by-line karşılaştırma)
+   * @param {string} oldContent
+   * @param {string} newContent
+   * @returns {Array<{type: 'added' | 'removed' | 'context', content: string, lineNumber: number}>}
+   */
+  _generateDiff(oldContent, newContent) {
+    const oldLines = (oldContent || '').split('\n');
+    const newLines = (newContent || '').split('\n');
+    const result = [];
+
+    // Basit LCS-based diff (satır bazında)
+    let lineNumber = 0;
+    const maxLen = Math.max(oldLines.length, newLines.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const oldLine = oldLines[i];
+      const newLine = newLines[i];
+
+      if (oldLine === newLine) {
+        result.push({ type: 'context', content: newLine || '', lineNumber: ++lineNumber });
+      } else {
+        if (oldLine !== undefined) {
+          result.push({ type: 'removed', content: oldLine, lineNumber });
+        }
+        if (newLine !== undefined) {
+          result.push({ type: 'added', content: newLine, lineNumber: ++lineNumber });
+        }
+      }
+    }
+
+    return result;
+  },
+
+  /**
+   * Diff satırı render et
+   * @param {{type: string, content: string, lineNumber: number}} line
+   * @param {number} index
+   * @returns {string}
+   */
+  _renderDiffLine(line, index) {
+    const prefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
+    return `
+      <div class="diff-line ${line.type}">
+        <span class="diff-line-number">${line.lineNumber || ''}</span>
+        <span class="diff-line-content">${this._escapeHtml(line.content)}</span>
+      </div>
+    `;
+  },
+
+  /**
+   * Diff view toggle (unified/split)
+   * @param {string} toolId
+   */
+  _toggleDiffView(toolId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const diffViewer = element.querySelector('.diff-viewer');
+    if (diffViewer) {
+      diffViewer.classList.toggle('split-view');
+    }
+  },
+
+  /**
+   * Diff kopyala
+   * @param {string} toolId
+   */
+  _copyDiff(toolId) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const diffContent = element.querySelector('.diff-content');
+    const rawDiff = diffContent?.getAttribute('data-raw-diff') || diffContent?.textContent || '';
+
+    navigator.clipboard.writeText(rawDiff).then(() => {
+      console.log('[ToolRenderer] Diff copied');
+    }).catch(err => {
+      console.error('[ToolRenderer] Diff copy failed:', err);
+    });
+  },
+
+  // =========================================================================
+  // Execution Time (FAZ 4)
+  // =========================================================================
+
+  /**
+   * Tool card'a execution time badge ekle
+   * @param {string} toolId
+   * @param {number} startedAt - Başlangıç timestamp
+   * @param {number} [completedAt] - Bitiş timestamp (opsiyonel, running ise null)
+   */
+  updateExecutionTime(toolId, startedAt, completedAt) {
+    const element = this._toolElements.get(toolId);
+    if (!element) return;
+
+    const header = element.querySelector('.tool-header');
+    if (!header) return;
+
+    // Mevcut time badge'i bul veya oluştur
+    let timeBadge = header.querySelector('.tool-time');
+    if (!timeBadge) {
+      timeBadge = document.createElement('span');
+      timeBadge.className = 'tool-time';
+      const statusEl = header.querySelector('.tool-status');
+      if (statusEl) {
+        statusEl.insertAdjacentElement('beforebegin', timeBadge);
+      }
+    }
+
+    if (completedAt) {
+      const duration = completedAt - startedAt;
+      timeBadge.textContent = this._formatDuration(duration);
+      timeBadge.classList.remove('running');
+    } else {
+      // Running - canlı güncelleme
+      timeBadge.classList.add('running');
+      this._startLiveTimer(toolId, startedAt, timeBadge);
+    }
+  },
+
+  /**
+   * Canlı timer başlat
+   * @param {string} toolId
+   * @param {number} startedAt
+   * @param {HTMLElement} badge
+   */
+  _startLiveTimer(toolId, startedAt, badge) {
+    // Mevcut timer'u temizle
+    if (this._liveTimers?.has(toolId)) {
+      clearInterval(this._liveTimers.get(toolId));
+    }
+
+    this._liveTimers = this._liveTimers || new Map();
+
+    const update = () => {
+      const duration = Date.now() - startedAt;
+      badge.textContent = this._formatDuration(duration);
+    };
+
+    update();
+    const intervalId = setInterval(update, 100);
+    this._liveTimers.set(toolId, intervalId);
+  },
+
+  /**
+   * Süre formatla
+   * @param {number} ms - Milisaniye
+   * @returns {string}
+   */
+  _formatDuration(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
   }
 };
 

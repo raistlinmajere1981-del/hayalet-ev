@@ -35,10 +35,5 @@ export function setupFsHandlers(mainWindow: BrowserWindow | null): void {
     }
   });
 
-  registerHandler("show-open-dialog", async (_event, options = {}) => {
-    if (!mainWindow) {
-      return { canceled: true, filePaths: [] };
-    }
-    return await dialog.showOpenDialog(mainWindow, options || {});
-  });
+  // show-open-dialog moved to ipc-window.ts for better organization
 }

@@ -438,6 +438,7 @@ const MessageStore = {
       text: input.text ?? existing?.text,
       toolCall: input.toolCall ?? existing?.toolCall,
       thinking: input.thinking ?? existing?.thinking,
+      step: input.step ?? existing?.step,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

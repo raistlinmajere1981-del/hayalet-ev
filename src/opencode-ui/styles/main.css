@@ -593,6 +593,175 @@ kbd {
   background: var(--text-muted);
 }
 
+/* ============================================
+ * Agent/Model Selector
+ * ============================================ */
+
+.agent-model-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selector-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.selector-trigger:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+.selector-trigger.active {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.selector-label {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.selector-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selector-chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.selector-trigger.active .selector-chevron {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+.selector-dropdown {
+  position: fixed;
+  z-index: 2000;
+  min-width: 200px;
+  max-width: 350px;
+  max-height: 300px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.selector-search-container {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.selector-search {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.selector-search:focus {
+  border-color: var(--accent-primary);
+}
+
+.selector-search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.selector-list {
+  overflow-y: auto;
+  max-height: 250px;
+  padding: 4px;
+}
+
+.selector-option {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.selector-option:hover,
+.selector-option.focused {
+  background: var(--bg-tertiary);
+}
+
+.selector-option.selected {
+  background: rgba(88, 166, 255, 0.15);
+}
+
+.selector-option.selected:hover,
+.selector-option.selected.focused {
+  background: rgba(88, 166, 255, 0.25);
+}
+
+.selector-option-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-option-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.selector-option-desc {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selector-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.selector-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
 /* Selection */
 ::selection {
   background: var(--accent-secondary);
@@ -614,4 +783,180 @@ kbd {
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-sm);
   box-shadow: inset 0 -1px 0 var(--border-primary);
+}
+
+/* ============================================
+ * Instance Tabs (Multi-workspace support)
+ * ============================================ */
+
+.instance-tabs-container {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.instance-tabs-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-sm);
+  min-height: 36px;
+}
+
+.instance-tabs-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.instance-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.instance-tabs-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.instance-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 180px;
+  min-width: 100px;
+}
+
+.instance-tab:hover {
+  background: var(--bg-primary);
+  border-color: var(--border-secondary);
+}
+
+.instance-tab.active {
+  background: var(--bg-primary);
+  border-color: var(--border-primary);
+  border-bottom-color: var(--bg-primary);
+  margin-bottom: -1px;
+}
+
+.instance-tab-status {
+  flex-shrink: 0;
+}
+
+.instance-tab-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.instance-tab-status .status-dot.connected {
+  background: var(--color-success, #22c55e);
+  box-shadow: 0 0 4px var(--color-success, #22c55e);
+}
+
+.instance-tab-status .status-dot.connecting {
+  background: var(--color-warning, #f59e0b);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.instance-tab-status .status-dot.disconnected {
+  background: var(--text-muted);
+}
+
+.instance-tab-status .status-dot.error {
+  background: var(--color-error, #ef4444);
+}
+
+.instance-tab-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.instance-tab.active .instance-tab-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.instance-tab-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.instance-tab:hover .instance-tab-close {
+  opacity: 1;
+}
+
+.instance-tab-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--color-error, #ef4444);
+}
+
+.instance-tab-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px dashed var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.instance-tab-new:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.instance-tabs-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-left: var(--space-sm);
+  border-left: 1px solid var(--border-primary);
+  margin-left: var(--space-sm);
+}
+
+.instance-tabs-hints .hint {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.instance-tabs-hints kbd {
+  padding: 1px 4px;
+  font-size: 10px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
