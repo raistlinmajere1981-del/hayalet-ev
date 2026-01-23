@@ -79,6 +79,13 @@ import {
   inspectProviderElementTool,
   PROVIDER_TOOL_DEFINITIONS,
 } from "./tools/provider-tools.js";
+
+import {
+  handleWebSearch,
+  handleWebFetch,
+  handleWebSearchAndFetch,
+  webToolDefinitions,
+} from "./tools/web-tools.js";
 import {
   logToolCall,
   logToolError,
@@ -309,7 +316,7 @@ const TOOL_DEFINITIONS = [
 ];
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS, ...PROVIDER_TOOL_DEFINITIONS] };
+  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS, ...PROVIDER_TOOL_DEFINITIONS, ...webToolDefinitions] };
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -800,6 +807,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
         }
         
         return { content: [{ type: "text", text: output }] };
+      }
+
+      // ========== WEB TOOLS ==========
+      case "web_search": {
+        logToolCall("web_search", args);
+        return await handleWebSearch(args as Record<string, unknown>);
+      }
+
+      case "web_fetch": {
+        logToolCall("web_fetch", args);
+        return await handleWebFetch(args as Record<string, unknown>);
+      }
+
+      case "web_search_and_fetch": {
+        logToolCall("web_search_and_fetch", args);
+        return await handleWebSearchAndFetch(args as Record<string, unknown>);
       }
 
       default:

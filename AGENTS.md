@@ -371,6 +371,18 @@ cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
 
 **Not:** `fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
 
+### Web Tools (Arama ve İçerik)
+```
+web_search             # SearXNG ile web araması (Google, Bing, DuckDuckGo)
+web_fetch              # URL'den sayfa içeriği çek (temiz markdown)
+web_search_and_fetch   # Arama yap + ilk N sonucun içeriğini çek
+```
+
+**Kurulum:** SearXNG gerektirir:
+```bash
+docker compose -f docker-compose.searxng.yml up -d
+```
+
 ### Progress Göstergesi
 Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
 
