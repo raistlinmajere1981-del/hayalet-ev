@@ -215,17 +215,24 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
 
 /**
  * Screenshot al (CDP üzerinden)
+ * 
+ * Not: Çift monitör ortamlarında pencere arka plandayken screenshot
+ * alamıyor. Bu yüzden önce Page.bringToFront çağrılıyor.
  */
 export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
   return withConnection(async (ws: WebSocket) => {
-    // Page domain'ini etkinleştir (screenshot için gerekli)
+    // Pencereyi öne getir (çift monitör/arka plan sorunu için gerekli)
+    await sendCDPCommand(ws, "Page.bringToFront", {}, 5000);
+    
+    // Page domain'ini etkinleştir
     await sendCDPCommand(ws, "Page.enable", {}, 5000);
     
-    // Screenshot al (daha uzun timeout - büyük sayfalar için)
+    // Screenshot al
     const result = await sendCDPCommand(ws, "Page.captureScreenshot", {
       format,
       quality: format === "jpeg" ? quality : undefined,
-    }, 30000);
+      fromSurface: true, // Compositor surface'den al (daha güvenilir)
+    }, 15000);
     return result.data as string; // Base64 encoded
   });
 }
