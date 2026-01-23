@@ -9,8 +9,8 @@ import { fetchAndParse, truncateText, type ScrapedContent } from "../utils/web-s
 import { logToolError } from "../utils/mcp-logger.js";
 import type { ToolResult } from "../types/index.js";
 
-// SearXNG yapılandırması
-const SEARXNG_URL = process.env.SEARXNG_URL || "http://localhost:8888";
+// SearXNG yapılandırması (host network mode için 8080 portu)
+const SEARXNG_URL = process.env.SEARXNG_URL || "http://localhost:8080";
 const DEFAULT_TIMEOUT = 15000;
 
 // ============================================

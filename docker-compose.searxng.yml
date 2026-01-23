@@ -8,8 +8,7 @@ services:
     image: searxng/searxng:latest
     container_name: hayalet-searxng
     restart: unless-stopped
-    ports:
-      - "8888:8080"
+    network_mode: host
     volumes:
       - ./config/searxng_settings.yml:/etc/searxng/settings.yml:rw
     environment:
@@ -21,8 +20,6 @@ services:
       - CHOWN
       - SETGID
       - SETUID
-    networks:
-      - searxng-net
     depends_on:
       - redis
 
@@ -30,7 +27,8 @@ services:
     image: redis:alpine
     container_name: hayalet-searxng-redis
     restart: unless-stopped
-    command: redis-server --save 30 1 --loglevel warning
+    network_mode: host
+    command: redis-server --port 6380 --save 30 1 --loglevel warning
     volumes:
       - searxng-redis:/data
     cap_drop:
@@ -39,12 +37,6 @@ services:
       - SETGID
       - SETUID
       - DAC_OVERRIDE
-    networks:
-      - searxng-net
-
-networks:
-  searxng-net:
-    driver: bridge
 
 volumes:
   searxng-redis:
