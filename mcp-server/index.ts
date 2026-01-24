@@ -20,7 +20,7 @@ import {
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { testElectron, listPlugins } from "./tools/electron-tools.js";
+import { testElectron, listTools } from "./tools/electron-tools.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "./tools/log-tools.js";
 import { getErrorHints } from "./tools/debug-tools.js";
 import {
@@ -150,8 +150,8 @@ const TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "hev_list_plugins",
-    description: "Hayalet-ev plugin'lerini listele",
+    name: "hev_list_tools",
+    description: "Hayalet-ev MCP tool'larını kategorize ederek listele (87 tool)",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -355,8 +355,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
       case "hev_test_electron":
         return await testElectron(PROJECT_ROOT, args ?? {});
 
-      case "hev_list_plugins":
-        return await listPlugins(PROJECT_ROOT);
+      case "hev_list_tools":
+        return listTools();
 
       case "hev_read_electron_logs":
         return await readElectronLogs(LOG_DIR, args ?? {});

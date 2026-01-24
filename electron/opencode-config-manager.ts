@@ -39,6 +39,8 @@ export interface OpenCodeConfig {
   preferences: OpenCodePreferences;
   lastUsedBinary?: string;
   lastWorkspace?: string;
+  /** Aktif projeler - uygulama açıldığında otomatik yüklenir */
+  activeProjects: string[];
 }
 
 // Constants
@@ -66,6 +68,8 @@ function getDefaultConfig(): OpenCodeConfig {
       diffViewMode: "split",
       toolOutputExpansion: "expanded",
     },
+    // Default proje: hayalet-ev (uygulamanın çalıştığı dizin)
+    activeProjects: [process.cwd()],
   };
 }
 
@@ -496,6 +500,119 @@ export async function clearFolderPreference(folderPath: string): Promise<boolean
     return true;
   } catch (error) {
     console.error('[OpenCodeConfig] Error clearing folder preference:', error);
+    return false;
+  }
+}
+
+// =============================================================================
+// Active Projects Management
+// =============================================================================
+
+/**
+ * Get active projects list
+ * @returns Array of active project paths
+ */
+export async function getActiveProjects(): Promise<string[]> {
+  try {
+    const config = await loadOpencodeConfig();
+    return config.activeProjects || [process.cwd()];
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error getting active projects:', error);
+    return [process.cwd()];
+  }
+}
+
+/**
+ * Add a project to active projects list
+ * @param projectPath - Project folder path to add
+ * @returns Updated active projects list
+ */
+export async function addActiveProject(projectPath: string): Promise<string[]> {
+  try {
+    const config = await loadOpencodeConfig();
+    const normalizedPath = normalizeFolderPath(projectPath);
+    
+    // Initialize if not exists
+    if (!config.activeProjects) {
+      config.activeProjects = [process.cwd()];
+    }
+    
+    // Check if already exists
+    const exists = config.activeProjects.some(
+      p => normalizeFolderPath(p) === normalizedPath
+    );
+    
+    if (!exists) {
+      config.activeProjects.push(projectPath);
+      await saveOpencodeConfig(config);
+      console.log(`[OpenCodeConfig] Added active project: ${projectPath}`);
+    }
+    
+    // Also add to recent folders
+    await addRecentFolder(projectPath);
+    
+    return config.activeProjects;
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error adding active project:', error);
+    return [];
+  }
+}
+
+/**
+ * Remove a project from active projects list
+ * @param projectPath - Project folder path to remove
+ * @returns Updated active projects list
+ */
+export async function removeActiveProject(projectPath: string): Promise<string[]> {
+  try {
+    const config = await loadOpencodeConfig();
+    const normalizedPath = normalizeFolderPath(projectPath);
+    
+    if (!config.activeProjects) {
+      return [process.cwd()];
+    }
+    
+    // Don't remove the default project (cwd)
+    const cwdNormalized = normalizeFolderPath(process.cwd());
+    if (normalizedPath === cwdNormalized) {
+      console.log('[OpenCodeConfig] Cannot remove default project (cwd)');
+      return config.activeProjects;
+    }
+    
+    config.activeProjects = config.activeProjects.filter(
+      p => normalizeFolderPath(p) !== normalizedPath
+    );
+    
+    // Ensure at least default project exists
+    if (config.activeProjects.length === 0) {
+      config.activeProjects = [process.cwd()];
+    }
+    
+    await saveOpencodeConfig(config);
+    console.log(`[OpenCodeConfig] Removed active project: ${projectPath}`);
+    
+    return config.activeProjects;
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error removing active project:', error);
+    return [process.cwd()];
+  }
+}
+
+/**
+ * Check if a project is in active projects list
+ * @param projectPath - Project folder path to check
+ * @returns True if project is active
+ */
+export async function isActiveProject(projectPath: string): Promise<boolean> {
+  try {
+    const config = await loadOpencodeConfig();
+    const normalizedPath = normalizeFolderPath(projectPath);
+    
+    return (config.activeProjects || []).some(
+      p => normalizeFolderPath(p) === normalizedPath
+    );
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error checking active project:', error);
     return false;
   }
 }

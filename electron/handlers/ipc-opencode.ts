@@ -25,6 +25,9 @@ import {
   saveAgentModelPreference,
   saveAgentPreference,
   saveModelPreference,
+  getActiveProjects,
+  addActiveProject,
+  removeActiveProject,
   type OpenCodeConfig,
   type OpenCodePreferences,
   type OpenCodeProviderInfo,
@@ -534,6 +537,58 @@ export function setupOpencodeHandlers(): void {
     } catch (error) {
       console.error("[IPC:OpenCode] Failed to save model preference:", error);
       return false;
+    }
+  });
+
+  // ===========================================================================
+  // Active Projects Management
+  // ===========================================================================
+
+  /**
+   * Get active projects list
+   */
+  registerHandler("opc-get-active-projects", async (): Promise<string[]> => {
+    try {
+      const projects = await getActiveProjects();
+      console.log(`[IPC:OpenCode] Get active projects:`, projects);
+      return projects;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to get active projects:", error);
+      return [process.cwd()];
+    }
+  });
+
+  /**
+   * Add a project to active projects
+   */
+  registerHandler("opc-add-active-project", async (
+    _event,
+    projectPath: string
+  ): Promise<string[]> => {
+    try {
+      const projects = await addActiveProject(projectPath);
+      console.log(`[IPC:OpenCode] Added active project: ${projectPath}`);
+      return projects;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to add active project:", error);
+      return [];
+    }
+  });
+
+  /**
+   * Remove a project from active projects
+   */
+  registerHandler("opc-remove-active-project", async (
+    _event,
+    projectPath: string
+  ): Promise<string[]> => {
+    try {
+      const projects = await removeActiveProject(projectPath);
+      console.log(`[IPC:OpenCode] Removed active project: ${projectPath}`);
+      return projects;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to remove active project:", error);
+      return [];
     }
   });
   

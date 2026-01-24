@@ -1042,6 +1042,10 @@ export class AsistanController {
             opcSaveAgentModelPreference: (preference, folderPath) => window.__nativeUIRequest('opcSaveAgentModelPreference', preference, folderPath),
             opcSaveAgentPreference: (agent, folderPath) => window.__nativeUIRequest('opcSaveAgentPreference', agent, folderPath),
             opcSaveModelPreference: (providerId, modelId, folderPath) => window.__nativeUIRequest('opcSaveModelPreference', providerId, modelId, folderPath),
+            // Active Projects Management
+            opcGetActiveProjects: () => window.__nativeUIRequest('opcGetActiveProjects'),
+            opcAddActiveProject: (projectPath) => window.__nativeUIRequest('opcAddActiveProject', projectPath),
+            opcRemoveActiveProject: (projectPath) => window.__nativeUIRequest('opcRemoveActiveProject', projectPath),
           };
           
           console.log('[NativeUI] API bridge injected');
@@ -1116,6 +1120,16 @@ export class AsistanController {
             break;
           case "opcSaveModelPreference":
             result = await window.electronAPI?.opcSaveModelPreference?.(args[0] as string, args[1] as string, args[2] as string | undefined);
+            break;
+          // Active Projects Management
+          case "opcGetActiveProjects":
+            result = await window.electronAPI?.opcGetActiveProjects?.();
+            break;
+          case "opcAddActiveProject":
+            result = await window.electronAPI?.opcAddActiveProject?.(args[0] as string);
+            break;
+          case "opcRemoveActiveProject":
+            result = await window.electronAPI?.opcRemoveActiveProject?.(args[0] as string);
             break;
           default:
             throw new Error(`Unknown API method: ${method}`);

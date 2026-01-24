@@ -31,7 +31,12 @@
 - **Detay:** Açıklama
 -->
 
-*Henüz not yok*
+### [2026-01-24] Rovo Dev CLI Web Entegrasyonu
+- **Kategori:** UI
+- **Öncelik:** Orta (OpenCode UI tamamlandıktan sonra)
+- **Detay:** Atlassian Rovo Dev CLI'nin server mode'u var (`acli rovodev server`). HTTP API + SSE stream ile webview üzerinden kullanılabilir. OpenCode UI tamamlandıktan sonra kopyası üzerine Rovo entegrasyonu yapılacak.
+- **API:** `http://localhost:8123/v3/chat/stream` (SSE)
+- **Döküman:** https://support.atlassian.com/rovo/docs/use-server-mode-in-rovo-dev-cli/
 
 ---
 

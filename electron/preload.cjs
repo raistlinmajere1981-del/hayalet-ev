@@ -146,6 +146,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opcSaveAgentPreference: (agent, folderPath) => ipcRenderer.invoke("opc-save-agent-preference", agent, folderPath),
   opcSaveModelPreference: (providerId, modelId, folderPath) => ipcRenderer.invoke("opc-save-model-preference", providerId, modelId, folderPath),
   
+  // OpenCode Active Projects Management
+  opcGetActiveProjects: () => ipcRenderer.invoke("opc-get-active-projects"),
+  opcAddActiveProject: (projectPath) => ipcRenderer.invoke("opc-add-active-project", projectPath),
+  opcRemoveActiveProject: (projectPath) => ipcRenderer.invoke("opc-remove-active-project", projectPath),
+  
   // OpenCode Filesystem (Directory Browser)
   opcOpenFolderDialog: (options) => ipcRenderer.invoke("opc-open-folder-dialog", options),
   opcOpenFileDialog: (options) => ipcRenderer.invoke("opc-open-file-dialog", options),

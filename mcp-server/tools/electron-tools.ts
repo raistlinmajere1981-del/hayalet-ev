@@ -4,20 +4,17 @@
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { readdir, readFile } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
 import { logToolError } from "../utils/mcp-logger.js";
 import { ELECTRON_TIMEOUTS } from "../utils/timeouts.js";
 import type { ToolResult } from "../types/index.js";
 
 const execAsync = promisify(exec);
 
-/** Plugin info */
-interface PluginInfo {
-  name: string;
-  version: string;
-  description: string;
+/** Tool category info */
+interface ToolCategory {
+  category: string;
+  emoji: string;
+  tools: string[];
 }
 
 /**
@@ -64,58 +61,146 @@ export async function testElectron(
 }
 
 /**
- * list_plugins handler
+ * list_tools handler - Hayalet-ev MCP tool'larını kategorize ederek listele
  */
-export async function listPlugins(projectRoot: string): Promise<ToolResult> {
-  const pluginsDir = join(projectRoot, "plugins");
-  const plugins: PluginInfo[] = [];
+export function listTools(): ToolResult {
+  const categories: ToolCategory[] = [
+    {
+      category: "Electron & CDP",
+      emoji: "⚡",
+      tools: [
+        "hev_test_electron",
+        "hev_list_tools",
+        "hev_check_electron_connection",
+        "hev_send_command_to_electron",
+        "hev_take_cdp_screenshot",
+        "hev_get_electron_window_info",
+        "hev_click_element_by_selector",
+        "hev_click_element_by_text",
+        "hev_fill_input_field",
+        "hev_get_page_dom_structure",
+        "hev_inspect_element",
+        "hev_query_elements",
+        "hev_send_key_press",
+        "hev_scroll_page",
+      ],
+    },
+    {
+      category: "Filesystem",
+      emoji: "📁",
+      tools: [
+        "hev_fs_open_files",
+        "hev_fs_create_file",
+        "hev_fs_delete_file",
+        "hev_fs_move_file",
+        "hev_fs_expand_code_chunks",
+        "hev_fs_find_and_replace",
+        "hev_fs_grep",
+        "hev_fs_expand_folder",
+        "hev_fs_bash",
+        "hev_fs_create_plan",
+        "hev_fs_show",
+        "hev_fs_create_chunked",
+        "hev_fs_append_chunk",
+      ],
+    },
+    {
+      category: "Recycle & Backup",
+      emoji: "♻️",
+      tools: [
+        "hev_fs_trash_list",
+        "hev_fs_restore",
+        "hev_fs_trash_empty",
+        "hev_fs_backup",
+        "hev_fs_undo",
+        "hev_fs_history",
+        "hev_fs_diff",
+        "hev_fs_diff_content",
+      ],
+    },
+    {
+      category: "Development",
+      emoji: "🔧",
+      tools: [
+        "hev_dev_analyze_project",
+        "hev_dev_bootstrap_context",
+        "hev_dev_generate_diagram",
+        "hev_dev_update_cache",
+        "hev_dev_edit_lines",
+        "hev_dev_git_diff",
+        "hev_dev_lint_file",
+        "hev_dev_search_symbol",
+        "hev_dev_test_run",
+      ],
+    },
+    {
+      category: "Context Generation",
+      emoji: "📊",
+      tools: [
+        "hev_context_generate",
+        "hev_context_status",
+        "hev_context_module",
+        "hev_context_read",
+      ],
+    },
+    {
+      category: "Git & PR",
+      emoji: "🔀",
+      tools: [
+        "hev_git_fork_setup",
+        "hev_git_create_pr",
+        "hev_git_check_guidelines",
+        "hev_git_pr_status",
+      ],
+    },
+    {
+      category: "Web Search",
+      emoji: "🌐",
+      tools: [
+        "hev_web_search",
+        "hev_web_fetch",
+        "hev_web_search_and_fetch",
+      ],
+    },
+    {
+      category: "Workflow & Test",
+      emoji: "🔄",
+      tools: [
+        "hev_run_workflow",
+        "hev_run_steps",
+        "hev_list_workflows",
+      ],
+    },
+    {
+      category: "Provider & Debug",
+      emoji: "🔍",
+      tools: [
+        "hev_list_provider_webviews",
+        "hev_list_provider_selectors",
+        "hev_validate_provider_selectors",
+        "hev_inspect_provider_element",
+        "hev_read_electron_logs",
+        "hev_list_log_sessions",
+        "hev_get_error_hints",
+        "hev_get_session_summary",
+      ],
+    },
+  ];
+
+  const totalTools = categories.reduce((sum, cat) => sum + cat.tools.length, 0);
   
-  if (!existsSync(pluginsDir)) {
-    return {
-      content: [{ type: "text", text: "Plugin dizini bulunamadı" }],
-    };
+  let output = `📦 Hayalet-ev MCP Tools (${totalTools} tool)\n`;
+  output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  for (const cat of categories) {
+    output += `${cat.emoji} ${cat.category} (${cat.tools.length})\n`;
+    output += `   ${cat.tools.join(", ")}\n\n`;
   }
   
-  const dirs = await readdir(pluginsDir, { withFileTypes: true });
-  
-  for (const dir of dirs) {
-    if (dir.isDirectory()) {
-      const manifestPath = join(pluginsDir, dir.name, ".claude-plugin", "plugin.json");
-      try {
-        if (existsSync(manifestPath)) {
-          const manifest = JSON.parse(await readFile(manifestPath, "utf-8")) as {
-            name?: string;
-            version?: string;
-            description?: string;
-          };
-          plugins.push({
-            name: manifest.name || dir.name,
-            version: manifest.version || "unknown",
-            description: manifest.description || "No description",
-          });
-        } else {
-          plugins.push({
-            name: dir.name,
-            version: "unknown",
-            description: "No manifest",
-          });
-        }
-      } catch {
-        plugins.push({
-          name: dir.name,
-          version: "unknown",
-          description: "Parse error",
-        });
-      }
-    }
-  }
+  output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  output += `💡 Detaylı bilgi için: tool_name --help\n`;
   
   return {
-    content: [
-      {
-        type: "text",
-        text: `Hayalet-ev Plugin'leri:\n${plugins.map(p => `- ${p.name} (${p.version}): ${p.description}`).join("\n")}`,
-      },
-    ],
+    content: [{ type: "text", text: output }],
   };
 }
