@@ -1,5 +1,22 @@
 # Hayalet-ev Development Guide
 
+## ⚠️ ZORUNLU: Mode Status Bar (Her Cevabın Başında)
+
+**Her cevabın başında aktif modu gösteren status bar KULLANILMALIDIR:**
+
+| Mod | Status Bar | Ne Zaman |
+|-----|------------|----------|
+| ⚡ QUICK | `╔══ ⚡ QUICK MODE ══╗` | Basit syntax, trivial işler |
+| 🔧 STANDARD | `┏━━ 🔧 STANDARD MODE ━━┓` | Normal geliştirme |
+| 🔬 RESEARCH | `┌── 🔬 RESEARCH MODE ──┐` | Web araştırma gerekli |
+| 🧠 ULTRATHINK | `╔══ 🧠 ULTRATHINK MODE ══╗` | Kritik kararlar, mimari |
+
+**Mod geçişlerinde:** `━━━ MOD DEĞİŞİKLİĞİ: STANDARD → RESEARCH ━━━`
+
+> Detaylı kurallar: `.rovodev/auto-triggers.md` ve `.rovodev/persona.md`
+
+---
+
 ## 📋 Project Overview
 
 **Hayalet-ev** (Ghost House) is an Electron-based multi-AI chat interface platform that enables:
