@@ -38,6 +38,33 @@
 - **API:** `http://localhost:8123/v3/chat/stream` (SSE)
 - **Döküman:** https://support.atlassian.com/rovo/docs/use-server-mode-in-rovo-dev-cli/
 
+### [2026-01-24] Multi-Agent Orchestration Sistemi
+- **Kategori:** Mimari / Büyük Özellik
+- **Öncelik:** Uzun vadeli (Asistan sayfası tamamlandıktan sonra)
+- **Detay:** Büyük projelerde paralel AI worker koordinasyonu:
+  - Ana session: Orchestrator (proje analizi, task dağıtımı, izleme)
+  - Worker session'lar: Her biri bir task üzerinde çalışır
+  - Shared state: `.temp/tasks/*.json` dosyaları ile koordinasyon
+  - Otomatik spawn: Hayalet-ev asistan UI üzerinden (terminal yerine)
+- **Neden Hayalet-ev?**
+  - Zaten multi-AI altyapısı var (slot sistemi)
+  - Webview + IPC altyapısı hazır
+  - OpenCode UI + Rovo entegrasyonu ile genişletilebilir
+  - Her asistan slot'u bir "worker" olabilir
+- **Temel Konsept:**
+  ```
+  Asistan Sayfası (Orchestrator)
+  ├── Slot 1: OpenCode Worker → Task-001
+  ├── Slot 2: Rovo Worker → Task-002  
+  ├── Slot 3: OpenCode Worker → Task-003
+  └── Merkezi izleme + koordinasyon paneli
+  ```
+- **Gereksinimler:**
+  1. Asistan sayfası + OpenCode UI tamamlanmalı
+  2. Rovo Dev entegrasyonu yapılmalı
+  3. Task management sistemi tasarlanmalı
+  4. Worker arası iletişim protokolü
+
 ---
 
 ## 🔧 TODO - Sonra Yapılacaklar
