@@ -46,10 +46,13 @@ const OpenCodeApp = {
     // URL parametrelerinden server URL'ini al
     this._parseUrlParams();
     
-    // Workspace kontrolü - yoksa entrance sayfasına yönlendir
+    // Workspace kontrolü
     if (!this._checkWorkspace()) {
       return;
     }
+    
+    // Aktif projeleri yükle ve instance'lar oluştur
+    await this._loadActiveProjects();
 
     // UI bileşenlerini başlat
     this._initComponents();
@@ -63,10 +66,16 @@ const OpenCodeApp = {
     // Session badge ve status panel tracking
     this._initSessionBadgeTracking();
 
-    // SSE bağlantısını başlat
-    await this._connectSSE();
+    // NOT: SSE bağlantısı otomatik başlatılmıyor
+    // Kullanıcı "Bağlan" butonuna tıkladığında _connectSSE() çağrılır
+    
+    // Loading overlay'ı gizle ve app'i göster
+    this._showApp();
+    
+    // Başlangıç durumunu göster
+    this._updateStatus('disconnected', 'Bağlanılmadı');
 
-    console.log('[OpenCode] Initialized');
+    console.log('[OpenCode] Initialized (ready for connection)');
   },
 
   /**
@@ -91,25 +100,73 @@ const OpenCodeApp = {
   },
 
   /**
-   * Workspace kontrolü - yoksa entrance sayfasına yönlendir
-   * @returns {boolean} true if workspace exists
+   * Workspace kontrolü - aktif projeleri yükle
+   * @returns {boolean} true to continue initialization
    */
   _checkWorkspace() {
-    // Workspace varsa devam et
-    if (this._workspace) {
-      console.log('[OpenCode] Workspace:', this._workspace);
-      return true;
+    // URL'den workspace gelmediyse, aktif projelerden ilkini kullan
+    if (!this._workspace) {
+      // Aktif projeleri async olarak yükleyeceğiz, şimdilik default kullan
+      console.log('[OpenCode] No workspace from URL, will load from activeProjects');
+    } else {
+      console.log('[OpenCode] Workspace from URL:', this._workspace);
     }
     
-    // Entrance sayfasındaysak yönlendirme yapma
-    if (window.location.pathname.includes('entrance.html')) {
-      return false;
+    // Her zaman devam et - aktif projeler _loadActiveProjects'ta yüklenecek
+    return true;
+  },
+
+  /**
+   * Aktif projeleri yükle ve instance'ları oluştur
+   * @returns {Promise<void>}
+   */
+  async _loadActiveProjects() {
+    try {
+      // Electron API üzerinden aktif projeleri al
+      const activeProjects = await window.electronAPI?.opcGetActiveProjects?.() || [];
+      
+      console.log('[OpenCode] Loading active projects:', activeProjects);
+      
+      if (activeProjects.length === 0) {
+        console.warn('[OpenCode] No active projects found');
+        return;
+      }
+      
+      // İlk projeyi workspace olarak ayarla (URL'den gelmediyse)
+      if (!this._workspace) {
+        this._workspace = activeProjects[0];
+        sessionStorage.setItem('opencode-workspace', this._workspace);
+        console.log('[OpenCode] Set default workspace:', this._workspace);
+      }
+      
+      // Her aktif proje için instance oluştur (disconnected olarak başlar)
+      for (const projectPath of activeProjects) {
+        if (typeof InstanceStore !== 'undefined') {
+          const existing = InstanceStore.findByFolder(projectPath);
+          if (!existing) {
+            const instance = InstanceStore.createInstance({
+              folder: projectPath,
+              name: projectPath.split('/').pop() || projectPath.split('\\').pop() || 'Workspace',
+              url: this._serverUrl,
+            });
+            // Status: disconnected - kullanıcı "Bağlan" butonuna tıklamalı
+            InstanceStore.setInstanceStatus(instance.id, 'disconnected');
+            console.log('[OpenCode] Created instance for active project:', instance.name, '(disconnected)');
+          }
+        }
+      }
+      
+      // İlk instance'ı aktif yap
+      if (typeof InstanceStore !== 'undefined') {
+        const instances = InstanceStore.getInstancesArray();
+        if (instances.length > 0 && !InstanceStore.getActiveInstance()) {
+          InstanceStore.setActiveInstance(instances[0].id);
+        }
+      }
+      
+    } catch (err) {
+      console.error('[OpenCode] Failed to load active projects:', err);
     }
-    
-    // Workspace yoksa entrance sayfasına yönlendir
-    console.log('[OpenCode] No workspace, redirecting to entrance...');
-    window.location.href = 'entrance.html';
-    return false;
   },
 
   /**
@@ -801,7 +858,7 @@ const OpenCodeApp = {
       app.classList.add('ready');
     }
     
-    console.log('[OpenCode] App ready - connection established');
+    console.log('[OpenCode] App ready');
   },
 
   /**
@@ -818,8 +875,7 @@ const OpenCodeApp = {
     const existingInstance = existingInstances.find(inst => inst.folder === currentWorkspace);
     
     if (existingInstance) {
-      // Var olan instance'ı connected yap
-      InstanceStore.setInstanceStatus(existingInstance.id, 'connected');
+      // Var olan instance'ı aktif yap (status değiştirme - bağlantı durumunu koru)
       InstanceStore.setActiveInstance(existingInstance.id);
       console.log('[OpenCode] Existing instance activated:', existingInstance.id);
       
@@ -835,13 +891,13 @@ const OpenCodeApp = {
       url: this._serverUrl,
     });
 
-    // Connected olarak işaretle
-    InstanceStore.setInstanceStatus(instance.id, 'connected');
+    // Disconnected olarak başla - kullanıcı "Bağlan" butonuna tıklamalı
+    InstanceStore.setInstanceStatus(instance.id, 'disconnected');
     
     // AgentModelSelector'a folder path set et
     this._updateAgentModelSelectorFolder(currentWorkspace);
     
-    console.log('[OpenCode] New instance created:', instance.id, instance.name);
+    console.log('[OpenCode] New instance created:', instance.id, instance.name, '(disconnected)');
   },
 
   /**
@@ -1103,22 +1159,17 @@ const OpenCodeApp = {
     }
 
     try {
-      // Create instance in store
+      // Create instance in store (starts as disconnected)
       const instance = InstanceStore.createInstance({
         folder: options.folder,
         name: options.name,
         url: options.serverUrl,
       });
 
-      console.log('[OpenCode] Created instance:', instance.id);
+      // Set status to disconnected (user must click "Bağlan" to connect)
+      InstanceStore.setInstanceStatus(instance.id, 'disconnected');
 
-      // Connect SSE for this instance
-      if (options.serverUrl && typeof SSEClient !== 'undefined') {
-        const connected = await SSEClient.connectInstance(instance.id, options.serverUrl);
-        if (connected) {
-          InstanceStore.setInstanceStatus(instance.id, 'connected');
-        }
-      }
+      console.log('[OpenCode] Created instance:', instance.id, '(disconnected)');
 
       return instance.id;
     } catch (err) {
@@ -1172,27 +1223,96 @@ const OpenCodeApp = {
    * Handle instance close from tabs
    * @param {string} instanceId
    */
-  _onInstanceClose(instanceId) {
+  async _onInstanceClose(instanceId) {
     // Confirm if this is the last instance
     if (typeof InstanceStore !== 'undefined' && InstanceStore.getInstanceCount() <= 1) {
-      // Don't allow closing the last instance, or show confirmation
+      // Don't allow closing the last instance
       console.log('[OpenCode] Cannot close last instance');
+      this._showToast('Son workspace kapatılamaz', 'warning');
       return;
     }
-    this.closeInstance(instanceId);
+    
+    // Get instance info before closing
+    const instance = InstanceStore.getInstance(instanceId);
+    const folderPath = instance?.folder;
+    
+    // Close the instance
+    await this.closeInstance(instanceId);
+    
+    // Remove from activeProjects in settings
+    if (folderPath && window.electronAPI?.opcRemoveActiveProject) {
+      try {
+        await window.electronAPI.opcRemoveActiveProject(folderPath);
+        console.log('[OpenCode] Removed from active projects:', folderPath);
+      } catch (err) {
+        console.error('[OpenCode] Failed to remove from active projects:', err);
+      }
+    }
   },
 
   /**
    * Handle new instance request from tabs
    */
-  _onInstanceNew() {
+  async _onInstanceNew() {
     console.log('[OpenCode] New instance requested');
-    // This would typically open a dialog to select a folder
-    // For now, emit an event that can be handled elsewhere
-    this._showToast('Yeni workspace seçmek için dialog açılacak', 'info');
     
-    // Emit custom event for external handling
-    window.dispatchEvent(new CustomEvent('opencode:new-instance-requested'));
+    // Folder seçme dialog'u aç
+    if (window.electronAPI?.showOpenDialog) {
+      try {
+        const result = await window.electronAPI.showOpenDialog({
+          properties: ['openDirectory'],
+          title: 'Workspace Seçin',
+          buttonLabel: 'Seç'
+        });
+        
+        if (result && !result.canceled && result.filePaths?.length > 0) {
+          const folderPath = result.filePaths[0];
+          const folderName = folderPath.split('/').pop() || folderPath.split('\\').pop() || 'Workspace';
+          
+          // Check if already exists
+          if (typeof InstanceStore !== 'undefined') {
+            const existing = InstanceStore.findByFolder(folderPath);
+            if (existing) {
+              // Activate existing instance
+              InstanceStore.setActiveInstance(existing.id);
+              this._showToast(`${folderName} zaten açık`, 'info');
+              return;
+            }
+          }
+          
+          // Create new instance
+          const instanceId = await this.createInstance({
+            folder: folderPath,
+            name: folderName,
+            serverUrl: this._serverUrl,
+          });
+          
+          if (instanceId) {
+            // Activate the new instance
+            if (typeof InstanceStore !== 'undefined') {
+              InstanceStore.setActiveInstance(instanceId);
+            }
+            
+            // Add to activeProjects in settings
+            if (window.electronAPI?.opcAddActiveProject) {
+              try {
+                await window.electronAPI.opcAddActiveProject(folderPath);
+                console.log('[OpenCode] Added to active projects:', folderPath);
+              } catch (err) {
+                console.error('[OpenCode] Failed to add to active projects:', err);
+              }
+            }
+            
+            this._showToast(`${folderName} eklendi`, 'success');
+          }
+        }
+      } catch (err) {
+        console.error('[OpenCode] Folder dialog error:', err);
+        this._showToast('Klasör seçilemedi', 'error');
+      }
+    } else {
+      this._showToast('Dialog kullanılamıyor', 'error');
+    }
   },
 
   /**

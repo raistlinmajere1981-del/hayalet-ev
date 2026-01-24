@@ -94,6 +94,11 @@ declare global {
     opcSaveAgentModelPreference: (preference: Record<string, unknown>, folderPath?: string) => Promise<boolean>;
     opcSaveAgentPreference: (agent: string, folderPath?: string) => Promise<boolean>;
     opcSaveModelPreference: (providerId: string, modelId: string, folderPath?: string) => Promise<boolean>;
+    
+    // OpenCode Active Projects Management
+    opcGetActiveProjects: () => Promise<string[]>;
+    opcAddActiveProject: (projectPath: string) => Promise<string[]>;
+    opcRemoveActiveProject: (projectPath: string) => Promise<string[]>;
 
     // File Operations
     readFile: (path: string) => Promise<string | null>;
