@@ -8,6 +8,124 @@
 const ToolRenderer = {
   /** @type {Map<string, HTMLElement>} */
   _toolElements: new Map(),
+  
+  /** @type {Set<string>} Session bazlı auto-approve */
+  _autoApprovedTools: new Set(),
+  
+  /** @type {Map<string, number>} Tool execution start times */
+  _toolStartTimes: new Map(),
+
+  // =========================================================================
+  // Auto-Approve Management
+  // =========================================================================
+
+  /**
+   * Tool auto-approve kontrolu (session + localStorage)
+   * @param {string} toolName
+   * @returns {boolean}
+   */
+  isAutoApproved(toolName) {
+    // Session bazlı kontrol
+    if (this._autoApprovedTools.has(toolName)) return true;
+    
+    // LocalStorage'dan kontrol
+    try {
+      const persisted = JSON.parse(localStorage.getItem('opencode-auto-approved-tools') || '[]');
+      return persisted.includes(toolName);
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Tool'u auto-approve listesine ekle ve persist et
+   * @param {string} toolName
+   * @param {boolean} persist - localStorage'a da kaydet (default: true)
+   */
+  setAutoApprove(toolName, persist = true) {
+    this._autoApprovedTools.add(toolName);
+    
+    if (persist) {
+      this._persistAutoApprove(toolName);
+    }
+  },
+
+  /**
+   * Auto-approve tercihini localStorage'a kaydet
+   * @param {string} toolName
+   */
+  _persistAutoApprove(toolName) {
+    try {
+      const persisted = JSON.parse(localStorage.getItem('opencode-auto-approved-tools') || '[]');
+      if (!persisted.includes(toolName)) {
+        persisted.push(toolName);
+        localStorage.setItem('opencode-auto-approved-tools', JSON.stringify(persisted));
+      }
+    } catch (err) {
+      console.warn('[ToolRenderer] Failed to persist auto-approve:', err);
+    }
+  },
+
+  /**
+   * Auto-approve tercihini kaldır
+   * @param {string} toolName
+   */
+  removeAutoApprove(toolName) {
+    try {
+      const persisted = JSON.parse(localStorage.getItem('opencode-auto-approved-tools') || '[]');
+      const filtered = persisted.filter(t => t !== toolName);
+      localStorage.setItem('opencode-auto-approved-tools', JSON.stringify(filtered));
+      this._autoApprovedTools.delete(toolName);
+    } catch (err) {
+      console.warn('[ToolRenderer] Failed to remove auto-approve:', err);
+    }
+  },
+
+  /**
+   * Tüm auto-approve tercihlerini temizle
+   */
+  clearAllAutoApproves() {
+    try {
+      localStorage.removeItem('opencode-auto-approved-tools');
+      this._autoApprovedTools.clear();
+    } catch (err) {
+      console.warn('[ToolRenderer] Failed to clear auto-approves:', err);
+    }
+  },
+
+  // =========================================================================
+  // Execution Time Tracking
+  // =========================================================================
+
+  /**
+   * Tool execution başlangıç zamanını kaydet
+   * @param {string} toolId
+   */
+  markToolStart(toolId) {
+    this._toolStartTimes.set(toolId, Date.now());
+  },
+
+  /**
+   * Tool execution süresini hesapla
+   * @param {string} toolId
+   * @returns {number|null} milliseconds or null if not started
+   */
+  getExecutionTime(toolId) {
+    const startTime = this._toolStartTimes.get(toolId);
+    if (!startTime) return null;
+    return Date.now() - startTime;
+  },
+
+  /**
+   * Execution time'ı formatla
+   * @param {number} ms
+   * @returns {string}
+   */
+  formatExecutionTime(ms) {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
+  },
 
   // =========================================================================
   // Public API
@@ -160,6 +278,17 @@ const ToolRenderer = {
     });
   },
 
+  /** @type {boolean} Enable debug logging */
+  _debug: false,
+
+  /**
+   * Enable/disable debug logging
+   * @param {boolean} enabled
+   */
+  setDebug(enabled) {
+    this._debug = enabled;
+  },
+
   /**
    * Tool card güncelle
    * @param {string} toolId - Tool ID
@@ -167,7 +296,22 @@ const ToolRenderer = {
    */
   updateToolCard(toolId, update) {
     const element = this._toolElements.get(toolId);
-    if (!element) return;
+    if (!element) {
+      // Debug log: element not found
+      if (this._debug) {
+        console.warn(`[ToolRenderer] updateToolCard failed: element not found for toolId="${toolId}"`, {
+          toolId,
+          update,
+          registeredTools: Array.from(this._toolElements.keys()),
+          selector: `[data-tool-id="${toolId}"]`,
+        });
+      }
+      return;
+    }
+
+    if (this._debug) {
+      console.log(`[ToolRenderer] updateToolCard:`, { toolId, update });
+    }
 
     // Status güncelle
     if (update.status) {
@@ -180,7 +324,21 @@ const ToolRenderer = {
 
       const statusText = element.querySelector('.tool-status');
       if (statusText) {
-        statusText.textContent = this._getStatusText(update.status);
+        // Execution time ekle (completed/error durumlarında)
+        let statusStr = this._getStatusText(update.status);
+        if ((update.status === 'completed' || update.status === 'error') && this._toolStartTimes.has(toolId)) {
+          const execTime = this.getExecutionTime(toolId);
+          if (execTime !== null) {
+            statusStr += ` (${this.formatExecutionTime(execTime)})`;
+          }
+          this._toolStartTimes.delete(toolId); // Cleanup
+        }
+        statusText.textContent = statusStr;
+      }
+      
+      // Running durumunda start time'ı kaydet
+      if (update.status === 'running' && !this._toolStartTimes.has(toolId)) {
+        this.markToolStart(toolId);
       }
     }
 
@@ -374,19 +532,20 @@ const ToolRenderer = {
    */
   _parseAnsi(text) {
     // Normalize literal escape sequences
-    let normalized = text
+    const normalized = text
       .replace(/\\u001b/gi, '\u001b')
       .replace(/\\x1b/gi, '\u001b')
       .replace(/\\033/g, '\u001b');
 
     // If no ANSI codes, return as-is
+    // eslint-disable-next-line no-control-regex
     if (!/\u001b/.test(normalized)) {
       return text;
     }
 
     // Parse ANSI sequences
     const result = [];
-    let currentStyles = {
+    const currentStyles = {
       fg: null,
       bg: null,
       bold: false,
@@ -398,12 +557,14 @@ const ToolRenderer = {
     };
 
     // Split by ANSI escape sequences
+    // eslint-disable-next-line no-control-regex
     const parts = normalized.split(/(\u001b\[[0-9;]*m)/);
 
     for (const part of parts) {
       if (!part) continue;
 
       // Check if this is an ANSI sequence
+      // eslint-disable-next-line no-control-regex
       const match = part.match(/^\u001b\[([0-9;]*)m$/);
       if (match) {
         const codes = match[1].split(';').map(c => parseInt(c, 10) || 0);
@@ -743,15 +904,6 @@ const ToolRenderer = {
     }
   },
 
-  /**
-   * Tool auto-approve kontrolu
-   * @param {string} toolName
-   * @returns {boolean}
-   */
-  isAutoApproved(toolName) {
-    return this._autoApprovedTools?.has(toolName) || false;
-  },
-
   // =========================================================================
   // Inline Question Support (FAZ 4)
   // =========================================================================
@@ -1073,11 +1225,9 @@ const ToolRenderer = {
   /**
    * Diff satırı render et
    * @param {{type: string, content: string, lineNumber: number}} line
-   * @param {number} index
    * @returns {string}
    */
-  _renderDiffLine(line, index) {
-    const prefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
+  _renderDiffLine(line) {
     return `
       <div class="diff-line ${line.type}">
         <span class="diff-line-number">${line.lineNumber || ''}</span>

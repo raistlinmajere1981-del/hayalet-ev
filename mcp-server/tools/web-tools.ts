@@ -5,7 +5,7 @@
  * sayfa içeriği çekme ve özetleme araçları.
  */
 
-import { fetchAndParse, truncateText, type ScrapedContent } from "../utils/web-scraper.js";
+import { fetchAndParse, truncateText } from "../utils/web-scraper.js";
 import { logToolError } from "../utils/mcp-logger.js";
 import { WEB_TIMEOUTS } from "../utils/timeouts.js";
 import type { ToolResult } from "../types/index.js";
@@ -24,6 +24,115 @@ export interface SearchResult {
   engine: string;
   category?: string;
   publishedDate?: string;
+  score?: number; // Kalite skoru
+}
+
+// ============================================
+// Spam/Düşük Kalite Domain Blacklist
+// ============================================
+
+const SPAM_DOMAINS = new Set([
+  "pinterest.com",
+  "pinterest.co",
+  "quora.com", // Genelde düşük kalite
+  "w3schools.com", // MDN tercih edilmeli
+  "geeksforgeeks.org", // Genelde kötü örnekler
+  "tutorialspoint.com",
+  "javatpoint.com",
+]);
+
+const HIGH_QUALITY_DOMAINS = new Set([
+  "github.com",
+  "stackoverflow.com",
+  "developer.mozilla.org",
+  "docs.microsoft.com",
+  "docs.python.org",
+  "nodejs.org",
+  "typescriptlang.org",
+  "reactjs.org",
+  "vuejs.org",
+  "wikipedia.org",
+  "arxiv.org",
+  "medium.com",
+  "dev.to",
+]);
+
+// ============================================
+// Helper: Duplicate ve Kalite Filtreleme
+// ============================================
+
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // www. prefix'ini kaldır, trailing slash kaldır
+    return u.hostname.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+  } catch {
+    return url;
+  }
+}
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function calculateScore(result: { url: string; engine: string; snippet?: string }): number {
+  let score = 1.0;
+  const domain = getDomain(result.url);
+  
+  // Yüksek kaliteli domain bonus
+  if (HIGH_QUALITY_DOMAINS.has(domain)) {
+    score += 0.5;
+  }
+  
+  // Spam domain penaltı
+  if (SPAM_DOMAINS.has(domain)) {
+    score -= 0.8;
+  }
+  
+  // Engine bazlı bonus
+  if (["stackoverflow", "github", "wikipedia"].includes(result.engine)) {
+    score += 0.3;
+  }
+  
+  // Snippet uzunluğu (daha uzun = daha bilgilendirici)
+  if (result.snippet && result.snippet.length > 150) {
+    score += 0.2;
+  }
+  
+  return Math.max(0.1, score);
+}
+
+function filterAndRankResults(results: SearchResult[]): SearchResult[] {
+  const seenUrls = new Set<string>();
+  const seenTitles = new Set<string>();
+  
+  return results
+    // Spam filtrele
+    .filter((r) => {
+      const domain = getDomain(r.url);
+      return !SPAM_DOMAINS.has(domain);
+    })
+    // Duplicate URL filtrele
+    .filter((r) => {
+      const normalized = normalizeUrl(r.url);
+      if (seenUrls.has(normalized)) return false;
+      seenUrls.add(normalized);
+      return true;
+    })
+    // Duplicate başlık filtrele (benzer içerik)
+    .filter((r) => {
+      const titleKey = r.title.toLowerCase().slice(0, 50);
+      if (seenTitles.has(titleKey)) return false;
+      seenTitles.add(titleKey);
+      return true;
+    })
+    // Skor hesapla ve sırala
+    .map((r) => ({ ...r, score: calculateScore(r) }))
+    .sort((a, b) => (b.score || 0) - (a.score || 0));
 }
 
 export interface SearchResponse {
@@ -115,8 +224,7 @@ export async function webSearch(options: {
     const searchTime = Date.now() - startTime;
 
     // Sonuçları formatla
-    const results: SearchResult[] = (data.results || [])
-      .slice(0, limit)
+    const rawResults: SearchResult[] = (data.results || [])
       .map((r) => ({
         title: r.title || "",
         url: r.url || "",
@@ -126,16 +234,19 @@ export async function webSearch(options: {
         publishedDate: r.publishedDate,
       }));
 
+    // Filtreleme ve sıralama uygula
+    const filteredResults = filterAndRankResults(rawResults).slice(0, limit);
+
     return {
       query,
-      results,
-      totalResults: data.number_of_results || results.length,
+      results: filteredResults,
+      totalResults: data.number_of_results || rawResults.length,
       searchTime,
       engines: data.engines || [],
     };
   } catch (error) {
     const err = error as Error;
-    logToolError("web_search", err, { query, categories });
+    logToolError("hev_web_search", err, { query, categories });
 
     // SearXNG bağlantı hatası için anlamlı mesaj
     if (err.name === "AbortError") {
@@ -195,7 +306,7 @@ export async function webFetch(options: {
     };
   } catch (error) {
     const err = error as Error;
-    logToolError("web_fetch", err, { url });
+    logToolError("hev_web_fetch", err, { url });
 
     return {
       url,
@@ -391,7 +502,7 @@ export async function handleWebSearchAndFetch(args: Record<string, unknown>): Pr
 
 export const webToolDefinitions = [
   {
-    name: "web_search",
+    name: "hev_web_search",
     description: "SearXNG ile web araması yap. Google, Bing, DuckDuckGo ve diğer arama motorlarından sonuç getirir.",
     inputSchema: {
       type: "object" as const,
@@ -428,7 +539,7 @@ export const webToolDefinitions = [
     },
   },
   {
-    name: "web_fetch",
+    name: "hev_web_fetch",
     description: "Bir web sayfasının içeriğini çek ve temiz metin/markdown olarak döndür. Reklam, menü gibi gereksiz içerikler otomatik temizlenir.",
     inputSchema: {
       type: "object" as const,
@@ -457,7 +568,7 @@ export const webToolDefinitions = [
     },
   },
   {
-    name: "web_search_and_fetch",
+    name: "hev_web_search_and_fetch",
     description: "Web araması yap ve ilk N sonucun tam içeriğini çek. Detaylı araştırma için ideal.",
     inputSchema: {
       type: "object" as const,

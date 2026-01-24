@@ -81,7 +81,7 @@ export async function checkElectronConnection(): Promise<ToolResult> {
       };
     }
   } catch (err) {
-    return cdpError("check_electron_connection", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_check_electron_connection", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -113,7 +113,7 @@ ${JSON.stringify(result, null, 2)}
       }],
     };
   } catch (err) {
-    return cdpError("send_command_to_electron", err as Error, `Komut hatası: ${(err as Error).message}`);
+    return cdpError("hev_send_command_to_electron", err as Error, `Komut hatası: ${(err as Error).message}`);
   }
 }
 
@@ -152,7 +152,7 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
       }],
     };
   } catch (err) {
-    return cdpError("take_cdp_screenshot", err as Error, `Screenshot hatası: ${(err as Error).message}`);
+    return cdpError("hev_take_cdp_screenshot", err as Error, `Screenshot hatası: ${(err as Error).message}`);
   }
 }
 
@@ -177,7 +177,7 @@ export async function getElectronWindowInfo(): Promise<ToolResult> {
       }],
     };
   } catch (err) {
-    return cdpError("get_electron_window_info", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_get_electron_window_info", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -213,7 +213,7 @@ export async function clickElementBySelector(args: Record<string, unknown>): Pro
       };
     }
   } catch (err) {
-    return cdpError("click_element_by_selector", err as Error, `Tıklama hatası: ${(err as Error).message}`);
+    return cdpError("hev_click_element_by_selector", err as Error, `Tıklama hatası: ${(err as Error).message}`);
   }
 }
 
@@ -250,7 +250,7 @@ export async function clickElementByText(args: Record<string, unknown>): Promise
       };
     }
   } catch (err) {
-    return cdpError("click_element_by_text", err as Error, `Tıklama hatası: ${(err as Error).message}`);
+    return cdpError("hev_click_element_by_text", err as Error, `Tıklama hatası: ${(err as Error).message}`);
   }
 }
 
@@ -286,7 +286,7 @@ export async function fillInputField(args: Record<string, unknown>): Promise<Too
       };
     }
   } catch (err) {
-    return cdpError("fill_input_field", err as Error, `Input hatası: ${(err as Error).message}`);
+    return cdpError("hev_fill_input_field", err as Error, `Input hatası: ${(err as Error).message}`);
   }
 }
 
@@ -314,7 +314,7 @@ ${JSON.stringify(structure.body, null, 2)}
       }],
     };
   } catch (err) {
-    return cdpError("get_page_dom_structure", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_get_page_dom_structure", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -357,7 +357,7 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
       };
     }
   } catch (err) {
-    return cdpError("inspect_element", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_inspect_element", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -398,7 +398,7 @@ ${list}`,
       }],
     };
   } catch (err) {
-    return cdpError("query_elements", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_query_elements", err as Error, `Hata: ${(err as Error).message}`);
   }
 }
 
@@ -434,7 +434,7 @@ export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolR
       }],
     };
   } catch (err) {
-    return cdpError("send_key_press", err as Error, `Tuş hatası: ${(err as Error).message}`);
+    return cdpError("hev_send_key_press", err as Error, `Tuş hatası: ${(err as Error).message}`);
   }
 }
 
@@ -456,6 +456,6 @@ export async function scrollPage(args: Record<string, unknown>): Promise<ToolRes
       }],
     };
   } catch (err) {
-    return cdpError("scroll_page", err as Error, `Scroll hatası: ${(err as Error).message}`);
+    return cdpError("hev_scroll_page", err as Error, `Scroll hatası: ${(err as Error).message}`);
   }
 }

@@ -55,7 +55,7 @@ export async function testElectron(
         ],
       };
     }
-    logToolError("test_electron", error, { timeout });
+    logToolError("hev_test_electron", error, { timeout });
     return {
       content: [{ type: "text", text: `❌ Electron test hatası: ${error.message}` }],
       isError: true,

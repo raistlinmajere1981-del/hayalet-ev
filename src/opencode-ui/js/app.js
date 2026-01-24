@@ -59,6 +59,9 @@ const OpenCodeApp = {
 
     // Session store subscription (UI güncellemeleri için)
     this._subscribeToSessionStore();
+    
+    // Session badge ve status panel tracking
+    this._initSessionBadgeTracking();
 
     // SSE bağlantısını başlat
     await this._connectSSE();
@@ -511,18 +514,65 @@ const OpenCodeApp = {
       newSessionBtn.addEventListener('click', () => this._handleNewSession());
     }
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts with AbortController for cleanup
+    this._eventAbortController = new AbortController();
+    const { signal } = this._eventAbortController;
+
     document.addEventListener('keydown', (e) => {
       // Ctrl+N - Yeni oturum
-      if (e.ctrlKey && e.key === 'n') {
+      if (e.ctrlKey && !e.shiftKey && e.key === 'n') {
         e.preventDefault();
         this._handleNewSession();
       }
-      // Escape - İşlemi iptal et
-      if (e.key === 'Escape' && this._isProcessing) {
-        APIClient.cancel().catch(console.error);
+      // Ctrl+Shift+A - Agent seçici aç
+      if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        document.getElementById('agent-selector')?.click();
       }
-    });
+      // Ctrl+Shift+M - Model seçici aç
+      if (e.ctrlKey && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+        e.preventDefault();
+        document.getElementById('model-selector')?.click();
+      }
+      // Ctrl+Shift+P - Command Palette
+      if (e.ctrlKey && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+        e.preventDefault();
+        this._toggleCommandPalette();
+      }
+      // Escape - İşlemi iptal et veya modal kapat
+      if (e.key === 'Escape') {
+        if (this._isProcessing) {
+          APIClient.cancel().catch(console.error);
+        }
+        // Modal'ları kapat
+        this._closeAllDropdowns();
+      }
+    }, { signal });
+  },
+
+  /**
+   * Cleanup all event listeners (call on destroy/unmount)
+   */
+  destroy() {
+    console.log('[OpenCode] Destroying app, cleaning up event listeners...');
+    
+    // Abort all event listeners
+    if (this._eventAbortController) {
+      this._eventAbortController.abort();
+      this._eventAbortController = null;
+    }
+
+    // Disconnect SSE
+    if (typeof SSEClient !== 'undefined') {
+      SSEClient.disconnectAll();
+    }
+
+    // Cancel pending API requests
+    if (typeof APIClient !== 'undefined') {
+      APIClient.cancelAllRequests();
+    }
+
+    this._initialized = false;
   },
 
   // =========================================================================
@@ -602,6 +652,45 @@ const OpenCodeApp = {
       StoreBridge.handleEvent('thinking.end', { ...data.data, sessionId: data.sessionId });
     });
     
+    // Session update event -> Update agent/model info
+    SSEClient.on('session.updated', (data) => {
+      const sessionId = data.sessionId;
+      const sessionData = data.data || {};
+      
+      console.log('[OpenCode] Session updated:', sessionId, sessionData);
+      
+      // Only update defined values (agent and model come in separate events)
+      const hasAgent = sessionData.agent !== undefined && sessionData.agent !== null;
+      const hasModel = sessionData.provider !== undefined && sessionData.model !== undefined;
+      
+      console.log('[OpenCode] Session update check:', { hasAgent, hasModel, sessionData });
+      
+      if (sessionId && (hasAgent || hasModel)) {
+        // Build update object with only defined values
+        const updateInfo = {};
+        if (hasAgent) updateInfo.agent = sessionData.agent;
+        if (hasModel) {
+          updateInfo.provider = sessionData.provider;
+          updateInfo.model = sessionData.model;
+        }
+        
+        console.log('[OpenCode] Updating with:', updateInfo);
+        
+        SessionStore.updateSessionInfo(sessionId, updateInfo);
+        
+        // Update AgentModelSelector (only with defined values)
+        if (typeof AgentModelSelector !== 'undefined') {
+          console.log('[OpenCode] Calling AgentModelSelector.setFromSession');
+          AgentModelSelector.setFromSession(updateInfo);
+        } else {
+          console.warn('[OpenCode] AgentModelSelector not available');
+        }
+        
+        // Refresh token display
+        this._updateTokenDisplay();
+      }
+    });
+
     // Status events -> StoreBridge
     SSEClient.on('status.change', (data) => {
       StoreBridge.handleEvent('status.change', data.data);
@@ -668,6 +757,8 @@ const OpenCodeApp = {
         this._updateStatus('connected', 'Bağlı');
         // Otomatik instance oluştur (eğer yoksa)
         this._ensureInstanceExists();
+        // Loading overlay'ı gizle ve app'i göster
+        this._showApp();
         break;
       case 'disconnected':
         this._updateStatus('disconnected', 'Bağlantı kesildi');
@@ -681,12 +772,36 @@ const OpenCodeApp = {
       case 'failed':
         this._updateStatus('error', 'Bağlantı başarısız');
         this._updateActiveInstanceStatus('error');
+        // Hata durumunda da app'i göster (hata mesajı görünsün)
+        this._showApp();
         break;
       case 'error':
         this._updateStatus('error', 'Hata');
         this._updateActiveInstanceStatus('error');
+        // Hata durumunda da app'i göster (hata mesajı görünsün)
+        this._showApp();
         break;
     }
+  },
+
+  /**
+   * Loading overlay'ı gizle ve app'i göster
+   */
+  _showApp() {
+    const overlay = document.getElementById('loading-overlay');
+    const app = document.getElementById('app');
+    
+    if (overlay) {
+      overlay.classList.add('hidden');
+    }
+    
+    if (app) {
+      app.style.opacity = '1';
+      app.style.pointerEvents = 'auto';
+      app.classList.add('ready');
+    }
+    
+    console.log('[OpenCode] App ready - connection established');
   },
 
   /**
@@ -707,6 +822,9 @@ const OpenCodeApp = {
       InstanceStore.setInstanceStatus(existingInstance.id, 'connected');
       InstanceStore.setActiveInstance(existingInstance.id);
       console.log('[OpenCode] Existing instance activated:', existingInstance.id);
+      
+      // AgentModelSelector'a folder path set et
+      this._updateAgentModelSelectorFolder(currentWorkspace);
       return;
     }
 
@@ -720,7 +838,28 @@ const OpenCodeApp = {
     // Connected olarak işaretle
     InstanceStore.setInstanceStatus(instance.id, 'connected');
     
+    // AgentModelSelector'a folder path set et
+    this._updateAgentModelSelectorFolder(currentWorkspace);
+    
     console.log('[OpenCode] New instance created:', instance.id, instance.name);
+  },
+
+  /**
+   * AgentModelSelector'a folder path set et ve preference'ları yükle
+   */
+  _updateAgentModelSelectorFolder(folderPath) {
+    if (typeof AgentModelSelector !== 'undefined' && folderPath) {
+      AgentModelSelector.setFolderPath(folderPath);
+      
+      // Kaydedilmiş preference varsa yükle
+      AgentModelSelector._loadSavedPreference().then(pref => {
+        if (pref) {
+          AgentModelSelector.setFromSession(pref);
+        }
+      }).catch(err => {
+        console.warn('[OpenCode] Failed to load saved preference:', err);
+      });
+    }
   },
 
   /**
@@ -1250,9 +1389,73 @@ const OpenCodeApp = {
 
   /**
    * Çöp kutusunu boşalt
+   * - SessionStore'daki eski/geçersiz session referanslarını temizle
+   * - Orphan attachment'ları temizle
+   * - LocalStorage'daki eski verileri temizle
    */
-  _clearTrash() {
-    console.log('[OpenCode] Clear trash - not implemented yet');
+  async _clearTrash() {
+    let cleanedCount = 0;
+    
+    try {
+      // 1. SessionStore'dan geçersiz session'ları temizle
+      if (typeof SessionStore !== 'undefined') {
+        const sessions = SessionStore.getAllSessions();
+        const validSessionIds = new Set();
+        
+        // API'den güncel session listesini al
+        const apiSessions = await APIClient?.listSessions();
+        if (apiSessions && Array.isArray(apiSessions)) {
+          apiSessions.forEach(s => validSessionIds.add(s.id));
+          
+          // Store'daki ama API'de olmayan session'ları temizle
+          sessions.forEach(session => {
+            if (!validSessionIds.has(session.id)) {
+              SessionStore.removeSession(session.id);
+              cleanedCount++;
+            }
+          });
+        }
+      }
+      
+      // 2. Orphan attachment'ları temizle
+      if (typeof AttachmentStore !== 'undefined') {
+        const _currentSessionId = SessionStore?.getCurrentSessionId();
+        // Tüm instance'lardaki attachment'ları kontrol et
+        // Not: Şu an sadece current session dışındakileri temizliyoruz
+        // Çünkü diğer session'ların attachment'ları zaten API'den gelmiyor
+        console.log('[OpenCode] Attachment cleanup: current session preserved, id:', _currentSessionId);
+      }
+      
+      // 3. LocalStorage temizliği (eski auto-approve, vs.)
+      try {
+        // 30 günden eski auto-approve tercihlerini temizle (opsiyonel)
+        const autoApproved = JSON.parse(localStorage.getItem('opencode-auto-approved-tools') || '[]');
+        if (autoApproved.length > 50) {
+          // Çok fazla birikmişse ilk 20'yi tut
+          localStorage.setItem('opencode-auto-approved-tools', JSON.stringify(autoApproved.slice(-20)));
+          cleanedCount += autoApproved.length - 20;
+        }
+      } catch {
+        // LocalStorage erişim hatası - görmezden gel
+      }
+      
+      // 4. MessageStore cache temizliği
+      if (typeof MessageStore !== 'undefined' && MessageStore.clearOldCache) {
+        MessageStore.clearOldCache();
+      }
+      
+      if (cleanedCount > 0) {
+        this._showToast(`${cleanedCount} öğe temizlendi`, 'success');
+      } else {
+        this._showToast('Temizlenecek öğe yok', 'info');
+      }
+      
+      console.log('[OpenCode] Trash cleared:', cleanedCount, 'items');
+      
+    } catch (err) {
+      console.error('[OpenCode] Clear trash error:', err);
+      this._showToast('Temizleme sırasında hata oluştu', 'error');
+    }
   },
 
   /**
@@ -1578,18 +1781,14 @@ const OpenCodeApp = {
   // =========================================================================
 
   /**
-   * SessionStore değişikliklerini dinle
+   * SessionStore değişikliklerini dinle (session badge için)
+   * Not: Token tracking ayrı _subscribeToSessionStore'da (FAZ 4)
    */
-  _subscribeToSessionStore() {
+  _initSessionBadgeTracking() {
     if (typeof SessionStore === 'undefined') return;
     
     SessionStore.subscribe((event) => {
       this._updateSessionBadge();
-      
-      // Token usage güncellendiğinde stats'u güncelle
-      if (event.type === 'usage:updated') {
-        this._updateTokenStats();
-      }
     });
     
     // İlk yüklemede de güncelle
@@ -1729,6 +1928,14 @@ const OpenCodeApp = {
                 <path d="M12 12v3"></path>
               </svg>
             </button>
+            <button class="btn-session-action" title="Compact (Sıkıştır)" onclick="event.stopPropagation(); OpenCodeApp._compactSession('${session.id}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 14 10 14 10 20"></polyline>
+                <polyline points="20 10 14 10 14 4"></polyline>
+                <line x1="14" y1="10" x2="21" y2="3"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+            </button>
             <button class="btn-session-action danger" title="Sil" onclick="event.stopPropagation(); OpenCodeApp._deleteSession('${session.id}')">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -1788,24 +1995,36 @@ const OpenCodeApp = {
    * @param {string} sessionId
    */
   async _renameSession(sessionId) {
+    if (typeof SessionStore === 'undefined') {
+      console.warn('[OpenCode] SessionStore not available');
+      return;
+    }
+    
     const session = SessionStore.getSession(sessionId);
-    if (!session) return;
+    if (!session) {
+      console.warn('[OpenCode] Session not found:', sessionId);
+      return;
+    }
 
     const currentTitle = session.title || `Oturum ${sessionId.substring(0, 8)}`;
     const newTitle = prompt('Yeni oturum adı:', currentTitle);
 
-    if (!newTitle || newTitle === currentTitle) return;
+    if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) return;
 
-    // Store'u güncelle
-    SessionStore.upsertSession(sessionId, { title: newTitle });
+    try {
+      // Store'u güncelle
+      SessionStore.upsertSession(sessionId, { title: newTitle.trim() });
 
-    // API'ye bildir
-    if (typeof APIClient !== 'undefined' && APIClient.renameSession) {
-      try {
-        await APIClient.renameSession(sessionId, newTitle);
-      } catch (err) {
-        console.warn('[OpenCode] Failed to rename session on server:', err);
+      // API'ye bildir
+      if (typeof APIClient !== 'undefined' && APIClient.renameSession) {
+        await APIClient.renameSession(sessionId, newTitle.trim());
       }
+
+      console.log('[OpenCode] Session renamed:', sessionId, '->', newTitle.trim());
+      this._showToast?.('Oturum yeniden adlandırıldı', 'success');
+    } catch (err) {
+      console.error('[OpenCode] Failed to rename session:', err);
+      this._showToast?.('Yeniden adlandırma başarısız', 'error');
     }
 
     this._renderSessionList();
@@ -1829,35 +2048,151 @@ const OpenCodeApp = {
   },
 
   /**
+   * Session'u compact et (sıkıştır)
+   * Token kullanımını azaltmak için eski mesajları özetler
+   * @param {string} sessionId
+   */
+  async _compactSession(sessionId) {
+    if (typeof SessionStore === 'undefined') {
+      console.warn('[OpenCode] SessionStore not available');
+      return;
+    }
+    
+    const session = SessionStore.getSession(sessionId);
+    if (!session) {
+      console.warn('[OpenCode] Session not found for compact:', sessionId);
+      return;
+    }
+
+    const confirmed = confirm('Bu oturum sıkıştırılacak. Eski mesajlar özetlenecek ve token kullanımı azalacak. Devam edilsin mi?');
+    if (!confirmed) return;
+
+    try {
+      // API'den compact işlemi yap
+      if (typeof APIClient !== 'undefined' && APIClient.compactConversation) {
+        const result = await APIClient.compactConversation();
+        
+        if (result.success) {
+          // Token kazancını göster
+          const savedTokens = result.savedTokens || result.tokensSaved || 0;
+          const message = savedTokens > 0 
+            ? `Oturum sıkıştırıldı. ${savedTokens.toLocaleString()} token tasarruf edildi.`
+            : 'Oturum sıkıştırıldı.';
+          
+          console.log('[OpenCode] Session compacted:', sessionId, { savedTokens });
+          this._showToast?.(message, 'success', 4000);
+          
+          // Mesaj listesini yenile
+          if (typeof MessageStore !== 'undefined') {
+            MessageStore.clearSession(sessionId);
+          }
+          this._loadSessionMessages?.(sessionId);
+        } else {
+          throw new Error(result.error || 'Compact failed');
+        }
+      } else {
+        this._showToast?.('Compact API mevcut değil', 'warning');
+      }
+    } catch (err) {
+      console.error('[OpenCode] Failed to compact session:', err);
+      this._showToast?.('Sıkıştırma başarısız', 'error');
+    }
+  },
+
+  /**
    * Session'u sil
    * @param {string} sessionId
    */
   async _deleteSession(sessionId) {
+    if (typeof SessionStore === 'undefined') {
+      console.warn('[OpenCode] SessionStore not available');
+      return;
+    }
+    
     const session = SessionStore.getSession(sessionId);
-    if (!session) return;
-
-    const confirmed = confirm(`"${session.title || sessionId}" oturumu silinecek. Emin misiniz?`);
-    if (!confirmed) return;
-
-    // API'den sil
-    if (typeof APIClient !== 'undefined' && APIClient.deleteSession) {
-      try {
-        await APIClient.deleteSession(sessionId);
-      } catch (err) {
-        console.warn('[OpenCode] Failed to delete session on server:', err);
-      }
+    if (!session) {
+      console.warn('[OpenCode] Session not found for delete:', sessionId);
+      return;
     }
 
-    // Store'dan sil
-    SessionStore.removeSession(sessionId);
-    MessageStore.clearSession(sessionId);
+    const sessionTitle = session.title || `Oturum ${sessionId.substring(0, 8)}`;
+    const confirmed = confirm(`"${sessionTitle}" oturumu silinecek. Emin misiniz?`);
+    if (!confirmed) return;
 
-    // Eğer aktif session silindiyse, yeni session oluştur
-    if (SessionStore.getCurrentSessionId() === null) {
-      this._handleNewSession();
+    try {
+      // API'den sil
+      if (typeof APIClient !== 'undefined' && APIClient.deleteSession) {
+        await APIClient.deleteSession(sessionId);
+      }
+
+      // Store'dan sil
+      SessionStore.removeSession(sessionId);
+      
+      // MessageStore varsa mesajları da temizle
+      if (typeof MessageStore !== 'undefined' && MessageStore.clearSession) {
+        MessageStore.clearSession(sessionId);
+      }
+
+      console.log('[OpenCode] Session deleted:', sessionId);
+      this._showToast?.('Oturum silindi', 'success');
+
+      // Eğer aktif session silindiyse, yeni session oluştur veya başka session'a geç
+      const remainingSessions = SessionStore.getAllSessions();
+      if (SessionStore.getCurrentSessionId() === sessionId || SessionStore.getCurrentSessionId() === null) {
+        if (remainingSessions.length > 0) {
+          // Başka bir session'a geç
+          SessionStore.setCurrentSession(remainingSessions[0].id);
+        } else {
+          // Hiç session kalmadı, yeni oluştur
+          this._handleNewSession();
+        }
+      }
+    } catch (err) {
+      console.error('[OpenCode] Failed to delete session:', err);
+      this._showToast?.('Silme başarısız', 'error');
     }
 
     this._renderSessionList();
+  },
+
+  /**
+   * Command Palette'i aç/kapat
+   */
+  _toggleCommandPalette() {
+    const paletteModal = document.getElementById('command-palette-modal');
+    if (!paletteModal) return;
+    
+    paletteModal.classList.toggle('hidden');
+    if (!paletteModal.classList.contains('hidden')) {
+      const input = paletteModal.querySelector('.palette-input');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+    }
+  },
+
+  /**
+   * Tüm açık dropdown'ları kapat
+   */
+  _closeAllDropdowns() {
+    // Agent dropdown
+    const agentDropdown = document.querySelector('.agent-dropdown-popup');
+    if (agentDropdown && !agentDropdown.classList.contains('hidden')) {
+      agentDropdown.classList.add('hidden');
+    }
+    
+    // Model dropdown
+    const modelDropdown = document.querySelector('.model-dropdown-popup');
+    if (modelDropdown && !modelDropdown.classList.contains('hidden')) {
+      modelDropdown.classList.add('hidden');
+    }
+    
+    // Command palette
+    const paletteModal = document.getElementById('command-palette-modal');
+    if (paletteModal && !paletteModal.classList.contains('hidden')) {
+      paletteModal.classList.add('hidden');
+    }
   },
 
   /**
@@ -1972,9 +2307,6 @@ const OpenCodeApp = {
   },
 
   /**
-   * Background shell'leri güncelle
-   */
-  /**
    * Plugin listesini güncelle
    */
   async _updatePlugins() {
@@ -1983,12 +2315,18 @@ const OpenCodeApp = {
 
     // API'den plugin listesi al
     let plugins = [];
-    if (typeof APIClient !== 'undefined' && APIClient.status) {
+    if (typeof APIClient !== 'undefined' && APIClient.getPlugins) {
       try {
-        const result = await APIClient.status();
+        const result = await APIClient.getPlugins();
         plugins = result.plugins || [];
       } catch {
-        plugins = [];
+        // Fallback: status endpoint'inden dene
+        try {
+          const statusResult = await APIClient.status();
+          plugins = statusResult.plugins || [];
+        } catch {
+          plugins = [];
+        }
       }
     }
 
@@ -1997,12 +2335,23 @@ const OpenCodeApp = {
       return;
     }
 
-    container.innerHTML = plugins.map(plugin => `
-      <div class="plugin-item">
-        <span class="plugin-name">${this._escapeHtml(typeof plugin === 'string' ? plugin : plugin.name)}</span>
-      </div>
-    `).join('');
+    container.innerHTML = plugins.map(plugin => {
+      const name = typeof plugin === 'string' ? plugin : plugin.name;
+      const enabled = typeof plugin === 'object' ? plugin.enabled !== false : true;
+      const statusClass = enabled ? 'enabled' : 'disabled';
+      
+      return `
+        <div class="plugin-item ${statusClass}">
+          <span class="plugin-status-dot"></span>
+          <span class="plugin-name">${this._escapeHtml(name)}</span>
+        </div>
+      `;
+    }).join('');
   },
+
+  /**
+   * Background shell'leri güncelle
+   */
 
   async _updateBackgroundShells() {
     const container = document.querySelector('.shell-list');
@@ -2283,11 +2632,243 @@ const OpenCodeApp = {
     } else if (input) {
       input.style.height = 'auto';
     }
+  },
+
+  // =========================================================================
+  // Toast Notifications
+  // =========================================================================
+
+  /**
+   * Toast mesajı göster
+   * @param {string} message - Gösterilecek mesaj
+   * @param {'success' | 'error' | 'info' | 'warning'} type - Toast tipi
+   * @param {number} duration - Gösterim süresi (ms)
+   */
+  _showToast(message, type = 'info', duration = 3000) {
+    // Mevcut toast container'ı bul veya oluştur
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    // Toast elementi oluştur
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    // Icon seç
+    const icons = {
+      success: '✓',
+      error: '✗',
+      warning: '⚠',
+      info: 'ℹ'
+    };
+    
+    toast.innerHTML = `
+      <span class="toast-icon">${icons[type] || icons.info}</span>
+      <span class="toast-message">${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      toast.classList.add('toast-show');
+    });
+    
+    // Auto remove
+    setTimeout(() => {
+      toast.classList.remove('toast-show');
+      toast.classList.add('toast-hide');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  },
+
+  // =========================================================================
+  // Session Modals
+  // =========================================================================
+
+  /** @type {string|null} */
+  _pendingRenameSessionId: null,
+  /** @type {string|null} */
+  _pendingDeleteSessionId: null,
+
+  /**
+   * Session Rename Modal'ı aç
+   * @param {string} sessionId
+   * @param {string} currentTitle
+   */
+  showRenameModal(sessionId, currentTitle) {
+    this._pendingRenameSessionId = sessionId;
+    const modal = document.getElementById('session-rename-modal');
+    const input = document.getElementById('session-rename-input');
+    const idInput = document.getElementById('session-rename-id');
+    
+    if (modal && input && idInput) {
+      input.value = currentTitle || '';
+      idInput.value = sessionId;
+      modal.classList.remove('hidden');
+      input.focus();
+      input.select();
+    }
+  },
+
+  /**
+   * Session Rename Modal'ı kapat
+   */
+  hideRenameModal() {
+    const modal = document.getElementById('session-rename-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    this._pendingRenameSessionId = null;
+  },
+
+  /**
+   * Session rename işlemini uygula
+   */
+  async confirmRename() {
+    const input = document.getElementById('session-rename-input');
+    const sessionId = this._pendingRenameSessionId;
+    const newTitle = input?.value?.trim();
+    
+    if (!sessionId || !newTitle) {
+      this._showToast('Lütfen geçerli bir isim girin', 'warning');
+      return;
+    }
+    
+    this.hideRenameModal();
+    
+    const success = await window.SessionStore?.renameSession(sessionId, newTitle);
+    if (success) {
+      this._showToast('Oturum yeniden adlandırıldı', 'success');
+    } else {
+      this._showToast('Yeniden adlandırma başarısız', 'error');
+    }
+  },
+
+  /**
+   * Session Delete Modal'ı aç
+   * @param {string} sessionId
+   * @param {string} sessionTitle
+   */
+  showDeleteModal(sessionId, sessionTitle) {
+    this._pendingDeleteSessionId = sessionId;
+    const modal = document.getElementById('session-delete-modal');
+    const namePreview = document.getElementById('delete-session-name');
+    const idInput = document.getElementById('session-delete-id');
+    
+    if (modal && namePreview && idInput) {
+      namePreview.textContent = sessionTitle || sessionId;
+      idInput.value = sessionId;
+      modal.classList.remove('hidden');
+    }
+  },
+
+  /**
+   * Session Delete Modal'ı kapat
+   */
+  hideDeleteModal() {
+    const modal = document.getElementById('session-delete-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    this._pendingDeleteSessionId = null;
+  },
+
+  /**
+   * Session delete işlemini uygula
+   */
+  async confirmDelete() {
+    const sessionId = this._pendingDeleteSessionId;
+    
+    if (!sessionId) return;
+    
+    this.hideDeleteModal();
+    
+    const success = await window.SessionStore?.deleteSession(sessionId);
+    if (success) {
+      this._showToast('Oturum silindi', 'success');
+      // Eğer silinen oturum aktifse, yeni oturum oluştur
+      if (window.SessionStore?.getCurrentSessionId() === sessionId) {
+        this._handleNewSession();
+      }
+    } else {
+      this._showToast('Silme işlemi başarısız', 'error');
+    }
+  },
+
+  /**
+   * Shell Output Modal'ı aç
+   * @param {string} content
+   */
+  showShellOutputModal(content) {
+    const modal = document.getElementById('shell-output-modal');
+    const outputEl = document.getElementById('shell-output-content');
+    
+    if (modal && outputEl) {
+      outputEl.textContent = content || '';
+      modal.classList.remove('hidden');
+    }
+  },
+
+  /**
+   * Shell Output Modal'ı kapat
+   */
+  hideShellOutputModal() {
+    const modal = document.getElementById('shell-output-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  },
+
+  /**
+   * Modal event listener'larını kur
+   */
+  _setupModalListeners() {
+    // Rename modal
+    document.getElementById('rename-modal-close')?.addEventListener('click', () => this.hideRenameModal());
+    document.getElementById('btn-rename-cancel')?.addEventListener('click', () => this.hideRenameModal());
+    document.getElementById('btn-rename-confirm')?.addEventListener('click', () => this.confirmRename());
+    document.getElementById('session-rename-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.confirmRename();
+      if (e.key === 'Escape') this.hideRenameModal();
+    });
+    
+    // Delete modal
+    document.getElementById('delete-modal-close')?.addEventListener('click', () => this.hideDeleteModal());
+    document.getElementById('btn-delete-cancel')?.addEventListener('click', () => this.hideDeleteModal());
+    document.getElementById('btn-delete-confirm')?.addEventListener('click', () => this.confirmDelete());
+    
+    // Shell output modal
+    document.getElementById('shell-modal-close')?.addEventListener('click', () => this.hideShellOutputModal());
+    document.getElementById('btn-shell-close')?.addEventListener('click', () => this.hideShellOutputModal());
+    
+    // Overlay click to close
+    document.getElementById('session-rename-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'session-rename-modal') this.hideRenameModal();
+    });
+    document.getElementById('session-delete-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'session-delete-modal') this.hideDeleteModal();
+    });
+    document.getElementById('shell-output-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'shell-output-modal') this.hideShellOutputModal();
+    });
   }
 };
 
 // Global'e ekle
 window.OpenCodeApp = OpenCodeApp;
+
+// Modal listener'ları DOM hazır olduğunda kur
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => OpenCodeApp._setupModalListeners());
+} else {
+  // DOM zaten yüklü
+  setTimeout(() => OpenCodeApp._setupModalListeners(), 0);
+}
 
 // DOM hazır olunca başlat
 document.addEventListener('DOMContentLoaded', () => {

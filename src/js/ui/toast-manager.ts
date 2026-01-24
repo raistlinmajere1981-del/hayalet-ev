@@ -340,5 +340,5 @@ export const Toast = {
   },
 };
 
-// Alias for convenience
+// Alias for convenience (geriye uyumluluk)
 export const ToastManager = Toast;

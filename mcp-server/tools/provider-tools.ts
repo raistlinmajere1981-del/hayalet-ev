@@ -181,7 +181,7 @@ export async function validateSelectors(
     
   } catch (error) {
     progress.fail((error as Error).message);
-    logToolError("validate_provider_selectors", error as Error, { provider, categories });
+    logToolError("hev_validate_provider_selectors", error as Error, { provider, categories });
     return {
       provider,
       url: "",
@@ -256,7 +256,7 @@ export async function inspectProviderElementTool(
     
   } catch (error) {
     progress.fail((error as Error).message);
-    logToolError("inspect_provider_element", error as Error, { provider, selector });
+    logToolError("hev_inspect_provider_element", error as Error, { provider, selector });
     return {
       provider,
       selector,
@@ -273,7 +273,7 @@ export async function inspectProviderElementTool(
 
 export const PROVIDER_TOOL_DEFINITIONS = [
   {
-    name: "list_provider_webviews",
+    name: "hev_list_provider_webviews",
     description: "Mevcut provider'ları ve bağlı webview'ları listele. CDP bağlantısı gerektirir.",
     inputSchema: {
       type: "object" as const,
@@ -281,7 +281,7 @@ export const PROVIDER_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "list_provider_selectors",
+    name: "hev_list_provider_selectors",
     description: "Provider config dosyasındaki selector'ları listele (canlı test olmadan)",
     inputSchema: {
       type: "object" as const,
@@ -296,7 +296,7 @@ export const PROVIDER_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "validate_provider_selectors",
+    name: "hev_validate_provider_selectors",
     description: "Provider'ın tüm selector'larını canlı webview'da test et. Electron uygulaması ve ilgili AI sayfası açık olmalı.",
     inputSchema: {
       type: "object" as const,
@@ -316,7 +316,7 @@ export const PROVIDER_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "inspect_provider_element",
+    name: "hev_inspect_provider_element",
     description: "Provider webview'ında belirli bir selector ile element inspect et",
     inputSchema: {
       type: "object" as const,

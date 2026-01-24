@@ -30,6 +30,9 @@ const StoreBridge = {
   /** @type {Map<string, string>} Instance ID -> Last user message (per-instance echo filtering) */
   _lastUserMessageByInstance: new Map(),
 
+  /** @type {Map<string, number>} Instance ID -> Echo timeout ID (auto-clear after 30s) */
+  _echoTimeoutByInstance: new Map(),
+
   /** @type {boolean} Debug mode */
   _debug: false,
 
@@ -822,11 +825,18 @@ const StoreBridge = {
       },
     });
 
-    // Update session usage
+    // Update session usage (simple totals)
     const sessionId = message.sessionId;
     if (sessionId && (inputTokens || outputTokens || cost)) {
       SessionStore.updateSessionUsage(sessionId, {
         tokens: (inputTokens || 0) + (outputTokens || 0),
+        cost: cost || 0,
+      });
+      
+      // Also update session info with detailed breakdown
+      SessionStore.updateSessionInfo(sessionId, {
+        inputTokens: inputTokens || 0,
+        outputTokens: outputTokens || 0,
         cost: cost || 0,
       });
     }
@@ -842,10 +852,33 @@ const StoreBridge = {
 
   /**
    * Set last user message (for echo filtering)
+   * Auto-clears after 30 seconds to prevent stale echo detection
    * @param {string} message
+   * @param {string} [instanceId] - Optional instance ID for multi-instance support
    */
-  setLastUserMessage(message) {
-    this._lastUserMessage = (message || '').trim();
+  setLastUserMessage(message, instanceId = 'default') {
+    const normalizedMessage = (message || '').trim();
+    this._lastUserMessage = normalizedMessage;
+    
+    // Multi-instance support
+    this._lastUserMessageByInstance.set(instanceId, normalizedMessage);
+    
+    // Clear any existing timeout for this instance
+    const existingTimeout = this._echoTimeoutByInstance.get(instanceId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
+    // Auto-clear after 30 seconds to prevent stale echo detection
+    const timeoutId = setTimeout(() => {
+      if (this._lastUserMessage === normalizedMessage) {
+        this._lastUserMessage = null;
+      }
+      this._lastUserMessageByInstance.delete(instanceId);
+      this._echoTimeoutByInstance.delete(instanceId);
+    }, 30000);
+    
+    this._echoTimeoutByInstance.set(instanceId, timeoutId);
   },
 
   /**
@@ -998,6 +1031,13 @@ const StoreBridge = {
     this._currentMessageId = null;
     this._pendingIdReplacements.clear();
     this._ignoredMessageIds.clear();
+    
+    // Clear all echo detection timeouts
+    for (const timeoutId of this._echoTimeoutByInstance.values()) {
+      clearTimeout(timeoutId);
+    }
+    this._echoTimeoutByInstance.clear();
+    this._lastUserMessageByInstance.clear();
   },
 
   /**

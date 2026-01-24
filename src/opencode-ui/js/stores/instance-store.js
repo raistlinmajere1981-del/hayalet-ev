@@ -90,6 +90,70 @@ const InstanceStore = {
     return this._instances.get(this._activeInstanceId) || null;
   },
 
+  // ===========================================================================
+  // Null-Safe Helper Methods
+  // ===========================================================================
+
+  /**
+   * Get active instance path (null-safe)
+   * @returns {string | null}
+   */
+  getActiveInstancePath() {
+    return this.getActiveInstance()?.folder || null;
+  },
+
+  /**
+   * Get active instance session ID (null-safe)
+   * @returns {string | null}
+   */
+  getActiveInstanceSessionId() {
+    return this.getActiveInstance()?.sessionId || null;
+  },
+
+  /**
+   * Get active instance URL (null-safe)
+   * @returns {string | null}
+   */
+  getActiveInstanceUrl() {
+    return this.getActiveInstance()?.url || null;
+  },
+
+  /**
+   * Get active instance name (null-safe)
+   * @returns {string | null}
+   */
+  getActiveInstanceName() {
+    return this.getActiveInstance()?.name || null;
+  },
+
+  /**
+   * Get active instance status (null-safe)
+   * @returns {string}
+   */
+  getActiveInstanceStatus() {
+    return this.getActiveInstance()?.status || 'disconnected';
+  },
+
+  /**
+   * Check if active instance exists and is connected
+   * @returns {boolean}
+   */
+  isActiveInstanceConnected() {
+    return this.getActiveInstance()?.status === 'connected';
+  },
+
+  /**
+   * Safely get a property from active instance
+   * @param {string} property - Property name
+   * @param {*} defaultValue - Default value if not found
+   * @returns {*}
+   */
+  getActiveInstanceProperty(property, defaultValue = null) {
+    const instance = this.getActiveInstance();
+    if (!instance) return defaultValue;
+    return instance[property] ?? defaultValue;
+  },
+
   /**
    * Check if any instances exist
    * @returns {boolean}
@@ -130,7 +194,35 @@ const InstanceStore = {
   // ===========================================================================
 
   /**
-   * Create a new instance
+   * Find instance by folder path
+   * @param {string} folderPath
+   * @returns {Instance | null}
+   */
+  findByFolder(folderPath) {
+    if (!folderPath) return null;
+    
+    const normalizedPath = this._normalizePath(folderPath);
+    
+    for (const instance of this._instances.values()) {
+      if (this._normalizePath(instance.folder) === normalizedPath) {
+        return instance;
+      }
+    }
+    return null;
+  },
+
+  /**
+   * Normalize path for comparison (handle trailing slashes, backslashes)
+   * @param {string} path
+   * @returns {string}
+   */
+  _normalizePath(path) {
+    if (!path) return '';
+    return path.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
+  },
+
+  /**
+   * Create a new instance (with duplicate prevention)
    * @param {Object} options
    * @param {string} options.folder - Workspace folder path
    * @param {string} [options.name] - Display name
@@ -138,6 +230,22 @@ const InstanceStore = {
    * @returns {Instance}
    */
   createInstance(options) {
+    // Check for existing instance with same folder
+    const existingInstance = this.findByFolder(options.folder);
+    if (existingInstance) {
+      console.log('[InstanceStore] Instance already exists for folder:', options.folder, '-> activating existing');
+      
+      // Update URL if provided and different
+      if (options.url && existingInstance.url !== options.url) {
+        this.updateInstance(existingInstance.id, { url: options.url });
+      }
+      
+      // Activate existing instance
+      this.setActiveInstance(existingInstance.id);
+      
+      return existingInstance;
+    }
+
     const now = Date.now();
     const instanceId = `inst_${now}_${Math.random().toString(36).substr(2, 6)}`;
     
@@ -161,6 +269,7 @@ const InstanceStore = {
       this._activeInstanceId = instanceId;
     }
 
+    console.log('[InstanceStore] Created new instance:', instanceId, 'for folder:', options.folder);
     this._notify({ type: 'instance:created', instanceId, instance });
     return instance;
   },

@@ -13,7 +13,13 @@
   <link rel="stylesheet" href="styles/tools.css">
 </head>
 <body>
-  <div id="app">
+  <!-- Loading Overlay - SSE bağlantısı kurulana kadar gösterilir -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Bağlanıyor...</p>
+  </div>
+
+  <div id="app" style="opacity: 0; pointer-events: none;">
     <!-- ============================================
          Top Header Bar
          ============================================ -->
@@ -316,7 +322,9 @@
               </svg>
             </div>
             <div class="section-content">
-              <p class="placeholder-text">No background processes.</p>
+              <div class="shell-list">
+                <!-- Background shells will be populated dynamically -->
+              </div>
             </div>
           </div>
           
@@ -412,37 +420,80 @@
         </div>
       </div>
     </div>
+    
+    <!-- Session Rename Modal -->
+    <div class="modal-overlay hidden" id="session-rename-modal">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Oturumu Yeniden Adlandır</h3>
+          <button class="modal-close" id="rename-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-input" id="session-rename-input" placeholder="Yeni oturum adı...">
+          <input type="hidden" id="session-rename-id">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-rename-cancel">İptal</button>
+          <button class="btn btn-primary" id="btn-rename-confirm">Kaydet</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Session Delete Confirm Modal -->
+    <div class="modal-overlay hidden" id="session-delete-modal">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Oturumu Sil</h3>
+          <button class="modal-close" id="delete-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">Bu oturumu silmek istediğinizden emin misiniz?</p>
+          <p class="session-name-preview" id="delete-session-name"></p>
+          <input type="hidden" id="session-delete-id">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-delete-cancel">İptal</button>
+          <button class="btn btn-danger" id="btn-delete-confirm">Sil</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Background Shell Output Modal -->
+    <div class="modal-overlay hidden" id="shell-output-modal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h3>Shell Çıktısı</h3>
+          <button class="modal-close" id="shell-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <pre class="shell-output-content" id="shell-output-content"></pre>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-shell-close">Kapat</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Scripts -->
-  <!-- Config (load first) -->
-  <script src="js/config.js"></script>
-  
-  <!-- Store modules -->
-  <script src="js/stores/types.js"></script>
-  <script src="js/stores/normalizers.js"></script>
-  <script src="js/stores/instance-store.js"></script>
-  <script src="js/stores/message-store.js"></script>
-  <script src="js/stores/session-store.js"></script>
-  <script src="js/stores/attachment-store.js"></script>
-  <script src="js/stores/store-bridge.js"></script>
-  <script src="js/stores/index.js"></script>
-  
-  <!-- Core modules -->
-  <script src="js/sse-client.js"></script>
-  <script src="js/api-client.js"></script>
-  <script src="js/agent-model-selector.js"></script>
-  <script src="js/message-renderer.js"></script>
-  <script src="js/prompt-handler.js"></script>
-  <!-- Tool Renderer System: Registry first, then base renderer, then specific renderers -->
-  <script src="js/tool-renderers/index.js"></script>
-  <script src="js/tool-renderer.js"></script>
-  <script src="js/tool-renderers/read-renderer.js"></script>
-  <script src="js/tool-renderers/write-renderer.js"></script>
-  <script src="js/tool-renderers/bash-renderer.js"></script>
-  <script src="js/permission-modal.js"></script>
-  <script src="js/question-modal.js"></script>
-  <script src="js/instance-tabs.js"></script>
-  <script src="js/app.js"></script>
+  <!-- DOMPurify for XSS Sanitization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha512-4HfQp/AaJi4ILBimZAzJWMT3NaDrHctndmWHfmhhIzD5qmjVB8DVuqrAZ5RjC2T09PvMPaGdPfKSI+wOgF3pqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- Scripts - Single entry point for Vite compatibility -->
+  <script type="module" src="js/index.js"></script>
 </body>
 </html>

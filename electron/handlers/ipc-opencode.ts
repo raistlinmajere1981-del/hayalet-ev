@@ -20,11 +20,17 @@ import {
   removeOpencodeBinary,
   updateOpencodePreferences,
   recordWorkspaceLaunch,
-  loadOpenCodeModels,
+  loadOpenCodeModels as _loadOpenCodeModels,
+  getAgentModelPreference,
+  saveAgentModelPreference,
+  saveAgentPreference,
+  saveModelPreference,
   type OpenCodeConfig,
   type OpenCodePreferences,
   type OpenCodeProviderInfo,
+  type AgentModelPreference,
 } from "../opencode-config-manager.ts";
+import { OpenCodeManager } from "../opencode-manager.ts";
 
 // =============================================================================
 // Types
@@ -358,70 +364,66 @@ export function setupOpencodeHandlers(): void {
   // =========================================================================
   
   /**
-   * Get available models from OpenCode system config
-   * Reads from: ~/.config/opencode/opencode.json
-   * Falls back to CLI if config not found
+   * Get available models from OpenCode Server API
+   * Endpoint: GET /config.providers
    */
   registerHandler("opc-list-models", async (): Promise<OpenCodeProviderInfo[]> => {
     try {
-      // Önce config dosyasından oku
-      const providers = await loadOpenCodeModels();
+      const apiResult = await OpenCodeManager.getProviders();
       
-      if (providers.length > 0) {
-        console.log(`[IPC:OpenCode] Loaded ${providers.length} providers from config`);
-        return providers;
+      if (!apiResult.success) {
+        console.error("[IPC:OpenCode] Failed to fetch models from API:", apiResult.error);
+        return [];
       }
       
-      // Config boşsa CLI'dan dene (fallback)
-      console.log("[IPC:OpenCode] Config empty, trying CLI fallback...");
-      const { execSync } = await import("child_process");
+      if (!apiResult.data?.providers?.length) {
+        console.warn("[IPC:OpenCode] API returned empty provider list");
+        return [];
+      }
       
-      const output = execSync("opencode models", { 
-        encoding: "utf-8",
-        timeout: 10000,
-        stdio: ["pipe", "pipe", "pipe"]
+      const providers: OpenCodeProviderInfo[] = apiResult.data.providers.map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        models: Object.entries(provider.models || {}).map(([modelId, model]) => ({
+          id: `${provider.id}/${modelId}`,
+          name: model.name || modelId,
+          providerId: provider.id,
+          context: model.limit?.context,
+          output: model.limit?.output,
+        })),
+      }));
+      
+      console.log(`[IPC:OpenCode] Loaded ${providers.length} providers from API`, {
+        totalModels: providers.reduce((sum, p) => sum + p.models.length, 0)
       });
       
-      // Parse CLI output - each line is "provider/model" format
-      const modelsByProvider = new Map<string, OpenCodeProviderInfo>();
-      
-      output
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line && line.includes("/"))
-        .forEach(line => {
-          const [providerId, ...modelParts] = line.split("/");
-          const modelId = modelParts.join("/");
-          
-          if (!modelsByProvider.has(providerId)) {
-            modelsByProvider.set(providerId, {
-              id: providerId,
-              name: providerId.charAt(0).toUpperCase() + providerId.slice(1),
-              models: [],
-            });
-          }
-          
-          modelsByProvider.get(providerId)!.models.push({
-            id: line,
-            name: modelId || line,
-            providerId,
-          });
-        });
-      
-      return Array.from(modelsByProvider.values());
+      return providers;
     } catch (err) {
-      console.error("[IPC:OpenCode] Error listing models:", err);
+      console.error("[IPC:OpenCode] Error fetching models:", err);
       return [];
     }
   });
   
   /**
-   * Get available agents from OpenCode CLI
-   * Runs: opencode agent list
+   * Get available agents - tries multiple sources in order:
+   * 1. OpenCode Server API (app.agents) - most up-to-date
+   * 2. CLI (opencode agent list) - fallback
    */
   registerHandler("opc-list-agents", async (): Promise<Array<{name: string, description?: string}>> => {
-    const { execSync } = await import("child_process");
+    // 1. Önce OpenCode Server API'den çek
     try {
+      const apiResult = await OpenCodeManager.getAgents();
+      if (apiResult.success && Array.isArray(apiResult.data) && apiResult.data.length > 0) {
+        console.log(`[IPC:OpenCode] Loaded ${apiResult.data.length} agents from API`);
+        return apiResult.data;
+      }
+    } catch (apiErr) {
+      console.warn("[IPC:OpenCode] API agent fetch failed, trying CLI...", apiErr);
+    }
+
+    // 2. CLI'dan dene (fallback)
+    try {
+      const { execSync } = await import("child_process");
       const output = execSync("opencode agent list", { 
         encoding: "utf-8",
         timeout: 10000,
@@ -446,10 +448,92 @@ export function setupOpencodeHandlers(): void {
         }
       }
       
-      return agents.length > 0 ? agents : [{ name: "coder", description: "Default coding agent" }];
-    } catch (err) {
-      console.error("[IPC:OpenCode] Error listing agents:", err);
-      return [{ name: "coder", description: "Default coding agent" }];
+      if (agents.length > 0) {
+        console.log(`[IPC:OpenCode] Loaded ${agents.length} agents from CLI`);
+        return agents;
+      }
+    } catch (cliErr) {
+      console.error("[IPC:OpenCode] CLI agent fetch failed:", cliErr);
+    }
+    
+    // Fallback: default agent
+    console.log("[IPC:OpenCode] Using default agent");
+    return [{ name: "coder", description: "Default coding agent" }];
+  });
+
+  // ===========================================================================
+  // Agent/Model Preference Persistence
+  // ===========================================================================
+
+  /**
+   * Get saved agent/model preference for a folder
+   */
+  registerHandler("opc-get-agent-model-preference", async (
+    _event,
+    folderPath?: string
+  ): Promise<AgentModelPreference | null> => {
+    try {
+      const preference = await getAgentModelPreference(folderPath);
+      console.log(`[IPC:OpenCode] Get preference for ${folderPath || 'default'}:`, preference);
+      return preference;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to get agent/model preference:", error);
+      return null;
+    }
+  });
+
+  /**
+   * Save agent/model preference for a folder
+   */
+  registerHandler("opc-save-agent-model-preference", async (
+    _event,
+    preference: Omit<AgentModelPreference, 'lastUpdated'>,
+    folderPath?: string
+  ): Promise<boolean> => {
+    try {
+      const success = await saveAgentModelPreference(preference, folderPath);
+      console.log(`[IPC:OpenCode] Save preference for ${folderPath || 'default'}:`, success);
+      return success;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to save agent/model preference:", error);
+      return false;
+    }
+  });
+
+  /**
+   * Save only agent preference
+   */
+  registerHandler("opc-save-agent-preference", async (
+    _event,
+    agent: string,
+    folderPath?: string
+  ): Promise<boolean> => {
+    try {
+      const success = await saveAgentPreference(agent, folderPath);
+      console.log(`[IPC:OpenCode] Save agent preference: ${agent} for ${folderPath || 'default'}`);
+      return success;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to save agent preference:", error);
+      return false;
+    }
+  });
+
+  /**
+   * Save only model preference
+   */
+  registerHandler("opc-save-model-preference", async (
+    _event,
+    providerId: string,
+    modelId: string,
+    folderPath?: string
+  ): Promise<boolean> => {
+    try {
+      const success = await saveModelPreference(providerId, modelId, folderPath);
+      console.log(`[IPC:OpenCode] Save model preference: ${providerId}/${modelId} for ${folderPath || 'default'}`);
+      return success;
+    } catch (error) {
+      console.error("[IPC:OpenCode] Failed to save model preference:", error);
+      return false;
     }
   });
   

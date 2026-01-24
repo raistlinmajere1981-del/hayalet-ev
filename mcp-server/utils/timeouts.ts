@@ -61,7 +61,7 @@ export const WEB_TIMEOUTS = {
 
 export const FS_TIMEOUTS = {
   /** Bash komutu varsayılan timeout */
-  BASH_DEFAULT: 30_000,
+  BASH_DEFAULT: 60_000,
   
   /** Bash heredoc ile dosya yazma */
   BASH_HEREDOC: 30_000,

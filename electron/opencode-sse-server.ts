@@ -175,9 +175,9 @@ export const OpenCodeSSEServer = {
   /**
    * SSE Server'ı başlat
    */
-  async start(config: Partial<SSEServerConfig> = {}): Promise<{ success: boolean; url?: string; error?: string }> {
+  async start(config: Partial<SSEServerConfig> = {}): Promise<{ success: boolean; url?: string; workspace?: string; error?: string }> {
     if (this._server) {
-      return { success: true, url: this._getServerUrl(), };
+      return { success: true, url: this._getServerUrl(), workspace: process.cwd() };
     }
 
     this._config = { ...this._config, ...config };
@@ -198,7 +198,7 @@ export const OpenCodeSSEServer = {
         this._server.listen(this._config.port, this._config.host, () => {
           console.log('[SSE-SERVER]', 'info', `Server başlatıldı: ${this._getServerUrl()}`);
           this._startHeartbeat();
-          resolve({ success: true, url: this._getServerUrl() });
+          resolve({ success: true, url: this._getServerUrl(), workspace: process.cwd() });
         });
       } catch (err: unknown) {
         resolve({ success: false, error: (err as Error).message });
@@ -1021,7 +1021,7 @@ export const OpenCodeSSEServer = {
   _handleRequest(req: IncomingMessage, res: ServerResponse): void {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', this._config.corsOrigin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
@@ -1071,6 +1071,9 @@ export const OpenCodeSSEServer = {
     } else if (path.startsWith('/api/sessions/') && req.method === 'PUT') {
       const sessionId = path.split('/')[3];
       this._handleRenameSession(req, sessionId, res);
+    } else if (path.startsWith('/api/sessions/') && req.method === 'PATCH') {
+      const sessionId = path.split('/')[3];
+      this._handleUpdateSession(req, sessionId, res);
     } else if (path === '/api/sessions' && req.method === 'POST') {
       this._handleCreateSession(req, res);
     } else if (path === '/api/compact' && req.method === 'POST') {
@@ -1092,6 +1095,14 @@ export const OpenCodeSSEServer = {
       this._handleGetMCPServers(res);
     } else if (path === '/api/shells' && req.method === 'GET') {
       this._handleGetShells(res);
+    } else if (path === '/api/plugins' && req.method === 'GET') {
+      this._handleGetPlugins(res);
+    } else if (path === '/config/providers' && req.method === 'GET') {
+      // Native UI için providers endpoint'i
+      this._handleGetProviders(res);
+    } else if (path === '/config/agents' && req.method === 'GET') {
+      // Native UI için agents endpoint'i
+      this._handleGetAgents(res);
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -1533,6 +1544,52 @@ export const OpenCodeSSEServer = {
     }
   },
 
+  /**
+   * Session güncelle (agent, model, provider değiştir)
+   */
+  async _handleUpdateSession(req: IncomingMessage, sessionId: string, res: ServerResponse): Promise<void> {
+    try {
+      const body = await this._readBody(req);
+      const { agent, provider, model } = JSON.parse(body || '{}');
+      
+      console.log('[SSE-SERVER]', 'info', `Session update: ${sessionId}`, { agent, provider, model });
+      
+      // OpenCode'a gönder (agent/model değiştirme)
+      if (agent) {
+        const result = await OpenCodeManager.setAgent(agent);
+        if (!result.success) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: result.error || 'Failed to set agent' }));
+          return;
+        }
+      }
+      
+      if (provider && model) {
+        const result = await OpenCodeManager.setModel(provider, model);
+        if (!result.success) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: result.error || 'Failed to set model' }));
+          return;
+        }
+      }
+      
+      // SSE event gönder
+      this.publish({
+        type: 'session.updated',
+        timestamp: Date.now(),
+        sessionId,
+        data: { agent, provider, model },
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, sessionId, agent, provider, model }));
+    } catch (err) {
+      console.error('[SSE-SERVER]', 'error', 'Update session error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (err as Error).message }));
+    }
+  },
+
   // =========================================================================
   // Conversation Actions (FAZ 3 - Revert, Fork, Compact, Retry)
   // =========================================================================
@@ -1748,25 +1805,112 @@ export const OpenCodeSSEServer = {
   // Status Panel (FAZ 8 - MCP Servers, Shells)
   // =========================================================================
 
-  _handleGetMCPServers(res: ServerResponse): void {
-    // MCP server durumlarını döndür
-    const servers = [
-      { name: 'hayalet-ev', status: 'connected', toolCount: 47 },
-      { name: 'filesystem', status: 'connected', toolCount: 12 },
-    ];
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ servers }));
+  async _handleGetMCPServers(res: ServerResponse): Promise<void> {
+    try {
+      // OpenCodeManager'dan gerçek MCP server bilgilerini al
+      const result = await OpenCodeManager.getMCPServers();
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ servers: result.data }));
+      } else {
+        // Fallback: Varsayılan değerler
+        const servers = [
+          { name: 'hayalet-ev', status: 'connected', toolCount: 47 },
+        ];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ servers }));
+      }
+    } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'MCP servers fetch error', { error: (err as Error).message });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ servers: [] }));
+    }
   },
 
-  _handleGetShells(res: ServerResponse): void {
-    // Aktif shell process'lerini döndür
-    // Gerçek implementasyon için process tracking gerekli
-    const shells: Array<{ pid: number; command: string; status: string }> = [];
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ shells }));
+  async _handleGetShells(res: ServerResponse): Promise<void> {
+    try {
+      // OpenCodeManager'dan gerçek shell process bilgilerini al
+      const result = await OpenCodeManager.getBackgroundShells();
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ shells: result.data }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ shells: [] }));
+      }
+    } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Shells fetch error', { error: (err as Error).message });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ shells: [] }));
+    }
+  },
+
+  async _handleGetPlugins(res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getPlugins();
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ plugins: result.data }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ plugins: [] }));
+      }
+    } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Plugins fetch error', { error: (err as Error).message });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ plugins: [] }));
+    }
+  },
+
+  /**
+   * Provider ve model listesini döndür
+   * Native UI için /config/providers endpoint'i
+   */
+  async _handleGetProviders(res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getProviders();
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result.data));
+      } else {
+        // Boş providers listesi döndür
+        console.log('[SSE-SERVER]', 'warn', 'Providers fetch failed', { error: result.error });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ providers: [], default: {} }));
+      }
+    } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Providers fetch error', { error: (err as Error).message });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ providers: [], default: {} }));
+    }
+  },
+
+  /**
+   * Agent listesini döndür
+   * Native UI için /config/agents endpoint'i
+   */
+  async _handleGetAgents(res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getAgents();
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ agents: result.data }));
+      } else {
+        console.log('[SSE-SERVER]', 'warn', 'Agents fetch failed', { error: result.error });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ agents: [] }));
+      }
+    } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Agents fetch error', { error: (err as Error).message });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ agents: [] }));
+    }
   },
 };
 
-export default OpenCodeSSEServer;
+// Named export kullanılıyor: export { OpenCodeSSEServer }

@@ -265,33 +265,84 @@ const APIClient = {
     return this._request('GET', '/api/shells');
   },
 
+  /**
+   * Plugin listesini al
+   * @returns {Promise<{plugins: Array<{name: string, enabled: boolean}>}>}
+   */
+  async getPlugins() {
+    return this._request('GET', '/api/plugins');
+  },
+
   // =========================================================================
   // Helper Methods
   // =========================================================================
 
+  /** @type {number} Default timeout in milliseconds */
+  _defaultTimeout: 30000,
+
+  /** @type {AbortController | null} Current request abort controller */
+  _currentAbortController: null,
+
+  /**
+   * Set default timeout for requests
+   * @param {number} ms - Timeout in milliseconds
+   */
+  setDefaultTimeout(ms) {
+    this._defaultTimeout = ms;
+  },
+
+  /**
+   * Cancel all pending requests
+   */
+  cancelAllRequests() {
+    if (this._currentAbortController) {
+      this._currentAbortController.abort();
+      this._currentAbortController = null;
+    }
+  },
+
   /**
    * HTTP isteği gönder
-   * @param {'GET' | 'POST' | 'PUT' | 'DELETE'} method
+   * @param {'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'} method
    * @param {string} path
    * @param {object} [body]
+   * @param {object} [options]
+   * @param {number} [options.timeout] - Request timeout in ms (default: 30000)
+   * @param {AbortSignal} [options.signal] - External abort signal
    * @returns {Promise<any>}
    */
-  async _request(method, path, body = null) {
+  async _request(method, path, body = null, options = {}) {
     const url = `${this._getServerUrl()}${path}`;
+    const timeout = options.timeout ?? this._defaultTimeout;
     
-    const options = {
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    this._currentAbortController = controller;
+    
+    // Link external signal if provided
+    if (options.signal) {
+      options.signal.addEventListener('abort', () => controller.abort());
+    }
+    
+    // Setup timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeout);
+    
+    const fetchOptions = {
       method,
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
     };
 
     if (body && method !== 'GET') {
-      options.body = JSON.stringify(body);
+      fetchOptions.body = JSON.stringify(body);
     }
 
     try {
-      const response = await fetch(url, options);
+      const response = await fetch(url, fetchOptions);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -300,8 +351,21 @@ const APIClient = {
 
       return await response.json();
     } catch (err) {
+      // Handle abort/timeout specifically
+      if (err.name === 'AbortError') {
+        const timeoutError = new Error(`Request timeout after ${timeout}ms: ${method} ${path}`);
+        timeoutError.name = 'TimeoutError';
+        timeoutError.isTimeout = true;
+        console.error(`[API] ${method} ${path} timeout after ${timeout}ms`);
+        throw timeoutError;
+      }
       console.error(`[API] ${method} ${path} failed:`, err);
       throw err;
+    } finally {
+      clearTimeout(timeoutId);
+      if (this._currentAbortController === controller) {
+        this._currentAbortController = null;
+      }
     }
   },
 
@@ -447,26 +511,6 @@ const APIClient = {
   },
 
   /**
-   * Session detaylarını getir
-   * @param {string} sessionId - Session ID
-   * @returns {Promise<SessionDetail>}
-   * 
-   * @typedef {object} SessionDetail
-   * @property {string} id - Session ID
-   * @property {string} [title] - Başlık
-   * @property {string} agent - Kullanılan agent adı
-   * @property {string} provider - Provider ID
-   * @property {string} model - Model ID
-   * @property {string} status - Session durumu
-   * @property {number} [inputTokens] - Kullanılan input token
-   * @property {number} [outputTokens] - Kullanılan output token
-   * @property {number} [cost] - Maliyet
-   */
-  async getSession(sessionId) {
-    return this._request('GET', `/api/sessions/${encodeURIComponent(sessionId)}`);
-  },
-
-  /**
    * Tüm session'ları listele
    * @returns {Promise<Array<SessionSummary>>}
    * 
@@ -483,6 +527,38 @@ const APIClient = {
    */
   async listSessions() {
     return this._request('GET', '/api/sessions');
+  },
+
+  // =========================================================================
+  // Status Panel - Extended Operations
+  // =========================================================================
+
+  /**
+   * Plugin durumunu toggle et
+   * @param {string} pluginName
+   * @param {boolean} enabled
+   * @returns {Promise<{success: boolean}>}
+   */
+  async togglePlugin(pluginName, enabled) {
+    return this._request('PATCH', `/api/plugins/${encodeURIComponent(pluginName)}`, { enabled });
+  },
+
+  /**
+   * Background shell output'unu getir
+   * @param {string} shellId
+   * @returns {Promise<{output: string}>}
+   */
+  async getShellOutput(shellId) {
+    return this._request('GET', `/api/shells/${encodeURIComponent(shellId)}/output`);
+  },
+
+  /**
+   * Background shell'i sonlandır
+   * @param {string} shellId
+   * @returns {Promise<{success: boolean}>}
+   */
+  async killShell(shellId) {
+    return this._request('DELETE', `/api/shells/${encodeURIComponent(shellId)}`);
   }
 };
 

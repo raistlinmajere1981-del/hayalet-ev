@@ -8,11 +8,6 @@ const EntranceApp = {
   // State
   _recentFolders: [],
   _selectedIndex: 0,
-  _settings: {
-    opencodePath: '',
-    defaultPort: 4096,
-    autoConnect: true,
-  },
   _configLoaded: false,
   _pendingRequests: new Map(), // postMessage request tracking
   _requestId: 0,
@@ -153,7 +148,6 @@ const EntranceApp = {
     }
     
     // Fallback to localStorage
-    this._loadSettingsFromLocalStorage();
     this._loadRecentFolders();
   },
 
@@ -172,79 +166,12 @@ const EntranceApp = {
       lastUsed: f.lastAccessed || Date.now(),
     }));
     
-    // Load settings/preferences
-    if (config.preferences) {
-      this._settings.defaultPort = config.preferences.defaultPort || 4096;
-      this._settings.autoConnect = config.preferences.autoConnect !== false;
-    }
-    
-    if (config.lastUsedBinary) {
-      this._settings.opencodePath = config.lastUsedBinary;
-    }
-    
-    this._updateSettingsUI();
+
   },
 
-  /**
-   * Load settings from localStorage (fallback)
-   */
-  _loadSettingsFromLocalStorage() {
-    try {
-      const saved = localStorage.getItem('opencode-entrance-settings');
-      if (saved) {
-        this._settings = { ...this._settings, ...JSON.parse(saved) };
-      }
-    } catch (e) {
-      console.warn('[Entrance] Failed to load settings from localStorage:', e);
-    }
-    this._updateSettingsUI();
-  },
 
-  /**
-   * Update settings UI elements
-   */
-  _updateSettingsUI() {
-    const pathInput = document.getElementById('opencode-path');
-    const portInput = document.getElementById('default-port');
-    const autoConnectInput = document.getElementById('auto-connect');
-    
-    if (pathInput) pathInput.value = this._settings.opencodePath || this._detectOpencodePath();
-    if (portInput) portInput.value = this._settings.defaultPort;
-    if (autoConnectInput) autoConnectInput.checked = this._settings.autoConnect;
-  },
 
-  /**
-   * Detect opencode binary path
-   */
-  _detectOpencodePath() {
-    // This would ideally come from the main process
-    return '/usr/bin/opencode';
-  },
 
-  /**
-   * Save settings to localStorage and Electron config
-   */
-  async _saveSettings() {
-    // Try Electron API first
-    if (this._configLoaded && window.electronAPI?.opcUpdatePreferences) {
-      try {
-        await window.electronAPI.opcUpdatePreferences({
-          defaultPort: this._settings.defaultPort,
-          autoConnect: this._settings.autoConnect,
-        });
-        console.log('[Entrance] Settings saved via Electron API');
-      } catch (e) {
-        console.warn('[Entrance] Failed to save settings via Electron:', e);
-      }
-    }
-    
-    // Also save to localStorage as backup
-    try {
-      localStorage.setItem('opencode-entrance-settings', JSON.stringify(this._settings));
-    } catch (e) {
-      console.warn('[Entrance] Failed to save settings to localStorage:', e);
-    }
-  },
 
   /**
    * Load recent folders from localStorage
@@ -362,45 +289,6 @@ const EntranceApp = {
       terminalBtn.addEventListener('click', () => this._handleOpenTerminal());
     }
     
-    // Advanced settings toggle
-    const advancedToggle = document.getElementById('advanced-toggle');
-    const advancedSection = advancedToggle?.closest('.entrance-section');
-    if (advancedToggle && advancedSection) {
-      advancedToggle.addEventListener('click', () => {
-        advancedSection.classList.toggle('collapsed');
-        // Scroll into view when expanded
-        if (!advancedSection.classList.contains('collapsed')) {
-          setTimeout(() => {
-            advancedSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 100);
-        }
-      });
-      // Start collapsed
-      advancedSection.classList.add('collapsed');
-    }
-    
-    // Settings inputs
-    const portInput = document.getElementById('default-port');
-    if (portInput) {
-      portInput.addEventListener('change', (e) => {
-        this._settings.defaultPort = parseInt(e.target.value) || 4096;
-        this._saveSettings();
-      });
-    }
-    
-    const autoConnectInput = document.getElementById('auto-connect');
-    if (autoConnectInput) {
-      autoConnectInput.addEventListener('change', (e) => {
-        this._settings.autoConnect = e.target.checked;
-        this._saveSettings();
-      });
-    }
-    
-    // Change path button
-    const changePathBtn = document.getElementById('btn-change-path');
-    if (changePathBtn) {
-      changePathBtn.addEventListener('click', () => this._handleChangePath());
-    }
     
     // Folder list click delegation
     const folderList = document.getElementById('folder-list');
@@ -653,10 +541,8 @@ const EntranceApp = {
     // Add to recent folders
     this.addRecentFolder(selectedPath, folderName);
     
-    // Auto-connect if setting is enabled
-    if (this._settings.autoConnect) {
-      this._selectFolder(selectedPath);
-    }
+    // Auto-connect
+    this._selectFolder(selectedPath);
   },
 
   /**
@@ -673,10 +559,8 @@ const EntranceApp = {
       this.addRecentFolder(selectedPath, folderName);
       this._renderFolderList();
       
-      // Only auto-connect if setting is enabled
-      if (this._settings.autoConnect) {
-        this._selectFolder(selectedPath);
-      }
+      // Auto-connect
+      this._selectFolder(selectedPath);
     }
   },
 
@@ -700,9 +584,7 @@ const EntranceApp = {
         const path = folderName;
         this.addRecentFolder(path, folderName);
         this._renderFolderList();
-        if (this._settings.autoConnect) {
-          this._selectFolder(path);
-        }
+        this._selectFolder(path);
       }
       input.remove();
     });
@@ -741,37 +623,25 @@ const EntranceApp = {
   },
 
   /**
-   * Handle change path button click
-   */
-  async _handleChangePath() {
-    if (window.electronAPI?.selectFile) {
-      try {
-        const result = await window.electronAPI.selectFile({
-          filters: [{ name: 'Executables', extensions: ['*'] }]
-        });
-        if (result && result.path) {
-          this._settings.opencodePath = result.path;
-          this._saveSettings();
-          document.getElementById('opencode-path').value = result.path;
-        }
-      } catch (e) {
-        console.error('[Entrance] Change path error:', e);
-      }
-    } else {
-      const path = prompt('Enter OpenCode binary path:', this._settings.opencodePath);
-      if (path) {
-        this._settings.opencodePath = path;
-        this._saveSettings();
-        document.getElementById('opencode-path').value = path;
-      }
-    }
-  },
-
-  /**
    * Select folder and navigate to chat
    */
   _selectFolder(path) {
     console.log('[Entrance] Selecting folder:', path);
+    
+    // Show loading overlay immediately
+    const overlay = document.getElementById('loading-overlay');
+    const app = document.getElementById('app');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      const loadingText = overlay.querySelector('.loading-text');
+      if (loadingText) {
+        loadingText.textContent = 'Workspace yükleniyor...';
+      }
+    }
+    if (app) {
+      app.style.opacity = '0.5';
+      app.style.pointerEvents = 'none';
+    }
     
     // Update last used time
     const folder = this._recentFolders.find(f => f.path === path);
@@ -783,8 +653,10 @@ const EntranceApp = {
     // Store selected folder
     sessionStorage.setItem('opencode-workspace', path);
     
-    // Navigate to chat page
-    window.location.href = 'index.html?workspace=' + encodeURIComponent(path);
+    // Small delay to ensure overlay is visible before navigation
+    requestAnimationFrame(() => {
+      window.location.href = 'index.html?workspace=' + encodeURIComponent(path);
+    });
   },
 
   /**

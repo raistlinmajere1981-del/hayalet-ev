@@ -755,4 +755,4 @@ export const DatabaseManager = {
   },
 };
 
-export default DatabaseManager;
+// Named export kullanılıyor: export { DatabaseManager }

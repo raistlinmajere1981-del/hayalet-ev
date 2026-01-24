@@ -1,0 +1,4948 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+The content has been processed where line numbers have been added.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+- Pay special attention to the Repository Description. These contain important context and guidelines specific to this project.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: AGENTS.md, package.json, src/js/modules/core-engine.ts, src/js/modules/slot-controller.ts, src/js/modules/webview-manager.ts, src/js/modules/traffic-manager.ts, src/js/modules/ipc-client.ts, src/js/types/*.ts, electron/main.ts, electron/preload.cjs
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Line numbers have been added to the beginning of each line
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+
+================================================================
+User Provided Header
+================================================================
+# Hayalet-ev Context - Level 2 (Standard)
+# Orchestrator'lar ve type tanımları
+
+
+================================================================
+Directory Structure
+================================================================
+electron/
+  main.ts
+  preload.cjs
+src/
+  js/
+    modules/
+      core-engine.ts
+      ipc-client.ts
+      slot-controller.ts
+      traffic-manager.ts
+      webview-manager.ts
+    types/
+      commands.ts
+      common.ts
+      database.ts
+      index.ts
+      ipc-channels.ts
+      provider.ts
+      relay.ts
+      settings.ts
+      traffic.ts
+AGENTS.md
+package.json
+
+================================================================
+Files
+================================================================
+
+================
+File: src/js/types/commands.ts
+================
+  1: /**
+  2:  * Command Types - Komut sistemi tipleri
+  3:  * 
+  4:  * @module src/js/types/commands
+  5:  */
+  6: 
+  7: import type { SlotId, Attachment } from "./common.js";
+  8: 
+  9: // ============================================================================
+ 10: // Command Job Types
+ 11: // ============================================================================
+ 12: 
+ 13: /** Komut durumu */
+ 14: export type CommandJobStatus = "pending" | "processing" | "done" | "failed";
+ 15: 
+ 16: /** Temel komut job'ı */
+ 17: export interface CommandJob {
+ 18:   id: string;
+ 19:   command: string;
+ 20:   status: CommandJobStatus;
+ 21:   createdAt: number;
+ 22:   updatedAt?: number;
+ 23:   source?: SlotId | "user" | "system";
+ 24:   target?: SlotId;
+ 25:   payload?: CommandPayload;
+ 26:   result?: CommandResult;
+ 27:   error?: string;
+ 28: }
+ 29: 
+ 30: /** Komut payload'ı */
+ 31: export interface CommandPayload {
+ 32:   message?: string;
+ 33:   files?: string[];
+ 34:   attachments?: Attachment[];
+ 35:   options?: Record<string, unknown>;
+ 36:   [key: string]: unknown;
+ 37: }
+ 38: 
+ 39: /** Komut sonucu */
+ 40: export interface CommandResult {
+ 41:   success: boolean;
+ 42:   message?: string;
+ 43:   data?: unknown;
+ 44:   error?: string;
+ 45: }
+ 46: 
+ 47: // ============================================================================
+ 48: // Command Definition Types
+ 49: // ============================================================================
+ 50: 
+ 51: /** Komut tanımı */
+ 52: export interface CommandDefinition {
+ 53:   name: string;
+ 54:   description: string;
+ 55:   aliases?: string[];
+ 56:   usage?: string;
+ 57:   examples?: string[];
+ 58:   handler: CommandHandler;
+ 59: }
+ 60: 
+ 61: /** Komut handler fonksiyonu */
+ 62: export type CommandHandler = (args: CommandArgs) => Promise<CommandResult>;
+ 63: 
+ 64: /** Komut argümanları */
+ 65: export interface CommandArgs {
+ 66:   raw: string;
+ 67:   command: string;
+ 68:   args: string[];
+ 69:   flags: Record<string, string | boolean>;
+ 70:   source?: SlotId | "user";
+ 71:   target?: SlotId;
+ 72: }
+ 73: 
+ 74: // ============================================================================
+ 75: // Meta Command Types
+ 76: // ============================================================================
+ 77: 
+ 78: /** Meta komut tanımı (kullanıcı tanımlı) */
+ 79: export interface MetaCommand {
+ 80:   name: string;
+ 81:   description: string;
+ 82:   code: string;
+ 83:   createdBy: string;
+ 84:   createdAt: number;
+ 85:   updatedAt?: number;
+ 86: }
+ 87: 
+ 88: /** Meta komut listesi sonucu */
+ 89: export interface MetaCommandListResult {
+ 90:   success: boolean;
+ 91:   commands?: Record<string, MetaCommand>;
+ 92:   message?: string;
+ 93: }
+ 94: 
+ 95: // ============================================================================
+ 96: // Command Executor Types
+ 97: // ============================================================================
+ 98: 
+ 99: /** Executor context */
+100: export interface ExecutorContext {
+101:   slot: SlotId;
+102:   jobId?: string;
+103:   attachments?: Attachment[];
+104:   tempPaths?: string[];
+105: }
+106: 
+107: /** Executor options */
+108: export interface ExecutorOptions {
+109:   timeout?: number;
+110:   retries?: number;
+111:   onProgress?: (progress: number) => void;
+112: }
+
+================
+File: src/js/types/database.ts
+================
+  1: /**
+  2:  * Database Types - Veritabanı tipleri
+  3:  * 
+  4:  * @module src/js/types/database
+  5:  */
+  6: 
+  7: // ============================================================================
+  8: // Conversation Types
+  9: // ============================================================================
+ 10: 
+ 11: /** Konuşma kaydı */
+ 12: export interface Conversation {
+ 13:   id: string;
+ 14:   accountId: string;
+ 15:   title: string;
+ 16:   webUrl: string;
+ 17:   createdAt: number;
+ 18:   updatedAt: number;
+ 19:   messageCount?: number;
+ 20:   lastMessage?: string;
+ 21:   archived?: boolean;
+ 22:   starred?: boolean;
+ 23:   tags?: string[];
+ 24: }
+ 25: 
+ 26: /** Konuşma güncelleme payload'ı */
+ 27: export interface ConversationUpdate {
+ 28:   accountId: string;
+ 29:   conversationId: string;
+ 30:   title?: string;
+ 31:   archived?: boolean;
+ 32:   starred?: boolean;
+ 33:   tags?: string[];
+ 34:   [key: string]: unknown;
+ 35: }
+ 36: 
+ 37: // ============================================================================
+ 38: // Message Types
+ 39: // ============================================================================
+ 40: 
+ 41: /** Mesaj rolü */
+ 42: export type MessageRole = "user" | "assistant" | "system";
+ 43: 
+ 44: /** Mesaj kaydı */
+ 45: export interface Message {
+ 46:   id: string;
+ 47:   conversationId: string;
+ 48:   accountId: string;
+ 49:   role: MessageRole;
+ 50:   content: string;
+ 51:   contentHash: string;
+ 52:   index: number;
+ 53:   createdAt: number;
+ 54:   updatedAt?: number;
+ 55:   metadata?: MessageMetadata;
+ 56: }
+ 57: 
+ 58: /** Mesaj metadata'sı */
+ 59: export interface MessageMetadata {
+ 60:   model?: string;
+ 61:   tokens?: number;
+ 62:   attachments?: MessageAttachment[];
+ 63:   reactions?: string[];
+ 64:   [key: string]: unknown;
+ 65: }
+ 66: 
+ 67: /** Mesaja eklenmiş dosya */
+ 68: export interface MessageAttachment {
+ 69:   id: string;
+ 70:   name: string;
+ 71:   url?: string;
+ 72:   mimeType?: string;
+ 73:   size?: number;
+ 74: }
+ 75: 
+ 76: // ============================================================================
+ 77: // Sync Types
+ 78: // ============================================================================
+ 79: 
+ 80: /** Mesaj senkronizasyon payload'ı */
+ 81: export interface MessageSyncPayload {
+ 82:   accountId: string;
+ 83:   webUrl: string;
+ 84:   messages: SyncMessage[];
+ 85:   authors?: SyncAuthors;
+ 86: }
+ 87: 
+ 88: /** Senkronize edilecek mesaj */
+ 89: export interface SyncMessage {
+ 90:   role: MessageRole;
+ 91:   text: string;
+ 92:   index: number;
+ 93:   contentHash?: string;
+ 94: }
+ 95: 
+ 96: /** Yazar bilgileri */
+ 97: export interface SyncAuthors {
+ 98:   user?: string;
+ 99:   assistant?: string;
+100: }
+101: 
+102: /** Senkronizasyon sonucu */
+103: export interface SyncResult {
+104:   success: boolean;
+105:   conversationId?: string;
+106:   added?: number;
+107:   updated?: number;
+108:   deleted?: number;
+109:   message?: string;
+110: }
+111: 
+112: // ============================================================================
+113: // Search Types
+114: // ============================================================================
+115: 
+116: /** Arama parametreleri */
+117: export interface SearchParams {
+118:   accountId?: string;
+119:   query: string;
+120:   limit?: number;
+121:   offset?: number;
+122:   filters?: SearchFilters;
+123: }
+124: 
+125: /** Arama filtreleri */
+126: export interface SearchFilters {
+127:   role?: MessageRole;
+128:   dateFrom?: number;
+129:   dateTo?: number;
+130:   conversationId?: string;
+131: }
+132: 
+133: /** Arama sonucu */
+134: export interface SearchResult {
+135:   messages: Message[];
+136:   total: number;
+137:   hasMore: boolean;
+138: }
+139: 
+140: // ============================================================================
+141: // Attachment Store Types
+142: // ============================================================================
+143: 
+144: /** Kayıtlı attachment */
+145: export interface StoredAttachment {
+146:   id: string;
+147:   conversationId: string;
+148:   accountId: string;
+149:   messageId?: string;
+150:   name: string;
+151:   path?: string;
+152:   url?: string;
+153:   mimeType?: string;
+154:   size?: number;
+155:   hash?: string;
+156:   createdAt: number;
+157: }
+
+================
+File: src/js/types/ipc-channels.ts
+================
+  1: /**
+  2:  * IPC Channel Type Definitions
+  3:  * 
+  4:  * Bu dosya tüm IPC kanalları için type-safe tanımlamalar içerir.
+  5:  * Main process ve Renderer process arasındaki iletişimde tip güvenliği sağlar.
+  6:  * 
+  7:  * @example
+  8:  * // Type-safe IPC çağrısı
+  9:  * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
+ 10:  * // result tipi otomatik olarak DbGetConversationsResult olur
+ 11:  */
+ 12: 
+ 13: // ============================================================================
+ 14: // Database Channel Types
+ 15: // ============================================================================
+ 16: 
+ 17: export interface DbInitAccountParams {
+ 18:   accountId: string;
+ 19: }
+ 20: 
+ 21: export interface DbInitAccountResult {
+ 22:   success: boolean;
+ 23:   error?: string;
+ 24: }
+ 25: 
+ 26: export interface DbGetConversationsParams {
+ 27:   accountId: string;
+ 28: }
+ 29: 
+ 30: export interface DbConversation {
+ 31:   id: string;
+ 32:   value: string;
+ 33:   webUrl: string;
+ 34:   title: string;
+ 35:   summary: string;
+ 36:   messageCount: number;
+ 37:   createdAt: number;
+ 38:   updatedAt: number;
+ 39:   folder: string;
+ 40:   label: string;
+ 41: }
+ 42: 
+ 43: export interface DbGetConversationsResult {
+ 44:   success: boolean;
+ 45:   data?: DbConversation[];
+ 46:   error?: string;
+ 47: }
+ 48: 
+ 49: export interface DbGetMessagesParams {
+ 50:   accountId: string;
+ 51:   conversationId: string;
+ 52: }
+ 53: 
+ 54: export interface DbMessage {
+ 55:   id: string;
+ 56:   index: number;
+ 57:   role: string;
+ 58:   author: string;
+ 59:   text: string;
+ 60:   contentHash: string;
+ 61:   domIndex: number | null;
+ 62:   domId: string | null;
+ 63:   createdAt: number;
+ 64: }
+ 65: 
+ 66: export interface DbGetMessagesResult {
+ 67:   success: boolean;
+ 68:   data?: DbMessage[];
+ 69:   error?: string;
+ 70: }
+ 71: 
+ 72: export interface DbSyncMessagesParams {
+ 73:   accountId: string;
+ 74:   webUrl: string;
+ 75:   messages: Array<{
+ 76:     role: string;
+ 77:     author?: string;
+ 78:     content: string;
+ 79:     domIndex?: number;
+ 80:     domId?: string;
+ 81:   }>;
+ 82: }
+ 83: 
+ 84: export interface DbSyncMessagesResult {
+ 85:   success: boolean;
+ 86:   conversationId?: string;
+ 87:   syncedCount?: number;
+ 88:   error?: string;
+ 89: }
+ 90: 
+ 91: export interface DbDeleteConversationParams {
+ 92:   accountId: string;
+ 93:   conversationId: string;
+ 94: }
+ 95: 
+ 96: export interface DbDeleteConversationResult {
+ 97:   success: boolean;
+ 98:   error?: string;
+ 99: }
+100: 
+101: export interface DbUpdateConversationParams {
+102:   accountId: string;
+103:   conversationId: string;
+104:   title?: string;
+105:   summary?: string;
+106: }
+107: 
+108: export interface DbUpdateConversationResult {
+109:   success: boolean;
+110:   error?: string;
+111: }
+112: 
+113: export interface DbSaveAttachmentParams {
+114:   accountId: string;
+115:   conversationId: string;
+116:   messageId: string;
+117:   filePath: string;
+118:   originalName: string;
+119:   mimeType?: string;
+120: }
+121: 
+122: export interface DbSaveAttachmentResult {
+123:   success: boolean;
+124:   attachmentId?: string;
+125:   storedPath?: string;
+126:   error?: string;
+127: }
+128: 
+129: export interface DbGetAttachmentsParams {
+130:   accountId: string;
+131:   conversationId: string;
+132: }
+133: 
+134: export interface DbAttachment {
+135:   id: string;
+136:   messageId: string;
+137:   originalName: string;
+138:   storedName: string;
+139:   storedPath: string;
+140:   mimeType: string | null;
+141:   size: number;
+142:   createdAt: number;
+143: }
+144: 
+145: export interface DbGetAttachmentsResult {
+146:   success: boolean;
+147:   data?: DbAttachment[];
+148:   error?: string;
+149: }
+150: 
+151: export interface DbSearchMessagesParams {
+152:   accountId: string;
+153:   query: string;
+154:   limit?: number;
+155: }
+156: 
+157: export interface DbSearchMessageResult {
+158:   id: string;
+159:   conversationId: string;
+160:   conversationTitle: string;
+161:   webUrl: string;
+162:   role: string;
+163:   author: string;
+164:   content: string;
+165:   snippet: string;
+166:   createdAt: number;
+167: }
+168: 
+169: export interface DbSearchMessagesResult {
+170:   success: boolean;
+171:   data?: DbSearchMessageResult[];
+172:   error?: string;
+173: }
+174: 
+175: export interface DbSearchAttachmentsParams {
+176:   accountId: string;
+177:   query: string;
+178:   limit?: number;
+179: }
+180: 
+181: export interface DbSearchAttachmentResult {
+182:   id: string;
+183:   messageId: string;
+184:   conversationId: string;
+185:   conversationTitle: string;
+186:   webUrl: string;
+187:   originalName: string;
+188:   storedPath: string;
+189:   mimeType: string | null;
+190:   size: number;
+191:   createdAt: number;
+192: }
+193: 
+194: export interface DbSearchAttachmentsResult {
+195:   success: boolean;
+196:   data?: DbSearchAttachmentResult[];
+197:   error?: string;
+198: }
+199: 
+200: export interface DbSearchAllAccountsParams {
+201:   query: string;
+202:   limit?: number;
+203: }
+204: 
+205: export interface DbSearchAllAccountsResult {
+206:   success: boolean;
+207:   data?: {
+208:     messages: Array<DbSearchMessageResult & { accountId: string }>;
+209:     attachments: Array<DbSearchAttachmentResult & { accountId: string }>;
+210:   };
+211:   error?: string;
+212: }
+213: 
+214: // ============================================================================
+215: // Settings Channel Types
+216: // ============================================================================
+217: 
+218: export interface LoadSettingsResult {
+219:   [key: string]: unknown;
+220: }
+221: 
+222: export interface SaveSettingsParams {
+223:   [key: string]: unknown;
+224: }
+225: 
+226: export interface SaveSettingsResult {
+227:   success: boolean;
+228:   error?: string;
+229: }
+230: 
+231: // ============================================================================
+232: // File System Channel Types
+233: // ============================================================================
+234: 
+235: export interface ReadFileParams {
+236:   filePath: string;
+237: }
+238: 
+239: export interface ReadFileResult {
+240:   success: boolean;
+241:   data?: string;
+242:   error?: string;
+243: }
+244: 
+245: export interface WriteFileParams {
+246:   filePath: string;
+247:   content: string;
+248: }
+249: 
+250: export interface WriteFileResult {
+251:   success: boolean;
+252:   error?: string;
+253: }
+254: 
+255: export interface FileExistsParams {
+256:   filePath: string;
+257: }
+258: 
+259: export interface FileExistsResult {
+260:   exists: boolean;
+261: }
+262: 
+263: // ============================================================================
+264: // Window Channel Types
+265: // ============================================================================
+266: 
+267: export interface OpenDevToolsParams {
+268:   webviewId?: string;
+269: }
+270: 
+271: export interface SetAlwaysOnTopParams {
+272:   value: boolean;
+273: }
+274: 
+275: // ============================================================================
+276: // IPC Channel Map - Tüm kanalların tip eşleştirmesi
+277: // ============================================================================
+278: 
+279: /**
+280:  * IPC Channel Map
+281:  * 
+282:  * Her IPC kanalı için params ve result tiplerini tanımlar.
+283:  * Bu map, type-safe IPC çağrıları için kullanılır.
+284:  */
+285: export interface IPCChannelMap {
+286:   // Database
+287:   "db-init-account": { params: DbInitAccountParams; result: DbInitAccountResult };
+288:   "db-get-conversations": { params: DbGetConversationsParams; result: DbGetConversationsResult };
+289:   "db-get-messages": { params: DbGetMessagesParams; result: DbGetMessagesResult };
+290:   "db-sync-messages": { params: DbSyncMessagesParams; result: DbSyncMessagesResult };
+291:   "db-delete-conversation": { params: DbDeleteConversationParams; result: DbDeleteConversationResult };
+292:   "db-update-conversation": { params: DbUpdateConversationParams; result: DbUpdateConversationResult };
+293:   "db-save-attachment": { params: DbSaveAttachmentParams; result: DbSaveAttachmentResult };
+294:   "db-get-attachments": { params: DbGetAttachmentsParams; result: DbGetAttachmentsResult };
+295:   "db-search-messages": { params: DbSearchMessagesParams; result: DbSearchMessagesResult };
+296:   "db-search-attachments": { params: DbSearchAttachmentsParams; result: DbSearchAttachmentsResult };
+297:   "db-search-all-accounts": { params: DbSearchAllAccountsParams; result: DbSearchAllAccountsResult };
+298:   
+299:   // Settings
+300:   "load-settings": { params: void; result: LoadSettingsResult };
+301:   "save-settings": { params: SaveSettingsParams; result: SaveSettingsResult };
+302:   
+303:   // File System
+304:   "read-file": { params: ReadFileParams; result: ReadFileResult };
+305:   "write-file": { params: WriteFileParams; result: WriteFileResult };
+306:   "file-exists": { params: FileExistsParams; result: FileExistsResult };
+307:   
+308:   // Window
+309:   "open-devtools": { params: OpenDevToolsParams | void; result: void };
+310:   "set-always-on-top": { params: SetAlwaysOnTopParams; result: void };
+311:   "minimize-window": { params: void; result: void };
+312:   "maximize-window": { params: void; result: void };
+313:   "close-window": { params: void; result: void };
+314: }
+315: 
+316: /**
+317:  * IPC Channel Names
+318:  */
+319: export type IPCChannel = keyof IPCChannelMap;
+320: 
+321: /**
+322:  * IPC Channel Params Helper
+323:  */
+324: export type IPCParams<T extends IPCChannel> = IPCChannelMap[T]["params"];
+325: 
+326: /**
+327:  * IPC Channel Result Helper
+328:  */
+329: export type IPCResult<T extends IPCChannel> = IPCChannelMap[T]["result"];
+
+================
+File: src/js/types/relay.ts
+================
+  1: /**
+  2:  * Relay Types - AI-AI ve AI-Asistan iletişim tipleri
+  3:  * 
+  4:  * @module src/js/types/relay
+  5:  */
+  6: 
+  7: import type { SlotId, Attachment } from "./common.js";
+  8: 
+  9: // ============================================================================
+ 10: // Relay Message Types
+ 11: // ============================================================================
+ 12: 
+ 13: /** Relay mesaj tipi */
+ 14: export type RelayMessageType = "text" | "command" | "file" | "system";
+ 15: 
+ 16: /** Relay mesajı */
+ 17: export interface RelayMessage {
+ 18:   id: string;
+ 19:   type: RelayMessageType;
+ 20:   source: SlotId;
+ 21:   target: SlotId;
+ 22:   content: string;
+ 23:   attachments?: Attachment[];
+ 24:   timestamp: number;
+ 25:   metadata?: RelayMessageMetadata;
+ 26: }
+ 27: 
+ 28: /** Relay mesaj metadata'sı */
+ 29: export interface RelayMessageMetadata {
+ 30:   originalMessageId?: string;
+ 31:   replyTo?: string;
+ 32:   flags?: string[];
+ 33:   [key: string]: unknown;
+ 34: }
+ 35: 
+ 36: // ============================================================================
+ 37: // Relay State Types
+ 38: // ============================================================================
+ 39: 
+ 40: /** Relay durumu */
+ 41: export type RelayStatus = "idle" | "active" | "paused" | "error";
+ 42: 
+ 43: /** Relay state */
+ 44: export interface RelayState {
+ 45:   status: RelayStatus;
+ 46:   source: SlotId | null;
+ 47:   target: SlotId | null;
+ 48:   messageQueue: RelayMessage[];
+ 49:   lastActivity: number;
+ 50:   error?: string;
+ 51: }
+ 52: 
+ 53: // ============================================================================
+ 54: // Relay Config Types
+ 55: // ============================================================================
+ 56: 
+ 57: /** Relay yapılandırması */
+ 58: export interface RelayConfig {
+ 59:   autoStart?: boolean;
+ 60:   maxQueueSize?: number;
+ 61:   messageDelay?: number;
+ 62:   retryAttempts?: number;
+ 63:   retryDelay?: number;
+ 64:   filters?: RelayFilters;
+ 65: }
+ 66: 
+ 67: /** Relay filtreleri */
+ 68: export interface RelayFilters {
+ 69:   allowedTypes?: RelayMessageType[];
+ 70:   blockedPatterns?: string[];
+ 71:   maxMessageLength?: number;
+ 72: }
+ 73: 
+ 74: // ============================================================================
+ 75: // AI-AI Relay Types
+ 76: // ============================================================================
+ 77: 
+ 78: /** AI-AI relay modu */
+ 79: export type AIRelayMode = "ping-pong" | "broadcast" | "chain";
+ 80: 
+ 81: /** AI-AI relay yapılandırması */
+ 82: export interface AIRelayConfig extends RelayConfig {
+ 83:   mode: AIRelayMode;
+ 84:   participants: SlotId[];
+ 85:   turnOrder?: SlotId[];
+ 86:   maxTurns?: number;
+ 87: }
+ 88: 
+ 89: /** AI-AI relay state */
+ 90: export interface AIRelayState extends RelayState {
+ 91:   mode: AIRelayMode;
+ 92:   currentTurn: SlotId | null;
+ 93:   turnCount: number;
+ 94:   participants: SlotId[];
+ 95: }
+ 96: 
+ 97: // ============================================================================
+ 98: // AI-Asistan Relay Types
+ 99: // ============================================================================
+100: 
+101: /** Asistan relay yapılandırması */
+102: export interface AsistanRelayConfig extends RelayConfig {
+103:   asistanSlot: SlotId;
+104:   userSlot: SlotId;
+105:   commandPrefix?: string;
+106: }
+107: 
+108: /** Asistan relay state */
+109: export interface AsistanRelayState extends RelayState {
+110:   asistanSlot: SlotId;
+111:   userSlot: SlotId;
+112:   pendingCommands: string[];
+113: }
+114: 
+115: // ============================================================================
+116: // Relay Events
+117: // ============================================================================
+118: 
+119: /** Relay event tipi */
+120: export type RelayEventType = 
+121:   | "message:received"
+122:   | "message:sent"
+123:   | "message:error"
+124:   | "status:changed"
+125:   | "turn:changed"
+126:   | "queue:updated";
+127: 
+128: /** Relay event */
+129: export interface RelayEvent {
+130:   type: RelayEventType;
+131:   relay: string;
+132:   timestamp: number;
+133:   data: unknown;
+134: }
+135: 
+136: /** Relay event listener */
+137: export type RelayEventListener = (event: RelayEvent) => void;
+
+================
+File: src/js/types/settings.ts
+================
+  1: /**
+  2:  * Settings Types - Ayar yapılandırma tipleri
+  3:  * 
+  4:  * @module src/js/types/settings
+  5:  */
+  6: 
+  7: import type { SlotId, ProviderId } from "./common.js";
+  8: 
+  9: // ============================================================================
+ 10: // Account Types
+ 11: // ============================================================================
+ 12: 
+ 13: /** Hesap bilgisi */
+ 14: export interface Account {
+ 15:   id: string;
+ 16:   provider: ProviderId;
+ 17:   email: string;
+ 18:   name?: string;
+ 19:   avatar?: string;
+ 20:   createdAt?: number;
+ 21:   lastUsedAt?: number;
+ 22: }
+ 23: 
+ 24: /** Slot-Account eşleştirmesi */
+ 25: export interface SlotAssignment {
+ 26:   slot: SlotId;
+ 27:   accountId: string | null;
+ 28: }
+ 29: 
+ 30: // ============================================================================
+ 31: // Settings Schema Types
+ 32: // ============================================================================
+ 33: 
+ 34: /** Slot ayarları */
+ 35: export interface SlotSettings {
+ 36:   accountId: string | null;
+ 37:   provider: ProviderId | null;
+ 38:   url?: string;
+ 39:   path?: string;
+ 40: }
+ 41: 
+ 42: /** Upload method tercihi */
+ 43: export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "dragdrop" | "injection";
+ 44: 
+ 45: /** Message method tercihi */
+ 46: export type MessageMethod = "injection" | "xdotools";
+ 47: 
+ 48: /** Genel ayarlar */
+ 49: export interface GeneralSettings {
+ 50:   theme?: "light" | "dark" | "system";
+ 51:   language?: string;
+ 52:   startMinimized?: boolean;
+ 53:   closeToTray?: boolean;
+ 54:   autoUpdate?: boolean;
+ 55: }
+ 56: 
+ 57: /** Upload ayarları */
+ 58: export interface UploadSettings {
+ 59:   preferredMethod: UploadMethod;
+ 60:   fallbackMethod?: UploadMethod;
+ 61:   maxFileSize?: number;
+ 62:   allowedTypes?: string[];
+ 63: }
+ 64: 
+ 65: /** Google Drive ayarları */
+ 66: export interface GoogleDriveSettings {
+ 67:   connected: boolean;
+ 68:   email?: string;
+ 69:   accessToken?: string;
+ 70:   refreshToken?: string;
+ 71:   expiresAt?: number;
+ 72: }
+ 73: 
+ 74: /** Ana ayar şeması */
+ 75: export interface AppSettings {
+ 76:   version?: string;
+ 77:   general?: GeneralSettings;
+ 78:   slots: {
+ 79:     ai1: SlotSettings;
+ 80:     ai2: SlotSettings;
+ 81:   };
+ 82:   accounts: Account[];
+ 83:   upload?: UploadSettings;
+ 84:   googleDrive?: GoogleDriveSettings;
+ 85:   [key: string]: unknown; // Ek alanlar için
+ 86: }
+ 87: 
+ 88: // ============================================================================
+ 89: // Settings Events
+ 90: // ============================================================================
+ 91: 
+ 92: /** Ayar değişiklik event'i */
+ 93: export interface SettingsChangeEvent {
+ 94:   path: string;
+ 95:   oldValue: unknown;
+ 96:   newValue: unknown;
+ 97:   timestamp: number;
+ 98: }
+ 99: 
+100: /** Ayar listener callback */
+101: export type SettingsListener = (event: SettingsChangeEvent) => void;
+
+================
+File: src/js/types/traffic.ts
+================
+  1: /**
+  2:  * Traffic Types - State tracking tipleri
+  3:  * 
+  4:  * @module src/js/types/traffic
+  5:  */
+  6: 
+  7: import type { SlotId, ProviderId } from "./common.js";
+  8: 
+  9: // ============================================================================
+ 10: // Traffic State Types
+ 11: // ============================================================================
+ 12: 
+ 13: /** Slot durumu */
+ 14: export interface SlotState {
+ 15:   slot: SlotId;
+ 16:   provider: ProviderId | null;
+ 17:   url: string | null;
+ 18:   isLoading: boolean;
+ 19:   isThinking: boolean;
+ 20:   isSending: boolean;
+ 21:   isReady: boolean;
+ 22:   lastActivity: number;
+ 23:   error?: string;
+ 24: }
+ 25: 
+ 26: /** Tüm slotların durumu */
+ 27: export type TrafficState = Record<SlotId, SlotState>;
+ 28: 
+ 29: /** State değişiklik event'i */
+ 30: export interface StateChangeEvent {
+ 31:   slot: SlotId;
+ 32:   field: keyof SlotState;
+ 33:   oldValue: unknown;
+ 34:   newValue: unknown;
+ 35:   timestamp: number;
+ 36: }
+ 37: 
+ 38: // ============================================================================
+ 39: // Loading Tracker Types
+ 40: // ============================================================================
+ 41: 
+ 42: /** Loading durumu */
+ 43: export interface LoadingState {
+ 44:   isLoading: boolean;
+ 45:   startedAt?: number;
+ 46:   progress?: number;
+ 47:   url?: string;
+ 48: }
+ 49: 
+ 50: /** Loading event'i */
+ 51: export interface LoadingEvent {
+ 52:   slot: SlotId;
+ 53:   type: "start" | "progress" | "complete" | "error";
+ 54:   url?: string;
+ 55:   progress?: number;
+ 56:   error?: string;
+ 57: }
+ 58: 
+ 59: // ============================================================================
+ 60: // Thinking Tracker Types
+ 61: // ============================================================================
+ 62: 
+ 63: /** Thinking durumu */
+ 64: export interface ThinkingState {
+ 65:   isThinking: boolean;
+ 66:   startedAt?: number;
+ 67:   indicator?: ThinkingIndicator;
+ 68: }
+ 69: 
+ 70: /** Thinking göstergesi */
+ 71: export interface ThinkingIndicator {
+ 72:   visible: boolean;
+ 73:   element?: string;
+ 74:   text?: string;
+ 75: }
+ 76: 
+ 77: /** Thinking event'i */
+ 78: export interface ThinkingEvent {
+ 79:   slot: SlotId;
+ 80:   type: "start" | "stop";
+ 81:   duration?: number;
+ 82: }
+ 83: 
+ 84: // ============================================================================
+ 85: // Send Tracker Types
+ 86: // ============================================================================
+ 87: 
+ 88: /** Gönderim durumu */
+ 89: export interface SendState {
+ 90:   isSending: boolean;
+ 91:   startedAt?: number;
+ 92:   message?: string;
+ 93:   attachments?: number;
+ 94: }
+ 95: 
+ 96: /** Gönderim event'i */
+ 97: export interface SendEvent {
+ 98:   slot: SlotId;
+ 99:   type: "start" | "complete" | "error";
+100:   messageLength?: number;
+101:   attachmentCount?: number;
+102:   duration?: number;
+103:   error?: string;
+104: }
+105: 
+106: // ============================================================================
+107: // Probe Types
+108: // ============================================================================
+109: 
+110: /** Probe sonucu */
+111: export interface ProbeResult {
+112:   slot: SlotId;
+113:   timestamp: number;
+114:   isReady: boolean;
+115:   isLoading: boolean;
+116:   isThinking: boolean;
+117:   hasInput: boolean;
+118:   hasSendButton: boolean;
+119:   messageCount?: number;
+120:   error?: string;
+121: }
+122: 
+123: /** Probe script oluşturucu options */
+124: export interface ProbeScriptOptions {
+125:   provider: ProviderId;
+126:   checkInput?: boolean;
+127:   checkSendButton?: boolean;
+128:   checkThinking?: boolean;
+129:   checkMessages?: boolean;
+130: }
+
+================
+File: src/js/modules/ipc-client.ts
+================
+  1: /**
+  2:  * IPC Client - Type-Safe IPC Wrapper
+  3:  * 
+  4:  * Bu modül renderer process'ten main process'e type-safe IPC çağrıları yapmayı sağlar.
+  5:  * 
+  6:  * @example
+  7:  * import { IPC } from "./ipc-client.js";
+  8:  * 
+  9:  * // Type-safe çağrı - params ve result tipleri otomatik
+ 10:  * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
+ 11:  * if (result.success) {
+ 12:  *   console.log(result.data); // DbConversation[] tipinde
+ 13:  * }
+ 14:  * 
+ 15:  * // Hata durumunda null döner
+ 16:  * const safeResult = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
+ 17:  */
+ 18: 
+ 19: import { LogManager } from "./log-manager.js";
+ 20: import { getErrorMessage } from "../types/index.js";
+ 21: import type { IPCChannel, IPCParams, IPCResult } from "../types/ipc-channels.js";
+ 22: 
+ 23: // ============================================================================
+ 24: // Types
+ 25: // ============================================================================
+ 26: 
+ 27: interface ElectronAPI {
+ 28:   invoke: (channel: string, params?: unknown) => Promise<unknown>;
+ 29:   send: (channel: string, params?: unknown) => void;
+ 30:   on: (channel: string, callback: (...args: unknown[]) => void) => () => void;
+ 31: }
+ 32: 
+ 33: // ============================================================================
+ 34: // IPC Client Class
+ 35: // ============================================================================
+ 36: 
+ 37: class IPCClientClass {
+ 38:   private _api: ElectronAPI | null = null;
+ 39: 
+ 40:   /**
+ 41:    * ElectronAPI referansını al (lazy init)
+ 42:    */
+ 43:   private get api(): ElectronAPI {
+ 44:     if (!this._api) {
+ 45:       const electronAPI = (window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
+ 46:       if (!electronAPI) {
+ 47:         throw new Error("electronAPI not available - preload script may not have loaded");
+ 48:       }
+ 49:       this._api = electronAPI;
+ 50:     }
+ 51:     return this._api;
+ 52:   }
+ 53: 
+ 54:   /**
+ 55:    * Type-safe IPC invoke
+ 56:    * 
+ 57:    * @param channel - IPC kanal adı
+ 58:    * @param params - Kanal parametreleri (tip otomatik)
+ 59:    * @returns Promise<Result> - Kanal sonucu (tip otomatik)
+ 60:    * @throws Error - IPC hatası durumunda
+ 61:    * 
+ 62:    * @example
+ 63:    * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
+ 64:    */
+ 65:   async invoke<T extends IPCChannel>(
+ 66:     channel: T,
+ 67:     ...args: IPCParams<T> extends void ? [] : [IPCParams<T>]
+ 68:   ): Promise<IPCResult<T>> {
+ 69:     const params = args[0];
+ 70:     return this.api.invoke(channel, params) as Promise<IPCResult<T>>;
+ 71:   }
+ 72: 
+ 73:   /**
+ 74:    * Safe IPC invoke - hata durumunda null döner, exception fırlatmaz
+ 75:    * 
+ 76:    * @param channel - IPC kanal adı
+ 77:    * @param params - Kanal parametreleri
+ 78:    * @returns Promise<Result | null> - Sonuç veya null
+ 79:    * 
+ 80:    * @example
+ 81:    * const result = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
+ 82:    * if (result) {
+ 83:    *   // result tipi otomatik
+ 84:    * }
+ 85:    */
+ 86:   async safeInvoke<T extends IPCChannel>(
+ 87:     channel: T,
+ 88:     ...args: IPCParams<T> extends void ? [] : [IPCParams<T>]
+ 89:   ): Promise<IPCResult<T> | null> {
+ 90:     try {
+ 91:       const params = args[0];
+ 92:       return await this.api.invoke(channel, params) as IPCResult<T>;
+ 93:     } catch (error) {
+ 94:       LogManager.addEvent("ipc-client", "error", `IPC invoke failed: ${channel} - ${getErrorMessage(error)}`);
+ 95:       return null;
+ 96:     }
+ 97:   }
+ 98: 
+ 99:   /**
+100:    * IPC send (fire-and-forget)
+101:    * 
+102:    * @param channel - IPC kanal adı
+103:    * @param params - Kanal parametreleri
+104:    */
+105:   send<T extends IPCChannel>(
+106:     channel: T,
+107:     ...args: IPCParams<T> extends void ? [] : [IPCParams<T>]
+108:   ): void {
+109:     const params = args[0];
+110:     this.api.send(channel, params);
+111:   }
+112: 
+113:   /**
+114:    * IPC event listener
+115:    * 
+116:    * @param channel - IPC kanal adı
+117:    * @param callback - Event callback
+118:    * @returns Unsubscribe fonksiyonu
+119:    */
+120:   on<T extends IPCChannel>(
+121:     channel: T,
+122:     callback: (result: IPCResult<T>) => void
+123:   ): () => void {
+124:     return this.api.on(channel, (data) => callback(data as IPCResult<T>));
+125:   }
+126: 
+127:   /**
+128:    * ElectronAPI mevcut mu kontrol et
+129:    */
+130:   isAvailable(): boolean {
+131:     return !!(window as unknown as { electronAPI?: ElectronAPI }).electronAPI;
+132:   }
+133: }
+134: 
+135: /**
+136:  * Singleton IPC Client instance
+137:  */
+138: export const IPC = new IPCClientClass();
+
+================
+File: src/js/types/common.ts
+================
+  1: /**
+  2:  * Common Types - Genel amaçlı type tanımları
+  3:  * 
+  4:  * @module src/js/types/common
+  5:  */
+  6: 
+  7: // ============================================================================
+  8: // Slot & Provider Types
+  9: // ============================================================================
+ 10: 
+ 11: /** AI slot tanımlayıcısı */
+ 12: export type SlotId = "ai0" | "ai1" | "ai2";
+ 13: 
+ 14: /** Kullanıcı tarafından atanabilir slotlar */
+ 15: export type UserSlotId = "ai1" | "ai2";
+ 16: 
+ 17: /** Asistan slotu */
+ 18: export type AsistanSlotId = "ai0";
+ 19: 
+ 20: /** Ana AI provider'ları */
+ 21: export type ProviderId = "chatgpt" | "gemini" | "grok";
+ 22: 
+ 23: /** Asistan provider'ları */
+ 24: export type AsistanProviderId = "opencode";
+ 25: 
+ 26: /** Tüm provider'lar */
+ 27: export type AllProviderId = ProviderId | AsistanProviderId;
+ 28: 
+ 29: /** Özel sayfalar */
+ 30: export type SpecialPage = "settings" | "archives" | "webview" | "asistan";
+ 31: 
+ 32: // ============================================================================
+ 33: // Generic Utility Types
+ 34: // ============================================================================
+ 35: 
+ 36: /** Nullable type */
+ 37: export type Nullable<T> = T | null;
+ 38: 
+ 39: /** Optional type */
+ 40: export type Optional<T> = T | undefined;
+ 41: 
+ 42: /** Callback fonksiyon tipi */
+ 43: export type Callback<T = void> = () => T;
+ 44: 
+ 45: /** Async callback fonksiyon tipi */
+ 46: export type AsyncCallback<T = void> = () => Promise<T>;
+ 47: 
+ 48: /** Event listener tipi */
+ 49: export type EventListener<T = unknown> = (payload: T) => void;
+ 50: 
+ 51: /** Unsubscribe fonksiyonu */
+ 52: export type Unsubscribe = () => void;
+ 53: 
+ 54: // ============================================================================
+ 55: // Result Types (IPC için)
+ 56: // ============================================================================
+ 57: 
+ 58: /** Temel sonuç tipi */
+ 59: export interface BaseResult {
+ 60:   success: boolean;
+ 61:   message?: string;
+ 62:   error?: string;
+ 63: }
+ 64: 
+ 65: /** Veri içeren sonuç tipi */
+ 66: export interface DataResult<T> extends BaseResult {
+ 67:   data?: T;
+ 68: }
+ 69: 
+ 70: /** Liste sonuç tipi */
+ 71: export interface ListResult<T> extends BaseResult {
+ 72:   items?: T[];
+ 73:   total?: number;
+ 74: }
+ 75: 
+ 76: // ============================================================================
+ 77: // File Types
+ 78: // ============================================================================
+ 79: 
+ 80: /** Dosya bilgisi */
+ 81: export interface FileInfo {
+ 82:   path: string;
+ 83:   name: string;
+ 84:   size?: number;
+ 85:   mimeType?: string;
+ 86:   data?: string; // base64
+ 87: }
+ 88: 
+ 89: /** Yüklenen dosya */
+ 90: export interface UploadedFile extends FileInfo {
+ 91:   url?: string;
+ 92:   uploadedAt?: number;
+ 93: }
+ 94: 
+ 95: /** Attachment (mesaja eklenen dosya) */
+ 96: export interface Attachment {
+ 97:   id?: string;
+ 98:   name: string;
+ 99:   path?: string;
+100:   url?: string;
+101:   mimeType?: string;
+102:   size?: number;
+103:   data?: string; // base64
+104: }
+105: 
+106: // ============================================================================
+107: // Logging Types
+108: // ============================================================================
+109: 
+110: /** Log seviyesi */
+111: export type LogLevel = "debug" | "info" | "warning" | "error";
+112: 
+113: /** Log kaynağı */
+114: export type LogSource = string;
+115: 
+116: /** Log entry */
+117: export interface LogEntry {
+118:   timestamp: number;
+119:   source: LogSource;
+120:   level: LogLevel;
+121:   message: string;
+122:   data?: unknown;
+123: }
+124: 
+125: // ============================================================================
+126: // Error Handling Utilities
+127: // ============================================================================
+128: 
+129: /** Error benzeri obje tipi */
+130: export interface ErrorLike {
+131:   message?: string;
+132:   name?: string;
+133:   stack?: string;
+134: }
+135: 
+136: /**
+137:  * Unknown tipindeki error'dan güvenli şekilde mesaj çıkarır
+138:  * TypeScript'te catch bloklarında error tipi 'unknown' olduğu için bu helper gerekli
+139:  * 
+140:  * @param error - Herhangi bir tipte error
+141:  * @returns Error mesajı string olarak
+142:  */
+143: export function getErrorMessage(error: unknown): string {
+144:   if (error instanceof Error) {
+145:     return error.message;
+146:   }
+147:   if (typeof error === "string") {
+148:     return error;
+149:   }
+150:   if (error && typeof error === "object" && "message" in error) {
+151:     return String((error as ErrorLike).message);
+152:   }
+153:   return String(error);
+154: }
+
+================
+File: src/js/types/index.ts
+================
+ 1: /**
+ 2:  * Hayalet-ev Type Definitions
+ 3:  * 
+ 4:  * Merkezi type tanımları - tüm modüller buradan import eder
+ 5:  * 
+ 6:  * @module src/js/types
+ 7:  */
+ 8: 
+ 9: // === Core Types ===
+10: export * from "./common.js";
+11: export * from "./provider.js";
+12: export * from "./settings.js";
+13: export * from "./commands.js";
+14: export * from "./database.js";
+15: export * from "./traffic.js";
+16: export * from "./relay.js";
+17: 
+18: // === IPC Types ===
+19: export * from "./ipc-channels.js";
+
+================
+File: src/js/types/provider.ts
+================
+  1: /**
+  2:  * Provider Types - AI provider konfigürasyonları
+  3:  * 
+  4:  * @module src/js/types/provider
+  5:  */
+  6: 
+  7: import type { AllProviderId } from "./common.js";
+  8: 
+  9: // ============================================================================
+ 10: // Selector Types
+ 11: // ============================================================================
+ 12: 
+ 13: /** Temel selector'lar */
+ 14: export interface BaseSelectors {
+ 15:   sendButton: string;
+ 16:   stopButton: string;
+ 17:   inputField: string;
+ 18:   messageContainer: string;
+ 19:   voiceButton?: string;
+ 20:   filePreview?: string | string[];
+ 21:   attachButton?: string;
+ 22: }
+ 23: 
+ 24: /** Scrape selector'ları */
+ 25: export interface ScrapeSelectors {
+ 26:   preferred: string;
+ 27:   fallback: string;
+ 28:   messageWrapper?: string;
+ 29:   userWrapper?: string;
+ 30:   assistantWrapper?: string;
+ 31:   messageId?: string;
+ 32:   userMessage?: string;
+ 33:   assistantMessage?: string;
+ 34: }
+ 35: 
+ 36: /** Rol selector'ları (Gemini için) */
+ 37: export interface RoleSelectors {
+ 38:   user: string;
+ 39:   assistant: string;
+ 40:   text?: string;
+ 41: }
+ 42: 
+ 43: /** Filter ayarları */
+ 44: export interface FilterConfig {
+ 45:   selectors: string[];
+ 46:   hosts: string[];
+ 47:   blockResourceTypes: string[];
+ 48:   dragOverlaySelectors?: string[];
+ 49:   dragTextMatchers?: string[];
+ 50: }
+ 51: 
+ 52: /** Telemetry ayarları */
+ 53: export interface TelemetryConfig {
+ 54:   endpoints: string[];
+ 55:   tokenPaths: string[];
+ 56: }
+ 57: 
+ 58: // ============================================================================
+ 59: // Provider Config Types
+ 60: // ============================================================================
+ 61: 
+ 62: /** Mesaj ID stratejisi */
+ 63: export type MessageIdStrategy = "content-hash" | "dom-id";
+ 64: 
+ 65: /** Input tipi */
+ 66: export type InputType = "direct" | "character-by-character" | "contenteditable";
+ 67: 
+ 68: /** Temel provider konfigürasyonu */
+ 69: export interface BaseProviderConfig {
+ 70:   id: AllProviderId;
+ 71:   name: string;
+ 72:   baseUrl: string;
+ 73:   loginUrl: string | null;
+ 74:   lastVerified: string;
+ 75:   
+ 76:   selectors: BaseSelectors;
+ 77:   inputType: InputType;
+ 78:   scrollerSelectors: string[];
+ 79:   scrapeSelectors: ScrapeSelectors;
+ 80:   fileInputSelectors: string[];
+ 81:   uploadTargetSelectors: string[];
+ 82:   criticalSelectors: string[];
+ 83:   contentContainers: string[];
+ 84:   excludedUrls: string[];
+ 85:   
+ 86:   filters: FilterConfig;
+ 87:   telemetry: TelemetryConfig;
+ 88:   
+ 89:   messageIdStrategy?: MessageIdStrategy;
+ 90:   roleSelectors?: RoleSelectors;
+ 91:   defaultPaths?: string[];
+ 92: }
+ 93: 
+ 94: /** ChatGPT config */
+ 95: export interface ChatGPTConfig extends BaseProviderConfig {
+ 96:   id: "chatgpt";
+ 97: }
+ 98: 
+ 99: /** Gemini config */
+100: export interface GeminiConfig extends BaseProviderConfig {
+101:   id: "gemini";
+102:   defaultPaths: string[];
+103:   roleSelectors: RoleSelectors;
+104: }
+105: 
+106: /** Grok config */
+107: export interface GrokConfig extends BaseProviderConfig {
+108:   id: "grok";
+109: }
+110: 
+111: /** OpenCode config (Asistan) */
+112: export interface OpenCodeConfig extends BaseProviderConfig {
+113:   id: "opencode";
+114:   port: number;
+115:   cors: string;
+116:   command: string;
+117:   isAsistan: true;
+118:   loginUrl: null;
+119:   getProjectUrl: (projectPath?: string | null, port?: number) => string;
+120:   getServerCommand: (port?: number, cors?: string) => { command: string; args: string[] };
+121: }
+122: 
+123: /** Tüm provider config'leri */
+124: export type ProviderConfig = ChatGPTConfig | GeminiConfig | GrokConfig | OpenCodeConfig;
+125: 
+126: // ============================================================================
+127: // Provider Instance Types
+128: // ============================================================================
+129: 
+130: /** Provider scraper interface */
+131: export interface ProviderScraper {
+132:   scrapeMessages: (doc: Document) => ScrapedMessage[];
+133:   getMessageRole: (el: Element) => "user" | "assistant" | null;
+134:   getMessageText: (el: Element) => string;
+135: }
+136: 
+137: /** Scraped message */
+138: export interface ScrapedMessage {
+139:   role: "user" | "assistant";
+140:   text: string;
+141:   index: number;
+142:   contentHash?: string;
+143:   domId?: string;
+144: }
+145: 
+146: /** Provider instance (config + scraper) */
+147: export interface ProviderInstance {
+148:   config: ProviderConfig;
+149:   scraper: ProviderScraper;
+150: }
+151: 
+152: // ============================================================================
+153: // Provider Registry Types
+154: // ============================================================================
+155: 
+156: /** Registry'deki provider bilgisi */
+157: export interface RegisteredProvider {
+158:   id: AllProviderId;
+159:   config: ProviderConfig;
+160:   scraper?: ProviderScraper;
+161: }
+162: 
+163: /** Provider registry map */
+164: export type ProviderRegistryMap = Map<AllProviderId, RegisteredProvider>;
+
+================
+File: electron/main.ts
+================
+  1: import { app, BrowserWindow, dialog, shell } from "electron";
+  2: import { fileURLToPath } from "url";
+  3: import { dirname, join } from "path";
+  4: import { deviceActionHandler } from "./device-manager.ts";
+  5: import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
+  6: import { appendLog } from "./log-manager.ts";
+  7: import { whisperLoad, whisperSave } from "./whisper-manager.ts";
+  8: import {
+  9:   commandInit,
+ 10:   commandWrite,
+ 11:   commandPaths,
+ 12:   commandStageAttachments,
+ 13:   commandStageTemp,
+ 14:   commandCleanupTemp,
+ 15:   commandMoveFailed,
+ 16:   commandArchiveCopy,
+ 17:   commandCleanupJob,
+ 18:   commandMove,
+ 19: } from "./command-manager.ts";
+ 20: import { DatabaseManager } from "./database/index.ts";
+ 21: import {
+ 22:   fmWriteFileAtomic,
+ 23:   readFileAsBase64,
+ 24:   copyToAssets,
+ 25:   copyFileTo,
+ 26:   deleteAsset,
+ 27:   generateTree,
+ 28: } from "./file-manager.ts";
+ 29: import {
+ 30:   createWindow as createAppWindow,
+ 31:   initWindowManager,
+ 32:   setTrayIconPath,
+ 33: } from "./window-manager.ts";
+ 34: import { catboxUpload, uguuUpload } from "./webview-manager.ts";
+ 35: import {
+ 36:   googledriveStartAuth,
+ 37:   googledriveExchangeCode,
+ 38:   googledriveDisconnect,
+ 39:   googledriveUpload,
+ 40: } from "./googledrive-manager.ts";
+ 41: import { OpenCodeManager } from "./opencode-manager.ts";
+ 42: import { OpenCodeSSEServer } from "./opencode-sse-server.ts";
+ 43: import {
+ 44:   initLogSystem,
+ 45:   interceptMainConsole,
+ 46:   setupRendererLogger,
+ 47:   setupWebviewLogger,
+ 48:   setMainWindow,
+ 49:   getSessionId,
+ 50:   getEarlyLogs,
+ 51:   clearEarlyLogs,
+ 52:   getSessionDir,
+ 53:   getLogDir,
+ 54:   readConsoleLogs,
+ 55:   readErrorLogs,
+ 56:   readAllLogs,
+ 57:   queryLogs,
+ 58:   listSessions,
+ 59:   writeStateSnapshot,
+ 60:   writeSessionSummary,
+ 61:   updateAppState,
+ 62:   getAppState,
+ 63:   generateCorrelationId,
+ 64:   CONSOLE_LOG,
+ 65:   ERROR_LOG,
+ 66: } from "./console-logger.ts";
+ 67: import { SessionManager } from "./session-manager.ts";
+ 68: import { MetaCommandManager } from "./meta-command-manager.ts";
+ 69: import type { LogQueryParams } from "./types/index.ts";
+ 70: 
+ 71: // Handler Setup Imports
+ 72: import { setupFsHandlers } from "./handlers/ipc-fs.ts";
+ 73: import { setupWindowHandlers } from "./handlers/ipc-window.ts";
+ 74: import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
+ 75: import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
+ 76: import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
+ 77: import { setupOpencodeHandlers } from "./handlers/ipc-opencode.ts";
+ 78: import { registerHandler } from "./handlers/ipc-helpers.ts";
+ 79: 
+ 80: const __filename = fileURLToPath(import.meta.url);
+ 81: const __dirname = dirname(__filename);
+ 82: 
+ 83: // CDP (Chrome DevTools Protocol) remote debugging için port ayarla
+ 84: const CDP_PORT = process.env.CDP_PORT || 9222;
+ 85: app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
+ 86: 
+ 87: let mainWindow: BrowserWindow | null = null;
+ 88: 
+ 89: initLogSystem();
+ 90: 
+ 91: interceptMainConsole();
+ 92: 
+ 93: if (process.stdout && process.stdout.isTTY) {
+ 94:   try {
+ 95:     process.stdout.write("\x1b[?1004l");
+ 96:   } catch (e) {}
+ 97: }
+ 98: 
+ 99: updateAppState({
+100:   startTime: new Date().toISOString(),
+101:   platform: process.platform,
+102:   nodeVersion: process.version,
+103: });
+104: 
+105: // Single instance lock - ikinci kopyanın açılmasını engelle
+106: const gotTheLock = app.requestSingleInstanceLock();
+107: 
+108: if (!gotTheLock) {
+109:   // Başka bir instance zaten çalışıyor, bu instance'ı kapat
+110:   console.log("Another instance is already running. Exiting...");
+111:   app.quit();
+112: } else {
+113:   // İkinci instance açılmaya çalışıldığında mevcut pencereyi ön plana getir
+114:   app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
+115:     if (mainWindow) {
+116:       // Minimize edilmişse restore et
+117:       if (mainWindow.isMinimized()) {
+118:         mainWindow.restore();
+119:       }
+120:       // Pencereyi ön plana getir
+121:       mainWindow.focus();
+122:       console.log("Second instance attempted - focused existing window");
+123:     }
+124:   });
+125: }
+126: 
+127: app.whenReady().then(async () => {
+128:   try {
+129:     // Startup cache temizliği (login bilgileri korunur)
+130:     try {
+131:       await SessionManager.clearStartupCache();
+132:     } catch (e: unknown) {
+133:       console.warn("Startup cache temizliği başarısız:", (e as Error)?.message);
+134:     }
+135: 
+136:     mainWindow = await createAppWindow({ __dirname });
+137: 
+138:     setMainWindow(mainWindow);
+139: 
+140:     setupRendererLogger(mainWindow.webContents);
+141: 
+142:     // Setup Modular Handlers
+143:     setupFsHandlers(mainWindow);
+144:     setupWindowHandlers();
+145:     setupProviderHandlers(__dirname);
+146:     setupSettingsHandlers();
+147:     setupDatabaseHandlers();
+148:     setupOpencodeHandlers();
+149: 
+150:     try {
+151:       initWindowManager({ mainWindow });
+152:     } catch (e) {}
+153: 
+154:     // System tray icon path'i kaydet (lazy - sadece minimize edilince oluşur)
+155:     try {
+156:       const iconPath = join(__dirname, "../src/assets/icon.png");
+157:       setTrayIconPath(iconPath);
+158:     } catch (e) {
+159:       console.error("Tray icon path hatası:", e);
+160:     }
+161:   } catch (err: unknown) {
+162:     console.error("CRITICAL: createAppWindow failed:", err);
+163:     process.exit(1);
+164:   }
+165: 
+166:   app.on("activate", async () => {
+167:     if (BrowserWindow.getAllWindows().length === 0) {
+168:       mainWindow = await createAppWindow({ __dirname });
+169:     }
+170:   });
+171: });
+172: 
+173: // Cleanup tamamlandı mı flag'i
+174: let cleanupDone = false;
+175: 
+176: /**
+177:  * Uygulama kapanmadan önce cleanup işlemlerini yap
+178:  */
+179: async function performCleanup() {
+180:   if (cleanupDone) return;
+181:   cleanupDone = true;
+182: 
+183:   console.log("[MAIN] Cleanup başlatılıyor...");
+184: 
+185:   // OpenCode server'ı kapat
+186:   try {
+187:     await OpenCodeManager.cleanup();
+188:     console.log("[MAIN] OpenCode server kapatıldı");
+189:   } catch (err: unknown) {
+190:     console.error("[MAIN] OpenCode cleanup failed:", err);
+191:   }
+192: 
+193:   // SSE Server'ı kapat
+194:   try {
+195:     await OpenCodeSSEServer.stop();
+196:     console.log("[MAIN] SSE Server kapatıldı");
+197:   } catch (err: unknown) {
+198:     console.error("[MAIN] SSE Server cleanup failed:", err);
+199:   }
+200: 
+201:   // Session summary yaz
+202:   try {
+203:     // writeSessionSummary(totalLogs, errorCount, warnCount, chunkIndex, endReason)
+204:     await writeSessionSummary(0, 0, 0, 0, "normal");
+205:     console.log("[MAIN] Session summary yazıldı");
+206:   } catch (err: unknown) {
+207:     console.error("[MAIN] Failed to write session summary:", err);
+208:   }
+209: }
+210: 
+211: app.on("window-all-closed", async () => {
+212:   if (process.platform !== "darwin") {
+213:     // X butonu ile kapatıldığında cleanup yap
+214:     await performCleanup();
+215:     app.quit();
+216:   }
+217: });
+218: 
+219: app.on("will-quit", async () => {
+220:   // Database bağlantılarını kapat
+221:   DatabaseManager.closeAll();
+222:   // Cleanup henüz yapılmadıysa yap
+223:   await performCleanup();
+224: });
+225: 
+226: app.on("before-quit", async () => {
+227:   // Cleanup henüz yapılmadıysa yap
+228:   await performCleanup();
+229: });
+230: 
+231: if (process.platform !== "win32") {
+232:   process.on("SIGTERM", () => {
+233:     app.quit();
+234:   });
+235: 
+236:   process.on("SIGINT", () => {
+237:     app.quit();
+238:   });
+239: }
+240: 
+241: // ============================================================================
+242: // Remaining IPC Handlers (Not yet refactored to modules)
+243: // ============================================================================
+244: 
+245: registerHandler("device-action", deviceActionHandler);
+246: 
+247: registerHandler("show-message-box", async (_event, options: Electron.MessageBoxOptions) => {
+248:   if (!mainWindow) {
+249:     return { response: 0, checkboxChecked: false };
+250:   }
+251:   return await dialog.showMessageBox(mainWindow, options);
+252: });
+253: 
+254: registerHandler("fm-write-file-atomic", fmWriteFileAtomic);
+255: registerHandler("read-file", readFileAsBase64);
+256: registerHandler("catbox-upload", catboxUpload);
+257: 
+258: // Güvenilir Google OAuth domain'leri
+259: const ALLOWED_GOOGLE_AUTH_DOMAINS = ["accounts.google.com"];
+260: 
+261: registerHandler("googledrive-start-auth", async (event) => {
+262:   const result = await googledriveStartAuth(event);
+263:   if (result?.success && result?.authUrl) {
+264:     try {
+265:       const urlObj = new URL(result.authUrl);
+266:       if (!ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
+267:         return { ...result, success: false, message: "Güvenilmeyen URL: " + urlObj.hostname };
+268:       }
+269:       await shell.openExternal(result.authUrl);
+270:     } catch (err: unknown) {
+271:       return { ...result, message: "Tarayıcı açılamadı: " + ((err as Error)?.message || "hata") };
+272:     }
+273:   }
+274:   return result;
+275: });
+276: registerHandler("googledrive-exchange-code", googledriveExchangeCode);
+277: registerHandler("googledrive-disconnect", googledriveDisconnect);
+278: registerHandler("googledrive-upload", googledriveUpload);
+279: 
+280: registerHandler("uguu-upload", uguuUpload);
+281: 
+282: registerHandler("whisper-load", whisperLoad);
+283: registerHandler("whisper-save", whisperSave);
+284: 
+285: // server-command-run ve server-command-list kaldırıldı (preload'da expose edilmiyordu)
+286: 
+287: registerHandler("command-init", commandInit);
+288: registerHandler("command-write", commandWrite);
+289: registerHandler("command-paths", commandPaths);
+290: registerHandler("command-stage-attachments", commandStageAttachments);
+291: registerHandler("command-stage-temp", commandStageTemp);
+292: registerHandler("command-cleanup-temp", commandCleanupTemp);
+293: registerHandler("command-move-failed", commandMoveFailed);
+294: registerHandler("command-archive-copy", commandArchiveCopy);
+295: registerHandler("command-cleanup-job", commandCleanupJob);
+296: registerHandler("command-move", commandMove);
+297: 
+298: registerHandler("capture-page", capturePageHandler);
+299: registerHandler("screenshot-capture", screenshotCaptureHandler);
+300: 
+301: // Database IPC Handlers - Moved to handlers/ipc-database.ts
+302: 
+303: // Meta Command IPC handlers
+304: registerHandler("meta-define-command", (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
+305:   MetaCommandManager.defineCommand(event, params)
+306: );
+307: registerHandler("meta-delete-command", (event, params: { name: string }) =>
+308:   MetaCommandManager.deleteCommand(event, params)
+309: );
+310: registerHandler("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
+311: registerHandler("meta-get-command", (event, params: { name: string }) =>
+312:   MetaCommandManager.getCommand(event, params)
+313: );
+314: 
+315: registerHandler("append-log", appendLog);
+316: 
+317: registerHandler("copy-to-assets", copyToAssets);
+318: registerHandler("copy-file-to", copyFileTo);
+319: registerHandler("delete-asset", deleteAsset);
+320: registerHandler("generate-tree", generateTree);
+321: 
+322: registerHandler("read-console-logs", async (_event, tail: number = 100) => await readConsoleLogs(tail));
+323: registerHandler("read-error-logs", async (_event, tail: number = 100) => await readErrorLogs(tail));
+324: 
+325: registerHandler("get-log-paths", async () => {
+326:   return {
+327:     console: CONSOLE_LOG,
+328:     error: ERROR_LOG,
+329:     sessionDir: getSessionDir(),
+330:     logDir: getLogDir(),
+331:   };
+332: });
+333: 
+334: registerHandler("get-session-id", async () => getSessionId());
+335: 
+336: // Erken logları al (UI hazır olmadan önce oluşanlar)
+337: registerHandler("get-early-logs", async () => {
+338:   const logs = getEarlyLogs();
+339:   clearEarlyLogs(); // Alındıktan sonra temizle
+340:   return logs;
+341: });
+342: 
+343: registerHandler(
+344:   "read-all-logs",
+345:   async (_event, targetSessionId: string | null = null) => await readAllLogs(targetSessionId)
+346: );
+347: registerHandler("query-logs", async (_event, query: LogQueryParams = {}) => await queryLogs(query));
+348: registerHandler("list-sessions", async () => await listSessions());
+349: 
+350: registerHandler("get-app-state", async () => getAppState());
+351: 
+352: registerHandler("write-state-snapshot", async () => {
+353:   await writeStateSnapshot();
+354:   return { success: true };
+355: });
+356: 
+357: registerHandler("setup-webview-logger", async (_event, webviewId: number, slot: string, provider: string) => {
+358:   const { webContents } = await import("electron");
+359:   const wc = webContents.fromId(webviewId);
+360:   if (wc) {
+361:     setupWebviewLogger(wc, slot, provider);
+362:     return { success: true };
+363:   }
+364:   return { success: false, error: "WebContents not found" };
+365: });
+366: 
+367: registerHandler("generate-correlation-id", async (_event, prefix: string = "op") => {
+368:   return generateCorrelationId(prefix);
+369: });
+370: 
+371: // OpenCode Server IPC Handlers
+372: registerHandler(
+373:   "opencode-start",
+374:   async (_event, options: { port?: number; cors?: string; projectPath?: string } = {}) => await OpenCodeManager.start(options)
+375: );
+376: registerHandler("opencode-stop", async () => await OpenCodeManager.stop());
+377: registerHandler("opencode-status", async () => OpenCodeManager.getStatus());
+378: 
+379: // OpenCode SSE Server IPC Handlers
+380: registerHandler(
+381:   "opencode-sse-start",
+382:   async (_event, config: { port?: number; host?: string; corsOrigin?: string } = {}) => await OpenCodeSSEServer.start(config)
+383: );
+384: registerHandler("opencode-sse-stop", async () => await OpenCodeSSEServer.stop());
+385: registerHandler("opencode-sse-status", async () => OpenCodeSSEServer.getStatus());
+386: registerHandler("opencode-sse-session", async () => OpenCodeSSEServer.getSession());
+387: registerHandler("opencode-sse-start-session", async () => OpenCodeSSEServer.startSession());
+388: registerHandler("opencode-sse-end-session", async () => OpenCodeSSEServer.endSession());
+389: registerHandler("opencode-sse-connect", async () => await OpenCodeSSEServer.connectToOpenCode());
+390: registerHandler("opencode-sse-disconnect", async () => OpenCodeSSEServer.disconnectFromOpenCode());
+
+================
+File: src/js/modules/webview-manager.ts
+================
+  1: /**
+  2:  * WebviewManager - Facade Pattern
+  3:  * 
+  4:  * Bu modül tüm webview alt sistemlerini koordine eder:
+  5:  * - LifecycleManager: Yaşam döngüsü (register, attach, detach, destroy)
+  6:  * - MessageSender: Mesaj ve dosya gönderimi
+  7:  * - ConversationSyncer: Konuşma senkronizasyonu ve arşivleme
+  8:  * - PendingArchiveHandler: Bekleyen arşiv işlemleri
+  9:  */
+ 10: 
+ 11: import { getProvider } from "./webview/provider-factory.js";
+ 12: import { isSlotUrlExcluded } from "./webview/methods/shared/url-utils.js";
+ 13: import { LifecycleManager } from "./webview/lifecycle-manager.js";
+ 14: import { MessageSender } from "./webview/message-sender.js";
+ 15: import { AppState } from "./app-state.js";
+ 16: import { ConversationSyncer } from "./webview/conversation-syncer.js";
+ 17: import { PendingArchiveHandler } from "./webview/pending-archive-handler.js";
+ 18: 
+ 19: class WebviewManagerClass {
+ 20:   settings: any;
+ 21: 
+ 22:   constructor() {
+ 23:     this.settings = null;
+ 24:   }
+ 25: 
+ 26:   // ==========================================
+ 27:   // ==========================================
+ 28: 
+ 29:   /**
+ 30:    * Ayarları güncelle ve alt modüllere dağıt
+ 31:    * @param {Object} settings - Uygulama ayarları
+ 32:    */
+ 33:   setSettings(settings: Record<string, unknown>) {
+ 34:     this.settings = settings;
+ 35:     MessageSender.setSettings(settings as any);
+ 36:     ConversationSyncer.setSettings(settings as any);
+ 37:   }
+ 38: 
+ 39:   // ==========================================
+ 40:   // ==========================================
+ 41: 
+ 42:   /**
+ 43:    * Webview'ı kaydet
+ 44:    * @param {string} provider - Slot ID
+ 45:    * @param {HTMLElement} webview - Webview elementi
+ 46:    */
+ 47:   register(provider: string, webview: HTMLElement) {
+ 48:     LifecycleManager.register(provider, webview);
+ 49:   }
+ 50: 
+ 51:   /**
+ 52:    * Webview'ı slot'a bağla
+ 53:    * @param {string} provider - Slot ID
+ 54:    * @param {HTMLElement} webview - Webview elementi
+ 55:    * @param {Object} opts - { onReady }
+ 56:    */
+ 57:   attach(provider: string, webview: HTMLElement, opts: Record<string, unknown> = {}) {
+ 58:     const providerId = AppState.getProviderIdForSlot(provider);
+ 59:     LifecycleManager.attach(provider, webview, { ...opts, providerId });
+ 60:   }
+ 61: 
+ 62:   /**
+ 63:    * Webview'ı slot'tan ayır
+ 64:    * @param {string} provider - Slot ID
+ 65:    * @param {Object} opts - { cleanupDom, skipTrafficStop }
+ 66:    */
+ 67:   detach(provider: string, opts: Record<string, unknown> = {}) {
+ 68:     LifecycleManager.detach(provider, opts);
+ 69:   }
+ 70: 
+ 71:   /**
+ 72:    * Webview'ı çöz
+ 73:    * @param {string} provider - Slot ID
+ 74:    * @returns {HTMLElement|null}
+ 75:    */
+ 76:   resolveWebview(provider: string) {
+ 77:     return LifecycleManager.resolve(provider);
+ 78:   }
+ 79: 
+ 80:   /**
+ 81:    * Webview'ı tamamen yok et
+ 82:    * @param {string} provider - Slot ID
+ 83:    */
+ 84:   destroyWebview(provider: string) {
+ 85:     LifecycleManager.destroy(provider);
+ 86:   }
+ 87: 
+ 88:   /**
+ 89:    * Webview'ı aktif olarak işaretle
+ 90:    * @param {string} provider - Slot ID
+ 91:    */
+ 92:   markActive(provider: string) {
+ 93:     LifecycleManager.markActive(provider);
+ 94:   }
+ 95: 
+ 96:   /**
+ 97:    * İnaktif webview'ları temizle
+ 98:    */
+ 99:   cleanupInactiveWebviews() {
+100:     LifecycleManager.cleanupInactive();
+101:   }
+102: 
+103:   // ==========================================
+104:   // ==========================================
+105: 
+106:   /**
+107:    * Mesaj ve dosya gönder
+108:    * @param {Object} opts - { provider, text, attachments }
+109:    * @returns {Promise<Object>}
+110:    */
+111:   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
+112:     const webview = this.resolveWebview(provider);
+113:     return MessageSender.send({ provider, text, attachments: attachments as any[], webview: webview as any });
+114:   }
+115: 
+116:   // ==========================================
+117:   // ==========================================
+118: 
+119:   /**
+120:    * ConversationSyncer'ı başlat
+121:    * @param {Object} coreEngine - CoreEngine instance
+122:    */
+123:   initSyncer(coreEngine: unknown) {
+124:     ConversationSyncer.init(coreEngine as any, ((provider: string) => this.resolveWebview(provider)) as any);
+125:   }
+126: 
+127:   /**
+128:    * Konuşmayı senkronize et
+129:    * @param {string} provider - Slot ID
+130:    * @param {HTMLElement} webview - Webview elementi (optional)
+131:    * @param {Object} options - { catchEnabled }
+132:    * @returns {Promise<Object>}
+133:    */
+134:   async syncConversation(provider: string, webview: HTMLElement | null, options: Record<string, unknown> = {}) {
+135:     const targetWebview = webview || this.resolveWebview(provider);
+136:     return ConversationSyncer.syncConversation(provider, targetWebview, options);
+137:   }
+138: 
+139:   /**
+140:    * Provider'ı senkronize et (eski SyncHandler.syncProvider)
+141:    * @param {string} provider - Slot ID
+142:    * @param {Object} opts - { from }
+143:    * @returns {Promise<Object>}
+144:    */
+145:   async syncProvider(provider: string, opts: Record<string, unknown> = {}) {
+146:     return ConversationSyncer.syncProvider(provider, opts);
+147:   }
+148: 
+149:   /**
+150:    * Stable listener ekle
+151:    * @param {string} provider - Slot ID
+152:    * @param {Function} callback - Callback
+153:    */
+154:   addStableListener(provider: string, callback: () => void) {
+155:     ConversationSyncer.addStableListener(provider, callback);
+156:   }
+157: 
+158:   /**
+159:    * Son sync sonucunu getir
+160:    * @param {string} provider - Slot ID
+161:    * @returns {Object|null}
+162:    */
+163:   getLastSyncResult(provider: string) {
+164:     return ConversationSyncer.getLastSyncResult(provider);
+165:   }
+166: 
+167:   // ==========================================
+168:   // ==========================================
+169: 
+170:   /**
+171:    * Bekleyen arşiv ekle
+172:    * @param {string} provider - Slot ID
+173:    * @param {Object} entry - { jobId, folder, temp }
+174:    */
+175:   addPendingArchive(provider: string, entry: { jobId: string; folder: string; temp?: string[] }) {
+176:     PendingArchiveHandler.addPending(provider, entry);
+177:   }
+178: 
+179:   // ==========================================
+180:   // ==========================================
+181: 
+182:   /**
+183:    * Slot için provider modülünü getir
+184:    * @param {string} providerSlot - Slot ID
+185:    * @returns {Object|null}
+186:    */
+187:   getProviderModule(providerSlot: string) {
+188:     const providerId = AppState.getProviderIdForSlot(providerSlot);
+189:     return providerId ? getProvider(providerId) : null;
+190:   }
+191: 
+192:   /**
+193:    * URL excluded mı kontrol et
+194:    * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
+195:    * @param {string} providerSlot - Slot ID
+196:    * @param {string} url - URL
+197:    * @returns {boolean}
+198:    */
+199:   isUrlExcluded(providerSlot: string, url: string) {
+200:     return isSlotUrlExcluded(providerSlot, url);
+201:   }
+202: 
+203:   // ==========================================
+204:   // ==========================================
+205: 
+206:   /**
+207:    * Tüm webview referanslarını getir
+208:    * @returns {Object}
+209:    */
+210:   get webviews() {
+211:     return LifecycleManager.getAll();
+212:   }
+213: }
+214: 
+215: export const WebviewManager = new WebviewManagerClass();
+
+================
+File: electron/preload.cjs
+================
+  1: const { contextBridge, ipcRenderer } = require("electron");
+  2: 
+  3: contextBridge.exposeInMainWorld("electronAPI", {
+  4:   readDirectoryFiles: (dirPath) =>
+  5:     ipcRenderer.invoke("read-directory-files", dirPath),
+  6:   loadSettings: () => ipcRenderer.invoke("load-settings"),
+  7:   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
+  8:   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
+  9:   showMessageBox: (options) => ipcRenderer.invoke("show-message-box", options),
+ 10:   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
+ 11:   commandInit: () => ipcRenderer.invoke("command-init"),
+ 12:   commandWrite: (item) => ipcRenderer.invoke("command-write", item),
+ 13:   commandMove: (id, status, reason) =>
+ 14:     ipcRenderer.invoke("command-move", id, status, reason),
+ 15:   commandPaths: () => ipcRenderer.invoke("command-paths"),
+ 16:   commandStageAttachments: (payload) =>
+ 17:     ipcRenderer.invoke("command-stage-attachments", payload),
+ 18:   commandStageTemp: (payload) =>
+ 19:     ipcRenderer.invoke("command-stage-temp", payload),
+ 20:   commandCleanupTemp: (payload) =>
+ 21:     ipcRenderer.invoke("command-cleanup-temp", payload),
+ 22:   commandMoveFailed: (payload) =>
+ 23:     ipcRenderer.invoke("command-move-failed", payload),
+ 24:   commandArchiveCopy: (payload) =>
+ 25:     ipcRenderer.invoke("command-archive-copy", payload),
+ 26:   commandCleanupJob: (payload) =>
+ 27:     ipcRenderer.invoke("command-cleanup-job", payload),
+ 28:   copyToAssets: (srcPath, role, accountInfo) =>
+ 29:     ipcRenderer.invoke("copy-to-assets", srcPath, role, accountInfo),
+ 30:   deleteAsset: (assetPath) => ipcRenderer.invoke("delete-asset", assetPath),
+ 31:   copyFileTo: (srcPath, destDir) =>
+ 32:     ipcRenderer.invoke("copy-file-to", srcPath, destDir),
+ 33:   openPath: (path) => ipcRenderer.invoke("open-path", path),
+ 34:   fmEnsureDirs: (scope) => ipcRenderer.invoke("fm-ensure-dirs", scope),
+ 35:   fmTempPath: (prefix, ext) => ipcRenderer.invoke("fm-temp-path", prefix, ext),
+ 36:   fmWriteFileAtomic: (payload) =>
+ 37:     ipcRenderer.invoke("fm-write-file-atomic", payload),
+ 38:   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
+ 39:   getProviderConfig: (providerId) =>
+ 40:     ipcRenderer.invoke("get-provider-config", providerId),
+ 41:   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
+ 42:   
+ 43:   // Database API
+ 44:   dbInitAccount: (params) => ipcRenderer.invoke("db-init-account", params),
+ 45:   dbGetConversations: (params) => ipcRenderer.invoke("db-get-conversations", params),
+ 46:   dbGetMessages: (params) => ipcRenderer.invoke("db-get-messages", params),
+ 47:   dbSyncMessages: (params) => ipcRenderer.invoke("db-sync-messages", params),
+ 48:   dbSaveAttachment: (params) => ipcRenderer.invoke("db-save-attachment", params),
+ 49:   dbGetAttachments: (params) => ipcRenderer.invoke("db-get-attachments", params),
+ 50:   dbDeleteConversation: (params) => ipcRenderer.invoke("db-delete-conversation", params),
+ 51:   dbSearchMessages: (params) => ipcRenderer.invoke("db-search-messages", params),
+ 52:   dbSearchAttachments: (params) => ipcRenderer.invoke("db-search-attachments", params),
+ 53:   dbSearchAllAccounts: (params) => ipcRenderer.invoke("db-search-all-accounts", params),
+ 54:   dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
+ 55: 
+ 56:   // Meta Command API
+ 57:   metaDefineCommand: (params) => ipcRenderer.invoke("meta-define-command", params),
+ 58:   metaDeleteCommand: (params) => ipcRenderer.invoke("meta-delete-command", params),
+ 59:   metaListCommands: () => ipcRenderer.invoke("meta-list-commands"),
+ 60:   metaGetCommand: (params) => ipcRenderer.invoke("meta-get-command", params),
+ 61:   
+ 62:   appendLog: (payload) => ipcRenderer.invoke("append-log", payload),
+ 63:   getSessionId: () => ipcRenderer.invoke("get-session-id"),
+ 64:   getEarlyLogs: () => ipcRenderer.invoke("get-early-logs"),
+ 65:   readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
+ 66:   queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
+ 67:   listSessions: () => ipcRenderer.invoke("list-sessions"),
+ 68:   getAppState: () => ipcRenderer.invoke("get-app-state"),
+ 69:   writeStateSnapshot: () => ipcRenderer.invoke("write-state-snapshot"),
+ 70:   setupWebviewLogger: (webviewId, slot, provider) =>
+ 71:     ipcRenderer.invoke("setup-webview-logger", webviewId, slot, provider),
+ 72:   generateCorrelationId: (prefix) =>
+ 73:     ipcRenderer.invoke("generate-correlation-id", prefix),
+ 74:   readConsoleLogs: (tail) => ipcRenderer.invoke("read-console-logs", tail),
+ 75:   readErrorLogs: (tail) => ipcRenderer.invoke("read-error-logs", tail),
+ 76:   getLogPaths: () => ipcRenderer.invoke("get-log-paths"),
+ 77:   onConsoleLogForward: (callback) =>
+ 78:     ipcRenderer.on("console-log-forward", (event, data) => callback(data)),
+ 79:   whisperLoad: (params) => ipcRenderer.invoke("whisper-load", params),
+ 80:   whisperSave: (params) => ipcRenderer.invoke("whisper-save", params),
+ 81:   capturePage: (type, region) =>
+ 82:     ipcRenderer.invoke("capture-page", type, region),
+ 83:   screenshotCapture: (options) =>
+ 84:     ipcRenderer.invoke("screenshot-capture", options),
+ 85:   catboxUpload: (payload) => ipcRenderer.invoke("catbox-upload", payload),
+ 86:   uguuUpload: (payload) => ipcRenderer.invoke("uguu-upload", payload),
+ 87:   googledriveStartAuth: () => ipcRenderer.invoke("googledrive-start-auth"),
+ 88:   googledriveExchangeCode: (code) =>
+ 89:     ipcRenderer.invoke("googledrive-exchange-code", code),
+ 90:   googledriveUpload: (payload) =>
+ 91:     ipcRenderer.invoke("googledrive-upload", payload),
+ 92:   googledriveDisconnect: () => ipcRenderer.invoke("googledrive-disconnect"),
+ 93:   windowMinimize: () => ipcRenderer.send("window-minimize"),
+ 94:   windowToggleFullscreen: () => ipcRenderer.send("window-toggle-fullscreen"),
+ 95:   windowClose: () => ipcRenderer.send("window-close"),
+ 96:   windowMinimizeToTray: () => ipcRenderer.send("window-minimize-to-tray"),
+ 97:   appRestart: () => ipcRenderer.invoke("app-restart"),
+ 98:   openTerminal: (path) => ipcRenderer.invoke("open-terminal", path),
+ 99:   shellOpenPath: (path) => ipcRenderer.invoke("shell-open-path", path),
+100:   deviceAction: (action, payload) =>
+101:     ipcRenderer.invoke("device-action", action, payload),
+102:   generateTree: (basePath, options) =>
+103:     ipcRenderer.invoke("generate-tree", basePath, options),
+104:   // OpenCode Config API
+105:   loadOpencodeConfig: () => ipcRenderer.invoke("load-opencode-config"),
+106:   saveOpencodeConfig: (config) => ipcRenderer.invoke("save-opencode-config", config),
+107:   opcAddRecentFolder: (path, name) => ipcRenderer.invoke("opencode-add-recent-folder", path, name),
+108:   opcRemoveRecentFolder: (path) => ipcRenderer.invoke("opencode-remove-recent-folder", path),
+109:   opcAddBinary: (path, version) => ipcRenderer.invoke("opencode-add-binary", path, version),
+110:   opcRemoveBinary: (path) => ipcRenderer.invoke("opencode-remove-binary", path),
+111:   opcUpdatePreferences: (updates) => ipcRenderer.invoke("opencode-update-preferences", updates),
+112:   opcRecordWorkspaceLaunch: (folderPath, binaryPath) => ipcRenderer.invoke("opencode-record-workspace-launch", folderPath, binaryPath),
+113: 
+114:   // OpenCode Server API
+115:   opencodeStart: (options) => ipcRenderer.invoke("opencode-start", options),
+116:   opencodeStop: () => ipcRenderer.invoke("opencode-stop"),
+117:   opencodeStatus: () => ipcRenderer.invoke("opencode-status"),
+118: 
+119:   // OpenCode SSE Server
+120:   opencodeSSEStart: (config) => ipcRenderer.invoke("opencode-sse-start", config),
+121:   opencodeSSEStop: () => ipcRenderer.invoke("opencode-sse-stop"),
+122:   opencodeSSEStatus: () => ipcRenderer.invoke("opencode-sse-status"),
+123:   opencodeSSESession: () => ipcRenderer.invoke("opencode-sse-session"),
+124:   opencodeSSEStartSession: () => ipcRenderer.invoke("opencode-sse-start-session"),
+125:   opencodeSSEEndSession: () => ipcRenderer.invoke("opencode-sse-end-session"),
+126:   opencodeSSEConnect: () => ipcRenderer.invoke("opencode-sse-connect"),
+127:   opencodeSSEDisconnect: () => ipcRenderer.invoke("opencode-sse-disconnect"),
+128:   
+129:   // Legacy assistant aliases (opencode'a yönlendirilir)
+130:   assistantConnect: (provider, options) =>
+131:     ipcRenderer.invoke("opencode-start", options),
+132:   assistantDisconnect: () => ipcRenderer.invoke("opencode-stop"),
+133:   assistantStatus: () => ipcRenderer.invoke("opencode-status"),
+134:   assistantGetConfig: (providerId) =>
+135:     ipcRenderer.invoke("get-provider-config", providerId),
+136:   onAssistantDisconnected: (callback) =>
+137:     ipcRenderer.on("assistant-disconnected", (event, data) => callback(data)),
+138:   
+139:   // OpenCode CLI Integration (Agent & Model Lists)
+140:   opcListModels: () => ipcRenderer.invoke("opc-list-models"),
+141:   opcListAgents: () => ipcRenderer.invoke("opc-list-agents"),
+142:   
+143:   // OpenCode Agent/Model Preference Persistence
+144:   opcGetAgentModelPreference: (folderPath) => ipcRenderer.invoke("opc-get-agent-model-preference", folderPath),
+145:   opcSaveAgentModelPreference: (preference, folderPath) => ipcRenderer.invoke("opc-save-agent-model-preference", preference, folderPath),
+146:   opcSaveAgentPreference: (agent, folderPath) => ipcRenderer.invoke("opc-save-agent-preference", agent, folderPath),
+147:   opcSaveModelPreference: (providerId, modelId, folderPath) => ipcRenderer.invoke("opc-save-model-preference", providerId, modelId, folderPath),
+148:   
+149:   // OpenCode Filesystem (Directory Browser)
+150:   opcOpenFolderDialog: (options) => ipcRenderer.invoke("opc-open-folder-dialog", options),
+151:   opcOpenFileDialog: (options) => ipcRenderer.invoke("opc-open-file-dialog", options),
+152:   opcListFilesystem: (path, options) => ipcRenderer.invoke("opc-list-filesystem", path, options),
+153:   opcValidatePath: (path) => ipcRenderer.invoke("opc-validate-path", path),
+154:   opcGetHomePath: () => ipcRenderer.invoke("opc-get-home-path"),
+155:   opcJoinPath: (...segments) => ipcRenderer.invoke("opc-join-path", ...segments),
+156:   opcPathInfo: (path) => ipcRenderer.invoke("opc-path-info", path),
+157: });
+158: 
+159: try {
+160:   const isMainFrame =
+161:     !window.location.href.startsWith("http") ||
+162:     window.location.hostname.includes("localhost");
+163: 
+164:   if (typeof window !== "undefined" && isMainFrame) {
+165:     function disableSpellcheck() {
+166:       try {
+167:         document.querySelectorAll("input, textarea").forEach((el) => {
+168:           el.setAttribute("spellcheck", "false");
+169:           el.autocapitalize = "off";
+170:           el.autocomplete = "off";
+171:         });
+172:       } catch (err) {
+173:       }
+174:     }
+175: 
+176:     function injectInitApp() {
+177:       try {
+178:         if (window.__hayalet_init_injected) return;
+179:         window.__hayalet_init_injected = true;
+180:         disableSpellcheck();
+181: 
+182:         const s = document.createElement("script");
+183:         s.type = "module";
+184:         s.src = "/js/app.js"; // Set the src directly
+185:         s.onload = () => {
+186:           console.log("[Hayalet-Preload] /js/app.js loaded via src.");
+187:         };
+188:         s.onerror = (err) => {
+189:           console.error(
+190:             "[Hayalet-Preload] Error loading /js/app.js via src:",
+191:             JSON.stringify(err),
+192:           );
+193:         };
+194: 
+195:         (document.head || document.documentElement).appendChild(s);
+196:       } catch (err) {
+197:         console.warn("injectInitApp failed", err);
+198:       }
+199:     }
+200: 
+201:     if (document.readyState === "loading") {
+202:       document.addEventListener("DOMContentLoaded", injectInitApp);
+203:     } else {
+204:       injectInitApp();
+205:     }
+206:   }
+207: } catch (e) {
+208: }
+
+================
+File: src/js/modules/traffic-manager.ts
+================
+  1: /**
+  2:  * TrafficManager - Webview traffic gösterge takibi (Orchestrator)
+  3:  * 
+  4:  * Alt modüller:
+  5:  * - traffic/loading-tracker.js: Sayfa yükleme durumu
+  6:  * - traffic/thinking-tracker.js: AI thinking durumu
+  7:  * - traffic/send-tracker.js: Send button durumu
+  8:  * - traffic/probe-script-builder.js: Probe script oluşturucu
+  9:  * - traffic/webview-events.js: Webview event yönetimi
+ 10:  */
+ 11: 
+ 12: import { LogManager } from "./log-manager.js";
+ 13: import { getErrorMessage } from "../types/index.js";
+ 14: import { AppState } from "./app-state.js";
+ 15: import { LoadingTracker } from "./traffic/loading-tracker.js";
+ 16: import { ThinkingTracker } from "./traffic/thinking-tracker.js";
+ 17: import { SendTracker } from "./traffic/send-tracker.js";
+ 18: import { buildProbeScript } from "./traffic/probe-script-builder.js";
+ 19: import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } from "./traffic/webview-events.js";
+ 20: import { isSlotUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
+ 21: import { INTERVALS, DELAYS } from "../constants/index.js";
+ 22: 
+ 23: // ============================================
+ 24: // ============================================
+ 25: const TIMING_CONFIG = {
+ 26:   pollIntervalMs: 2000,
+ 27:   loading: {
+ 28:     maxWaitForScrollMs: 15000,
+ 29:     autoScrollIntervalMs: 1000,
+ 30:     noScrollChangeTimeoutMs: 2000,
+ 31:   },
+ 32:   thinking: {
+ 33:     minHoldMs: 4000,
+ 34:     stopButtonDetectionTimeoutMs: 2000,
+ 35:   },
+ 36: };
+ 37: 
+ 38: const STATUS_COLORS = {
+ 39:   busy: "#e74c3c",
+ 40:   idle: "#2ecc71",
+ 41: };
+ 42: 
+ 43: const defaultStatus = () => ({
+ 44:   loading: "idle",
+ 45:   thinking: "idle",
+ 46:   send: "idle",
+ 47: });
+ 48: 
+ 49: const defaultState = () => ({
+ 50:   status: defaultStatus(),
+ 51:   lastHref: "",
+ 52:   lastSendSeen: 0,
+ 53:   loadingActive: false,
+ 54:   loadingStartTime: 0,
+ 55:   loadingScrollAppeared: false,
+ 56:   lastScrollChange: 0,
+ 57:   lastAutoScrollAt: 0,
+ 58:   loadingJustEnded: false,
+ 59:   loadingEndedAt: 0,
+ 60:   stopButtonLastSeen: 0,
+ 61:   stopButtonDisappearedAt: 0,
+ 62:   thinkingJustEnded: false,
+ 63:   thinkingEndedAt: 0,
+ 64:   polling: false,
+ 65:   readyState: "loading",
+ 66:   sendState: "not-found",
+ 67:   thinkingState: "idle",
+ 68: });
+ 69: 
+ 70: // ============================================
+ 71: // ============================================
+ 72: class TrafficManagerClass {
+ 73:   indicators: Record<string, any>;
+ 74:   state: Record<string, any>;
+ 75:   listeners: ((...args: any[]) => void)[];
+ 76:   webviews: Record<string, any>;
+ 77:   pollTimer: ReturnType<typeof setInterval> | null;
+ 78:   _runners: Record<string, any>;
+ 79:   _skipNextLoading: Record<string, boolean>;
+ 80:   loadingTracker: LoadingTracker;
+ 81:   thinkingTracker: ThinkingTracker;
+ 82:   sendTracker: SendTracker;
+ 83: 
+ 84:   constructor() {
+ 85:     this.indicators = { ai0: {}, ai1: {}, ai2: {} };
+ 86:     this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState() };
+ 87:     this.listeners = [];
+ 88:     this.webviews = {};
+ 89:     this.pollTimer = null;
+ 90:     this._runners = {};
+ 91:     this._skipNextLoading = { ai0: false, ai1: false, ai2: false };
+ 92: 
+ 93:     this.loadingTracker = new LoadingTracker(TIMING_CONFIG);
+ 94:     this.thinkingTracker = new ThinkingTracker(TIMING_CONFIG);
+ 95:     this.sendTracker = new SendTracker(TIMING_CONFIG);
+ 96:   }
+ 97: 
+ 98:   /**
+ 99:    * Bir sonraki URL değişiminde loading tetiklemeyi atla
+100:    * Mesaj gönderiminde default page'den çıkışta kullanılır
+101:    * @param {string} provider - ai0, ai1, ai2
+102:    */
+103:   skipNextLoadingFor(provider: string) {
+104:     if (provider && Object.prototype.hasOwnProperty.call(this._skipNextLoading, provider)) {
+105:       this._skipNextLoading[provider] = true;
+106:       // 5 saniye sonra otomatik reset (güvenlik için)
+107:       setTimeout(() => {
+108:         this._skipNextLoading[provider] = false;
+109:       }, 5000);
+110:     }
+111:   }
+112: 
+113:   // ============================================
+114:   // ============================================
+115: 
+116:   /** @deprecated Use isSlotUrlExcluded from url-utils.ts directly */
+117:   isUrlExcluded(providerSlot: string, url: string) {
+118:     return isSlotUrlExcluded(providerSlot, url);
+119:   }
+120: 
+121:   // ============================================
+122:   // ============================================
+123: 
+124:   onUpdate(listener: (snapshot: { provider: string; state: unknown }) => void) {
+125:     if (typeof listener !== "function") return () => {};
+126:     this.listeners.push(listener);
+127:     return () => {
+128:       this.listeners = this.listeners.filter((l) => l !== listener);
+129:     };
+130:   }
+131: 
+132:   notifyListeners(provider: string) {
+133:     const snapshot = { provider, state: this.state[provider] };
+134:     this.listeners.forEach((listener) => {
+135:       try {
+136:         listener(snapshot);
+137:       } catch (_err) {
+138:       }
+139:     });
+140:   }
+141: 
+142:   // ============================================
+143:   // ============================================
+144: 
+145:   init() {
+146:     this.cacheIndicators();
+147:     this.refreshIndicators("ai0");
+148:     this.refreshIndicators("ai1");
+149:     this.refreshIndicators("ai2");
+150:   }
+151: 
+152:   cacheIndicators() {
+153:     // Asistan (AI0) göstergeleri
+154:     this.indicators.ai0.loading = document.getElementById("ai0-loading-indicator");
+155:     this.indicators.ai0.send = document.getElementById("ai0-send-indicator");
+156:     this.indicators.ai0.thinking = document.getElementById("ai0-thinking-indicator");
+157:     // AI1 göstergeleri
+158:     this.indicators.ai1.loading = document.getElementById("ai1-loading-indicator");
+159:     this.indicators.ai1.send = document.getElementById("ai1-send-indicator");
+160:     this.indicators.ai1.thinking = document.getElementById("ai1-thinking-indicator");
+161:     // AI2 göstergeleri
+162:     this.indicators.ai2.loading = document.getElementById("ai2-loading-indicator");
+163:     this.indicators.ai2.send = document.getElementById("ai2-send-indicator");
+164:     this.indicators.ai2.thinking = document.getElementById("ai2-thinking-indicator");
+165:   }
+166: 
+167:   // ============================================
+168:   // ============================================
+169: 
+170:   attachWebview(provider: string, webviewEl: HTMLElement & { isDestroyed?: () => boolean; getWebContentsId?: () => number; isLoading?: () => boolean; getWebContents?: () => { isLoading?: () => boolean }; executeJavaScript?: (script: string) => Promise<unknown> }) {
+171:     if (!provider || !webviewEl) return;
+172:     this.webviews[provider] = webviewEl;
+173: 
+174:     if (hasHandlers(provider)) return;
+175: 
+176:     attachWebviewEvents(provider, webviewEl as any, {
+177:       onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
+178:       onDomReady: () => {},
+179:       onFailLoad: (prov: string) => this.setAllUnreachable(prov),
+180:       buildProbeScript,
+181:     });
+182:   }
+183: 
+184:   detachWebview(provider: string) {
+185:     if (!provider) return;
+186:     detachWebviewEvents(provider);
+187:     this.setAllUnreachable(provider);
+188:   }
+189: 
+190:   _handleNavigation(provider: string, href: string) {
+191:     if (this.isUrlExcluded(provider, href)) return;
+192: 
+193:     const viewState = this.state[provider] || defaultState();
+194: 
+195:     if (href && href !== viewState.lastHref) {
+196:       const previousHref = viewState.lastHref;
+197:       viewState.lastHref = href;
+198:       
+199:       // Default page'den conversation page'e geçiş kontrolü
+200:       const providerId = AppState.getProviderIdForSlot(provider) || "";
+201:       const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
+202:       const isOnDefaultPage = isDefaultPage(href, providerId);
+203:       
+204:       // Skip flag aktifse (mesaj gönderiminden kaynaklı URL değişimi)
+205:       if (this._skipNextLoading[provider] && wasOnDefaultPage && !isOnDefaultPage) {
+206:         this._skipNextLoading[provider] = false;
+207:         this.state[provider] = viewState;
+208:         // Loading başlatma, sadece thinking tracker takip edecek
+209:         return;
+210:       }
+211:       
+212:       this.loadingTracker.startLoading(viewState, Date.now());
+213:       this.state[provider] = viewState;
+214:       this.setIndicator(provider, "loading", "busy");
+215:     }
+216:   }
+217: 
+218:   // ============================================
+219:   // ============================================
+220: 
+221:   async start(provider: string) {
+222:     if (!provider) return;
+223:     if (this._runners[provider]) return;
+224:     this._runners[provider] = {
+225:       startedAt: Date.now(),
+226:       backoffMs: TIMING_CONFIG.pollIntervalMs,
+227:       nextProbeAt: Date.now(),
+228:       probing: false, // Race condition fix: probe lock flag
+229:     };
+230:     this.startPolling();
+231:     this.setIndicator(provider, "loading", this.state[provider]?.status?.loading || "busy");
+232:   }
+233: 
+234:   async stop(provider: string, { force: _force = false } = {}) {
+235:     if (!provider) return;
+236:     if (!this._runners[provider]) return;
+237:     try {
+238:       delete this._runners[provider];
+239:       this.setAllUnreachable(provider);
+240:     } catch (err) {
+241:       LogManager.addEvent("traffic", "error", `TrafficManager.stop error for ${provider}: ${getErrorMessage(err)}`);
+242:     }
+243:     if (Object.keys(this._runners).length === 0 && this.pollTimer) {
+244:       try { clearTimeout(this.pollTimer); } catch (_) { void 0; }
+245:       this.pollTimer = null;
+246:     }
+247:   }
+248: 
+249:   // ============================================
+250:   // ============================================
+251: 
+252:   startPolling() {
+253:     if (this.pollTimer) return;
+254:     const loop = async () => {
+255:       try {
+256:         const now = Date.now();
+257:         const providers = Object.keys(this.webviews || {});
+258:         for (const provider of providers) {
+259:           const runner = this._runners[provider];
+260:           if (!runner) continue;
+261:           if (now < (runner.nextProbeAt || 0)) continue;
+262:           // Race condition fix: Skip if already probing this provider
+263:           if (runner.probing) continue;
+264:           
+265:           try {
+266:             runner.probing = true; // Lock
+267:             const ok = await this.probe(provider);
+268:             if (ok) {
+269:               runner.backoffMs = TIMING_CONFIG.pollIntervalMs;
+270:             } else {
+271:               runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, INTERVALS.BACKOFF_MAX);
+272:             }
+273:             runner.nextProbeAt = Date.now() + (runner.backoffMs || TIMING_CONFIG.pollIntervalMs);
+274:           } catch (_) {
+275:             runner.backoffMs = Math.min((runner.backoffMs || TIMING_CONFIG.pollIntervalMs) * 2, INTERVALS.BACKOFF_MAX);
+276:             runner.nextProbeAt = Date.now() + (runner.backoffMs || TIMING_CONFIG.pollIntervalMs);
+277:           } finally {
+278:             runner.probing = false; // Unlock
+279:           }
+280:         }
+281:       } catch (_err) {
+282:       } finally {
+283:         this.pollTimer = setTimeout(loop, Math.max(250, Math.floor(TIMING_CONFIG.pollIntervalMs / 4)));
+284:       }
+285:     };
+286:     loop();
+287:   }
+288: 
+289:   async probe(provider: string) {
+290:     if (!provider) return;
+291:     const webview = this.webviews[provider];
+292:     if (!webview || webview.isDestroyed?.()) return;
+293:     
+294:     // FIX: Webview'ın DOM'a attach olup olmadığını kontrol et
+295:     // getWebContentsId yoksa veya hata veriyorsa webview henüz hazır değil
+296:     try {
+297:       if (typeof webview.getWebContentsId !== "function") {
+298:         return false;
+299:       }
+300:       // getWebContentsId çağrısı webview hazır değilse hata fırlatır
+301:       webview.getWebContentsId();
+302:     } catch (_) {
+303:       // Webview henüz DOM'a attach olmamış, sessizce geç
+304:       return false;
+305:     }
+306:     
+307:     const viewState = this.state[provider] || defaultState();
+308:     if (viewState.polling) return;
+309:     viewState.polling = true;
+310:     this.state[provider] = viewState;
+311:     try {
+312:       const script = buildProbeScript(provider);
+313:       const isLoading = typeof webview.isLoading === "function"
+314:         ? webview.isLoading()
+315:         : typeof webview.getWebContents === "function"
+316:           ? !!webview.getWebContents()?.isLoading?.()
+317:           : false;
+318:       
+319:       // isLoading true ise executeJavaScript çağırma
+320:       if (isLoading) {
+321:         return false;
+322:       }
+323:       
+324:       const result = await webview.executeJavaScript(script, true);
+325:       const ok = await this.handleProbe(provider, result, isLoading);
+326:       return !!ok;
+327:     } catch (_) {
+328:       this.setAllUnreachable(provider);
+329:       return false;
+330:     } finally {
+331:       viewState.polling = false;
+332:       this.state[provider] = viewState;
+333:     }
+334:   }
+335: 
+336:   // ============================================
+337:   // ============================================
+338: 
+339:   async handleProbe(provider: string, data: { error?: string; href?: string; sendState?: string; thinkingState?: string; thinkingText?: string; messageCount?: number } | null, isStillLoading = false) {
+340:     if (!this.state[provider]) {
+341:       this.state[provider] = defaultState();
+342:     }
+343:     let viewState = this.state[provider];
+344: 
+345:     if (!data || data.error) {
+346:       LogManager.addEvent("traffic", "warn", `probe data error for ${provider}: ${String(data?.error || "no-data")}`);
+347:       this.setAllUnreachable(provider);
+348:       return false;
+349:     }
+350: 
+351:     if (isStillLoading) {
+352:       return;
+353:     }
+354: 
+355:     const currentHref = normalizeHref(data.href);
+356: 
+357:     if (this.isUrlExcluded(provider, currentHref)) {
+358:       this.setIndicator(provider, "loading", "idle");
+359:       this.setIndicator(provider, "thinking", "idle");
+360:       this.setIndicator(provider, "send", "idle");
+361:       return false;
+362:     }
+363: 
+364:     const now = Date.now();
+365:     const webview = this.webviews[provider];
+366: 
+367:     const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
+368:     viewState = loadingResult.newState;
+369:     this.setIndicator(provider, "loading", loadingResult.indicator);
+370:     if (loadingResult.event) {
+371:       this.logEvent(loadingResult.event);
+372:       if (loadingResult.event.type === "loading-ended") {
+373:         setTimeout(() => {
+374:           try {
+375:             const st = this.state[provider] || defaultState();
+376:             this.loadingTracker.clearJustEnded(st);
+377:             this.state[provider] = st;
+378:           } catch (_) { void 0; }
+379:         }, DELAYS.STATE_CLEAR);
+380:       }
+381:     }
+382: 
+383:     const thinkingResult = this.thinkingTracker.handleProbe(provider, viewState, data, now);
+384:     viewState = thinkingResult.newState;
+385:     this.setIndicator(provider, "thinking", thinkingResult.indicator);
+386:     if (thinkingResult.event) {
+387:       this.logEvent(thinkingResult.event);
+388:       if (thinkingResult.event.type === "thinking-ended") {
+389:         setTimeout(() => {
+390:           try {
+391:             const st = this.state[provider] || defaultState();
+392:             this.thinkingTracker.clearJustEnded(st);
+393:             this.state[provider] = st;
+394:           } catch (_) { void 0; }
+395:         }, DELAYS.STATE_CLEAR);
+396:       }
+397:     }
+398: 
+399:     const sendResult = this.sendTracker.handleProbe(provider, viewState, data, now);
+400:     viewState = sendResult.newState;
+401:     this.setIndicator(provider, "send", sendResult.indicator);
+402: 
+403:     this.state[provider] = viewState;
+404:     return true;
+405:   }
+406: 
+407:   logEvent(event: { message: string }) {
+408:     try {
+409:       LogManager.addEvent("traffic", "info", event.message);
+410:     } catch (_) { /* noop */ }
+411:   }
+412: 
+413:   // ============================================
+414:   // ============================================
+415: 
+416:   refreshIndicators(provider: string) {
+417:     if (!provider) return;
+418:     const st = this.state[provider] || defaultState();
+419:     this.setIndicator(provider, "loading", st.status.loading);
+420:     this.setIndicator(provider, "thinking", st.status.thinking);
+421:     this.setIndicator(provider, "send", st.status.send);
+422:   }
+423: 
+424:   setIndicator(provider: string, kind: string, status: string) {
+425:     if (!provider) return;
+426:     if (!this.state[provider]) {
+427:       this.state[provider] = defaultState();
+428:     }
+429:     const viewState = this.state[provider];
+430:     viewState.status = { ...viewState.status, [kind]: status };
+431:     this.state[provider] = viewState;
+432:     this.updateDerivedStates(provider);
+433: 
+434:     const dot = this.indicators[provider]?.[kind];
+435:     if (dot) {
+436:       const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.busy;
+437:       dot.style.display = "inline-block";
+438:       dot.style.backgroundColor = color;
+439:       
+440:       // Loading ve thinking için sadece busy (kırmızı) durumunda pulse animasyonu
+441:       if (kind === "loading" || kind === "thinking") {
+442:         if (status === "busy") {
+443:           dot.classList.add("is-busy");
+444:         } else {
+445:           dot.classList.remove("is-busy");
+446:         }
+447:       }
+448:     }
+449:     
+450:     // Thinking durumunda cluster'a glow efekti ekle/kaldır
+451:     if (kind === "thinking") {
+452:       this._updateClusterThinkingGlow(provider, status);
+453:     }
+454:     
+455:     this.notifyListeners(provider);
+456: 
+457:   }
+458: 
+459:   /**
+460:    * Cluster'a thinking glow efekti ekle/kaldır
+461:    * @param {string} provider - ai0, ai1, ai2
+462:    * @param {string} status - busy veya idle
+463:    */
+464:   _updateClusterThinkingGlow(provider: string, status: string) {
+465:     const cluster = document.getElementById(`cluster-${provider}`);
+466:     if (!cluster) return;
+467:     
+468:     if (status === "busy") {
+469:       cluster.classList.add("thinking-active");
+470:     } else {
+471:       cluster.classList.remove("thinking-active");
+472:     }
+473:   }
+474: 
+475:   setAllUnreachable(provider: string) {
+476:     this.setIndicator(provider, "loading", "idle");
+477:     this.setIndicator(provider, "thinking", "idle");
+478:     this.setIndicator(provider, "send", "busy");
+479:     const st = this.state[provider] || defaultState();
+480:     st.loadingActive = false;
+481:     this.state[provider] = st;
+482:   }
+483: 
+484:   updateDerivedStates(provider: string) {
+485:     const st = this.state[provider] || defaultState();
+486:     st.readyState = st.status.loading === "idle" ? "ready" : "loading";
+487:     st.sendState = st.status.send === "idle" ? "enabled" : st.status.send === "busy" ? "disabled" : "not-found";
+488:     st.thinkingState = st.status.thinking === "busy" ? "thinking" : "idle";
+489:     this.state[provider] = st;
+490:   }
+491: 
+492:   // ============================================
+493:   // ============================================
+494: 
+495:   waitForSendEnabled(provider: string, timeout = 4000, interval = 100) {
+496:     return this.sendTracker.waitForSendEnabled(
+497:       () => this.state[provider] || defaultState(),
+498:       timeout,
+499:       interval
+500:     );
+501:   }
+502: 
+503:   waitForThinkingCoolDown(provider: string, coolDownMs = 5000, timeoutMs = 45000) {
+504:     const deadline = Date.now() + timeoutMs;
+505:     const waitIdle = () =>
+506:       new Promise((resolve) => {
+507:         const tick = () => {
+508:           const st = this.state[provider] || defaultState();
+509:           if (st.status.thinking !== "busy") {
+510:             resolve(true);
+511:             return;
+512:           }
+513:           if (Date.now() > deadline) {
+514:             resolve(false);
+515:             return;
+516:           }
+517:           setTimeout(tick, INTERVALS.THINKING_TICK);
+518:         };
+519:         tick();
+520:       });
+521:     return waitIdle().then(async () => {
+522:       if (coolDownMs > 0) {
+523:         await new Promise((r) => setTimeout(r, coolDownMs));
+524:       }
+525:       return true;
+526:     });
+527:   }
+528: 
+529:   // ============================================
+530:   // ============================================
+531: 
+532:   signal(channel: string, status: string, message = "") {
+533:     if (status === "error") {
+534:       LogManager.addEvent("traffic", "error", `[${channel}] ${message || status}`);
+535:     }
+536:     this.listeners.forEach((listener) => {
+537:       try {
+538:         listener({ channel, status, message });
+539:       } catch (_err) {
+540:       }
+541:     });
+542:   }
+543: }
+544: 
+545: export const TrafficManager = new TrafficManagerClass();
+
+================
+File: src/js/modules/core-engine.ts
+================
+  1: import { SettingsManager } from "./settings-manager.js";
+  2: import { getErrorMessage } from "../types/index.js";
+  3: import { WebviewManager } from "./webview-manager.js";
+  4: import { LogManager } from "./log-manager.js";
+  5: import { AppState } from "./app-state.js";
+  6: import { ProtocolHandler } from "./protocol-handler.js";
+  7: import { RelayManager } from "./relay-manager.js";
+  8: import { CommandManager } from "./command-manager.js";
+  9: import { CommandExecutor } from "./command-executor.js";
+ 10: import { WhisperManager } from "./whisper-manager.js";
+ 11: import { FileManager } from "./file-manager.js";
+ 12: import { TrafficManager } from "./traffic-manager.js";
+ 13: import { ServerCommands } from "./server-commands.js";
+ 14: import { SlotController, SlotEvent } from "./slot-controller.js";
+ 15: import { ErrorBoundary } from "./error-boundary.js";
+ 16: import { getFilename, generateUniqueId, TIMEOUTS, decodeBase64 } from "../constants/index.js";
+ 17: import type { AppSettings } from "../types/settings.js";
+ 18: 
+ 19: // ============================================================================
+ 20: // Types
+ 21: // ============================================================================
+ 22: 
+ 23: /** Bağlantı sonucu */
+ 24: interface ConnectionResult {
+ 25:   success: boolean;
+ 26:   message?: string;
+ 27:   correlationId?: string;
+ 28: }
+ 29: 
+ 30: /** Batch gönderim parametreleri */
+ 31: interface SendBatchParams {
+ 32:   targets?: string[];
+ 33:   text?: string;
+ 34:   page?: string;
+ 35:   archiveFolders?: Record<string, string>;
+ 36:   attachments?: (string | AttachmentInput)[];
+ 37:   jobIds?: Record<string, string>;
+ 38: }
+ 39: 
+ 40: /** Attachment girişi */
+ 41: interface AttachmentInput {
+ 42:   name?: string;
+ 43:   path?: string;
+ 44:   commandPath?: string;
+ 45: }
+ 46: 
+ 47: /** Protokol gönderim parametreleri */
+ 48: interface SendProtocolParams {
+ 49:   room?: string;
+ 50:   scenario?: string;
+ 51:   targets?: string[];
+ 52:   context?: Record<string, unknown>;
+ 53:   mode?: string | null;
+ 54: }
+ 55: 
+ 56: /** Whisper kayıt bilgisi */
+ 57: interface WhisperRecord {
+ 58:   text?: string;
+ 59:   id?: string;
+ 60:   when?: unknown;
+ 61: }
+ 62: 
+ 63: /** Caught command payload */
+ 64: interface CaughtCommandPayload {
+ 65:   provider?: string;
+ 66:   args?: string;
+ 67:   source?: string;
+ 68:   webUrl?: string;
+ 69:   target?: string;
+ 70: }
+ 71: 
+ 72: class CoreEngineClass {
+ 73:   settings: AppSettings | null;
+ 74:   initialized: boolean;
+ 75:   relay: typeof RelayManager | null;
+ 76:   _settingsSub: (() => void) | null;
+ 77:   _previousSettings: AppSettings | null;
+ 78:   _cleanupInterval: ReturnType<typeof setInterval> | null;
+ 79:   // Memory leak fix: Event listener unsubscribe references
+ 80:   _commandSentUnsub: (() => void) | null;
+ 81:   _commandFailedUnsub: (() => void) | null;
+ 82:   _slotTrafficStartedUnsub: (() => void) | null;
+ 83:   _slotTrafficStoppedUnsub: (() => void) | null;
+ 84: 
+ 85:   constructor() {
+ 86:     this.settings = null;
+ 87:     this.initialized = false;
+ 88:     this.relay = null;
+ 89:     this._settingsSub = null;
+ 90:     this._previousSettings = null;
+ 91:     this._cleanupInterval = null;
+ 92:     // Memory leak fix: Initialize unsubscribe references
+ 93:     this._commandSentUnsub = null;
+ 94:     this._commandFailedUnsub = null;
+ 95:     this._slotTrafficStartedUnsub = null;
+ 96:     this._slotTrafficStoppedUnsub = null;
+ 97:   }
+ 98: 
+ 99:   async init(): Promise<AppSettings | null> {
+100:     if (this.initialized) {
+101:       return this.settings;
+102:     }
+103:     
+104:     // Initialize error boundary first (catches all subsequent errors)
+105:     ErrorBoundary.init();
+106:     
+107:     this.settings = await SettingsManager.load();
+108:     WebviewManager.setSettings(this.settings as Record<string, unknown>);
+109:     await FileManager.ensureDirs("all");
+110:     AppState.init("ai1");
+111:     LogManager.init();
+112:     await CommandManager.init();
+113:     
+114:     // Inactive webview cleanup interval
+115:     this._cleanupInterval = setInterval(() => {
+116:       try {
+117:         WebviewManager.cleanupInactiveWebviews();
+118:       } catch (err) {
+119:         LogManager.addEvent("core", "warning", `Cleanup error: ${getErrorMessage(err)}`);
+120:       }
+121:     }, TIMEOUTS.CLEANUP_INTERVAL);
+122:     CommandExecutor.init(this);
+123:     CommandManager.setExecutor((job: unknown) => CommandExecutor.executeJob(job as never));
+124:     // Memory leak fix: Store unsubscribe references
+125:     this._commandSentUnsub = CommandManager.on("sent", ({ job }: { job: unknown }) =>
+126:       CommandExecutor.handleJobSuccess(job as never),
+127:     );
+128:     this._commandFailedUnsub = CommandManager.on("failed", ({ job, error }: { job: unknown; error: unknown }) =>
+129:       CommandExecutor.handleJobFailure(job as never, error),
+130:     );
+131:     try {
+132:       RelayManager.init(this);
+133:       this.relay = RelayManager;
+134:     } catch (e) {
+135:       LogManager.addEvent(
+136:         "core",
+137:         "warning",
+138:         `RelayManager init failed: ${(e instanceof Error ? e.message : String(e)) || String(e)}`,
+139:       );
+140:     }
+141: 
+142:     await WhisperManager.init({ settings: this.settings as Record<string, unknown> | undefined });
+143:     WhisperManager.setSender((slot: string, text: string) => {
+144:       void this.enqueueWhisperJob(slot, { text }, text);
+145:     });
+146:     WebviewManager.initSyncer(this);
+147:     
+148:     await SlotController.init();
+149:     
+150:     // Memory leak fix: Store unsubscribe references for SlotController events
+151:     this._slotTrafficStartedUnsub = SlotController.on(SlotEvent.TRAFFIC_STARTED, ({ slot }: { slot?: string }) => {
+152:       if (!slot) return;
+153:       const webview = SlotController.getWebview(slot);
+154:       if (webview) {
+155:         TrafficManager.attachWebview(slot, webview);
+156:         TrafficManager.start(slot);
+157:       }
+158:     });
+159:     
+160:     this._slotTrafficStoppedUnsub = SlotController.on(SlotEvent.TRAFFIC_STOPPED, ({ slot }: { slot?: string }) => {
+161:       if (!slot) return;
+162:       TrafficManager.stop(slot);
+163:     });
+164:     
+165:     this.initialized = true;
+166: 
+167:     this._previousSettings = JSON.parse(JSON.stringify(this.settings));
+168: 
+169:     try {
+170:       this._settingsSub = SettingsManager.subscribe((payload) => {
+171:         const { settings } = payload;
+172:         if (!settings) return;
+173: 
+174:         this.useSettings(settings as AppSettings);
+175:         this._previousSettings = JSON.parse(JSON.stringify(settings)) as AppSettings;
+176:       });
+177:     } catch (err) {
+178:       LogManager.addEvent(
+179:         "core",
+180:         "warning",
+181:         `SettingsManager subscribe error: ${err instanceof Error ? err.message : String(err)}`,
+182:       );
+183:     }
+184: 
+185:     return this.settings;
+186:   }
+187: 
+188:   /**
+189:    * Set connection state for a provider slot
+190:    * Delegates to SlotController for coordinated state management
+191:    */
+192:   async setConnection(
+193:     provider: string,
+194:     connected: boolean,
+195:     opts: { force?: boolean } = {}
+196:   ): Promise<ConnectionResult> {
+197:     if (!provider) return { success: false, message: "no-provider" };
+198: 
+199:     if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2") {
+200:       return { success: false, message: "invalid-provider" };
+201:     }
+202: 
+203:     const prev = SlotController.isConnected(provider);
+204:     const now = !!connected;
+205:     const force = !!opts.force;
+206: 
+207:     LogManager.addEvent(
+208:       "core",
+209:       "info",
+210:       `setConnection ${provider} => ${now} (force=${force}, prev=${prev})`,
+211:     );
+212: 
+213:     if (!force && prev === now) {
+214:       return { success: true, message: "no-change" };
+215:     }
+216: 
+217:     let result;
+218:     if (now) {
+219:       result = await SlotController.connect(provider, { force });
+220:     } else {
+221:       result = await SlotController.disconnect(provider, { force });
+222:     }
+223: 
+224:     return result;
+225:   }
+226: 
+227:   async ensureReady(): Promise<void> {
+228:     if (!this.initialized) {
+229:       await this.init();
+230:     }
+231:   }
+232: 
+233:   useSettings(settings: AppSettings | null): AppSettings | null {
+234:     if (settings) {
+235:       this.settings = settings;
+236:       WebviewManager.setSettings(this.settings);
+237:     }
+238:     return this.settings;
+239:   }
+240: 
+241:   /**
+242:    * Batch mesaj gönderimi
+243:    */
+244:   async sendBatch({
+245:     targets = [],
+246:     text = "",
+247:     page = "generic",
+248:     archiveFolders = {},
+249:     attachments = [],
+250:     jobIds = {},
+251:   }: SendBatchParams = {}): Promise<{ success: boolean; message?: string }> {
+252:     await this.ensureReady();
+253:     const list = Array.isArray(targets)
+254:       ? targets.filter(Boolean)
+255:       : [targets].filter(Boolean);
+256:     if (!list.length) return { success: false, message: "Hedef yok" };
+257: 
+258:     const attachmentItems = attachments.map((a: string | AttachmentInput) => {
+259:       const name =
+260:         typeof a === "string"
+261:           ? getFilename(a)
+262:           : a.name ||
+263:             getFilename(a.path || "") ||
+264:             getFilename(a.commandPath || "");
+265:       const path =
+266:         typeof a === "string" ? a : a.path || a.commandPath || a.name;
+267:       return { name, path };
+268:     });
+269:     const attachmentPaths = attachmentItems.map((a) => a.path).filter(Boolean);
+270:     const hasAttachments = attachmentPaths.length > 0;
+271:     /** @type {Array<any>} */
+272:     const jobs: unknown[] = [];
+273:     for (const provider of list) {
+274:       const jobId =
+275:         jobIds?.[provider] ||
+276:         generateUniqueId("cmd");
+277:       let staged: { staged: unknown[]; temp: string[]; commandDir: string } = { staged: [], temp: [], commandDir: "" };
+278:       if (hasAttachments) {
+279:         const stageResult = await FileManager.stageCommandFiles(jobId, attachmentPaths.filter((p): p is string => typeof p === "string"));
+280:         staged = stageResult;
+281:         LogManager.addEvent(
+282:           "command",
+283:           "info",
+284:           `Dosyalar komut için hazırlandı (${jobId})`,
+285:           {
+286:             jobId,
+287:             count: staged.staged?.length || 0,
+288:           },
+289:         );
+290:       }
+291:       const stagedEntries = ((staged && staged.staged) || []).map((s) => {
+292:         const item = s as { name?: string; renamedName?: string; originalName?: string; commandPath?: string };
+293:         return {
+294:           ...item,
+295:           name:
+296:             item.name ||
+297:             item.renamedName ||
+298:             item.originalName ||
+299:             getFilename(item.commandPath || ""),
+300:         };
+301:       });
+302:       jobs.push({
+303:         id: jobId,
+304:         provider,
+305:         message: text || "",
+306:         attachments: stagedEntries,
+307:         attachmentsMeta: { ...staged, staged: stagedEntries, temp: [] as string[] },
+308:         meta: {
+309:           targets: list,
+310:           page,
+311:           attachments: stagedEntries,
+312:           archiveFolders,
+313:         },
+314:       });
+315:     }
+316:     CommandManager.enqueue(jobs as never[]);
+317:     LogManager.addEvent(
+318:       "command",
+319:       "info",
+320:       `Komut kuyruğa alındı (${jobs.length} iş)`,
+321:       {
+322:         targets: list,
+323:         page,
+324:       },
+325:     );
+326:     this.setActiveTargets(list);
+327:     return { success: true };
+328:   }
+329: 
+330:   async sendMessage(p: { provider?: string; text?: string; page?: string } | null): Promise<{ success: boolean; message?: string }> {
+331:     const { provider = "ai1", text = "", page = "generic" } = p || {};
+332:     return this.sendBatch({
+333:       targets: [provider],
+334:       text,
+335:       page,
+336:     });
+337:   }
+338: 
+339:   async sendToTargets(p: { targets?: string[]; text?: string; page?: string } | null): Promise<{ success: boolean; message?: string }> {
+340:     return this.sendBatch({
+341:       targets: p?.targets,
+342:       text: p?.text || "",
+343:       page: p?.page || "generic",
+344:     });
+345:   }
+346: 
+347:   async sendProtocol({
+348:     room = "",
+349:     scenario = "",
+350:     targets = [],
+351:     context = {},
+352:     mode = null,
+353:   }: SendProtocolParams = {}): Promise<{ success: boolean; message?: string }> {
+354:     await this.ensureReady();
+355:     /** @type {any} */
+356:     const payload = ProtocolHandler.buildPayload({
+357:       room,
+358:       scenario,
+359:       targets: /** @type {any} */ (targets),
+360:       context,
+361:     });
+362:     if (!payload) {
+363:       LogManager.addEvent(
+364:         "protocol",
+365:         "warning",
+366:         `Bilinmeyen protokol: ${room}:${scenario}`,
+367:       );
+368:       return { success: false, message: "Bilinmeyen protokol" };
+369:     }
+370:     /** @type {any[]} */
+371:     const targetList = (payload.targets || []).filter((t) =>
+372:       SlotController.isConnected(t),
+373:     );
+374:     if (!targetList.length) {
+375:       LogManager.addEvent(
+376:         "protocol",
+377:         "warning",
+378:         "Protokol gönderilemedi, bağlı AI yok",
+379:       );
+380:       return { success: false, message: "Bağlı hedef yok" };
+381:     }
+382: 
+383:     if (payload.protocolPath && window.electronAPI?.readFile) {
+384:       try {
+385:         const base64 = await window.electronAPI.readFile(payload.protocolPath);
+386:         if (base64) {
+387:           payload.message = decodeBase64(base64);
+388:           LogManager.addEvent(
+389:             "protocol",
+390:             "info",
+391:             `Protokol dosyası okundu: ${payload.protocolPath}`,
+392:           );
+393:         }
+394:       } catch (err) {
+395:         LogManager.addEvent(
+396:           "protocol",
+397:           "error",
+398:           `Protokol dosyası okunamadı: ${(err instanceof Error ? err.message : String(err)) || "unknown error"}`,
+399:         );
+400:       }
+401:     }
+402: 
+403:     const attachments = ((payload as any).attachments || []).map((att: any) => ({
+404:       name: att.name || getFilename(att.path || ""),
+405:       path: att.path || att,
+406:     }));
+407:     if (
+408:       room === "analyze" &&
+409:       scenario === "ai-ai" &&
+410:       mode === "aiRelaySequential"
+411:     ) {
+412:       try {
+413:         let orderedTargets = [...targetList];
+414:         const contextStarter =
+415:           context && typeof context === "object" && "starter" in context
+416:             ? context.starter
+417:             : null;
+418:         if (contextStarter && orderedTargets.includes(contextStarter as string)) {
+419:           orderedTargets = [
+420:             contextStarter as string,
+421:             ...orderedTargets.filter((t) => t !== contextStarter),
+422:           ];
+423:         }
+424: 
+425:         await this.relay?.startProtocolSession?.({
+426:           providers: orderedTargets,
+427:           protocolPayload: payload,
+428:           attachments,
+429:         });
+430:         LogManager.addEvent(
+431:           "protocol",
+432:           "info",
+433:           `Started sequential protocol session for ${orderedTargets.join(", ")}`,
+434:         );
+435:         return { success: true, message: "sequential-session-started" };
+436:       } catch (e) {
+437:         LogManager.addEvent(
+438:           "protocol",
+439:           "error",
+440:           `Failed to start sequential session: ${(e instanceof Error ? e.message : String(e)) || "unknown error"}`,
+441:         );
+442:       }
+443:     }
+444: 
+445:     const res = await this.sendBatch({
+446:       targets: /** @type {any[]} */ (targetList),
+447:       text: payload.message,
+448:       attachments,
+449:       page: `protocol-${room || "generic"}`,
+450:     });
+451:     try {
+452:       if (room === "analyze") {
+453:         if (scenario === "ai-ai") {
+454:           this.relay?.startSession({ providers: targetList });
+455:         }
+456:         if (scenario === "ai-ai-stop") {
+457:           this.relay?.stopProtocolSession?.();
+458:           this.relay?.stopSession?.();
+459:         }
+460:       }
+461:     } catch (e) {
+462:       LogManager.addEvent(
+463:         "relay",
+464:         "warning",
+465:         `Failed to apply relay action from protocol: ${(e instanceof Error ? e.message : String(e)) || "unknown error"}`,
+466:       );
+467:     }
+468:     if (res?.success) {
+469:       LogManager.addEvent(
+470:         "protocol",
+471:         "info",
+472:         `Protokol gönderildi: ${room}:${scenario} -> ${targetList.join(", ")}`,
+473:       );
+474:     } else {
+475:       LogManager.addEvent(
+476:         "protocol",
+477:         "error",
+478:         `Protokol hata: ${res?.message || "bilinmiyor"} (${room}:${scenario})`,
+479:       );
+480:     }
+481:     return res;
+482:   }
+483: 
+484:   async whisper(
+485:     op: string,
+486:     args?: { user?: string; text?: string; when?: unknown; id?: string }
+487:   ): Promise<unknown> {
+488:     switch (op) {
+489:       case "add":
+490:         return WhisperManager.WhisperManagerAdd(
+491:           args?.user,
+492:           args?.text || "",
+493:           args?.when,
+494:         );
+495:       case "remove":
+496:         return WhisperManager.WhisperManagerDelete(args?.user, args?.id || "");
+497:       case "list":
+498:         return WhisperManager.getRecords(args?.user);
+499:       case "done":
+500:         return WhisperManager.getDoneRecords(args?.user);
+501:       case "catch":
+502:         return WhisperManager.catch();
+503:       default:
+504:         return null;
+505:     }
+506:   }
+507: 
+508:   pauseWhispers(): void {
+509:     WhisperManager.pause?.();
+510:   }
+511: 
+512:   resumeWhispers(runCheck = false): void {
+513:     WhisperManager.resume?.(runCheck);
+514:   }
+515: 
+516:   async enqueueWhisperJob(
+517:     provider: string,
+518:     record: WhisperRecord = {},
+519:     messageOverride = ""
+520:   ): Promise<{ success: boolean; jobId?: string }> {
+521:     const text = messageOverride || record.text || "";
+522:     const whisperId = record.id || "";
+523:     const payload = {
+524:       provider,
+525:       whisperId,
+526:       message: text,
+527:       when: record.when,
+528:     };
+529:     LogManager.addEvent(
+530:       "whisper",
+531:       "info",
+532:       `Whisper kuyruğa alındı (${provider})`,
+533:     );
+534:     const exec = async (): Promise<void> => {
+535:       const res = await this.sendMessage({ provider, text });
+536:       if (!res?.success) {
+537:         WhisperManager.markReady(provider, whisperId);
+538:         throw new Error(
+539:           (res && typeof res === "object" && "message" in res
+540:             ? String(res.message)
+541:             : undefined) || "Whisper gönderilemedi",
+542:         );
+543:       }
+544:       WhisperManager.WhisperManagerDone(provider, whisperId);
+545:     };
+546:     const job = CommandManager.CommandManagerEnqueue(
+547:       provider,
+548:       "WhisperSend",
+549:       "whisper",
+550:       payload,
+551:       exec as unknown as null,
+552:       "normal",
+553:     );
+554:     return { success: true, jobId: job?.id };
+555:   }
+556: 
+557:   async handleCaughtCommand(
+558:     commandName: string,
+559:     payload: CaughtCommandPayload = {}
+560:   ): Promise<{ success: boolean; message?: string; jobId?: string; priority?: string }> {
+561:     if (!commandName) return { success: false, message: "Komut adı yok" };
+562:     const known = Array.isArray(ServerCommands.list())
+563:       ? ServerCommands.list().some(
+564:           (c) => (c || "").toLowerCase() === String(commandName).toLowerCase(),
+565:         )
+566:       : false;
+567:     if (!known) {
+568:       LogManager.addEvent(
+569:         "command",
+570:         "error",
+571:         `Bilinmeyen komut: ${commandName}`,
+572:       );
+573:       return { success: false, message: "Bilinmeyen komut" };
+574:     }
+575:     if (!this.settings) {
+576:       await this.init();
+577:     }
+578:     const priority = "normal";
+579:     const stamp = new Date().toLocaleString("tr-TR");
+580:     const provider = payload.provider || "AI";
+581:     const nickAi1 = AppState.getNickname("ai1");
+582:     const nickAi2 = AppState.getNickname("ai2");
+583:     const humanName = AppState.getNickname("user");
+584:     const who =
+585:       provider === "ai1" ? nickAi1 : provider === "ai2" ? nickAi2 : provider;
+586:     const argLabel =
+587:       typeof payload.args === "string" && payload.args.length
+588:         ? payload.args
+589:         : "";
+590:     const cmdText = `++cmd:${commandName}${argLabel ? `(${argLabel})` : "()"}`;
+591:     const sender = payload.source === "manual" ? humanName : who;
+592:     const queuePayload = {
+593:       provider,
+594:       command: commandName,
+595:       args: argLabel,
+596:       source: payload.source || provider,
+597:       sender,
+598:       webUrl: payload.webUrl || "",
+599:       message: cmdText,
+600:     };
+601:     LogManager.addEvent(
+602:       "command-catch",
+603:       "info",
+604:       `${sender} - ${commandName}${argLabel ? ` (${argLabel})` : ""} - ${stamp}`,
+605:       {
+606:         provider,
+607:         sender,
+608:         command: commandName,
+609:         args: argLabel,
+610:         timestamp: stamp,
+611:         webUrl: payload.webUrl || "",
+612:       },
+613:     );
+614:     const execFn = async (): Promise<void> => {
+615:       await ServerCommands.run(commandName, queuePayload);
+616:     };
+617:     const job = CommandManager.CommandManagerEnqueue(
+618:       payload.target || "core",
+619:       commandName,
+620:       "catch",
+621:       queuePayload,
+622:       execFn as unknown as null,
+623:       priority,
+624:     );
+625:     LogManager.addEvent(
+626:       "core",
+627:       "info",
+628:       `[${stamp}] ${who} - Komut kuyruğa alındı: ${cmdText}`,
+629:       {
+630:         provider,
+631:         command: commandName,
+632:         args: argLabel,
+633:         jobId: job?.id,
+634:       },
+635:     );
+636:     return { success: true, jobId: job?.id, priority };
+637:   }
+638: 
+639:   setActiveTargets(targets: string[] = []): void {
+640:     AppState.setChatTargets(targets as never[]);
+641:   }
+642: 
+643:   listCommands(): unknown[] {
+644:     return CommandManager.list();
+645:   }
+646: 
+647:   /**
+648:    * Cleanup method - tüm subscription ve interval'ları temizle
+649:    * Uygulama kapanırken çağrılmalı
+650:    */
+651:   destroy(): void {
+652:     // Cleanup interval'ı durdur
+653:     if (this._cleanupInterval) {
+654:       clearInterval(this._cleanupInterval);
+655:       this._cleanupInterval = null;
+656:     }
+657:     // Settings subscription'ı iptal et
+658:     if (this._settingsSub) {
+659:       this._settingsSub();
+660:       this._settingsSub = null;
+661:     }
+662:     // Memory leak fix: Cleanup CommandManager event listeners
+663:     if (this._commandSentUnsub) {
+664:       this._commandSentUnsub();
+665:       this._commandSentUnsub = null;
+666:     }
+667:     if (this._commandFailedUnsub) {
+668:       this._commandFailedUnsub();
+669:       this._commandFailedUnsub = null;
+670:     }
+671:     // Memory leak fix: Cleanup SlotController event listeners
+672:     if (this._slotTrafficStartedUnsub) {
+673:       this._slotTrafficStartedUnsub();
+674:       this._slotTrafficStartedUnsub = null;
+675:     }
+676:     if (this._slotTrafficStoppedUnsub) {
+677:       this._slotTrafficStoppedUnsub();
+678:       this._slotTrafficStoppedUnsub = null;
+679:     }
+680:     this.initialized = false;
+681:     LogManager.addEvent("core", "info", "CoreEngine destroyed", { visibility: 2 });
+682:   }
+683: }
+684: 
+685: export const CoreEngine = new CoreEngineClass();
+
+================
+File: src/js/modules/slot-controller.ts
+================
+  1: /**
+  2:  * SlotController - Merkezi Slot Yaşam Döngüsü Yöneticisi (Orchestrator)
+  3:  * 
+  4:  * Tüm slot işlemlerini (account assignment, connection, webview, traffic) 
+  5:  * tek bir state machine ile yönetir.
+  6:  * 
+  7:  * Alt modüller:
+  8:  * - slot/webview-handler.js: Webview attach/detach/dom-ready
+  9:  * - slot/url-handler.js: URL değişiklik takibi ve exclusion
+ 10:  * - slot/timeout-handler.js: Timeout ve hata yönetimi
+ 11:  * - slot/settings-sync.js: Settings senkronizasyonu
+ 12:  */
+ 13: 
+ 14: import { LogManager } from "./log-manager.js";
+ 15: import { SettingsManager } from "./settings-manager.js";
+ 16: import { getErrorMessage } from "../types/index.js";
+ 17: import type { SlotId } from "../types/index.js";
+ 18: import { 
+ 19:   SlotStateMachine, 
+ 20:   SlotStates, 
+ 21:   createSlotStateMachine,
+ 22:   type SlotStateType,
+ 23:   type TransitionResult,
+ 24: } from "./slot/state-machine.js";
+ 25: 
+ 26: import {
+ 27:   attachWebview,
+ 28:   detachWebview,
+ 29:   waitForDomReady,
+ 30:   clearDomReadyHandler,
+ 31:   getCurrentUrl,
+ 32: } from "./slot/webview-handler.js";
+ 33: 
+ 34: import {
+ 35:   checkUrlExclusion,
+ 36:   setupUrlChangeHandler,
+ 37:   clearUrlChangeHandler,
+ 38:   handleUrlChange,
+ 39:   navigate as navigateWebview,
+ 40: } from "./slot/url-handler.js";
+ 41: 
+ 42: import {
+ 43:   startTimeout,
+ 44:   clearTimeout,
+ 45:   handleConnectTimeout,
+ 46:   handleConnectError,
+ 47:   cleanupAfterError,
+ 48: } from "./slot/timeout-handler.js";
+ 49: 
+ 50: import {
+ 51:   handleSettingsChange,
+ 52:   syncWithSettings,
+ 53:   syncSlotWithSettings,
+ 54: } from "./slot/settings-sync.js";
+ 55: 
+ 56: // ============================================
+ 57: // ============================================
+ 58: export const SlotState = {
+ 59:   EMPTY: "empty",
+ 60:   ASSIGNED: "assigned",
+ 61:   CONNECTING: "connecting",
+ 62:   CONNECTED: "connected",
+ 63:   DISCONNECTING: "disconnecting",
+ 64:   ERROR: "error",
+ 65: };
+ 66: 
+ 67: // ============================================
+ 68: // ============================================
+ 69: export const SlotEvent = {
+ 70:   ACCOUNT_ASSIGNED: "account_assigned",
+ 71:   ACCOUNT_REMOVED: "account_removed",
+ 72:   CONNECT_START: "connect_start",
+ 73:   CONNECT_COMPLETE: "connect_complete",
+ 74:   CONNECT_FAILED: "connect_failed",
+ 75:   DISCONNECT_START: "disconnect_start",
+ 76:   DISCONNECT_COMPLETE: "disconnect_complete",
+ 77:   WEBVIEW_REGISTERED: "webview_registered",
+ 78:   WEBVIEW_ATTACHED: "webview_attached",
+ 79:   WEBVIEW_DETACHED: "webview_detached",
+ 80:   WEBVIEW_DOM_READY: "webview_dom_ready",
+ 81:   WEBVIEW_NAVIGATED: "webview_navigated",
+ 82:   TRAFFIC_STARTED: "traffic_started",
+ 83:   TRAFFIC_STOPPED: "traffic_stopped",
+ 84:   URL_CHANGED: "url_changed",
+ 85:   URL_EXCLUDED: "url_excluded",
+ 86:   URL_INCLUDED: "url_included",
+ 87:   STATE_CHANGED: "state_changed",
+ 88: };
+ 89: 
+ 90: // ============================================
+ 91: // ============================================
+ 92: const CONFIG = {
+ 93:   connectTimeoutMs: 30000,
+ 94:   urlCheckDelayMs: 500,
+ 95: };
+ 96: 
+ 97: // ============================================
+ 98: // Slot State Interface
+ 99: // ============================================
+100: interface SlotStateData {
+101:   state: string;
+102:   stateMachine: SlotStateMachine; // Robust state machine
+103:   accountId: string | null;
+104:   providerId: string | null;
+105:   providerConfig: unknown | null;
+106:   webview: HTMLElement | null;
+107:   webviewRegistered: boolean;
+108:   domReady: boolean;
+109:   currentUrl: string | null;
+110:   urlExcluded: boolean;
+111:   trafficStarted: boolean;
+112:   correlationId: string | null;
+113:   error: Error | null;
+114:   lastActivity: number;
+115: }
+116: 
+117: const createSlotState = (slotId: string): SlotStateData => ({
+118:   state: SlotState.EMPTY,
+119:   stateMachine: createSlotStateMachine(slotId, SlotStates.EMPTY),
+120:   accountId: null,
+121:   providerId: null,
+122:   providerConfig: null,
+123:   webview: null,
+124:   webviewRegistered: false,
+125:   domReady: false,
+126:   currentUrl: null,
+127:   urlExcluded: false,
+128:   trafficStarted: false,
+129:   correlationId: null,
+130:   error: null,
+131:   lastActivity: Date.now(),
+132: });
+133: 
+134: // ============================================
+135: // ============================================
+136: class SlotControllerClass {
+137:   _slots: Record<string, any>;
+138:   _listeners: ((...args: any[]) => void)[];
+139:   _initialized: boolean;
+140:   _boundLog: typeof this._log;
+141:   _boundEmit: typeof this._emit;
+142:   _boundTransition: typeof this._transition;
+143: 
+144:   constructor() {
+145:     this._slots = {
+146:       ai0: createSlotState("ai0"), // Asistan slotu
+147:       ai1: createSlotState("ai1"),
+148:       ai2: createSlotState("ai2"),
+149:     };
+150:     this._listeners = [];
+151:     this._initialized = false;
+152:     
+153:     this._boundLog = this._log.bind(this);
+154:     this._boundEmit = this._emit.bind(this);
+155:     this._boundTransition = this._transition.bind(this);
+156:   }
+157: 
+158:   // ============================================
+159:   // ============================================
+160:   
+161:   async init() {
+162:     if (this._initialized) return;
+163:     
+164:     SettingsManager.subscribe(({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
+165:       handleSettingsChange(this._slots, settings as any, changedPaths, ((slot: string, s: SlotStateData) => {
+166:         this._syncSlotWithSettings(slot, s);
+167:       }) as any);
+168:     });
+169:     
+170:     const settings = SettingsManager.getSnapshot();
+171:     syncWithSettings(this._slots, settings as any, ((slot: string, s: SlotStateData) => {
+172:       this._syncSlotWithSettings(slot, s);
+173:     }) as any);
+174:     
+175:     this._initialized = true;
+176:     LogManager.addEvent("slot-controller", "info", "SlotController initialized", { visibility: 2 });
+177:   }
+178: 
+179:   // ============================================
+180:   // ============================================
+181: 
+182:   getState(slot: string) {
+183:     if (!this._isValidSlot(slot)) return null;
+184:     return { ...this._slots[slot] };
+185:   }
+186: 
+187:   isConnected(slot: string) {
+188:     if (!this._isValidSlot(slot)) return false;
+189:     return this._slots[slot].state === SlotState.CONNECTED;
+190:   }
+191: 
+192:   isAssigned(slot: string) {
+193:     if (!this._isValidSlot(slot)) return false;
+194:     return this._slots[slot].state !== SlotState.EMPTY;
+195:   }
+196: 
+197:   isTransitioning(slot: string) {
+198:     if (!this._isValidSlot(slot)) return false;
+199:     const state = this._slots[slot].state;
+200:     return state === SlotState.CONNECTING || state === SlotState.DISCONNECTING;
+201:   }
+202: 
+203:   isUrlExcluded(slot: string) {
+204:     if (!this._isValidSlot(slot)) return false;
+205:     return this._slots[slot].urlExcluded;
+206:   }
+207: 
+208:   getProviderId(slot: string) {
+209:     if (!this._isValidSlot(slot)) return null;
+210:     return this._slots[slot].providerId;
+211:   }
+212: 
+213:   getWebview(slot: string) {
+214:     if (!this._isValidSlot(slot)) return null;
+215:     return this._slots[slot].webview;
+216:   }
+217: 
+218:   // ============================================
+219:   // ============================================
+220: 
+221:   registerWebview(slot: string, webview: HTMLElement) {
+222:     if (!this._isValidSlot(slot) || !webview) return;
+223:     
+224:     const slotState = this._slots[slot];
+225:     
+226:     // Zaten aynı webview register edilmişse tekrar log yazma
+227:     if (slotState.webviewRegistered && slotState.webview === webview) {
+228:       return; // Çift register'u önle
+229:     }
+230:     
+231:     slotState.webview = webview;
+232:     slotState.webviewRegistered = true;
+233:     slotState.lastActivity = Date.now();
+234:     
+235:     this._log(slot, "info", "Webview registered");
+236:     this._emit(slot, SlotEvent.WEBVIEW_REGISTERED, { webview });
+237:   }
+238: 
+239:   unregisterWebview(slot: string) {
+240:     if (!this._isValidSlot(slot)) return;
+241:     
+242:     const slotState = this._slots[slot];
+243:     
+244:     if (slotState.state === SlotState.CONNECTED) {
+245:       this.disconnect(slot, { force: true });
+246:     }
+247:     
+248:     slotState.webview = null;
+249:     slotState.webviewRegistered = false;
+250:     slotState.domReady = false;
+251:     
+252:     this._log(slot, "info", "Webview unregistered");
+253:     this._emit(slot, SlotEvent.WEBVIEW_DETACHED, {});
+254:   }
+255: 
+256:   recoverFromError(slot: string) {
+257:     if (!this._isValidSlot(slot)) {
+258:       return { success: false, message: "invalid-slot" };
+259:     }
+260: 
+261:     const slotState = this._slots[slot];
+262:     
+263:     if (slotState.state !== SlotState.ERROR) {
+264:       return { success: false, message: "not-in-error-state" };
+265:     }
+266: 
+267:     this._log(slot, "info", "Manual recovery from ERROR state");
+268:     slotState.error = null;
+269:     
+270:     if (slotState.accountId) {
+271:       this._transition(slot, SlotState.ASSIGNED);
+272:     } else {
+273:       this._transition(slot, SlotState.EMPTY);
+274:     }
+275: 
+276:     return { success: true, message: "recovered" };
+277:   }
+278: 
+279:   // ============================================
+280:   // ============================================
+281: 
+282:   async connect(slot: string, options: { force?: boolean; url?: string; correlationId?: string } = {}) {
+283:     if (!this._isValidSlot(slot)) {
+284:       return { success: false, message: "invalid-slot" };
+285:     }
+286: 
+287:     const slotState = this._slots[slot];
+288:     const correlationId = this._generateCorrelationId(slot, "connect");
+289:     
+290:     this._log(slot, "info", `Connect requested`, { correlationId });
+291: 
+292:     if (slotState.state === SlotState.EMPTY) {
+293:       this._log(slot, "warning", "Cannot connect: no account assigned", { correlationId });
+294:       return { success: false, message: "no-account-assigned", correlationId };
+295:     }
+296: 
+297:     if (slotState.state === SlotState.CONNECTED && !options.force) {
+298:       this._log(slot, "debug", "Already connected", { correlationId });
+299:       return { success: true, message: "already-connected", correlationId };
+300:     }
+301: 
+302:     if (slotState.state === SlotState.CONNECTING) {
+303:       this._log(slot, "warning", "Connection already in progress", { correlationId });
+304:       return { success: false, message: "connection-in-progress", correlationId };
+305:     }
+306: 
+307:     if (slotState.state === SlotState.ERROR) {
+308:       this._log(slot, "info", "Recovering from ERROR state", { correlationId });
+309:       slotState.error = null;
+310:       this._transition(slot, SlotState.ASSIGNED);
+311:     }
+312: 
+313:     if (slotState.state === SlotState.CONNECTED && options.force) {
+314:       this._log(slot, "info", "Force reconnect - disconnecting first", { correlationId });
+315:       await this.disconnect(slot, { force: true });
+316:     }
+317: 
+318:     if (!slotState.webview) {
+319:       this._log(slot, "error", "Cannot connect: webview not registered", { correlationId });
+320:       return { success: false, message: "webview-not-registered", correlationId };
+321:     }
+322: 
+323:     // URL override desteği (OpenCode gibi dinamik URL gerektiren provider'lar için)
+324:     if (options.url) {
+325:       slotState._overrideUrl = options.url;
+326:       this._log(slot, "debug", `URL override set: ${options.url}`, { correlationId });
+327:     }
+328: 
+329:     slotState.correlationId = correlationId;
+330:     
+331:     // State transition - başarısız olursa devam etme
+332:     const transitionResult = this._transition(slot, SlotState.CONNECTING);
+333:     if (!transitionResult.success) {
+334:       this._log(slot, "error", `Invalid state transition blocked: ${slotState.state} → connecting. ${transitionResult.error}`, { correlationId });
+335:       return { success: false, message: "invalid-state-transition", correlationId, error: transitionResult.error };
+336:     }
+337:     this._emit(slot, SlotEvent.CONNECT_START, { correlationId });
+338: 
+339:     startTimeout(slot, "connect", CONFIG.connectTimeoutMs, () => {
+340:       handleConnectTimeout(
+341:         slotState, slot, correlationId, SlotState.ERROR,
+342:         this._boundLog, this._boundEmit, this._boundTransition,
+343:         SlotEvent.CONNECT_FAILED,
+344:         (s, cid) => this._cleanupAfterError(s, cid)
+345:       );
+346:     });
+347: 
+348:     try {
+349:       await attachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_ATTACHED);
+350: 
+351:       await waitForDomReady(slotState, slot, correlationId, this._boundLog);
+352:       slotState.domReady = true;
+353:       this._emit(slot, SlotEvent.WEBVIEW_DOM_READY, { correlationId });
+354: 
+355:       await this._delay(CONFIG.urlCheckDelayMs);
+356:       const currentUrl = getCurrentUrl(slotState);
+357:       slotState.currentUrl = currentUrl;
+358:       
+359:       const isExcluded = checkUrlExclusion(slotState, currentUrl);
+360:       slotState.urlExcluded = isExcluded;
+361: 
+362:       if (isExcluded) {
+363:         this._emit(slot, SlotEvent.URL_EXCLUDED, { url: currentUrl, correlationId });
+364:         this._log(slot, "info", `URL excluded: ${currentUrl} - traffic disabled`, { correlationId });
+365:       } else {
+366:         this._emit(slot, SlotEvent.URL_INCLUDED, { url: currentUrl, correlationId });
+367:         await this._startTraffic(slot, correlationId);
+368:       }
+369: 
+370:       setupUrlChangeHandler(slotState, slot, correlationId, (s: string, url: string) => {
+371:         this._handleUrlChange(s, url);
+372:       });
+373: 
+374:       clearTimeout(slot, "connect");
+375:       this._transition(slot, SlotState.CONNECTED);
+376:       this._emit(slot, SlotEvent.CONNECT_COMPLETE, { correlationId, urlExcluded: isExcluded });
+377: 
+378:       const elapsed = Date.now() - slotState.lastActivity;
+379:       this._log(slot, "success", `Connected successfully (${elapsed}ms)${isExcluded ? " [URL excluded]" : ""}`, { correlationId });
+380: 
+381:       return { success: true, message: "connected", correlationId };
+382:     } catch (error) {
+383:       clearTimeout(slot, "connect");
+384:       return handleConnectError(
+385:         slotState, slot, correlationId, error, SlotState.ERROR,
+386:         this._boundLog, this._boundEmit, this._boundTransition,
+387:         SlotEvent.CONNECT_FAILED,
+388:         (s, cid) => this._cleanupAfterError(s, cid)
+389:       );
+390:     }
+391:   }
+392: 
+393:   async disconnect(slot: string, _options: { force?: boolean } = {}) {
+394:     if (!this._isValidSlot(slot)) {
+395:       return { success: false, message: "invalid-slot" };
+396:     }
+397: 
+398:     const slotState = this._slots[slot];
+399:     const correlationId = this._generateCorrelationId(slot, "disconnect");
+400: 
+401:     this._log(slot, "info", "Disconnect requested", { correlationId });
+402: 
+403:     if (slotState.state === SlotState.EMPTY) {
+404:       return { success: true, message: "not-assigned", correlationId };
+405:     }
+406: 
+407:     // ASSIGNED durumunda zaten bağlı değil - disconnect gereksiz
+408:     // force=true olsa bile ASSIGNED'dan DISCONNECTING'e geçiş geçersiz
+409:     if (slotState.state === SlotState.ASSIGNED) {
+410:       this._log(slot, "debug", "Already disconnected (ASSIGNED state)", { correlationId });
+411:       return { success: true, message: "already-disconnected", correlationId };
+412:     }
+413: 
+414:     if (slotState.state === SlotState.DISCONNECTING) {
+415:       return { success: false, message: "disconnect-in-progress", correlationId };
+416:     }
+417: 
+418:     // State transition - başarısız olursa devam etme
+419:     const transitionResult = this._transition(slot, SlotState.DISCONNECTING);
+420:     if (!transitionResult.success) {
+421:       this._log(slot, "error", `Invalid state transition blocked: ${slotState.state} → disconnecting. ${transitionResult.error}`, { correlationId });
+422:       return { success: false, message: "invalid-state-transition", correlationId, error: transitionResult.error };
+423:     }
+424:     this._emit(slot, SlotEvent.DISCONNECT_START, { correlationId });
+425: 
+426:     try {
+427:       clearUrlChangeHandler(slot);
+428: 
+429:       if (slotState.trafficStarted) {
+430:         await this._stopTraffic(slot, correlationId);
+431:       }
+432: 
+433:       await detachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED);
+434: 
+435:       slotState.domReady = false;
+436:       slotState.currentUrl = null;
+437:       slotState.urlExcluded = false;
+438:       slotState.trafficStarted = false;
+439:       slotState.correlationId = null;
+440:       slotState.error = null;
+441: 
+442:       this._transition(slot, SlotState.ASSIGNED);
+443:       this._emit(slot, SlotEvent.DISCONNECT_COMPLETE, { correlationId });
+444: 
+445:       this._log(slot, "success", "Disconnected successfully", { correlationId });
+446:       return { success: true, message: "disconnected", correlationId };
+447:     } catch (error) {
+448:       slotState.domReady = false;
+449:       slotState.trafficStarted = false;
+450:       this._transition(slot, SlotState.ASSIGNED);
+451:       
+452:       this._log(slot, "warning", `Disconnect completed with errors: ${getErrorMessage(error)}`, { correlationId });
+453:       return { success: true, message: "disconnected-with-errors", correlationId };
+454:     }
+455:   }
+456: 
+457:   // ============================================
+458:   // ============================================
+459: 
+460:   navigate(slot: string, url: string | null = null) {
+461:     if (!this._isValidSlot(slot)) return;
+462:     
+463:     navigateWebview(
+464:       this._slots[slot], slot, url, SlotState.CONNECTED,
+465:       this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_NAVIGATED
+466:     );
+467:   }
+468: 
+469:   // ============================================
+470:   // ============================================
+471: 
+472:   subscribe(listener: (payload: unknown) => void) {
+473:     if (typeof listener === "function") {
+474:       this._listeners.push(listener);
+475:     }
+476:     return () => {
+477:       this._listeners = this._listeners.filter((l) => l !== listener);
+478:     };
+479:   }
+480: 
+481:   on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void) {
+482:     const wrapper = (payload: { event?: string; slot?: string }) => {
+483:       if (payload.event === eventType) {
+484:         listener(payload);
+485:       }
+486:     };
+487:     wrapper._original = listener;
+488:     wrapper._eventType = eventType;
+489:     this._listeners.push(wrapper);
+490:     return () => {
+491:       this._listeners = this._listeners.filter((l) => l !== wrapper);
+492:     };
+493:   }
+494: 
+495:   // ============================================
+496:   // ============================================
+497: 
+498:   _syncSlotWithSettings(slot: string, settings: SlotStateData) {
+499:     syncSlotWithSettings(
+500:       this._slots[slot], slot, settings as any,
+501:       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
+502:       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
+503:       this._boundLog, this._boundTransition, this._boundEmit,
+504:       (s: string, opts?: { force?: boolean }) => this.disconnect(s, opts),
+505:       (s: string) => this.navigate(s)
+506:     );
+507:   }
+508: 
+509:   // ============================================
+510:   // ============================================
+511: 
+512:   _handleUrlChange(slot: string, newUrl: string) {
+513:     handleUrlChange(
+514:       this._slots[slot], slot as SlotId, newUrl, SlotState.CONNECTED,
+515:       this._boundLog, this._boundEmit,
+516:       { URL_CHANGED: SlotEvent.URL_CHANGED, URL_EXCLUDED: SlotEvent.URL_EXCLUDED, URL_INCLUDED: SlotEvent.URL_INCLUDED },
+517:       (s: SlotId, cid: string) => this._startTraffic(s, cid),
+518:       (s: SlotId, cid: string) => this._stopTraffic(s, cid)
+519:     );
+520:   }
+521: 
+522:   // ============================================
+523:   // ============================================
+524: 
+525:   async _startTraffic(slot: string, correlationId: string) {
+526:     const slotState = this._slots[slot];
+527:     if (!slotState.webview || slotState.trafficStarted) return;
+528: 
+529:     try {
+530:       slotState.trafficStarted = true;
+531:       this._emit(slot, SlotEvent.TRAFFIC_STARTED, { correlationId });
+532:       this._log(slot, "debug", "Traffic started", { correlationId });
+533:     } catch (err) {
+534:       this._log(slot, "warning", `Traffic start warning: ${getErrorMessage(err)}`, { correlationId });
+535:     }
+536:   }
+537: 
+538:   async _stopTraffic(slot: string, correlationId: string) {
+539:     const slotState = this._slots[slot];
+540:     if (!slotState.trafficStarted) return;
+541: 
+542:     try {
+543:       slotState.trafficStarted = false;
+544:       this._emit(slot, SlotEvent.TRAFFIC_STOPPED, { correlationId });
+545:       this._log(slot, "debug", "Traffic stopped", { correlationId });
+546:     } catch (err) {
+547:       this._log(slot, "warning", `Traffic stop warning: ${getErrorMessage(err)}`, { correlationId });
+548:     }
+549:   }
+550: 
+551:   // ============================================
+552:   // ============================================
+553: 
+554:   async _cleanupAfterError(slot: string, correlationId: string) {
+555:     await cleanupAfterError(
+556:       this._slots[slot], slot, correlationId,
+557:       this._boundLog,
+558:       (s: string) => clearUrlChangeHandler(s as SlotId),
+559:       (s: string) => clearDomReadyHandler(s as SlotId),
+560:       (s: string, cid: string) => this._stopTraffic(s, cid),
+561:       (s: string, cid: string) => detachWebview(this._slots[s], s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED as string)
+562:     );
+563:   }
+564: 
+565:   // ============================================
+566:   // ============================================
+567: 
+568:   /**
+569:    * State transition with validation
+570:    * @returns TransitionResult with success status and details
+571:    */
+572:   _transition(slot: string, newState: string, reason?: string): TransitionResult {
+573:     const slotState = this._slots[slot];
+574:     const oldState = slotState.state;
+575:     
+576:     // State machine ile geçerlilik kontrolü ve geçiş
+577:     const result = slotState.stateMachine.transition(
+578:       newState as SlotStateType,
+579:       {
+580:         correlationId: slotState.correlationId || undefined,
+581:         reason,
+582:       }
+583:     );
+584:     
+585:     if (result.success) {
+586:       // Legacy state alanını da güncelle (backward compatibility)
+587:       slotState.state = newState;
+588:       slotState.lastActivity = Date.now();
+589:       
+590:       if (!result.wasNoOp) {
+591:         this._emit(slot, SlotEvent.STATE_CHANGED, { 
+592:           oldState, 
+593:           newState,
+594:           validated: true,
+595:         });
+596:       }
+597:     } else {
+598:       // Geçersiz transition - hata logla ama crash etme
+599:       this._log(slot, "error", `Invalid state transition blocked: ${oldState} → ${newState}. ${result.error}`);
+600:     }
+601:     
+602:     return result;
+603:   }
+604: 
+605:   /**
+606:    * State machine üzerinden mevcut state'i al
+607:    */
+608:   getStateMachineState(slot: string): SlotStateType | null {
+609:     if (!this._isValidSlot(slot)) return null;
+610:     return this._slots[slot].stateMachine.state;
+611:   }
+612: 
+613:   /**
+614:    * State machine debug bilgisini al
+615:    */
+616:   getStateMachineDebugInfo(slot: string) {
+617:     if (!this._isValidSlot(slot)) return null;
+618:     return this._slots[slot].stateMachine.getDebugInfo();
+619:   }
+620: 
+621:   /**
+622:    * Belirli bir state'e geçiş yapılabilir mi kontrol et
+623:    */
+624:   canTransitionTo(slot: string, targetState: string): boolean {
+625:     if (!this._isValidSlot(slot)) return false;
+626:     return this._slots[slot].stateMachine.canTransitionTo(targetState as SlotStateType);
+627:   }
+628: 
+629:   // ============================================
+630:   // ============================================
+631: 
+632:   _isValidSlot(slot: string) {
+633:     return slot === "ai0" || slot === "ai1" || slot === "ai2";
+634:   }
+635: 
+636:   _generateCorrelationId(slot: string, operation: string) {
+637:     const timestamp = Date.now();
+638:     const random = Math.random().toString(36).slice(2, 8);
+639:     return `${slot}-${operation}-${timestamp}-${random}`;
+640:   }
+641: 
+642:   _emit(slot: string, event: string, data: Record<string, unknown> = {}) {
+643:     const payload = {
+644:       slot,
+645:       event,
+646:       data,
+647:       timestamp: Date.now(),
+648:       state: this._slots[slot]?.state,
+649:     };
+650: 
+651:     this._listeners.forEach((listener) => {
+652:       try {
+653:         listener(payload);
+654:       } catch (_err) {
+655:       }
+656:     });
+657:   }
+658: 
+659:   _log(slot: string, level: string, message: string, context: { correlationId?: string } = {}) {
+660:     const prefix = context.correlationId ? `[${context.correlationId}] ` : "";
+661:     LogManager.addEvent(`slot-${slot}`, level, `${prefix}${message}`);
+662:   }
+663: 
+664:   _delay(ms: number) {
+665:     return new Promise((resolve) => setTimeout(resolve, ms));
+666:   }
+667: }
+668: 
+669: export const SlotController = new SlotControllerClass();
+
+================
+File: AGENTS.md
+================
+  1: # Hayalet-ev Development Guide
+  2: 
+  3: ## 📋 Project Overview
+  4: 
+  5: **Hayalet-ev** (Ghost House) is an Electron-based multi-AI chat interface platform that enables:
+  6: - **Multi-AI Integration:** ChatGPT, Gemini, Grok, and extensible for other providers
+  7: - **AI-to-AI Communication:** Protocol-based AI conversation system
+  8: - **Conversation Archiving:** Automatic conversation storage with Google Drive sync
+  9: - **Plugin System:** Extensible architecture for custom commands and features
+ 10: - **Voice & Screenshots:** Whisper integration for voice input, screenshot capture
+ 11: - **MCP Server:** Model Context Protocol server for AI assistant integration
+ 12: 
+ 13: ### Tech Stack
+ 14: - **Runtime:** Electron 39+ with Node.js (ESM modules)
+ 15: - **Language:** TypeScript (strict mode)
+ 16: - **Build Tool:** Vite 7.3
+ 17: - **Architecture:** Multi-process (Main + Renderer + Webviews)
+ 18: - **Storage:** SQLite + Google Drive API
+ 19: 
+ 20: ### Version
+ 21: Current: `5.4.0`
+ 22: 
+ 23: ---
+ 24: 
+ 25: ## 🚨 MCP Tool Kullanım Direktifi (KRİTİK)
+ 26: 
+ 27: **Bu projede dosya ve geliştirme işlemleri için SADECE `hayalet-ev` MCP server kullanılmalıdır.**
+ 28: 
+ 29: ### Neden?
+ 30: - `hayalet-ev` MCP server proje için özelleştirilmiş 34 tool içerir
+ 31: - Collapsed view, code parsing, proje analizi gibi özel özellikler sunar
+ 32: - Default MCP'ler (filesystem-tools vb.) bu projede verimsiz çalışır
+ 33: 
+ 34: ### Kullanılacak Tool Prefix'leri
+ 35: | Prefix | Açıklama | Örnek |
+ 36: |--------|----------|-------|
+ 37: | `fs_*` | Dosya işlemleri | `hev_fs_open_files`, `hev_fs_grep`, `hev_fs_bash` |
+ 38: | `dev_*` | Geliştirme araçları | `hev_dev_analyze_project`, `hev_dev_generate_diagram` |
+ 39: | CDP tools | Electron kontrolü | `hev_check_electron_connection`, `hev_take_cdp_screenshot` |
+ 40: 
+ 41: ### ❌ KULLANMA
+ 42: - `open_files` → Yerine `hev_fs_open_files` kullan
+ 43: - `grep` → Yerine `hev_fs_grep` kullan  
+ 44: - `bash` → Yerine `hev_fs_bash` kullan
+ 45: - `expand_folder` → Yerine `hev_fs_expand_folder` kullan
+ 46: - `create_file` → Yerine `hev_fs_create_file` kullan
+ 47: 
+ 48: ### ✅ KULLAN
+ 49: ```
+ 50: mcp__hayalet_ev__invoke_tool ile:
+ 51: - fs_open_files, fs_create_file, fs_delete_file, fs_move_file
+ 52: - fs_expand_code_chunks, fs_find_and_replace, fs_grep
+ 53: - fs_expand_folder, fs_bash, fs_create_plan
+ 54: - dev_analyze_project, dev_bootstrap_context, dev_generate_diagram
+ 55: - dev_generate_diagram, dev_update_cache, dev_edit_lines
+ 56: ```
+ 57: 
+ 58: ---
+ 59: 
+ 60: ## 🏗️ Architecture Overview
+ 61: 
+ 62: > **Detaylı rehber:** `.rovodev/architecture.md`
+ 63: 
+ 64: ```
+ 65: Main Process (electron/main.ts)
+ 66: ├── Renderer Process (src/index.html → CoreEngine)
+ 67: ├── AI Provider Webviews (isolated contexts)
+ 68: └── IPC Bridge (preload.cjs)
+ 69: ```
+ 70: 
+ 71: ### Kritik Modüller
+ 72: | Modül | Konum | Rol |
+ 73: |-------|-------|-----|
+ 74: | CoreEngine | `src/js/modules/core-engine.ts` | Ana koordinatör |
+ 75: | SlotController | `src/js/modules/slot-controller.ts` | Slot lifecycle + State machine |
+ 76: | WebviewManager | `src/js/modules/webview-manager.ts` | Webview lifecycle |
+ 77: | TrafficManager | `src/js/modules/traffic-manager.ts` | State tracking (race-condition korumalı) |
+ 78: | DatabaseManager | `electron/database/index.ts` | SQLite yönetimi |
+ 79: | SettingsManager | `electron/settings-manager.ts` | JSON config |
+ 80: | ErrorBoundary | `src/js/modules/error-boundary.ts` | Global hata yakalama |
+ 81: | IPC Client | `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper |
+ 82: 
+ 83: ---
+ 84: 
+ 85: ## ⚠️ Dikkat Edilmesi Gerekenler
+ 86: 
+ 87: ### Silinmemesi Gereken Modüller
+ 88: Bu modüller "kullanılmıyor" gibi görünebilir ama kritik bağımlılıkları var:
+ 89: 
+ 90: | Modül | Not |
+ 91: |-------|-----|
+ 92: | `file-utils.ts` | Tüm file upload metodları için kritik - **SİLME!** |
+ 93: | `url-utils.ts` | URL işlemleri için kritik |
+ 94: | `provider-registry.ts` | 10+ dosya tarafından kullanılıyor |
+ 95: 
+ 96: ### IPC Üzerinden Çağrılan Modüller
+ 97: Bu modüller doğrudan import edilmez, `electron/main.ts`'de IPC handler'ları üzerinden çağrılır:
+ 98: - `device-manager.ts`, `screenshot-manager.ts`, `whisper-manager.ts`
+ 99: - `googledrive-manager.ts`, `server-commands.ts`
+100: 
+101: ### Provider Config'leri
+102: AI siteleri DOM yapılarını sık değiştiriyor. Selector değişikliği yapmadan önce ilgili AI sitesinde manuel test yap:
+103: - `providers/chatgpt/config.ts`
+104: - `providers/gemini/config.ts`
+105: - `providers/grok/config.ts`
+106: 
+107: ---
+108: 
+109: ## 🔑 Key Concepts
+110: 
+111: > **Detaylı rehber:** `.rovodev/concepts.md`
+112: 
+113: | Kavram | Dosya | Açıklama |
+114: |--------|-------|----------|
+115: | Settings | `electron/settings-manager.ts` | `./config/settings.json` yönetimi |
+116: | IPC | `electron/preload.cjs` | `window.electronAPI.*` metodları |
+117: | Typed IPC | `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper (`IPC.invoke()`) |
+118: | IPC Types | `src/js/types/ipc-channels.ts` | IPC channel tip tanımları |
+119: | Providers | `src/js/modules/webview/providers/` | ChatGPT, Grok, Gemini, OpenCode |
+120: | Database | `electron/database/` | SQLite, accountId bazlı |
+121: | Traffic | `src/js/modules/traffic/` | Loading, thinking, send tracking |
+122: | Relay | `src/js/modules/relay/` | AI↔AI, AI↔Asistan |
+123: | SlotState | `src/js/modules/slot/state-machine.ts` | Robust state machine (EMPTY→CONNECTED) |
+124: | ErrorBoundary | `src/js/modules/error-boundary.ts` | Global hata yakalama |
+125: | URL Utils | `src/js/modules/webview/methods/shared/url-utils.ts` | Merkezi URL validation (`isSlotUrlExcluded`) |
+126: 
+127: ### IPC API Quick Reference (ÖNEMLİ!)
+128: 
+129: > **Tam tanımlar:** `src/js/global.d.ts`
+130: 
+131: Renderer'da `window.electronAPI.*` metodları kullanılır. **Dikkat:** Metod isimlerini doğru kullan!
+132: 
+133: | Kategori | Metod | Açıklama |
+134: |----------|-------|----------|
+135: | **Settings** | `loadSettings()` | Ayarları yükle (❌ `getSettings` değil!) |
+136: | | `saveSettings(settings)` | Ayarları kaydet |
+137: | | `createAccount(data)` | Yeni hesap oluştur |
+138: | | `assignAccountToSlot(slot, accountId)` | Hesabı slota ata |
+139: | **Database** | `dbGetConversations({ accountId })` | Konuşmaları getir → `{ success, data: [...] }` |
+140: | | `dbGetMessages({ accountId, conversationId })` | Mesajları getir → `{ success, data: [...] }` |
+141: | | `dbSyncMessages({ ... })` | Mesajları senkronize et |
+142: | | `dbSaveConversation(conv)` | Konuşma kaydet |
+143: | **Window** | `windowMinimize()` | Pencereyi küçült |
+144: | | `windowMaximize()` | Pencereyi büyüt |
+145: | | `windowClose()` | Pencereyi kapat |
+146: 
+147: ```typescript
+148: // ❌ YANLIŞ - metod yok!
+149: const settings = await window.electronAPI?.getSettings?.();
+150: 
+151: // ✅ DOĞRU
+152: const settings = await window.electronAPI?.loadSettings?.();
+153: const accounts = settings?.accounts || [];
+154: 
+155: // Database sonuçları { success, data } formatında döner
+156: const result = await window.electronAPI?.dbGetConversations?.({ accountId });
+157: const conversations = result?.data || [];  // ❌ result direkt array değil!
+158: ```
+159: 
+160: ### Log Sistemi (ZORUNLU)
+161: 
+162: > **Detaylı rehber:** `.rovodev/logging.md`
+163: 
+164: ```typescript
+165: // ❌ YANLIŞ
+166: console.log("mesaj");
+167: 
+168: // ✅ DOĞRU  
+169: import { LogManager } from "./modules/log-manager.ts";
+170: LogManager.addEvent("source", "info", "mesaj");
+171: 
+172: // ✅ DAHA İYİ - Visibility ile
+173: LogManager.toast("entrance", "success", "Bağlandı");     // Seviye 1 - Toast
+174: LogManager.panel("system", "info", "Init tamamlandı");  // Seviye 2 - Panel
+175: LogManager.verbose("traffic", "debug", "State change"); // Seviye 3 - Debug
+176: ```
+177: 
+178: ### Log Analizi (ÖNEMLİ!)
+179: 
+180: **`console-001.log` artık birleşik log dosyasıdır (Main + Renderer)!**
+181: 
+182: ```bash
+183: # ✅ DOĞRU - Birleşik loglar (main + renderer)
+184: cat logs/SESSION_ID/console-001.log | tail -50
+185: 
+186: # MCP tool ile (default: console)
+187: read_electron_logs --tail 100
+188: 
+189: # JSON analizi için structured log
+190: read_electron_logs --type structured --tail 100
+191: ```
+192: 
+193: | Dosya | İçerik | Kullanım |
+194: |-------|--------|----------|
+195: | `console-001.log` | Birleşik loglar (Main + Renderer) | ✅ Ana analiz |
+196: | `structured.jsonl` | JSON format (detaylı analiz) | Programatik analiz |
+197: | `error.log` | Sadece hatalar | Hızlı kontrol |
+198: 
+199: ### 3 Seviyeli Visibility
+200: 
+201: | Seviye | Ad | Görünüm | Kullanım |
+202: |--------|-----|---------|----------|
+203: | 1 | Toast | Toast+Panel+Modal | Bağlantı, hata, başarı |
+204: | 2 | Panel | Panel+Modal | Init, db, sync |
+205: | 3 | Verbose | Sadece Modal | Debug, state, traffic |
+206: 
+207: ---
+208: 
+209: ## 🎯 Development Guidelines
+210: 
+211: > **Detaylı rehber:** `.rovodev/concepts.md`
+212: 
+213: ### Code Style
+214: - **Language:** TypeScript (ES2022+, ESM modules, strict mode)
+215: - **Async:** Always use `async/await`, never callbacks
+216: - **Error Handling:** Always wrap async operations in try-catch
+217: - **Naming:** camelCase for functions, PascalCase for classes
+218: - **Documentation:** All Markdown files in Turkish
+219: 
+220: ### File Naming
+221: - `*-manager.ts` → Singleton services
+222: - `*-handler.ts` → Event processors
+223: - `*-utils.ts` → Helper functions
+224: - `index.ts` → Barrel exports
+225: 
+226: ### IPC Safety
+227: - **Never** use `remote` module
+228: - **Always** use `ipcRenderer.invoke()` for async operations
+229: - **Always** validate input in main process handlers
+230: 
+231: ---
+232: 
+233: ## 🔷 TypeScript
+234: 
+235: Proje **%100 TypeScript** ve **strict mode** ile çalışıyor.
+236: 
+237: | Bileşen | Strict Mode |
+238: |---------|-------------|
+239: | Renderer (src/js) | ✅ `strict: true` |
+240: | Electron (electron/) | ✅ `strict: true` |
+241: | MCP Server (mcp-server/) | ✅ `strict: true` |
+242: | Preload (.cjs) | CommonJS (zorunlu) |
+243: 
+244: ### Kontrol Komutları
+245: ```bash
+246: npm run lint          # ESLint + TypeScript
+247: npm run check-types   # tsc --noEmit
+248: npm run check         # lint + check-types
+249: ```
+250: 
+251: ### Yeni IPC Metodu Ekleme
+252: `src/js/global.d.ts`'i güncelle:
+253: ```typescript
+254: interface Window {
+255:   electronAPI?: {
+256:     myNewMethod: (param: string) => Promise<{ success: boolean }>;
+257:   };
+258: }
+259: ```
+260: 
+261: ---
+262: 
+263: ## 🚀 Common Tasks
+264: 
+265: > **Detaylı rehber:** `.rovodev/testing.md`
+266: 
+267: ### Temel Komutlar
+268: ```bash
+269: npm start              # Uygulamayı başlat
+270: npm run lint           # Kod kontrolü
+271: npm run pre-commit     # Commit öncesi kontrol
+272: ```
+273: 
+274: ### Unused Kontrolleri (Knip)
+275: ```bash
+276: npm run knip           # Temel analiz
+277: npm run knip:strict    # Derin analiz (tüm kategoriler)
+278: npm run knip:fix       # Otomatik düzeltme
+279: npm run knip:watch     # İzleme modu
+280: ```
+281: 
+282: **Knip** kullanılmayan dosyalar, export'lar, bağımlılıklar ve type'ları tespit eder.
+283: 
+284: ### Test Timeout Süreleri
+285: | Komut | Timeout | Açıklama |
+286: |-------|---------|----------|
+287: | `npm start` | 40 sn | Electron + Vite başlatma |
+288: | `npm run lint` | 80 sn | ESLint tüm proje |
+289: | `npm run check-types` | 80 sn | TypeScript type-check |
+290: | `npm run check` | 120 sn | lint + check-types |
+291: 
+292: **Not:** Bu süreler AI asistan testleri için önerilen minimum bekleme süreleridir.
+293: 
+294: ### Yeni Session Başlangıcı
+295: ```bash
+296: cat .rovodev/context.md   # Context dosyasını oku
+297: # veya MCP tool kullan:
+298: dev_bootstrap_context     # Session context oluştur
+299: ```
+300: 
+301: ---
+302: 
+303: ## 🎯 CDP & MCP Tools
+304: 
+305: > **Detaylı rehber:** `.rovodev/cdp.md`
+306: 
+307: MCP Server v1.7.0 - **47 tool** (CDP + Filesystem + Dev Tools + Recycle Bin + Diff)
+308: 
+309: ### CDP Tools (Electron kontrolü)
+310: ```
+311: check_electron_connection, click_element_by_selector, take_cdp_screenshot
+312: ```
+313: 
+314: ### Filesystem Tools (Dosya işlemleri)
+315: ```
+316: fs_open_files, fs_create_file, fs_grep, fs_bash, fs_expand_folder
+317: fs_show              # Dosya içeriğini satır numaralarıyla göster
+318: ```
+319: 
+320: ### Recycle Bin & Backup (Güvenli dosya işlemleri)
+321: ```
+322: fs_delete_file       # Silme (çöp kutusuna, geri alınabilir)
+323: fs_trash_list        # Çöp kutusunu listele
+324: fs_restore           # Silinen dosyayı geri yükle
+325: fs_trash_empty       # Çöp kutusunu boşalt
+326: fs_backup            # Dosya yedeği al (timestamped)
+327: fs_undo              # Son işlemi geri al
+328: fs_history           # İşlem geçmişi
+329: ```
+330: 
+331: ### Diff Tools (Karşılaştırma)
+332: ```
+333: fs_diff              # İki dosyayı karşılaştır (unified diff)
+334: fs_diff_content      # İki içeriği karşılaştır
+335: ```
+336: 
+337: ### Dev Tools (Geliştirme araçları)
+338: ```
+339: dev_analyze_project    # Proje analizi
+340: dev_bootstrap_context  # Context üret
+341: dev_generate_diagram   # Bağımlılık diagramı
+342: dev_update_cache       # Cache güncelle
+343: dev_edit_lines         # Satır bazlı düzenleme
+344: dev_git_diff           # Git değişikliklerini göster
+345: dev_lint_file          # Tek dosyada ESLint
+346: dev_search_symbol      # Projede sembol ara
+347: dev_test_run           # Test çalıştır
+348: ```
+349: 
+350: ### Provider Tools (Selector Doğrulama)
+351: 
+352: AI provider selector'larını canlı test etmek için araçlar:
+353: 
+354: ```
+355: list_provider_webviews       # Provider ve webview listesi
+356: list_provider_selectors      # Config'deki selector'ları listele
+357: validate_provider_selectors  # Selector'ları canlı webview'da test et
+358: inspect_provider_element     # Webview'da element inspect et
+359: ```
+360: 
+361: **Kullanım örneği:**
+362: ```bash
+363: # ChatGPT selector'larını doğrula
+364: validate_provider_selectors provider=chatgpt
+365: 
+366: # Belirli element inspect et
+367: inspect_provider_element provider=chatgpt selector='[data-message-author-role="user"]'
+368: ```
+369: 
+370: ### MCP Server Logging
+371: MCP tool çağrıları ve hatalar `mcp-server/logs/mcp-server.log` dosyasına kaydedilir.
+372: 
+373: ```bash
+374: # MCP log'larını görüntüle
+375: cat mcp-server/logs/mcp-server.log | tail -20
+376: 
+377: # JSON formatında - jq ile parse
+378: cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
+379: ```
+380: 
+381: **Not:** `hev_fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
+382: 
+383: ### Web Tools (Arama ve İçerik)
+384: 
+385: **Araçlar:**
+386: ```
+387: web_search             # SearXNG ile web araması (Google, Bing, DuckDuckGo, GitHub, StackOverflow)
+388: web_fetch              # URL'den sayfa içeriği çek (temiz markdown)
+389: web_search_and_fetch   # Arama yap + ilk N sonucun içeriğini çek (detaylı araştırma)
+390: ```
+391: 
+392: **Kurulum:** SearXNG gerektirir:
+393: ```bash
+394: sudo docker compose -f docker-compose.searxng.yml up -d
+395: ```
+396: 
+397: #### 🎯 Web Search Kullanım Stratejisi
+398: 
+399: **MUTLAKA KULLAN - Bu durumlarda web search zorunlu:**
+400: 
+401: | Durum | Neden | Örnek Sorgu |
+402: |-------|-------|-------------|
+403: | Spesifik hata mesajı | Güncel çözümler değişir | `"ECONNREFUSED" Docker Node.js solution` |
+404: | Versiyon-spesifik soru | API'ler değişir | `React 19 useOptimistic example` |
+405: | "Güncel/en son/2024/2025" içeren sorular | Eski bilgi geçersiz | `TypeScript 5.4 new features` |
+406: | Bilinmeyen kütüphane/teknoloji | Yerleşik bilgi yetersiz | `Bun runtime vs Node.js` |
+407: | Best practices sorusu | Standartlar değişir | `Docker security best practices 2025` |
+408: | Performans karşılaştırması | Benchmark'lar güncellenir | `Vite vs Webpack build speed` |
+409: 
+410: **KULLANMA - Bu durumlarda gereksiz:**
+411: 
+412: | Durum | Neden |
+413: |-------|-------|
+414: | Temel syntax soruları | Yerleşik bilgi yeterli |
+415: | Proje-spesifik kod analizi | Cevap projede, internette değil |
+416: | Basit algoritma soruları | Değişmeyen bilgi |
+417: | Bu projenin kendi dosyaları hakkında | `hev_fs_grep`, `hev_fs_open_files` kullan |
+418: 
+419: #### 🔍 Arama Stratejisi
+420: 
+421: ```
+422: 1. HIZLI KONTROL (emin değilsen):
+423:    web_search query="konu" limit=5
+424:    → Link listesi al, genel fikir edin
+425: 
+426: 2. DETAYLI ARAŞTIRMA (çözüm gerekiyorsa):
+427:    web_search_and_fetch query="konu" fetch_count=3
+428:    → Tam içerik çek, analiz et
+429: 
+430: 3. BİLİNEN KAYNAK (dokümantasyon):
+431:    web_fetch url="https://docs.example.com/api"
+432:    → Direkt içerik çek
+433: ```
+434: 
+435: #### 📝 Etkili Sorgu Yazma
+436: 
+437: ```bash
+438: # ❌ KÖTÜ - çok genel
+439: web_search query="React error"
+440: 
+441: # ✅ İYİ - spesifik hata + context
+442: web_search query="React useEffect cleanup function memory leak"
+443: 
+444: # ✅ İYİ - versiyon belirt
+445: web_search query="Node.js 20 fetch API native"
+446: 
+447: # ✅ İYİ - çözüm odaklı
+448: web_search query="Docker container cannot connect to host network solution"
+449: ```
+450: 
+451: #### 🏷️ Kategori ve Engine Seçimi
+452: 
+453: ```bash
+454: # Kod/programlama soruları
+455: web_search query="..." categories="it" engines="github,stackoverflow"
+456: 
+457: # Genel bilgi
+458: web_search query="..." categories="general"
+459: 
+460: # Akademik/bilimsel
+461: web_search query="..." categories="science" engines="google scholar"
+462: 
+463: # Haberler/güncel
+464: web_search query="..." categories="news" time_range="month"
+465: ```
+466: 
+467: #### ⚡ Performans İpuçları
+468: 
+469: | Parametre | Hızlı Kontrol | Detaylı Araştırma |
+470: |-----------|---------------|-------------------|
+471: | `limit` | 3-5 | 10 |
+472: | `fetch_count` | - | 2-3 |
+473: | `max_content_length` | - | 10000 |
+474: 
+475: **Dil Stratejisi:**
+476: - Teknik terimler için **İngilizce** sorgu (daha fazla sonuç)
+477: - Türkçe kaynak gerekirse `language="tr-TR"` ekle
+478: 
+479: ### Timeout Konfigürasyonu
+480: 
+481: Tüm timeout değerleri merkezi olarak `mcp-server/utils/timeouts.ts` dosyasında tanımlıdır.
+482: 
+483: | Kategori | İşlem | Timeout |
+484: |----------|-------|---------|
+485: | **CDP** | Target discovery | 10s |
+486: | | WebSocket bağlantı | 10s |
+487: | | Komut (varsayılan) | 15s |
+488: | | Screenshot | 15s |
+489: | **Web** | Arama API | 15s |
+490: | | Sayfa fetch | 15s |
+491: | | URL kontrol | 10s |
+492: | **Filesystem** | Bash komutu | 30s |
+493: | **Dev** | ESLint | 120s |
+494: | | Test çalıştırma | 120s |
+495: | **Electron** | Test | 10s |
+496: 
+497: **Minimum timeout:** 10 saniye (tüm değerler bu sınırın üstünde)
+498: 
+499: ### Progress Göstergesi
+500: Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
+501: 
+502: ```
+503: [PROGRESS] ⏳ Proje analizi başladı...
+504: [PROGRESS] [33%] electron taranıyor...
+505: [PROGRESS] ✅ Proje analizi 175 dosya analiz edildi (0.1s)
+506: ```
+507: 
+508: Progress destekleyen tool'lar:
+509: - `hev_dev_analyze_project`
+510: - `hev_dev_lint_file`
+511: - `hev_dev_test_run`
+512: - `hev_fs_create_file`
+513: - `fs_find_and_replace`
+514: 
+515: ---
+516: 
+517: ## 📁 Important Files
+518: 
+519: | Dosya | Açıklama |
+520: |-------|----------|
+521: | `electron/main.ts` | Ana process, IPC handlers |
+522: | `electron/preload.cjs` | contextBridge API |
+523: | `src/js/modules/core-engine.ts` | Renderer koordinatör |
+524: | `src/js/modules/slot-controller.ts` | Slot lifecycle + state machine |
+525: | `src/js/modules/error-boundary.ts` | Global hata yakalama |
+526: | `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper |
+527: | `src/js/types/ipc-channels.ts` | IPC channel tip tanımları |
+528: | `src/js/modules/slot/state-machine.ts` | Robust state machine |
+529: | `electron/handlers/ipc-database.ts` | Modüler database IPC handlers |
+530: | `mcp-server/index.ts` | MCP protocol server |
+531: 
+532: ---
+533: 
+534: ## 🔒 Security
+535: 
+536: - ✅ `contextIsolation: true`
+537: - ✅ `nodeIntegration: false`
+538: - ✅ `sandbox: true`
+539: - IPC kanalları main process'te validate edilir
+540: 
+541: ---
+542: 
+543: ## 🛠️ Troubleshooting
+544: 
+545: | Sorun | Çözüm |
+546: |-------|-------|
+547: | Electron başlamıyor | `rm -rf node_modules && npm install` |
+548: | CDP bağlantı yok | `npm start` ile uygulama çalışıyor mu? |
+549: | IPC çalışmıyor | preload.cjs ve main.ts channel isimlerini kontrol et |
+550: 
+551: > Detaylı troubleshooting: `.rovodev/testing.md`
+552: 
+553: ---
+554: 
+555: ## 🧙 ROVO - AI Asistan Protokolleri
+556: 
+557: > **ROVO** (Research-Oriented Virtual Operator) - Araştırma-öncelikli, 15+ yıllık deneyimli yazılım asistanı
+558: 
+559: ### Karakter Profili
+560: 
+561: ROVO **asla belirsizlikle hareket etmez**:
+562: - Emin olmadığı konuda **önce araştırır** (web search)
+563: - Kritik kararlarda **derin analiz** yapar (ULTRATHINK)
+564: - Sorunları ve fikirleri **not eder** (notebook)
+565: 
+566: > Detaylı profil: `.rovodev/persona.md`
+567: 
+568: ### Çalışma Modları
+569: 
+570: | Mod | Tetikleyici | Davranış |
+571: |-----|-------------|----------|
+572: | **QUICK** | Basit syntax, trivial işler | Direkt, kısa cevap |
+573: | **STANDARD** | Normal geliştirme | Dengeli analiz + uygulama |
+574: | **RESEARCH** | Belirsizlik, güncel bilgi gereksinimi | **Otomatik web araştırma** → uygulama |
+575: | **ULTRATHINK** | Kritik kararlar, mimari değişiklikler | Derin, çok boyutlu analiz |
+576: 
+577: > Tetikleyici kurallar: `.rovodev/auto-triggers.md`
+578: 
+579: ### Özel Komutlar
+580: 
+581: | Komut | Açıklama |
+582: |-------|----------|
+583: | `ULTRATHINK:` | Derin analiz modunu aktive et |
+584: | `Notlarını kontrol edelim` | ROVO'nun not defterini aç, birlikte incele |
+585: | `Hızlı cevap:` | QUICK moda zorla (araştırma atlansın) |
+586: 
+587: ### RESEARCH Modu - Otomatik Web Araştırma
+588: 
+589: **ZORUNLU** araştırma durumları (otomatik tetiklenir):
+590: 
+591: | Durum | Neden | Örnek |
+592: |-------|-------|-------|
+593: | Hata mesajı | Güncel çözümler değişir | "ECONNREFUSED hatası" |
+594: | Versiyon sorusu | API'ler değişir | "React 19'da ne var?" |
+595: | Bilinmeyen teknoloji | Yerleşik bilgi yetersiz | "Bun runtime nasıl?" |
+596: | Best practice | Standartlar değişir | "Docker güvenlik 2025" |
+597: | "Güncel/en son" kelimesi | Eski bilgi geçersiz | "TypeScript 5.4 özellikleri" |
+598: 
+599: ### Not Defteri
+600: 
+601: ROVO çalışırken karşılaştığı sorunları kaydeder:
+602: - 🐛 Tool hataları ve workaround'lar
+603: - 💡 Yeni tool/özellik fikirleri  
+604: - 🔧 Sonra yapılacak düzeltmeler
+605: - 📝 Tekrarlayan pattern'ler
+606: 
+607: **Kontrol komutu:** `Notlarını kontrol edelim`
+608: 
+609: > Not defteri: `.rovodev/notebook.md`
+610: 
+611: ---
+612: 
+613: ## 🔗 Quick Links
+614: 
+615: ### Session Başlangıcı
+616: - `.rovodev/context.md` - **YENİ SESSION İÇİN ÖNCE BUNU OKU**
+617: 
+618: ### Mimari & Kavramlar
+619: - `.rovodev/architecture.md` - Mimari detayları
+620: - `.rovodev/concepts.md` - Key concepts detayları
+621: - `.rovodev/cdp.md` - CDP tool'ları
+622: - `.rovodev/logging.md` - Log sistemi
+623: - `.rovodev/testing.md` - Test workflow'ları
+624: 
+625: ### ROVO Protokolleri
+626: - `.rovodev/persona.md` - **ROVO karakter profili**
+627: - `.rovodev/auto-triggers.md` - **Otomatik mod kuralları**
+628: - `.rovodev/ultrathink.md` - ULTRATHINK protokol detayları
+629: - `.rovodev/notebook.md` - **ROVO not defteri**
+630: 
+631: ---
+632: 
+633: **Last Updated:** 2026-01-24  
+634: **Version:** 5.5.0
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================

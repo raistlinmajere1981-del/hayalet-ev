@@ -199,7 +199,7 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
 function extractText(
   element: cheerio.Cheerio<AnyNode>,
   $: cheerio.CheerioAPI,
-  includeLinks: boolean
+  _includeLinks: boolean
 ): string {
   const lines: string[] = [];
 
@@ -292,11 +292,12 @@ function extractMarkdown(
       case "li":
         text = `- ${processInlineElements($el, $, includeLinks)}`;
         break;
-      case "pre":
+      case "pre": {
         const code = $el.find("code").text() || $el.text();
         const lang = $el.find("code").attr("class")?.match(/language-(\w+)/)?.[1] || "";
         text = `\n\`\`\`${lang}\n${code.trim()}\n\`\`\`\n`;
         break;
+      }
       case "blockquote":
         text = `> ${$el.text().trim()}\n`;
         break;

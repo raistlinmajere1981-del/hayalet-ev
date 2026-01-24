@@ -128,7 +128,7 @@ const SSEClient = {
         this._eventSource.onopen = () => {
           console.log('[SSE] Connected');
           this._connected = true;
-          this._reconnectAttempts = 0;
+          this._resetReconnectState(); // Reset exponential backoff on success
           this._emit('connection', { status: 'connected' });
           resolve(true);
         };
@@ -468,24 +468,54 @@ const SSEClient = {
     }
   },
 
+  /** @type {number} Maximum reconnect delay in ms */
+  _maxReconnectDelay: 30000,
+
   /**
-   * Yeniden bağlanmayı planla
+   * Calculate exponential backoff delay
+   * @param {number} attempt - Current attempt number
+   * @returns {number} Delay in milliseconds
+   */
+  _calculateBackoffDelay(attempt) {
+    // Exponential backoff: baseDelay * 2^(attempt-1)
+    // With jitter to prevent thundering herd
+    const baseDelay = this._getReconnectDelay();
+    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+    const jitter = Math.random() * 1000; // 0-1s random jitter
+    const delay = Math.min(exponentialDelay + jitter, this._maxReconnectDelay);
+    return Math.round(delay);
+  },
+
+  /**
+   * Yeniden bağlanmayı planla (exponential backoff ile)
    */
   _scheduleReconnect() {
     this._reconnectAttempts++;
-    const delay = this._reconnectDelay * this._reconnectAttempts;
+    const delay = this._calculateBackoffDelay(this._reconnectAttempts);
     
-    console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${this._reconnectAttempts}/${this._maxReconnectAttempts})`);
+    console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${this._reconnectAttempts}/${this._getMaxReconnectAttempts()}) [exponential backoff]`);
     
     this._emit('connection', { 
       status: 'reconnecting', 
       attempt: this._reconnectAttempts,
-      maxAttempts: this._getMaxReconnectAttempts() 
+      maxAttempts: this._getMaxReconnectAttempts(),
+      nextRetryMs: delay
     });
 
     this._reconnectTimeout = setTimeout(() => {
       this.connect();
     }, delay);
+  },
+
+  /**
+   * Reset reconnection state (call on successful connect)
+   */
+  _resetReconnectState() {
+    this._reconnectAttempts = 0;
+    if (this._reconnectTimeout) {
+      clearTimeout(this._reconnectTimeout);
+      this._reconnectTimeout = null;
+    }
   }
 };
 

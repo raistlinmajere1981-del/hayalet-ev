@@ -34,16 +34,16 @@ Current: `5.4.0`
 ### Kullanılacak Tool Prefix'leri
 | Prefix | Açıklama | Örnek |
 |--------|----------|-------|
-| `fs_*` | Dosya işlemleri | `fs_open_files`, `fs_grep`, `fs_bash` |
-| `dev_*` | Geliştirme araçları | `dev_analyze_project`, `dev_generate_diagram` |
-| CDP tools | Electron kontrolü | `check_electron_connection`, `take_cdp_screenshot` |
+| `fs_*` | Dosya işlemleri | `hev_fs_open_files`, `hev_fs_grep`, `hev_fs_bash` |
+| `dev_*` | Geliştirme araçları | `hev_dev_analyze_project`, `hev_dev_generate_diagram` |
+| CDP tools | Electron kontrolü | `hev_check_electron_connection`, `hev_take_cdp_screenshot` |
 
 ### ❌ KULLANMA
-- `open_files` → Yerine `fs_open_files` kullan
-- `grep` → Yerine `fs_grep` kullan  
-- `bash` → Yerine `fs_bash` kullan
-- `expand_folder` → Yerine `fs_expand_folder` kullan
-- `create_file` → Yerine `fs_create_file` kullan
+- `open_files` → Yerine `hev_fs_open_files` kullan
+- `grep` → Yerine `hev_fs_grep` kullan  
+- `bash` → Yerine `hev_fs_bash` kullan
+- `expand_folder` → Yerine `hev_fs_expand_folder` kullan
+- `create_file` → Yerine `hev_fs_create_file` kullan
 
 ### ✅ KULLAN
 ```
@@ -378,7 +378,7 @@ cat mcp-server/logs/mcp-server.log | tail -20
 cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
 ```
 
-**Not:** `fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
+**Not:** `hev_fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
 
 ### Web Tools (Arama ve İçerik)
 
@@ -414,7 +414,7 @@ sudo docker compose -f docker-compose.searxng.yml up -d
 | Temel syntax soruları | Yerleşik bilgi yeterli |
 | Proje-spesifik kod analizi | Cevap projede, internette değil |
 | Basit algoritma soruları | Değişmeyen bilgi |
-| Bu projenin kendi dosyaları hakkında | `fs_grep`, `fs_open_files` kullan |
+| Bu projenin kendi dosyaları hakkında | `hev_fs_grep`, `hev_fs_open_files` kullan |
 
 #### 🔍 Arama Stratejisi
 
@@ -506,10 +506,10 @@ Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
 ```
 
 Progress destekleyen tool'lar:
-- `dev_analyze_project`
-- `dev_lint_file`
-- `dev_test_run`
-- `fs_create_file`
+- `hev_dev_analyze_project`
+- `hev_dev_lint_file`
+- `hev_dev_test_run`
+- `hev_fs_create_file`
 - `fs_find_and_replace`
 
 ---
@@ -552,32 +552,83 @@ Progress destekleyen tool'lar:
 
 ---
 
-## 🚀 Özel Protokoller
+## 🧙 ROVO - AI Asistan Protokolleri
 
-| Komut | Dosya | Açıklama |
-|-------|-------|----------|
-| `ULTRATHINK` | `.rovodev/ultrathink.md` | Derin analiz modu - kısa cevaplar yerine çok boyutlu analiz |
+> **ROVO** (Research-Oriented Virtual Operator) - Araştırma-öncelikli, 15+ yıllık deneyimli yazılım asistanı
 
-**Kullanım:** Herhangi bir sorudan önce `ULTRATHINK:` yazın.
+### Karakter Profili
 
-**Örnek:**
-```
-ULTRATHINK: Bu mimarinin avantajları ve dezavantajları neler?
-```
+ROVO **asla belirsizlikle hareket etmez**:
+- Emin olmadığı konuda **önce araştırır** (web search)
+- Kritik kararlarda **derin analiz** yapar (ULTRATHINK)
+- Sorunları ve fikirleri **not eder** (notebook)
+
+> Detaylı profil: `.rovodev/persona.md`
+
+### Çalışma Modları
+
+| Mod | Tetikleyici | Davranış |
+|-----|-------------|----------|
+| **QUICK** | Basit syntax, trivial işler | Direkt, kısa cevap |
+| **STANDARD** | Normal geliştirme | Dengeli analiz + uygulama |
+| **RESEARCH** | Belirsizlik, güncel bilgi gereksinimi | **Otomatik web araştırma** → uygulama |
+| **ULTRATHINK** | Kritik kararlar, mimari değişiklikler | Derin, çok boyutlu analiz |
+
+> Tetikleyici kurallar: `.rovodev/auto-triggers.md`
+
+### Özel Komutlar
+
+| Komut | Açıklama |
+|-------|----------|
+| `ULTRATHINK:` | Derin analiz modunu aktive et |
+| `Notlarını kontrol edelim` | ROVO'nun not defterini aç, birlikte incele |
+| `Hızlı cevap:` | QUICK moda zorla (araştırma atlansın) |
+
+### RESEARCH Modu - Otomatik Web Araştırma
+
+**ZORUNLU** araştırma durumları (otomatik tetiklenir):
+
+| Durum | Neden | Örnek |
+|-------|-------|-------|
+| Hata mesajı | Güncel çözümler değişir | "ECONNREFUSED hatası" |
+| Versiyon sorusu | API'ler değişir | "React 19'da ne var?" |
+| Bilinmeyen teknoloji | Yerleşik bilgi yetersiz | "Bun runtime nasıl?" |
+| Best practice | Standartlar değişir | "Docker güvenlik 2025" |
+| "Güncel/en son" kelimesi | Eski bilgi geçersiz | "TypeScript 5.4 özellikleri" |
+
+### Not Defteri
+
+ROVO çalışırken karşılaştığı sorunları kaydeder:
+- 🐛 Tool hataları ve workaround'lar
+- 💡 Yeni tool/özellik fikirleri  
+- 🔧 Sonra yapılacak düzeltmeler
+- 📝 Tekrarlayan pattern'ler
+
+**Kontrol komutu:** `Notlarını kontrol edelim`
+
+> Not defteri: `.rovodev/notebook.md`
 
 ---
 
 ## 🔗 Quick Links
 
+### Session Başlangıcı
 - `.rovodev/context.md` - **YENİ SESSION İÇİN ÖNCE BUNU OKU**
+
+### Mimari & Kavramlar
 - `.rovodev/architecture.md` - Mimari detayları
 - `.rovodev/concepts.md` - Key concepts detayları
 - `.rovodev/cdp.md` - CDP tool'ları
 - `.rovodev/logging.md` - Log sistemi
 - `.rovodev/testing.md` - Test workflow'ları
+
+### ROVO Protokolleri
+- `.rovodev/persona.md` - **ROVO karakter profili**
+- `.rovodev/auto-triggers.md` - **Otomatik mod kuralları**
 - `.rovodev/ultrathink.md` - ULTRATHINK protokol detayları
+- `.rovodev/notebook.md` - **ROVO not defteri**
 
 ---
 
-**Last Updated:** 2026-01-18  
-**Version:** 5.4.0
+**Last Updated:** 2026-01-24  
+**Version:** 5.5.0

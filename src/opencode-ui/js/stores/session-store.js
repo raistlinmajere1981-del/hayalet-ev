@@ -44,6 +44,62 @@ const SessionStore = {
   _sessionInfo: new Map(),
 
   // ===========================================================================
+  // Race Condition Protection
+  // ===========================================================================
+
+  /** @type {number} Request counter for race condition protection */
+  _requestCounter: 0,
+
+  /** @type {Map<string, number>} Operation name -> Last request ID */
+  _lastRequestIds: new Map(),
+
+  /** @type {Map<string, boolean>} Operation name -> Loading state */
+  _loadingStates: new Map(),
+
+  /**
+   * Generate unique request ID for an operation
+   * @param {string} operation - Operation name (e.g., 'loadSessions', 'fetchSession')
+   * @returns {number} Request ID
+   */
+  _startRequest(operation) {
+    const requestId = ++this._requestCounter;
+    this._lastRequestIds.set(operation, requestId);
+    this._loadingStates.set(operation, true);
+    return requestId;
+  },
+
+  /**
+   * Check if request is still valid (not superseded by newer request)
+   * @param {string} operation - Operation name
+   * @param {number} requestId - Request ID to check
+   * @returns {boolean} True if request should be applied
+   */
+  _isRequestValid(operation, requestId) {
+    return this._lastRequestIds.get(operation) === requestId;
+  },
+
+  /**
+   * Mark operation as complete
+   * @param {string} operation - Operation name
+   * @param {number} requestId - Request ID
+   */
+  _endRequest(operation, requestId) {
+    // Only clear loading if this was the last request
+    if (this._isRequestValid(operation, requestId)) {
+      this._loadingStates.set(operation, false);
+    }
+  },
+
+  /**
+   * Check if operation is currently loading
+   * @param {string} operation - Operation name
+   * @returns {boolean}
+   */
+  isLoading(operation) {
+    return this._loadingStates.get(operation) === true;
+  },
+
+  // ===========================================================================
   // Query Methods
   // ===========================================================================
 
@@ -410,6 +466,51 @@ const SessionStore = {
     }
 
     this._notify({ type: 'session:deleted', sessionId });
+  },
+
+  /**
+   * Rename a session (API + Store)
+   * @param {string} sessionId
+   * @param {string} newTitle
+   * @returns {Promise<boolean>}
+   */
+  async renameSession(sessionId, newTitle) {
+    try {
+      const result = await window.APIClient?.renameSession(sessionId, newTitle);
+      if (result?.success) {
+        const session = this._sessions.get(sessionId);
+        if (session) {
+          session.title = newTitle;
+          session.updatedAt = Date.now();
+          this.bumpSessionRevision(sessionId);
+          this._notify({ type: 'session:renamed', sessionId, title: newTitle });
+        }
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[SessionStore] Rename failed:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Delete a session (API + Store)
+   * @param {string} sessionId
+   * @returns {Promise<boolean>}
+   */
+  async deleteSession(sessionId) {
+    try {
+      const result = await window.APIClient?.deleteSession(sessionId);
+      if (result?.success) {
+        this.removeSession(sessionId);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('[SessionStore] Delete failed:', err);
+      return false;
+    }
   },
 
   /**

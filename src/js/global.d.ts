@@ -86,6 +86,14 @@ declare global {
     opcRemoveBinary: (path: string) => Promise<OpenCodeConfig>;
     opcUpdatePreferences: (updates: Partial<OpenCodePreferences>) => Promise<OpenCodeConfig>;
     opcRecordWorkspaceLaunch: (folderPath: string, binaryPath?: string) => Promise<OpenCodeConfig>;
+    
+    // OpenCode Agent/Model Preference Persistence
+    opcListModels: () => Promise<Array<{ id: string; name: string; providerId: string }>>;
+    opcListAgents: () => Promise<Array<{ name: string; description?: string }>>;
+    opcGetAgentModelPreference: (folderPath?: string) => Promise<{ agent?: string; providerId?: string; modelId?: string; lastUpdated?: number } | null>;
+    opcSaveAgentModelPreference: (preference: Record<string, unknown>, folderPath?: string) => Promise<boolean>;
+    opcSaveAgentPreference: (agent: string, folderPath?: string) => Promise<boolean>;
+    opcSaveModelPreference: (providerId: string, modelId: string, folderPath?: string) => Promise<boolean>;
 
     // File Operations
     readFile: (path: string) => Promise<string | null>;
@@ -181,7 +189,7 @@ declare global {
     opencodeStatus: () => Promise<{ running: boolean; port?: number }>;
 
     // OpenCode SSE Server
-    opencodeSSEStart: (config?: { port?: number; host?: string; corsOrigin?: string }) => Promise<{ success: boolean; url?: string; error?: string }>;
+    opencodeSSEStart: (config?: { port?: number; host?: string; corsOrigin?: string }) => Promise<{ success: boolean; url?: string; workspace?: string; error?: string }>;
     opencodeSSEStop: () => Promise<{ success: boolean }>;
     opencodeSSEStatus: () => Promise<{ running: boolean; url: string | null; clients: number; openCodeConnected: boolean }>;
     opencodeSSESession: () => Promise<{ session: unknown | null }>;

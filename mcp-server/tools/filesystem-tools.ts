@@ -140,7 +140,7 @@ export async function createFile(
   } catch (error) {
     const err = error as Error;
     progress.fail(err.message);
-    logToolError("fs_create_file", err, { filePath, contentSize: Buffer.byteLength(initialContent, "utf-8") });
+    logToolError("hev_fs_create_file", err, { filePath, contentSize: Buffer.byteLength(initialContent, "utf-8") });
     return { 
       success: false, 
       message: `Dosya oluşturma hatası: ${err.message}\nYol: ${filePath}\nİçerik boyutu: ${Buffer.byteLength(initialContent, "utf-8")} byte` 
@@ -204,6 +204,114 @@ ${eofMarker}`;
 }
 
 /**
+ * fs_create_chunked - Büyük dosyaları parçalar halinde oluştur
+ * LLM response limitlerini aşmak için chunk-based yaklaşım
+ */
+export async function createChunkedFile(
+  filePath: string,
+  chunks: string[],
+  projectRoot: string,
+  overwrite: boolean = false
+): Promise<{ success: boolean; message: string; chunkCount: number }> {
+  const progress = createProgress({ operation: "hev_fs_create_chunked", total: 100 });
+  const tempDir = `${projectRoot}/.tmp_chunks`;
+  const tempFiles: string[] = [];
+  
+  try {
+    progress.log(`${chunks.length} parça birleştiriliyor...`);
+    
+    // Hedef dosya kontrolü
+    if (!overwrite) {
+      try {
+        await access(filePath);
+        return { success: false, message: `Dosya zaten var: ${filePath}`, chunkCount: 0 };
+      } catch { /* dosya yok, devam */ }
+    }
+    
+    // Temp dizini oluştur
+    await mkdir(tempDir, { recursive: true });
+    
+    // Her chunk'ı temp dosyaya yaz
+    for (let i = 0; i < chunks.length; i++) {
+      const tempPath = `${tempDir}/chunk_${String(i).padStart(4, "0")}.tmp`;
+      await writeFile(tempPath, chunks[i], "utf-8");
+      tempFiles.push(tempPath);
+      progress.update(Math.round(((i + 1) / chunks.length) * 50), `Parça ${i + 1}/${chunks.length} yazıldı`);
+    }
+    
+    // Hedef dizini oluştur
+    await mkdir(dirname(filePath), { recursive: true });
+    
+    // Tüm chunk'ları birleştir
+    progress.update(60, "Parçalar birleştiriliyor...");
+    let fullContent = "";
+    for (const tempPath of tempFiles) {
+      const chunk = await readFile(tempPath, "utf-8");
+      fullContent += chunk;
+    }
+    
+    // Hedef dosyaya yaz
+    progress.update(80, "Dosya yazılıyor...");
+    await writeFile(filePath, fullContent, "utf-8");
+    
+    // Temp dosyaları temizle
+    progress.update(90, "Temp dosyalar temizleniyor...");
+    for (const tempPath of tempFiles) {
+      try { await unlink(tempPath); } catch { /* ignore */ }
+    }
+    
+    const finalSize = Buffer.byteLength(fullContent, "utf-8");
+    progress.done(`${filePath} oluşturuldu (${chunks.length} parça, ${finalSize} byte)`);
+    
+    return {
+      success: true,
+      message: `Dosya oluşturuldu: ${filePath}\nParça sayısı: ${chunks.length}\nToplam boyut: ${finalSize} byte`,
+      chunkCount: chunks.length,
+    };
+  } catch (error) {
+    // Hata durumunda temp dosyaları temizle
+    for (const tempPath of tempFiles) {
+      try { await unlink(tempPath); } catch { /* ignore */ }
+    }
+    const err = error as Error;
+    progress.fail(err.message);
+    logToolError("hev_fs_create_chunked", err, { filePath, chunkCount: chunks.length });
+    return { success: false, message: `Chunk dosya oluşturma hatası: ${err.message}`, chunkCount: 0 };
+  }
+}
+
+/**
+ * fs_append_chunk - Mevcut dosyaya chunk ekle (streaming write)
+ */
+export async function appendChunk(
+  filePath: string,
+  content: string,
+  createIfMissing: boolean = true
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Dosya var mı kontrol et
+    let existingContent = "";
+    try {
+      existingContent = await readFile(filePath, "utf-8");
+    } catch {
+      if (!createIfMissing) {
+        return { success: false, message: `Dosya bulunamadı: ${filePath}` };
+      }
+      // Dizini oluştur
+      await mkdir(dirname(filePath), { recursive: true });
+    }
+    
+    // İçeriği ekle
+    await writeFile(filePath, existingContent + content, "utf-8");
+    return { success: true, message: `Chunk eklendi: ${filePath} (+${Buffer.byteLength(content, "utf-8")} byte)` };
+  } catch (error) {
+    const err = error as Error;
+    logToolError("hev_fs_append_chunk", err, { filePath });
+    return { success: false, message: `Append hatası: ${err.message}` };
+  }
+}
+
+/**
  * delete_file - Dosya sil (çöp kutusuna taşır)
  */
 export async function deleteFile(filePath: string, projectRoot: string, permanent: boolean = false): Promise<{ success: boolean; message: string }> {
@@ -219,7 +327,7 @@ export async function deleteFile(filePath: string, projectRoot: string, permanen
     }
     return { success: false, message: `Dosya bulunamadı: ${filePath}` };
   } catch (error) {
-    logToolError("fs_delete_file", error as Error, { filePath });
+    logToolError("hev_fs_delete_file", error as Error, { filePath });
     return { success: false, message: `Hata: ${(error as Error).message}` };
   }
 }
@@ -239,7 +347,7 @@ export async function moveFile(
     await rename(filePath, newPath);
     return { success: true, message: `Dosya taşındı: ${filePath} → ${newPath}` };
   } catch (error) {
-    logToolError("fs_move_file", error as Error, { filePath, newPath });
+    logToolError("hev_fs_move_file", error as Error, { filePath, newPath });
     return { success: false, message: `Hata: ${(error as Error).message}` };
   }
 }
@@ -269,7 +377,7 @@ export async function expandCodeChunks(
     const fileContent = await readFile(filePath, "utf-8");
     return { content: addLineNumbers(fileContent) };
   } catch (error) {
-    logToolError("fs_expand_code_chunks", error as Error, { filePath, lineRanges, patterns });
+    logToolError("hev_fs_expand_code_chunks", error as Error, { filePath, lineRanges, patterns });
     return { content: "", error: (error as Error).message };
   }
 }
@@ -341,7 +449,7 @@ export async function expandFolder(
     const structure = formatFolderStructure(entries);
     return { structure: `${folderPath}/\n${structure}` };
   } catch (error) {
-    logToolError("fs_expand_folder", error as Error, { folderPath, maxDepth });
+    logToolError("hev_fs_expand_folder", error as Error, { folderPath, maxDepth });
     return { structure: "", error: (error as Error).message };
   }
 }
@@ -602,7 +710,7 @@ export function createTechnicalPlan(
 
 export const FILESYSTEM_TOOL_DEFINITIONS = [
   {
-    name: "fs_open_files",
+    name: "hev_fs_open_files",
     description: "Bir veya daha fazla dosyayı aç. Büyük dosyalar collapsed view ile gösterilir (fonksiyon gövdeleri gizli).",
     inputSchema: {
       type: "object" as const,
@@ -617,7 +725,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_create_file",
+    name: "hev_fs_create_file",
     description: "Yeni dosya oluştur. Dizin yoksa otomatik oluşturulur.",
     inputSchema: {
       type: "object" as const,
@@ -641,7 +749,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_delete_file",
+    name: "hev_fs_delete_file",
     description: "Dosya sil (çöp kutusuna taşır, geri alınabilir). permanent=true ile kalıcı siler.",
     inputSchema: {
       type: "object" as const,
@@ -660,7 +768,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_move_file",
+    name: "hev_fs_move_file",
     description: "Dosya taşı veya yeniden adlandır.",
     inputSchema: {
       type: "object" as const,
@@ -678,7 +786,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_expand_code_chunks",
+    name: "hev_fs_expand_code_chunks",
     description: "Dosyada belirli satır aralıklarını veya kod sembollerini genişlet. Pattern örnekleri: 'MyClass', 'my_function', 'def my_function', 'MyClass/myMethod'",
     inputSchema: {
       type: "object" as const,
@@ -707,7 +815,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_find_and_replace",
+    name: "hev_fs_find_and_replace",
     description: "Dosyada bul ve değiştir.",
     inputSchema: {
       type: "object" as const,
@@ -729,7 +837,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_grep",
+    name: "hev_fs_grep",
     description: "Dosyalarda pattern ara. 3 mod: 1) Sadece content_pattern: içerik ara, 2) Sadece path_glob: dosya yolu ara, 3) Her ikisi: filtrelenmiş dosyalarda ara",
     inputSchema: {
       type: "object" as const,
@@ -746,7 +854,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_expand_folder",
+    name: "hev_fs_expand_folder",
     description: "Klasör yapısını göster (tree view).",
     inputSchema: {
       type: "object" as const,
@@ -765,7 +873,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_bash",
+    name: "hev_fs_bash",
     description: "Shell komutu çalıştır. Komut workspace dizininde çalışır. & ile biten komutlar arka planda çalışır.",
     inputSchema: {
       type: "object" as const,
@@ -784,7 +892,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_create_plan",
+    name: "hev_fs_create_plan",
     description: "Teknik plan oluştur ve doğrula.",
     inputSchema: {
       type: "object" as const,
@@ -824,7 +932,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
   },
   // === Recycle Bin Tools ===
   {
-    name: "fs_trash_list",
+    name: "hev_fs_trash_list",
     description: "Çöp kutusundaki dosyaları listele",
     inputSchema: {
       type: "object" as const,
@@ -832,7 +940,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_restore",
+    name: "hev_fs_restore",
     description: "Çöp kutusundan dosya geri yükle. Index verilmezse en son silinen geri yüklenir.",
     inputSchema: {
       type: "object" as const,
@@ -845,7 +953,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_trash_empty",
+    name: "hev_fs_trash_empty",
     description: "Çöp kutusunu boşalt",
     inputSchema: {
       type: "object" as const,
@@ -858,7 +966,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_backup",
+    name: "hev_fs_backup",
     description: "Dosyanın yedeğini al (timestamp ile .bak uzantılı)",
     inputSchema: {
       type: "object" as const,
@@ -872,7 +980,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_undo",
+    name: "hev_fs_undo",
     description: "Son dosya işlemini geri al (delete, create, replace)",
     inputSchema: {
       type: "object" as const,
@@ -880,7 +988,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_history",
+    name: "hev_fs_history",
     description: "Dosya işlem geçmişini göster",
     inputSchema: {
       type: "object" as const,
@@ -895,7 +1003,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
   },
   // === Diff Tools ===
   {
-    name: "fs_diff",
+    name: "hev_fs_diff",
     description: "İki dosyayı karşılaştır (unified diff formatı)",
     inputSchema: {
       type: "object" as const,
@@ -913,7 +1021,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_diff_content",
+    name: "hev_fs_diff_content",
     description: "İki metin bloğunu karşılaştır",
     inputSchema: {
       type: "object" as const,
@@ -941,7 +1049,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "fs_show",
+    name: "hev_fs_show",
     description: "Dosya içeriğini satır numaralarıyla göster",
     inputSchema: {
       type: "object" as const,
@@ -960,6 +1068,53 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         },
       },
       required: ["file_path"],
+    },
+  },
+  {
+    name: "hev_fs_create_chunked",
+    description: "Büyük dosyaları parçalar halinde oluştur. LLM response limitlerini aşmak için chunk-based yaklaşım kullanır.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Oluşturulacak dosya yolu",
+        },
+        chunks: {
+          type: "array",
+          items: { type: "string" },
+          description: "Dosya içeriğinin parçaları (sırayla birleştirilecek)",
+        },
+        overwrite: {
+          type: "boolean",
+          description: "Dosya varsa üzerine yaz",
+          default: false,
+        },
+      },
+      required: ["file_path", "chunks"],
+    },
+  },
+  {
+    name: "hev_fs_append_chunk",
+    description: "Mevcut dosyaya içerik ekle (streaming write). Büyük dosyaları parça parça oluşturmak için kullanılır.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Hedef dosya yolu",
+        },
+        content: {
+          type: "string",
+          description: "Eklenecek içerik",
+        },
+        create_if_missing: {
+          type: "boolean",
+          description: "Dosya yoksa oluştur",
+          default: true,
+        },
+      },
+      required: ["file_path", "content"],
     },
   },
 ];

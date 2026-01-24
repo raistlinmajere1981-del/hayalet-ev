@@ -146,7 +146,7 @@ Local dosya sistemi ile etkileşim için araçlar:
     Örnek: "config.ts'de 'localhost' yerine '127.0.0.1' yaz"
     ```
 
-23. **fs_grep** - Dosyalarda ara (regex + glob)
+23. **hev_fs_grep** - Dosyalarda ara (regex + glob)
     ```
     Örnek: "Projede 'TODO' içeren satırları bul"
     Örnek: "*.test.ts dosyalarında 'describe' ara"
@@ -157,7 +157,7 @@ Local dosya sistemi ile etkileşim için araçlar:
     Örnek: "src klasörünün yapısını göster"
     ```
 
-25. **fs_bash** - Shell komutu çalıştır
+25. **hev_fs_bash** - Shell komutu çalıştır
     ```
     Örnek: "npm run lint çalıştır"
     Örnek: "git status"
@@ -172,7 +172,7 @@ Local dosya sistemi ile etkileşim için araçlar:
 
 Geliştirme workflow'ları için araçlar (eski npm scriptlerinin yerine):
 
-27. **dev_analyze_project** - Proje analizi
+27. **hev_dev_analyze_project** - Proje analizi
     ```
     Örnek: "Proje istatistiklerini göster"
     Modlar: summary, deps, modules, full

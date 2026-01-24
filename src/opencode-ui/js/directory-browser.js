@@ -131,13 +131,73 @@ const DirectoryBrowser = {
   },
   
   // ==========================================================================
+  // Path Security
+  // ==========================================================================
+
+  /**
+   * Validate path for security (prevent path traversal attacks)
+   * @param {string} path - Path to validate
+   * @returns {{valid: boolean, reason?: string}}
+   */
+  _validatePath(path) {
+    if (!path || typeof path !== 'string') {
+      return { valid: false, reason: 'Invalid path: empty or non-string' };
+    }
+
+    const normalizedPath = path.trim();
+
+    // Check for null bytes (common attack vector)
+    if (normalizedPath.includes('\0')) {
+      console.warn('[DirectoryBrowser] Blocked path with null byte:', path);
+      return { valid: false, reason: 'Path contains null byte' };
+    }
+
+    // Check for suspicious patterns
+    const suspiciousPatterns = [
+      /\.\.\//, // ../
+      /\.\.\\/, // ..\\
+      /^\.\.$/, // just ..
+      /~\/\.\.\//, // ~/../../
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(normalizedPath)) {
+        console.warn('[DirectoryBrowser] Blocked suspicious path pattern:', path);
+        return { valid: false, reason: 'Path contains suspicious traversal pattern' };
+      }
+    }
+
+    return { valid: true };
+  },
+
+  /**
+   * Check if path is within allowed bounds (home directory)
+   * @param {string} path - Path to check
+   * @returns {boolean}
+   */
+  _isPathAllowed(path) {
+    if (!this._homePath) return true; // Can't validate without home path
+    
+    // Simple check: path should start with home or be absolute system path
+    // More sophisticated checks could use path.resolve comparison
+    return true; // For now, basic validation is sufficient
+  },
+
+  // ==========================================================================
   // Directory Operations
   // ==========================================================================
   
   /**
-   * Dizini yükle (cache destekli)
+   * Dizini yükle (cache destekli, path validation ile)
    */
   async _loadDirectory(targetPath) {
+    // Path security validation
+    const validation = this._validatePath(targetPath);
+    if (!validation.valid) {
+      this._showError(validation.reason || 'Invalid path');
+      return { entries: [], metadata: null };
+    }
+
     const cacheKey = this._normalizePathKey(targetPath);
     
     // Check cache

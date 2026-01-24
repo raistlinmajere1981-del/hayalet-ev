@@ -334,3 +334,168 @@ function formatProviderName(providerId: string): string {
   };
   return nameMap[providerId.toLowerCase()] || providerId;
 }
+
+// =============================================================================
+// Agent/Model Preference Persistence
+// =============================================================================
+
+/**
+ * Agent/Model tercih bilgisi interface
+ */
+export interface AgentModelPreference {
+  agent?: string;
+  providerId?: string;
+  modelId?: string;
+  lastUpdated: number;
+}
+
+/**
+ * Folder bazlı agent/model tercihleri
+ * Key: folder path (normalized)
+ */
+export interface FolderPreferences {
+  [folderPath: string]: AgentModelPreference;
+}
+
+/**
+ * Extended OpenCodeConfig with agent/model preferences
+ */
+export interface OpenCodeConfigExtended extends OpenCodeConfig {
+  agentModelPreferences?: FolderPreferences;
+  defaultAgentModel?: AgentModelPreference;
+}
+
+/**
+ * Normalize folder path for consistent key
+ */
+function normalizeFolderPath(folderPath: string): string {
+  return folderPath.replace(/\\/g, '/').replace(/\/$/, '');
+}
+
+/**
+ * Get agent/model preference for a folder
+ * Falls back to default if folder-specific preference doesn't exist
+ */
+export async function getAgentModelPreference(folderPath?: string): Promise<AgentModelPreference | null> {
+  try {
+    const config = await loadOpencodeConfig() as OpenCodeConfigExtended;
+    
+    if (folderPath) {
+      const normalizedPath = normalizeFolderPath(folderPath);
+      const folderPref = config.agentModelPreferences?.[normalizedPath];
+      if (folderPref) {
+        console.log(`[OpenCodeConfig] Loaded preference for ${normalizedPath}:`, folderPref);
+        return folderPref;
+      }
+    }
+    
+    // Fall back to default
+    if (config.defaultAgentModel) {
+      console.log('[OpenCodeConfig] Using default preference:', config.defaultAgentModel);
+      return config.defaultAgentModel;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error getting agent/model preference:', error);
+    return null;
+  }
+}
+
+/**
+ * Save agent/model preference for a folder
+ * Also updates the default if no folder specified
+ * Merges with existing preference - only updates defined (non-null/undefined) values
+ */
+export async function saveAgentModelPreference(
+  preference: Omit<AgentModelPreference, 'lastUpdated'>,
+  folderPath?: string
+): Promise<boolean> {
+  try {
+    const config = await loadOpencodeConfig() as OpenCodeConfigExtended;
+    
+    // Get existing preference to merge with
+    const existingPref = folderPath 
+      ? config.agentModelPreferences?.[normalizeFolderPath(folderPath)]
+      : config.defaultAgentModel;
+    
+    // Merge: only override if new value is defined (not null/undefined)
+    const mergedPref: AgentModelPreference = {
+      agent: preference.agent ?? existingPref?.agent,
+      providerId: preference.providerId ?? existingPref?.providerId,
+      modelId: preference.modelId ?? existingPref?.modelId,
+      lastUpdated: Date.now(),
+    };
+    
+    console.log('[OpenCodeConfig] Merging preference:', { incoming: preference, existing: existingPref, merged: mergedPref });
+    
+    if (folderPath) {
+      const normalizedPath = normalizeFolderPath(folderPath);
+      
+      // Initialize preferences object if not exists
+      if (!config.agentModelPreferences) {
+        config.agentModelPreferences = {};
+      }
+      
+      config.agentModelPreferences[normalizedPath] = mergedPref;
+      console.log(`[OpenCodeConfig] Saved preference for ${normalizedPath}:`, mergedPref);
+    }
+    
+    // Always update default as well (last used becomes default)
+    config.defaultAgentModel = mergedPref;
+    
+    await saveOpencodeConfig(config);
+    return true;
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error saving agent/model preference:', error);
+    return false;
+  }
+}
+
+/**
+ * Update only agent preference
+ */
+export async function saveAgentPreference(agent: string, folderPath?: string): Promise<boolean> {
+  const current = await getAgentModelPreference(folderPath);
+  return saveAgentModelPreference({
+    ...current,
+    agent,
+  }, folderPath);
+}
+
+/**
+ * Update only model preference
+ */
+export async function saveModelPreference(
+  providerId: string, 
+  modelId: string, 
+  folderPath?: string
+): Promise<boolean> {
+  const current = await getAgentModelPreference(folderPath);
+  return saveAgentModelPreference({
+    ...current,
+    providerId,
+    modelId,
+  }, folderPath);
+}
+
+/**
+ * Clear preferences for a folder
+ */
+export async function clearFolderPreference(folderPath: string): Promise<boolean> {
+  try {
+    const config = await loadOpencodeConfig() as OpenCodeConfigExtended;
+    const normalizedPath = normalizeFolderPath(folderPath);
+    
+    if (config.agentModelPreferences?.[normalizedPath]) {
+      delete config.agentModelPreferences[normalizedPath];
+      await saveOpencodeConfig(config);
+      console.log(`[OpenCodeConfig] Cleared preference for ${normalizedPath}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('[OpenCodeConfig] Error clearing folder preference:', error);
+    return false;
+  }
+}

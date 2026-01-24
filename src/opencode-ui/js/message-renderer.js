@@ -1061,6 +1061,31 @@ const MessageRenderer = {
   },
 
   /**
+   * Handle retry message - son mesajı tekrar gönder
+   * @param {string} messageId
+   */
+  async _handleRetry(messageId) {
+    const currentSessionId = window.SessionStore?.getCurrentSessionId();
+    if (!currentSessionId) {
+      console.warn('[MessageRenderer] No active session for retry');
+      return;
+    }
+    
+    try {
+      // API üzerinden retry yap
+      const result = await window.APIClient?.retry(currentSessionId);
+      if (result?.success) {
+        window.OpenCodeApp?._showToast?.('Mesaj tekrar gönderildi', 'success');
+      } else {
+        window.OpenCodeApp?._showToast?.('Retry başarısız', 'error');
+      }
+    } catch (err) {
+      console.error('[MessageRenderer] Retry failed:', err);
+      window.OpenCodeApp?._showToast?.('Retry hatası', 'error');
+    }
+  },
+
+  /**
    * Create status indicator HTML
    * @param {import('./stores/types.js').MessageStatus} [status]
    * @returns {string}
@@ -1143,7 +1168,7 @@ const MessageRenderer = {
   },
 
   /**
-   * Basit Markdown render
+   * Basit Markdown render (XSS sanitization ile)
    * @param {string} text
    * @returns {string}
    */
@@ -1154,7 +1179,7 @@ const MessageRenderer = {
 
     // Code blocks (```)
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-      const language = lang || 'plaintext';
+      const language = this._sanitizeLanguage(lang) || 'plaintext';
       return `
         <div class="code-block">
           <div class="code-block-header">
@@ -1175,8 +1200,12 @@ const MessageRenderer = {
     // Italic (*)
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
-    // Links [text](url)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // Links [text](url) - with URL sanitization
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+      const safeUrl = this._sanitizeUrl(url);
+      if (!safeUrl) return text; // Invalid URL - just show text
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    });
 
     // Line breaks
     html = html.replace(/\n/g, '<br>');
@@ -1186,7 +1215,55 @@ const MessageRenderer = {
     html = `<p>${html}</p>`;
     html = html.replace(/<p><\/p>/g, '');
 
+    // Final sanitization with DOMPurify (if available)
+    return this._sanitizeHtml(html);
+  },
+
+  /**
+   * Sanitize HTML output with DOMPurify
+   * @param {string} html
+   * @returns {string}
+   */
+  _sanitizeHtml(html) {
+    // Use DOMPurify if available
+    if (typeof DOMPurify !== 'undefined') {
+      return DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'a', 'div', 'span', 'button'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'onclick'],
+        ALLOW_DATA_ATTR: false,
+      });
+    }
+    // Fallback - already escaped, return as-is
     return html;
+  },
+
+  /**
+   * Sanitize URL to prevent javascript: and other XSS vectors
+   * @param {string} url
+   * @returns {string | null}
+   */
+  _sanitizeUrl(url) {
+    if (!url) return null;
+    const trimmedUrl = url.trim().toLowerCase();
+    // Block dangerous protocols
+    if (trimmedUrl.startsWith('javascript:') || 
+        trimmedUrl.startsWith('data:') || 
+        trimmedUrl.startsWith('vbscript:')) {
+      console.warn('[MessageRenderer] Blocked dangerous URL:', url);
+      return null;
+    }
+    return url;
+  },
+
+  /**
+   * Sanitize language identifier for code blocks
+   * @param {string} lang
+   * @returns {string}
+   */
+  _sanitizeLanguage(lang) {
+    if (!lang) return '';
+    // Only allow alphanumeric and common chars
+    return lang.replace(/[^a-zA-Z0-9_-]/g, '');
   },
 
   /**

@@ -565,12 +565,19 @@ export async function grepDirectory(
  * Basit glob pattern matching
  */
 export function matchGlob(path: string, pattern: string): boolean {
-  // Basit glob: * -> .*, ** -> .*, ? -> .
+  // Glob pattern matching:
+  // ** → herhangi bir path (alt dizinler dahil)
+  // * → tek dizin seviyesinde herhangi bir karakter (/ hariç)
+  // ? → tek karakter
+  
+  // Önce ** için placeholder kullan (tek * ile karışmaması için)
+  const placeholder = "\x00GLOBSTAR\x00";
   const regexPattern = pattern
-    .replace(/\./g, "\\.")
-    .replace(/\*\*/g, ".*")
-    .replace(/\*/g, "[^/]*")
-    .replace(/\?/g, ".");
+    .replace(/\*\*/g, placeholder)  // ** → placeholder
+    .replace(/\./g, "\\.")         // . → \.
+    .replace(/\*/g, "[^/]*")        // * → [^/]* (tek seviye)
+    .replace(/\?/g, ".")            // ? → .
+    .replace(new RegExp(placeholder, "g"), ".*");  // placeholder → .* (çok seviye)
   
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(path) || regex.test(basename(path));

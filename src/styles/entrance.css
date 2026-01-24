@@ -307,8 +307,8 @@
 }
 
 .control-panel-accordion .accordion-content.open {
-  max-height: none;
-  overflow: visible;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 /* === ACCORDION PANELS === */

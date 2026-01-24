@@ -60,7 +60,7 @@
   border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-lg);
-  transform: translateX(calc(100% - var(--side-nav-trigger-width)));
+  transform: translateX(100%);
   transition: transform var(--duration-normal) var(--ease-out);
 }
 

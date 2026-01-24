@@ -53,6 +53,7 @@ interface TrafficState {
 interface ServerResult {
   success: boolean;
   url?: string;
+  workspace?: string;
   error?: string;
   alreadyRunning?: boolean;
   existingServer?: boolean;
@@ -473,7 +474,9 @@ export class AsistanController {
           const serverUrl = result.url || "http://127.0.0.1:4097";
           const baseOrigin = window.location.origin;
           // Doğrudan index.html yükle (entrance.html yerine)
-          const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}`;
+          // Workspace parametresi SSE server result'tan alınır
+          const workspacePath = result.workspace || '/home';
+          const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}&workspace=${encodeURIComponent(workspacePath)}`;
           
           LogManager.addEvent("asistan", "debug", `Native webview URL: ${srcUrl}`, { visibility: 3 });
           
@@ -520,6 +523,9 @@ export class AsistanController {
       if (placeholder) {
         placeholder.classList.remove("hidden");
       }
+      
+      // Native bridge flag'ini reset et - sonraki bağlantıda yeniden kurulması için
+      this._nativeBridgeSetup = false;
     } catch (e) {
       const err = e as Error;
       LogManager.addEvent("asistan", "error", `SSE Server durdurma hatası: ${err.message}`);
@@ -1031,6 +1037,11 @@ export class AsistanController {
             // Agent & Model Lists
             opcListModels: () => window.__nativeUIRequest('opcListModels'),
             opcListAgents: () => window.__nativeUIRequest('opcListAgents'),
+            // Agent/Model Preference Persistence
+            opcGetAgentModelPreference: (folderPath) => window.__nativeUIRequest('opcGetAgentModelPreference', folderPath),
+            opcSaveAgentModelPreference: (preference, folderPath) => window.__nativeUIRequest('opcSaveAgentModelPreference', preference, folderPath),
+            opcSaveAgentPreference: (agent, folderPath) => window.__nativeUIRequest('opcSaveAgentPreference', agent, folderPath),
+            opcSaveModelPreference: (providerId, modelId, folderPath) => window.__nativeUIRequest('opcSaveModelPreference', providerId, modelId, folderPath),
           };
           
           console.log('[NativeUI] API bridge injected');
@@ -1092,6 +1103,19 @@ export class AsistanController {
             break;
           case "opcListAgents":
             result = await window.electronAPI?.opcListAgents?.();
+            break;
+          // Agent/Model Preference Persistence
+          case "opcGetAgentModelPreference":
+            result = await window.electronAPI?.opcGetAgentModelPreference?.(args[0] as string | undefined);
+            break;
+          case "opcSaveAgentModelPreference":
+            result = await window.electronAPI?.opcSaveAgentModelPreference?.(args[0] as Record<string, unknown>, args[1] as string | undefined);
+            break;
+          case "opcSaveAgentPreference":
+            result = await window.electronAPI?.opcSaveAgentPreference?.(args[0] as string, args[1] as string | undefined);
+            break;
+          case "opcSaveModelPreference":
+            result = await window.electronAPI?.opcSaveModelPreference?.(args[0] as string, args[1] as string, args[2] as string | undefined);
             break;
           default:
             throw new Error(`Unknown API method: ${method}`);
@@ -1165,5 +1189,8 @@ export class AsistanController {
     this._unsubSlot?.();
     this._unsubTraffic?.();
     this._unsubAppState?.();
+    
+    // Native bridge flag'ini reset et
+    this._nativeBridgeSetup = false;
   }
 }

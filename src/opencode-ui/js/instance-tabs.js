@@ -193,14 +193,103 @@ const InstanceTabs = {
    * @param {string} instanceId
    */
   _handleClose(instanceId) {
-    this._callbacks.onClose?.(instanceId);
+    // Son tab'u kapatmaya çalışırsa uyarı göster
+    if (typeof InstanceStore !== 'undefined') {
+      const instanceCount = InstanceStore.getInstanceCount();
+      
+      if (instanceCount <= 1) {
+        // Son tab - kapatmayı engelle ve bilgilendir
+        this._showLastTabWarning();
+        return;
+      }
+    }
+    
+    // Confirm dialog
+    const instance = typeof InstanceStore !== 'undefined' 
+      ? InstanceStore.getInstance(instanceId) 
+      : null;
+    const instanceName = instance?.name || instance?.folder || 'Instance';
+    
+    if (confirm(`"${instanceName}" kapatılsın mı?`)) {
+      this._callbacks.onClose?.(instanceId);
+    }
+  },
+
+  /**
+   * Son tab uyarısı göster
+   */
+  _showLastTabWarning() {
+    // Toast mesajı göster (OpenCodeApp varsa)
+    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp._showToast) {
+      OpenCodeApp._showToast('Son instance kapatılamaz', 'warning');
+    } else {
+      console.log('[InstanceTabs] Cannot close last instance');
+    }
   },
 
   /**
    * Handle new tab
    */
   _handleNew() {
-    this._callbacks.onNew?.();
+    // Workspace seçme dialog'u göster
+    this._showWorkspaceSelector();
+  },
+
+  /**
+   * Workspace seçme dialog'u göster
+   */
+  _showWorkspaceSelector() {
+    // Electron API varsa native folder dialog kullan
+    if (window.electronAPI?.showOpenDialog) {
+      window.electronAPI.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Workspace Seçin',
+        buttonLabel: 'Seç'
+      }).then(result => {
+        if (result && !result.canceled && result.filePaths?.length > 0) {
+          const folderPath = result.filePaths[0];
+          this._createInstanceFromFolder(folderPath);
+        }
+      }).catch(err => {
+        console.error('[InstanceTabs] Folder dialog error:', err);
+      });
+    } else {
+      // Fallback: callback'i çağır (harici handling için)
+      this._callbacks.onNew?.();
+    }
+  },
+
+  /**
+   * Klasörden yeni instance oluştur
+   * @param {string} folderPath
+   */
+  async _createInstanceFromFolder(folderPath) {
+    if (typeof InstanceStore === 'undefined') {
+      console.error('[InstanceTabs] InstanceStore not available');
+      return;
+    }
+
+    const folderName = folderPath.split('/').pop() || folderPath.split('\\').pop() || 'Workspace';
+    
+    // Instance oluştur
+    const instance = InstanceStore.createInstance({
+      folder: folderPath,
+      name: folderName,
+    });
+
+    console.log('[InstanceTabs] Created instance:', instance.id, folderName);
+
+    // SSE bağlantısı kur (OpenCodeApp üzerinden)
+    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp.createInstance) {
+      await OpenCodeApp.createInstance({
+        folder: folderPath,
+        name: folderName,
+      });
+    }
+
+    // Yeni instance'a geç
+    InstanceStore.setActiveInstance(instance.id);
+    this._callbacks.onSelect?.(instance.id);
   },
 
   // ===========================================================================

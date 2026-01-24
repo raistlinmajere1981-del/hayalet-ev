@@ -553,7 +553,7 @@ export function gitDiff(projectRoot: string, options: { staged?: boolean; file?:
       stats: statMatch ? { additions: parseInt(statMatch[1]), deletions: parseInt(statMatch[2]) } : undefined,
     };
   } catch (error) {
-    logToolError("dev_git_diff", error as Error, { staged: options.staged, file: options.file });
+    logToolError("hev_dev_git_diff", error as Error, { staged: options.staged, file: options.file });
     return { success: false, diff: (error as Error).message };
   }
 }
@@ -594,7 +594,7 @@ export function lintFile(projectRoot: string, filePath: string, fix: boolean = f
     }
   } catch (error) {
     progress.fail((error as Error).message);
-    logToolError("dev_lint_file", error as Error, { filePath, fix });
+    logToolError("hev_dev_lint_file", error as Error, { filePath, fix });
     return { success: false, output: (error as Error).message, errorCount: 0, warningCount: 0 };
   }
 }
@@ -723,7 +723,7 @@ export function testRun(projectRoot: string, options: { file?: string; grep?: st
     }
   } catch (error) {
     progress.fail((error as Error).message);
-    logToolError("dev_test_run", error as Error, { file: options.file, grep: options.grep, timeout: options.timeout });
+    logToolError("hev_dev_test_run", error as Error, { file: options.file, grep: options.grep, timeout: options.timeout });
     return { success: false, output: (error as Error).message, passed: 0, failed: 0 };
   }
 }
@@ -734,7 +734,7 @@ export function testRun(projectRoot: string, options: { file?: string; grep?: st
 
 export const DEV_TOOL_DEFINITIONS = [
   {
-    name: "dev_analyze_project",
+    name: "hev_dev_analyze_project",
     description: "Proje analizi: dosya sayıları, satır sayıları, bağımlılıklar, git durumu",
     inputSchema: {
       type: "object" as const,
@@ -749,7 +749,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_bootstrap_context",
+    name: "hev_dev_bootstrap_context",
     description: "Session context dosyası üret (.rovodev/context.md). Yeni AI session başlatırken kullanışlı.",
     inputSchema: {
       type: "object" as const,
@@ -768,7 +768,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_generate_diagram",
+    name: "hev_dev_generate_diagram",
     description: "Modül bağımlılık diagramı oluştur (Mermaid veya DOT formatında)",
     inputSchema: {
       type: "object" as const,
@@ -792,7 +792,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_update_cache",
+    name: "hev_dev_update_cache",
     description: "Proje cache'ini güncelle (export/import haritası, dosya hash'leri)",
     inputSchema: {
       type: "object" as const,
@@ -811,7 +811,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_edit_lines",
+    name: "hev_dev_edit_lines",
     description: "Satır bazlı dosya düzenleme. Büyük dosyalarda find_and_replace yerine kullanılabilir.",
     inputSchema: {
       type: "object" as const,
@@ -847,7 +847,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_git_diff",
+    name: "hev_dev_git_diff",
     description: "Git değişikliklerini göster (staged veya unstaged)",
     inputSchema: {
       type: "object" as const,
@@ -865,7 +865,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_lint_file",
+    name: "hev_dev_lint_file",
     description: "Tek dosyada ESLint çalıştır",
     inputSchema: {
       type: "object" as const,
@@ -884,7 +884,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_search_symbol",
+    name: "hev_dev_search_symbol",
     description: "Projede sembol ara (fonksiyon, class, interface, type, const)",
     inputSchema: {
       type: "object" as const,
@@ -904,7 +904,7 @@ export const DEV_TOOL_DEFINITIONS = [
     },
   },
   {
-    name: "dev_test_run",
+    name: "hev_dev_test_run",
     description: "Test çalıştır (vitest/jest otomatik algılanır)",
     inputSchema: {
       type: "object" as const,

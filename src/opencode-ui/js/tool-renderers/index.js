@@ -18,10 +18,17 @@ const ToolRendererRegistry = {
   // Registry API
   // =========================================================================
 
+  /** @type {Set<Function>} Event listeners */
+  _listeners: new Set(),
+
+  /** @type {Map<string, Function[]>} Tool-specific hooks */
+  _hooks: new Map(),
+
   /**
    * Register a custom renderer for a tool
    * @param {string} toolName - Tool name (e.g., 'read', 'write', 'bash')
    * @param {ToolRendererConfig} config - Renderer configuration
+   * @returns {Function} Unregister function
    */
   register(toolName, config) {
     this._renderers.set(toolName, {
@@ -29,6 +36,43 @@ const ToolRendererRegistry = {
       ...config,
     });
     console.log('[ToolRendererRegistry] Registered:', toolName);
+    this._notify({ type: 'renderer:registered', toolName });
+    
+    // Return unregister function
+    return () => this.unregister(toolName);
+  },
+
+  /**
+   * Alias for register (extensibility API)
+   * @param {string} toolName
+   * @param {ToolRendererConfig} config
+   * @returns {Function} Unregister function
+   */
+  registerRenderer(toolName, config) {
+    return this.register(toolName, config);
+  },
+
+  /**
+   * Unregister a tool renderer
+   * @param {string} toolName
+   * @returns {boolean} True if renderer was removed
+   */
+  unregister(toolName) {
+    const existed = this._renderers.delete(toolName);
+    if (existed) {
+      console.log('[ToolRendererRegistry] Unregistered:', toolName);
+      this._notify({ type: 'renderer:unregistered', toolName });
+    }
+    return existed;
+  },
+
+  /**
+   * Alias for unregister (extensibility API)
+   * @param {string} toolName
+   * @returns {boolean}
+   */
+  unregisterRenderer(toolName) {
+    return this.unregister(toolName);
   },
 
   /**
@@ -37,6 +81,89 @@ const ToolRendererRegistry = {
    */
   setDefault(config) {
     this._defaultRenderer = config;
+    this._notify({ type: 'default:changed' });
+  },
+
+  /**
+   * Add a hook for tool events (before/after render)
+   * @param {string} toolName - Tool name or '*' for all tools
+   * @param {'beforeRender' | 'afterRender' | 'onStatusChange'} hookType
+   * @param {Function} callback
+   * @returns {Function} Unhook function
+   */
+  addHook(toolName, hookType, callback) {
+    const key = `${toolName}:${hookType}`;
+    if (!this._hooks.has(key)) {
+      this._hooks.set(key, []);
+    }
+    this._hooks.get(key).push(callback);
+    
+    return () => this.removeHook(toolName, hookType, callback);
+  },
+
+  /**
+   * Remove a hook
+   * @param {string} toolName
+   * @param {string} hookType
+   * @param {Function} callback
+   */
+  removeHook(toolName, hookType, callback) {
+    const key = `${toolName}:${hookType}`;
+    const hooks = this._hooks.get(key);
+    if (hooks) {
+      const index = hooks.indexOf(callback);
+      if (index !== -1) {
+        hooks.splice(index, 1);
+      }
+    }
+  },
+
+  /**
+   * Execute hooks for a tool
+   * @param {string} toolName
+   * @param {string} hookType
+   * @param {object} data
+   */
+  _executeHooks(toolName, hookType, data) {
+    // Tool-specific hooks
+    const specificKey = `${toolName}:${hookType}`;
+    const specificHooks = this._hooks.get(specificKey) || [];
+    
+    // Wildcard hooks (apply to all tools)
+    const wildcardKey = `*:${hookType}`;
+    const wildcardHooks = this._hooks.get(wildcardKey) || [];
+    
+    [...wildcardHooks, ...specificHooks].forEach(hook => {
+      try {
+        hook(data);
+      } catch (err) {
+        console.error('[ToolRendererRegistry] Hook error:', err);
+      }
+    });
+  },
+
+  /**
+   * Subscribe to registry changes
+   * @param {Function} listener
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(listener) {
+    this._listeners.add(listener);
+    return () => this._listeners.delete(listener);
+  },
+
+  /**
+   * Notify listeners
+   * @param {object} event
+   */
+  _notify(event) {
+    this._listeners.forEach(listener => {
+      try {
+        listener(event);
+      } catch (err) {
+        console.error('[ToolRendererRegistry] Listener error:', err);
+      }
+    });
   },
 
   /**
@@ -75,14 +202,40 @@ const ToolRendererRegistry = {
    * @returns {HTMLElement}
    */
   renderToolCard(toolCall) {
+    // Execute beforeRender hooks
+    this._executeHooks(toolCall.toolName, 'beforeRender', { toolCall });
+    
     const renderer = this.get(toolCall.toolName);
+    let card;
     
     if (renderer?.renderCard) {
-      return renderer.renderCard(toolCall);
+      card = renderer.renderCard(toolCall);
+    } else {
+      // Fallback to default ToolRenderer
+      card = ToolRenderer.createToolCard(toolCall);
     }
     
-    // Fallback to default ToolRenderer
-    return ToolRenderer.createToolCard(toolCall);
+    // Execute afterRender hooks
+    this._executeHooks(toolCall.toolName, 'afterRender', { toolCall, element: card });
+    
+    return card;
+  },
+
+  /**
+   * Update tool status and execute hooks
+   * @param {object} toolCall
+   * @param {string} newStatus
+   */
+  updateStatus(toolCall, newStatus) {
+    const oldStatus = toolCall.status;
+    toolCall.status = newStatus;
+    
+    // Execute status change hooks
+    this._executeHooks(toolCall.toolName, 'onStatusChange', { 
+      toolCall, 
+      oldStatus, 
+      newStatus 
+    });
   },
 
   /**

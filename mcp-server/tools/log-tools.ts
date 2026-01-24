@@ -202,7 +202,7 @@ export async function listLogSessions(
     };
   } catch (err) {
     const error = err as Error;
-    logToolError("list_log_sessions", error, { limit });
+    logToolError("hev_list_log_sessions", error, { limit });
     return {
       content: [{ type: "text", text: `❌ Session listesi okunamadı: ${error.message}` }],
       isError: true,

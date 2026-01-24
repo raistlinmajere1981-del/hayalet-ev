@@ -58,37 +58,77 @@ const AgentModelSelector = {
   // Initialization
   // ===========================================================================
   
+  /** @type {string | null} Current folder path for preference persistence */
+  _currentFolderPath: null,
+
+  /**
+   * Set current folder path for preference persistence
+   * @param {string} folderPath
+   */
+  setFolderPath(folderPath) {
+    this._currentFolderPath = folderPath;
+    console.log('[AgentModelSelector] Folder path set:', folderPath);
+  },
+
   /**
    * Initialize selector - fetch agents and providers
+   * @param {string} [folderPath] - Optional folder path for loading saved preferences
    * @returns {Promise<void>}
    */
-  async initialize() {
+  async initialize(folderPath) {
     if (this._initialized) return;
+    
+    if (folderPath) {
+      this._currentFolderPath = folderPath;
+    }
     
     this._loading = true;
     this._notify({ type: 'loading:start' });
     
     try {
-      // Fetch agents and providers in parallel
-      const [agents, providers] = await Promise.all([
+      // Fetch agents, providers, and saved preferences in parallel
+      const [agents, providers, savedPreference] = await Promise.all([
         this._fetchAgents(),
         this._fetchProviders(),
+        this._loadSavedPreference(),
       ]);
       
       this._agents = agents || [];
       this._providers = providers || [];
       this._initialized = true;
       
-      // Set default agent if available and not already set
-      if (!this._currentAgent && this._agents.length > 0) {
-        this._currentAgent = this._agents[0].name;
+      // Apply saved preference if available
+      if (savedPreference) {
+        console.log('[AgentModelSelector] Applying saved preference:', savedPreference);
+        
+        if (savedPreference.agent) {
+          this._currentAgent = savedPreference.agent;
+        }
+        
+        if (savedPreference.providerId && savedPreference.modelId) {
+          this._currentModel = {
+            providerId: savedPreference.providerId,
+            modelId: savedPreference.modelId,
+          };
+        }
       }
       
-      // Set default model if available and not already set
+      // Set default agent if still not set and agents available
+      if (!this._currentAgent && this._agents.length > 0) {
+        this._currentAgent = this._agents[0].name;
+        console.log('[AgentModelSelector] Default agent set:', this._currentAgent);
+      }
+      
+      // Set default model if still not set and providers available
       if (!this._currentModel && this._providers.length > 0) {
         const firstProvider = this._providers[0];
         if (firstProvider?.models?.length > 0) {
-          this._currentModel = firstProvider.models[0].id;
+          const firstModel = firstProvider.models[0];
+          this._currentModel = {
+            providerId: firstProvider.id,
+            modelId: firstModel.id,
+          };
+          console.log('[AgentModelSelector] Default model set:', this._currentModel);
         }
       }
       
@@ -97,6 +137,7 @@ const AgentModelSelector = {
         providers: this._providers.length,
         currentAgent: this._currentAgent,
         currentModel: this._currentModel,
+        savedPreference: !!savedPreference,
       });
       
       // Update UI with current values
@@ -113,21 +154,110 @@ const AgentModelSelector = {
       this._notify({ type: 'loading:end' });
     }
   },
+
+  /**
+   * Load saved preference from config
+   * @returns {Promise<{agent?: string, providerId?: string, modelId?: string} | null>}
+   */
+  async _loadSavedPreference() {
+    try {
+      if (window.electronAPI?.opcGetAgentModelPreference) {
+        const pref = await window.electronAPI.opcGetAgentModelPreference(this._currentFolderPath);
+        if (pref) {
+          console.log('[AgentModelSelector] Loaded saved preference:', pref);
+          return pref;
+        }
+      }
+    } catch (err) {
+      console.warn('[AgentModelSelector] Failed to load saved preference:', err);
+    }
+    return null;
+  },
+
+  /**
+   * Save current preference to config
+   */
+  async _saveCurrentPreference() {
+    try {
+      if (window.electronAPI?.opcSaveAgentModelPreference) {
+        const preference = {
+          agent: this._currentAgent,
+          providerId: this._currentModel?.providerId,
+          modelId: this._currentModel?.modelId,
+        };
+        await window.electronAPI.opcSaveAgentModelPreference(preference, this._currentFolderPath);
+        console.log('[AgentModelSelector] Saved preference:', preference);
+      }
+    } catch (err) {
+      console.warn('[AgentModelSelector] Failed to save preference:', err);
+    }
+  },
   
   /**
+   * Set agent/model from session data (called from SSE events)
+   * @param {Object} sessionData
+   * @param {string} [sessionData.agent]
+   * @param {string} [sessionData.provider]
+   * @param {string} [sessionData.model]
+   */
+  setFromSession(sessionData) {
+    if (!sessionData) return;
+    
+    let changed = false;
+    
+    if (sessionData.agent && sessionData.agent !== this._currentAgent) {
+      this._currentAgent = sessionData.agent;
+      changed = true;
+      console.log('[AgentModelSelector] Agent set from session:', sessionData.agent);
+    }
+    
+    if (sessionData.provider && sessionData.model) {
+      const newModel = {
+        providerId: sessionData.provider,
+        modelId: sessionData.model,
+      };
+      if (this._currentModel?.providerId !== newModel.providerId || 
+          this._currentModel?.modelId !== newModel.modelId) {
+        this._currentModel = newModel;
+        changed = true;
+        console.log('[AgentModelSelector] Model set from session:', newModel);
+      }
+    }
+    
+    if (changed) {
+      this._updateUI();
+      // Save the new preference
+      this._saveCurrentPreference().catch(err => {
+        console.warn('[AgentModelSelector] Failed to save preference from session:', err);
+      });
+    }
+  },
+
+  /**
    * Fetch agents - try Electron IPC first (opencode CLI), then REST API
+   * Includes retry mechanism to wait for bridge to be ready
    */
   async _fetchAgents() {
-    // Try Electron IPC (opencode agent list via CLI)
-    if (window.electronAPI?.opcListAgents) {
-      try {
-        const agents = await window.electronAPI.opcListAgents();
-        if (agents && agents.length > 0) {
-          console.log('[AgentModelSelector] Fetched agents via IPC:', agents.length);
-          return agents;
+    // Wait for bridge to be ready (max 5 seconds with 500ms intervals)
+    const maxRetries = 10;
+    for (let i = 0; i < maxRetries; i++) {
+      if (window.electronAPI?.opcListAgents) {
+        try {
+          const agents = await window.electronAPI.opcListAgents();
+          if (agents && agents.length > 0) {
+            console.log('[AgentModelSelector] Fetched agents via IPC:', agents.length);
+            return agents;
+          }
+        } catch (err) {
+          console.warn('[AgentModelSelector] IPC agent fetch failed:', err);
         }
-      } catch (err) {
-        console.warn('[AgentModelSelector] IPC agent fetch failed:', err);
+        break; // IPC available but returned empty/failed, don't retry
+      }
+      
+      // Bridge not ready yet, wait and retry
+      if (i < maxRetries - 1) {
+        console.log(`[AgentModelSelector] Waiting for IPC bridge (agents)... (${i + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
     
@@ -212,28 +342,7 @@ const AgentModelSelector = {
     return [];
   },
   
-  /**
-   * Set current agent/model from session info
-   * @param {object} sessionInfo - Session details
-   */
-  setFromSession(sessionInfo) {
-    if (!sessionInfo) return;
-    
-    const changed = 
-      this._currentAgent !== sessionInfo.agent ||
-      this._currentModel?.providerId !== sessionInfo.provider ||
-      this._currentModel?.modelId !== sessionInfo.model;
-    
-    if (changed) {
-      this._currentAgent = sessionInfo.agent || null;
-      this._currentModel = sessionInfo.provider && sessionInfo.model 
-        ? { providerId: sessionInfo.provider, modelId: sessionInfo.model }
-        : null;
-      
-      this._notify({ type: 'selection:changed' });
-      this._updateUI();
-    }
-  },
+  // setFromSession - moved to line ~203 with save functionality
   
   // ===========================================================================
   // Query Methods
@@ -331,6 +440,10 @@ const AgentModelSelector = {
       this._currentAgent = agentName;
       this._notify({ type: 'agent:changed', agent: agentName });
       this._updateUI();
+      
+      // Save preference to config
+      this._saveCurrentPreference();
+      
       return true;
     } catch (err) {
       console.error('[AgentModelSelector] Failed to change agent:', err);
@@ -360,6 +473,10 @@ const AgentModelSelector = {
       this._currentModel = { providerId, modelId };
       this._notify({ type: 'model:changed', providerId, modelId });
       this._updateUI();
+      
+      // Save preference to config
+      this._saveCurrentPreference();
+      
       return true;
     } catch (err) {
       console.error('[AgentModelSelector] Failed to change model:', err);

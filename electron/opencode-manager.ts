@@ -88,6 +88,7 @@ interface OpenCodeState {
   error: string | null;
   sessionId: string | null;
   connected: boolean;
+  authHeader: string | null; // Basic auth header for OpenCode API
 }
 
 // Session bilgisi
@@ -119,6 +120,7 @@ export const OpenCodeManager = {
     error: null,
     sessionId: null,
     connected: false,
+    authHeader: null,
   } as OpenCodeState,
 
   _statusListeners: [] as Array<(state: OpenCodeState) => void>,
@@ -152,34 +154,41 @@ export const OpenCodeManager = {
     }
 
     try {
-      // Port kontrolü
+      // Port kontrolü - eğer port kullanımdaysa farklı port dene
+      let actualPort = port;
       const portInUse = await this._isPortInUse(port);
       if (portInUse) {
-        // Port kullanımda - belki başka bir opencode instance?
-        console.log("[OPENCODE]", "warn", `Port ${port} kullanımda, mevcut server'a bağlanılıyor`);
-        this._state.running = true;
-        this._state.port = port;
-        this._state.projectPath = projectPath;
-        return {
-          success: true,
-          url: this._getProjectUrl(projectPath, port),
-          existingServer: true,
-        };
+        // Port kullanımda - farklı bir port bul (auth sorunlarından kaçınmak için kendi server'ımızı başlat)
+        console.log("[OPENCODE]", "warn", `Port ${port} kullanımda, alternatif port aranıyor...`);
+        
+        // 4096'dan başlayarak boş port bul
+        for (let testPort = port + 1; testPort < port + 100; testPort++) {
+          const inUse = await this._isPortInUse(testPort);
+          if (!inUse) {
+            actualPort = testPort;
+            console.log("[OPENCODE]", "info", `Alternatif port bulundu: ${actualPort}`);
+            break;
+          }
+        }
+        
+        if (actualPort === port) {
+          throw new Error(`Port ${port} ve sonraki 100 port kullanımda`);
+        }
       }
 
-      // Server'ı başlat
-      await this._spawnServer(port, cors);
+      // Server'ı başlat (kendi auth bilgilerimizle)
+      await this._spawnServer(actualPort, cors);
       
       // Server hazır olana kadar bekle
-      await this._waitForServer(port);
+      await this._waitForServer(actualPort);
       
       this._state.running = true;
-      this._state.port = port;
+      this._state.port = actualPort;
       this._state.projectPath = projectPath;
       this._state.error = null;
       
-      const url = this._getProjectUrl(projectPath, port);
-      console.log("[OPENCODE]", "info", "Server başlatıldı", { port, url, pid: this._state.pid });
+      const url = this._getProjectUrl(projectPath, actualPort);
+      console.log("[OPENCODE]", "info", "Server başlatıldı", { port: actualPort, url, pid: this._state.pid, authEnabled: !!this._state.authHeader });
       
       this._notifyListeners();
       
@@ -259,6 +268,216 @@ export const OpenCodeManager = {
     return `http://127.0.0.1:${this._state.port}`;
   },
 
+  // =========================================================================
+  // Auth Helper
+  // =========================================================================
+
+  /**
+   * Get headers for API requests including auth
+   */
+  _getHeaders(contentType = "application/json"): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+    };
+    
+    if (this._state.authHeader) {
+      headers["Authorization"] = this._state.authHeader;
+    }
+    
+    return headers;
+  },
+
+  /**
+   * Get headers for SSE connections
+   */
+  _getSSEHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Accept": "text/event-stream",
+    };
+    
+    if (this._state.authHeader) {
+      headers["Authorization"] = this._state.authHeader;
+    }
+    
+    return headers;
+  },
+
+  // =========================================================================
+  // Config API (Providers & Models)
+  // =========================================================================
+
+  /**
+   * Provider ve model listesini OpenCode server'dan al
+   * Endpoint: GET /config -> providers objesi
+   */
+  async getProviders(): Promise<ApiResponse<{
+    providers: Array<{
+      id: string;
+      name: string;
+      models: Record<string, {
+        name: string;
+        limit?: { context?: number; output?: number };
+        cost?: { input?: number; output?: number };
+      }>;
+    }>;
+    default?: Record<string, string>;
+  }>> {
+    try {
+      // /config/providers endpoint'inden provider ve model listesini al
+      const headers = this._getHeaders();
+      
+      // DEBUG: Auth header kontrolü
+      console.log("[OPENCODE-API]", "debug", "getProviders request", {
+        url: `${this._getApiUrl()}/config/providers`,
+        hasAuthHeader: !!headers["Authorization"],
+        authHeaderPreview: headers["Authorization"]?.substring(0, 20) + "...",
+      });
+      
+      const response = await fetch(`${this._getApiUrl()}/config/providers`, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        // 401 Unauthorized ise auth header eksik olabilir
+        if (response.status === 401) {
+          console.warn("[OPENCODE-API]", "warn", "getProviders unauthorized - auth may be required");
+          return { success: false, error: "Unauthorized - auth required" };
+        }
+        const errorText = await response.text();
+        console.error("[OPENCODE-API]", "error", "getProviders failed", { status: response.status, error: errorText });
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      // Response'un JSON olduğundan emin ol
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error("[OPENCODE-API]", "error", "getProviders returned non-JSON", { contentType });
+        return { success: false, error: "Server returned non-JSON response" };
+      }
+
+      // /config.providers endpoint'i providers array'i ve default map'i döndürüyor
+      const rawData = await response.json() as {
+        providers: Array<{
+          id: string;
+          name: string;
+          models: Record<string, {
+            name: string;
+            limit?: { context?: number; output?: number };
+            cost?: { input?: number; output?: number };
+          }>;
+        }>;
+        default?: Record<string, string>;
+      };
+      
+      // DEBUG: Raw response'u logla
+      console.log("[OPENCODE-API]", "debug", "Raw config.providers response", { 
+        providersCount: rawData?.providers?.length || 0,
+        defaultKeys: Object.keys(rawData?.default || {}),
+        firstProvider: rawData?.providers?.[0]?.id,
+      });
+      
+      // Providers zaten array formatında, models'ları düzelt
+      const providers = (rawData.providers || []).map(provider => {
+        const models: Record<string, {
+          name: string;
+          limit?: { context?: number; output?: number };
+          cost?: { input?: number; output?: number };
+        }> = {};
+        
+        if (provider.models) {
+          for (const [modelKey, modelValue] of Object.entries(provider.models)) {
+            models[modelKey] = {
+              name: modelValue.name || modelKey,
+              limit: modelValue.limit,
+              cost: modelValue.cost,
+            };
+          }
+        }
+        
+        return {
+          id: provider.id,
+          name: provider.name,
+          models,
+        };
+      });
+      
+      const data = {
+        providers,
+        default: rawData.default,
+      };
+      
+      console.log("[OPENCODE-API]", "info", "Providers fetched", { 
+        providerCount: providers.length,
+        modelCount: providers.reduce((sum, p) => sum + Object.keys(p.models || {}).length, 0)
+      });
+      
+      return { success: true, data };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("[OPENCODE-API]", "error", "getProviders error", { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  /**
+   * Agent listesini OpenCode server'dan al
+   * Endpoint: GET /app.agents
+   */
+  async getAgents(): Promise<ApiResponse<Array<{ name: string; description?: string }>>> {
+    try {
+      // /agent endpoint'inden agent listesini al
+      const response = await fetch(`${this._getApiUrl()}/agent`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn("[OPENCODE-API]", "warn", "getAgents unauthorized");
+          return { success: false, error: "Unauthorized" };
+        }
+        const errorText = await response.text();
+        console.error("[OPENCODE-API]", "error", "getAgents failed", { status: response.status, error: errorText });
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      // Response'un JSON olduğundan emin ol
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error("[OPENCODE-API]", "error", "getAgents returned non-JSON");
+        return { success: false, error: "Server returned non-JSON response" };
+      }
+
+      // /app.agents endpoint'i direkt array döndürüyor
+      const rawData = await response.json() as Array<{ 
+        name: string; 
+        description?: string;
+        mode?: string;
+        model?: { providerID?: string; modelID?: string };
+      }>;
+      
+      const data = (rawData || []).map(agent => ({
+        name: agent.name,
+        description: agent.description || '',
+      }));
+      
+      console.log("[OPENCODE-API]", "info", "Agents fetched", { count: data.length });
+      
+      return { success: true, data };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("[OPENCODE-API]", "error", "getAgents error", { error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // =========================================================================
+  // Session API  
+  // =========================================================================
+
   /**
    * Session listesini al
    */
@@ -266,7 +485,7 @@ export const OpenCodeManager = {
     try {
       const response = await fetch(`${this._getApiUrl()}/session`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
 
@@ -304,7 +523,7 @@ export const OpenCodeManager = {
       // Yeni session oluştur
       const response = await fetch(`${this._getApiUrl()}/session`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         body: JSON.stringify({ path: path || process.cwd() }),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
@@ -331,10 +550,18 @@ export const OpenCodeManager = {
    * CodeNomad pattern: messageID ve partID client-side üretilir
    */
   async sendMessage(message: string, sessionId?: string, messageId?: string): Promise<ApiResponse<{ messageId: string }>> {
-    const sid = sessionId || this._state.sessionId;
+    let sid = sessionId || this._state.sessionId;
     
+    // Session yoksa otomatik oluştur
     if (!sid) {
-      return { success: false, error: "Session ID gerekli" };
+      console.log("[OPENCODE-API]", "info", "Session yok, otomatik oluşturuluyor...");
+      const sessionResult = await this.createOrGetSession();
+      if (!sessionResult.success || !sessionResult.data?.id) {
+        return { success: false, error: "Session oluşturulamadı: " + (sessionResult.error || "Bilinmeyen hata") };
+      }
+      sid = sessionResult.data.id;
+      this._state.sessionId = sid;
+      console.log("[OPENCODE-API]", "info", "Session oluşturuldu", { sessionId: sid });
     }
 
     try {
@@ -360,7 +587,7 @@ export const OpenCodeManager = {
       
       const response = await fetch(`${this._getApiUrl()}/session/${sid}/prompt_async`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
@@ -411,7 +638,7 @@ export const OpenCodeManager = {
       
       const response = await fetch(`${this._getApiUrl()}/session/${sid}/permissions/${permissionId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         body: JSON.stringify({ approved }),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
@@ -441,7 +668,7 @@ export const OpenCodeManager = {
     try {
       const response = await fetch(`${this._getApiUrl()}/session/${sid}/cancel`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
 
@@ -472,7 +699,7 @@ export const OpenCodeManager = {
       // OpenCode API'de compact endpoint'i varsa kullan
       const response = await fetch(`${this._getApiUrl()}/session/${sid}/compact`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: this._getHeaders(),
         signal: AbortSignal.timeout(API_TIMEOUT),
       });
 
@@ -490,6 +717,66 @@ export const OpenCodeManager = {
       return { success: true, data: { tokens: data.tokens || data.compactedTokens || 0 } };
     } catch (err) {
       console.log("[OPENCODE-API]", "error", "compactSession hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
+   * Agent değiştir
+   */
+  async setAgent(agentName: string): Promise<ApiResponse<void>> {
+    if (!this._state.running) {
+      return { success: false, error: "OpenCode çalışmıyor" };
+    }
+
+    try {
+      const url = `${this._getApiUrl()}/agent`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ name: agentName }),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return { success: false, error: error || `HTTP ${response.status}` };
+      }
+
+      console.log("[OPENCODE-API]", "info", "Agent değiştirildi", { agent: agentName });
+      return { success: true };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "setAgent hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
+   * Model değiştir
+   */
+  async setModel(providerId: string, modelId: string): Promise<ApiResponse<void>> {
+    if (!this._state.running) {
+      return { success: false, error: "OpenCode çalışmıyor" };
+    }
+
+    try {
+      const url = `${this._getApiUrl()}/model`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: this._getHeaders(),
+        body: JSON.stringify({ provider: providerId, model: modelId }),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return { success: false, error: error || `HTTP ${response.status}` };
+      }
+
+      console.log("[OPENCODE-API]", "info", "Model değiştirildi", { provider: providerId, model: modelId });
+      return { success: true };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "setModel hatası", { error: (err as Error).message });
       return { success: false, error: (err as Error).message };
     }
   },
@@ -559,7 +846,7 @@ export const OpenCodeManager = {
     try {
       const response = await fetch(url, {
         method: "GET",
-        headers: { "Accept": "text/event-stream" },
+        headers: this._getSSEHeaders(),
         signal: abortController.signal,
       });
 
@@ -616,13 +903,33 @@ export const OpenCodeManager = {
    */
   _spawnServer(port: number, cors: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Generate a random password for this server instance
+      const serverPassword = randomBase62(32);
+      const username = "opencode";
+      
+      // Create Basic auth header
+      const credentials = Buffer.from(`${username}:${serverPassword}`).toString('base64');
+      this._state.authHeader = `Basic ${credentials}`;
+      
       const args = ["serve", "--port", String(port), "--cors", cors];
       
-      console.log("[OPENCODE]", "debug", "Server başlatılıyor", { command: OPENCODE_DEFAULTS.command, args });
+      // Set password via environment variable
+      const env = {
+        ...process.env,
+        OPENCODE_SERVER_PASSWORD: serverPassword,
+        OPENCODE_SERVER_USERNAME: username,
+      };
+      
+      console.log("[OPENCODE]", "debug", "Server başlatılıyor", { 
+        command: OPENCODE_DEFAULTS.command, 
+        args,
+        authEnabled: true 
+      });
       
       this._process = spawn(OPENCODE_DEFAULTS.command, args, {
         stdio: ["ignore", "pipe", "pipe"],
         detached: false,
+        env,
       });
 
       this._state.pid = this._process.pid ?? null;
@@ -823,6 +1130,7 @@ export const OpenCodeManager = {
       error: null,
       sessionId: null,
       connected: false,
+      authHeader: null,
     };
   },
 
@@ -927,5 +1235,131 @@ export const OpenCodeManager = {
    */
   _sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  },
+
+  // =========================================================================
+  // MCP & Background Process APIs
+  // =========================================================================
+
+  /**
+   * MCP server listesini al
+   * OpenCode'un bağlı olduğu MCP server'ları döndürür
+   */
+  async getMCPServers(): Promise<ApiResponse<Array<{ name: string; status: string; toolCount?: number }>>> {
+    try {
+      // OpenCode /app/info veya /config endpoint'inden MCP bilgisi çekilebilir
+      const response = await fetch(`${this._getApiUrl()}/app/info`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        // Endpoint yoksa boş liste dön
+        if (response.status === 404) {
+          return { success: true, data: [] };
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json() as { 
+        mcpServers?: Array<{ name: string; status?: string; tools?: unknown[] }>;
+        mcp?: { servers?: Array<{ name: string; status?: string; tools?: unknown[] }> };
+      };
+      
+      // MCP server bilgisini çıkar
+      const servers = data.mcpServers || data.mcp?.servers || [];
+      const result = servers.map(s => ({
+        name: s.name,
+        status: s.status || 'connected',
+        toolCount: s.tools?.length || 0,
+      }));
+      
+      console.log("[OPENCODE-API]", "debug", "MCP servers fetched", { count: result.length });
+      return { success: true, data: result };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "warn", "getMCPServers error", { error: (err as Error).message });
+      return { success: true, data: [] }; // Hata durumunda boş liste
+    }
+  },
+
+  /**
+   * Arka plan shell process'lerini al
+   * OpenCode tarafından başlatılan ve hala çalışan shell komutları
+   */
+  async getBackgroundShells(): Promise<ApiResponse<Array<{ pid: number; command: string; status: string }>>> {
+    try {
+      // OpenCode /session/{id}/processes veya /app/processes endpoint'i
+      const sessionId = this._state.sessionId;
+      if (!sessionId) {
+        return { success: true, data: [] };
+      }
+
+      const response = await fetch(`${this._getApiUrl()}/session/${sessionId}/processes`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        // Endpoint yoksa boş liste dön
+        if (response.status === 404) {
+          return { success: true, data: [] };
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json() as { 
+        processes?: Array<{ pid: number; command: string; status?: string }>;
+        shells?: Array<{ pid: number; command: string; status?: string }>;
+      };
+      
+      const shells = data.processes || data.shells || [];
+      const result = shells.map(s => ({
+        pid: s.pid,
+        command: s.command,
+        status: s.status || 'running',
+      }));
+      
+      console.log("[OPENCODE-API]", "debug", "Background shells fetched", { count: result.length });
+      return { success: true, data: result };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "warn", "getBackgroundShells error", { error: (err as Error).message });
+      return { success: true, data: [] }; // Hata durumunda boş liste
+    }
+  },
+
+  /**
+   * Plugin listesini al
+   */
+  async getPlugins(): Promise<ApiResponse<Array<{ name: string; enabled: boolean }>>> {
+    try {
+      const response = await fetch(`${this._getApiUrl()}/app/plugins`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { success: true, data: [] };
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json() as Array<{ name: string; enabled?: boolean }> | { plugins?: Array<{ name: string; enabled?: boolean }> };
+      const plugins = Array.isArray(data) ? data : (data.plugins || []);
+      
+      const result = plugins.map(p => ({
+        name: p.name,
+        enabled: p.enabled !== false,
+      }));
+      
+      console.log("[OPENCODE-API]", "debug", "Plugins fetched", { count: result.length });
+      return { success: true, data: result };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "warn", "getPlugins error", { error: (err as Error).message });
+      return { success: true, data: [] };
+    }
   },
 };

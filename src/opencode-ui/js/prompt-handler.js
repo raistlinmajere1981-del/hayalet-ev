@@ -374,13 +374,46 @@ const PromptHandler = {
     // History'ye ekle
     this.addToHistory(message);
 
-    // Callback çağır
+    // Shell mode aktifse shell komutu olarak gönder
+    if (this._shellMode && message.startsWith('!')) {
+      const shellCommand = message.slice(1).trim();
+      if (shellCommand) {
+        this._sendShellCommand(shellCommand);
+        this.clear();
+        this._toggleShellMode(false);
+        return;
+      }
+    }
+
+    // Normal mesaj gönder
     if (this._onSend) {
       this._onSend(message);
     }
 
     // Temizle
     this.clear();
+  },
+
+  /**
+   * Shell komutu gönder
+   * @param {string} command - Shell komutu
+   */
+  async _sendShellCommand(command) {
+    console.log('[PromptHandler] Sending shell command:', command);
+    
+    // Shell komutunu AI'a gönder (bash tool çalıştırmasını iste)
+    const shellPrompt = `Lütfen aşağıdaki shell komutunu çalıştır:\n\n\`\`\`bash\n${command}\n\`\`\``;
+    
+    // Önce callback varsa kullan
+    if (this._onShellCommand) {
+      this._onShellCommand(command);
+      return;
+    }
+    
+    // Callback yoksa normal mesaj olarak gönder
+    if (this._onSend) {
+      this._onSend(shellPrompt);
+    }
   },
 
   /**
@@ -443,15 +476,30 @@ const PromptHandler = {
     return this._input.selectionStart === len && this._input.selectionEnd === len;
   },
 
+  /** @type {number} Maximum textarea height in pixels */
+  _maxTextareaHeight: 300,
+
   /**
-   * Textarea boyutunu otomatik ayarla
+   * Textarea boyutunu otomatik ayarla (maxHeight sınırı ile)
    */
   _autoResize() {
     if (!this._input) return;
     
+    // Reset height to calculate actual content height
     this._input.style.height = 'auto';
-    const newHeight = Math.min(this._input.scrollHeight, 200);
-    this._input.style.height = `${newHeight}px`;
+    
+    const scrollHeight = this._input.scrollHeight;
+    const maxHeight = this._maxTextareaHeight;
+    
+    if (scrollHeight > maxHeight) {
+      // Content exceeds max height - make scrollable
+      this._input.style.height = `${maxHeight}px`;
+      this._input.style.overflowY = 'auto';
+    } else {
+      // Content fits - auto height, no scroll
+      this._input.style.height = `${scrollHeight}px`;
+      this._input.style.overflowY = 'hidden';
+    }
   },
 
   /**
@@ -542,22 +590,50 @@ const PromptHandler = {
     // API'den dosya listesi al
     try {
       if (typeof APIClient !== 'undefined' && APIClient.searchFiles) {
-        const result = await APIClient.searchFiles(query, 8);
+        const result = await APIClient.searchFiles(query, 10);
         if (result.files && result.files.length > 0) {
           this._mentionResults = result.files;
+        } else if (query === '') {
+          // Boş query için root dosyaları göster
+          this._mentionResults = this._getDefaultMentionItems();
         } else {
-          // API sonuç dönmezse fallback
-          this._mentionResults = this._getMockMentionResults(query);
+          // Sonuç yoksa boş liste
+          this._mentionResults = [];
         }
       } else {
-        this._mentionResults = this._getMockMentionResults(query);
+        // API yoksa default liste
+        this._mentionResults = query ? [] : this._getDefaultMentionItems();
       }
     } catch (err) {
       console.warn('[PromptHandler] File search failed:', err);
-      this._mentionResults = this._getMockMentionResults(query);
+      // Hata durumunda da default liste göster
+      this._mentionResults = query ? [] : this._getDefaultMentionItems();
     }
     
     this._renderMentionDropdown();
+  },
+
+  /**
+   * Varsayılan mention öğeleri (API bağlantısı yokken)
+   * @returns {Array<{name: string, path?: string, type: string}>}
+   */
+  _getDefaultMentionItems() {
+    // Agent'ları da ekle (varsa)
+    const items = [];
+    
+    if (typeof AgentModelSelector !== 'undefined') {
+      const agents = AgentModelSelector.getAvailableAgents?.() || [];
+      agents.forEach(agent => {
+        items.push({
+          name: agent.name,
+          path: null,
+          type: 'agent',
+          description: agent.description,
+        });
+      });
+    }
+    
+    return items;
   },
 
   /**
@@ -587,28 +663,6 @@ const PromptHandler = {
     );
     
     this._renderCommandDropdown();
-  },
-
-  /**
-   * Mock mention sonuçları (API entegrasyonu yapılacak)
-   * @param {string} query
-   * @returns {Array<{name: string, path?: string, type: string}>}
-   */
-  _getMockMentionResults(query) {
-    const items = [
-      { name: 'package.json', path: './package.json', type: 'file' },
-      { name: 'tsconfig.json', path: './tsconfig.json', type: 'file' },
-      { name: 'README.md', path: './README.md', type: 'file' },
-      { name: 'src/', path: './src', type: 'folder' },
-      { name: 'Coder Agent', path: null, type: 'agent' },
-      { name: 'Reviewer Agent', path: null, type: 'agent' },
-    ];
-    
-    if (!query) return items.slice(0, 5);
-    
-    return items.filter(item => 
-      item.name.toLowerCase().includes(query.toLowerCase())
-    ).slice(0, 8);
   },
 
   /**
@@ -991,14 +1045,38 @@ const PromptHandler = {
       `;
     }
     
+    // File content preview için tooltip (kod dosyaları)
+    let contentPreview = '';
+    if (att.type === 'file' && att.content) {
+      const previewLines = att.content.split('\n').slice(0, 10).join('\n');
+      const escapedContent = this._escapeHtml(previewLines);
+      const truncated = att.content.split('\n').length > 10 ? '\n...' : '';
+      contentPreview = `data-content-preview="${escapedContent}${truncated}"`;
+    }
+    
     return `
-      <div class="attachment-chip ${att.type}" data-attachment-id="${att.id}" title="${att.name}${sizeStr ? ' (' + sizeStr + ')' : ''}">
+      <div class="attachment-chip ${att.type}" data-attachment-id="${att.id}" ${contentPreview} title="${att.name}${sizeStr ? ' (' + sizeStr + ')' : ''}">
         ${previewHtml || `<span class="attachment-icon">${icon}</span>`}
         <span class="attachment-name">${this._truncateName(att.name, 20)}</span>
         ${sizeStr ? `<span class="attachment-size">${sizeStr}</span>` : ''}
         <button class="remove-attachment" title="Kaldır">×</button>
       </div>
     `;
+  },
+
+  /**
+   * HTML karakterlerini escape et
+   * @param {string} text
+   * @returns {string}
+   */
+  _escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   },
 
   /**

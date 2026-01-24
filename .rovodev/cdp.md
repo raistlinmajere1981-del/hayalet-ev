@@ -32,10 +32,10 @@ CDP (Chrome DevTools Protocol) entegrasyonu sayesinde AI asistanlar Electron uyg
 
 | Kategori | Tool'lar | Kullanım Amacı |
 |----------|----------|----------------|
-| **Bağlantı** | `check_electron_connection` | Electron çalışıyor mu kontrolü |
+| **Bağlantı** | `hev_check_electron_connection` | Electron çalışıyor mu kontrolü |
 | **İnceleme** | `get_electron_window_info`, `get_page_dom_structure`, `inspect_element`, `query_elements` | UI durumunu anlama |
-| **Etkileşim** | `click_element_by_selector`, `click_element_by_text`, `fill_input_field`, `send_key_press`, `scroll_page` | UI ile etkileşim |
-| **Görüntüleme** | `take_cdp_screenshot` | Görsel doğrulama |
+| **Etkileşim** | `hev_click_element_by_selector`, `click_element_by_text`, `fill_input_field`, `send_key_press`, `scroll_page` | UI ile etkileşim |
+| **Görüntüleme** | `hev_take_cdp_screenshot` | Görsel doğrulama |
 | **Kod Çalıştırma** | `send_command_to_electron` | Arbitrary JavaScript |
 
 ### Geliştirme Workflow'ları
@@ -374,3 +374,153 @@ acli rovodev
 
 ---
 
+
+---
+
+### Workflow Tools (Test Otomasyonu)
+
+Test hazırlık süreçlerini otomatize eden predefined workflow'lar:
+
+| Tool | Açıklama |
+|------|----------|
+| `hev_run_workflow` | Predefined workflow çalıştır |
+| `hev_run_steps` | Custom adımlar çalıştır |
+| `hev_list_workflows` | Mevcut workflow'ları listele |
+
+**Predefined Workflows:**
+
+| Workflow | Açıklama | Adımlar |
+|----------|----------|---------|
+| `setup_asistan` | Asistan sayfası + bağlantı | navigate → wait → click → wait |
+| `setup_entrance` | Entrance sayfası hazır | navigate → wait |
+| `setup_ai1_slot` | AI1 slot bağlantısı | navigate → wait → click → wait |
+| `check_app` | Uygulama durumu kontrol | wait → screenshot → assert |
+
+**Kullanım:**
+```bash
+# Predefined workflow
+hev_run_workflow workflow="setup_asistan"
+
+# Custom steps
+hev_run_steps steps='[{"action":"navigate","page":"asistan"},{"action":"click","selector":"#btn"}]'
+```
+
+**Adım Tipleri:**
+- `click` - Element tıkla (selector veya text)
+- `fill` - Input doldur
+- `wait` - Element veya süre bekle
+- `screenshot` - Ekran görüntüsü
+- `navigate` - Sayfa geçişi
+- `assert` - Koşul doğrula
+
+### Chunk Tools (Büyük Dosya Oluşturma)
+
+LLM response limitlerini aşmak için chunk-based dosya oluşturma araçları:
+
+| Tool | Açıklama |
+|------|----------|
+| `hev_fs_create_chunked` | Parçaları tek seferde birleştir |
+| `hev_fs_append_chunk` | Dosyaya streaming append |
+
+**fs_create_chunked Kullanımı:**
+```bash
+# Tüm parçaları bir kerede gönder
+fs_create_chunked file_path="src/big-file.ts" chunks='["part1...", "part2...", "part3..."]'
+```
+
+**fs_append_chunk Kullanımı (Streaming):**
+```bash
+# Parça parça ekle
+fs_append_chunk file_path="src/big-file.ts" content="// Part 1\n..." create_if_missing=true
+fs_append_chunk file_path="src/big-file.ts" content="// Part 2\n..."
+fs_append_chunk file_path="src/big-file.ts" content="// Part 3\n..."
+```
+
+**Ne Zaman Kullanılmalı:**
+- Dosya içeriği 50KB'dan büyükse
+- create_file tool'u hata veriyorsa
+- Uzun kod dosyaları oluştururken
+
+---
+
+### Git PR Tools (GitHub Workflow)
+
+GitHub CLI (gh) entegrasyonu ile PR workflow otomasyonu:
+
+| Tool | Açıklama |
+|------|----------|
+| `hev_git_fork_setup` | Repo fork et, clone et, branch oluştur |
+| `hev_git_create_pr` | Commit et, push et, PR oluştur |
+| `hev_git_check_guidelines` | CONTRIBUTING.md, DCO, PR template kontrolü |
+| `hev_git_pr_status` | Git durumu ve açık PR'ları göster |
+
+**Gereksinimler:**
+- GitHub CLI (`gh`) kurulu olmalı: `brew install gh` veya `apt install gh`
+- GitHub'a giriş yapılmış olmalı: `gh auth login`
+
+**Tam PR Workflow Örneği:**
+```bash
+# 1. Fork ve branch hazırla
+hev_git_fork_setup repo="owner/repo" work_dir="~/projects" base_branch="main" feature_branch="fix/bug-123"
+
+# 2. Değişiklik yap (hev_fs_find_and_replace, hev_fs_create_file vb.)
+
+# 3. Guidelines kontrol et
+hev_git_check_guidelines cwd="~/projects/repo"
+
+# 4. PR oluştur
+hev_git_create_pr base_branch="main" title="Fix: Bug #123" body="Bu PR şunu düzeltiyor..." cwd="~/projects/repo"
+```
+
+**Özellikler:**
+- ✅ Idempotent - Tekrar çalıştırılabilir
+- ✅ DCO sign-off otomatik (-s flag)
+- ✅ Mevcut PR kontrolü (duplicate önleme)
+- ✅ Shallow clone desteği (hızlı)
+
+---
+
+### Context Tools (Proje Analizi)
+
+Repomix entegrasyonu ile çok seviyeli proje context sistemi:
+
+| Tool | Açıklama |
+|------|----------|
+| `hev_context_generate` | Belirli seviyede context oluştur |
+| `hev_context_status` | Mevcut context durumu |
+| `hev_context_module` | Spesifik modül için context |
+| `hev_context_read` | Context içeriğini oku |
+
+**Context Seviyeleri:**
+
+| Seviye | Token | Boyut | İçerik |
+|--------|-------|-------|--------|
+| L1 (Quick) | ~7K | 27KB | AGENTS.md + package.json |
+| L2 (Standard) | ~48K | 174KB | Orchestrator'lar + types |
+| L3 (Deep) | ~360K | 1.3MB | Tüm src/js + electron |
+| L4 (Full) | ~518K | 1.8MB | MCP server dahil |
+
+**Kullanım:**
+```bash
+# Session başlangıcında status kontrol
+hev_context_status
+
+# Normal geliştirme için L2
+hev_context_generate level="L2"
+
+# Derin analiz için L3
+hev_context_generate level="L3" force=true
+
+# Belirli modül için
+hev_context_module module="webview"
+hev_context_module module="traffic"
+
+# Context içeriğini oku
+hev_context_read level="L2"
+```
+
+**Cache Sistemi:**
+- 1 saatten yeni context'ler cache'den gelir
+- `force=true` ile yeniden oluştur
+- Config'ler: `.rovodev/context-configs/`
+- Çıktılar: `.rovodev/context/`
