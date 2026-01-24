@@ -6,9 +6,8 @@
 - **Multi-AI Integration:** ChatGPT, Gemini, Grok, and extensible for other providers
 - **AI-to-AI Communication:** Protocol-based AI conversation system
 - **Conversation Archiving:** Automatic conversation storage with Google Drive sync
-- **Plugin System:** Extensible architecture for custom commands and features
 - **Voice & Screenshots:** Whisper integration for voice input, screenshot capture
-- **MCP Server:** Model Context Protocol server for AI assistant integration
+- **MCP Server:** 87 tool ile AI asistan entegrasyonu (context, workflow, git, web search)
 
 ### Tech Stack
 - **Runtime:** Electron 39+ with Node.js (ESM modules)
@@ -18,7 +17,7 @@
 - **Storage:** SQLite + Google Drive API
 
 ### Version
-Current: `5.4.0`
+Current: `5.5.0`
 
 ---
 
@@ -27,32 +26,32 @@ Current: `5.4.0`
 **Bu projede dosya ve geliştirme işlemleri için SADECE `hayalet-ev` MCP server kullanılmalıdır.**
 
 ### Neden?
-- `hayalet-ev` MCP server proje için özelleştirilmiş 34 tool içerir
+- `hayalet-ev` MCP server proje için özelleştirilmiş **87 tool** içerir
 - Collapsed view, code parsing, proje analizi gibi özel özellikler sunar
 - Default MCP'ler (filesystem-tools vb.) bu projede verimsiz çalışır
 
-### Kullanılacak Tool Prefix'leri
+### Tool Listesi
+Tüm tool'ları görmek için: **`hev_list_tools`** 
+
+### Tool Prefix'leri (Tümü `hev_` ile başlar)
 | Prefix | Açıklama | Örnek |
 |--------|----------|-------|
-| `fs_*` | Dosya işlemleri | `hev_fs_open_files`, `hev_fs_grep`, `hev_fs_bash` |
-| `dev_*` | Geliştirme araçları | `hev_dev_analyze_project`, `hev_dev_generate_diagram` |
-| CDP tools | Electron kontrolü | `hev_check_electron_connection`, `hev_take_cdp_screenshot` |
+| `hev_fs_*` | Dosya işlemleri | `hev_fs_open_files`, `hev_fs_grep`, `hev_fs_bash` |
+| `hev_dev_*` | Geliştirme araçları | `hev_dev_analyze_project` |
+| `hev_context_*` | Proje context'i | `hev_context_generate`, `hev_context_status` |
+| `hev_git_*` | Git/PR işlemleri | `hev_git_fork_setup`, `hev_git_create_pr` |
+| `hev_web_*` | Web araştırma | `hev_web_search`, `hev_web_fetch` |
+| `hev_run_*` | Test workflow | `hev_run_workflow`, `hev_run_steps` |
+| `hev_*` | Electron/CDP | `hev_check_electron_connection`, `hev_take_cdp_screenshot` |
 
-### ❌ KULLANMA
-- `open_files` → Yerine `hev_fs_open_files` kullan
-- `grep` → Yerine `hev_fs_grep` kullan  
-- `bash` → Yerine `hev_fs_bash` kullan
-- `expand_folder` → Yerine `hev_fs_expand_folder` kullan
-- `create_file` → Yerine `hev_fs_create_file` kullan
-
-### ✅ KULLAN
+### ❌ KULLANMA (Default tool'lar)
 ```
-mcp__hayalet_ev__invoke_tool ile:
-- fs_open_files, fs_create_file, fs_delete_file, fs_move_file
-- fs_expand_code_chunks, fs_find_and_replace, fs_grep
-- fs_expand_folder, fs_bash, fs_create_plan
-- dev_analyze_project, dev_bootstrap_context, dev_generate_diagram
-- dev_generate_diagram, dev_update_cache, dev_edit_lines
+open_files, grep, bash, expand_folder, create_file
+```
+
+### ✅ KULLAN (hev_* tool'ları)
+```
+mcp__hayalet_ev__invoke_tool ile tüm hev_* tool'ları kullan
 ```
 
 ---
@@ -304,213 +303,66 @@ dev_bootstrap_context     # Session context oluştur
 
 > **Detaylı rehber:** `.rovodev/cdp.md`
 
-MCP Server v1.7.0 - **47 tool** (CDP + Filesystem + Dev Tools + Recycle Bin + Diff)
+### Tool Listesi (87 tool)
 
-### CDP Tools (Electron kontrolü)
-```
-check_electron_connection, click_element_by_selector, take_cdp_screenshot
-```
+Tüm tool'ları kategorize görmek için: **`hev_list_tools`**
 
-### Filesystem Tools (Dosya işlemleri)
-```
-fs_open_files, fs_create_file, fs_grep, fs_bash, fs_expand_folder
-fs_show              # Dosya içeriğini satır numaralarıyla göster
-```
+| Kategori | Sayı | Açıklama |
+|----------|------|----------|
+| ⚡ Electron & CDP | 14 | Electron kontrolü, screenshot, DOM |
+| 📁 Filesystem | 13 | Dosya CRUD, grep, bash |
+| ♻️ Recycle & Backup | 8 | Çöp kutusu, geri alma, diff |
+| 🔧 Development | 9 | Analiz, lint, test, sembol arama |
+| 📊 Context | 4 | Proje context üretimi (Repomix) |
+| 🔀 Git & PR | 4 | Fork, PR, guidelines |
+| 🌐 Web Search | 3 | SearXNG araması |
+| 🔄 Workflow | 3 | Test workflow otomasyonu |
+| 🔍 Provider & Debug | 8 | Selector validation, logs |
 
-### Recycle Bin & Backup (Güvenli dosya işlemleri)
-```
-fs_delete_file       # Silme (çöp kutusuna, geri alınabilir)
-fs_trash_list        # Çöp kutusunu listele
-fs_restore           # Silinen dosyayı geri yükle
-fs_trash_empty       # Çöp kutusunu boşalt
-fs_backup            # Dosya yedeği al (timestamped)
-fs_undo              # Son işlemi geri al
-fs_history           # İşlem geçmişi
-```
+### Sık Kullanılanlar
 
-### Diff Tools (Karşılaştırma)
-```
-fs_diff              # İki dosyayı karşılaştır (unified diff)
-fs_diff_content      # İki içeriği karşılaştır
-```
-
-### Dev Tools (Geliştirme araçları)
-```
-dev_analyze_project    # Proje analizi
-dev_bootstrap_context  # Context üret
-dev_generate_diagram   # Bağımlılık diagramı
-dev_update_cache       # Cache güncelle
-dev_edit_lines         # Satır bazlı düzenleme
-dev_git_diff           # Git değişikliklerini göster
-dev_lint_file          # Tek dosyada ESLint
-dev_search_symbol      # Projede sembol ara
-dev_test_run           # Test çalıştır
-```
-
-### Provider Tools (Selector Doğrulama)
-
-AI provider selector'larını canlı test etmek için araçlar:
-
-```
-list_provider_webviews       # Provider ve webview listesi
-list_provider_selectors      # Config'deki selector'ları listele
-validate_provider_selectors  # Selector'ları canlı webview'da test et
-inspect_provider_element     # Webview'da element inspect et
-```
-
-**Kullanım örneği:**
 ```bash
-# ChatGPT selector'larını doğrula
-validate_provider_selectors provider=chatgpt
+# Proje context'i oluştur (session başlangıcı)
+hev_context_generate level="L2"
 
-# Belirli element inspect et
-inspect_provider_element provider=chatgpt selector='[data-message-author-role="user"]'
+# Tool listesi
+hev_list_tools
+
+# Web araştırma
+hev_web_search query="..." categories="it"
+
+# Test workflow
+hev_run_workflow workflow="setup_asistan"
 ```
 
 ### MCP Server Logging
-MCP tool çağrıları ve hatalar `mcp-server/logs/mcp-server.log` dosyasına kaydedilir.
-
 ```bash
-# MCP log'larını görüntüle
 cat mcp-server/logs/mcp-server.log | tail -20
-
-# JSON formatında - jq ile parse
-cat mcp-server/logs/mcp-server.log | jq -r 'select(.level=="error")'
 ```
 
-**Not:** `hev_fs_create_file` için maksimum içerik boyutu 500KB. 10KB üzeri dosyalar otomatik olarak bash heredoc ile yazılır (LLM token limit sorunlarını önler).
+### Web Tools
 
-### Web Tools (Arama ve İçerik)
+**SearXNG Kurulum:** `sudo docker compose -f docker-compose.searxng.yml up -d`
 
-**Araçlar:**
-```
-web_search             # SearXNG ile web araması (Google, Bing, DuckDuckGo, GitHub, StackOverflow)
-web_fetch              # URL'den sayfa içeriği çek (temiz markdown)
-web_search_and_fetch   # Arama yap + ilk N sonucun içeriğini çek (detaylı araştırma)
-```
+**Ne zaman kullan:**
+- Hata mesajları, güncel bilgi, versiyon soruları, bilinmeyen teknolojiler
 
-**Kurulum:** SearXNG gerektirir:
-```bash
-sudo docker compose -f docker-compose.searxng.yml up -d
-```
-
-#### 🎯 Web Search Kullanım Stratejisi
-
-**MUTLAKA KULLAN - Bu durumlarda web search zorunlu:**
-
-| Durum | Neden | Örnek Sorgu |
-|-------|-------|-------------|
-| Spesifik hata mesajı | Güncel çözümler değişir | `"ECONNREFUSED" Docker Node.js solution` |
-| Versiyon-spesifik soru | API'ler değişir | `React 19 useOptimistic example` |
-| "Güncel/en son/2024/2025" içeren sorular | Eski bilgi geçersiz | `TypeScript 5.4 new features` |
-| Bilinmeyen kütüphane/teknoloji | Yerleşik bilgi yetersiz | `Bun runtime vs Node.js` |
-| Best practices sorusu | Standartlar değişir | `Docker security best practices 2025` |
-| Performans karşılaştırması | Benchmark'lar güncellenir | `Vite vs Webpack build speed` |
-
-**KULLANMA - Bu durumlarda gereksiz:**
-
-| Durum | Neden |
-|-------|-------|
-| Temel syntax soruları | Yerleşik bilgi yeterli |
-| Proje-spesifik kod analizi | Cevap projede, internette değil |
-| Basit algoritma soruları | Değişmeyen bilgi |
-| Bu projenin kendi dosyaları hakkında | `hev_fs_grep`, `hev_fs_open_files` kullan |
-
-#### 🔍 Arama Stratejisi
-
-```
-1. HIZLI KONTROL (emin değilsen):
-   web_search query="konu" limit=5
-   → Link listesi al, genel fikir edin
-
-2. DETAYLI ARAŞTIRMA (çözüm gerekiyorsa):
-   web_search_and_fetch query="konu" fetch_count=3
-   → Tam içerik çek, analiz et
-
-3. BİLİNEN KAYNAK (dokümantasyon):
-   web_fetch url="https://docs.example.com/api"
-   → Direkt içerik çek
-```
-
-#### 📝 Etkili Sorgu Yazma
+**Ne zaman kullanma:**
+- Temel syntax, proje-spesifik analiz → `hev_fs_grep` kullan
 
 ```bash
-# ❌ KÖTÜ - çok genel
-web_search query="React error"
+# Hızlı arama
+hev_web_search query="React 19 features" categories="it"
 
-# ✅ İYİ - spesifik hata + context
-web_search query="React useEffect cleanup function memory leak"
-
-# ✅ İYİ - versiyon belirt
-web_search query="Node.js 20 fetch API native"
-
-# ✅ İYİ - çözüm odaklı
-web_search query="Docker container cannot connect to host network solution"
+# Detaylı araştırma
+hev_web_search_and_fetch query="..." fetch_count=3
 ```
 
-#### 🏷️ Kategori ve Engine Seçimi
+### Timeout & Progress
 
-```bash
-# Kod/programlama soruları
-web_search query="..." categories="it" engines="github,stackoverflow"
+Timeout config: `mcp-server/utils/timeouts.ts`
 
-# Genel bilgi
-web_search query="..." categories="general"
-
-# Akademik/bilimsel
-web_search query="..." categories="science" engines="google scholar"
-
-# Haberler/güncel
-web_search query="..." categories="news" time_range="month"
-```
-
-#### ⚡ Performans İpuçları
-
-| Parametre | Hızlı Kontrol | Detaylı Araştırma |
-|-----------|---------------|-------------------|
-| `limit` | 3-5 | 10 |
-| `fetch_count` | - | 2-3 |
-| `max_content_length` | - | 10000 |
-
-**Dil Stratejisi:**
-- Teknik terimler için **İngilizce** sorgu (daha fazla sonuç)
-- Türkçe kaynak gerekirse `language="tr-TR"` ekle
-
-### Timeout Konfigürasyonu
-
-Tüm timeout değerleri merkezi olarak `mcp-server/utils/timeouts.ts` dosyasında tanımlıdır.
-
-| Kategori | İşlem | Timeout |
-|----------|-------|---------|
-| **CDP** | Target discovery | 10s |
-| | WebSocket bağlantı | 10s |
-| | Komut (varsayılan) | 15s |
-| | Screenshot | 15s |
-| **Web** | Arama API | 15s |
-| | Sayfa fetch | 15s |
-| | URL kontrol | 10s |
-| **Filesystem** | Bash komutu | 30s |
-| **Dev** | ESLint | 120s |
-| | Test çalıştırma | 120s |
-| **Electron** | Test | 10s |
-
-**Minimum timeout:** 10 saniye (tüm değerler bu sınırın üstünde)
-
-### Progress Göstergesi
-Uzun süren işlemler (analiz, lint, test) stderr'e progress mesajları yazar:
-
-```
-[PROGRESS] ⏳ Proje analizi başladı...
-[PROGRESS] [33%] electron taranıyor...
-[PROGRESS] ✅ Proje analizi 175 dosya analiz edildi (0.1s)
-```
-
-Progress destekleyen tool'lar:
-- `hev_dev_analyze_project`
-- `hev_dev_lint_file`
-- `hev_dev_test_run`
-- `hev_fs_create_file`
-- `fs_find_and_replace`
+Progress destekleyen tool'lar: `hev_dev_analyze_project`, `hev_dev_lint_file`, `hev_dev_test_run`
 
 ---
 
