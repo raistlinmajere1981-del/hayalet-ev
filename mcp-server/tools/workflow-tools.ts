@@ -197,13 +197,15 @@ async function executeStep(ws: WebSocket, step: WorkflowStep, stepNum: number): 
 
 // Predefined Workflows
 const WORKFLOWS: Record<string, WorkflowStep[]> = {
+  // Asistan sayfası: Bağlan → Otomatik hayalet-ev projesi ile chat sayfasına geçer
   setup_asistan: [
     { action: "navigate", page: "asistan" },
     { action: "wait", selector: "#asistan-connect-btn", timeout: 5000 },
     { action: "screenshot", name: "asistan-before", optional: true },
     { action: "click", selector: "#asistan-connect-btn" },
-    { action: "wait", selector: ".status-dot.connected", timeout: 15000 },
-    { action: "screenshot", name: "asistan-connected", optional: true },
+    { action: "wait", timeout: 2000 },  // Otomatik bağlantı için bekle
+    { action: "wait", selector: ".chat-container, #chat-messages, .message-list", timeout: 15000 },  // Chat sayfası yüklendi
+    { action: "screenshot", name: "asistan-chat-ready", optional: true },
   ],
   setup_entrance: [
     { action: "navigate", page: "entrance" },
