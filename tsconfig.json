@@ -51,6 +51,7 @@
     "build",
     "electron",
     "mcp-server",
-    ".rovodev"
+    ".rovodev",
+    "src/opencode-ui"
   ]
 }

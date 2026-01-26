@@ -159,6 +159,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opcGetHomePath: () => ipcRenderer.invoke("opc-get-home-path"),
   opcJoinPath: (...segments) => ipcRenderer.invoke("opc-join-path", ...segments),
   opcPathInfo: (path) => ipcRenderer.invoke("opc-path-info", path),
+
+  // Workspace API (Multi-Instance Support)
+  workspaceList: () => ipcRenderer.invoke("workspace:list"),
+  workspaceCreate: (options) => ipcRenderer.invoke("workspace:create", options),
+  workspaceDelete: (id) => ipcRenderer.invoke("workspace:delete", id),
+  workspaceGet: (id) => ipcRenderer.invoke("workspace:get", id),
+  workspaceGetAuth: (id) => ipcRenderer.invoke("workspace:getAuth", id),
 });
 
 try {

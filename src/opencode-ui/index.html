@@ -11,6 +11,79 @@
   <link rel="stylesheet" href="styles/messages.css">
   <link rel="stylesheet" href="styles/prompt.css">
   <link rel="stylesheet" href="styles/tools.css">
+  
+  <!-- Shiki Syntax Highlighting -->
+  <script type="module">
+    import { codeToHtml, bundledLanguages } from 'https://esm.sh/shiki@1.0.0';
+    
+    // Shiki highlighter'ı global'e kaydet
+    window.ShikiHighlighter = {
+      _cache: new Map(),
+      _ready: false,
+      _supportedLangs: new Set(Object.keys(bundledLanguages)),
+      
+      async highlight(code, lang = 'text') {
+        // Normalize language
+        const normalizedLang = this._normalizeLanguage(lang);
+        
+        // Check cache
+        const cacheKey = `${normalizedLang}:${code}`;
+        if (this._cache.has(cacheKey)) {
+          return this._cache.get(cacheKey);
+        }
+        
+        try {
+          const html = await codeToHtml(code, {
+            lang: normalizedLang,
+            theme: 'github-dark'
+          });
+          
+          this._cache.set(cacheKey, html);
+          
+          // Limit cache size
+          if (this._cache.size > 100) {
+            const firstKey = this._cache.keys().next().value;
+            this._cache.delete(firstKey);
+          }
+          
+          return html;
+        } catch (err) {
+          console.warn('[Shiki] Highlight error:', err);
+          return null;
+        }
+      },
+      
+      _normalizeLanguage(lang) {
+        if (!lang) return 'text';
+        const l = lang.toLowerCase();
+        
+        // Common aliases
+        const aliases = {
+          'js': 'javascript',
+          'ts': 'typescript',
+          'py': 'python',
+          'rb': 'ruby',
+          'sh': 'bash',
+          'shell': 'bash',
+          'zsh': 'bash',
+          'yml': 'yaml',
+          'md': 'markdown',
+          'plaintext': 'text',
+          'txt': 'text'
+        };
+        
+        const normalized = aliases[l] || l;
+        return this._supportedLangs.has(normalized) ? normalized : 'text';
+      },
+      
+      isSupported(lang) {
+        return this._supportedLangs.has(this._normalizeLanguage(lang));
+      }
+    };
+    
+    window.ShikiHighlighter._ready = true;
+    console.log('[Shiki] Highlighter ready');
+  </script>
 </head>
 <body>
   <!-- Loading Overlay - SSE bağlantısı kurulana kadar gösterilir -->
@@ -33,15 +106,6 @@
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-        
-        <!-- Token Usage -->
-        <div class="token-usage">
-          <span class="token-label">USED</span>
-          <span class="token-value" id="tokens-used">0</span>
-          <span class="token-separator">|</span>
-          <span class="token-label">AVAIL</span>
-          <span class="token-value" id="tokens-avail">200K</span>
-        </div>
       </div>
       
       <div class="header-center">
@@ -53,11 +117,12 @@
       </div>
       
       <div class="header-right">
-        <!-- Connection Status -->
-        <div class="connection-status" id="connection-status">
-          <span class="status-dot"></span>
-          <span class="status-text">Bağlantı bekleniyor</span>
+        <!-- Permission Notification Banner -->
+        <div class="permission-banner-container hidden" id="permission-banner-container">
+          <!-- Permission banner rendered by permission-banner.js -->
         </div>
+        
+        <!-- Connection Status - Ana toolbar'da gösteriliyor -->
         
         <!-- Settings Toggle -->
         <button class="btn btn-icon" id="btn-toggle-right-sidebar" title="Ayarlar Paneli">
@@ -273,6 +338,15 @@
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
           </button>
+          <button class="action-btn" id="btn-panel-logs" title="Server Logs">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
           
           <div class="action-bar-spacer"></div>
           
@@ -300,16 +374,20 @@
             </button>
           </div>
           
-          <!-- Plan Section -->
-          <div class="panel-section collapsible">
+          <!-- Plan Section (syncs with Todo tool output) -->
+          <div class="panel-section collapsible" id="plan-section">
             <div class="section-header">
               <h4 class="section-title">PLAN</h4>
+              <span class="section-badge hidden" id="plan-count">0/0</span>
               <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </div>
-            <div class="section-content">
-              <p class="placeholder-text">Nothing planned yet.</p>
+            <div class="section-content" id="plan-content">
+              <p class="placeholder-text" id="plan-placeholder">Nothing planned yet.</p>
+              <div class="plan-items hidden" id="plan-items">
+                <!-- Plan items will be populated by app.js from Todo tool output -->
+              </div>
             </div>
           </div>
           
@@ -371,6 +449,22 @@
             </div>
           </div>
         </div>
+        
+        <!-- Logs Panel Content (hidden by default, shown when logs button clicked) -->
+        <div class="sidebar-content logs-panel hidden" id="logs-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">SERVER LOGS</h3>
+            <button class="btn btn-icon" id="btn-logs-close" title="Kapat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="logs-container" id="logs-container">
+            <!-- LogsView will render here -->
+          </div>
+        </div>
       </aside>
     </div>
 
@@ -409,6 +503,21 @@
       </div>
     </div>
     
+    <!-- Disconnected Modal -->
+    <div class="disconnected-modal" id="disconnected-modal">
+      <div class="disconnected-modal-content">
+        <div class="disconnected-modal-icon">🔌</div>
+        <div class="disconnected-modal-title">Bağlantı Kesildi</div>
+        <div class="disconnected-modal-message">
+          Sunucu ile bağlantı koptu. Yeniden bağlanmak ister misiniz?
+        </div>
+        <div class="disconnected-modal-actions">
+          <button class="disconnected-modal-btn secondary" id="btn-dismiss-disconnect">Kapat</button>
+          <button class="disconnected-modal-btn primary" id="btn-reconnect">Yeniden Bağlan</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Command Palette Modal -->
     <div class="modal-overlay hidden" id="command-palette-modal">
       <div class="command-palette">
@@ -491,7 +600,7 @@
   </div>
 
   <!-- DOMPurify for XSS Sanitization -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.8/purify.min.js" integrity="sha512-4HfQp/AaJi4ILBimZAzJWMT3NaDrHctndmWHfmhhIzD5qmjVB8DVuqrAZ5RjC2T09PvMPaGdPfKSI+wOgF3pqQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- Scripts - Single entry point for Vite compatibility -->
   <script type="module" src="js/index.js"></script>

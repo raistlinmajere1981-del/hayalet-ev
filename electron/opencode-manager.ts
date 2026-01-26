@@ -227,7 +227,7 @@ export const OpenCodeManager = {
    * Server durumunu al
    * @returns {OpenCodeState}
    */
-  getStatus() {
+  getStatus(): OpenCodeState {
     return { ...this._state };
   },
 
@@ -255,6 +255,44 @@ export const OpenCodeManager = {
     console.log("[OPENCODE]", "info", "Cleanup başlatılıyor...");
     this._disconnectEventSource();
     await this.stop();
+  },
+
+  /**
+   * External workspace auth header'ını set et
+   * WorkspaceManager tarafından başlatılan process'ler için kullanılır
+   */
+  setAuthHeader(authHeader: string): void {
+    this._state.authHeader = authHeader;
+    console.log("[OPENCODE]", "debug", "External auth header set", { 
+      hasAuth: !!authHeader,
+      preview: authHeader?.substring(0, 20) + "..."
+    });
+  },
+
+  /**
+   * External workspace port'unu set et
+   * WorkspaceManager tarafından başlatılan process'ler için kullanılır
+   */
+  setPort(port: number): void {
+    this._state.port = port;
+    this._state.running = true;
+    console.log("[OPENCODE]", "debug", "External port set", { port });
+  },
+
+  /**
+   * External workspace'den yapılandır
+   * WorkspaceManager tarafından başlatılan process bilgilerini alır
+   */
+  configureFromWorkspace(config: { port: number; authHeader: string; projectPath?: string }): void {
+    this._state.port = config.port;
+    this._state.authHeader = config.authHeader;
+    this._state.running = true;
+    this._state.projectPath = config.projectPath || null;
+    console.log("[OPENCODE]", "info", "Configured from workspace", { 
+      port: config.port,
+      hasAuth: !!config.authHeader,
+      projectPath: config.projectPath
+    });
   },
 
   // =========================================================================
@@ -502,6 +540,59 @@ export const OpenCodeManager = {
   },
 
   /**
+   * Belirli bir session'ı ID ile al
+   */
+  async getSessionById(sessionId: string): Promise<ApiResponse<OpenCodeSession>> {
+    try {
+      const response = await fetch(`${this._getApiUrl()}/session/${sessionId}`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { success: false, error: "Session not found" };
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json() as { session?: OpenCodeSession } | OpenCodeSession;
+      const session = (data as { session?: OpenCodeSession }).session || (data as OpenCodeSession);
+      return { success: true, data: session };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "getSessionById hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
+   * Session mesajlarını al
+   */
+  async getSessionMessages(sessionId: string): Promise<ApiResponse<Array<{ role: string; content: string; id?: string }>>> {
+    try {
+      const response = await fetch(`${this._getApiUrl()}/session/${sessionId}/messages`, {
+        method: "GET",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { success: true, data: [] };
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json() as { messages?: Array<{ role: string; content: string; id?: string }> };
+      return { success: true, data: data.messages || [] };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "getSessionMessages hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
    * Yeni session oluştur veya mevcut session'a bağlan
    */
   async createOrGetSession(path?: string): Promise<ApiResponse<OpenCodeSession>> {
@@ -546,10 +637,16 @@ export const OpenCodeManager = {
 
   /**
    * Mesaj gönder (async - streaming response için)
-   * OpenCode API formatı: { messageID, parts: [{ id, type: "text", text: "..." }] }
+   * OpenCode API formatı: { messageID, parts: [{ id, type: "text", text: "..." }], agent?, model? }
    * CodeNomad pattern: messageID ve partID client-side üretilir
+   * Model ve agent her mesajla birlikte gönderilir (CodeNomad pattern)
    */
-  async sendMessage(message: string, sessionId?: string, messageId?: string): Promise<ApiResponse<{ messageId: string }>> {
+  async sendMessage(
+    message: string, 
+    sessionId?: string, 
+    messageId?: string,
+    _options?: { agent?: string; providerId?: string; modelId?: string }
+  ): Promise<ApiResponse<{ messageId: string }>> {
     let sid = sessionId || this._state.sessionId;
     
     // Session yoksa otomatik oluştur
@@ -576,14 +673,35 @@ export const OpenCodeManager = {
         messageLength: message.length 
       });
       
-      // OpenCode API formatı: messageID + parts array (CodeNomad uyumlu)
-      // Not: model ve agent parametreleri OpenCode'un kendi config'inden alınır
+      // OpenCode API formatı: messageID + parts array + agent + model (CodeNomad uyumlu)
+      // Model ve agent her mesajla birlikte gönderilir
       const body: Record<string, unknown> = {
         messageID: msgId,
         parts: [
           { id: partId, type: "text", text: message }
         ],
       };
+      
+      // =========================================================================
+      // Agent/Model seçimi şimdilik DEVRE DIŞI
+      // Session'ın default agent/model değerleri kullanılır.
+      // TODO: CodeNomad debug logları incelendikten sonra aktif edilecek
+      // =========================================================================
+      // if (options?.agent) {
+      //   body.agent = options.agent;
+      //   console.log("[OPENCODE-API]", "debug", "Agent eklendi", { agent: options.agent });
+      // }
+      // if (options?.providerId && options?.modelId) {
+      //   body.model = {
+      //     providerID: options.providerId,
+      //     modelID: options.modelId,
+      //   };
+      //   console.log("[OPENCODE-API]", "debug", "Model eklendi", { providerID, modelID });
+      // }
+      console.log("[OPENCODE-API]", "debug", "Agent/Model: Session default kullanılıyor (explicit seçim devre dışı)");
+      
+      // DEBUG: Tam request body'yi logla
+      console.log("[OPENCODE-API]", "debug", "prompt_async REQUEST BODY", JSON.stringify(body, null, 2));
       
       const response = await fetch(`${this._getApiUrl()}/session/${sid}/prompt_async`, {
         method: "POST",
@@ -717,6 +835,82 @@ export const OpenCodeManager = {
       return { success: true, data: { tokens: data.tokens || data.compactedTokens || 0 } };
     } catch (err) {
       console.log("[OPENCODE-API]", "error", "compactSession hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
+   * Session sil
+   * OpenCode SDK pattern: client.session.delete({ sessionID })
+   */
+  async deleteSession(sessionId: string): Promise<ApiResponse<void>> {
+    if (!sessionId) {
+      return { success: false, error: "Session ID gerekli" };
+    }
+
+    try {
+      console.log("[OPENCODE-API]", "info", "Session siliniyor", { sessionId });
+      
+      const response = await fetch(`${this._getApiUrl()}/session/${sessionId}`, {
+        method: "DELETE",
+        headers: this._getHeaders(),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("[OPENCODE-API]", "warn", "Session bulunamadı", { sessionId });
+          return { success: false, error: "Session not found" };
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      // Eğer silinen session aktif session ise state'i temizle
+      if (this._state.sessionId === sessionId) {
+        this._state.sessionId = null;
+      }
+
+      console.log("[OPENCODE-API]", "info", "Session silindi", { sessionId });
+      return { success: true };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "deleteSession hatası", { error: (err as Error).message });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  /**
+   * Session güncelle (rename/title değiştir)
+   * OpenCode SDK pattern: client.session.update({ sessionID, title })
+   */
+  async updateSession(sessionId: string, updates: { title?: string }): Promise<ApiResponse<void>> {
+    if (!sessionId) {
+      return { success: false, error: "Session ID gerekli" };
+    }
+
+    try {
+      console.log("[OPENCODE-API]", "info", "Session güncelleniyor", { sessionId, updates });
+      
+      const response = await fetch(`${this._getApiUrl()}/session/${sessionId}`, {
+        method: "PATCH",
+        headers: this._getHeaders(),
+        body: JSON.stringify(updates),
+        signal: AbortSignal.timeout(API_TIMEOUT),
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("[OPENCODE-API]", "warn", "Session bulunamadı", { sessionId });
+          return { success: false, error: "Session not found" };
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      console.log("[OPENCODE-API]", "info", "Session güncellendi", { sessionId, updates });
+      return { success: true };
+    } catch (err) {
+      console.log("[OPENCODE-API]", "error", "updateSession hatası", { error: (err as Error).message });
       return { success: false, error: (err as Error).message };
     }
   },
@@ -1213,7 +1407,31 @@ export const OpenCodeManager = {
 
     try {
       const openCodeEvent = JSON.parse(payload);
-      console.log("[OPENCODE-SSE]", "debug", "Event parsed", { type: openCodeEvent.type });
+      
+      // DEBUG: Tool ve message event'lerini detaylı logla
+      if (openCodeEvent.type?.includes('tool') || openCodeEvent.type?.includes('message')) {
+        const props = openCodeEvent.properties || {};
+        console.log("[OPENCODE-SSE]", "debug", "RAW EVENT FULL", { 
+          type: openCodeEvent.type,
+          messageId: props.id || props.messageId || openCodeEvent.messageId,
+          role: props.role,
+          partsCount: props.parts?.length || 0,
+          partTypes: props.parts?.map((p: { type: string }) => p.type),
+          // Part içeriklerinin ilk 50 karakteri
+          partPreviews: props.parts?.map((p: { type: string; text?: string; content?: string }) => ({
+            type: p.type,
+            preview: (p.text || p.content || '').substring(0, 100)
+          })),
+          // Eğer part yoksa doğrudan event'teki veriyi logla
+          directContent: !props.parts ? {
+            part: props.part,
+            fullContent: props.fullContent?.substring?.(0, 100),
+            role: props.role || openCodeEvent.role,
+          } : null,
+        });
+      } else {
+        console.log("[OPENCODE-SSE]", "debug", "Event parsed", { type: openCodeEvent.type });
+      }
       
       const nativeEvent = eventParser.toNativeUIEvent(openCodeEvent);
       if (nativeEvent && this._eventCallback) {
@@ -1247,8 +1465,8 @@ export const OpenCodeManager = {
    */
   async getMCPServers(): Promise<ApiResponse<Array<{ name: string; status: string; toolCount?: number }>>> {
     try {
-      // OpenCode /app/info veya /config endpoint'inden MCP bilgisi çekilebilir
-      const response = await fetch(`${this._getApiUrl()}/app/info`, {
+      // OpenCode /mcp endpoint'i (CodeNomad SDK: client.mcp.status())
+      const response = await fetch(`${this._getApiUrl()}/mcp`, {
         method: "GET",
         headers: this._getHeaders(),
         signal: AbortSignal.timeout(API_TIMEOUT),
@@ -1257,26 +1475,45 @@ export const OpenCodeManager = {
       if (!response.ok) {
         // Endpoint yoksa boş liste dön
         if (response.status === 404) {
+          console.log("[OPENCODE-API]", "debug", "MCP endpoint not found (404)");
           return { success: true, data: [] };
         }
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json() as { 
-        mcpServers?: Array<{ name: string; status?: string; tools?: unknown[] }>;
-        mcp?: { servers?: Array<{ name: string; status?: string; tools?: unknown[] }> };
-      };
+      const data = await response.json() as { servers?: Record<string, unknown> } | Array<{ name?: string; status?: string; tools?: unknown[] }>;
       
-      // MCP server bilgisini çıkar
-      const servers = data.mcpServers || data.mcp?.servers || [];
-      const result = servers.map(s => ({
-        name: s.name,
-        status: s.status || 'connected',
-        toolCount: s.tools?.length || 0,
-      }));
+      // DEBUG: Raw response'u logla
+      console.log("[OPENCODE-API]", "debug", "MCP raw response", { 
+        keys: Object.keys(data || {}),
+        hasServers: !Array.isArray(data) && !!(data as { servers?: unknown })?.servers,
+        dataPreview: JSON.stringify(data).substring(0, 500)
+      });
       
-      console.log("[OPENCODE-API]", "debug", "MCP servers fetched", { count: result.length });
-      return { success: true, data: result };
+      // MCP server bilgisini çıkar (CodeNomad formatı: { servers: { serverName: { ... } } })
+      // OpenCode formatı farklı olabilir - tüm olasılıkları kontrol et
+      let servers: Array<{ name: string; status: string; toolCount: number }> = [];
+      
+      if (!Array.isArray(data) && data?.servers && typeof data.servers === 'object') {
+        servers = Object.entries(data.servers).map(([key, s]: [string, unknown]) => {
+          const server = s as { name?: string; status?: string; tools?: Array<{ name: string }>; error?: string };
+          return {
+            name: server.name || key,
+            status: server.error ? 'error' : (server.status || 'connected'),
+            toolCount: server.tools?.length || 0,
+          };
+        });
+      } else if (Array.isArray(data)) {
+        // Alternatif format: array olarak dönebilir
+        servers = data.map((s: { name?: string; status?: string; tools?: unknown[] }) => ({
+          name: s.name || 'unknown',
+          status: s.status || 'connected',
+          toolCount: Array.isArray(s.tools) ? s.tools.length : 0,
+        }));
+      }
+      
+      console.log("[OPENCODE-API]", "debug", "MCP servers fetched", { count: servers.length });
+      return { success: true, data: servers };
     } catch (err) {
       console.log("[OPENCODE-API]", "warn", "getMCPServers error", { error: (err as Error).message });
       return { success: true, data: [] }; // Hata durumunda boş liste
@@ -1331,10 +1568,11 @@ export const OpenCodeManager = {
 
   /**
    * Plugin listesini al
+   * OpenCode /config endpoint'inden plugin bilgisi (CodeNomad SDK: client.config.get())
    */
-  async getPlugins(): Promise<ApiResponse<Array<{ name: string; enabled: boolean }>>> {
+  async getPlugins(): Promise<ApiResponse<Array<{ name: string; enabled: boolean; path?: string }>>> {
     try {
-      const response = await fetch(`${this._getApiUrl()}/app/plugins`, {
+      const response = await fetch(`${this._getApiUrl()}/config`, {
         method: "GET",
         headers: this._getHeaders(),
         signal: AbortSignal.timeout(API_TIMEOUT),
@@ -1342,21 +1580,25 @@ export const OpenCodeManager = {
 
       if (!response.ok) {
         if (response.status === 404) {
+          console.log("[OPENCODE-API]", "debug", "Config endpoint not found (404)");
           return { success: true, data: [] };
         }
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json() as Array<{ name: string; enabled?: boolean }> | { plugins?: Array<{ name: string; enabled?: boolean }> };
-      const plugins = Array.isArray(data) ? data : (data.plugins || []);
+      const data = await response.json() as { 
+        plugins?: Record<string, string>; // { pluginName: pluginPath }
+      };
       
-      const result = plugins.map(p => ({
-        name: p.name,
-        enabled: p.enabled !== false,
-      }));
+      // Plugin bilgisini çıkar (CodeNomad formatı: { plugins: { name: path } })
+      const plugins = data.plugins ? Object.entries(data.plugins).map(([name, path]) => ({
+        name,
+        enabled: true,
+        path: typeof path === 'string' ? path : undefined,
+      })) : [];
       
-      console.log("[OPENCODE-API]", "debug", "Plugins fetched", { count: result.length });
-      return { success: true, data: result };
+      console.log("[OPENCODE-API]", "debug", "Plugins fetched", { count: plugins.length });
+      return { success: true, data: plugins };
     } catch (err) {
       console.log("[OPENCODE-API]", "warn", "getPlugins error", { error: (err as Error).message });
       return { success: true, data: [] };

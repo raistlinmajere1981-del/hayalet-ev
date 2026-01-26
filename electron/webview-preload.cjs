@@ -90,6 +90,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // OpenCode CLI Integration (Agent & Model Lists)
   opcListModels: () => ipcRenderer.invoke("opc-list-models"),
   opcListAgents: () => ipcRenderer.invoke("opc-list-agents"),
+  opcGetAgentModelPreference: (folderPath) => ipcRenderer.invoke("opc-get-agent-model-preference", folderPath),
+  opcSaveAgentModelPreference: (prefs, folderPath) => ipcRenderer.invoke("opc-save-agent-model-preference", prefs, folderPath),
 });
 
 function setupProvider() {

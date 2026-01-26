@@ -17,8 +17,8 @@ import { SlotController, SlotState } from "../modules/slot-controller.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { ProviderRegistry } from "../modules/webview/provider-registry.js";
 import { RelayManager } from "../modules/relay-manager.js";
-import { OPENCODE_DEFAULTS } from "../modules/webview/providers/opencode/config.js";
 // ButtonStates kullanılmıyor - direkt buton manipülasyonu yapılıyor
+// OPENCODE_DEFAULTS artık workspace-manager'da kullanılıyor
 import type { AppSettings } from "../types/settings.js";
 
 // ============================================================================
@@ -40,6 +40,15 @@ interface SlotStateInfo {
   error?: string;
 }
 
+interface ServerResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  alreadyRunning?: boolean;
+  existingServer?: boolean;
+  workspaceId?: string;
+}
+
 interface TrafficState {
   state?: {
     status?: {
@@ -48,15 +57,6 @@ interface TrafficState {
       send?: string;
     };
   };
-}
-
-interface ServerResult {
-  success: boolean;
-  url?: string;
-  workspace?: string;
-  error?: string;
-  alreadyRunning?: boolean;
-  existingServer?: boolean;
 }
 
 export class AsistanController {
@@ -362,55 +362,97 @@ export class AsistanController {
   }
 
   /**
-   * OpenCode server'ı başlat
+   * OpenCode server'ı başlat (workspace-based)
+   * WorkspaceManager üzerinden dinamik port ile instance başlatır
    */
   async _startOpenCodeServer(): Promise<ServerResult> {
     try {
       // UI'ı güncelle
-      this._updateStatusUI("connecting", "Server başlatılıyor...");
+      this._updateStatusUI("connecting", "Workspace oluşturuluyor...");
       
-      const result = await window.electronAPI?.opencodeStart?.({
-        port: OPENCODE_DEFAULTS.port,
-        projectPath: null,
-      }) as ServerResult | undefined;
+      // Default workspace path (hayalet-ev)
+      const defaultWorkspacePath = '/home/raistlin/hayalet-ev';
       
-      if (result?.success) {
+      // WorkspaceManager üzerinden workspace oluştur (dinamik port allocation)
+      const result = await window.electronAPI?.workspaceCreate?.({
+        path: defaultWorkspacePath,
+        name: 'hayalet-ev',
+      });
+      
+      if (result?.success && result?.data) {
+        const workspace = result.data;
         this._isServerRunning = true;
-        LogManager.addEvent("asistan", "info", "OpenCode server başlatıldı", { 
-          url: result.url,
-          alreadyRunning: result.alreadyRunning,
-          existingServer: result.existingServer,
+        
+        // Store workspace info for later use
+        this._activeWorkspaceId = workspace.id;
+        this._activeWorkspacePort = workspace.port ?? null;
+        
+        const url = `http://127.0.0.1:${workspace.port}`;
+        
+        LogManager.addEvent("asistan", "info", "Workspace oluşturuldu", { 
+          id: workspace.id,
+          port: workspace.port,
+          url,
+          path: workspace.path,
         });
-        return result;
+        
+        return { 
+          success: true, 
+          url,
+          workspaceId: workspace.id,
+        };
       } else {
         this._isServerRunning = false;
-        return { success: false, error: result?.error };
+        return { success: false, error: result?.error || "Workspace oluşturulamadı" };
       }
     } catch (e) {
       const err = e as Error;
       this._isServerRunning = false;
-      LogManager.addEvent("asistan", "error", "OpenCode server başlatma hatası", { error: err.message });
+      LogManager.addEvent("asistan", "error", "Workspace oluşturma hatası", { error: err.message });
       return { success: false, error: err.message };
     }
   }
 
+  /** Active workspace ID */
+  private _activeWorkspaceId: string | null = null;
+  
+  /** Active workspace port */
+  private _activeWorkspacePort: number | null = null;
+
   /**
-   * OpenCode server'ı durdur
+   * OpenCode server'ı durdur (workspace-based)
+   * WorkspaceManager üzerinden workspace'i siler ve process'i durdurur
    */
   async _stopOpenCodeServer(): Promise<ServerResult> {
     try {
-      const result = await window.electronAPI?.opencodeStop?.() as ServerResult | undefined;
-      this._isServerRunning = false;
-      
-      if (result?.success) {
-        LogManager.addEvent("asistan", "info", "OpenCode server durduruldu", { visibility: 2 });
+      if (this._activeWorkspaceId) {
+        const result = await window.electronAPI?.workspaceDelete?.(this._activeWorkspaceId);
+        this._isServerRunning = false;
+        this._activeWorkspaceId = null;
+        this._activeWorkspacePort = null;
+        
+        if (result?.success) {
+          LogManager.addEvent("asistan", "info", "Workspace kapatıldı", { visibility: 2 });
+        }
+        
+        return { success: true };
+      } else {
+        // Fallback: eski yöntemle durdur
+        const result = await window.electronAPI?.opencodeStop?.() as ServerResult | undefined;
+        this._isServerRunning = false;
+        
+        if (result?.success) {
+          LogManager.addEvent("asistan", "info", "OpenCode server durduruldu", { visibility: 2 });
+        }
+        
+        return result || { success: false };
       }
-      
-      return result || { success: false };
     } catch (e) {
       const err = e as Error;
       this._isServerRunning = false;
-      LogManager.addEvent("asistan", "error", "OpenCode server durdurma hatası", { error: err.message });
+      this._activeWorkspaceId = null;
+      this._activeWorkspacePort = null;
+      LogManager.addEvent("asistan", "error", "Workspace kapatma hatası", { error: err.message });
       return { success: false, error: err.message };
     }
   }
@@ -429,11 +471,16 @@ export class AsistanController {
     if (this._isSSEServerRunning) return;
     
     try {
+      // Loading overlay göster
+      this._showNativeLoadingOverlay(true, "Bağlantı kuruluyor...");
+      
       // 1. SSE Server'ı başlat
       const result = await window.electronAPI?.opencodeSSEStart?.();
       if (result?.success) {
         this._isSSEServerRunning = true;
         LogManager.addEvent("asistan", "info", `SSE Server başlatıldı: ${result.url}`, { visibility: 2 });
+        
+        this._showNativeLoadingOverlay(true, "OpenCode'a bağlanılıyor...");
         
         // 2. OpenCode'a bağlan (SSE bridge)
         const connectResult = await window.electronAPI?.opencodeSSEConnect?.();
@@ -442,6 +489,8 @@ export class AsistanController {
         } else {
           LogManager.addEvent("asistan", "warn", `OpenCode bağlantısı kurulamadı: ${connectResult?.error}`, { visibility: 2 });
         }
+        
+        this._showNativeLoadingOverlay(true, "UI yükleniyor...");
         
         // 3. Placeholder'ı gizle, webview'ı göster
         const placeholder = document.getElementById("native-panel-placeholder");
@@ -470,15 +519,39 @@ export class AsistanController {
           // Native UI bridge'i kur (Electron API erişimi için)
           this._setupNativeUIBridge(nativeWebview);
           
-          // Server URL'ini query param olarak gönder
-          const serverUrl = result.url || "http://127.0.0.1:4097";
+          // Server URL'ini query param olarak gönder (instance-aware)
+          // ÖNEMLI: Workspace port'u kullanılmalı, SSE server port'u (4097) değil!
+          // _activeWorkspacePort, _startOpenCodeServer()'da set ediliyor
+          if (!this._activeWorkspacePort) {
+            LogManager.addEvent("asistan", "warn", "Workspace port not set, using fallback", { visibility: 2 });
+          }
+          const serverUrl = this._activeWorkspacePort 
+            ? `http://127.0.0.1:${this._activeWorkspacePort}` 
+            : "http://127.0.0.1:4097";
           const baseOrigin = window.location.origin;
           // Doğrudan index.html yükle (entrance.html yerine)
-          // Workspace parametresi SSE server result'tan alınır
-          const workspacePath = result.workspace || '/home';
+          // Workspace path default project path'i kullanır
+          const workspacePath = '/home/raistlin/hayalet-ev';
           const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}&workspace=${encodeURIComponent(workspacePath)}`;
           
-          LogManager.addEvent("asistan", "debug", `Native webview URL: ${srcUrl}`, { visibility: 3 });
+          LogManager.addEvent("asistan", "info", `Native UI URL: ${srcUrl}`, { 
+            workspacePort: this._activeWorkspacePort,
+            visibility: 2 
+          });
+          
+          LogManager.addEvent("asistan", "debug", `Native webview URL: ${srcUrl}`, { 
+            visibility: 3,
+            workspaceId: this._activeWorkspaceId,
+            port: this._activeWorkspacePort,
+          });
+          
+          // Webview yüklenince loading overlay'i kapat
+          const onDomReady = () => {
+            this._showNativeLoadingOverlay(false);
+            nativeWebview.removeEventListener("dom-ready", onDomReady);
+            LogManager.addEvent("asistan", "info", "Native UI yüklendi", { visibility: 2 });
+          };
+          nativeWebview.addEventListener("dom-ready", onDomReady);
           
           // Webview DOM'a eklendikten sonra URL'i set et
           requestAnimationFrame(() => {
@@ -488,6 +561,8 @@ export class AsistanController {
           });
         }
       } else {
+        // Hata durumunda overlay'i kapat
+        this._showNativeLoadingOverlay(false);
         LogManager.addEvent("asistan", "error", `SSE Server başlatılamadı: ${result?.error}`, { visibility: 1 });
       }
     } catch (e) {
@@ -556,6 +631,28 @@ export class AsistanController {
     }
     if (this.statusText) {
       this.statusText.textContent = message || "Bağlı Değil";
+    }
+  }
+
+  /**
+   * Native panel loading overlay'ini göster/gizle
+   */
+  _showNativeLoadingOverlay(show: boolean, message?: string): void {
+    const placeholder = document.getElementById("native-panel-placeholder");
+    if (!placeholder) return;
+    
+    if (show) {
+      // Placeholder'a loading state ekle
+      placeholder.classList.remove("hidden");
+      placeholder.innerHTML = `
+        <div class="loading-overlay-content">
+          <div class="loading-spinner"></div>
+          <h3>${message || "Yükleniyor..."}</h3>
+        </div>
+      `;
+    } else {
+      // Loading tamamlandı, placeholder'i gizle
+      placeholder.classList.add("hidden");
     }
   }
 
@@ -1034,6 +1131,7 @@ export class AsistanController {
             showOpenDialog: (options) => window.__nativeUIRequest('showOpenDialog', options),
             openTerminal: (path) => window.__nativeUIRequest('openTerminal', path),
             shellOpenPath: (path) => window.__nativeUIRequest('shellOpenPath', path),
+            selectFolder: (options) => window.__nativeUIRequest('selectFolder', options),
             // Agent & Model Lists
             opcListModels: () => window.__nativeUIRequest('opcListModels'),
             opcListAgents: () => window.__nativeUIRequest('opcListAgents'),
@@ -1046,6 +1144,11 @@ export class AsistanController {
             opcGetActiveProjects: () => window.__nativeUIRequest('opcGetActiveProjects'),
             opcAddActiveProject: (projectPath) => window.__nativeUIRequest('opcAddActiveProject', projectPath),
             opcRemoveActiveProject: (projectPath) => window.__nativeUIRequest('opcRemoveActiveProject', projectPath),
+            // Workspace Management (Backend IPC)
+            workspaceCreate: (options) => window.__nativeUIRequest('workspaceCreate', options),
+            workspaceDelete: (workspaceId) => window.__nativeUIRequest('workspaceDelete', workspaceId),
+            workspaceList: () => window.__nativeUIRequest('workspaceList'),
+            workspaceGetAuth: (workspaceId) => window.__nativeUIRequest('workspaceGetAuth', workspaceId),
           };
           
           console.log('[NativeUI] API bridge injected');
@@ -1130,6 +1233,28 @@ export class AsistanController {
             break;
           case "opcRemoveActiveProject":
             result = await window.electronAPI?.opcRemoveActiveProject?.(args[0] as string);
+            break;
+          // Workspace Management (Backend IPC)
+          case "workspaceCreate": {
+            // InstanceStore folder kullanıyor, backend path bekliyor
+            const opts = args[0] as { folder?: string; path?: string; name?: string };
+            result = await window.electronAPI?.workspaceCreate?.({ 
+              path: opts.path || opts.folder || '', 
+              name: opts.name 
+            });
+            break;
+          }
+          case "workspaceDelete":
+            result = await window.electronAPI?.workspaceDelete?.(args[0] as string);
+            break;
+          case "workspaceList":
+            result = await window.electronAPI?.workspaceList?.();
+            break;
+          case "workspaceGetAuth":
+            result = await window.electronAPI?.workspaceGetAuth?.(args[0] as string);
+            break;
+          case "selectFolder":
+            result = await window.electronAPI?.showOpenDialog?.({ properties: ['openDirectory'] });
             break;
           default:
             throw new Error(`Unknown API method: ${method}`);

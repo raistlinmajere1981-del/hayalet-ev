@@ -75,6 +75,7 @@ import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
 import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupOpencodeHandlers } from "./handlers/ipc-opencode.ts";
+import { registerWorkspaceHandlers, shutdownWorkspaces } from "./handlers/ipc-workspace.ts";
 import { registerHandler } from "./handlers/ipc-helpers.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -146,6 +147,7 @@ app.whenReady().then(async () => {
     setupSettingsHandlers();
     setupDatabaseHandlers();
     setupOpencodeHandlers();
+    registerWorkspaceHandlers();
 
     try {
       initWindowManager({ mainWindow });
@@ -196,6 +198,14 @@ async function performCleanup() {
     console.log("[MAIN] SSE Server kapatıldı");
   } catch (err: unknown) {
     console.error("[MAIN] SSE Server cleanup failed:", err);
+  }
+
+  // Workspace'leri kapat
+  try {
+    await shutdownWorkspaces();
+    console.log("[MAIN] Workspace'ler kapatıldı");
+  } catch (err: unknown) {
+    console.error("[MAIN] Workspace cleanup failed:", err);
   }
 
   // Session summary yaz
@@ -383,8 +393,6 @@ registerHandler(
 );
 registerHandler("opencode-sse-stop", async () => await OpenCodeSSEServer.stop());
 registerHandler("opencode-sse-status", async () => OpenCodeSSEServer.getStatus());
-registerHandler("opencode-sse-session", async () => OpenCodeSSEServer.getSession());
-registerHandler("opencode-sse-start-session", async () => OpenCodeSSEServer.startSession());
-registerHandler("opencode-sse-end-session", async () => OpenCodeSSEServer.endSession());
+registerHandler("opencode-sse-session-id", async () => OpenCodeSSEServer.getSessionId());
 registerHandler("opencode-sse-connect", async () => await OpenCodeSSEServer.connectToOpenCode());
 registerHandler("opencode-sse-disconnect", async () => OpenCodeSSEServer.disconnectFromOpenCode());

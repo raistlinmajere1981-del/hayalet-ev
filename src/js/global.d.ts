@@ -72,6 +72,20 @@ declare global {
     lastWorkspace?: string;
   }
 
+  // Workspace Types (Multi-Instance Support)
+  interface WorkspaceDescriptor {
+    id: string;
+    name: string;
+    path: string;
+    status: 'starting' | 'ready' | 'stopped' | 'error';
+    port?: number;
+    pid?: number;
+    proxyPath: string;
+    error?: string;
+    createdAt: string;
+    updatedAt: string;
+  }
+
   interface ElectronAPI {
     // Settings
     loadSettings: () => Promise<Record<string, unknown>>;
@@ -210,6 +224,13 @@ declare global {
 
     // Meta Commands
     metaCommand: (command: string, args?: Record<string, unknown>) => Promise<IPCResult & { command?: string }>;
+
+    // Workspace API (Multi-Instance Support)
+    workspaceList: () => Promise<IPCResult & { data?: WorkspaceDescriptor[] }>;
+    workspaceCreate: (options: { path: string; name?: string }) => Promise<IPCResult & { data?: WorkspaceDescriptor }>;
+    workspaceDelete: (id: string) => Promise<IPCResult & { data?: WorkspaceDescriptor }>;
+    workspaceGet: (id: string) => Promise<IPCResult & { data?: WorkspaceDescriptor }>;
+    workspaceGetAuth: (id: string) => Promise<IPCResult & { data?: { authorization: string } }>;
 
     // Index signature for any other methods not explicitly defined
     [key: string]: ((...args: unknown[]) => unknown) | undefined;

@@ -8,6 +8,7 @@ export function setupFsHandlers(_mainWindow: BrowserWindow | null): void {
   registerHandler("fm-temp-path", (event, prefix, ext) => fmTempPath(event, prefix as string, ext as string));
   registerHandler("fm-ensure-dirs", fmEnsureDirs);
   registerHandler("open-path", async (_event, path) => openPath(path as string));
+  // read-file handler is defined in main.ts as readFileAsBase64
 
   // Dizin içeriğini listele
   registerHandler("read-directory-files", async (_event, dirPath: string) => {

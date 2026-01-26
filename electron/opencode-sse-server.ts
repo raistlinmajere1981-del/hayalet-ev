@@ -65,7 +65,7 @@ export type SSEEventType =
 export interface SSEEvent {
   type: SSEEventType;
   timestamp: number;
-  sessionId?: string;
+  sessionId?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: Record<string, any>;
 }
@@ -103,19 +103,10 @@ export interface QuestionEventData {
   allowFreeform?: boolean;
 }
 
-/** Session state */
+/** Session state - minimal, data comes from OpenCode API */
 export interface SessionState {
   id: string;
   status: 'idle' | 'processing' | 'waiting' | 'error';
-  startedAt: number;
-  lastActivity: number;
-  messages: Array<{
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-  }>;
-  pendingPermission?: PermissionEventData;
-  pendingQuestion?: QuestionEventData;
 }
 
 /** Connected SSE client */
@@ -159,9 +150,11 @@ export const OpenCodeSSEServer = {
   _clients: new Map<number, SSEClient>(),
   _nextClientId: 0,
   _heartbeatInterval: null as NodeJS.Timeout | null,
-  _session: null as SessionState | null,
+  // Session state - minimal tracking (session ID only, data comes from OpenCode API)
+  _currentSessionId: null as string | null,
   _openCodeConnected: false,
-  _lastSentUserMessageId: null as string | null,  // Son gönderilen user mesajı ID'si (echo filtreleme için)
+  // Echo filtreleme için son gönderilen user mesajı ID'si
+  _lastSentUserMessageId: null as string | null,
   _config: {
     port: 4097, // OpenCode server'dan farklı port
     host: '127.0.0.1',
@@ -256,71 +249,25 @@ export const OpenCodeSSEServer = {
   },
 
   /**
-   * Session state'ini al
+   * Get current session ID
    */
-  getSession(): SessionState | null {
-    return this._session;
+  getSessionId(): string | null {
+    return this._currentSessionId;
   },
 
   /**
-   * Yeni session başlat
+   * Set current session ID (called when OpenCode session is created/loaded)
    */
-  startSession(): SessionState {
-    this._session = {
-      id: `session-${Date.now()}`,
-      status: 'idle',
-      startedAt: Date.now(),
-      lastActivity: Date.now(),
-      messages: [],
-    };
-
-    this.publish({
-      type: 'session.started',
-      timestamp: Date.now(),
-      sessionId: this._session.id,
-      data: { session: this._session },
-    });
-
-    return this._session;
-  },
-
-  /**
-   * Session'ı sonlandır
-   */
-  endSession(): void {
-    if (this._session) {
+  setSessionId(sessionId: string | null): void {
+    this._currentSessionId = sessionId;
+    if (sessionId) {
       this.publish({
-        type: 'session.stopped',
+        type: 'session.started',
         timestamp: Date.now(),
-        sessionId: this._session.id,
+        sessionId,
+        data: { sessionId },
       });
-      this._session = null;
     }
-  },
-
-  /**
-   * Mesaj ekle
-   */
-  addMessage(role: 'user' | 'assistant', content: string): void {
-    if (!this._session) {
-      this.startSession();
-    }
-
-    const messageId = `msg-${Date.now()}`;
-    
-    this._session!.messages.push({
-      role,
-      content,
-      timestamp: Date.now(),
-    });
-    this._session!.lastActivity = Date.now();
-
-    this.publish({
-      type: 'message.end',
-      timestamp: Date.now(),
-      sessionId: this._session!.id,
-      data: { role, content, messageId },
-    });
   },
 
   /**
@@ -328,15 +275,11 @@ export const OpenCodeSSEServer = {
    */
   startMessageStream(role: 'user' | 'assistant', messageId?: string): string {
     const id = messageId || `msg-${Date.now()}`;
-    
-    if (this._session) {
-      this._session.status = 'processing';
-    }
 
     this.publish({
       type: 'message.start',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { role, messageId: id },
     });
 
@@ -350,7 +293,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'message.delta',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { messageId, delta },
     });
   },
@@ -359,19 +302,10 @@ export const OpenCodeSSEServer = {
    * Streaming mesaj bitir
    */
   endMessageStream(messageId: string, fullContent: string): void {
-    if (this._session) {
-      this._session.status = 'idle';
-      this._session.messages.push({
-        role: 'assistant',
-        content: fullContent,
-        timestamp: Date.now(),
-      });
-    }
-
     this.publish({
       type: 'message.end',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { messageId, content: fullContent },
     });
   },
@@ -383,7 +317,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'tool.start',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { toolId, toolName, status: 'running', input },
     });
   },
@@ -395,7 +329,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'tool.output',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { toolId, output },
     });
   },
@@ -407,7 +341,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'tool.end',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { toolId, status, output: result },
     });
   },
@@ -419,7 +353,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'step.start',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { stepId, messageId },
     });
   },
@@ -431,7 +365,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'step.finish',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: {
         stepId,
         messageId,
@@ -446,15 +380,10 @@ export const OpenCodeSSEServer = {
    * Permission request gönder
    */
   requestPermission(data: PermissionEventData): void {
-    if (this._session) {
-      this._session.status = 'waiting';
-      this._session.pendingPermission = data;
-    }
-
     this.publish({
       type: 'permission.request',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data,
     });
   },
@@ -463,15 +392,10 @@ export const OpenCodeSSEServer = {
    * Question gönder
    */
   askQuestion(data: QuestionEventData): void {
-    if (this._session) {
-      this._session.status = 'waiting';
-      this._session.pendingQuestion = data;
-    }
-
     this.publish({
       type: 'question.ask',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data,
     });
   },
@@ -497,10 +421,10 @@ export const OpenCodeSSEServer = {
   /**
    * OpenCode SSE stream'ine bağlan ve event'leri Native UI'a ilet
    */
-  async connectToOpenCode(): Promise<{ success: boolean; error?: string; sessionId?: string }> {
+  async connectToOpenCode(): Promise<{ success: boolean; error?: string; sessionId?: string | null }> {
     if (this._openCodeConnected) {
       console.log('[SSE-SERVER]', 'debug', 'OpenCode zaten bağlı');
-      return { success: true, sessionId: this._session?.id };
+      return { success: true, sessionId: this._currentSessionId };
     }
     
     if (this._openCodeConnecting) {
@@ -511,27 +435,31 @@ export const OpenCodeSSEServer = {
     this._openCodeConnecting = true;
 
     try {
-      // OpenCode server çalışıyor mu kontrol et
+      // OpenCode server çalışıyor mu ve auth header set edilmiş mi kontrol et
       const status = OpenCodeManager.getStatus();
       if (!status.running) {
-        return { success: false, error: 'OpenCode server çalışmıyor' };
+        this._openCodeConnecting = false;
+        console.log('[SSE-SERVER]', 'warn', 'OpenCode server çalışmıyor - workspace oluşturulmalı');
+        return { success: false, error: 'OpenCode server çalışmıyor - önce workspace oluşturun' };
+      }
+      
+      // Auth header kontrolü - workspace oluşturulmadan API çağrıları 401 döner
+      if (!status.authHeader) {
+        this._openCodeConnecting = false;
+        console.log('[SSE-SERVER]', 'warn', 'Auth header yok - workspace oluşturulmalı');
+        return { success: false, error: 'Auth header yok - önce workspace oluşturun' };
       }
 
       // Session oluştur veya mevcut session'a bağlan
       const sessionResult = await OpenCodeManager.createOrGetSession();
       if (!sessionResult.success) {
+        this._openCodeConnecting = false;
         return { success: false, error: sessionResult.error || 'Session oluşturulamadı' };
       }
 
-      // Local session'ı güncelle
+      // Session ID'yi kaydet
       if (sessionResult.data) {
-        this._session = {
-          id: sessionResult.data.id,
-          status: 'idle',
-          startedAt: sessionResult.data.createdAt || Date.now(),
-          lastActivity: sessionResult.data.updatedAt || Date.now(),
-          messages: [],
-        };
+        this._currentSessionId = sessionResult.data.id;
       }
 
       // OpenCode SSE event'lerine subscribe ol
@@ -549,7 +477,7 @@ export const OpenCodeSSEServer = {
       this.publish({
         type: 'status.change',
         timestamp: Date.now(),
-        sessionId: this._session?.id,
+        sessionId: this._currentSessionId,
         data: { status: 'opencode_connected' },
       });
 
@@ -577,7 +505,7 @@ export const OpenCodeSSEServer = {
     this.publish({
       type: 'status.change',
       timestamp: Date.now(),
-      sessionId: this._session?.id,
+      sessionId: this._currentSessionId,
       data: { status: 'opencode_disconnected' },
     });
   },
@@ -620,16 +548,30 @@ export const OpenCodeSSEServer = {
         const fullContent = partObj?.content || partObj?.text || (event.data.fullContent as string) || (event.data.content as string) || '';
         const partType = partObj?.type || (event.data.partType as string) || (event.data.type as string) || 'text';
         
+        // DEBUG: Tüm message.part.updated event'lerini logla
+        console.log('[SSE-SERVER]', 'debug', 'message.part.updated received', { 
+          messageId, 
+          role, 
+          partType,
+          contentLength: fullContent?.length || 0,
+          contentPreview: fullContent?.substring?.(0, 50) || '(empty)',
+          lastSentUserMessageId: this._lastSentUserMessageId,
+          isUserMessage: role === 'user',
+          isEchoCandidate: messageId === this._lastSentUserMessageId,
+          hasPartObj: !!partObj,
+          eventDataKeys: Object.keys(event.data || {}),
+        });
 
-        // User mesajlarını atla (role veya messageId ile)
+        // User mesajlarını atla - SADECE role === 'user' kontrolü
         if (role === 'user') {
-          console.log('[SSE-SERVER]', 'debug', 'User message.part.updated skipped (role)', { messageId });
+          console.log('[SSE-SERVER]', 'debug', 'User message.part.updated skipped (role=user)', { messageId });
           break;
         }
         
-        // Echo filtreleme: Bizim gönderdiğimiz user mesajını atla
-        if (messageId && messageId === this._lastSentUserMessageId) {
-          console.log('[SSE-SERVER]', 'debug', 'User message.part.updated skipped (echo filter)', { messageId });
+        // User mesajının echo'sunu atla (aynı messageId ile gelen)
+        // OpenCode user mesajını echo ediyor ve role bilgisi her zaman doğru gelmiyor
+        if (messageId === this._lastSentUserMessageId) {
+          console.log('[SSE-SERVER]', 'debug', 'User message echo skipped (same messageId)', { messageId });
           break;
         }
         
@@ -780,7 +722,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'message.removed',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -790,7 +732,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'message.part.removed',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -830,14 +772,10 @@ export const OpenCodeSSEServer = {
 
       case 'permission.resolved':
       case 'permission.replied':
-        if (this._session) {
-          this._session.status = 'processing';
-          this._session.pendingPermission = undefined;
-        }
         this.publish({
           type: 'permission.resolved',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -858,14 +796,10 @@ export const OpenCodeSSEServer = {
       case 'question.answered':
       case 'question.replied':
       case 'question.rejected':
-        if (this._session) {
-          this._session.status = 'processing';
-          this._session.pendingQuestion = undefined;
-        }
         this.publish({
           type: 'status.change',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: { status: 'question_answered', ...event.data },
         });
         break;
@@ -881,7 +815,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: event.type as SSEEventType,
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: {
             ...event.data,
             messageId: this._currentAssistantMessageId || `thinking-${Date.now()}`,
@@ -915,13 +849,10 @@ export const OpenCodeSSEServer = {
       // Session Events (CodeNomad: session.idle, session.status, session.compacted, session.error)
       // =========================================
       case 'session.updated':
-        if (this._session && event.data.status) {
-          this._session.status = this._mapOpenCodeStatus(event.data.status as string);
-        }
         this.publish({
           type: 'session.updated',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -930,7 +861,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'session.compacted',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -939,7 +870,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'session.error',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -962,14 +893,10 @@ export const OpenCodeSSEServer = {
           }
         }
         
-        if (this._session) {
-          this._session.status = this._mapOpenCodeStatus(statusType as string);
-        }
-        
         this.publish({
           type: 'status.change',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: { status: statusType },
         });
         break;
@@ -979,7 +906,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'session.error',
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
         break;
@@ -991,7 +918,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: event.type as SSEEventType,
           timestamp: event.timestamp,
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: event.data,
         });
     }
@@ -1103,6 +1030,36 @@ export const OpenCodeSSEServer = {
     } else if (path === '/config/agents' && req.method === 'GET') {
       // Native UI için agents endpoint'i
       this._handleGetAgents(res);
+    // =========================================================================
+    // OpenCode SDK Compatible Routes: /session/{id} format
+    // API Client bu formatı kullanıyor - /api/sessions/ ile aynı handler'ları kullan
+    // =========================================================================
+    } else if (path === '/session' && req.method === 'GET') {
+      // GET /session - tüm session'ları listele
+      this._handleGetSessions(res);
+    } else if (path === '/session' && req.method === 'POST') {
+      // POST /session - yeni session oluştur
+      this._handleCreateSession(req, res);
+    } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'GET') {
+      // GET /session/{id} - belirli session'ı al
+      const sessionId = path.split('/')[2];
+      this._handleGetSessionById(sessionId, res);
+    } else if (path.startsWith('/session/') && path.endsWith('/messages') && req.method === 'GET') {
+      // GET /session/{id}/messages - session mesajlarını al
+      const sessionId = path.split('/')[2];
+      this._handleGetSessionMessages(sessionId, res);
+    } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'DELETE') {
+      // DELETE /session/{id} - session sil
+      const sessionId = path.split('/')[2];
+      this._handleDeleteSession(sessionId, res);
+    } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'PUT') {
+      // PUT /session/{id} - session yeniden adlandır
+      const sessionId = path.split('/')[2];
+      this._handleRenameSession(req, sessionId, res);
+    } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'PATCH') {
+      // PATCH /session/{id} - session güncelle (agent, model)
+      const sessionId = path.split('/')[2];
+      this._handleUpdateSession(req, sessionId, res);
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
@@ -1128,13 +1085,13 @@ export const OpenCodeSSEServer = {
     };
     res.write(`data: ${JSON.stringify(connectEvent)}\n\n`);
 
-    // Send current session state if exists
-    if (this._session) {
+    // Send current session ID if exists
+    if (this._currentSessionId) {
       const sessionEvent: SSEEvent = {
         type: 'session.started',
         timestamp: Date.now(),
-        sessionId: this._session.id,
-        data: { session: this._session },
+        sessionId: this._currentSessionId,
+        data: { sessionId: this._currentSessionId },
       };
       res.write(`data: ${JSON.stringify(sessionEvent)}\n\n`);
     }
@@ -1159,13 +1116,13 @@ export const OpenCodeSSEServer = {
 
   _handleGetSession(res: ServerResponse): void {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ session: this._session }));
+    res.end(JSON.stringify({ sessionId: this._currentSessionId }));
   },
 
   async _handleSendMessage(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const body = await this._readBody(req);
-      const { message, messageId: clientMessageId } = JSON.parse(body);
+      const { message, messageId: clientMessageId, agent, providerId, modelId } = JSON.parse(body);
 
       if (!message) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1185,8 +1142,12 @@ export const OpenCodeSSEServer = {
       this._currentAssistantContent = '';
       this._currentAssistantMessageId = null;
 
-      // OpenCode'a mesajı ilet (client-side messageId varsa kullan)
-      const result = await OpenCodeManager.sendMessage(message, undefined, clientMessageId);
+      // OpenCode'a mesajı ilet (model ve agent bilgisi dahil - CodeNomad pattern)
+      const result = await OpenCodeManager.sendMessage(message, undefined, clientMessageId, {
+        agent: agent as string | undefined,
+        providerId: providerId as string | undefined,
+        modelId: modelId as string | undefined,
+      });
       
       // User messageId'yi kaydet (echo filtreleme için)
       if (result.success && result.data?.messageId) {
@@ -1201,13 +1162,15 @@ export const OpenCodeSSEServer = {
         return;
       }
 
-      // Streaming response başlat (assistant mesajı için)
-      this.startMessageStream('assistant', result.data?.messageId);
+      // NOT: Assistant streaming'i burada başlatmıyoruz!
+      // OpenCode'dan message.part.updated event'i geldiğinde otomatik başlayacak
+      // Erken başlatmak _currentAssistantMessageId'yi set eder ve gerçek yanıtların
+      // işlenmesini engeller.
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ 
         success: true, 
-        sessionId: this._session?.id,
+        sessionId: this._currentSessionId,
         messageId: result.data?.messageId 
       }));
     } catch (err: unknown) {
@@ -1237,16 +1200,11 @@ export const OpenCodeSSEServer = {
         return;
       }
 
-      if (this._session) {
-        this._session.status = 'processing';
-        this._session.pendingPermission = undefined;
-      }
-
       // Permission resolved event yayınla
       this.publish({
         type: 'status.change',
         timestamp: Date.now(),
-        sessionId: this._session?.id,
+        sessionId: this._currentSessionId,
         data: { 
           status: approved ? 'permission_approved' : 'permission_denied',
           permissionId 
@@ -1272,20 +1230,13 @@ export const OpenCodeSSEServer = {
         return;
       }
 
-      // TODO: OpenCode'da question response API'si eklenince burayı güncelle
-      // Şimdilik sadece local state'i güncelle
       console.log('[SSE-SERVER]', 'info', 'Question yanıtı alındı', { questionId, answer });
-
-      if (this._session) {
-        this._session.status = 'processing';
-        this._session.pendingQuestion = undefined;
-      }
 
       // Question answered event yayınla
       this.publish({
         type: 'status.change',
         timestamp: Date.now(),
-        sessionId: this._session?.id,
+        sessionId: this._currentSessionId,
         data: { 
           status: 'question_answered',
           questionId,
@@ -1319,7 +1270,7 @@ export const OpenCodeSSEServer = {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
           success: true, 
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           message: 'OpenCode bağlantısı kuruldu'
         }));
       } else {
@@ -1346,14 +1297,10 @@ export const OpenCodeSSEServer = {
       const result = await OpenCodeManager.cancelSession();
       
       if (result.success) {
-        if (this._session) {
-          this._session.status = 'idle';
-        }
-        
         this.publish({
           type: 'status.change',
           timestamp: Date.now(),
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: { status: 'cancelled' },
         });
 
@@ -1431,101 +1378,151 @@ export const OpenCodeSSEServer = {
   },
 
   // =========================================================================
-  // Session Management Endpoints (FAZ 6 - Session List)
+  // Session Management Endpoints - Direct OpenCode API Proxy
   // =========================================================================
 
-  /** @type {Map<string, SessionState>} Tüm session'lar */
-  _sessions: new Map<string, SessionState>(),
-
-  _handleGetSessions(res: ServerResponse): void {
-    const sessions = Array.from(this._sessions.values()).map(s => ({
-      id: s.id,
-      title: `Session ${s.id.substring(0, 8)}`,
-      createdAt: s.startedAt,
-      updatedAt: s.lastActivity,
-      messageCount: s.messages.length,
-      status: s.status,
-    }));
-    
-    // Mevcut session'ı da ekle
-    if (this._session && !this._sessions.has(this._session.id)) {
-      sessions.unshift({
-        id: this._session.id,
-        title: `Session ${this._session.id.substring(0, 8)}`,
-        createdAt: this._session.startedAt,
-        updatedAt: this._session.lastActivity,
-        messageCount: this._session.messages.length,
-        status: this._session.status,
+  async _handleGetSessions(res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getSessions();
+      
+      if (result.success && result.data) {
+        const sessions = result.data.map((s) => ({
+          id: s.id,
+          title: s.title || `Session ${s.id.substring(0, 8)}`,
+          createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : new Date().toISOString(),
+          updatedAt: s.updatedAt ? new Date(s.updatedAt).toISOString() : new Date().toISOString(),
+          messageCount: 0,
+          status: 'active',
+        }));
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ sessions }));
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ sessions: [] }));
+    } catch (error) {
+      console.log('[SSE-SERVER]', 'error', 'Failed to fetch sessions', { 
+        error: (error as Error).message 
       });
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (error as Error).message }));
     }
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ sessions }));
   },
 
-  _handleGetSessionById(sessionId: string, res: ServerResponse): void {
-    let session = this._sessions.get(sessionId);
-    if (!session && this._session?.id === sessionId) {
-      session = this._session;
-    }
-    
-    if (!session) {
+  async _handleGetSessionById(sessionId: string, res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getSessionById(sessionId);
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ session: result.data }));
+        return;
+      }
+      
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Session not found' }));
-      return;
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (error as Error).message }));
     }
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ session }));
   },
 
-  _handleGetSessionMessages(sessionId: string, res: ServerResponse): void {
-    let session = this._sessions.get(sessionId);
-    if (!session && this._session?.id === sessionId) {
-      session = this._session;
+  async _handleGetSessionMessages(sessionId: string, res: ServerResponse): Promise<void> {
+    try {
+      const result = await OpenCodeManager.getSessionMessages(sessionId);
+      
+      if (result.success && result.data) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ messages: result.data }));
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ messages: [] }));
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (error as Error).message }));
     }
-    
-    if (!session) {
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Session not found' }));
-      return;
-    }
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages: session.messages }));
   },
 
   async _handleCreateSession(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const body = await this._readBody(req);
-      const { title } = JSON.parse(body || '{}');
+      const { title, path } = JSON.parse(body || '{}');
       
-      // Mevcut session'ı kaydet
-      if (this._session) {
-        this._sessions.set(this._session.id, { ...this._session });
+      console.log('[SSE-SERVER]', 'info', 'Creating session via OpenCode API', { title, path });
+      
+      const result = await OpenCodeManager.createOrGetSession(path);
+      
+      if (!result.success || !result.data) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: result.error || 'Session creation failed' }));
+        return;
       }
       
-      // Yeni session oluştur
-      const newSession = this.startSession();
+      const openCodeSession = result.data;
+      this._currentSessionId = openCodeSession.id;
+      
+      console.log('[SSE-SERVER]', 'info', 'Session created', { 
+        sessionId: openCodeSession.id, 
+        path 
+      });
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, sessionId: newSession.id, title }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        sessionId: openCodeSession.id, 
+        title: title || openCodeSession.title,
+        path 
+      }));
     } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Session creation error', { error: (err as Error).message });
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));
     }
   },
 
-  _handleDeleteSession(sessionId: string, res: ServerResponse): void {
-    const deleted = this._sessions.delete(sessionId);
-    
-    // Aktif session siliniyorsa null yap
-    if (this._session?.id === sessionId) {
-      this._session = null;
+  async _handleDeleteSession(sessionId: string, res: ServerResponse): Promise<void> {
+    try {
+      console.log('[SSE-SERVER]', 'info', 'Delete session requested', { sessionId });
+      
+      // OpenCodeManager üzerinden session'ı sil
+      const result = await OpenCodeManager.deleteSession(sessionId);
+      
+      if (!result.success) {
+        // 404 durumunda özel handling
+        if (result.error === 'Session not found') {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Session not found' }));
+          return;
+        }
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: result.error || 'Failed to delete session' }));
+        return;
+      }
+      
+      // Local state'i güncelle
+      if (this._currentSessionId === sessionId) {
+        this._currentSessionId = null;
+      }
+      
+      // SSE event gönder
+      this.publish({
+        type: 'session.stopped',
+        timestamp: Date.now(),
+        sessionId,
+        data: { sessionId, reason: 'deleted' },
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      console.log('[SSE-SERVER]', 'error', 'Delete session error', { error: (error as Error).message });
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (error as Error).message }));
     }
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: deleted || this._session === null }));
   },
 
   async _handleRenameSession(req: IncomingMessage, sessionId: string, res: ServerResponse): Promise<void> {
@@ -1533,12 +1530,40 @@ export const OpenCodeSSEServer = {
       const body = await this._readBody(req);
       const { title } = JSON.parse(body || '{}');
       
-      // Session title'ı güncelle (basit implementasyon)
-      console.log('[SSE-SERVER]', 'info', `Session renamed: ${sessionId} -> ${title}`);
+      if (!title || typeof title !== 'string') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Title is required' }));
+        return;
+      }
+      
+      console.log('[SSE-SERVER]', 'info', `Session rename requested: ${sessionId} -> ${title}`);
+      
+      // OpenCodeManager üzerinden session'ı güncelle
+      const result = await OpenCodeManager.updateSession(sessionId, { title: title.trim() });
+      
+      if (!result.success) {
+        if (result.error === 'Session not found') {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Session not found' }));
+          return;
+        }
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: result.error || 'Failed to rename session' }));
+        return;
+      }
+      
+      // SSE event gönder
+      this.publish({
+        type: 'session.updated',
+        timestamp: Date.now(),
+        sessionId,
+        data: { title: title.trim() },
+      });
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, sessionId, title }));
+      res.end(JSON.stringify({ success: true, sessionId, title: title.trim() }));
     } catch (err) {
+      console.log('[SSE-SERVER]', 'error', 'Rename session error', { error: (err as Error).message });
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));
     }
@@ -1603,7 +1628,7 @@ export const OpenCodeSSEServer = {
         this.publish({
           type: 'session.compacted',
           timestamp: Date.now(),
-          sessionId: this._session?.id,
+          sessionId: this._currentSessionId,
           data: { compactedTokens: result.data?.tokens || 0 },
         });
       }
@@ -1638,21 +1663,14 @@ export const OpenCodeSSEServer = {
       const body = await this._readBody(req);
       const { messageId } = JSON.parse(body || '{}');
       
-      if (!messageId || !this._session) {
+      if (!messageId) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Message ID required' }));
         return;
       }
       
-      // Mesajdan sonrakileri sil
-      const messageIndex = this._session.messages.findIndex(
-        (m, i) => `msg-${m.timestamp}` === messageId || i.toString() === messageId
-      );
-      
-      if (messageIndex !== -1) {
-        this._session.messages = this._session.messages.slice(0, messageIndex + 1);
-        this._session.lastActivity = Date.now();
-      }
+      // TODO: Implement OpenCodeManager.revertToMessage when available
+      console.log('[SSE-SERVER]', 'info', `Revert requested to message: ${messageId}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, messageId }));
@@ -1665,45 +1683,13 @@ export const OpenCodeSSEServer = {
   async _handleFork(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const body = await this._readBody(req);
-      const { messageId, newSessionId } = JSON.parse(body || '{}');
+      const { messageId } = JSON.parse(body || '{}');
       
-      if (!this._session) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'No active session' }));
-        return;
-      }
-      
-      // Mevcut session'ı kaydet
-      this._sessions.set(this._session.id, { ...this._session });
-      
-      // Yeni session oluştur (fork)
-      const forkId = newSessionId || `session-fork-${Date.now()}`;
-      const messageIndex = messageId 
-        ? this._session.messages.findIndex((m) => `msg-${m.timestamp}` === messageId)
-        : this._session.messages.length - 1;
-      
-      const forkedMessages = this._session.messages.slice(0, messageIndex + 1);
-      
-      const forkedSession: SessionState = {
-        id: forkId,
-        status: 'idle',
-        startedAt: Date.now(),
-        lastActivity: Date.now(),
-        messages: [...forkedMessages],
-      };
-      
-      this._sessions.set(forkId, forkedSession);
-      this._session = forkedSession;
-      
-      this.publish({
-        type: 'session.started',
-        timestamp: Date.now(),
-        sessionId: forkId,
-        data: { session: forkedSession, forkedFrom: messageId },
-      });
+      // TODO: Implement OpenCodeManager.forkSession when available
+      console.log('[SSE-SERVER]', 'info', `Fork requested from message: ${messageId}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true, sessionId: forkId }));
+      res.end(JSON.stringify({ success: true, message: 'Fork not yet implemented' }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: (err as Error).message }));

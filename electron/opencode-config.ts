@@ -27,6 +27,6 @@ export const OPENCODE_DEFAULTS: OpencodeDefaults = {
     providerID: "zai",
     modelID: "glm-4.7",
   },
-  // Default agent: Sisyphus (ana coding agent)
-  defaultAgent: "Sisyphus",
+  // Default agent: build (OpenCode'un ana coding agent'ı)
+  defaultAgent: "build",
 };
