@@ -6,9 +6,9 @@
  */
 
 export * from './types';
-export { default as MessageStore } from './message-store';
-export { default as SessionStore } from './session-store';
-export { default as InstanceStore } from './instance-store';
-export { default as AttachmentStore } from './attachment-store';
-export { default as StoreBridge } from './store-bridge';
-export { normalizeMessage, normalizeSession, normalizeInstance } from './normalizers';
+export { MessageStore } from './message-store';
+export { SessionStore } from './session-store';
+export { InstanceStore } from './instance-store';
+export { AttachmentStore } from './attachment-store';
+export { StoreBridge } from './store-bridge';
+export { PartNormalizer } from './normalizers';

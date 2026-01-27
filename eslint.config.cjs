@@ -87,18 +87,27 @@ module.exports = tseslint.config(
       },
     },
     rules: {
-      // === TypeScript Specific ===
+      // === TypeScript Specific (Maximum Strictness) ===
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           argsIgnorePattern: "^(_|e|err|error|evt|event)",
           varsIgnorePattern: "^(_|e|err|error|evt|event)",
           caughtErrorsIgnorePattern: "^(_|e|err|error)",
         },
       ],
-      "@typescript-eslint/no-explicit-any": "off", // Kademeli açılacak
-      "@typescript-eslint/no-require-imports": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-return": "warn",
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "warn",
+      "@typescript-eslint/prefer-optional-chain": "warn",
+      "@typescript-eslint/strict-boolean-expressions": "off", // Too strict for this project
       
       // === General Rules ===
       "no-unused-vars": "off", // TypeScript versiyonu kullanılıyor
@@ -167,7 +176,7 @@ module.exports = tseslint.config(
 
   // === Electron Preload (renderer context with Node access) ===
   {
-    files: ["electron/preload.cjs"],
+    files: ["electron/preload.cjs", "electron/webview-preload.cjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "script",
@@ -278,102 +287,6 @@ module.exports = tseslint.config(
         KeyboardEvent: "readonly",
         MouseEvent: "readonly",
         InputEvent: "readonly",
-      },
-    },
-    rules: {
-      "no-unused-vars": [
-        "warn",
-        {
-          argsIgnorePattern: "^(_|e|err|error|evt|event)",
-          varsIgnorePattern: "^(_|e|err|error|evt|event)",
-          caughtErrorsIgnorePattern: "^(_|e|err|error)",
-        },
-      ],
-      "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-console": "off",
-      "prefer-const": "warn",
-      "no-undef": "error",
-    },
-  },
-
-  // === OpenCode Native UI (browser context with custom globals) ===
-  {
-    files: ["src/opencode-ui/**/*.js"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        // Browser globals
-        window: "readonly",
-        document: "readonly",
-        console: "readonly",
-        localStorage: "readonly",
-        sessionStorage: "readonly",
-        setTimeout: "readonly",
-        clearTimeout: "readonly",
-        setInterval: "readonly",
-        clearInterval: "readonly",
-        fetch: "readonly",
-        EventSource: "readonly",
-        FormData: "readonly",
-        Blob: "readonly",
-        File: "readonly",
-        FileReader: "readonly",
-        URL: "readonly",
-        URLSearchParams: "readonly",
-        Event: "readonly",
-        CustomEvent: "readonly",
-        HTMLElement: "readonly",
-        Element: "readonly",
-        Node: "readonly",
-        NodeList: "readonly",
-        MutationObserver: "readonly",
-        IntersectionObserver: "readonly",
-        ResizeObserver: "readonly",
-        requestAnimationFrame: "readonly",
-        cancelAnimationFrame: "readonly",
-        getComputedStyle: "readonly",
-        navigator: "readonly",
-        location: "readonly",
-        history: "readonly",
-        crypto: "readonly",
-        performance: "readonly",
-        atob: "readonly",
-        btoa: "readonly",
-        TextEncoder: "readonly",
-        TextDecoder: "readonly",
-        ClipboardEvent: "readonly",
-        KeyboardEvent: "readonly",
-        MouseEvent: "readonly",
-        InputEvent: "readonly",
-        DragEvent: "readonly",
-        DataTransfer: "readonly",
-        // OpenCode UI custom globals (cross-module communication)
-        OpenCodeApp: "readonly",
-        APIClient: "readonly",
-        SSEClient: "readonly",
-        PromptHandler: "readonly",
-        MessageRenderer: "readonly",
-        ToolRenderer: "readonly",
-        DirectoryBrowser: "readonly",
-        AgentModelSelector: "readonly",
-        InstanceTabs: "readonly",
-        // Stores
-        InstanceStore: "readonly",
-        SessionStore: "readonly",
-        MessageStore: "readonly",
-        AttachmentStore: "readonly",
-        StoreBridge: "readonly",
-        // Config & Modals
-        OpenCodeConfig: "readonly",
-        PermissionModal: "readonly",
-        QuestionModal: "readonly",
-        // Tool Renderer Registry
-        ToolRendererRegistry: "readonly",
-        // Browser dialogs
-        alert: "readonly",
-        prompt: "readonly",
-        confirm: "readonly",
       },
     },
     rules: {

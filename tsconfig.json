@@ -11,13 +11,25 @@
     "allowJs": true,
     "noEmit": true,
     
-    // === Strict Ayarları ===
+    // === Strict Ayarları (Maximum) ===
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
     "noImplicitThis": true,
-    "noUnusedLocals": false,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    
+    // === Additional Strictness ===
+    "noUnusedLocals": false, // Too many false positives
     "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false, // Too strict - causes 100+ errors
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false, // Too strict - requires ['property'] syntax
     
     // === Import/Export ===
     "esModuleInterop": true,
@@ -52,6 +64,6 @@
     "electron",
     "mcp-server",
     ".rovodev",
-    "src/opencode-ui"
+    "opencode-ui"
   ]
 }

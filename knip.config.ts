@@ -34,7 +34,7 @@ const config: KnipConfig = {
     ".rovodev/**/*",
     
     // OpenCode UI - klasik script tag ile yükleniyor, ES modules değil
-    "src/opencode-ui/**/*",
+    "opencode-ui/**/*",
     
     // Type barrel exports (public API)
     "src/js/types/**/*",

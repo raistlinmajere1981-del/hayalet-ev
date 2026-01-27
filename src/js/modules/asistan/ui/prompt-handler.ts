@@ -1353,5 +1353,8 @@ const PromptHandler = {
   }
 };
 
-// Global'e ekle
+// ES6 Export
+export { PromptHandler };
+
+// Global export (backward compatibility)
 window.PromptHandler = PromptHandler;

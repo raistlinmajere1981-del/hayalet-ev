@@ -180,7 +180,6 @@ const QuestionModal = {
   _renderInput(question: { type?: string; default?: unknown; options?: Array<{ value: string; label: string; description?: string }> }) {
     switch (question.type) {
       case 'confirm':
-      {
         return `
           <div class="question-confirm">
             <button class="confirm-btn confirm-yes ${question.default === 'yes' ? 'selected' : ''}" data-value="yes">
@@ -193,9 +192,8 @@ const QuestionModal = {
         `;
 
       case 'select':
-      {
-      case 'multi-select':
-      case "select": {        const isMulti = question.type === 'multi-select';
+      case 'multi-select': {
+        const isMulti = question.type === 'multi-select';
         const defaultValues = isMulti ? (question.default as string[] || []) : [question.default];
         const options = (question.options || []).map((opt: { value: string; label: string; description?: string }, idx: number) => `
           <div class="select-option ${defaultValues.includes(opt.value) ? 'selected' : ''}" data-value="${this._escapeHtml(opt.value)}">
@@ -210,7 +208,6 @@ const QuestionModal = {
       }
 
       case 'text':
-      {
       default:
         return `
           <div class="question-text-input">
@@ -232,8 +229,7 @@ const QuestionModal = {
    */
   _setupInputListeners(container: Element, question: { type?: string }) {
     switch (question.type) {
-      case 'confirm':
-      {
+      case 'confirm': {
         container.querySelectorAll('.confirm-btn').forEach((btn: Element) => {
           btn.addEventListener('click', () => {
             container.querySelectorAll('.confirm-btn').forEach((b: Element) => b.classList.remove('selected'));
@@ -242,8 +238,9 @@ const QuestionModal = {
           });
         });
         break;
+      }
 
-      case 'select':
+      case 'select': {
         container.querySelectorAll('.select-option').forEach((opt: Element) => {
           opt.addEventListener('click', () => {
             container.querySelectorAll('.select-option').forEach((o: Element) => o.classList.remove('selected'));
@@ -252,9 +249,10 @@ const QuestionModal = {
           });
         });
         break;
+      }
 
       case 'text':
-      default:
+      default: {
         const input = container.querySelector('.text-input') as HTMLInputElement | null;
         if (input) {
           input.addEventListener('input', (e: Event) => {
@@ -270,6 +268,7 @@ const QuestionModal = {
           setTimeout(() => input.focus(), 100);
         }
         break;
+      }
     }
   },
 
@@ -538,5 +537,8 @@ const QuestionModal = {
   },
 };
 
-// Global export
+// ES6 Export
+export { QuestionModal };
+
+// Global export (backward compatibility)
 window.QuestionModal = QuestionModal;

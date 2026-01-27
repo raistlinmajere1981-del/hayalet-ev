@@ -12,13 +12,14 @@ interface SSEEventData {
   [key: string]: unknown;
 }
 
-interface PermissionRequestData {
+interface _PermissionRequestData {
   id?: string;
   partId?: string;
   messageId?: string;
   permission?: { id: string; type?: string; path?: string; command?: string };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface QuestionData {
   id?: string;
   question?: { type?: string; text?: string; options?: Array<{ label: string; value: string }> };
@@ -798,7 +799,7 @@ const OpenCodeApp = {
         
         console.log('[OpenCode] Updating with:', updateInfo);
         
-        SessionStore.updateSessionInfo(sessionId, updateInfo);
+        window.SessionStore?.updateSessionInfo(sessionId, updateInfo);
         
         // Update AgentModelSelector (only with defined values)
         if (typeof AgentModelSelector !== 'undefined') {
@@ -1113,7 +1114,7 @@ const OpenCodeApp = {
       
       if (options && (options as Array<{value: string; label: string}>).length > 0) {
         html += '<div class="question-options">';
-        (options as Array<{value: string; label: string}>).forEach((opt, i) => {
+        (options as Array<{value: string; label: string}>).forEach((opt, _i) => {
           html += `
             <button class="question-option" data-value="${opt.value}" onclick="OpenCodeApp._selectOption(this)">
               ${opt.label}
@@ -1264,7 +1265,7 @@ const OpenCodeApp = {
 
     // Clear session data
     if (typeof SessionStore !== 'undefined') {
-      SessionStore.clearInstance(instanceId);
+      window.SessionStore?.clearInstance(instanceId);
     }
 
     // Remove from store
@@ -1395,7 +1396,7 @@ const OpenCodeApp = {
 
     // Sync SessionStore to the new active instance
     if (typeof SessionStore !== 'undefined') {
-      SessionStore.syncFromActiveInstance();
+      window.SessionStore?.syncFromActiveInstance();
     }
 
     // Update UI to reflect the new instance's state
@@ -1591,7 +1592,7 @@ const OpenCodeApp = {
     try {
       // 1. SessionStore'dan geçersiz session'ları temizle
       if (typeof SessionStore !== 'undefined') {
-        const sessions = SessionStore.getAllSessions() as Array<{ id: string }>;
+        const sessions = window.SessionStore?.getAllSessions() as Array<{ id: string }>;
         const validSessionIds = new Set<string>();
         
         // API'den güncel session listesini al
@@ -1602,7 +1603,7 @@ const OpenCodeApp = {
           // Store'daki ama API'de olmayan session'ları temizle
           sessions.forEach(session => {
             if (!validSessionIds.has(session.id)) {
-              SessionStore.removeSession(session.id);
+              window.SessionStore?.removeSession(session.id);
               cleanedCount++;
             }
           });
@@ -1908,12 +1909,12 @@ const OpenCodeApp = {
     console.log('[OpenCode] Creating new session...');
     
     // Clear stores
-    const currentSessionId = SessionStore.getCurrentSessionId();
+    const currentSessionId = window.SessionStore?.getCurrentSessionId();
     if (currentSessionId) {
       MessageStore.clearSession(currentSessionId);
     }
     StoreBridge.clear();
-    SessionStore.clear();
+    window.SessionStore?.clear();
     
     // Clear UI
     MessageRenderer.clear();
@@ -1981,7 +1982,7 @@ const OpenCodeApp = {
   _initSessionBadgeTracking() {
     if (typeof SessionStore === 'undefined') return;
     
-    SessionStore.subscribe((event) => {
+    window.SessionStore?.subscribe((event) => {
       this._updateSessionBadge();
     });
     
@@ -2005,7 +2006,7 @@ const OpenCodeApp = {
     if (!sessionBadge || !sessionIdText) return;
     
     const sessionId = typeof SessionStore !== 'undefined' 
-      ? SessionStore.getCurrentSessionId() 
+      ? window.SessionStore?.getCurrentSessionId() 
       : null;
     
     if (sessionId) {
@@ -2051,12 +2052,12 @@ const OpenCodeApp = {
     interface SessionRecord { id: string; title?: string; status?: string; messageIds?: string[]; updatedAt?: number; }
     let sessions: SessionRecord[] = [];
     if (typeof SessionStore !== 'undefined') {
-      sessions = SessionStore.getAllSessions() as SessionRecord[];
+      sessions = window.SessionStore?.getAllSessions() as SessionRecord[];
       
       // API session'larını store'a ekle
       apiSessions.forEach((apiSession: { id: string; title?: string; status?: string }) => {
-        if (!SessionStore.getSession(apiSession.id)) {
-          SessionStore.upsertSession(apiSession.id, {
+        if (!window.SessionStore?.getSession(apiSession.id)) {
+          window.SessionStore?.upsertSession(apiSession.id, {
             title: apiSession.title,
             messageIds: [],
             status: apiSession.status || 'idle',
@@ -2065,13 +2066,13 @@ const OpenCodeApp = {
       });
       
       // Güncel listeyi al
-      sessions = SessionStore.getAllSessions() as SessionRecord[];
+      sessions = window.SessionStore?.getAllSessions() as SessionRecord[];
     } else {
       sessions = apiSessions as SessionRecord[];
     }
 
     const currentId = typeof SessionStore !== 'undefined' 
-      ? SessionStore.getCurrentSessionId() 
+      ? window.SessionStore?.getCurrentSessionId() 
       : null;
 
     // Henüz session yoksa placeholder göster
@@ -2150,13 +2151,13 @@ const OpenCodeApp = {
   async _switchSession(sessionId: string) {
     if (typeof SessionStore === 'undefined') return;
 
-    const currentId = SessionStore.getCurrentSessionId();
+    const currentId = window.SessionStore?.getCurrentSessionId();
     if (sessionId === currentId) return;
 
     console.log('[OpenCode] Switching to session:', sessionId);
 
     // Session'u aktif yap
-    SessionStore.setCurrentSession(sessionId);
+    window.SessionStore?.setCurrentSession(sessionId);
 
     // Mesaj listesini temizle ve yeniden yükle
     MessageRenderer.clear();
@@ -2195,7 +2196,7 @@ const OpenCodeApp = {
       return;
     }
     
-    const session = SessionStore.getSession(sessionId);
+    const session = window.SessionStore?.getSession(sessionId);
     if (!session) {
       console.warn('[OpenCode] Session not found:', sessionId);
       return;
@@ -2208,7 +2209,7 @@ const OpenCodeApp = {
 
     try {
       // Store'u güncelle
-      SessionStore.upsertSession(sessionId, { title: newTitle.trim() });
+      window.SessionStore?.upsertSession(sessionId, { title: newTitle.trim() });
 
       // API'ye bildir
       if (typeof APIClient !== 'undefined' && APIClient.renameSession) {
@@ -2230,7 +2231,7 @@ const OpenCodeApp = {
    * @param {string} sessionId
    */
   async _forkSession(sessionId: string) {
-    const session = SessionStore.getSession(sessionId);
+    const session = window.SessionStore?.getSession(sessionId);
     if (!session) return;
 
     const messages = MessageStore.getSessionMessages(sessionId);
@@ -2253,7 +2254,7 @@ const OpenCodeApp = {
       return;
     }
     
-    const session = SessionStore.getSession(sessionId);
+    const session = window.SessionStore?.getSession(sessionId);
     if (!session) {
       console.warn('[OpenCode] Session not found for compact:', sessionId);
       return;
@@ -2305,7 +2306,7 @@ const OpenCodeApp = {
       return;
     }
     
-    const session = SessionStore.getSession(sessionId);
+    const session = window.SessionStore?.getSession(sessionId);
     if (!session) {
       console.warn('[OpenCode] Session not found for delete:', sessionId);
       return;
@@ -2322,7 +2323,7 @@ const OpenCodeApp = {
       }
 
       // Store'dan sil
-      SessionStore.removeSession(sessionId);
+      window.SessionStore?.removeSession(sessionId);
       
       // MessageStore varsa mesajları da temizle
       if (typeof MessageStore !== 'undefined' && MessageStore.clearSession) {
@@ -2333,11 +2334,11 @@ const OpenCodeApp = {
       this._showToast?.('Oturum silindi', 'success');
 
       // Eğer aktif session silindiyse, yeni session oluştur veya başka session'a geç
-      const remainingSessions = SessionStore.getAllSessions() as Array<{ id: string }>;
-      if (SessionStore.getCurrentSessionId() === sessionId || SessionStore.getCurrentSessionId() === null) {
+      const remainingSessions = window.SessionStore?.getAllSessions() as Array<{ id: string }>;
+      if (window.SessionStore?.getCurrentSessionId() === sessionId || window.SessionStore?.getCurrentSessionId() === null) {
         if (remainingSessions.length > 0) {
           // Başka bir session'a geç
-          SessionStore.setCurrentSession(remainingSessions[0].id);
+          window.SessionStore?.setCurrentSession(remainingSessions[0].id);
         } else {
           // Hiç session kalmadı, yeni oluştur
           this._handleNewSession();
@@ -2450,13 +2451,13 @@ const OpenCodeApp = {
    */
   _updateTokenStats() {
     const sessionId = typeof SessionStore !== 'undefined' 
-      ? SessionStore.getCurrentSessionId() 
+      ? window.SessionStore?.getCurrentSessionId() 
       : null;
 
     let usage = { tokens: 0, cost: 0 };
     
     if (sessionId && typeof SessionStore !== 'undefined') {
-      usage = SessionStore.getSessionUsage(sessionId);
+      usage = window.SessionStore?.getSessionUsage(sessionId);
     }
 
     // Input/Output tokens (basitleştirilmiş - tek değer göster)
@@ -2640,7 +2641,7 @@ const OpenCodeApp = {
     }
 
     // Subscribe to session events
-    SessionStore.subscribe((event: unknown) => {
+    window.SessionStore?.subscribe((event: unknown) => {
       const e = event as { type?: string };
       switch (e.type) {
         case 'session:changed':
@@ -2657,7 +2658,7 @@ const OpenCodeApp = {
 
     // Subscribe to message store for step events (token tracking)
     if (typeof MessageStore !== 'undefined') {
-      MessageStore.subscribe((event: unknown) => {
+      window.MessageStore?.subscribe?.((event: unknown) => {
         const e = event as { type?: string };
         // Step finish event'leri token güncellemesi tetikler
         if (e.type === 'part:updated' || e.type === 'message:updated') {
@@ -2687,7 +2688,7 @@ const OpenCodeApp = {
     const sessionId = SessionStore?.getCurrentSessionId?.();
     
     // Get session-specific info (detailed breakdown)
-    const sessionInfo = sessionId ? SessionStore?.getSessionInfo?.(sessionId) as { inputTokens?: number; outputTokens?: number; cost?: number } | null : null;
+    const sessionInfo = sessionId ? window.SessionStore?.getSessionInfo?.(sessionId) as { inputTokens?: number; outputTokens?: number; cost?: number } | null : null;
     
     // Get session usage (simple totals)
     const sessionUsage = sessionId ? SessionStore?.getSessionUsage?.(sessionId) : null;
@@ -2938,7 +2939,9 @@ const OpenCodeApp = {
     
     this.hideRenameModal();
     
-    const success = await window.SessionStore?.renameSession(sessionId, newTitle);
+    const success = window.SessionStore?.renameSession 
+      ? await window.SessionStore?.renameSession(sessionId, newTitle)
+      : false;
     if (success) {
       this._showToast('Oturum yeniden adlandırıldı', 'success');
     } else {
@@ -2986,10 +2989,13 @@ const OpenCodeApp = {
     this.hideDeleteModal();
     
     try {
-      await window.SessionStore?.deleteSession(sessionId);
+      if (window.SessionStore?.deleteSession) {
+        await window.SessionStore?.deleteSession(sessionId);
+      }
       this._showToast('Oturum silindi', 'success');
       // Eğer silinen oturum aktifse, yeni oturum oluştur
-      if (window.SessionStore?.getCurrentSessionId() === sessionId) {
+      const currentId = window.SessionStore?.getCurrentSessionId?.();
+      if (currentId === sessionId) {
         this._handleNewSession();
       }
     } catch {

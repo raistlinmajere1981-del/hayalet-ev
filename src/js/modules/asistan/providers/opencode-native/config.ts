@@ -263,6 +263,7 @@ const OpenCodeConfig = {
    */
   get(key: string, defaultValue: unknown = undefined) {
     const parts = key.split('.');
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let value: unknown = this;
     
     for (const part of parts) {
@@ -356,6 +357,9 @@ const OpenCodeConfig = {
 // Load user preferences on init
 OpenCodeConfig.loadUserPreferences();
 
-// Global export
+// ES6 Export
+export { OpenCodeConfig };
+
+// Global export (backward compatibility)
 window.OpenCodeConfig = OpenCodeConfig;
 

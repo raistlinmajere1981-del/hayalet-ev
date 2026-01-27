@@ -182,6 +182,9 @@ type LangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' | 'jav
     ToolRendererRegistry.register('readFile', ReadRenderer as unknown as ToolRendererConfig);
   }
 
-  // Global export
+  // ES6 Export
+  export { ReadRenderer };
+
+  // Global export (backward compatibility)
   window.ReadRenderer = ReadRenderer;
 })();

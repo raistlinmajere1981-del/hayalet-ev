@@ -1361,5 +1361,8 @@ const ToolRenderer = {
   }
 };
 
-// Global'e ekle
+// ES6 Export
+export { ToolRenderer };
+
+// Global export (backward compatibility)
 window.ToolRenderer = ToolRenderer;

@@ -384,7 +384,7 @@ const SessionStore = {
     }
 
     // Update global current if this is the active instance
-    if (typeof InstanceStore !== 'undefined' && InstanceStore.getActiveInstanceId() === instanceId) {
+    if (window.InstanceStore && window.InstanceStore.getActiveInstanceId?.() === instanceId) {
       this._currentSessionId = sessionId;
     }
 
@@ -505,7 +505,7 @@ const SessionStore = {
    */
   async renameSession(sessionId: string, newTitle: string) {
     try {
-      const result = await window.APIClient?.renameSession(sessionId, newTitle) as { success: boolean } | undefined;
+      const result = await window.APIClient?.renameSession?.(sessionId, newTitle) as { success: boolean } | undefined;
       if (result?.success) {
         const session = this._sessions.get(sessionId);
         if (session) {
@@ -530,7 +530,7 @@ const SessionStore = {
    */
   async deleteSession(sessionId: string) {
     try {
-      await window.APIClient?.deleteSession(sessionId);
+      await window.APIClient?.deleteSession?.(sessionId);
       // deleteSession returns void, so just proceed if no error
       {
         this.removeSession(sessionId);
@@ -703,7 +703,7 @@ const SessionStore = {
     this._statusByInstance.set(instanceId, status);
 
     // Update global status if this is the active instance
-    if (typeof InstanceStore !== 'undefined' && InstanceStore.getActiveInstanceId() === instanceId) {
+    if (window.InstanceStore && window.InstanceStore.getActiveInstanceId?.() === instanceId) {
       this._status = status;
     }
 
@@ -742,9 +742,9 @@ const SessionStore = {
    * Call this when active instance changes
    */
   syncFromActiveInstance() {
-    if (typeof InstanceStore === 'undefined') return;
+    if (!window.InstanceStore) return;
     
-    const activeInstanceId = InstanceStore.getActiveInstanceId();
+    const activeInstanceId = window.InstanceStore.getActiveInstanceId?.();
     if (activeInstanceId) {
       this._currentSessionId = this._currentSessionByInstance.get(activeInstanceId) || null;
       this._status = this._statusByInstance.get(activeInstanceId) || 'idle';
@@ -755,5 +755,8 @@ const SessionStore = {
   },
 };
 
-// Global export
+// ES6 Export
+export { SessionStore };
+
+// Global export (backward compatibility)
 (window as unknown as { SessionStore: typeof SessionStore }).SessionStore = SessionStore;

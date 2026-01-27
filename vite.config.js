@@ -10,7 +10,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'src/index.html'),
-        'opencode-ui': resolve(__dirname, 'src/opencode-ui/index.html'),
+        'asistan-native': resolve(__dirname, 'src/pages/asistan-native.html'),
       },
     },
   },

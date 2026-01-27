@@ -386,5 +386,8 @@ const InstanceTabs = {
   },
 };
 
-// Global export
+// ES6 Export
+export { InstanceTabs };
+
+// Global export (backward compatibility)
 window.InstanceTabs = InstanceTabs;

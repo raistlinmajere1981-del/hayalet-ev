@@ -593,19 +593,79 @@ export function matchGlob(path: string, pattern: string): boolean {
 export async function findAndReplace(
   filePath: string,
   find: string,
-  replace: string
-): Promise<{ success: boolean; replacements: number; error?: string }> {
+  replace: string,
+  options?: {
+    ignoreWhitespace?: boolean;
+    dryRun?: boolean;
+  }
+): Promise<{ success: boolean; replacements: number; error?: string; preview?: string }> {
   try {
     const content = await readFile(filePath, "utf-8");
+    let searchPattern = find;
     
-    // Kaç kez değişiklik yapılacak
-    const occurrences = content.split(find).length - 1;
+    // Whitespace normalization
+    if (options?.ignoreWhitespace) {
+      // Whitespace karakterlerini normalize et
+      searchPattern = find
+        .split(/\s+/)
+        .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special chars
+        .join('\\s+');
+    }
+    
+    // Pattern matching
+    let occurrences = 0;
+    let newContent = content;
+    
+    if (options?.ignoreWhitespace) {
+      // Regex mode
+      const regex = new RegExp(searchPattern, 'g');
+      const matches = content.match(regex);
+      occurrences = matches ? matches.length : 0;
+      
+      if (occurrences > 0) {
+        newContent = content.replace(regex, replace);
+      }
+    } else {
+      // String mode (eski davranış)
+      occurrences = content.split(find).length - 1;
+      
+      if (occurrences > 0) {
+        newContent = content.split(find).join(replace);
+      }
+    }
     
     if (occurrences === 0) {
       return { success: false, replacements: 0, error: "Pattern bulunamadı" };
     }
     
-    const newContent = content.split(find).join(replace);
+    // Dry run mode - sadece preview dön
+    if (options?.dryRun) {
+      // İlk 3 değişikliği göster
+      const lines = content.split('\n');
+      const previewLines: string[] = [];
+      let changeCount = 0;
+      
+      for (let i = 0; i < lines.length && changeCount < 3; i++) {
+        const oldLine = lines[i];
+        const newLine = options.ignoreWhitespace
+          ? oldLine.replace(new RegExp(searchPattern, 'g'), replace)
+          : oldLine.split(find).join(replace);
+        
+        if (oldLine !== newLine) {
+          changeCount++;
+          previewLines.push(`Line ${i + 1}:`);
+          previewLines.push(`- ${oldLine}`);
+          previewLines.push(`+ ${newLine}`);
+          previewLines.push('');
+        }
+      }
+      
+      return {
+        success: true,
+        replacements: occurrences,
+        preview: previewLines.join('\n') + `\n(Total: ${occurrences} değişiklik)`
+      };
+    }
     
     // Dosyayı yaz
     const { writeFile } = await import("fs/promises");

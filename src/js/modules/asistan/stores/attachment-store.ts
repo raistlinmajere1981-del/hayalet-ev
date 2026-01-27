@@ -502,7 +502,10 @@ const AttachmentStore = {
   },
 };
 
-// Global export
+// ES6 Export
+export { AttachmentStore };
+
+// Global export (backward compatibility)
 window.AttachmentStore = AttachmentStore;
 
 /**

@@ -141,6 +141,9 @@ interface BashToolCall {
     ToolRendererRegistry.register('command', config);
   }
 
-  // Global export
+  // ES6 Export
+  export { BashRenderer };
+
+  // Global export (backward compatibility)
   window.BashRenderer = BashRenderer;
 })();

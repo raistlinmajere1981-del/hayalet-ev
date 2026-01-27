@@ -28,7 +28,7 @@ function decodeHtmlEntities(text: string) {
  * @param {string | {text?: string}} segment
  * @returns {string | {text?: string}}
  */
-function decodeTextSegment(segment: string | { text?: string }) {
+function _decodeTextSegment(segment: string | { text?: string }) {
   if (typeof segment === 'string') {
     return decodeHtmlEntities(segment);
   }
@@ -93,7 +93,7 @@ function isValidThinkingPart(part: MessagePart) {
  * @param {Object} part
  * @returns {boolean}
  */
-function isValidTextPart(part: MessagePart) {
+function _isValidTextPart(part: MessagePart) {
   if (!part || part.type !== 'text') return false;
   return typeof part.text === 'string';
 }
@@ -194,5 +194,8 @@ const PartNormalizer = {
   },
 };
 
-// Global export
+// ES6 Export
+export { PartNormalizer };
+
+// Global export (backward compatibility)
 window.PartNormalizer = PartNormalizer;

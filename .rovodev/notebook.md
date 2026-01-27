@@ -38,6 +38,48 @@
 - **API:** `http://localhost:8123/v3/chat/stream` (SSE)
 - **Döküman:** https://support.atlassian.com/rovo/docs/use-server-mode-in-rovo-dev-cli/
 
+### [2026-01-27] AST-based Code Editing Tool
+- **Kategori:** Tool / DX
+- **Öncelik:** Orta
+- **Detay:** `hev_edit_code_block` - TypeScript/JavaScript için AST-based kod düzenleme tool'u. Regex pattern matching yerine TypeScript parser kullanır.
+- **Avantajlar:**
+  - %100 doğru syntax parsing
+  - Semantic editing (fonksiyon, class, method bazlı)
+  - Otomatik formatting
+  - Zero false positives
+- **Kullanım Örneği:**
+  ```typescript
+  hev_edit_code_block({
+    file: "question-modal.ts",
+    block: "switch (question.type)",  // AST selector
+    transformation: {
+      addBraces: ["confirm", "select", "text"]  // case'lere {} ekle
+    }
+  })
+  ```
+- **Implementation:** `@typescript-eslint/parser` veya `ts-morph` library
+
+### [2026-01-27] Batch Operations Tool
+- **Kategori:** Tool / DX
+- **Öncelik:** Düşük
+- **Detay:** `hev_batch_edit` - Birden fazla benzer değişiklik için özel tool. Sed/awk alternatifi.
+- **Kullanım Örneği:**
+  ```typescript
+  hev_batch_edit({
+    files: ["*.ts"],
+    operations: [
+      { type: "rename", from: "oldName", to: "newName" },
+      { type: "add-import", module: "@types/node" },
+      { type: "wrap-cases", pattern: "switch.*case" }
+    ]
+  })
+  ```
+- **Avantajlar:**
+  - Declarative API
+  - Batch processing
+  - Progress tracking
+  - Rollback support
+
 ### [2026-01-24] Multi-Agent Orchestration Sistemi
 - **Kategori:** Mimari / Büyük Özellik
 - **Öncelik:** Uzun vadeli (Asistan sayfası tamamlandıktan sonra)
@@ -101,4 +143,4 @@
 
 ---
 
-**Son Güncelleme:** 2026-01-24
+**Son Güncelleme:** 2026-01-27

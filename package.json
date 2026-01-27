@@ -17,7 +17,7 @@
     "format": "prettier --write \"src/**/*.{js,css,html,json,md}\"",
     "check": "npm run lint && npm run check-types",
     "check:all": "npm run check && npm run build",
-    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p mcp-server/tsconfig.json && tsc --noEmit -p src/opencode-ui/tsconfig.json",
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.electron.json && tsc --noEmit -p mcp-server/tsconfig.json && tsc --noEmit -p opencode-ui/tsconfig.json",
     "knip": "knip",
     "knip:strict": "knip --include files,dependencies,devDependencies,unlisted,exports,types,duplicates",
     "knip:fix": "knip --fix",

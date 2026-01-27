@@ -558,6 +558,9 @@ const InstanceStore = {
   },
 };
 
-// Global export
+// ES6 Export
+export { InstanceStore };
+
+// Global export (backward compatibility)
 (window as unknown as { InstanceStore: typeof InstanceStore }).InstanceStore = InstanceStore;
 

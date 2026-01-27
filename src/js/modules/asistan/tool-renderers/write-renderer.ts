@@ -101,7 +101,7 @@ type WriteLangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' |
      * @param {object} toolCall
      * @returns {string}
      */
-    _renderDiffOutput(output: string, toolCall: WriteToolCall) {
+    _renderDiffOutput(output: string, _toolCall: WriteToolCall) {
       const lines = this._parseDiff(output);
       const stats = this._calculateDiffStats(lines);
       
@@ -318,6 +318,9 @@ type WriteLangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' |
     ToolRendererRegistry.register('edit', WriteRenderer as unknown as ToolRendererConfig);
   }
 
-  // Global export
+  // ES6 Export
+  export { WriteRenderer };
+
+  // Global export (backward compatibility)
   window.WriteRenderer = WriteRenderer;
 })();

@@ -562,5 +562,8 @@ const APIClient = {
   }
 };
 
-// Global'e ekle
+// ES6 Export
+export { APIClient };
+
+// Global export (backward compatibility)
 (window as unknown as { APIClient: typeof APIClient }).APIClient = APIClient;

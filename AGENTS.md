@@ -316,6 +316,163 @@ dev_bootstrap_context     # Session context oluştur
 
 ---
 
+## 🛠️ Tool Kullanım Best Practices
+
+> **KRİTİK:** Multi-line kod değişiklikleri için doğru tool seçimi hata oranını %80 azaltır!
+
+### 3-Tier Strateji (ZORUNLU)
+
+| Tier | Tool | Ne Zaman Kullan | Örnek |
+|------|------|----------------|--------|
+| **1️⃣ Basit** | `hev_fs_find_and_replace` | Tek satır, basit string | Değişken ismi, import |
+| **2️⃣ Multi-line** | `hev_dev_edit_lines` | Switch-case, blok düzenleme | Case'lere `{}` ekle |
+| **3️⃣ Batch** | `hev_fs_bash + sed` | Birden fazla benzer değişiklik | Regex patterns |
+
+### Tier 1: `hev_fs_find_and_replace`
+
+**✅ Kullan:**
+```typescript
+// Tek satır değişiklikler
+find: "const TYPES_VERSION = '1.2.0';"
+replace: "const _TYPES_VERSION = '1.2.0';"
+```
+
+**❌ Kullanma:**
+```typescript
+// 40 satırlık switch-case blok
+find: "case 'confirm':\n  { ... 40 satır ... }"
+// → Pattern matching başarısız! (whitespace farkları)
+```
+
+**Yeni Özellikler:**
+```typescript
+// Whitespace tolerance
+hev_fs_find_and_replace({
+  file_path: "file.ts",
+  find: "case  'select':",  // Extra space
+  replace: "case 'select': {",
+  ignore_whitespace: true  // ✅ Whitespace farkı ignore edilir
+})
+
+// Preview mode
+hev_fs_find_and_replace({
+  find: "...",
+  replace: "...",
+  dry_run: true  // ✅ Sadece göster, değiştirme
+})
+```
+
+---
+
+### Tier 2: `hev_dev_edit_lines` (🎯 Önerilen)
+
+**Ne Zaman:**
+- Multi-line kod blokları
+- Switch-case düzenleme
+- Fonksiyon gövdesi değişikliği
+
+**Nasıl:**
+```typescript
+// 1. Satır numaralarını bul
+hev_fs_show({ file_path: "...", start_line: 230, end_line: 275 })
+
+// 2. Line-based edit
+hev_dev_edit_lines({
+  file_path: "question-modal.ts",
+  operation: "replace",
+  start_line: 231,
+  end_line: 243,
+  content: "      case 'confirm': {\n        ...\n      }",
+  validate_syntax: true  // ✅ Otomatik syntax check
+})
+```
+
+**Avantajlar:**
+- ✅ Line number based (kesin)
+- ✅ Dry run mode
+- ✅ Syntax validation (TypeScript/JavaScript)
+- ✅ Preview gösterir
+
+**Yeni Özellikler:**
+```typescript
+// Syntax validation
+hev_dev_edit_lines({
+  operation: "replace",
+  start_line: 100,
+  end_line: 150,
+  content: "new code",
+  validate_syntax: true  // ✅ Syntax hatası varsa rollback
+})
+```
+
+---
+
+### Tier 3: Bash + Sed (Batch Operations)
+
+**Ne Zaman:**
+- Birden fazla benzer değişiklik
+- Regex patterns
+- Conditional replacements
+
+```bash
+# Tüm case'lere { ekle
+hev_fs_bash({
+  command: "sed -i 's/^\\s*case \\(.*\\):$/      case \\1: {/' file.ts"
+})
+
+# Test et
+hev_fs_bash({ command: "node -c file.ts" })  # Syntax check
+```
+
+---
+
+### ⚠️ Yapılmayanlar (Anti-patterns)
+
+```typescript
+// ❌ YANLIŞ: Büyük blok find_and_replace ile
+hev_fs_find_and_replace({
+  find: "40 satırlık switch-case",
+  replace: "modified 40 satır"
+})
+// Sonuç: 15 iteration, 4 git reset 🔥
+
+// ✅ DOĞRU: edit_lines kullan
+hev_dev_edit_lines({ start_line: 231, end_line: 270, ... })
+// Sonuç: 3 iteration, 0 git reset ✅
+```
+
+---
+
+### 🛡️ Safety Checklist
+
+**Her değişiklik öncesi:**
+1. ✅ Dry run mode kullan
+2. ✅ Preview kontrol et
+3. ✅ Syntax validation aç
+4. ✅ Git diff kontrol et
+
+**Her değişiklik sonrası:**
+```bash
+npm run lint -- file.ts  # Syntax + lint check
+git diff file.ts          # Değişiklikleri gör
+```
+
+---
+
+### 📊 Tool Seçim Decision Tree
+
+```
+Değişiklik tipi?
+├── Tek satır?
+│   └── ✅ hev_fs_find_and_replace
+├── Multi-line blok?
+│   └── ✅ hev_dev_edit_lines
+└── Birden fazla benzer?
+    └── ✅ hev_fs_bash + sed
+```
+
+---
+
 ## 🎯 CDP & MCP Tools
 
 > **Detaylı rehber:** `.rovodev/cdp.md`

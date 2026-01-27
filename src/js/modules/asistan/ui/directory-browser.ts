@@ -121,7 +121,11 @@ const DirectoryBrowser = {
     
     try {
       // Get home path first
-      this._homePath = await this._getHomePath();
+      const homePath = await this._getHomePath();
+      if (!homePath) {
+        throw new Error('Home path not available');
+      }
+      this._homePath = homePath;
       
       // Determine starting path
       const startPath = defaultPath || this._homePath;
@@ -182,7 +186,7 @@ const DirectoryBrowser = {
    * @param {string} path - Path to check
    * @returns {boolean}
    */
-  _isPathAllowed(path: string) {
+  _isPathAllowed(_path: string) {
     if (!this._homePath) return true; // Can't validate without home path
     
     // Simple check: path should start with home or be absolute system path

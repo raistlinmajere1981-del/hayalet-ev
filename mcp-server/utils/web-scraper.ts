@@ -139,6 +139,8 @@ export async function fetchAndParse(
 export function parseHTML(html: string, url: string, options: FetchOptions = {}): ScrapedContent {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const $ = cheerio.load(html);
+  // @ts-ignore - $ used in commented code
+  void $; // Prevent unused warning
 
   // Noise elementleri kaldır
   REMOVE_SELECTORS.forEach((selector) => {

@@ -293,7 +293,7 @@ const MessageRenderer = {
     toolParts.forEach((part: MessagePart) => {
       if (part.toolCall && typeof ToolRenderer !== 'undefined') {
         const toolId = part.toolCall.toolId || '';
-        let toolEl = toolId ? body.querySelector(`[data-tool-id="${toolId}"]`) : null;
+        const toolEl = toolId ? body.querySelector(`[data-tool-id="${toolId}"]`) : null;
         if (!toolEl) {
           const newToolEl = ToolRenderer.createToolCard(part.toolCall);
           body.appendChild(newToolEl);
@@ -1139,7 +1139,7 @@ const MessageRenderer = {
    * Handle retry message - son mesajı tekrar gönder
    * @param {string} messageId
    */
-  async _handleRetry(messageId: string) {
+  async _handleRetry(_messageId: string) {
     const currentSessionId = window.SessionStore?.getCurrentSessionId();
     if (!currentSessionId) {
       console.warn('[MessageRenderer] No active session for retry');
@@ -1567,5 +1567,8 @@ const MessageRenderer = {
   }
 };
 
-// Global'e ekle
+// ES6 Export
+export { MessageRenderer };
+
+// Global export (backward compatibility)
 window.MessageRenderer = MessageRenderer;

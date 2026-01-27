@@ -390,5 +390,8 @@ const PermissionModal = {
   },
 };
 
-// Global export
+// ES6 Export
+export { PermissionModal };
+
+// Global export (backward compatibility)
 window.PermissionModal = PermissionModal;

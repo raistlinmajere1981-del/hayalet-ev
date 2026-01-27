@@ -26,6 +26,153 @@ declare global {
     // Custom Properties
     __hayalet_settings_unsub?: () => void;
     __hayalet_provider_config?: ProviderConfig;
+
+    // =========================================================================
+    // OpenCode/Asistan Global Exports
+    // =========================================================================
+
+    // OpenCode Config
+    OpenCodeConfig?: {
+      serverUrl: string;
+      getServerUrl: () => string;
+      setServerUrl: (url: string) => void;
+      get: (key: string, defaultValue?: unknown) => unknown;
+      isEnabled: (feature: string) => boolean;
+      getStatusText: (status: string) => string;
+      [key: string]: unknown;
+    };
+
+    // API Client
+    APIClient?: {
+      listAgents?: () => Promise<unknown>;
+      listProviders?: () => Promise<unknown>;
+      updateSessionAgent?: (sessionId: string, agentName: string) => Promise<unknown>;
+      updateSessionModel?: (sessionId: string, providerId: string, modelId: string) => Promise<unknown>;
+      retry?: (sessionId: string) => Promise<unknown>;
+      [key: string]: unknown;
+    };
+
+    // SSE Client
+    SSEClient?: {
+      connect?: () => Promise<unknown>;
+      disconnect?: () => void;
+      [key: string]: unknown;
+    };
+
+    // Message Store
+    MessageStore?: {
+      createMessage?: (data: unknown) => unknown;
+      updateMessage?: (id: string, data: unknown) => void;
+      getMessage?: (id: string) => unknown;
+      [key: string]: unknown;
+    };
+
+    // Session Store
+    SessionStore?: {
+      getCurrentSessionId?: () => string | null;
+      createSession?: () => unknown;
+      getSessionInfo?: (sessionId: string) => unknown;
+      getSessionUsage?: (sessionId: string) => unknown;
+      getTotalUsage?: () => { tokens: number; cost: number };
+      renameSession?: (sessionId: string, title: string) => Promise<boolean>;
+      deleteSession?: (sessionId: string) => Promise<void>;
+      [key: string]: unknown;
+    };
+
+    // Instance Store
+    InstanceStore?: {
+      [key: string]: unknown;
+    };
+
+    // Attachment Store
+    AttachmentStore?: {
+      [key: string]: unknown;
+    };
+
+    // Store Bridge
+    StoreBridge?: {
+      [key: string]: unknown;
+    };
+
+    // Part Normalizer
+    PartNormalizer?: {
+      normalize?: (part: unknown) => unknown;
+      normalizeAll?: (parts: unknown[]) => unknown[];
+      decodeHtml?: (text: string) => string;
+      needsNormalization?: (part: unknown) => boolean;
+      [key: string]: unknown;
+    };
+
+    // UI Components
+    PermissionModal?: {
+      show?: (data: unknown) => void;
+      hide?: () => void;
+      [key: string]: unknown;
+    };
+
+    QuestionModal?: {
+      show?: (data: unknown) => void;
+      hide?: () => void;
+      [key: string]: unknown;
+    };
+
+    MessageRenderer?: {
+      render?: (message: unknown) => HTMLElement;
+      [key: string]: unknown;
+    };
+
+    PromptHandler?: {
+      [key: string]: unknown;
+    };
+
+    ToolRenderer?: {
+      [key: string]: unknown;
+    };
+
+    AgentModelSelector?: {
+      show?: () => void;
+      hide?: () => void;
+      update?: () => void;
+      [key: string]: unknown;
+    };
+
+    InstanceTabs?: {
+      [key: string]: unknown;
+    };
+
+    // Tool Renderers
+    ToolRendererRegistry?: {
+      register?: (name: string, renderer: unknown) => void;
+      get?: (name: string) => unknown;
+      [key: string]: unknown;
+    };
+
+    BashRenderer?: {
+      render?: (data: unknown) => HTMLElement;
+      [key: string]: unknown;
+    };
+
+    ReadRenderer?: {
+      render?: (data: unknown) => HTMLElement;
+      [key: string]: unknown;
+    };
+
+    WriteRenderer?: {
+      render?: (data: unknown) => HTMLElement;
+      [key: string]: unknown;
+    };
+
+    // OpenCode App
+    OpenCodeApp?: {
+      _showToast?: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+      [key: string]: unknown;
+    };
+
+    // DOMPurify (external library)
+    DOMPurify?: {
+      sanitize: (dirty: string, config?: unknown) => string;
+      [key: string]: unknown;
+    };
   }
 
   /**

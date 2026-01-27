@@ -47,6 +47,7 @@ interface ManagedProcess {
   requestedStop: boolean;
 }
 
+// @ts-ignore - Reserved for future use
 interface _ProcessExitInfo {
   workspaceId: string;
   code: number | null;

@@ -12,7 +12,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { readdir } from "fs/promises";
-import { join, relative, extname, basename } from "path";
+import { join, relative, basename } from "path";
 import { execSync } from "child_process";
 import { createHash } from "crypto";
 import { createProgress } from "../utils/progress.js";
@@ -285,7 +285,7 @@ export async function generateDiagram(
   options: { format?: "mermaid" | "dot"; module?: string; depth?: number } = {}
 ): Promise<DiagramResult> {
   const format = options.format || "mermaid";
-  const _maxDepth = options.depth || 10; // TODO: Implement depth limiting
+  // const _maxDepth = options.depth || 10; // TODO: Implement depth limiting
   
   const allFiles: string[] = [];
   for (const srcDir of CONFIG.srcDirs) {
@@ -443,6 +443,8 @@ interface EditLinesResult {
   message: string;
   linesAffected?: number;
   preview?: string;
+  syntaxValid?: boolean;
+  syntaxError?: string;
 }
 
 export function editLines(
@@ -453,7 +455,9 @@ export function editLines(
     endLine?: number;
     content?: string;
     dryRun?: boolean;
-  }
+    validateSyntax?: boolean;
+  },
+  projectRoot?: string
 ): EditLinesResult {
   if (!existsSync(filePath)) {
     return { success: false, message: `Dosya bulunamadı: ${filePath}` };
@@ -512,6 +516,40 @@ export function editLines(
       }
       const replaceLines = options.content.split("\n");
       const newLines = [...lines.slice(0, start), ...replaceLines, ...lines.slice(end)];
+      
+      // Syntax validation (TypeScript/JavaScript dosyaları için)
+      let syntaxValid = true;
+      let syntaxError: string | undefined;
+      
+      if (options.validateSyntax && projectRoot && /\.(ts|js|tsx|jsx)$/.test(filePath)) {
+        const tempContent = newLines.join("\n");
+        try {
+          // Node.js syntax check (basit ama hızlı)
+          execSync(`node --check --input-type=module`, {
+            input: tempContent,
+            cwd: projectRoot,
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+            timeout: 5000
+          });
+          syntaxValid = true;
+        } catch (err: any) {
+          syntaxValid = false;
+          const error = err as { stderr?: { toString(): string }; message?: string };
+          syntaxError = error.stderr?.toString() || error.message || "Syntax hatası";
+          
+          // Dry run değilse ve syntax hatası varsa işlemi iptal et
+          if (!options.dryRun) {
+            return {
+              success: false,
+              message: "Syntax hatası tespit edildi, değişiklik yapılmadı",
+              syntaxValid: false,
+              syntaxError
+            };
+          }
+        }
+      }
+      
       if (!options.dryRun) {
         writeFileSync(filePath, newLines.join("\n"), "utf-8");
       }
@@ -519,6 +557,8 @@ export function editLines(
         success: true, 
         message: options.dryRun ? "Dry run: değişiklik yapılacak" : `${end - start} satır değiştirildi`,
         linesAffected: end - start,
+        syntaxValid,
+        syntaxError
       };
     }
 

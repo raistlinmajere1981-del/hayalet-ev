@@ -10,6 +10,7 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
+// @ts-ignore - Reserved for future use
 const _isQuitting: boolean = false;
 
 /**

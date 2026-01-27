@@ -1077,5 +1077,8 @@ const StoreBridge = {
   },
 };
 
-// Global export
+// ES6 Export
+export { StoreBridge };
+
+// Global export (backward compatibility)
 window.StoreBridge = StoreBridge;

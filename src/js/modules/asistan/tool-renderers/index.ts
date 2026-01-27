@@ -393,6 +393,10 @@ const ToolRendererRegistry = {
 };
 
 // Global export
+// ES6 Export
+export { ToolRendererRegistry };
+
+// Global export (backward compatibility)
 window.ToolRendererRegistry = ToolRendererRegistry;
 
 /**

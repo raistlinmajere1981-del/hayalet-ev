@@ -876,5 +876,8 @@ const MessageStore = {
   },
 };
 
-// Global exports
+// ES6 Export
+export { MessageStore };
+
+// Global export (backward compatibility)
 (window as unknown as { MessageStore: typeof MessageStore }).MessageStore = MessageStore;

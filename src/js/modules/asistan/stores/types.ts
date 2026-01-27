@@ -274,6 +274,17 @@
  * @typedef {'message:created' | 'message:updated' | 'message:deleted' | 'part:updated' | 'session:changed' | 'permission:updated' | 'permission:removed' | 'permission:cleared' | 'question:updated' | 'question:removed' | 'question:cleared'} ExtendedStoreEventType
  */
 
-// Version marker (no export - loaded as script)
- 
-const TYPES_VERSION = '1.2.0';
+// ES6 Exports
+export type MessageStatus = 'sending' | 'sent' | 'streaming' | 'complete' | 'error';
+export type MessageRole = 'user' | 'assistant';
+export type PartType = 'text' | 'tool' | 'thinking';
+export type ToolStatus = 'pending' | 'running' | 'success' | 'error';
+export type SessionStatus = 'idle' | 'processing' | 'waiting';
+export type PermissionStatus = 'pending' | 'approved' | 'denied';
+export type QuestionStatus = 'pending' | 'answered';
+export type StoreEventType = 'message:created' | 'message:updated' | 'message:deleted' | 'part:updated' | 'session:changed';
+export type ExtendedStoreEventType = StoreEventType | 'permission:updated' | 'permission:removed' | 'permission:cleared' | 'question:updated' | 'question:removed' | 'question:cleared';
+
+// Version marker
+const _TYPES_VERSION = '1.2.0';
+export { _TYPES_VERSION };

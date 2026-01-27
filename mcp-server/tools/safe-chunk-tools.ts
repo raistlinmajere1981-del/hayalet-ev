@@ -5,7 +5,7 @@
  * ÇÖZÜM: Streaming write + checksum validation + rollback
  */
 
-import { writeFile, readFile, unlink, mkdir, access } from "fs/promises";
+import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { createHash } from "crypto";
 import { dirname } from "path";
 import { createProgress } from "../utils/progress.js";
@@ -92,7 +92,7 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
 export function startChunkedSession(
   filePath: string,
   totalChunks: number,
-  projectRoot: string
+  _projectRoot: string
 ): { success: boolean; sessionId: string; message: string } {
   const progress = createProgress({ operation: "Session Start", quiet: true });
   
@@ -423,7 +423,7 @@ export async function finalizeChunked(
  */
 export function getSessionStatus(
   sessionId: string
-): { success: boolean; message: string; session?: Omit<ChunkSession, 'metadata' | 'startTime'> & { durationSeconds: number; progressPercent: number; missingChunks: number } } {
+): { success: boolean; message: string; session?: { sessionId: string; filePath: string; totalChunks: number; receivedChunks: number; missingChunks: number; durationSeconds: number; progressPercent: number } } {
   const session = activeSessions.get(sessionId);
   
   if (!session) {

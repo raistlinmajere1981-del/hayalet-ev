@@ -388,15 +388,24 @@ export async function expandCodeChunks(
 export async function findAndReplaceCode(
   filePath: string,
   find: string,
-  replace: string
+  replace: string,
+  ignoreWhitespace?: boolean,
+  dryRun?: boolean
 ): Promise<ReplaceResult> {
   const progress = createProgress({ operation: "Find & Replace", quiet: true });
   progress.update(0, `${filePath} işleniyor...`);
   
-  const result = await findAndReplace(filePath, find, replace);
+  const result = await findAndReplace(filePath, find, replace, {
+    ignoreWhitespace,
+    dryRun
+  });
   
   if (result.success) {
-    progress.done(`${result.replacements} değişiklik yapıldı`);
+    if (dryRun) {
+      progress.done(`Preview: ${result.replacements} değişiklik`);
+    } else {
+      progress.done(`${result.replacements} değişiklik yapıldı`);
+    }
   } else {
     progress.fail(result.error || "Bilinmeyen hata");
   }
@@ -406,6 +415,7 @@ export async function findAndReplaceCode(
     replacements: result.replacements,
     success: result.success,
     error: result.error,
+    preview: result.preview
   };
 }
 
@@ -816,7 +826,7 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_fs_find_and_replace",
-    description: "Dosyada bul ve değiştir.",
+    description: "Dosyada bul ve değiştir. ignoreWhitespace=true ile whitespace farkları ignore edilir. dryRun=true ile önizleme modunda çalışır.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -831,6 +841,16 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         replace: {
           type: "string",
           description: "Yerine konacak metin",
+        },
+        ignore_whitespace: {
+          type: "boolean",
+          description: "Whitespace farklarını ignore et (boşluk, tab, newline sayısı fark etmez)",
+          default: false,
+        },
+        dry_run: {
+          type: "boolean",
+          description: "Önizleme modu - değişiklikleri göster ama dosyaya yazma",
+          default: false,
         },
       },
       required: ["file_path", "find", "replace"],

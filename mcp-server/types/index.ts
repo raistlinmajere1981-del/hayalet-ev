@@ -130,6 +130,7 @@ export interface ReplaceResult {
   replacements: number;
   success: boolean;
   error?: string;
+  preview?: string;  // Dry run mode için önizleme
 }
 
 /** Technical Plan tipleri */

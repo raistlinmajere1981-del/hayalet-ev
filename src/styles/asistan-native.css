@@ -11,6 +11,15 @@
 @import './design-system/index.css';
 
 /* ============================================
+ * OpenCode UI Components (Modular)
+ * ============================================ */
+@import './asistan-native/components/main.css';
+@import './asistan-native/components/sidebar.css';
+@import './asistan-native/components/messages.css';
+@import './asistan-native/components/prompt.css';
+@import './asistan-native/components/tools.css';
+
+/* ============================================
  * Reset & Base (Design-system'den inherit)
  * ============================================ */
 

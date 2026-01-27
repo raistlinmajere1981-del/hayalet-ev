@@ -368,7 +368,10 @@ const SSEClient = {
     if (!this._listeners.has(eventType)) {
       this._listeners.set(eventType, []);
     }
-    this._listeners.get(eventType)!.push(callback);
+    const listeners = this._listeners.get(eventType);
+    if (listeners) {
+      listeners.push(callback);
+    }
 
     // Unsubscribe fonksiyonu dön
     return () => {
@@ -506,5 +509,8 @@ const SSEClient = {
   }
 };
 
-// Global'e ekle
+// ES6 Export
+export { SSEClient };
+
+// Global export (backward compatibility)
 window.SSEClient = SSEClient;
