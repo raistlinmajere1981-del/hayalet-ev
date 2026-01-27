@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenCode UI</title>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/sidebar.css">
+  <link rel="stylesheet" href="styles/messages.css">
+  <link rel="stylesheet" href="styles/prompt.css">
+  <link rel="stylesheet" href="styles/tools.css">
+  
+  <!-- Shiki Syntax Highlighting -->
+  <script type="module">
+    import { codeToHtml, bundledLanguages } from 'https://esm.sh/shiki@1.0.0';
+    
+    // Shiki highlighter'ı global'e kaydet
+    window.ShikiHighlighter = {
+      _cache: new Map(),
+      _ready: false,
+      _supportedLangs: new Set(Object.keys(bundledLanguages)),
+      
+      async highlight(code, lang = 'text') {
+        // Normalize language
+        const normalizedLang = this._normalizeLanguage(lang);
+        
+        // Check cache
+        const cacheKey = `${normalizedLang}:${code}`;
+        if (this._cache.has(cacheKey)) {
+          return this._cache.get(cacheKey);
+        }
+        
+        try {
+          const html = await codeToHtml(code, {
+            lang: normalizedLang,
+            theme: 'github-dark'
+          });
+          
+          this._cache.set(cacheKey, html);
+          
+          // Limit cache size
+          if (this._cache.size > 100) {
+            const firstKey = this._cache.keys().next().value;
+            this._cache.delete(firstKey);
+          }
+          
+          return html;
+        } catch (err) {
+          console.warn('[Shiki] Highlight error:', err);
+          return null;
+        }
+      },
+      
+      _normalizeLanguage(lang) {
+        if (!lang) return 'text';
+        const l = lang.toLowerCase();
+        
+        // Common aliases
+        const aliases = {
+          'js': 'javascript',
+          'ts': 'typescript',
+          'py': 'python',
+          'rb': 'ruby',
+          'sh': 'bash',
+          'shell': 'bash',
+          'zsh': 'bash',
+          'yml': 'yaml',
+          'md': 'markdown',
+          'plaintext': 'text',
+          'txt': 'text'
+        };
+        
+        const normalized = aliases[l] || l;
+        return this._supportedLangs.has(normalized) ? normalized : 'text';
+      },
+      
+      isSupported(lang) {
+        return this._supportedLangs.has(this._normalizeLanguage(lang));
+      }
+    };
+    
+    window.ShikiHighlighter._ready = true;
+    console.log('[Shiki] Highlighter ready');
+  </script>
+</head>
+<body>
+  <!-- Loading Overlay - SSE bağlantısı kurulana kadar gösterilir -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Bağlanıyor...</p>
+  </div>
+
+  <div id="app" style="opacity: 0; pointer-events: none;">
+    <!-- ============================================
+         Top Header Bar
+         ============================================ -->
+    <header class="app-header">
+      <div class="header-left">
+        <!-- Hamburger Menu -->
+        <button class="btn btn-icon" id="btn-menu" title="Menü">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="header-center">
+        <!-- Command Palette -->
+        <button class="command-palette-btn" id="btn-command-palette">
+          <span>Command Palette</span>
+          <kbd>Ctrl+Shift+P</kbd>
+        </button>
+      </div>
+      
+      <div class="header-right">
+        <!-- Permission Notification Banner -->
+        <div class="permission-banner-container hidden" id="permission-banner-container">
+          <!-- Permission banner rendered by permission-banner.js -->
+        </div>
+        
+        <!-- Connection Status - Ana toolbar'da gösteriliyor -->
+        
+        <!-- Settings Toggle -->
+        <button class="btn btn-icon" id="btn-toggle-right-sidebar" title="Ayarlar Paneli">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============================================
+         Instance Tabs (Multi-workspace support)
+         ============================================ -->
+    <div class="instance-tabs-container" id="instance-tabs-container">
+      <!-- Instance tabs will be rendered here by instance-tabs.js -->
+    </div>
+
+    <!-- ============================================
+         Main Layout (3 Column)
+         ============================================ -->
+    <div class="app-layout">
+      
+      <!-- ==========================================
+           Left Sidebar - Sessions
+           ========================================== -->
+      <aside class="sidebar sidebar-left" id="sidebar-left">
+        <div class="sidebar-header">
+          <h3 class="sidebar-title">SESSIONS</h3>
+          <button class="btn btn-sm btn-new-session" id="btn-new-session" title="Yeni Oturum">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Session List -->
+        <div class="session-list" id="session-list">
+          <!-- Sessions will be populated dynamically by app.js -->
+        </div>
+        
+        <!-- Sidebar Footer - Stats & Controls -->
+        <div class="sidebar-footer">
+          <!-- Token Stats -->
+          <div class="stats-section">
+            <div class="stat-row">
+              <span class="stat-label">TOKENS</span>
+              <span class="stat-value">INPUT <strong id="stat-input">0</strong></span>
+              <span class="stat-value">OUTPUT <strong id="stat-output">0</strong></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">COST</span>
+              <span class="stat-value cost">$<strong id="stat-cost">0.00</strong></span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">CONTEXT</span>
+              <span class="stat-value">USED <strong id="stat-context-used">0</strong></span>
+              <span class="stat-value">AVAIL <strong id="stat-context-avail">200K</strong></span>
+            </div>
+          </div>
+          
+          <!-- Agent Selector -->
+          <div class="selector-section">
+            <label class="selector-label">Agent: Sisyphus</label>
+            <div class="selector-shortcuts">
+              <kbd>Ctrl+Shift+A</kbd>
+              <kbd>Ctrl+Shift+M</kbd>
+            </div>
+          </div>
+          
+          <!-- Agent Selector -->
+          <div class="selector-section">
+            <button class="agent-selector" id="agent-selector" title="Agent seç">
+              <span class="agent-icon">👤</span>
+              <div class="agent-info">
+                <span class="agent-name">Agent: coder</span>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Model Selector -->
+          <div class="selector-section">
+            <button class="model-selector" id="model-selector" title="Model seç">
+              <span class="model-icon">🤖</span>
+              <div class="model-info">
+                <span class="model-name">Model: -</span>
+                <span class="model-id">-</span>
+              </div>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ==========================================
+           Main Content - Chat Area
+           ========================================== -->
+      <main class="app-main">
+        <!-- Messages Area -->
+        <div class="messages-container" id="messages-container">
+          <div class="messages-list" id="messages-list">
+            <!-- Welcome message -->
+            <div class="welcome-message" id="welcome-message">
+              <div class="welcome-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <h2>OpenCode'a Hoş Geldiniz</h2>
+              <p>Kod yazmanıza, dosyaları düzenlemenize ve terminal komutları çalıştırmanıza yardımcı olabilirim.</p>
+              <div class="quick-actions">
+                <button class="quick-action" data-prompt="Bu projede ne yapılabilir?">
+                  <span class="icon">📊</span>
+                  <span>Projeyi analiz et</span>
+                </button>
+                <button class="quick-action" data-prompt="Bu projedeki hataları bul">
+                  <span class="icon">🐛</span>
+                  <span>Hataları bul</span>
+                </button>
+                <button class="quick-action" data-prompt="README.md dosyasını oluştur">
+                  <span class="icon">📝</span>
+                  <span>README oluştur</span>
+                </button>
+              </div>
+            </div>
+            <!-- Messages will be inserted here -->
+          </div>
+        </div>
+
+        <!-- Prompt Area -->
+        <div class="prompt-container">
+          <div class="prompt-wrapper">
+            <div class="prompt-attachments" id="prompt-attachments">
+              <!-- Attachments will be shown here -->
+            </div>
+            <div class="prompt-input-wrapper">
+              <textarea 
+                id="prompt-input" 
+                class="prompt-input" 
+                placeholder="Type your message, @file, @agent, or paste images and text..."
+                rows="1"
+              ></textarea>
+              <div class="prompt-actions">
+                <button class="btn btn-icon" id="btn-attach" title="Dosya Ekle">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                </button>
+                <button class="btn btn-icon" id="btn-expand" title="Genişlet">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                  </svg>
+                </button>
+                <button class="btn btn-primary" id="btn-send" title="Gönder (Enter)">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Footer Shortcuts Bar -->
+            <div class="prompt-footer">
+              <div class="shortcut-bar">
+                <span class="shortcut"><kbd>Enter</kbd> New line</span>
+                <span class="shortcut-separator">•</span>
+                <span class="shortcut"><kbd>Ctrl+Enter</kbd> Send</span>
+                <span class="shortcut-separator">•</span>
+                <span class="shortcut"><kbd>@</kbd> Files/agents</span>
+                <span class="shortcut-separator">•</span>
+                <span class="shortcut"><kbd>↑↓</kbd> History</span>
+                <span class="shortcut-separator">•</span>
+                <span class="shortcut"><kbd>!</kbd> Shell mode</span>
+                <span class="shortcut-separator">•</span>
+                <span class="shortcut"><kbd>/</kbd> Commands</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ==========================================
+           Right Sidebar - Status Panel
+           ========================================== -->
+      <aside class="sidebar sidebar-right" id="sidebar-right">
+        <!-- Vertical Action Bar -->
+        <div class="action-bar">
+          <button class="action-btn active" id="btn-panel-status" title="Status Panel">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </button>
+          <button class="action-btn" id="btn-panel-actions" title="Hızlı İşlemler">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </button>
+          <button class="action-btn" id="btn-panel-trash" title="Çöp Kutusu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <button class="action-btn" id="btn-panel-logs" title="Server Logs">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+          
+          <div class="action-bar-spacer"></div>
+          
+          <!-- Stop/Play Controls -->
+          <button class="action-btn control-btn" id="btn-stop" title="Durdur">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+            </svg>
+          </button>
+          <button class="action-btn control-btn play" id="btn-play" title="Devam Et">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Status Panel Content -->
+        <div class="sidebar-content">
+          <div class="panel-header">
+            <h3 class="panel-title">STATUS PANEL</h3>
+            <button class="btn btn-icon btn-pin" title="Sabitle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M2 12h20"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Plan Section (syncs with Todo tool output) -->
+          <div class="panel-section collapsible" id="plan-section">
+            <div class="section-header">
+              <h4 class="section-title">PLAN</h4>
+              <span class="section-badge hidden" id="plan-count">0/0</span>
+              <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="section-content" id="plan-content">
+              <p class="placeholder-text" id="plan-placeholder">Nothing planned yet.</p>
+              <div class="plan-items hidden" id="plan-items">
+                <!-- Plan items will be populated by app.js from Todo tool output -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- Background Shells Section -->
+          <div class="panel-section collapsible">
+            <div class="section-header">
+              <h4 class="section-title">BACKGROUND SHELLS</h4>
+              <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="section-content">
+              <div class="shell-list">
+                <!-- Background shells will be populated dynamically -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- MCP Servers Section -->
+          <div class="panel-section collapsible">
+            <div class="section-header">
+              <h4 class="section-title">MCP SERVERS</h4>
+              <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="section-content">
+              <div class="server-list" id="mcp-server-list">
+                <!-- MCP servers will be populated dynamically by app.js -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- LSP Servers Section -->
+          <div class="panel-section collapsible">
+            <div class="section-header">
+              <h4 class="section-title">LSP SERVERS</h4>
+              <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="section-content">
+              <p class="placeholder-text">No LSP servers detected.</p>
+            </div>
+          </div>
+          
+          <!-- Plugins Section -->
+          <div class="panel-section collapsible">
+            <div class="section-header">
+              <h4 class="section-title">PLUGINS</h4>
+              <svg class="collapse-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="section-content">
+              <div class="plugin-list" id="plugin-list">
+                <!-- Plugins will be populated dynamically by app.js -->
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Logs Panel Content (hidden by default, shown when logs button clicked) -->
+        <div class="sidebar-content logs-panel hidden" id="logs-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">SERVER LOGS</h3>
+            <button class="btn btn-icon" id="btn-logs-close" title="Kapat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="logs-container" id="logs-container">
+            <!-- LogsView will render here -->
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============================================
+         Modals
+         ============================================ -->
+    
+    <!-- Permission Modal -->
+    <div class="modal-overlay hidden" id="permission-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>İzin Gerekiyor</h3>
+        </div>
+        <div class="modal-body" id="permission-body">
+          <!-- Permission details will be inserted here -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-deny">Reddet</button>
+          <button class="btn btn-primary" id="btn-approve">Onayla</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Question Modal -->
+    <div class="modal-overlay hidden" id="question-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Soru</h3>
+        </div>
+        <div class="modal-body" id="question-body">
+          <!-- Question details will be inserted here -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" id="btn-answer">Cevapla</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Disconnected Modal -->
+    <div class="disconnected-modal" id="disconnected-modal">
+      <div class="disconnected-modal-content">
+        <div class="disconnected-modal-icon">🔌</div>
+        <div class="disconnected-modal-title">Bağlantı Kesildi</div>
+        <div class="disconnected-modal-message">
+          Sunucu ile bağlantı koptu. Yeniden bağlanmak ister misiniz?
+        </div>
+        <div class="disconnected-modal-actions">
+          <button class="disconnected-modal-btn secondary" id="btn-dismiss-disconnect">Kapat</button>
+          <button class="disconnected-modal-btn primary" id="btn-reconnect">Yeniden Bağlan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Palette Modal -->
+    <div class="modal-overlay hidden" id="command-palette-modal">
+      <div class="command-palette">
+        <div class="palette-header">
+          <input type="text" class="palette-input" placeholder="Type a command..." autofocus>
+        </div>
+        <div class="palette-results">
+          <!-- Command results will be inserted here -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- Session Rename Modal -->
+    <div class="modal-overlay hidden" id="session-rename-modal">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Oturumu Yeniden Adlandır</h3>
+          <button class="modal-close" id="rename-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-input" id="session-rename-input" placeholder="Yeni oturum adı...">
+          <input type="hidden" id="session-rename-id">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-rename-cancel">İptal</button>
+          <button class="btn btn-primary" id="btn-rename-confirm">Kaydet</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Session Delete Confirm Modal -->
+    <div class="modal-overlay hidden" id="session-delete-modal">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <h3>Oturumu Sil</h3>
+          <button class="modal-close" id="delete-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-text">Bu oturumu silmek istediğinizden emin misiniz?</p>
+          <p class="session-name-preview" id="delete-session-name"></p>
+          <input type="hidden" id="session-delete-id">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-delete-cancel">İptal</button>
+          <button class="btn btn-danger" id="btn-delete-confirm">Sil</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Background Shell Output Modal -->
+    <div class="modal-overlay hidden" id="shell-output-modal">
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h3>Shell Çıktısı</h3>
+          <button class="modal-close" id="shell-modal-close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <pre class="shell-output-content" id="shell-output-content"></pre>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-shell-close">Kapat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOMPurify for XSS Sanitization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <!-- Scripts - Single entry point for Vite compatibility -->
+  <script type="module" src="js/index.js"></script>
+</body>
+</html>
