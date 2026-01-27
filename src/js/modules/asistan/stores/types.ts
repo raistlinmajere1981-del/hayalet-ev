@@ -275,5 +275,5 @@
  */
 
 // Version marker (no export - loaded as script)
-// eslint-disable-next-line no-unused-vars
+ 
 const TYPES_VERSION = '1.2.0';

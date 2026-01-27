@@ -464,7 +464,7 @@ const MessageStore = {
     if (!message) return;
 
     // Find existing text part or create new
-    let textPartId = message.partIds.find((id: string) => message.parts[id]?.type === 'text');
+    const textPartId = message.partIds.find((id: string) => message.parts[id]?.type === 'text');
     
     if (textPartId && append) {
       const existing = message.parts[textPartId];

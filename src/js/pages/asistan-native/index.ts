@@ -1,48 +1,24 @@
 /**
  * OpenCode UI - Entry Point
  * 
- * Tüm modülleri sırasıyla yükler ve global scope'a ekler.
- * Vite dev mode için gerekli.
+ * Tüm bileşenleri import edip global scope'a kaydet.
+ * Vite compatibility için tek entry point.
  */
 
-// Config
-import './config.js';
-
-// Stores
-import './stores/types.js';
-import './stores/normalizers.js';
-import './stores/instance-store.js';
-import './stores/message-store.js';
-import './stores/session-store.js';
-import './stores/attachment-store.js';
-import './stores/store-bridge.js';
-import './stores/index.js';
-
-// Core modules
-import './sse-client.js';
-import './api-client.js';
-import './agent-model-selector.js';
-
-// UI modules
-import './message-renderer.js';
-import './prompt-handler.js';
-import './directory-browser.js';
-
-// Tool renderers
-import './tool-renderers/index.js';
-import './tool-renderer.js';
-import './tool-renderers/read-renderer.js';
-import './tool-renderers/write-renderer.js';
-import './tool-renderers/bash-renderer.js';
-
-// Modals
-import './permission-modal.js';
-import './question-modal.js';
-
-// Instance management
-import './instance-tabs.js';
-
-// Main app (must be last)
+// Import all components (yeni path'ler)
+import '../../modules/asistan/providers/opencode-native/config.js';
+import '../../modules/asistan/providers/opencode-native/api-client.js';
+import '../../modules/asistan/providers/opencode-native/sse-client.js';
+import '../../modules/asistan/stores/index.js';
+import '../../modules/asistan/ui/agent-model-selector.js';
+import '../../modules/asistan/ui/directory-browser.js';
+import '../../modules/asistan/ui/instance-tabs.js';
+import '../../modules/asistan/ui/permission-modal.js';
+import '../../modules/asistan/ui/question-modal.js';
+import '../../modules/asistan/ui/message-renderer.js';
+import '../../modules/asistan/ui/tool-renderer.js';
+import '../../modules/asistan/ui/prompt-handler.js';
 import './app.js';
 
-console.log('[OpenCode] All modules loaded via index.js');
+// Components are now available in global scope via window object
+console.log('[OpenCode] All components loaded');
