@@ -62,6 +62,14 @@ import {
   FILESYSTEM_TOOL_DEFINITIONS,
 } from "./tools/filesystem-tools.js";
 import {
+  startChunkedSession,
+  writeChunk,
+  finalizeChunked,
+  getSessionStatus,
+  cancelSession,
+  SAFE_CHUNK_TOOL_DEFINITIONS,
+} from "./tools/safe-chunk-tools.js";
+import {
   analyzeProject,
   bootstrapContext,
   generateDiagram,
@@ -337,7 +345,7 @@ const TOOL_DEFINITIONS = [
 ];
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS, ...PROVIDER_TOOL_DEFINITIONS, ...webToolDefinitions, ...WORKFLOW_TOOL_DEFINITIONS, ...GIT_TOOL_DEFINITIONS, ...CONTEXT_TOOL_DEFINITIONS] };
+  return { tools: [...TOOL_DEFINITIONS, ...FILESYSTEM_TOOL_DEFINITIONS, ...SAFE_CHUNK_TOOL_DEFINITIONS, ...DEV_TOOL_DEFINITIONS, ...PROVIDER_TOOL_DEFINITIONS, ...webToolDefinitions, ...WORKFLOW_TOOL_DEFINITIONS, ...GIT_TOOL_DEFINITIONS, ...CONTEXT_TOOL_DEFINITIONS] };
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -590,6 +598,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<any> =>
           (args as { file_path: string }).file_path,
           (args as { content: string }).content,
           (args as { create_if_missing?: boolean }).create_if_missing
+        );
+        return { content: [{ type: "text", text: result.message }] };
+      }
+
+      // === Safe Chunk Tools ===
+      case "hev_fs_start_chunked_session": {
+        const result = startChunkedSession(
+          (args as { file_path: string }).file_path,
+          (args as { total_chunks: number }).total_chunks,
+          PROJECT_ROOT
+        );
+        return { content: [{ type: "text", text: result.message }] };
+      }
+
+      case "hev_fs_write_chunk": {
+        const result = await writeChunk(
+          (args as { session_id: string }).session_id,
+          (args as { chunk_index: number }).chunk_index,
+          (args as { content: string }).content,
+          PROJECT_ROOT
+        );
+        let msg = result.message;
+        if (result.warnings && result.warnings.length > 0) {
+          msg += "\n\n⚠️ Uyarılar:\n" + result.warnings.join("\n");
+        }
+        return { content: [{ type: "text", text: msg }] };
+      }
+
+      case "hev_fs_finalize_chunked": {
+        const result = await finalizeChunked(
+          (args as { session_id: string }).session_id,
+          PROJECT_ROOT,
+          (args as { verify_checksum?: string }).verify_checksum
+        );
+        return { content: [{ type: "text", text: result.message }] };
+      }
+
+      case "hev_fs_chunk_session_status": {
+        const result = getSessionStatus(
+          (args as { session_id: string }).session_id
+        );
+        return { content: [{ type: "text", text: result.message }] };
+      }
+
+      case "hev_fs_cancel_chunk_session": {
+        const result = await cancelSession(
+          (args as { session_id: string }).session_id,
+          PROJECT_ROOT
         );
         return { content: [{ type: "text", text: result.message }] };
       }
