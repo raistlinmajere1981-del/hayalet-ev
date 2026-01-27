@@ -32,3 +32,9 @@
 @import './components/splash.css';
 @import './components/accordion.css';
 @import './components/navigation.css';
+
+/* === ASISTAN NATIVE COMPONENTS === */
+@import './components/messages.css';
+@import './components/tools.css';
+@import './components/prompt.css';
+@import './components/sidebar.css';
