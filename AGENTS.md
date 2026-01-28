@@ -2,7 +2,7 @@
 
 ## ⚠️ ZORUNLU: Mode Status Bar (Her Cevabın Başında)
 
-**Her cevabın başında aktif modu gösteren status bar KULLANILMALIDIR:**
+**Her cevabın başında aktif modu gösteren status bar kullanılmalıdır:**
 
 | Mod | Status Bar | Ne Zaman |
 |-----|------------|----------|
@@ -17,65 +17,47 @@
 
 ---
 
+## 🗣️ Dil Politikası (ZORUNLU)
+
+- **Asistan ↔ Kullanıcı iletişimi:** Tamamen Türkçe.
+- **Hayalet-ev UI metinleri:** Tamamen Türkçe.
+- **Kod tarafı:** Değişken/fonksiyon/class adları ve yorumlar **tamamen İngilizce** olmalı.
+
+---
+
 ## 📋 Project Overview
 
-**Hayalet-ev** (Ghost House) is an Electron-based multi-AI chat interface platform that enables:
-- **Multi-AI Integration:** ChatGPT, Gemini, Grok, and extensible for other providers
-- **AI-to-AI Communication:** Protocol-based AI conversation system
-- **Conversation Archiving:** Automatic conversation storage with Google Drive sync
-- **Voice & Screenshots:** Whisper integration for voice input, screenshot capture
-- **MCP Server:** 87 tool ile AI asistan entegrasyonu (context, workflow, git, web search)
+**Hayalet-ev** (Ghost House) Electron tabanlı multi-AI chat platformudur.
 
-### Tech Stack
-- **Runtime:** Electron 39+ with Node.js (ESM modules)
-- **Language:** TypeScript (strict mode)
-- **Build Tool:** Vite 7.3
-- **Architecture:** Multi-process (Main + Renderer + Webviews)
-- **Storage:** SQLite + Google Drive API
-
-### Version
-Current: `5.5.0`
+- **Yetenekler:** Multi-AI, AI↔AI protokolü, Google Drive arşiv, Whisper, MCP entegrasyonu
+- **Tech Stack:** Electron 39+ (Node.js ESM), TypeScript (strict), Vite 7.3, SQLite
+- **Mimari:** Main + Renderer + Webviews
+- **Sürüm:** `5.5.0`
 
 ---
 
 ## 🚨 MCP Tool Kullanım Direktifi (KRİTİK)
 
-**Bu projede dosya ve geliştirme işlemleri için SADECE `hayalet-ev` MCP server kullanılmalıdır.**
+**Dosya ve geliştirme işlemleri için SADECE `hayalet-ev` MCP server kullanılmalıdır.**
 
-### Neden?
-- `hayalet-ev` MCP server proje için özelleştirilmiş **87 tool** içerir
-- Collapsed view, code parsing, proje analizi gibi özel özellikler sunar
-- Default MCP'ler (filesystem-tools vb.) bu projede verimsiz çalışır
+- Tüm tool listesi: `hev_list_tools`
+- Çalıştırma formatı: `mcp__hayalet_ev__invoke_tool` ile `hev_*` tool’ları
+- **❌ Hayalet-ev Mcp Sunucusu Aktif Olduğu Sürece Kullanma:** `open_files`, `grep`, `bash`, `expand_folder`, `create_file`
 
-### Tool Listesi
-Tüm tool'ları görmek için: **`hev_list_tools`** 
-
-### Tool Prefix'leri (Tümü `hev_` ile başlar)
-| Prefix | Açıklama | Örnek |
-|--------|----------|-------|
-| `hev_fs_*` | Dosya işlemleri | `hev_fs_open_files`, `hev_fs_grep`, `hev_fs_bash` |
-| `hev_dev_*` | Geliştirme araçları | `hev_dev_analyze_project` |
-| `hev_context_*` | Proje context'i | `hev_context_generate`, `hev_context_status` |
-| `hev_git_*` | Git/PR işlemleri | `hev_git_fork_setup`, `hev_git_create_pr` |
-| `hev_web_*` | Web araştırma | `hev_web_search`, `hev_web_fetch` |
-| `hev_run_*` | Test workflow | `hev_run_workflow`, `hev_run_steps` |
-| `hev_*` | Electron/CDP | `hev_check_electron_connection`, `hev_take_cdp_screenshot` |
-
-### ❌ KULLANMA (Default tool'lar)
-```
-open_files, grep, bash, expand_folder, create_file
-```
-
-### ✅ KULLAN (hev_* tool'ları)
-```
-mcp__hayalet_ev__invoke_tool ile tüm hev_* tool'ları kullan
-```
+### Sık Kullanılan Prefix’ler
+- `hev_fs_*` (dosya)
+- `hev_dev_*` (dev araçları)
+- `hev_context_*` (context)
+- `hev_git_*` (git/PR)
+- `hev_web_*` (web search)
+- `hev_run_*` (workflow)
+- `hev_*` (Electron/CDP)
 
 ---
 
 ## 🏗️ Architecture Overview
 
-> **Detaylı rehber:** `.rovodev/architecture.md`
+> Detaylı rehber: `.rovodev/architecture.md`
 
 ```
 Main Process (electron/main.ts)
@@ -90,7 +72,7 @@ Main Process (electron/main.ts)
 | CoreEngine | `src/js/modules/core-engine.ts` | Ana koordinatör |
 | SlotController | `src/js/modules/slot-controller.ts` | Slot lifecycle + State machine |
 | WebviewManager | `src/js/modules/webview-manager.ts` | Webview lifecycle |
-| TrafficManager | `src/js/modules/traffic-manager.ts` | State tracking (race-condition korumalı) |
+| TrafficManager | `src/js/modules/traffic-manager.ts` | State tracking |
 | DatabaseManager | `electron/database/index.ts` | SQLite yönetimi |
 | SettingsManager | `electron/settings-manager.ts` | JSON config |
 | ErrorBoundary | `src/js/modules/error-boundary.ts` | Global hata yakalama |
@@ -101,8 +83,6 @@ Main Process (electron/main.ts)
 ## ⚠️ Dikkat Edilmesi Gerekenler
 
 ### Silinmemesi Gereken Modüller
-Bu modüller "kullanılmıyor" gibi görünebilir ama kritik bağımlılıkları var:
-
 | Modül | Not |
 |-------|-----|
 | `file-utils.ts` | Tüm file upload metodları için kritik - **SİLME!** |
@@ -110,551 +90,162 @@ Bu modüller "kullanılmıyor" gibi görünebilir ama kritik bağımlılıkları
 | `provider-registry.ts` | 10+ dosya tarafından kullanılıyor |
 
 ### IPC Üzerinden Çağrılan Modüller
-Bu modüller doğrudan import edilmez, `electron/main.ts`'de IPC handler'ları üzerinden çağrılır:
+Doğrudan import edilmez, `electron/main.ts` IPC handler’ları üzerinden çağrılır:
 - `device-manager.ts`, `screenshot-manager.ts`, `whisper-manager.ts`
 - `googledrive-manager.ts`, `server-commands.ts`
 
-### Provider Config'leri
-AI siteleri DOM yapılarını sık değiştiriyor. Selector değişikliği yapmadan önce ilgili AI sitesinde manuel test yap:
+### Provider Config’leri
+AI siteleri DOM yapılarını sık değiştirir. Selector değişikliğinde manuel test yap:
 - `providers/chatgpt/config.ts`
 - `providers/gemini/config.ts`
 - `providers/grok/config.ts`
 
 ---
 
-## 🔑 Key Concepts
+## 🔑 Key Concepts (Özet)
 
-> **Detaylı rehber:** `.rovodev/concepts.md`
+> Detaylı rehber: `.rovodev/concepts.md`
 
 | Kavram | Dosya | Açıklama |
 |--------|-------|----------|
 | Settings | `electron/settings-manager.ts` | `./config/settings.json` yönetimi |
 | IPC | `electron/preload.cjs` | `window.electronAPI.*` metodları |
-| Typed IPC | `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper (`IPC.invoke()`) |
-| IPC Types | `src/js/types/ipc-channels.ts` | IPC channel tip tanımları |
+| Typed IPC | `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper |
 | Providers | `src/js/modules/webview/providers/` | ChatGPT, Grok, Gemini, OpenCode |
 | Database | `electron/database/` | SQLite, accountId bazlı |
 | Traffic | `src/js/modules/traffic/` | Loading, thinking, send tracking |
-| Relay | `src/js/modules/relay/` | AI↔AI, AI↔Asistan |
-| SlotState | `src/js/modules/slot/state-machine.ts` | Robust state machine (EMPTY→CONNECTED) |
-| ErrorBoundary | `src/js/modules/error-boundary.ts` | Global hata yakalama |
-| URL Utils | `src/js/modules/webview/methods/shared/url-utils.ts` | Merkezi URL validation (`isSlotUrlExcluded`) |
+| SlotState | `src/js/modules/slot/state-machine.ts` | Robust state machine |
+| URL Utils | `src/js/modules/webview/methods/shared/url-utils.ts` | URL validation (`isSlotUrlExcluded`) |
 
-### IPC API Quick Reference (ÖNEMLİ!)
+**IPC Quick Reference:** `src/js/global.d.ts`
+- Settings: `loadSettings()`, `saveSettings()`, `createAccount()`, `assignAccountToSlot()`
+- Database: `dbGetConversations()`, `dbGetMessages()`, `dbSyncMessages()`, `dbSaveConversation()`
+- Window: `windowMinimize()`, `windowMaximize()`, `windowClose()`
 
-> **Tam tanımlar:** `src/js/global.d.ts`
+**Not:** `window.electronAPI?.getSettings()` yoktur → **`loadSettings()`** kullan.
 
-Renderer'da `window.electronAPI.*` metodları kullanılır. **Dikkat:** Metod isimlerini doğru kullan!
+---
 
-| Kategori | Metod | Açıklama |
-|----------|-------|----------|
-| **Settings** | `loadSettings()` | Ayarları yükle (❌ `getSettings` değil!) |
-| | `saveSettings(settings)` | Ayarları kaydet |
-| | `createAccount(data)` | Yeni hesap oluştur |
-| | `assignAccountToSlot(slot, accountId)` | Hesabı slota ata |
-| **Database** | `dbGetConversations({ accountId })` | Konuşmaları getir → `{ success, data: [...] }` |
-| | `dbGetMessages({ accountId, conversationId })` | Mesajları getir → `{ success, data: [...] }` |
-| | `dbSyncMessages({ ... })` | Mesajları senkronize et |
-| | `dbSaveConversation(conv)` | Konuşma kaydet |
-| **Window** | `windowMinimize()` | Pencereyi küçült |
-| | `windowMaximize()` | Pencereyi büyüt |
-| | `windowClose()` | Pencereyi kapat |
+## 🧾 Log Sistemi (Özet)
 
-```typescript
-// ❌ YANLIŞ - metod yok!
-const settings = await window.electronAPI?.getSettings?.();
+> Detaylı rehber: `.rovodev/logging.md`
 
-// ✅ DOĞRU
-const settings = await window.electronAPI?.loadSettings?.();
-const accounts = settings?.accounts || [];
-
-// Database sonuçları { success, data } formatında döner
-const result = await window.electronAPI?.dbGetConversations?.({ accountId });
-const conversations = result?.data || [];  // ❌ result direkt array değil!
-```
-
-### Log Sistemi (ZORUNLU)
-
-> **Detaylı rehber:** `.rovodev/logging.md`
-
-```typescript
-// ❌ YANLIŞ
-console.log("mesaj");
-
-// ✅ DOĞRU  
-import { LogManager } from "./modules/log-manager.ts";
-LogManager.addEvent("source", "info", "mesaj");
-
-// ✅ DAHA İYİ - Visibility ile
-LogManager.toast("entrance", "success", "Bağlandı");     // Seviye 1 - Toast
-LogManager.panel("system", "info", "Init tamamlandı");  // Seviye 2 - Panel
-LogManager.verbose("traffic", "debug", "State change"); // Seviye 3 - Debug
-```
-
-### Log Analizi (ÖNEMLİ!)
-
-**`console-001.log` artık birleşik log dosyasıdır (Main + Renderer)!**
-
-```bash
-# ✅ DOĞRU - Birleşik loglar (main + renderer)
-cat logs/SESSION_ID/console-001.log | tail -50
-
-# MCP tool ile (default: console)
-read_electron_logs --tail 100
-
-# JSON analizi için structured log
-read_electron_logs --type structured --tail 100
-```
-
-| Dosya | İçerik | Kullanım |
-|-------|--------|----------|
-| `console-001.log` | Birleşik loglar (Main + Renderer) | ✅ Ana analiz |
-| `structured.jsonl` | JSON format (detaylı analiz) | Programatik analiz |
-| `error.log` | Sadece hatalar | Hızlı kontrol |
-
-### 3 Seviyeli Visibility
-
-| Seviye | Ad | Görünüm | Kullanım |
-|--------|-----|---------|----------|
-| 1 | Toast | Toast+Panel+Modal | Bağlantı, hata, başarı |
-| 2 | Panel | Panel+Modal | Init, db, sync |
-| 3 | Verbose | Sadece Modal | Debug, state, traffic |
+- **Console yerine:** `LogManager.addEvent()` kullan.
+- **Birleşik log:** `console-001.log` (Main + Renderer).
+- **Visibility seviyeleri:** Toast / Panel / Verbose.
 
 ---
 
 ## 🎯 Development Guidelines
 
-> **Detaylı rehber:** `.rovodev/concepts.md`
-
-### Code Style
-- **Language:** TypeScript (ES2022+, ESM modules, strict mode)
-- **Async:** Always use `async/await`, never callbacks
-- **Error Handling:** Always wrap async operations in try-catch
-- **Naming:** camelCase for functions, PascalCase for classes
-- **Documentation:** All Markdown files in Turkish
-
-### File Naming
-- `*-manager.ts` → Singleton services
-- `*-handler.ts` → Event processors
-- `*-utils.ts` → Helper functions
-- `index.ts` → Barrel exports
-
-### IPC Safety
-- **Never** use `remote` module
-- **Always** use `ipcRenderer.invoke()` for async operations
-- **Always** validate input in main process handlers
+- **Async:** `async/await` kullan, callback yok
+- **Error Handling:** tüm async işlemler `try/catch`
+- **Naming:** camelCase / PascalCase
+- **Documentation:** Markdown dosyaları Türkçe
+- **IPC Safety:** `ipcRenderer.invoke()` + input validate
 
 ---
 
-## 🔷 TypeScript
-
-Proje **%100 TypeScript** ve **strict mode** ile çalışıyor.
-
-| Bileşen | Strict Mode |
-|---------|-------------|
-| Renderer (src/js) | ✅ `strict: true` |
-| Electron (electron/) | ✅ `strict: true` |
-| MCP Server (mcp-server/) | ✅ `strict: true` |
-| Preload (.cjs) | CommonJS (zorunlu) |
-
-### Kontrol Komutları
-```bash
-npm run lint          # ESLint + TypeScript
-npm run check-types   # tsc --noEmit
-npm run check         # lint + check-types
-```
-
-### Yeni IPC Metodu Ekleme
-`src/js/global.d.ts`'i güncelle:
-```typescript
-interface Window {
-  electronAPI?: {
-    myNewMethod: (param: string) => Promise<{ success: boolean }>;
-  };
-}
-```
-
----
-
-## 🚀 Common Tasks
-
-> **Detaylı rehber:** `.rovodev/testing.md`
-
-### Temel Komutlar
-```bash
-npm start              # Uygulamayı başlat
-npm run lint           # Kod kontrolü
-npm run pre-commit     # Commit öncesi kontrol
-```
-
-### Unused Kontrolleri (Knip)
-```bash
-npm run knip           # Temel analiz
-npm run knip:strict    # Derin analiz (tüm kategoriler)
-npm run knip:fix       # Otomatik düzeltme
-npm run knip:watch     # İzleme modu
-```
-
-**Knip** kullanılmayan dosyalar, export'lar, bağımlılıklar ve type'ları tespit eder.
-
-### Test Timeout Süreleri
-| Komut | Timeout | Açıklama |
-|-------|---------|----------|
-| `npm start` | 40 sn | Electron + Vite başlatma |
-| `npm run lint` | 80 sn | ESLint tüm proje |
-| `npm run check-types` | 80 sn | TypeScript type-check |
-| `npm run check` | 120 sn | lint + check-types |
-
-**Not:** Bu süreler AI asistan testleri için önerilen minimum bekleme süreleridir.
-
-### Yeni Session Başlangıcı
-```bash
-cat .rovodev/context.md   # Context dosyasını oku
-# veya MCP tool kullan:
-dev_bootstrap_context     # Session context oluştur
-```
-
----
-
-## 🛠️ Tool Kullanım Best Practices
-
-> **KRİTİK:** Multi-line kod değişiklikleri için doğru tool seçimi hata oranını %80 azaltır!
-
-### 3-Tier Strateji (ZORUNLU)
-
-| Tier | Tool | Ne Zaman Kullan | Örnek |
-|------|------|----------------|--------|
-| **1️⃣ Basit** | `hev_fs_find_and_replace` | Tek satır, basit string | Değişken ismi, import |
-| **2️⃣ Multi-line** | `hev_dev_edit_lines` | Switch-case, blok düzenleme | Case'lere `{}` ekle |
-| **3️⃣ Batch** | `hev_fs_bash + sed` | Birden fazla benzer değişiklik | Regex patterns |
-
-### Tier 1: `hev_fs_find_and_replace`
-
-**✅ Kullan:**
-```typescript
-// Tek satır değişiklikler
-find: "const TYPES_VERSION = '1.2.0';"
-replace: "const _TYPES_VERSION = '1.2.0';"
-```
-
-**❌ Kullanma:**
-```typescript
-// 40 satırlık switch-case blok
-find: "case 'confirm':\n  { ... 40 satır ... }"
-// → Pattern matching başarısız! (whitespace farkları)
-```
-
-**Yeni Özellikler:**
-```typescript
-// Whitespace tolerance
-hev_fs_find_and_replace({
-  file_path: "file.ts",
-  find: "case  'select':",  // Extra space
-  replace: "case 'select': {",
-  ignore_whitespace: true  // ✅ Whitespace farkı ignore edilir
-})
-
-// Preview mode
-hev_fs_find_and_replace({
-  find: "...",
-  replace: "...",
-  dry_run: true  // ✅ Sadece göster, değiştirme
-})
-```
-
----
-
-### Tier 2: `hev_dev_edit_lines` (🎯 Önerilen)
-
-**Ne Zaman:**
-- Multi-line kod blokları
-- Switch-case düzenleme
-- Fonksiyon gövdesi değişikliği
-
-**Nasıl:**
-```typescript
-// 1. Satır numaralarını bul
-hev_fs_show({ file_path: "...", start_line: 230, end_line: 275 })
-
-// 2. Line-based edit
-hev_dev_edit_lines({
-  file_path: "question-modal.ts",
-  operation: "replace",
-  start_line: 231,
-  end_line: 243,
-  content: "      case 'confirm': {\n        ...\n      }",
-  validate_syntax: true  // ✅ Otomatik syntax check
-})
-```
-
-**Avantajlar:**
-- ✅ Line number based (kesin)
-- ✅ Dry run mode
-- ✅ Syntax validation (TypeScript/JavaScript)
-- ✅ Preview gösterir
-
-**Yeni Özellikler:**
-```typescript
-// Syntax validation
-hev_dev_edit_lines({
-  operation: "replace",
-  start_line: 100,
-  end_line: 150,
-  content: "new code",
-  validate_syntax: true  // ✅ Syntax hatası varsa rollback
-})
-```
-
----
-
-### Tier 3: Bash + Sed (Batch Operations)
-
-**Ne Zaman:**
-- Birden fazla benzer değişiklik
-- Regex patterns
-- Conditional replacements
+## ⚙️ Günlük Komutlar (Özet)
 
 ```bash
-# Tüm case'lere { ekle
-hev_fs_bash({
-  command: "sed -i 's/^\\s*case \\(.*\\):$/      case \\1: {/' file.ts"
-})
+npm start
+npm run lint
+npm run check-types
+npm run check
+```
 
-# Test et
-hev_fs_bash({ command: "node -c file.ts" })  # Syntax check
+Test timeout detayları: `.rovodev/testing.md`
+
+---
+
+## 🛠️ Tool Kullanım Best Practices (Özet)
+
+> Detaylı rehber: `.rovodev/auto-triggers.md`
+
+| Tier | Tool | Ne Zaman |
+|------|------|---------|
+| 1 | `hev_fs_find_and_replace` | Tek satır, basit string |
+| 2 | `hev_dev_edit_lines` | Multi-line blok |
+| 3 | `hev_fs_bash` | Batch değişiklik |
+
+**Kural:** Önce dry-run + preview + syntax validation.
+
+---
+
+## 🔍 Syntax Checker (YENİ - v1.9.0)
+
+Edit işlemlerinden sonra dosyalarda syntax hatası kontrolü:
+
+### `hev_dev_check_syntax`
+
+**Ne Zaman Kullan:**
+- Multi-line edit sonrası
+- Refactoring sonrası
+- Parantez/bracket dengesi şüphesi
+- JSON dosyası validation
+
+**Yetenekler:**
+- ✅ Parantez dengesi: `()`, `{}`, `[]`
+- ✅ ESLint syntax check (JS/TS)
+- ✅ TypeScript type check
+- ✅ JSON validation
+
+**Örnek Kullanım:**
+```javascript
+// Edit yaptıktan sonra:
+await hev_dev_edit_lines('file.js', { operation: 'replace', ... });
+
+// Hemen kontrol et:
+await hev_dev_check_syntax('file.js', { 
+  check_brackets: true,
+  check_eslint: true 
+});
+```
+
+**Çıktı:**
+```
+🔍 Syntax Kontrolü: file.js
+──────────────────────────────────────────────────
+❌ Parantez Dengesi: BOZUK
+   Süslü Parantez: 4 açık / 5 kapalı
+──────────────────────────────────────────────────
+❌ 1 hata bulundu
 ```
 
 ---
 
-### ⚠️ Yapılmayanlar (Anti-patterns)
+## 🛠️ Troubleshooting (Özet)
 
-```typescript
-// ❌ YANLIŞ: Büyük blok find_and_replace ile
-hev_fs_find_and_replace({
-  find: "40 satırlık switch-case",
-  replace: "modified 40 satır"
-})
-// Sonuç: 15 iteration, 4 git reset 🔥
+- Electron başlamıyor → `rm -rf node_modules && npm install`
+- CDP bağlantı yok → `npm start` ile app açık mı kontrol et
+- IPC çalışmıyor → preload.cjs ve main.ts channel isimleri
 
-// ✅ DOĞRU: edit_lines kullan
-hev_dev_edit_lines({ start_line: 231, end_line: 270, ... })
-// Sonuç: 3 iteration, 0 git reset ✅
-```
-
----
-
-### 🛡️ Safety Checklist
-
-**Her değişiklik öncesi:**
-1. ✅ Dry run mode kullan
-2. ✅ Preview kontrol et
-3. ✅ Syntax validation aç
-4. ✅ Git diff kontrol et
-
-**Her değişiklik sonrası:**
-```bash
-npm run lint -- file.ts  # Syntax + lint check
-git diff file.ts          # Değişiklikleri gör
-```
-
----
-
-### 📊 Tool Seçim Decision Tree
-
-```
-Değişiklik tipi?
-├── Tek satır?
-│   └── ✅ hev_fs_find_and_replace
-├── Multi-line blok?
-│   └── ✅ hev_dev_edit_lines
-└── Birden fazla benzer?
-    └── ✅ hev_fs_bash + sed
-```
-
----
-
-## 🎯 CDP & MCP Tools
-
-> **Detaylı rehber:** `.rovodev/cdp.md`
-
-### Tool Listesi (87 tool)
-
-Tüm tool'ları kategorize görmek için: **`hev_list_tools`**
-
-| Kategori | Sayı | Açıklama |
-|----------|------|----------|
-| ⚡ Electron & CDP | 14 | Electron kontrolü, screenshot, DOM |
-| 📁 Filesystem | 13 | Dosya CRUD, grep, bash |
-| ♻️ Recycle & Backup | 8 | Çöp kutusu, geri alma, diff |
-| 🔧 Development | 9 | Analiz, lint, test, sembol arama |
-| 📊 Context | 4 | Proje context üretimi (Repomix) |
-| 🔀 Git & PR | 4 | Fork, PR, guidelines |
-| 🌐 Web Search | 3 | SearXNG araması |
-| 🔄 Workflow | 3 | Test workflow otomasyonu |
-| 🔍 Provider & Debug | 8 | Selector validation, logs |
-
-### Sık Kullanılanlar
-
-```bash
-# Proje context'i oluştur (session başlangıcı)
-hev_context_generate level="L2"
-
-# Tool listesi
-hev_list_tools
-
-# Web araştırma
-hev_web_search query="..." categories="it"
-
-# Test workflow
-hev_run_workflow workflow="setup_asistan"
-```
-
-### MCP Server Logging
-```bash
-cat mcp-server/logs/mcp-server.log | tail -20
-```
-
-### Web Tools
-
-**SearXNG Kurulum:** `sudo docker compose -f docker-compose.searxng.yml up -d`
-
-**Ne zaman kullan:**
-- Hata mesajları, güncel bilgi, versiyon soruları, bilinmeyen teknolojiler
-
-**Ne zaman kullanma:**
-- Temel syntax, proje-spesifik analiz → `hev_fs_grep` kullan
-
-```bash
-# Hızlı arama
-hev_web_search query="React 19 features" categories="it"
-
-# Detaylı araştırma
-hev_web_search_and_fetch query="..." fetch_count=3
-```
-
-### Timeout & Progress
-
-Timeout config: `mcp-server/utils/timeouts.ts`
-
-Progress destekleyen tool'lar: `hev_dev_analyze_project`, `hev_dev_lint_file`, `hev_dev_test_run`
-
----
-
-## 📁 Important Files
-
-| Dosya | Açıklama |
-|-------|----------|
-| `electron/main.ts` | Ana process, IPC handlers |
-| `electron/preload.cjs` | contextBridge API |
-| `src/js/modules/core-engine.ts` | Renderer koordinatör |
-| `src/js/modules/slot-controller.ts` | Slot lifecycle + state machine |
-| `src/js/modules/error-boundary.ts` | Global hata yakalama |
-| `src/js/modules/ipc-client.ts` | Type-safe IPC wrapper |
-| `src/js/types/ipc-channels.ts` | IPC channel tip tanımları |
-| `src/js/modules/slot/state-machine.ts` | Robust state machine |
-| `electron/handlers/ipc-database.ts` | Modüler database IPC handlers |
-| `mcp-server/index.ts` | MCP protocol server |
-
----
-
-## 🔒 Security
-
-- ✅ `contextIsolation: true`
-- ✅ `nodeIntegration: false`
-- ✅ `sandbox: true`
-- IPC kanalları main process'te validate edilir
-
----
-
-## 🛠️ Troubleshooting
-
-| Sorun | Çözüm |
-|-------|-------|
-| Electron başlamıyor | `rm -rf node_modules && npm install` |
-| CDP bağlantı yok | `npm start` ile uygulama çalışıyor mu? |
-| IPC çalışmıyor | preload.cjs ve main.ts channel isimlerini kontrol et |
-
-> Detaylı troubleshooting: `.rovodev/testing.md`
+Detaylar: `.rovodev/testing.md`
 
 ---
 
 ## 🧙 ROVO - AI Asistan Protokolleri
 
-> **ROVO** (Research-Oriented Virtual Operator) - Araştırma-öncelikli, 15+ yıllık deneyimli yazılım asistanı
-
-### Karakter Profili
-
-ROVO **asla belirsizlikle hareket etmez**:
-- Emin olmadığı konuda **önce araştırır** (web search)
-- Kritik kararlarda **derin analiz** yapar (ULTRATHINK)
-- Sorunları ve fikirleri **not eder** (notebook)
-
-> Detaylı profil: `.rovodev/persona.md`
-
-### Çalışma Modları
-
-| Mod | Tetikleyici | Davranış |
-|-----|-------------|----------|
-| **QUICK** | Basit syntax, trivial işler | Direkt, kısa cevap |
-| **STANDARD** | Normal geliştirme | Dengeli analiz + uygulama |
-| **RESEARCH** | Belirsizlik, güncel bilgi gereksinimi | **Otomatik web araştırma** → uygulama |
-| **ULTRATHINK** | Kritik kararlar, mimari değişiklikler | Derin, çok boyutlu analiz |
-
-> Tetikleyici kurallar: `.rovodev/auto-triggers.md`
-
-### Özel Komutlar
-
-| Komut | Açıklama |
-|-------|----------|
-| `ULTRATHINK:` | Derin analiz modunu aktive et |
-| `Notlarını kontrol edelim` | ROVO'nun not defterini aç, birlikte incele |
-| `Hızlı cevap:` | QUICK moda zorla (araştırma atlansın) |
-
-### RESEARCH Modu - Otomatik Web Araştırma
-
-**ZORUNLU** araştırma durumları (otomatik tetiklenir):
-
-| Durum | Neden | Örnek |
-|-------|-------|-------|
-| Hata mesajı | Güncel çözümler değişir | "ECONNREFUSED hatası" |
-| Versiyon sorusu | API'ler değişir | "React 19'da ne var?" |
-| Bilinmeyen teknoloji | Yerleşik bilgi yetersiz | "Bun runtime nasıl?" |
-| Best practice | Standartlar değişir | "Docker güvenlik 2025" |
-| "Güncel/en son" kelimesi | Eski bilgi geçersiz | "TypeScript 5.4 özellikleri" |
-
-### Not Defteri
-
-ROVO çalışırken karşılaştığı sorunları kaydeder:
-- 🐛 Tool hataları ve workaround'lar
-- 💡 Yeni tool/özellik fikirleri  
-- 🔧 Sonra yapılacak düzeltmeler
-- 📝 Tekrarlayan pattern'ler
-
-**Kontrol komutu:** `Notlarını kontrol edelim`
-
-> Not defteri: `.rovodev/notebook.md`
+- Modlar ve tetikleyiciler: `.rovodev/auto-triggers.md`
+- Persona detayları: `.rovodev/persona.md`
+- Not defteri: `.rovodev/notebook.md`
 
 ---
 
 ## 🔗 Quick Links
 
-### Session Başlangıcı
-- `.rovodev/context.md` - **YENİ SESSION İÇİN ÖNCE BUNU OKU**
-
-### Mimari & Kavramlar
-- `.rovodev/architecture.md` - Mimari detayları
-- `.rovodev/concepts.md` - Key concepts detayları
-- `.rovodev/cdp.md` - CDP tool'ları
+- `.rovodev/context.md` - Session context
+- `.rovodev/architecture.md` - Mimari detaylar
+- `.rovodev/concepts.md` - Key concepts
+- `.rovodev/cdp.md` - CDP tool’ları
 - `.rovodev/logging.md` - Log sistemi
-- `.rovodev/testing.md` - Test workflow'ları
-
-### ROVO Protokolleri
-- `.rovodev/persona.md` - **ROVO karakter profili**
-- `.rovodev/auto-triggers.md` - **Otomatik mod kuralları**
-- `.rovodev/ultrathink.md` - ULTRATHINK protokol detayları
-- `.rovodev/notebook.md` - **ROVO not defteri**
+- `.rovodev/testing.md` - Test workflow’ları
+- `.rovodev/persona.md` - ROVO karakter profili
+- `.rovodev/auto-triggers.md` - Mod kuralları
+- `.rovodev/notebook.md` - ROVO not defteri
 
 ---
 
-**Last Updated:** 2026-01-24  
+**Last Updated:** 2026-01-28  
 **Version:** 5.5.0
