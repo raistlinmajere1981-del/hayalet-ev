@@ -4,8 +4,129 @@
  */
 
 import type { ProviderConfig } from "./types/provider.js";
+import type {
+  MessageRecord,
+  MessagePart,
+  MessageUpsertInput,
+  PartUpdateInput,
+  StoreEvent,
+  PermissionEntry,
+  QuestionEntry,
+  OptimisticMessageResult,
+} from "./modules/asistan/stores/message/types.js";
+import type {
+  ToolRendererConfig,
+  ToolCallData,
+  HookType,
+  HookCallback,
+  RegistryListener,
+  RegistryEvent,
+} from "./modules/asistan/tool-renderers/registry/types.js";
 
 export {};
+
+type AttachmentType = "file" | "image" | "text" | "agent";
+
+type AttachmentRecord = {
+  id: string;
+  type: AttachmentType;
+  name: string;
+  path?: string | null;
+  content?: string | null;
+  dataUrl?: string | null;
+  mimeType?: string;
+  size?: number;
+  createdAt: number;
+};
+
+type AttachmentInput = {
+  type: AttachmentType;
+  name?: string;
+  path?: string;
+  content?: string;
+  dataUrl?: string;
+  mimeType?: string;
+  size?: number;
+};
+
+type SessionRecord = {
+  id: string;
+  title?: string;
+  messageIds?: string[];
+  status?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  instanceId?: string;
+  [key: string]: unknown;
+};
+
+type SessionInfo = {
+  agent?: string;
+  providerId?: string;
+  modelId?: string;
+  [key: string]: unknown;
+};
+
+type SessionUsage = {
+  tokens: number;
+  cost: number;
+};
+
+type InstanceRecord = {
+  id: string;
+  folder: string;
+  name?: string;
+  status: "connecting" | "connected" | "disconnected" | "error" | string;
+  url?: string;
+  createdAt: number;
+  updatedAt: number;
+  currentSessionId?: string | null;
+  sessionId?: string | null;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+type InstanceStoreEvent = {
+  type: string;
+  instanceId?: string | null;
+  [key: string]: unknown;
+};
+
+type SessionStoreEvent = {
+  type: string;
+  sessionId?: string | null;
+  instanceId?: string | null;
+  [key: string]: unknown;
+};
+
+type AttachmentStoreEvent = {
+  type: string;
+  sessionId?: string;
+  instanceId?: string;
+  attachment?: AttachmentRecord;
+  attachmentId?: string;
+};
+
+type ToolRegistry = {
+  register: (toolName: string, config: ToolRendererConfig) => unknown;
+  registerRenderer: (toolName: string, config: ToolRendererConfig) => unknown;
+  unregister: (toolName: string) => unknown;
+  unregisterRenderer: (toolName: string) => unknown;
+  addHook: (toolName: string, hookType: HookType, callback: HookCallback) => unknown;
+  removeHook: (toolName: string, hookType: HookType, callback: HookCallback) => unknown;
+  subscribe: (listener: RegistryListener) => (() => void) | void;
+  getRegisteredTools: () => string[];
+  setDefault: (config: ToolRendererConfig) => void;
+  renderToolCard: (toolCall: ToolCallData) => string;
+  updateStatus: (toolCall: ToolCallData, newStatus: string) => void;
+  renderInput: (toolCall: ToolCallData) => string;
+  renderOutput: (toolCall: ToolCallData) => string;
+  shouldAutoCollapse: (toolCall: ToolCallData) => boolean;
+  get: (toolName: string) => ToolRendererConfig | undefined;
+  has: (toolName: string) => boolean;
+  _copyToClipboard: (btn: HTMLElement) => void;
+  _executeHooks: (toolName: string, hookType: HookType, data: unknown) => void;
+};
 
 declare global {
   interface Window {
@@ -39,16 +160,41 @@ declare global {
       get: (key: string, defaultValue?: unknown) => unknown;
       isEnabled: (feature: string) => boolean;
       getStatusText: (status: string) => string;
+      getAnsiColor: (code: number) => string | null;
+      maxHistoryItems: number;
+      commands: Array<{ name: string; description: string }>;
       [key: string]: unknown;
     };
 
     // API Client
+      listFileSystem?: (path: string, options?: Record<string, unknown>) => Promise<unknown>;
+
     APIClient?: {
       listAgents?: () => Promise<unknown>;
       listProviders?: () => Promise<unknown>;
       updateSessionAgent?: (sessionId: string, agentName: string) => Promise<unknown>;
       updateSessionModel?: (sessionId: string, providerId: string, modelId: string) => Promise<unknown>;
-      retry?: (sessionId: string) => Promise<unknown>;
+      retry?: (sessionId?: string) => Promise<unknown>;
+      connect?: () => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+      sendMessage?: (message: string, messageId?: string) => Promise<unknown>;
+      cancel?: () => Promise<unknown>;
+      respondToPermission?: (permissionId: string, approved: boolean) => Promise<unknown>;
+      respondToQuestion?: (questionId: string, answer: string) => Promise<unknown>;
+      compact?: () => Promise<unknown>;
+      getSessions?: () => Promise<{ sessions: unknown[] }>;
+      getSessionMessages?: (sessionId: string) => Promise<{ messages: unknown[] }>;
+      renameSession?: (sessionId: string, title: string) => Promise<unknown>;
+      deleteSession?: (sessionId: string) => Promise<unknown>;
+      revertConversation?: (messageId: string) => Promise<{ success: boolean; error?: string }>;
+      forkConversation?: (messageId: string) => Promise<unknown>;
+      searchFiles?: (query: string, limit: number) => Promise<{ files: unknown[] }>;
+      listSessions?: () => Promise<unknown[]>;
+      getMCPServers?: () => Promise<{ servers: unknown[] }>;
+      getPlugins?: () => Promise<{ plugins: unknown[] }>;
+      getBackgroundShells?: () => Promise<{ shells: unknown[] }>;
+      status?: () => Promise<unknown>;
+      setServerUrl?: (url: string) => void;
+      cancelAllRequests?: () => void;
       [key: string]: unknown;
     };
 
@@ -61,36 +207,115 @@ declare global {
 
     // Message Store
     MessageStore?: {
-      createMessage?: (data: unknown) => unknown;
-      updateMessage?: (id: string, data: unknown) => void;
-      getMessage?: (id: string) => unknown;
+      createMessage?: (data: MessageUpsertInput) => MessageRecord;
+      updateMessage?: (id: string, data: Partial<MessageRecord>) => void;
+      getMessage?: (id: string) => MessageRecord | undefined;
+      getSessionMessages?: (sessionId: string) => MessageRecord[];
+      hasMessage?: (id: string) => boolean;
+      upsertMessage?: (data: MessageUpsertInput) => MessageRecord;
+      updateMessageStatus?: (id: string, status: string) => void;
+      updateTextPart?: (messageId: string, content: string, append: boolean) => void;
+      addOrUpdatePart?: (data: PartUpdateInput) => MessagePart;
+      getMessageContent?: (id: string) => string;
+      getMessageParts?: (id: string) => MessagePart[];
+      removeMessage?: (id: string) => void;
+      clearSession?: (sessionId: string) => void;
+      markMessageSent?: (id: string) => void;
+      markMessageFailed?: (id: string, error: unknown) => void;
+      retryMessage?: (id: string) => boolean;
+      replaceMessageId?: (data: { oldId: string; newId: string }) => void;
+      createOptimisticMessage?: (data: unknown) => OptimisticMessageResult;
+      upsertPermission?: (data: PermissionEntry) => PermissionEntry | null;
+      removePermission?: (id: string) => void;
+      getPermissionQueue?: () => PermissionEntry[];
+      upsertQuestion?: (data: QuestionEntry) => QuestionEntry | null;
+      removeQuestion?: (id: string) => void;
+      getQuestionQueue?: () => QuestionEntry[];
+      subscribe?: (callback: (event: StoreEvent) => void) => (() => void);
+      createId?: (prefix: string) => string;
       [key: string]: unknown;
     };
 
     // Session Store
     SessionStore?: {
       getCurrentSessionId?: () => string | null;
-      createSession?: () => unknown;
-      getSessionInfo?: (sessionId: string) => unknown;
-      getSessionUsage?: (sessionId: string) => unknown;
-      getTotalUsage?: () => { tokens: number; cost: number };
+      createSession?: () => SessionRecord;
+      getSessionInfo?: (sessionId: string) => SessionInfo | undefined;
+      getSessionUsage?: (sessionId: string) => SessionUsage | undefined;
+      getTotalUsage?: () => SessionUsage;
       renameSession?: (sessionId: string, title: string) => Promise<boolean>;
       deleteSession?: (sessionId: string) => Promise<void>;
+      setCurrentSession?: (sessionId: string) => void;
+      upsertSession?: (sessionId: string, data: Partial<SessionRecord>) => SessionRecord;
+      getAllSessions?: () => SessionRecord[];
+      getSession?: (sessionId: string) => SessionRecord | undefined;
+      getCurrentSession?: () => SessionRecord | null;
+      removeSession?: (sessionId: string) => void;
+      updateStatus?: (status: string) => void;
+      updateSessionUsage?: (sessionId: string, usage: SessionUsage) => void;
+      updateSessionInfo?: (sessionId: string, info: SessionInfo) => void;
+      syncFromActiveInstance?: () => void;
+      clearInstance?: (instanceId: string) => void;
+      clear?: () => void;
+      subscribe?: (callback: (event: SessionStoreEvent) => void) => (() => void);
       [key: string]: unknown;
     };
 
     // Instance Store
     InstanceStore?: {
+      getActiveInstanceId?: () => string | null;
+      getActiveInstance?: () => InstanceRecord | null;
+      setActiveInstance?: (id: string | null) => void;
+      createInstance?: (data: { folder: string; name?: string; url?: string }) => InstanceRecord;
+      removeInstance?: (id: string) => void;
+      getInstance?: (id: string) => InstanceRecord | undefined;
+      getInstancesArray?: () => InstanceRecord[];
+      getInstanceCount?: () => number;
+      setInstanceStatus?: (id: string, status: string, reason?: string | null) => void;
+      findByFolder?: (folder: string) => InstanceRecord | null;
+      getActiveInstancePath?: () => string | null;
+      getActiveInstanceSessionId?: () => string | null;
+      getActiveInstanceUrl?: () => string | null;
+      getActiveInstanceName?: () => string | null;
+      getActiveInstanceStatus?: () => string;
+      isActiveInstanceConnected?: () => boolean;
+      getActiveInstanceProperty?: (property: string, defaultValue?: unknown) => unknown;
+      hasInstances?: () => boolean;
+      getDisconnectionReason?: (instanceId: string) => string | null;
+      subscribe?: (callback: (event: InstanceStoreEvent) => void) => (() => void);
       [key: string]: unknown;
     };
 
     // Attachment Store
     AttachmentStore?: {
+      getAttachments?: (sessionId: string, instanceId?: string) => AttachmentRecord[];
+      addAttachment?: (sessionId: string, attachment: AttachmentInput, instanceId?: string) => AttachmentRecord | null;
+      addFileAttachment?: (sessionId: string, file: File, instanceId?: string) => Promise<AttachmentRecord | null>;
+      addImageAttachment?: (sessionId: string, imageData: File | Blob, instanceId?: string) => Promise<AttachmentRecord | null>;
+      addTextAttachment?: (sessionId: string, content: string, name?: string, instanceId?: string) => AttachmentRecord | null;
+      removeAttachment?: (sessionId: string, attachmentId: string, instanceId?: string) => boolean;
+      clearAttachments?: (sessionId: string, instanceId?: string) => void;
+      getAttachmentsForAPI?: (sessionId: string, instanceId?: string) => Array<Record<string, unknown>>;
+      handlePaste?: (event: ClipboardEvent, sessionId: string, instanceId?: string) => Promise<AttachmentRecord[]>;
+      handleDrop?: (event: DragEvent, sessionId: string, instanceId?: string) => Promise<AttachmentRecord[]>;
+      subscribe?: (callback: (event: AttachmentStoreEvent) => void) => (() => void);
       [key: string]: unknown;
     };
 
     // Store Bridge
     StoreBridge?: {
+      handleEvent?: (eventType: string, data: unknown, instanceId?: string | null) => void;
+      setLastUserMessage?: (message: string, instanceId?: string) => void;
+      addOptimisticUserMessage?: (content: string, messageId?: string) => string;
+      markUserMessageSent?: (messageId: string) => void;
+      markUserMessageFailed?: (messageId: string, errorInfo?: unknown) => void;
+      retryMessage?: (messageId: string) => boolean;
+      replaceMessageId?: (tempId: string, realId: string) => void;
+      getPendingMessageContent?: (messageId: string) => string | null;
+      hasPendingMessages?: () => boolean;
+      getCurrentMessageId?: () => string | null;
+      clear?: () => void;
+      setDebug?: (enabled: boolean) => void;
       [key: string]: unknown;
     };
 
@@ -126,6 +351,14 @@ declare global {
     };
 
     ToolRenderer?: {
+      createToolCard?: (toolCall: unknown) => HTMLElement;
+      updateToolCard?: (toolId: string, update: unknown) => void;
+      appendOutput?: (toolId: string, delta: string) => void;
+      toggleCollapse?: (toolId: string) => void;
+      clear?: () => void;
+      addDiffViewer?: (toolId: string, diff: unknown) => void;
+      _parseAnsi?: (text: string) => string;
+      _copySection?: (btn: HTMLElement) => void;
       [key: string]: unknown;
     };
 
@@ -133,6 +366,20 @@ declare global {
       show?: () => void;
       hide?: () => void;
       update?: () => void;
+      initialize?: () => Promise<void>;
+      getCurrentAgent?: () => unknown;
+      getCurrentModel?: () => unknown;
+      getAvailableAgents?: () => unknown[];
+      getFlatModels?: () => unknown[];
+      selectAgent?: (agentName: string) => Promise<void>;
+      selectModel?: (providerId: string, modelId: string) => Promise<void>;
+      setFromSession?: (info: unknown) => void;
+      setFolderPath?: (folderPath: string) => void;
+      _loadSavedPreference?: () => Promise<unknown>;
+      subscribe?: (callback: (event: unknown) => void) => (() => void);
+      _currentAgent?: string;
+      _currentModel?: unknown;
+      _providers?: Array<{ id: string; name: string; models: Array<{ id: string; name: string }> }>;
       [key: string]: unknown;
     };
 
@@ -141,11 +388,7 @@ declare global {
     };
 
     // Tool Renderers
-    ToolRendererRegistry?: {
-      register?: (name: string, renderer: unknown) => void;
-      get?: (name: string) => unknown;
-      [key: string]: unknown;
-    };
+    ToolRendererRegistry?: ToolRegistry;
 
     BashRenderer?: {
       render?: (data: unknown) => HTMLElement;
@@ -164,7 +407,7 @@ declare global {
 
     // OpenCode App
     OpenCodeApp?: {
-      _showToast?: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+      _showToast?: (message: string, type: "success" | "error" | "info" | "warning") => void;
       [key: string]: unknown;
     };
 
@@ -174,6 +417,13 @@ declare global {
       [key: string]: unknown;
     };
   }
+
+  const MessageStore: Window['MessageStore'];
+  const SessionStore: Window['SessionStore'];
+  const InstanceStore: Window['InstanceStore'];
+  const ToolRendererRegistry: Window['ToolRendererRegistry'];
+  const APIClient: Window['APIClient'];
+  const OpenCodeApp: Window['OpenCodeApp'];
 
   /**
    * Generic IPC Result type

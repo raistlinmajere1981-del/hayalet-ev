@@ -36,7 +36,7 @@ const config: KnipConfig = {
     // OpenCode UI - klasik script tag ile yükleniyor, ES modules değil
     "opencode-ui/**/*",
     
-    // Type barrel exports (public API)
+    // Type barrel exports (public API için gerekli)
     "src/js/types/**/*",
     "electron/types/**/*",
     "mcp-server/types/**/*",
@@ -55,7 +55,7 @@ const config: KnipConfig = {
     "src/js/ui/modal-manager.ts",
     "src/js/modules/ipc-client.ts",
     
-    // IPC üzerinden dinamik çağrılan (main.ts'de handler)
+    // IPC üzerinden dinamik çağrılan (main.ts'de handler via console-logger)
     "electron/server-commands.ts",
     
     // Database store'lar (gelecek kullanım için hazır)
@@ -64,6 +64,14 @@ const config: KnipConfig = {
     
     // Shared helpers (referans olarak tutuluyor)
     "src/js/modules/webview/providers/shared/scraper-helpers.ts",
+    
+    // Console logger submodules - main.ts'de indirect import edilir
+    "electron/logger/**/*",
+    
+    // Asistan-native modülü - Vite MPA entry point (HTML'den yüklenir)
+    // Knip HTML dosyalarını parse edemez, bu yüzden false positive veriyor
+    "src/js/modules/asistan/**/*",
+    "src/js/pages/asistan-native/**/*",
   ],
 
   // Ignore dependencies - build/CI araçları ve özel kullanımlar

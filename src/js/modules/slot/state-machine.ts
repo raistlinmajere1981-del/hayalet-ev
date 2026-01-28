@@ -352,7 +352,7 @@ export function createSlotStateMachine(
 /**
  * State transition geçerli mi kontrol et (static)
  */
-export function isValidTransition(
+function isValidTransition(
   fromState: SlotStateType,
   toState: SlotStateType
 ): boolean {
@@ -364,7 +364,7 @@ export function isValidTransition(
  * State'in "terminal" olup olmadığını kontrol et
  * Terminal state'ler: kullanıcı müdahalesi gerektiren durumlar
  */
-export function isTerminalState(state: SlotStateType): boolean {
+function isTerminalState(state: SlotStateType): boolean {
   return state === SlotStates.ERROR;
 }
 
@@ -378,6 +378,6 @@ export function isTransitioningState(state: SlotStateType): boolean {
 /**
  * State'in "active" olup olmadığını kontrol et (connection var)
  */
-export function isActiveState(state: SlotStateType): boolean {
+function isActiveState(state: SlotStateType): boolean {
   return state === SlotStates.CONNECTED || state === SlotStates.CONNECTING;
 }

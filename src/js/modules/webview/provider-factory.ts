@@ -139,21 +139,21 @@ export function getProvider(providerId: keyof typeof allProviders) {
  *   await provider.sendMessage(webview, "Hello");
  * }
  */
-export async function getProviderAsync(providerId: ProviderId): Promise<ProviderModule | null> {
+async function getProviderAsync(providerId: ProviderId): Promise<ProviderModule | null> {
   return loadProvider(providerId);
 }
 
 /**
  * Provider yüklü mü kontrol et
  */
-export function isProviderLoaded(providerId: ProviderId): boolean {
+function isProviderLoaded(providerId: ProviderId): boolean {
   return providerCache.has(providerId);
 }
 
 /**
  * Tüm provider'ları preload et (startup optimization için)
  */
-export async function preloadAllProviders(): Promise<void> {
+async function preloadAllProviders(): Promise<void> {
   const ids: ProviderId[] = ["chatgpt", "grok", "gemini", "opencode"];
   await Promise.all(ids.map(id => loadProvider(id)));
 }
@@ -161,6 +161,6 @@ export async function preloadAllProviders(): Promise<void> {
 /**
  * Provider cache'ini temizle (testing için)
  */
-export function clearProviderCache(): void {
+function clearProviderCache(): void {
   providerCache.clear();
 }

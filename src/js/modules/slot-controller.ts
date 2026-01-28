@@ -15,8 +15,9 @@ import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { getErrorMessage } from "../types/index.js";
 import type { SlotId } from "../types/index.js";
+import type { 
+  SlotStateMachine} from "./slot/state-machine.js";
 import { 
-  SlotStateMachine, 
   SlotStates, 
   createSlotStateMachine,
   type SlotStateType,

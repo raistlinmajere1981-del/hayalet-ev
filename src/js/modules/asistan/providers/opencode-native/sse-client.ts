@@ -5,6 +5,8 @@
  * Real-time event streaming için EventSource API kullanır.
  */
 
+import { OpenCodeConfig } from './config.js';
+
 const SSEClient = {
   // ===========================================================================
   // Legacy Single Connection State (backward compatibility)
@@ -45,10 +47,7 @@ const SSEClient = {
    * @returns {*}
    */
   _getConfig(key: string, fallback: unknown) {
-    if (typeof OpenCodeConfig !== 'undefined') {
-      return OpenCodeConfig.get(key, fallback);
-    }
-    return fallback;
+    return OpenCodeConfig.get(key, fallback);
   },
 
   /**
@@ -57,9 +56,7 @@ const SSEClient = {
    */
   _getServerUrl() {
     if (!this._serverUrl) {
-      this._serverUrl = (typeof OpenCodeConfig !== 'undefined')
-        ? OpenCodeConfig.getServerUrl()
-        : 'http://127.0.0.1:4097';
+      this._serverUrl = OpenCodeConfig.getServerUrl();
     }
     return this._serverUrl;
   },
@@ -201,9 +198,9 @@ const SSEClient = {
           this._instanceReconnectAttempts.set(instanceId, 0);
           this._emit('connection', { status: 'connected', instanceId });
           
-          // Update InstanceStore
-          if (typeof InstanceStore !== 'undefined') {
-            InstanceStore.setInstanceStatus(instanceId, 'connected');
+          // Update InstanceStore (if available)
+          if (typeof (window as any).InstanceStore !== 'undefined') {
+            (window as any).InstanceStore.setInstanceStatus(instanceId, 'connected');
           }
           
           resolve(true);
@@ -218,9 +215,9 @@ const SSEClient = {
           this._connectionStatus.set(instanceId, false);
           this._emit('connection', { status: 'error', instanceId, error });
           
-          // Update InstanceStore
-          if (typeof InstanceStore !== 'undefined') {
-            InstanceStore.setInstanceStatus(instanceId, 'error', 'Connection error');
+          // Update InstanceStore (if available)
+          if (typeof (window as any).InstanceStore !== 'undefined') {
+            (window as any).InstanceStore.setInstanceStatus(instanceId, 'error', 'Connection error');
           }
           
           // Auto-reconnect

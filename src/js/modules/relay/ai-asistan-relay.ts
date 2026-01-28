@@ -55,7 +55,7 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Bu relay bu provider'ı yönetiyor mu?
    */
-  handlesProvider(provider: string): boolean {
+  override handlesProvider(provider: string): boolean {
     if (!this._active) return false;
     return provider === this._sourceSlot || provider === this._targetSlot;
   }
@@ -71,7 +71,7 @@ export class AIAsistanRelay extends BaseRelay {
    * AI-Asistan relay oturumu başlat
    * Protokolü okur ve AI'ye gönderir, ardından relay aktif olur
    */
-  async start(opts: { sourceSlot?: string } = {}): Promise<void> {
+  override async start(opts: { sourceSlot?: string } = {}): Promise<void> {
     const source = opts.sourceSlot;
     
     if (!source || (source !== "ai1" && source !== "ai2")) {
@@ -208,7 +208,7 @@ export class AIAsistanRelay extends BaseRelay {
   /**
    * Relay oturumunu durdur
    */
-  async stop(): Promise<void> {
+  override async stop(): Promise<void> {
     const sessionId = this._session?.id;
     const source = this._sourceSlot;
     
@@ -231,7 +231,7 @@ export class AIAsistanRelay extends BaseRelay {
    * AI thinking tamamlandığında çağrılır
    * State machine'e göre akışı yönetir
    */
-  async handleThinkingComplete(provider: string, syncResult: SyncResult | null): Promise<void> {
+  override async handleThinkingComplete(provider: string, syncResult: SyncResult | null): Promise<void> {
     try {
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 

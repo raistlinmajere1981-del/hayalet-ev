@@ -321,11 +321,12 @@ const AgentModelSelector = {
         try {
           const providers = await window.electronAPI.opcListModels();
           if (providers && providers.length > 0) {
-            // Yeni format: direkt provider array döner
-            // Her provider: { id, name, models: [{ id, name, providerId, context?, output?, variants? }] }
-            console.log('[AgentModelSelector] Fetched providers via IPC:', providers.length, 
-              'models:', providers.reduce((sum, p) => sum + (p.models?.length || 0), 0));
-            return providers;
+            const providerCount = Array.isArray(providers) ? providers.length : 0;
+            const modelCount = Array.isArray(providers)
+              ? providers.reduce<number>((sum: number, p: { models?: unknown[] }) => sum + (Array.isArray(p.models) ? p.models.length : 0), 0)
+              : 0;
+            console.log('[AgentModelSelector] Fetched providers via IPC:', providerCount,
+              'models:', modelCount);
           }
         } catch (err) {
           console.warn('[AgentModelSelector] IPC provider fetch failed:', err);

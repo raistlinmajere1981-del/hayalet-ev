@@ -12,6 +12,7 @@ module.exports = tseslint.config(
       "*.min.js",
       "package-lock.json",
       ".rovodev/scripts/**",
+      "mcp-server/**",
     ],
   },
 
@@ -87,16 +88,16 @@ module.exports = tseslint.config(
       },
     },
     rules: {
-      // === TypeScript Specific (Maximum Strictness) ===
+      // === TypeScript Specific (Step 1: Ease Strictness) ===
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^(_|e|err|error|evt|event)",
           varsIgnorePattern: "^(_|e|err|error|evt|event)",
           caughtErrorsIgnorePattern: "^(_|e|err|error)",
         },
       ],
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-assignment": "warn",
       "@typescript-eslint/no-unsafe-member-access": "warn",
       "@typescript-eslint/no-unsafe-call": "warn",

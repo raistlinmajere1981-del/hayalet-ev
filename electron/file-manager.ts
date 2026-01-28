@@ -23,24 +23,6 @@ async function ensureDir(dirPath: string): Promise<void> {
 
 export { ensureDir };
 
-export async function ensureScope(scope: string = "all"): Promise<ResultBase> {
-  try {
-    const paths = PATHS();
-    const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
-    const resolved: Record<string, string> = {};
-    for (const key of scopes) {
-      const resolver = paths[key];
-      if (!resolver) continue;
-      const p = resolver();
-      await ensureDir(p);
-      resolved[key] = p;
-    }
-    return { success: true, ...resolved };
-  } catch (err: unknown) {
-    return { success: false, message: (err as Error)?.message || String(err) };
-  }
-}
-
 function PATHS(): PathResolvers {
   const base = process.cwd();
   return {

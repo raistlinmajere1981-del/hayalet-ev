@@ -55,7 +55,7 @@ class SettingsManagerClass {
     this._broadcast = createSettingsBroadcast("hayalet-settings");
     this._stopBroadcast = this._broadcast.on((data) => {
       const msg = data as { type?: string; payload?: unknown };
-      if (!msg || msg.type !== "settings-changed") {
+      if (msg?.type !== "settings-changed") {
         return;
       }
       

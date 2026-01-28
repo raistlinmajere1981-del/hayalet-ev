@@ -35,12 +35,10 @@ export function scrapeMessages() {
   }
 
   const preferredSel =
-    (window.__hayalet_provider_config &&
-      window.__hayalet_provider_config.scrapeSelectors?.preferred) ||
+    (window.__hayalet_provider_config?.scrapeSelectors?.preferred) ||
     "[data-message-author-role]";
   const fallbackSel =
-    (window.__hayalet_provider_config &&
-      window.__hayalet_provider_config.scrapeSelectors?.fallback) ||
+    (window.__hayalet_provider_config?.scrapeSelectors?.fallback) ||
     ".message-bubble, .markdown.prose";
   const preferred = Array.from(document.querySelectorAll(preferredSel));
   const fallback = Array.from(document.querySelectorAll(fallbackSel));

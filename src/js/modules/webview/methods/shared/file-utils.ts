@@ -44,7 +44,7 @@ export function validateFiles(files: FilePayload[]): { valid: boolean; message?:
  * @param {string} serviceName - Name of the upload service
  * @returns {Object} Formatted response
  */
-export function formatUploadResponse(
+function formatUploadResponse(
   uploadedLinks: string[],
   errors: UploadError[] = [],
   serviceName = "",

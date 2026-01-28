@@ -425,7 +425,7 @@ export class WebviewPanel {
       try {
         if (!event || !event.channel) return;
         if (event.channel === "provider-usage") {
-          const payload = (event.args && event.args[0]) as { tokens?: string | string[] } | null;
+          const payload = (event.args?.[0]) as { tokens?: string | string[] } | null;
           if (payload) {
             const titleEl = document.getElementById(`${type}-title`);
             if (titleEl) {

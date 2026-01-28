@@ -27,13 +27,13 @@ const PermissionModal = {
     this._createModal();
     
     // Subscribe to permission store changes
-    if (typeof MessageStore !== 'undefined') {
-      this._unsubscribe = MessageStore.subscribe((event: unknown) => {
+    if (typeof window.MessageStore !== 'undefined') {
+      this._unsubscribe = window.MessageStore.subscribe?.((event: unknown) => {
         const e = event as { type?: string };
         if (e.type?.startsWith('permission:')) {
           this._onPermissionChange();
         }
-      });
+      }) || null;
     }
     
     console.log('[PermissionModal] Initialized');
@@ -118,24 +118,20 @@ const PermissionModal = {
     document.body.appendChild(this._modal);
   },
 
-  // ===========================================================================
-  // Permission Handling
-  // ===========================================================================
-
   /**
-   * Handle permission store change
+   * Get pending permissions from store
    */
-  _onPermissionChange() {
-    if (typeof MessageStore === 'undefined') return;
+  _getPendingPermissions() {
+    // Message store'dan güncel permission listesini al
+    if (!MessageStore?.getPermissionQueue) return [];
 
-    const active = MessageStore.getActivePermission();
-    const queue = MessageStore.getPermissionQueue();
+    const queue = MessageStore.getPermissionQueue() || [];
+    const active = (MessageStore as { getActivePermission?: () => unknown })?.getActivePermission?.();
+    const entries = active ? [active, ...queue] : queue;
 
-    if (active) {
-      this._showPermission(active, queue.length);
-    } else {
-      this._hide();
-    }
+    return entries
+      .map((entry: unknown) => entry as PermissionEntry)
+      .filter((entry: PermissionEntry) => entry && entry.permissionId);
   },
 
   /**
@@ -264,8 +260,8 @@ const PermissionModal = {
     this._emitResponse(permissionId, true);
     
     // Remove from store
-    if (typeof MessageStore !== 'undefined') {
-      MessageStore.removePermission(permissionId);
+    if (typeof window.MessageStore !== 'undefined') {
+      window.MessageStore.removePermission?.(permissionId);
     }
   },
 
@@ -282,8 +278,8 @@ const PermissionModal = {
     this._emitResponse(permissionId, false);
     
     // Remove from store
-    if (typeof MessageStore !== 'undefined') {
-      MessageStore.removePermission(permissionId);
+    if (typeof window.MessageStore !== 'undefined') {
+      window.MessageStore.removePermission?.(permissionId);
     }
   },
 

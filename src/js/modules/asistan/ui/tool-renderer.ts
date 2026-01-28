@@ -452,8 +452,8 @@ const ToolRenderer = {
    */
   _getStatusText(status: string) {
     // Config'den al
-    if (typeof OpenCodeConfig !== 'undefined') {
-      return OpenCodeConfig.getStatusText(status);
+    if (typeof window.OpenCodeConfig !== 'undefined') {
+      return window.OpenCodeConfig?.getStatusText(status);
     }
     // Fallback
     const texts: Record<string, string> = {
@@ -675,8 +675,8 @@ const ToolRenderer = {
    */
   _getAnsiColor(code: number) {
     // Try config first
-    if (typeof OpenCodeConfig !== 'undefined') {
-      const color = OpenCodeConfig.getAnsiColor(code);
+    if (typeof window.OpenCodeConfig !== 'undefined') {
+      const color = window.OpenCodeConfig?.getAnsiColor(code);
       if (color) return color;
     }
     // Fallback to built-in defaults

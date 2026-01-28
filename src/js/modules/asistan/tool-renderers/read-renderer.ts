@@ -41,12 +41,13 @@ type LangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' | 'jav
      * @param {object} input
      * @returns {string}
      */
-    renderInput(input: ReadInput) {
+    renderInput(input: unknown) {
       if (!input) return '';
       
-      const filePath = input.file_path || input.path || input.filePath || '';
-      const startLine = input.start_line || input.startLine;
-      const endLine = input.end_line || input.endLine;
+      const readInput = input as ReadInput;
+      const filePath = readInput.file_path || readInput.path || readInput.filePath || '';
+      const startLine = readInput.start_line || readInput.startLine;
+      const endLine = readInput.end_line || readInput.endLine;
       
       let rangeText = '';
       if (startLine !== undefined || endLine !== undefined) {
@@ -67,12 +68,13 @@ type LangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' | 'jav
      * @param {object} toolCall
      * @returns {string}
      */
-    renderOutput(output: string, toolCall: ReadToolCall) {
+    renderOutput(output: string, toolCall: unknown) {
+      const call = toolCall as ReadToolCall;
       if (!output) return '';
       
       const lines = output.split('\n');
-      const startLine = toolCall.input?.start_line || toolCall.input?.startLine || 1;
-      const language = this._detectLanguage(toolCall.input?.file_path || toolCall.input?.path || '');
+      const startLine = call.input?.start_line || call.input?.startLine || 1;
+      const language = this._detectLanguage(call.input?.file_path || call.input?.path || '');
       
       const lineNumberWidth = String(startLine + lines.length).length;
       
@@ -110,10 +112,11 @@ type LangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' | 'jav
      * @param {object} toolCall
      * @returns {boolean}
      */
-    shouldAutoCollapse(toolCall: ReadToolCall) {
-      const output = toolCall.output || '';
+    shouldAutoCollapse(toolCall: unknown) {
+      const call = toolCall as ReadToolCall;
+      const output = call.output || '';
       const lines = output.split('\n').length;
-      return toolCall.status === 'success' && lines > 50;
+      return call.status === 'success' && lines > 50;
     },
 
     /**
@@ -176,15 +179,15 @@ type LangMapKey = 'js' | 'ts' | 'tsx' | 'jsx' | 'py' | 'rb' | 'go' | 'rs' | 'jav
   };
 
   // Register with registry
-  if (typeof ToolRendererRegistry !== 'undefined') {
-    ToolRendererRegistry.register('read', ReadRenderer as unknown as ToolRendererConfig);
-    ToolRendererRegistry.register('file_read', ReadRenderer as unknown as ToolRendererConfig);
-    ToolRendererRegistry.register('readFile', ReadRenderer as unknown as ToolRendererConfig);
+  if (typeof window.ToolRendererRegistry !== 'undefined') {
+    window.ToolRendererRegistry.register?.('read', ReadRenderer);
+    window.ToolRendererRegistry.register?.('file_read', ReadRenderer);
+    window.ToolRendererRegistry.register?.('readFile', ReadRenderer);
   }
-
-  // ES6 Export
-  export { ReadRenderer };
 
   // Global export (backward compatibility)
   window.ReadRenderer = ReadRenderer;
+  
+  // ES6 Export
+  export { ReadRenderer };
 })();

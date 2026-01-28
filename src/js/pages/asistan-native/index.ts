@@ -5,20 +5,20 @@
  * Vite compatibility için tek entry point.
  */
 
-// Import all components (yeni path'ler)
-import '../../modules/asistan/providers/opencode-native/config.js';
-import '../../modules/asistan/providers/opencode-native/api-client.js';
-import '../../modules/asistan/providers/opencode-native/sse-client.js';
-import '../../modules/asistan/stores/index.js';
-import '../../modules/asistan/ui/agent-model-selector.js';
-import '../../modules/asistan/ui/directory-browser.js';
-import '../../modules/asistan/ui/instance-tabs.js';
-import '../../modules/asistan/ui/permission-modal.js';
-import '../../modules/asistan/ui/question-modal.js';
-import '../../modules/asistan/ui/message-renderer.js';
-import '../../modules/asistan/ui/tool-renderer.js';
-import '../../modules/asistan/ui/prompt-handler.js';
-import './app.js';
+// Import all components
+import '../../modules/asistan/providers/opencode-native/config';
+import '../../modules/asistan/providers/opencode-native/api-client';
+import '../../modules/asistan/providers/opencode-native/sse-client';
+import '../../modules/asistan/stores/index';
+import '../../modules/asistan/ui/agent-model-selector';
+import '../../modules/asistan/ui/directory-browser';
+import '../../modules/asistan/ui/instance-tabs';
+import '../../modules/asistan/ui/permission-modal';
+import '../../modules/asistan/ui/question-modal';
+import '../../modules/asistan/ui/message-renderer/index';
+import '../../modules/asistan/ui/tool-renderer';
+import '../../modules/asistan/ui/prompt-handler/index';
+import './app';
 
 // Components are now available in global scope via window object
 console.log('[OpenCode] All components loaded');

@@ -35,10 +35,10 @@ interface BashToolCall {
      * @param {object} input
      * @returns {string}
      */
-    renderInput(input: BashInput | string) {
+    renderInput(input: unknown) {
       if (!input) return '';
       
-      const inputObj = typeof input === 'string' ? { command: input } : input;
+      const inputObj = typeof input === 'string' ? { command: input } : (input as BashInput);
       const command = inputObj.command || inputObj.cmd || '';
       const cwd = inputObj.cwd || inputObj.workingDir;
       const timeout = inputObj.timeout;
@@ -66,14 +66,17 @@ interface BashToolCall {
      * @param {object} toolCall
      * @returns {string}
      */
-    renderOutput(output: string, toolCall: BashToolCall) {
-      if (!output && !toolCall.error) return '';
+    renderOutput(output: string, toolCall: unknown) {
+      const call = toolCall as BashToolCall;
+      if (!output && !call.error) return '';
       
-      const hasError = toolCall.status === 'error' || toolCall.error;
-      const exitCode = toolCall.exitCode ?? (hasError ? 1 : 0);
+      const hasError = call.status === 'error' || call.error;
+      const exitCode = call.exitCode ?? (hasError ? 1 : 0);
       
       // Parse ANSI codes
-      const parsedOutput = ToolRenderer._parseAnsi(this._escapeHtml(output || ''));
+      const parsedOutput = (typeof window.ToolRenderer !== 'undefined' && window.ToolRenderer._parseAnsi) 
+        ? window.ToolRenderer._parseAnsi(this._escapeHtml(output || ''))
+        : this._escapeHtml(output || '');
       
       return `
         <div class="tool-section">
@@ -93,10 +96,10 @@ interface BashToolCall {
           <div class="tool-terminal-output" data-raw-content="${this._escapeHtml(output || '')}">
             ${parsedOutput || '<span class="empty-output">(no output)</span>'}
           </div>
-          ${toolCall.error ? `
+          ${call.error ? `
             <div class="tool-error-output">
               <span class="error-label">⚠️ Error:</span>
-              <span class="error-text">${this._escapeHtml(toolCall.error)}</span>
+              <span class="error-text">${this._escapeHtml(call.error)}</span>
             </div>
           ` : ''}
         </div>
@@ -108,12 +111,13 @@ interface BashToolCall {
      * @param {object} toolCall
      * @returns {boolean}
      */
-    shouldAutoCollapse(toolCall: BashToolCall) {
+    shouldAutoCollapse(toolCall: unknown) {
+      const call = toolCall as BashToolCall;
       // Don't auto-collapse errors
-      if (toolCall.status === 'error') return false;
+      if (call.status === 'error') return false;
       
       // Auto-collapse successful commands with long output
-      const output = toolCall.output || '';
+      const output = call.output || '';
       const lines = output.split('\n').length;
       return lines > 30;
     },
@@ -132,18 +136,17 @@ interface BashToolCall {
   };
 
   // Register with registry
-  if (typeof ToolRendererRegistry !== 'undefined') {
-    const config = BashRenderer as unknown as ToolRendererConfig;
-    ToolRendererRegistry.register('bash', config);
-    ToolRendererRegistry.register('shell', config);
-    ToolRendererRegistry.register('execute', config);
-    ToolRendererRegistry.register('run', config);
-    ToolRendererRegistry.register('command', config);
+  if (typeof window.ToolRendererRegistry !== 'undefined') {
+    window.ToolRendererRegistry.register?.('bash', BashRenderer);
+    window.ToolRendererRegistry.register?.('shell', BashRenderer);
+    window.ToolRendererRegistry.register?.('execute', BashRenderer);
+    window.ToolRendererRegistry.register?.('run', BashRenderer);
+    window.ToolRendererRegistry.register?.('command', BashRenderer);
   }
-
-  // ES6 Export
-  export { BashRenderer };
 
   // Global export (backward compatibility)
   window.BashRenderer = BashRenderer;
+  
+  // ES6 Export
+  export { BashRenderer };
 })();

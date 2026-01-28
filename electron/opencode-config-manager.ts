@@ -483,27 +483,6 @@ export async function saveModelPreference(
   }, folderPath);
 }
 
-/**
- * Clear preferences for a folder
- */
-export async function clearFolderPreference(folderPath: string): Promise<boolean> {
-  try {
-    const config = await loadOpencodeConfig() as OpenCodeConfigExtended;
-    const normalizedPath = normalizeFolderPath(folderPath);
-    
-    if (config.agentModelPreferences?.[normalizedPath]) {
-      delete config.agentModelPreferences[normalizedPath];
-      await saveOpencodeConfig(config);
-      console.log(`[OpenCodeConfig] Cleared preference for ${normalizedPath}`);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('[OpenCodeConfig] Error clearing folder preference:', error);
-    return false;
-  }
-}
-
 // =============================================================================
 // Active Projects Management
 // =============================================================================
@@ -603,7 +582,7 @@ export async function removeActiveProject(projectPath: string): Promise<string[]
  * @param projectPath - Project folder path to check
  * @returns True if project is active
  */
-export async function isActiveProject(projectPath: string): Promise<boolean> {
+async function isActiveProject(projectPath: string): Promise<boolean> {
   try {
     const config = await loadOpencodeConfig();
     const normalizedPath = normalizeFolderPath(projectPath);

@@ -532,7 +532,7 @@ export class AsistanController {
           // Doğrudan index.html yükle (entrance.html yerine)
           // Workspace path default project path'i kullanır
           const workspacePath = '/home/raistlin/hayalet-ev';
-          const srcUrl = `${baseOrigin}/opencode-ui/index.html?server=${encodeURIComponent(serverUrl)}&workspace=${encodeURIComponent(workspacePath)}`;
+          const srcUrl = `${baseOrigin}/pages/asistan-native.html?server=${encodeURIComponent(serverUrl)}&workspace=${encodeURIComponent(workspacePath)}`;
           
           LogManager.addEvent("asistan", "info", `Native UI URL: ${srcUrl}`, { 
             workspacePort: this._activeWorkspacePort,

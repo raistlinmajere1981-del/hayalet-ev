@@ -109,24 +109,19 @@ const QuestionModal = {
     document.body.appendChild(this._modal);
   },
 
-  // ===========================================================================
-  // Question Handling
-  // ===========================================================================
-
   /**
-   * Handle question store change
+   * Get pending questions from store
    */
-  _onQuestionChange() {
-    if (typeof MessageStore === 'undefined') return;
+  _getPendingQuestions() {
+    if (!MessageStore?.getQuestionQueue) return [];
 
-    const active = MessageStore.getActiveQuestion() as { question?: { id?: string; text?: string; type?: string; options?: Array<{ value: string; label: string; description?: string }>; default?: unknown } } | null;
-    const queue = MessageStore.getQuestionQueue();
+    const queue = MessageStore.getQuestionQueue() || [];
+    const active = (MessageStore as { getActiveQuestion?: () => unknown })?.getActiveQuestion?.();
+    const entries = active ? [active, ...queue] : queue;
 
-    if (active) {
-      this._showQuestion(active, queue.length);
-    } else {
-      this._hide();
-    }
+    return entries
+      .map((entry: unknown) => entry as QuestionEntry)
+      .filter((entry: QuestionEntry) => entry && entry.questionId);
   },
 
   /**

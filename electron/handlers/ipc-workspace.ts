@@ -11,7 +11,7 @@
 
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { WorkspaceManager, type WorkspaceDescriptor } from "../workspace-manager.ts";
-import { OpenCodeManager } from "../opencode-manager.ts";
+import { OpenCodeManager } from "../opencode/index.ts";
 
 // ===========================================================================
 // Response Types

@@ -90,7 +90,7 @@ export async function clearStartupCache(): Promise<{ main: ClearResult; asistan:
  * Belirli bir partition'ın tüm verilerini siler (logout için).
  * DİKKAT: Bu fonksiyon cookies dahil HER ŞEYİ siler!
  */
-// @ts-ignore - Reserved for future use
+// @ts-expect-error - Reserved for future use
 async function _clearAllSessionData(partitionName: string): Promise<ClearAllResult> {
   try {
     const ses = session.fromPartition(partitionName);

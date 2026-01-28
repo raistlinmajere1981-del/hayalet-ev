@@ -384,7 +384,7 @@ const SessionStore = {
     }
 
     // Update global current if this is the active instance
-    if (window.InstanceStore && window.InstanceStore.getActiveInstanceId?.() === instanceId) {
+    if ((window as any).InstanceStore && (window as any).InstanceStore.getActiveInstanceId?.() === instanceId) {
       this._currentSessionId = sessionId;
     }
 
@@ -505,7 +505,7 @@ const SessionStore = {
    */
   async renameSession(sessionId: string, newTitle: string) {
     try {
-      const result = await window.APIClient?.renameSession?.(sessionId, newTitle) as { success: boolean } | undefined;
+      const result = await (window as any).APIClient?.renameSession?.(sessionId, newTitle) as { success: boolean } | undefined;
       if (result?.success) {
         const session = this._sessions.get(sessionId);
         if (session) {
@@ -530,7 +530,7 @@ const SessionStore = {
    */
   async deleteSession(sessionId: string) {
     try {
-      await window.APIClient?.deleteSession?.(sessionId);
+      await (window as any).APIClient?.deleteSession?.(sessionId);
       // deleteSession returns void, so just proceed if no error
       {
         this.removeSession(sessionId);
@@ -703,7 +703,7 @@ const SessionStore = {
     this._statusByInstance.set(instanceId, status);
 
     // Update global status if this is the active instance
-    if (window.InstanceStore && window.InstanceStore.getActiveInstanceId?.() === instanceId) {
+    if ((window as any).InstanceStore && (window as any).InstanceStore.getActiveInstanceId?.() === instanceId) {
       this._status = status;
     }
 
@@ -736,15 +736,15 @@ const SessionStore = {
 
     this._notify({ type: 'instance:cleared', instanceId });
   },
-
   /**
    * Sync current session from active instance
    * Call this when active instance changes
    */
   syncFromActiveInstance() {
-    if (!window.InstanceStore) return;
+    if (!(window as any).InstanceStore) return;
     
-    const activeInstanceId = window.InstanceStore.getActiveInstanceId?.();
+    const getActiveInstanceId = (window as any).InstanceStore?.getActiveInstanceId;
+    const activeInstanceId = typeof getActiveInstanceId === 'function' ? getActiveInstanceId() : null;
     if (activeInstanceId) {
       this._currentSessionId = this._currentSessionByInstance.get(activeInstanceId) || null;
       this._status = this._statusByInstance.get(activeInstanceId) || 'idle';

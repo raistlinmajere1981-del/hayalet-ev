@@ -38,8 +38,8 @@ import {
   googledriveDisconnect,
   googledriveUpload,
 } from "./googledrive-manager.ts";
-import { OpenCodeManager } from "./opencode-manager.ts";
-import { OpenCodeSSEServer } from "./opencode-sse-server.ts";
+import { OpenCodeManager } from "./opencode/index.ts";
+import { OpenCodeSSEServer } from "./opencode-sse-server/index.ts";
 import {
   initLogSystem,
   interceptMainConsole,

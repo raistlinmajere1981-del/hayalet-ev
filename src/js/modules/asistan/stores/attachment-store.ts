@@ -7,15 +7,45 @@
  * CodeNomad pattern: getAttachments(instanceId, sessionId)
  */
 
+interface AttachmentRecord {
+  id: string;
+  type: 'file' | 'image' | 'text' | 'agent';
+  name: string;
+  path?: string | null;
+  content?: string | null;
+  dataUrl?: string | null;
+  mimeType?: string;
+  size?: number;
+  createdAt: number;
+}
+
+interface AttachmentInput {
+  type: AttachmentRecord['type'];
+  name?: string;
+  path?: string;
+  content?: string;
+  dataUrl?: string;
+  mimeType?: string;
+  size?: number;
+}
+
+type AttachmentStoreEvent = {
+  type: string;
+  sessionId?: string;
+  instanceId?: string;
+  attachment?: AttachmentRecord;
+  attachmentId?: string;
+};
+
 const AttachmentStore = {
   // =========================================================================
   // State
   // =========================================================================
 
-  /** @type {Map<string, Map<string, Attachment[]>>} instanceId -> sessionId -> attachments */
-  _attachments: new Map(),
+  /** @type {Map<string, Map<string, AttachmentRecord[]>>} instanceId -> sessionId -> attachments */
+  _attachments: new Map<string, Map<string, AttachmentRecord[]>>(),
 
-  _listeners: new Set<(event: unknown) => void>(),
+  _listeners: new Set<(event: AttachmentStoreEvent) => void>(),
 
   /** @type {number} Max attachment size in bytes (10MB) */
   MAX_FILE_SIZE: 10 * 1024 * 1024,
@@ -35,7 +65,7 @@ const AttachmentStore = {
    * @param {Function} listener
    * @returns {Function} Unsubscribe function
    */
-  subscribe(listener: (event: unknown) => void) {
+  subscribe(listener: (event: AttachmentStoreEvent) => void) {
     this._listeners.add(listener);
     return () => this._listeners.delete(listener);
   },
@@ -44,8 +74,8 @@ const AttachmentStore = {
    * Notify listeners of changes
    * @param {Object} event
    */
-  _notify(event: { type: string; sessionId?: string; instanceId?: string; attachment?: unknown; attachmentId?: string }) {
-    this._listeners.forEach((listener: (event: unknown) => void) => {
+  _notify(event: AttachmentStoreEvent) {
+    this._listeners.forEach((listener) => {
       try {
         listener(event);
       } catch (err) {
@@ -62,9 +92,9 @@ const AttachmentStore = {
    * Get attachments for a session
    * @param {string} sessionId
    * @param {string} [instanceId='default']
-   * @returns {Attachment[]}
+   * @returns {AttachmentRecord[]}
    */
-  getAttachments(sessionId: string, instanceId = 'default') {
+  getAttachments(sessionId: string, instanceId = 'default'): AttachmentRecord[] {
     const instanceMap = this._attachments.get(instanceId);
     if (!instanceMap) return [];
     return instanceMap.get(sessionId) || [];
@@ -75,11 +105,15 @@ const AttachmentStore = {
    * @param {string} sessionId
    * @param {AttachmentInput} input
    * @param {string} [instanceId='default']
-   * @returns {Attachment | null}
+   * @returns {AttachmentRecord | null}
    */
-  addAttachment(sessionId: string, input: { type: string; name?: string; path?: string; content?: string; dataUrl?: string; mimeType?: string; size?: number }, instanceId = 'default') {
+  addAttachment(
+    sessionId: string,
+    input: AttachmentInput,
+    instanceId = 'default'
+  ): AttachmentRecord | null {
     // Validate input
-    if (!input || !input.type) {
+    if (!input?.type) {
       console.warn('[AttachmentStore] Invalid attachment input:', input);
       return null;
     }
@@ -88,16 +122,16 @@ const AttachmentStore = {
     if (!this._attachments.has(instanceId)) {
       this._attachments.set(instanceId, new Map());
     }
-    const instanceMap = this._attachments.get(instanceId);
+    const instanceMap = this._attachments.get(instanceId) as Map<string, AttachmentRecord[]>;
 
     // Get or create session attachments
     if (!instanceMap.has(sessionId)) {
       instanceMap.set(sessionId, []);
     }
-    const attachments = instanceMap.get(sessionId);
+    const attachments = instanceMap.get(sessionId) as AttachmentRecord[];
 
     // Check for duplicates (by path for files, by content hash for others)
-    const isDuplicate = attachments.some((a: { type: string; path?: string | null; dataUrl?: string | null }) => {
+    const isDuplicate = attachments.some((a) => {
       if (a.type === 'file' && input.type === 'file') {
         return a.path === input.path;
       }
@@ -113,8 +147,7 @@ const AttachmentStore = {
     }
 
     // Create attachment record
-    /** @type {Attachment} */
-    const attachment = {
+    const attachment: AttachmentRecord = {
       id: this._generateId(),
       type: input.type,
       name: input.name || this._extractFileName(input.path) || 'Untitled',
@@ -146,14 +179,14 @@ const AttachmentStore = {
    * @param {string} [instanceId='default']
    * @returns {boolean}
    */
-  removeAttachment(sessionId: string, attachmentId: string, instanceId = 'default') {
+  removeAttachment(sessionId: string, attachmentId: string, instanceId = 'default'): boolean {
     const instanceMap = this._attachments.get(instanceId);
     if (!instanceMap) return false;
 
     const attachments = instanceMap.get(sessionId);
     if (!attachments) return false;
 
-    const index = attachments.findIndex((a: { id: string }) => a.id === attachmentId);
+    const index = attachments.findIndex((a) => a.id === attachmentId);
     if (index === -1) return false;
 
     const [removed] = attachments.splice(index, 1);
@@ -212,7 +245,7 @@ const AttachmentStore = {
    * @param {string} sessionId
    * @param {File} file
    * @param {string} [instanceId='default']
-   * @returns {Promise<Attachment | null>}
+   * @returns {Promise<AttachmentRecord | null>}
    */
   async addFileAttachment(sessionId: string, file: File, instanceId = 'default') {
     // Validate file size
@@ -254,7 +287,7 @@ const AttachmentStore = {
    * @param {string} sessionId
    * @param {File | Blob} imageData
    * @param {string} [instanceId='default']
-   * @returns {Promise<Attachment | null>}
+   * @returns {Promise<AttachmentRecord | null>}
    */
   async addImageAttachment(sessionId: string, imageData: File | Blob, instanceId = 'default') {
     try {
@@ -280,7 +313,7 @@ const AttachmentStore = {
    * @param {string} content
    * @param {string} [name]
    * @param {string} [instanceId='default']
-   * @returns {Attachment | null}
+   * @returns {AttachmentRecord | null}
    */
   addTextAttachment(sessionId: string, content: string, name?: string, instanceId = 'default') {
     return this.addAttachment(sessionId, {
@@ -301,13 +334,13 @@ const AttachmentStore = {
    * @param {ClipboardEvent} event
    * @param {string} sessionId
    * @param {string} [instanceId='default']
-   * @returns {Promise<Attachment[]>}
+   * @returns {Promise<AttachmentRecord[]>}
    */
   async handlePaste(event: ClipboardEvent, sessionId: string, instanceId = 'default') {
     const items = event.clipboardData?.items;
     if (!items) return [];
 
-    const attachments: Array<{ id: string; type: string; name: string; path?: string; content?: string; dataUrl?: string; mimeType?: string; size?: number; createdAt: number }> = [];
+    const attachments: AttachmentRecord[] = [];
 
     for (const item of items) {
       // Handle image paste
@@ -354,13 +387,13 @@ const AttachmentStore = {
    * @param {DragEvent} event
    * @param {string} sessionId
    * @param {string} [instanceId='default']
-   * @returns {Promise<Attachment[]>}
+   * @returns {Promise<AttachmentRecord[]>}
    */
   async handleDrop(event: DragEvent, sessionId: string, instanceId = 'default') {
     const files = event.dataTransfer?.files;
     if (!files || files.length === 0) return [];
 
-    const attachments: Array<{ id: string; type: string; name: string; path?: string; content?: string; dataUrl?: string; mimeType?: string; size?: number; createdAt: number }> = [];
+    const attachments: AttachmentRecord[] = [];
 
     for (const file of files) {
       const attachment = await this.addFileAttachment(sessionId, file, instanceId);
@@ -386,31 +419,33 @@ const AttachmentStore = {
    * Get attachments in API-ready format
    * @param {string} sessionId
    * @param {string} [instanceId='default']
-   * @returns {APIAttachment[]}
-   */
+   * @returns {Array<Record<string, unknown>>}
   getAttachmentsForAPI(sessionId: string, instanceId = 'default') {
     const attachments = this.getAttachments(sessionId, instanceId);
-    
-    return attachments.map((a: { type: string; name: string; dataUrl?: string | null; mimeType?: string; path?: string | null; content?: string | null }) => {
-      if (a.type === 'image') {
-        return {
-          type: 'image',
-          name: a.name,
-          data: a.dataUrl,
-          mimeType: a.mimeType,
-        };
-      }
-      if (a.type === 'file' || a.type === 'text') {
-        return {
-          type: 'file',
-          name: a.name,
-          path: a.path,
-          content: a.content,
-          mimeType: a.mimeType,
-        };
-      }
-      return null;
-    }).filter(Boolean);
+
+    return attachments
+      .map((attachment) => {
+        if (attachment.type === 'image') {
+          return {
+            type: 'image',
+            name: attachment.name,
+            data: attachment.dataUrl ?? undefined,
+            mimeType: attachment.mimeType,
+          };
+        }
+        if (attachment.type === 'file' || attachment.type === 'text') {
+          return {
+            type: 'file',
+            name: attachment.name,
+            path: attachment.path ?? undefined,
+            content: attachment.content ?? undefined,
+            mimeType: attachment.mimeType,
+          };
+        }
+        return null;
+      })
+      .filter((value): value is Record<string, unknown> => Boolean(value));
+  }
   },
 
   // =========================================================================
@@ -440,39 +475,39 @@ const AttachmentStore = {
    * @param {AttachmentInput} input
    * @returns {string}
    */
-  _detectMimeType(input: { mimeType?: string; name?: string; path?: string }) {
+  _detectMimeType(input: AttachmentInput) {
     if (input.mimeType) return input.mimeType;
-    
+
     const name = input.name || input.path || '';
     const ext = name.split('.').pop()?.toLowerCase();
-    
+
     const mimeMap = {
-      'js': 'text/javascript',
-      'ts': 'text/typescript',
-      'tsx': 'text/typescript',
-      'jsx': 'text/javascript',
-      'json': 'application/json',
-      'html': 'text/html',
-      'css': 'text/css',
-      'md': 'text/markdown',
-      'py': 'text/x-python',
-      'rb': 'text/x-ruby',
-      'go': 'text/x-go',
-      'rs': 'text/x-rust',
-      'java': 'text/x-java',
-      'sh': 'text/x-shellscript',
-      'yaml': 'text/yaml',
-      'yml': 'text/yaml',
-      'xml': 'application/xml',
-      'sql': 'text/x-sql',
-      'png': 'image/png',
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'gif': 'image/gif',
-      'webp': 'image/webp',
-      'svg': 'image/svg+xml',
+      js: 'text/javascript',
+      ts: 'text/typescript',
+      tsx: 'text/typescript',
+      jsx: 'text/javascript',
+      json: 'application/json',
+      html: 'text/html',
+      css: 'text/css',
+      md: 'text/markdown',
+      py: 'text/x-python',
+      rb: 'text/x-ruby',
+      go: 'text/x-go',
+      rs: 'text/x-rust',
+      java: 'text/x-java',
+      sh: 'text/x-shellscript',
+      yaml: 'text/yaml',
+      yml: 'text/yaml',
+      xml: 'application/xml',
+      sql: 'text/x-sql',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      svg: 'image/svg+xml',
     };
-    
+
     return (ext && mimeMap[ext as keyof typeof mimeMap]) || 'application/octet-stream';
   },
 
@@ -483,8 +518,8 @@ const AttachmentStore = {
    */
   _isTextFile(filename: string) {
     const ext = '.' + (filename.split('.').pop()?.toLowerCase() || '');
-    return this.CODE_EXTENSIONS.includes(ext) || 
-           ['.txt', '.log', '.csv', '.env', '.gitignore', '.dockerignore'].includes(ext);
+    return this.CODE_EXTENSIONS.includes(ext) ||
+      ['.txt', '.log', '.csv', '.env', '.gitignore', '.dockerignore'].includes(ext);
   },
 
   /**
@@ -507,38 +542,3 @@ export { AttachmentStore };
 
 // Global export (backward compatibility)
 window.AttachmentStore = AttachmentStore;
-
-/**
- * @typedef {Object} Attachment
- * @property {string} id - Unique attachment ID
- * @property {'file' | 'image' | 'text' | 'agent'} type - Attachment type
- * @property {string} name - Display name
- * @property {string | null} path - File path (if applicable)
- * @property {string | null} content - Text content (for text/code)
- * @property {string | null} dataUrl - Base64 data URL (for images)
- * @property {string} mimeType - MIME type
- * @property {number} size - Size in bytes
- * @property {number} createdAt - Creation timestamp
- */
-
-/**
- * @typedef {Object} AttachmentInput
- * @property {'file' | 'image' | 'text' | 'agent'} type
- * @property {string} [name]
- * @property {string} [path]
- * @property {string} [content]
- * @property {string} [dataUrl]
- * @property {string} [mimeType]
- * @property {number} [size]
- */
-
-/**
- * @typedef {Object} APIAttachment
- * @property {'file' | 'image'} type
- * @property {string} name
- * @property {string} [data] - Base64 data for images
- * @property {string} [path] - File path
- * @property {string} [content] - Text content
- * @property {string} mimeType
- */
-

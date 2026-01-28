@@ -6,9 +6,9 @@
  */
 
 export * from './types';
-export { MessageStore } from './message-store';
+export { MessageStore } from './message/index';
 export { SessionStore } from './session-store';
 export { InstanceStore } from './instance-store';
 export { AttachmentStore } from './attachment-store';
-export { StoreBridge } from './store-bridge';
+export { StoreBridge } from './store-bridge/index';
 export { PartNormalizer } from './normalizers';

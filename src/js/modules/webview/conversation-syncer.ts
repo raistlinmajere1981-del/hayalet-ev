@@ -309,7 +309,7 @@ class ConversationSyncerClass {
       this._lastSyncResult[provider] = res;
 
       const lastAfter = res.messages?.[res.messages.length - 1];
-      const stableAfter = lastAfter && lastAfter.role && lastAfter.role !== "user";
+      const stableAfter = lastAfter?.role && lastAfter.role !== "user";
 
       if (stableAfter) {
         this._notifyStable(provider, res);

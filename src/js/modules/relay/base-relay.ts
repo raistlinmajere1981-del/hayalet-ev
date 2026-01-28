@@ -95,6 +95,14 @@ export class BaseRelay {
   }
 
   /**
+   * Protokol oturumunu durdur (opsiyonel override)
+   */
+  async stopProtocolSession() {
+    await this.stop();
+  }
+
+
+  /**
    * AI thinking tamamlandığında çağrılır - alt sınıflar override etmeli
    * @abstract
    * @param {string} _provider - AI slot (ai1 veya ai2)

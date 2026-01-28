@@ -144,7 +144,7 @@ export const UploadManager = {
     }
 
     const r = result as { uploadedLinks?: string[]; uploaded?: string[]; data?: { uploadedLinks?: string[] }; errors?: string[] };
-    const uploaded = r.uploadedLinks || r.uploaded || (r.data && r.data.uploadedLinks) || [];
+    const uploaded = r.uploadedLinks || r.uploaded || (r.data?.uploadedLinks) || [];
 
     return {
       uploadedLinks: Array.isArray(uploaded) ? uploaded : [],

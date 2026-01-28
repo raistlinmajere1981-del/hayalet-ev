@@ -61,7 +61,7 @@ interface MessagePart {
  * @returns {boolean}
  */
 function isValidToolPart(part: MessagePart) {
-  if (!part || part.type !== 'tool') return false;
+  if (part?.type !== 'tool') return false;
   
   // Tool parts must have an ID
   if (!part.id || part.id.length === 0) {
@@ -84,7 +84,7 @@ function isValidToolPart(part: MessagePart) {
  * @returns {boolean}
  */
 function isValidThinkingPart(part: MessagePart) {
-  if (!part || part.type !== 'thinking') return false;
+  if (part?.type !== 'thinking') return false;
   return part.thinking && typeof part.thinking.content === 'string';
 }
 
@@ -94,7 +94,7 @@ function isValidThinkingPart(part: MessagePart) {
  * @returns {boolean}
  */
 function _isValidTextPart(part: MessagePart) {
-  if (!part || part.type !== 'text') return false;
+  if (part?.type !== 'text') return false;
   return typeof part.text === 'string';
 }
 
@@ -198,4 +198,4 @@ const PartNormalizer = {
 export { PartNormalizer };
 
 // Global export (backward compatibility)
-window.PartNormalizer = PartNormalizer;
+(window as any).PartNormalizer = PartNormalizer;

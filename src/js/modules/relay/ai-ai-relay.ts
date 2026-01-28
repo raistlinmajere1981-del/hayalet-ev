@@ -27,7 +27,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} provider - AI slot
    * @returns {boolean}
    */
-  handlesProvider(provider: string) {
+  override handlesProvider(provider: string) {
     return this._active && this._providers.includes(provider);
   }
 
@@ -35,7 +35,7 @@ export class AIAIRelay extends BaseRelay {
    * Basit AI-AI relay oturumu başlat
    * @param {Object} opts - { providers: ['ai1', 'ai2'] }
    */
-  async start(opts: { providers?: string[] } = {}) {
+  override async start(opts: { providers?: string[] } = {}) {
     this._providers = Array.isArray(opts.providers) && opts.providers.length
       ? opts.providers
       : ["ai1", "ai2"];
@@ -106,7 +106,7 @@ export class AIAIRelay extends BaseRelay {
   /**
    * Relay oturumunu durdur
    */
-  async stop() {
+  override async stop() {
     const wasProtocol = this._session?.type === "protocol";
     const sessionId = this._session?.id;
     
@@ -126,7 +126,7 @@ export class AIAIRelay extends BaseRelay {
   /**
    * Protokol oturumunu durdur (alias for stop)
    */
-  async stopProtocolSession() {
+  override async stopProtocolSession() {
     await this.stop();
   }
 
@@ -135,7 +135,7 @@ export class AIAIRelay extends BaseRelay {
    * @param {string} provider - AI slot (ai1 veya ai2)
    * @param {Object} syncResult - Conversation sync sonucu
    */
-  async handleThinkingComplete(provider: string, syncResult: { messages?: Array<{ role: string; text?: string }> }) {
+  override async handleThinkingComplete(provider: string, syncResult: { messages?: Array<{ role: string; text?: string }> }) {
     try {
       if (!syncResult || !Array.isArray(syncResult.messages)) return;
 
@@ -165,7 +165,7 @@ export class AIAIRelay extends BaseRelay {
    */
   async _handleProtocolFlow(provider: string, text: string) {
     const s = this._session;
-    if (!s || !s.providers || !s.lastTexts) return;
+    if (!s?.providers || !s.lastTexts) return;
     
     const [ai1, ai2] = s.providers;
 

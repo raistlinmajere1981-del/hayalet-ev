@@ -5,6 +5,8 @@
  * SSE Server ile iletişim için kullanılır.
  */
 
+import { OpenCodeConfig } from './config.js';
+
 const APIClient = {
   /** @type {string} */
   _serverUrl: null as string | null, // Set from OpenCodeConfig
@@ -15,9 +17,7 @@ const APIClient = {
    */
   _getServerUrl() {
     if (!this._serverUrl) {
-      this._serverUrl = (typeof OpenCodeConfig !== 'undefined') 
-        ? OpenCodeConfig.getServerUrl() 
-        : 'http://127.0.0.1:4097';
+      this._serverUrl = OpenCodeConfig.getServerUrl();
     }
     return this._serverUrl;
   },

@@ -33,7 +33,7 @@ import {
   type OpenCodeProviderInfo,
   type AgentModelPreference,
 } from "../opencode-config-manager.ts";
-import { OpenCodeManager } from "../opencode-manager.ts";
+import { OpenCodeManager } from "../opencode/index.ts";
 
 // =============================================================================
 // Types

@@ -10,7 +10,7 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
-// @ts-ignore - Reserved for future use
+// @ts-expect-error - Reserved for future use
 const _isQuitting: boolean = false;
 
 /**
@@ -132,20 +132,6 @@ function restoreFromTray() {
     _mainWindow.show();
     _mainWindow.focus();
     console.log('[WindowManager] Pencere geri açıldı');
-  }
-}
-
-/**
- * Tray'i temizle (uygulama kapanırken)
- */
-export function destroyTray() {
-  if (_tray) {
-    try {
-      _tray.destroy();
-    } catch (err) {
-      // Sessizce geç
-    }
-    _tray = null;
   }
 }
 
