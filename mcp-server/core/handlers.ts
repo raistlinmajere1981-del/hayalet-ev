@@ -55,6 +55,7 @@ import {
   searchSymbol,
   testRun,
   checkSyntax,
+  visualizeStructure,
 } from "../tools/dev-tools.js";
 import {
   startChunkedSession,
@@ -709,6 +710,24 @@ export async function handleToolCall(
         checkBrackets: a.check_brackets,
         checkESLint: a.check_eslint,
         checkTS: a.check_ts,
+      });
+      return { content: [{ type: "text", text: result.output }] };
+    }
+    if (name === "hev_dev_visualize_structure") {
+      const a = args as {
+        file_path: string;
+        show_scopes?: boolean;
+        show_brackets?: boolean;
+        show_comments?: boolean;
+        show_strings?: boolean;
+        max_depth?: number;
+      };
+      const result = await visualizeStructure(PROJECT_ROOT, a.file_path, {
+        showScopes: a.show_scopes,
+        showBrackets: a.show_brackets,
+        showComments: a.show_comments,
+        showStrings: a.show_strings,
+        maxDepth: a.max_depth,
       });
       return { content: [{ type: "text", text: result.output }] };
     }

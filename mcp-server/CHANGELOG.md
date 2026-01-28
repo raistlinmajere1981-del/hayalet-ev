@@ -2,6 +2,86 @@
 
 Tüm önemli değişiklikler bu dosyada belgelenecektir.
 
+## [1.10.0] - 2026-01-28
+
+### ✨ Yeni Özellikler
+
+#### Structure Visualizer Tool
+"Parantez cehennemi" sorunlarını çözmek için dosya yapısını görselleştiren yeni tool eklendi.
+
+**Tool: `hev_dev_visualize_structure`**
+
+**Yetenekler:**
+- ✅ **AST-based Parsing**: Function, class, if, for, while, try, switch hierarchy
+- ✅ **Scope Hierarchy**: Nested yapı görselleştirmesi (satır aralıkları + durum)
+- ✅ **Bracket Analysis**: Kapanmamış/fazla parantezler (satır + sütun bilgisiyle)
+- ✅ **Comment Blocks**: Single-line, multi-line, unclosed comment detection
+- ✅ **Intelligent Fallback**: Syntax hatası varsa token-based parse ile devam eder
+
+**Kullanım Senaryoları:**
+- 🔥 "Parantez cehennemi" durumlarında hangi scope'un kapanmadığını bulma
+- 🏗️ Büyük refactoring sonrası dosya yapısını kontrol etme
+- 🐛 Multi-line edit sonrası scope dengesi doğrulama
+- 📊 Dosyanın genel yapısını anlama (function/class map)
+
+**Örnek Çıktı:**
+```
+🔍 Dosya Yapısı: app.js
+══════════════════════════════════════════════════
+
+📦 SCOPE HIERARCHY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3-14     │ ⚡ calculateTotal            ✅
+  7-10     │ └─ 🔀 if statement              ✅
+16-33    │ 🏛️ ShoppingCart              ✅
+  22-22    │ └─ 🔀 if statement              ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 BRACKET ANALYSIS:
+❌ Kapanmamış parantezler (1):
+   Line 26, Col 15: '{' kapanmamış
+
+💬 COMMENT BLOCKS:
+   Line 14: /* ... ❌ UNCLOSED
+```
+
+### 🔧 Teknik Değişiklikler
+
+**Yeni Bağımlılıklar:**
+- `@babel/parser`: AST parsing için
+- `@babel/traverse`: AST traversal için
+- `@babel/types`: Type definitions
+
+**Yeni Fonksiyonlar:**
+- `tools/dev-tools.ts`: `visualizeStructure()` fonksiyonu eklendi
+- Parametreler: `projectRoot`, `filePath`, `options` (showScopes, showBrackets, showComments, showStrings, maxDepth)
+
+**Handler Güncellemeleri:**
+- `core/handlers.ts`: `hev_dev_visualize_structure` handler eklendi
+- AST parsing ve fallback mekanizması
+
+### 📝 Dokümantasyon
+
+- README.md güncellendi (v1.10.0)
+- AGENTS.md'ye Structure Visualizer bölümü eklendi
+- Tool sayısı: 67 → 68
+- Kullanım senaryoları ve workflow örnekleri
+
+### 🎯 Faydalar
+
+- ✅ "Parantez cehennemi" sorunlarını çözmek artık çok kolay
+- ✅ AI'lar dosya yapısını görsel olarak anlayabilir
+- ✅ Kapanmamış scope'lar kesin satır/sütun bilgisiyle tespit edilir
+- ✅ Context Preview + Syntax Checker + Structure Visualizer = Üçlü güç sistemi
+
+### 🏆 Üçlü Güç Sistemi Tamamlandı
+
+1. **Context Preview (v1.8.0)**: Değişiklikleri görsel doğrula
+2. **Syntax Checker (v1.9.0)**: Syntax hatalarını yakala
+3. **Structure Visualizer (v1.10.0)**: Dosya yapısını anla
+
+---
+
 ## [1.9.0] - 2026-01-28
 
 ### ✨ Yeni Özellikler

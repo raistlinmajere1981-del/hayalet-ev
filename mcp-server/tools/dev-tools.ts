@@ -1029,6 +1029,45 @@ export const DEV_TOOL_DEFINITIONS = [
       required: ["file_path"],
     },
   },
+  {
+    name: "hev_dev_visualize_structure",
+    description: "Dosya yapısını görselleştir: AST tree, scope hierarchy, bracket analysis, comment blocks. Parantez cehennemi sorunlarını çözmek için idealdir.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Analiz edilecek dosya yolu",
+        },
+        show_scopes: {
+          type: "boolean",
+          description: "Scope hierarchy göster (function, class, if, for, etc.)",
+          default: true,
+        },
+        show_brackets: {
+          type: "boolean",
+          description: "Bracket analysis göster (kapanmamış/fazla parantezler)",
+          default: true,
+        },
+        show_comments: {
+          type: "boolean",
+          description: "Comment blocks göster",
+          default: true,
+        },
+        show_strings: {
+          type: "boolean",
+          description: "String literals göster",
+          default: false,
+        },
+        max_depth: {
+          type: "number",
+          description: "Maksimum scope derinliği",
+          default: 10,
+        },
+      },
+      required: ["file_path"],
+    },
+  },
 ];
 
 /**
@@ -1226,5 +1265,391 @@ export async function checkSyntax(
     errors,
     bracketsBalanced,
     bracketDetails,
+  };
+}
+
+/**
+ * Visualize file structure (AST, brackets, scopes)
+ */
+export async function visualizeStructure(
+  projectRoot: string,
+  filePath: string,
+  options: {
+    showScopes?: boolean;
+    showBrackets?: boolean;
+    showComments?: boolean;
+    showStrings?: boolean;
+    maxDepth?: number;
+  } = {}
+): Promise<{
+  success: boolean;
+  output: string;
+  tree?: any;
+  errors: string[];
+}> {
+  const { 
+    showScopes = true, 
+    showBrackets = true, 
+    showComments = true,
+    showStrings = false,
+    maxDepth = 10 
+  } = options;
+  
+  const fullPath = join(projectRoot, filePath);
+  const errors: string[] = [];
+  const output: string[] = [];
+  
+  if (!existsSync(fullPath)) {
+    return {
+      success: false,
+      output: `❌ Dosya bulunamadı: ${filePath}`,
+      errors: ['File not found'],
+    };
+  }
+
+  const content = readFileSync(fullPath, 'utf-8');
+  const ext = extname(filePath);
+  const lines = content.split('\n');
+  
+  output.push(`🔍 Dosya Yapısı: ${filePath}`);
+  output.push('═'.repeat(50));
+  output.push('');
+
+  let scopeCount = 0; // Track scope count outside try block
+
+  // Try AST parsing for JS/TS files
+  if (['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'].includes(ext)) {
+    try {
+      const { parse } = await import('@babel/parser');
+      const traverseImport: any = await import('@babel/traverse');
+      // Handle both CommonJS and ESM imports
+      const traverse = typeof traverseImport === 'function' 
+        ? traverseImport 
+        : traverseImport.default?.default || traverseImport.default || traverseImport;
+      
+      const ast = parse(content, {
+        sourceType: 'module',
+        plugins: [
+          'typescript',
+          'jsx',
+          'decorators-legacy',
+          'classProperties',
+          'objectRestSpread',
+          'optionalChaining',
+          'nullishCoalescingOperator',
+        ],
+      });
+
+      if (showScopes) {
+        output.push('📦 SCOPE HIERARCHY:');
+        output.push('━'.repeat(50));
+        
+        const scopes: Array<{
+          type: string;
+          name: string;
+          start: number;
+          end: number;
+          startLine: number;
+          endLine: number;
+          parent?: any;
+        }> = [];
+
+        traverse(ast, {
+          FunctionDeclaration(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'function',
+              name: node.id?.name || 'anonymous',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          FunctionExpression(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'function',
+              name: node.id?.name || 'anonymous',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          ArrowFunctionExpression(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'arrow',
+              name: 'arrow function',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          ClassDeclaration(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'class',
+              name: node.id?.name || 'anonymous',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          IfStatement(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'if',
+              name: 'if statement',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          ForStatement(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'for',
+              name: 'for loop',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          WhileStatement(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'while',
+              name: 'while loop',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          TryStatement(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'try',
+              name: 'try block',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+          SwitchStatement(path: any) {
+            const node = path.node;
+            scopes.push({
+              type: 'switch',
+              name: 'switch statement',
+              start: node.start,
+              end: node.end,
+              startLine: node.loc.start.line,
+              endLine: node.loc.end.line,
+            });
+          },
+        });
+
+        // Sort by start line
+        scopes.sort((a, b) => a.startLine - b.startLine);
+
+        // Build hierarchy
+        const rootScopes = scopes.filter(s => 
+          !scopes.some(parent => 
+            parent.start < s.start && parent.end > s.end && parent !== s
+          )
+        );
+
+        const renderScope = (scope: any, depth: number = 0, prefix: string = '') => {
+          if (depth > maxDepth) return;
+          
+          const indent = '  '.repeat(depth);
+          const lineRange = `${scope.startLine}-${scope.endLine}`;
+          const icon = scope.type === 'function' ? '⚡' : 
+                      scope.type === 'class' ? '🏛️' : 
+                      scope.type === 'if' ? '🔀' :
+                      scope.type === 'for' || scope.type === 'while' ? '🔁' :
+                      scope.type === 'try' ? '🛡️' :
+                      scope.type === 'switch' ? '🎛️' : '📦';
+          
+          const status = scope.endLine ? '✅' : '❌ UNCLOSED';
+          
+          output.push(`${indent}${lineRange.padEnd(8)} │ ${prefix}${icon} ${scope.name.padEnd(25)} ${status}`);
+
+          // Find children
+          const children = scopes.filter(child => 
+            child.start > scope.start && 
+            child.end < scope.end &&
+            !scopes.some(between => 
+              between.start > scope.start && 
+              between.end < scope.end &&
+              between.start < child.start && 
+              between.end > child.end &&
+              between !== child
+            )
+          );
+
+          children.forEach((child, idx) => {
+            const isLast = idx === children.length - 1;
+            const childPrefix = isLast ? '└─ ' : '├─ ';
+            renderScope(child, depth + 1, childPrefix);
+          });
+        };
+
+        rootScopes.forEach(scope => renderScope(scope));
+        
+        output.push('━'.repeat(50));
+        output.push('');
+        
+        scopeCount = scopes.length; // Save count before leaving scope
+      }
+
+      output.push(`✅ AST parse başarılı (${scopeCount} scope bulundu)`);
+
+    } catch (err) {
+      const error = err as Error;
+      errors.push(`AST parse error: ${error.message}`);
+      output.push(`⚠️  AST parse başarısız, fallback mod kullanılıyor...`);
+      output.push('');
+    }
+  }
+
+  // Bracket analysis (always run)
+  if (showBrackets) {
+    output.push('');
+    output.push('🔗 BRACKET ANALYSIS:');
+    output.push('━'.repeat(50));
+    
+    const bracketStack: Array<{ char: string; line: number; col: number }> = [];
+    const bracketPairs = { '(': ')', '{': '}', '[': ']' };
+    const unclosedBrackets: Array<{ char: string; line: number; col: number }> = [];
+    const extraBrackets: Array<{ char: string; line: number; col: number }> = [];
+
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const line = lines[lineIdx];
+      
+      for (let col = 0; col < line.length; col++) {
+        const char = line[col];
+        
+        if (['(', '{', '['].includes(char)) {
+          bracketStack.push({ char, line: lineIdx + 1, col: col + 1 });
+        } else if ([')', '}', ']'].includes(char)) {
+          const last = bracketStack[bracketStack.length - 1];
+          const expectedOpen = Object.keys(bracketPairs).find(k => bracketPairs[k as keyof typeof bracketPairs] === char);
+          
+          if (last && last.char === expectedOpen) {
+            bracketStack.pop();
+          } else {
+            extraBrackets.push({ char, line: lineIdx + 1, col: col + 1 });
+          }
+        }
+      }
+    }
+
+    unclosedBrackets.push(...bracketStack);
+
+    if (unclosedBrackets.length === 0 && extraBrackets.length === 0) {
+      output.push('✅ Tüm parantezler dengeli');
+    } else {
+      if (unclosedBrackets.length > 0) {
+        output.push(`❌ Kapanmamış parantezler (${unclosedBrackets.length}):`);
+        unclosedBrackets.slice(0, 5).forEach(b => {
+          output.push(`   Line ${b.line}, Col ${b.col}: '${b.char}' kapanmamış`);
+        });
+        if (unclosedBrackets.length > 5) {
+          output.push(`   ... ve ${unclosedBrackets.length - 5} tane daha`);
+        }
+      }
+      
+      if (extraBrackets.length > 0) {
+        output.push(`❌ Fazla kapanış parantezleri (${extraBrackets.length}):`);
+        extraBrackets.slice(0, 5).forEach(b => {
+          output.push(`   Line ${b.line}, Col ${b.col}: '${b.char}' açılış yok`);
+        });
+        if (extraBrackets.length > 5) {
+          output.push(`   ... ve ${extraBrackets.length - 5} tane daha`);
+        }
+      }
+    }
+    
+    output.push('━'.repeat(50));
+  }
+
+  // Comment analysis
+  if (showComments) {
+    output.push('');
+    output.push('💬 COMMENT BLOCKS:');
+    output.push('━'.repeat(50));
+    
+    const commentBlocks: Array<{ type: string; start: number; end?: number }> = [];
+    let inMultilineComment = false;
+    let multilineStart = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Single line comments
+      if (line.includes('//')) {
+        const idx = line.indexOf('//');
+        commentBlocks.push({ type: 'single', start: i + 1 });
+      }
+      
+      // Multi-line comments
+      if (line.includes('/*')) {
+        inMultilineComment = true;
+        multilineStart = i + 1;
+      }
+      
+      if (inMultilineComment && line.includes('*/')) {
+        commentBlocks.push({ type: 'multi', start: multilineStart, end: i + 1 });
+        inMultilineComment = false;
+      }
+    }
+
+    if (inMultilineComment) {
+      commentBlocks.push({ type: 'multi', start: multilineStart, end: undefined });
+      errors.push(`Unclosed multi-line comment starting at line ${multilineStart}`);
+    }
+
+    if (commentBlocks.length === 0) {
+      output.push('   (Yorum bloğu yok)');
+    } else {
+      const singleComments = commentBlocks.filter(c => c.type === 'single');
+      const multiComments = commentBlocks.filter(c => c.type === 'multi');
+      
+      output.push(`   Single-line: ${singleComments.length}`);
+      output.push(`   Multi-line: ${multiComments.length}`);
+      
+      multiComments.slice(0, 5).forEach(c => {
+        if (c.end) {
+          output.push(`   Line ${c.start}-${c.end}: /* ... */ ✅`);
+        } else {
+          output.push(`   Line ${c.start}: /* ... ❌ UNCLOSED`);
+        }
+      });
+    }
+    
+    output.push('━'.repeat(50));
+  }
+
+  output.push('');
+  output.push(`📊 Total Lines: ${lines.length}`);
+  
+  if (errors.length > 0) {
+    output.push('');
+    output.push('⚠️  ISSUES DETECTED:');
+    errors.forEach(err => output.push(`   • ${err}`));
+  }
+
+  return {
+    success: errors.length === 0,
+    output: output.join('\n'),
+    errors,
   };
 }

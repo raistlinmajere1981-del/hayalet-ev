@@ -1,6 +1,6 @@
 {
   "name": "hayalet-ev-mcp",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "MCP Server for Hayalet-ev development workflows with CDP support",
   "type": "module",
   "main": "core/index.ts",
@@ -16,11 +16,15 @@
     "start:built": "node dist/index.js"
   },
   "dependencies": {
+    "@babel/parser": "^7.28.6",
+    "@babel/traverse": "^7.28.6",
+    "@babel/types": "^7.28.6",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "cheerio": "^1.2.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
     "@types/ws": "^8.18.1",
     "tsx": "^4.21.0"
   },

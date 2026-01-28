@@ -173,7 +173,7 @@ Test timeout detayları: `.rovodev/testing.md`
 
 ---
 
-## 🔍 Syntax Checker (YENİ - v1.9.0)
+## 🔍 Syntax Checker (v1.9.0)
 
 Edit işlemlerinden sonra dosyalarda syntax hatası kontrolü:
 
@@ -211,6 +211,80 @@ await hev_dev_check_syntax('file.js', {
    Süslü Parantez: 4 açık / 5 kapalı
 ──────────────────────────────────────────────────
 ❌ 1 hata bulundu
+```
+
+---
+
+## 🏗️ Structure Visualizer (YENİ - v1.10.0)
+
+"Parantez cehennemi" sorunlarını çözmek için dosya yapısını görselleştir:
+
+### `hev_dev_visualize_structure`
+
+**Ne Zaman Kullan:**
+- ❌ Parantez dengesizliği tespit edildiğinde
+- 🔥 "Parantez cehennemi" durumlarında
+- 🏗️ Büyük refactoring sonrası yapı kontrolü
+- 🐛 Hangi scope'un kapanmadığını bulmak için
+- 📊 Dosya yapısını anlamak için
+
+**Yetenekler:**
+- ✅ **AST Parsing**: Function, class, if, for, while, try, switch hierarchy
+- ✅ **Scope Tree**: Nested yapı görselleştirmesi (satır aralıkları)
+- ✅ **Bracket Analysis**: Kapanmamış/fazla parantezler (satır + sütun)
+- ✅ **Comment Blocks**: Single/multi-line, unclosed detection
+- ✅ **Intelligent Fallback**: Syntax hatası varsa token-based
+
+**Örnek Kullanım:**
+```javascript
+// Parantez problemi tespit edildi:
+await hev_dev_check_syntax('file.js');
+// → ❌ Parantez Dengesi: BOZUK
+
+// Yapıyı görselleştir:
+await hev_dev_visualize_structure('file.js', {
+  show_scopes: true,
+  show_brackets: true,
+  show_comments: true
+});
+```
+
+**Çıktı:**
+```
+🔍 Dosya Yapısı: file.js
+══════════════════════════════════════════════════
+
+📦 SCOPE HIERARCHY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3-14     │ ⚡ processData               ❌ UNCLOSED
+  7-10     │ ├─ 🔀 if statement              ✅
+  12-?     │ └─ 🔁 for loop                  ❌ UNCLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 BRACKET ANALYSIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Kapanmamış parantezler (2):
+   Line 3, Col 23: '{' kapanmamış (processData)
+   Line 12, Col 30: '{' kapanmamış (for loop)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 COMMENT BLOCKS:
+   Line 14: /* ... ❌ UNCLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  ISSUES DETECTED:
+   • Line 3: function processData - MISSING closing brace
+   • Line 12: for loop - MISSING closing brace
+   • Line 14: Unclosed multi-line comment
+```
+
+**Workflow:**
+```
+1. Edit yaptım
+2. checkSyntax() → Parantez bozuk!
+3. visualizeStructure() → Hangi satırda eksik göster
+4. Context Preview ile düzelt
+5. Tekrar checkSyntax() → ✅ OK!
 ```
 
 ---

@@ -2,12 +2,13 @@
 
 Rovodev CLI için Hayalet-ev projesi özel MCP (Model Context Protocol) Server.
 
-**v1.9.0** - CDP + Filesystem + Dev Tools + Recycle Bin + Diff + Context Preview + **Syntax Checker** desteği ile!
+**v1.10.0** - CDP + Filesystem + Dev Tools + Recycle Bin + Diff + Context Preview + Syntax Checker + **Structure Visualizer** desteği ile!
 
 ## 🎯 Özellikler
 
-- **67 Tool** - Dosya, geliştirme ve Electron kontrolü
-- **Syntax Checker** - Parantez dengesi, ESLint, TypeScript kontrolü ✨ YENİ
+- **68 Tool** - Dosya, geliştirme ve Electron kontrolü
+- **Structure Visualizer** - AST tree, scope hierarchy, bracket analysis ✨ YENİ
+- **Syntax Checker** - Parantez dengesi, ESLint, TypeScript kontrolü
 - **Context Preview** - Edit operasyonlarında değişiklik bölgesinin ±5 satır context'i
 - **Provider Validation** - AI selector'larını canlı test et
 - **Recycle Bin** - Silinen dosyalar geri alınabilir
@@ -229,7 +230,7 @@ Geliştirme workflow'ları için araçlar (eski npm scriptlerinin yerine):
     Örnek: "utils testlerini çalıştır"
     ```
 
-37. **hev_dev_check_syntax** - Syntax hataları ve parantez dengesi kontrolü ✨ YENİ
+37. **hev_dev_check_syntax** - Syntax hataları ve parantez dengesi kontrolü
     ```
     Örnek: "Bu dosyada syntax hatası var mı?"
     Örnek: "Parantez dengesi kontrolü yap"
@@ -251,6 +252,44 @@ Geliştirme workflow'ları için araçlar (eski npm scriptlerinin yerine):
     ──────────────────────────────────────────────────
     ❌ 1 hata bulundu
     ```
+
+38. **hev_dev_visualize_structure** - Dosya yapısını görselleştir ✨ YENİ
+    ```
+    Örnek: "Bu dosyanın yapısını göster"
+    Örnek: "Parantez cehennemi var, scope hierarchy göster"
+    Örnek: "Hangi fonksiyon nerede kapanıyor?"
+    ```
+    
+    **Yetenekler:**
+    - ✅ **AST-based parsing**: Function, class, if, for, while, try, switch
+    - ✅ **Scope hierarchy**: Nested yapı görselleştirmesi
+    - ✅ **Bracket analysis**: Kapanmamış/fazla parantezler (satır + sütun)
+    - ✅ **Comment blocks**: Single/multi-line, unclosed detection
+    - ✅ **Intelligent fallback**: Syntax hatası varsa token-based parse
+    
+    **Çıktı Örneği:**
+    ```
+    🔍 Dosya Yapısı: app.js
+    ══════════════════════════════════════════════════
+    
+    📦 SCOPE HIERARCHY:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    3-14     │ ⚡ calculateTotal            ✅
+      7-10     │ └─ 🔀 if statement              ✅
+    16-33    │ 🏛️ ShoppingCart              ✅
+      22-22    │ └─ 🔀 if statement              ✅
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+    🔗 BRACKET ANALYSIS:
+    ❌ Kapanmamış parantezler (1):
+       Line 26, Col 15: '{' kapanmamış
+    ```
+    
+    **Kullanım Senaryoları:**
+    - 🔥 "Parantez cehennemi" sorunlarını çözme
+    - 🔍 Multi-line edit sonrası doğrulama
+    - 🏗️ Refactoring sırasında yapı kontrolü
+    - 🐛 Kapanmamış scope'ları bulma
 
 ### ✨ Context Preview
 
