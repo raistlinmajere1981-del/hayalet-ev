@@ -90,10 +90,9 @@ let mainWindow: BrowserWindow | null = null;
 initLogSystem();
 
 interceptMainConsole();
-
 if (process.stdout && process.stdout.isTTY) {
   try {
-    process.stdout.write("\x1b[?1004l");
+    process.stdout.write("\x1b" + "[?1004l");
   } catch (e) {}
 }
 

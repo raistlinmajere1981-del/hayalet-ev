@@ -67,3 +67,4 @@ screenshots/
 !src/assets/*.jpeg
 .ts-migrate-backup/
 dist-electron/
+/yedek/
