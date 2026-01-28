@@ -161,15 +161,36 @@ Test timeout detayları: `.rovodev/testing.md`
 
 ## 🛠️ Tool Kullanım Best Practices (Özet)
 
-> Detaylı rehber: `.rovodev/auto-triggers.md`
+> Detaylı rehber: `.rovodev/auto-triggers.md`  
+> **YENİ:** Duplicate önleme rehberi: `.rovodev/safe-editing.md`
 
 | Tier | Tool | Ne Zaman |
 |------|------|---------|
 | 1 | `hev_fs_find_and_replace` | Tek satır, basit string |
-| 2 | `hev_dev_edit_lines` | Multi-line blok |
+| 2 | `hev_dev_edit_lines` | Multi-line blok (ÖNERİLEN) |
 | 3 | `hev_fs_bash` | Batch değişiklik |
 
 **Kural:** Önce dry-run + preview + syntax validation.
+
+### ⚠️ UYARI: Rovodev Built-in Tool'lar
+
+**Rovodev'in kendi `find_and_replace_code` tool'u buggy!**
+- ❌ Fuzzy matching yapıyor ama silme işlemini düzgün yapmıyor
+- ❌ Duplicate satırlar oluşturuyor
+- ❌ Context preview yanıltıcı olabiliyor
+
+**Çözüm:**
+```
+❌ find_and_replace_code(...)     // Rovodev built-in
+✅ hev_fs_find_and_replace(...)   // Hayalet-ev MCP
+✅ hev_dev_edit_lines(...)         // En güvenli
+```
+
+**Güvenli Workflow:**
+1. `hev_fs_show()` - Önce kontrol et
+2. `hev_dev_edit_lines()` - Edit yap (context preview otomatik)
+3. `hev_dev_check_syntax()` - Syntax kontrol
+4. `hev_dev_visualize_structure()` - Yapı kontrol (şüpheli durumlarda)
 
 ---
 
