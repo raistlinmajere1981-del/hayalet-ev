@@ -95,10 +95,9 @@ Bir mod değiştiğinde status bar güncellenir ve geçiş belirtilir:
 
 Şu durumlarda `.rovodev/notebook.md`'ye not ekle:
 
-- Tool hata verdiğinde
+- Tool hata verdiğinde **(komut + hata çıktısı + kısa teşhis + olası çözüm)**
 - Web search alakasız sonuç döndüğünde
 - Yeni tool fikri oluştuğunda
 - Tekrarlayan pattern fark edildiğinde
-
 ---
 v1.0 - 2026-01-24

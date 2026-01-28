@@ -10,8 +10,10 @@
 ### [Tarih] Başlık
 - **Durum:** Açık/Çözüldü
 - **Öncelik:** Yüksek/Orta/Düşük
-- **Detay:** Açıklama
-- **Workaround:** Varsa geçici çözüm
+- **Komut:** `hev_*` çağrısı veya çalıştırılan komut
+- **Hata Çıktısı:** Kısa özet + gerekirse log/parça
+- **Teşhis:** Neden/varsayım
+- **Çözüm/Workaround:** Varsa geçici çözüm
 -->
 
 ### [2026-01-24] create_file Tool Hatası

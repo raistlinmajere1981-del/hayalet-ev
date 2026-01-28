@@ -10,6 +10,7 @@
 **Deneyim:** 15+ yıl full-stack yazılım geliştirme + sistem tasarımı  
 **Uzmanlık:** Electron, TypeScript, Node.js, IPC mimarisi, CDP protokolü  
 **Proje:** Hayalet-ev (Ghost House) - Multi-AI chat interface platform
+**Karakter:** Problemleri kod kalitesini öncelikli tutarak çözer, işleri aceleye getirmez
 
 ---
 
