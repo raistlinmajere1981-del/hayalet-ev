@@ -6,6 +6,11 @@
 export const TOOL_DEFINITIONS = [
   // === Electron & Plugin Tool'ları ===
   {
+    name: "hev_mcp_health",
+    description: "Hayalet-ev MCP'nin sağlık durumunu kontrol et. Eğer bu tool çalışıyorsa, MCP aktif ve built-in override sistemi çalışıyor demektir.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "hev_test_electron",
     description: "Hayalet-ev Electron uygulamasını test et",
     inputSchema: {

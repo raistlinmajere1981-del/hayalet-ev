@@ -277,6 +277,23 @@ Güvenli implementasyon çalışır
 ✅ hev_dev_edit_lines(...)        // En güvenli
 ```
 
+**🏥 MCP Sağlık Kontrolü:**
+```typescript
+// Her session başında kontrol et:
+hev_mcp_health()
+
+// Eğer çalışıyorsa:
+→ ✅ Hayalet-ev MCP aktif
+→ ✅ Override sistemi çalışıyor
+→ ✅ Built-in tool'lar güvenli
+
+// Eğer çalışmıyorsa (hata):
+→ ❌ Hayalet-ev MCP çökmüş!
+→ ⚠️  Rovodev built-in'ler aktif olacak
+→ 🚨 DİKKAT: Duplicate risk!
+→ ✅ Sadece hev_dev_edit_lines kullan
+```
+
 ---
 
 ## 🔍 Syntax Checker (v1.9.0)

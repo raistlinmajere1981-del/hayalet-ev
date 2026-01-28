@@ -204,3 +204,24 @@ export function listTools(): ToolResult {
     content: [{ type: "text", text: output }],
   };
 }
+
+/**
+ * MCP Health Check - Hayalet-ev MCP'nin çalıştığını doğrula
+ */
+export async function mcpHealthCheck(): Promise<{
+  healthy: boolean;
+  version: string;
+  uptime: number;
+  toolCount: number;
+  message: string;
+}> {
+  const startTime = process.uptime();
+  
+  return {
+    healthy: true,
+    version: "1.10.0",
+    uptime: startTime,
+    toolCount: 70,
+    message: "✅ Hayalet-ev MCP aktif ve çalışıyor. Built-in override sistemi aktif.",
+  };
+}

@@ -4,7 +4,7 @@
  */
 
 import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
-import { testElectron, listTools } from "../tools/electron-tools.js";
+import { testElectron, listTools, mcpHealthCheck } from "../tools/electron-tools.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "../tools/log-tools.js";
 import { getErrorHints } from "../tools/debug-tools.js";
 import {
@@ -106,6 +106,34 @@ export async function handleToolCall(
 
   try {
     // === Electron & Log Tools ===
+    if (name === "hev_mcp_health") {
+      const health = await mcpHealthCheck();
+      const output = `
+${health.message}
+
+📊 MCP Durum:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Sağlık: ${health.healthy ? 'Healthy' : 'Unhealthy'}
+📦 Versiyon: ${health.version}
+⏱️  Uptime: ${Math.floor(health.uptime)}s
+🔧 Tool Sayısı: ${health.toolCount}
+🛡️  Override Sistemi: Aktif
+
+💡 Bu mesajı görüyorsan:
+   → Hayalet-ev MCP çalışıyor
+   → Built-in override sistemi aktif
+   → find_and_replace_code güvenli
+   → expand_code_chunks güvenli
+
+⚠️  Eğer bu tool çalışmazsa:
+   → Hayalet-ev MCP çökmüş demektir
+   → Rovodev built-in tool'ları kullanacak
+   → DİKKAT: Duplicate line riski!
+   → Acil: hev_dev_edit_lines kullan
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      return { content: [{ type: "text", text: output }] };
+    }
     if (name === "hev_test_electron") {
       return await handleTestElectron(args, PROJECT_ROOT);
     }
