@@ -244,6 +244,41 @@ git checkout -- path/to/file.ts
 
 ---
 
+### 🛡️ Otomatik Koruma: Built-in Override Sistemi
+
+**Hayalet-ev MCP artık Rovodev built-in tool'larını otomatik override ediyor!**
+
+```
+AI çağırır: find_and_replace_code(...)
+↓
+Hayalet-ev MCP intercept eder
+↓
+Güvenli implementasyon çalışır
+↓
+🛡️ SAFE MODE (Hayalet-ev override)
+✅ 1 değişiklik yapıldı
+[Context Preview]
+```
+
+**Override Edilen Tool'lar:**
+- ✅ `find_and_replace_code` → Safe implementation (context preview'li)
+- ✅ `expand_code_chunks` → Safe implementation
+
+**Nasıl Çalışıyor:**
+1. Hayalet-ev MCP tool definitions'ları en sona ekliyor
+2. Rovodev aynı isimli tool'u bulunca son kaydedileni kullanıyor
+3. Built-in buggy version bypass ediliyor
+4. Output'ta "🛡️ SAFE MODE" görürsen override çalışmış demektir
+
+**Manuel Kullanım Hala Önerilir:**
+```typescript
+// Override çalışsa da, explicit hayalet-ev tool'ları kullanmak daha iyi:
+✅ hev_fs_find_and_replace(...)  // Explicit safe
+✅ hev_dev_edit_lines(...)        // En güvenli
+```
+
+---
+
 ## 🔍 Syntax Checker (v1.9.0)
 
 Edit işlemlerinden sonra dosyalarda syntax hatası kontrolü:

@@ -214,6 +214,64 @@ export async function handleToolCall(
       }
       return { content: [{ type: "text", text: msg }] };
     }
+
+    // === ROVODEV BUILT-IN OVERRIDE HANDLERS ===
+    // These handlers override buggy Rovodev built-in tools
+    
+    if (name === "find_and_replace_code") {
+      // Override Rovodev's buggy built-in with our safe implementation
+      const a = args as { 
+        file_path: string; 
+        find: string; 
+        replace: string;
+        ignore_whitespace?: boolean;
+        dry_run?: boolean;
+      };
+      
+      const result = await findAndReplaceCode(
+        a.file_path,
+        a.find,
+        a.replace,
+        a.ignore_whitespace,
+        a.dry_run
+      );
+      
+      let msg = `🛡️  SAFE MODE (Hayalet-ev override)\n`;
+      msg += result.success
+        ? `✅ ${result.replacements} değişiklik yapıldı: ${result.file}`
+        : `❌ ${result.error}`;
+      
+      if (result.contextPreview) {
+        msg += `\n${result.contextPreview}`;
+      }
+      
+      return { content: [{ type: "text", text: msg }] };
+    }
+    
+    if (name === "expand_code_chunks") {
+      // Override Rovodev's built-in with our safe implementation
+      const a = args as {
+        file_path: string;
+        line_ranges?: Array<[number, number]>;
+        patterns?: string[];
+      };
+      
+      const result = await expandCodeChunks(
+        a.file_path,
+        a.line_ranges || [],
+        a.patterns || []
+      );
+      
+      let msg = `🛡️  SAFE MODE (Hayalet-ev override)\n`;
+      if (result.error) {
+        msg += `❌ ${result.error}`;
+      } else {
+        msg += `✅ Kod genişletildi`;
+      }
+      msg += `\n\n${result.content}`;
+      
+      return { content: [{ type: "text", text: msg }] };
+    }
     if (name === "hev_fs_grep") {
       const result = await grep(
         PROJECT_ROOT,

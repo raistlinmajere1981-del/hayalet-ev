@@ -218,3 +218,70 @@ export const TOOL_DEFINITIONS = [
     },
   },
 ];
+
+// === ROVODEV BUILT-IN OVERRIDE TOOLS ===
+// These tools override buggy Rovodev built-in tools with safe implementations
+
+export const OVERRIDE_TOOL_DEFINITIONS = [
+  {
+    name: "find_and_replace_code",
+    description: "SAFE VERSION: Find and replace code with context preview. Overrides Rovodev built-in to prevent duplicate lines.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Path to the file",
+        },
+        find: {
+          type: "string",
+          description: "Code to find (exact match)",
+        },
+        replace: {
+          type: "string",
+          description: "Code to replace with",
+        },
+        ignore_whitespace: {
+          type: "boolean",
+          description: "Ignore whitespace differences (default: false)",
+          default: false,
+        },
+        dry_run: {
+          type: "boolean",
+          description: "Preview changes without applying (default: false)",
+          default: false,
+        },
+      },
+      required: ["file_path", "find", "replace"],
+    },
+  },
+  {
+    name: "expand_code_chunks",
+    description: "SAFE VERSION: Expand code by line ranges or patterns. Overrides Rovodev built-in.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Path to the file",
+        },
+        line_ranges: {
+          type: "array",
+          items: {
+            type: "array",
+            items: { type: "number" },
+          },
+          description: "Line ranges to expand [[start, end], ...]",
+          default: [],
+        },
+        patterns: {
+          type: "array",
+          items: { type: "string" },
+          description: "Patterns to search and expand (function names, class names, etc.)",
+          default: [],
+        },
+      },
+      required: ["file_path"],
+    },
+  },
+];
