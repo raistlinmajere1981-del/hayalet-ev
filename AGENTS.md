@@ -172,25 +172,75 @@ Test timeout detayları: `.rovodev/testing.md`
 
 **Kural:** Önce dry-run + preview + syntax validation.
 
-### ⚠️ UYARI: Rovodev Built-in Tool'lar
+### 🚨 KRİTİK UYARI: DUPLICATE SATIR SORUNU
 
-**Rovodev'in kendi `find_and_replace_code` tool'u buggy!**
-- ❌ Fuzzy matching yapıyor ama silme işlemini düzgün yapmıyor
-- ❌ Duplicate satırlar oluşturuyor
-- ❌ Context preview yanıltıcı olabiliyor
+**❌❌❌ ROVODEV BUILT-IN TOOL'LARI KULLANMA! ❌❌❌**
 
-**Çözüm:**
+**PROBLEM:**
+- Rovodev'in `find_and_replace_code` tool'u **BUGGY!**
+- Tek satır replace bile **duplicate** oluşturuyor!
+- Context preview **YANILTICI** - güzel görünüyor ama dosya **BOZULUYOR!**
+- Özellikle büyük dosyalarda **CASCADE HATA** başlıyor
+- 12+ edit sonunda 8 hata → 97 hata olabiliyor!
+
+**❌ ASLA KULLANMA:**
+```python
+find_and_replace_code(...)      # ← DUPLICATE OLUŞTURUR!
+expand_code_chunks(...)         # ← Güvenilmez
 ```
-❌ find_and_replace_code(...)     // Rovodev built-in
-✅ hev_fs_find_and_replace(...)   // Hayalet-ev MCP
-✅ hev_dev_edit_lines(...)         // En güvenli
+
+**✅ SADECE BUNLARI KULLAN:**
+```python
+# Tier 1: Küçük değişiklikler
+hev_fs_find_and_replace(...)    # MCP tool (güvenli)
+
+# Tier 2: Multi-line edit (EN GÜVENLİ)
+hev_dev_edit_lines(...)         # Context preview + syntax check
+
+# Tier 3: Önce göster, sonra karar ver
+hev_fs_show(...)                # Dosyayı incele
 ```
 
-**Güvenli Workflow:**
-1. `hev_fs_show()` - Önce kontrol et
-2. `hev_dev_edit_lines()` - Edit yap (context preview otomatik)
-3. `hev_dev_check_syntax()` - Syntax kontrol
-4. `hev_dev_visualize_structure()` - Yapı kontrol (şüpheli durumlarda)
+**🛡️ ZORUNLU WORKFLOW (4 ADIM):**
+
+```
+1️⃣ ÖNCE GÖSTER:
+   hev_fs_show('file.ts', startLine, endLine)
+   → Mevcut içeriği GÖR, satır numaralarını KONTROL ET
+
+2️⃣ EDIT YAP:
+   hev_dev_edit_lines('file.ts', {
+     operation: 'replace',
+     startLine: X,
+     endLine: Y,
+     content: '...'
+   })
+   → Context preview otomatik gelir AMA güvenme!
+
+3️⃣ SYNTAX KONTROL:
+   hev_dev_check_syntax('file.ts')
+   → Parantez dengesi + ESLint
+
+4️⃣ DOĞRULAMA:
+   hev_fs_show('file.ts', startLine-5, endLine+5)
+   → Duplicate VAR MI kontrol et!
+```
+
+**🚨 DUPLICATE TESPİTİ:**
+Eğer context preview'da şöyle bir şey görüyorsan:
+```
+24 │ const MyClass = {
+25 │   const MyClass = {    ← DUPLICATE!
+```
+**HEMEN DURDUR! Git checkout yap!**
+
+```bash
+cd /home/raistlin/hayalet-ev
+git checkout -- path/to/file.ts
+```
+
+**📖 Detaylı Rehber:**
+→ `.rovodev/safe-editing.md`
 
 ---
 
