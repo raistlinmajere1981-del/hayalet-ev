@@ -2,11 +2,13 @@
 
 Rovodev CLI için Hayalet-ev projesi özel MCP (Model Context Protocol) Server.
 
-**v1.7.0** - CDP + Filesystem + Dev Tools + Recycle Bin + Diff desteği ile!
+**v1.9.0** - CDP + Filesystem + Dev Tools + Recycle Bin + Diff + Context Preview + **Syntax Checker** desteği ile!
 
 ## 🎯 Özellikler
 
-- **51 Tool** - Dosya, geliştirme ve Electron kontrolü
+- **67 Tool** - Dosya, geliştirme ve Electron kontrolü
+- **Syntax Checker** - Parantez dengesi, ESLint, TypeScript kontrolü ✨ YENİ
+- **Context Preview** - Edit operasyonlarında değişiklik bölgesinin ±5 satır context'i
 - **Provider Validation** - AI selector'larını canlı test et
 - **Recycle Bin** - Silinen dosyalar geri alınabilir
 - **Diff** - Dosya/içerik karşılaştırma
@@ -226,6 +228,62 @@ Geliştirme workflow'ları için araçlar (eski npm scriptlerinin yerine):
     ```
     Örnek: "utils testlerini çalıştır"
     ```
+
+37. **hev_dev_check_syntax** - Syntax hataları ve parantez dengesi kontrolü ✨ YENİ
+    ```
+    Örnek: "Bu dosyada syntax hatası var mı?"
+    Örnek: "Parantez dengesi kontrolü yap"
+    Örnek: "ESLint ile kontrol et"
+    ```
+    
+    **Yetenekler:**
+    - ✅ Parantez dengesi: `()`, `{}`, `[]`
+    - ✅ ESLint integration (JS/TS)
+    - ✅ TypeScript type check
+    - ✅ JSON validation
+    
+    **Çıktı Örneği:**
+    ```
+    🔍 Syntax Kontrolü: test.js
+    ──────────────────────────────────────────────────
+    ❌ Parantez Dengesi: BOZUK
+       Süslü Parantez: 4 açık / 5 kapalı
+    ──────────────────────────────────────────────────
+    ❌ 1 hata bulundu
+    ```
+
+### ✨ Context Preview
+
+Tüm edit operasyonları (insert, replace, delete, find_and_replace) artık otomatik olarak **context preview** gösterir!
+
+**Ne İşe Yarar?**
+- ✅ Değişikliğin doğru yere yapıldığını görsel olarak doğrular
+- ✅ Değişiklik öncesi/sonrası ±5 satır gösterir
+- ✅ Satır numaraları ile değişiklik bölgesini işaretler
+- ✅ AI'ların hata yapma oranını azaltır
+
+**Örnek Çıktı:**
+```
+✅ 1 satır eklendi
+
+Context Preview (±5 lines):
+──────────────────────────────────────────────────
+    1 │ // Mevcut kod
+    2 │ function example() {
+    3 │   const x = 1;
+    4 │   return x;
+┌─[CHANGE START]─────────────────────
+►   5 │   // Yeni eklenen satır
+└─[CHANGE END]───────────────────────
+    6 │ }
+    7 │ 
+    8 │ export default example;
+──────────────────────────────────────────────────
+```
+
+**Hangi Tool'larda Aktif?**
+- `hev_dev_edit_lines` (insert, replace, delete)
+- `hev_fs_find_and_replace`
 
 ### 🗑️ Recycle Bin Tool'ları
 

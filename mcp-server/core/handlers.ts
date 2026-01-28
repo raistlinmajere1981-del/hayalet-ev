@@ -1,0 +1,786 @@
+/**
+ * Tool Call Handlers
+ * Massive switch statement broken into smaller sections by category
+ */
+
+import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
+import { testElectron, listTools } from "../tools/electron-tools.js";
+import { readElectronLogs, listLogSessions, getSessionSummary } from "../tools/log-tools.js";
+import { getErrorHints } from "../tools/debug-tools.js";
+import {
+  checkElectronConnection,
+  sendCommandToElectron,
+  takeCdpScreenshot,
+  getElectronWindowInfo,
+  clickElementBySelector,
+  clickElementByText,
+  fillInputField,
+  getPageDomStructure,
+  inspectElement,
+  queryElements,
+  sendKeyPress,
+  scrollPage,
+} from "../tools/cdp-tools.js";
+import {
+  openFiles,
+  createFile,
+  deleteFile,
+  moveFile,
+  expandCodeChunks,
+  findAndReplaceCode,
+  grep,
+  expandFolder,
+  executeBash,
+  createTechnicalPlan,
+  trashList,
+  restoreFile,
+  trashEmpty,
+  backupFile,
+  undoOperation,
+  operationHistory,
+  fileDiff,
+  contentDiff,
+  showFile,
+  createChunkedFile,
+  appendChunk,
+} from "../tools/filesystem-tools.js";
+import {
+  analyzeProject,
+  bootstrapContext,
+  generateDiagram,
+  updateCache,
+  editLines,
+  gitDiff,
+  lintFile,
+  searchSymbol,
+  testRun,
+  checkSyntax,
+} from "../tools/dev-tools.js";
+import {
+  startChunkedSession,
+  writeChunk,
+  finalizeChunked,
+  getSessionStatus,
+  cancelSession,
+} from "../tools/safe-chunk-tools.js";
+import {
+  listProviderWebviews,
+  listProviderSelectors,
+  validateSelectors,
+  inspectProviderElementTool,
+} from "../tools/provider-tools.js";
+import {
+  handleWebSearch,
+  handleWebFetch,
+  handleWebSearchAndFetch,
+} from "../tools/web-tools.js";
+import {
+  runWorkflow,
+  runCustomSteps,
+  listWorkflows,
+} from "../tools/workflow-tools.js";
+import {
+  gitForkSetup,
+  gitCreatePr,
+  gitCheckGuidelines,
+  gitPrStatus,
+} from "../tools/git-tools.js";
+import {
+  generateContext,
+  contextStatus,
+  moduleContext,
+  readContext,
+} from "../tools/context-tools.js";
+import { logToolCall, logToolError } from "../utils/mcp-logger.js";
+
+type RequestParams = CallToolRequest["params"];
+
+export async function handleToolCall(
+  name: string,
+  args: Record<string, unknown>,
+  PROJECT_ROOT: string,
+  LOG_DIR: string
+): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
+  const { startTime } = logToolCall(name, args);
+
+  try {
+    // === Electron & Log Tools ===
+    if (name === "hev_test_electron") {
+      return await handleTestElectron(args, PROJECT_ROOT);
+    }
+    if (name === "hev_list_tools") {
+      return listTools();
+    }
+    if (name === "hev_read_electron_logs") {
+      return await readElectronLogsHandler(args, LOG_DIR);
+    }
+    if (name === "hev_list_log_sessions") {
+      return await listLogSessionsHandler(args, LOG_DIR);
+    }
+    if (name === "hev_get_error_hints") {
+      return await getErrorHintsHandler(args);
+    }
+    if (name === "hev_get_session_summary") {
+      return await getSessionSummaryHandler(args, LOG_DIR);
+    }
+
+    // === CDP Tools ===
+    if (name === "hev_check_electron_connection") {
+      return await checkElectronConnection();
+    }
+    if (name === "hev_send_command_to_electron") {
+      return await sendCommandToElectron(args);
+    }
+    if (name === "hev_take_cdp_screenshot") {
+      return await takeCdpScreenshot(args);
+    }
+    if (name === "hev_get_electron_window_info") {
+      return await getElectronWindowInfo();
+    }
+    if (name === "hev_click_element_by_selector") {
+      return await clickElementBySelector(args);
+    }
+    if (name === "hev_click_element_by_text") {
+      return await clickElementByText(args);
+    }
+    if (name === "hev_fill_input_field") {
+      return await fillInputField(args);
+    }
+    if (name === "hev_get_page_dom_structure") {
+      return await getPageDomStructure(args);
+    }
+    if (name === "hev_inspect_element") {
+      return await inspectElement(args);
+    }
+    if (name === "hev_query_elements") {
+      return await queryElements(args);
+    }
+    if (name === "hev_send_key_press") {
+      return await sendKeyPress(args);
+    }
+    if (name === "hev_scroll_page") {
+      return await scrollPage(args);
+    }
+
+    // === Filesystem Tools ===
+    if (name === "hev_fs_open_files") {
+      const result = await openFiles((args as { file_paths: string[] }).file_paths);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+    if (name === "hev_fs_create_file") {
+      const result = await createFile(
+        (args as { file_path: string }).file_path,
+        (args as { initial_content?: string }).initial_content ?? "",
+        (args as { overwrite?: boolean }).overwrite ?? false,
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_delete_file") {
+      const result = await deleteFile(
+        (args as { file_path: string }).file_path,
+        PROJECT_ROOT,
+        (args as { permanent?: boolean }).permanent ?? false
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_move_file") {
+      const result = await moveFile(
+        (args as { file_path: string }).file_path,
+        (args as { new_path: string }).new_path
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_expand_code_chunks") {
+      const result = await expandCodeChunks(
+        (args as { file_path: string }).file_path,
+        (args as { line_ranges?: [number, number][] }).line_ranges ?? [],
+        (args as { patterns?: string[] }).patterns ?? []
+      );
+      return { content: [{ type: "text", text: result.error || result.content }] };
+    }
+    if (name === "hev_fs_find_and_replace") {
+      const result = await findAndReplaceCode(
+        (args as { file_path: string }).file_path,
+        (args as { find: string }).find,
+        (args as { replace: string }).replace
+      );
+      let msg = result.success
+        ? `✅ ${result.replacements} değişiklik yapıldı: ${result.file}`
+        : `❌ ${result.error}`;
+      if (result.contextPreview) {
+        msg += `\n${result.contextPreview}`;
+      }
+      return { content: [{ type: "text", text: msg }] };
+    }
+    if (name === "hev_fs_grep") {
+      const result = await grep(
+        PROJECT_ROOT,
+        (args as { content_pattern?: string }).content_pattern ?? null,
+        (args as { path_glob?: string }).path_glob ?? null
+      );
+      const output = result.matches.map((m: any) => `${m.file}:${m.line}: ${m.content}`).join("\n");
+      return { content: [{ type: "text", text: `${result.totalMatches} eşleşme bulundu:\n\n${output}` }] };
+    }
+    if (name === "hev_fs_expand_folder") {
+      const result = await expandFolder(
+        (args as { folder_path: string }).folder_path,
+        (args as { max_depth?: number }).max_depth ?? 3
+      );
+      return { content: [{ type: "text", text: result.error || result.structure }] };
+    }
+    if (name === "hev_fs_bash") {
+      const result = await executeBash(
+        (args as { command: string }).command,
+        PROJECT_ROOT,
+        (args as { timeout?: number }).timeout ?? 30000
+      );
+      let output = "";
+      if (result.stdout) output += result.stdout;
+      if (result.stderr) output += (output ? "\n" : "") + `STDERR: ${result.stderr}`;
+      if (result.timedOut) output += "\n⚠️ Timeout!";
+      output += `\n[exit: ${result.exitCode}]`;
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_fs_create_plan") {
+      const result = createTechnicalPlan((args as { plan: any }).plan);
+      return { content: [{ type: "text", text: result.summary }] };
+    }
+
+    // === Recycle Bin Tools ===
+    if (name === "hev_fs_trash_list") {
+      const result = trashList(PROJECT_ROOT);
+      if (result.total === 0) {
+        return { content: [{ type: "text", text: "🗑️ Çöp kutusu boş" }] };
+      }
+      let output = `🗑️ Çöp Kutusu (${result.total} dosya)\n\n`;
+      result.items.forEach((item, i) => {
+        output += `${i}. ${item.path} (${item.size}) - ${item.deletedAt}\n`;
+      });
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_fs_restore") {
+      const result = restoreFile(PROJECT_ROOT, (args as { index?: number }).index);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_trash_empty") {
+      const result = trashEmpty(PROJECT_ROOT, (args as { older_than_days?: number }).older_than_days);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_backup") {
+      const result = backupFile(PROJECT_ROOT, (args as { file_path: string }).file_path);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_undo") {
+      const result = undoOperation(PROJECT_ROOT);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_history") {
+      const result = operationHistory(PROJECT_ROOT, (args as { limit?: number }).limit ?? 20);
+      if (result.operations.length === 0) {
+        return { content: [{ type: "text", text: "📋 İşlem geçmişi boş" }] };
+      }
+      let output = `📋 Son ${result.operations.length} İşlem\n\n`;
+      result.operations.forEach((op, i) => {
+        const undoIcon = op.canUndo ? "↩️" : "✓";
+        output += `${i + 1}. ${undoIcon} ${op.type} - ${op.timestamp}\n`;
+      });
+      return { content: [{ type: "text", text: output }] };
+    }
+
+    // === Diff Tools ===
+    if (name === "hev_fs_diff") {
+      const result = fileDiff(
+        (args as { file1: string }).file1,
+        (args as { file2: string }).file2
+      );
+      return { content: [{ type: "text", text: result.summary }] };
+    }
+    if (name === "hev_fs_diff_content") {
+      const result = contentDiff(
+        (args as { content1: string }).content1,
+        (args as { content2: string }).content2,
+        (args as { label1?: string }).label1,
+        (args as { label2?: string }).label2
+      );
+      if (result.identical) {
+        return { content: [{ type: "text", text: "✅ İçerikler aynı" }] };
+      }
+      return {
+        content: [
+          {
+            type: "text",
+            text: `📊 ${result.additions} ekleme, ${result.deletions} silme\n\n${result.unified}`,
+          },
+        ],
+      };
+    }
+    if (name === "hev_fs_show") {
+      const result = showFile(
+        (args as { file_path: string }).file_path,
+        (args as { start_line?: number }).start_line,
+        (args as { end_line?: number }).end_line
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: `📄 ${result.summary.language} (${result.summary.lines} satır)\n\n${result.content}`,
+          },
+        ],
+      };
+    }
+    if (name === "hev_fs_create_chunked") {
+      const result = await createChunkedFile(
+        (args as { file_path: string }).file_path,
+        (args as { chunks: string[] }).chunks,
+        PROJECT_ROOT,
+        (args as { overwrite?: boolean }).overwrite
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_append_chunk") {
+      const result = await appendChunk(
+        (args as { file_path: string }).file_path,
+        (args as { content: string }).content,
+        (args as { create_if_missing?: boolean }).create_if_missing
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+
+    // === Safe Chunk Tools ===
+    if (name === "hev_fs_start_chunked_session") {
+      const result = startChunkedSession(
+        (args as { file_path: string }).file_path,
+        (args as { total_chunks: number }).total_chunks,
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_write_chunk") {
+      const result = await writeChunk(
+        (args as { session_id: string }).session_id,
+        (args as { chunk_index: number }).chunk_index,
+        (args as { content: string }).content,
+        PROJECT_ROOT
+      );
+      let msg = result.message;
+      if (result.warnings && result.warnings.length > 0) {
+        msg += "\n\n⚠️ Uyarılar:\n" + result.warnings.join("\n");
+      }
+      return { content: [{ type: "text", text: msg }] };
+    }
+    if (name === "hev_fs_finalize_chunked") {
+      const result = await finalizeChunked(
+        (args as { session_id: string }).session_id,
+        PROJECT_ROOT,
+        (args as { verify_checksum?: string }).verify_checksum
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_chunk_session_status") {
+      const result = getSessionStatus((args as { session_id: string }).session_id);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_fs_cancel_chunk_session") {
+      const result = await cancelSession(
+        (args as { session_id: string }).session_id,
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.message }] };
+    }
+
+    // === Dev Tools ===
+    if (name === "hev_dev_analyze_project") {
+      const result = await analyzeProject(PROJECT_ROOT, args as { mode?: "summary" | "deps" | "modules" | "full" });
+      let output = `📊 Proje Analizi\n\n`;
+      output += `Toplam: ${result.summary.totalFiles} dosya, ${result.summary.totalLines} satır\n\n`;
+      for (const [dir, stats] of Object.entries(result.summary.byDirectory)) {
+        output += `- ${dir}: ${(stats as any).files} dosya, ${(stats as any).lines} satır\n`;
+      }
+      if (result.git) {
+        output += `\n🔀 Git: ${result.git.branch} (${result.git.hasChanges ? "değişiklik var" : "temiz"})\n`;
+      }
+      if (result.dependencies) {
+        output += `\n📦 Bağımlılıklar: ${result.dependencies.production.length} prod, ${result.dependencies.development.length} dev\n`;
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_bootstrap_context") {
+      const result = await bootstrapContext(PROJECT_ROOT, args as { print?: boolean; full?: boolean });
+      return { content: [{ type: "text", text: result.content }] };
+    }
+    if (name === "hev_dev_generate_diagram") {
+      const result = await generateDiagram(PROJECT_ROOT, args as { format?: "mermaid" | "dot"; module?: string; depth?: number });
+      return {
+        content: [
+          {
+            type: "text",
+            text: `📊 Bağımlılık Diagramı (${result.nodeCount} modül, ${result.edgeCount} bağlantı)\n\n${result.diagram}`,
+          },
+        ],
+      };
+    }
+    if (name === "hev_dev_update_cache") {
+      const result = await updateCache(PROJECT_ROOT, args as { force?: boolean; show?: boolean });
+      let output = result.updated ? "✅ Cache güncellendi" : "📋 Cache durumu";
+      output += `\n\nDosyalar: ${result.stats.totalFiles}\nSatırlar: ${result.stats.totalLines}\nExportlar: ${result.stats.totalExports}`;
+      if (result.changedFiles.length > 0) {
+        output += `\n\nDeğişen dosyalar (${result.changedFiles.length}):\n`;
+        output += result.changedFiles
+          .slice(0, 10)
+          .map((f: string) => `- ${f}`)
+          .join("\n");
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_edit_lines") {
+      const result = await editLines(
+        (args as { file_path: string }).file_path,
+        {
+          operation: (args as { operation: "replace" | "delete" | "insert" | "show" }).operation,
+          startLine: (args as { start_line: number }).start_line,
+          endLine: (args as { end_line?: number }).end_line,
+          content: (args as { content?: string }).content,
+          dryRun: (args as { dry_run?: boolean }).dry_run,
+        },
+        PROJECT_ROOT
+      );
+      let output = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+      if (result.preview) output += `\n\n${result.preview}`;
+      if (result.contextPreview) output += `\n${result.contextPreview}`;
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_git_diff") {
+      const result = gitDiff(PROJECT_ROOT, {
+        staged: (args as { staged?: boolean }).staged,
+        file: (args as { file?: string }).file,
+      });
+      let output = result.diff;
+      if (result.stats) {
+        output = `📊 +${result.stats.additions} -${result.stats.deletions}\n\n${output}`;
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_lint_file") {
+      const result = lintFile(
+        PROJECT_ROOT,
+        (args as { file_path: string }).file_path,
+        (args as { fix?: boolean }).fix ?? false
+      );
+      let output = result.output;
+      if (!result.success) {
+        output = `❌ ${result.errorCount} hata, ${result.warningCount} uyarı\n\n${output}`;
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_search_symbol") {
+      const result = await searchSymbol(PROJECT_ROOT, (args as { symbol: string }).symbol, {
+        type: (args as { type?: "function" | "class" | "interface" | "type" | "const" | "all" }).type,
+      });
+      if (result.total === 0) {
+        return { content: [{ type: "text", text: `🔍 "${(args as { symbol: string }).symbol}" bulunamadı` }] };
+      }
+      let output = `🔍 ${result.total} sonuç bulundu\n\n`;
+      for (const match of result.matches) {
+        output += `📍 ${match.file}:${match.line} [${match.type}]\n   ${match.context}\n\n`;
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_test_run") {
+      const result = testRun(PROJECT_ROOT, {
+        file: (args as { file?: string }).file,
+        grep: (args as { grep?: string }).grep,
+        timeout: (args as { timeout?: number }).timeout,
+      });
+      let output = result.output;
+      const statusIcon = result.success ? "✅" : "❌";
+      const summary = `${statusIcon} ${result.passed} passed, ${result.failed} failed`;
+      output = `${summary}\n\n${output}`;
+      return { content: [{ type: "text", text: output }] };
+    }
+
+    // === Provider Tools ===
+    if (name === "hev_list_provider_webviews") {
+      const result = await listProviderWebviews(PROJECT_ROOT);
+      let output = "📋 Provider ve Webview Listesi\n\n";
+      output += "**Providers:**\n";
+      for (const p of result.providers) {
+        output += `- ${p.name} (${p.id}) ${p.hasConfig ? "✅" : "❌"}\n`;
+      }
+      output += "\n**Bağlı Webviews:**\n";
+      if (result.connected.length === 0) {
+        output += "- Bağlı webview yok (Electron çalışıyor mu?)\n";
+      } else {
+        for (const w of result.connected) {
+          output += `- ${w.provider}: ${w.title}\n  ${w.url}\n`;
+        }
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_list_provider_selectors") {
+      const result = listProviderSelectors(PROJECT_ROOT, (args as { provider: string }).provider);
+      if (!result.found) {
+        return { content: [{ type: "text", text: `❌ Provider config bulunamadı: ${result.provider}` }] };
+      }
+      let output = `📋 ${result.provider} Selector Listesi\n`;
+      output += `URL: ${result.config?.baseUrl}\n`;
+      output += `Son Doğrulama: ${result.config?.lastVerified || "Bilinmiyor"}\n`;
+      output += `Toplam: ${result.summary.total} selector\n\n`;
+
+      for (const [category, sels] of Object.entries(result.grouped)) {
+        output += `**${category}** (${(sels as any).length}):\n`;
+        for (const sel of sels as any) {
+          output += `  - ${sel.key}: \`${sel.selector.slice(0, 60)}${sel.selector.length > 60 ? "..." : ""}\`\n`;
+        }
+        output += "\n";
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_validate_provider_selectors") {
+      const result = await validateSelectors(
+        PROJECT_ROOT,
+        (args as { provider: string }).provider,
+        (args as { categories?: string[] }).categories
+      );
+
+      if (!result.connected) {
+        return { content: [{ type: "text", text: `❌ ${result.error}` }] };
+      }
+
+      let output = `📊 ${result.provider} Selector Doğrulama\n`;
+      output += `URL: ${result.url}\n`;
+      output += `Tarih: ${result.timestamp}\n`;
+      output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+      const grouped: Record<string, any> = {};
+      for (const r of result.results) {
+        if (!grouped[r.category]) grouped[r.category] = [];
+        grouped[r.category].push(r);
+      }
+
+      for (const [category, results] of Object.entries(grouped)) {
+        output += `**${category}:**\n`;
+        for (const r of results) {
+          const icon = r.found ? "✅" : "❌";
+          const countInfo = r.found ? ` (${r.count} element)` : "";
+          output += `${icon} ${r.key}${countInfo}\n`;
+          if (!r.found && r.error) {
+            output += `   Hata: ${r.error}\n`;
+          }
+        }
+        output += "\n";
+      }
+
+      output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      output += `Özet: ${result.summary.valid}/${result.summary.total} geçerli (${result.summary.successRate})\n`;
+
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_inspect_provider_element") {
+      const result = await inspectProviderElementTool(
+        PROJECT_ROOT,
+        (args as { provider: string }).provider,
+        (args as { selector: string }).selector,
+        {
+          includeStyles: (args as { include_styles?: boolean }).include_styles,
+          includeParent: (args as { include_parent?: boolean }).include_parent,
+          includeChildren: (args as { include_children?: boolean }).include_children,
+        }
+      );
+
+      if (!result.found) {
+        return {
+          content: [{ type: "text", text: `❌ Element bulunamadı: ${result.selector}\n${result.error || ""}` }],
+        };
+      }
+
+      let output = `📋 Element Inspect: ${result.provider}\n`;
+      output += `Selector: \`${result.selector}\`\n`;
+      output += `Bulunan: ${result.count} element\n\n`;
+
+      for (let i = 0; i < (result.elements?.length || 0); i++) {
+        const el = result.elements![i];
+        output += `**Element #${i + 1}:**\n`;
+        output += `  Tag: ${el.tagName}\n`;
+        if (el.id) output += `  ID: ${el.id}\n`;
+        if (el.className) output += `  Class: ${(el.className as string).slice(0, 80)}...\n`;
+        if (el.textContent) output += `  Text: "${(el.textContent as string).slice(0, 50)}..."\n`;
+        if (el.isVisible !== undefined) output += `  Görünür: ${el.isVisible ? "✅" : "❌"}\n`;
+        if (el.boundingRect) {
+          const rect = el.boundingRect as { x: number; y: number; width: number; height: number };
+          output += `  Konum: ${rect.x}, ${rect.y} | Boyut: ${rect.width}x${rect.height}\n`;
+        }
+        if (el.attributes) {
+          const attrs = Object.entries(el.attributes as Record<string, string>).slice(0, 5);
+          if (attrs.length > 0) {
+            output += `  Attributes:\n`;
+            for (const [k, v] of attrs) {
+              output += `    ${k}="${(v as string).slice(0, 40)}"\n`;
+            }
+          }
+        }
+        output += "\n";
+      }
+
+      return { content: [{ type: "text", text: output }] };
+    }
+
+    // === Web Tools ===
+    if (name === "hev_web_search") {
+      return await handleWebSearch(args);
+    }
+    if (name === "hev_web_fetch") {
+      return await handleWebFetch(args);
+    }
+    if (name === "hev_web_search_and_fetch") {
+      return await handleWebSearchAndFetch(args);
+    }
+
+    // === Workflow Tools ===
+    if (name === "hev_run_workflow") {
+      const result = await runWorkflow((args as { workflow: string }).workflow);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+    if (name === "hev_run_steps") {
+      const result = await runCustomSteps((args as { steps: unknown[] }).steps);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+    if (name === "hev_list_workflows") {
+      const result = listWorkflows();
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+
+    // === Git Tools ===
+    if (name === "hev_git_fork_setup") {
+      const a = args as { repo: string; work_dir: string; base_branch?: string; feature_branch?: string; shallow?: boolean };
+      const result = await gitForkSetup(a.repo, a.work_dir, a.base_branch || "main", a.feature_branch, a.shallow ?? true);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_git_create_pr") {
+      const a = args as { base_branch: string; title: string; body?: string; cwd?: string };
+      const result = await gitCreatePr(a.base_branch, a.title, a.body, a.cwd);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_git_check_guidelines") {
+      const result = await gitCheckGuidelines((args as { cwd?: string }).cwd);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_git_pr_status") {
+      const result = await gitPrStatus((args as { cwd?: string }).cwd);
+      return { content: [{ type: "text", text: result.message }] };
+    }
+
+    // === Context Tools ===
+    // === Dev Tools ===
+    if (name === "hev_dev_edit_lines") {
+      const a = args as {
+        file_path: string;
+        operation: "replace" | "delete" | "insert" | "show";
+        start_line: number;
+        end_line?: number;
+        content?: string;
+        dry_run?: boolean;
+      };
+      const result = await editLines(
+        a.file_path,
+        {
+          operation: a.operation,
+          startLine: a.start_line,
+          endLine: a.end_line,
+          content: a.content,
+          dryRun: a.dry_run,
+        },
+        PROJECT_ROOT
+      );
+      let output = result.success ? `✅ ${result.message}` : `❌ ${result.message}`;
+      if (result.preview) output += `\n\n${result.preview}`;
+      if (result.contextPreview) output += `\n${result.contextPreview}`;
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_check_syntax") {
+      const a = args as {
+        file_path: string;
+        check_brackets?: boolean;
+        check_eslint?: boolean;
+        check_ts?: boolean;
+      };
+      const result = await checkSyntax(PROJECT_ROOT, a.file_path, {
+        checkBrackets: a.check_brackets,
+        checkESLint: a.check_eslint,
+        checkTS: a.check_ts,
+      });
+      return { content: [{ type: "text", text: result.output }] };
+    }
+
+    if (name === "hev_context_generate") {
+      const a = args as { level?: string; force?: boolean; include_content?: boolean };
+      const result = await generateContext(PROJECT_ROOT, {
+        level: (a.level as "L1" | "L2" | "L3" | "L4") || "L2",
+        force: a.force,
+        includeContent: a.include_content,
+      });
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_context_status") {
+      const status = await contextStatus(PROJECT_ROOT);
+      let output = `📊 Context Status\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      output += `Repomix: ${status.repomixVersion}\n`;
+      output += `Available: ${status.available.join(", ")}\n\n`;
+      for (const level of ["L1", "L2", "L3", "L4"] as const) {
+        const info = status.current[level];
+        if (info) {
+          output += `${level}: ${info.sizeKB}KB, ~${info.tokens.toLocaleString()} tokens (${info.age})\n`;
+        } else {
+          output += `${level}: not generated\n`;
+        }
+      }
+      return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_context_module") {
+      const a = args as { module: string; include_tests?: boolean };
+      const result = await moduleContext(PROJECT_ROOT, { module: a.module, includeTests: a.include_tests });
+      return { content: [{ type: "text", text: result.message }] };
+    }
+    if (name === "hev_context_read") {
+      const a = args as { level?: string };
+      const result = readContext(PROJECT_ROOT, (a.level as "L1" | "L2" | "L3" | "L4") || "L2");
+      return { content: [{ type: "text", text: result.content }] };
+    }
+
+    throw new Error(`Bilinmeyen tool: ${name}`);
+  } catch (err) {
+    const error = err as Error;
+    logToolError(name, error, args, startTime);
+    return {
+      content: [{ type: "text", text: `❌ Hata: ${error.message}` }],
+      isError: true,
+    };
+  }
+}
+
+// Helper handlers for common patterns
+async function handleTestElectron(args: Record<string, unknown>, PROJECT_ROOT: string) {
+  const result = await testElectron(PROJECT_ROOT, args);
+  return result;
+}
+
+async function readElectronLogsHandler(args: Record<string, unknown>, LOG_DIR: string) {
+  const result = await readElectronLogs(LOG_DIR, args);
+  return result;
+}
+
+async function listLogSessionsHandler(args: Record<string, unknown>, LOG_DIR: string) {
+  const result = await listLogSessions(LOG_DIR, args);
+  return result;
+}
+
+async function getErrorHintsHandler(args: Record<string, unknown>) {
+  const result = await getErrorHints(args);
+  return result;
+}
+
+async function getSessionSummaryHandler(args: Record<string, unknown>, LOG_DIR: string) {
+  const result = await getSessionSummary(LOG_DIR, args);
+  return result;
+}

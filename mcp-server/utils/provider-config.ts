@@ -67,6 +67,7 @@ export interface ProviderInfo {
 // ============================================
 
 const PROVIDERS = ["chatgpt", "gemini", "grok", "opencode"] as const;
+
 export type ProviderId = typeof PROVIDERS[number];
 
 // ============================================

@@ -1,9 +1,15 @@
 {
   "name": "hayalet-ev-mcp",
-  "version": "1.7.0",
+  "version": "1.9.0",
   "description": "MCP Server for Hayalet-ev development workflows with CDP support",
   "type": "module",
-  "main": "index.ts",
+  "main": "core/index.ts",
+  "bin": {
+    "hayalet-ev-mcp": "./start.js"
+  },
+  "exports": {
+    ".": "./start.js"
+  },
   "scripts": {
     "start": "tsx index.ts",
     "build": "tsc",

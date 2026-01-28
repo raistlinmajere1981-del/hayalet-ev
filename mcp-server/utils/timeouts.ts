@@ -99,9 +99,9 @@ export const ELECTRON_TIMEOUTS = {
 // ============================================
 
 /**
- * Timeout değerini saniyeye çevir (log/display için)
+ * Timeout değerini saniyeye çevir (log/display için) - internal
  */
-export function toSeconds(ms: number): number {
+function toSeconds(ms: number): number {
   return ms / 1000;
 }
 
@@ -118,9 +118,9 @@ export function formatTimeout(ms: number): string {
 }
 
 /**
- * Tüm timeout'ları listele (debug için)
+ * Tüm timeout'ları listele (debug için) - internal
  */
-export function getAllTimeouts(): Record<string, Record<string, number>> {
+function getAllTimeouts(): Record<string, Record<string, number>> {
   return {
     CDP: { ...CDP_TIMEOUTS },
     WEB: { ...WEB_TIMEOUTS },

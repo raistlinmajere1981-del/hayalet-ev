@@ -131,6 +131,7 @@ export interface ReplaceResult {
   success: boolean;
   error?: string;
   preview?: string;  // Dry run mode için önizleme
+  contextPreview?: string; // Değişiklik bölgesinin context'i (±5 satır)
 }
 
 /** Technical Plan tipleri */

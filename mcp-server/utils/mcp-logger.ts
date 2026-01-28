@@ -142,9 +142,9 @@ export function logToolCall(toolName: string, args: unknown): { startTime: numbe
 }
 
 /**
- * Tool çağrısı başarılı sonucunu logla
+ * Tool çağrısı başarılı sonucunu logla (internal)
  */
-export function logToolSuccess(toolName: string, startTime: number): void {
+function logToolSuccess(toolName: string, startTime: number): void {
   const duration = Date.now() - startTime;
   
   writeLog({
@@ -195,9 +195,9 @@ export function logError(message: string, error?: Error): void {
 }
 
 /**
- * Debug log
+ * Debug log (internal)
  */
-export function logDebug(message: string, data?: unknown): void {
+function logDebug(message: string, data?: unknown): void {
   writeLog({
     timestamp: new Date().toISOString(),
     level: "debug",
@@ -235,16 +235,16 @@ function truncateArgs(args: unknown, maxLength: number = 1000): unknown {
 }
 
 /**
- * Mevcut session ID'yi döndür
+ * Mevcut session ID'yi döndür (internal)
  */
-export function getCurrentSessionId(): string {
+function getCurrentSessionId(): string {
   return SESSION_ID;
 }
 
 /**
- * Session klasör yolunu döndür
+ * Session klasör yolunu döndür (internal)
  */
-export function getSessionDir(): string {
+function getSessionDir(): string {
   return SESSION_DIR;
 }
 
@@ -268,9 +268,9 @@ export function readLogs(tail: number = 50, sessionId?: string): string[] {
 }
 
 /**
- * Tüm session'ları listele
+ * Tüm session'ları listele (internal)
  */
-export function listSessions(): Array<{ id: string; date: Date; size: number }> {
+function listSessions(): Array<{ id: string; date: Date; size: number }> {
   try {
     const entries = readdirSync(LOG_BASE_DIR, { withFileTypes: true });
     const sessions: Array<{ id: string; date: Date; size: number }> = [];

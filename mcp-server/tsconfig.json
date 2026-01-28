@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "lib": ["ESNext"],
     "types": ["node"],
-    "noEmit": true,
+    "noEmit": false,
+    "outDir": "./dist",
     "skipLibCheck": true,
     "checkJs": false,
     "allowJs": false,
@@ -29,6 +30,7 @@
   },
   "include": [
     "index.ts",
+    "core/*.ts",
     "tools/*.ts",
     "utils/*.ts",
     "types/*.ts"

@@ -77,9 +77,9 @@ interface MatchResult {
 }
 
 /**
- * Error pattern'i eşleştir (internal helper, dışarıdan da kullanılabilir)
+ * Error pattern'i eşleştir (internal helper)
  */
-export function matchErrorPattern(errorMessage: string, provider: string | null = null): MatchResult | null {
+function matchErrorPattern(errorMessage: string, provider: string | null = null): MatchResult | null {
   for (const p of ERROR_PATTERNS) {
     if (p.pattern.test(errorMessage)) {
       return {
@@ -141,5 +141,64 @@ ${hint.checkFiles.length > 0 ? `📁 Kontrol Edilecek Dosyalar:\n${hint.checkFil
         text: `🔍 Hata analizi:\n\n"${errorMessage}"\n\n❓ Bu hata için bilinen bir pattern bulunamadı.\n\nÖneriler:\n- Log dosyalarını incele\n- Stack trace'i kontrol et\n- İlgili kodu debug et`,
       },
     ],
+  };
+}
+
+
+/**
+ * Hata bağlamını toplayıp özetler
+ */
+export async function collectErrorContext(args: Record<string, unknown>): Promise<ToolResult> {
+  const {
+    command,
+    errorMessage,
+    logSnippet,
+    provider,
+    fileContext,
+    hint,
+  } = args as {
+    command?: string;
+    errorMessage?: string;
+    logSnippet?: string;
+    provider?: string;
+    fileContext?: string[];
+    hint?: string;
+  };
+
+  if (!errorMessage && !logSnippet) {
+    return {
+      content: [{ type: "text", text: "❌ 'errorMessage' veya 'logSnippet' parametresi gerekli" }],
+      isError: true,
+    };
+  }
+
+  const matched = errorMessage ? matchErrorPattern(errorMessage, provider || null) : null;
+  const nextChecks: string[] = [];
+
+  if (matched?.checkFiles?.length) {
+    nextChecks.push(...matched.checkFiles);
+  }
+
+  if (fileContext && fileContext.length > 0) {
+    nextChecks.push(...fileContext);
+  }
+
+  const output = [
+    "🧭 Hata Bağlam Özeti",
+    "",
+    errorMessage ? `📝 Hata: ${errorMessage}` : undefined,
+    command ? `🧪 Komut: ${command}` : undefined,
+    provider ? `🤖 Provider: ${provider}` : undefined,
+    logSnippet ? `📄 Log Parçası:\n${logSnippet}` : undefined,
+    hint ? `💡 Ek Not: ${hint}` : undefined,
+    matched ? `📂 Kategori: ${matched.category} | Önem: ${matched.severity}` : "📂 Kategori: bilinmiyor",
+    matched?.suggestion ? `✅ Öneri: ${matched.suggestion}` : "✅ Öneri: Log/stack trace kontrol et",
+    nextChecks.length > 0 ? `🔍 Kontrol Noktaları:\n${nextChecks.map((item) => `- ${item}`).join("\n")}` : "🔍 Kontrol Noktaları: yok",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    content: [{ type: "text", text: output }],
   };
 }

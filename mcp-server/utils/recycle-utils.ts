@@ -272,7 +272,7 @@ export function logOperation(projectRoot: string, operation: Operation): void {
   saveOperationLog(projectRoot, log);
 }
 
-export function getLastOperation(projectRoot: string): Operation | null {
+function getLastOperation(projectRoot: string): Operation | null {
   const log = getOperationLog(projectRoot);
   return log.operations.find(op => op.canUndo) || null;
 }

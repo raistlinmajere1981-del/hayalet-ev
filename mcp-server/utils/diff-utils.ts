@@ -334,3 +334,154 @@ export function getFileSummary(filePath: string): { lines: number; words: number
   
   return { lines, words, chars, language };
 }
+
+// ============================================
+// Patch Apply (Unified Diff)
+// ============================================
+
+export interface PatchApplyResult {
+  success: boolean;
+  appliedLines: number;
+  failedHunks: number;
+  message: string;
+  content?: string;
+}
+
+interface PatchHunkLine {
+  type: "context" | "add" | "remove";
+  content: string;
+}
+
+interface PatchHunk {
+  oldStart: number;
+  oldCount: number;
+  newStart: number;
+  newCount: number;
+  lines: PatchHunkLine[];
+}
+
+export function applyUnifiedPatch(originalContent: string, patch: string): PatchApplyResult {
+  if (!patch.trim()) {
+    return {
+      success: false,
+      appliedLines: 0,
+      failedHunks: 0,
+      message: "Patch boş",
+    };
+  }
+
+  const patchLines = patch.split("\n");
+  const hunks: PatchHunk[] = [];
+
+  let index = 0;
+  while (index < patchLines.length) {
+    const line = patchLines[index];
+
+    if (line.startsWith("@@")) {
+      const match = /@@ -(\d+),(\d+) \+(\d+),(\d+) @@/.exec(line);
+      if (!match) {
+        return {
+          success: false,
+          appliedLines: 0,
+          failedHunks: hunks.length,
+          message: `Geçersiz hunk header: ${line}`,
+        };
+      }
+
+      const hunk: PatchHunk = {
+        oldStart: Number(match[1]),
+        oldCount: Number(match[2]),
+        newStart: Number(match[3]),
+        newCount: Number(match[4]),
+        lines: [],
+      };
+
+      index += 1;
+      while (index < patchLines.length && !patchLines[index].startsWith("@@")) {
+        const hunkLine = patchLines[index];
+        if (hunkLine.startsWith("+")) {
+          hunk.lines.push({ type: "add", content: hunkLine.slice(1) });
+        } else if (hunkLine.startsWith("-")) {
+          hunk.lines.push({ type: "remove", content: hunkLine.slice(1) });
+        } else if (hunkLine.startsWith(" ")) {
+          hunk.lines.push({ type: "context", content: hunkLine.slice(1) });
+        } else if (hunkLine.trim() === "") {
+          hunk.lines.push({ type: "context", content: "" });
+        }
+        index += 1;
+      }
+
+      hunks.push(hunk);
+      continue;
+    }
+
+    index += 1;
+  }
+
+  const originalLines = originalContent.split("\n");
+  const updatedLines = [...originalLines];
+
+  let appliedLines = 0;
+  let failedHunks = 0;
+
+  for (const hunk of hunks) {
+    const startIndex = Math.max(hunk.oldStart - 1, 0);
+    let cursor = startIndex;
+    let valid = true;
+
+    for (const line of hunk.lines) {
+      if (line.type === "context") {
+        if (updatedLines[cursor] !== line.content) {
+          valid = false;
+          break;
+        }
+        cursor += 1;
+      }
+    }
+
+    if (!valid) {
+      failedHunks += 1;
+      continue;
+    }
+
+    cursor = startIndex;
+    const newContent: string[] = [];
+
+    for (const line of hunk.lines) {
+      if (line.type === "context") {
+        newContent.push(updatedLines[cursor]);
+        cursor += 1;
+        continue;
+      }
+      if (line.type === "remove") {
+        cursor += 1;
+        appliedLines += 1;
+        continue;
+      }
+      if (line.type === "add") {
+        newContent.push(line.content);
+        appliedLines += 1;
+      }
+    }
+
+    updatedLines.splice(startIndex, cursor - startIndex, ...newContent);
+  }
+
+  if (failedHunks > 0) {
+    return {
+      success: false,
+      appliedLines,
+      failedHunks,
+      message: `Patch uygulanamadı (${failedHunks} hunk başarısız)`,
+      content: updatedLines.join("\n"),
+    };
+  }
+
+  return {
+    success: true,
+    appliedLines,
+    failedHunks: 0,
+    message: `Patch uygulandı (${appliedLines} satır)`,
+    content: updatedLines.join("\n"),
+  };
+}

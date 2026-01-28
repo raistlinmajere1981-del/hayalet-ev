@@ -588,6 +588,61 @@ export function matchGlob(path: string, pattern: string): boolean {
 // ============================================
 
 /**
+ * Değişiklik bölgesinin context preview'ını oluştur
+ * @param filePath - Dosya yolu
+ * @param startLine - Değişiklik başlangıç satırı (0-indexed)
+ * @param endLine - Değişiklik bitiş satırı (0-indexed, exclusive)
+ * @param contextLines - Önce ve sonra gösterilecek satır sayısı
+ * @returns Formatlanmış context preview string
+ */
+export async function getContextPreview(
+  filePath: string,
+  startLine: number,
+  endLine: number,
+  contextLines: number = 5
+): Promise<string> {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    const lines = content.split('\n');
+    const totalLines = lines.length;
+
+    // Boundary kontrolü
+    const actualStart = Math.max(0, startLine);
+    const actualEnd = Math.min(totalLines, endLine);
+    
+    // Context range hesapla
+    const previewStart = Math.max(0, actualStart - contextLines);
+    const previewEnd = Math.min(totalLines, actualEnd + contextLines);
+
+    // Preview oluştur
+    const previewLines: string[] = [];
+    previewLines.push('\nContext Preview (±' + contextLines + ' lines):');
+    previewLines.push('─'.repeat(50));
+
+    for (let i = previewStart; i < previewEnd; i++) {
+      const lineNum = String(i + 1).padStart(4);
+      const marker = (i >= actualStart && i < actualEnd) ? '►' : ' ';
+      
+      // Değişiklik bölgesini işaretle
+      if (i === actualStart) {
+        previewLines.push('┌─[CHANGE START]─────────────────────');
+      }
+      
+      previewLines.push(`${marker}${lineNum} │ ${lines[i]}`);
+      
+      if (i === actualEnd - 1) {
+        previewLines.push('└─[CHANGE END]───────────────────────');
+      }
+    }
+
+    previewLines.push('─'.repeat(50));
+    return previewLines.join('\n');
+  } catch (error) {
+    return `Failed to generate context preview: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+/**
  * Dosyada bul ve değiştir
  */
 export async function findAndReplace(

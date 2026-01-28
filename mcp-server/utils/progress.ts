@@ -188,9 +188,9 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
 }
 
 /**
- * Basit progress spinner (işlem adı ile)
+ * Basit progress spinner (işlem adı ile) - internal
  */
-export function withProgress<T>(
+function withProgress<T>(
   operation: string,
   fn: (progress: ProgressTracker) => Promise<T>
 ): Promise<T> {

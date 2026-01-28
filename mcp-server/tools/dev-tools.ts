@@ -13,11 +13,13 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { readdir } from "fs/promises";
 import { join, relative, basename } from "path";
-import { execSync } from "child_process";
+import { execSync, exec } from "child_process";
+import { extname } from "path";
 import { createHash } from "crypto";
 import { createProgress } from "../utils/progress.js";
 import { logToolError } from "../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "../utils/timeouts.js";
+import { getContextPreview } from "../utils/file-utils.js";
 
 // ============================================
 // Shared Configuration
@@ -443,11 +445,12 @@ interface EditLinesResult {
   message: string;
   linesAffected?: number;
   preview?: string;
+  contextPreview?: string; // Değişiklik bölgesinin context'i (±5 satır)
   syntaxValid?: boolean;
   syntaxError?: string;
 }
 
-export function editLines(
+export async function editLines(
   filePath: string,
   options: {
     operation: "replace" | "delete" | "insert" | "show";
@@ -458,7 +461,7 @@ export function editLines(
     validateSyntax?: boolean;
   },
   projectRoot?: string
-): EditLinesResult {
+): Promise<EditLinesResult> {
   if (!existsSync(filePath)) {
     return { success: false, message: `Dosya bulunamadı: ${filePath}` };
   }
@@ -484,6 +487,15 @@ export function editLines(
 
     case "delete": {
       const newLines = [...lines.slice(0, start), ...lines.slice(end)];
+      
+      // Context preview oluştur (değişiklik yapılmadan önce)
+      let contextPreview: string | undefined;
+      try {
+        contextPreview = await getContextPreview(filePath, start, end, 5);
+      } catch (err) {
+        // Preview oluşturulamazsa devam et
+      }
+      
       if (!options.dryRun) {
         writeFileSync(filePath, newLines.join("\n"), "utf-8");
       }
@@ -491,6 +503,7 @@ export function editLines(
         success: true, 
         message: options.dryRun ? "Dry run: silme yapılacak" : `${end - start} satır silindi`,
         linesAffected: end - start,
+        contextPreview,
       };
     }
 
@@ -500,13 +513,25 @@ export function editLines(
       }
       const insertLines = options.content.split("\n");
       const newLines = [...lines.slice(0, start + 1), ...insertLines, ...lines.slice(start + 1)];
+      
+      // Değişiklik yap ve sonra context preview oluştur
       if (!options.dryRun) {
         writeFileSync(filePath, newLines.join("\n"), "utf-8");
       }
+      
+      // Context preview (eklenen bölge için)
+      let contextPreview: string | undefined;
+      try {
+        contextPreview = await getContextPreview(filePath, start + 1, start + 1 + insertLines.length, 5);
+      } catch (err) {
+        // Preview oluşturulamazsa devam et
+      }
+      
       return { 
         success: true, 
         message: options.dryRun ? "Dry run: ekleme yapılacak" : `${insertLines.length} satır eklendi`,
         linesAffected: insertLines.length,
+        contextPreview,
       };
     }
 
@@ -553,10 +578,20 @@ export function editLines(
       if (!options.dryRun) {
         writeFileSync(filePath, newLines.join("\n"), "utf-8");
       }
+      
+      // Context preview (değiştirilen bölge için)
+      let contextPreview: string | undefined;
+      try {
+        contextPreview = await getContextPreview(filePath, start, start + replaceLines.length, 5);
+      } catch (err) {
+        // Preview oluşturulamazsa devam et
+      }
+      
       return { 
         success: true, 
         message: options.dryRun ? "Dry run: değişiklik yapılacak" : `${end - start} satır değiştirildi`,
         linesAffected: end - start,
+        contextPreview,
         syntaxValid,
         syntaxError
       };
@@ -965,4 +1000,231 @@ export const DEV_TOOL_DEFINITIONS = [
       },
     },
   },
+  {
+    name: "hev_dev_check_syntax",
+    description: "Dosyada syntax hataları, parantez dengesi ve ESLint kontrolleri yap",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Kontrol edilecek dosya yolu",
+        },
+        check_brackets: {
+          type: "boolean",
+          description: "Parantez dengesi kontrolü (varsayılan: true)",
+          default: true,
+        },
+        check_eslint: {
+          type: "boolean",
+          description: "ESLint syntax kontrolü (varsayılan: true)",
+          default: true,
+        },
+        check_ts: {
+          type: "boolean",
+          description: "TypeScript type check (varsayılan: false)",
+          default: false,
+        },
+      },
+      required: ["file_path"],
+    },
+  },
 ];
+
+/**
+ * Check syntax errors and bracket balance
+ */
+
+/**
+ * Check syntax errors and bracket balance
+ */
+export async function checkSyntax(
+  projectRoot: string,
+  filePath: string,
+  options: {
+    checkBrackets?: boolean;
+    checkESLint?: boolean;
+    checkTS?: boolean;
+  } = {}
+): Promise<{
+  success: boolean;
+  output: string;
+  errors: Array<{ line?: number; column?: number; message: string; type: string }>;
+  bracketsBalanced: boolean;
+  bracketDetails?: { open: number; close: number; type: string }[];
+}> {
+  const { checkBrackets = true, checkESLint = true, checkTS = false } = options;
+  const errors: Array<{ line?: number; column?: number; message: string; type: string }> = [];
+  const output: string[] = [];
+  
+  const fullPath = join(projectRoot, filePath);
+  
+  if (!existsSync(fullPath)) {
+    return {
+      success: false,
+      output: `❌ Dosya bulunamadı: ${filePath}`,
+      errors: [{ message: 'File not found', type: 'system' }],
+      bracketsBalanced: false,
+    };
+  }
+
+  const content = readFileSync(fullPath, 'utf-8');
+  const ext = extname(filePath);
+  
+  output.push(`🔍 Syntax Kontrolü: ${filePath}`);
+  output.push('─'.repeat(50));
+
+  let bracketsBalanced = true;
+  const bracketDetails: { open: number; close: number; type: string }[] = [];
+  
+  if (checkBrackets) {
+    const brackets = [
+      { open: '(', close: ')', name: 'Parantez' },
+      { open: '{', close: '}', name: 'Süslü Parantez' },
+      { open: '[', close: ']', name: 'Köşeli Parantez' },
+    ];
+
+    for (const bracket of brackets) {
+      const openCount = (content.match(new RegExp(`\\${bracket.open}`, 'g')) || []).length;
+      const closeCount = (content.match(new RegExp(`\\${bracket.close}`, 'g')) || []).length;
+      
+      bracketDetails.push({
+        open: openCount,
+        close: closeCount,
+        type: bracket.name,
+      });
+
+      if (openCount !== closeCount) {
+        bracketsBalanced = false;
+        const diff = Math.abs(openCount - closeCount);
+        const missing = openCount > closeCount ? bracket.close : bracket.open;
+        errors.push({
+          message: `${bracket.name} dengesi bozuk: ${diff} adet '${missing}' ${openCount > closeCount ? 'eksik' : 'fazla'}`,
+          type: 'bracket',
+        });
+      }
+    }
+
+    if (bracketsBalanced) {
+      output.push('✅ Parantez Dengesi: OK');
+      bracketDetails.forEach((detail) => {
+        output.push(`   ${detail.type}: ${detail.open}/${detail.close}`);
+      });
+    } else {
+      output.push('❌ Parantez Dengesi: BOZUK');
+      bracketDetails.forEach((detail) => {
+        if (detail.open !== detail.close) {
+          output.push(`   ${detail.type}: ${detail.open} açık / ${detail.close} kapalı`);
+        }
+      });
+    }
+  }
+
+  if (checkESLint && ['.js', '.ts', '.jsx', '.tsx'].includes(ext)) {
+    try {
+      const eslintResult = await new Promise<string>((resolve) => {
+        exec(
+          `cd "${projectRoot}" && npx eslint --no-eslintrc --parser @typescript-eslint/parser "${filePath}" 2>&1 || true`,
+          { timeout: DEV_TIMEOUTS.LINT },
+          (error, stdout) => {
+            resolve(stdout);
+          }
+        );
+      });
+
+      if (eslintResult.includes('error') || eslintResult.includes('Parsing error')) {
+        output.push('❌ ESLint: Syntax hatası bulundu');
+        
+        const errorLines = eslintResult.split('\n').filter(line => 
+          line.includes('error') || line.includes('Parsing error')
+        );
+        
+        errorLines.slice(0, 5).forEach(line => {
+          const match = line.match(/(\d+):(\d+)\s+error\s+(.+)/);
+          if (match) {
+            errors.push({
+              line: parseInt(match[1]),
+              column: parseInt(match[2]),
+              message: match[3].trim(),
+              type: 'eslint',
+            });
+            output.push(`   Line ${match[1]}: ${match[3].trim()}`);
+          }
+        });
+      } else {
+        output.push('✅ ESLint: Syntax OK');
+      }
+    } catch (err) {
+      output.push('⚠️  ESLint: Kontrol edilemedi');
+    }
+  }
+
+  if (checkTS && ['.ts', '.tsx'].includes(ext)) {
+    try {
+      const tscResult = await new Promise<string>((resolve) => {
+        exec(
+          `cd "${projectRoot}" && npx tsc --noEmit --pretty false "${filePath}" 2>&1 || true`,
+          { timeout: DEV_TIMEOUTS.LINT },
+          (error, stdout) => {
+            resolve(stdout);
+          }
+        );
+      });
+
+      if (tscResult.includes('error TS')) {
+        output.push('❌ TypeScript: Type hataları bulundu');
+        
+        const errorLines = tscResult.split('\n').filter(line => line.includes('error TS'));
+        errorLines.slice(0, 5).forEach(line => {
+          const match = line.match(/(\d+):(\d+) - error TS\d+: (.+)/);
+          if (match) {
+            errors.push({
+              line: parseInt(match[1]),
+              column: parseInt(match[2]),
+              message: match[3].trim(),
+              type: 'typescript',
+            });
+            output.push(`   Line ${match[1]}: ${match[3].trim()}`);
+          }
+        });
+      } else {
+        output.push('✅ TypeScript: Type check OK');
+      }
+    } catch (err) {
+      output.push('⚠️  TypeScript: Kontrol edilemedi');
+    }
+  }
+
+  if (ext === '.json') {
+    try {
+      JSON.parse(content);
+      output.push('✅ JSON: Geçerli format');
+    } catch (err) {
+      const error = err as Error;
+      errors.push({
+        message: error.message,
+        type: 'json',
+      });
+      output.push('❌ JSON: Geçersiz format');
+      output.push(`   ${error.message}`);
+    }
+  }
+
+  output.push('─'.repeat(50));
+
+  const success = errors.length === 0 && bracketsBalanced;
+  
+  if (success) {
+    output.push('✅ Tüm kontroller başarılı!');
+  } else {
+    output.push(`❌ ${errors.length} hata bulundu`);
+  }
+
+  return {
+    success,
+    output: output.join('\n'),
+    errors,
+    bracketsBalanced,
+    bracketDetails,
+  };
+}

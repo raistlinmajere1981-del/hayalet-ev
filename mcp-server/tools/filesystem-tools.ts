@@ -19,6 +19,7 @@ import {
   grepDirectory,
   findAndReplace,
   addLineNumbers,
+  getContextPreview,
 } from "../utils/file-utils.js";
 import { createProgress } from "../utils/progress.js";
 import { FS_TIMEOUTS } from "../utils/timeouts.js";
@@ -400,6 +401,36 @@ export async function findAndReplaceCode(
     dryRun
   });
   
+  // Context preview oluştur (değişiklik yapıldıysa)
+  let contextPreview: string | undefined;
+  if (result.success && result.replacements > 0) {
+    try {
+      // İlk değişikliğin olduğu satırı bul
+      const content = await readFile(filePath, 'utf-8');
+      const lines = content.split('\n');
+      let firstChangeLineIndex = -1;
+      
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(replace)) {
+          firstChangeLineIndex = i;
+          break;
+        }
+      }
+      
+      if (firstChangeLineIndex >= 0) {
+        // Değişiklik yapılan ilk satır etrafında context preview
+        contextPreview = await getContextPreview(
+          filePath,
+          firstChangeLineIndex,
+          firstChangeLineIndex + 1,
+          5
+        );
+      }
+    } catch (err) {
+      // Context preview oluşturulamazsa sessizce devam et
+    }
+  }
+  
   if (result.success) {
     if (dryRun) {
       progress.done(`Preview: ${result.replacements} değişiklik`);
@@ -415,7 +446,8 @@ export async function findAndReplaceCode(
     replacements: result.replacements,
     success: result.success,
     error: result.error,
-    preview: result.preview
+    preview: result.preview,
+    contextPreview
   };
 }
 
