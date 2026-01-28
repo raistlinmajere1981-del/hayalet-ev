@@ -1117,6 +1117,9 @@ export async function checkSyntax(
   const bracketDetails: { open: number; close: number; type: string }[] = [];
   
   if (checkBrackets) {
+    // Use context-aware bracket counting
+    const bracketCounts = countBracketsContextAware(content);
+    
     const brackets = [
       { open: '(', close: ')', name: 'Parantez' },
       { open: '{', close: '}', name: 'Süslü Parantez' },
@@ -1124,8 +1127,8 @@ export async function checkSyntax(
     ];
 
     for (const bracket of brackets) {
-      const openCount = (content.match(new RegExp(`\\${bracket.open}`, 'g')) || []).length;
-      const closeCount = (content.match(new RegExp(`\\${bracket.close}`, 'g')) || []).length;
+      const openCount = bracketCounts.open[bracket.open].length;
+      const closeCount = bracketCounts.close[bracket.close].length;
       
       bracketDetails.push({
         open: openCount,
@@ -1143,6 +1146,8 @@ export async function checkSyntax(
         });
       }
     }
+    
+    bracketsBalanced = bracketCounts.balanced;
 
     if (bracketsBalanced) {
       output.push('✅ Parantez Dengesi: OK');
@@ -1520,39 +1525,33 @@ export async function visualizeStructure(
     }
   }
 
-  // Bracket analysis (always run)
+  // Bracket analysis (always run, context-aware)
   if (showBrackets) {
     output.push('');
     output.push('🔗 BRACKET ANALYSIS:');
     output.push('━'.repeat(50));
     
-    const bracketStack: Array<{ char: string; line: number; col: number }> = [];
-    const bracketPairs = { '(': ')', '{': '}', '[': ']' };
+    const bracketCounts = countBracketsContextAware(content);
     const unclosedBrackets: Array<{ char: string; line: number; col: number }> = [];
     const extraBrackets: Array<{ char: string; line: number; col: number }> = [];
-
-    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-      const line = lines[lineIdx];
+    
+    // Calculate unclosed and extra brackets
+    const bracketPairs = { '(': ')', '{': '}', '[': ']' };
+    
+    for (const [openChar, closeChar] of Object.entries(bracketPairs)) {
+      const openList = bracketCounts.open[openChar];
+      const closeList = bracketCounts.close[closeChar];
       
-      for (let col = 0; col < line.length; col++) {
-        const char = line[col];
-        
-        if (['(', '{', '['].includes(char)) {
-          bracketStack.push({ char, line: lineIdx + 1, col: col + 1 });
-        } else if ([')', '}', ']'].includes(char)) {
-          const last = bracketStack[bracketStack.length - 1];
-          const expectedOpen = Object.keys(bracketPairs).find(k => bracketPairs[k as keyof typeof bracketPairs] === char);
-          
-          if (last && last.char === expectedOpen) {
-            bracketStack.pop();
-          } else {
-            extraBrackets.push({ char, line: lineIdx + 1, col: col + 1 });
-          }
-        }
+      if (openList.length > closeList.length) {
+        // More opens than closes - some are unclosed
+        const diff = openList.length - closeList.length;
+        unclosedBrackets.push(...openList.slice(-diff).map(b => ({ char: openChar, ...b })));
+      } else if (closeList.length > openList.length) {
+        // More closes than opens - some are extra
+        const diff = closeList.length - openList.length;
+        extraBrackets.push(...closeList.slice(-diff).map(b => ({ char: closeChar, ...b })));
       }
     }
-
-    unclosedBrackets.push(...bracketStack);
 
     if (unclosedBrackets.length === 0 && extraBrackets.length === 0) {
       output.push('✅ Tüm parantezler dengeli');
@@ -1652,4 +1651,104 @@ export async function visualizeStructure(
     output: output.join('\n'),
     errors,
   };
+}
+
+/**
+ * Context-aware bracket counting (ignores brackets inside strings and regexes)
+ */
+function countBracketsContextAware(content: string): {
+  open: { [key: string]: Array<{ line: number; col: number }> };
+  close: { [key: string]: Array<{ line: number; col: number }> };
+  balanced: boolean;
+} {
+  const lines = content.split('\n');
+  const open: { [key: string]: Array<{ line: number; col: number }> } = { '(': [], '{': [], '[': [] };
+  const close: { [key: string]: Array<{ line: number; col: number }> } = { ')': [], '}': [], ']': [] };
+  
+  let inString = false;
+  let stringChar = '';
+  let inRegex = false;
+  let inSingleLineComment = false;
+  let inMultiLineComment = false;
+  
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx];
+    inSingleLineComment = false; // Reset at start of each line
+    
+    for (let col = 0; col < line.length; col++) {
+      const char = line[col];
+      const prevChar = col > 0 ? line[col - 1] : '';
+      const nextChar = col < line.length - 1 ? line[col + 1] : '';
+      
+      // Skip if in single-line comment
+      if (inSingleLineComment) continue;
+      
+      // Multi-line comment detection
+      if (!inString && !inRegex && char === '/' && nextChar === '*') {
+        inMultiLineComment = true;
+        col++; // Skip next char
+        continue;
+      }
+      if (inMultiLineComment && char === '*' && nextChar === '/') {
+        inMultiLineComment = false;
+        col++; // Skip next char
+        continue;
+      }
+      if (inMultiLineComment) continue;
+      
+      // Single-line comment detection
+      if (!inString && !inRegex && char === '/' && nextChar === '/') {
+        inSingleLineComment = true;
+        continue;
+      }
+      
+      // String detection (with escape handling)
+      if ((char === '"' || char === "'" || char === '`') && prevChar !== '\\') {
+        if (!inString && !inRegex) {
+          inString = true;
+          stringChar = char;
+        } else if (inString && char === stringChar) {
+          inString = false;
+          stringChar = '';
+        }
+        continue;
+      }
+      
+      // Skip if in string
+      if (inString) continue;
+      
+      // Regex detection (simple: /.../ pattern)
+      // Only detect if preceded by = or ( or , or : or space
+      if (char === '/' && prevChar !== '\\') {
+        const beforeChars = [' ', '=', '(', ',', ':', '[', '\t', '\n'];
+        const isRegexStart = beforeChars.includes(prevChar) || col === 0;
+        
+        if (isRegexStart && !inRegex) {
+          inRegex = true;
+          continue;
+        } else if (inRegex) {
+          inRegex = false;
+          continue;
+        }
+      }
+      
+      // Skip if in regex
+      if (inRegex) continue;
+      
+      // Count brackets (only outside strings, regexes, and comments)
+      if (char === '(' || char === '{' || char === '[') {
+        open[char].push({ line: lineIdx + 1, col: col + 1 });
+      } else if (char === ')' || char === '}' || char === ']') {
+        close[char].push({ line: lineIdx + 1, col: col + 1 });
+      }
+    }
+  }
+  
+  // Check balance
+  const balanced = 
+    open['('].length === close[')'].length &&
+    open['{'].length === close['}'].length &&
+    open['['].length === close[']'].length;
+  
+  return { open, close, balanced };
 }
