@@ -5,8 +5,10 @@
  * 
  * Commit öncesi otomatik kontroller:
  * 1. ESLint kontrolü
- * 2. console.log yasağı (renderer process'te)
- * 3. LogManager kullanım kontrolü
+ * 2. TypeScript kontrolü (soft mode - sadece uyarı)
+ * 3. console.log yasağı (renderer process'te)
+ * 4. LogManager kullanım kontrolü
+ * 5. Geçici dosya kontrolü
  * 
  * Kurulum:
  *   # .git/hooks/pre-commit olarak kopyala
@@ -106,6 +108,35 @@ function checkLint() {
     }
     
     console.log(colors.green('   ✅ Lint kontrolü başarılı (sadece uyarılar)'));
+    return { success: true, errors: [] };
+  }
+}
+
+/**
+ * TypeScript kontrolü (soft mode - sadece uyarı)
+ */
+function checkTypeScriptSoft() {
+  console.log(colors.blue('\n📘 TypeScript kontrolü (soft mode)...'));
+  
+  try {
+    execSync('npx tsc --noEmit', {
+      cwd: PROJECT_ROOT,
+      stdio: 'pipe',
+    });
+    console.log(colors.green('   ✅ Type kontrolü başarılı'));
+    return { success: true, errors: [] };
+  } catch (error) {
+    const output = error.stdout?.toString() || error.stderr?.toString() || '';
+    
+    // Hata sayısını bul
+    const errorMatch = output.match(/Found (\d+) error/);
+    const errorCount = errorMatch ? errorMatch[1] : 'bilinmeyen';
+    
+    console.log(colors.yellow(`   ⚠️  ${errorCount} TypeScript hatası mevcut (commit engellenmedi)`));
+    console.log(colors.gray('      Hataları görmek için: npm run ai:errors'));
+    console.log(colors.gray('      Tam kontrol için: npm run ai:check'));
+    
+    // Soft mode: Uyarı ver ama commit'i engelleme
     return { success: true, errors: [] };
   }
 }
@@ -255,7 +286,10 @@ async function main() {
   // 1. ESLint kontrolü
   results.push(checkLint());
   
-  // 2. console.log kontrolü
+  // 2. TypeScript kontrolü (soft mode - sadece uyarı)
+  checkTypeScriptSoft();
+  
+  // 3. console.log kontrolü
   results.push(checkConsoleUsage(stagedFiles));
   
   // 3. Geçici dosya kontrolü

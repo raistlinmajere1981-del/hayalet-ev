@@ -37,7 +37,13 @@
     "update:deps": "npx npm-check-updates -u --reject electron,electron-builder && npm install && cd mcp-server && npx npm-check-updates -u && npm install",
     "update:full": "npx npm-check-updates -u && npm install && cd mcp-server && npx npm-check-updates -u && npm install",
     "update:interactive": "npx npm-check-updates -i --format group && cd mcp-server && npx npm-check-updates -i --format group",
-    "generate:docs": "node scripts/generate-tool-list.js && node scripts/generate-version-info.js"
+    "generate:docs": "node scripts/generate-tool-list.js && node scripts/generate-version-info.js",
+    "ai:check": "tsc --noEmit && eslint src/**/*.ts electron/**/*.ts",
+    "ai:fix": "eslint --fix src/**/*.ts electron/**/*.ts",
+    "ai:errors": "tsc --noEmit --pretty 2>&1 | grep 'error TS'",
+    "ai:stats": "tsc --noEmit 2>&1 | tail -1",
+    "type:watch": "tsc --noEmit --watch",
+    "type:watch:electron": "tsc --noEmit --watch -p tsconfig.electron.json"
   },
   "keywords": [
     "electron",
