@@ -269,6 +269,47 @@ export async function analyzeScopeImpact(
 }
 
 /**
+ * Check if content change is only a variable rename
+ */
+function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
+  // Normalize by replacing all identifiers with placeholder
+  const normalize = (s: string) => {
+    return s
+      .replace(/\b[a-z_$][a-zA-Z0-9_$]*\b/g, 'VAR') // identifiers
+      .replace(/\s+/g, ' ') // whitespace
+      .trim();
+  };
+  
+  return normalize(oldContent) === normalize(newContent);
+}
+
+/**
+ * Check if content change is only a type annotation change
+ */
+function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
+  // Remove type annotations and compare structure
+  const removeTypes = (s: string) => {
+    return s
+      .replace(/:\s*[A-Z][a-zA-Z0-9<>[\]|&,\s]*(?=[,;)])/g, ': TYPE') // type annotations
+      .replace(/<[^>]+>/g, '<T>') // generics
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+  
+  return removeTypes(oldContent) === removeTypes(newContent);
+}
+
+/**
+ * Check if only optional chaining was added
+ */
+function isOnlyOptionalChainingAddition(oldContent: string, newContent: string): boolean {
+  // Remove optional chaining operators and compare
+  const removeOptional = (s: string) => s.replace(/\?\./g, '.').replace(/\??\[/g, '[');
+  
+  return removeOptional(oldContent) === removeOptional(newContent);
+}
+
+/**
  * Validate bracket balance before/after edit
  */
 export function validateBracketBalance(
@@ -292,6 +333,17 @@ export function validateBracketBalance(
     const isBalanced = newOpenCount === newCloseCount;
 
     if (wasBalanced && !isBalanced) {
+      // 🔍 Smart detection: Check if it's a benign change
+      const isBenignChange = 
+        isOnlyVariableRename(oldContent, newContent) ||
+        isOnlyTypeChange(oldContent, newContent) ||
+        isOnlyOptionalChainingAddition(oldContent, newContent);
+      
+      if (isBenignChange) {
+        // False positive - bracket count changed due to syntax change, not actual imbalance
+        continue;
+      }
+      
       const diff = Math.abs(newOpenCount - newCloseCount);
       const missing = newOpenCount > newCloseCount ? closeChar : openChar;
       issues.push(

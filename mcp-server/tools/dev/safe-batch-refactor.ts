@@ -146,11 +146,93 @@ export async function safelyRefactorCode(
 // Helper Functions
 // ============================================
 
+/**
+ * Normalize whitespace for pattern matching
+ */
+function normalizeWhitespace(str: string): string {
+  return str.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Check if line matches pattern with whitespace-agnostic comparison
+ */
+function matchesPattern(line: string, pattern: string, useRegex: boolean): boolean {
+  if (useRegex) {
+    const regex = new RegExp(pattern);
+    return regex.test(line);
+  }
+  
+  // Whitespace-agnostic exact match
+  return normalizeWhitespace(line).includes(normalizeWhitespace(pattern));
+}
+
+/**
+ * Replace pattern in line preserving indentation
+ */
+function replaceInLine(line: string, pattern: string, replacement: string, useRegex: boolean): string {
+  // Preserve original indentation
+  const indent = line.match(/^\s*/)?.[0] || '';
+  
+  if (useRegex) {
+    const regex = new RegExp(pattern);
+    return line.replace(regex, replacement);
+  }
+  
+  // Whitespace-agnostic string replacement
+  const normalizedLine = normalizeWhitespace(line);
+  const normalizedPattern = normalizeWhitespace(pattern);
+  
+  if (!normalizedLine.includes(normalizedPattern)) {
+    return line;
+  }
+  
+  // Find pattern in original line (whitespace-tolerant)
+  const lineTokens = line.split(/(\s+)/); // Keep whitespace as tokens
+  const patternTokens = pattern.split(/\s+/).filter(t => t);
+  
+  // Simple token matching
+  let matchStart = -1;
+  let matchEnd = -1;
+  
+  for (let i = 0; i < lineTokens.length; i++) {
+    let matched = true;
+    let patternIdx = 0;
+    let tokenIdx = i;
+    
+    while (patternIdx < patternTokens.length && tokenIdx < lineTokens.length) {
+      const token = lineTokens[tokenIdx]?.trim();
+      if (!token) {
+        tokenIdx++;
+        continue;
+      }
+      
+      if (token !== patternTokens[patternIdx]) {
+        matched = false;
+        break;
+      }
+      
+      if (matchStart === -1) matchStart = tokenIdx;
+      matchEnd = tokenIdx;
+      patternIdx++;
+      tokenIdx++;
+    }
+    
+    if (matched && patternIdx === patternTokens.length) {
+      // Found match, replace tokens
+      const before = lineTokens.slice(0, matchStart).join('');
+      const after = lineTokens.slice(matchEnd + 1).join('');
+      return indent + (before.trim() + ' ' + replacement + ' ' + after.trim()).trim();
+    }
+  }
+  
+  return line;
+}
+
 function applyOperation(content: string, op: RefactorOperation): string {
   const lines = content.split("\\n");
-  // 🛡️ FIXED: Remove 'g' flag to prevent infinite loop on self-matching patterns
-  // Each line gets replaced ONCE, not globally
-  const regex = new RegExp(op.pattern);
+  
+  // Detect if pattern is regex (contains regex special chars)
+  const isRegexPattern = /[.*+?^${}()|[\]\\]/.test(op.pattern);
 
   let replacementCount = 0;
   const MAX_REPLACEMENTS = 1000; // Safety limit
@@ -160,10 +242,13 @@ function applyOperation(content: string, op: RefactorOperation): string {
     op.target_lines.forEach((lineNum) => {
       if (lineNum > 0 && lineNum <= lines.length && replacementCount < MAX_REPLACEMENTS) {
         const oldLine = lines[lineNum - 1] || '';
-        const newLine = oldLine.replace(regex, op.replace_with);
-        if (oldLine !== newLine) {
-          lines[lineNum - 1] = newLine;
-          replacementCount++;
+        
+        if (matchesPattern(oldLine, op.pattern, isRegexPattern)) {
+          const newLine = replaceInLine(oldLine, op.pattern, op.replace_with, isRegexPattern);
+          if (oldLine !== newLine) {
+            lines[lineNum - 1] = newLine;
+            replacementCount++;
+          }
         }
       }
     });
@@ -171,10 +256,13 @@ function applyOperation(content: string, op: RefactorOperation): string {
     // Apply to all lines
     for (let i = 0; i < lines.length && replacementCount < MAX_REPLACEMENTS; i++) {
       const oldLine = lines[i] || '';
-      const newLine = oldLine.replace(regex, op.replace_with);
-      if (oldLine !== newLine) {
-        lines[i] = newLine;
-        replacementCount++;
+      
+      if (matchesPattern(oldLine, op.pattern, isRegexPattern)) {
+        const newLine = replaceInLine(oldLine, op.pattern, op.replace_with, isRegexPattern);
+        if (oldLine !== newLine) {
+          lines[i] = newLine;
+          replacementCount++;
+        }
       }
     }
   }
