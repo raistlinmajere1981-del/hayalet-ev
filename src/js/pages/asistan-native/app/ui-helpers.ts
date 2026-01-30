@@ -80,8 +80,8 @@ export const UIHelpers = {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         console.log('[OpenCode] File selected:', file.name);
-        if (typeof window.PromptHandler !== 'undefined') {
-          window.PromptHandler.attachFile?.(file);
+        if (typeof window.PromptHandler !== 'undefined' && window.PromptHandler.attachFile) {
+          (window.PromptHandler.attachFile as (file: File) => void)(file);
         }
       }
     };

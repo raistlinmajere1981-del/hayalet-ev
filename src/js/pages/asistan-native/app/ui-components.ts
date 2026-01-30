@@ -73,7 +73,8 @@ export function setupUIComponents(context: AppContext) {
     async clearTrash() {
       if (typeof window.SessionStore === 'undefined') return;
 
-      const trashSessions = (window.SessionStore.getTrashedSessions?.() || []) as Array<{ id: string }>;
+      const getTrashedSessions = window.SessionStore.getTrashedSessions as (() => Array<{ id: string }>) | undefined;
+      const trashSessions = (getTrashedSessions ? getTrashedSessions() : []) as Array<{ id: string }>;
       if (trashSessions.length === 0) {
         context._showToast('Çöp kutusu boş', 'info');
         return;

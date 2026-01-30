@@ -172,7 +172,7 @@ class ConversationSyncerClass {
     this._syncInProgress[provider] = true;
 
     try {
-      await waitForDomReady(webview);
+      await waitForDomReady(webview as any);
 
       const providerId = AppState.getProviderIdForSlot(provider);
       const providerModule = providerId ? getProvider(providerId) : null;
@@ -185,7 +185,7 @@ class ConversationSyncerClass {
         `(${providerModule.scrapeMessages.toString()})();`
       );
 
-      const rawUrl = webview.getURL() || "";
+      const rawUrl = webview.getURL?.() || "";
       const webUrl = normalizeUrl(rawUrl);
 
       const { existing, prevCount, newEntry } = await this._getArchiveStatus(provider, webUrl);

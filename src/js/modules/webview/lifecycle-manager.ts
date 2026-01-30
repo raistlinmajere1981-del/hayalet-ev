@@ -31,7 +31,7 @@ class LifecycleManagerClass {
 
   register(provider: string, webview: HTMLElement) {
     if (!provider || !webview) return;
-    this.webviews[provider] = webview;
+    this.webviews[provider] = webview as Electron.WebviewTag;
     this._lastActivity[provider] = Date.now();
   }
 
@@ -153,7 +153,7 @@ class LifecycleManagerClass {
             );
           }
         };
-        webview.addEventListener("dom-ready", handleReady as EventListener, { once: true });
+        (webview as any).addEventListener("dom-ready", handleReady, { once: true });
       }
 
       LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached", { visibility: 2 });

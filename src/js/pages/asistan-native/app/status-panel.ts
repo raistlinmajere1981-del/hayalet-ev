@@ -41,7 +41,7 @@ export function setupStatusPanel(context: AppContext) {
       if (servers.length === 0) {
         section.innerHTML += '<p>Sunucu yok</p>';
       } else {
-        servers.forEach((server: { name: string; port: number; status: string }) => {
+        servers.forEach((server: { id?: string; name: string; port: number; status: string }) => {
           section.innerHTML += `<div>• ${server.name || server.id} (${server.status || 'unknown'})</div>`;
         });
       }
@@ -63,7 +63,7 @@ export function setupStatusPanel(context: AppContext) {
       if (shells.length === 0) {
         section.innerHTML += '<p>Kabuk yok</p>';
       } else {
-        shells.forEach((shell: { name: string; path: string }) => {
+        shells.forEach((shell: { id?: string; name: string; path: string; status?: string }) => {
           section.innerHTML += `<div>• ${shell.name || shell.id} (${shell.status || 'running'})</div>`;
         });
       }
@@ -85,7 +85,7 @@ export function setupStatusPanel(context: AppContext) {
       if (plugins.length === 0) {
         section.innerHTML += '<p>Eklenti yok</p>';
       } else {
-        plugins.forEach((plugin: { name: string; version: string; enabled: boolean }) => {
+        plugins.forEach((plugin: { id?: string; name: string; version: string; enabled: boolean }) => {
           section.innerHTML += `<div>• ${plugin.name || plugin.id}</div>`;
         });
       }
@@ -151,7 +151,9 @@ export function setupStatusPanel(context: AppContext) {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (file) {
           console.log('[OpenCode] File selected:', file.name);
-          window.PromptHandler.attachFile?.(file);
+          if (window.PromptHandler?.attachFile) {
+            (window.PromptHandler.attachFile as (file: File) => void)(file);
+          }
         }
       };
       input.click();
@@ -160,7 +162,7 @@ export function setupStatusPanel(context: AppContext) {
     updateStatus(status: string, text: string) {
       context._status = status;
       context._statusText = text;
-      context._updateConnectionStatus();
+      context._updateConnectionStatus(status, text);
     },
 
     getServerUrl(): string {

@@ -45,10 +45,10 @@ export class ServerController {
     this.commandGuide = null;
   }
 
-  getProviderLabel(provider: string | null) {
+  getProviderLabel(provider: string | null): string {
     if (!provider) return "AI";
     if (provider === "ai1" || provider === "ai2" || provider === "user") {
-      return AppState.getNickname(provider);
+      return String(AppState.getNickname(provider));
     }
     return provider;
   }
@@ -321,8 +321,8 @@ export class ServerController {
     recent.forEach((entry: LogEntry) => {
       const src = entry.source || "";
       if (src === "command-catch") {
-        const provider = entry.meta?.provider || "";
-        const sender = entry.meta?.sender || this.getProviderLabel(provider);
+        const provider = String(entry.meta?.provider || "");
+        const sender = String(entry.meta?.sender || this.getProviderLabel(provider));
         const cmd = entry.meta?.command || entry.message || "";
         const args = entry.meta?.args ? ` (${entry.meta.args})` : "";
         const stamp = entry.meta?.timestamp || entry.timestamp || "";
@@ -330,8 +330,8 @@ export class ServerController {
         return;
       }
       if (src === "command-result") {
-        const provider = entry.meta?.provider || "";
-        const sender = entry.meta?.sender || this.getProviderLabel(provider);
+        const provider = String(entry.meta?.provider || "");
+        const sender = String(entry.meta?.sender || this.getProviderLabel(provider));
         const cmd = entry.meta?.command || "";
         const args = entry.meta?.args ? ` (${entry.meta.args})` : "";
         const stamp = entry.meta?.timestamp || entry.timestamp || "";

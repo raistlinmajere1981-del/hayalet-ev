@@ -292,8 +292,8 @@ const InstanceTabs = {
     console.log('[InstanceTabs] Created instance:', instance.id, folderName);
 
     // SSE bağlantısı kur (OpenCodeApp üzerinden)
-    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp?.createInstance) {
-      await OpenCodeApp.createInstance({
+    if (typeof OpenCodeApp !== 'undefined' && OpenCodeApp?._createInstance) {
+      await OpenCodeApp._createInstance({
         folder: folderPath,
         name: folderName,
       });

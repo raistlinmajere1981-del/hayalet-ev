@@ -105,7 +105,7 @@ class AppStateClass {
     return account?.avatarPath || "";
   }
 
-  getNickname(provider: string) {
+  getNickname(provider: string): string {
     const settings = this.getSettings();
     // Null check fix: Return default value if settings is null
     if (!settings) {
@@ -115,7 +115,7 @@ class AppStateClass {
       return settings.user?.nickname || "Kullanıcı";
     }
     const account = this.getAccountForSlot(provider);
-    return account?.nickname || account?.email || provider.toUpperCase();
+    return String(account?.nickname || account?.email || provider.toUpperCase());
   }
 
 

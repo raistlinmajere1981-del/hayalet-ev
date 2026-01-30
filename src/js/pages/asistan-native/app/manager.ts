@@ -2,6 +2,7 @@
  * OpenCodeApp Manager - Main singleton application
  */
 
+import type { AppContext } from './types';
 import { setupInitialization } from './initialization';
 import { setupEventListeners } from './event-listeners';
 import { setupSSEConnection } from './sse-connection';
