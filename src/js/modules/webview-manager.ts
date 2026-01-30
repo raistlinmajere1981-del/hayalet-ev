@@ -113,7 +113,7 @@ class WebviewManagerClass {
    */
   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
-    return MessageSender.send({ provider, text, attachments: attachments[], webview: webview });
+    return MessageSender.send({ provider, text, attachments, webview });
   }
 
   // ==========================================

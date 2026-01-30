@@ -1,4 +1,5 @@
 
+import type { AppSettings } from "../types/settings.js";
 import {
   defaultSettings,
   normalizeSettings,
@@ -41,13 +42,11 @@ interface SettingsBroadcast {
 }
 
  
-type SettingsData = unknown;
-
 class SettingsManagerClass {
-  _settings: SettingsData;
+  _settings: AppSettings;
   _loaded: boolean;
   _emitter: Emitter;
-  _lastSaved: SettingsData;
+  _lastSaved: AppSettings;
   _broadcast: SettingsBroadcast;
   _stopBroadcast: () => void;
 
@@ -75,7 +74,7 @@ class SettingsManagerClass {
     });
   }
 
-  getSnapshot() {
+  getSnapshot(): AppSettings {
     return this._settings;
   }
 

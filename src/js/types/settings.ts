@@ -36,7 +36,7 @@ export interface SlotAssignment {
 /** Slot ayarları */
 export interface SlotSettings {
   accountId: string | null;
-  provider: ProviderId | null;
+  provider?: ProviderId | null;
   url?: string;
   path?: string;
   messageMethod?: MessageMethod;
@@ -82,6 +82,7 @@ export interface AppSettings {
   general?: GeneralSettings;
   user?: {
     nickname?: string;
+    avatarPath?: string;
   };
   integrations?: {
     googledrive?: GoogleDriveSettings;
@@ -89,8 +90,11 @@ export interface AppSettings {
   slots: {
     ai1: SlotSettings;
     ai2: SlotSettings;
+    [key: string]: SlotSettings; // Dynamic slot access
   };
+  asistanSlot?: SlotSettings; // AI0 slot
   accounts: Account[];
+  asistanAccounts?: Account[]; // AI0 accounts
   upload?: UploadSettings;
   googleDrive?: GoogleDriveSettings;
   [key: string]: unknown; // Ek alanlar için

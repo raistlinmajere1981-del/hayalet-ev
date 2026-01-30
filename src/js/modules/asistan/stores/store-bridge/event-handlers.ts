@@ -11,10 +11,12 @@ import type { SessionStatus, PartUpdateInput, PermissionEntry, QuestionEntry } f
 // Store Interface Types
 // ============================================================================
 
+import type { MessageUpsertInput } from '../message/types';
+
 interface MessageStoreAPI {
   hasMessage?: (messageId: string) => boolean;
   getMessage?: (messageId: string) => MessageRecord | null;
-  upsertMessage?: (data: import('../message/types').MessageUpsertInput) => MessageRecord;
+  upsertMessage?: (data: MessageUpsertInput) => MessageRecord;
   updateTextPart?: (messageId: string, content: string, isDelta: boolean) => void;
   updateMessageStatus?: (messageId: string, status: string) => void;
   addOrUpdatePart?: (data: PartUpdateInput) => void;
@@ -35,6 +37,7 @@ interface SessionStoreAPI {
   updateSessionInfo?: (sessionId: string, info: Record<string, unknown>) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface InstanceStoreAPI {
   // Currently unused in handlers
 }
@@ -98,7 +101,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     },
 
     handleMessageStart(data: Record<string, unknown>) {
-      const { MessageStore, SessionStore, debug } = deps;
+      const { MessageStore, SessionStore } = deps;
       const messageId = data?.messageId as string | undefined;
       const role = data?.role as string | undefined;
 

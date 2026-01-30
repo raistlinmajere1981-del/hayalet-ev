@@ -1,3 +1,4 @@
+import type { AppSettings } from "../../types/settings.js";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
@@ -8,22 +9,21 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 const DEFAULT_ASISTAN_ACCOUNT = {
   id: "opencode_opencode_at_opencode_com",
   email: "opencode@opencode.com",
-  provider: "opencode",
+  provider: "opencode" as const,
   nickname: "OpenCode",
   avatarPath: "src/assets/opencode.png",
-  isAsistan: true,
 };
 
-export function defaultSettings() {
-  const defaults = {
+export function defaultSettings(): AppSettings {
+  const defaults: AppSettings = {
     user: { nickname: "Kullanıcı", avatarPath: "" },
     integrations: {
       googledrive: {
-        clientId: "",
-        clientSecret: "",
-        authorizationCode: "",
         connected: false,
-        account: "",
+        email: "",
+        accessToken: "",
+        refreshToken: "",
+        expiresAt: 0,
       },
     },
     accounts: [],
@@ -87,8 +87,8 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
   }
 
    
-  const r = raw;
-  const out: Record<string, unknown> = {};
+  const r = raw as Partial<AppSettings>;
+  const out: Partial<AppSettings> = {};
 
   if (isPlainObject(r.user)) {
     out.user = r.user;
@@ -142,11 +142,11 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
   return out;
 }
 
-export function normalizeSettings(raw: unknown) {
+export function normalizeSettings(raw: unknown): AppSettings {
   const defaults = defaultSettings();
   const legacyNormalized = normalizeLegacy(raw);
    
-  const merged = mergeDefaults(legacyNormalized, defaults);
+  const merged = mergeDefaults(legacyNormalized, defaults) as AppSettings;
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];

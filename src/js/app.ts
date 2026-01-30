@@ -7,6 +7,13 @@ import { getMimeTypeFromPath, getFilename } from "./constants/index.js";
 const SLOTS = { AI1: "ai1", AI2: "ai2" };
 const ASISTAN_SLOT = "ai0";
 const SPECIAL_PAGES = ["settings", "archives", "webview", "asistan"];
+
+interface PageController {
+  init?: () => Promise<void> | void;
+  onShow?: () => void;
+  onHide?: () => void;
+}
+
 import { getErrorMessage } from "./types/index.js";
 import { AnalyzeController } from "./pages/analyze.js";
 import { WhisperController } from "./pages/whisper.js";
@@ -36,7 +43,7 @@ let currentPage: string | null = null;
 /**
  * @type {Object.<string, any>}
  */
-const controllers: Record<string, unknown> = {};
+const controllers: Record<string, PageController> = {};
 
 function ensureElectronApiFallback() {
   if (window.electronAPI) return;
@@ -89,7 +96,7 @@ function ensureElectronApiFallback() {
         return null;
       }
     },
-    readFilesMulti: (paths: string[]) => {
+    readFilesMulti: async (paths: string[]) => {
       return Promise.all(
         paths.map(async (p) => ({
           path: p,
@@ -111,12 +118,12 @@ function ensureElectronApiFallback() {
     fmTempPath: async (prefix: string, ext: string) => ({
       path: `${prefix}-${Date.now()}.${ext}`,
     }),
-    fmWriteFileAtomic: async (payload: { path: string }) => ({
+    fmWriteFileAtomic: async (payload: Record<string, unknown>) => ({
       success: true,
-      path: payload.path,
+      path: (payload.path as string) || '',
     }),
 
-    commandInit: async () => ({ success: true }),
+    commandInit: async () => ({ success: true, jobs: [] }),
     commandWrite: async () => ({ success: true }),
     commandMove: async () => ({ success: true }),
     commandStageAttachments: async (payload: { files?: string[] }) => ({
@@ -129,34 +136,33 @@ function ensureElectronApiFallback() {
       commandDir: "commands",
     }),
     commandArchiveCopy: async () => ({ success: true }),
-    commandCleanupJob: async () => {
-    },
+    commandCleanupJob: async () => ({ success: true }),
     commandMoveFailed: async () => ({ success: true }),
 
-    whisperLoad: async (_params: unknown) => ({ pending: [] as unknown[], done: [] as unknown[] }),
+    whisperLoad: async (_params: unknown) => ({ success: true, pending: [] as unknown[], done: [] as unknown[] }),
     whisperSave: async (_params: unknown) => ({ success: true }),
 
     getPreloadPath: async (): Promise<string> => "",
-    showOpenDialog: async (): Promise<null> => null,
-    copyToAssets: async (p: string) => ({ path: String(p) }),
+    showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+    copyToAssets: async (p: string) => ({ success: true, path: String(p) }),
     capturePage: async (): Promise<{ success: boolean }> => ({ success: false }),
     screenshotCapture: async (): Promise<{ success: boolean }> => ({ success: false }),
-    windowMinimize: (): void => {
+    windowMinimize: async (): Promise<void> => {
     },
-    windowToggleFullscreen: (): void => {
+    windowToggleFullscreen: async (): Promise<void> => {
     },
-    windowClose: (): void => {
+    windowClose: async (): Promise<void> => {
     },
-    appRestart: (): void => {
+    appRestart: async (): Promise<void> => {
     },
     generateTree: async (): Promise<{ success: boolean }> => ({ success: false }),
-    fetchUrl: async (): Promise<null> => null,
-    catboxUpload: async (): Promise<null> => null,
-    uguuUpload: async (): Promise<null> => null,
-    googledriveUpload: async (): Promise<null> => null,
-    googledriveStartAuth: async (): Promise<null> => null,
-    googledriveExchangeCode: async (): Promise<null> => null,
-    googledriveDisconnect: async (): Promise<null> => null,
+    fetchUrl: async () => ({ success: false, url: '' }),
+    catboxUpload: async () => ({ success: false, url: '' }),
+    uguuUpload: async () => ({ success: false, url: '', uploadedLinks: [], uploaded: 0, errors: [] }),
+    googledriveUpload: async () => ({ success: false, authUrl: '' }),
+    googledriveStartAuth: async () => ({ success: false }),
+    googledriveExchangeCode: async () => ({ success: false }),
+    googledriveDisconnect: async () => ({ success: false }),
   };
 }
 
@@ -210,12 +216,12 @@ async function initApp() {
   controllers.server = new ServerController();
   controllers.archives = new ArchivesController();
   controllers.asistan = new AsistanController();
-  await controllers.entrance.init();
-  await controllers.analyze.init();
-  await controllers.whisper.init();
-  await controllers.server.init();
-  await controllers.archives.init();
-  await controllers.asistan.init();
+  await controllers.entrance.init?.();
+  await controllers.analyze.init?.();
+  await controllers.whisper.init?.();
+  await controllers.server.init?.();
+  await controllers.archives.init?.();
+  await controllers.asistan.init?.();
   await ConversationListManager.init();
 
   // AI webview'lerini kaydet
@@ -297,7 +303,7 @@ function showPage(pageName: string) {
     previousPage !== pageName &&
     controllers[previousPage]?.onHide
   ) {
-    controllers[previousPage].onHide();
+    controllers[previousPage]?.onHide?.();
   }
   document.querySelectorAll(".page").forEach((page) => {
     page.classList.add("hidden");
@@ -309,7 +315,7 @@ function showPage(pageName: string) {
     currentPage = pageName;
 
     if (controllers[pageName]?.onShow) {
-      controllers[pageName].onShow();
+      controllers[pageName]?.onShow?.();
     }
 
     setActiveNavigation(pageName);
