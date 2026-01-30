@@ -582,7 +582,7 @@ export async function removeActiveProject(projectPath: string): Promise<string[]
  * @param projectPath - Project folder path to check
  * @returns True if project is active
  */
-async function isActiveProject(projectPath: string): Promise<boolean> {
+async function _isActiveProject(projectPath: string): Promise<boolean> {
   try {
     const config = await loadOpencodeConfig();
     const normalizedPath = normalizeFolderPath(projectPath);

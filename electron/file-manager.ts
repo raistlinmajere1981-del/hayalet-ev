@@ -4,7 +4,7 @@ import { existsSync } from "fs";
 import { shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 
-interface PathResolvers {
+interface _PathResolvers {
   [key: string]: () => string;
 }
 
@@ -41,7 +41,7 @@ export async function fmTempPath(
     const cleanPrefix = (prefix || "tmp").replace(/[^\w.-]+/g, "_");
     const cleanExt = (ext || "").toString().replace(/^[.]+/, "");
     const filename = `${cleanPrefix}-${Date.now()}-${Math.random().toString(16).slice(2)}${cleanExt ? `.${cleanExt}` : ""}`;
-    const baseDir = PATHS().commands()!;
+    const baseDir = PATHS().commands();
     await ensureDir(baseDir);
     const fullPath = join(baseDir, filename);
     return { success: true, path: fullPath };
@@ -244,7 +244,7 @@ export async function generateTree(
     const treeLines = await buildTree(basePath);
     lines.push(...treeLines);
     const treeContent = lines.join("\n");
-    const tempDir = PATHS().commands()!;
+    const tempDir = PATHS().commands();
     await ensureDir(tempDir);
     const timestamp = Date.now();
     const treeFile = join(tempDir, `tree-${timestamp}.txt`);

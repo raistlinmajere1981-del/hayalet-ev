@@ -2,8 +2,9 @@
  * OpenCode SSE Server - Type Definitions
  */
 
-import type { ServerResponse } from 'http';
+import type { Server, ServerResponse } from 'http';
 import type { NativeUIEvent } from '../opencode-event-parser.ts';
+import type { OpenCodeEventBus } from './event-bus.ts';
 
 /** SSE Event tipleri - CodeNomad uyumlu */
 export type SSEEventType =
@@ -81,11 +82,10 @@ export interface QuestionEventData {
   allowFreeform?: boolean;
 }
 
-
 /** Server state object type */
 export interface ServerState {
-  _server: ReturnType<typeof import('http').createServer> | null;
-  _eventBus: import('./event-bus.ts').OpenCodeEventBus;
+  _server: Server | null;
+  _eventBus: OpenCodeEventBus;
   _clients: Map<number, SSEClient>;
   _nextClientId: number;
   _heartbeatInterval: NodeJS.Timeout | null;

@@ -14,14 +14,14 @@ import { OpenCodeEventBus } from './event-bus.ts';
 import {
   readBody,
   getServerUrl,
-  broadcastToClients,
+  broadcastToClients as _broadcastToClients,
   disconnectAllClients,
   setupHeartbeat,
 } from './utils.ts';
 import { createEndpointRouter } from './endpoints.ts';
 import type {
   SSEEvent,
-  SSEEventType,
+  SSEEventType as _SSEEventType,
   SSEClient,
   SSEServerConfig,
   PermissionEventData,

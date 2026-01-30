@@ -74,9 +74,13 @@ interface AllLogsResult {
  */
 export async function readAllLogs(targetSessionId: string | null = null): Promise<AllLogsResult> {
   const logDir = getLogDir();
+  if (!logDir) {
+    throw new Error("Log directory not initialized");
+  }
+  
   const sessionId = targetSessionId || getSessionId();
   const sessionDir = targetSessionId
-    ? join(logDir!, targetSessionId)
+    ? join(logDir, targetSessionId)
     : getSessionDir();
 
   const result: AllLogsResult = {

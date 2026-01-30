@@ -8,7 +8,7 @@
 import { OpenCodeManager } from '../opencode/index.js';
 import type { NativeUIEvent } from '../opencode-event-parser.js';
 import { handleOpenCodeEvent } from './event-handlers.js';
-import type { ServerState } from './types.js';
+import type { ServerState, PermissionEventData, QuestionEventData, SSEEvent } from './types.js';
 
 /** OpenCode connection callback handlers */
 interface OpenCodeHandlers {
@@ -19,9 +19,9 @@ interface OpenCodeHandlers {
   endToolCall: (toolId: string, status: 'success' | 'error', result?: string) => void;
   startStep: (stepId: string, messageId?: string) => void;
   finishStep: (stepId: string, usage: { inputTokens?: number; outputTokens?: number; cost?: number }, messageId?: string) => void;
-  requestPermission: (data: import('./types.js').PermissionEventData) => void;
-  askQuestion: (data: import('./types.js').QuestionEventData) => void;
-  publish: (event: import('./types.js').SSEEvent) => void;
+  requestPermission: (data: PermissionEventData) => void;
+  askQuestion: (data: QuestionEventData) => void;
+  publish: (event: SSEEvent) => void;
   getCurrentSessionId: () => string | null;
 }
 
@@ -96,7 +96,7 @@ export async function connectToOpenCode(
   }
 }
 
-export function disconnectFromOpenCode(state: ServerState, publish: (event: import('./types.js').SSEEvent) => void): void {
+export function disconnectFromOpenCode(state: ServerState, publish: (event: SSEEvent) => void): void {
   if (!state._openCodeConnected) return;
 
   OpenCodeManager.unsubscribeFromEvents();
