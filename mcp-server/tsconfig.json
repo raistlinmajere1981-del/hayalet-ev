@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext"],
+    "types": ["node"],
+    "noEmit": false,
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "checkJs": false,
+    "allowJs": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true, // Re-enabled 2026-01-29 - fixing null safety issues
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": false, // Depends on strictNullChecks
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "declaration": true
+  },
+  "include": [
+    "index.ts",
+    "core/*.ts",
+    "tools/*.ts",
+    "utils/*.ts",
+    "types/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

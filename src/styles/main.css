@@ -1,0 +1,507 @@
+/**
+ * Hayalet-ev - Main Stylesheet
+ * Global layout, topbar, relay flows, and utilities
+ * @version 3.0.0
+ */
+
+/* Import Design System */
+@import './design-system/index.css';
+
+/* ========================================
+ * GLOBAL RESET & BASE
+ * ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--bg-app);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* ========================================
+ * APP LAYOUT
+ * ======================================== */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+#pages-container {
+  height: 100%;
+}
+
+/* Page base */
+.page {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page.hidden {
+  display: none;
+}
+
+/* ========================================
+ * TOPBAR
+ * ======================================== */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--space-4);
+  background: var(--bg-glass);
+  border-bottom: var(--border-1) solid var(--border-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-app-region: drag;
+  z-index: 50;
+  box-sizing: border-box;
+}
+
+.top-bar button,
+.top-bar select,
+.top-bar a,
+.top-bar .theme-dropdown {
+  -webkit-app-region: no-drag;
+}
+
+/* Topbar sections */
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.top-bar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+}
+
+.logo-text {
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* ========================================
+ * THEME DROPDOWN
+ * ======================================== */
+
+.theme-dropdown {
+  position: relative;
+}
+
+.theme-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.theme-dropdown-btn:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--color-accent);
+  color: var(--text-primary);
+}
+
+.theme-dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 160px;
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-dropdown);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: var(--transition-fast);
+  z-index: 100;
+}
+
+.theme-dropdown.is-open .theme-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.theme-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.theme-dropdown-item:first-child {
+  border-radius: var(--radius-dropdown) var(--radius-dropdown) 0 0;
+}
+
+.theme-dropdown-item:last-child {
+  border-radius: 0 0 var(--radius-dropdown) var(--radius-dropdown);
+}
+
+.theme-dropdown-item:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.theme-dropdown-item.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+.theme-dropdown-icon {
+  font-size: var(--text-lg);
+}
+
+/* ========================================
+ * INDICATORS ROW
+ * ======================================== */
+
+.indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+/* Cluster grubu - topbar içinde dikey ortalanmış */
+.indicators-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  height: calc(100% - var(--space-2));
+  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-4);
+  /* Çerçeve gizlendi */
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xl);
+}
+
+/* Üst satır: AI1 - Asistan - AI2 clusterları (üste dayalı) */
+.indicators-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* ========================================
+ * RELAY FLOW LINES
+ * ======================================== */
+
+.relay-flow-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.relay-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+/* AI2 tarafındaki butonlar 180 derece dönük */
+.relay-btn-flipped {
+  transform: rotate(180deg);
+}
+
+.relay-btn-flipped.is-active {
+  transform: rotate(180deg);
+}
+
+.relay-toggle-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.relay-toggle-btn.is-active {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow: var(--glow-accent);
+}
+
+.relay-btn-icon {
+  font-size: var(--text-sm);
+}
+
+/* Start/Stop icons */
+.relay-toggle-btn .icon-play { display: block; }
+.relay-toggle-btn .icon-stop { display: none; }
+.relay-toggle-btn.is-active .icon-play { display: none; }
+.relay-toggle-btn.is-active .icon-stop { display: block; }
+
+/* Flow line */
+.relay-flow-line {
+  position: relative;
+  width: 70px;
+  height: 3px;
+  background: var(--relay-track-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.flow-track {
+  position: absolute;
+  inset: 0;
+}
+
+.flow-particle {
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 100%;
+  background: var(--relay-particle-color);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--relay-particle-color);
+}
+
+.relay-flow-line.is-active .flow-particle {
+  animation: flow-ltr 1.5s ease-in-out infinite;
+}
+
+.relay-flow-line.is-active.flow-rtl .flow-particle {
+  animation: flow-rtl 1.5s ease-in-out infinite;
+}
+
+/* Bottom relay flow (AI1 <-> AI2) - Butonlar üstteki relay'lerle hizalı */
+.relay-flow-bottom-row {
+  position: absolute;
+  bottom: var(--space-1);
+  /* Sol relay wrapper'dan sağ relay wrapper'a kadar - üstteki butonlarla hizalı */
+  left: calc(320px + var(--space-3) - 45px);
+  right: calc(320px + var(--space-3) - 45px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.relay-btn-bottom-left,
+.relay-btn-bottom-right {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.relay-flow-line-bottom {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: var(--relay-track-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  /* Üstteki çizgilerle hizalamak için margin */
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.flow-track-horizontal {
+  position: absolute;
+  inset: 0;
+}
+
+.relay-flow-line-bottom .flow-particle {
+  position: absolute;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  background: var(--relay-particle-color);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--relay-particle-color);
+}
+
+.relay-flow-line-bottom.is-active .flow-particle {
+  animation: flow-ltr 2s ease-in-out infinite;
+}
+
+.relay-flow-line-bottom.is-active.flow-rtl .flow-particle {
+  animation: flow-rtl 2s ease-in-out infinite;
+}
+
+/* ========================================
+ * UTILITY CLASSES
+ * ======================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); }
+
+.img-cover {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Flex utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+
+/* ========================================
+ * RESPONSIVE
+ * ======================================== */
+
+/* 1920px - Full HD, no scroll */
+@media (min-width: 1920px) {
+  body {
+    overflow: hidden;
+  }
+}
+
+/* Below 1920px - allow vertical scroll if needed */
+@media (max-width: 1919px) {
+  body {
+    overflow-y: auto;
+  }
+}
+
+/* Tablet - hide center indicators */
+@media (max-width: 1024px) {
+  .top-bar-center {
+    display: none;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .logo-text {
+    display: none;
+  }
+}

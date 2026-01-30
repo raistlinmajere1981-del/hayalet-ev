@@ -1,0 +1,112 @@
+import { LogManager } from "./log-manager.js";
+import { ServerCommands } from "./server-commands.js";
+import { MetaCommandManager } from "./meta-command-manager.js";
+
+class CatchManagerClass {
+  /**
+   * Scans a list of messages for commands based on a given prefix.
+   * @param {object} options
+   * @param {string} options.provider - The provider of the messages (e.g., 'ai1', 'ai2').
+   * @param {string} options.webUrl - The URL of the conversation.
+   * @param {any[]} [options.messages=[]] - The list of message objects to scan.
+   * @param {number} [options.prevCount=0] - The number of messages previously synced.
+   * @param {boolean} [options.hasExisting=false] - Whether the conversation already exists in the archive.
+   * @param {string} [options.prefix='cmd'] - The command prefix to look for (e.g., 'cmd', 'chat', 'bg').
+   * @returns {Promise<any[]>} - A promise that resolves to an array of found and validated commands.
+   */
+  async catchCommands({
+    provider,
+    webUrl,
+    messages = [],
+    prevCount = 0,
+    hasExisting = false,
+    prefix = "cmd",
+  }: {
+    provider: string;
+    webUrl: string;
+    messages?: Array<{ role?: string; text?: string; index?: number }>;
+    prevCount?: number;
+    hasExisting?: boolean;
+    prefix?: string;
+  }) {
+    const list = Array.isArray(messages) ? messages : [];
+    const startIndex = hasExisting
+      ? Math.max(0, Math.min(prevCount, list.length))
+      : 0;
+    const targetMessages = list.filter(
+      (msg) => msg?.role === "assistant" && (msg.index || 0) >= startIndex,
+    );
+
+    const found: Array<{ provider: string; command: string; args: string; prefix: string; text: string; webUrl: string }> = [];
+
+    targetMessages.forEach((msg) => {
+      const text = msg.text || "";
+      const regex = new RegExp(
+        `\\+\\+${prefix}:([A-Za-z0-9_]+)\\(([^)]*)\\)`,
+        "g",
+      );
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const [, name, argsRaw] = match;
+        if (!name) continue;
+        found.push({
+          provider,
+          command: name,
+          args: (argsRaw || "").trim(),
+          prefix,
+          text,
+          webUrl,
+        });
+        LogManager.addEvent(
+          `catch-${provider}`,
+          "info",
+          `Komut bulundu [${prefix}]: ${name}${argsRaw ? " | " + argsRaw : ""}`,
+        );
+      }
+    });
+
+    if (prefix === "cmd") {
+      try {
+        // Sistem komutları + custom komutlar
+        const systemCmds = (ServerCommands.list() || []).map((s) =>
+          String(s).toLowerCase(),
+        );
+        const customCmds = MetaCommandManager.getCommandNames().map((s) =>
+          String(s).toLowerCase(),
+        );
+        const valid = [...systemCmds, ...customCmds];
+        
+        const filtered = found.filter((f) =>
+          valid.includes(String(f.command || "").toLowerCase()),
+        );
+        if (found.length && !filtered.length) {
+          LogManager.addEvent(
+            `catch-${provider}`,
+            "warning",
+            `++cmd komutları bulundu fakat kayıtlı komut listesinde eşleşme yok (${found
+              .map((f) => f.command)
+              .join(", ")})`,
+          );
+        }
+        return filtered;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        LogManager.addEvent(
+          `catch-${provider}`,
+          "warning",
+          `ServerCommands kontrolü yapılamadı: ${message}`,
+        );
+        return found;
+      }
+    }
+
+    // Meta komutlar - DefineCommand, DeleteCommand, ListCommands
+    if (prefix === "meta") {
+      return found; // Tüm meta komutları geçerli
+    }
+
+    return found;
+  }
+}
+
+export const CatchManager = new CatchManagerClass();

@@ -1,0 +1,123 @@
+<div class="page hidden" id="page-analyze">
+  <div class="analyze-wrapper">
+    <div class="conversation-grid">
+      <div class="conv-card" id="card-ai1">
+        <div class="conv-header">
+          <div class="identity">
+            <div class="avatar-circle" id="avatar-ai1">N</div>
+            <div>
+              <div class="name" id="name-ai1">AI1</div>
+              <div class="status" id="status-ai1">Bağlı</div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <select class="pill-select" id="filter-count-ai1">
+              <option value="3">Son 3</option>
+              <option value="10">Son 10</option>
+              <option value="all">Tümü</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="conv-body" id="messages-ai1">
+          <div class="message-placeholder">Henüz mesaj yok.</div>
+        </div>
+      </div>
+
+      <div class="conv-card" id="card-ai2">
+        <div class="conv-header">
+          <div class="identity">
+            <div class="avatar-circle" id="avatar-ai2">G</div>
+            <div>
+              <div class="name" id="name-ai2">AI2</div>
+              <div class="status" id="status-ai2">Bağlı</div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <select class="pill-select" id="filter-count-ai2">
+              <option value="3">Son 3</option>
+              <option value="10">Son 10</option>
+              <option value="all">Tümü</option>
+            </select>
+          </div>
+        </div>
+        <div class="conv-body" id="messages-ai2">
+          <div class="message-placeholder">Henüz mesaj yok.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compose-row">
+      <!-- Sol sidebar: Analiz ve AI-AI kontrolleri -->
+      <div class="compose-sidebar">
+        <button class="btn btn-secondary btn-sm" id="compose-start-btn">
+          📝 Analiz Sohbeti
+        </button>
+        
+        <div class="ai-chat-group">
+          <div class="relay-controls">
+            <label class="checkbox-label"
+              ><input type="radio" name="relay-starter" value="ai1" checked />
+              <span id="relay-ai1-label">AI1</span></label
+            >
+            <label class="checkbox-label"
+              ><input type="radio" name="relay-starter" value="ai2" />
+              <span id="relay-ai2-label">AI2</span></label
+            >
+          </div>
+          <button class="btn btn-secondary btn-sm" id="ai-chat-start">
+            🔄 AI-AI Sohbeti
+          </button>
+        </div>
+      </div>
+
+      <!-- Orta: Metin alanı ve gönder kontrolleri -->
+      <div class="compose-area">
+        <textarea
+          class="form-input large"
+          id="compose-input"
+          placeholder="Mesaj yaz..."
+          spellcheck="false"
+        ></textarea>
+
+        <div class="compose-actions">
+          <div class="send-controls">
+            <label class="checkbox-label"
+              ><input type="checkbox" id="send-ai1" checked />
+              <span id="send-ai1-label">AI1</span></label
+            >
+            <label class="checkbox-label">
+              <input type="checkbox" id="send-ai2" checked />
+              <span id="send-ai2-label">AI2</span></label
+            >
+            <label class="checkbox-label"
+              ><input type="checkbox" id="send-cross" /> Çaprazla</label
+            >
+          </div>
+          <button class="btn btn-primary btn-sm" id="compose-send-btn">
+            <span class="btn-text">Gönder</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="upload-add-btn">
+            Dosya ekle
+          </button>
+        </div>
+      </div>
+
+      <!-- Sağ: Dosya paneli -->
+      <div class="compose-files">
+        <div class="file-box" id="upload-list">Henüz dosya yok.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="read-modal hidden" id="read-modal">
+    <div class="read-modal-content">
+      <div class="read-modal-header">
+        <button class="btn btn-secondary btn-ghost" id="read-modal-close">
+          Kapat
+        </button>
+      </div>
+      <div class="read-modal-body" id="read-modal-body"></div>
+    </div>
+  </div>
+</div>

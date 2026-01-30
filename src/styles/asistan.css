@@ -1,0 +1,378 @@
+/**
+ * Asistan Page Styles
+ * 
+ * Uses design system tokens and components.
+ * OpenCode/Local AI assistant interface.
+ */
+
+/* === PAGE LAYOUT === */
+.asistan-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-primary);
+  overflow: hidden;
+}
+
+/* === TOP BAR === */
+.asistan-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-tertiary);
+  border-bottom: var(--border-1) solid var(--color-border);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.asistan-controls-left,
+.asistan-controls-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Relay butonu genişliği */
+#asistan-relay-btn {
+  min-width: 180px;
+}
+
+.asistan-controls-left .control-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.asistan-controls-left .control-group label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* === STATUS INDICATOR === */
+.asistan-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.asistan-status .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-error);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.asistan-status .status-dot.connected {
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--glow-success);
+}
+
+.asistan-status .status-dot.connecting {
+  background: var(--color-warning);
+  animation: status-pulse 1s ease-in-out infinite;
+}
+
+.asistan-status .status-dot.loading {
+  background: var(--color-info);
+  animation: status-pulse 0.8s ease-in-out infinite;
+}
+
+.asistan-status .status-dot.thinking {
+  background: var(--color-warning);
+  animation: status-pulse 0.5s ease-in-out infinite;
+}
+
+.asistan-status .status-dot.send-disabled {
+  background: var(--color-text-muted);
+}
+
+.asistan-status .status-dot.error {
+  background: var(--color-error);
+  box-shadow: 0 0 8px var(--glow-error);
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.asistan-status #asistan-status-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+/* === WEBVIEW PANEL === */
+.asistan-webview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.asistan-webview-panel .webview-url-bar {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-secondary);
+  border-bottom: var(--border-1) solid var(--color-border);
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.asistan-webview-panel .webview-url-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  line-height: var(--leading-snug);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-height: calc(1.4em * 2);
+  overflow: hidden;
+}
+
+.asistan-webview-panel .webview-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--color-bg-primary);
+}
+
+.asistan-webview-panel .webview-wrapper webview {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+}
+
+/* === WEBVIEW OVERLAY === */
+.asistan-webview-panel .webview-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: opacity var(--duration-normal) var(--ease-out),
+              visibility var(--duration-normal) var(--ease-out);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  margin: var(--space-2);
+}
+
+.asistan-webview-panel .webview-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.asistan-webview-panel .webview-overlay .overlay-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.6;
+}
+
+.asistan-webview-panel .webview-overlay .overlay-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.asistan-webview-panel .webview-overlay .overlay-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* === RELAY BUTTON STATES === */
+#asistan-relay-btn.active {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  border-color: var(--color-success);
+}
+
+#asistan-relay-btn:disabled,
+#asistan-relay-source:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === FORM ELEMENTS === */
+.form-select.compact {
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--text-sm);
+  min-width: 120px;
+  background: var(--color-bg-primary);
+  border: var(--border-1) solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+}
+
+.form-select.compact:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .asistan-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+  
+  .asistan-controls-left,
+  .asistan-controls-right {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+/* === UI MODE TOGGLE === */
+.ui-mode-toggle {
+  margin-left: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: var(--border-1) solid var(--color-border);
+}
+
+.toggle-buttons {
+  display: flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: var(--border-1) solid var(--color-border);
+}
+
+.toggle-btn {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.toggle-btn:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.toggle-btn.active {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.toggle-btn:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.toggle-btn:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* === NATIVE UI PANEL === */
+.asistan-native-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  position: relative;
+}
+
+.asistan-native-panel.hidden {
+  display: none;
+}
+
+.opencode-native-webview {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.opencode-native-webview.hidden {
+  display: none;
+}
+
+/* Native Panel Placeholder */
+.native-panel-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  margin: var(--space-2);
+  z-index: 5;
+}
+
+.native-panel-placeholder.hidden {
+  display: none;
+}
+
+.native-panel-placeholder .placeholder-icon {
+  margin-bottom: var(--space-4);
+  opacity: 0.4;
+  color: var(--color-text-muted);
+}
+
+.native-panel-placeholder .placeholder-icon svg {
+  width: 64px;
+  height: 64px;
+}
+
+.native-panel-placeholder .placeholder-title {
+  font-size: var(--text-md);
+  font-weight: var(--font-medium);
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* === WEBVIEW PANEL (Legacy) === */
+.asistan-webview-panel.hidden {
+  display: none;
+}
+
+/* === CONNECT BUTTON TRANSITIONS === */
+#asistan-connect-btn {
+  transition: background-color 0.2s ease, 
+              border-color 0.2s ease, 
+              color 0.2s ease,
+              transform 0.1s ease;
+  min-width: 120px;
+}
+
+#asistan-connect-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+#asistan-connect-btn.btn-danger {
+  background-color: var(--color-danger, #ef4444);
+  border-color: var(--color-danger, #ef4444);
+  color: white;
+}
+
+#asistan-connect-btn.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-danger-hover, #dc2626);
+  border-color: var(--color-danger-hover, #dc2626);
+}

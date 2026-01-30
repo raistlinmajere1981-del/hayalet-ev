@@ -1,0 +1,40 @@
+/**
+ * Hayalet-ev Design System
+ * 
+ * A modern, glassmorphism-based design system
+ * with 3 theme palettes: Obsidian, Midnight, Aurora
+ * 
+ * @version 3.0.0
+ */
+
+/* === DESIGN TOKENS === */
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/shadows.css';
+@import './tokens/borders.css';
+@import './tokens/animations.css';
+
+/* === THEMES === */
+@import './themes/theme-base.css';
+@import './themes/theme-obsidian.css';
+@import './themes/theme-midnight.css';
+@import './themes/theme-aurora.css';
+
+/* === COMPONENTS === */
+@import './components/buttons.css';
+@import './components/inputs.css';
+@import './components/cards.css';
+@import './components/toast.css';
+@import './components/modals.css';
+@import './components/loaders.css';
+@import './components/indicators.css';
+@import './components/splash.css';
+@import './components/accordion.css';
+@import './components/navigation.css';
+
+/* === ASISTAN NATIVE COMPONENTS === */
+@import './components/messages.css';
+@import './components/tools.css';
+@import './components/prompt.css';
+@import './components/sidebar.css';

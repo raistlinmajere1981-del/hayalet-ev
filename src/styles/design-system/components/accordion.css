@@ -1,0 +1,163 @@
+/**
+ * Hayalet-ev Design System - Accordion Components
+ * Collapsible panels with smooth animations
+ * @version 3.0.0
+ */
+
+/* === BASE ACCORDION === */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+/* === ACCORDION ITEM === */
+.accordion-item {
+  border-bottom: var(--border-1) solid var(--border-default);
+}
+
+.accordion-item:last-child {
+  border-bottom: none;
+}
+
+/* === ACCORDION TOGGLE === */
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: left;
+}
+
+.accordion-toggle:hover {
+  background: var(--hover-overlay);
+}
+
+.accordion-toggle:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+
+/* Icons and title */
+.accordion-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+.accordion-title {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.accordion-badges {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.accordion-chevron {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.accordion-toggle[aria-expanded="true"] .accordion-chevron {
+  transform: rotate(180deg);
+}
+
+/* === ACCORDION CONTENT === */
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-normal) var(--ease-out);
+}
+
+.accordion-content.open,
+.accordion-toggle[aria-expanded="true"] + .accordion-content {
+  grid-template-rows: 1fr;
+}
+
+.accordion-content-inner {
+  overflow: hidden;
+}
+
+/* Alternative: max-height approach */
+.accordion-content-maxh {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.accordion-content-maxh.open {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* === CONTROL PANEL ACCORDION === */
+.control-panel-accordion {
+  flex: 0 0 auto;
+  background: var(--bg-surface);
+  border-top: var(--border-1) solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.control-panel-accordion .accordion-toggle {
+  flex-shrink: 0;
+}
+
+.control-panel-accordion .accordion-content {
+  display: block;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.control-panel-accordion .accordion-content.open {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* === ACCORDION PANELS GRID === */
+.accordion-panels {
+  display: grid;
+  grid-template-columns: 0.7fr 1.4fr 0.8fr 1.1fr;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  min-height: 0;
+}
+
+/* Panel item in accordion */
+.accordion-panels .panel-item {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 0;
+  max-height: var(--panel-max-height);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1200px) {
+  .accordion-panels {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .accordion-panels {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,85 @@
+<div class="page hidden" id="page-asistan">
+  <div class="asistan-container">
+    <!-- Üst Kontrol Paneli -->
+    <div class="asistan-topbar">
+      <div class="asistan-controls-left">
+        <div class="control-group">
+          <label for="asistan-provider-select">Provider</label>
+          <select id="asistan-provider-select" class="form-select compact">
+            <option value="opencode">OpenCode</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="asistan-connect-btn">Bağlan</button>
+        <div class="asistan-status">
+          <span class="status-dot" id="asistan-status-dot"></span>
+          <span id="asistan-status-text">Bağlı Değil</span>
+        </div>
+        <button class="btn btn-small btn-secondary" id="asistan-devtools-btn">
+          DevTools
+        </button>
+        <!-- UI Mode Toggle -->
+        <div class="control-group ui-mode-toggle">
+          <label>UI Modu</label>
+          <div class="toggle-buttons">
+            <button class="toggle-btn active" id="ui-mode-native" title="Native UI (SSE)">
+              Native
+            </button>
+            <button class="toggle-btn" id="ui-mode-webview" title="OpenCode Webview">
+              Webview
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="asistan-controls-right">
+        <button class="btn btn-secondary" id="asistan-relay-btn" disabled>
+          AI-Asistan Sohbet
+        </button>
+        <select id="asistan-relay-source" class="form-select compact" disabled>
+          <option value="">Kaynak Seç</option>
+          <option value="ai1">AI1</option>
+          <option value="ai2">AI2</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Native UI Panel (OpenCode SSE) -->
+    <div class="asistan-native-panel" id="asistan-native-panel">
+      <div class="native-panel-placeholder" id="native-panel-placeholder">
+        <div class="placeholder-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2"/>
+            <circle cx="12" cy="5" r="2"/>
+            <path d="M12 7v4"/>
+            <circle cx="8" cy="16" r="1" fill="currentColor"/>
+            <circle cx="16" cy="16" r="1" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="placeholder-title">Asistan Bekleniyor</div>
+      </div>
+      <webview 
+        id="opencode-native-webview"
+        src="about:blank"
+        class="opencode-native-webview hidden"
+        partition="persist:native-ui"
+        webpreferences="contextIsolation=yes, nodeIntegration=no, webSecurity=no"
+      ></webview>
+    </div>
+
+    <!-- Webview Paneli (Eski OpenCode Webview) -->
+    <div class="asistan-webview-panel hidden" id="asistan-webview-panel">
+      <div class="webview-url-bar">
+        <div class="webview-url-text" id="asistan-url-display">-</div>
+      </div>
+      <div class="webview-wrapper" id="ai0-webview-mount">
+        <!-- Overlay - webview üzerinde gösterilir -->
+        <div class="webview-overlay" id="ai0-webview-overlay">
+          <div class="overlay-icon">🤖</div>
+          <div class="overlay-title">Asistan Bağlı Değil</div>
+          <div class="overlay-subtitle">Bağlan butonuna tıklayın</div>
+        </div>
+        <!-- Webview will be mounted here dynamically -->
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,69 @@
+<div class="page hidden" id="page-server">
+  <div class="server-room">
+    <div class="server-top">
+      <div class="server-topbar">
+        <div class="left">
+          <span>AI Seç</span>
+          <select id="server-controller-select" class="form-select compact">
+            <option value="ai1">AI1</option>
+            <option value="ai2">AI2</option>
+          </select>
+          <button class="btn btn-secondary" id="server-delegate-btn">
+            Kontrolü Devret
+          </button>
+          <button class="btn btn-secondary" id="server-reclaim-btn">
+            Kontrolü Devral
+          </button>
+        </div>
+      </div>
+      <div class="server-panels">
+        <div class="server-panel">
+          <div class="panel-title">AI → CoreEngine</div>
+          <div class="log-list" id="server-ai-log">
+            <div class="log-empty-state">Henüz log kaydı yok</div>
+          </div>
+        </div>
+        <div class="server-panel">
+          <div class="panel-title">CoreEngine → AI</div>
+          <div class="log-list" id="server-core-log">
+            <div class="log-empty-state">Henüz log kaydı yok</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="server-bottom">
+      <div class="command-test">
+        <div class="command-left">
+          <textarea
+            id="server-command-text"
+            class="form-input"
+            rows="4"
+            placeholder="Komut testi - örn: ++cmd:PlayMusic(classic)"
+          ></textarea>
+          <button class="btn btn-primary btn-sm" id="server-command-send">
+            CoreEngine'e Gönder
+          </button>
+        </div>
+        <div class="command-right">
+          <div class="command-add-row">
+            <label for="server-command-select">Komut Ekle</label>
+            <div class="command-add-controls">
+              <select id="server-command-select" class="form-select"></select>
+              <button class="btn btn-secondary btn-sm" id="server-command-add">Ekle</button>
+            </div>
+          </div>
+          <div class="command-guide">
+            <textarea
+              id="server-command-guide"
+              class="form-input guide-text"
+              rows="3"
+              readonly
+              placeholder="Kullanım kılavuzu"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

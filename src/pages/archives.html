@@ -1,0 +1,105 @@
+<div class="page hidden" id="page-archives">
+  <div class="archives-container">
+    <!-- Sol Panel: Sohbet Listesi -->
+    <div class="archives-sidebar">
+      <div class="sidebar-header">
+        <h3>Sohbetler</h3>
+        <div class="provider-toggle">
+          <label class="toggle-label">
+            <input type="radio" name="archives-provider" value="ai1" checked />
+            <span id="archives-provider-ai1">AI1</span>
+          </label>
+          <label class="toggle-label">
+            <input type="radio" name="archives-provider" value="ai2" />
+            <span id="archives-provider-ai2">AI2</span>
+          </label>
+        </div>
+      </div>
+      <div class="archives-list" id="archives-list">
+        <div class="empty">Kayıt yok</div>
+      </div>
+    </div>
+
+    <!-- Sağ Panel: Detay + Arama -->
+    <div class="archives-main">
+      <!-- Üst: Detay Paneli -->
+      <div class="archives-detail">
+        <div class="detail-header">
+          <h3>Sohbet Detayları</h3>
+        </div>
+        
+        <div class="detail-content" id="detail-content">
+          <div class="empty-state" id="detail-empty">
+            <p>Detayları görmek için bir sohbet seçin</p>
+          </div>
+          
+          <form class="conversation-form hidden" id="conversation-form">
+            <div class="form-group">
+              <label for="archive-title">Başlık</label>
+              <input type="text" id="archive-title" class="form-input" placeholder="Sohbet başlığı">
+            </div>
+            
+            <div class="form-group">
+              <label for="archive-summary">Özet</label>
+              <textarea id="archive-summary" class="form-input" rows="3" placeholder="Sohbet özeti..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label>Web URL</label>
+              <div class="url-display-group">
+                <span class="url-display" id="archive-weburl-display">-</span>
+                <button type="button" class="btn-icon" id="btn-copy-url" title="URL'yi kopyala">📋</button>
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="archive-save">Kaydet</button>
+              <button type="button" class="btn btn-danger" id="btn-delete">🗑️ Sil</button>
+            </div>
+            <div class="form-hint" id="archive-status"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Alt: Arama Paneli -->
+      <div class="archives-search">
+        <div class="search-header">
+          <h3>Arama</h3>
+          <div class="search-scope">
+            <label class="scope-label">
+              <input type="radio" name="search-scope" value="current" checked />
+              <span>Mevcut Hesap</span>
+            </label>
+            <label class="scope-label">
+              <input type="radio" name="search-scope" value="all" />
+              <span>Tüm Hesaplar</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="search-input-wrapper">
+          <input type="text" id="search-input" class="form-input" placeholder="Mesaj veya dosya ara..." autocomplete="off">
+          <button type="button" class="btn-clear hidden" id="btn-clear-search">×</button>
+        </div>
+
+        <div class="search-tabs">
+          <button class="tab-btn active" data-tab="messages">
+            Mesajlar <span class="tab-count" id="messages-count">0</span>
+          </button>
+          <button class="tab-btn" data-tab="files">
+            Dosyalar <span class="tab-count" id="files-count">0</span>
+          </button>
+        </div>
+
+        <div class="search-results" id="search-results">
+          <div class="search-empty" id="search-empty">
+            <p>Aramaya başlamak için yukarıya yazın</p>
+          </div>
+          
+          <div class="results-panel active" id="results-messages"></div>
+          <div class="results-panel" id="results-files"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

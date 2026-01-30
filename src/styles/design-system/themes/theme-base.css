@@ -1,0 +1,89 @@
+/**
+ * Hayalet-ev Design System - Theme Base
+ * Tema bağımsız değişken tanımları ve fallback'ler
+ * @version 3.0.0
+ */
+
+:root {
+  /* === SEMANTIC COLOR ALIASES === */
+  /* Temalar bu değişkenleri override eder */
+  
+  /* Background */
+  --bg-app: var(--slate-900);
+  --bg-surface: var(--slate-800);
+  --bg-elevated: var(--slate-700);
+  --bg-glass: rgba(15, 23, 42, 0.8);
+  --bg-glass-hover: rgba(15, 23, 42, 0.9);
+  --bg-input: rgba(15, 23, 42, 0.6);
+  --bg-overlay: rgba(0, 0, 0, 0.7);
+  
+  /* Text */
+  --text-primary: var(--slate-100);
+  --text-secondary: var(--slate-300);
+  --text-tertiary: var(--slate-400);
+  --text-muted: var(--slate-500);
+  --text-inverse: var(--slate-900);
+  
+  /* Border */
+  --border-default: rgba(71, 85, 105, 0.5);
+  --border-subtle: rgba(51, 65, 85, 0.5);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-focus: var(--cyan-400);
+  
+  /* Accent */
+  --color-accent: var(--cyan-400);
+  --color-accent-hover: var(--cyan-300);
+  --color-accent-active: var(--cyan-500);
+  --color-accent-muted: var(--cyan-alpha-20);
+  --accent-gradient: linear-gradient(135deg, var(--cyan-400) 0%, var(--teal-400) 100%);
+  
+  /* Status */
+  --color-success: var(--emerald-400);
+  --color-success-bg: var(--emerald-alpha-20);
+  --color-warning: var(--amber-400);
+  --color-warning-bg: var(--amber-alpha-20);
+  --color-error: var(--red-400);
+  --color-error-bg: var(--red-alpha-20);
+  --color-info: var(--blue-400);
+  
+  /* Interactive */
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --active-overlay: rgba(255, 255, 255, 0.1);
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--color-accent);
+  
+  /* Shadows & Glows */
+  --glow-accent: var(--glow-cyan-md);
+  
+  /* Scrollbar */
+  --scrollbar-track: var(--bg-surface);
+  --scrollbar-thumb: var(--slate-600);
+  --scrollbar-thumb-hover: var(--slate-500);
+  
+  /* Relay flow */
+  --relay-particle-color: var(--color-accent);
+  --relay-track-color: rgba(34, 211, 238, 0.15);
+  
+  /* Indicator dots */
+  --dot-inactive: var(--slate-600);
+  --dot-loading: var(--amber-400);
+  --dot-send: var(--cyan-400);
+  --dot-thinking: var(--emerald-400);
+
+  /* === LEGACY ALIASES === */
+  /* Eski CSS dosyalarıyla uyumluluk için */
+  --color-bg-primary: var(--bg-app);
+  --color-bg-secondary: var(--bg-surface);
+  --color-bg-tertiary: var(--bg-elevated);
+  --color-bg-hover: var(--hover-overlay);
+  --color-bg-active: var(--active-overlay);
+  --color-bg-overlay: var(--bg-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border-default);
+  --color-accent-muted: var(--color-accent-muted);
+  --color-danger: var(--color-error);
+  --color-indicator-connected: var(--color-success);
+  --color-indicator-disconnected: var(--slate-600);
+}

@@ -1,0 +1,68 @@
+{
+  "compilerOptions": {
+    // === Temel Ayarlar ===
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    
+    // === Tip Kontrolü ===
+    "checkJs": false,
+    "allowJs": true,
+    "noEmit": true,
+    
+    // === Strict Ayarları (Maximum) ===
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+    
+    // === Additional Strictness ===
+    "noUnusedLocals": false, // Too many false positives
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true, // ✅ Enabled for safety (AI-assisted migration)
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false, // Too strict - requires ['property'] syntax
+    
+    // === Import/Export ===
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    
+    // === Path Alias ===
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@electron/*": ["electron/*"]
+    },
+    
+    // === Diğer ===
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  
+  // === Renderer Process (src/js) ===
+  "include": [
+    "src/js/**/*.js",
+    "src/js/**/*.ts",
+    "src/js/**/*.d.ts"
+  ],
+  
+  "exclude": [
+    "node_modules",
+    "node_modules/**/*",
+    "dist",
+    "build",
+    "electron",
+    "mcp-server",
+    ".rovo",
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "operations": [
+    {
+      "id": "mkxukj99hq2vu",
+      "type": "delete",
+      "timestamp": "2026-01-28T09:53:07.197Z",
+      "files": [
+        {
+          "path": "tmp_rovodev_preview_test.js",
+          "backupPath": "/home/raistlin/hayalet-ev/mcp-server/.rovo/trash/2026-01-28T09-53-07-196Z__..__tmp_rovodev_preview_test.js"
+        }
+      ],
+      "canUndo": true
+    },
+    {
+      "id": "mkxu6v8aamikb",
+      "type": "delete",
+      "timestamp": "2026-01-28T09:42:29.530Z",
+      "files": [
+        {
+          "path": "tmp_rovodev_preview_test.js",
+          "backupPath": "/home/raistlin/hayalet-ev/mcp-server/.rovo/trash/2026-01-28T09-42-29-529Z__..__tmp_rovodev_preview_test.js"
+        }
+      ],
+      "canUndo": true
+    },
+    {
+      "id": "mkxtqcphtwofv",
+      "type": "delete",
+      "timestamp": "2026-01-28T09:29:39.029Z",
+      "files": [
+        {
+          "path": "tmp_rovodev_test_context_preview_script.js",
+          "backupPath": "/home/raistlin/hayalet-ev/mcp-server/.rovo/trash/2026-01-28T09-29-39-029Z__..__tmp_rovodev_test_context_preview_script.js"
+        }
+      ],
+      "canUndo": true
+    },
+    {
+      "id": "mkxtqcpf9dfyi",
+      "type": "delete",
+      "timestamp": "2026-01-28T09:29:39.026Z",
+      "files": [
+        {
+          "path": "tmp_rovodev_test_context_preview.ts",
+          "backupPath": "/home/raistlin/hayalet-ev/mcp-server/.rovo/trash/2026-01-28T09-29-39-021Z__..__tmp_rovodev_test_context_preview.ts"
+        }
+      ],
+      "canUndo": true
+    }
+  ]
+}

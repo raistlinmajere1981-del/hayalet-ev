@@ -1,0 +1,20 @@
+Sunucu odası Kontrolü Devral
+
+- Bu modda "Kontrol Devedildi" mesajı ile AI artık sadece komut listesindeki komutlar ile sistem yönetimini devralacak.
+- Komutları mesaj olarak bir veya birkaç komut olarak gönderebilecek, dönüşler mesaj olarak ve istendiğinde ekran görüntüsü olarak iletilecek.
+- Şuan test aşamasındayız, bu protokolü ve komut sistemini beraber geliştiricez.
+- Mevcut kullanılabilir kodlar (şuan dummy) her komut için detaylı açıklama eklenecek
+Ana Komutlar :	++cmd:DeviceManager()
+				++cmd:CommandManager()				
+				++cmd:WebviewManager()
+				++cmd:WhisperManager()
+				++cmd:FileManager()
+				++cmd:WindowManager()
+				++cmd:ScreenShotManager()
+				++cmd:ArchiveManager()
+Hazır Komutlar:	++cmd:PlayMusic(liste veya dosya adı)
+				++cmd:Restart()		
+				++cmd:AIAIChatStart()
+				++cmd:AIAIChatStop()
+				++cmd:GetFile(dosya yolu, metod)
+				++cmd:GetItDone(asistan,mesaj)

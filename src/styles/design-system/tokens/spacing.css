@@ -1,0 +1,63 @@
+/**
+ * Hayalet-ev Design System - Spacing Tokens
+ * 4px base unit spacing scale
+ * @version 3.0.0
+ */
+
+:root {
+  /* === BASE SPACING SCALE === */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* === LAYOUT DIMENSIONS === */
+  --topbar-height: 100px;
+  --sidebar-width: 280px;
+  --side-nav-width: 100px;
+  --side-nav-trigger-width: 16px;
+  
+  /* Panel heights */
+  --accordion-header-height: 44px;
+  --panel-min-height: 200px;
+  --panel-max-height: 45vh;
+  
+  /* Input/Button heights */
+  --input-height: 40px;
+  --input-height-sm: 32px;
+  --input-height-lg: 48px;
+  --btn-height: 40px;
+  --btn-height-sm: 32px;
+  --btn-height-xs: 24px;
+  
+  /* Avatar sizes */
+  --avatar-xs: 24px;
+  --avatar-sm: 32px;
+  --avatar-md: 40px;
+  --avatar-lg: 56px;
+  --avatar-xl: 80px;
+
+  /* === GAP PRESETS === */
+  --gap-xs: var(--space-1);
+  --gap-sm: var(--space-2);
+  --gap-md: var(--space-4);
+  --gap-lg: var(--space-6);
+  --gap-xl: var(--space-8);
+}

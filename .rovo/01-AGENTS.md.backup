@@ -1,0 +1,768 @@
+# 📋 Hayalet-ev Development Guide
+
+> Hayalet-ev (Ghost House) - Multi-AI chat platformu için ana geliştirme rehberi
+
+---
+
+## 🔖 Quick Links
+
+| Başlık                                                        | Okuma Süresi | Açıklama                |
+| ------------------------------------------------------------- | ------------ | ----------------------- |
+| [Quick Start](00-QUICK-START.md)                              | 5 dakika     | 5 dakikada başla        |
+| [Atlas Orchestration](02-ATLAS-ORCHESTRATION.md)              | 10 dakika    | Orchestration sistemi   |
+| [MCP Tools](guides/development/10-MCP-TOOLS.md)               | 15 dakika    | Tool ekosistemi detaylı |
+| [TypeScript Suite](guides/development/20-TYPESCRIPT-SUITE.md) | 20 dakika    | TS Helper Suite         |
+| [Architecture](guides/architecture/40-ARCHITECTURE.md)        | 15 dakika    | Mimari detaylar         |
+| [Concepts](guides/architecture/50-CONCEPTS.md)                | 20 dakika    | Key concepts            |
+
+---
+
+## 📖 1. Dil Politikası (ZORUNLU)
+
+- **Asistan ↔ Kullanıcı:** Tamamen Türkçe
+- **Hayalet-ev UI metinleri:** Tamamen Türkçe
+- **Kod tarafı:** Değişken/fonksiyon/class adları ve yorumlar **tamamen İngilizce**
+
+---
+
+## 🏗️ 2. Project Overview
+
+**Hayalet-ev** Electron tabanlı multi-AI chat platformudur.
+
+- **Tech Stack:** Electron 39+ (Node.js ESM), TypeScript (strict), Vite 7.3, SQLite
+- **Sürüm:** 5.5.0
+- **MCP Server:** v1.12.0 (77 tool)
+
+**Mimari:**
+
+```
+Main Process (electron/main.ts)
+├── Renderer Process (src/index.html → CoreEngine)
+├── AI Provider Webviews (isolated contexts)
+└── IPC Bridge (preload.cjs)
+```
+
+---
+
+## 🚨 3. MCP Tool Kullanım Direktifi (KRİTİK)
+
+**Dosya ve geliştirme işlemleri için SADECE `hayalet-ev` MCP server kullanılmalıdır.**
+
+### Sık Kullanılan Prefix'ler
+
+| Kategori     | Prefix          | Tool Sayısı | Link                                          |
+| ------------ | --------------- | ----------- | --------------------------------------------- |
+| Filesystem   | `hev_fs_*`      | 15          | [Details](guides/development/10-MCP-TOOLS.md) |
+| Development  | `hev_dev_*`     | 20          | [Details](guides/development/10-MCP-TOOLS.md) |
+| Context      | `hev_context_*` | 4           | [Details](guides/development/10-MCP-TOOLS.md) |
+| Git/PR       | `hev_git_*`     | 4           | [Details](guides/development/10-MCP-TOOLS.md) |
+| Web          | `hev_web_*`     | 3           | [Details](guides/development/10-MCP-TOOLS.md) |
+| Workflow     | `hev_run_*`     | 3           | [Details](guides/development/10-MCP-TOOLS.md) |
+| Electron/CDP | `hev_*`         | 28+         | [Details](guides/testing/70-CDP.md)           |
+
+**Not:** ❌ Rovodev built-in tool'larını kullanma (duplicate riski!)
+
+---
+
+## 🎯 4. TypeScript Helper Suite (v1.11.0)
+
+**7 yeni tool ile error fixing workflow'u 10x hızlandırıldı!**
+
+| Tool                             | Kullanım               | Frekans              |
+| -------------------------------- | ---------------------- | -------------------- |
+| `hev_dev_typescript_dashboard`   | Durum analizi          | Her session başı     |
+| `hev_dev_safe_batch_refactor`    | Toplu düzeltme         | 50+ benzer hata      |
+| `hev_dev_fix_typescript_batch`   | Undefined checks       | 20-30 hata           |
+| `hev_dev_check_syntax`           | Verification           | Her düzeltme sonrası |
+| `hev_dev_typescript_type_helper` | Type conflict analysis | Interface sorunları  |
+| `hev_dev_ast_insert`             | Smart code insertion   | Yeni kod ekleme      |
+| `hev_dev_smart_insert`           | NL-based insertion     | Doğal dil pozisyon   |
+
+**Detaylı anlatım:** [guides/development/20-TYPESCRIPT-SUITE.md](guides/development/20-TYPESCRIPT-SUITE.md)
+
+---
+
+## 🎭 5. Mod Sistemi
+
+ROVO duruma göre otomatik mod değiştirir. Status bar ile takip et:
+
+| Mod           | Status Bar                   | Kullanım                    |
+| ------------- | ---------------------------- | --------------------------- |
+| ⚡ QUICK      | `╔══ ⚡ QUICK MODE ══╗`      | Basit syntax, trivial işler |
+| 🔧 STANDARD   | `┏━━ 🔧 STANDARD MODE ━━┓`   | Normal geliştirme           |
+| 🔬 RESEARCH   | `┌── 🔬 RESEARCH MODE ──┐`   | Web araştırma gerekli       |
+| 🧠 ULTRATHINK | `╔══ 🧠 ULTRATHINK MODE ══╗` | Kritik kararlar, mimari     |
+
+**Detaylı kurallar:** [guides/reference/80-AUTO-TRIGGERS.md](guides/reference/80-AUTO-TRIGGERS.md)
+
+---
+
+## 🛠️ 6. Development Guidelines
+
+### Async & Error Handling
+
+- **Async:** `async/await` kullan, callback yok
+- **Error Handling:** Tüm async işlemler `try/catch`
+
+### Naming
+
+- **Variables:** camelCase
+- **Classes:** PascalCase
+- **Constants:** UPPER_SNAKE_CASE
+
+### Documentation
+
+- **Markdown dosyaları:** Türkçe
+- **Kod yorumları:** İngilizce
+
+### IPC Safety
+
+- `ipcRenderer.invoke()` + input validate
+- Type-safe IPC için: `src/js/modules/ipc-client.ts`
+
+---
+
+## 🏗️ 7. Architecture Overview
+
+| Modül           | Konum                               | Rol                            |
+| --------------- | ----------------------------------- | ------------------------------ |
+| CoreEngine      | `src/js/modules/core-engine.ts`     | Ana koordinatör                |
+| SlotController  | `src/js/modules/slot-controller.ts` | Slot lifecycle + State machine |
+| WebviewManager  | `src/js/modules/webview-manager.ts` | Webview lifecycle              |
+| TrafficManager  | `src/js/modules/traffic-manager.ts` | State tracking                 |
+| DatabaseManager | `electron/database/index.ts`        | SQLite yönetimi                |
+| SettingsManager | `electron/settings-manager.ts`      | JSON config                    |
+| ErrorBoundary   | `src/js/modules/error-boundary.ts`  | Global hata yakalama           |
+| IPC Client      | `src/js/modules/ipc-client.ts`      | Type-safe IPC wrapper          |
+
+**Detaylı anlatım:** [guides/architecture/40-ARCHITECTURE.md](guides/architecture/40-ARCHITECTURE.md)
+
+---
+
+## ⚠️ 8. Dikkat Edilmesi Gerekenler
+
+### Silinmemesi Gereken Modüller
+
+| Modül                  | Not                                   |
+| ---------------------- | ------------------------------------- |
+| `file-utils.ts`        | Tüm file upload metodları için kritik |
+| `url-utils.ts`         | URL işlemleri için kritik             |
+| `provider-registry.ts` | 10+ dosya tarafından kullanılıyor     |
+
+### IPC Üzerinden Çağrılan Modüller
+
+Doğrudan import edilmez, `electron/main.ts` IPC handler'ları üzerinden çağrılır:
+
+- `device-manager.ts`, `screenshot-manager.ts`, `whisper-manager.ts`
+- `googledrive-manager.ts`, `server-commands.ts`
+
+### Provider Config'leri
+
+AI siteleri DOM yapılarını sık değiştirir. Selector değişikliğinde manuel test yap:
+
+- `providers/chatgpt/config.ts`
+- `providers/gemini/config.ts`
+- `providers/grok/config.ts`
+
+---
+
+## 🔑 9. Key Concepts (Özet)
+
+| Kavram    | Dosya                                  | Açıklama                          |
+| --------- | -------------------------------------- | --------------------------------- |
+| Settings  | `electron/settings-manager.ts`         | `./config/settings.json` yönetimi |
+| IPC       | `electron/preload.cjs`                 | `window.electronAPI.*` metodları  |
+| Typed IPC | `src/js/modules/ipc-client.ts`         | Type-safe IPC wrapper             |
+| Providers | `src/js/modules/webview/providers/`    | ChatGPT, Grok, Gemini, OpenCode   |
+| Database  | `electron/database/`                   | SQLite, accountId bazlı           |
+| Traffic   | `src/js/modules/traffic/`              | Loading, thinking, send tracking  |
+| SlotState | `src/js/modules/slot/state-machine.ts` | Robust state machine              |
+
+**Detaylı anlatım:** [guides/architecture/50-CONCEPTS.md](guides/architecture/50-CONCEPTS.md)
+
+---
+
+## ⚙️ 10. Günlük Komutlar (Özet)
+
+```bash
+npm start                      # Uygulamayı başlat
+npm run lint                   # ESLint kontrolü
+npm run check-types            # TypeScript kontrolü
+npm run check                  # Tüm kontroller
+npm run generate:docs          # Dokümantasyon güncelle
+```
+
+---
+
+## 🛡️ 11. Tool Kullanım Best Practices (Özet)
+
+### Tier Table
+
+| Tier | Tool                      | Ne Zaman                   |
+| ---- | ------------------------- | -------------------------- |
+| 1    | `hev_fs_find_and_replace` | Tek satır, basit string    |
+| 2    | `hev_dev_edit_lines`      | Multi-line blok (ÖNERİLEN) |
+| 3    | `hev_fs_bash`             | Batch değişiklik           |
+
+### Duplicate Satır Sorunu (KRİTİK)
+
+**❌ ASLA KULLANMA:**
+
+```typescript
+find_and_replace_code(...)      // ← DUPLICATE OLUŞTURUR!
+expand_code_chunks(...)         // ← Güvenilmez
+```
+
+**✅ SADECE BUNLARI KULLAN:**
+
+```typescript
+hev_fs_find_and_replace(...)    // MCP tool (güvenli)
+hev_dev_edit_lines(...)         // Context preview + syntax check
+hev_fs_show(...)                // Dosyayı incele
+```
+
+**Detaylı rehber:** [guides/reference/84-SAFE-EDITING.md](guides/reference/84-SAFE-EDITING.md)
+
+---
+
+## 🔍 12. Syntax Checker
+
+**Ne Zaman Kullan:**
+
+- Multi-line edit sonrası
+- Refactoring sonrası
+- Parantez/bracket dengesi şüphesi
+
+**Yetenekler:**
+
+- ✅ Parantez dengesi: `()`, `{}`, `[]`
+- ✅ ESLint syntax check (JS/TS)
+- ✅ TypeScript type check
+- ✅ JSON validation
+
+**Detaylı anlatım:** [guides/development/20-TYPESCRIPT-SUITE.md](guides/development/20-TYPESCRIPT-SUITE.md)
+
+---
+
+## 🛠️ 13. Troubleshooting (Özet)
+
+| Sorun               | Çözüm                                   |
+| ------------------- | --------------------------------------- |
+| Electron başlamıyor | `rm -rf node_modules && npm install`    |
+| CDP bağlantı yok    | `npm start` ile app açık mı kontrol et  |
+| IPC çalışmıyor      | preload.cjs ve main.ts channel isimleri |
+| MCP server crash    | `hev_mcp_health()` ile kontrol et       |
+
+**Detaylı anlatım:** [guides/testing/75-TROUBLESHOOTING.md](guides/testing/75-TROUBLESHOOTING.md)
+
+---
+
+## 🧙 14. ROVO - AI Asistan Protokolleri
+
+### 14.1 Not Defteri Protokolü (ZORUNLU)
+
+Asistan AI'ler, Hayalet-ev MCP tool'larını kullanırken karşılaştıkları hataları, geliştirme fikirlerini ve eklenebilecek yeni tool'ları **mutlaka** not defterine not almalıdır.
+
+**Not Defteri Dosyası:** [guides/reference/85-NOTEBOOK.md](guides/reference/85-NOTEBOOK.md)
+
+---
+
+### 14.1.1 Ne Not Alınmalı?
+
+#### 🚨 Hata Kaydı
+
+**Format:**
+
+```
+## Hata Tarihi: YYYY-MM-DD
+
+**Komut:**
+[Tool adı + parametreler]
+
+**Hata Mesajı:**
+[Error mesajı tam olarak]
+
+**Sorun Tanımı:**
+[Kısa, açıklayıcı cümle]
+
+**Önerilen Çözüm:**
+[Mümkünse, adım adım çözüm]
+
+**İlgili Dosyalar:**
+[Dosya listesi]
+
+**Kategoriler:**
+[tool-error, syntax-error, runtime-error, config-error, etc.]
+```
+
+**Örnek:**
+
+```
+## Hata Tarihi: 2026-01-30
+
+**Komut:**
+hev_dev_safe_batch_refactor({
+  file_path: "src/modules/event-handlers.ts",
+  operations: [{ pattern: "...", replace_with: "..." }]
+})
+
+**Hata Mesajı:**
+"Error count increased: 52 → 54"
+
+**Sorun Tanımı:**
+Replace string'i syntax hatası yaratmış, error sayısı artmış.
+
+**Önerilen Çözüm:**
+1. Replace pattern'ını dry-run mode'da test et
+2. hev_dev_check_syntax ile verify et
+3. verify_after_each: true ile retry et
+
+**İlgili Dosyalar:**
+- src/modules/event-handlers.ts
+
+**Kategoriler:**
+[tool-error, syntax-error]
+```
+
+---
+
+#### 💡 Geliştirme Fikri
+
+**Format:**
+
+```
+## Fikir Tarihi: YYYY-MM-DD
+
+**Fikir Başlığı:**
+[Kısa, açıklayıcı başlık]
+
+**Sorun:**
+[Mevcut sorun veya eksiklik]
+
+**Önerilen Çözüm:**
+[Detaylı açıklama]
+
+**Etki:**
+[Bu çözüm neyi kolaylaştıracak?]
+
+**Kategori:**
+[new-tool, workflow-improvement, automation, refactoring]
+```
+
+**Örnek:**
+
+```
+## Fikir Tarihi: 2026-01-30
+
+**Fikir Başlığı:**
+Otomatik tool suggestion sistemi
+
+**Sorun:**
+Kullanıcı her seferinde hangi tool'u kullanacağını manuel araştırıyor, zaman kaybı var.
+
+**Önerilen Çözüm:**
+1. hev_dev_typescript_dashboard sonuçlarına göre otomatik tool önerisi
+2. En çok görülen error code'larına göre workflow önerisi
+3. Önceki session'lardan öğrenilen pattern'leri sakla
+
+**Etki:**
+- Zaman tasarrufu: ~50%
+- Hata azaltması: ~30%
+- Öğrenme ivmesi: Artış
+
+**Kategori:**
+[automation, workflow-improvement]
+```
+
+---
+
+#### 🔧 Yeni Tool Fikri
+
+**Format:**
+
+```
+## Fikir Tarihi: YYYY-MM-DD
+
+**Tool Adı:**
+[hyphe separated, hev_ prefix'li]
+
+**Kategori:**
+[Filesystem, Development, Context, Git/PR, Web, Workflow, Electron/CDP]
+
+**Sorun:**
+[Bu tool ne sorunu çözecek?]
+
+**Kullanım Senaryosı:**
+[Ne zaman, nasıl kullanılacak?]
+
+**Önerilen Fonksiyonalite:**
+[Detaylı feature listesi]
+
+**İlgili Tool'lar:**
+[Bu tool hangi mevcut tool'ları tamamlayacak/bağlayacak?]
+
+**Priority:**
+[high, medium, low]
+
+**MCP Handler:**
+[handlers.ts'de hangi dosya?]
+```
+
+**Örnek:**
+
+```
+## Fikir Tarihi: 2026-01-30
+
+**Tool Adı:**
+hev_dev_auto_suggest_tools
+
+**Kategori:**
+Development
+
+**Sorun:**
+Kullanıcı hangi tool'u kullanacağını manuel araştırıyor, zaman kaybı var.
+
+**Kullanım Senaryosı:**
+1. User: "TypeScript error var" → Suggest: hev_dev_fix_typescript_batch
+2. User: "File edit" → Suggest: hev_dev_edit_lines
+3. User: "Big refactor" → Suggest: hev_dev_safe_batch_refactor
+
+**Önerilen Fonksiyonalite:**
+- Error code analizi ve tool önerisi
+- Dosya boyutu ve complexity analizi
+- Önceki kullanım pattern'lerine göre öneri
+- Öneri confidence skoru (high/medium/low)
+
+**İlgili Tool'lar:**
+- hev_dev_typescript_dashboard
+- hev_dev_analyze_project
+- hev_dev_search_symbol
+
+**Priority:**
+medium
+
+**MCP Handler:**
+tools/dev/auto-suggest.ts
+```
+
+---
+
+### 14.1.2 Ne Zaman Not Alınmalı?
+
+#### ✅ MANDATORY - Not Alma Zorunlu
+
+**Şu durumlar MUTLAKA not alınmalı:**
+
+1. **Beklenmeyen hata mesajları**
+   - Tool çalıştığında unknown error
+   - Duplicate line oluşumu
+   - MCP server crash
+
+2. **Workaround bulunduğunda**
+   - Manuel fix gerektiren durumlar
+   - Temporary solution'lar
+   - Custom script yazıldığında
+
+3. **Yeni pattern keşfedildiğinde**
+   - Tekrarlayan sorunlar
+   - Belirsiz çözümlü problemler
+   - Best practice pattern'leri
+
+4. **Tool eksikliği fark edildiğinde**
+   - Bu işi yapacak bir tool yok
+   - Mevcut tool yetersiz kalıyor
+   - Manual step gerekiyor
+
+5. **Performance sorunu yaşandığında**
+   - Tool yavaş çalışıyor
+   - Token kullanımı fazla
+   - Session timeout oluyor
+
+---
+
+### 14.1.3 Not Alma Workflow
+
+```bash
+# 1. Not defterini oku (session başında)
+read /home/raistlin/hayalet-ev/.rovo/guides/reference/85-NOTEBOOK.md
+
+# 2. Work sırasında not al
+# Her kritik durumda not defterine ekle
+
+# 3. Notlar toplama
+# Tek bir session'da 3+ not varsa, session sonunda summary ekle
+
+# 4. Periyodik review
+# Her hafta, notları organize et ve kategorize et
+```
+
+---
+
+### 14.1.4 Not Defteri Yapısı
+
+**Önerilen Kategorizasyon:**
+
+```
+85-NOTEBOOK.md
+├── 1. Hata Kayıtları
+│   ├── 1.1 Tool Hataları
+│   ├── 1.2 Syntax Hataları
+│   ├── 1.3 Runtime Hataları
+│   └── 1.4 Config Hataları
+├── 2. Geliştirme Fikirleri
+│   ├── 2.1 Automation
+│   ├── 2.2 Workflow İyileştirmeleri
+│   └── 2.3 Refactoring
+└── 3. Yeni Tool Fikirleri
+    ├── 3.1 High Priority
+    ├── 3.2 Medium Priority
+    └── 3.3 Low Priority
+```
+
+---
+
+### 14.1.5 Kullanım Örnekleri
+
+#### Örnek 1: Hata Kaydı
+
+**Senaryo:** `hev_dev_safe_batch_refactor` çalışırken error artışı yaşandı.
+
+**Not Alma:**
+
+```markdown
+## 1. Hata Kayıtları
+
+### 1.1 Tool Hataları
+
+## Hata Tarihi: 2026-01-30
+
+**Komut:**
+hev_dev_safe_batch_refactor({
+file_path: "src/modules/event-handlers.ts",
+operations: [{ pattern: "MessageStore\\?\\.([a-zA-Z]+)\\?\\.", replace_with: "..." }]
+})
+
+**Hata Mesajı:**
+"Error count increased: 52 → 54"
+
+**Sorun Tanımı:**
+Replace string'i syntax hatası yaratmış.
+
+**Önerilen Çözüm:**
+
+1. Dry-run mode kullan
+2. Syntax kontrolü ekle
+3. Pattern'i test et
+
+**İlgili Dosyalar:**
+
+- src/modules/event-handlers.ts
+
+**Kategoriler:**
+[tool-error, syntax-error]
+```
+
+---
+
+#### Örnek 2: Geliştirme Fikri
+
+**Senaryo:** TypeScript error dashboard sonrasında hangi hataya odaklanılacağı kararı vermek zaman alıyor.
+
+**Not Alma:**
+
+```markdown
+## 2. Geliştirme Fikirleri
+
+### 2.1 Automation
+
+## Fikir Tarihi: 2026-01-30
+
+**Fikir Başlığı:**
+Auto-focus recommendation system
+
+**Sorun:**
+hev_dev_typescript_dashboard sonrasında hangi error'a odaklanılacağı manuel karar veriyor.
+
+**Önerilen Çözüm:**
+
+1. Dashboard output'ına otomatik priority hesapla
+   - Error count + severity weight
+   - Top files count
+   - Impact analysis
+2. Top 3 error code önerisi
+3. Her error için hangi tool'u kullanacağını da söyle
+
+**Etki:**
+
+- Zaman tasarrufu: ~40%
+- Karar kalitesi: Artış
+
+**Kategori:**
+[automation, workflow-improvement]
+```
+
+---
+
+#### Örnek 3: Yeni Tool Fikri
+
+**Senaryo:** Batch refactor sonrasında her dosya için ayrı ayrı `hev_dev_check_syntax` çağırmak gerekiyor.
+
+**Not Alma:**
+
+````markdown
+## 3. Yeni Tool Fikirleri
+
+### 3.1 High Priority
+
+## Fikir Tarihi: 2026-01-30
+
+**Tool Adı:**
+hev_dev_batch_check_syntax
+
+**Kategori:**
+Development
+
+**Sorun:**
+Batch refactor sonrasında her dosya için ayrı ayrı syntax check yapmak gerekiyor, zaman kaybı.
+
+**Kullanım Senaryosı:**
+
+```typescript
+hev_dev_batch_check_syntax({
+  file_paths: [
+    "src/modules/event-handlers.ts",
+    "src/modules/slot-controller.ts",
+    "src/modules/traffic-manager.ts",
+  ],
+  check_brackets: true,
+  check_eslint: true,
+  check_ts: true,
+});
+```
+````
+
+**Önerilen Fonksiyonalite:**
+
+- Çoklu dosya syntax kontrolü
+- Her dosya için ayrı ayrı sonuç
+- Summary report (toplam error, dosya bazlı breakdown)
+- Parallel execution (performans)
+
+**İlgili Tool'lar:**
+
+- hev_dev_check_syntax (tek dosya)
+
+**Priority:**
+medium
+
+**MCP Handler:**
+tools/dev/batch-check-syntax.ts
+
+````
+
+---
+
+### 14.1.6 Not Defteri Best Practices
+
+#### ✅ DO
+
+1. **Hemen not al** - Beklemeyin, hemen kaydet
+2. **Detaylı yaz** - Hem sorun hem çözüm açıkça belirtilsin
+3. **Kategorize et** - İlgili kategoriyi mutlaka belirt
+4. **Format tutar** - Önerilen formatı kullan
+5. **Tarih ekle** - Her notta tarih olsun
+6. **Referans ver** - İlgili dosyaları listele
+
+#### ❌ DON'T
+
+1. **Unutma** - "Sonra not alırım" demeyin, unutursunuz
+2. **Vague yazma** - "Bir hata oldu" yazma, detaylı yazın
+3. **Kategori eksik** - Kategori belirtilmediyse faydasız olur
+4. **Çözümsüz** - Sadece sorun yazma, çözüm önerin
+5. **Duplicate not** - Aynı notu birden fazla kez yazma
+
+---
+
+### 14.1.7 Not Defteri Review Protocol
+
+**Periyodik Review:** Her hafta
+
+```markdown
+## Weekly Review: YYYY-MM-DD
+
+### Toplam Notlar: X
+- Hata Kaydı: Y
+- Geliştirme Fikri: Z
+- Yeni Tool Fikri: T
+
+### Action Items:
+1. [ ] High priority tool fikirleri değerlendir
+2. [ ] Tekrarlayan hatalar root cause analizi
+3. [ ] Geliştirme fikirleri implementasyon planı
+
+### Completed Items:
+1. [X] Tool fikri X implement edildi
+2. [X] Hata Y çözüldü
+````
+
+---
+
+**Not Defteri Dosyası:** [guides/reference/85-NOTEBOOK.md](guides/reference/85-NOTEBOOK.md)
+
+---
+
+- **Modlar ve tetikleyiciler:** [guides/reference/80-AUTO-TRIGGERS.md](guides/reference/80-AUTO-TRIGGERS.md)
+- **Persona detayları:** [guides/reference/81-PERSONA.md](guides/reference/81-PERSONA.md)
+- **Not defteri:** [guides/reference/85-NOTEBOOK.md](guides/reference/85-NOTEBOOK.md)
+
+---
+
+## 🔗 15. Quick Reference Tables
+
+### En Sık Kullanılan 10 MCP Tool
+
+| Tool                           | Use Case        | Frekans      |
+| ------------------------------ | --------------- | ------------ |
+| `hev_fs_show`                  | Dosya okuma     | Her zaman    |
+| `hev_dev_edit_lines`           | Multi-line edit | Sık          |
+| `hev_dev_check_syntax`         | Syntax kontrol  | Edit sonrası |
+| `hev_fs_find_and_replace`      | Simple replace  | Ara sıra     |
+| `hev_dev_typescript_dashboard` | Error analizi   | Session başı |
+| `hev_dev_safe_batch_refactor`  | Batch refactor  | 50+ hata     |
+| `hev_dev_fix_typescript_batch` | TS errors       | 20+ hata     |
+| `hev_read_electron_logs`       | Debug           | Hata varsa   |
+| `hev_list_tools`               | Tool listesi    | Bilgi için   |
+| `hev_mcp_health`               | Health check    | Session başı |
+
+### Common Workflows
+
+| Senaryo              | İlk Tool                             | Son Tool                       |
+| -------------------- | ------------------------------------ | ------------------------------ |
+| TypeScript error fix | `hev_dev_typescript_dashboard`       | `hev_dev_check_syntax`         |
+| Yeni dosya oluştur   | `hev_fs_create_file`                 | `hev_fs_show`                  |
+| File edit            | `hev_fs_show` → `hev_dev_edit_lines` | `hev_dev_check_syntax`         |
+| Batch refactor       | `hev_dev_safe_batch_refactor`        | `hev_dev_typescript_dashboard` |
+
+---
+
+## 📦 16. Additional Resources
+
+### Detaylı Rehberler
+
+- **Development:** [guides/development/](guides/development/)
+- **Architecture:** [guides/architecture/](guides/architecture/)
+- **Testing:** [guides/testing/](guides/testing/)
+- **Reference:** [guides/reference/](guides/reference/)
+
+### Otomatik İçerik
+
+- **Complete Tool List:** [\_metadata/TOOL-LIST.md](_metadata/TOOL-LIST.md)
+- **Version Info:** [\_metadata/VERSION-INFO.md](_metadata/VERSION-INFO.md)
+- **Roadmap:** [\_metadata/ROADMAP.md](_metadata/ROADMAP.md)
+
+---
+
+**Last Updated:** 2026-01-30
+**Version:** 2.1
+**Status:** ✅ Production Ready
+**Lines:** 768
