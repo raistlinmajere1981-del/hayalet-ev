@@ -171,7 +171,7 @@ export class AsistanController {
       const opt = document.createElement("option");
       opt.value = provider.id;
       opt.textContent = provider.name;
-      this.providerSelect!.appendChild(opt);
+      this.providerSelect?.appendChild(opt);
     });
     
     // Settings'den seçili provider'ı al

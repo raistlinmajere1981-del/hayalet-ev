@@ -18,7 +18,7 @@ export type UserSlotId = "ai1" | "ai2";
 export type AsistanSlotId = "ai0";
 
 /** Ana AI provider'ları */
-export type ProviderId = "chatgpt" | "gemini" | "grok";
+export type ProviderId = "chatgpt" | "gemini" | "grok" | "opencode";
 
 /** Asistan provider'ları */
 export type AsistanProviderId = "opencode";

@@ -76,7 +76,7 @@ export class WhisperPanel {
                 this.render();
             });
 
-            this.listEl!.appendChild(row);
+            this.listEl?.appendChild(row);
         });
     }
 

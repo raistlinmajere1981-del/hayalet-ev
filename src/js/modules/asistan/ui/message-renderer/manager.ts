@@ -7,15 +7,15 @@
  */
 
 import { renderMarkdown, escapeHtml } from './markdown-parser.js';
-import { createStreamingIndicator, createStatusIndicator, copyCode } from './syntax-highlighter.js';
+import { createStatusIndicator, copyCode } from './syntax-highlighter.js';
 import {
-  formatTokenCount,
-  formatTime,
+  // formatTokenCount, // Unused
+  // formatTime, // Unused
   renderStepCardStart,
   renderStepCardFinish,
   createMessageElement,
   createRetryButton,
-  getAgentModelMetaHtml,
+  // getAgentModelMetaHtml, // Unused
 } from './renderers.js';
 import { SmartScroll } from './smart-scroll.js';
 import type { MessageRecord, StoreEvent, MessagePart, MessageRendererOptions } from './types.js';
@@ -718,7 +718,9 @@ const MessageRenderer = {
     const messagesToRemove = messages.slice(messageIndex + 1);
     if (typeof window.MessageStore !== 'undefined') {
       messagesToRemove.forEach((m: unknown) => {
-        window.MessageStore!.removeMessage?.((m as MessageRecord).id);
+        if (window.MessageStore?.removeMessage) {
+          window.MessageStore.removeMessage((m as MessageRecord).id);
+        }
       });
       window.MessageStore.removeMessage?.(messageId);
     }
@@ -787,17 +789,19 @@ const MessageRenderer = {
     if (typeof window.MessageStore !== 'undefined') {
       messagesToCopy.forEach((m: unknown, i: number) => {
         const msg = m as MessageRecord;
-        const content = window.MessageStore!.getMessageContent?.(msg.id) || '';
+        const content = window.MessageStore?.getMessageContent?.(msg.id) || '';
         const newId = `${forkSessionId}_msg_${i}`;
 
-        window.MessageStore!.upsertMessage?.({
-          id: newId,
-          sessionId: forkSessionId,
-          role: (msg.role || 'user') as 'system' | 'user' | 'assistant',
-          status: 'complete',
-          parts: [{ type: 'text', text: content }],
-          createdAt: (msg.createdAt as number) || Date.now(),
-        });
+        if (window.MessageStore?.upsertMessage) {
+          window.MessageStore.upsertMessage({
+            id: newId,
+            sessionId: forkSessionId,
+            role: (msg.role || 'user') as 'system' | 'user' | 'assistant',
+            status: 'complete',
+            parts: [{ type: 'text', text: content }],
+            createdAt: (msg.createdAt as number) || Date.now(),
+          });
+        }
       });
     }
 

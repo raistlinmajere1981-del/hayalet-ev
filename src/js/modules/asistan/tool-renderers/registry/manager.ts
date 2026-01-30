@@ -55,11 +55,19 @@ const ToolRendererRegistry = {
       this._renderHelpers = createRenderHelpers(
         (toolName) => this._renderers.get(toolName),
         this._defaultRenderer || undefined,
-        (toolName, hookType, data) =>
-          this._registryApi!._executeHooks(toolName, hookType as HookType, data),
+        (toolName, hookType, data) => {
+          if (!this._registryApi) throw new Error('Registry API not initialized');
+          return this._registryApi._executeHooks(toolName, hookType as HookType, data);
+        },
         this._escapeHtml,
-        (input) => this._defaultRenderers!.defaultRenderInput(input),
-        (output) => this._defaultRenderers!.defaultRenderOutput(output)
+        (input) => {
+          if (!this._defaultRenderers) throw new Error('Default renderers not initialized');
+          return this._defaultRenderers.defaultRenderInput(input);
+        },
+        (output) => {
+          if (!this._defaultRenderers) throw new Error('Default renderers not initialized');
+          return this._defaultRenderers.defaultRenderOutput(output);
+        }
       );
     }
   },
@@ -70,42 +78,50 @@ const ToolRendererRegistry = {
 
   register(toolName: string, config: ToolRendererConfig) {
     this._initHelpers();
-    return this._registryApi!.register(toolName, config);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.register(toolName, config);
   },
 
   registerRenderer(toolName: string, config: ToolRendererConfig) {
     this._initHelpers();
-    return this._registryApi!.registerRenderer(toolName, config);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.registerRenderer(toolName, config);
   },
 
   unregister(toolName: string) {
     this._initHelpers();
-    return this._registryApi!.unregister(toolName);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.unregister(toolName);
   },
 
   unregisterRenderer(toolName: string) {
     this._initHelpers();
-    return this._registryApi!.unregisterRenderer(toolName);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.unregisterRenderer(toolName);
   },
 
   addHook(toolName: string, hookType: HookType, callback: HookCallback) {
     this._initHelpers();
-    return this._registryApi!.addHook(toolName, hookType, callback);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.addHook(toolName, hookType, callback);
   },
 
   removeHook(toolName: string, hookType: HookType, callback: HookCallback) {
     this._initHelpers();
-    return this._registryApi!.removeHook(toolName, hookType, callback);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.removeHook(toolName, hookType, callback);
   },
 
   subscribe(listener: RegistryListener) {
     this._initHelpers();
-    return this._registryApi!.subscribe(listener);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.subscribe(listener);
   },
 
   getRegisteredTools() {
     this._initHelpers();
-    return this._registryApi!.getRegisteredTools();
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi.getRegisteredTools();
   },
 
   /**
@@ -135,37 +151,44 @@ const ToolRendererRegistry = {
 
   renderToolCard(toolCall: ToolCallData) {
     this._initHelpers();
-    return this._renderHelpers!.renderToolCard(toolCall);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.renderToolCard(toolCall);
   },
 
   updateStatus(toolCall: ToolCallData, newStatus: string) {
     this._initHelpers();
-    return this._renderHelpers!.updateStatus(toolCall, newStatus);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.updateStatus(toolCall, newStatus);
   },
 
   renderInput(toolCall: ToolCallData) {
     this._initHelpers();
-    return this._renderHelpers!.renderInput(toolCall);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.renderInput(toolCall);
   },
 
   renderOutput(toolCall: ToolCallData) {
     this._initHelpers();
-    return this._renderHelpers!.renderOutput(toolCall);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.renderOutput(toolCall);
   },
 
   shouldAutoCollapse(toolCall: ToolCallData) {
     this._initHelpers();
-    return this._renderHelpers!.shouldAutoCollapse(toolCall);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.shouldAutoCollapse(toolCall);
   },
 
   get(toolName: string) {
     this._initHelpers();
-    return this._renderHelpers!.get(toolName);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.get(toolName);
   },
 
   has(toolName: string) {
     this._initHelpers();
-    return this._renderHelpers!.has(toolName);
+    if (!this._renderHelpers) throw new Error('Render helpers not initialized');
+    return this._renderHelpers.has(toolName);
   },
 
   // =========================================================================
@@ -184,7 +207,8 @@ const ToolRendererRegistry = {
    */
   _executeHooks(toolName: string, hookType: HookType, data: unknown) {
     this._initHelpers();
-    return this._registryApi!._executeHooks(toolName, hookType, data);
+    if (!this._registryApi) throw new Error('Registry API not initialized');
+    return this._registryApi._executeHooks(toolName, hookType, data);
   },
 };
 

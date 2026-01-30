@@ -36,7 +36,7 @@ import {
   addOrUpdatePart,
   updateTextPart,
   getMessageParts,
-  getPart,
+  // getPart, // Unused
 } from './part-operations';
 import {
   upsertPermission,
@@ -301,7 +301,8 @@ const messageStore = {
           ...part,
           messageId: newId,
         };
-        this._parts.set(partId, updated.parts[partId]!);
+        const part = updated.parts[partId];
+        if (part) this._parts.set(partId, part);
       }
     });
 

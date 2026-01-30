@@ -34,12 +34,12 @@ const loadingPromises: Map<ProviderId, Promise<ProviderModule | null>> = new Map
 async function loadProvider(providerId: ProviderId): Promise<ProviderModule | null> {
   // Cache'de varsa döndür
   if (providerCache.has(providerId)) {
-    return providerCache.get(providerId)!;
+    return providerCache.get(providerId) ?? null;
   }
 
   // Zaten yükleniyor mu kontrol et (prevent duplicate loads)
   if (loadingPromises.has(providerId)) {
-    return loadingPromises.get(providerId)!;
+    return loadingPromises.get(providerId) ?? null;
   }
 
   // Yükleme promise'i oluştur
@@ -139,21 +139,21 @@ export function getProvider(providerId: keyof typeof allProviders) {
  *   await provider.sendMessage(webview, "Hello");
  * }
  */
-async function getProviderAsync(providerId: ProviderId): Promise<ProviderModule | null> {
+async function _getProviderAsync(providerId: ProviderId): Promise<ProviderModule | null> {
   return loadProvider(providerId);
 }
 
 /**
  * Provider yüklü mü kontrol et
  */
-function isProviderLoaded(providerId: ProviderId): boolean {
+function _isProviderLoaded(providerId: ProviderId): boolean {
   return providerCache.has(providerId);
 }
 
 /**
  * Tüm provider'ları preload et (startup optimization için)
  */
-async function preloadAllProviders(): Promise<void> {
+async function _preloadAllProviders(): Promise<void> {
   const ids: ProviderId[] = ["chatgpt", "grok", "gemini", "opencode"];
   await Promise.all(ids.map(id => loadProvider(id)));
 }
@@ -161,6 +161,6 @@ async function preloadAllProviders(): Promise<void> {
 /**
  * Provider cache'ini temizle (testing için)
  */
-function clearProviderCache(): void {
+function _clearProviderCache(): void {
   providerCache.clear();
 }

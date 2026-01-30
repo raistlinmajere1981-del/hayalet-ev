@@ -5,7 +5,7 @@
  * Adapted from CodeNomad's permission system
  */
 
-interface PermissionEntry {
+interface _PermissionEntry {
   permissionId: string;
   toolName?: string;
   description?: string;

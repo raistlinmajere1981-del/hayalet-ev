@@ -11,8 +11,8 @@ import { MessageStore } from '../message/index';
 import type { MessageErrorInfo } from '../message/types';
 import { createEventHandlers } from './event-handlers';
 import {
-  normalizeForComparison,
-  isEcho,
+  // normalizeForComparison, // Unused
+  // isEcho, // Unused
   createEchoFilterState,
   clearEchoFilter,
 } from './utils';

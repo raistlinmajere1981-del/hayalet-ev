@@ -9,9 +9,9 @@ function createPickerApi(
   getValueFn: () => string,
   getAttachmentsFn: () => unknown[],
   addAttachmentFn: (item: MentionResult) => void,
-  closePickerFn: () => void,
-  clearInputFn: () => void,
-  updateAttachmentsFn: () => void
+  _closePickerFn: () => void,
+  _clearInputFn: () => void,
+  _updateAttachmentsFn: () => void
 ) {
   function checkTrigger(value: string, cursorPos: number, trigger: string) {
     const beforeCursor = value.slice(0, cursorPos);

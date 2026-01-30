@@ -4,8 +4,8 @@
  */
 
 import { renderMarkdown, escapeHtml } from './markdown-parser.js';
-import { createStreamingIndicator, createStatusIndicator } from './syntax-highlighter.js';
-import type { MessageRecord, StepData, MessagePart } from './types.js';
+import { createStatusIndicator } from './syntax-highlighter.js';
+import type { MessageRecord, StepData } from './types.js';
 
 /**
  * Format token count (1.5K, 12K, etc)

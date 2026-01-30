@@ -113,7 +113,7 @@ class CommandManagerClass {
       resolve = res;
       reject = rej;
     });
-    return { promise, resolve: resolve!, reject: reject! };
+    return { promise, resolve: resolve as (value: CommandResult) => void, reject: reject as (reason?: unknown) => void };
   }
 
   /**
@@ -282,7 +282,7 @@ class CommandManagerClass {
     command: string,
     _mode = "default",
     payload: Record<string, unknown> = {},
-    executor: (() => Promise<any>) | null = null,
+    executor: (() => Promise<unknown>) | null = null,
     _priority = "normal",
   ) {
     const [job] = this.enqueue([

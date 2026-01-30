@@ -4,20 +4,7 @@
 
 import type { AppContext } from './types';
 
-interface PromptHandler {
-  setValue(value: string): void;
-  focus(): void;
-}
 
-interface APIClient {
-  cancel(): Promise<void>;
-  retry(): Promise<void>;
-  cancelAllRequests(): void;
-}
-
-interface SSEClient {
-  disconnectAll(): void;
-}
 
 export function setupEventListeners(context: AppContext) {
 

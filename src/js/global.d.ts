@@ -20,7 +20,7 @@ import type {
   HookType,
   HookCallback,
   RegistryListener,
-  RegistryEvent,
+  // RegistryEvent, // Unused
 } from "./modules/asistan/tool-renderers/registry/types.js";
 
 export {};

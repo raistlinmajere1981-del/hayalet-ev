@@ -186,6 +186,7 @@ class TrafficManagerClass {
       try {
         listener(snapshot);
       } catch (_err) {
+        // Error ignored
       }
     });
   }
@@ -337,6 +338,7 @@ class TrafficManagerClass {
           }
         }
       } catch (_err) {
+        // Error ignored
       } finally {
         this.pollTimer = setTimeout(loop, Math.max(250, Math.floor(TIMING_CONFIG.pollIntervalMs / 4)));
       }
@@ -604,11 +606,13 @@ class TrafficManagerClass {
 
   signal(channel: string, status: string, message = "") {
     if (status === "error") {
+      // Error handling placeholder
     }
     this.listeners.forEach((listener) => {
       try {
         listener({ provider: channel || '', state: { status, message } });
       } catch (_err) {
+        // Error ignored
       }
     });
   }

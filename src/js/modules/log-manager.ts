@@ -9,16 +9,17 @@
  */
 
 // Toast import - lazy loaded to avoid circular dependencies
-let ToastModule: typeof import('../ui/toast-manager') | null = null;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+let toastModule: typeof import('../ui/toast-manager') | null = null;
 const getToast = async () => {
-  if (!ToastModule) {
+  if (!toastModule) {
     try {
-      ToastModule = await import('../ui/toast-manager.js');
+      toastModule = await import('../ui/toast-manager.js');
     } catch {
       // Toast modülü yüklenemedi - sessizce devam et
     }
   }
-  return ToastModule?.Toast;
+  return toastModule?.Toast;
 };
 
 /**

@@ -691,3 +691,4 @@ class CoreEngineClass {
 }
 
 export const CoreEngine = new CoreEngineClass();
+export type CoreEngine = CoreEngineClass;

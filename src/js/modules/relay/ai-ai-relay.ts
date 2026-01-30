@@ -9,6 +9,7 @@
 import { BaseRelay } from "./base-relay.js";
 import { SlotController } from "../slot-controller.js";
 import { getErrorMessage } from "../../types/index.js";
+import type { CoreEngine as CoreEngineType } from "../core-engine.js";
 
 interface ProtocolPayload {
   room?: string;
@@ -34,7 +35,7 @@ export class AIAIRelay extends BaseRelay {
   _prevThinking: Record<string, string>;
   _lastTexts: Record<string, string>;
 
-  constructor(coreEngine: typeof import('../core-engine.js').CoreEngine) {
+  constructor(coreEngine: CoreEngineType) {
     super(coreEngine);
     this._providers = ["ai1", "ai2"];
     this._prevThinking = { ai1: "idle", ai2: "idle" };

@@ -60,7 +60,8 @@ function createRegistryApi(
       if (!hooks.has(key)) {
         hooks.set(key, []);
       }
-      hooks.get(key)!.push(callback);
+      const hookArray = hooks.get(key);
+      if (hookArray) hookArray.push(callback);
 
       return () => this.removeHook(toolName, hookType, callback);
     },

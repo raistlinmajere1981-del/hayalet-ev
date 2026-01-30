@@ -1,4 +1,4 @@
-import type { AppSettings } from "../../types/settings.js";
+import type { AppSettings, SlotSettings } from "../../types/settings.js";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
@@ -124,7 +124,7 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
       fileMethod: slotData.fileMethod || "dragdrop",
     };
   });
-  out.slots = slots;
+  out.slots = slots as { ai1: SlotSettings; ai2: SlotSettings; [key: string]: SlotSettings };
 
   // Asistan slotu (AI0)
   if (isPlainObject(r.asistanSlot)) {

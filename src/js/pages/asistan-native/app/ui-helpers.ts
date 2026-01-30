@@ -2,7 +2,7 @@
  * UI Helpers - Generic helper methods
  */
 
-export function setupUIHelpers(context: unknown) {
+export function setupUIHelpers(_context: unknown) {
   return {
     init() {
       // Empty initialization

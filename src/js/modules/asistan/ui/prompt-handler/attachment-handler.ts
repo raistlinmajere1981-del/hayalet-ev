@@ -3,7 +3,7 @@
  * Attachment rendering, paste, drag & drop
  */
 
-import type { AttachmentItem, MentionResult } from './types.js';
+import type { AttachmentItem } from './types.js';
 
 function escapeHtml(text: string): string {
   if (!text) return '';

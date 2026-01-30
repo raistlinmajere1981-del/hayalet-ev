@@ -6,7 +6,7 @@
  * CodeNomad prompt-input.tsx pattern'i referans alınmıştır.
  */
 
-import type { PromptHandlerOptions, MentionResult, CommandResult, TriggerMatch, AttachmentItem } from './types.js';
+import type { PromptHandlerOptions, MentionResult, CommandResult, AttachmentItem } from './types.js';
 import { createKeyboardHandlers } from './keyboard-handler.js';
 import { createPickerApi } from './picker-api.js';
 import { escapeHtml, renderAttachmentChip, showImagePreview } from './attachment-handler.js';
@@ -144,7 +144,7 @@ const PromptHandler = {
     this._historyIndexRef.value = -1;
 
     const value = this._input?.value || '';
-    const cursorPos = this._input?.selectionStart || 0;
+    const _cursorPos = this._input?.selectionStart || 0;
 
     // Shell mode check
     if (value.startsWith('!') && !this._shellMode) {
@@ -190,7 +190,8 @@ const PromptHandler = {
       this._initPickerApi();
     }
 
-    this._mentionResults = await this._pickerApi!.openMentionPicker(query);
+    if (!this._pickerApi) throw new Error('Picker API not initialized');
+    this._mentionResults = await this._pickerApi.openMentionPicker(query);
     this._renderMentionDropdown();
   },
 
@@ -202,7 +203,8 @@ const PromptHandler = {
       this._initPickerApi();
     }
 
-    this._commandResults = this._pickerApi!.openCommandPicker(query);
+    if (!this._pickerApi) throw new Error('Picker API not initialized');
+    this._commandResults = this._pickerApi.openCommandPicker(query);
     this._renderCommandDropdown();
   },
 

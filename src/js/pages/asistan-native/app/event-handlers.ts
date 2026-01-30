@@ -180,7 +180,6 @@ export function setupEventHandlers(context: AppContext) {
     },
 
     handleQuestionResponse() {
-      const qId = context._pendingQuestionId;
       const modal = document.getElementById('question-modal');
       const input = modal?.querySelector('.question-input') as HTMLInputElement | null;
 

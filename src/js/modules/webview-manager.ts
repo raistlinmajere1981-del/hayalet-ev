@@ -136,7 +136,8 @@ class WebviewManagerClass {
    */
   async syncConversation(provider: string, webview: WebviewTag | null, options: Record<string, unknown> = {}) {
     const targetWebview = webview || this.resolveWebview(provider);
-    return ConversationSyncer.syncConversation(provider, targetWebview!, options);
+    if (!targetWebview) throw new Error('Webview not found');
+    return ConversationSyncer.syncConversation(provider, targetWebview, options);
   }
 
   /**

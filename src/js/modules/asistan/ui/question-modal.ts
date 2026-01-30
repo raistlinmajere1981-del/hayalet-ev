@@ -5,7 +5,7 @@
  * Supports text input, select, and confirm question types
  */
 
-interface QuestionEntry {
+interface _QuestionEntry {
   questionId: string;
   question?: { id?: string; type?: string; text?: string; options?: unknown[]; defaultValue?: string };
   [key: string]: unknown;
