@@ -207,8 +207,11 @@ function replaceInLine(line: string, pattern: string, replacement: string, useRe
 function applyOperation(content: string, op: RefactorOperation): string {
   const lines = content.split("\\n");
   
-  // Detect if pattern is regex (contains regex special chars)
-  const isRegexPattern = /[.*+?^${}()|[\]\\]/.test(op.pattern);
+  // Detect if pattern is INTENTIONAL regex (has unescaped regex operators)
+  // Simple heuristic: If pattern looks like plain code with [], (), {}, it's NOT regex
+  // Only treat as regex if it has .*, .+, ^, $, |, (?:...) etc.
+  const hasRegexOperators = /\.\*|\.\+|\^|\$|\||\(\?[:=!]/.test(op.pattern);
+  const isRegexPattern = hasRegexOperators;
 
   let replacementCount = 0;
   const MAX_REPLACEMENTS = 1000; // Safety limit
