@@ -5,6 +5,7 @@
 import { spawn, ChildProcess } from "child_process";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { FS_TIMEOUTS } from "../../utils/timeouts.js";
+import { safeGitCommand, checkGitLock, removeStaleLock } from "../../utils/git-utils.js";
 
 interface BashResult {
   stdout: string;
@@ -33,6 +34,21 @@ export async function executeBash(
     
     const isBackground = command.trim().endsWith("&");
     const actualCommand = isBackground ? command.slice(0, -1).trim() : command;
+    
+    // Git command detection and auto-recovery
+    const isGitCommand = actualCommand.trim().startsWith("git ");
+    if (isGitCommand) {
+      try {
+        const lockCheck = checkGitLock(workspacePath);
+        if (lockCheck.hasLock && lockCheck.isStale) {
+          console.log(`[BASH] Stale git lock detected (${lockCheck.ageMinutes} min), auto-removing...`);
+          removeStaleLock(workspacePath);
+        }
+      } catch (lockError: any) {
+        // If lock check fails, continue with normal execution
+        console.warn('[BASH] Git lock check failed:', lockError.message);
+      }
+    }
     
     const child = spawn("bash", ["-c", actualCommand], {
       cwd: workspacePath,

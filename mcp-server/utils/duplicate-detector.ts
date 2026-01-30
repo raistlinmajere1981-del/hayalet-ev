@@ -3,11 +3,44 @@
  * 
  * AST-based scope detection to eliminate false positives.
  * Only flags duplicates within the same scope (function, class, block).
+ * Includes template/boilerplate exception for documentation files.
  */
 
 import { parse } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { readFile } from 'fs/promises';
+
+/**
+ * Template patterns that are allowed to repeat (documentation, config files)
+ */
+const TEMPLATE_PATTERNS = [
+  /^\*\*Category:\*\*/,           // Markdown: **Category:** Development
+  /^\*\*Prefix:\*\*/,              // Markdown: **Prefix:** `hev_dev_*`
+  /^\*\*Description:\*\*/,         // Markdown: **Description:** ...
+  /^\*\*Tool:\*\*/,                // Markdown: **Tool:** tool_name
+  /^\*\*Use Case:\*\*/,            // Markdown: **Use Case:** ...
+  /^\*\*When:\*\*/,                // Markdown: **When:** ...
+  /^\*\*Impact:\*\*/,              // Markdown: **Impact:** ...
+  /^\*\*Status:\*\*/,              // Markdown: **Status:** ...
+  /^---+$/,                        // Markdown: horizontal separators
+  /^===+$/,                        // Markdown: heading underlines
+  /^#{1,6}\s/,                     // Markdown: headings
+  /^\s*\|\s*[-:]+\s*\|/,          // Markdown: table separators
+  /^import\s+.*from\s+['"].*['"];?$/, // ES6 imports
+  /^export\s+\{.*\}\s+from/,       // ES6 re-exports
+  /^\s*\/\/\s*TODO:/,              // TODO comments
+  /^\s*\/\/\s*FIXME:/,             // FIXME comments
+  /^\s*console\.(log|warn|error)\(/, // Console statements
+];
+
+/**
+ * Check if a line matches any template pattern
+ */
+function isTemplatePattern(line: string): boolean {
+  const trimmed = line.trim();
+  if (trimmed.length === 0) return true; // Empty lines are templates
+  return TEMPLATE_PATTERNS.some(pattern => pattern.test(trimmed));
+}
 
 interface ScopeInfo {
   type: 'function' | 'class' | 'method' | 'block' | 'switch-case' | 'interface' | 'type-alias' | 'file';
@@ -231,6 +264,7 @@ export async function detectContextAwareDuplicates(
       const changedLine = (changedLines[i] || '').trim();
       if (changedLine.length < 10) continue; // Skip short lines
       if (changedLine.startsWith('//') || changedLine.startsWith('/*')) continue; // Skip comments
+      if (isTemplatePattern(changedLine)) continue; // Skip template patterns
       
       const changedLineNum = changedLineStart + i + 1; // 1-based
       const changedScope = scopeMap.get(changedLineNum);
@@ -285,6 +319,7 @@ function detectSimpleDuplicates(
   for (let i = 0; i < changedLines.length; i++) {
     const changedLine = (changedLines[i] || '').trim();
     if (changedLine.length < 10) continue;
+    if (isTemplatePattern(changedLine)) continue; // Skip template patterns
     
     const changedLineNum = changedLineStart + i + 1;
     const searchStart = Math.max(0, changedLineStart - searchRadius);

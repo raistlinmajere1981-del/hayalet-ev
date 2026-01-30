@@ -26,8 +26,8 @@
 
 | Key | Value |
 |-----|-------|
-| **Version** | 1.10.0 |
-| **Total Tools** | 72 |
+| **Version** | 1.12.0 |
+| **Total Tools** | 97 |
 
 ## Dependencies
 

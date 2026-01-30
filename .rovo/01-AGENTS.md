@@ -32,7 +32,7 @@
 
 - **Tech Stack:** Electron 39+ (Node.js ESM), TypeScript (strict), Vite 7.3, SQLite
 - **Sürüm:** 5.5.0
-- **MCP Server:** v1.12.0 (73 tool)
+- **MCP Server:** v1.12.0 (97 tools)
 
 **Mimari:** Main Process → Renderer Process → AI Provider Webviews + IPC Bridge
 
@@ -284,7 +284,7 @@ hev_dev_check_syntax({ file_path: 'file.ts' })
 - [Reference](guides/reference/) - Auto-triggers, persona, logging
 
 ### Auto-Generated
-- [Tool List](_metadata/TOOL-LIST.md) - All 77 tools
+- [Tool List](_metadata/TOOL-LIST.md) - All 97 tools
 - [Version Info](_metadata/VERSION-INFO.md) - Version tracking
 
 ---
