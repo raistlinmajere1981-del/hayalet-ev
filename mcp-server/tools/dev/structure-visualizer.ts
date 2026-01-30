@@ -467,13 +467,25 @@ export function countBracketsContextAware(content: string): {
         const isEscaped = backslashCount % 2 === 1;
         
         if (!isEscaped) {
-          const beforeChars = [' ', '=', '(', ',', ':', '[', '\t', '\n', '{', ';', '!', '&', '|'];
-          const charBefore = (checkPos >= 0 && line[checkPos]) ? line[checkPos]! : '';
-          const isRegexStart = beforeChars.includes(charBefore) || col === 0;
+          // Check if previous non-whitespace token suggests division operator
+          let prevTokenEnd = col - 1;
+          while (prevTokenEnd >= 0 && line[prevTokenEnd] && /\s/.test(line[prevTokenEnd]!)) {
+            prevTokenEnd--;
+          }
           
-          if (isRegexStart) {
-            inRegex = true;
-            continue;
+          // If previous token ends with identifier, digit, or closing bracket, it's division
+          const prevTokenChar = prevTokenEnd >= 0 && line[prevTokenEnd] ? line[prevTokenEnd]! : '';
+          const isDivision = /[\w$)\]]/.test(prevTokenChar);
+          
+          if (!isDivision) {
+            const beforeChars = ['=', '(', ',', ':', '[', '{', ';', '!', '&', '|', 'return', 'throw'];
+            const charBefore = (checkPos >= 0 && line[checkPos]) ? line[checkPos]! : '';
+            const isRegexStart = beforeChars.includes(charBefore) || col === 0;
+            
+            if (isRegexStart) {
+              inRegex = true;
+              continue;
+            }
           }
         }
       } else if (char === '/' && inRegex) {
