@@ -52,6 +52,9 @@ import {
   editLines,
   gitDiff,
   lintFile,
+  lintProject,
+  generateEslintDashboard,
+  eslintBatchFix,
   searchSymbol,
   testRun,
   checkSyntax,
@@ -581,6 +584,46 @@ ${health.message}
         output = `❌ ${result.errorCount} hata, ${result.warningCount} uyarı\n\n${output}`;
       }
       return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_dev_lint_project") {
+      const result = await lintProject(
+        {
+          pattern: (args as { pattern?: string }).pattern,
+          fix: (args as { fix?: boolean }).fix,
+          max_warnings: (args as { max_warnings?: number }).max_warnings,
+          cache: (args as { cache?: boolean }).cache,
+          format: (args as { format?: string }).format as "stylish" | "compact" | "json" | "codeframe",
+        },
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.output }] };
+    }
+    if (name === "hev_dev_eslint_dashboard") {
+      const result = await generateEslintDashboard(
+        {
+          pattern: (args as { pattern?: string }).pattern,
+          sort_by: (args as { sort_by?: string }).sort_by as "count" | "severity" | "file",
+          group_by: (args as { group_by?: string }).group_by as "rule" | "file" | "category",
+          limit: (args as { limit?: number }).limit,
+          show_fixable: (args as { show_fixable?: boolean }).show_fixable,
+        },
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.output }] };
+    }
+    if (name === "hev_dev_eslint_batch_fix") {
+      const result = await eslintBatchFix(
+        {
+          pattern: (args as { pattern?: string }).pattern,
+          rules: (args as { rules?: string[] }).rules,
+          fix_strategy: (args as { fix_strategy?: string }).fix_strategy as "safe" | "aggressive" | "suggestion",
+          dry_run: (args as { dry_run?: boolean }).dry_run,
+          auto_apply: (args as { auto_apply?: boolean }).auto_apply,
+          verify_after: (args as { verify_after?: boolean }).verify_after,
+        },
+        PROJECT_ROOT
+      );
+      return { content: [{ type: "text", text: result.output }] };
     }
     if (name === "hev_dev_search_symbol") {
       const result = await searchSymbol(PROJECT_ROOT, (args as { symbol: string }).symbol, {

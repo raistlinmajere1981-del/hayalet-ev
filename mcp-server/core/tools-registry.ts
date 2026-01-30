@@ -436,5 +436,48 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
       required: ["tool_name", "description", "function_name", "tool_constant"]
     }
   },
+  {
+    name: "hev_dev_lint_project",
+    description: "Proje genelinde ESLint çalıştır (glob pattern ile batch linting)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Glob pattern (örn: 'src/**/*.ts', 'mcp-server/**/*.ts')", default: "**/*.{js,ts,jsx,tsx}" },
+        fix: { type: "boolean", description: "Otomatik düzeltme yap", default: false },
+        max_warnings: { type: "number", description: "Maksimum uyarı sayısı (-1 = sınırsız)", default: -1 },
+        cache: { type: "boolean", description: "Cache kullan (daha hızlı)", default: true },
+        format: { type: "string", enum: ["stylish", "compact", "json", "codeframe"], description: "Çıktı formatı", default: "stylish" },
+      },
+    },
+  },
+  {
+    name: "hev_dev_eslint_dashboard",
+    description: "ESLint hatalarını analiz edip dashboard formatında gösterir (rule analytics, clustering)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Glob pattern (örn: 'src/**/*.ts')", default: "**/*.{js,ts,jsx,tsx}" },
+        sort_by: { type: "string", enum: ["count", "severity", "file"], description: "Sıralama kriteri", default: "count" },
+        group_by: { type: "string", enum: ["rule", "file", "category"], description: "Gruplama kriteri", default: "rule" },
+        limit: { type: "number", description: "Gösterilecek maksimum item sayısı", default: 10 },
+        show_fixable: { type: "boolean", description: "Otomatik düzeltilecekleri göster", default: true },
+      },
+    },
+  },
+  {
+    name: "hev_dev_eslint_batch_fix",
+    description: "ESLint rule-based otomatik toplu düzeltme (batch auto-fix with verification)",
+    inputSchema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Glob pattern (örn: 'src/**/*.ts')", default: "**/*.{js,ts,jsx,tsx}" },
+        rules: { type: "array", items: { type: "string" }, description: "Belirli rule'lar için fix (boş = tüm fixable rules)", default: [] },
+        fix_strategy: { type: "string", enum: ["safe", "aggressive", "suggestion"], description: "Fix stratejisi (safe=problem+layout, aggressive=all, suggestion=only suggestions)", default: "safe" },
+        dry_run: { type: "boolean", description: "Sadece analiz (değişiklik yapma)", default: false },
+        auto_apply: { type: "boolean", description: "Otomatik uygula (onay bekleme)", default: false },
+        verify_after: { type: "boolean", description: "Fix sonrası TypeScript check", default: true },
+      },
+    },
+  },
   
 ];

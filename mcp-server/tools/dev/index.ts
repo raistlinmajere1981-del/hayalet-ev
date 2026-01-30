@@ -12,6 +12,9 @@ export { updateCache, CACHE_MANAGER_TOOL } from "./cache-manager.js";
 export { editLines, LINE_EDITOR_TOOL } from "./line-editor.js";
 export { gitDiff, GIT_DIFF_TOOL } from "./git-tools.js";
 export { lintFile, LINTER_TOOL } from "./linter.js";
+export { lintProject, LINT_PROJECT_TOOL } from "./eslint-project.js";
+export { generateEslintDashboard, ESLINT_DASHBOARD_TOOL } from "./eslint-dashboard.js";
+export { eslintBatchFix, ESLINT_BATCH_FIX_TOOL } from "./eslint-batch-fix.js";
 export { searchSymbol, SYMBOL_SEARCHER_TOOL } from "./symbol-searcher.js";
 export { testRun, TEST_RUNNER_TOOL } from "./test-runner.js";
 export { checkSyntax, SYNTAX_CHECKER_TOOL } from "./syntax-checker.js";
@@ -33,6 +36,9 @@ import { CACHE_MANAGER_TOOL } from "./cache-manager.js";
 import { LINE_EDITOR_TOOL } from "./line-editor.js";
 import { GIT_DIFF_TOOL } from "./git-tools.js";
 import { LINTER_TOOL } from "./linter.js";
+import { LINT_PROJECT_TOOL } from "./eslint-project.js";
+import { ESLINT_DASHBOARD_TOOL } from "./eslint-dashboard.js";
+import { ESLINT_BATCH_FIX_TOOL } from "./eslint-batch-fix.js";
 import { SYMBOL_SEARCHER_TOOL } from "./symbol-searcher.js";
 import { TEST_RUNNER_TOOL } from "./test-runner.js";
 import { SYNTAX_CHECKER_TOOL } from "./syntax-checker.js";
@@ -54,6 +60,9 @@ export const DEV_TOOL_DEFINITIONS = [
   LINE_EDITOR_TOOL,
   GIT_DIFF_TOOL,
   LINTER_TOOL,
+  LINT_PROJECT_TOOL,
+  ESLINT_DASHBOARD_TOOL,
+  ESLINT_BATCH_FIX_TOOL,
   SYMBOL_SEARCHER_TOOL,
   TEST_RUNNER_TOOL,
   SYNTAX_CHECKER_TOOL,
