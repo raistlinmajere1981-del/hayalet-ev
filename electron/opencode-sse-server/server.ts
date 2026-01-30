@@ -5,7 +5,8 @@
  * Çok büyük dosyadan çıktığı için temel yapılar + handler'lar burada
  */
 
-import { createServer, IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
+import { createServer } from 'http';
 import { OpenCodeManager } from '../opencode/index.ts';
 import type { NativeUIEvent } from '../opencode-event-parser.ts';
 import { handleOpenCodeEvent } from './event-handlers.ts';

@@ -19,7 +19,10 @@ export function randomBase62(length: number): string {
     const bytes = new Uint8Array(length);
     cryptoObj.getRandomValues(bytes);
     for (let i = 0; i < length; i++) {
-      result += BASE62_CHARS[bytes[i] % BASE62_CHARS.length];
+      const byte = bytes[i];
+      if (byte !== undefined) {
+        result += BASE62_CHARS[byte % BASE62_CHARS.length];
+      }
     }
   } else {
     for (let i = 0; i < length; i++) {

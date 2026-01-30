@@ -367,7 +367,7 @@ class WorkspaceManagerClass {
               }
               child.removeListener("error", handleError);
 
-              const port = parseInt(portMatch[1], 10);
+              const port = parseInt(portMatch[1] || '0', 10);
               console.log(`[WorkspaceManager] Port allocated: ${port} for workspace ${workspaceId}`);
               resolve({ pid: child.pid!, port });
             }

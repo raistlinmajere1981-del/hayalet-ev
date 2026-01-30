@@ -5,7 +5,7 @@
  * State injection pattern kullanılıyor
  */
 
-import { IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenCodeManager } from '../../opencode/index.js';
 
 export async function handleGetMCPServers(

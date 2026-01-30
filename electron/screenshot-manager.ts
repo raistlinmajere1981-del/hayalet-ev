@@ -1,7 +1,8 @@
 import { dirname } from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { nativeImage, BrowserWindow, IpcMainInvokeEvent } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
+import { nativeImage, BrowserWindow } from 'electron';
 import screenshot from 'screenshot-desktop';
 
 interface CaptureResult {
@@ -25,7 +26,8 @@ export async function capturePageHandler(
       const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
       if (match) {
         const [, x, y, w, h] = match.map(Number);
-        rect = { x, y, width: w, height: h };
+        rect = { x: x || 0, y: y || 0, width: w || 0, height: h || 0 };
+
       }
     }
     const img = await win.capturePage(rect);
@@ -56,7 +58,8 @@ export async function screenshotCaptureHandler(
       const match = region.match(/(\d+)[;,](\d+)[: ](\d+)[;,](\d+)/);
       if (match) {
         const [, x, y, w, h] = match.map(Number);
-        img = img.crop({ x, y, width: w, height: h });
+        img = img.crop({ x: x || 0, y: y || 0, width: w || 0, height: h || 0 });
+
       }
     }
     const dataBuffer = useJpg ? img.toJPEG(90) : img.toPNG();

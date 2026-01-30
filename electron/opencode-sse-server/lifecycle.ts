@@ -5,7 +5,8 @@
  * State injection pattern kullanılıyor (circular dependency yok)
  */
 
-import { createServer, IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
+import { createServer } from 'http';
 import type { ServerState, SSEServerConfig } from './types.js';
 import { getServerUrl, disconnectAllClients, setupHeartbeat } from './utils.js';
 

@@ -410,7 +410,7 @@ class TrafficManagerClass {
     if (!this.state[provider]) {
       this.state[provider] = defaultState();
     }
-    let viewState = this.state[provider];
+    const viewState = this.state[provider];
 
     if (!data || data.error) {
       LogManager.addEvent("traffic", "warn", `probe data error for ${provider}: ${String(data?.error || "no-data")}`);

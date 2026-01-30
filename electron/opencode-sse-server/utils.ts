@@ -2,7 +2,8 @@
  * OpenCode SSE Server - Utilities
  */
 
-import { IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage} from 'http';
+import { ServerResponse } from 'http';
 import type { SSEClient } from './types.ts';
 
 /**

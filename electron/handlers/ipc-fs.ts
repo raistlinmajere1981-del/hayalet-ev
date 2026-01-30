@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import type { BrowserWindow } from "electron";
 import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { fmTempPath, fmEnsureDirs, openPath } from "../file-manager.ts";

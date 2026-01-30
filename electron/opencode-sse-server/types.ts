@@ -81,4 +81,21 @@ export interface QuestionEventData {
   allowFreeform?: boolean;
 }
 
+
+/** Server state object type */
+export interface ServerState {
+  _server: ReturnType<typeof import('http').createServer> | null;
+  _eventBus: import('./event-bus.ts').OpenCodeEventBus;
+  _clients: Map<number, SSEClient>;
+  _nextClientId: number;
+  _heartbeatInterval: NodeJS.Timeout | null;
+  _currentSessionId: string | null;
+  _openCodeConnected: boolean;
+  _lastSentUserMessageId: string | null;
+  _openCodeConnecting: boolean;
+  _currentAssistantMessageId: string | null;
+  _currentAssistantContent: string;
+  _config: SSEServerConfig;
+}
+
 export type { NativeUIEvent };

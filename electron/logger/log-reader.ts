@@ -185,7 +185,7 @@ export async function queryLogs(query: LogQueryParams = {}): Promise<string[]> {
       const sinceDate = new Date(since);
       filtered = filtered.filter(l => {
         const match = l.match(/^\[(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\]/);
-        if (match) {
+        if (match && match[1]) {
           return new Date(match[1]) >= sinceDate;
         }
         return true;

@@ -5,7 +5,7 @@
  * State injection pattern kullanılıyor
  */
 
-import { ServerResponse } from 'http';
+import type { ServerResponse } from 'http';
 import type { ServerState, SSEClient, SSEEvent } from './types.js';
 
 export function addSSEClient(

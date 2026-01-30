@@ -454,18 +454,47 @@ export function countBracketsContextAware(content: string): {
       // Skip if in string
       if (inString) continue;
       
-      // Regex detection (simple: /.../ pattern)
-      // Only detect if preceded by = or ( or , or : or space
-      if (char === '/' && prevChar !== '\\') {
-        const beforeChars = [' ', '=', '(', ',', ':', '[', '\t', '\n'];
-        const isRegexStart = (prevChar && beforeChars.includes(prevChar)) || col === 0;
+      // Regex detection with proper escape handling
+      if (char === '/' && !inRegex) {
+        // Check if this / is escaped by counting preceding backslashes
+        let backslashCount = 0;
+        let checkPos = col - 1;
+        while (checkPos >= 0 && line[checkPos] === '\\') {
+          backslashCount++;
+          checkPos--;
+        }
+        // If odd number of backslashes, the / is escaped
+        const isEscaped = backslashCount % 2 === 1;
         
-        if (isRegexStart && !inRegex) {
-          inRegex = true;
-          continue;
-        } else if (inRegex) {
-          inRegex = false;
-          continue;
+        if (!isEscaped) {
+          const beforeChars = [' ', '=', '(', ',', ':', '[', '\t', '\n', '{', ';', '!', '&', '|'];
+          const charBefore = (checkPos >= 0 && line[checkPos]) ? line[checkPos]! : '';
+          const isRegexStart = beforeChars.includes(charBefore) || col === 0;
+          
+          if (isRegexStart) {
+            inRegex = true;
+            continue;
+          }
+        }
+      } else if (char === '/' && inRegex) {
+        // Check if regex-ending / is escaped
+        let backslashCount = 0;
+        let checkPos = col - 1;
+        while (checkPos >= 0 && line[checkPos] === '\\') {
+          backslashCount++;
+          checkPos--;
+        }
+        const isEscaped = backslashCount % 2 === 1;
+        
+        if (!isEscaped) {
+          // Verify this is truly regex end by checking next char (flags or delimiter)
+          const regexFlags = ['i', 'g', 'm', 's', 'u', 'y', '.', ' ', ')', ';', ',', '}', ']'];
+          const isRegexEnd = (nextChar && regexFlags.includes(nextChar)) || col === line.length - 1;
+          
+          if (isRegexEnd) {
+            inRegex = false;
+            continue;
+          }
         }
       }
       

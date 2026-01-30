@@ -15,7 +15,7 @@
     "strictNullChecks": true, // Re-enabled 2026-01-29 - fixing null safety issues
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
-    "strictPropertyInitialization": false, // Depends on strictNullChecks
+    "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "useUnknownInCatchVariables": true,
     "alwaysStrict": true,
@@ -24,6 +24,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "declaration": true

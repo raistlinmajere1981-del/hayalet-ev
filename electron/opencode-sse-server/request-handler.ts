@@ -5,7 +5,7 @@
  * State injection pattern kullanılıyor
  */
 
-import { IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { ServerState } from './types.js';
 import { createEndpointRouter } from './endpoints.js';
 

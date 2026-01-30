@@ -249,7 +249,7 @@ export function setupOpencodeHandlers(): void {
       return null;
     }
     
-    return result.filePaths[0];
+    return result.filePaths[0] ?? null;
   });
   
   /**
@@ -444,7 +444,7 @@ export function setupOpencodeHandlers(): void {
           const match = line.match(/^(\w+)(?:\s*\(([^)]+)\))?/);
           if (match) {
             agents.push({
-              name: match[1],
+              name: match[1] || '',
               description: match[2] || undefined,
             });
           }

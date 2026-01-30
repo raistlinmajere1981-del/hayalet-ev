@@ -331,6 +331,7 @@ module.exports = tseslint.config(
       },
     },
     rules: {
+      // === TypeScript Specific ===
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -339,9 +340,25 @@ module.exports = tseslint.config(
           caughtErrorsIgnorePattern: "^(_|e|err|error)",
         },
       ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
+      "@typescript-eslint/strict-boolean-expressions": "off",
+      
+      // === General Rules ===
+      "no-unused-vars": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-console": "off",
       "prefer-const": "warn",
+      "no-undef": "off",
     },
   },
 
@@ -368,6 +385,7 @@ module.exports = tseslint.config(
       },
     },
     rules: {
+      // === TypeScript Specific ===
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
@@ -376,9 +394,25 @@ module.exports = tseslint.config(
           caughtErrorsIgnorePattern: "^(_|e|err|error)",
         },
       ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "@typescript-eslint/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
+      "@typescript-eslint/strict-boolean-expressions": "off",
+      
+      // === General Rules ===
+      "no-unused-vars": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-console": "off",
       "prefer-const": "warn",
+      "no-undef": "off",
     },
   }
 );

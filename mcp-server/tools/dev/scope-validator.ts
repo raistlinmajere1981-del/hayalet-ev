@@ -70,9 +70,7 @@ export async function analyzeScopeImpact(
   }
 
   try {
-    console.log('[SCOPE-VALIDATOR] Parsing file:', filePath);
-    console.log('[SCOPE-VALIDATOR] File exists:', existsSync(filePath));
-    console.log('[SCOPE-VALIDATOR] Content length:', content.length);
+    // Debug logs removed - MCP server should not write to stdout
     
     const ast = parse(content, {
       sourceType: 'module',
@@ -86,8 +84,6 @@ export async function analyzeScopeImpact(
         'nullishCoalescingOperator',
       ],
     });
-    
-    console.log('[SCOPE-VALIDATOR] AST parse successful');
 
     const scopes: ScopeInfo[] = [];
 

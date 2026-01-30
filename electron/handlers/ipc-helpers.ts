@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainInvokeEvent } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
+import { ipcMain } from "electron";
 import type { IpcHandler, IpcResult } from "../types/index.ts";
 
 /**

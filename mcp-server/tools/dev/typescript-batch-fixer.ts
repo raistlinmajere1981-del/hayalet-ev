@@ -113,7 +113,7 @@ async function getTypescriptErrors(
     try {
       result = execSync(
         `npx tsc --noEmit 2>&1 | grep '${filePath}' | grep 'error TS'`,
-        { cwd, encoding: "utf-8", timeout: DEV_TIMEOUTS.TYPESCRIPT_CHECK, shell: true }
+        { cwd, encoding: "utf-8", timeout: DEV_TIMEOUTS.TYPESCRIPT_CHECK, shell: '/bin/bash' }
       );
     } catch (execError: any) {
       // tsc returns non-zero on errors, but we still want the output

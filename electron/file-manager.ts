@@ -23,7 +23,7 @@ async function ensureDir(dirPath: string): Promise<void> {
 
 export { ensureDir };
 
-function PATHS(): PathResolvers {
+function PATHS() {
   const base = process.cwd();
   return {
     data: () => join(base, "data"),
@@ -41,7 +41,7 @@ export async function fmTempPath(
     const cleanPrefix = (prefix || "tmp").replace(/[^\w.-]+/g, "_");
     const cleanExt = (ext || "").toString().replace(/^[.]+/, "");
     const filename = `${cleanPrefix}-${Date.now()}-${Math.random().toString(16).slice(2)}${cleanExt ? `.${cleanExt}` : ""}`;
-    const baseDir = PATHS().commands();
+    const baseDir = PATHS().commands()!;
     await ensureDir(baseDir);
     const fullPath = join(baseDir, filename);
     return { success: true, path: fullPath };
@@ -56,7 +56,7 @@ export async function fmEnsureDirs(_event: IpcMainInvokeEvent, scope: string = "
     const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
     const resolved: Record<string, string> = {};
     for (const key of scopes) {
-      const resolver = paths[key];
+      const resolver = paths[key as keyof typeof paths];
       if (!resolver) continue;
       const p = resolver();
       await ensureDir(p);
@@ -225,6 +225,7 @@ export async function generateTree(
         const filtered = entries.filter((e) => !shouldExclude(e.name));
         for (let idx = 0; idx < filtered.length; idx++) {
           const entry = filtered[idx];
+          if (!entry) continue;
           const isLast = idx === filtered.length - 1;
           const connector = isLast ? "└── " : "├── ";
           const nextPrefix = prefix + (isLast ? "    " : "│   ");
@@ -243,7 +244,7 @@ export async function generateTree(
     const treeLines = await buildTree(basePath);
     lines.push(...treeLines);
     const treeContent = lines.join("\n");
-    const tempDir = PATHS().commands();
+    const tempDir = PATHS().commands()!;
     await ensureDir(tempDir);
     const timestamp = Date.now();
     const treeFile = join(tempDir, `tree-${timestamp}.txt`);

@@ -4,7 +4,7 @@
  * HTTP request handlers for all endpoints
  */
 
-import { IncomingMessage, ServerResponse } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { URL } from 'url';
 
 export type EndpointHandler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
@@ -69,20 +69,20 @@ export function createEndpointRouter(handlers: {
     } else if (path === '/api/sessions' && req.method === 'POST') {
       handlers.handleCreateSession(req, res);
     } else if (path.startsWith('/api/sessions/') && req.method === 'GET') {
-      const sessionId = path.split('/')[3];
+      const sessionId = path.split('/')[3] || '';
       if (path.endsWith('/messages')) {
         handlers.handleGetSessionMessages(sessionId.replace('/messages', ''), res);
       } else {
         handlers.handleGetSessionById(sessionId, res);
       }
     } else if (path.startsWith('/api/sessions/') && req.method === 'DELETE') {
-      const sessionId = path.split('/')[3];
+      const sessionId = path.split('/')[3] || '';
       handlers.handleDeleteSession(sessionId, res);
     } else if (path.startsWith('/api/sessions/') && req.method === 'PUT') {
-      const sessionId = path.split('/')[3];
+      const sessionId = path.split('/')[3] || '';
       handlers.handleRenameSession(req, sessionId, res);
     } else if (path.startsWith('/api/sessions/') && req.method === 'PATCH') {
-      const sessionId = path.split('/')[3];
+      const sessionId = path.split('/')[3] || '';
       handlers.handleUpdateSession(req, sessionId, res);
     } else if (path === '/api/compact' && req.method === 'POST') {
       handlers.handleCompact(req, res);
@@ -114,19 +114,19 @@ export function createEndpointRouter(handlers: {
     } else if (path === '/session' && req.method === 'POST') {
       handlers.handleCreateSession(req, res);
     } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'GET') {
-      const sessionId = path.split('/')[2];
+      const sessionId = path.split('/')[2] || '';
       handlers.handleGetSessionById(sessionId, res);
     } else if (path.startsWith('/session/') && path.endsWith('/messages') && req.method === 'GET') {
-      const sessionId = path.split('/')[2];
+      const sessionId = path.split('/')[2] || '';
       handlers.handleGetSessionMessages(sessionId, res);
     } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'DELETE') {
-      const sessionId = path.split('/')[2];
+      const sessionId = path.split('/')[2] || '';
       handlers.handleDeleteSession(sessionId, res);
     } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'PUT') {
-      const sessionId = path.split('/')[2];
+      const sessionId = path.split('/')[2] || '';
       handlers.handleRenameSession(req, sessionId, res);
     } else if (path.startsWith('/session/') && path.split('/').length === 3 && req.method === 'PATCH') {
-      const sessionId = path.split('/')[2];
+      const sessionId = path.split('/')[2] || '';
       handlers.handleUpdateSession(req, sessionId, res);
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
