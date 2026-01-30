@@ -151,7 +151,7 @@ export function setupSessionList(context: AppContext) {
 
         const forkTitle = `${original.title || 'Oturum'} (kopyası)`;
 
-        const response = (await (window.APIClient as any)?.forkConversation?.(sessionId)) || {} as any;
+        const response = (await window.APIClient?.forkConversation?.(sessionId)) as { sessionId?: string } | undefined || {};
 
         if (response.sessionId) {
           const forkedSession = {

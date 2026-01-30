@@ -44,6 +44,7 @@ export function validateFiles(files: FilePayload[]): { valid: boolean; message?:
  * @param {string} serviceName - Name of the upload service
  * @returns {Object} Formatted response
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatUploadResponse(
   uploadedLinks: string[],
   errors: UploadError[] = [],

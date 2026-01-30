@@ -6,6 +6,7 @@
 
 import type { MessageRecord } from '../message';
 import type { SessionStatus, PartUpdateInput, PermissionEntry, QuestionEntry } from '../message/types';
+import type { MessagePart, PermissionData, QuestionData, SessionData } from './types';
 
 // ============================================================================
 // Store Interface Types
@@ -101,7 +102,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     },
 
     handleMessageStart(data: Record<string, unknown>) {
-      const { MessageStore, SessionStore } = deps;
+      const { SessionStore } = deps;
       const messageId = data?.messageId as string | undefined;
       const role = data?.role as string | undefined;
 
@@ -193,7 +194,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const partId = `tool-${toolId}`;
-      const existingPart = (message.parts as Record<string, unknown>)[partId] as Record<string, any> | undefined;
+      const existingPart = (message.parts as Record<string, unknown>)[partId] as MessagePart | undefined;
 
       if (existingPart?.toolCall) {
         const currentOutput = existingPart.toolCall.output || '';
@@ -228,7 +229,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const partId = `tool-${toolId}`;
-      const existingPart = (message.parts as Record<string, unknown>)[partId] as Record<string, any> | undefined;
+      const existingPart = (message.parts as Record<string, unknown>)[partId] as MessagePart | undefined;
 
       if (existingPart?.toolCall) {
         const toolCall = existingPart.toolCall;
@@ -252,7 +253,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
 
         if (isWriteTool && hasDiffData && ToolRenderer?.addDiffViewer) {
           const filename = filePath || (toolCall.input as Record<string, unknown>)?.file_path || (toolCall.input as Record<string, unknown>)?.path || 'unknown';
-          const diffData = diff as Record<string, any> | undefined;
+          const diffData = diff as MessagePart | undefined;
           ToolRenderer.addDiffViewer(toolId, {
             filename,
             oldContent: diffData?.oldContent || '',
@@ -300,9 +301,9 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const thinkingPartId = (message.partIds as string[]).find(
-        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.type === 'thinking'
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as MessagePart)?.type === 'thinking'
       );
-      const existingPart = thinkingPartId ? (message.parts as Record<string, unknown>)[thinkingPartId] as Record<string, any> : null;
+      const existingPart = thinkingPartId ? (message.parts as Record<string, unknown>)[thinkingPartId] as MessagePart : null;
       const currentContent = existingPart?.thinking?.content || '';
       const normalizedContent = PartNormalizer?.decodeHtml?.(content) ?? content;
 
@@ -325,11 +326,11 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const thinkingPartId = (message.partIds as string[]).find(
-        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.type === 'thinking'
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as MessagePart)?.type === 'thinking'
       );
 
       if (thinkingPartId) {
-        const existingPart = (message.parts as Record<string, unknown>)[thinkingPartId] as Record<string, any>;
+        const existingPart = (message.parts as Record<string, unknown>)[thinkingPartId] as MessagePart;
         MessageStore?.addOrUpdatePart?.({
           messageId: targetMessageId,
           partId: thinkingPartId,
@@ -342,8 +343,8 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Session Handlers
     handleSessionStarted(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const session = (data?.session || {}) as Record<string, any>;
-      const sessionId = session.id || data?.sessionId;
+      const session = (data?.session || {}) as SessionData;
+      const sessionId = (session.id || data?.sessionId) as string;
 
       if (!sessionId) {
         console.warn('[StoreBridge] session.started without sessionId');
@@ -408,7 +409,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Permission Handlers
     handlePermissionRequested(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const permission = data?.permission as Record<string, any> | undefined;
+      const permission = data?.permission as PermissionData | undefined;
       const messageId = data?.messageId as string | undefined;
       const toolCallId = data?.toolCallId as string | undefined;
 
@@ -450,7 +451,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Question Handlers
     handleQuestionRequested(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const question = data?.question as Record<string, any> | undefined;
+      const question = data?.question as QuestionData | undefined;
       const messageId = data?.messageId as string | undefined;
 
       if (!question?.id) return;
@@ -462,7 +463,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
         messageId: targetMessageId ?? undefined,
         question: {
           id: question.id,
-          text: question.text || question.question || '',
+          text: question.text || '',
           type: question.type || 'text',
           options: question.options || [],
           default: question.default,
@@ -531,10 +532,10 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const stepPartId = (message.partIds as string[]).find(
-        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.step?.stepId === stepId
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as MessagePart)?.step?.stepId === stepId
       ) || `step-${stepId}`;
 
-      const existingPart = (message.parts as Record<string, unknown>)[stepPartId] as Record<string, any> | undefined;
+      const existingPart = (message.parts as Record<string, unknown>)[stepPartId] as MessagePart | undefined;
 
       MessageStore?.addOrUpdatePart?.({
         messageId: targetMessageId,

@@ -120,10 +120,10 @@ export interface AppContext {
   _handleStatusChange: (data: SSEEventData) => void;
   _handleError: (data: SSEEventData) => void;
   _handlePermissionRequest: (data: PermissionRequestData) => void;
-  _handlePermissionResponse: (partId: string, approved: boolean) => Promise<void>;
+  _handlePermissionResponse: (approved: boolean) => void;
   _handleQuestion: (data: QuestionData) => void;
   _selectOption: (value: string) => void;
-  _handleQuestionResponse: (questionId: string, answer: string) => Promise<void>;
+  _handleQuestionResponse: () => void;
 
   // Message actions
   _handleSendMessage: () => Promise<void>;

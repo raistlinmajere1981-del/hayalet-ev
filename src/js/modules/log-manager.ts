@@ -50,6 +50,12 @@ export interface LogEntry {
   visibility: LogVisibility;
 }
 
+interface ActiveOperation {
+  name: string;
+  startTime: number;
+  [key: string]: unknown;
+}
+
 class LogManagerClass {
   logs: LogEntry[];
   maxMemoryLogs: number;
@@ -58,7 +64,7 @@ class LogManagerClass {
   lastThrottle: Map<string, number>;
   _consoleListenerSetup: boolean;
   _initialized: boolean;
-  _activeOperations: Map<string, unknown>;
+  _activeOperations: Map<string, ActiveOperation>;
   _correlationCounter: number;
 
   constructor() {
@@ -212,12 +218,12 @@ class LogManagerClass {
     const operation = this._activeOperations.get(correlationId);
     if (!operation) return;
     
-    const duration = Date.now() - (operation as any).startTime;
+    const duration = Date.now() - operation.startTime;
     
     this.addEvent(
-      (operation as any).name,
+      operation.name,
       status === 'error' ? 'error' : 'info',
-      `İşlem ${status === 'success' ? 'tamamlandı' : status === 'error' ? 'başarısız' : 'iptal edildi'}: ${(operation as any).name} (${duration}ms)`,
+      `İşlem ${status === 'success' ? 'tamamlandı' : status === 'error' ? 'başarısız' : 'iptal edildi'}: ${operation.name} (${duration}ms)`,
       { correlationId, status, duration, result }
     );
     

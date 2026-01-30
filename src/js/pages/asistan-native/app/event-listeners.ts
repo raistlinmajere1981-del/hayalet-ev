@@ -4,6 +4,19 @@
 
 import type { AppContext } from './types';
 
+declare global {
+  interface Window {
+    PromptHandler?: {
+      setValue?: (value: string) => void;
+      focus?: () => void;
+      setProcessing?: (processing: boolean) => void;
+    };
+    SSEClient?: {
+      disconnectAll?: () => void;
+    };
+  }
+}
+
 
 
 export function setupEventListeners(context: AppContext) {
@@ -16,8 +29,8 @@ export function setupEventListeners(context: AppContext) {
         btn.addEventListener('click', () => {
           const prompt = btn.getAttribute('data-prompt');
           if (prompt) {
-            (window.PromptHandler as any)?.setValue?.(prompt);
-            (window.PromptHandler as any)?.focus?.();
+            window.PromptHandler?.setValue?.(prompt);
+            window.PromptHandler?.focus?.();
           }
         });
       });
@@ -26,16 +39,16 @@ export function setupEventListeners(context: AppContext) {
       const approveBtn = document.getElementById('btn-approve');
       const denyBtn = document.getElementById('btn-deny');
       if (approveBtn) {
-        approveBtn.addEventListener('click', () => (context as any)._handlePermissionResponse(true));
+        approveBtn.addEventListener('click', () => context._handlePermissionResponse(true));
       }
       if (denyBtn) {
-        denyBtn.addEventListener('click', () => (context as any)._handlePermissionResponse(false));
+        denyBtn.addEventListener('click', () => context._handlePermissionResponse(false));
       }
 
       // Question modal
       const answerBtn = document.getElementById('btn-answer');
       if (answerBtn) {
-        answerBtn.addEventListener('click', () => (context as any)._handleQuestionResponse());
+        answerBtn.addEventListener('click', () => context._handleQuestionResponse());
       }
 
       // Stop button
@@ -136,7 +149,7 @@ export function setupEventListeners(context: AppContext) {
       }
 
       if (typeof window.SSEClient !== 'undefined') {
-        (window.SSEClient as any)?.disconnectAll?.();
+        window.SSEClient?.disconnectAll?.();
       }
 
       if (typeof window.APIClient !== 'undefined') {

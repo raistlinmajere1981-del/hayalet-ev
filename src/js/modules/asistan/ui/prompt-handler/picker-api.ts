@@ -4,6 +4,10 @@
 
 import type { MentionResult, CommandResult } from './types.js';
 
+interface Agent {
+  name: string;
+}
+
 function createPickerApi(
   inputEl: HTMLTextAreaElement | null,
   getValueFn: () => string,
@@ -56,7 +60,7 @@ function createPickerApi(
 
     if (typeof window.AgentModelSelector !== 'undefined') {
       const agents = (window.AgentModelSelector).getAvailableAgents?.() || [];
-      (agents as any[]).forEach((agent: { name: string }) => {
+      (agents as Agent[]).forEach((agent) => {
         items.push({
           name: agent.name,
           path: undefined,

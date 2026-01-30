@@ -20,6 +20,15 @@ import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } 
 import { isSlotUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
 import { INTERVALS, DELAYS } from "../constants/index.js";
 
+interface WebviewElement {
+  getURL?: () => string;
+  executeJavaScript: (script: string) => Promise<unknown>;
+  insertCSS?: (css: string) => Promise<void>;
+  addEventListener?: (event: string, handler: (...args: unknown[]) => void) => void;
+  removeEventListener?: (event: string, handler: (...args: unknown[]) => void) => void;
+  [key: string]: unknown;
+}
+
 // ============================================
 // ============================================
 const TIMING_CONFIG = {
@@ -232,7 +241,7 @@ class TrafficManagerClass {
 
     if (hasHandlers(provider)) return;
 
-    attachWebviewEvents(provider, webviewEl as any, {
+    attachWebviewEvents(provider, webviewEl, {
       onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
       onDomReady: () => {},
       onFailLoad: (prov: string) => this.setAllUnreachable(prov),
@@ -439,7 +448,7 @@ class TrafficManagerClass {
 
     if (!webview) return;
     
-    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview as any, currentHref);
+    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
     Object.assign(viewState, loadingResult.newState);
     this.setIndicator(provider, "loading", loadingResult.indicator);
     if (loadingResult.event) {
@@ -471,7 +480,7 @@ class TrafficManagerClass {
       }
     }
 
-    const sendResult = this.sendTracker.handleProbe(provider, viewState as any, data, now);
+    const sendResult = this.sendTracker.handleProbe(provider, viewState, data, now);
     Object.assign(viewState, sendResult.newState);
     this.setIndicator(provider, "send", sendResult.indicator);
 

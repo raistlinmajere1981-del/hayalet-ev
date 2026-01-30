@@ -74,3 +74,13 @@ export interface QuestionData {
   options?: unknown[];
   default?: unknown;
 }
+
+export interface MessagePart {
+  type?: string;
+  content?: string;
+  toolCall?: ToolCallData;
+  thinking?: ThinkingData;
+  step?: StepData;
+  diff?: DiffViewerData;
+  [key: string]: unknown;
+}

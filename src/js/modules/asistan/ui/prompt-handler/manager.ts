@@ -444,7 +444,7 @@ const PromptHandler = {
     }
 
     container.classList.add('has-attachments');
-    container.innerHTML = (attachments as any[]).map((att: AttachmentItem) => renderAttachmentChip(att)).join('');
+    container.innerHTML = (attachments as AttachmentItem[]).map((att) => renderAttachmentChip(att)).join('');
 
     container.querySelectorAll('.remove-attachment').forEach((btn) => {
       btn.addEventListener('click', (e) => {

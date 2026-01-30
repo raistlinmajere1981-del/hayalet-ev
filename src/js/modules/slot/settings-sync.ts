@@ -31,7 +31,7 @@ interface Account {
   provider?: string;
 }
 
-interface Settings {
+export interface Settings {
   slots?: Record<string, SlotSettings>;
   accounts?: Account[];
   asistanSlot?: SlotSettings;

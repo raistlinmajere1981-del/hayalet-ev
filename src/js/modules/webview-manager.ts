@@ -19,6 +19,11 @@ import { AppState } from "./app-state.js";
 import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import { PendingArchiveHandler } from "./webview/pending-archive-handler.js";
 
+interface FileEntry {
+  name?: string;
+  path?: string;
+}
+
 class WebviewManagerClass {
   settings: AppSettings | null;
 
@@ -59,7 +64,7 @@ class WebviewManagerClass {
    */
   attach(provider: string, webview: WebviewTag, opts: Record<string, unknown> = {}) {
     const providerId = AppState.getProviderIdForSlot(provider);
-    LifecycleManager.attach(provider, webview, { ...opts, providerId: providerId as any });
+    LifecycleManager.attach(provider, webview, { ...opts, providerId: providerId || undefined });
   }
 
   /**
@@ -113,7 +118,7 @@ class WebviewManagerClass {
    */
   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
-    return MessageSender.send({ provider, text, attachments: attachments as any[], webview: webview as any });
+    return MessageSender.send({ provider, text, attachments: attachments as FileEntry[], webview });
   }
 
   // ==========================================
@@ -124,7 +129,7 @@ class WebviewManagerClass {
    * @param {Object} coreEngine - CoreEngine instance
    */
   initSyncer(coreEngine: unknown) {
-    ConversationSyncer.init(coreEngine as any, ((provider: string) => this.resolveWebview(provider)));
+    ConversationSyncer.init(coreEngine, ((provider: string) => this.resolveWebview(provider)));
   }
 
   /**

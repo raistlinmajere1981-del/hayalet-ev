@@ -5,6 +5,18 @@
  * Handles event mapping, echo filtering, and optimistic updates.
  */
 
+declare global {
+  interface Window {
+    PartNormalizer: {
+      decodeHtml?: (text: string) => string;
+    };
+    ToolRenderer: {
+      render?: (toolCall: unknown) => void;
+    };
+    StoreBridge: typeof StoreBridge;
+  }
+}
+
 import { InstanceStore } from '../instance-store.js';
 import { SessionStore } from '../session-store.js';
 import { MessageStore } from '../message/index';
@@ -48,8 +60,8 @@ const StoreBridge = {
         MessageStore,
         SessionStore,
         InstanceStore,
-        PartNormalizer: (window as any).PartNormalizer,
-        ToolRenderer: (window as any).ToolRenderer,
+        PartNormalizer: window.PartNormalizer,
+        ToolRenderer: window.ToolRenderer,
         get currentMessageId() {
           return StoreBridge._streamingState.currentMessageId;
         },
@@ -77,8 +89,9 @@ const StoreBridge = {
       console.log('[StoreBridge] Event:', eventType, enrichedData);
     }
 
-    // Route to appropriate handler (handlers is guaranteed non-null after _initHandlers)
-    const handlers = this._handlers!;
+    // Route to appropriate handler
+    if (!this._handlers) return;
+    const handlers = this._handlers;
     switch (eventType) {
       // Message events
       case 'message.delta':
@@ -242,4 +255,4 @@ const StoreBridge = {
 export { StoreBridge };
 
 // Global compatibility
-(window as any).StoreBridge = StoreBridge;
+window.StoreBridge = StoreBridge;

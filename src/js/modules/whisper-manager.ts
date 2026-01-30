@@ -94,7 +94,7 @@ class WhisperManagerClass {
         return { pending: [], done: [] };
       }
       
-      const res = await window.electronAPI?.whisperLoad?.({ id: accountInfo.id } as any);
+      const res = await window.electronAPI?.whisperLoad?.({ id: accountInfo.id } as { id: string });
       if (res && typeof res === "object") {
         return {
           pending: Array.isArray(res.pending)

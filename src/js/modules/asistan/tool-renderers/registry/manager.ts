@@ -6,6 +6,12 @@
  * Adapted from CodeNomad's tool-call/resolveToolRenderer pattern
  */
 
+declare global {
+  interface Window {
+    ToolRendererRegistry: typeof ToolRendererRegistry;
+  }
+}
+
 import type {
   ToolRendererConfig,
   ToolCallData,
@@ -213,6 +219,6 @@ const ToolRendererRegistry = {
 };
 
 // Global export (backward compatibility)
-(window as any).ToolRendererRegistry = ToolRendererRegistry;
+window.ToolRendererRegistry = ToolRendererRegistry;
 
 export { ToolRendererRegistry };

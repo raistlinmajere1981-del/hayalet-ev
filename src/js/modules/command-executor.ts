@@ -20,6 +20,12 @@ interface CommandJob {
   };
 }
 
+interface WebviewSendResult {
+  success: boolean;
+  message?: string;
+  code?: string;
+}
+
 class CommandExecutorClass {
   coreEngine: typeof CoreEngine | null;
 
@@ -52,7 +58,7 @@ class CommandExecutorClass {
       provider: job.provider,
       text: job.message || "",
       attachments: job.attachments,
-    });
+    }) as WebviewSendResult | undefined;
 
     const duration = Date.now() - startTime;
 
@@ -64,12 +70,12 @@ class CommandExecutorClass {
         {
           provider: job.provider,
           duration,
-          errorCode: (result as any)?.code || "E_WEBVIEW_SEND",
+          errorCode: result?.code || "E_WEBVIEW_SEND",
         },
         job.id
       );
-      const err = new Error((result as any)?.message || "E_WEBVIEW_SEND") as Error & { code?: string };
-      err.code = (result as any)?.code || "E_WEBVIEW_SEND";
+      const err = new Error(result?.message || "E_WEBVIEW_SEND") as Error & { code?: string };
+      err.code = result?.code || "E_WEBVIEW_SEND";
       throw err;
     }
     

@@ -4,6 +4,19 @@ import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
 
+
+interface RawConversationEntry {
+  id?: string;
+  webUrl?: string;
+  title?: string;
+  updatedAt?: number;
+  createdAt?: number;
+}
+
+interface SlotSettings {
+  accountId?: string;
+  [key: string]: unknown;
+}
 interface ConversationEntry {
   conversationId: string;
   id: string;
@@ -110,11 +123,11 @@ class ConversationListManagerClass {
       // Provider bilgisini slot olarak ekle (ai1/ai2)
       this.entries = [
         ...ai1Entries.map((e: unknown) => {
-          const entry = e as any;
+          const entry = e as RawConversationEntry;
           return { conversationId: String(entry.id || ''), id: String(entry.id || ''), webUrl: String(entry.webUrl || ''), provider: "ai1" as const, mtime: entry.updatedAt || entry.createdAt || 0, folder: '', title: String(entry.title || '') };
         }),
         ...ai2Entries.map((e: unknown) => {
-          const entry = e as any;
+          const entry = e as RawConversationEntry;
           return { conversationId: String(entry.id || ''), id: String(entry.id || ''), webUrl: String(entry.webUrl || ''), provider: "ai2" as const, mtime: entry.updatedAt || entry.createdAt || 0, folder: '', title: String(entry.title || '') };
         }),
       ];
@@ -156,7 +169,7 @@ class ConversationListManagerClass {
     if (!select) return;
 
     const settings = SettingsManager.getSnapshot();
-    const slot = (settings?.slots?.[provider] || {}) as any;
+    const slot = (settings?.slots?.[provider] || {}) as SlotSettings;
     const hasAccount = !!slot.accountId;
     const isConnected = SlotController.isConnected(provider);
 

@@ -3,30 +3,50 @@
  * Shell mode toggle, command execution
  */
 
+declare global {
+  interface Window {
+    MessageRenderer?: {
+      clear?: () => void;
+      addMessage?: (data: unknown) => void;
+    };
+    StoreBridge?: {
+      clear?: () => void;
+    };
+    OpenCodeApp?: {
+      _handleNewSession?: () => Promise<void>;
+    };
+    APIClient?: {
+      cancel?: () => Promise<void>;
+      compact?: () => Promise<{ compactedTokens?: number }>;
+      retry?: () => Promise<void>;
+    };
+  }
+}
+
 async function executeCommand(commandName: string, clearInputFn: () => void) {
   clearInputFn();
 
   switch (commandName) {
     case 'clear':
       if (typeof window.MessageRenderer !== 'undefined') {
-        (window.MessageRenderer as any)?.clear?.();
+        window.MessageRenderer?.clear?.();
       }
       if (typeof window.StoreBridge !== 'undefined') {
-        (window.StoreBridge as any)?.clear?.();
+        window.StoreBridge?.clear?.();
       }
       console.log('[PromptHandler] Chat cleared');
       break;
 
     case 'new':
       if (typeof window.OpenCodeApp !== 'undefined') {
-        await (window.OpenCodeApp as any)?._handleNewSession?.();
+        await window.OpenCodeApp?._handleNewSession?.();
       }
       break;
 
     case 'cancel':
       if (typeof window.APIClient !== 'undefined') {
         try {
-          await (window.APIClient as any)?.cancel?.();
+          await window.APIClient?.cancel?.();
           console.log('[PromptHandler] Operation cancelled');
         } catch (err) {
           console.error('[PromptHandler] Cancel failed:', err);
@@ -52,7 +72,7 @@ async function executeCommand(commandName: string, clearInputFn: () => void) {
 - **/** - Komut çalıştır
 - **!** - Shell modu
 - **↑↓** - Geçmişte gezin`;
-        (window.MessageRenderer as any)?.addMessage?.({
+        window.MessageRenderer?.addMessage?.({
           id: `msg-help-${Date.now()}`,
           role: 'assistant',
           content: helpContent,
@@ -64,11 +84,11 @@ async function executeCommand(commandName: string, clearInputFn: () => void) {
     case 'compact':
       if (typeof window.APIClient !== 'undefined') {
         try {
-          const result = (await (window.APIClient as any)?.compact?.()) as { compactedTokens?: number };
+          const result = (await window.APIClient?.compact?.()) as { compactedTokens?: number } | undefined;
           console.log('[PromptHandler] Compact result:', result);
-          if (result.compactedTokens) {
+          if (result?.compactedTokens) {
             if (typeof window.MessageRenderer !== 'undefined') {
-              (window.MessageRenderer as any)?.addMessage?.({
+              window.MessageRenderer?.addMessage?.({
                 id: `msg-compact-${Date.now()}`,
                 role: 'assistant',
                 content: `✅ Context sıkıştırıldı. Kazanç: ${result.compactedTokens} token`,
@@ -85,7 +105,7 @@ async function executeCommand(commandName: string, clearInputFn: () => void) {
     case 'retry':
       if (typeof window.APIClient !== 'undefined') {
         try {
-          await (window.APIClient as any)?.retry?.();
+          await window.APIClient?.retry?.();
           console.log('[PromptHandler] Retry initiated');
         } catch (err) {
           console.error('[PromptHandler] Retry failed:', err);

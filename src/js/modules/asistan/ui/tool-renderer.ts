@@ -5,6 +5,12 @@
  * Expand/collapse, status gösterimi ve output rendering içerir.
  */
 
+declare global {
+  interface Window {
+    ToolRenderer: typeof ToolRenderer;
+  }
+}
+
 const ToolRenderer = {
   /** @type {Map<string, HTMLElement>} */
   _toolElements: new Map() as Map<string, HTMLElement>,
@@ -1375,4 +1381,4 @@ const ToolRenderer = {
 export { ToolRenderer };
 
 // Global export (backward compatibility)
-(window as any).ToolRenderer = ToolRenderer;
+window.ToolRenderer = ToolRenderer;

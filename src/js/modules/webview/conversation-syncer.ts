@@ -172,7 +172,7 @@ class ConversationSyncerClass {
     this._syncInProgress[provider] = true;
 
     try {
-      await waitForDomReady(webview as any);
+      await waitForDomReady(webview);
 
       const providerId = AppState.getProviderIdForSlot(provider);
       const providerModule = providerId ? getProvider(providerId) : null;

@@ -5,6 +5,12 @@
  * Handles HTML entity decoding, validation, and sanitization of message parts.
  */
 
+declare global {
+  interface Window {
+    PartNormalizer: typeof PartNormalizer;
+  }
+}
+
 // =============================================================================
 // HTML Entity Decoding
 // =============================================================================
@@ -198,4 +204,4 @@ const PartNormalizer = {
 export { PartNormalizer };
 
 // Global export (backward compatibility)
-(window as any).PartNormalizer = PartNormalizer;
+window.PartNormalizer = PartNormalizer;

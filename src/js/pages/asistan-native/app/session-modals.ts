@@ -2,7 +2,7 @@
  * Session Modals - Rename, delete, shell output
  */
 
-import type { AppContext } from './types';
+import type { AppContext, SessionRecord } from './types';
 
 export function setupSessionModals(context: AppContext) {
   return {
@@ -13,7 +13,7 @@ export function setupSessionModals(context: AppContext) {
       if (modal && input) {
         context._pendingRenameSessionId = sessionId;
 
-        const session = typeof window.SessionStore !== 'undefined' ? ((window.SessionStore)?.getAllSessions?.() || []).find((s: any) => s.id === sessionId) : null;
+        const session = typeof window.SessionStore !== 'undefined' ? ((window.SessionStore)?.getAllSessions?.() || []).find((s: SessionRecord) => s.id === sessionId) : null;
         if (session) {
           input.value = session.title || '';
         }
@@ -47,7 +47,7 @@ export function setupSessionModals(context: AppContext) {
       if (modal) {
         context._pendingDeleteSessionId = sessionId;
 
-        const session = typeof window.SessionStore !== 'undefined' ? ((window.SessionStore)?.getAllSessions?.() || []).find((s: any) => s.id === sessionId) : null;
+        const session = typeof window.SessionStore !== 'undefined' ? ((window.SessionStore)?.getAllSessions?.() || []).find((s: SessionRecord) => s.id === sessionId) : null;
         const titleEl = modal.querySelector('.delete-title');
         if (titleEl && session) {
           titleEl.textContent = `"${session.title || 'Adsız Oturum'}" silinecek mi?`;

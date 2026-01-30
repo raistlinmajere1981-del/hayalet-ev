@@ -91,7 +91,7 @@ export class WebviewPanel {
           this.updateUrlDisplay(provider, state as TrafficState);
         } else {
           (["ai1", "ai2"] as SlotType[]).forEach((p) => {
-            this.updateUrlDisplay(p, TrafficManager.state[p] as any);
+            this.updateUrlDisplay(p, TrafficManager.state[p] as Record<string, unknown>);
           });
         }
       });
@@ -400,7 +400,7 @@ export class WebviewPanel {
       if (isExcluded) return;
 
       const currentProviderId = AppState.getProviderIdForSlot(type) || providerId;
-      const cfg = currentProviderId ? ProviderRegistry.get(currentProviderId as any) : null;
+      const cfg = currentProviderId ? ProviderRegistry.get(currentProviderId as string) : null;
       if (cfg) {
         try {
           const configScript = `

@@ -11,8 +11,12 @@
 import { LogManager } from "../log-manager.js";
 
 /** CoreEngine interface - relay'lerin ihtiyaç duyduğu metodlar */
- 
-type CoreEngineRef = unknown;
+interface CoreEngineInterface {
+  sendToTargets?: (payload: { targets?: string[]; message?: string; [key: string]: unknown }) => Promise<unknown>;
+  sendMessage?: (payload: { provider?: string; text?: string; attachments?: unknown[]; [key: string]: unknown }) => Promise<unknown>;
+}
+
+type CoreEngineRef = CoreEngineInterface;
 
 /** Relay session bilgisi - esnek yapı, alt sınıflar genişletebilir */
 interface RelaySession {
