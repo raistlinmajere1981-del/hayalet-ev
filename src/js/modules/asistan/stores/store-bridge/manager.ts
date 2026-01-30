@@ -40,7 +40,7 @@ const StoreBridge = {
   _streamingState: streamingState,
 
   // Create event handler functions
-  _handlers: null,
+  _handlers: null as ReturnType<typeof createEventHandlers> | null,
 
   _initHandlers() {
     if (!this._handlers) {
@@ -48,8 +48,8 @@ const StoreBridge = {
         MessageStore,
         SessionStore,
         InstanceStore,
-        PartNormalizer: (window).PartNormalizer,
-        ToolRenderer: (window).ToolRenderer,
+        PartNormalizer: (window as any).PartNormalizer,
+        ToolRenderer: (window as any).ToolRenderer,
         get currentMessageId() {
           return StoreBridge._streamingState.currentMessageId;
         },
@@ -77,91 +77,92 @@ const StoreBridge = {
       console.log('[StoreBridge] Event:', eventType, enrichedData);
     }
 
-    // Route to appropriate handler
+    // Route to appropriate handler (handlers is guaranteed non-null after _initHandlers)
+    const handlers = this._handlers!;
     switch (eventType) {
       // Message events
       case 'message.delta':
       case 'message.part.updated':
-        this._handlers.handleMessageDelta(enrichedData);
+        handlers.handleMessageDelta(enrichedData);
         break;
 
       case 'message.start':
       case 'message.created':
-        this._handlers.handleMessageStart(enrichedData);
+        handlers.handleMessageStart(enrichedData);
         break;
 
       case 'message.end':
       case 'message.completed':
-        this._handlers.handleMessageCompleted(enrichedData);
+        handlers.handleMessageCompleted(enrichedData);
         break;
 
       // Tool events
       case 'tool.start':
-        this._handlers.handleToolStart(enrichedData);
+        handlers.handleToolStart(enrichedData);
         break;
 
       case 'tool.output':
-        this._handlers.handleToolOutput(enrichedData);
+        handlers.handleToolOutput(enrichedData);
         break;
 
       case 'tool.end':
-        this._handlers.handleToolEnd(enrichedData);
+        handlers.handleToolEnd(enrichedData);
         break;
 
       // Thinking events
       case 'thinking.start':
-        this._handlers.handleThinkingStart(enrichedData);
+        handlers.handleThinkingStart(enrichedData);
         break;
 
       case 'thinking.delta':
-        this._handlers.handleThinkingDelta(enrichedData);
+        handlers.handleThinkingDelta(enrichedData);
         break;
 
       case 'thinking.end':
-        this._handlers.handleThinkingEnd(enrichedData);
+        handlers.handleThinkingEnd(enrichedData);
         break;
 
       // Session events
       case 'session.started':
-        this._handlers.handleSessionStarted(enrichedData);
+        handlers.handleSessionStarted(enrichedData);
         break;
 
       case 'session.stopped':
       case 'session.idle':
       case 'session.completed':
-        this._handlers.handleSessionIdle(enrichedData);
+        handlers.handleSessionIdle(enrichedData);
         break;
 
       // Status events
       case 'status.change':
-        this._handlers.handleStatusChange(enrichedData);
+        handlers.handleStatusChange(enrichedData);
         break;
 
       // Permission events
       case 'permission.requested':
-        this._handlers.handlePermissionRequested(enrichedData);
+        handlers.handlePermissionRequested(enrichedData);
         break;
 
       case 'permission.resolved':
-        this._handlers.handlePermissionResolved(enrichedData);
+        handlers.handlePermissionResolved(enrichedData);
         break;
 
       // Question events
       case 'question.requested':
-        this._handlers.handleQuestionRequested(enrichedData);
+        handlers.handleQuestionRequested(enrichedData);
         break;
 
       case 'question.answered':
-        this._handlers.handleQuestionAnswered(enrichedData);
+        handlers.handleQuestionAnswered(enrichedData);
         break;
 
       // Step events
       case 'step.start':
-        this._handlers.handleStepStart(enrichedData);
+        handlers.handleStepStart(enrichedData);
         break;
 
       case 'step.finish':
-        this._handlers.handleStepFinish(enrichedData);
+        handlers.handleStepFinish(enrichedData);
         break;
 
       default:
@@ -234,13 +235,11 @@ const StoreBridge = {
 
   setDebug(enabled: boolean) {
     this._debug = enabled;
-    if (this._handlers) {
-      (this._handlers).debug = enabled;
-    }
+    // Note: handlers don't have a debug property, they use the deps.debug getter
   },
 };
 
 export { StoreBridge };
 
 // Global compatibility
-(window).StoreBridge = StoreBridge;
+(window as any).StoreBridge = StoreBridge;

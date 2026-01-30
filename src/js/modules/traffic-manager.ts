@@ -232,7 +232,7 @@ class TrafficManagerClass {
 
     if (hasHandlers(provider)) return;
 
-    attachWebviewEvents(provider, webviewEl, {
+    attachWebviewEvents(provider, webviewEl as any, {
       onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
       onDomReady: () => {},
       onFailLoad: (prov: string) => this.setAllUnreachable(prov),
@@ -439,7 +439,7 @@ class TrafficManagerClass {
 
     if (!webview) return;
     
-    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
+    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview as any, currentHref);
     Object.assign(viewState, loadingResult.newState);
     this.setIndicator(provider, "loading", loadingResult.indicator);
     if (loadingResult.event) {
@@ -471,7 +471,7 @@ class TrafficManagerClass {
       }
     }
 
-    const sendResult = this.sendTracker.handleProbe(provider, viewState, data, now);
+    const sendResult = this.sendTracker.handleProbe(provider, viewState as any, data, now);
     Object.assign(viewState, sendResult.newState);
     this.setIndicator(provider, "send", sendResult.indicator);
 

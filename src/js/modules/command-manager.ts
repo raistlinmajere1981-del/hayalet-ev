@@ -289,9 +289,9 @@ class CommandManagerClass {
       {
         provider: target,
         command,
-        message: (payload).message || "",
+        message: (payload as any).message || "",
         payload,
-        run: executor || undefined,
+        run: (executor as any) || undefined,
       },
     ]);
     return job;

@@ -57,7 +57,7 @@ const PromptHandler = {
 
     // Subscribe to AttachmentStore
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore).subscribe((event: unknown) => {
+      window.AttachmentStore?.subscribe?.((event: unknown) => {
         const e = event as { type?: string };
         if (
           e.type === 'attachment:added' ||
@@ -398,7 +398,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore).removeAttachment(sessionId, attachmentId);
+      window.AttachmentStore?.removeAttachment?.(sessionId, attachmentId);
     } else {
       this._attachments = this._attachments.filter((p: string) => p !== attachmentId);
       this._renderAttachments();
@@ -411,7 +411,7 @@ const PromptHandler = {
 
     let attachments = [];
     if (typeof window.AttachmentStore !== 'undefined') {
-      attachments = (window.AttachmentStore).getAttachments(sessionId) || [];
+      attachments = window.AttachmentStore?.getAttachments?.(sessionId) || [];
     } else {
       attachments = this._attachments.map((path: string) => ({
         id: path,
@@ -444,7 +444,7 @@ const PromptHandler = {
     }
 
     container.classList.add('has-attachments');
-    container.innerHTML = attachments.map((att: AttachmentItem) => renderAttachmentChip(att)).join('');
+    container.innerHTML = (attachments as any[]).map((att: AttachmentItem) => renderAttachmentChip(att)).join('');
 
     container.querySelectorAll('.remove-attachment').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -469,9 +469,9 @@ const PromptHandler = {
 
     if (typeof window.AttachmentStore !== 'undefined') {
       const sessionId = this._getCurrentSessionId();
-      const attachments = await (window.AttachmentStore).handlePaste(e, sessionId);
+      const attachments = await window.AttachmentStore?.handlePaste?.(e, sessionId);
 
-      if (attachments.length > 0) {
+      if (attachments && attachments.length > 0) {
         console.log('[PromptHandler] Pasted attachments:', attachments.length);
         const hasOnlyImages = attachments.every((a: { type?: string }) => a.type === 'image');
         if (hasOnlyImages) {
@@ -511,8 +511,10 @@ const PromptHandler = {
 
     if (typeof window.AttachmentStore !== 'undefined') {
       const sessionId = this._getCurrentSessionId();
-      const attachments = await (window.AttachmentStore).handleDrop(e, sessionId);
-      console.log('[PromptHandler] Dropped attachments:', attachments.length);
+      const attachments = await window.AttachmentStore?.handleDrop?.(e, sessionId);
+      if (attachments) {
+        console.log('[PromptHandler] Dropped attachments:', attachments.length);
+      }
     } else {
       Array.from(files as FileList).forEach((file) => {
         this._addAttachment({
@@ -545,7 +547,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      return (window.AttachmentStore).getAttachmentsForAPI(sessionId);
+      return window.AttachmentStore?.getAttachmentsForAPI?.(sessionId) || [];
     }
 
     return this._attachments.map((path: string) => ({
@@ -559,7 +561,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore).clearAttachments(sessionId);
+      window.AttachmentStore?.clearAttachments?.(sessionId);
     } else {
       this._attachments = [];
       this._renderAttachments();

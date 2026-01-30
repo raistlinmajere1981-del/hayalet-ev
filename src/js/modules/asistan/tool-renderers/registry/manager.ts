@@ -213,6 +213,6 @@ const ToolRendererRegistry = {
 };
 
 // Global export (backward compatibility)
-(window).ToolRendererRegistry = ToolRendererRegistry;
+(window as any).ToolRendererRegistry = ToolRendererRegistry;
 
 export { ToolRendererRegistry };

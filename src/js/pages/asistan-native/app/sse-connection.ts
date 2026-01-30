@@ -10,7 +10,7 @@ export function setupSSEConnection(context: AppContext) {
       context._updateStatus('connecting', 'Bağlanıyor...');
 
       if (window.SSEClient && window.SSEClient.on) {
-      window.SSEClient?.on?.('connection', (data: unknown) => context._handleConnectionChange(data));
+      window.SSEClient?.on?.('connection', (data: unknown) => context._handleConnectionChange(data as any));
 
       window.SSEClient?.on?.('session.started', (data: unknown) => {
         const d = data as SSEEventData;
@@ -126,7 +126,7 @@ export function setupSSEConnection(context: AppContext) {
         context._handleStatusChange({ data: { status: 'idle' } });
       });
 
-      window.SSEClient?.on?.('error', (data: unknown) => context._handleError(data));
+      window.SSEClient?.on?.('error', (data: unknown) => context._handleError(data as any));
       }
 
       const connected = await window.SSEClient?.connect?.();

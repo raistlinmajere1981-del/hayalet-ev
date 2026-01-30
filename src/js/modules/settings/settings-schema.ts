@@ -124,7 +124,7 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
       fileMethod: slotData.fileMethod || "dragdrop",
     };
   });
-  out.slots = slots as { ai1: SlotSettings; ai2: SlotSettings; [key: string]: SlotSettings };
+  out.slots = slots as unknown as { ai1: SlotSettings; ai2: SlotSettings; [key: string]: SlotSettings };
 
   // Asistan slotu (AI0)
   if (isPlainObject(r.asistanSlot)) {
@@ -159,7 +159,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.asistanAccounts = [DEFAULT_ASISTAN_ACCOUNT];
   }
 
-  for (const slot of ["ai1", "ai2"]) {
+  // Ensure slots is initialized
+  if (!merged.slots) {
+    merged.slots = defaults.slots;
+  }
+
+  for (const slot of ["ai1", "ai2"] as const) {
     const id = merged.slots?.[slot]?.accountId;
     if (id === "" || typeof id === "undefined") {
       merged.slots[slot].accountId = null;
@@ -179,58 +184,60 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!isPlainObject(merged.asistanSlot)) {
     merged.asistanSlot = defaultSettings().asistanSlot;
   }
-  if (merged.asistanSlot.accountId === "" || typeof merged.asistanSlot.accountId === "undefined") {
+  if (merged.asistanSlot && (merged.asistanSlot.accountId === "" || typeof merged.asistanSlot.accountId === "undefined")) {
     merged.asistanSlot.accountId = "opencode_opencode_at_opencode_com";
   }
-  if (typeof merged.asistanSlot.catchCommands !== "boolean") {
+  if (merged.asistanSlot && typeof merged.asistanSlot.catchCommands !== "boolean") {
     merged.asistanSlot.catchCommands = false;
   }
-  if (!merged.asistanSlot.messageMethod) {
+  if (merged.asistanSlot && !merged.asistanSlot.messageMethod) {
     merged.asistanSlot.messageMethod = "injection";
   }
-  if (!merged.asistanSlot.fileMethod) {
+  if (merged.asistanSlot && !merged.asistanSlot.fileMethod) {
     merged.asistanSlot.fileMethod = "injection";
   }
 
   if (!isPlainObject(merged.integrations)) {
     merged.integrations = defaults.integrations;
   }
-  if (!isPlainObject(merged.integrations.googledrive)) {
-    merged.integrations.googledrive = defaults.integrations.googledrive;
+  if (merged.integrations && !isPlainObject(merged.integrations.googledrive)) {
+    if (merged.integrations) {
+      merged.integrations.googledrive = defaults.integrations?.googledrive;
+    }
   }
 
   if (!isPlainObject(merged.assistants)) {
     merged.assistants = defaults.assistants;
   }
-  if (!merged.assistants.preferred) {
+  if (merged.assistants && !merged.assistants.preferred) {
     merged.assistants.preferred = "rovodev";
   }
-  if (!merged.assistants.preferredMode) {
+  if (merged.assistants && !merged.assistants.preferredMode) {
     merged.assistants.preferredMode = "terminal";
   }
 
   if (!isPlainObject(merged.logging)) {
     merged.logging = defaults.logging;
   }
-  if (!merged.logging.level) {
+  if (merged.logging && !merged.logging.level) {
     merged.logging.level = "info";
   }
-  if (!Array.isArray(merged.logging.verboseModules)) {
+  if (merged.logging && !Array.isArray(merged.logging.verboseModules)) {
     merged.logging.verboseModules = [];
   }
-  if (!Array.isArray(merged.logging.silentModules)) {
+  if (merged.logging && !Array.isArray(merged.logging.silentModules)) {
     merged.logging.silentModules = [];
   }
-  if (!merged.logging.persistLevel) {
+  if (merged.logging && !merged.logging.persistLevel) {
     merged.logging.persistLevel = "info";
   }
-  if (typeof merged.logging.maxMemoryLogs !== "number") {
+  if (merged.logging && typeof merged.logging.maxMemoryLogs !== "number") {
     merged.logging.maxMemoryLogs = 200;
   }
-  if (typeof merged.logging.enableStateSnapshots !== "boolean") {
+  if (merged.logging && typeof merged.logging.enableStateSnapshots !== "boolean") {
     merged.logging.enableStateSnapshots = true;
   }
-  if (typeof merged.logging.snapshotInterval !== "number") {
+  if (merged.logging && typeof merged.logging.snapshotInterval !== "number") {
     merged.logging.snapshotInterval = 60000;
   }
 

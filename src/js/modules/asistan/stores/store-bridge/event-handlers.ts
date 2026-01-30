@@ -193,7 +193,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const partId = `tool-${toolId}`;
-      const existingPart = (message.parts as Record<string, unknown>)[partId];
+      const existingPart = (message.parts as Record<string, unknown>)[partId] as Record<string, any> | undefined;
 
       if (existingPart?.toolCall) {
         const currentOutput = existingPart.toolCall.output || '';
@@ -228,7 +228,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const partId = `tool-${toolId}`;
-      const existingPart = (message.parts as Record<string, unknown>)[partId];
+      const existingPart = (message.parts as Record<string, unknown>)[partId] as Record<string, any> | undefined;
 
       if (existingPart?.toolCall) {
         const toolCall = existingPart.toolCall;
@@ -252,11 +252,12 @@ export function createEventHandlers(deps: EventHandlerDeps) {
 
         if (isWriteTool && hasDiffData && ToolRenderer?.addDiffViewer) {
           const filename = filePath || (toolCall.input as Record<string, unknown>)?.file_path || (toolCall.input as Record<string, unknown>)?.path || 'unknown';
+          const diffData = diff as Record<string, any> | undefined;
           ToolRenderer.addDiffViewer(toolId, {
             filename,
-            oldContent: diff?.oldContent || '',
-            newContent: diff?.newContent || '',
-            unifiedDiff: diff?.unifiedDiff || output,
+            oldContent: diffData?.oldContent || '',
+            newContent: diffData?.newContent || '',
+            unifiedDiff: diffData?.unifiedDiff || output,
           });
         }
       }
@@ -299,9 +300,9 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const thinkingPartId = (message.partIds as string[]).find(
-        (id: string) => (message.parts as Record<string, unknown>)[id]?.type === 'thinking'
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.type === 'thinking'
       );
-      const existingPart = thinkingPartId ? (message.parts as Record<string, unknown>)[thinkingPartId] : null;
+      const existingPart = thinkingPartId ? (message.parts as Record<string, unknown>)[thinkingPartId] as Record<string, any> : null;
       const currentContent = existingPart?.thinking?.content || '';
       const normalizedContent = PartNormalizer?.decodeHtml?.(content) ?? content;
 
@@ -324,11 +325,11 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const thinkingPartId = (message.partIds as string[]).find(
-        (id: string) => (message.parts as Record<string, unknown>)[id]?.type === 'thinking'
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.type === 'thinking'
       );
 
       if (thinkingPartId) {
-        const existingPart = (message.parts as Record<string, unknown>)[thinkingPartId];
+        const existingPart = (message.parts as Record<string, unknown>)[thinkingPartId] as Record<string, any>;
         MessageStore?.addOrUpdatePart?.({
           messageId: targetMessageId,
           partId: thinkingPartId,
@@ -341,7 +342,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Session Handlers
     handleSessionStarted(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const session = (data?.session || {});
+      const session = (data?.session || {}) as Record<string, any>;
       const sessionId = session.id || data?.sessionId;
 
       if (!sessionId) {
@@ -407,7 +408,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Permission Handlers
     handlePermissionRequested(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const permission = data?.permission;
+      const permission = data?.permission as Record<string, any> | undefined;
       const messageId = data?.messageId as string | undefined;
       const toolCallId = data?.toolCallId as string | undefined;
 
@@ -449,7 +450,7 @@ export function createEventHandlers(deps: EventHandlerDeps) {
     // Question Handlers
     handleQuestionRequested(data: Record<string, unknown>) {
       const { MessageStore, SessionStore } = deps;
-      const question = data?.question;
+      const question = data?.question as Record<string, any> | undefined;
       const messageId = data?.messageId as string | undefined;
 
       if (!question?.id) return;
@@ -530,10 +531,10 @@ export function createEventHandlers(deps: EventHandlerDeps) {
       if (!message) return;
 
       const stepPartId = (message.partIds as string[]).find(
-        (id: string) => (message.parts as Record<string, unknown>)[id]?.step?.stepId === stepId
+        (id: string) => ((message.parts as Record<string, unknown>)[id] as Record<string, any>)?.step?.stepId === stepId
       ) || `step-${stepId}`;
 
-      const existingPart = (message.parts as Record<string, unknown>)[stepPartId];
+      const existingPart = (message.parts as Record<string, unknown>)[stepPartId] as Record<string, any> | undefined;
 
       MessageStore?.addOrUpdatePart?.({
         messageId: targetMessageId,

@@ -59,7 +59,7 @@ class WebviewManagerClass {
    */
   attach(provider: string, webview: WebviewTag, opts: Record<string, unknown> = {}) {
     const providerId = AppState.getProviderIdForSlot(provider);
-    LifecycleManager.attach(provider, webview, { ...opts, providerId });
+    LifecycleManager.attach(provider, webview, { ...opts, providerId: providerId as any });
   }
 
   /**
@@ -113,7 +113,7 @@ class WebviewManagerClass {
    */
   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
-    return MessageSender.send({ provider, text, attachments, webview });
+    return MessageSender.send({ provider, text, attachments: attachments as any[], webview: webview as any });
   }
 
   // ==========================================
@@ -124,7 +124,7 @@ class WebviewManagerClass {
    * @param {Object} coreEngine - CoreEngine instance
    */
   initSyncer(coreEngine: unknown) {
-    ConversationSyncer.init(coreEngine, ((provider: string) => this.resolveWebview(provider)));
+    ConversationSyncer.init(coreEngine as any, ((provider: string) => this.resolveWebview(provider)));
   }
 
   /**

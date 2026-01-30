@@ -109,8 +109,14 @@ class ConversationListManagerClass {
 
       // Provider bilgisini slot olarak ekle (ai1/ai2)
       this.entries = [
-        ...ai1Entries.map((e: unknown) => ({ conversationId: String(e.id || ''), id: String(e.id || ''), webUrl: String(e.webUrl || ''), provider: "ai1" as const, mtime: e.updatedAt || e.createdAt || 0, folder: '', title: String(e.title || '') })),
-        ...ai2Entries.map((e: unknown) => ({ conversationId: String(e.id || ''), id: String(e.id || ''), webUrl: String(e.webUrl || ''), provider: "ai2" as const, mtime: e.updatedAt || e.createdAt || 0, folder: '', title: String(e.title || '') })),
+        ...ai1Entries.map((e: unknown) => {
+          const entry = e as any;
+          return { conversationId: String(entry.id || ''), id: String(entry.id || ''), webUrl: String(entry.webUrl || ''), provider: "ai1" as const, mtime: entry.updatedAt || entry.createdAt || 0, folder: '', title: String(entry.title || '') };
+        }),
+        ...ai2Entries.map((e: unknown) => {
+          const entry = e as any;
+          return { conversationId: String(entry.id || ''), id: String(entry.id || ''), webUrl: String(entry.webUrl || ''), provider: "ai2" as const, mtime: entry.updatedAt || entry.createdAt || 0, folder: '', title: String(entry.title || '') };
+        }),
       ];
 
       this.renderAll({ silent });
@@ -150,7 +156,7 @@ class ConversationListManagerClass {
     if (!select) return;
 
     const settings = SettingsManager.getSnapshot();
-    const slot = settings?.slots?.[provider] || {};
+    const slot = (settings?.slots?.[provider] || {}) as any;
     const hasAccount = !!slot.accountId;
     const isConnected = SlotController.isConnected(provider);
 

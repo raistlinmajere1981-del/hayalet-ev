@@ -118,7 +118,7 @@ class SettingsManagerClass {
   }
 
   async save(nextSettings: Record<string, unknown>) {
-    const next = normalizeSettings(nextSettings);
+    const next = normalizeSettings(nextSettings) as any;
     const changedPaths = getChangedPaths(this._lastSaved, next);
     
     this._settings = next;

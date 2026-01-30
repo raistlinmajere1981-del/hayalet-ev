@@ -5,7 +5,7 @@
 import OpenCodeApp from './manager';
 
 // Export globally
-window.OpenCodeApp = OpenCodeApp;
+(window as any).OpenCodeApp = OpenCodeApp;
 
 
 // Initialize on DOM ready

@@ -212,12 +212,12 @@ class LogManagerClass {
     const operation = this._activeOperations.get(correlationId);
     if (!operation) return;
     
-    const duration = Date.now() - operation.startTime;
+    const duration = Date.now() - (operation as any).startTime;
     
     this.addEvent(
-      operation.name,
+      (operation as any).name,
       status === 'error' ? 'error' : 'info',
-      `İşlem ${status === 'success' ? 'tamamlandı' : status === 'error' ? 'başarısız' : 'iptal edildi'}: ${operation.name} (${duration}ms)`,
+      `İşlem ${status === 'success' ? 'tamamlandı' : status === 'error' ? 'başarısız' : 'iptal edildi'}: ${(operation as any).name} (${duration}ms)`,
       { correlationId, status, duration, result }
     );
     

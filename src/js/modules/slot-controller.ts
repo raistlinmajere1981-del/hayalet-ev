@@ -180,14 +180,14 @@ class SlotControllerClass {
     if (this._initialized) return;
     
     SettingsManager.subscribe(({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
-      handleSettingsChange(this._slots, settings, changedPaths, ((slot: string, s: SlotStateData) => {
-        this._syncSlotWithSettings(slot, s);
+      handleSettingsChange(this._slots as Record<string, any>, settings as any, changedPaths, ((slot: string, s: any) => {
+        this._syncSlotWithSettings(slot, s as SlotStateData);
       }));
     });
     
     const settings = SettingsManager.getSnapshot();
-    syncWithSettings(this._slots, settings, ((slot: string, s: SlotStateData) => {
-      this._syncSlotWithSettings(slot, s);
+    syncWithSettings(this._slots as Record<string, any>, settings as any, ((slot: string, s: any) => {
+      this._syncSlotWithSettings(slot, s as SlotStateData);
     }));
     
     this._initialized = true;
@@ -260,7 +260,7 @@ class SlotControllerClass {
       return; // Çift register'u önle
     }
     
-    slotState.webview = webview;
+    slotState.webview = webview as any;
     slotState.webviewRegistered = true;
     slotState.lastActivity = Date.now();
     
@@ -376,17 +376,17 @@ class SlotControllerClass {
     });
 
     try {
-      await attachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_ATTACHED);
+      await attachWebview(slotState as any, slot as any, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_ATTACHED);
 
-      await waitForDomReady(slotState, slot, correlationId, this._boundLog);
+      await waitForDomReady(slotState as any, slot as any, correlationId, this._boundLog);
       slotState.domReady = true;
       this._emit(slot, SlotEvent.WEBVIEW_DOM_READY, { correlationId });
 
       await this._delay(CONFIG.urlCheckDelayMs);
-      const currentUrl = getCurrentUrl(slotState);
+      const currentUrl = getCurrentUrl(slotState as any);
       slotState.currentUrl = currentUrl;
       
-      const isExcluded = checkUrlExclusion(slotState, currentUrl);
+      const isExcluded = checkUrlExclusion(slotState as any, currentUrl);
       slotState.urlExcluded = isExcluded;
 
       if (isExcluded) {
@@ -397,7 +397,7 @@ class SlotControllerClass {
         await this._startTraffic(slot, correlationId);
       }
 
-      setupUrlChangeHandler(slotState, slot, correlationId, (s: string, url: string) => {
+      setupUrlChangeHandler(slotState as any, slot as any, correlationId, (s: string, url: string) => {
         this._handleUrlChange(s, url);
       });
 
@@ -454,13 +454,13 @@ class SlotControllerClass {
     this._emit(slot, SlotEvent.DISCONNECT_START, { correlationId });
 
     try {
-      clearUrlChangeHandler(slot);
+      clearUrlChangeHandler(slot as any);
 
       if (slotState.trafficStarted) {
         await this._stopTraffic(slot, correlationId);
       }
 
-      await detachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED);
+      await detachWebview(slotState as any, slot as any, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED);
 
       slotState.domReady = false;
       slotState.currentUrl = "";
@@ -492,7 +492,7 @@ class SlotControllerClass {
     if (!slotState) return;
     
     navigateWebview(
-      slotState, slot, url, SlotState.CONNECTED,
+      slotState as any, slot as any, url, SlotState.CONNECTED,
       this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_NAVIGATED
     );
   }
@@ -511,10 +511,10 @@ class SlotControllerClass {
 
   on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void) {
     const wrapper = ((payload: unknown) => {
-      if (payload && typeof payload === 'object' && payload.event === eventType) {
-        listener(payload);
+      if (payload && typeof payload === 'object' && (payload as any).event === eventType) {
+        listener(payload as any);
       }
-    });
+    }) as any;
     
     wrapper._original = listener;
     wrapper._eventType = eventType;
@@ -532,7 +532,7 @@ class SlotControllerClass {
     if (!slotState) return;
     
     syncSlotWithSettings(
-      slotState, slot, settings,
+      slotState as any, slot as any, settings as any,
       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
       this._boundLog, this._boundTransition, this._boundEmit,
@@ -544,12 +544,12 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  _handleUrlChange(slot: string, newUrl: string) {
+  _handleUrlChange(slot: any, newUrl: string) {
     const slotState = this._getSlot(slot);
     if (!slotState) return;
     
     handleUrlChange(
-      slotState, slot, newUrl, SlotState.CONNECTED,
+      slotState as any, slot as any, newUrl, SlotState.CONNECTED,
       this._boundLog, this._boundEmit,
       { URL_CHANGED: SlotEvent.URL_CHANGED, URL_EXCLUDED: SlotEvent.URL_EXCLUDED, URL_INCLUDED: SlotEvent.URL_INCLUDED },
       (s: SlotId, cid: string) => this._startTraffic(s as string, cid),
@@ -602,7 +602,7 @@ class SlotControllerClass {
       async (s: string, cid: string) => {
         const innerSlot = this._getSlot(s);
         if (innerSlot) {
-          await detachWebview(innerSlot, s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED as string);
+          await detachWebview(innerSlot as any, s as SlotId, cid, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED as string);
         }
       }
     );

@@ -7,7 +7,7 @@
  */
 
 import { renderMarkdown, escapeHtml } from './markdown-parser.js';
-import { createStatusIndicator, copyCode } from './syntax-highlighter.js';
+import { createStatusIndicator, createStreamingIndicator, copyCode } from './syntax-highlighter.js';
 import {
   // formatTokenCount, // Unused
   // formatTime, // Unused

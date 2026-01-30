@@ -113,7 +113,7 @@ export class AIAIRelay extends BaseRelay {
 
       this._log("info", `Protocol session ${id}: sending to ${first}`);
 
-      await this.coreEngine.sendToTargets({
+      await (this.coreEngine as any).sendToTargets({
         targets: [first],
         text: message,
         page: "protocol-relay",
@@ -207,7 +207,7 @@ export class AIAIRelay extends BaseRelay {
       s.state = "sent-to-ai2";
 
       try {
-        await this.coreEngine.sendToTargets({
+        await (this.coreEngine as any).sendToTargets({
           targets: [ai2],
           text: forwardText,
           page: "protocol-relay",
@@ -231,7 +231,7 @@ export class AIAIRelay extends BaseRelay {
       this._log("info", `Protocol session ${s.id}: forwarding ${ai2} -> ${ai1} (#${s.forwardCount})`, { excerpt: text.slice(0, 200) });
 
       try {
-        await this.coreEngine.sendMessage({
+        await (this.coreEngine as any).sendMessage({
           provider: ai1,
           text,
           page: "relay",
@@ -252,7 +252,7 @@ export class AIAIRelay extends BaseRelay {
       this._log("info", `Protocol session ${s.id}: forwarding ${ai1} -> ${ai2} (#${s.forwardCount})`, { excerpt: text.slice(0, 200) });
 
       try {
-        await this.coreEngine.sendMessage({
+        await (this.coreEngine as any).sendMessage({
           provider: ai2,
           text,
           page: "relay",
@@ -289,7 +289,7 @@ export class AIAIRelay extends BaseRelay {
     });
 
     try {
-      await this.coreEngine.sendMessage({
+      await (this.coreEngine as any).sendMessage({
         provider: target,
         text,
         page: "relay",

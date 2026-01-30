@@ -16,8 +16,8 @@ export function setupEventListeners(context: AppContext) {
         btn.addEventListener('click', () => {
           const prompt = btn.getAttribute('data-prompt');
           if (prompt) {
-            window.PromptHandler?.setValue?.(prompt);
-            window.PromptHandler?.focus?.();
+            (window.PromptHandler as any)?.setValue?.(prompt);
+            (window.PromptHandler as any)?.focus?.();
           }
         });
       });
@@ -26,16 +26,16 @@ export function setupEventListeners(context: AppContext) {
       const approveBtn = document.getElementById('btn-approve');
       const denyBtn = document.getElementById('btn-deny');
       if (approveBtn) {
-        approveBtn.addEventListener('click', () => context._handlePermissionResponse(true));
+        approveBtn.addEventListener('click', () => (context as any)._handlePermissionResponse(true));
       }
       if (denyBtn) {
-        denyBtn.addEventListener('click', () => context._handlePermissionResponse(false));
+        denyBtn.addEventListener('click', () => (context as any)._handlePermissionResponse(false));
       }
 
       // Question modal
       const answerBtn = document.getElementById('btn-answer');
       if (answerBtn) {
-        answerBtn.addEventListener('click', () => context._handleQuestionResponse());
+        answerBtn.addEventListener('click', () => (context as any)._handleQuestionResponse());
       }
 
       // Stop button
@@ -136,7 +136,7 @@ export function setupEventListeners(context: AppContext) {
       }
 
       if (typeof window.SSEClient !== 'undefined') {
-        window.SSEClient?.disconnectAll?.();
+        (window.SSEClient as any)?.disconnectAll?.();
       }
 
       if (typeof window.APIClient !== 'undefined') {

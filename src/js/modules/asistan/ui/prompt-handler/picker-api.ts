@@ -56,7 +56,7 @@ function createPickerApi(
 
     if (typeof window.AgentModelSelector !== 'undefined') {
       const agents = (window.AgentModelSelector).getAvailableAgents?.() || [];
-      agents.forEach((agent: { name: string }) => {
+      (agents as any[]).forEach((agent: { name: string }) => {
         items.push({
           name: agent.name,
           path: undefined,

@@ -97,6 +97,20 @@ export interface AppSettings {
   asistanAccounts?: Account[]; // AI0 accounts
   upload?: UploadSettings;
   googleDrive?: GoogleDriveSettings;
+  assistants?: {
+    preferred?: string;
+    preferredMode?: string;
+    lastConnected?: string | null;
+  };
+  logging?: {
+    level?: string;
+    verboseModules?: string[];
+    silentModules?: string[];
+    persistLevel?: string;
+    maxMemoryLogs?: number;
+    enableStateSnapshots?: boolean;
+    snapshotInterval?: number;
+  };
   [key: string]: unknown; // Ek alanlar için
 }
 

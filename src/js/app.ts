@@ -96,14 +96,14 @@ function ensureElectronApiFallback() {
         return null;
       }
     },
-    readFilesMulti: async (paths: string[]) => {
+    readFilesMulti: (async (paths: string[]) => {
       return Promise.all(
         paths.map(async (p) => ({
           path: p,
           data: await window.electronAPI?.readFile(p),
         })),
       );
-    },
+    }) as any,
 
     openPath: async (_path: string) => ({ success: true }),
 
