@@ -152,3 +152,154 @@ _Şu anda aktif sorun yok. Tool hatası tespit edildiğinde buraya eklenecek._
 **Iteration:** 12 iterations (efficient)
 **Success Rate:** 100% 🏆
 
+
+### [2026-01-31 00:52] MCP Tool Hataları - TypeScript Düzeltme Session'ı
+
+**Session Özeti:** 75 TypeScript hatasını 0'a düşürdük (67 iteration)
+
+---
+
+#### 🔴 Hata #1: `hev_dev_edit_lines` - Scope Kırılma Riski
+
+**Ne zaman:** Iteration 8-9, `slot-controller.ts` düzenleme  
+**Tool:** `hev_dev_edit_lines`  
+**Input:**
+```typescript
+{
+  "file_path": "src/js/modules/slot-controller.ts",
+  "operation": "replace",
+  "start_line": 513,
+  "end_line": 526,
+  "safe_mode": true
+}
+```
+
+**Hata Mesajı:**
+```
+❌ ⚠️  Scope kırılma riski tespit edildi!
+```
+
+**Durum:** 
+- `on()` metodunda intersection type kullanılan wrapper fonksiyonu düzenlemeye çalışıldı
+- Pattern: `const wrapper = ((payload: unknown) => { ... }) as (...args: unknown[]) => void & { _original?: ...; _eventType?: ... }`
+- Tool, intersection type'ı scope riski olarak algıladı (false positive olabilir)
+
+**Workaround:** 
+- `hev_fs_find_and_replace` ile basit string replacement kullanıldı
+- Alternatif: `safe_mode: false` kullanılabilirdi
+
+**İyileştirme Önerisi:**
+- Intersection type detection iyileştirilebilir
+- Type alias'lar için özel handling eklenebilir
+
+---
+
+#### 🟡 Hata #2: `hev_fs_find_and_replace` - Pattern Bulunamadı (3 kez)
+
+**Ne zaman:** Iteration 31, 35, 49  
+**Tool:** `hev_fs_find_and_replace`
+
+**Durum #1 - store-bridge/manager.ts:**
+```typescript
+// Aranan pattern:
+"export { StoreBridge };\n\n// Global compatibility\nwindow.StoreBridge = StoreBridge;"
+
+// Gerçek kod:
+"// Global compatibility\nwindow.StoreBridge = StoreBridge;\n\nexport { StoreBridge };"
+```
+**Neden:** Satır sıralaması farklıydı (export önce/sonra)
+
+---
+
+**Durum #2 - traffic-manager.ts:**
+```typescript
+// Aranan pattern (122-130 arası):
+"  backoffMs?: number;\n}\n\ntype WebviewElement = HTMLElement & {\n  isDestroyed?: () => boolean;\n  ..."
+
+// Gerçek kod (126-134 arası):
+// Satır numaraları kaymış
+```
+**Neden:** `hev_fs_show` çıktısından pattern kopyalarken satır numaraları güncellenmemişti
+
+---
+
+**Durum #3 - shell-mode.ts:**
+```typescript
+// Aranan pattern:
+"      await this.coreEngine.sendMessage({\n        provider: target,\n        text,\n        page: \"relay\",\n      });"
+
+// Sorun: Daha geniş context gerekiyordu (try bloğu dahil)
+```
+**Neden:** Pattern çok dar seçilmişti, daha büyük bloğun parçasıydı
+
+---
+
+**Workaround:** 
+1. Daha geniş context kullanıldı (önce/sonra 3-5 satır)
+2. `sed -n` ile satır numaraları doğrulandı
+3. `hev_dev_edit_lines` ile satır bazlı düzenleme yapıldı
+
+**İyileştirme Önerisi:**
+- Pattern bulunamazsa "yakın eşleşmeler" gösterilebilir (fuzzy matching)
+- Multi-line pattern'lerde whitespace-insensitive mod eklenebilir
+- "Pattern 5 karaktere kadar %80 eşleşiyor, devam etmek ister misin?" önerisi
+
+---
+
+#### ✅ Başarı Hikayeleri
+
+**`hev_dev_typescript_dashboard`:**
+- 3 kez kullanıldı, her seferinde perfect output
+- Hata kategorilendirmesi ve dosya bazlı breakdown çok faydalı
+- Progress tracking için ideal
+
+**`hev_fs_show`:**
+- ~25 kez kullanıldı, hiç hata vermedi
+- Büyük dosyalarda collapsed view performanslı çalıştı
+- Line range özelliği çok kullanışlı
+
+**`bash` + `npx tsc`:**
+- ~35 kez kullanıldı, hiç sorun yok
+- Hata sayısını track etmek için `grep | wc -l` kombinasyonu mükemmel
+
+---
+
+#### 📊 Tool Başarı Oranları (Bu Session)
+
+| Tool | Kullanım | Başarı | Hata | Oran |
+|------|----------|--------|------|------|
+| `hev_fs_show` | 25 | 25 | 0 | 100% |
+| `hev_fs_find_and_replace` | 30 | 27 | 3 | 90% |
+| `hev_dev_edit_lines` | 2 | 0 | 2 | 0% (safe_mode ile) |
+| `hev_dev_check_syntax` | 5 | 5 | 0 | 100% |
+| `hev_dev_typescript_dashboard` | 3 | 3 | 0 | 100% |
+| `bash` | 35 | 35 | 0 | 100% |
+
+---
+
+#### 🎯 Öğrenilen Dersler
+
+1. **`hev_dev_edit_lines` safe_mode:** Intersection type'larda false positive veriyor → `hev_fs_find_and_replace` tercih et
+2. **Pattern matching:** Whitespace ve indentation önemli → Daha geniş context kullan
+3. **Workflow:** `hev_fs_show` → `sed -n` ile verify → `hev_fs_find_and_replace` → `hev_dev_check_syntax` **%100 güvenilir**
+4. **TypeScript dashboard:** Session başında ve progress check'lerde mutlaka kullan
+
+---
+
+#### 💡 Geliştirme Önerileri
+
+**Yüksek Öncelik:**
+1. `hev_fs_find_and_replace` - Fuzzy matching / yakın eşleşme önerisi
+2. `hev_dev_edit_lines` - Intersection type detection iyileştirmesi
+
+**Orta Öncelik:**
+3. `hev_dev_typescript_dashboard` - Trend gösterimi (önceki session'la karşılaştırma)
+4. `hev_fs_find_and_replace` - Multi-line pattern'de whitespace-insensitive mod
+
+**Düşük Öncelik:**
+5. Duplicate detection - False positive azaltma (scope-aware)
+
+---
+
+**Genel Değerlendirme:** Toollar %95+ güvenilirlik ile çalıştı. Karşılaşılan sorunlar minor ve kolay workaround'ları var. 🎉
+
