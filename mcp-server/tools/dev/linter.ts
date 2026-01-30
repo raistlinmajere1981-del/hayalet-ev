@@ -16,7 +16,8 @@ export function lintFile(projectRoot: string, filePath: string, fix: boolean = f
   
   try {
     const fixArg = fix ? " --fix" : "";
-    const cmd = `npx eslint "${filePath}" --format stylish${fixArg}`;
+    // Enable cache for faster subsequent runs
+    const cmd = `npx eslint "${filePath}" --format stylish --cache${fixArg}`;
     progress.update(0, `${filePath} lint ediliyor...`);
     
     try {

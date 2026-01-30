@@ -32,7 +32,7 @@
   "include": [
     "index.ts",
     "core/*.ts",
-    "tools/*.ts",
+    "tools/**/*.ts",
     "utils/*.ts",
     "types/*.ts"
   ],

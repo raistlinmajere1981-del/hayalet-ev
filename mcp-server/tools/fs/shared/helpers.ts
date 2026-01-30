@@ -30,10 +30,27 @@ export function showFileContent(filePath: string, startLine?: number, endLine?: 
   const start = startLine !== undefined ? Math.max(0, startLine) : 0;
   const end = endLine !== undefined ? Math.min(lines.length, endLine) : lines.length;
   
+  // Add header when showing specific range (hint to prevent collapse)
   let output = '';
+  if (startLine !== undefined || endLine !== undefined) {
+    const rangeInfo = startLine !== undefined && endLine !== undefined 
+      ? `lines ${startLine + 1}-${end}` 
+      : startLine !== undefined 
+      ? `from line ${startLine + 1}` 
+      : `up to line ${end}`;
+    output += `🔍 Showing ${rangeInfo} (${end - start} lines, EXPANDED)\n`;
+    output += '─'.repeat(60) + '\n';
+  }
+  
   for (let i = start; i < end; i++) {
     const lineNum = String(i + 1).padStart(4, ' ');
     output += `${lineNum} │ ${lines[i]}\n`;
+  }
+  
+  // Add footer
+  if (startLine !== undefined || endLine !== undefined) {
+    output += '─'.repeat(60) + '\n';
+    output += `📄 Displayed ${end - start} lines from ${path.basename(filePath)}\n`;
   }
   
   return output;

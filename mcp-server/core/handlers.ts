@@ -420,11 +420,17 @@ ${health.message}
         (args as { start_line?: number }).start_line,
         (args as { end_line?: number }).end_line
       );
+      // If line range specified, content already has header/footer - don't add duplicate
+      const hasLineRange = (args as { start_line?: number }).start_line !== undefined || 
+                           (args as { end_line?: number }).end_line !== undefined;
+      const text = hasLineRange 
+        ? result.content  // Already has header/footer
+        : `📄 ${result.summary.language} (${result.summary.lines} satır)\n\n${result.content}`;
       return {
         content: [
           {
             type: "text",
-            text: `📄 ${result.summary.language} (${result.summary.lines} satır)\n\n${result.content}`,
+            text,
           },
         ],
       };

@@ -101,7 +101,7 @@ export async function checkSyntax(
 
   if (checkEslint && projectRoot && /\.(ts|js|tsx|jsx)$/.test(ext)) {
     try {
-      execSync(`npx eslint "${filePath}" --format stylish`, {
+      execSync(`npx eslint "${filePath}" --format stylish --cache`, {
         cwd: projectRoot,
         encoding: 'utf-8',
         timeout: 15000,
