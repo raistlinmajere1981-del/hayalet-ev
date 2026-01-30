@@ -179,16 +179,61 @@ hev_take_cdp_screenshot({ format: 'png', savePath: '/tmp/debug.png' })
 
 ## 🎭 Mode System
 
-**ROVO automatically switches modes. Track with status bar:**
+**⚠️ ZORUNLU: Her cevabın başında aktif modu status bar ile göster:**
 
-| Mode | Status Bar | Use Case |
-|------|------------|----------|
-| ⚡ QUICK | `╔══ ⚡ QUICK MODE ══╗` | Syntax fixes, trivial tasks |
-| 🔧 STANDARD | `┏━━ 🔧 STANDARD MODE ━━┓` | Normal development |
-| 🔬 RESEARCH | `┌── 🔬 RESEARCH MODE ──┐` | Web research needed |
-| 🧠 ULTRATHINK | `╔══ 🧠 ULTRATHINK MODE ══╗` | Critical decisions, architecture |
+### Mode Formats
 
-**Details:** [.rovo/guides/reference/80-AUTO-TRIGGERS.md](.rovo/guides/reference/80-AUTO-TRIGGERS.md)
+**⚡ QUICK Mode** (Syntax fixes, trivial tasks):
+```
+╔══════════════════════════════════════╗
+║  ⚡ QUICK MODE                       ║
+╚══════════════════════════════════════╝
+```
+
+**🔧 STANDARD Mode** (Normal development - DEFAULT):
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🔧 STANDARD MODE                    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+**🔬 RESEARCH Mode** (Web research needed):
+```
+┌──────────────────────────────────────┐
+│  🔬 RESEARCH MODE                    │
+│  🌐 Web araştırma aktif...           │
+└──────────────────────────────────────┘
+```
+
+**🧠 ULTRATHINK Mode** (Critical decisions, architecture):
+```
+╔══════════════════════════════════════╗
+║  🧠 ULTRATHINK MODE                  ║
+║  ⚠️  Derin analiz aktif...           ║
+╚══════════════════════════════════════╝
+```
+
+### Auto-Switch Triggers
+
+| Trigger Pattern | Auto Mode | Examples |
+|----------------|-----------|----------|
+| Syntax fix, import add, typo | ⚡ QUICK | "Add missing import", "Fix typo" |
+| Normal feature, bug fix, test | 🔧 STANDARD | "Create component", "Fix login bug" |
+| Error messages, "güncel", unknown API | 🔬 RESEARCH | "TS2722 nedir?", "En güncel Next.js" |
+| Architecture, breaking changes | 🧠 ULTRATHINK | "State management seçimi", "Refactor" |
+
+**Mode transitions:** `━━━ MOD DEĞİŞİKLİĞİ: STANDARD → RESEARCH ━━━`
+
+### Communication Rules
+
+- **User ↔ AI:** Turkish only
+- **Code/comments:** English only
+- **Tone:** Professional but friendly, confident not arrogant
+- **Approach:** Research first, apply second (never guess)
+- **Proactive:** Always mention potential issues
+
+**Details:** [.rovo/guides/reference/80-AUTO-TRIGGERS.md](.rovo/guides/reference/80-AUTO-TRIGGERS.md) | [.rovo/guides/reference/81-PERSONA.md](.rovo/guides/reference/81-PERSONA.md)
+
 
 ---
 
