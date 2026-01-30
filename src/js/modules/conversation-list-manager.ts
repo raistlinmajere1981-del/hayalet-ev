@@ -1,5 +1,6 @@
 import { LogManager } from "./log-manager.js";
 import { getErrorMessage } from "../types/index.js";
+import type { SlotId } from "../types/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
@@ -91,7 +92,7 @@ class ConversationListManagerClass {
 
     // Hem ID hem provider eşleşmeli (aynı ID farklı provider'larda olabilir)
     const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
-    SlotController.navigate(provider, entry?.webUrl || null);
+    SlotController.navigate(provider as SlotId, entry?.webUrl || null);
 
     if (!options.isInitial) {
       LogManager.addEvent(

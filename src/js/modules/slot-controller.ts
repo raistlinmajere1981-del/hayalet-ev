@@ -15,6 +15,7 @@ import { LogManager } from "./log-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { getErrorMessage } from "../types/index.js";
 import type { SlotId } from "../types/index.js";
+import type { BaseProviderConfig } from "../types/provider.js";
 import type { 
   SlotStateMachine} from "./slot/state-machine.js";
 import { 
@@ -111,23 +112,37 @@ type WebviewElement = HTMLElement & {
 
 /**
  * Slot state - tüm slot modülleriyle uyumlu birleşik interface
+ * Bu interface tüm alt modüllerin (webview-handler, url-handler, settings-sync, timeout-handler) 
+ * gerektirdiği alanları içerir.
  */
 interface SlotStateData {
+  // Core state
   state: string;
-  stateMachine: SlotStateMachine; // Robust state machine
+  stateMachine: SlotStateMachine;
+  
+  // Account & Provider (settings-sync için)
   accountId: string | null;
   providerId: string | null;
-  providerConfig: unknown | null;
+  providerConfig: BaseProviderConfig | null;
+  
+  // Webview (webview-handler için)
   webview: WebviewElement | null;
   webviewRegistered: boolean;
   domReady: boolean;
+  
+  // URL tracking (url-handler için)
   currentUrl: string;
   urlExcluded: boolean;
+  
+  // Traffic (url-handler için)
   trafficStarted: boolean;
+  
+  // Metadata
   correlationId: string;
   error: Error | null;
   lastActivity: number;
-  // Webview handler için
+  
+  // Internal flags (webview-handler için)
   _overrideUrl?: string;
   _pendingLoad?: boolean;
   _targetUrl?: string;
@@ -399,7 +414,7 @@ class SlotControllerClass {
       }
 
       setupUrlChangeHandler(slotState, slot, correlationId, (s: string, url: string) => {
-        this._handleUrlChange(s, url);
+        this._handleUrlChange(s as SlotId, url);
       });
 
       clearTimeout(slot, "connect");
@@ -455,13 +470,13 @@ class SlotControllerClass {
     this._emit(slot, SlotEvent.DISCONNECT_START, { correlationId });
 
     try {
-      clearUrlChangeHandler(slot);
+      clearUrlChangeHandler(slot as SlotId);
 
       if (slotState.trafficStarted) {
         await this._stopTraffic(slot, correlationId);
       }
 
-      await detachWebview(slotState, slot, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED);
+      await detachWebview(slotState, slot as SlotId, correlationId, this._boundLog, this._boundEmit, SlotEvent.WEBVIEW_DETACHED);
 
       slotState.domReady = false;
       slotState.currentUrl = "";
@@ -511,14 +526,18 @@ class SlotControllerClass {
   }
 
   on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void) {
-    const wrapper = ((payload: unknown) => {
+    const wrapper = (payload: unknown) => {
       if (payload && typeof payload === 'object' && 'event' in payload && payload.event === eventType) {
         listener(payload as { event?: string; slot?: string });
       }
-    }) as (...args: unknown[]) => void & { _original?: typeof listener; _eventType?: string };
+    };
     
-    wrapper._original = listener;
-    wrapper._eventType = eventType;
+    // Function properties ekle (any ile tip bypass)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (wrapper as any)._original = listener;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (wrapper as any)._eventType = eventType;
+    
     this._listeners.push(wrapper);
     return () => {
       this._listeners = this._listeners.filter((l) => l !== wrapper);
@@ -528,7 +547,7 @@ class SlotControllerClass {
   // ============================================
   // ============================================
 
-  _syncSlotWithSettings(slot: string, settings: SlotStateData) {
+  _syncSlotWithSettings(slot: string, settings: Settings) {
     const slotState = this._getSlot(slot);
     if (!slotState) return;
     
@@ -537,8 +556,8 @@ class SlotControllerClass {
       { EMPTY: SlotState.EMPTY, ASSIGNED: SlotState.ASSIGNED, CONNECTED: SlotState.CONNECTED, CONNECTING: SlotState.CONNECTING },
       { ACCOUNT_ASSIGNED: SlotEvent.ACCOUNT_ASSIGNED, ACCOUNT_REMOVED: SlotEvent.ACCOUNT_REMOVED },
       this._boundLog, this._boundTransition, this._boundEmit,
-      (s: SlotId, opts?: { force?: boolean }) => this.disconnect(s, opts),
-      (s: SlotId) => this.navigate(s)
+      (s: string, opts?: { force?: boolean }) => this.disconnect(s, opts),
+      (s: string) => this.navigate(s as SlotId)
     );
   }
 

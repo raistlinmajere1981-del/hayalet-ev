@@ -6,11 +6,7 @@
  * Adapted from CodeNomad's tool-call/resolveToolRenderer pattern
  */
 
-declare global {
-  interface Window {
-    ToolRendererRegistry: typeof ToolRendererRegistry;
-  }
-}
+// ToolRendererRegistry is declared in global.d.ts
 
 import type {
   ToolRendererConfig,
@@ -219,6 +215,7 @@ const ToolRendererRegistry = {
 };
 
 // Global export (backward compatibility)
-window.ToolRendererRegistry = ToolRendererRegistry;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+window.ToolRendererRegistry = ToolRendererRegistry as any;
 
 export { ToolRendererRegistry };

@@ -291,7 +291,7 @@ class CommandManagerClass {
         command,
         message: (typeof payload.message === 'string' ? payload.message : ""),
         payload,
-        run: executor || undefined,
+        run: executor as (() => Promise<CommandResult>) | undefined || undefined,
       },
     ]);
     return job;

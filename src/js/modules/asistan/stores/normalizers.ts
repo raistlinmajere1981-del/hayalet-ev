@@ -5,11 +5,7 @@
  * Handles HTML entity decoding, validation, and sanitization of message parts.
  */
 
-declare global {
-  interface Window {
-    PartNormalizer: typeof PartNormalizer;
-  }
-}
+// PartNormalizer is declared in global.d.ts
 
 // =============================================================================
 // HTML Entity Decoding
@@ -204,4 +200,5 @@ const PartNormalizer = {
 export { PartNormalizer };
 
 // Global export (backward compatibility)
-window.PartNormalizer = PartNormalizer;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+window.PartNormalizer = PartNormalizer as any;

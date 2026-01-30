@@ -38,10 +38,11 @@ export class AIAsistanRelay extends BaseRelay {
   _prevThinking: Record<string, string>;
   _lastTexts: Record<string, string>;
   _sessionState: string;
+  // @ts-expect-error - CoreEngine type compatibility with BaseRelay
   declare coreEngine: CoreEngine;
 
   constructor(coreEngine: CoreEngine) {
-    super(coreEngine);
+    super(coreEngine as never);
     // Kaynak AI slotu (ai1 veya ai2) ve hedef her zaman ai0 (asistan)
     this._sourceSlot = null;
     this._targetSlot = "ai0";

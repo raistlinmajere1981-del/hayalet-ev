@@ -30,6 +30,13 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": true,
+    
+    // === AI-Optimized Settings ===
+    "noErrorTruncation": true,
+    "verbatimModuleSyntax": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./tsconfig.electron.tsbuildinfo",
+    
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {

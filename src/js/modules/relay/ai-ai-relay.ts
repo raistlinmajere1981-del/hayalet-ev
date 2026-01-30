@@ -113,12 +113,14 @@ export class AIAIRelay extends BaseRelay {
 
       this._log("info", `Protocol session ${id}: sending to ${first}`);
 
-      await this.coreEngine.sendToTargets({
-        targets: [first],
-        text: message,
-        page: "protocol-relay",
-        attachments: attachments as string[],
-      });
+      if (this.coreEngine.sendToTargets) {
+        await this.coreEngine.sendToTargets({
+          targets: [first].filter((t): t is string => !!t),
+          text: message,
+          page: "protocol-relay",
+          attachments: attachments as string[],
+        });
+      }
 
       this._log("info", `Protocol session ${id}: sent to ${first}`);
       this._dispatchEvent("relay-changed", { active: true, type: "ai-ai-protocol" });
@@ -207,12 +209,14 @@ export class AIAIRelay extends BaseRelay {
       s.state = "sent-to-ai2";
 
       try {
-        await this.coreEngine.sendToTargets({
-          targets: [ai2],
-          text: forwardText,
-          page: "protocol-relay",
-          attachments: (s.attachments || []) as string[],
-        });
+        if (this.coreEngine.sendToTargets) {
+          await this.coreEngine.sendToTargets({
+            targets: [ai2].filter((t): t is string => !!t),
+            text: forwardText,
+            page: "protocol-relay",
+            attachments: (s.attachments || []) as string[],
+          });
+        }
         this._log("info", `Protocol session ${s.id}: forwarded ${ai1} -> ${ai2}`);
       } catch (e) {
         this._log("warning", `Protocol session ${s.id}: forward to ${ai2} failed: ${getErrorMessage(e)}`);
@@ -231,11 +235,13 @@ export class AIAIRelay extends BaseRelay {
       this._log("info", `Protocol session ${s.id}: forwarding ${ai2} -> ${ai1} (#${s.forwardCount})`, { excerpt: text.slice(0, 200) });
 
       try {
-        await this.coreEngine.sendMessage({
-          provider: ai1,
-          text,
-          page: "relay",
-        });
+        if (this.coreEngine.sendMessage) {
+          await this.coreEngine.sendMessage({
+            provider: ai1,
+            text,
+            page: "relay",
+          });
+        }
       } catch (e) {
         this._log("warning", `Protocol session ${s.id}: forward ${ai2}->${ai1} failed: ${getErrorMessage(e)}`);
       }
@@ -252,11 +258,13 @@ export class AIAIRelay extends BaseRelay {
       this._log("info", `Protocol session ${s.id}: forwarding ${ai1} -> ${ai2} (#${s.forwardCount})`, { excerpt: text.slice(0, 200) });
 
       try {
-        await this.coreEngine.sendMessage({
-          provider: ai2,
-          text,
-          page: "relay",
-        });
+        if (this.coreEngine.sendMessage) {
+          await this.coreEngine.sendMessage({
+            provider: ai2,
+            text,
+            page: "relay",
+          });
+        }
       } catch (e) {
         this._log("warning", `Protocol session ${s.id}: forward ${ai1}->${ai2} failed: ${getErrorMessage(e)}`);
       }
@@ -289,11 +297,13 @@ export class AIAIRelay extends BaseRelay {
     });
 
     try {
-      await this.coreEngine.sendMessage({
-        provider: target,
-        text,
-        page: "relay",
-      });
+      if (this.coreEngine.sendMessage) {
+        await this.coreEngine.sendMessage({
+          provider: target,
+          text,
+          page: "relay",
+        });
+      }
     } catch (err) {
       this._log("warning", `Relay forwarding failed: ${getErrorMessage(err)}`, {
         from: provider,

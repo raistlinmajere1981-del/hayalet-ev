@@ -3,43 +3,25 @@
  * Shell mode toggle, command execution
  */
 
-declare global {
-  interface Window {
-    MessageRenderer?: {
-      clear?: () => void;
-      addMessage?: (data: unknown) => void;
-    };
-    StoreBridge?: {
-      clear?: () => void;
-    };
-    OpenCodeApp?: {
-      _handleNewSession?: () => Promise<void>;
-    };
-    APIClient?: {
-      cancel?: () => Promise<void>;
-      compact?: () => Promise<{ compactedTokens?: number }>;
-      retry?: () => Promise<void>;
-    };
-  }
-}
+// Window interface extensions are declared in global.d.ts
 
 async function executeCommand(commandName: string, clearInputFn: () => void) {
   clearInputFn();
 
   switch (commandName) {
     case 'clear':
-      if (typeof window.MessageRenderer !== 'undefined') {
-        window.MessageRenderer?.clear?.();
+      if (typeof window.MessageRenderer !== 'undefined' && window.MessageRenderer?.clear) {
+        (window.MessageRenderer.clear as () => void)();
       }
-      if (typeof window.StoreBridge !== 'undefined') {
-        window.StoreBridge?.clear?.();
+      if (typeof window.StoreBridge !== 'undefined' && window.StoreBridge?.clear) {
+        (window.StoreBridge.clear as () => void)();
       }
       console.log('[PromptHandler] Chat cleared');
       break;
 
     case 'new':
-      if (typeof window.OpenCodeApp !== 'undefined') {
-        await window.OpenCodeApp?._handleNewSession?.();
+      if (typeof window.OpenCodeApp !== 'undefined' && window.OpenCodeApp?._handleNewSession) {
+        await (window.OpenCodeApp._handleNewSession as () => Promise<void>)();
       }
       break;
 
@@ -72,12 +54,14 @@ async function executeCommand(commandName: string, clearInputFn: () => void) {
 - **/** - Komut çalıştır
 - **!** - Shell modu
 - **↑↓** - Geçmişte gezin`;
-        window.MessageRenderer?.addMessage?.({
-          id: `msg-help-${Date.now()}`,
-          role: 'assistant',
-          content: helpContent,
-          timestamp: Date.now(),
-        });
+        if (window.MessageRenderer?.addMessage) {
+          (window.MessageRenderer.addMessage as (data: unknown) => void)({
+            id: `msg-help-${Date.now()}`,
+            role: 'assistant',
+            content: helpContent,
+            timestamp: Date.now(),
+          });
+        }
       }
       break;
 
@@ -88,12 +72,14 @@ async function executeCommand(commandName: string, clearInputFn: () => void) {
           console.log('[PromptHandler] Compact result:', result);
           if (result?.compactedTokens) {
             if (typeof window.MessageRenderer !== 'undefined') {
-              window.MessageRenderer?.addMessage?.({
-                id: `msg-compact-${Date.now()}`,
-                role: 'assistant',
-                content: `✅ Context sıkıştırıldı. Kazanç: ${result.compactedTokens} token`,
-                timestamp: Date.now(),
-              });
+              if (window.MessageRenderer?.addMessage) {
+                (window.MessageRenderer.addMessage as (data: unknown) => void)({
+                  id: `msg-compact-${Date.now()}`,
+                  role: 'assistant',
+                  content: `✅ Context sıkıştırıldı. Kazanç: ${result.compactedTokens} token`,
+                  timestamp: Date.now(),
+                });
+              }
             }
           }
         } catch (err) {

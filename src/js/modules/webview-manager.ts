@@ -118,7 +118,7 @@ class WebviewManagerClass {
    */
   async send({ provider, text, attachments = [] }: { provider: string; text: string; attachments?: unknown[] }) {
     const webview = this.resolveWebview(provider);
-    return MessageSender.send({ provider, text, attachments: attachments as FileEntry[], webview });
+    return MessageSender.send({ provider, text, attachments: attachments as FileEntry[], webview: webview as never });
   }
 
   // ==========================================
@@ -129,7 +129,7 @@ class WebviewManagerClass {
    * @param {Object} coreEngine - CoreEngine instance
    */
   initSyncer(coreEngine: unknown) {
-    ConversationSyncer.init(coreEngine, ((provider: string) => this.resolveWebview(provider)));
+    ConversationSyncer.init(coreEngine as never, ((provider: string) => this.resolveWebview(provider)));
   }
 
   /**

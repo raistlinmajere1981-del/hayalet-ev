@@ -4,18 +4,7 @@
 
 import type { AppContext } from './types';
 
-declare global {
-  interface Window {
-    PromptHandler?: {
-      setValue?: (value: string) => void;
-      focus?: () => void;
-      setProcessing?: (processing: boolean) => void;
-    };
-    SSEClient?: {
-      disconnectAll?: () => void;
-    };
-  }
-}
+// Window interface extensions are declared in global.d.ts
 
 
 
@@ -28,9 +17,11 @@ export function setupEventListeners(context: AppContext) {
       quickActions.forEach((btn) => {
         btn.addEventListener('click', () => {
           const prompt = btn.getAttribute('data-prompt');
-          if (prompt) {
-            window.PromptHandler?.setValue?.(prompt);
-            window.PromptHandler?.focus?.();
+          if (prompt && window.PromptHandler?.setValue) {
+            (window.PromptHandler.setValue as (value: string) => void)(prompt);
+            if (window.PromptHandler?.focus) {
+              (window.PromptHandler.focus as () => void)();
+            }
           }
         });
       });
@@ -148,8 +139,8 @@ export function setupEventListeners(context: AppContext) {
         context._eventAbortController = null;
       }
 
-      if (typeof window.SSEClient !== 'undefined') {
-        window.SSEClient?.disconnectAll?.();
+      if (typeof window.SSEClient !== 'undefined' && window.SSEClient?.disconnectAll) {
+        (window.SSEClient.disconnectAll as () => void)();
       }
 
       if (typeof window.APIClient !== 'undefined') {

@@ -5,7 +5,8 @@
 import OpenCodeApp from './manager';
 
 // Export globally
-(window as Window & { OpenCodeApp: typeof OpenCodeApp }).OpenCodeApp = OpenCodeApp;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(window as any).OpenCodeApp = OpenCodeApp;
 
 
 // Initialize on DOM ready

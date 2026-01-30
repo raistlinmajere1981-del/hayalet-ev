@@ -20,14 +20,18 @@ import { attachWebviewEvents, detachWebviewEvents, hasHandlers, normalizeHref } 
 import { isSlotUrlExcluded, isDefaultPage } from "./webview/methods/shared/url-utils.js";
 import { INTERVALS, DELAYS } from "../constants/index.js";
 
-interface WebviewElement {
+// WebviewElement type - combined definition
+type WebviewElement = HTMLElement & {
   getURL?: () => string;
-  executeJavaScript: (script: string) => Promise<unknown>;
+  executeJavaScript?: (script: string) => Promise<unknown>;
   insertCSS?: (css: string) => Promise<void>;
   addEventListener?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeEventListener?: (event: string, handler: (...args: unknown[]) => void) => void;
-  [key: string]: unknown;
-}
+  isDestroyed?: () => boolean;
+  getWebContentsId?: () => number;
+  isLoading?: () => boolean;
+  getWebContents?: () => { isLoading?: () => boolean };
+};
 
 // ============================================
 // ============================================
@@ -121,13 +125,7 @@ interface ProbeRunner {
   backoffMs?: number;
 }
 
-type WebviewElement = HTMLElement & {
-  isDestroyed?: () => boolean;
-  getWebContentsId?: () => number;
-  isLoading?: () => boolean;
-  getWebContents?: () => { isLoading?: () => boolean };
-  executeJavaScript?: (script: string) => Promise<unknown>;
-};
+// WebviewElement type already defined at top of file
 
 class TrafficManagerClass {
   indicators: Record<string, TrafficIndicator>;
@@ -241,7 +239,7 @@ class TrafficManagerClass {
 
     if (hasHandlers(provider)) return;
 
-    attachWebviewEvents(provider, webviewEl, {
+    attachWebviewEvents(provider, webviewEl as never, {
       onNavigation: (prov: string, href: string) => this._handleNavigation(prov, href),
       onDomReady: () => {},
       onFailLoad: (prov: string) => this.setAllUnreachable(prov),
@@ -272,13 +270,13 @@ class TrafficManagerClass {
       // Skip flag aktifse (mesaj gönderiminden kaynaklı URL değişimi)
       if (this._skipNextLoading[provider] && wasOnDefaultPage && !isOnDefaultPage) {
         this._skipNextLoading[provider] = false;
-        this.state[provider] = viewState;
+        this.state[provider] = viewState as Record<string, unknown> & TrafficState;
         // Loading başlatma, sadece thinking tracker takip edecek
         return;
       }
       
       this.loadingTracker.startLoading(viewState, Date.now());
-      this.state[provider] = viewState;
+      this.state[provider] = viewState as Record<string, unknown> & TrafficState;
       this.setIndicator(provider, "loading", "busy");
     }
   }
@@ -376,7 +374,7 @@ class TrafficManagerClass {
     const viewState = this.state[provider] || defaultState();
     if (viewState.polling) return;
     viewState.polling = true;
-    this.state[provider] = viewState;
+    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
     try {
       const script = buildProbeScript(provider);
       const isLoading = typeof webview.isLoading === "function"
@@ -409,7 +407,7 @@ class TrafficManagerClass {
       return false;
     } finally {
       viewState.polling = false;
-      this.state[provider] = viewState;
+      this.state[provider] = viewState as Record<string, unknown> & TrafficState;
     }
   }
 
@@ -448,7 +446,7 @@ class TrafficManagerClass {
 
     if (!webview) return;
     
-    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview, currentHref);
+    const loadingResult = await this.loadingTracker.handleProbe(provider, viewState, data, now, webview as never, currentHref);
     Object.assign(viewState, loadingResult.newState);
     this.setIndicator(provider, "loading", loadingResult.indicator);
     if (loadingResult.event) {
@@ -480,11 +478,11 @@ class TrafficManagerClass {
       }
     }
 
-    const sendResult = this.sendTracker.handleProbe(provider, viewState, data, now);
+    const sendResult = this.sendTracker.handleProbe(provider, viewState as Record<string, unknown> & TrafficState, data, now);
     Object.assign(viewState, sendResult.newState);
     this.setIndicator(provider, "send", sendResult.indicator);
 
-    this.state[provider] = viewState;
+    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
     return true;
   }
 
@@ -512,7 +510,7 @@ class TrafficManagerClass {
     }
     const viewState = this.state[provider];
     viewState.status = { ...viewState.status, [kind]: status };
-    this.state[provider] = viewState;
+    this.state[provider] = viewState as Record<string, unknown> & TrafficState;
     this.updateDerivedStates(provider);
 
     const dot = this.indicators[provider]?.[kind as keyof TrafficIndicator];

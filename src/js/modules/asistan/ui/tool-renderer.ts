@@ -5,11 +5,7 @@
  * Expand/collapse, status gösterimi ve output rendering içerir.
  */
 
-declare global {
-  interface Window {
-    ToolRenderer: typeof ToolRenderer;
-  }
-}
+// ToolRenderer is declared in global.d.ts
 
 const ToolRenderer = {
   /** @type {Map<string, HTMLElement>} */
@@ -1381,4 +1377,5 @@ const ToolRenderer = {
 export { ToolRenderer };
 
 // Global export (backward compatibility)
-window.ToolRenderer = ToolRenderer;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+window.ToolRenderer = ToolRenderer as any;

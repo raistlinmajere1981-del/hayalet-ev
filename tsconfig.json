@@ -46,7 +46,13 @@
     
     // === Diğer ===
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    
+    // === AI-Optimized Settings ===
+    "noErrorTruncation": true,        // Full error messages for AI analysis
+    "verbatimModuleSyntax": true,     // Strict type import/export clarity
+    "incremental": true,              // Faster rebuilds (cache-based)
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
   },
   
   // === Renderer Process (src/js) ===

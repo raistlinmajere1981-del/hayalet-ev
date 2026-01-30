@@ -119,7 +119,7 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
         msg,
         provider,
         attachmentsBasePath,
-        msgAttachments as unknown[],
+        msgAttachments as AttachmentData[],
         callbacks
       );
       container.appendChild(bubble);
