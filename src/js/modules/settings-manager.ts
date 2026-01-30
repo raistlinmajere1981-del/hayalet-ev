@@ -105,11 +105,13 @@ class SettingsManagerClass {
     return await this.load({ force: true });
   }
 
-  get(path?: string) {
+  get(path?: string): unknown {
     if (!path) return this._settings;
     const parts = String(path).split(".");
-    let cur = this._settings;
-    for (const p of parts) cur = cur?.[p];
+    let cur: Record<string, unknown> = this._settings as unknown as Record<string, unknown>;
+    for (const p of parts) {
+      cur = (cur?.[p] as Record<string, unknown>) || {};
+    }
     return cur;
   }
 
@@ -118,7 +120,7 @@ class SettingsManagerClass {
   }
 
   async save(nextSettings: Record<string, unknown>) {
-    const next = normalizeSettings(nextSettings) as any;
+    const next = normalizeSettings(nextSettings) as AppSettings;
     const changedPaths = getChangedPaths(this._lastSaved, next);
     
     this._settings = next;

@@ -301,8 +301,8 @@ const messageStore = {
           ...part,
           messageId: newId,
         };
-        const part = updated.parts[partId];
-        if (part) this._parts.set(partId, part);
+        const updatedPart = updated.parts[partId];
+        if (updatedPart) this._parts.set(partId, updatedPart);
       }
     });
 

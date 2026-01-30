@@ -63,3 +63,30 @@ async function grepDirectory(
   return matches;
 }
 
+
+// Tool Definitions
+export const GREP_TOOL = {
+  name: "hev_fs_grep",
+  description: "Dosyalarda pattern ara",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      content_pattern: { type: "string", description: "Aranacak regex pattern" },
+      path_glob: { type: "string", description: "Dosya yolu glob pattern" }
+    }
+  }
+};
+
+export const SHOW_FILE_TOOL = {
+  name: "hev_fs_show",
+  description: "Dosya içeriğini satır numaralarıyla göster",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Dosya yolu" },
+      start_line: { type: "integer", description: "Başlangıç satırı" },
+      end_line: { type: "integer", description: "Bitiş satırı" }
+    },
+    required: ["file_path"]
+  }
+};

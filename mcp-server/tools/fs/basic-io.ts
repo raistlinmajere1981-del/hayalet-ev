@@ -7,7 +7,8 @@
 import { access, writeFile, mkdir, unlink, rename } from "fs/promises";
 import { dirname } from "path";
 import { spawn } from "child_process";
-import { readFileWithCollapse, type FileContent } from "../../utils/file-utils.js";
+import { readFileWithCollapse } from "../../utils/file-utils.js";
+import type { FileContent } from "../../types/index.js";
 import { moveToTrash, logOperation } from "../../utils/recycle-utils.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { createProgress } from "../../utils/progress.js";

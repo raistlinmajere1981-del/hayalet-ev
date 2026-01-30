@@ -6,8 +6,18 @@
 
 import { readFile } from "fs/promises";
 import { expandSymbols, expandLineRanges, addLineNumbers } from "../../utils/file-utils.js";
-import { getContextPreview } from "../../utils/file-utils.js";
+import { getContextPreview, findAndReplace } from "../../utils/file-utils.js";
 import { logToolError } from "../../utils/mcp-logger.js";
+import { createProgress } from "../../utils/progress.js";
+
+interface ReplaceResult {
+  file: string;
+  replacements: number;
+  success: boolean;
+  error?: string;
+  preview?: string;
+  contextPreview?: string;
+}
 
 export async function expandCodeChunks(
   filePath: string,
@@ -61,7 +71,8 @@ export async function findAndReplaceCode(
       let firstChangeLineIndex = -1;
       
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes(replace)) {
+        const line = lines[i];
+        if (line && line.includes(replace)) {
           firstChangeLineIndex = i;
           break;
         }
@@ -101,84 +112,34 @@ export async function findAndReplaceCode(
   };
 }
 
-// Tool Definitions
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        file_path: {
-          type: "string",
-          description: "Dosya yolu",
-        },
-        line_ranges: {
-          type: "array",
-          items: {
-            type: "array",
-            items: { type: "integer" },
-          },
-          description: "Genişletilecek satır aralıkları [[start, end], ...]. Tüm dosya için [[0, -1]]",
-          default: [],
-        },
-        patterns: {
-          type: "array",
-          items: { type: "string" },
-          description: "Aranacak sembol patternleri (fonksiyon, class isimleri vb.)",
-          default: [],
-        },
-      },
-      required: ["file_path"],
-    },
-  },
-  {
-    name: "hev_fs_find_and_replace",
-    description: "Dosyada bul ve değiştir. ignoreWhitespace=true ile whitespace farkları ignore edilir. dryRun=true ile önizleme modunda çalışır.",
-    inputSchema: {
 
-      properties: {
-        file_path: {
-          type: "string",
-          description: "Dosya yolu",
-        },
-        find: {
-          type: "string",
-          description: "Bulunacak metin",
-        },
-        replace: {
-          type: "string",
-          description: "Yerine konacak metin",
-        },
-        ignore_whitespace: {
-          type: "boolean",
-          description: "Whitespace farklarını ignore et (boşluk, tab, newline sayısı fark etmez)",
-          default: false,
-        },
-        dry_run: {
-          type: "boolean",
-          description: "Önizleme modu - değişiklikleri göster ama dosyaya yazma",
-          default: false,
-        },
-      },
-      required: ["file_path", "find", "replace"],
+// Tool Definitions
+export const EXPAND_CODE_CHUNKS_TOOL = {
+  name: "hev_fs_expand_code_chunks",
+  description: "Dosyada kod parçalarını genişlet",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Dosya yolu" },
+      line_ranges: { type: "array", items: { type: "array", items: { type: "integer" } }, description: "Satır aralıkları", default: [] },
+      patterns: { type: "array", items: { type: "string" }, description: "Aranacak semboller", default: [] }
     },
-  },
-  {
-    name: "hev_fs_grep",
-    description: "Dosyalarda pattern ara. 3 mod: 1) Sadece content_pattern: içerik ara, 2) Sadece path_glob: dosya yolu ara, 3) Her ikisi: filtrelenmiş dosyalarda ara",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        content_pattern: {
-          type: "string",
-          description: "Aranacak regex pattern (içerik için)",
-        },
-        path_glob: {
-          type: "string",
-          description: "Dosya yolu glob pattern (örn: '*.ts', '**/test/*.js')",
-        },
-      },
+    required: ["file_path"]
+  }
+};
+
+export const FIND_AND_REPLACE_TOOL = {
+  name: "hev_fs_find_and_replace",
+  description: "Dosyada bul ve değiştir",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Dosya yolu" },
+      find: { type: "string", description: "Bulunacak metin" },
+      replace: { type: "string", description: "Yerine konacak metin" },
+      ignore_whitespace: { type: "boolean", description: "Whitespace ignore et", default: false },
+      dry_run: { type: "boolean", description: "Önizleme modu", default: false }
     },
-  },
-  {
-    name: "hev_fs_expand_folder",
-    description: "Klasör yapısını göster (tree view).",
-    inputSchema: {
-      type: "object" as const,
+    required: ["file_path", "find", "replace"]
+  }
+};

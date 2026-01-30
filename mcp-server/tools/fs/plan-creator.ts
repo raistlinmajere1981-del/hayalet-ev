@@ -4,6 +4,17 @@
 
 import { existsSync } from "fs";
 
+interface TechnicalPlan {
+  logicalChanges?: Array<{
+    summary: string;
+    filesToChange: Array<{
+      filePath: string;
+      descriptionOfChange: string;
+      clarifyingQuestionIfAny?: string;
+    }>;
+  }>;
+}
+
 export function createTechnicalPlan(
   plan: TechnicalPlan
 ): { success: boolean; summary: string } {
@@ -17,6 +28,7 @@ export function createTechnicalPlan(
   
   for (let i = 0; i < plan.logicalChanges.length; i++) {
     const change = plan.logicalChanges[i];
+    if (!change) continue;
     summaryLines.push(`## ${i + 1}. ${change.summary}\n`);
     
     for (const file of change.filesToChange) {

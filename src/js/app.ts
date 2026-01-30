@@ -103,7 +103,7 @@ function ensureElectronApiFallback() {
           data: await window.electronAPI?.readFile(p),
         })),
       );
-    }) as any,
+    }) as unknown as (paths: string[]) => Promise<Array<{ path: string; data: string | null }>>,
 
     openPath: async (_path: string) => ({ success: true }),
 
@@ -163,7 +163,7 @@ function ensureElectronApiFallback() {
     googledriveStartAuth: async () => ({ success: false }),
     googledriveExchangeCode: async () => ({ success: false }),
     googledriveDisconnect: async () => ({ success: false }),
-  };
+  } as unknown as ElectronAPI;
 }
 
 if (!window.electronAPI) {

@@ -6,6 +6,15 @@ import { spawn, ChildProcess } from "child_process";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { FS_TIMEOUTS } from "../../utils/timeouts.js";
 
+interface BashResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  pid?: number;
+  timedOut?: boolean;
+  success?: boolean;
+}
+
 export async function executeBash(
   command: string | number,
   workspacePath: string,

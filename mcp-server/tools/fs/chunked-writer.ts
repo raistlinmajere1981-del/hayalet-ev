@@ -4,7 +4,7 @@
  * Large file handling with chunks
  */
 
-import { writeFile, appendFile, access } from "fs/promises";
+import { writeFile, appendFile, access, readFile, unlink } from "fs/promises";
 import { dirname } from "path";
 import { mkdir } from "fs/promises";
 import { logToolError } from "../../utils/mcp-logger.js";
@@ -37,7 +37,7 @@ export async function createChunkedFile(
     // Her chunk'ı temp dosyaya yaz
     for (let i = 0; i < chunks.length; i++) {
       const tempPath = `${tempDir}/chunk_${String(i).padStart(4, "0")}.tmp`;
-      await writeFile(tempPath, chunks[i], "utf-8");
+      await writeFile(tempPath, chunks[i] || '', "utf-8");
       tempFiles.push(tempPath);
       progress.update(Math.round(((i + 1) / chunks.length) * 50), `Parça ${i + 1}/${chunks.length} yazıldı`);
     }
@@ -112,81 +112,30 @@ export async function appendChunk(
 }
 
 // Tool Definitions
-          type: "string",
-          description: "İkinci içeriğin etiketi",
-          default: "b",
-        },
-      },
-      required: ["content1", "content2"],
+export const CREATE_CHUNKED_FILE_TOOL = {
+  name: "hev_fs_create_chunked",
+  description: "Büyük dosyaları parçalar halinde oluştur",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Hedef dosya yolu" },
+      chunks: { type: "array", items: { type: "string" }, description: "İçerik parçaları" },
+      overwrite: { type: "boolean", description: "Üzerine yaz", default: false }
     },
-  },
-  {
-    name: "hev_fs_show",
-    description: "Dosya içeriğini satır numaralarıyla göster",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        file_path: {
-          type: "string",
-          description: "Dosya yolu",
-        },
-        start_line: {
-          type: "integer",
-          description: "Başlangıç satırı (1-indexed)",
-        },
-        end_line: {
-          type: "integer",
-          description: "Bitiş satırı",
-        },
-      },
-      required: ["file_path"],
-    },
-  },
-  {
-    name: "hev_fs_create_chunked",
-    description: "Büyük dosyaları parçalar halinde oluştur. LLM response limitlerini aşmak için chunk-based yaklaşım kullanır.",
-    inputSchema: {
-      type: "object" as const,
+    required: ["file_path", "chunks"]
+  }
+};
 
-        file_path: {
-          type: "string",
-          description: "Oluşturulacak dosya yolu",
-        },
-        chunks: {
-          type: "array",
-          items: { type: "string" },
-          description: "Dosya içeriğinin parçaları (sırayla birleştirilecek)",
-        },
-        overwrite: {
-          type: "boolean",
-          description: "Dosya varsa üzerine yaz",
-          default: false,
-        },
-      },
-      required: ["file_path", "chunks"],
+export const APPEND_CHUNK_TOOL = {
+  name: "hev_fs_append_chunk",
+  description: "Dosyaya içerik ekle (streaming)",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Hedef dosya yolu" },
+      content: { type: "string", description: "Eklenecek içerik" },
+      create_if_missing: { type: "boolean", description: "Yoksa oluştur", default: true }
     },
-  },
-  {
-    name: "hev_fs_append_chunk",
-    description: "Mevcut dosyaya içerik ekle (streaming write). Büyük dosyaları parça parça oluşturmak için kullanılır.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        file_path: {
-          type: "string",
-          description: "Hedef dosya yolu",
-        },
-        content: {
-          type: "string",
-          description: "Eklenecek içerik",
-        },
-        create_if_missing: {
-          type: "boolean",
-          description: "Dosya yoksa oluştur",
-          default: true,
-        },
-      },
-      required: ["file_path", "content"],
-    },
-  },
-];
+    required: ["file_path", "content"]
+  }
+};

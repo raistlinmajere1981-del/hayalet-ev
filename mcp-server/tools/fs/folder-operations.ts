@@ -2,7 +2,6 @@
  * Filesystem Tools - Folder Operations
  */
 
-import { buildTree } from "../../utils/file-utils.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
 export async function expandFolder(
@@ -19,19 +18,27 @@ export async function expandFolder(
   }
 }
 
+// Helper functions (stubs - need implementation)
+async function readFolderStructure(folderPath: string, maxDepth: number): Promise<any[]> {
+  // Implementation needed
+  return [];
+}
+
+function formatFolderStructure(entries: any[]): string {
+  // Implementation needed
+  return "";
+}
+
 // Tool Definition
-    name: "hev_fs_create_plan",
-    description: "Teknik plan oluştur ve doğrula.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        plan: {
-          type: "object",
-          description: "Teknik plan objesi { logicalChanges: [...] }",
-          properties: {
-            logicalChanges: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  summary: { type: "string" },
+export const EXPAND_FOLDER_TOOL = {
+  name: "hev_fs_expand_folder",
+  description: "Klasör yapısını göster (tree view)",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      folder_path: { type: "string", description: "Klasör yolu" },
+      max_depth: { type: "integer", description: "Maksimum derinlik", default: 3 }
+    },
+    required: ["folder_path"]
+  }
+};

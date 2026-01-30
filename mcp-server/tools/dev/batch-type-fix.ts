@@ -62,17 +62,21 @@ async function addGuards(content: string, pattern: string): Promise<string> {
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (!line) {
+      result.push('');
+      continue;
+    }
     
     // Detect pattern like: MessageStore?.method()
     const match = line.match(new RegExp(`(\\s*)(${pattern}\\?\\.\\w+)\\(`));
     
-    if (match) {
+    if (match && match[1]) {
       const indent = match[1];
       const obj = pattern;
       
       // Check if already in guard
       const prevLine = i > 0 ? lines[i - 1] : '';
-      if (prevLine.includes(`if (${obj})`)) {
+      if (prevLine && prevLine.includes(`if (${obj})`)) {
         result.push(line);
         continue;
       }

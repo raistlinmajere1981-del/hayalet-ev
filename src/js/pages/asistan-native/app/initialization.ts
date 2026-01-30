@@ -89,11 +89,11 @@ export function setupInitialization(context: AppContext) {
       // Message Renderer
       const messagesList = document.getElementById('messages-list');
       if (messagesList) {
-        (window.MessageRenderer as any)?.init?.(messagesList, { reactive: true });
+        (window.MessageRenderer as { init?: (el: HTMLElement, opts: { reactive: boolean }) => void })?.init?.(messagesList, { reactive: true });
 
         const messagesContainer = messagesList.closest('.messages-container') as HTMLElement | null;
         if (messagesContainer) {
-          (window.MessageRenderer as any)?.initSmartScroll?.(messagesContainer);
+          (window.MessageRenderer as { initSmartScroll?: (el: HTMLElement) => void })?.initSmartScroll?.(messagesContainer);
           console.log('[OpenCode] Smart scroll initialized');
         }
 
@@ -113,21 +113,21 @@ export function setupInitialization(context: AppContext) {
       const promptInput = document.getElementById('prompt-input');
       const sendButton = document.getElementById('btn-send');
       if (promptInput && sendButton) {
-        (window.PromptHandler as any)?.init?.({
+        (window.PromptHandler as { init?: (opts: Record<string, unknown>) => void })?.init?.({
           input: promptInput as HTMLTextAreaElement,
           sendButton: sendButton,
-          onSend: (message: string) => (context as any)._handleSendMessage(message),
+          onSend: (message: string) => (context as { _handleSendMessage: (msg: string) => void })._handleSendMessage(message),
         });
       }
 
       // Permission & Question Modals
       if (typeof window.PermissionModal !== 'undefined') {
-        (window.PermissionModal as any)?.init?.();
+        (window.PermissionModal as { init?: () => void })?.init?.();
         console.log('[OpenCode] PermissionModal initialized');
       }
 
       if (typeof window.QuestionModal !== 'undefined') {
-        (window.QuestionModal as any)?.init?.();
+        (window.QuestionModal as { init?: () => void })?.init?.();
         console.log('[OpenCode] QuestionModal initialized');
       }
 
@@ -152,19 +152,19 @@ export function setupInitialization(context: AppContext) {
         if (modelSelectorBtn) {
           modelSelectorBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            context._openModelDropdown(modelSelectorBtn);
+            context._openModelDropdown();
           });
         }
 
         if (agentSelectorBtn) {
           agentSelectorBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            context._openAgentDropdown(agentSelectorBtn);
+            context._openAgentDropdown();
           });
         }
 
         window.AgentModelSelector?.subscribe?.((event: unknown) => {
-          const evt = event as any;
+          const evt = event as { type?: string };
           if (evt.type === 'model:changed' || evt.type === 'selection:changed') {
             context._updateModelSelectorButton();
           }
@@ -214,7 +214,7 @@ export function setupInitialization(context: AppContext) {
 
       if (typeof window.MessageStore !== 'undefined') {
         window.MessageStore?.subscribe?.((event: unknown) => {
-          const evt = event as any;
+          const evt = event as { type?: string };
           if (evt.type === 'part:updated' || evt.type === 'message:updated') {
           if (context._tokenUpdateTimeout) {
             clearTimeout(context._tokenUpdateTimeout);
@@ -234,11 +234,11 @@ export function setupInitialization(context: AppContext) {
       if (typeof window.SessionStore === 'undefined') return;
 
       window.SessionStore?.subscribe?.(() => {
-        (context as any)._updateSessionBadge();
+        (context as unknown as { _updateSessionBadge: () => void })._updateSessionBadge();
       });
 
-      (context as any)._updateSessionBadge();
-      (context as any)._updateStatusPanel();
+      (context as unknown as { _updateSessionBadge: () => void })._updateSessionBadge();
+      (context as unknown as { _updateStatusPanel: () => void })._updateStatusPanel();
       context._statusPanelInterval = setInterval(() => {
         context._updateStatusPanel();
       }, 30000);

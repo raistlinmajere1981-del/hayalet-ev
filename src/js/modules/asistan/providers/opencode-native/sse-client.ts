@@ -200,7 +200,7 @@ const SSEClient = {
           
           // Update InstanceStore (if available)
           if (typeof (window).InstanceStore !== 'undefined') {
-            (window).InstanceStore.setInstanceStatus(instanceId, 'connected');
+            (window).InstanceStore.setInstanceStatus?.(instanceId, 'connected');
           }
           
           resolve(true);
@@ -217,7 +217,7 @@ const SSEClient = {
           
           // Update InstanceStore (if available)
           if (typeof (window).InstanceStore !== 'undefined') {
-            (window).InstanceStore.setInstanceStatus(instanceId, 'error', 'Connection error');
+            (window).InstanceStore.setInstanceStatus?.(instanceId, 'error', 'Connection error');
           }
           
           // Auto-reconnect

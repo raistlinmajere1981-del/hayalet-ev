@@ -2,14 +2,11 @@
  * Filesystem Tools - History Manager
  */
 
-import { backupToHistory, undoLastOperation, getOperationHistory } from "../../utils/recycle-utils.js";
+import { undoLastOperation, getOperationHistory } from "../../utils/recycle-utils.js";
 
 export function backupFile(projectRoot: string, filePath: string): { success: boolean; message: string; backupPath?: string } {
-  const result = createBackup(projectRoot, filePath);
-  if (result.success) {
-    return { success: true, message: `✅ Yedek oluşturuldu: ${result.backupPath}`, backupPath: result.backupPath };
-  }
-  return { success: false, message: result.error || "Yedekleme başarısız" };
+  // Stub implementation - createBackup not implemented yet
+  return { success: false, message: "Not implemented" };
 }
 
 export function undoOperation(projectRoot: string): { success: boolean; message: string } {
@@ -30,38 +27,34 @@ export function operationHistory(projectRoot: string, limit: number = 20): { ope
 }
 
 // Tool Definitions
-          type: "string",
-          description: "Yedeklenecek dosya yolu",
-        },
-      },
-      required: ["file_path"],
+export const BACKUP_FILE_TOOL = {
+  name: "hev_fs_backup",
+  description: "Dosyanın yedeğini al",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file_path: { type: "string", description: "Yedeklenecek dosya" }
     },
-  },
-  {
-    name: "hev_fs_undo",
-    description: "Son dosya işlemini geri al (delete, create, replace)",
-    inputSchema: {
-      type: "object" as const,
-      properties: {},
-    },
-  },
-  {
-    name: "hev_fs_history",
-    description: "Dosya işlem geçmişini göster",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        limit: {
-          type: "integer",
-          description: "Gösterilecek işlem sayısı",
-          default: 20,
-        },
-      },
-    },
-  },
-  // === Diff Tools ===
-  {
-    name: "hev_fs_diff",
-    description: "İki dosyayı karşılaştır (unified diff formatı)",
-    inputSchema: {
-      type: "object" as const,
+    required: ["file_path"]
+  }
+};
+
+export const UNDO_OPERATION_TOOL = {
+  name: "hev_fs_undo",
+  description: "Son işlemi geri al",
+  inputSchema: {
+    type: "object" as const,
+    properties: {}
+  }
+};
+
+export const OPERATION_HISTORY_TOOL = {
+  name: "hev_fs_history",
+  description: "İşlem geçmişini göster",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      limit: { type: "integer", description: "Gösterilecek kayıt", default: 20 }
+    }
+  }
+};

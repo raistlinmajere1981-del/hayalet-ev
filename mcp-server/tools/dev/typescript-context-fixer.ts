@@ -120,7 +120,7 @@ function parseTypeScriptErrors(output: string): any[] {
     // Parse: src/file.ts(123,45): error TS2532: Object is possibly 'undefined'.
     // Note: Message might be truncated, but we only need file/line/code for root cause
     const match = line.match(/^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.*)$/);
-    if (match) {
+    if (match && match[1] && match[2] && match[3] && match[4] && match[5]) {
       errors.push({
         file: match[1],
         line: parseInt(match[2], 10),
@@ -335,6 +335,7 @@ function formatOutput(issues: TypeDefinitionIssue[], filePath: string): string {
     
     for (let i = 0; i < group.items.length; i++) {
       const issue = group.items[i];
+      if (!issue) continue;
       output += `\n${i + 1}. Line ${issue.line}: ${issue.error_code}\n`;
       output += `   Symbol: ${issue.symbol}\n`;
       output += `   Root Cause: ${issue.root_cause}\n`;

@@ -35,7 +35,7 @@ function parseTypeScriptErrors(output: string): TypeScriptError[] {
   for (const line of lines) {
     // Match: src/file.ts(123,45): error TS1234: Message
     const match = line.match(/^(.+?)\((\d+),\d+\):\s*error\s+(TS\d+):\s*(.*)$/);
-    if (match) {
+    if (match && match[1] && match[2] && match[3] && match[4]) {
       errors.push({
         file: match[1],
         line: parseInt(match[2]),
@@ -54,13 +54,13 @@ function extractSymbol(message: string, errorCode: string): string {
   // TS2304: Cannot find name 'X'
   if (errorCode === 'TS2304') {
     const match = message.match(/Cannot find name '([^']+)'/);
-    if (match) return match[1];
+    if (match && match[1]) return match[1];
   }
   
   // TS18046: 'X' is of type 'unknown'
   if (errorCode === 'TS18046') {
     const match = message.match(/'([^']+)' is of type 'unknown'/);
-    if (match) return match[1];
+    if (match && match[1]) return match[1];
   }
   
   // TS2722: Cannot invoke an object which is possibly 'undefined'
@@ -78,13 +78,13 @@ function extractSymbol(message: string, errorCode: string): string {
   // TS2322: Type 'X' is not assignable to type 'Y'
   if (errorCode === 'TS2322') {
     const match = message.match(/Type '([^']+)' is not assignable/);
-    if (match) return match[1];
+    if (match && match[1]) return match[1];
   }
   
   // TS2345: Argument of type 'X' is not assignable
   if (errorCode === 'TS2345') {
     const match = message.match(/Argument of type '([^']+)'/);
-    if (match) return match[1];
+    if (match && match[1]) return match[1];
   }
   
   // TS2349: This expression is not callable
@@ -175,6 +175,8 @@ function formatClusters(clusters: ErrorCluster[], limit?: number): string {
   
   for (let i = 0; i < displayClusters.length; i++) {
     const cluster = displayClusters[i];
+    if (!cluster) continue;
+    
     const fileCount = cluster.affectedFiles.size;
     
     output.push(`\nCluster ${i + 1}: ${cluster.description}`);

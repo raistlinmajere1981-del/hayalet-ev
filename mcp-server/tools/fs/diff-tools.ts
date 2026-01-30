@@ -2,7 +2,7 @@
  * Filesystem Tools - Diff Tools
  */
 
-import { diffLines } from "../../utils/diff-utils.js";
+import { diffFiles, diffContent } from "../../utils/diff-utils.js";
 
 export function fileDiff(file1: string, file2: string): { identical: boolean; summary: string } {
   const result = diffFiles(file1, file2);
@@ -20,22 +20,30 @@ export function contentDiff(content1: string, content2: string, label1?: string,
 }
 
 // Tool Definitions
-        file1: {
-          type: "string",
-          description: "Birinci dosya yolu",
-        },
-        file2: {
-          type: "string",
-          description: "İkinci dosya yolu",
-        },
-      },
-      required: ["file1", "file2"],
+export const FILE_DIFF_TOOL = {
+  name: "hev_fs_diff",
+  description: "İki dosyayı karşılaştır",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      file1: { type: "string", description: "Birinci dosya" },
+      file2: { type: "string", description: "İkinci dosya" }
     },
-  },
-  {
-    name: "hev_fs_diff_content",
-    description: "İki metin bloğunu karşılaştır",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        content1: {
+    required: ["file1", "file2"]
+  }
+};
+
+export const CONTENT_DIFF_TOOL = {
+  name: "hev_fs_diff_content",
+  description: "İki metin bloğunu karşılaştır",
+  inputSchema: {
+    type: "object" as const,
+    properties: {
+      content1: { type: "string", description: "Birinci içerik" },
+      content2: { type: "string", description: "İkinci içerik" },
+      label1: { type: "string", description: "Birinci etiket", default: "a" },
+      label2: { type: "string", description: "İkinci etiket", default: "b" }
+    },
+    required: ["content1", "content2"]
+  }
+};
