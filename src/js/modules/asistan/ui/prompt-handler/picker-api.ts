@@ -55,7 +55,7 @@ function createPickerApi(
     const items: MentionResult[] = [];
 
     if (typeof window.AgentModelSelector !== 'undefined') {
-      const agents = (window.AgentModelSelector as any).getAvailableAgents?.() || [];
+      const agents = (window.AgentModelSelector).getAvailableAgents?.() || [];
       agents.forEach((agent: { name: string }) => {
         items.push({
           name: agent.name,
@@ -69,8 +69,8 @@ function createPickerApi(
   }
 
   function openCommandPicker(query: string): CommandResult[] {
-    const commands = (typeof window.OpenCodeConfig !== 'undefined' && (window.OpenCodeConfig as any).commands)
-      ? (window.OpenCodeConfig as any).commands
+    const commands = (typeof window.OpenCodeConfig !== 'undefined' && (window.OpenCodeConfig).commands)
+      ? (window.OpenCodeConfig).commands
       : [
           { name: 'clear', description: 'Sohbeti temizle' },
           { name: 'new', description: 'Yeni oturum başlat' },

@@ -84,16 +84,16 @@ export function setupInitialization(context: AppContext) {
 
     initComponents() {
       // Instance Tabs
-      (context._initInstanceTabs as any)?.();
+      context._initInstanceTabs();
 
       // Message Renderer
       const messagesList = document.getElementById('messages-list');
       if (messagesList) {
-        (window.MessageRenderer?.init as any)?.(messagesList, { reactive: true });
+        window.MessageRenderer?.init?.(messagesList, { reactive: true });
 
         const messagesContainer = messagesList.closest('.messages-container') as HTMLElement | null;
         if (messagesContainer) {
-          (window.MessageRenderer?.initSmartScroll as any)?.(messagesContainer);
+          window.MessageRenderer?.initSmartScroll?.(messagesContainer);
           console.log('[OpenCode] Smart scroll initialized');
         }
 
@@ -101,38 +101,38 @@ export function setupInitialization(context: AppContext) {
       }
 
       // Sidebars
-      (context._initSidebars as any)?.();
+      context._initSidebars();
 
       // Command palette
-      (context._initCommandPalette as any)?.();
+      context._initCommandPalette();
 
       // Collapsible sections
-      (context._initCollapsibleSections as any)?.();
+      context._initCollapsibleSections();
 
       // Prompt Handler
       const promptInput = document.getElementById('prompt-input');
       const sendButton = document.getElementById('btn-send');
       if (promptInput && sendButton) {
-        (window.PromptHandler?.init as any)?.({
+        window.PromptHandler?.init?.({
           input: promptInput as HTMLTextAreaElement,
           sendButton: sendButton,
-          onSend: (message: string) => (context._handleSendMessage as any)(message),
+          onSend: (message: string) => context._handleSendMessage(message),
         });
       }
 
       // Permission & Question Modals
       if (typeof window.PermissionModal !== 'undefined') {
-        (window.PermissionModal?.init as any)?.();
+        window.PermissionModal?.init?.();
         console.log('[OpenCode] PermissionModal initialized');
       }
 
       if (typeof window.QuestionModal !== 'undefined') {
-        (window.QuestionModal?.init as any)?.();
+        window.QuestionModal?.init?.();
         console.log('[OpenCode] QuestionModal initialized');
       }
 
       // API Client URL
-      window.APIClient?.setServerUrl?.((context._getServerUrl as any)?.());
+      window.APIClient?.setServerUrl?.(context._getServerUrl());
 
       // Agent/Model Selector
       if (typeof window.AgentModelSelector !== 'undefined') {
@@ -142,8 +142,8 @@ export function setupInitialization(context: AppContext) {
         window.AgentModelSelector?.initialize?.()
           .then(() => {
             console.log('[OpenCode] AgentModelSelector initialized');
-            (context._updateModelSelectorButton as any)?.();
-            (context._updateAgentSelectorButton as any)?.();
+            context._updateModelSelectorButton();
+            context._updateAgentSelectorButton();
           })
           .catch((err: unknown) => {
             console.warn('[OpenCode] AgentModelSelector init error:', err);
@@ -152,23 +152,23 @@ export function setupInitialization(context: AppContext) {
         if (modelSelectorBtn) {
           modelSelectorBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            (context._openModelDropdown as any)?.(modelSelectorBtn);
+            context._openModelDropdown(modelSelectorBtn);
           });
         }
 
         if (agentSelectorBtn) {
           agentSelectorBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            (context._openAgentDropdown as any)?.(agentSelectorBtn);
+            context._openAgentDropdown(agentSelectorBtn);
           });
         }
 
-        window.AgentModelSelector?.subscribe?.((event: any) => {
+        window.AgentModelSelector?.subscribe?.((event: unknown) => {
           if (event.type === 'model:changed' || event.type === 'selection:changed') {
-            (context._updateModelSelectorButton as any)?.();
+            context._updateModelSelectorButton();
           }
           if (event.type === 'agent:changed' || event.type === 'selection:changed') {
-            (context._updateAgentSelectorButton as any)?.();
+            context._updateAgentSelectorButton();
           }
         });
       }
@@ -202,29 +202,29 @@ export function setupInitialization(context: AppContext) {
           case 'session:changed':
           case 'session:usage:updated':
           case 'session:info:updated':
-            (context._updateTokenDisplay as any)?.();
+            context._updateTokenDisplay();
             break;
           case 'session:created':
           case 'session:updated':
-            (context._updateSessionList as any)?.();
+            context._updateSessionList();
             break;
         }
       });
 
       if (typeof window.MessageStore !== 'undefined') {
-        window.MessageStore?.subscribe?.((event: any) => {
+        window.MessageStore?.subscribe?.((event: unknown) => {
           if (event.type === 'part:updated' || event.type === 'message:updated') {
-          if ((context._tokenUpdateTimeout as any)) {
-            clearTimeout(context._tokenUpdateTimeout as any);
+          if (context._tokenUpdateTimeout) {
+            clearTimeout(context._tokenUpdateTimeout);
           }
             context._tokenUpdateTimeout = setTimeout(() => {
-              (context._updateTokenDisplay as any)?.();
+              context._updateTokenDisplay();
             }, 100);
           }
         });
       }
 
-      (context._updateTokenDisplay as any)?.();
+      context._updateTokenDisplay();
       console.log('[OpenCode] Subscribed to SessionStore');
     },
 
@@ -232,13 +232,13 @@ export function setupInitialization(context: AppContext) {
       if (typeof window.SessionStore === 'undefined') return;
 
       window.SessionStore?.subscribe?.(() => {
-        (context._updateSessionBadge as any)?.();
+        context._updateSessionBadge();
       });
 
-      (context._updateSessionBadge as any)?.();
-      (context._updateStatusPanel as any)?.();
+      context._updateSessionBadge();
+      context._updateStatusPanel();
       context._statusPanelInterval = setInterval(() => {
-        (context._updateStatusPanel as any)?.();
+        context._updateStatusPanel();
       }, 30000);
     },
   };

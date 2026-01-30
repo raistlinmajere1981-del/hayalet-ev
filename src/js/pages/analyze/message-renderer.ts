@@ -81,7 +81,7 @@ export async function renderMessages(provider: string, callbacks: RenderCallback
     }
 
     // Conversation attachments'larını DB'den al
-    const attachmentsByMessage: Record<string, any[]> = {};
+    const attachmentsByMessage: Record<string, unknown[]> = {};
     try {
       const attachmentsResult = await window.electronAPI?.dbGetAttachments?.({
         accountId: accountInfo.id,

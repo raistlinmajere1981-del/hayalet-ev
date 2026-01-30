@@ -1,5 +1,5 @@
 
-function isPlainObject(v: unknown): v is Record<string, any> {
+function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
@@ -87,7 +87,7 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
   }
 
    
-  const r = raw as any;
+  const r = raw;
   const out: Record<string, unknown> = {};
 
   if (isPlainObject(r.user)) {
@@ -146,7 +146,7 @@ export function normalizeSettings(raw: unknown) {
   const defaults = defaultSettings();
   const legacyNormalized = normalizeLegacy(raw);
    
-  const merged = mergeDefaults(legacyNormalized, defaults) as any;
+  const merged = mergeDefaults(legacyNormalized, defaults);
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];

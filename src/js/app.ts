@@ -36,7 +36,7 @@ let currentPage: string | null = null;
 /**
  * @type {Object.<string, any>}
  */
-const controllers: Record<string, any> = {};
+const controllers: Record<string, unknown> = {};
 
 function ensureElectronApiFallback() {
   if (window.electronAPI) return;
@@ -61,7 +61,7 @@ function ensureElectronApiFallback() {
     }
   };
 
-  (window as any).electronAPI = {
+  (window).electronAPI = {
     loadSettings: async () => {
       try {
         const raw = localStorage.getItem(storageKey);

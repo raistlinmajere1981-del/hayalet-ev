@@ -83,7 +83,7 @@ export function setupTokenDisplay(context: AppContext) {
 
       if (activeSession && typeof window.MessageStore !== 'undefined') {
         const messages = window.MessageStore?.getSessionMessages?.(activeSession.id) || [];
-        const totalChars = messages.reduce((sum: number, msg) => sum + ((msg as any).content?.length ?? 0), 0);
+        const totalChars = messages.reduce((sum: number, msg) => sum + ((msg).content?.length ?? 0), 0);
 
 
         const statsEl = document.getElementById('token-stats');

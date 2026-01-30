@@ -56,8 +56,8 @@ export class EntranceHallController {
     // Setup webviews
     await this.webviewPanel.setupWebviews();
     this.webviewPanel.applyGating(SettingsManager.getSnapshot(), ["*"]);
-    this.webviewPanel.updateUrlDisplay("ai1", TrafficManager.state.ai1 as any);
-    this.webviewPanel.updateUrlDisplay("ai2", TrafficManager.state.ai2 as any);
+    this.webviewPanel.updateUrlDisplay("ai1", TrafficManager.state.ai1);
+    this.webviewPanel.updateUrlDisplay("ai2", TrafficManager.state.ai2);
     this.webviewPanel.subscribeToTraffic();
 
     // Global listeners

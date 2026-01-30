@@ -125,7 +125,7 @@ class CommandManagerClass {
     try {
       return JSON.parse(JSON.stringify(rest));
     } catch {
-      const cleaned: Record<string, any> = {};
+      const cleaned: Record<string, unknown> = {};
       Object.entries(rest || {}).forEach(([key, value]) => {
         if (typeof value === "function") return;
         try {
@@ -281,7 +281,7 @@ class CommandManagerClass {
     target: string,
     command: string,
     _mode = "default",
-    payload: Record<string, any> = {},
+    payload: Record<string, unknown> = {},
     executor: (() => Promise<any>) | null = null,
     _priority = "normal",
   ) {
@@ -289,10 +289,10 @@ class CommandManagerClass {
       {
         provider: target,
         command,
-        message: (payload as any).message || "",
+        message: (payload).message || "",
         payload,
         run: executor || undefined,
-      } as any,
+      },
     ]);
     return job;
   }

@@ -41,7 +41,7 @@ interface SettingsBroadcast {
 }
 
  
-type SettingsData = any;
+type SettingsData = unknown;
 
 class SettingsManagerClass {
   _settings: SettingsData;

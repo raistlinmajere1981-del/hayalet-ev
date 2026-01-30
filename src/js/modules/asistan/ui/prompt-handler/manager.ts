@@ -57,7 +57,7 @@ const PromptHandler = {
 
     // Subscribe to AttachmentStore
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore as any).subscribe((event: unknown) => {
+      (window.AttachmentStore).subscribe((event: unknown) => {
         const e = event as { type?: string };
         if (
           e.type === 'attachment:added' ||
@@ -126,7 +126,7 @@ const PromptHandler = {
 
     const maxHistory =
       typeof window.OpenCodeConfig !== 'undefined'
-        ? (window.OpenCodeConfig as any).maxHistoryItems
+        ? (window.OpenCodeConfig).maxHistoryItems
         : 50;
     if (this._history.length > maxHistory) {
       this._history = this._history.slice(0, maxHistory);
@@ -396,7 +396,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore as any).removeAttachment(sessionId, attachmentId);
+      (window.AttachmentStore).removeAttachment(sessionId, attachmentId);
     } else {
       this._attachments = this._attachments.filter((p: string) => p !== attachmentId);
       this._renderAttachments();
@@ -409,7 +409,7 @@ const PromptHandler = {
 
     let attachments = [];
     if (typeof window.AttachmentStore !== 'undefined') {
-      attachments = (window.AttachmentStore as any).getAttachments(sessionId) || [];
+      attachments = (window.AttachmentStore).getAttachments(sessionId) || [];
     } else {
       attachments = this._attachments.map((path: string) => ({
         id: path,
@@ -467,7 +467,7 @@ const PromptHandler = {
 
     if (typeof window.AttachmentStore !== 'undefined') {
       const sessionId = this._getCurrentSessionId();
-      const attachments = await (window.AttachmentStore as any).handlePaste(e, sessionId);
+      const attachments = await (window.AttachmentStore).handlePaste(e, sessionId);
 
       if (attachments.length > 0) {
         console.log('[PromptHandler] Pasted attachments:', attachments.length);
@@ -509,7 +509,7 @@ const PromptHandler = {
 
     if (typeof window.AttachmentStore !== 'undefined') {
       const sessionId = this._getCurrentSessionId();
-      const attachments = await (window.AttachmentStore as any).handleDrop(e, sessionId);
+      const attachments = await (window.AttachmentStore).handleDrop(e, sessionId);
       console.log('[PromptHandler] Dropped attachments:', attachments.length);
     } else {
       Array.from(files as FileList).forEach((file) => {
@@ -534,7 +534,7 @@ const PromptHandler = {
 
   _getCurrentSessionId(): string {
     if (typeof window.SessionStore !== 'undefined') {
-      return (window.SessionStore as any).getCurrentSessionId?.() || 'default';
+      return (window.SessionStore).getCurrentSessionId?.() || 'default';
     }
     return 'default';
   },
@@ -543,7 +543,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      return (window.AttachmentStore as any).getAttachmentsForAPI(sessionId);
+      return (window.AttachmentStore).getAttachmentsForAPI(sessionId);
     }
 
     return this._attachments.map((path: string) => ({
@@ -557,7 +557,7 @@ const PromptHandler = {
     const sessionId = this._getCurrentSessionId();
 
     if (typeof window.AttachmentStore !== 'undefined') {
-      (window.AttachmentStore as any).clearAttachments(sessionId);
+      (window.AttachmentStore).clearAttachments(sessionId);
     } else {
       this._attachments = [];
       this._renderAttachments();
@@ -566,6 +566,6 @@ const PromptHandler = {
 };
 
 // Global export
-(window as any).PromptHandler = PromptHandler;
+(window).PromptHandler = PromptHandler;
 
 export { PromptHandler };

@@ -91,7 +91,7 @@ export class WebviewPanel {
           this.updateUrlDisplay(provider, state as TrafficState);
         } else {
           (["ai1", "ai2"] as SlotType[]).forEach((p) => {
-            this.updateUrlDisplay(p, TrafficManager.state[p] as any);
+            this.updateUrlDisplay(p, TrafficManager.state[p]);
           });
         }
       });

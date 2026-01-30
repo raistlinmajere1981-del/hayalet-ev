@@ -35,7 +35,7 @@ class ScreenshotManagerClass {
         `capturePage başarısız: ${getErrorMessage(err)}`,
       );
     }
-    if (!res?.success || !((res as any).dataUrl || res.data)) {
+    if (!res?.success || !((res).dataUrl || res.data)) {
       res = await this.captureSystem("", {
         ...opts,
         allowRegionFallback: false,
@@ -58,7 +58,7 @@ class ScreenshotManagerClass {
         `captureWindow fallback: ${getErrorMessage(err)}`,
       );
     }
-    if (!res?.success || !((res as any).dataUrl || res.data)) {
+    if (!res?.success || !((res).dataUrl || res.data)) {
       res = await this.captureSystem("", opts);
     }
     return this.persist(res as ScreenshotResult, tag, opts.format);

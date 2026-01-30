@@ -81,7 +81,7 @@ export function setupUIComponents(context: AppContext) {
       }
 
       if (confirm(`${trashSessions.length} oturum kalıcı olarak silinecek. Emin misiniz?`)) {
-        trashSessions.forEach((session: any) => {
+        trashSessions.forEach((session: unknown) => {
           window.SessionStore?.deleteSession?.(session.id);
         });
         context._showToast('Çöp kutusu temizlendi', 'success');
@@ -188,7 +188,7 @@ export function setupUIComponents(context: AppContext) {
         item.className = 'dropdown-item';
         item.textContent = agent.name || agent.id;
         item.addEventListener('click', () => {
-          (window.AgentModelSelector as any)?.setAgent?.(agent.id);
+          (window.AgentModelSelector)?.setAgent?.(agent.id);
           context._updateAgentSelectorButton();
           dropdown.remove();
         });
@@ -212,7 +212,7 @@ export function setupUIComponents(context: AppContext) {
         item.className = 'dropdown-item';
         item.textContent = model.name || model.id;
         item.addEventListener('click', () => {
-          (window.AgentModelSelector as any)?.selectModel?.(model.providerId, model.id);
+          (window.AgentModelSelector)?.selectModel?.(model.providerId, model.id);
           context._updateModelSelectorButton();
           dropdown.remove();
         });

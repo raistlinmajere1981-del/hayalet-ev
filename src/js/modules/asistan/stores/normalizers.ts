@@ -198,4 +198,4 @@ const PartNormalizer = {
 export { PartNormalizer };
 
 // Global export (backward compatibility)
-(window as any).PartNormalizer = PartNormalizer;
+(window).PartNormalizer = PartNormalizer;

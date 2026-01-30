@@ -29,8 +29,8 @@ export function setupEventListeners(context: AppContext) {
         btn.addEventListener('click', () => {
           const prompt = btn.getAttribute('data-prompt');
           if (prompt) {
-            (window.PromptHandler?.setValue as any)?.(prompt);
-            (window.PromptHandler?.focus as any)?.();
+            window.PromptHandler?.setValue?.(prompt);
+            window.PromptHandler?.focus?.();
           }
         });
       });
@@ -39,16 +39,16 @@ export function setupEventListeners(context: AppContext) {
       const approveBtn = document.getElementById('btn-approve');
       const denyBtn = document.getElementById('btn-deny');
       if (approveBtn) {
-        approveBtn.addEventListener('click', () => (context._handlePermissionResponse as any)?.(true));
+        approveBtn.addEventListener('click', () => context._handlePermissionResponse(true));
       }
       if (denyBtn) {
-        denyBtn.addEventListener('click', () => (context._handlePermissionResponse as any)?.(false));
+        denyBtn.addEventListener('click', () => context._handlePermissionResponse(false));
       }
 
       // Question modal
       const answerBtn = document.getElementById('btn-answer');
       if (answerBtn) {
-        answerBtn.addEventListener('click', () => (context._handleQuestionResponse as any)?.());
+        answerBtn.addEventListener('click', () => context._handleQuestionResponse());
       }
 
       // Stop button
@@ -59,7 +59,7 @@ export function setupEventListeners(context: AppContext) {
           try {
             await window.APIClient?.cancel?.();
             context._updateStatus('connected', 'İptal edildi');
-            (window.PromptHandler?.setProcessing as any)?.(false);
+            window.PromptHandler?.setProcessing?.(false);
           } catch (err) {
             console.error('[OpenCode] Cancel failed:', err);
           }
@@ -83,7 +83,7 @@ export function setupEventListeners(context: AppContext) {
       const attachBtn = document.getElementById('btn-attach');
       if (attachBtn) {
         attachBtn.addEventListener('click', () => {
-          (context._handleAttachFile as any)?.();
+          context._handleAttachFile?.();
         });
       }
 
@@ -91,14 +91,14 @@ export function setupEventListeners(context: AppContext) {
       const expandBtn = document.getElementById('btn-expand');
       if (expandBtn) {
         expandBtn.addEventListener('click', () => {
-          (context._togglePromptExpand as any)?.();
+          context._togglePromptExpand?.();
         });
       }
 
       // New Session button
       const newSessionBtn = document.getElementById('btn-new-session');
       if (newSessionBtn) {
-        newSessionBtn.addEventListener('click', () => (context._handleNewSession as any)?.());
+        newSessionBtn.addEventListener('click', () => context._handleNewSession?.());
       }
 
       // Keyboard shortcuts
@@ -111,7 +111,7 @@ export function setupEventListeners(context: AppContext) {
           // Ctrl+N - New session
           if (e.ctrlKey && !e.shiftKey && e.key === 'n') {
             e.preventDefault();
-            (context._handleNewSession as any)?.();
+            context._handleNewSession?.();
           }
           // Ctrl+Shift+A - Agent selector
           if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
@@ -126,14 +126,14 @@ export function setupEventListeners(context: AppContext) {
           // Ctrl+Shift+P - Command palette
           if (e.ctrlKey && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
             e.preventDefault();
-            (context._toggleCommandPalette as any)?.();
+            context._toggleCommandPalette?.();
           }
           // Escape
           if (e.key === 'Escape') {
             if (context._isProcessing) {
               window.APIClient?.cancel?.().catch(console.error);
             }
-            (context._closeAllDropdowns as any)?.();
+            context._closeAllDropdowns();
           }
         },
         { signal }
@@ -149,7 +149,7 @@ export function setupEventListeners(context: AppContext) {
       }
 
       if (typeof window.SSEClient !== 'undefined') {
-        (window.SSEClient?.disconnectAll as any)?.();
+        window.SSEClient?.disconnectAll?.();
       }
 
       if (typeof window.APIClient !== 'undefined') {
@@ -161,32 +161,32 @@ export function setupEventListeners(context: AppContext) {
 
     setupModalListeners() {
       // Rename modal
-      document.getElementById('rename-modal-close')?.addEventListener('click', () => (context.hideRenameModal as any)?.());
-      document.getElementById('btn-rename-cancel')?.addEventListener('click', () => (context.hideRenameModal as any)?.());
-      document.getElementById('btn-rename-confirm')?.addEventListener('click', () => (context.confirmRename as any)?.());
+      document.getElementById('rename-modal-close')?.addEventListener('click', () => context.hideRenameModal());
+      document.getElementById('btn-rename-cancel')?.addEventListener('click', () => context.hideRenameModal());
+      document.getElementById('btn-rename-confirm')?.addEventListener('click', () => context.confirmRename());
       document.getElementById('session-rename-input')?.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter') (context.confirmRename as any)?.();
-        if (e.key === 'Escape') (context.hideRenameModal as any)?.();
+        if (e.key === 'Enter') context.confirmRename();
+        if (e.key === 'Escape') context.hideRenameModal();
       });
 
       // Delete modal
-      document.getElementById('delete-modal-close')?.addEventListener('click', () => (context.hideDeleteModal as any)?.());
-      document.getElementById('btn-delete-cancel')?.addEventListener('click', () => (context.hideDeleteModal as any)?.());
-      document.getElementById('btn-delete-confirm')?.addEventListener('click', () => (context.confirmDelete as any)?.());
+      document.getElementById('delete-modal-close')?.addEventListener('click', () => context.hideDeleteModal());
+      document.getElementById('btn-delete-cancel')?.addEventListener('click', () => context.hideDeleteModal());
+      document.getElementById('btn-delete-confirm')?.addEventListener('click', () => context.confirmDelete());
 
       // Shell output modal
-      document.getElementById('shell-modal-close')?.addEventListener('click', () => (context.hideShellOutputModal as any)?.());
-      document.getElementById('btn-shell-close')?.addEventListener('click', () => (context.hideShellOutputModal as any)?.());
+      document.getElementById('shell-modal-close')?.addEventListener('click', () => context.hideShellOutputModal());
+      document.getElementById('btn-shell-close')?.addEventListener('click', () => context.hideShellOutputModal());
 
       // Overlay click to close
       document.getElementById('session-rename-modal')?.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).id === 'session-rename-modal') (context.hideRenameModal as any)?.();
+        if ((e.target as HTMLElement).id === 'session-rename-modal') context.hideRenameModal();
       });
       document.getElementById('session-delete-modal')?.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).id === 'session-delete-modal') (context.hideDeleteModal as any)?.();
+        if ((e.target as HTMLElement).id === 'session-delete-modal') context.hideDeleteModal();
       });
       document.getElementById('shell-output-modal')?.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).id === 'shell-output-modal') (context.hideShellOutputModal as any)?.();
+        if ((e.target as HTMLElement).id === 'shell-output-modal') context.hideShellOutputModal();
       });
     },
   };

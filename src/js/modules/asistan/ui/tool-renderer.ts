@@ -1375,4 +1375,4 @@ const ToolRenderer = {
 export { ToolRenderer };
 
 // Global export (backward compatibility)
-window.ToolRenderer = ToolRenderer as any;
+window.ToolRenderer = ToolRenderer;

@@ -153,7 +153,7 @@ class LifecycleManagerClass {
             );
           }
         };
-        (webview as any).addEventListener("dom-ready", handleReady, { once: true });
+        (webview).addEventListener("dom-ready", handleReady, { once: true });
       }
 
       LogManager.addEvent(`webview-${provider}`, "info", "attach: webview attached", { visibility: 2 });

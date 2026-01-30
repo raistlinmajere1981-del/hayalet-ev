@@ -146,12 +146,12 @@ export function setupSessionList(context: AppContext) {
       }
 
       try {
-        const original = ((window.SessionStore as any)?.getAllSessions?.() || []).find((s: SessionRecord) => s.id === sessionId);
+        const original = ((window.SessionStore)?.getAllSessions?.() || []).find((s: SessionRecord) => s.id === sessionId);
         if (!original) return;
 
         const forkTitle = `${original.title || 'Oturum'} (kopyası)`;
 
-        const response = await (window.APIClient as any)?.forkConversation?.(sessionId) || {};
+        const response = await (window.APIClient)?.forkConversation?.(sessionId) || {};
 
         if (response.sessionId) {
           const forkedSession = {
@@ -184,7 +184,7 @@ export function setupSessionList(context: AppContext) {
 
       try {
         console.log('[OpenCode] Compacting session:', sessionId);
-        await (window.APIClient as any)?.compact?.();
+        await (window.APIClient)?.compact?.();
         context._showToast('Oturum sıkıştırıldı', 'success');
       } catch (err) {
         console.error('[OpenCode] Compact failed:', err);

@@ -40,7 +40,7 @@ const StoreBridge = {
   _streamingState: streamingState,
 
   // Create event handler functions
-  _handlers: null as any,
+  _handlers: null,
 
   _initHandlers() {
     if (!this._handlers) {
@@ -48,8 +48,8 @@ const StoreBridge = {
         MessageStore,
         SessionStore,
         InstanceStore,
-        PartNormalizer: (window as any).PartNormalizer,
-        ToolRenderer: (window as any).ToolRenderer,
+        PartNormalizer: (window).PartNormalizer,
+        ToolRenderer: (window).ToolRenderer,
         get currentMessageId() {
           return StoreBridge._streamingState.currentMessageId;
         },
@@ -235,7 +235,7 @@ const StoreBridge = {
   setDebug(enabled: boolean) {
     this._debug = enabled;
     if (this._handlers) {
-      (this._handlers as any).debug = enabled;
+      (this._handlers).debug = enabled;
     }
   },
 };
@@ -243,4 +243,4 @@ const StoreBridge = {
 export { StoreBridge };
 
 // Global compatibility
-(window as any).StoreBridge = StoreBridge;
+(window).StoreBridge = StoreBridge;

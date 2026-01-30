@@ -12,7 +12,7 @@ import { LogManager } from "../log-manager.js";
 
 /** CoreEngine interface - relay'lerin ihtiyaç duyduğu metodlar */
  
-type CoreEngineRef = any;
+type CoreEngineRef = unknown;
 
 /** Relay session bilgisi - esnek yapı, alt sınıflar genişletebilir */
 interface RelaySession {

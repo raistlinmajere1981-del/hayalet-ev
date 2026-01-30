@@ -57,7 +57,7 @@ class LogManagerClass {
   lastThrottle: Map<string, number>;
   _consoleListenerSetup: boolean;
   _initialized: boolean;
-  _activeOperations: Map<string, any>;
+  _activeOperations: Map<string, unknown>;
   _correlationCounter: number;
 
   constructor() {

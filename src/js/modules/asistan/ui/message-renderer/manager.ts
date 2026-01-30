@@ -908,6 +908,6 @@ const MessageRenderer = {
 };
 
 // Global export (backward compatibility)
-(window as any).MessageRenderer = MessageRenderer;
+(window).MessageRenderer = MessageRenderer;
 
 export { MessageRenderer };

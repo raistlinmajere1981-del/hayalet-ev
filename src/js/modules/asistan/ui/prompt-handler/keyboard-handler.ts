@@ -133,7 +133,7 @@ function createKeyboardHandlers(
       e.preventDefault();
       if (activePicker !== 'none') {
         closerPickerFn();
-      } else if ((window as any).PromptHandler?._shellMode) {
+      } else if ((window).PromptHandler?._shellMode) {
         toggleShellModeFn(false);
       } else {
         setInputValueFn('');

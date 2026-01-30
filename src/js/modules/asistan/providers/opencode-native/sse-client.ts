@@ -199,8 +199,8 @@ const SSEClient = {
           this._emit('connection', { status: 'connected', instanceId });
           
           // Update InstanceStore (if available)
-          if (typeof (window as any).InstanceStore !== 'undefined') {
-            (window as any).InstanceStore.setInstanceStatus(instanceId, 'connected');
+          if (typeof (window).InstanceStore !== 'undefined') {
+            (window).InstanceStore.setInstanceStatus(instanceId, 'connected');
           }
           
           resolve(true);
@@ -216,8 +216,8 @@ const SSEClient = {
           this._emit('connection', { status: 'error', instanceId, error });
           
           // Update InstanceStore (if available)
-          if (typeof (window as any).InstanceStore !== 'undefined') {
-            (window as any).InstanceStore.setInstanceStatus(instanceId, 'error', 'Connection error');
+          if (typeof (window).InstanceStore !== 'undefined') {
+            (window).InstanceStore.setInstanceStatus(instanceId, 'error', 'Connection error');
           }
           
           // Auto-reconnect
