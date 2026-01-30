@@ -369,7 +369,11 @@ class WorkspaceManagerClass {
 
               const port = parseInt(portMatch[1] || '0', 10);
               console.log(`[WorkspaceManager] Port allocated: ${port} for workspace ${workspaceId}`);
-              resolve({ pid: child.pid!, port });
+              if (child.pid) {
+                resolve({ pid: child.pid, port });
+              } else {
+                reject(new Error('Child process PID is undefined'));
+              }
             }
           }
         }

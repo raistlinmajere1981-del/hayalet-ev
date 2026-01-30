@@ -53,11 +53,19 @@ export function initLogSystem(
 export async function ensureSessionDir(): Promise<void> {
   if (!SESSION_DIR) initLogSystem();
 
-  if (!existsSync(SESSION_DIR!)) {
-    await mkdir(SESSION_DIR!, { recursive: true });
+  if (!SESSION_DIR) {
+    throw new Error("SESSION_DIR not initialized");
+  }
+
+  if (!existsSync(SESSION_DIR)) {
+    await mkdir(SESSION_DIR, { recursive: true });
+
+    if (!SESSION_ID) {
+      throw new Error("SESSION_ID not initialized");
+    }
 
     const meta: SessionMeta = {
-      sessionId: SESSION_ID!,
+      sessionId: SESSION_ID,
       startTime: new Date().toISOString(),
       platform: process.platform,
       nodeVersion: process.version,
@@ -66,7 +74,7 @@ export async function ensureSessionDir(): Promise<void> {
     };
     
     await writeFile(
-      join(SESSION_DIR!, "meta.json"),
+      join(SESSION_DIR, "meta.json"),
       JSON.stringify(meta, null, 2)
     );
   }
@@ -85,8 +93,12 @@ export async function writeSessionSummary(
   try {
     await ensureSessionDir();
 
+    if (!SESSION_ID) {
+      throw new Error("SESSION_ID not initialized");
+    }
+
     const summary: SessionSummary = {
-      sessionId: SESSION_ID!,
+      sessionId: SESSION_ID,
       startTime: (appStateSnapshot.startTime as string) || new Date().toISOString(),
       endTime: new Date().toISOString(),
       endReason: endReason as SessionSummary["endReason"],
@@ -99,8 +111,12 @@ export async function writeSessionSummary(
       lastState: appStateSnapshot,
     };
 
+    if (!SESSION_DIR) {
+      throw new Error("SESSION_DIR not initialized");
+    }
+
     await writeFile(
-      join(SESSION_DIR!, "summary.json"),
+      join(SESSION_DIR, "summary.json"),
       JSON.stringify(summary, null, 2)
     );
   } catch (_err) {
@@ -119,10 +135,14 @@ export async function listSessions(): Promise<SessionListItem[]> {
     const entries = await readdir(LOG_DIR, { withFileTypes: true });
     const sessions = [];
     
+    if (!LOG_DIR) {
+      throw new Error("LOG_DIR not initialized");
+    }
+
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        const metaPath = join(LOG_DIR!, entry.name, "meta.json");
-        const summaryPath = join(LOG_DIR!, entry.name, "summary.json");
+        const metaPath = join(LOG_DIR, entry.name, "meta.json");
+        const summaryPath = join(LOG_DIR, entry.name, "summary.json");
         
         let meta = null;
         let summary = null;

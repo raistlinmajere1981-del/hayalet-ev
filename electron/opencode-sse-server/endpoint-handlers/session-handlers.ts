@@ -7,7 +7,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenCodeManager } from '../../opencode/index.js';
-import type { ServerState } from '../types.js';
+import type { ServerState, SSEEvent } from '../types.js';
 import { readBody } from '../utils.js';
 
 export async function handleGetSessions(
@@ -113,7 +113,7 @@ export async function handleDeleteSession(
   state: ServerState,
   sessionId: string,
   res: ServerResponse,
-  publish: (event: import('../types.js').SSEEvent) => void
+  publish: (event: SSEEvent) => void
 ): Promise<void> {
   try {
     const result = await OpenCodeManager.deleteSession(sessionId);
@@ -151,7 +151,7 @@ export async function handleRenameSession(
   req: IncomingMessage,
   sessionId: string,
   res: ServerResponse,
-  publish: (event: import('../types.js').SSEEvent) => void
+  publish: (event: SSEEvent) => void
 ): Promise<void> {
   try {
     const body = await readBody(req);
@@ -194,7 +194,7 @@ export async function handleUpdateSession(
   req: IncomingMessage,
   sessionId: string,
   res: ServerResponse,
-  publish: (event: import('../types.js').SSEEvent) => void
+  publish: (event: SSEEvent) => void
 ): Promise<void> {
   try {
     const body = await readBody(req);

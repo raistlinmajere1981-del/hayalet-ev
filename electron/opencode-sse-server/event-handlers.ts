@@ -135,7 +135,9 @@ export function handleOpenCodeEvent(
       
       if (delta) {
         state.currentAssistantContent = updatedContent;
-        callbacks.appendMessageDelta(state.currentAssistantMessageId!, delta);
+        if (state.currentAssistantMessageId) {
+          callbacks.appendMessageDelta(state.currentAssistantMessageId, delta);
+        }
       }
       break;
     }

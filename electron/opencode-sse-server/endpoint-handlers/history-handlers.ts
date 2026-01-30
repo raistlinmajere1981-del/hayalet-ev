@@ -7,14 +7,14 @@
 
 import type { IncomingMessage, ServerResponse } from 'http';
 import { OpenCodeManager } from '../../opencode/index.js';
-import type { ServerState } from '../types.js';
+import type { ServerState, SSEEvent } from '../types.js';
 import { readBody } from '../utils.js';
 
 export async function handleCompact(
   state: ServerState,
   _req: IncomingMessage,
   res: ServerResponse,
-  publish: (event: import('../types.js').SSEEvent) => void
+  publish: (event: SSEEvent) => void
 ): Promise<void> {
   try {
     const result = await OpenCodeManager.compactSession();

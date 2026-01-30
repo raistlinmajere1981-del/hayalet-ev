@@ -103,7 +103,7 @@ export async function createOrGetSession(
   port: number,
   authHeader: string | null,
   path?: string,
-  currentSessionId?: string | null
+  _currentSessionId?: string | null
 ): Promise<ApiResponse<OpenCodeSession>> {
   try {
     // Önce mevcut session'ları kontrol et
