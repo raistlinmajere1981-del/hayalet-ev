@@ -17,7 +17,7 @@ hev_mcp_health()
 
 ```
 ✅ Hayalet-ev MCP Server aktif
-📊 Toplam Tool: 77
+📊 Toplam Tool: 73
 🔧 Categories: 7
 📈 Status: Production Ready
 ```
@@ -34,6 +34,9 @@ hev_dev_analyze_project(mode: "summary")
 
 # TypeScript error dashboard
 hev_dev_typescript_dashboard()
+
+# ESLint error dashboard (YENİ!)
+hev_dev_eslint_dashboard()
 ```
 
 **Bu ne işe yarar?**

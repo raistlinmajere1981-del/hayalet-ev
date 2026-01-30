@@ -32,7 +32,7 @@
 
 - **Tech Stack:** Electron 39+ (Node.js ESM), TypeScript (strict), Vite 7.3, SQLite
 - **Sürüm:** 5.5.0
-- **MCP Server:** v1.12.0 (77 tool)
+- **MCP Server:** v1.12.0 (73 tool)
 
 **Mimari:** Main Process → Renderer Process → AI Provider Webviews + IPC Bridge
 
@@ -49,7 +49,7 @@
 | Kategori | Prefix | Count | Link |
 |----------|--------|-------|------|
 | Filesystem | `hev_fs_*` | 15 | [Details](guides/development/10-MCP-TOOLS.md) |
-| Development | `hev_dev_*` | 20 | [Details](guides/development/10-MCP-TOOLS.md) |
+| Development | `hev_dev_*` | 21 | [Details](guides/development/10-MCP-TOOLS.md) |
 | Context | `hev_context_*` | 4 | [Details](guides/development/10-MCP-TOOLS.md) |
 | Git/PR | `hev_git_*` | 4 | [Details](guides/development/10-MCP-TOOLS.md) |
 | Web | `hev_web_*` | 3 | [Details](guides/development/10-MCP-TOOLS.md) |
@@ -60,15 +60,21 @@
 
 ---
 
-## 🎯 4. TypeScript Helper Suite
+## 🎯 4. TypeScript & ESLint Suite
 
-**7 specialized tool - Error fixing workflow'unu 10x hızlandırır.**
+**10 specialized tool - Error fixing workflow'unu 10x hızlandırır.**
 
-### Top 3 Must-Know Tools
+### Top 6 Must-Know Tools
 
+**TypeScript:**
 1. **`hev_dev_typescript_dashboard`** - Project-wide error analytics
 2. **`hev_dev_safe_batch_refactor`** - Batch refactoring with rollback
 3. **`hev_dev_fix_typescript_batch`** - Auto-fix undefined checks
+
+**ESLint (YENİ!):**
+4. **`hev_dev_eslint_dashboard`** - ESLint rule analytics & clustering
+5. **`hev_dev_lint_project`** - Batch ESLint with glob patterns
+6. **`hev_dev_eslint_batch_fix`** - Rule-based auto-fix with verification
 
 **Full guide:** [guides/development/20-TYPESCRIPT-SUITE.md](guides/development/20-TYPESCRIPT-SUITE.md)  
 **Technical details:** [mcp-server/AGENTS.md](../mcp-server/AGENTS.md)
