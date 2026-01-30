@@ -186,46 +186,22 @@ function replaceInLine(line: string, pattern: string, replacement: string, useRe
     return line;
   }
   
-  // Find pattern in original line (whitespace-tolerant)
-  const lineTokens = line.split(/(\s+)/); // Keep whitespace as tokens
-  const patternTokens = pattern.split(/\s+/).filter(t => t);
+  // Simple approach: Replace in normalized version, then reapply to original
+  // This preserves the structure while being whitespace-agnostic
+  const trimmedLine = line.trim();
+  const trimmedPattern = pattern.trim();
   
-  // Simple token matching
-  let matchStart = -1;
-  let matchEnd = -1;
+  // Use regex with escaped pattern for safe replacement
+  const escapedPattern = trimmedPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escapedPattern.replace(/\s+/g, '\\s+'), 'g');
   
-  for (let i = 0; i < lineTokens.length; i++) {
-    let matched = true;
-    let patternIdx = 0;
-    let tokenIdx = i;
-    
-    while (patternIdx < patternTokens.length && tokenIdx < lineTokens.length) {
-      const token = lineTokens[tokenIdx]?.trim();
-      if (!token) {
-        tokenIdx++;
-        continue;
-      }
-      
-      if (token !== patternTokens[patternIdx]) {
-        matched = false;
-        break;
-      }
-      
-      if (matchStart === -1) matchStart = tokenIdx;
-      matchEnd = tokenIdx;
-      patternIdx++;
-      tokenIdx++;
-    }
-    
-    if (matched && patternIdx === patternTokens.length) {
-      // Found match, replace tokens
-      const before = lineTokens.slice(0, matchStart).join('');
-      const after = lineTokens.slice(matchEnd + 1).join('');
-      return indent + (before.trim() + ' ' + replacement + ' ' + after.trim()).trim();
-    }
+  const replaced = trimmedLine.replace(regex, replacement.trim());
+  
+  if (replaced === trimmedLine) {
+    return line; // No change
   }
   
-  return line;
+  return indent + replaced;
 }
 
 function applyOperation(content: string, op: RefactorOperation): string {
