@@ -235,6 +235,115 @@ hev_take_cdp_screenshot({ format: 'png', savePath: '/tmp/debug.png' })
 **Details:** [.rovo/guides/reference/80-AUTO-TRIGGERS.md](.rovo/guides/reference/80-AUTO-TRIGGERS.md) | [.rovo/guides/reference/81-PERSONA.md](.rovo/guides/reference/81-PERSONA.md)
 
 
+
+## 🔒 Tool Usage Rules (MANDATORY)
+
+### Before ANY Edit
+**⚠️ ZORUNLU:** Dosya düzenlemeden ÖNCE mutlaka `hev_fs_show` kullan.
+
+```typescript
+❌ YANLIŞ:
+hev_dev_edit_lines({ file_path: 'file.ts', ... })
+
+✅ DOĞRU:
+hev_fs_show({ file_path: 'file.ts', start_line: 100, end_line: 120 })
+// Then edit...
+hev_dev_edit_lines({ file_path: 'file.ts', ... })
+```
+
+### After ANY Edit
+**⚠️ ZORUNLU:** Her düzenlemeden SONRA syntax check.
+
+```typescript
+hev_dev_edit_lines({ ... })
+hev_dev_check_syntax({ file_path: 'file.ts' })  // ← ZORUNLU
+```
+
+### TypeScript Errors
+**⚠️ ZORUNLU:** TypeScript hatası varsa önce dashboard.
+
+```typescript
+❌ YANLIŞ: Direkt fix'e geçmek
+
+✅ DOĞRU:
+hev_dev_typescript_dashboard()  // ← 1. Durum tespiti
+// Then choose fix strategy
+```
+
+### Error Recovery
+
+**Scenario 1: Duplicate Lines Detected**
+```bash
+# Immediate rollback
+git checkout -- path/to/file.ts
+# Alternative
+hev_fs_undo()
+```
+
+**Scenario 2: Syntax Error After Edit**
+```typescript
+1. hev_fs_undo()  // Rollback last edit
+2. hev_fs_show({ ... })  // Verify rollback
+3. Fix and retry
+```
+
+**Scenario 3: Tool Error/Unexpected Behavior**
+```typescript
+// 1. IMMEDIATELY log to notebook
+// 2. Document: tool name, scenario, error message, input params
+// 3. Continue with alternative approach
+```
+
+### 📓 Notebook Protocol (MANDATORY)
+
+**⚠️ ZORUNLU: Şu durumlarda `.rovo/notebook.md`'ye not ekle:**
+
+1. **Tool hatası aldığında:**
+   ```markdown
+   ### [YYYY-MM-DD HH:MM] Tool Hatası: {tool_name}
+   
+   **Senaryo:** {Ne yapmaya çalıştın}
+   **Tool:** `{tool_name}({ params })`
+   **Hata:** {Error message}
+   **Input:** 
+   ```json
+   {actual input params}
+   ```
+   **Beklenen:** {Ne olmasını bekliyordun}
+   **Gerçekleşen:** {Ne oldu}
+   **Workaround:** {Nasıl çözdün}
+   **İyileştirme Önerisi:** {Tool nasıl geliştirilebilir}
+   ```
+
+2. **Tool beklenmedik sonuç verdiğinde:**
+   ```markdown
+   ### [YYYY-MM-DD HH:MM] Beklenmeyen Davranış: {tool_name}
+   
+   **Durum:** {Kısa açıklama}
+   **Beklenen:** {Expected behavior}
+   **Gerçekleşen:** {Actual behavior}
+   **Impact:** {Sorun yarattı mı?}
+   **Not:** {Ek gözlemler}
+   ```
+
+3. **Yeni pattern/iyileştirme farkettiysen:**
+   ```markdown
+   ### [YYYY-MM-DD HH:MM] İyileştirme Fikri: {alan}
+   
+   **Gözlem:** {Neyi farketttin}
+   **Öneri:** {Nasıl iyileştirilebilir}
+   **Potansiyel Impact:** {Fayda tahmini}
+   ```
+
+**Not Ekleme:**
+```typescript
+hev_fs_bash({ 
+  command: "echo '\n### [$(date +\%Y-\%m-\%d\ \%H:\%M)] Tool Hatası: hev_dev_edit_lines\n...' >> .rovo/notebook.md" 
+})
+```
+
+---
+
 ---
 
 ## 🏗️ Architecture (Quick)
