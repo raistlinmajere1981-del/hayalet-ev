@@ -97,6 +97,16 @@ const INTENT_PATTERNS = [
       { name: 'hev_read_electron_logs', priority: 3, reason: 'Check test logs' }
     ],
     workflows: []
+  },
+  {
+    patterns: [/new.*tool/i, /add.*tool/i, /register.*tool/i, /yeni.*tool/i, /tool.*ekle/i],
+    category: 'tool-management',
+    tools: [
+      { name: 'hev_dev_register_tool', priority: 1, reason: 'Auto-register new tool to handlers/registry/index' },
+      { name: 'hev_suggest_tool', priority: 2, reason: 'For tool discovery guidance' },
+      { name: 'hev_list_tools', priority: 3, reason: 'List all available tools' }
+    ],
+    workflows: []
   }
 ];
 

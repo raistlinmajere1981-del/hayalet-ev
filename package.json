@@ -29,7 +29,6 @@
     "test:smoke": "node .rovo/scripts/smoke-test.js",
     "test:smoke:auto": "node .rovo/scripts/smoke-test.js --auto-start",
     "test:smoke:verbose": "node .rovo/scripts/smoke-test.js --verbose --screenshot",
-    "pre-commit": "node .rovo/scripts/pre-commit.js",
     "file": "node .rovo/scripts/file-ops.js",
     "git-sync": "git add . && git commit -m \"Sync\" && git push",
     "git-status": "git status",
