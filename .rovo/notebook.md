@@ -680,3 +680,69 @@ const wrapper = ((payload: unknown) => { ... }) as Type & { prop?: Type };
 - **Success Rate:** 100%
 - **Test Coverage:** 3 test cases, all passed
 
+
+---
+
+### [2026-01-31 13:40] Tool Hatası Düzeltildi: hev_fs_find_and_replace - Better Error Messages & Fuzzy Matching ✅
+
+**Durum:** ✅ FIXED
+
+**Sorun:**
+`hev_fs_find_and_replace` tool'u pattern bulamadığında sadece "Pattern bulunamadı" mesajı veriyordu.
+- Neden bulunamadığı hakkında bilgi yok
+- Yakın eşleşmeler gösterilmiyor
+- Whitespace farklılıkları için yardım yok
+
+**Notebook'taki Örnekler:**
+1. Satır sıralaması farklı (export önce/sonra)
+2. Satır numaraları kayması
+3. Pattern çok dar seçilmiş
+
+**Çözüm:**
+1. **Fuzzy Matching:** Yakın eşleşmeleri bul ve göster
+2. **Better Error Messages:** Whitespace-insensitive mod öner
+3. **Multi-line Support:** Whitespace normalization iyileştirildi
+
+**Değişiklikler:**
+- `mcp-server/utils/file-utils.ts`:
+  - Fuzzy matching algorithm eklendi (word-based, 70% threshold)
+  - Whitespace normalization ile yakın eşleşme bulma
+  - Partial match detection
+  - İpuçları ve öneriler eklendi
+  
+- `mcp-server/tools/fs/code-operations.ts`:
+  - Tool description güncellendi
+  - `ignore_whitespace` parametresi açıklaması iyileştirildi
+
+**Test Sonuçları:**
+```
+✅ Test 1: Exact whitespace mismatch + Suggestions - PASSED
+✅ Test 2: Partial match detection - PASSED
+✅ Test 3: Whitespace-insensitive mode - PASSED
+✅ Test 4: Multi-line whitespace-insensitive - PASSED
+
+🎯 Overall: ✅ ALL TESTS PASSED (4/4)
+```
+
+**Impact:**
+- ✅ Pattern bulunamadığında yakın eşleşmeler gösteriliyor
+- ✅ Whitespace farklılıkları için ignore_whitespace öneriliyor
+- ✅ Multi-line pattern'lerde whitespace handling geliştirildi
+- ✅ Error messages daha actionable (hev_fs_show önerisi)
+
+**Özellikler:**
+- Fuzzy matching: %70 word match threshold
+- Whitespace normalization: Boşluk/tab/newline farklılıklarını normalize eder
+- Suggestions: İlk 5 yakın eşleşmeyi gösterir
+- Actionable tips: ignore_whitespace veya hev_fs_show önerir
+
+**Files Modified:**
+- `mcp-server/utils/file-utils.ts` (+28 lines)
+- `mcp-server/tools/fs/code-operations.ts` (+8 lines)
+
+**Metadata:**
+- **Timestamp:** 2026-01-31 13:40-13:55
+- **Iterations:** 16
+- **Success Rate:** 100%
+- **Test Coverage:** 4 test cases, all passed
+

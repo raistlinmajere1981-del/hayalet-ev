@@ -692,11 +692,15 @@ export async function findAndReplace(
     
     // Whitespace normalization
     if (options?.ignoreWhitespace) {
-      // Whitespace karakterlerini normalize et
+      // Whitespace karakterlerini normalize et (multi-line support)
       searchPattern = find
+        .trim()
         .split(/\s+/)
         .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escape special chars
         .join('\\s+');
+      
+      // Multi-line pattern için newline'ları da \\s+ ile değiştir
+      searchPattern = searchPattern.replace(/\\n/g, '\\s+');
     }
     
     // Pattern matching
@@ -722,7 +726,44 @@ export async function findAndReplace(
     }
     
     if (occurrences === 0) {
-      return { success: false, replacements: 0, error: "Pattern bulunamadı" };
+      // Better error message with suggestions
+      const lines = content.split('\n');
+      const suggestions: string[] = [];
+      
+      // Find similar lines (fuzzy matching)
+      const searchTerms = find.split('\n');
+      const firstSearchTerm = searchTerms[0]?.trim();
+      
+      if (firstSearchTerm) {
+        // Split search term into words for better matching
+        const searchWords = firstSearchTerm.toLowerCase().split(/\s+/);
+        
+        for (let i = 0; i < lines.length && suggestions.length < 5; i++) {
+          const line = lines[i];
+          if (!line) continue;
+          const lineLower = line.toLowerCase();
+          
+          // Check if line contains the search term (ignoring whitespace differences)
+          const lineNormalized = line.replace(/\s+/g, ' ').trim().toLowerCase();
+          const searchNormalized = firstSearchTerm.replace(/\s+/g, ' ').toLowerCase();
+          
+          if (lineNormalized.includes(searchNormalized)) {
+            suggestions.push(`Line ${i + 1}: ${line}`);
+          } else {
+            // Check if line contains most of the search words
+            const matchCount = searchWords.filter(word => lineLower.includes(word)).length;
+            if (matchCount >= Math.ceil(searchWords.length * 0.7)) {
+              suggestions.push(`Line ${i + 1}: ${line} (partial match)`);
+            }
+          }
+        }
+      }
+      
+      const errorMsg = suggestions.length > 0
+        ? `Pattern bulunamadı. Yakın eşleşmeler:\n${suggestions.join('\n')}\n\n💡 İpucu: ignore_whitespace: true kullanın veya hev_fs_show ile dosya içeriğini kontrol edin.`
+        : `Pattern bulunamadı. Dosyada "${firstSearchTerm?.substring(0, 50) || find.substring(0, 50)}" içeren satır yok.\n\n💡 İpucu: hev_fs_show ile dosya içeriğini kontrol edin.`;
+      
+      return { success: false, replacements: 0, error: errorMsg };
     }
     
     // Dry run mode - sadece preview dön

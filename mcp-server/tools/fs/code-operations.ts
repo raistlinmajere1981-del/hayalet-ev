@@ -130,15 +130,23 @@ export const EXPAND_CODE_CHUNKS_TOOL = {
 
 export const FIND_AND_REPLACE_TOOL = {
   name: "hev_fs_find_and_replace",
-  description: "Dosyada bul ve değiştir",
+  description: "Dosyada bul ve değiştir. Pattern bulunamazsa yakın eşleşmeler önerir. ignore_whitespace ile whitespace-insensitive arama yapabilir.",
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: { type: "string", description: "Dosya yolu" },
-      find: { type: "string", description: "Bulunacak metin" },
+      find: { type: "string", description: "Bulunacak metin (exact match)" },
       replace: { type: "string", description: "Yerine konacak metin" },
-      ignore_whitespace: { type: "boolean", description: "Whitespace ignore et", default: false },
-      dry_run: { type: "boolean", description: "Önizleme modu", default: false }
+      ignore_whitespace: { 
+        type: "boolean", 
+        description: "Whitespace farklılıklarını görmezden gel (boşluk/tab/newline). Multi-line pattern'lerde kullanışlı.", 
+        default: false 
+      },
+      dry_run: { 
+        type: "boolean", 
+        description: "Sadece önizleme göster, değişiklik yapma", 
+        default: false 
+      }
     },
     required: ["file_path", "find", "replace"]
   }
