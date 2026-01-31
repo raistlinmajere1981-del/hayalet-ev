@@ -288,4 +288,20 @@ export const TOOL_REGISTRATION_HELPER_TOOL = {
     },
     required: ["tool_name", "description", "function_name", "tool_constant"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'tool-management',
+    priority: 'high',
+    complexity: 'complex',
+    useCases: [
+      'Register new tool with boilerplate automation',
+      'Auto-add to handlers, registry, and index',
+      'Streamline tool development workflow'
+    ],
+    relatedTools: ['hev_dev_analyze_project', 'hev_fs_show'],
+    agentGuidance: 'Use this for adding new MCP tools. Combines with npm run tool:register for full workflow. Automates handler/registry registration.',
+    requiresConfirmation: false,
+    riskLevel: 'medium',
+    tags: ['tool', 'registration', 'automation', 'boilerplate']
+  }
 };

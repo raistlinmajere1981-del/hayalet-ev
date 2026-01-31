@@ -2,6 +2,9 @@
  * MCP Server Type Definitions
  */
 
+// === Enhanced Tool Metadata Types (Phase 1.1) ===
+export * from '../core/types/tool-metadata.js';
+
 // CDP Types
 export interface CDPTarget {
   id: string;

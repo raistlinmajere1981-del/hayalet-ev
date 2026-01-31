@@ -1,7 +1,10 @@
 /**
  * MCP Tool Definitions
- * All 87+ tool definitions (types, descriptions, input schemas)
+ * All 97 tool definitions with enhanced metadata
+ * @version 2.0.0 - Enhanced with metadata for auto-documentation
  */
+
+import type { EnhancedToolDefinition, ToolMetadata } from '../types/index.js';
 
 export const TOOL_DEFINITIONS = [
   // === Electron & Plugin Tool'ları ===
@@ -9,7 +12,19 @@ export const TOOL_DEFINITIONS = [
     name: "hev_mcp_health",
     description: "Hayalet-ev MCP'nin sağlık durumunu kontrol et. Eğer bu tool çalışıyorsa, MCP aktif ve built-in override sistemi çalışıyor demektir.",
     inputSchema: { type: "object", properties: {} },
-  },
+    metadata: {
+      category: 'core',
+      subcategory: 'health',
+      priority: 'critical',
+      complexity: 'simple',
+      useCases: ['Session başlangıcında MCP sağlığını kontrol et', 'Tool çalışmıyorsa troubleshoot'],
+      relatedTools: ['hev_list_tools'],
+      agentGuidance: 'Her session başında veya tool hatası aldığında kullan. MCP çalışmazsa built-in toollar aktif olur (RISKLI!).',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['health', 'status', 'troubleshoot']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_test_electron",
     description: "Hayalet-ev Electron uygulamasını test et",
@@ -19,12 +34,36 @@ export const TOOL_DEFINITIONS = [
         timeout: { type: "number", description: "Test süresi (saniye), varsayılan 5", default: 5 },
       },
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'testing',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Electron app connectivity test', 'CDP health check'],
+      relatedTools: ['hev_check_electron_connection', 'hev_mcp_health'],
+      agentGuidance: 'Use to verify Electron app is running and CDP is accessible.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['electron', 'testing', 'connectivity']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_list_tools",
-    description: "Hayalet-ev MCP tool'larını kategorize ederek listele (87 tool)",
+    description: "Hayalet-ev MCP tool'larını kategorize ederek listele (97 tool)",
     inputSchema: { type: "object", properties: {} },
-  },
+    metadata: {
+      category: 'core',
+      subcategory: 'discovery',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Tool keşfetme', 'Kategori bazlı araştırma', 'Tool count doğrulama'],
+      relatedTools: ['hev_suggest_tool', 'hev_tool_workflow'],
+      agentGuidance: 'Tüm toolları görmek yerine hev_suggest_tool veya kategori bazlı arama kullan. 97 tool çok fazla!',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['discovery', 'list', 'reference']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_read_electron_logs",
     description: "Electron console ve error loglarını oku. Gelişmiş filtreleme: source (MAIN, RENDERER, WEBVIEW-AI1, etc.), level (LOG, WARN, ERROR), içerik arama, correlation ID ile işlem takibi.",

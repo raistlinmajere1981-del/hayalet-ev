@@ -15,6 +15,7 @@ import { WEB_TOOL_METADATA } from "./web-tools.js";
 import { WORKFLOW_TOOL_METADATA } from "./workflow-tools.js";
 import { GIT_TOOL_METADATA } from "./git-tools.js";
 import { CONTEXT_TOOL_METADATA } from "./context-tools.js";
+import { getAllToolDefinitions } from "../core/tools-list.js";
 
 const execAsync = promisify(exec);
 
@@ -161,12 +162,13 @@ export async function mcpHealthCheck(): Promise<{
   message: string;
 }> {
   const startTime = process.uptime();
+  const allTools = getAllToolDefinitions();
   
   return {
     healthy: true,
     version: "1.10.0",
     uptime: startTime,
-    toolCount: 70,
+    toolCount: allTools.length,
     message: "✅ Hayalet-ev MCP aktif ve çalışıyor. Built-in override sistemi aktif.",
   };
 }

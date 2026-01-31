@@ -5,6 +5,7 @@
 
 import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 import { testElectron, listTools, mcpHealthCheck } from "../tools/electron-tools.js";
+import { handleSuggestTool, handleToolWorkflow } from "../tools/tool-discovery.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "../tools/log-tools.js";
 import { getErrorHints } from "../tools/debug-tools.js";
 import {
@@ -149,6 +150,12 @@ ${health.message}
     }
     if (name === "hev_list_tools") {
       return listTools();
+    }
+    if (name === "hev_suggest_tool") {
+      return await handleSuggestTool(args || {});
+    }
+    if (name === "hev_tool_workflow") {
+      return await handleToolWorkflow(args || {});
     }
     if (name === "hev_read_electron_logs") {
       return await readElectronLogsHandler(args, LOG_DIR);

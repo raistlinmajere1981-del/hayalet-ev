@@ -292,8 +292,29 @@ async function main() {
   // 3. console.log kontrolü
   results.push(checkConsoleUsage(stagedFiles));
   
-  // 3. Geçici dosya kontrolü
+  // 4. Geçici dosya kontrolü
   results.push(checkTempFiles(stagedFiles));
+  
+  // 5. Tool documentation güncelleme (mcp-server değişiklikleri varsa)
+  const mcpFiles = stagedFiles.filter(f => f.startsWith('mcp-server/'));
+  if (mcpFiles.length > 0) {
+    console.log(colors.blue('\n📚 Dokümantasyon güncelleniyor...'));
+    try {
+      execSync('node scripts/generate-tool-docs.js', {
+        cwd: PROJECT_ROOT,
+        stdio: 'pipe'
+      });
+      console.log(colors.green('   ✅ Dokümantasyon güncellendi'));
+      // Auto-stage generated docs
+      execSync('git add AGENTS.md .rovo/01-AGENTS.md .rovo/_metadata/TOOL-LIST.md', {
+        cwd: PROJECT_ROOT,
+        stdio: 'pipe'
+      });
+      console.log(colors.gray('      (Auto-staged: AGENTS.md, .rovo/01-AGENTS.md, .rovo/_metadata/TOOL-LIST.md)'));
+    } catch (error) {
+      console.log(colors.yellow('   ⚠️  Dokümantasyon güncellenemedi (devam ediliyor)'));
+    }
+  }
   
   // Sonuçları değerlendir
   const failed = results.filter(r => !r.success);

@@ -14,10 +14,12 @@ import { GIT_TOOL_DEFINITIONS } from "../tools/git-tools.js";
 import { CONTEXT_TOOL_DEFINITIONS } from "../tools/context-tools.js";
 import { DEV_TOOL_DEFINITIONS } from "../tools/dev/index.js";
 import { TOOL_DEFINITIONS, OVERRIDE_TOOL_DEFINITIONS } from "./tools-registry.js";
+import { TOOL_DISCOVERY_DEFINITIONS } from "../tools/tool-discovery.js";
 
 export function getAllToolDefinitions() {
   return [
     ...TOOL_DEFINITIONS,
+    ...TOOL_DISCOVERY_DEFINITIONS,
     ...FILESYSTEM_TOOL_DEFINITIONS,
     ...SAFE_CHUNK_TOOL_DEFINITIONS,
     ...DEV_TOOL_DEFINITIONS,
