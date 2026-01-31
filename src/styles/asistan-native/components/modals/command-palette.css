@@ -1,0 +1,182 @@
+/**
+ * OpenCode UI - Command Palette
+ * 
+ * Quick command search and execution
+ */
+
+/* ============================================
+ * Command Palette (New)
+ * ============================================ */
+
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+}
+
+.command-palette-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.command-palette-modal {
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  width: 90%;
+  max-width: 640px;
+  max-height: 70vh;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast), transform var(--transition-fast);
+}
+
+.command-palette-modal.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.command-palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.command-palette-search-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.command-palette-input {
+  flex: 1;
+  padding: var(--space-xs) 0;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.command-palette-input::placeholder {
+  color: var(--text-muted);
+}
+
+.command-palette-hint {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.command-palette-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm) 0;
+}
+
+.command-palette-empty {
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.command-palette-group {
+  margin-bottom: var(--space-sm);
+}
+
+.command-palette-group-header {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.command-palette-item:hover,
+.command-palette-item.selected {
+  background: var(--bg-hover);
+}
+
+.command-palette-item.selected {
+  background: var(--accent-secondary);
+}
+
+.command-palette-item.selected .command-palette-item-label {
+  color: var(--text-inverse, #fff);
+}
+
+.command-palette-item.selected .command-palette-item-desc {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.command-palette-item.selected .command-palette-shortcut {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-inverse, #fff);
+}
+
+.command-palette-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.command-palette-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-palette-item-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.command-palette-item-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-palette-shortcut {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+}
+

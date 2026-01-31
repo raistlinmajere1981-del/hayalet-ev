@@ -1,0 +1,90 @@
+/**
+ * OpenCode UI - Prompt Actions
+ * 
+ * Action buttons, hints, and footer shortcut bar
+ */
+
+/* ============================================
+ * Prompt Actions
+ * ============================================ */
+
+.prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.prompt-actions .btn-icon {
+  color: var(--text-secondary);
+}
+
+.prompt-actions .btn-icon:hover {
+  color: var(--text-primary);
+}
+
+.prompt-actions .btn-primary {
+  padding: var(--space-sm) var(--space-md);
+}
+
+.prompt-actions .btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+ * Prompt Hints
+ * ============================================ */
+
+.prompt-hints {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+  padding: 0 var(--space-sm);
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* ============================================
+ * Footer Shortcut Bar
+ * ============================================ */
+
+.prompt-footer {
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.shortcut-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+.shortcut kbd {
+  font-size: 9px;
+  padding: 2px 4px;
+  background: var(--bg-secondary);
+}
+
+.shortcut-separator {
+  color: var(--border-primary);
+  margin: 0 var(--space-xs);
+}
+

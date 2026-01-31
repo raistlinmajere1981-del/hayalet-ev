@@ -1,0 +1,42 @@
+/**
+ * OpenCode UI - App Layout
+ * 
+ * Main application layout structure
+ */
+
+/* ============================================
+ * App Container
+ * ============================================ */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ============================================
+ * App Main Area
+ * ============================================ */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+/* ============================================
+ * Tool Header Spacer
+ * ============================================ */
+
+.tool-header-spacer {
+  flex: 1;
+}

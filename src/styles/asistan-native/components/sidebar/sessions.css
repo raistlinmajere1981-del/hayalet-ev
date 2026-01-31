@@ -1,0 +1,267 @@
+/**
+ * OpenCode UI - Session List
+ * 
+ * Session items, thread view, and session preview tooltip
+ */
+
+/* ============================================
+ * Session List
+ * ============================================ */
+
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm);
+}
+
+.session-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-xs);
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.session-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-primary);
+}
+
+.session-item.active {
+  background: var(--bg-active);
+  border-color: var(--accent-secondary);
+}
+
+.session-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.session-title {
+  display: block;
+  max-width: 100%;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-item.active .session-title {
+  color: var(--accent-secondary);
+}
+
+.session-time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.session-status {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.session-status.status-idle {
+  color: var(--success);
+}
+
+.session-status.status-pending,
+.session-status.status-running {
+  color: var(--warning);
+}
+
+.session-status.status-completed {
+  color: var(--text-muted);
+}
+
+.session-status.status-error {
+  color: var(--danger);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-sm);
+}
+
+.status-badge.idle {
+  color: var(--success);
+  background: rgba(35, 134, 54, 0.15);
+}
+
+.status-badge.busy {
+  color: var(--warning);
+  background: rgba(210, 153, 34, 0.15);
+}
+
+.status-badge.error {
+  color: var(--danger);
+  background: rgba(248, 81, 73, 0.15);
+}
+
+.session-actions {
+  display: flex;
+  gap: var(--space-xs);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.session-item:hover .session-actions {
+  opacity: 1;
+}
+
+.btn-session-action,
+.session-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-session-action:hover,
+.session-action-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+}
+
+.session-action-btn.delete-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+/* ============================================
+ * Thread View - Session Hierarchy
+ * ============================================ */
+
+.session-item.session-child {
+  margin-left: var(--space-lg);
+  border-left: 2px solid var(--border-subtle);
+  padding-left: var(--space-sm);
+}
+
+.session-item.session-child::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  width: var(--space-sm);
+  height: 2px;
+  background: var(--border-subtle);
+}
+
+.session-child-indicator {
+  color: var(--text-muted);
+  margin-right: var(--space-xs);
+  font-size: 0.85em;
+}
+
+.session-expand-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--space-xs);
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.session-expand-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.session-expand-btn.expanded {
+  color: var(--accent-primary);
+}
+
+.session-expand-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.session-fork-badge {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 0.7em;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  margin-left: var(--space-xs);
+}
+
+/* ============================================
+ * Session Preview Tooltip
+ * ============================================ */
+
+.session-preview-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  margin-left: var(--space-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm);
+  max-width: 300px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+}
+
+.session-item:hover .session-preview-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.session-preview-content {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  max-height: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
