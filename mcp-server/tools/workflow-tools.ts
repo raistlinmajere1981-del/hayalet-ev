@@ -290,6 +290,18 @@ export const WORKFLOW_TOOL_DEFINITIONS = [
       },
       required: ["workflow"],
     },
+    metadata: {
+      category: 'workflow',
+      subcategory: 'testing',
+      priority: 'medium',
+      complexity: 'medium',
+      useCases: ['E2E testing', 'UI automation', 'Setup verification'],
+      relatedTools: ['hev_run_steps', 'hev_list_workflows'],
+      agentGuidance: 'Predefined test workflow\'ları çalıştır. CDP üzerinden UI automation yapar.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['workflow', 'testing', 'automation', 'e2e']
+    }
   },
   {
     name: "hev_run_steps",
@@ -319,11 +331,35 @@ export const WORKFLOW_TOOL_DEFINITIONS = [
       },
       required: ["steps"],
     },
+    metadata: {
+      category: 'workflow',
+      subcategory: 'custom',
+      priority: 'high',
+      complexity: 'complex',
+      useCases: ['Custom UI automation', 'Complex test scenarios', 'Multi-step operations'],
+      relatedTools: ['hev_run_workflow', 'hev_click_element_by_selector'],
+      agentGuidance: 'Custom workflow adımları oluştur ve çalıştır. Flexible automation için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['workflow', 'custom', 'automation', 'advanced']
+    }
   },
   {
     name: "hev_list_workflows",
     description: "Mevcut predefined workflow'ları listele",
     inputSchema: { type: "object", properties: {} },
+    metadata: {
+      category: 'workflow',
+      subcategory: 'discovery',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: ['Workflow discovery', 'Available workflows check'],
+      relatedTools: ['hev_run_workflow', 'hev_run_steps'],
+      agentGuidance: 'Hangi predefined workflow\'lar mevcut görmek için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['workflow', 'list', 'discovery']
+    }
   },
 ];
 

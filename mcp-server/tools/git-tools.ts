@@ -417,6 +417,18 @@ export const GIT_TOOL_DEFINITIONS = [
       },
       required: ["repo", "work_dir"],
     },
+    metadata: {
+      category: 'git',
+      subcategory: 'contribution',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Open source contribution', 'Fork and setup workflow', 'Feature branch creation'],
+      relatedTools: ['hev_git_create_pr', 'hev_git_check_guidelines'],
+      agentGuidance: 'Open source contribution için repo fork et, clone et ve branch oluştur. gh CLI gerektirir.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['git', 'fork', 'setup', 'contribution']
+    }
   },
   {
     name: "hev_git_create_pr",
@@ -431,6 +443,18 @@ export const GIT_TOOL_DEFINITIONS = [
       },
       required: ["base_branch", "title"],
     },
+    metadata: {
+      category: 'git',
+      subcategory: 'contribution',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Create pull request', 'Commit and push changes', 'Open source contribution'],
+      relatedTools: ['hev_git_fork_setup', 'hev_git_pr_status', 'hev_git_check_guidelines'],
+      agentGuidance: 'Değişiklikleri commit/push et ve PR oluştur. Mevcut PR varsa update eder.',
+      requiresConfirmation: true,
+      riskLevel: 'medium',
+      tags: ['git', 'pr', 'commit', 'contribution']
+    }
   },
   {
     name: "hev_git_check_guidelines",
@@ -442,6 +466,18 @@ export const GIT_TOOL_DEFINITIONS = [
       },
       required: [] as string[],
     },
+    metadata: {
+      category: 'git',
+      subcategory: 'validation',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Check contribution guidelines', 'DCO verification', 'PR template check'],
+      relatedTools: ['hev_git_create_pr', 'hev_git_fork_setup'],
+      agentGuidance: 'PR oluşturmadan önce contribution guidelines ve DCO gereksinimlerini kontrol et.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['git', 'guidelines', 'validation', 'dco']
+    }
   },
   {
     name: "hev_git_pr_status",
@@ -453,6 +489,18 @@ export const GIT_TOOL_DEFINITIONS = [
       },
       required: [],
     },
+    metadata: {
+      category: 'git',
+      subcategory: 'status',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Check git status', 'View open PRs', 'Branch information'],
+      relatedTools: ['hev_git_create_pr', 'hev_dev_git_diff'],
+      agentGuidance: 'Git durumunu ve açık PR\'ları kontrol et. PR oluşturmadan önce kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['git', 'status', 'pr', 'branch']
+    }
   },
 ];
 

@@ -537,6 +537,18 @@ export const webToolDefinitions = [
       },
       required: ["query"],
     },
+    metadata: {
+      category: 'web',
+      subcategory: 'search',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Web search', 'Documentation lookup', 'Research'],
+      relatedTools: ['hev_web_fetch', 'hev_web_search_and_fetch'],
+      agentGuidance: 'Meta-search engine ile web araması. Spam filtreleme ve quality scoring ile sonuçlar optimize edilir.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['web', 'search', 'searxng', 'research']
+    }
   },
   {
     name: "hev_web_fetch",
@@ -566,6 +578,18 @@ export const webToolDefinitions = [
       },
       required: ["url"],
     },
+    metadata: {
+      category: 'web',
+      subcategory: 'fetch',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Fetch page content', 'Documentation reading', 'Content extraction'],
+      relatedTools: ['hev_web_search', 'hev_web_search_and_fetch'],
+      agentGuidance: 'Web sayfası içeriğini temiz metin/markdown olarak al. Boilerplate (ads, menu) otomatik temizlenir.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['web', 'fetch', 'scraping', 'content']
+    }
   },
   {
     name: "hev_web_search_and_fetch",
@@ -595,6 +619,18 @@ export const webToolDefinitions = [
       },
       required: ["query"],
     },
+    metadata: {
+      category: 'web',
+      subcategory: 'research',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Deep research', 'Multi-source content gathering', 'Comprehensive analysis'],
+      relatedTools: ['hev_web_search', 'hev_web_fetch'],
+      agentGuidance: 'Ara ve ilk N sonucun içeriğini çek. Deep research için kullan. Paralel fetch ile hızlı.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['web', 'research', 'deep-search', 'comprehensive']
+    }
   },
 ];
 

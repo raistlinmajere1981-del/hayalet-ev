@@ -355,6 +355,18 @@ export const CONTEXT_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'context',
+      subcategory: 'generation',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Proje context oluştur', 'AI ile paylaşım için codebase özeti', 'Kod analizi'],
+      relatedTools: ['hev_context_status', 'hev_context_read'],
+      agentGuidance: 'Proje context\'i oluştur. L2 (48K token) standart, L3/L4 büyük projeler için. Cache\'li.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['context', 'repomix', 'codebase', 'generation']
+    }
   },
   {
     name: "hev_context_status",
@@ -363,6 +375,18 @@ export const CONTEXT_TOOL_DEFINITIONS = [
       type: "object" as const,
       properties: {},
     },
+    metadata: {
+      category: 'context',
+      subcategory: 'status',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Context dosyalarını kontrol et', 'Cache durumu', 'Token sayısı'],
+      relatedTools: ['hev_context_generate'],
+      agentGuidance: 'Hangi context dosyaları var ve ne kadar güncel kontrol et.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['context', 'status', 'cache']
+    }
   },
   {
     name: "hev_context_module",
@@ -382,6 +406,18 @@ export const CONTEXT_TOOL_DEFINITIONS = [
       },
       required: ["module"],
     },
+    metadata: {
+      category: 'context',
+      subcategory: 'module',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Modül-specific context', 'Odaklanmış analiz', 'Küçük scope'],
+      relatedTools: ['hev_context_generate'],
+      agentGuidance: 'Belirli bir modül için context oluştur. Full context yerine focused analiz için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['context', 'module', 'focused']
+    }
   },
   {
     name: "hev_context_read",
@@ -397,6 +433,18 @@ export const CONTEXT_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'context',
+      subcategory: 'read',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: ['Oluşturulmuş context\'i oku', 'Cache\'den context yükle'],
+      relatedTools: ['hev_context_generate', 'hev_context_status'],
+      agentGuidance: 'Generate edilmiş context dosyasını oku. Önce hev_context_generate çalıştırmalısın.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['context', 'read', 'cache']
+    }
   },
 ];
 

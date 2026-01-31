@@ -79,7 +79,19 @@ export const TOOL_DEFINITIONS = [
         sessionId: { type: "string", description: "Belirli bir session'ın loglarını oku (varsayılan: en son session)" },
       },
     },
-  },
+    metadata: {
+      category: 'debug',
+      subcategory: 'logs',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Hata ayıklama için log inceleme', 'Belirli source/level/pattern ile filtreleme', 'Correlation ID ile işlem takibi'],
+      relatedTools: ['hev_list_log_sessions', 'hev_get_session_summary', 'hev_get_error_hints'],
+      agentGuidance: 'Hata araştırması için kullan. source ile WEBVIEW-AI1, WEBVIEW-AI2 vb. ayır. correlationId ile işlem zincirini takip et.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['debug', 'logs', 'troubleshooting', 'electron']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_list_log_sessions",
     description: "Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder.",
@@ -89,7 +101,19 @@ export const TOOL_DEFINITIONS = [
         limit: { type: "number", description: "Gösterilecek maksimum session sayısı (varsayılan: 10)", default: 10 },
       },
     },
-  },
+    metadata: {
+      category: 'debug',
+      subcategory: 'logs',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Geçmiş session\'ları görüntüleme', 'Belirli bir session ID bulma'],
+      relatedTools: ['hev_read_electron_logs', 'hev_get_session_summary'],
+      agentGuidance: 'Log okumadan önce session listesini kontrol et. En son session varsayılan olarak kullanılır.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['debug', 'logs', 'session']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_get_error_hints",
     description: "Belirli bir hata mesajı için AI debugging ipuçları al. Bilinen hata pattern'lerini eşleştirir ve çözüm önerileri sunar.",
@@ -101,7 +125,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["errorMessage"],
     },
-  },
+    metadata: {
+      category: 'debug',
+      subcategory: 'error-analysis',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Hata pattern matching', 'Çözüm önerisi alma', 'Provider-specific troubleshooting'],
+      relatedTools: ['hev_collect_error_context', 'hev_read_electron_logs'],
+      agentGuidance: 'Hata mesajı aldığında bu tool ile bilinen pattern\'leri kontrol et. Provider bilgisi verirsen dosya yolları için kullanır.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['debug', 'error', 'hints', 'ai-assisted']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_get_session_summary",
     description: "Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum)",
@@ -111,7 +147,19 @@ export const TOOL_DEFINITIONS = [
         sessionId: { type: "string", description: "Session ID (varsayılan: en son session)" },
       },
     },
-  },
+    metadata: {
+      category: 'debug',
+      subcategory: 'logs',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Session health check', 'Hata istatistikleri görme', 'Session karşılaştırması'],
+      relatedTools: ['hev_list_log_sessions', 'hev_read_electron_logs'],
+      agentGuidance: 'Session\'ın genel durumunu öğrenmek için kullan. Hata sayısı, süre ve durum bilgisi verir.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['debug', 'logs', 'session', 'summary']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_collect_error_context",
     description: "Hata bağlamını toplayıp özetler (komut, log, kategori, öneri)",
@@ -127,7 +175,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["errorMessage"],
     },
-  },
+    metadata: {
+      category: 'debug',
+      subcategory: 'error-analysis',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Hata context toplama', 'Error report oluşturma', 'Debugging için context sağlama'],
+      relatedTools: ['hev_get_error_hints', 'hev_read_electron_logs'],
+      agentGuidance: 'Hata aldığında komut, log, dosya gibi bağlamsal bilgileri topla. Bu tool structured error context oluşturur.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['debug', 'error', 'context', 'analysis']
+    }
+  } as EnhancedToolDefinition,
 
 
   // === CDP (Chrome DevTools Protocol) Tool'ları ===
@@ -135,7 +195,19 @@ export const TOOL_DEFINITIONS = [
     name: "hev_check_electron_connection",
     description: "Electron uygulamasına CDP bağlantısını kontrol et. Uygulama çalışıyor mu ve debug portu açık mı?",
     inputSchema: { type: "object", properties: {} },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['CDP connectivity check', 'Electron app health', 'Debugging başlangıcı'],
+      relatedTools: ['hev_test_electron', 'hev_send_command_to_electron'],
+      agentGuidance: 'CDP operasyonlarından önce bağlantıyı kontrol et. Debug port açık mı?',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'connectivity', 'electron', 'health']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_send_command_to_electron",
     description: "Electron uygulamasında JavaScript kodu çalıştır. Herhangi bir JS expression çalıştırabilir.",
@@ -147,7 +219,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["command"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['DOM manipulation', 'State inspection', 'Custom JS execution'],
+      relatedTools: ['hev_inspect_element', 'hev_get_page_dom_structure'],
+      agentGuidance: 'Powerful tool: herhangi bir JS çalıştır. State değişikliği, data inspection için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['cdp', 'javascript', 'execution', 'advanced']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_take_cdp_screenshot",
     description: "Electron penceresinin ekran görüntüsünü al (CDP üzerinden, tam sayfa).",
@@ -159,12 +243,36 @@ export const TOOL_DEFINITIONS = [
         savePath: { type: "string", description: "Dosya kaydetme yolu (opsiyonel)" },
       },
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Visual debugging', 'UI verification', 'Documentation'],
+      relatedTools: ['hev_get_electron_window_info', 'hev_inspect_element'],
+      agentGuidance: 'UI state\'i görsel olarak kaydet. Full page screenshot destekler.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'screenshot', 'visual', 'debugging']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_get_electron_window_info",
     description: "Electron penceresinin boyut, pozisyon ve URL bilgilerini al.",
     inputSchema: { type: "object", properties: {} },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Window state inspection', 'Layout debugging', 'URL verification'],
+      relatedTools: ['hev_take_cdp_screenshot', 'hev_check_electron_connection'],
+      agentGuidance: 'Pencere durumunu öğren: boyut, pozisyon, URL. Layout sorunları için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'window', 'info', 'layout']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_click_element_by_selector",
     description: "CSS selector ile bir elemente tıkla.",
@@ -175,7 +283,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["selector"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-interaction',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['UI automation', 'Button clicks', 'Element interaction'],
+      relatedTools: ['hev_click_element_by_text', 'hev_inspect_element', 'hev_query_elements'],
+      agentGuidance: 'CSS selector ile element tıkla. Önce hev_inspect_element ile elementin var olduğunu doğrula.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'click', 'interaction', 'automation']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_click_element_by_text",
     description: "Metin içeriğine göre bir elemente tıkla.",
@@ -187,7 +307,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["text"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-interaction',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Text-based interaction', 'Button clicks by label', 'Link clicks'],
+      relatedTools: ['hev_click_element_by_selector', 'hev_query_elements'],
+      agentGuidance: 'Metin ile element bul ve tıkla. Selector bilmiyorsan bu tool kullanışlı.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'click', 'text', 'automation']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_fill_input_field",
     description: "Bir input alanına değer yaz.",
@@ -200,7 +332,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["selector", "value"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-interaction',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Form filling', 'Input automation', 'Text entry'],
+      relatedTools: ['hev_send_key_press', 'hev_click_element_by_selector'],
+      agentGuidance: 'Input field\'a değer yaz. clear=true ile önce mevcut içeriği temizler.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'input', 'form', 'automation']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_get_page_dom_structure",
     description: "Sayfanın DOM yapısını al. Debug ve element bulma için kullanışlı.",
@@ -210,7 +354,19 @@ export const TOOL_DEFINITIONS = [
         maxDepth: { type: "number", description: "Maksimum DOM derinliği", default: 3 },
       },
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-inspection',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['DOM exploration', 'Element discovery', 'Structure debugging'],
+      relatedTools: ['hev_inspect_element', 'hev_query_elements'],
+      agentGuidance: 'Sayfanın DOM yapısını görüntüle. Element selector\'ı bulmak için kullan. maxDepth ile derinliği kontrol et.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'dom', 'inspection', 'debugging']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_inspect_element",
     description: "Bir elementin detaylı bilgilerini al (boyut, pozisyon, görünürlük, içerik).",
@@ -221,7 +377,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["selector"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-inspection',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: ['Element debugging', 'Layout inspection', 'Visibility check'],
+      relatedTools: ['hev_query_elements', 'hev_get_page_dom_structure', 'hev_click_element_by_selector'],
+      agentGuidance: 'Element\'in detaylı bilgilerini al. Tıklamadan önce görünür mü kontrol et.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'inspect', 'element', 'debugging']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_query_elements",
     description: "Bir selector ile eşleşen tüm elementleri bul ve listele.",
@@ -233,7 +401,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["selector"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-inspection',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Multiple elements search', 'Element counting', 'Selector validation'],
+      relatedTools: ['hev_inspect_element', 'hev_get_page_dom_structure'],
+      agentGuidance: 'Selector ile eşleşen tüm elementleri bul. Birden fazla element varsa hangi indexte olduğunu öğren.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'query', 'elements', 'search']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_send_key_press",
     description: "Klavye tuşu gönder (Enter, Escape, Tab vb.).",
@@ -248,7 +428,19 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["key"],
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-interaction',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Keyboard automation', 'Form submission', 'Navigation keys'],
+      relatedTools: ['hev_fill_input_field', 'hev_click_element_by_selector'],
+      agentGuidance: 'Klavye tuşu gönder. Enter ile form submit, Tab ile navigation, Escape ile cancel işlemleri.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'keyboard', 'key', 'automation']
+    }
+  } as EnhancedToolDefinition,
   {
     name: "hev_scroll_page",
     description: "Sayfada belirli bir konuma scroll yap.",
@@ -260,7 +452,19 @@ export const TOOL_DEFINITIONS = [
         behavior: { type: "string", enum: ["smooth", "instant"], description: "Scroll animasyonu", default: "smooth" },
       },
     },
-  },
+    metadata: {
+      category: 'electron',
+      subcategory: 'cdp-navigation',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: ['Page scrolling', 'Element visibility', 'Long page navigation'],
+      relatedTools: ['hev_take_cdp_screenshot', 'hev_inspect_element'],
+      agentGuidance: 'Sayfayı scroll et. Element görünür hale getirmek veya tam sayfa screenshot almak için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['cdp', 'scroll', 'navigation', 'page']
+    }
+  } as EnhancedToolDefinition,
 ];
 
 // === ROVODEV BUILT-IN OVERRIDE TOOLS ===

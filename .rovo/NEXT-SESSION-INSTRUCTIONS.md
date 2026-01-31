@@ -1,347 +1,201 @@
 # 🎯 Next Session Instructions: Complete Tool Metadata
 
-> **Session Goal:** 93 tool'a metadata ekleyerek %100 metadata coverage'a ulaşmak
-> **Estimated Time:** 17-22 iterations
-> **Complexity:** Medium (batch processing with review)
+**STATUS:** 🟢 40% COMPLETE (37/93+ tools done)  
+**PRIORITY:** HIGH  
+**ESTIMATED TIME:** 2-3 hours remaining  
+**LAST UPDATE:** 2026-01-31
 
 ---
 
-## 📋 Session Başlangıcı
+## 📊 Progress Summary
 
-### 1. Hazırlık (1-2 iteration)
+### ✅ COMPLETED (37 tools - 8 categories)
+
+1. **Debug/Log Tools (5)** ✅
+   - hev_read_electron_logs, hev_list_log_sessions, hev_get_error_hints
+   - hev_get_session_summary, hev_collect_error_context
+   - File: `mcp-server/core/tools-registry.ts`
+
+2. **CDP Tools (12)** ✅
+   - Connection: hev_check_electron_connection, hev_test_electron
+   - Interaction: hev_click_element_by_selector, hev_click_element_by_text, hev_fill_input_field, hev_send_key_press
+   - Inspection: hev_inspect_element, hev_query_elements, hev_get_page_dom_structure
+   - Visual: hev_take_cdp_screenshot, hev_get_electron_window_info, hev_scroll_page
+   - File: `mcp-server/core/tools-registry.ts`
+
+3. **Tool Discovery (2)** ✅
+   - hev_suggest_tool, hev_tool_workflow
+   - File: `mcp-server/tools/tool-discovery.ts`
+
+4. **Provider Tools (4)** ✅
+   - hev_list_provider_webviews, hev_list_provider_selectors
+   - hev_validate_provider_selectors, hev_inspect_provider_element
+   - File: `mcp-server/tools/provider-tools.ts`
+
+5. **Workflow Tools (3)** ✅
+   - hev_run_workflow, hev_run_steps, hev_list_workflows
+   - File: `mcp-server/tools/workflow-tools.ts`
+
+6. **Git Tools (4)** ✅
+   - hev_git_fork_setup, hev_git_create_pr
+   - hev_git_check_guidelines, hev_git_pr_status
+   - File: `mcp-server/tools/git-tools.ts`
+
+7. **Context Tools (4)** ✅
+   - hev_context_generate, hev_context_status
+   - hev_context_module, hev_context_read
+   - File: `mcp-server/tools/context-tools.ts`
+
+8. **Web Tools (3)** ✅
+   - hev_web_search, hev_web_fetch, hev_web_search_and_fetch
+   - File: `mcp-server/tools/web-tools.ts`
+
+---
+
+## ⏳ REMAINING (56+ tools - 2 categories)
+
+### 9. **Filesystem Tools (21 tools)** ⬅️ START HERE
+**File:** `mcp-server/tools/filesystem-tools.ts` (1184 lines)
+**Status:** 0/21 done
+
+**Subcategories:**
+- **Basic IO (4):** hev_fs_open_files, hev_fs_create_file, hev_fs_delete_file, hev_fs_move_file
+- **Code Operations (4):** hev_fs_expand_code_chunks, hev_fs_find_and_replace, hev_fs_grep, hev_fs_show
+- **Navigation (1):** hev_fs_expand_folder
+- **Execution (1):** hev_fs_bash
+- **Planning (1):** hev_fs_create_plan
+- **Trash/Recovery (3):** hev_fs_trash_list, hev_fs_restore, hev_fs_trash_empty
+- **History (3):** hev_fs_backup, hev_fs_undo, hev_fs_history
+- **Diff (2):** hev_fs_diff, hev_fs_diff_content
+- **Chunked (2):** hev_fs_create_chunked, hev_fs_append_chunk
+
+**Priority Tools (add first):**
+1. hev_fs_show (CRITICAL - used before all edits)
+2. hev_fs_find_and_replace (HIGH - most used edit tool)
+3. hev_fs_bash (HIGH - versatile execution)
+4. hev_fs_grep (HIGH - search operations)
+5. hev_fs_open_files (MEDIUM)
+
+### 10. **Dev Tools (~40 tools)** ⬅️ FINAL CATEGORY
+**Location:** `mcp-server/tools/dev/*.ts` (multiple files)
+**Status:** 0/40 done
+
+**Subcategories:**
+- TypeScript suite (5-7 tools): typescript-batch-fixer.ts, typescript-dashboard.ts, typescript-type-helper.ts
+- ESLint suite (5-7 tools): eslint-dashboard.ts, eslint-batch-fix.ts, eslint-project.ts
+- Code editing (5-7 tools): line-editor.ts, ast-code-inserter.ts, smart-search-insert.ts
+- Refactoring (3-5 tools): safe-batch-refactor.ts
+- Analysis (5-7 tools): project-analyzer.ts, structure-visualizer.ts, symbol-searcher.ts
+- Testing (2-3 tools): test-runner.ts
+- Others (10+ tools): Various dev utilities
+
+**Strategy for Dev Tools:**
+- Bu kategori çok büyük ve karmaşık
+- Alt kategorilere böl (TypeScript, ESLint, Refactor, etc.)
+- Her alt kategoriyi ayrı handle et
+- Toplu metadata ekleme için pattern kullan
+
+---
+
+## 🚀 Next Session Action Plan
+
+### Phase 1: Filesystem Tools (10-15 iterations)
+```bash
+# 1. Dosyayı aç
+open_files(["mcp-server/tools/filesystem-tools.ts"])
+
+# 2. Priority toollardan başla (5 tool)
+# - hev_fs_show, hev_fs_find_and_replace, hev_fs_bash, hev_fs_grep, hev_fs_open_files
+
+# 3. Geri kalan 16 tool'u subcategory'lere göre grup grup ekle
+# - Basic IO (4)
+# - Trash/History (6)
+# - Diff/Chunked (4)
+# - Other (2)
+```
+
+### Phase 2: Dev Tools (20-25 iterations)
+```bash
+# 1. Alt dosyaları tespit et
+ls mcp-server/tools/dev/*.ts
+
+# 2. Her dosyayı aç ve tool sayısını say
+# 3. Öncelikli toolları belirle (TypeScript, ESLint)
+# 4. Kategori kategori metadata ekle
+```
+
+---
+
+## 📝 Metadata Template
+
+```typescript
+metadata: {
+  category: 'filesystem' | 'development' | 'electron' | ...,
+  subcategory: 'basic-io' | 'typescript' | 'cdp' | ...,
+  priority: 'critical' | 'high' | 'medium' | 'low',
+  complexity: 'simple' | 'medium' | 'complex',
+  useCases: ['Use case 1', 'Use case 2', ...],
+  relatedTools: ['tool1', 'tool2', ...],
+  agentGuidance: 'Short guidance for AI agents...',
+  requiresConfirmation: true | false,
+  riskLevel: 'low' | 'medium' | 'high',
+  tags: ['tag1', 'tag2', ...]
+}
+```
+
+---
+
+## ✅ Verification Commands
 
 ```bash
-# MCP health check
-hev_mcp_health()
-# Expected: 99 tools, 6 with metadata
+# Tool count check
+cd mcp-server && grep "metadata:" tools/*.ts core/*.ts | wc -l
 
-# Mevcut durumu analiz et
-node -e "
-import('./mcp-server/dist/core/tools-list.js').then(m => {
+# Category completion
+cd mcp-server && grep "category: 'filesystem'" tools/filesystem-tools.ts | wc -l
+cd mcp-server && grep "category: 'development'" tools/dev/*.ts | wc -l
+
+# Final verification
+cd mcp-server && node -e "
+import('./dist/core/tools-list.js').then(m => {
   const tools = m.getAllToolDefinitions();
+  const withMeta = tools.filter(t => t.metadata);
   const withoutMeta = tools.filter(t => !t.metadata);
-  console.log('Without metadata:', withoutMeta.length);
-  console.log('\nBy category:');
-  
-  const byCategory = {};
-  withoutMeta.forEach(t => {
-    const cat = t.name.startsWith('hev_fs_') ? 'filesystem' :
-                t.name.startsWith('hev_dev_') ? 'development' :
-                t.name.startsWith('hev_context_') ? 'context' :
-                t.name.startsWith('hev_git_') ? 'git' :
-                t.name.startsWith('hev_web_') ? 'web' :
-                t.name.startsWith('hev_run_') ? 'workflow' :
-                t.name.includes('provider') ? 'provider' : 'electron';
-    
-    if (!byCategory[cat]) byCategory[cat] = [];
-    byCategory[cat].push(t.name);
-  });
-  
-  Object.entries(byCategory).forEach(([cat, tools]) => {
-    console.log(`  ${cat}: ${tools.length} tools`);
-  });
+  console.log('✅ With metadata:', withMeta.length);
+  console.log('❌ Without metadata:', withoutMeta.length);
+  console.log('📊 Progress:', Math.round(withMeta.length / tools.length * 100) + '%');
 });
 "
 ```
 
 ---
 
-## 🎯 Strateji: Category-Based Batch Processing
+## 🎯 Success Criteria
 
-### Öncelik Sırası
-
-1. **Filesystem Tools (26 tools)** - 4-5 iteration
-   - En çok kullanılan kategori
-   - Templates hazır (`scripts/add-metadata-batch.js`)
-   - Priority: HIGH
-
-2. **Development Tools (31 tools)** - 6-8 iteration
-   - TypeScript, ESLint, refactoring tools
-   - Karmaşık metadata gerekebilir
-   - Priority: HIGH
-
-3. **Electron/CDP Tools (20 tools)** - 4-5 iteration
-   - UI interaction, debugging
-   - Priority: MEDIUM
-
-4. **Other Categories (16 tools)** - 3-4 iteration
-   - Git (4), Web (3), Context (4), Provider (4), Workflow (1)
-   - Priority: MEDIUM
+- [ ] All filesystem tools (21) have metadata
+- [ ] All dev tools (~40) have metadata
+- [ ] Total metadata coverage: 100% (93+ tools)
+- [ ] No tool definition without metadata property
+- [ ] All metadata follows the standard schema
 
 ---
 
-## 🔧 Kullanılacak Tool
+## 📚 Reference
 
-### `npm run tool:register` - Interactive Mode
+**Completed Files:**
+- ✅ mcp-server/core/tools-registry.ts (Debug/Log + CDP tools)
+- ✅ mcp-server/tools/tool-discovery.ts
+- ✅ mcp-server/tools/provider-tools.ts
+- ✅ mcp-server/tools/workflow-tools.ts
+- ✅ mcp-server/tools/git-tools.ts
+- ✅ mcp-server/tools/context-tools.ts
+- ✅ mcp-server/tools/web-tools.ts
 
-**Kullanım:**
-```bash
-# Interactive full mode
-npm run tool:register
-
-# Quick mode (inference only)
-npm run tool:register --quick <tool_name> "<description>"
-```
-
-**Workflow:**
-1. Tool name + description gir
-2. Metadata interaktif topla (category, priority, use cases, etc.)
-3. Tool definition generate edilir (with metadata)
-4. Kopyala → ilgili dosyaya yapıştır
-5. Build & docs generate
+**Remaining Files:**
+- ⏳ mcp-server/tools/filesystem-tools.ts (21 tools)
+- ⏳ mcp-server/tools/dev/*.ts (~40 tools, multiple files)
 
 ---
 
-## 📝 Örnek Workflow (Filesystem - 5 Tool Batch)
-
-### Iteration 1: Hazırlık
-```typescript
-// List filesystem tools without metadata
-const fsTools = [
-  'hev_fs_open_files',
-  'hev_fs_create_file',
-  'hev_fs_delete_file',
-  'hev_fs_move_file',
-  'hev_fs_expand_folder'
-];
-```
-
-### Iteration 2-3: İlk 3 Tool'a Metadata
-```bash
-# Tool 1
-npm run tool:register --quick hev_fs_open_files "Open multiple files"
-# Copy generated definition
-
-# Tool 2
-npm run tool:register --quick hev_fs_create_file "Create new file"
-
-# Tool 3
-npm run tool:register --quick hev_fs_delete_file "Delete file (recoverable)"
-```
-
-### Iteration 4: Build & Test
-```bash
-cd mcp-server && npm run build
-node scripts/generate-tool-docs.js
-
-# Verify
-node -e "import('./mcp-server/dist/core/tools-list.js').then(m => {
-  const tools = m.getAllToolDefinitions();
-  const withMeta = tools.filter(t => t.metadata);
-  console.log('With metadata:', withMeta.length, '/', tools.length);
-})"
-```
-
-### Iteration 5: Review & Adjust
-```typescript
-// Review generated metadata in docs
-grep -A 15 "hev_fs_open_files" .rovo/_metadata/TOOL-LIST.md
-
-// If needed, adjust metadata
-hev_fs_show({ file_path: 'mcp-server/tools/filesystem-tools.ts' })
-// Edit if needed
-```
-
----
-
-## 🎨 Metadata Template (Reference)
-
-```typescript
-metadata: {
-  category: 'filesystem',              // Required
-  subcategory: 'basic-io',             // Optional
-  priority: 'high',                    // critical/high/medium/low
-  complexity: 'simple',                // simple/medium/complex
-  useCases: [                          // Use cases list
-    'Open multiple files',
-    'Quick overview'
-  ],
-  relatedTools: [                      // Related tools
-    'hev_fs_show',
-    'hev_fs_grep'
-  ],
-  agentGuidance: 'Use for...',         // AI agent hints
-  requiresConfirmation: false,         // User approval needed?
-  riskLevel: 'low',                    // low/medium/high
-  tags: ['read', 'multiple', 'files']  // Searchable tags
-}
-```
-
----
-
-## ✅ Success Criteria
-
-**Per Batch (5-10 tools):**
-- ✅ All tools have metadata
-- ✅ Build successful (no TypeScript errors)
-- ✅ Documentation generated
-- ✅ Metadata reviewed (spot check 2-3 tools)
-
-**End of Session:**
-- ✅ 99 tools with metadata (100%)
-- ✅ Documentation complete
-- ✅ All categories covered
-- ✅ Committed & pushed
-
----
-
-## 🚨 Common Issues & Solutions
-
-### Issue 1: Tool Definition Too Long
-**Problem:** Generated definition has 700+ lines  
-**Solution:** Break into smaller chunks, or use bash to append
-
-### Issue 2: Duplicate Warnings
-**Problem:** Similar metadata structures flagged  
-**Solution:** Ignore warnings if false positives (common with `tags: []`)
-
-### Issue 3: Inference Wrong
-**Problem:** Auto-inferred metadata incorrect  
-**Solution:** Use interactive mode or manually adjust after generation
-
-### Issue 4: Build Fails After Metadata Addition
-**Problem:** Syntax error in metadata  
-**Solution:** `hev_dev_check_syntax` before build
-
----
-
-## 📊 Progress Tracking
-
-### Use Todo List
-
-```typescript
-update_todo({
-  merge: false,
-  todos: [
-    { id: 1, content: 'Filesystem tools (26)', status: 'pending' },
-    { id: 2, content: 'Development tools (31)', status: 'pending' },
-    { id: 3, content: 'Electron tools (20)', status: 'pending' },
-    { id: 4, content: 'Other categories (16)', status: 'pending' },
-    { id: 5, content: 'Final docs & commit', status: 'pending' }
-  ]
-});
-```
-
-### Update After Each Batch
-
-```typescript
-update_todo({
-  merge: true,
-  todos: [
-    { id: 1, status: 'completed', content: 'Filesystem tools (26/26)' }
-  ]
-});
-```
-
----
-
-## 🎯 Efficiency Tips
-
-### 1. Batch Processing
-```bash
-# Process 5 tools at once
-for tool in tool1 tool2 tool3 tool4 tool5; do
-  npm run tool:register --quick $tool "Description"
-done
-```
-
-### 2. Template Reuse
-```typescript
-// Similar tools can reuse metadata structure
-// e.g., All 'read' operations: priority=medium, riskLevel=low
-```
-
-### 3. Spot Check, Not Full Review
-```bash
-# Don't review all 93 tools individually
-# Spot check 2-3 per category (10-15 total)
-```
-
-### 4. Commit Frequently
-```bash
-# After each category completion
-git add -A
-git commit -m "feat: Add metadata to filesystem tools (26/93)"
-```
-
----
-
-## 📈 Expected Timeline
-
-**Optimistic (17 iterations):**
-- Filesystem: 4 iterations (fast, templates ready)
-- Development: 6 iterations (many tools)
-- Electron: 4 iterations (straightforward)
-- Others: 3 iterations (small)
-
-**Realistic (20 iterations):**
-- Filesystem: 5 iterations
-- Development: 7 iterations
-- Electron: 5 iterations
-- Others: 3 iterations
-
-**Pessimistic (22 iterations):**
-- Filesystem: 5 iterations
-- Development: 8 iterations
-- Electron: 5 iterations
-- Others: 4 iterations
-
----
-
-## 🎊 Final Deliverables
-
-1. **99 Tools with Metadata** (100% coverage)
-2. **Updated Documentation** (auto-generated)
-3. **Committed & Pushed** (clean git history)
-4. **Notebook Updated** (lessons learned)
-
----
-
-## 💡 Alternative: Hybrid Approach
-
-**If time is limited, prioritize critical tools:**
-
-**Phase A: High Priority (30 tools)** - 7-8 iterations
-- All filesystem basic-io tools
-- All development critical tools
-- Top 5 electron tools
-
-**Phase B: Remaining (63 tools)** - Next session
-- Lower priority categories
-- Batch with less review
-
----
-
-## 📞 Need Help?
-
-**Reference Files:**
-- `scripts/register-tool.js` - Interactive helper
-- `scripts/add-metadata-batch.js` - Inference rules
-- `.rovo/notebook.md` - Previous session notes
-- `.rovo/01-AGENTS.md` - Tool usage guide
-
-**Key Commands:**
-```bash
-npm run tool:register          # Interactive mode
-npm run docs:generate          # Generate docs
-hev_dev_check_syntax           # Validate syntax
-hev_mcp_health                 # Check tool count
-```
-
----
-
-**Session Start Checklist:**
-- [ ] Read this file completely
-- [ ] Run `hev_mcp_health()` to verify system
-- [ ] Analyze current state (6/99 with metadata)
-- [ ] Create todo list for tracking
-- [ ] Start with filesystem category
-- [ ] Commit after each category
-
-**Good luck! 🚀**
-
----
-**Created:** 2026-01-31  
-**For Session:** Metadata Completion (Phase 3.3-3.6)  
-**Estimated Duration:** 2-3 hours  
-**Complexity:** Medium  
+**Last Session:** 2026-01-31 (29 iterations used, 37 tools completed)
+**Next Session:** Continue with Filesystem Tools

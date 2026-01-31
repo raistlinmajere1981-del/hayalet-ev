@@ -279,6 +279,18 @@ export const PROVIDER_TOOL_DEFINITIONS = [
       type: "object" as const,
       properties: {},
     },
+    metadata: {
+      category: 'provider',
+      subcategory: 'discovery',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Provider discovery', 'Webview connection check', 'Available providers list'],
+      relatedTools: ['hev_check_electron_connection', 'hev_validate_provider_selectors'],
+      agentGuidance: 'Hangi provider\'lar ve webview\'lar aktif görmek için kullan. CDP bağlantısı gerekli.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['provider', 'webview', 'discovery', 'cdp']
+    }
   },
   {
     name: "hev_list_provider_selectors",
@@ -294,6 +306,18 @@ export const PROVIDER_TOOL_DEFINITIONS = [
       },
       required: ["provider"],
     },
+    metadata: {
+      category: 'provider',
+      subcategory: 'config',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: ['Provider config inspection', 'Selector inventory', 'Static analysis'],
+      relatedTools: ['hev_validate_provider_selectors', 'hev_inspect_provider_element'],
+      agentGuidance: 'Provider config\'teki selector\'ları görmek için kullan. Canlı test yapmaz, sadece config\'i okur.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['provider', 'config', 'selectors', 'static']
+    }
   },
   {
     name: "hev_validate_provider_selectors",
@@ -314,6 +338,18 @@ export const PROVIDER_TOOL_DEFINITIONS = [
       },
       required: ["provider"],
     },
+    metadata: {
+      category: 'provider',
+      subcategory: 'validation',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: ['Selector validation', 'Provider health check', 'UI changes detection'],
+      relatedTools: ['hev_list_provider_webviews', 'hev_inspect_provider_element'],
+      agentGuidance: 'Provider\'ın tüm selector\'larını canlı test et. UI değişikliği olup olmadığını anlamak için kullan.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['provider', 'validation', 'live-test', 'cdp']
+    }
   },
   {
     name: "hev_inspect_provider_element",
@@ -348,6 +384,18 @@ export const PROVIDER_TOOL_DEFINITIONS = [
       },
       required: ["provider", "selector"],
     },
+    metadata: {
+      category: 'provider',
+      subcategory: 'inspection',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: ['Element debugging', 'Selector verification', 'Style inspection'],
+      relatedTools: ['hev_validate_provider_selectors', 'hev_inspect_element'],
+      agentGuidance: 'Provider webview\'da element detaylarını görüntüle. Config key veya CSS selector kullanılabilir.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['provider', 'inspect', 'element', 'cdp']
+    }
   },
 ];
 
