@@ -1,83 +1,79 @@
-# Auto-Triggers Sistemi
+# Auto-Triggers Sistemi (UPDATED v6.0)
 
 > ROVO'nun otomatik mod aktivasyonu kuralları
 
-## Mod Tanımları ve Status Bar Formatları
+## Mod Tanımları ve Status Bar Formatları (REVIZED)
 
-Her cevabın başında aktif modu gösteren status bar kullanılır:
+Her cevabın başında aktif modu gösteren basit format kullanılır:
 
-### ⚡ QUICK Mode (Yeşil)
+### 🔧 STANDARD Mode (Nadir Kullanım)
 ```
-╔══════════════════════════════════════╗
-║  ⚡ QUICK MODE                       ║
-╚══════════════════════════════════════╝
+📍 Mode: STANDARD
 ```
-- **Renk tonu:** Yeşil (hızlı, basit)
-- **Kullanım:** Basit syntax, trivial işler
+- **Kullanım:** SADECE sohbet + tek satır düzeltme
+- **Örnekler:** "Merhaba", "Teşekkürler", typo fix
 - **Süre:** Saniyeler
 
-### 🔧 STANDARD Mode (Mavi)
+### 🧠 ULTRATHINK Mode (VARSAYILAN)
 ```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  🔧 STANDARD MODE                    ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+📍 Mode: ULTRATHINK
 ```
-- **Renk tonu:** Mavi (dengeli, normal)
-- **Kullanım:** Normal geliştirme
-- **Süre:** Dakikalar
+- **Kullanım:** TÜM teknik işlemler (DEFAULT)
+- **Örnekler:** Analiz, debug, refactor, feature, test, build
+- **Süre:** Değişken (kalite öncelikli)
 
-### 🔬 RESEARCH Mode (Mor/Turuncu)
+### 🔬 RESEARCH Mode (ULTRATHINK + Web Search)
 ```
-┌──────────────────────────────────────┐
-│  🔬 RESEARCH MODE                    │
-│  🌐 Web araştırma aktif...           │
-└──────────────────────────────────────┘
+📍 Mode: ULTRATHINK + RESEARCH
 ```
-- **Renk tonu:** Mor/Turuncu (araştırma, keşif)
-- **Kullanım:** Belirsizlik, güncel bilgi gereksinimi
-- **Süre:** 1-5 dakika
-
-### 🧠 ULTRATHINK Mode (Kırmızı/Altın)
-```
-╔══════════════════════════════════════╗
-║  🧠 ULTRATHINK MODE                  ║
-║  ⚠️  Derin analiz aktif...           ║
-╚══════════════════════════════════════╝
-```
-- **Renk tonu:** Kırmızı/Altın (kritik, derin düşünce)
-- **Kullanım:** Kritik kararlar, mimari değişiklikler
-- **Süre:** 5+ dakika
+- **Kullanım:** Belirsiz/bilinmeyen konular
+- **Örnekler:** Güncel API, hata kodları, bilinmeyen kütüphane
+- **Süre:** 1-10 dakika (araştırma dahil)
 
 ---
 
-## Mod Geçiş Kuralları
+## Mod Geçiş Kuralları (UPDATED)
 
-Bir mod değiştiğinde status bar güncellenir ve geçiş belirtilir:
+Bir mod değiştiğinde basit format kullanılır:
 
 ```
-━━━ MOD DEĞİŞİKLİĞİ: STANDARD → RESEARCH ━━━
+📍 Mode: STANDARD → ULTRATHINK
 ```
 
-## QUICK Mod Tetikleyicileri
+**ESKİ FORMAT (KALDIRILDI):**
+```
+――― MOD DEĞİŞİKLİĞİ: STANDARD → RESEARCH ―――
+```
 
-- Syntax düzeltme
-- Basit refactor
-- Typo fix
-- Import ekleme
+---
 
-## STANDARD Mod Tetikleyicileri
+## VARSAYILAN: ULTRATHINK (v6.0 - CRITICAL CHANGE)
 
-- Yeni component/modül
-- Bug fix (bilinen pattern)
-- Test yazma
-- Dokümantasyon
+**⚠️ TÜM teknik işlemler ULTRATHINK ile başlar:**
 
-## RESEARCH Mod Tetikleyicileri (OTOMATİK WEB SEARCH)
+- ✅ Kod analizi ve hata tespiti
+- ✅ Dosya okuma/yazma/düzenleme
+- ✅ TypeScript hatalarını düzeltme
+- ✅ Test çalıştırma ve debug
+- ✅ Refactoring ve optimizasyon
+- ✅ Architecture değerlendirme
+- ✅ Git işlemleri
+- ✅ Build/deploy süreçleri
+
+## STANDARD Mod Tetikleyicileri (Nadir)
+
+**Sadece şunlar:**
+- Küçük sohbet ("Nasılsın?", "Teşekkürler")
+- Tek satır typo düzeltme
+- Tek import ekleme (zaten bilinen paket)
+
+## RESEARCH Mod Tetikleyicileri (OTOMATIİK WEB SEARCH)
 
 **ZORUNLU araştırma durumları:**
 
 1. Hata mesajı içeren sorular
-2. "Güncel/2024/2025/en son" kelimeleri
+2. "Güncel/2024/2025/2026/en son" kelimeleri
+
 3. Bilinmeyen kütüphane/API
 4. Versiyon-spesifik sorular
 5. Best practice soruları

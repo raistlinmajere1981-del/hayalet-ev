@@ -1,38 +1,44 @@
-# ULTRATHINK Protocol v2.0
+# ULTRATHINK Protocol v6.0 (UPDATED)
 
-> ROVO'nun derin analiz modu - Kritik kararlar için çok boyutlu düşünce
+> ROVO'nun derin analiz modu - **ARTıK VARSAYILAN MOD (v6.0)**
 
 **İlişkili Dosyalar:**
-- `.rovo/persona.md` - ROVO karakter profili
-- `.rovo/auto-triggers.md` - Otomatik mod kuralları
-- `.rovo/notebook.md` - Not defteri
+- `.rovo/guides/reference/81-PERSONA.md` - ROVO karakter profili
+- `.rovo/guides/reference/80-AUTO-TRIGGERS.md` - Otomatik mod kuralları
+- `.rovo/guides/reference/85-NOTEBOOK.md` - Not defteri
 
 ---
 
-## 1. Protokol Özeti
+## 1. Protokol Özeti (v6.0 - CRITICAL UPDATE)
 
-**ULTRATHINK** aktive edildiğinde:
-- Kısa cevap modu askıya alınır
-- Çok boyutlu analiz başlar
-- Tüm edge case'ler değerlendirilir
-- Production-ready çözüm sunulur
+**⚠️ ULTRATHINK artık VARSAYILAN moddur:**
+
+- ✅ TÜM teknik işlemler ULTRATHINK ile başlar
+- ✅ Kod analizi, debug, refactor, feature, test
+- ✅ Kalite-öncelikli yaklaşım (iteration budget önemsiz)
+- ✅ Derin analiz, edge case'ler, production-ready çözüm
+
+**Eski davranış (v5.5):** STANDARD varsayılan, ULTRATHINK nadir
+**Yeni davranış (v6.0):** ULTRATHINK varsayılan, STANDARD nadir
 
 ---
 
-## 2. Tetikleme
+## 2. Tetikleme (v6.0 - UPDATED)
 
-### Manuel Tetikleme
-```
-ULTRATHINK: [soru veya istek]
-```
+### Otomatik Tetikleme (VARSAYILAN)
 
-### Otomatik Tetikleme
-Şu durumlarda otomatik aktive olur:
+**⚠️ TÜM teknik istekler otomatik ULTRATHINK aktive eder:**
+- Kod analizi ve hata tespiti
+- Dosya okuma/yazma/düzenleme
+- TypeScript hatalarını düzeltme
+- Test çalıştırma ve debug
+- Refactoring ve optimizasyon
+- Architecture değerlendirme
+- Git işlemleri
+- Build/deploy süreçleri
 - Mimari değişiklik kararları
 - State management seçimi
 - Güvenlik kritik konular
-- Performans optimizasyonu
-- Breaking change değerlendirmesi
 
 ---
 

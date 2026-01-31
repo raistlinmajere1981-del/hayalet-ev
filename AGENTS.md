@@ -6,6 +6,89 @@
 
 ---
 
+## 🎯 TEMEL FELSEFİ: KALİTE > HER ŞEY (v6.0 - CRITICAL UPDATE)
+
+### ⚠️ ZORUNLU: Çözüm Kalitesi Her Zaman Önceliklidir
+
+**Agent'ın ASLA düşünmemesi gerekenler:**
+- ❌ "Iteration budget" (Token limiti önemli değil)
+- ❌ "Hızlı çözelim, kısa yoldan gidelim"
+- ❌ "Context window dolmasın"
+- ❌ "10 iterasyon'da bitirmeliyim"
+- ❌ "Kullanıcı bekliyor, acele edelim"
+
+**Agent'ın MUTLAKA önceliklendirmesi gerekenler:**
+- ✅ Kod kalitesi (maintainable, readable, testable)
+- ✅ Güvenlik (type safety, validation, error handling)
+- ✅ Doğruluk (en iyi çözüm, edge case'ler covered)
+- ✅ Detaylı analiz (hata teşhisi, root cause)
+- ✅ Kapsamlı test (tüm senaryolar)
+
+### Öncelik Sıralaması
+
+```
+1. 🏆 KOD KALİTESİ
+   - Type safety (strict TypeScript)
+   - Error handling (try-catch, validation)
+   - Naming conventions (açık, anlamlı)
+   - Code reusability (DRY principle)
+
+2. 🔒 GÜVENLİK
+   - Input validation
+   - SQL injection prevention
+   - XSS protection
+   - Secure IPC communication
+
+3. 🧪 TEST EDİLEBİLİRLİK
+   - Unit test yazılabilir
+   - Integration test mümkün
+   - Mock'lanabilir dependencies
+
+4. 📖 MAİNTAİNABİLİTY
+   - Açık dokümantasyon
+   - Anlaşılır mimari
+   - Kolay refactor
+
+5. ⚡ PERFORMANS (Son sırada)
+   - Optimization (gerekiyorsa)
+   - Caching (mantıklıysa)
+
+999. 💸 MALIYET / HIZ (ÖNEMSIZ)
+   - Token kullanımı
+   - İterasyon sayısı
+   - Çözüm süresi
+```
+
+### Pratik Uygulama
+
+**Örnek: TypeScript Hatası Analizi**
+
+❌ YANLIŞ YAKLAŞIM (Hızlı):
+```
+"517 hata var, hemen batch fix yapalım"
+→ 5 iterasyon, yarım yamalak
+→ 200 hata düzeldi, 50 yeni hata
+```
+
+✅ DOĞRU YAKLAŞIM (Kaliteli):
+```
+1. Dashboard ile analiz
+2. Root cause tespiti
+3. Strateji planlama
+4. İnkremental düzeltme
+5. Regression test
+→ 30 iterasyon, sürdürülebilir çözüm
+→ 500 hata düzeldi, 0 yeni hata
+```
+
+**ROVO şunu kabul eder:**
+- 📊 Detaylı analiz 10+ iterasyon → NORMAL
+- 🔧 Kapsamlı refactor 50+ iterasyon → NORMAL
+- 🧪 Test + debug 20+ iterasyon → NORMAL
+
+---
+
+
 ## 🏥 Health Check (Always Start Here)
 
 ```typescript
@@ -177,52 +260,54 @@ hev_take_cdp_screenshot({ format: 'png', savePath: '/tmp/debug.png' })
 
 ---
 
-## 🎭 Mode System
+## 🎭 Mode Sistemi (REVIZED v6.0)
 
-**⚠️ ZORUNLU: Her cevabın başında aktif modu status bar ile göster:**
+### ⚠️ ZORUNLU: Varsayılan Mod = ULTRATHINK
 
-### Mode Formats
+**Her cevabın başında aktif modu göster:**
 
-**⚡ QUICK Mode** (Syntax fixes, trivial tasks):
 ```
-╔══════════════════════════════════════╗
-║  ⚡ QUICK MODE                       ║
-╚══════════════════════════════════════╝
+📍 Mode: ULTRATHINK
 ```
 
-**🔧 STANDARD Mode** (Normal development - DEFAULT):
+**Mod geçişlerinde:**
 ```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  🔧 STANDARD MODE                    ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+📍 Mode: STANDARD → ULTRATHINK
 ```
 
-**🔬 RESEARCH Mode** (Web research needed):
-```
-┌──────────────────────────────────────┐
-│  🔬 RESEARCH MODE                    │
-│  🌐 Web araştırma aktif...           │
-└──────────────────────────────────────┘
-```
+### Mode Kullanım Kuralları
 
-**🧠 ULTRATHINK Mode** (Critical decisions, architecture):
-```
-╔══════════════════════════════════════╗
-║  🧠 ULTRATHINK MODE                  ║
-║  ⚠️  Derin analiz aktif...           ║
-╚══════════════════════════════════════╝
-```
+| Mode | Ne Zaman | Örnekler |
+|------|----------|----------|
+| **🔧 STANDARD** | Sadece sohbet + tek satır düzeltme | "Merhaba", "Teşekkürler", typo düzeltme |
+| **🧠 ULTRATHINK** | TÜM teknik işlemler (VARSAYILAN) | Analiz, debug, refactor, feature, test, build |
+| **🔬 RESEARCH** | ULTRATHINK + belirsizlik | Güncel API, bilinmeyen konu |
 
-### Auto-Switch Triggers
+### ULTRATHINK Kullanılır (VARSAYILAN)
 
-| Trigger Pattern | Auto Mode | Examples |
-|----------------|-----------|----------|
-| Syntax fix, import add, typo | ⚡ QUICK | "Add missing import", "Fix typo" |
-| Normal feature, bug fix, test | 🔧 STANDARD | "Create component", "Fix login bug" |
-| Error messages, "güncel", unknown API | 🔬 RESEARCH | "TS2722 nedir?", "En güncel Next.js" |
-| Architecture, breaking changes | 🧠 ULTRATHINK | "State management seçimi", "Refactor" |
+- ✅ Kod analizi ve hata tespiti
+- ✅ Dosya okuma/yazma/düzenleme
+- ✅ TypeScript hatalarını düzeltme
+- ✅ Test çalıştırma ve debug
+- ✅ Refactoring ve optimizasyon
+- ✅ Architecture değerlendirme
+- ✅ Git işlemleri
+- ✅ Build/deploy süreçleri
 
-**Mode transitions:** `━━━ MOD DEĞİŞİKLİĞİ: STANDARD → RESEARCH ━━━`
+### STANDARD Kullanılır (Nadir)
+
+- ✅ Küçük sohbet ("Nasılsın?", "Teşekkürler")
+- ✅ Tek satır typo düzeltme (değişken adı yazım hatası)
+- ✅ Tek import ekleme (zaten bilinen paket)
+
+### Auto-Switch: RESEARCH
+
+Belirsiz/bilinmeyen konu varsa → ULTRATHINK + RESEARCH
+
+**Tetikleyiciler:**
+- "Güncel", "2025", "en son" kelimeleri
+- Hata kodu sorgusu ("TS2722 nedir?")
+- Bilinmeyen API/kütüphane
 
 ### Communication Rules
 
@@ -236,7 +321,86 @@ hev_take_cdp_screenshot({ format: 'png', savePath: '/tmp/debug.png' })
 
 
 
+
 ## 🔒 Tool Usage Rules (MANDATORY)
+
+
+### MCP Tool Önceliği (UPDATED v6.0)
+
+**⚠️ ZORUNLU: Hayalet-ev MCP Tool'ları Her Zaman Öncelikli**
+
+**❌ ASLA Kullanma (Rovo Built-in):**
+```typescript
+find_and_replace_code(...)     // ← BUGGY! Duplicate risk
+expand_code_chunks(...)         // ← Use hev_fs_show instead
+open_files(...)                 // ← Use hev_fs_show for single file
+bash(...)                       // ← Use hev_fs_bash (safer, logged)
+```
+
+**✅ MUTLAKA Kullan (Hayalet-ev MCP):**
+```typescript
+hev_fs_show(...)               // Dosya okuma
+hev_fs_find_and_replace(...)   // Find & replace (safe)
+hev_dev_edit_lines(...)        // Multi-line edit
+hev_fs_bash(...)               // Shell commands (logged)
+```
+
+**Rationale:**
+
+| Built-in Tool | Problem | MCP Alternative | Benefit |
+|---------------|---------|-----------------|---------||
+| `find_and_replace_code` | Duplicate risk %80 | `hev_fs_find_and_replace` | Safe + preview |
+| `expand_code_chunks` | Belirsiz scope | `hev_fs_show` | Line numbers |
+| `bash` | No logging | `hev_fs_bash` | Auto-logged |
+| `open_files` | Token heavy | `hev_fs_show` | Targeted |
+
+---
+
+## 📓 Tool Hata Raporlama (UPDATED v6.0)
+
+### ⚠️ ZORUNLU: Tool Hatası Aldığında 3 Adım
+
+1. **Notebook'a ekle** (detaylı teşhis)
+2. **Kullanıcıya bildir** (kısa, 1 satır)
+3. **Alternatif yöntemle devam et**
+
+### Format: Notebook Girişi
+
+```markdown
+### [2026-01-31 10:48] Tool Hatası: hev_dev_safe_batch_refactor
+
+**Senaryo:** 50+ TypeScript hatası toplu düzeltme
+**Dosya:** electron/handlers/ipc-opencode.ts
+**Tool Parametreleri:**
+```json
+{"file_path": "...", "operations": [...]}
+```
+
+**Hata:**
+```
+Error: Syntax check failed after operation 12/50
+Unclosed bracket at line 145
+```
+
+**Kök Neden:** Pattern'de parantez dengesi bozuk
+**Workaround:** Manuel edit_lines ile 10'ar satır
+**İyileştirme Önerisi:** Tool'a bracket validator ekle
+**Durum:** ✅ Workaround başarılı
+```
+
+### Format: Kullanıcı Bildirimi (Kısa)
+
+```
+⚠️ hev_dev_safe_batch_refactor hatası → notebook'a not aldım
+Alternatif: hev_dev_edit_lines ile devam ediyorum
+```
+
+### Kritik: VERBOSE Hata Gösterme
+
+❌ YANLIŞ: Stack trace, uzun error output
+✅ DOĞRU: Tek satır özet + "detay notebook'ta"
+
+---
 
 ### Before ANY Edit
 **⚠️ ZORUNLU:** Dosya düzenlemeden ÖNCE mutlaka `hev_fs_show` kullan.
@@ -344,7 +508,59 @@ hev_fs_bash({
 
 ---
 
+## ⏸️ Onay Mekanizması (v6.0 - NEW)
+
+### ⚠️ ZORUNLU: Şu Durumlarda Mutlaka Onay İste
+
+**Dosya İşlemleri:**
+- [ ] 3+ dosya silme/taşıma
+- [ ] Binary dosya ekleme (>1MB)
+- [ ] Config dosyası değişikliği (package.json, tsconfig.json, vite.config.js)
+- [ ] .gitignore, .env değişikliği
+
+**Kod Değişiklikleri:**
+- [ ] 5+ dosya etkilenecek refactor
+- [ ] 100+ satır değişiklik (tek dosyada)
+- [ ] Breaking change (API signature değişikliği)
+- [ ] Yeni dependency ekleme (npm install)
+- [ ] Dependency versiyonu güncelleme
+
+**Mimari Kararlar:**
+- [ ] State management değişikliği
+- [ ] Database schema değişikliği
+- [ ] Yeni modül/dizin yapısı
+- [ ] Build konfigürasyonu değişikliği
+
+**Git İşlemleri:**
+- [ ] Branch silme
+- [ ] Force push
+- [ ] Rebase/reset --hard
+
+### Onay Formatı
+
+```
+🔔 ONAY GEREKLİ
+
+**İşlem:** 12 dosyada TypeScript hatası düzeltme
+**Etkilenen dosyalar:** 
+  - electron/handlers/*.ts (8 dosya)
+  - src/js/modules/*.ts (4 dosya)
+**Risk:** Orta (rollback mevcut)
+**Süre:** ~5 dakika
+
+Devam edeyim mi? (evet/hayır/detay)
+```
+
+### Onay Gerektirmeyen İşlemler
+
+✅ Okuma işlemleri (show, grep, dashboard)
+✅ Tek dosyada <50 satır değişiklik
+✅ Test çalıştırma
+✅ Log okuma
+✅ Screenshot alma
+
 ---
+
 
 ## 🏗️ Architecture (Quick)
 
@@ -419,8 +635,16 @@ Main Process (electron/main.ts)
    ```
 
 ---
-**Last Updated:** 2026-01-30  
-**Version:** 5.5.0  
+**Last Updated:** 2026-01-31  
+**Version:** 6.0.0 (MAJOR UPDATE)  
 **MCP Version:** 1.12.0  
 **Tools:** 77  
 **Maintained by:** ROVO AI Agent
+
+**Changelog v6.0:**
+- ✅ Kalite-öncelikli felsefe eklendi (iteration budget önemsiz)
+- ✅ Mode sistemi revize edildi (ULTRATHINK varsayılan)
+- ✅ Status bar sadeleştirildi (ASCII çerçeve → basit text)
+- ✅ Onay mekanizması eklendi (büyük değişiklikler öncesi onay)
+- ✅ MCP tool zorunluluğu güncellendi + hata raporlama protokolü
+

@@ -1,9 +1,57 @@
-# 📓 ROVO Not Defteri
+# 📓 ROVO Not Defteri (UPDATED v6.0)
 
 > Session'lar arası kalıcı hafıza - Aktif sorunlar, fikirler, gözlemler
-> **Son Güncelleme:** 2026-01-29 19:50
+> **Son Güncelleme:** 2026-01-31
 
 **📦 Arşiv:** Eski notlar `notebook-archive-2026-01-29.md` dosyasında
+
+---
+
+## 🎯 Notebook Protokolü (v6.0 - UPDATED)
+
+### ⚠️ ZORUNLU: Tool Hatası Aldığında
+
+**3 Adım:**
+
+1. **Notebook'a ekle** (detaylı teşhis + workaround)
+2. **Kullanıcıya kısa bildir** (1 satır özet)
+3. **Alternatif yöntemle devam et**
+
+### Format: Notebook Girişi (Detaylı)
+
+```markdown
+### [2026-01-31 10:48] Tool Hatası: hev_dev_safe_batch_refactor
+
+**Senaryo:** 50+ TypeScript hatası toplu düzeltme
+**Dosya:** electron/handlers/ipc-opencode.ts
+**Tool Parametreleri:**
+```json
+{"file_path": "...", "operations": [...]}
+```
+
+**Hata:**
+```
+Error: Syntax check failed after operation 12/50
+Unclosed bracket at line 145
+```
+
+**Kök Neden:** Pattern'de parantez dengesi bozuk
+**Workaround:** Manuel edit_lines ile 10'ar satır kontrollü düzeltme
+**İyileştirme Önerisi:** Tool'a bracket validator ekle (pre-check)
+**Durum:** ✅ Workaround başarılı, issue noted
+```
+
+### Format: Kullanıcı Bildirimi (Kısa - v6.0 NEW)
+
+```
+⚠️ hev_dev_safe_batch_refactor hatası → notebook'a not aldım
+Alternatif: hev_dev_edit_lines ile devam ediyorum
+```
+
+**❌ ASLA yapma:** Stack trace, uzun error output kullanıcıya gösterme
+**✅ DAIMA yap:** Tek satır özet + "detay notebook'ta"
+
+
 
 ---
 
