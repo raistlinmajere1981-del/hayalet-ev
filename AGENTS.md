@@ -12,6 +12,12 @@
 
 ### 1. Context Loading (MANDATORY)
 ```typescript
+// BEST: Use the new bootstrap tool (FASTEST - 1 call does everything!)
+hev_session_bootstrap({ mode: "quick" })
+// → ✅ Loads docs, checks MCP, analyzes project in ONE call
+// → Replaces Steps 1-3 below with a single tool call
+
+// ALTERNATIVE: Manual steps (if bootstrap unavailable)
 // Step 1: Read full documentation
 await open_files([
   ".rovo/01-AGENTS.md",      // 156 satır - TOP 10 tools + workflows
@@ -20,7 +26,7 @@ await open_files([
 
 // Step 2: Verify MCP health
 hev_mcp_health()
-// → ✅ Expected: Healthy, v1.11.0+, 99 tools
+// → ✅ Expected: Healthy, v1.11.0+, 101 tools
 
 // Step 3: Get project status (optional but recommended)
 hev_dev_analyze_project({ mode: "quick" })
@@ -32,10 +38,11 @@ Session başında bu bilgilere sahip olmalısın:
 
 - ✅ **Proje:** Hayalet-ev = Electron-based AI asistan (multi-provider: ChatGPT, Gemini, Grok, OpenCode)
 - ✅ **Mimari:** Webview-based slot system + traffic tracking + relay system
-- ✅ **Tool Count:** 99 (filesystem, dev, context, git, web, workflow, CDP, electron)
+- ✅ **Tool Count:** 101 (filesystem, dev, context, git, web, workflow, CDP, electron, **session**)
 - ✅ **TypeScript Status:** ~500+ errors (normal, incremental fix)
 - ✅ **Top Modules:** asistan, slot, traffic, webview, relay
 - ✅ **Safety Rules:** ÖNCE `hev_fs_show()` → SONRA edit → SONRA `hev_dev_check_syntax()`
+- ✅ **Bootstrap Tool:** `hev_session_bootstrap()` yeni eklendi (session hazırlığı için #1 tool)
 
 ### 3. İlk Mesaj Kontrolü
 
@@ -65,65 +72,73 @@ hev_tool_workflow({ scenario: "file-edit-safe" })
 
 ## ⭐ TOP 10 Most Important Tools
 
-### 🔥 Tier 1: Mission Critical (3 tools)
+### 🔥 Tier 1: Mission Critical (4 tools)
 
-#### 1. `hev_mcp_health` ⚡ FIRST THING TO RUN
+#### 1. `hev_session_bootstrap` 🚀 **NEW!** - USE THIS FIRST!
+Yeni session başlatma - tüm context'i otomatik yükle (AGENTS.md, MCP health, project status).
+
+**Use When:** HER YENİ SESSION BAŞINDA (ilk tool call)
+**Why:** 10 iterasyon yerine 1 call ile tüm context yüklenir
+**Example:** `hev_session_bootstrap({ mode: "quick" })`
+**Output:** MCP health + docs loaded + project info + recommendations
+
+#### 2. `hev_mcp_health` ⚡ SECOND PRIORITY
 Hayalet-ev MCP'nin sağlık durumunu kontrol et. MCP aktif ve built-in override sistemi çalışıyor demektir.
 
 **Use When:** Her session başında, tool hatası aldığında
 **Risk:** MCP çalışmazsa built-in toollar aktif olur (DUPLICATE LINES!)
 
-#### 2. `hev_suggest_tool` 🎯 TOOL DISCOVERY
+#### 3. `hev_suggest_tool` 🎯 TOOL DISCOVERY
 AI agent'a tool önerisi yap (intent-based discovery). Ne yapmak istediğini söyle, sana en uygun toolları önerir.
 
 **Use When:** 99 tool arasında kaybolduğunda, workflow planlarken
 **Example:** `hev_suggest_tool({ intent: "TypeScript hatalarını toplu düzelt" })`
 
-#### 3. `hev_tool_workflow` 📋 STEP-BY-STEP GUIDE
+#### 4. `hev_tool_workflow` 📋 STEP-BY-STEP GUIDE
 Belirli bir senaryo için önerilen tool workflow'unu göster. Karmaşık işlemler için adım adım kılavuz.
 
 **Use When:** TypeScript fix, refactoring, safe editing gibi karmaşık işlemler
 **Example:** `hev_tool_workflow({ scenario: "typescript-fix-large" })`
 
-### 🚀 Tier 2: Development Suite (7 tools)
+### 🚀 Tier 2: Development Suite (6 tools)
 
-#### 4. `hev_dev_typescript_dashboard` 📊 ERROR OVERVIEW
+#### 5. `hev_dev_typescript_dashboard` 📊 ERROR OVERVIEW
 Projedeki tüm TS hatalarını analiz eder, error code'lara göre gruplar, top files ranking.
 
 **Use When:** Session başında durum tespiti, progress tracking
 **Output:** 517 errors → TS2722: 39 errors, TS2532: 30 errors
 
-#### 5. `hev_dev_safe_batch_refactor` 🛡️ SAFEST EDIT METHOD
+#### 6. `hev_dev_safe_batch_refactor` 🛡️ SAFEST EDIT METHOD
 Regex-based toplu değişiklik + her adımda TypeScript check + hata artarsa auto-rollback.
 
 **Use When:** 50+ benzer hata (optional chaining → guard pattern)
 **Safety:** `verify_after_each: true`, `auto_rollback_on_error: true`
 
-#### 6. `hev_dev_fix_typescript_batch` 🔧 AUTO-FIX
+#### 7. `hev_dev_fix_typescript_batch` 🔧 AUTO-FIX
 Toplu TypeScript hatalarını otomatik düzeltir (undefined checks, optional chaining).
 
 **Use When:** TS2532, TS2722 gibi tekrarlayan hatalar
 **Options:** `fix_strategy: "conservative"`, `dry_run: true`
 
-#### 7. `hev_dev_check_syntax` ✅ MANDATORY AFTER EDIT
+#### 8. `hev_dev_check_syntax` ✅ MANDATORY AFTER EDIT
 Dosyada syntax hatalar, parantez dengesi, ESLint, TypeScript kontrolleri.
 
 **Use When:** HER EDIT SONRASI (zorunlu!)
 **Checks:** Syntax, brackets, ESLint, TypeScript errors
 
-#### 8. `hev_fs_show` 👁️ MANDATORY BEFORE EDIT
+#### 9. `hev_fs_show` 👁️ MANDATORY BEFORE EDIT
 Dosya içeriğini satır numaralarıyla gösterir (context before edit).
 
 **Use When:** HER EDIT ÖNCESI (zorunlu!)
 **Why:** Duplicate lines ve yanlış edit önleme
 
-#### 9. `hev_dev_analyze_project` 📁 PROJECT STATUS
+#### 10. `hev_dev_analyze_project` 📁 PROJECT STATUS
 Proje analizi: dosya sayıları, satır sayıları, bağımlılıklar, git durumu.
 
 **Use When:** Session başında, durum tespiti
 **Mode:** `quick` (fast) veya `full` (detailed)
 
-#### 10. `hev_dev_register_tool` 🔨 TOOL DEVELOPMENT
+#### 11. `hev_dev_register_tool` 🔨 TOOL DEVELOPMENT (Bonus)
 Yeni tool otomatik olarak handlers, registry ve index'e ekler.
 
 **Use When:** Yeni MCP tool geliştirirken

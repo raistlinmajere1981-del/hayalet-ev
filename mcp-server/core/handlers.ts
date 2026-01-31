@@ -5,6 +5,7 @@
 
 import type { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 import { testElectron, listTools, mcpHealthCheck } from "../tools/electron-tools.js";
+import { sessionBootstrap } from "../tools/session-bootstrap.js";
 import { handleSuggestTool, handleToolWorkflow } from "../tools/tool-discovery.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "../tools/log-tools.js";
 import { getErrorHints } from "../tools/debug-tools.js";
@@ -144,6 +145,9 @@ ${health.message}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
       return { content: [{ type: "text", text: output }] };
+    }
+    if (name === "hev_session_bootstrap") {
+      return await sessionBootstrap(args);
     }
     if (name === "hev_test_electron") {
       return await handleTestElectron(args, PROJECT_ROOT);

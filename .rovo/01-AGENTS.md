@@ -10,7 +10,36 @@
 
 These tools cover 80% of daily tasks:
 
-### 1. `hev_mcp_health`
+### 1. `hev_session_bootstrap` ⚡ **NEW!**
+
+**Description:** Yeni session başlatma - tüm context'i otomatik yükle (AGENTS.md, MCP health, project status). Session başında agent'ı anında 'ready' duruma getirir.
+
+**Priority:** critical | **Complexity:** simple | **Risk:** low
+
+**Use Cases:**
+- Session başlangıcında context load
+- Agent hazırlığı
+- Project status quick check
+
+**⚠️ Agent Guidance:** Her yeni session başında MUTLAKA çalıştır. `mode: "quick"` yeterli. Agent 10 iterasyon yerine 2 iterasyonda hazır olur.
+
+**Parameters:**
+- `mode`: "minimal" | "quick" (default) | "full"
+- `auto_fix_mcp`: boolean (default: false)
+- `return_format`: "summary" (default) | "detailed" | "json"
+
+**Example:**
+```typescript
+// Session başında
+hev_session_bootstrap({ mode: "quick" })
+// → ✅ Session ready! MCP healthy (101 tools). Hayalet-ev v5.4.0 on feature/css-centralization.
+```
+
+**Related Tools:** `hev_mcp_health`, `hev_dev_analyze_project`, `hev_dev_typescript_dashboard`
+
+---
+
+### 2. `hev_mcp_health`
 
 **Description:** Hayalet-ev MCP'nin sağlık durumunu kontrol et. Eğer bu tool çalışıyorsa, MCP aktif ve built-in override sistemi çalışıyor demektir.
 
@@ -22,11 +51,11 @@ These tools cover 80% of daily tasks:
 
 **⚠️ Agent Guidance:** Her session başında veya tool hatası aldığında kullan. MCP çalışmazsa built-in toollar aktif olur (RISKLI!).
 
-**Related Tools:** `hev_list_tools`
+**Related Tools:** `hev_list_tools`, `hev_session_bootstrap`
 
 ---
 
-### 2. `hev_suggest_tool`
+### 3. `hev_suggest_tool`
 
 **Description:** AI agent'a tool önerisi yap (intent-based discovery). Ne yapmak istediğini söyle, sana en uygun toolları önerir.
 
@@ -43,7 +72,7 @@ These tools cover 80% of daily tasks:
 
 ---
 
-### 3. `hev_list_tools`
+### 4. `hev_list_tools`
 
 **Description:** Hayalet-ev MCP tool'larını kategorize ederek listele (97 tool)
 
@@ -60,7 +89,7 @@ These tools cover 80% of daily tasks:
 
 ---
 
-### 4. `hev_tool_workflow`
+### 5. `hev_tool_workflow`
 
 **Description:** Belirli bir senaryo için önerilen tool workflow'unu göster. Step-by-step guide sağlar.
 
@@ -76,7 +105,7 @@ These tools cover 80% of daily tasks:
 
 ---
 
-### 5. `hev_dev_register_tool`
+### 6. `hev_dev_register_tool`
 
 **Description:** Yeni tool otomatik olarak handlers, registry ve index'e ekler (boilerplate automation)
 

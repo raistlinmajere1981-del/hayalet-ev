@@ -65,6 +65,44 @@ export const TOOL_DEFINITIONS = [
     }
   } as EnhancedToolDefinition,
   {
+    name: "hev_session_bootstrap",
+    description: "Yeni session başlatma - tüm context'i otomatik yükle (AGENTS.md, MCP health, project status). Session başında agent'ı anında 'ready' duruma getirir.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["minimal", "quick", "full"],
+          description: "Bootstrap mode: minimal (MCP health only), quick (+ docs + project), full (+ TypeScript dashboard)",
+          default: "quick"
+        },
+        auto_fix_mcp: {
+          type: "boolean",
+          description: "MCP unhealthy ise otomatik restart dene",
+          default: false
+        },
+        return_format: {
+          type: "string",
+          enum: ["summary", "detailed", "json"],
+          description: "Output format: summary (concise), detailed (full report), json (raw data)",
+          default: "summary"
+        }
+      }
+    },
+    metadata: {
+      category: 'core',
+      subcategory: 'session',
+      priority: 'critical',
+      complexity: 'simple',
+      useCases: ['Session başlangıcında context load', 'Agent hazırlığı', 'Project status quick check'],
+      relatedTools: ['hev_mcp_health', 'hev_dev_analyze_project', 'hev_dev_typescript_dashboard'],
+      agentGuidance: 'Her yeni session başında MUTLAKA çalıştır. mode: "quick" yeterli. Agent 10 iterasyon yerine 2 iterasyonda hazır olur.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['session', 'bootstrap', 'context', 'startup', 'initialization']
+    }
+  } as EnhancedToolDefinition,
+  {
     name: "hev_read_electron_logs",
     description: "Electron console ve error loglarını oku. Gelişmiş filtreleme: source (MAIN, RENDERER, WEBVIEW-AI1, etc.), level (LOG, WARN, ERROR), içerik arama, correlation ID ile işlem takibi.",
     inputSchema: {
