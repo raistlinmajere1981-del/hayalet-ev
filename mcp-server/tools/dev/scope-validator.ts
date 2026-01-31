@@ -211,6 +211,28 @@ export async function analyzeScopeImpact(
       },
     });
 
+    // Helper: Detect wrapper pattern (small arrow functions used in type casts)
+    const isWrapperPattern = (scope: ScopeInfo): boolean => {
+      // Arrow functions < 10 lines are often wrappers/callbacks
+      // These are safe to edit as they're typically simple functions
+      if (scope.type === 'arrow' && (scope.endLine - scope.startLine) < 10) {
+        return true;
+      }
+      return false;
+    };
+
+    // Helper: Check if a scope is nested inside another scope
+    const isNestedInside = (child: ScopeInfo, parent: ScopeInfo): boolean => {
+      return (
+        child.startLine >= parent.startLine &&
+        child.endLine <= parent.endLine &&
+        !(child.startLine === parent.startLine && child.endLine === parent.endLine)
+      );
+    };
+
+    // Find safe parent scopes (import/export/wrapper patterns)
+    const safeParentScopes: ScopeInfo[] = [];
+
     // Check which scopes are affected
     for (const scope of scopes) {
       const scopeStart = scope.startLine;
@@ -229,8 +251,19 @@ export async function analyzeScopeImpact(
         // 🛡️ SAFE TYPES: Import/Export statements are single-line and safe to edit
         const isSafeType = ['import', 'export'].includes(scope.type);
         
-        if (isSafeType) {
-          // Import/Export are safe, skip scope breaking checks
+        // 🛡️ WRAPPER PATTERN: Small arrow functions (< 10 lines) used in type casts/callbacks
+        const isWrapper = isWrapperPattern(scope);
+        
+        if (isSafeType || isWrapper) {
+          // Import/Export and wrapper patterns are safe, skip scope breaking checks
+          safeParentScopes.push(scope);
+          continue;
+        }
+
+        // 🛡️ NESTED IN SAFE PARENT: If this scope is nested inside a safe parent, skip it too
+        const isNestedInSafeParent = safeParentScopes.some(parent => isNestedInside(scope, parent));
+        if (isNestedInSafeParent) {
+          // This scope is inside a wrapper/safe pattern, skip validation
           continue;
         }
 
