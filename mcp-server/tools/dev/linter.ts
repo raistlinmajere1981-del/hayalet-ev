@@ -64,7 +64,23 @@ export const LINTER_TOOL = {
         description: "Otomatik düzeltme yap",
         default: false,
       },
-    },
+        },
     required: ["file_path"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'eslint',
+    priority: 'medium',
+    complexity: 'simple',
+    useCases: [
+      'Lint single file quickly',
+      'Check file before commit',
+      'Auto-fix specific file'
+    ],
+    relatedTools: ['hev_dev_lint_project', 'hev_dev_eslint_dashboard'],
+    agentGuidance: 'Use for single-file linting. Faster than hev_dev_lint_project. Use fix=false first to see issues.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['eslint', 'single-file', 'quick', 'cache-enabled']
+  }
 };

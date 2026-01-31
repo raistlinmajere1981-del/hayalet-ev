@@ -93,7 +93,23 @@ export const TEST_RUNNER_TOOL = {
         type: "integer" as const,
         description: "Timeout (ms)",
         default: 30000,
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'testing',
+    priority: 'high',
+    complexity: 'medium',
+    useCases: [
+      'Run tests before commit',
+      'Test specific files or patterns',
+      'Verify code changes'
+    ],
+    relatedTools: ['hev_fs_bash', 'hev_dev_check_syntax'],
+    agentGuidance: 'Auto-detects vitest/jest. Use grep to filter tests. Returns pass/fail counts. Good for verification after edits.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['testing', 'vitest', 'jest', 'auto-detect', 'verification']
+  }
 };

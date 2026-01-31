@@ -115,7 +115,23 @@ export const PROJECT_ANALYZER_TOOL = {
         enum: ["summary", "deps", "modules", "full"],
         description: "Analiz modu: summary (özet), deps (bağımlılıklar), modules (modül analizi), full (hepsi)",
         default: "summary",
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'analysis',
+    priority: 'medium',
+    complexity: 'medium',
+    useCases: [
+      'Project overview and statistics',
+      'Dependency analysis',
+      'Git status and commit history'
+    ],
+    relatedTools: ['hev_dev_generate_diagram', 'hev_dev_update_cache', 'hev_git_pr_status'],
+    agentGuidance: 'Comprehensive project analysis. Use mode=summary for quick overview, full for detailed report. Shows file counts, lines, deps, git info.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['analysis', 'statistics', 'overview', 'dependencies', 'git']
+  }
 };

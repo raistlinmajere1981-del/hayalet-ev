@@ -190,7 +190,23 @@ export const SYNTAX_CHECKER_TOOL = {
         description: "TypeScript type check",
         default: false,
       },
-    },
+        },
     required: ["file_path"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'validation',
+    priority: 'high',
+    complexity: 'medium',
+    useCases: [
+      'Pre-commit syntax validation',
+      'Check bracket balance',
+      'Combined ESLint + TypeScript check'
+    ],
+    relatedTools: ['hev_dev_lint_file', 'hev_dev_check_syntax', 'hev_fs_show'],
+    agentGuidance: 'Multi-layer validation: brackets, ESLint, TypeScript. Use before edits to catch issues. Provides detailed error breakdown.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['validation', 'syntax', 'brackets', 'eslint', 'typescript', 'pre-commit']
+  }
 };

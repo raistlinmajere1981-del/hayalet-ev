@@ -384,7 +384,23 @@ export const TYPESCRIPT_CONTEXT_FIXER_TOOL = {
         description: "Preview fixes without applying",
         default: true
       }
-    },
+        },
     required: ["file_path"]
+  },
+  metadata: {
+    category: 'development',
+    subcategory: 'typescript',
+    priority: 'medium',
+    complexity: 'complex',
+    useCases: [
+      'Root cause analysis for TypeScript errors',
+      'Identify missing type definitions',
+      'Suggest fixes for global.d.ts'
+    ],
+    relatedTools: ['hev_dev_typescript_dashboard', 'hev_dev_typescript_type_helper'],
+    agentGuidance: 'Advanced TS error root cause analyzer. Identifies missing type definitions and suggests where to add them (global.d.ts or interfaces). Experimental auto-fix.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['typescript', 'root-cause', 'type-definitions', 'advanced', 'diagnostics']
   }
 };

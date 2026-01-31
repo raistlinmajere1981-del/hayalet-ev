@@ -101,7 +101,23 @@ export const DIAGRAM_GENERATOR_TOOL = {
         type: "integer" as const,
         description: "Maksimum derinlik",
         default: 10,
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'analysis',
+    priority: 'low',
+    complexity: 'medium',
+    useCases: [
+      'Visualize module dependencies',
+      'Understand project architecture',
+      'Generate documentation diagrams'
+    ],
+    relatedTools: ['hev_dev_analyze_project', 'hev_fs_grep'],
+    agentGuidance: 'Generates Mermaid or DOT diagrams. Use module parameter to filter specific areas. Good for architecture documentation.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['diagram', 'visualization', 'dependencies', 'mermaid', 'architecture']
+  }
 };

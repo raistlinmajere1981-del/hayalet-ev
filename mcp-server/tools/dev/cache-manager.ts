@@ -109,7 +109,23 @@ export const CACHE_MANAGER_TOOL = {
         type: "boolean" as const,
         description: "Mevcut cache'i göster (güncelleme yapma)",
         default: false,
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'optimization',
+    priority: 'low',
+    complexity: 'medium',
+    useCases: [
+      'Track file changes',
+      'Build export/import map',
+      'Optimize incremental processing'
+    ],
+    relatedTools: ['hev_dev_analyze_project'],
+    agentGuidance: 'Caches file hashes and exports. Use force=true to rebuild. Use show=true to inspect without updating.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['cache', 'optimization', 'tracking', 'exports']
+  }
 };

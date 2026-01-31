@@ -554,7 +554,23 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
         dry_run: { type: "boolean", description: "Sadece önizleme göster", default: true },
         auto_apply: { type: "boolean", description: "Otomatik uygula", default: false }
       },
-      required: ["file_path"]
+            required: ["file_path"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'typescript',
+      priority: 'high',
+      complexity: 'complex',
+      useCases: [
+        'Auto-fix TypeScript null/undefined errors',
+        'Batch fix TS2532, TS18048 errors',
+        'Add type guards and optional chaining'
+      ],
+      relatedTools: ['hev_dev_typescript_dashboard', 'hev_dev_typescript_type_helper', 'hev_fs_backup'],
+      agentGuidance: 'ALWAYS use dry_run=true first. Use hev_dev_typescript_dashboard to identify error codes. Supports multiple fix strategies.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['typescript', 'auto-fix', 'batch', 'type-safety']
     }
   },
   {
@@ -575,9 +591,25 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
           description: "Gruplama kriteri",
           default: "error_code"
         },
-        show_trend: { type: "boolean", description: "Trend göster", default: false },
+                show_trend: { type: "boolean", description: "Trend göster", default: false },
         limit: { type: "number", description: "Maksimum item sayısı", default: 10 }
       }
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'typescript',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Analyze TypeScript errors by category',
+        'Identify most common error codes',
+        'Get overview of type issues in project'
+      ],
+      relatedTools: ['hev_dev_fix_typescript_batch', 'hev_dev_typescript_type_helper'],
+      agentGuidance: 'Use FIRST to understand TypeScript error landscape. Shows analytics with grouping and sorting. Helps prioritize fixes.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['typescript', 'analytics', 'dashboard', 'error-analysis']
     }
   },
   {
@@ -589,9 +621,25 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
         file_path: { type: "string", description: "Analiz edilecek dosya yolu" },
         show_interfaces: { type: "boolean", description: "Interface tanımlarını göster", default: true },
         suggest_fixes: { type: "boolean", description: "Çözüm önerileri göster", default: true },
-        analyze_conflicts: { type: "boolean", description: "Type conflict'leri detaylı analiz et", default: true }
+                analyze_conflicts: { type: "boolean", description: "Type conflict'leri detaylı analiz et", default: true }
       },
       required: ["file_path"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'typescript',
+      priority: 'medium',
+      complexity: 'medium',
+      useCases: [
+        'Analyze type mismatches',
+        'Suggest interface improvements',
+        'Identify type conflict sources'
+      ],
+      relatedTools: ['hev_dev_typescript_dashboard', 'hev_dev_fix_typescript_batch'],
+      agentGuidance: 'Use for deep type analysis. Shows interfaces and suggests fixes. Good for understanding complex type errors.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['typescript', 'type-analysis', 'interface', 'conflict-resolution']
     }
   },
   {
@@ -608,9 +656,25 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
           description: "Eklenecek kod tipi" 
         },
         code: { type: "string", description: "Eklenecek kod" },
-        dry_run: { type: "boolean", description: "Sadece önizleme", default: true }
+                dry_run: { type: "boolean", description: "Sadece önizleme", default: true }
       },
       required: ["file_path", "after_pattern", "insert_type", "code"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'code-editing',
+      priority: 'high',
+      complexity: 'complex',
+      useCases: [
+        'Insert code with AST awareness',
+        'Prevent duplicate imports/functions',
+        'Smart positioning (after specific patterns)'
+      ],
+      relatedTools: ['hev_dev_smart_insert', 'hev_fs_find_and_replace', 'hev_dev_edit_lines'],
+      agentGuidance: 'Use for AST-aware code insertion. Prevents duplicates and positions code intelligently. ALWAYS use dry_run=true first.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['ast', 'insert', 'duplicate-prevention', 'smart-positioning']
     }
   },
   {
@@ -632,11 +696,27 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
             required: ["pattern", "replace_with"]
           }
         },
-        verify_after_each: { type: "boolean", default: true },
+                verify_after_each: { type: "boolean", default: true },
         auto_rollback_on_error: { type: "boolean", default: true },
         dry_run: { type: "boolean", default: false }
       },
       required: ["file_path", "operations"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'refactoring',
+      priority: 'high',
+      complexity: 'complex',
+      useCases: [
+        'Multi-step refactoring with safety',
+        'Batch operations with rollback',
+        'Verified transformations'
+      ],
+      relatedTools: ['hev_fs_find_and_replace', 'hev_fs_backup', 'hev_dev_check_syntax'],
+      agentGuidance: 'Use for complex refactoring. Each step is verified. Auto-rollback on error. Safer than manual multi-step edits.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['refactoring', 'batch', 'verification', 'rollback', 'safety']
     }
   },
   {
@@ -652,10 +732,26 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
           enum: ["before", "after", "inside_start", "inside_end"],
           default: "after" 
         },
-        code: { type: "string" },
+                code: { type: "string" },
         dry_run: { type: "boolean", default: true }
       },
       required: ["file_path", "anchor", "code"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'code-editing',
+      priority: 'medium',
+      complexity: 'medium',
+      useCases: [
+        'Insert code using natural language positioning',
+        'Smart anchor-based insertion',
+        'Human-readable position descriptions'
+      ],
+      relatedTools: ['hev_dev_ast_insert', 'hev_fs_find_and_replace'],
+      agentGuidance: 'Use when exact position is unclear. Anchor can be natural language like "after the last import" or "inside MyClass". ALWAYS use dry_run=true first.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['insert', 'natural-language', 'smart-positioning', 'anchor-based']
     }
   },
   {
@@ -673,10 +769,26 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
           items: { type: "string" },
           default: ["handlers", "registry", "index"] 
         },
-        test_immediately: { type: "boolean", default: false },
+                test_immediately: { type: "boolean", default: false },
         dry_run: { type: "boolean", default: true }
       },
       required: ["tool_name", "description", "function_name", "tool_constant"]
+    },
+    metadata: {
+      category: 'development',
+      subcategory: 'tool-management',
+      priority: 'low',
+      complexity: 'medium',
+      useCases: [
+        'Register new MCP tools automatically',
+        'Update handlers, registry, and index',
+        'Streamline tool development'
+      ],
+      relatedTools: ['hev_fs_find_and_replace', 'hev_dev_ast_insert'],
+      agentGuidance: 'Use for adding new tools to MCP server. Automates registration process. ALWAYS use dry_run=true first to preview changes.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['tool-management', 'registration', 'automation', 'meta']
     }
   },
   {
@@ -689,9 +801,25 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
         fix: { type: "boolean", description: "Otomatik düzeltme yap", default: false },
         max_warnings: { type: "number", description: "Maksimum uyarı sayısı (-1 = sınırsız)", default: -1 },
         cache: { type: "boolean", description: "Cache kullan (daha hızlı)", default: true },
-        format: { type: "string", enum: ["stylish", "compact", "json", "codeframe"], description: "Çıktı formatı", default: "stylish" },
+                format: { type: "string", enum: ["stylish", "compact", "json", "codeframe"], description: "Çıktı formatı", default: "stylish" },
       },
     },
+    metadata: {
+      category: 'development',
+      subcategory: 'eslint',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Run ESLint across entire project',
+        'Batch linting with glob patterns',
+        'Project-wide code quality check'
+      ],
+      relatedTools: ['hev_dev_eslint_dashboard', 'hev_dev_eslint_batch_fix'],
+      agentGuidance: 'Use for project-wide linting. Supports glob patterns and caching. Use fix=false first to see issues.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['eslint', 'linting', 'batch', 'project-wide']
+    }
   },
   {
     name: "hev_dev_eslint_dashboard",
@@ -702,10 +830,26 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
         pattern: { type: "string", description: "Glob pattern (örn: 'src/**/*.ts')", default: "**/*.{js,ts,jsx,tsx}" },
         sort_by: { type: "string", enum: ["count", "severity", "file"], description: "Sıralama kriteri", default: "count" },
         group_by: { type: "string", enum: ["rule", "file", "category"], description: "Gruplama kriteri", default: "rule" },
-        limit: { type: "number", description: "Gösterilecek maksimum item sayısı", default: 10 },
+                limit: { type: "number", description: "Gösterilecek maksimum item sayısı", default: 10 },
         show_fixable: { type: "boolean", description: "Otomatik düzeltilecekleri göster", default: true },
       },
     },
+    metadata: {
+      category: 'development',
+      subcategory: 'eslint',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Analyze ESLint errors by rule',
+        'Identify most common violations',
+        'Prioritize which rules to fix'
+      ],
+      relatedTools: ['hev_dev_lint_project', 'hev_dev_eslint_batch_fix'],
+      agentGuidance: 'Use FIRST to understand ESLint error distribution. Shows analytics with clustering. Helps plan fixes.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['eslint', 'analytics', 'dashboard', 'rule-analysis']
+    }
   },
   {
     name: "hev_dev_eslint_batch_fix",
@@ -718,9 +862,25 @@ export const OVERRIDE_TOOL_DEFINITIONS = [
         fix_strategy: { type: "string", enum: ["safe", "aggressive", "suggestion"], description: "Fix stratejisi (safe=problem+layout, aggressive=all, suggestion=only suggestions)", default: "safe" },
         dry_run: { type: "boolean", description: "Sadece analiz (değişiklik yapma)", default: false },
         auto_apply: { type: "boolean", description: "Otomatik uygula (onay bekleme)", default: false },
-        verify_after: { type: "boolean", description: "Fix sonrası TypeScript check", default: true },
+                verify_after: { type: "boolean", description: "Fix sonrası TypeScript check", default: true },
       },
     },
+    metadata: {
+      category: 'development',
+      subcategory: 'eslint',
+      priority: 'high',
+      complexity: 'complex',
+      useCases: [
+        'Batch fix ESLint violations',
+        'Auto-fix specific rules',
+        'Safe automated code cleanup'
+      ],
+      relatedTools: ['hev_dev_eslint_dashboard', 'hev_dev_lint_project', 'hev_fs_backup'],
+      agentGuidance: 'ALWAYS use dry_run=true first. Use hev_dev_eslint_dashboard to identify rules. Supports safe/aggressive strategies with verification.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['eslint', 'auto-fix', 'batch', 'verification']
+    }
   },
   
 ];

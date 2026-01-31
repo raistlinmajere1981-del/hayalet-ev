@@ -771,6 +771,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_paths"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'basic-io',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Open multiple files at once',
+        'View collapsed structure of large files',
+        'Quick file overview before editing'
+      ],
+      relatedTools: ['hev_fs_show', 'hev_fs_expand_code_chunks'],
+      agentGuidance: 'Use for initial file exploration. Large files show collapsed view. For line numbers, use hev_fs_show instead.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['read', 'multiple-files', 'collapsed-view', 'exploration']
+    }
   },
   {
     name: "hev_fs_create_file",
@@ -795,6 +811,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'basic-io',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: [
+        'Create new files with content',
+        'Auto-creates parent directories',
+        'Large file support (>10KB uses bash heredoc)'
+      ],
+      relatedTools: ['hev_fs_create_chunked', 'hev_fs_append_chunk'],
+      agentGuidance: 'Use for files <500KB. For larger files, use hev_fs_create_chunked. Auto-switches to bash heredoc for files >10KB to avoid token limits.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['create', 'write', 'directory-auto-create', 'large-file-support']
+    }
   },
   {
     name: "hev_fs_delete_file",
@@ -814,6 +846,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'basic-io',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Safe file deletion (moves to trash)',
+        'Recoverable with hev_fs_restore',
+        'Permanent deletion for cleanup'
+      ],
+      relatedTools: ['hev_fs_trash_list', 'hev_fs_restore', 'hev_fs_undo'],
+      agentGuidance: 'Default behavior is SAFE (trash). Only use permanent=true for temp files. Can be undone with hev_fs_restore or hev_fs_undo.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['delete', 'safe', 'recoverable', 'trash']
+    }
   },
   {
     name: "hev_fs_move_file",
@@ -832,6 +880,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path", "new_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'basic-io',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Rename files',
+        'Move files to different directories',
+        'Reorganize file structure'
+      ],
+      relatedTools: ['hev_fs_create_file', 'hev_fs_delete_file'],
+      agentGuidance: 'Auto-creates parent directories. Use for both rename and move operations.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['move', 'rename', 'reorganize']
+    }
   },
   {
     name: "hev_fs_expand_code_chunks",
@@ -859,8 +923,24 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
           default: [] as any[],
         },
       },
-      required: ["file_path"],
+            required: ["file_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'code-operations',
+      priority: 'medium',
+      complexity: 'medium',
+      useCases: [
+        'Expand collapsed functions in large files',
+        'Find and view specific code symbols',
+        'Hierarchical symbol search (Class/method)'
+      ],
+      relatedTools: ['hev_fs_open_files', 'hev_fs_show', 'hev_dev_search_symbol'],
+      agentGuidance: 'Use when hev_fs_open_files shows collapsed view. Supports symbol patterns for precise expansion. Use [[0, -1]] to expand entire file.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['expand', 'symbols', 'collapsed-view', 'code-navigation']
+    }
   },
   {
     name: "hev_fs_find_and_replace",
@@ -893,6 +973,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path", "find", "replace"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'code-operations',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Safe code editing with exact match',
+        'Refactoring with whitespace-aware matching',
+        'Preview changes before applying (dry_run)'
+      ],
+      relatedTools: ['hev_fs_show', 'hev_dev_edit_lines', 'hev_fs_backup'],
+      agentGuidance: 'Most used edit tool. ALWAYS use hev_fs_show first to get exact text. Use ignore_whitespace=true for code. ALWAYS use dry_run=true first to preview.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['edit', 'refactor', 'safe', 'whitespace-aware', 'most-used']
+    }
   },
   {
     name: "hev_fs_grep",
@@ -910,6 +1006,23 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'code-operations',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Find function/class definitions',
+        'Search for specific patterns across codebase',
+        'File path search with glob patterns',
+        'Combined content and path filtering'
+      ],
+      relatedTools: ['hev_dev_search_symbol', 'hev_fs_open_files'],
+      agentGuidance: 'Use for codebase-wide search. Supports regex for content, glob for paths. Use path_glob to narrow search scope.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['search', 'regex', 'glob', 'codebase-search']
+    }
   },
   {
     name: "hev_fs_expand_folder",
@@ -929,6 +1042,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["folder_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'navigation',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Explore directory structure',
+        'Understand project layout',
+        'Find files in subdirectories'
+      ],
+      relatedTools: ['hev_fs_grep', 'hev_fs_open_files', 'hev_dev_analyze_project'],
+      agentGuidance: 'Use for directory exploration. Default depth=3 is usually sufficient. Increase for deeper inspection.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['navigation', 'tree', 'exploration', 'read-only']
+    }
   },
   {
     name: "hev_fs_bash",
@@ -948,6 +1077,23 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["command"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'execution',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Run build/test commands',
+        'Git operations',
+        'File operations not covered by other tools',
+        'Background process execution'
+      ],
+      relatedTools: ['hev_dev_test_run', 'hev_git_pr_status'],
+      agentGuidance: 'Versatile execution tool. Use for npm/git/test commands. Background mode (&) for long-running processes. Output is truncated at 50KB.',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['execution', 'shell', 'versatile', 'background-support']
+    }
   },
   {
     name: "hev_fs_create_plan",
@@ -987,6 +1133,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["plan"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'planning',
+      priority: 'low',
+      complexity: 'medium',
+      useCases: [
+        'Plan complex refactoring',
+        'Document intended changes',
+        'Validate change structure before execution'
+      ],
+      relatedTools: ['hev_fs_find_and_replace', 'hev_dev_safe_batch_refactor'],
+      agentGuidance: 'Use for complex multi-file changes. Validates plan structure and generates summary. Helps avoid missing steps.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['planning', 'refactoring', 'validation', 'documentation']
+    }
   },
   // === Recycle Bin Tools ===
   {
@@ -996,6 +1158,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       type: "object" as const,
       properties: {},
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'trash-recovery',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'View deleted files',
+        'Check trash before recovery',
+        'Verify deletion operations'
+      ],
+      relatedTools: ['hev_fs_restore', 'hev_fs_trash_empty', 'hev_fs_delete_file'],
+      agentGuidance: 'Use to see what can be recovered. Shows file path, deletion time, and size.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['trash', 'list', 'recovery', 'read-only']
+    }
   },
   {
     name: "hev_fs_restore",
@@ -1009,6 +1187,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'trash-recovery',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Undo accidental deletions',
+        'Recover specific deleted files',
+        'Quick recovery of last deleted file'
+      ],
+      relatedTools: ['hev_fs_trash_list', 'hev_fs_delete_file', 'hev_fs_undo'],
+      agentGuidance: 'Use hev_fs_trash_list first to see available files. No index = restore most recent deletion.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['restore', 'recovery', 'undo-delete', 'safe']
+    }
   },
   {
     name: "hev_fs_trash_empty",
@@ -1022,6 +1216,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'trash-recovery',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'Clean up trash periodically',
+        'Remove old deleted files',
+        'Free up disk space'
+      ],
+      relatedTools: ['hev_fs_trash_list', 'hev_fs_delete_file'],
+      agentGuidance: 'Use older_than_days to safely remove old files. Without parameter, empties entire trash (permanent).',
+      requiresConfirmation: false,
+      riskLevel: 'medium',
+      tags: ['cleanup', 'permanent', 'disk-space', 'maintenance']
+    }
   },
   {
     name: "hev_fs_backup",
@@ -1036,14 +1246,46 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'backup-history',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Create backup before risky edits',
+        'Preserve file state with timestamp',
+        'Manual version control'
+      ],
+      relatedTools: ['hev_fs_undo', 'hev_fs_history', 'hev_fs_find_and_replace'],
+      agentGuidance: 'Use before complex edits. Creates .bak file with timestamp. Can be restored manually.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['backup', 'safety', 'version-control', 'timestamp']
+    }
   },
-  {
+    {
     name: "hev_fs_undo",
     description: "Son dosya işlemini geri al (delete, create, replace)",
     inputSchema: {
       type: "object" as const,
       properties: {},
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'backup-history',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: [
+        'Undo accidental edits',
+        'Revert last operation quickly',
+        'Emergency rollback'
+      ],
+      relatedTools: ['hev_fs_history', 'hev_fs_restore', 'hev_fs_backup'],
+      agentGuidance: 'Quick undo for last operation. Use hev_fs_history to see what will be undone. Works for delete, create, replace operations.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['undo', 'rollback', 'emergency', 'quick-fix']
+    }
   },
   {
     name: "hev_fs_history",
@@ -1058,6 +1300,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
         },
       },
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'backup-history',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'View recent file operations',
+        'Check what can be undone',
+        'Audit trail for edits'
+      ],
+      relatedTools: ['hev_fs_undo', 'hev_fs_backup'],
+      agentGuidance: 'Shows chronological list of operations. Use before hev_fs_undo to see what will be reverted.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['history', 'audit', 'read-only', 'debugging']
+    }
   },
   // === Diff Tools ===
   {
@@ -1077,6 +1335,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file1", "file2"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'diff-compare',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Compare two file versions',
+        'Verify edits between files',
+        'Check differences before merge'
+      ],
+      relatedTools: ['hev_fs_diff_content', 'hev_fs_backup', 'hev_dev_git_diff'],
+      agentGuidance: 'Shows unified diff format. Use for file-to-file comparison. For content strings, use hev_fs_diff_content.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['diff', 'compare', 'unified-diff', 'read-only']
+    }
   },
   {
     name: "hev_fs_diff_content",
@@ -1105,10 +1379,64 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["content1", "content2"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'diff-compare',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'Compare code snippets',
+        'Preview edit changes',
+        'Verify string transformations'
+      ],
+      relatedTools: ['hev_fs_diff', 'hev_fs_find_and_replace'],
+      agentGuidance: 'Use for in-memory content comparison. Returns addition/deletion counts. Good for previewing edits.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['diff', 'compare', 'content', 'preview', 'read-only']
+    }
   },
   {
     name: "hev_fs_show",
     description: "Dosya içeriğini satır numaralarıyla göster",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Dosya yolu",
+        },
+        start_line: {
+          type: "integer",
+          description: "Başlangıç satırı (1-indexed)",
+        },
+        end_line: {
+          type: "integer",
+          description: "Bitiş satırı",
+        },
+      },
+      required: ["file_path"],
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'code-operations',
+      priority: 'critical',
+      complexity: 'simple',
+      useCases: [
+        'View file content before editing',
+        'Inspect specific line ranges',
+        'Quick file preview with line numbers'
+      ],
+      relatedTools: ['hev_fs_expand_code_chunks', 'hev_fs_open_files', 'hev_fs_grep'],
+      agentGuidance: 'ALWAYS use this before find_and_replace or edit_lines. Shows exact line numbers which prevents off-by-one errors.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['read', 'preview', 'line-numbers', 'critical-first-step']
+    }
+  },
+  {
+    name: "hev_fs_create_chunked",
+    description: "Büyük dosyaları parçalar halinde oluştur. LLM response limitlerini aşmak için chunk-based yaklaşım kullanır.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -1151,6 +1479,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path", "chunks"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'medium',
+      complexity: 'medium',
+      useCases: [
+        'Create large files (>500KB)',
+        'Bypass LLM response token limits',
+        'Multi-part file generation'
+      ],
+      relatedTools: ['hev_fs_append_chunk', 'hev_fs_create_file'],
+      agentGuidance: 'Use when file content exceeds hev_fs_create_file limit (500KB). Creates temp chunks and merges them safely.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'large-files', 'token-limit', 'batch-write']
+    }
   },
   {
     name: "hev_fs_append_chunk",
@@ -1174,6 +1518,22 @@ export const FILESYSTEM_TOOL_DEFINITIONS = [
       },
       required: ["file_path", "content"],
     },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'Stream large content to file',
+        'Incremental file building',
+        'Append logs or data'
+      ],
+      relatedTools: ['hev_fs_create_chunked', 'hev_fs_create_file'],
+      agentGuidance: 'Use for streaming writes. Appends to existing file or creates new. Simpler alternative to hev_fs_create_chunked for sequential writes.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['append', 'streaming', 'incremental', 'large-files']
+    }
   },
 ];
 

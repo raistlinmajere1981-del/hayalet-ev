@@ -97,6 +97,28 @@ const INTENT_PATTERNS = [
       { name: 'hev_read_electron_logs', priority: 3, reason: 'Check test logs' }
     ],
     workflows: []
+    },
+  {
+    patterns: [/large.*file/i, /big.*file/i, /chunk/i, /50kb/i, /büyük.*dosya/i, /büyük.*içerik/i, /chunk.*yaz/i],
+    category: 'large-file',
+    tools: [
+      { name: 'hev_fs_start_chunked_session', priority: 1, reason: 'Start safe chunk writing (for 50KB+ files)' },
+      { name: 'hev_fs_write_chunk', priority: 2, reason: 'Write chunks sequentially' },
+      { name: 'hev_fs_finalize_chunked', priority: 3, reason: 'Finalize and merge all chunks' },
+      { name: 'hev_fs_chunk_session_status', priority: 4, reason: 'Check progress' }
+    ],
+    workflows: ['chunk-write']
+  },
+  {
+    patterns: [/safe.*edit/i, /güvenli.*düzenle/i, /validated.*edit/i, /bracket.*check/i, /scope.*safe/i],
+    category: 'safe-editing',
+    tools: [
+      { name: 'hev_fs_show', priority: 1, reason: 'ALWAYS read first to get line numbers' },
+      { name: 'hev_dev_edit_lines', priority: 2, reason: 'Safe line editor with bracket & scope validation' },
+      { name: 'hev_dev_check_syntax', priority: 3, reason: 'Verify syntax after edit' },
+      { name: 'hev_fs_backup', priority: 4, reason: 'Create backup before risky edits' }
+    ],
+    workflows: ['file-edit-safe']
   },
   {
     patterns: [/new.*tool/i, /add.*tool/i, /register.*tool/i, /yeni.*tool/i, /tool.*ekle/i],

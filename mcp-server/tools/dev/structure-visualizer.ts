@@ -586,7 +586,23 @@ export const STRUCTURE_VISUALIZER_TOOL = {
         description: "Maksimum scope derinliği",
         default: 10,
       },
-    },
+        },
     required: ["file_path"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'analysis',
+    priority: 'medium',
+    complexity: 'complex',
+    useCases: [
+      'Visualize code structure and scopes',
+      'Detect unclosed brackets',
+      'Analyze comment blocks and AST hierarchy'
+    ],
+    relatedTools: ['hev_dev_check_syntax', 'hev_fs_show'],
+    agentGuidance: 'Advanced AST-based structure visualization. Shows scope hierarchy, bracket analysis, and unclosed detection. Use for debugging complex nesting issues.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['ast', 'structure', 'visualization', 'scopes', 'brackets', 'advanced']
+  }
 };

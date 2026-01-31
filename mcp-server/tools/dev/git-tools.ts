@@ -48,7 +48,23 @@ export const GIT_DIFF_TOOL = {
       file: {
         type: "string" as const,
         description: "Sadece belirli dosya",
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'git',
+    priority: 'medium',
+    complexity: 'simple',
+    useCases: [
+      'View git changes before commit',
+      'Check staged vs unstaged differences',
+      'Inspect specific file changes'
+    ],
+    relatedTools: ['hev_git_pr_status', 'hev_git_create_pr', 'hev_fs_diff'],
+    agentGuidance: 'Use to inspect code changes. Shows diff with stats (additions/deletions). Use staged=true for pre-commit review.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['git', 'diff', 'changes', 'version-control']
+  }
 };

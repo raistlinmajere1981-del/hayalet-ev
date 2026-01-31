@@ -124,7 +124,23 @@ export const CONTEXT_GENERATOR_TOOL = {
         type: "boolean" as const,
         description: "Detaylı versiyon",
         default: false,
-      },
+            },
     },
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'documentation',
+    priority: 'low',
+    complexity: 'simple',
+    useCases: [
+      'Generate session context for new AI sessions',
+      'Create project summary document',
+      'Bootstrap documentation'
+    ],
+    relatedTools: ['hev_dev_analyze_project', 'hev_context_generate'],
+    agentGuidance: 'Generates .rovo/context.md with project info, git status, and quick references. Use print=true to view without writing file.',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['context', 'documentation', 'bootstrap', 'session']
+  }
 };

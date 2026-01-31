@@ -301,7 +301,23 @@ export const LINE_EDITOR_TOOL = {
         description: "Güvenlik kontrollerini atla (dikkatli kullan!)",
         default: false,
       },
-    },
+        },
     required: ["file_path", "operation", "start_line"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'code-editing',
+    priority: 'high',
+    complexity: 'complex',
+    useCases: [
+      'Precise line-based editing for large files',
+      'Safe replacements with bracket validation',
+      'Scope-aware deletions'
+    ],
+    relatedTools: ['hev_fs_find_and_replace', 'hev_fs_show', 'hev_dev_check_syntax'],
+    agentGuidance: 'Advanced line editor with safety checks. ALWAYS use hev_fs_show first to get line numbers. Has safe_mode and bracket validation. Use for large files where find_and_replace is risky.',
+    requiresConfirmation: false,
+    riskLevel: 'medium',
+    tags: ['line-editing', 'safe', 'scope-aware', 'bracket-validation', 'precise']
+  }
 };

@@ -16,6 +16,7 @@ export type ToolCategory =
   | 'filesystem'    // File operations, search, history
   | 'development'   // TypeScript, ESLint, testing, refactoring
   | 'electron'      // CDP, UI interaction, screenshots
+  | 'debug'         // Logging, error analysis, debugging
   | 'git'           // Git operations, PR management
   | 'web'           // Web search, scraping
   | 'workflow'      // Predefined test workflows

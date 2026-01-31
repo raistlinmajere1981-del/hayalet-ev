@@ -82,7 +82,23 @@ export const SYMBOL_SEARCHER_TOOL = {
         description: "Sembol tipi",
         default: "all",
       },
-    },
+        },
     required: ["symbol"],
   },
+  metadata: {
+    category: 'development',
+    subcategory: 'analysis',
+    priority: 'medium',
+    complexity: 'medium',
+    useCases: [
+      'Find function/class definitions',
+      'Locate symbol usages',
+      'Code navigation and discovery'
+    ],
+    relatedTools: ['hev_fs_grep', 'hev_fs_open_files'],
+    agentGuidance: 'Use to find symbol definitions and usages. Searches across project. Returns both definitions and usages (limited to 100 results).',
+    requiresConfirmation: false,
+    riskLevel: 'low',
+    tags: ['search', 'symbols', 'code-navigation', 'definitions']
+  }
 };

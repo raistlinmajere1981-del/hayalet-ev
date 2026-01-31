@@ -562,8 +562,24 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
           minimum: 1,
           maximum: 1000
         }
-      },
+            },
       required: ["file_path", "total_chunks"]
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'high',
+      complexity: 'medium',
+      useCases: [
+        'Start safe chunk writing session for large files (50KB+)',
+        'Create files that exceed LLM token limits',
+        'Streaming file creation with validation'
+      ],
+      relatedTools: ['hev_fs_write_chunk', 'hev_fs_finalize_chunked', 'hev_fs_chunk_session_status'],
+      agentGuidance: 'Use for files >50KB that exceed token limits. Creates session for chunk-by-chunk writing with validation. Always follow: 1) start_session 2) write_chunks 3) finalize.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'large-files', 'session', 'streaming', 'safe-write']
     }
   },
   {
@@ -585,8 +601,24 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
           type: "string",
           description: "Chunk içeriği (satır sonu ile bitmeli)"
         }
-      },
+            },
       required: ["session_id", "chunk_index", "content"]
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: [
+        'Write individual chunks with validation',
+        'UTF-8 encoding validation',
+        'Checksum verification per chunk'
+      ],
+      relatedTools: ['hev_fs_start_chunked_session', 'hev_fs_finalize_chunked'],
+      agentGuidance: 'Write each chunk sequentially (index 0, 1, 2...). Each chunk validated for UTF-8 and boundaries. End chunks with newline. Avoid splitting functions/classes.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'validation', 'write', 'checksum', 'utf8']
     }
   },
   {
@@ -603,8 +635,24 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
           type: "string",
           description: "Opsiyonel: Final dosya checksum doğrulaması (MD5)"
         }
-      },
+            },
       required: ["session_id"]
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'high',
+      complexity: 'simple',
+      useCases: [
+        'Merge all chunks into final file',
+        'Complete chunk writing session',
+        'Verify final file integrity'
+      ],
+      relatedTools: ['hev_fs_start_chunked_session', 'hev_fs_write_chunk'],
+      agentGuidance: 'Final step after all chunks written. Merges chunks, verifies integrity, creates final file. Session auto-closes. Checks for missing chunks before proceeding.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'finalize', 'merge', 'completion', 'verification']
     }
   },
   {
@@ -616,9 +664,25 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
         session_id: {
           type: "string",
           description: "Session ID"
-        }
+                }
       },
       required: ["session_id"]
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'medium',
+      complexity: 'simple',
+      useCases: [
+        'Check chunk writing progress',
+        'Identify missing chunks',
+        'Monitor session status'
+      ],
+      relatedTools: ['hev_fs_write_chunk', 'hev_fs_finalize_chunked'],
+      agentGuidance: 'Use to check progress during chunk writing. Shows received/missing chunks, progress percentage, and duration. Helps debug if chunks are lost.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'status', 'monitoring', 'progress', 'debugging']
     }
   },
   {
@@ -630,9 +694,25 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
         session_id: {
           type: "string",
           description: "Session ID"
-        }
+                }
       },
       required: ["session_id"]
+    },
+    metadata: {
+      category: 'filesystem',
+      subcategory: 'chunked-operations',
+      priority: 'low',
+      complexity: 'simple',
+      useCases: [
+        'Cancel incomplete chunk sessions',
+        'Clean up temp files',
+        'Abort failed chunk writing'
+      ],
+      relatedTools: ['hev_fs_start_chunked_session', 'hev_fs_chunk_session_status'],
+      agentGuidance: 'Use when chunk writing fails or needs to restart. Cleans up temp files and removes session. Safe to call anytime.',
+      requiresConfirmation: false,
+      riskLevel: 'low',
+      tags: ['chunked', 'cancel', 'cleanup', 'abort', 'rollback']
     }
   }
 ];
