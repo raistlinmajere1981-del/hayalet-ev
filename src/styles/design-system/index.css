@@ -33,8 +33,17 @@
 @import './components/accordion.css';
 @import './components/navigation.css';
 
-/* === ASISTAN NATIVE COMPONENTS === */
+/* === SHARED COMPONENTS (Multi-page) === */
 @import './components/messages.css';
 @import './components/tools.css';
 @import './components/prompt.css';
 @import './components/sidebar.css';
+
+/* === ASISTAN NATIVE EXTENSIONS === */
+@import './components/asistan-native-layout.css';
+@import './components/asistan-native-messages.css';
+@import './components/asistan-native-tools.css';
+@import './components/asistan-native-prompt.css';
+@import './components/asistan-native-sidebar.css';
+@import './components/asistan-native-modals.css';
+@import './components/asistan-native-utilities.css';

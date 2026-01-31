@@ -7,59 +7,10 @@
 
 /* ============================================
  * Design System Import
+ * All asistan-native components are now centralized 
+ * in design-system/components/asistan-native-*.css
  * ============================================ */
 @import './design-system/index.css';
-
-/* ============================================
- * Layout Components
- * ============================================ */
-@import './asistan-native/components/layout/app-layout.css';
-@import './asistan-native/components/layout/header.css';
-
-/* ============================================
- * Sidebar Components
- * ============================================ */
-@import './asistan-native/components/sidebar/sessions.css';
-@import './asistan-native/components/sidebar/stats.css';
-@import './asistan-native/components/sidebar/selectors.css';
-@import './asistan-native/components/sidebar/status-panel.css';
-
-/* ============================================
- * Chat Components
- * ============================================ */
-@import './asistan-native/components/chat/messages.css';
-@import './asistan-native/components/chat/message-user.css';
-@import './asistan-native/components/chat/message-assistant.css';
-@import './asistan-native/components/chat/message-system.css';
-
-/* ============================================
- * Prompt Components
- * ============================================ */
-@import './asistan-native/components/prompt/prompt-input.css';
-@import './asistan-native/components/prompt/prompt-attachments.css';
-@import './asistan-native/components/prompt/prompt-actions.css';
-@import './asistan-native/components/prompt/prompt-shortcuts.css';
-
-/* ============================================
- * Tool Components
- * ============================================ */
-@import './asistan-native/components/tools/tool-cards.css';
-@import './asistan-native/components/tools/tool-bash.css';
-@import './asistan-native/components/tools/tool-read.css';
-@import './asistan-native/components/tools/tool-write.css';
-@import './asistan-native/components/tools/tool-generic.css';
-
-/* ============================================
- * Modal Components
- * ============================================ */
-@import './asistan-native/components/modals/permission-modal.css';
-@import './asistan-native/components/modals/question-modal.css';
-@import './asistan-native/components/modals/command-palette.css';
-
-/* ============================================
- * Shared Utilities
- * ============================================ */
-@import './asistan-native/components/shared/utilities.css';
 
 /* ============================================
  * Reset & Base (Design-system'den inherit)
