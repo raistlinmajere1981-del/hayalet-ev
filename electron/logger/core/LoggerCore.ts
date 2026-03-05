@@ -1,0 +1,300 @@
+/**
+ * Hayalet-ev Main Process Logger Core
+ *
+ * Central orchestrator for main process logging:
+ * - Receives batched logs from renderer via IPC
+ * - Intercepts main process console.*
+ * - Coordinates writers (structured, console, error, performance)
+ * - Manages session lifecycle
+ *
+ * @module electron/logger/core/LoggerCore
+ */
+
+import type { IpcMainInvokeEvent } from "electron";
+import { BrowserWindow } from "electron";
+import type { LogEntry, LogLevel, LogCategory } from "@shared/index.js";
+
+import type {
+  LogBatchPayload,
+  LogOperationResult,
+  LogWriterConfig,
+} from "@electron/types/logging.js";
+
+import { LogLevel as LL, LogCategory as LC } from "@shared/index.js";
+import { SessionManager } from "./SessionManager.js";
+import { StructuredWriter } from "../writers/StructuredWriter.js";
+import { ConsoleWriter } from "../writers/ConsoleWriter.js";
+import { ErrorWriter } from "../writers/ErrorWriter.js";
+import { PerformanceWriter } from "../writers/PerformanceWriter.js";
+import { matchErrorPattern } from "../../error-patterns.js";
+import { buildSessionStats } from "./session-stats.js";
+
+export class LoggerCore {
+  private static instance: LoggerCore | null = null;
+
+  private sessionManager: SessionManager;
+  private structuredWriter: StructuredWriter;
+  private consoleWriter: ConsoleWriter;
+  private errorWriter: ErrorWriter;
+  private performanceWriter: PerformanceWriter;
+
+  private isInitialized = false;
+  private writerConfig: LogWriterConfig;
+  private uiBroadcastQueue: LogEntry[] = [];
+  private uiBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly UI_BROADCAST_INTERVAL = 120;
+  private readonly UI_BROADCAST_MAX_BATCH = 200;
+  private sessionEntries: Array<Pick<LogEntry, "level" | "category">> = [];
+
+  private constructor() {
+    this.sessionManager = new SessionManager();
+
+    this.writerConfig = {
+      sessionDir: "",
+      enableStructuredLog: true,
+      enableConsoleLog: true,
+      enableErrorLog: true,
+      enablePerformanceLog: true,
+      compressionEnabled: false,
+      maxFileSize: 10, // 10 MB
+    };
+
+    this.structuredWriter = new StructuredWriter(this.writerConfig);
+    this.consoleWriter = new ConsoleWriter(this.writerConfig);
+    this.errorWriter = new ErrorWriter(this.writerConfig);
+    this.performanceWriter = new PerformanceWriter(this.writerConfig);
+  }
+
+  public static getInstance(): LoggerCore {
+    LoggerCore.instance ??= new LoggerCore();
+    return LoggerCore.instance;
+  }
+
+  public async init(logDir?: string): Promise<void> {
+    if (this.isInitialized) {
+      console.warn("[LoggerCore] Already initialized");
+      return;
+    }
+
+    await this.sessionManager.init(logDir);
+    const sessionDir = this.sessionManager.getSessionDir();
+
+    this.writerConfig.sessionDir = sessionDir;
+
+    this.structuredWriter.updateConfig(this.writerConfig);
+    this.consoleWriter.updateConfig(this.writerConfig);
+    this.errorWriter.updateConfig(this.writerConfig);
+    this.performanceWriter.updateConfig(this.writerConfig);
+
+    this.isInitialized = true;
+
+    await this.logInternal(LC.SYSTEM, LL.INFO, "LoggerCore initialized", {
+      sessionId: this.sessionManager.getSessionId(),
+      sessionDir,
+    });
+
+    // eslint-disable-next-line no-console
+    console.log("[LoggerCore] Initialized", {
+      sessionId: this.sessionManager.getSessionId(),
+      sessionDir,
+    });
+  }
+
+  public async handleBatch(
+    _event: IpcMainInvokeEvent,
+    payload: LogBatchPayload
+  ): Promise<LogOperationResult> {
+    try {
+      if (!this.isInitialized) {
+        return {
+          success: false,
+          message: "LoggerCore not initialized",
+        };
+      }
+
+      const { entries } = payload;
+
+      if (entries.length === 0) {
+        return { success: true, entriesWritten: 0 };
+      }
+
+      await entries.reduce<Promise<void>>(async (chain, entry) => {
+        await chain;
+        await this.processEntry(entry);
+      }, Promise.resolve());
+
+      return {
+        success: true,
+        entriesWritten: entries.length,
+      };
+    } catch (error) {
+      console.error("[LoggerCore] Batch processing failed:", error);
+      return {
+        success: false,
+        message: (error as Error).message,
+      };
+    }
+  }
+
+  private async processEntry(entry: LogEntry): Promise<void> {
+    const enriched = this.enrichEntry(entry);
+
+    if (enriched.level === LL.ERROR && enriched.message !== "") {
+      const hint = matchErrorPattern(enriched.message);
+      if (hint != null) {
+        enriched.aiHint = hint;
+      }
+    }
+
+    if (this.writerConfig.enableStructuredLog) {
+      await this.structuredWriter.write(enriched);
+    }
+
+    if (this.writerConfig.enableConsoleLog) {
+      await this.consoleWriter.write(enriched);
+    }
+
+    if (this.writerConfig.enableErrorLog && enriched.level === LL.ERROR) {
+      await this.errorWriter.write(enriched);
+    }
+
+    if (this.writerConfig.enablePerformanceLog && typeof enriched.context?.duration === "number") {
+      await this.performanceWriter.write(enriched);
+    }
+
+    this.sessionEntries.push({
+      level: enriched.level,
+      category: enriched.category,
+    });
+
+    this.enqueueUIBroadcast(enriched);
+  }
+
+  /**
+   * Queue log broadcasts to UI (renderer process).
+   * Uses short interval batching to avoid UI spam without dropping events.
+   */
+  private enqueueUIBroadcast(entry: LogEntry): void {
+    this.uiBroadcastQueue.push(entry);
+
+    const maxQueueSize = this.UI_BROADCAST_MAX_BATCH * 20;
+    if (this.uiBroadcastQueue.length > maxQueueSize) {
+      this.uiBroadcastQueue.splice(0, this.uiBroadcastQueue.length - maxQueueSize);
+    }
+
+    if (this.uiBroadcastTimer !== null) {
+      return;
+    }
+
+    this.uiBroadcastTimer = setTimeout(() => {
+      this.flushUIBroadcastQueue();
+    }, this.UI_BROADCAST_INTERVAL);
+  }
+
+  private flushUIBroadcastQueue(): void {
+    if (this.uiBroadcastTimer !== null) {
+      clearTimeout(this.uiBroadcastTimer);
+      this.uiBroadcastTimer = null;
+    }
+
+    if (this.uiBroadcastQueue.length === 0) {
+      return;
+    }
+
+    const batch = this.uiBroadcastQueue.splice(0, this.UI_BROADCAST_MAX_BATCH);
+    const payload = batch.map((entry) => {
+      const visibility = entry.visibility ?? 3;
+      return {
+        app: "hayalet-ev",
+        level: entry.level,
+        category: entry.category,
+        message: entry.message,
+        timestamp: entry.timestamp,
+        visibility,
+        source: entry.source ?? "main",
+        context: entry.context,
+        correlationId: entry.correlationId,
+        sessionId: entry.sessionId ?? this.sessionManager.getSessionId(),
+      };
+    });
+
+    const allWindows = BrowserWindow.getAllWindows();
+    for (const window of allWindows) {
+      if (!window.isDestroyed()) {
+        window.webContents.send("log:ui-notify-batch", payload);
+        for (const item of payload) {
+          window.webContents.send("log:ui-notify", item);
+        }
+      }
+    }
+
+    if (this.uiBroadcastQueue.length > 0) {
+      this.uiBroadcastTimer = setTimeout(() => {
+        this.flushUIBroadcastQueue();
+      }, this.UI_BROADCAST_INTERVAL);
+    }
+  }
+
+  private enrichEntry(entry: LogEntry): LogEntry {
+    return {
+      ...entry,
+      sessionId: entry.sessionId ?? this.sessionManager.getSessionId(),
+      isoTimestamp: entry.timestamp, // Alias for backward compat
+    };
+  }
+
+  public async logInternal(
+    category: LogCategory | string,
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>
+  ): Promise<void> {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      category,
+      message,
+      sessionId: this.sessionManager.getSessionId(),
+      source: "main",
+      ...(context !== undefined ? { context } : {}),
+    };
+
+    await this.processEntry(entry);
+  }
+
+  public getSessionId(): string {
+    return this.sessionManager.getSessionId();
+  }
+
+  public getSessionDir(): string {
+    return this.sessionManager.getSessionDir();
+  }
+
+  public getLogDir(): string {
+    return this.sessionManager.getLogDir();
+  }
+
+  public async shutdown(): Promise<void> {
+    if (!this.isInitialized) return;
+
+    await this.logInternal(LC.SYSTEM, LL.INFO, "LoggerCore shutting down");
+    this.flushUIBroadcastQueue();
+
+    await Promise.all([
+      this.structuredWriter.flush(),
+      this.consoleWriter.flush(),
+      this.errorWriter.flush(),
+      this.performanceWriter.flush(),
+    ]);
+
+    const stats = buildSessionStats(this.sessionEntries);
+    await this.sessionManager.closeSession(stats);
+
+    this.sessionEntries = [];
+    this.isInitialized = false;
+    // eslint-disable-next-line no-console
+    console.log("[LoggerCore] Shutdown complete");
+  }
+}
+
+export const getLoggerCore = (): LoggerCore => LoggerCore.getInstance();

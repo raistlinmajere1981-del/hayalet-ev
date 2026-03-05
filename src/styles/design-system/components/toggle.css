@@ -1,0 +1,49 @@
+/**
+ * Hayalet-ev Design System - Toggle Switch Component
+ * On/off toggle switches with status colors
+ * @version 5.4.0
+ */
+
+/* === TOGGLE SWITCH === */
+.ds-toggle {
+  position: relative;
+  display: inline-block;
+  width: var(--size-toggle-w);
+  height: var(--size-toggle-h);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ds-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ds-toggle__slider {
+  position: absolute;
+  inset: 0;
+  background: var(--color-error);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.ds-toggle__slider::before {
+  content: "";
+  position: absolute;
+  width: var(--size-toggle-thumb);
+  height: var(--size-toggle-thumb);
+  left: var(--size-toggle-offset);
+  bottom: var(--size-toggle-offset);
+  background: var(--text-inverse);
+  border-radius: var(--radius-full);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.ds-toggle input:checked + .ds-toggle__slider {
+  background: var(--color-success);
+}
+
+.ds-toggle input:checked + .ds-toggle__slider::before {
+  transform: translateX(var(--size-toggle-thumb));
+}

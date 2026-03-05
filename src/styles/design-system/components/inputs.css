@@ -1,0 +1,137 @@
+/**
+ * Hayalet-ev Design System - Input Components
+ * Form elements with glassmorphism styling
+ * @version 5.4.0
+ */
+
+/* === BASE INPUT === */
+/* .input is the primary class; .form-input is kept as an alias for compatibility */
+.input,
+.form-input {
+  display: block;
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-input);
+  backdrop-filter: var(--glass-blur);
+  transition: var(--transition-fast);
+}
+
+.input::placeholder,
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover:not(:disabled),
+.form-input:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
+.input:focus,
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+
+.input:disabled,
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Size variants */
+.input-sm,
+.form-input.input-sm {
+  height: var(--input-height-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* === TEXTAREA === */
+textarea.input,
+textarea.form-input {
+  height: auto;
+  min-height: var(--space-20);
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: var(--leading-relaxed);
+}
+
+textarea.large {
+  min-height: calc(var(--space-20) * 1.5);
+}
+
+/* === SELECT === */
+/* .select        → full-width (forms, panels)
+   .select-compact → small inline selects
+   .select-compact.pill → rounded compact variant */
+.select,
+.select-compact {
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: var(--border-1) solid var(--border-default);
+  cursor: pointer;
+  appearance: none;
+  transition: var(--transition-fast);
+}
+
+.select:hover:not(:disabled),
+.select-compact:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
+.select:focus,
+.select-compact:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Full-width select */
+.select {
+  display: block;
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-8) 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  border-radius: var(--radius-input);
+}
+
+.select:focus {
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+
+/* Dropdown option styling (override browser native white background) */
+.select option,
+.select-compact option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.select option:checked,
+.select-compact option:checked {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+/* Compact select */
+.select-compact {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* Pill modifier */
+.select-compact.pill {
+  border-radius: var(--radius-full);
+}

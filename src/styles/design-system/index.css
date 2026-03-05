@@ -1,0 +1,44 @@
+/**
+ * Hayalet-ev Design System
+ * 
+ * A modern, glassmorphism-based design system
+ * Theme: Obsidian (dark, cyan accents)
+ * 
+ * @version 5.4.0
+ */
+
+/* === DESIGN TOKENS === */
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/shadows.css";
+@import "./tokens/borders.css";
+@import "./tokens/animations.css";
+@import "./tokens/z-index.css";
+@import "./tokens/sizes.css";
+
+/* === THEMES === */
+@import "./themes/theme-base.css";
+@import "./themes/theme-obsidian.css";
+
+/* === COMPONENTS === */
+@import "./components/buttons.css";
+@import "./components/inputs.css";
+@import "./components/toast.css";
+@import "./components/modals.css";
+@import "./components/loaders.css";
+@import "./components/indicators.css";
+@import "./components/splash.css";
+@import "./components/accordion.css";
+@import "./components/navigation.css";
+@import "./components/states.css";
+@import "./components/utilities.css";
+@import "./components/sidebar.css";
+@import "./components/chat.css";
+@import "./components/progress.css";
+@import "./components/workspace.css";
+@import "./components/opencode-ui-tabs.css";
+@import "./components/toggle.css";
+@import "./components/status-badge.css";
+@import "./components/data-rows.css";
+@import "./components/markdown.css";

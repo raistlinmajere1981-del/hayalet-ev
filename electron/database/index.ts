@@ -1,0 +1,416 @@
+/**
+ * DatabaseManager - SQLite Archive Manager
+ *
+ * Per-account SQLite database for conversation archiving
+ * Format: data/{email}_{provider}/archive.db
+ *
+ * @module electron/database
+ */
+
+import { getLoggerCore } from "../logger/index.js";
+import { LogCategory, LogLevel } from "@shared/index.js";
+import type { IpcMainInvokeEvent } from "electron";
+import type { IpcResult } from "@electron/types";
+import { SQLiteArchiveManager } from "./sqlite-archive.js";
+import { loadSettings } from "../settings-manager.ts";
+import {
+  getDatabaseForAccount,
+  closeAllDatabases,
+  closeDatabaseForAccount,
+  getAccountFolder,
+} from "./sqlite-manager.js";
+import { collectSearchAccountIds } from "./search-account-ids.js";
+import { rmSync, existsSync } from "fs";
+import type { SyncMessagesParams } from "@electron/types";
+
+const logger = getLoggerCore();
+
+const activeManagers = new Map<string, SQLiteArchiveManager>();
+
+function getManager(accountId: string): SQLiteArchiveManager {
+  if (!activeManagers.has(accountId)) {
+    getDatabaseForAccount(accountId);
+    activeManagers.set(accountId, new SQLiteArchiveManager(accountId));
+  }
+
+  const manager = activeManagers.get(accountId);
+  if (manager === undefined) {
+    // Çok nadir: Map set başarısız/yarış durumu. Güvenli fallback.
+    const created = new SQLiteArchiveManager(accountId);
+    activeManagers.set(accountId, created);
+    return created;
+  }
+
+  return manager;
+}
+
+function toTimestamp(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value !== "") {
+    const parsed = new Date(value).getTime();
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return 0;
+}
+
+export const databaseManager = {
+  async initAccount(
+    _event: IpcMainInvokeEvent | null,
+    { accountId }: { accountId: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (accountId.length === 0) {
+        return { success: false, error: "Account ID gerekli" };
+      }
+
+      getDatabaseForAccount(accountId);
+
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.INFO,
+        "Account database initialized",
+        { accountId }
+      );
+
+      return { success: true };
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "initAccount error", {
+        accountId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async getConversations(
+    _event: IpcMainInvokeEvent | null,
+    { accountId }: { accountId: string }
+  ): Promise<IpcResult<unknown[]>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.getConversations();
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getConversations error", {
+        accountId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message, data: [] };
+    }
+  },
+
+  async getMessages(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ): Promise<IpcResult<unknown[]>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.getMessages(conversationId);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getMessages error", {
+        accountId,
+        conversationId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message, data: [] };
+    }
+  },
+
+  async syncMessages(
+    _event: IpcMainInvokeEvent | null,
+    params: SyncMessagesParams
+  ): Promise<{
+    success: boolean;
+    conversationId?: string;
+    added?: number;
+    total?: number;
+    error?: string;
+  }> {
+    try {
+      const manager = getManager(params.accountId);
+      return await manager.syncMessages(params);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "syncMessages error", {
+        accountId: params.accountId,
+        webUrl: params.webUrl,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async updateConversation(
+    _event: IpcMainInvokeEvent | null,
+    params: {
+      accountId: string;
+      conversationId: string;
+      title?: string;
+      summary?: string;
+    }
+  ): Promise<IpcResult<void>> {
+    try {
+      const { accountId, conversationId, ...data } = params;
+      const manager = getManager(accountId);
+      return await manager.updateConversation(conversationId, data);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "updateConversation error", {
+        params,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async deleteConversation(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ): Promise<IpcResult<void>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.deleteConversation(conversationId);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "deleteConversation error", {
+        accountId,
+        conversationId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async searchMessages(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
+  ): Promise<IpcResult<unknown[]>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.searchMessages(query, limit);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchMessages error", {
+        accountId,
+        query,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message, data: [] };
+    }
+  },
+
+  async saveAttachment(
+    _event: IpcMainInvokeEvent | null,
+    params: {
+      accountId: string;
+      conversationId: string;
+      messageId: string;
+      filePath: string;
+      originalName: string;
+      mimeType?: string;
+    }
+  ): Promise<IpcResult<{ attachmentId: string; storedPath: string }>> {
+    try {
+      const { accountId, conversationId, messageId, filePath, originalName, mimeType } = params;
+      const manager = getManager(accountId);
+      return await manager.saveAttachment(
+        conversationId,
+        messageId,
+        filePath,
+        originalName,
+        mimeType
+      );
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "saveAttachment error", {
+        params,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async getAttachments(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, conversationId }: { accountId: string; conversationId: string }
+  ): Promise<IpcResult<unknown[]>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.getAttachments(conversationId);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getAttachments error", {
+        accountId,
+        conversationId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message, data: [] };
+    }
+  },
+
+  async searchAttachments(
+    _event: IpcMainInvokeEvent | null,
+    { accountId, query, limit = 50 }: { accountId: string; query: string; limit?: number }
+  ): Promise<IpcResult<unknown[]>> {
+    try {
+      const manager = getManager(accountId);
+      return await manager.searchAttachments(query, limit);
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchAttachments error", {
+        accountId,
+        query,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message, data: [] };
+    }
+  },
+
+  async searchAllAccounts(
+    _event: IpcMainInvokeEvent | null,
+    { query, limit = 50 }: { query: string; limit?: number }
+  ): Promise<IpcResult<{ messages: unknown[]; attachments: unknown[] }>> {
+    try {
+      const trimmedQuery = String(query).trim();
+      const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 50;
+
+      if (trimmedQuery === "") {
+        return { success: true, data: { messages: [], attachments: [] } };
+      }
+
+      const settings = await loadSettings();
+      const accountIds = collectSearchAccountIds(settings);
+
+      if (accountIds.length === 0) {
+        return { success: true, data: { messages: [], attachments: [] } };
+      }
+
+      const searchResults = await Promise.all(
+        accountIds.map(async (accountId) => {
+          const manager = getManager(accountId);
+
+          const [messagesResult, attachmentsResult] = await Promise.all([
+            manager.searchMessages(trimmedQuery, normalizedLimit),
+            manager.searchAttachments(trimmedQuery, normalizedLimit),
+          ]);
+
+          const messages = Array.isArray(messagesResult.data)
+            ? messagesResult.data.map((row) => ({
+                ...row,
+                accountId,
+                account_id: accountId,
+              }))
+            : [];
+          const attachments = Array.isArray(attachmentsResult.data)
+            ? attachmentsResult.data.map((row) => ({
+                ...row,
+                accountId,
+                account_id: accountId,
+              }))
+            : [];
+
+          return { messages, attachments };
+        })
+      );
+
+      const messages = searchResults
+        .flatMap((entry) => entry.messages)
+        .sort(
+          (a, b) =>
+            toTimestamp((b as Record<string, unknown>)["created_at"]) -
+            toTimestamp((a as Record<string, unknown>)["created_at"])
+        )
+        .slice(0, normalizedLimit);
+
+      const attachments = searchResults
+        .flatMap((entry) => entry.attachments)
+        .sort(
+          (a, b) =>
+            toTimestamp((b as Record<string, unknown>)["created_at"]) -
+            toTimestamp((a as Record<string, unknown>)["created_at"])
+        )
+        .slice(0, normalizedLimit);
+
+      return {
+        success: true,
+        data: { messages, attachments },
+      };
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchAllAccounts error", {
+        query,
+        limit,
+        error: err,
+      });
+      return {
+        success: false,
+        error: (err as Error).message,
+        data: { messages: [], attachments: [] },
+      };
+    }
+  },
+
+  async updateConversationDetails(
+    event: IpcMainInvokeEvent | null,
+    params: {
+      accountId: string;
+      conversationId: string;
+      title?: string;
+      summary?: string;
+    }
+  ): Promise<IpcResult<void>> {
+    return await this.updateConversation(event, params);
+  },
+
+  async deleteAccount(
+    _event: IpcMainInvokeEvent | null,
+    { accountId }: { accountId: string }
+  ): Promise<IpcResult<void>> {
+    try {
+      // 1. Clear database records
+      const manager = getManager(accountId);
+      await manager.clearAccountData();
+
+      // 2. Close database connection and remove from pool
+      activeManagers.delete(accountId);
+      closeDatabaseForAccount(accountId);
+
+      // 3. Remove account data folder (db + attachments)
+      const accountFolder = getAccountFolder(accountId);
+      if (existsSync(accountFolder)) {
+        rmSync(accountFolder, { recursive: true, force: true });
+        await logger.logInternal(LogCategory.DATABASE, LogLevel.INFO, "Account folder deleted", {
+          accountId,
+          folder: accountFolder,
+        });
+      }
+
+      return { success: true };
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "deleteAccount error", {
+        accountId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async closeAll(): Promise<void> {
+    await this.cleanup();
+  },
+
+  async cleanup(): Promise<void> {
+    try {
+      activeManagers.clear();
+      closeAllDatabases();
+
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.INFO,
+        "SQLite databases cleanup complete",
+        {}
+      );
+    } catch (err) {
+      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "Cleanup error", {
+        error: err,
+      });
+    }
+  },
+};
+
+export { databaseManager as DatabaseManager };

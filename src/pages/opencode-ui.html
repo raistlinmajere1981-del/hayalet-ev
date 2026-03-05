@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="tr" data-theme="obsidian">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenCode UI - Chat</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/js/pages/opencode-ui/opencode-ui.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- ===== WORKSPACE BAR ===== -->
+      <div class="ds-workspace-bar">
+        <button
+          class="ds-workspace-bar__toggle-left ds-workspace-bar__toggle-left--active"
+          id="toggle-left"
+          title="Sol paneli aç/kapat"
+        >
+          ☰
+        </button>
+        <div class="ds-workspace-bar__center">
+          <button class="ds-workspace-tab ds-workspace-tab--active" id="workspace-active">
+            <span class="ds-workspace-tab__icon">📁</span> Main
+          </button>
+          <button class="ds-workspace-add" id="workspace-add" title="Yeni Workspace">+</button>
+        </div>
+        <button
+          class="ds-workspace-bar__toggle-right ds-workspace-bar__toggle-right--active"
+          id="toggle-right"
+          title="Sağ paneli aç/kapat"
+        >
+          ☰
+        </button>
+      </div>
+
+      <!-- ===== 3-COLUMN LAYOUT ===== -->
+      <div class="ds-layout-3col">
+        <!-- ===== LEFT SIDEBAR — Sessions ===== -->
+        <div class="ds-sidebar" id="sidebar-left">
+          <div class="ds-sidebar__header">
+            <span class="ds-sidebar__icon">💬</span>
+            <span class="ds-sidebar__title">Sessions</span>
+            <span class="ds-sidebar__subtitle" id="session-count-label">0 oturum</span>
+            <button
+              class="ds-sidebar__refresh-btn"
+              id="session-refresh-btn"
+              title="Oturumları yenile"
+            >
+              ↻
+            </button>
+          </div>
+
+          <!-- New chat button -->
+          <div class="px-2 py-2">
+            <button class="btn btn-primary w-full" id="new-session-btn">+ Yeni Sohbet</button>
+          </div>
+
+          <!-- Session list -->
+          <div class="ds-sidebar__body">
+            <div class="ds-session-list" id="session-list">
+              <div class="empty-state">Yükleniyor...</div>
+            </div>
+          </div>
+
+          <!-- Usage indicator (footer) -->
+          <div class="ds-sidebar__footer" id="usage-footer">
+            <div class="ds-usage">
+              <div class="ds-usage__header">
+                <span class="ds-usage__title">Token Kullanımı</span>
+                <span class="ds-usage__value" id="usage-value">—</span>
+              </div>
+              <div class="ds-progress">
+                <div class="ds-progress__track">
+                  <div class="ds-progress__fill" id="usage-fill"></div>
+                </div>
+                <div class="ds-progress__stats" id="usage-stats">
+                  <span class="ds-progress__stat">Yükleniyor...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== CENTER — Chat Area ===== -->
+        <div class="ds-chat" id="chat-area">
+          <!-- Messages -->
+          <div class="ds-chat__messages" id="chat-messages">
+            <div class="ds-chat__empty" id="chat-empty">
+              <img
+                class="ds-chat__empty-icon"
+                id="logo"
+                src="/assets/opencode.png"
+                alt="OpenCode UI"
+              />
+              <div class="text-center">
+                <div class="text-sm font-medium text-secondary">OpenCode UI</div>
+                <div class="text-xs text-muted" id="server-url">Bağlantı bekleniyor...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input bar -->
+          <div class="ds-chat__input-bar">
+            <!-- Toolbar: mode/model selects + file/image buttons -->
+            <div class="ds-chat__toolbar">
+              <div class="ds-chat__toolbar-left">
+                <!-- Custom Mode Dropdown -->
+                <div class="ds-custom-select" id="mode-dropdown">
+                  <button class="ds-custom-select__trigger" type="button">
+                    <span class="ds-custom-select__label">Mode ▾</span>
+                  </button>
+                  <div class="ds-custom-select__menu">
+                    <!-- JS tarafında populate edilir -->
+                  </div>
+                </div>
+                <!-- Custom Model Dropdown -->
+                <div class="ds-custom-select" id="model-dropdown">
+                  <button class="ds-custom-select__trigger" type="button">
+                    <span class="ds-custom-select__label">Model ▾</span>
+                  </button>
+                  <div class="ds-custom-select__menu">
+                    <!-- JS tarafında populate edilir -->
+                  </div>
+                </div>
+              </div>
+              <div class="ds-chat__toolbar-right">
+                <button class="ds-chat__action-btn" id="prune-btn" title="Son mesaj çiftini kaldır">
+                  ✂ Prune
+                </button>
+                <button
+                  class="ds-chat__action-btn ds-chat__action-btn--danger"
+                  id="clear-btn"
+                  title="Tüm sohbeti temizle"
+                >
+                  🗑 Clear
+                </button>
+                <button class="ds-chat__attach-btn" id="attach-file-btn">📎 Dosya</button>
+                <button
+                  class="ds-chat__attach-btn"
+                  id="attach-image-btn"
+                  title="Clipboard'dan görsel yapıştır (Ctrl+V)"
+                >
+                  📋 Yapıştır
+                </button>
+              </div>
+            </div>
+
+            <!-- Clipboard preview area -->
+            <div id="clipboard-preview-area" class="is-hidden px-2"></div>
+
+            <!-- Input row -->
+            <div class="ds-chat__input-row">
+              <textarea
+                class="ds-chat__textarea"
+                id="chat-input"
+                placeholder="Mesajinizi yazin... (Enter yeni satir, Ctrl+Enter gonder)"
+                rows="3"
+              ></textarea>
+              <button class="ds-chat__send" id="send-btn" title="Gönder">↑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== RIGHT SIDEBAR — Panels ===== -->
+        <div class="ds-sidebar ds-sidebar--right" id="sidebar-right">
+          <div class="ds-sidebar__body ds-sidebar__body--right">
+            <div class="ds-right-tabs" role="tablist" aria-label="OpenCode UI sağ panel sekmeleri">
+              <button
+                type="button"
+                id="rtab-btn-todo"
+                class="ds-right-tab"
+                data-rtab="todo"
+                role="tab"
+                aria-selected="false"
+                aria-controls="rtab-todo"
+                tabindex="-1"
+              >
+                Todo
+              </button>
+              <button
+                type="button"
+                id="rtab-btn-files"
+                class="ds-right-tab"
+                data-rtab="files"
+                role="tab"
+                aria-selected="false"
+                aria-controls="rtab-files"
+                tabindex="-1"
+              >
+                Files
+              </button>
+              <button
+                type="button"
+                id="rtab-btn-health"
+                class="ds-right-tab is-active"
+                data-rtab="health"
+                role="tab"
+                aria-selected="true"
+                aria-controls="rtab-health"
+                tabindex="0"
+              >
+                Health
+              </button>
+            </div>
+
+            <div class="ds-right-panels">
+              <section
+                class="ds-rtab-panel"
+                id="rtab-todo"
+                role="tabpanel"
+                aria-labelledby="rtab-btn-todo"
+              >
+                <div class="empty-state">Henüz todo yok</div>
+              </section>
+
+              <section
+                class="ds-rtab-panel"
+                id="rtab-files"
+                role="tabpanel"
+                aria-labelledby="rtab-btn-files"
+              >
+                <div class="empty-state">Değişen dosya yok</div>
+              </section>
+
+              <section
+                class="ds-rtab-panel is-active"
+                id="rtab-health"
+                role="tabpanel"
+                aria-labelledby="rtab-btn-health"
+              >
+                <div class="ds-panel" id="health-panel">
+                  <div class="ds-panel__header" data-toggle="health-panel-body">
+                    <span class="ds-panel__icon">💊</span>
+                    <span class="ds-panel__title">DURUM</span>
+                    <span id="health-badge" class="ds-status-badge ds-status-badge--warning">
+                      <span class="ds-status-badge__dot"></span>
+                      <span>Bekleniyor</span>
+                    </span>
+                    <span class="ds-panel__chevron">▾</span>
+                  </div>
+                  <div class="ds-panel__body" id="health-panel-body">
+                    <div class="ds-kv-row">
+                      <button class="btn btn-primary w-full is-hidden" id="mcp-accept-btn">
+                        ✅ MCP Terms Kabul Et
+                      </button>
+                    </div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">Versiyon</span>
+                      <span class="ds-kv-row__value" id="version">-</span>
+                    </div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">Model</span>
+                      <span class="ds-kv-row__value" id="model">-</span>
+                    </div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">Hesap</span>
+                      <span class="ds-kv-row__value" id="account">-</span>
+                    </div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">Dizin</span>
+                      <span class="ds-kv-row__value" id="working-dir">-</span>
+                    </div>
+                    <div id="lsp-section" class="ds-side-subsection"></div>
+                    <div id="plugin-section" class="ds-side-subsection"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="ds-right-secondary">
+              <div class="ds-panel ds-panel--collapsed">
+                <div class="ds-panel__header" data-toggle="prompts-panel-body">
+                  <span class="ds-panel__icon">⚡</span>
+                  <span class="ds-panel__title">HIZLI PROMPTLAR</span>
+                  <span class="ds-panel__count" id="prompt-count">0</span>
+                  <span class="ds-panel__chevron">▾</span>
+                </div>
+                <div class="ds-panel__body" id="prompts-panel-body">
+                  <button class="ds-panel__add" id="add-prompt-btn">+ Yeni Prompt Ekle</button>
+                  <div id="prompts-list">
+                    <div class="empty-state">Yükleniyor...</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ds-modal" id="prompt-modal">
+                <div class="ds-modal__overlay" id="prompt-modal-overlay"></div>
+                <div class="ds-modal__content">
+                  <h3 class="ds-modal__title" id="prompt-modal-title">Yeni Prompt</h3>
+                  <div class="ds-modal__field">
+                    <label class="ds-modal__label">İsim</label>
+                    <input
+                      type="text"
+                      class="ds-modal__input"
+                      id="prompt-modal-name"
+                      placeholder="Prompt ismi..."
+                    />
+                  </div>
+                  <div class="ds-modal__field">
+                    <label class="ds-modal__label">İçerik</label>
+                    <textarea
+                      class="ds-modal__textarea"
+                      id="prompt-modal-content"
+                      rows="5"
+                      placeholder="Prompt içeriği..."
+                    ></textarea>
+                  </div>
+                  <div class="ds-modal__actions">
+                    <button class="ds-modal__btn ds-modal__btn--secondary" id="prompt-modal-cancel">
+                      İptal
+                    </button>
+                    <button class="ds-modal__btn ds-modal__btn--primary" id="prompt-modal-save">
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ds-panel ds-panel--collapsed is-hidden" id="mcp-panel">
+                <div class="ds-panel__header" data-toggle="mcp-panel-body">
+                  <span class="ds-panel__icon">🔧</span>
+                  <span class="ds-panel__title">MCP SERVERS</span>
+                  <span class="ds-panel__count" id="mcp-count">0</span>
+                  <span class="ds-panel__chevron">▾</span>
+                </div>
+                <div class="ds-panel__body" id="mcp-panel-body">
+                  <div id="mcp-list"></div>
+                </div>
+              </div>
+
+              <div class="ds-panel ds-panel--collapsed">
+                <div class="ds-panel__header" data-toggle="tools-panel-body">
+                  <span class="ds-panel__icon">🛠️</span>
+                  <span class="ds-panel__title">TOOLS</span>
+                  <span class="ds-panel__count" id="tool-count">0</span>
+                  <span class="ds-panel__chevron">▾</span>
+                </div>
+                <div class="ds-panel__body" id="tools-panel-body">
+                  <input
+                    class="ds-panel__search"
+                    id="tool-search"
+                    type="text"
+                    placeholder="🔍 Tool ara..."
+                  />
+                  <div id="tools-list">
+                    <div class="empty-state">Yükleniyor...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="ds-footer-bar">
+            <span id="last-check">—</span>
+            <span id="error-area"></span>
+          </div>
+        </div>
+      </div>
+      <!-- /ds-layout-3col -->
+    </div>
+    <!-- /app-shell -->
+
+    <script type="module" src="/js/pages/opencode-ui/app.ts"></script>
+  </body>
+</html>

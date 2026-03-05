@@ -1,0 +1,46 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["src/*"],
+      "@electron/*": ["electron/*"],
+      "@mcp/*": ["src/mcp-server/*"],
+      "@shared/*": ["src/types/*"],
+      "@timeouts": ["shared/timeouts.ts"],
+      "@limits": ["shared/limits.ts"],
+      "@slots": ["shared/slots.ts"],
+      "@ui-constants": ["shared/ui-constants.ts"]
+    },
+    "outDir": "./dist/mcp-server",
+    "declaration": false,
+    "noEmit": false,
+    "types": ["node"],
+
+    // lib: ESNext + DOM — DOM tipleri src/types paylaşımlı dosyaları için gerekli
+    // Runtime güvencesi types:["node"] ile sağlanıyor (Node API'leri kısıtlı)
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "sourceMap": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./tsconfig.mcp.tsbuildinfo",
+    "noErrorTruncation": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/mcp-server/**/*.ts", "src/types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "electron",
+    "src/js",
+    "scripts",
+    "logs",
+    "commands",
+    "data",
+    "config",
+    "screenshots",
+    "tmp",
+    "temp",
+    ".vite",
+    ".rovo"
+  ]
+}

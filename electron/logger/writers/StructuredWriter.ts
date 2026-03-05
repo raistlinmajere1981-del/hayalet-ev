@@ -1,0 +1,54 @@
+/**
+ * Structured Log Writer - Primary log storage (JSONL format)
+ *
+ * Writes logs in JSON Lines format for:
+ * - Easy parsing and filtering
+ * - Streaming processing
+ * - MCP tool integration
+ *
+ * @module electron/logger/writers/StructuredWriter
+ */
+
+import { join } from "path";
+import { appendFile, mkdir } from "fs/promises";
+import type { LogEntry } from "@shared/index.js";
+import type { LogWriterConfig } from "@electron/types/logging.js";
+
+export class StructuredWriter {
+  private config: LogWriterConfig;
+  private filePath: string = "";
+  private dirReady: boolean = false;
+
+  constructor(config: LogWriterConfig) {
+    this.config = config;
+    this.updateFilePath();
+  }
+
+  public updateConfig(config: LogWriterConfig): void {
+    this.config = config;
+    this.updateFilePath();
+  }
+
+  private updateFilePath(): void {
+    this.filePath = join(this.config.sessionDir, "structured.jsonl");
+    this.dirReady = false;
+  }
+
+  public async write(entry: LogEntry): Promise<void> {
+    if (!this.config.enableStructuredLog) return;
+
+    try {
+      if (!this.dirReady) {
+        await mkdir(this.config.sessionDir, { recursive: true });
+        this.dirReady = true;
+      }
+      const line = JSON.stringify(entry) + "\n";
+      await appendFile(this.filePath, line, "utf-8");
+    } catch (error) {
+      console.error("[StructuredWriter] Write failed:", error);
+      throw error;
+    }
+  }
+
+  public async flush(): Promise<void> {}
+}

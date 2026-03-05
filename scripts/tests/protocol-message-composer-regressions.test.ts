@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  PROTOCOL_HEADER_TAG,
+  composeProtocolMessage,
+} from "../../src/js/modules/protocol-message-composer.ts";
+
+test("composeProtocolMessage prepends a standardized protocol header", () => {
+  const message = composeProtocolMessage("[START][ANALYZE][AI-AI]", "Gövde metni");
+
+  assert.equal(message, `${PROTOCOL_HEADER_TAG}[START][ANALYZE][AI-AI]\n\nGövde metni`);
+});
+
+test("composeProtocolMessage falls back to header-only when body is empty", () => {
+  const message = composeProtocolMessage("[STOP][ANALYZE][AI-ASISTAN]", "   ");
+
+  assert.equal(message, `${PROTOCOL_HEADER_TAG}[STOP][ANALYZE][AI-ASISTAN]`);
+});
+
+test("composeProtocolMessage keeps spacing for non-bracket legacy headers", () => {
+  const message = composeProtocolMessage("Kontrol Devredildi", "");
+
+  assert.equal(message, `${PROTOCOL_HEADER_TAG} Kontrol Devredildi`);
+});

@@ -1,0 +1,300 @@
+/**
+ * Hayalet-ev Design System - Indicator Components
+ * Status dots and indicator clusters
+ * @version 5.4.0
+ */
+
+/* === INDICATOR CLUSTER === */
+.indicator-cluster {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* Shared 3D effect for wide/asistan clusters */
+.indicator-cluster-wide,
+.indicator-cluster-asistan {
+  flex-direction: row;
+  box-shadow: var(--shadow-3d-inset);
+  transition: var(--transition-normal);
+}
+
+.indicator-cluster-wide.is-connected,
+.indicator-cluster-asistan.is-connected {
+  background: var(--bg-glass-hover);
+  border-color: var(--color-success);
+  box-shadow: var(--shadow-3d-inset-connected);
+}
+
+/* Genişletilmiş AI1/AI2 cluster */
+.indicator-cluster-wide {
+  flex: 1;
+  max-width: var(--sidebar-width);
+  padding: var(--space-2) var(--space-4);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Asistan cluster - kompakt (shared base + specific overrides merged) */
+.indicator-cluster-asistan {
+  flex: 0 0 auto;
+  padding: var(--space-1-5) var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.indicator-cluster-asistan .indicator-content {
+  gap: var(--space-1);
+}
+
+.indicator-cluster-asistan .indicator-dots-row {
+  gap: var(--space-2);
+}
+
+/* === INDICATOR AVATAR === */
+.indicator-avatar {
+  width: var(--size-control-md);
+  height: var(--size-control-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* Shared bordered avatar base (md + lg) */
+.indicator-avatar-md,
+.indicator-avatar-lg {
+  flex-shrink: 0;
+  background-color: var(--bg-elevated);
+  border: var(--border-2) solid var(--border-default);
+  transition: border-color var(--duration-normal) var(--ease-out);
+}
+
+/* Orta boy avatar (Asistan için) */
+.indicator-avatar-md {
+  width: var(--size-icon-md);
+  height: var(--size-icon-md);
+  border-radius: var(--radius-md);
+}
+
+/* Büyük avatar (AI1/AI2 için) */
+.indicator-avatar-lg {
+  width: var(--size-avatar-lg);
+  height: var(--size-avatar-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* Bağlı durumunda accent border */
+.indicator-cluster-wide.is-connected .indicator-avatar-lg,
+.indicator-cluster-asistan.is-connected .indicator-avatar-md {
+  border-color: var(--color-accent);
+}
+
+/* === INDICATOR CONTENT === */
+.indicator-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+  flex: 1;
+}
+
+/* === INDICATOR DOTS ROW (3 yanyana) === */
+.indicator-dots-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+/* Her dot item (label üstte + dot altta) */
+.indicator-dot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.indicator-dot-item .indicator-dot {
+  width: var(--size-dot-md);
+  height: var(--size-dot-md);
+}
+
+.indicator-dot-label {
+  font-size: var(--text-2xs);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+}
+
+/* === INDICATOR DOT === */
+.indicator-dot {
+  width: var(--size-dot-sm);
+  height: var(--size-dot-sm);
+  border-radius: var(--radius-full);
+  background: var(--dot-inactive);
+  transition: var(--transition-fast);
+}
+
+/* Loading state - amber (no pulse, no glow) */
+.indicator-dot.loading {
+  background: var(--dot-loading);
+  box-shadow: none;
+}
+
+/* Send state - cyan (no pulse) */
+.indicator-dot.send {
+  background: var(--dot-send);
+  box-shadow: 0 0 8px var(--dot-send);
+}
+
+/* Thinking state - green (no pulse, no glow) */
+.indicator-dot.thinking {
+  background: var(--dot-thinking);
+  box-shadow: none;
+}
+
+/* Active state */
+.indicator-dot.active {
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+
+/* === INDICATOR SELECT ROW === */
+.indicator-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.select-compact.indicator {
+  height: var(--size-control-md);
+  flex: 1;
+  min-width: var(--space-16);
+}
+
+/* === CONVERSATION REFRESH === */
+.conv-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-control-md); /* select ile aynı yükseklik */
+  height: var(--size-control-md);
+  padding: 0;
+  background: var(--bg-input);
+  border: var(--border-1) solid var(--border-default); /* Çerçeve eklendi */
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.conv-refresh:hover {
+  background: var(--hover-overlay);
+  border-color: var(--color-accent); /* Hover'da accent border */
+  color: var(--color-accent);
+}
+
+/* === STATUS DOT (Simple) === */
+.status-dot {
+  width: var(--size-dot-sm);
+  height: var(--size-dot-sm);
+  border-radius: var(--radius-full);
+  background: var(--dot-inactive);
+  flex-shrink: 0;
+}
+
+.status-dot.connected,
+.status-dot.success {
+  background: var(--color-success);
+  box-shadow: var(--glow-success);
+}
+
+.status-dot.error {
+  background: var(--color-error);
+  box-shadow: var(--glow-error);
+}
+
+.status-dot.warning {
+  background: var(--color-warning);
+}
+
+/* === SLOT STATUS DOT === */
+.slot-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: var(--size-dot-lg);
+  height: var(--size-dot-lg);
+  border-radius: var(--radius-full);
+  background: var(--dot-inactive);
+  border: var(--border-2) solid var(--bg-elevated);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.slot-status-dot.connected {
+  background: var(--color-success);
+  box-shadow: var(--glow-success);
+}
+
+/* === BADGE === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  text-transform: uppercase;
+  border-radius: var(--radius-badge);
+}
+
+.badge.chatgpt {
+  background: var(--provider-chatgpt);
+  color: var(--text-on-brand);
+}
+
+.badge.gemini {
+  background: var(--provider-gemini);
+  color: var(--text-on-brand);
+}
+
+.badge.grok {
+  background: var(--provider-grok);
+  color: var(--text-on-brand-inverse);
+}
+
+.badge.opencode {
+  background: var(--provider-opencode);
+  color: var(--text-on-brand);
+}
+
+/* === PASSIVE CLUSTER: dots forced grey when not connected === */
+.indicator-cluster:not(.is-connected) .indicator-dot {
+  background: var(--dot-inactive) !important;
+  box-shadow: none !important;
+}
+
+.indicator-cluster:not(.is-connected) .indicator-dot-label {
+  color: var(--text-muted);
+}
+
+/* === THINKING-ACTIVE CLUSTER GLOW === */
+.indicator-cluster-wide.thinking-active,
+.indicator-cluster-asistan.thinking-active {
+  box-shadow:
+    var(--shadow-3d-inset),
+    0 0 12px var(--amber-alpha-25);
+  border-color: var(--color-warning);
+}

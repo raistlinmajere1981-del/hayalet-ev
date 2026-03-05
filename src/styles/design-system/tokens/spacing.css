@@ -1,0 +1,47 @@
+/**
+ * Hayalet-ev Design System - Spacing Tokens
+ * @version 5.4.0
+ */
+
+:root {
+  /* === BASE SPACING SCALE (4px base unit) === */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* === LAYOUT DIMENSIONS === */
+  --topbar-height: 100px;
+  --side-nav-trigger-width: 8px;
+
+  /* === PANEL === */
+  --panel-min-height: 200px;
+
+  /* === INPUT/BUTTON HEIGHTS === */
+  --input-height: 40px;
+  --input-height-sm: 32px;
+  --btn-height: 40px;
+  --btn-height-sm: 32px;
+  --btn-height-xs: 24px;
+
+  /* === RELAY FLOW === */
+  --relay-line-width: 70px;
+  --relay-line-height: 3px;
+  --relay-particle-width: 20px;
+
+  /* === NAVIGATION === */
+  --nav-btn-size: 72px;
+  --nav-icon-size: 28px;
+}

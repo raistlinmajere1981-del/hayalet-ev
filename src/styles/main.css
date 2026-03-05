@@ -1,0 +1,599 @@
+/**
+ * Hayalet-ev - Main Stylesheet
+ * Global layout, topbar, relay flows, and utilities
+ * @version 5.4.0
+ */
+
+/* Import Design System */
+@import "./design-system/index.css";
+
+/* ========================================
+ * GLOBAL RESET & BASE
+ * ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: var(--text-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--bg-app);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: var(--size-dot-sm);
+  height: var(--size-dot-sm);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* ========================================
+ * APP LAYOUT
+ * ======================================== */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+#pages-container {
+  height: 100%;
+}
+
+/* Page base */
+.page {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.page.hidden {
+  display: none;
+}
+
+/* ========================================
+ * TOPBAR
+ * ======================================== */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--space-4);
+  background: var(--bg-glass);
+  border-bottom: var(--border-1) solid var(--border-glass);
+  backdrop-filter: var(--glass-blur);
+  z-index: var(--z-elevated);
+  box-sizing: border-box;
+}
+
+/* Topbar sections */
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.top-bar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.top-bar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-logo {
+  width: var(--size-icon-xl); /* 64px - logo boyutu */
+  height: var(--size-icon-xl);
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+
+  /* Hafif çerçeve */
+  border: var(--border-2) solid var(--border-glass);
+  box-shadow: var(--shadow-card);
+  transition: var(--transition-normal);
+}
+
+/* Logo hover efekti */
+.app-logo:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-card), var(--glow-accent);
+}
+.logo-text {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-wider);
+  text-shadow: var(--shadow-logo-text);
+
+  background: linear-gradient(to bottom, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  transition: var(--transition-normal);
+}
+
+.logo-text:hover {
+  text-shadow: var(--shadow-logo-text-hover);
+}
+
+/* ========================================
+ * THEME DROPDOWN
+ * ======================================== */
+
+.theme-dropdown {
+  position: relative;
+}
+
+.theme-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.theme-dropdown-btn:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--color-accent);
+  color: var(--text-primary);
+}
+
+.theme-dropdown-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: var(--space-24, 160px);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-dropdown);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: var(--transition-fast);
+  z-index: var(--z-dropdown);
+}
+
+.theme-dropdown.is-open .theme-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.theme-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.theme-dropdown-item:first-child {
+  border-radius: var(--radius-dropdown) var(--radius-dropdown) 0 0;
+}
+
+.theme-dropdown-item:last-child {
+  border-radius: 0 0 var(--radius-dropdown) var(--radius-dropdown);
+}
+
+.theme-dropdown-item:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.theme-dropdown-item.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+.theme-dropdown-icon {
+  font-size: var(--text-lg);
+}
+
+/* ========================================
+ * INDICATORS ROW
+ * ======================================== */
+
+.indicators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.indicators-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  height: calc(100% - var(--space-2));
+  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xl);
+}
+
+.indicators-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* ========================================
+ * RELAY FLOW LINES
+ * ======================================== */
+
+.relay-flow-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.relay-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.relay-toggle-btn:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.relay-toggle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.relay-toggle-btn.is-active {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow: var(--glow-accent);
+}
+
+.relay-btn-icon {
+  font-size: var(--text-sm);
+}
+
+/* Start/Stop icons */
+.relay-toggle-btn .icon-play {
+  display: block;
+}
+.relay-toggle-btn .icon-stop {
+  display: none;
+}
+.relay-toggle-btn.is-active .icon-play {
+  display: none;
+}
+.relay-toggle-btn.is-active .icon-stop {
+  display: block;
+}
+
+/* Flow line */
+.relay-flow-line {
+  position: relative;
+  width: var(--relay-line-width);
+  height: var(--relay-line-height);
+  background: var(--relay-track-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.flow-track {
+  position: absolute;
+  inset: 0;
+}
+
+.flow-particle {
+  position: absolute;
+  top: 0;
+  width: var(--relay-particle-width);
+  height: 100%;
+  background: var(--relay-particle-color);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--relay-particle-color);
+}
+
+.relay-flow-line.is-active .flow-particle {
+  animation: flow-ltr var(--duration-flow) ease-in-out infinite;
+}
+
+.relay-flow-line.is-active.flow-rtl .flow-particle {
+  animation: flow-rtl var(--duration-flow) ease-in-out infinite;
+}
+
+.relay-flow-bottom-row {
+  --relay-cluster-w: var(--sidebar-width);
+  --relay-btn-offset: var(--space-10);
+
+  position: absolute;
+  bottom: var(--space-1);
+  left: calc(var(--relay-cluster-w) + var(--space-3) - var(--relay-btn-offset));
+  right: calc(var(--relay-cluster-w) + var(--space-3) - var(--relay-btn-offset));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.relay-btn-bottom-left,
+.relay-btn-bottom-right {
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+  font-size: var(--text-2xs);
+}
+
+.relay-flow-line-bottom {
+  position: relative;
+  flex: 1;
+  height: var(--relay-line-height);
+  background: var(--relay-track-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-left: var(--space-2);
+  margin-right: var(--space-2);
+}
+
+.flow-track-horizontal {
+  position: absolute;
+  inset: 0;
+}
+
+.relay-flow-line-bottom .flow-particle {
+  position: absolute;
+  top: 0;
+  width: var(--size-avatar-md);
+  height: 100%;
+  background: var(--relay-particle-color);
+  border-radius: var(--radius-full);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--relay-particle-color);
+}
+
+.relay-flow-line-bottom.is-active .flow-particle {
+  animation: flow-ltr var(--duration-flow-slow) ease-in-out infinite;
+}
+
+.relay-flow-line-bottom.is-active.flow-rtl .flow-particle {
+  animation: flow-rtl var(--duration-flow-slow) ease-in-out infinite;
+}
+
+/* ========================================
+ * UTILITY CLASSES
+ * ======================================== */
+
+.hidden {
+  display: none !important;
+}
+
+/* === MENU HIDDEN (AI command: hide topbar/nav) === */
+body.menu-hidden .top-bar {
+  display: none;
+}
+
+body.menu-hidden .main-content {
+  height: 100vh;
+}
+
+/* === FORM HELPERS === */
+.form-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.form-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  min-height: var(--space-4);
+}
+
+.form-hint.error {
+  color: var(--color-error);
+}
+
+.form-hint.success {
+  color: var(--color-success);
+}
+
+/* === IMAGE UTILITIES === */
+.img-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* === BUTTON TEXT (responsive hide) === */
+.btn-text {
+  white-space: nowrap;
+}
+
+/* === LOAD MORE === */
+.load-more-btn {
+  display: block;
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--bg-elevated);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-align: center;
+}
+
+.load-more-btn:hover {
+  background: var(--hover-overlay);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* === EMPTY STATE === */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* === APP SHELL (full-viewport container) === */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* === ERROR MESSAGE === */
+.error-msg {
+  color: var(--color-error);
+}
+
+/* ========================================
+ * RESPONSIVE
+ * ======================================== */
+
+/* 1920px - Full HD, no scroll */
+@media (min-width: 1920px) {
+  /* --bp-2xl */
+  body {
+    overflow: hidden;
+  }
+}
+
+/* Below 1920px - allow vertical scroll if needed */
+@media (max-width: 1920px) {
+  /* --bp-2xl */
+  body {
+    overflow-y: auto;
+  }
+}
+
+/* Tablet - hide center indicators */
+@media (max-width: 1024px) {
+  /* --bp-lg */
+  .top-bar-center {
+    display: none;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  /* --bp-md */
+  .logo-text {
+    display: none;
+  }
+}

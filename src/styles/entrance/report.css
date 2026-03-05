@@ -1,0 +1,427 @@
+/**
+ * Hayalet-ev - Entrance Report & Live Log Styles
+ * Report container, live log overlay
+ * @version 5.4.0
+ */
+
+/* === REPORT CONTAINER === */
+.report-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-container .report-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+
+/* Shared log entry base for report & live-log */
+.report-container .log-entry,
+.live-log-content .log-entry {
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  transition: var(--transition-fast);
+}
+
+.report-container .log-entry {
+  margin-bottom: var(--space-1);
+  align-items: center;
+  font-size: var(--text-sm);
+  border-bottom: var(--border-1) solid var(--border-glass);
+}
+
+.report-container .log-entry:hover {
+  background-color: var(--bg-glass);
+}
+
+.report-container .log-time {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  min-width: var(--space-16);
+}
+
+/* Shared log badge base */
+.report-container .log-level-badge-info,
+.report-container .log-level-badge-warn,
+.live-log-content .log-level-badge-info,
+.live-log-content .log-level-badge-warn,
+.live-log-content .log-level-badge-error {
+  color: var(--text-on-brand);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* Report-specific overrides (wider badges) */
+.report-container .log-level-badge-info,
+.report-container .log-level-badge-warn {
+  padding: var(--space-0-5) var(--space-2);
+  min-width: var(--space-12);
+  text-align: center;
+}
+
+/* Badge colors */
+.report-container .log-level-badge-info,
+.live-log-content .log-level-badge-info {
+  background-color: var(--color-info);
+}
+
+.report-container .log-level-badge-warn,
+.live-log-content .log-level-badge-warn {
+  background-color: var(--color-warning);
+}
+
+.live-log-content .log-level-badge-error {
+  background-color: var(--color-error);
+}
+
+.report-container .log-category {
+  color: var(--color-accent);
+  font-weight: var(--font-medium);
+  min-width: var(--space-24);
+  font-size: var(--text-xs);
+}
+
+.report-container .log-message {
+  flex: 1;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+/* === LIVE LOG OVERLAY === */
+.live-log-overlay {
+  position: fixed;
+  top: var(--topbar-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: calc(var(--z-overlay) + 2);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.live-log-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 8, 13, 0.66);
+  backdrop-filter: blur(4px);
+}
+
+.live-log-shell {
+  position: relative;
+  width: min(1500px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, rgba(14, 19, 28, 0.96), rgba(9, 12, 18, 0.92));
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.live-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-1) solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.live-log-header h3 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.live-log-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.live-log-toolbar {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(220px, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--border-1) solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.live-log-app-tabs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.live-log-app-tabs .btn {
+  opacity: 0.7;
+}
+
+.live-log-app-tabs .btn.is-active {
+  opacity: 1;
+  border-color: var(--color-accent);
+  color: var(--text-on-brand);
+  background: color-mix(in srgb, var(--color-accent) 38%, transparent);
+}
+
+.live-log-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: var(--space-24);
+}
+
+.live-log-control span {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.live-log-control-search {
+  min-width: var(--space-56);
+}
+
+.live-log-metrics {
+  justify-self: end;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.live-log-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+}
+
+.live-log-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border-right: var(--border-1) solid var(--border-glass);
+}
+
+.live-log-content .log-entry {
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.live-log-content .log-entry:hover,
+.live-log-content .log-entry.is-selected {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.live-log-content .log-entry-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.live-log-content .log-time {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.live-log-content .log-app {
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-xs);
+  border: var(--border-1) solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.live-log-content .log-category {
+  color: var(--color-accent);
+  font-weight: var(--font-medium);
+  font-size: var(--text-xs);
+}
+
+.live-log-content .log-message {
+  color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.live-log-content .log-level-badge-warning,
+.live-log-content .log-level-badge-warn {
+  background-color: var(--color-warning);
+}
+
+.live-log-content .log-level-badge-error {
+  background-color: var(--color-error);
+}
+
+.live-log-content .log-level-badge-info {
+  background-color: var(--color-info);
+}
+
+.live-log-content .log-level-badge-success {
+  background-color: var(--color-success);
+}
+
+.live-log-content .log-level-badge-debug {
+  background-color: color-mix(in srgb, var(--color-info) 55%, var(--bg-surface));
+}
+
+.live-log-detail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.live-log-detail-title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.live-log-detail-meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.live-log-detail-context {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-primary);
+  line-height: 1.45;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid var(--border-glass);
+  background: rgba(8, 11, 16, 0.7);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.live-log-content .log-empty-state {
+  border: var(--border-1) dashed var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* === LOG VISIBILITY BADGES === */
+.log-entry.log-toast {
+  border-left: var(--border-3) solid var(--color-info);
+}
+
+.log-entry.log-panel {
+  border-left: var(--border-3) solid var(--color-warning);
+}
+
+/* === STATUS MESSAGE (Account feedback) === */
+.status-msg {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.status-msg.success {
+  color: var(--color-success);
+}
+
+.status-msg.error {
+  color: var(--color-error);
+}
+
+.status-msg.info {
+  color: var(--color-info);
+}
+
+@media (max-width: 1200px) {
+  .live-log-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .live-log-control-search,
+  .live-log-metrics,
+  .live-log-app-tabs {
+    grid-column: span 2;
+  }
+
+  .live-log-body {
+    grid-template-columns: 1fr;
+  }
+
+  .live-log-content {
+    border-right: 0;
+    border-bottom: var(--border-1) solid var(--border-glass);
+  }
+}
+
+@media (max-width: 768px) {
+  .live-log-overlay {
+    padding: var(--space-1);
+  }
+
+  .live-log-shell {
+    border-radius: var(--radius-sm);
+  }
+
+  .live-log-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .live-log-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .live-log-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .live-log-control-search,
+  .live-log-metrics,
+  .live-log-app-tabs {
+    grid-column: auto;
+  }
+}

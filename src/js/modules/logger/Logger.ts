@@ -1,0 +1,463 @@
+/**
+ * Hayalet-ev Unified Logger - Renderer Process
+ *
+ * Primary logging API for renderer process. Replaces all console.* calls.
+ *
+ * Features:
+ * - 3-level visibility system (toast/panel/verbose)
+ * - Structured logging with rich context
+ * - Operation tracking with correlation IDs
+ * - Automatic toast integration
+ * - IPC batching for performance
+ * - Console override for legacy code
+ *
+ * @example
+ * ```typescript
+ * // Simple logging
+ * Logger.success('webview', 'Message sent successfully');
+ * Logger.error('slot', new Error('Slot assignment failed'), { slotId: 'AI1' });
+ *
+ * // Operation tracking
+ * const corrId = Logger.startOperation('send-message', 'webview', { provider: 'chatgpt' });
+ * Logger.debug('webview', 'Finding input field', { correlationId: corrId });
+ * Logger.endOperation(corrId, true, 'Message delivered');
+ * ```
+ *
+ * @module Logger
+ */
+
+import type {
+  LogEntry,
+  LogLevel,
+  LogCategory,
+  LogVisibility,
+  LogOperation,
+} from "@shared/index.js";
+
+import { LogLevel as LL, LogVisibility as LV, LogCategory as LC } from "@shared/index.js";
+
+interface LoggerConfig {
+  sessionId: string;
+  maxMemoryLogs: number;
+  batchSize: number;
+  batchInterval: number;
+  enableConsoleOverride: boolean;
+  enableToastIntegration: boolean;
+}
+
+class Logger {
+  private static instance: Logger | null = null;
+
+  private config: LoggerConfig = {
+    sessionId: "",
+    maxMemoryLogs: 500, // Keep last 500 logs in memory
+    batchSize: 50, // Send to main after 50 logs
+    batchInterval: 100, // Or after 100ms
+    enableConsoleOverride: true,
+    enableToastIntegration: true,
+  };
+
+  private entries: LogEntry[] = [];
+  private batchQueue: LogEntry[] = [];
+  private activeOperations = new Map<string, LogOperation>();
+  private listeners: Array<(entry: LogEntry) => void> = [];
+  private batchTimer: ReturnType<typeof setTimeout> | null = null;
+  private isInitialized = false;
+
+  private constructor() {}
+
+  public static getInstance(): Logger {
+    Logger.instance ??= new Logger();
+    return Logger.instance;
+  }
+
+  public static init(sessionId: string, config?: Partial<LoggerConfig>): void {
+    const logger = Logger.getInstance();
+
+    if (logger.isInitialized) {
+      console.warn("[Logger] Already initialized");
+      return;
+    }
+
+    logger.config = { ...logger.config, sessionId, ...config };
+    logger.isInitialized = true;
+
+    if (logger.config.enableConsoleOverride) {
+      Logger.interceptConsole();
+    }
+
+    logger.startBatchTimer();
+
+    // Log initialization (use debug to avoid toast trigger during init)
+    Logger.debug(LC.SYSTEM, "Logger initialized", {
+      sessionId,
+      config: logger.config,
+    });
+  }
+
+  public static getSessionId(): string {
+    return Logger.getInstance().config.sessionId;
+  }
+
+  public static toast(
+    category: LogCategory | string,
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().log(category, level, message, LV.TOAST, context);
+  }
+
+  public static panel(
+    category: LogCategory | string,
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().log(category, level, message, LV.PANEL, context);
+  }
+
+  /**
+   * DEBUG level (Visibility 3) - Verbose debugging
+   * Hidden from users, visible in logs only
+   */
+  public static debug(
+    category: LogCategory | string,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().log(category, LL.DEBUG, message, LV.VERBOSE, context);
+  }
+
+  public static success(
+    category: LogCategory | string,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.toast(category, LL.SUCCESS, message, context);
+  }
+
+  public static error(
+    category: LogCategory | string,
+    error: Error | string,
+    context?: Record<string, unknown>
+  ): void {
+    const message = error instanceof Error ? error.message : error;
+    const errorContext =
+      error instanceof Error
+        ? {
+            ...context,
+            error: {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+              cause: (error as Error & { cause?: unknown }).cause,
+            },
+          }
+        : context;
+
+    Logger.toast(category, LL.ERROR, message, errorContext);
+  }
+
+  public static warn(
+    category: LogCategory | string,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.panel(category, LL.WARNING, message, context);
+  }
+
+  public static info(
+    category: LogCategory | string,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.panel(category, LL.INFO, message, context);
+  }
+
+  public static startOperation(
+    name: string,
+    category: LogCategory | string,
+    context?: Record<string, unknown>
+  ): string {
+    const logger = Logger.getInstance();
+    const correlationId = Logger.generateCorrelationId();
+
+    const operation: LogOperation = {
+      id: correlationId,
+      name,
+      category,
+      startTime: performance.now(),
+      ...(context ? { context } : {}),
+    };
+
+    logger.activeOperations.set(correlationId, operation);
+
+    Logger.debug(category, `[OPERATION START] ${name}`, {
+      correlationId,
+      operationName: name,
+      ...context,
+    });
+
+    return correlationId;
+  }
+
+  public static endOperation(
+    correlationId: string,
+    success: boolean,
+    result?: string,
+    context?: Record<string, unknown>
+  ): void {
+    const logger = Logger.getInstance();
+    const operation = logger.activeOperations.get(correlationId);
+
+    if (!operation) {
+      Logger.warn(LC.SYSTEM, `Operation not found: ${correlationId}`);
+      return;
+    }
+
+    const endTime = performance.now();
+    const duration = endTime - operation.startTime;
+
+    operation.endTime = endTime;
+    operation.status = success ? "success" : "failed";
+    if (typeof result === "string") {
+      operation.result = result;
+    } else {
+      delete operation.result;
+    }
+
+    const message = `[OPERATION ${success ? "SUCCESS" : "FAILED"}] ${operation.name}`;
+
+    Logger.debug(operation.category, message, {
+      correlationId,
+      operationName: operation.name,
+      duration,
+      status: operation.status,
+      result,
+      ...context,
+    });
+
+    logger.activeOperations.delete(correlationId);
+  }
+
+  public static withCorrelation(
+    correlationId: string,
+    category: LogCategory | string,
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().log(category, level, message, LV.VERBOSE, {
+      correlationId,
+      ...context,
+    });
+  }
+
+  private log(
+    category: LogCategory | string,
+    level: LogLevel,
+    message: string,
+    visibility: LogVisibility,
+    context?: Record<string, unknown>
+  ): void {
+    if (!this.isInitialized) {
+      console.warn("[Logger] Not initialized, call Logger.init() first");
+      return;
+    }
+
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      category,
+      message,
+      visibility,
+      sessionId: this.config.sessionId,
+      source: "renderer",
+      ...(context ? { context } : {}),
+    };
+
+    this.entries.push(entry);
+    if (this.entries.length > this.config.maxMemoryLogs) {
+      this.entries.shift(); // Remove oldest
+    }
+
+    this.queueForIPC(entry);
+
+    if (visibility === LV.TOAST && level !== LL.DEBUG && this.config.enableToastIntegration) {
+      void this.showToast(entry);
+    }
+
+    this.notifyListeners(entry);
+  }
+
+  private queueForIPC(entry: LogEntry): void {
+    this.batchQueue.push(entry);
+
+    if (this.batchQueue.length >= this.config.batchSize) {
+      this.flushBatch();
+    }
+  }
+
+  private flushBatch(): void {
+    if (this.batchQueue.length === 0) return;
+
+    const batch = [...this.batchQueue];
+    this.batchQueue = [];
+
+    const appendBatch = window.electronAPI?.logger.appendBatch;
+    if (typeof appendBatch !== "function") {
+      return;
+    }
+
+    appendBatch(batch).catch((error: Error) => {
+      console.error("[Logger] Failed to send batch to main:", error);
+    });
+  }
+
+  private startBatchTimer(): void {
+    this.batchTimer = setInterval(() => {
+      this.flushBatch();
+    }, this.config.batchInterval);
+  }
+
+  private async showToast(entry: LogEntry): Promise<void> {
+    try {
+      const { ToastManager: toastManager } = await import("../../ui/toast-manager.js");
+
+      const typeMap: Record<LogLevel, string> = {
+        [LL.DEBUG]: "info",
+        [LL.INFO]: "info",
+        [LL.SUCCESS]: "success",
+        [LL.WARNING]: "warning",
+        [LL.ERROR]: "error",
+      };
+
+      toastManager.show({
+        type: typeMap[entry.level] as "success" | "error" | "warning" | "info",
+        title: entry.message,
+      });
+    } catch (error: unknown) {
+      console.error("[Logger] Toast integration failed:", error);
+    }
+  }
+
+  private notifyListeners(entry: LogEntry): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+      } catch (error: unknown) {
+        console.error("[Logger] Listener error:", error);
+      }
+    }
+  }
+
+  private static interceptConsole(): void {
+    const consoleRef = globalThis.console;
+    const original = {
+      log: consoleRef.log,
+      info: consoleRef.info,
+      warn: consoleRef.warn,
+      error: consoleRef.error,
+      debug: consoleRef.debug,
+    };
+
+    consoleRef.log = (...args: unknown[]): void => {
+      original.log(...args);
+      Logger.debug(LC.LEGACY, Logger.formatArgs(args));
+    };
+
+    consoleRef.info = (...args: unknown[]): void => {
+      original.info(...args);
+      Logger.info(LC.LEGACY, Logger.formatArgs(args));
+    };
+
+    consoleRef.warn = (...args: unknown[]): void => {
+      original.warn(...args);
+      Logger.warn(LC.LEGACY, Logger.formatArgs(args));
+    };
+
+    consoleRef.error = (...args: unknown[]): void => {
+      original.error(...args);
+      const formatted = Logger.formatArgs(args);
+      const errorObj = args.find((arg): arg is Error => arg instanceof Error);
+      if (errorObj !== undefined) {
+        Logger.error(LC.LEGACY, errorObj);
+      } else {
+        Logger.error(LC.LEGACY, formatted);
+      }
+    };
+
+    consoleRef.debug = (...args: unknown[]): void => {
+      original.debug(...args);
+      Logger.debug(LC.LEGACY, Logger.formatArgs(args));
+    };
+  }
+
+  private static formatArgs(args: unknown[]): string {
+    return args
+      .map((arg) => {
+        if (typeof arg === "string") {
+          return arg;
+        }
+        if (typeof arg === "number" || typeof arg === "boolean" || typeof arg === "bigint") {
+          return String(arg);
+        }
+        if (arg === null || arg === undefined) {
+          return "";
+        }
+        if (typeof arg === "object") {
+          try {
+            return JSON.stringify(arg);
+          } catch {
+            return "[unserializable object]";
+          }
+        }
+        return "";
+      })
+      .join(" ");
+  }
+
+  private static generateCorrelationId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  public static subscribe(listener: (entry: LogEntry) => void): () => void {
+    const logger = Logger.getInstance();
+    logger.listeners.push(listener);
+
+    return () => {
+      const index = logger.listeners.indexOf(listener);
+      if (index > -1) {
+        logger.listeners.splice(index, 1);
+      }
+    };
+  }
+
+  public static getRecentLogs(count = 100): LogEntry[] {
+    return Logger.getInstance().entries.slice(-count);
+  }
+
+  public static clear(): void {
+    Logger.getInstance().entries = [];
+  }
+
+  public static getActiveOperations(): LogOperation[] {
+    return Array.from(Logger.getInstance().activeOperations.values());
+  }
+
+  public static shutdown(): void {
+    const logger = Logger.getInstance();
+
+    logger.flushBatch();
+
+    if (logger.batchTimer) {
+      clearInterval(logger.batchTimer);
+    }
+
+    Logger.info(LC.SYSTEM, "Logger shutdown complete");
+  }
+}
+
+export { Logger };
+export default Logger;

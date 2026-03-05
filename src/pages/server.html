@@ -1,0 +1,94 @@
+<div class="page hidden" id="page-server">
+  <div class="server-room">
+    <div class="server-topbar">
+      <div class="left">
+        <select id="server-controller-select" class="select">
+          <option value="ai1">AI1</option>
+          <option value="ai2">AI2</option>
+        </select>
+        <button class="btn btn-secondary" id="server-delegate-btn">Kontrolü Devret</button>
+        <button class="btn btn-secondary" id="server-reclaim-btn">Kontrolü Devral</button>
+      </div>
+    </div>
+
+    <div class="server-workspace">
+      <div class="server-workspace-left">
+        <div class="server-panels">
+          <div class="server-panel glass-panel server-timeline-panel">
+            <div class="panel-title">Komut Akışı (Komut → Sonuç)</div>
+            <div class="server-timeline-meta" id="server-timeline-meta">
+              Yukarı kaydırdıkça 3 session daha yüklenir
+            </div>
+            <div class="log-list server-timeline-list" id="server-command-timeline">
+              <div class="log-empty-state">Henüz komut kaydı yok</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="server-workspace-right">
+        <div class="server-panel glass-panel server-command-panel">
+          <div class="panel-title">Komut Yönetim Paneli</div>
+          <div class="command-manager">
+            <div class="command-toolbar-row">
+              <div class="command-toolbar-group">
+                <label for="server-command-slot-select">Slot</label>
+                <select id="server-command-slot-select" class="select">
+                  <option value="ai1">AI1</option>
+                  <option value="ai2">AI2</option>
+                  <option value="ai0">AI0</option>
+                </select>
+              </div>
+              <div
+                class="command-toolbar-group command-category-tabs"
+                id="server-command-category-tabs"
+              >
+                <button
+                  class="btn btn-secondary btn-sm command-category-tab active"
+                  data-category="ai1-ai2"
+                  type="button"
+                >
+                  AI1-AI2
+                </button>
+                <button
+                  class="btn btn-secondary btn-sm command-category-tab"
+                  data-category="ai0"
+                  type="button"
+                >
+                  AI0
+                </button>
+              </div>
+            </div>
+
+            <div class="command-toolbar-row command-run-row">
+              <input
+                id="server-command-test-args"
+                class="input"
+                type="text"
+                placeholder="Test argümanı (opsiyonel)"
+              />
+              <button id="server-command-run" class="btn btn-primary btn-sm" type="button">
+                Komutu Çalıştır
+              </button>
+            </div>
+
+            <div class="command-list" id="server-command-list">
+              <div class="log-empty-state">Bu kategori için komut bulunamadı</div>
+            </div>
+
+            <div class="command-detail">
+              <label for="server-command-detail">Komut Detayı</label>
+              <textarea
+                id="server-command-detail"
+                class="form-input guide-text"
+                rows="8"
+                readonly
+                placeholder="Komut seçerek detay görüntüleyin"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

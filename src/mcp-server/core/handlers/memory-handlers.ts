@@ -1,0 +1,128 @@
+import {
+  memoryBootstrapPolicy,
+  memoryDelete,
+  memoryPrune,
+  memorySearch,
+  memoryStats,
+  memoryUpdate,
+  memoryWrite,
+  MEMORY_TOOL_DEFINITIONS,
+} from "../../tools/memory-tools.js";
+import type { ToolContext, ToolEntry } from "../registry.js";
+
+function getDefinition(name: string): (typeof MEMORY_TOOL_DEFINITIONS)[number] {
+  const def = MEMORY_TOOL_DEFINITIONS.find((d) => d.name === name);
+  if (!def) throw new Error(`Memory tool definition not found: ${name}`);
+  return def;
+}
+
+export function createMemoryTools(context: ToolContext): ToolEntry[] {
+  const { PROJECT_ROOT } = context;
+
+  return [
+    {
+      definition: getDefinition("hev_memory_write"),
+      handler: (args): unknown => {
+        const result = memoryWrite(PROJECT_ROOT, args as Parameters<typeof memoryWrite>[1]);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${result.message}\n${JSON.stringify(result.memory, null, 2)}`,
+            },
+          ],
+        };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_search"),
+      handler: (args): unknown => {
+        const searchArgs = args as Parameters<typeof memorySearch>[1];
+        const result = memorySearch(PROJECT_ROOT, searchArgs);
+        if (searchArgs.response_format === "prompt_compact") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: result.prompt_context,
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_update"),
+      handler: (args): unknown => {
+        const result = memoryUpdate(PROJECT_ROOT, args as Parameters<typeof memoryUpdate>[1]);
+        const text = result.updated
+          ? `✅ Memory guncellendi: ${result.id}`
+          : `⚠️ Memory bulunamadi: ${result.id}`;
+        return { content: [{ type: "text", text }] };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_delete"),
+      handler: (args): unknown => {
+        const result = memoryDelete(PROJECT_ROOT, args as Parameters<typeof memoryDelete>[1]);
+        const text = result.deleted
+          ? `✅ Memory silindi: ${result.id}`
+          : `⚠️ Memory bulunamadi: ${result.id}`;
+        return { content: [{ type: "text", text }] };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_prune"),
+      handler: (args): unknown => {
+        const result = memoryPrune(PROJECT_ROOT, args as Parameters<typeof memoryPrune>[1]);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `🧹 Memory prune tamamlandi. Silinen: ${result.removed}, max_items: ${result.maxItems}`,
+            },
+          ],
+        };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_stats"),
+      handler: (args): unknown => {
+        const result = memoryStats(PROJECT_ROOT, args as Parameters<typeof memoryStats>[1]);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      },
+    },
+    {
+      definition: getDefinition("hev_memory_bootstrap_policy"),
+      handler: (args): unknown => {
+        const result = memoryBootstrapPolicy(
+          PROJECT_ROOT,
+          args as Parameters<typeof memoryBootstrapPolicy>[1]
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      },
+    },
+  ];
+}

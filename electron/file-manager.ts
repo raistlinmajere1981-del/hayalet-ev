@@ -1,0 +1,395 @@
+import { join, dirname, basename, resolve } from "path";
+import { mkdir, writeFile, rename, readdir, readFile, copyFile, rm } from "fs/promises";
+import { existsSync } from "fs";
+import { shell } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
+import { getLoggerCore } from "./logger/index.js";
+import { LogCategory, LogLevel } from "@shared/index.js";
+import { Paths } from "./paths.ts";
+
+const logger = getLoggerCore();
+
+interface ResultBase {
+  success: boolean;
+  message?: string;
+  path?: string;
+  [key: string]: unknown;
+}
+
+async function ensureDir(dirPath: string): Promise<void> {
+  if (!existsSync(dirPath)) {
+    await mkdir(dirPath, { recursive: true });
+  }
+}
+
+export { ensureDir };
+
+export async function fmTempPath(
+  _event: IpcMainInvokeEvent,
+  prefix: string = "tmp",
+  ext: string = "tmp"
+): Promise<ResultBase> {
+  try {
+    const cleanPrefix = prefix.replace(/[^\w.-]+/g, "_");
+    const cleanExt = ext.toString().replace(/^[.]+/, "");
+    const filename = `${cleanPrefix}-${Date.now()}-${Math.random().toString(16).slice(2)}${cleanExt.length > 0 ? `.${cleanExt}` : ""}`;
+    const baseDir = Paths.getCommandsDir();
+    await ensureDir(baseDir);
+    const fullPath = join(baseDir, filename);
+    return { success: true, path: fullPath };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function fmEnsureDirs(
+  _event: IpcMainInvokeEvent,
+  scope: string = "all"
+): Promise<ResultBase> {
+  try {
+    const scopes = scope === "all" ? ["data", "logs", "commands"] : [scope];
+    const resolved: Record<string, string> = {};
+    await Promise.all(
+      scopes.map(async (key) => {
+        let p: string;
+        if (key === "data") p = Paths.getDataDir();
+        else if (key === "logs") p = Paths.getLogsDir();
+        else if (key === "commands") p = Paths.getCommandsDir();
+        else return;
+        await ensureDir(p);
+        resolved[key] = p;
+      })
+    );
+    return { success: true, ...resolved };
+  } catch (err: unknown) {
+    return { success: false, message: (err as Error).message };
+  }
+}
+
+export async function fmWriteFileAtomic(
+  _event: IpcMainInvokeEvent,
+  payload: { path: string; data: string; encoding?: BufferEncoding }
+): Promise<ResultBase> {
+  try {
+    const { path: targetPath, data, encoding = "utf-8" } = payload;
+    if (targetPath.length === 0) throw new Error("path eksik");
+    const dir = dirname(targetPath);
+    await ensureDir(dir);
+    const tmpPath = `${targetPath}.${Date.now()}.tmp`;
+    const buffer =
+      typeof data === "string"
+        ? Buffer.from(data, encoding === "base64" ? "base64" : encoding)
+        : Buffer.from(data);
+    await writeFile(tmpPath, buffer);
+    await rename(tmpPath, targetPath);
+    return { success: true, path: targetPath };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function readFileAsBase64(
+  _event: IpcMainInvokeEvent,
+  filePath: string
+): Promise<string | null> {
+  try {
+    if (filePath.length === 0 || !existsSync(filePath)) return null;
+    const buffer = await readFile(filePath);
+    return buffer.toString("base64");
+  } catch (err: unknown) {
+    return null;
+  }
+}
+
+export async function copyToAssets(
+  _event: IpcMainInvokeEvent,
+  srcPath: string,
+  _role: string = "",
+  accountInfo: { email?: string; provider?: string } | null = null
+): Promise<ResultBase> {
+  try {
+    if (srcPath.length === 0 || !existsSync(srcPath)) {
+      throw new Error("Kaynak dosya bulunamadı");
+    }
+    const assetsDir = Paths.getAssetsDir();
+    if (!existsSync(assetsDir)) {
+      await mkdir(assetsDir, { recursive: true });
+    }
+    const baseName = basename(srcPath);
+    const parts = baseName.split(".");
+    const ext = parts.length > 1 ? "." + parts.pop() : "";
+    let candidate;
+
+    if (
+      accountInfo?.email !== undefined &&
+      accountInfo.email.length > 0 &&
+      accountInfo.provider !== undefined &&
+      accountInfo.provider.length > 0
+    ) {
+      const safeEmail = String(accountInfo.email)
+        .trim()
+        .replace(/@/g, "at")
+        .replace(/[^a-z0-9.-]/gi, "");
+      const safeProvider = String(accountInfo.provider)
+        .trim()
+        .replace(/[^a-z0-9_-]/gi, "");
+      candidate = `${safeEmail}-${safeProvider}${ext}`;
+    } else if (_role.length > 0) {
+      const normalizedRole = String(_role)
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, "");
+      const safeRole = normalizedRole.length > 0 ? normalizedRole : "avatar";
+      candidate = `${safeRole}${ext}`;
+    } else {
+      const stemBase = parts.join(".");
+      const stem = stemBase.length > 0 ? stemBase : "avatar";
+      candidate = `${stem}${ext}`;
+      let counter = 1;
+      while (existsSync(join(assetsDir, candidate))) {
+        candidate = `${stem} (${counter})${ext}`;
+        counter += 1;
+      }
+    }
+
+    if (String(_role).toLowerCase() === "user") {
+      try {
+        const entries = await readdir(assetsDir);
+        await Promise.all(
+          entries
+            .filter((name) => /^user\.[^./\\]+$/i.test(name))
+            .map(async (name) => {
+              await rm(join(assetsDir, name), { force: true });
+            })
+        );
+      } catch (e) {
+        void logger.logInternal(
+          LogCategory.FILE_MANAGER,
+          LogLevel.WARNING,
+          "Failed to remove existing user avatar",
+          { error: e }
+        );
+      }
+    }
+
+    const destPath = join(assetsDir, candidate);
+    await copyFile(srcPath, destPath);
+    return { success: true, path: destPath, fileName: candidate };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function copyFileTo(
+  _event: IpcMainInvokeEvent,
+  srcPath: string,
+  destDir: string
+): Promise<ResultBase> {
+  try {
+    if (srcPath.length === 0 || destDir.length === 0) throw new Error("Parametre eksik");
+    if (!existsSync(srcPath)) throw new Error("Kaynak dosya yok");
+    await mkdir(destDir, { recursive: true });
+    const base = basename(srcPath);
+    let candidate = base;
+    let counter = 1;
+    while (existsSync(join(destDir, candidate))) {
+      const parts = base.split(".");
+      const ext = parts.length > 1 ? "." + parts.pop() : "";
+      const stemBase = parts.join(".");
+      const stem = stemBase.length > 0 ? stemBase : "file";
+      candidate = `${stem} (${counter})${ext}`;
+      counter += 1;
+    }
+    const target = join(destDir, candidate);
+    await copyFile(srcPath, target);
+    return { success: true, path: target, name: candidate };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function deleteAsset(
+  _event: IpcMainInvokeEvent,
+  assetPath: string
+): Promise<ResultBase> {
+  try {
+    if (assetPath.length === 0) throw new Error("assetPath missing");
+    const target = assetPath;
+    if (!existsSync(target)) {
+      return { success: true, message: "Asset not found" };
+    }
+    await rm(target, { force: true });
+    return { success: true };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+interface GenerateTreeOptions {
+  maxDepth?: number;
+  exclude?: string[];
+}
+
+export async function generateTree(
+  _event: IpcMainInvokeEvent,
+  basePath: string = "",
+  options: GenerateTreeOptions = {}
+): Promise<ResultBase & { tree?: string }> {
+  try {
+    if (basePath.length === 0) basePath = Paths.getProjectRoot();
+    const maxDepth = options.maxDepth ?? 10;
+    const excludePatterns = options.exclude ?? ["node_modules", "dist", ".vite"];
+    const isProject = basePath === "project" || basePath === ".";
+    if (isProject) basePath = Paths.getProjectRoot();
+    if (!existsSync(basePath)) return { success: false, message: `Path not found: ${basePath}` };
+    const shouldExclude = (name: string): boolean =>
+      excludePatterns.some((pattern) => {
+        if (pattern.includes("*")) {
+          const regex = new RegExp(pattern.replace(/\*/g, ".*"));
+          return regex.test(name);
+        }
+        return name === pattern;
+      });
+    const buildTree = async (
+      dir: string,
+      depth: number = 0,
+      prefix: string = ""
+    ): Promise<string[]> => {
+      if (depth > maxDepth) return [];
+      try {
+        const entries = await readdir(dir, { withFileTypes: true });
+        const lines: string[] = [];
+        const filtered = entries.filter((e) => !shouldExclude(e.name));
+        const blocks = await Promise.all(
+          filtered.map(async (entry, idx): Promise<string[]> => {
+            const isLast = idx === filtered.length - 1;
+            const connector = isLast ? "└── " : "├── ";
+            const nextPrefix = prefix + (isLast ? "    " : "│   ");
+            const head = prefix + connector + entry.name + (entry.isDirectory() ? "/" : "");
+            if (!entry.isDirectory()) return [head];
+            const childLines: string[] = await buildTree(
+              join(dir, entry.name),
+              depth + 1,
+              nextPrefix
+            );
+            return [head, ...childLines];
+          })
+        );
+        blocks.forEach((block) => lines.push(...block));
+        return lines;
+      } catch (err: unknown) {
+        return [];
+      }
+    };
+    const lines = [basePath + "/"];
+    const treeLines = await buildTree(basePath);
+    lines.push(...treeLines);
+    const treeContent = lines.join("\n");
+    const tempDir = Paths.getCommandsDir();
+    await ensureDir(tempDir);
+    const timestamp = Date.now();
+    const treeFile = join(tempDir, `tree-${timestamp}.txt`);
+    await writeFile(treeFile, treeContent, "utf-8");
+    return {
+      success: true,
+      path: treeFile,
+      content: treeContent,
+      fileName: `tree-${timestamp}.txt`,
+      lines: lines.length,
+    };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function openPath(targetPath: string): Promise<ResultBase> {
+  try {
+    if (targetPath.length === 0) throw new Error("path eksik");
+    const absolutePath = resolve(Paths.getProjectRoot(), targetPath);
+    const res = await shell.openPath(absolutePath);
+    if (res.length > 0) throw new Error(res);
+    return { success: true };
+  } catch (error: unknown) {
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+// ========================================
+// PROTOCOL MANAGEMENT
+// ========================================
+
+const DEFAULT_PROTOCOL_KEYS = [
+  "AI-asistan",
+  "analyze-AI1-AI2",
+  "analyze-AI2-AI1",
+  "analyze-user-AI-AI",
+  "takecontrol",
+] as const;
+
+async function ensureProtocolsJson(): Promise<Record<string, string>> {
+  const protocolsPath = Paths.getProtocolsPath();
+
+  if (existsSync(protocolsPath)) {
+    const raw = await readFile(protocolsPath, "utf-8");
+    return JSON.parse(raw) as Record<string, string>;
+  }
+
+  const protocols: Record<string, string> = {};
+  DEFAULT_PROTOCOL_KEYS.forEach((key) => {
+    protocols[key] = "";
+  });
+
+  // data/ klasörünü oluştur ve JSON'ı yaz
+  await ensureDir(Paths.getDataDir());
+  await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
+  await logger.logInternal(
+    LogCategory.SYSTEM,
+    LogLevel.INFO,
+    "protocols.json oluşturuldu (ilk çalıştırma)"
+  );
+  return protocols;
+}
+
+export async function loadProtocols(
+  _event: IpcMainInvokeEvent
+): Promise<{ success: boolean; protocols?: Record<string, string>; message?: string }> {
+  try {
+    const protocols = await ensureProtocolsJson();
+    return { success: true, protocols };
+  } catch (error: unknown) {
+    await logger.logInternal(
+      LogCategory.SYSTEM,
+      LogLevel.ERROR,
+      `protocols.json okunamadı: ${(error as Error).message}`
+    );
+    return { success: false, message: (error as Error).message };
+  }
+}
+
+export async function saveProtocol(
+  _event: IpcMainInvokeEvent,
+  key: string,
+  content: string
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    if (key.length === 0) throw new Error("Protokol anahtarı eksik");
+
+    const protocols = await ensureProtocolsJson();
+
+    if (!(key in protocols)) {
+      throw new Error(`Bilinmeyen protokol anahtarı: ${key}`);
+    }
+
+    protocols[key] = content;
+    const protocolsPath = Paths.getProtocolsPath();
+    await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
+    await logger.logInternal(LogCategory.SYSTEM, LogLevel.INFO, `Protokol güncellendi: ${key}`);
+    return { success: true };
+  } catch (error: unknown) {
+    await logger.logInternal(
+      LogCategory.SYSTEM,
+      LogLevel.ERROR,
+      `Protokol kaydedilemedi: ${(error as Error).message}`
+    );
+    return { success: false, message: (error as Error).message };
+  }
+}

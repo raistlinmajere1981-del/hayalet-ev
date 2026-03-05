@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="tr" data-theme="obsidian">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hayalet Ev</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/entrance.css" />
+    <link rel="stylesheet" href="/styles/archives.css" />
+    <link rel="stylesheet" href="/styles/analyze.css" />
+    <link rel="stylesheet" href="/styles/server.css" />
+    <link rel="stylesheet" href="/styles/whisper.css" />
+    <link rel="stylesheet" href="/styles/asistan.css" />
+  </head>
+  <body>
+    <!-- Splash Screen (Centered Card) -->
+    <div id="splash-screen" class="splash">
+      <div class="splash-content">
+        <div class="splash-logo-container">
+          <img src="/assets/logo.jpg" alt="Hayalet Ev" class="splash-logo" id="splash-logo" />
+          <div class="splash-logo-glow"></div>
+        </div>
+        <h1 class="splash-title">Hayalet Ev</h1>
+        <p class="splash-version">v5.4.0</p>
+        <div class="splash-loader">
+          <div class="splash-progress" id="splash-progress"></div>
+        </div>
+        <p class="splash-status" id="splash-status">Başlatılıyor...</p>
+      </div>
+    </div>
+
+    <!-- Global Webview Container (always in DOM, hidden offscreen) -->
+    <div
+      id="global-webview-container"
+      style="
+        position: fixed;
+        top: -99999px;
+        left: -99999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      "
+    >
+      <webview
+        id="ai0-webview"
+        partition="persist:ai0"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+      <webview
+        id="ai1-webview"
+        partition="persist:main"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+      <webview
+        id="ai2-webview"
+        partition="persist:main"
+        allowpopups
+        spellcheck="false"
+        webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
+        style="width: 100%; height: 100%"
+      ></webview>
+    </div>
+
+    <!-- Side Navigation Overlay -->
+    <div class="side-nav-overlay" id="side-nav-overlay">
+      <div class="side-nav-trigger"></div>
+      <nav class="side-nav-menu">
+        <button class="side-nav-btn active" data-page="entrance" title="Giriş Salonu">
+          <span class="side-nav-icon">🏠</span>
+          <span class="side-nav-label">Giriş</span>
+        </button>
+        <button class="side-nav-btn" data-page="analyze" title="Analiz Odası">
+          <span class="side-nav-icon">🔍</span>
+          <span class="side-nav-label">Analiz</span>
+        </button>
+        <button class="side-nav-btn" data-page="asistan" title="Asistan Odası">
+          <span class="side-nav-icon">🤖</span>
+          <span class="side-nav-label">Asistan</span>
+        </button>
+        <button class="side-nav-btn" data-page="server" title="Sunucu Odası">
+          <span class="side-nav-icon">🖥️</span>
+          <span class="side-nav-label">Sunucu</span>
+        </button>
+        <button class="side-nav-btn" data-page="archives" title="Arşiv Odası">
+          <span class="side-nav-icon">📁</span>
+          <span class="side-nav-label">Arşiv</span>
+        </button>
+        <button class="side-nav-btn" data-page="whisper" title="Fısıltı Odası">
+          <span class="side-nav-icon">👂</span>
+          <span class="side-nav-label">Fısıltı</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="app">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="top-bar-left">
+          <div class="logo">
+            <img src="/assets/logo.jpg" class="app-logo" alt="Hayalet Ev logo" />
+            <span class="logo-text">Hayalet Ev</span>
+          </div>
+        </div>
+
+        <div class="top-bar-center">
+          <div class="indicators">
+            <!-- Cluster grubu - dikey ortalama için wrapper -->
+            <div class="indicators-group">
+              <!-- Üst satır: AI1 - FlowLine - Asistan - FlowLine - AI2 -->
+              <div class="indicators-row">
+                <!-- AI1 Cluster (Genişletilmiş) -->
+                <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
+                  <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai1"></div>
+                  <div class="indicator-content">
+                    <div class="indicator-dots-row">
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <div
+                          class="indicator-dot loading"
+                          id="ai1-loading-indicator"
+                          title="Yükleniyor"
+                        ></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Gönderim</span>
+                        <div class="indicator-dot" id="ai1-send-indicator" title="Gönderim"></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <div
+                          class="indicator-dot"
+                          id="ai1-thinking-indicator"
+                          title="Düşünüyor"
+                        ></div>
+                      </div>
+                    </div>
+                    <div class="indicator-select-row">
+                      <select id="conversation-ai1" class="select-compact indicator"></select>
+                      <button id="conversation-refresh-ai1" class="conv-refresh" title="Yenile">
+                        ⟳
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI1 ↔ AI0 Relay Flow Line -->
+                <div class="relay-flow-wrapper">
+                  <button
+                    class="relay-toggle-btn"
+                    id="relay-btn-ai1-ai0"
+                    title="AI1 ↔ Asistan Relay Başlat/Durdur"
+                  >
+                    <span class="relay-btn-icon icon-play">▶</span>
+                    <span class="relay-btn-icon icon-stop">⏹</span>
+                  </button>
+                  <div class="relay-flow-line" id="relay-flow-ai1-ai0" title="AI1 ↔ Asistan Relay">
+                    <div class="flow-track">
+                      <div class="flow-particle"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Asistan (AI0) Cluster - Merkez (AI1/AI2 formatında, kompakt) -->
+                <div class="indicator-cluster indicator-cluster-asistan" id="cluster-ai0">
+                  <div class="indicator-avatar indicator-avatar-md" id="indicator-avatar-ai0"></div>
+                  <div class="indicator-content">
+                    <div class="indicator-dots-row">
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <div
+                          class="indicator-dot"
+                          id="ai0-loading-indicator"
+                          title="Yükleniyor"
+                        ></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Gönderim</span>
+                        <div class="indicator-dot" id="ai0-send-indicator" title="Gönderim"></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <div
+                          class="indicator-dot"
+                          id="ai0-thinking-indicator"
+                          title="Düşünüyor"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI0 ↔ AI2 Relay Flow Line -->
+                <div class="relay-flow-wrapper relay-flow-wrapper-rtl">
+                  <div class="relay-flow-line" id="relay-flow-ai0-ai2" title="Asistan ↔ AI2 Relay">
+                    <div class="flow-track">
+                      <div class="flow-particle"></div>
+                    </div>
+                  </div>
+                  <button
+                    class="relay-toggle-btn"
+                    id="relay-btn-ai0-ai2"
+                    title="Asistan ↔ AI2 Relay Başlat/Durdur"
+                  >
+                    <span class="relay-btn-icon icon-play">◀</span>
+                    <span class="relay-btn-icon icon-stop">⏹</span>
+                  </button>
+                </div>
+
+                <!-- AI2 Cluster (Genişletilmiş) -->
+                <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
+                  <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai2"></div>
+                  <div class="indicator-content">
+                    <div class="indicator-dots-row">
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <div
+                          class="indicator-dot loading"
+                          id="ai2-loading-indicator"
+                          title="Yükleniyor"
+                        ></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Gönderim</span>
+                        <div class="indicator-dot" id="ai2-send-indicator" title="Gönderim"></div>
+                      </div>
+                      <div class="indicator-dot-item">
+                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <div
+                          class="indicator-dot"
+                          id="ai2-thinking-indicator"
+                          title="Düşünüyor"
+                        ></div>
+                      </div>
+                    </div>
+                    <div class="indicator-select-row">
+                      <select id="conversation-ai2" class="select-compact indicator"></select>
+                      <button id="conversation-refresh-ai2" class="conv-refresh" title="Yenile">
+                        ⟳
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- /.indicators-row -->
+
+              <!-- AI1 ↔ AI2 Relay (Asistan altında, ortalı, alta yaslı) -->
+              <div class="relay-flow-bottom-row">
+                <button
+                  class="relay-toggle-btn relay-btn-bottom-left"
+                  id="relay-btn-ai1-ai2-left"
+                  title="AI1 → AI2 Relay"
+                >
+                  <span class="relay-btn-icon icon-play">▶</span>
+                  <span class="relay-btn-icon icon-stop">⏹</span>
+                </button>
+                <div class="relay-flow-line-bottom" id="relay-flow-ai1-ai2" title="AI1 ↔ AI2 Relay">
+                  <div class="flow-track-horizontal">
+                    <div class="flow-particle"></div>
+                  </div>
+                </div>
+                <button
+                  class="relay-toggle-btn relay-btn-bottom-right"
+                  id="relay-btn-ai1-ai2-right"
+                  title="AI2 → AI1 Relay"
+                >
+                  <span class="relay-btn-icon icon-play">◀</span>
+                  <span class="relay-btn-icon icon-stop">⏹</span>
+                </button>
+              </div>
+            </div>
+            <!-- /.indicators-group -->
+          </div>
+        </div>
+
+        <div class="top-bar-right">
+          <!-- Pencere butonları - Üst satır -->
+          <div class="window-controls">
+            <button class="icon-btn" id="window-minimize-to-tray" title="System Tray'e Küçült">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 11L3 6h10l-5 5z" />
+              </svg>
+            </button>
+            <button class="icon-btn" id="window-minimize" title="Görev Çubuğuna Küçült">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="3" y="7" width="10" height="2" rx="0.5" />
+              </svg>
+            </button>
+            <button class="icon-btn" id="window-fullscreen" title="Tam Ekran">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M3 3h4v2H5v2H3V3zm6 0h4v4h-2V5H9V3zM3 9h2v2h2v2H3V9zm8 2h2v2h-4v-2h2z" />
+              </svg>
+            </button>
+            <button class="icon-btn" id="window-close" title="Kapat">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Canlı Log + Theme Dropdown - Yan yana -->
+          <div class="top-bar-actions">
+            <button class="btn btn-ghost btn-xs" id="report-modal-open" title="Canlı Log Overlay">
+              📊 Canlı Log
+            </button>
+            <div class="theme-dropdown" id="theme-dropdown">
+              <button class="theme-dropdown-btn" id="theme-dropdown-btn" title="Tema Seç">
+                <span class="theme-dropdown-icon" id="theme-current-icon">🌑</span>
+                <span id="theme-current-name">Obsidian</span>
+                <span>▼</span>
+              </button>
+              <div class="theme-dropdown-menu" id="theme-dropdown-menu">
+                <button class="theme-dropdown-item is-active" data-theme="obsidian">
+                  <span class="theme-dropdown-icon">🌑</span>
+                  <span>Obsidian</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content" id="main-content">
+        <div id="pages-container"></div>
+      </div>
+
+      <!-- Rapor Okuma Modu -->
+      <div class="modal modal-document modal-wide hidden" id="report-modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <span class="modal-title">Canlı Log Görünümü</span>
+            <button class="btn btn-ghost" id="report-modal-close">Kapat</button>
+          </div>
+          <div class="modal-body" id="report-modal-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Livefix Restart Countdown Overlay -->
+    <div class="livefix-countdown-overlay hidden" id="livefix-countdown-overlay">
+      <div class="livefix-countdown-card">
+        <div class="livefix-countdown-icon">⚡</div>
+        <div class="livefix-countdown-title">Uygulama Yeniden Başlıyor</div>
+        <div class="livefix-countdown-subtitle" id="livefix-countdown-subtitle">
+          Canlı düzeltme uygulandı
+        </div>
+        <div class="livefix-countdown-number" id="livefix-countdown-number">5</div>
+        <div class="livefix-countdown-label">saniye</div>
+      </div>
+    </div>
+  </body>
+</html>

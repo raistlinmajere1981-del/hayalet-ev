@@ -1,0 +1,31 @@
+<div class="page hidden" id="page-whisper">
+  <div class="whisper-layout">
+    <div class="panel glass-panel whisper-create-panel">
+      <h3>Fısıltı Ekle</h3>
+      <div class="whisper-form-grid">
+        <label class="whisper-form-label" for="whisper-add-account">Hesap</label>
+        <select id="whisper-add-account" class="select"></select>
+
+        <label class="whisper-form-label" for="whisper-add-text">Mesaj</label>
+        <textarea
+          id="whisper-add-text"
+          class="whisper-textarea"
+          rows="4"
+          placeholder="Fısıltı mesajını yazın"
+        ></textarea>
+
+        <label class="whisper-form-label" for="whisper-add-when">Zaman</label>
+        <input id="whisper-add-when" type="datetime-local" class="input" />
+      </div>
+
+      <div class="whisper-form-actions">
+        <button id="whisper-add-btn" class="btn btn-primary">Kayıt Ekle</button>
+        <button id="whisper-refresh-btn" class="btn btn-ghost">Yenile</button>
+      </div>
+
+      <div id="whisper-add-feedback" class="whisper-feedback"></div>
+    </div>
+
+    <div id="whisper-accounts" class="whisper-accounts"></div>
+  </div>
+</div>

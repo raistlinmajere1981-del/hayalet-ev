@@ -1,0 +1,19 @@
+/**
+ * Hayalet-ev Design System - Breakpoint Tokens
+ * Reference values for responsive design (CSS custom properties cannot be used in @media)
+ * Use these exact values in media queries for consistency
+ * @version 5.4.0
+ *
+ * BREAKPOINT SCALE:
+ * --bp-xs:  480px   → Small mobile
+ * --bp-sm:  640px   → Mobile
+ * --bp-md:  768px   → Tablet
+ * --bp-lg:  1024px  → Laptop
+ * --bp-xl:  1280px  → Desktop
+ * --bp-2xl: 1920px  → Ultra wide
+ *
+ * USAGE:
+ * @media (max-width: 768px)  → tablet and below
+ * @media (max-width: 1024px) → laptop and below
+ * @media (min-width: 1920px) → ultra wide and above
+ */

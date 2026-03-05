@@ -1,0 +1,345 @@
+/**
+ * Hayalet-ev Design System - Markdown Rendering Component
+ * Styles for rendered markdown content within message bubbles
+ * @version 5.4.0
+ */
+
+/* === MARKDOWN BASE === */
+.ds-markdown {
+  line-height: var(--leading-relaxed);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Headings */
+.ds-markdown h1,
+.ds-markdown h2,
+.ds-markdown h3 {
+  margin: 0.6em 0 0.3em;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.ds-markdown h1 {
+  font-size: 1.2em;
+}
+.ds-markdown h2 {
+  font-size: 1.1em;
+}
+.ds-markdown h3 {
+  font-size: 1em;
+}
+
+/* Paragraphs */
+.ds-markdown p {
+  margin: 0.4em 0;
+  line-height: var(--leading-relaxed);
+}
+
+/* Lists */
+.ds-markdown ul,
+.ds-markdown ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.ds-markdown li {
+  margin: 0.15em 0;
+}
+
+/* Inline code */
+.ds-markdown code {
+  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+/* Code blocks */
+.ds-markdown pre {
+  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin: 0.5em 0;
+  position: relative;
+}
+
+.ds-markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: var(--leading-normal);
+}
+
+/* Blockquote */
+.ds-markdown blockquote {
+  border-left: var(--border-3) solid var(--color-accent);
+  margin: 0.5em 0;
+  padding: 0.3em 0.8em;
+  color: var(--text-muted);
+}
+
+/* Table */
+.ds-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  font-size: 0.9em;
+}
+
+.ds-markdown th,
+.ds-markdown td {
+  border: var(--border-1) solid var(--border-glass);
+  padding: var(--space-1-5) var(--space-2);
+  text-align: left;
+}
+
+.ds-markdown th {
+  background: var(--hover-overlay);
+  font-weight: var(--font-semibold);
+}
+
+/* Links */
+.ds-markdown a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.ds-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Images */
+.ds-markdown img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  margin: 0.3em 0;
+}
+
+/* === CODE BLOCK WRAPPER === */
+.ds-code-block {
+  position: relative;
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ds-code-block pre {
+  margin: 0;
+  border-radius: 0;
+  border-top: var(--border-1) solid var(--border-glass);
+}
+
+.ds-code-block__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--hover-overlay);
+}
+
+.ds-code-lang {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-right: auto;
+}
+
+.ds-code-copy,
+.ds-code-run,
+.ds-code-toggle {
+  background: var(--hover-overlay);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  padding: var(--space-0-5) var(--space-1-5);
+  cursor: pointer;
+}
+
+.ds-code-copy:hover,
+.ds-code-run:hover,
+.ds-code-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.ds-code-line {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: var(--space-2);
+}
+
+.ds-code-linenum {
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.ds-code-linecontent {
+  min-width: 0;
+}
+
+.ds-code-block--collapsible pre {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ds-code-block--collapsible:not(.is-expanded) pre {
+  max-height: 180px;
+  overflow: hidden;
+}
+
+/* === TOOL CALL CARD === */
+.ds-tool-call {
+  background: var(--bg-elevated);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-md);
+  margin: 0.4em 0;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+
+.ds-tool-call__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast);
+}
+
+.ds-tool-call__header:hover {
+  background: var(--hover-overlay);
+}
+
+.ds-tool-call__chevron {
+  font-size: 0.7em;
+  transition: transform var(--duration-fast);
+  color: var(--text-muted);
+}
+
+.ds-tool-call--open .ds-tool-call__chevron {
+  transform: rotate(90deg);
+}
+
+.ds-tool-call__icon {
+  font-size: 1.1em;
+}
+
+.ds-tool-call__name {
+  font-family: var(--font-mono);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
+
+.ds-tool-call__args {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-tool-call__status {
+  margin-left: auto;
+  font-size: var(--text-2xs);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-badge);
+}
+
+.ds-tool-call__status--running {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.ds-tool-call__status--done {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.ds-tool-call__body {
+  display: none;
+  padding: 0 var(--space-3) var(--space-3);
+  border-top: var(--border-1) solid var(--border-glass);
+}
+
+.ds-tool-call--open .ds-tool-call__body {
+  display: block;
+}
+
+.ds-tool-call__result {
+  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-muted);
+}
+
+.ds-tool-result-terminal {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+/* === FILE CHIPS === */
+.ds-file-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin-top: var(--space-2);
+}
+
+.ds-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-xl);
+  background: var(--hover-overlay);
+  border: var(--border-1) solid var(--border-glass);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === CLIPBOARD PREVIEW === */
+.ds-clipboard-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-badge);
+  font-size: var(--text-2xs);
+  margin-bottom: var(--space-1);
+}
+
+.ds-clipboard-preview__remove {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--duration-fast);
+}
+
+.ds-clipboard-preview__remove:hover {
+  opacity: 1;
+}

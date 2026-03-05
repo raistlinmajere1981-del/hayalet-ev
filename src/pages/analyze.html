@@ -1,0 +1,94 @@
+<div class="page hidden" id="page-analyze">
+  <div class="analyze-wrapper">
+    <div class="conversation-grid">
+      <div class="conv-card glass-panel" id="card-ai1">
+        <div class="conv-header">
+          <div class="identity">
+            <div class="avatar-circle" id="avatar-ai1">N</div>
+            <div>
+              <div class="name" id="name-ai1">AI1</div>
+              <div class="status" id="status-ai1">Bağlı</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conv-body" id="messages-ai1">
+          <div class="message-placeholder">Henüz mesaj yok.</div>
+        </div>
+      </div>
+
+      <div class="conv-card glass-panel" id="card-ai2">
+        <div class="conv-header">
+          <div class="identity">
+            <div class="avatar-circle" id="avatar-ai2">G</div>
+            <div>
+              <div class="name" id="name-ai2">AI2</div>
+              <div class="status" id="status-ai2">Bağlı</div>
+            </div>
+          </div>
+        </div>
+        <div class="conv-body" id="messages-ai2">
+          <div class="message-placeholder">Henüz mesaj yok.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compose-row">
+      <div class="compose-area">
+        <div class="compose-input-row">
+          <div class="identity compose-user-identity">
+            <div class="avatar-circle" id="avatar-user-compose">U</div>
+            <div class="compose-user-meta">
+              <div class="name" id="name-user-compose">Kullanıcı</div>
+            </div>
+          </div>
+
+          <textarea
+            class="form-input large"
+            id="compose-input"
+            placeholder="Mesaj yaz..."
+            spellcheck="false"
+          ></textarea>
+        </div>
+
+        <div class="compose-actions">
+          <button class="btn btn-secondary btn-sm compose-start-action" id="compose-start-btn">
+            📝 Analiz Sohbeti
+          </button>
+          <button class="btn btn-secondary btn-sm compose-start-action" id="compose-stop-btn">
+            ⏹ Analiz Sonlandır
+          </button>
+          <div class="send-controls">
+            <label class="checkbox-label"
+              ><input type="checkbox" id="send-ai1" checked />
+              <span id="send-ai1-label">AI1</span></label
+            >
+            <label class="checkbox-label">
+              <input type="checkbox" id="send-ai2" checked />
+              <span id="send-ai2-label">AI2</span></label
+            >
+            <label class="checkbox-label"><input type="checkbox" id="send-cross" /> Çaprazla</label>
+          </div>
+          <button class="btn btn-primary btn-sm" id="compose-send-btn">
+            <span class="btn-text">Gönder</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="upload-add-btn">Dosya ekle</button>
+        </div>
+      </div>
+
+      <!-- Sağ: Dosya paneli -->
+      <div class="compose-files glass-panel">
+        <div class="file-box" id="upload-list">Henüz dosya yok.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal modal-document modal-read hidden" id="read-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button class="btn btn-ghost" id="read-modal-close">Kapat</button>
+      </div>
+      <div class="modal-body" id="read-modal-body"></div>
+    </div>
+  </div>
+</div>

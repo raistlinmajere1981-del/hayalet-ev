@@ -1,0 +1,19 @@
+/**
+ * Hayalet-ev Design System - Obsidian Theme
+ * @version 5.4.0
+ */
+
+[data-theme="obsidian"] {
+  --bg-app: #0a0f1a;
+  --bg-surface: #0d1320;
+  --bg-elevated: #111827;
+  --bg-overlay: rgba(0, 0, 0, 0.75);
+
+  --color-success-bg: var(--emerald-alpha-20);
+  --color-warning-bg: var(--amber-alpha-20);
+  --color-error-bg: var(--red-alpha-20);
+  --color-info: var(--blue-400);
+
+  --scrollbar-thumb: var(--slate-700);
+  --scrollbar-thumb-hover: var(--slate-600);
+}

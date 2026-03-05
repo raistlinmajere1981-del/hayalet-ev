@@ -1,0 +1,152 @@
+/**
+ * Hayalet-ev Design System - Splash Screen
+ * Centered card modal (NOT fullscreen)
+ * @version 5.4.0
+ */
+
+/* === SPLASH CONTAINER === */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-overlay);
+  backdrop-filter: var(--glass-blur);
+  z-index: var(--z-splash);
+  animation: backdrop-enter var(--duration-normal) var(--ease-out);
+}
+
+.splash.hidden {
+  display: none;
+}
+
+.splash.splash-hiding {
+  animation: fade-out var(--duration-slow) var(--ease-out) forwards;
+}
+
+/* === SPLASH CARD === */
+.splash-content {
+  --splash-min-w: 320px;
+  --splash-max-w: 400px;
+  --splash-logo-size: 80px;
+  --splash-loader-w: 200px;
+  --splash-loader-h: 4px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-12);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-2xl);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-modal);
+  animation: modal-enter var(--duration-slow) var(--ease-out);
+  min-width: var(--splash-min-w);
+  max-width: var(--splash-max-w);
+}
+
+/* === LOGO === */
+.splash-logo-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo {
+  width: var(--splash-logo-size);
+  height: var(--splash-logo-size);
+  border-radius: var(--radius-xl);
+  object-fit: cover;
+  animation: pulse-scale var(--duration-flow-slow) ease-in-out infinite;
+  position: relative;
+  z-index: var(--z-base);
+}
+
+.splash-logo-glow {
+  position: absolute;
+  inset: calc(var(--space-2-5) * -1);
+  background: var(--accent-gradient);
+  border-radius: var(--radius-2xl);
+  opacity: 0.3;
+  filter: var(--glass-blur);
+  animation: glow-pulse var(--duration-flow-slow) ease-in-out infinite;
+  z-index: 0;
+}
+
+/* === TITLE === */
+.splash-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  text-align: center;
+  margin: 0;
+}
+
+.splash-version {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin: calc(var(--space-2) * -1) 0 0 0;
+}
+
+/* === LOADER === */
+.splash-loader {
+  width: var(--splash-loader-w);
+  height: var(--splash-loader-h);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.splash-progress {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-full);
+  width: 0%;
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+.splash-progress.indeterminate {
+  width: 30%;
+  animation: progress-indeterminate var(--duration-flow) ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* === STATUS TEXT === */
+.splash-status {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+  min-height: var(--space-5);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 480px) {
+  /* --bp-xs */
+  .splash-content {
+    margin: var(--space-4);
+    padding: var(--space-8);
+    min-width: auto;
+  }
+
+  .splash-logo {
+    width: var(--size-icon-xl);
+    height: var(--size-icon-xl);
+  }
+
+  .splash-loader {
+    width: calc(var(--splash-loader-w) * 0.8);
+  }
+}

@@ -1,0 +1,12 @@
+/**
+ * Hayalet-ev Unified Logger - Public API
+ *
+ * @module logger
+ */
+
+export { Logger } from "./Logger.js";
+export { Logger as default } from "./Logger.js";
+
+export { LogLevel, LogCategory, LogVisibility } from "@shared/index.js";
+
+export type { LogEntry, LogOperation, LogQueryFilter, LogStats } from "@shared/index.js";

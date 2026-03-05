@@ -1,0 +1,88 @@
+/**
+ * Hayalet-ev Design System - Progress Component
+ * Progress bars, usage indicators, token stats
+ * @version 5.4.0
+ */
+
+/* === PROGRESS BAR === */
+.ds-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ds-progress__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
+
+.ds-progress__track {
+  width: 100%;
+  height: var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--hover-overlay);
+  overflow: hidden;
+}
+
+.ds-progress__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent-gradient);
+  transition: width var(--duration-normal) var(--ease-out);
+  min-width: 0;
+}
+
+/* Variant: warning threshold */
+.ds-progress__fill--warning {
+  background: linear-gradient(135deg, var(--color-warning) 0%, var(--amber-400) 100%);
+}
+
+/* Variant: danger threshold */
+.ds-progress__fill--danger {
+  background: linear-gradient(135deg, var(--color-error) 0%, var(--red-500) 100%);
+}
+
+/* === PROGRESS STATS === */
+.ds-progress__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.ds-progress__stat {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ds-progress__stat-value {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+/* === USAGE INDICATOR (compact variant) === */
+.ds-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ds-usage__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ds-usage__title {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
+
+.ds-usage__value {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-accent);
+}

@@ -1,0 +1,544 @@
+import { app, BrowserWindow, dialog, shell } from "electron";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import { initPaths, Paths } from "./paths.ts";
+import { deviceActionHandler } from "./device-manager.ts";
+import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
+import { whisperLoad, whisperSave } from "./whisper-manager.ts";
+import {
+  commandInit,
+  commandWrite,
+  commandPaths,
+  commandStageAttachments,
+  commandStageTemp,
+  commandCleanupTemp,
+  commandMoveFailed,
+  commandArchiveCopy,
+  commandCleanupJob,
+  commandMove,
+} from "./command-manager.ts";
+import { DatabaseManager } from "./database/index.ts";
+import {
+  fmWriteFileAtomic,
+  readFileAsBase64,
+  copyToAssets,
+  copyFileTo,
+  deleteAsset,
+  generateTree,
+  loadProtocols,
+  saveProtocol,
+} from "./file-manager.ts";
+import {
+  createWindow as createAppWindow,
+  initWindowManager,
+  setTrayIconPath,
+  setMainWindow,
+} from "./window-manager.ts";
+import { parseStartupFlagsFromArgv } from "./startup-flags.ts";
+import { loadSettings } from "./settings-manager.ts";
+import { catboxUpload, uguuUpload } from "./webview-manager.ts";
+import {
+  googledriveStartAuth,
+  googledriveExchangeCode,
+  googledriveDisconnect,
+  googledriveUpload,
+} from "./googledrive-manager.ts";
+import { opencodeServerManager } from "./opencode-server-manager.ts";
+import {
+  ensureOpencodeUiSession,
+  listOpencodeUiSessions,
+  readOpencodeUiSession,
+} from "./opencode-ui-session-store.ts";
+
+import { readConsoleLogs, readErrorLogs, readAllLogs, queryLogs } from "./logger/log-reader.ts";
+import { listSessions, updateAppState, getAppState } from "./logger/session-manager.ts";
+import { writeStateSnapshot } from "./logger/log-writer.ts";
+import { SessionManager } from "./session-manager.ts";
+
+function generateCorrelationId(prefix: string = "op"): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+import { MetaCommandManager } from "./meta-command-manager.ts";
+import type { LogQueryParams } from "./types/index.ts";
+
+import { setupFsHandlers } from "./handlers/ipc-fs.ts";
+import { setupWindowHandlers } from "./handlers/ipc-window.ts";
+import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
+import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
+import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
+import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
+
+import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
+import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
+import { LogCategory, LogLevel } from "@shared/index.js";
+
+const logger = getLoggerCore();
+
+const moduleFilename = fileURLToPath(import.meta.url);
+const moduleDirname = dirname(moduleFilename);
+
+// Initialize centralized path system
+initPaths(moduleDirname);
+
+// CDP (Chrome DevTools Protocol) remote debugging için port ayarla
+const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
+app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
+
+// Note: If you experience GPU-related crashes on older systems, uncomment these lines:
+
+let mainWindow: BrowserWindow | null = null;
+
+if (process.stdout.isTTY === true) {
+  try {
+    process.stdout.write("\x1b" + "[?1004l");
+  } catch (e) {
+    void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "TTY cleanup failed", {
+      error: e,
+    });
+  }
+}
+
+updateAppState({
+  startTime: new Date().toISOString(),
+  platform: process.platform,
+  nodeVersion: process.version,
+});
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  void logger.logInternal(
+    LogCategory.MAIN,
+    LogLevel.INFO,
+    "Another instance is already running. Exiting...",
+    {}
+  );
+  app.quit();
+} else {
+  app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
+    if (mainWindow !== null) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
+      void logger.logInternal(
+        LogCategory.MAIN,
+        LogLevel.INFO,
+        "Second instance attempted - focused existing window",
+        {}
+      );
+    }
+  });
+}
+
+void app.whenReady().then(async () => {
+  try {
+    try {
+      await initLogger();
+      await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Unified logger initialized", {});
+    } catch (e: unknown) {
+      await logger.logInternal(
+        LogCategory.MAIN,
+        LogLevel.ERROR,
+        `Logger initialization failed: ${(e as Error).message}`,
+        {
+          error: {
+            name: (e as Error).name,
+            message: (e as Error).message,
+            stack: (e as Error).stack,
+          },
+        }
+      );
+    }
+
+    try {
+      await SessionManager.clearStartupCache();
+    } catch (e: unknown) {
+      await logger.logInternal(
+        LogCategory.MAIN,
+        LogLevel.WARNING,
+        `Startup cache clear failed: ${(e as Error).message}`,
+        { error: { message: (e as Error).message } }
+      );
+    }
+
+    const startupFlags = parseStartupFlagsFromArgv(process.argv);
+    mainWindow = createAppWindow({ startupFlags });
+
+    setMainWindow(mainWindow);
+
+    setupFsHandlers(mainWindow);
+    setupWindowHandlers();
+    setupDatabaseHandlers();
+    setupProviderHandlers();
+    setupSettingsHandlers();
+    setupMemoryHandlers();
+
+    try {
+      initWindowManager({ mainWindow });
+    } catch (e) {
+      void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "initWindowManager failed", {
+        error: e,
+      });
+    }
+
+    try {
+      const iconPath = Paths.getIconPath();
+      setTrayIconPath(iconPath);
+    } catch (e) {
+      await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Tray icon path error", {
+        error: e,
+      });
+    }
+  } catch (err: unknown) {
+    const errorDetails =
+      err instanceof Error
+        ? { name: err.name, message: err.message, stack: err.stack }
+        : { raw: String(err) };
+    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "CRITICAL: createAppWindow failed", {
+      error: errorDetails,
+    });
+    console.error("CRITICAL ERROR:", err);
+    process.exit(1);
+  }
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      mainWindow = createAppWindow();
+    }
+  });
+});
+
+let cleanupDone = false;
+
+async function shouldKeepAssistantServersRunningOnClose(): Promise<boolean> {
+  try {
+    const settings = await loadSettings();
+    return settings?.assistants.keepServersOnAppClose === true;
+  } catch {
+    return false;
+  }
+}
+
+async function performCleanup(): Promise<void> {
+  if (cleanupDone) return;
+  cleanupDone = true;
+
+  const keepServersOnAppClose = await shouldKeepAssistantServersRunningOnClose();
+
+  await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Cleanup started", {
+    keepServersOnAppClose,
+  });
+
+  try {
+    if (keepServersOnAppClose) {
+      console.info("[MAIN] OpenCode serve cleanup skipped by settings");
+    } else {
+      const ocStatus = await opencodeServerManager.findRunningServer(4096, 4110);
+      if (ocStatus.running) {
+        const ocPort = ocStatus.port != null ? String(ocStatus.port) : "unknown";
+        console.info(`[MAIN] Stopping OpenCode serve (port: ${ocPort})`);
+        await opencodeServerManager.stop();
+
+        const ocAfter = await opencodeServerManager.findRunningServer(4096, 4110);
+        if (ocAfter.running) {
+          const afterPort = ocAfter.port != null ? String(ocAfter.port) : "unknown";
+          console.info(
+            `[MAIN] OpenCode serve still running after stop attempt (port: ${afterPort})`
+          );
+        } else {
+          console.info("[MAIN] OpenCode serve process closed");
+        }
+      } else {
+        console.info("[MAIN] OpenCode serve not running, skipping");
+      }
+    }
+    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "OpenCode serve cleanup done", {
+      keepServersOnAppClose,
+    });
+  } catch (err: unknown) {
+    console.info(
+      `[MAIN] OpenCode serve cleanup failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "OpenCode serve cleanup failed", {
+      error: err,
+    });
+  }
+
+  try {
+    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Session closing", {
+      reason: "normal",
+    });
+    await shutdownLogger();
+    console.info("[MAIN] Logger shutdown complete");
+  } catch (err: unknown) {
+    console.error("[MAIN] Logger shutdown failed:", err);
+  }
+}
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    void (async (): Promise<void> => {
+      await performCleanup();
+      app.quit();
+    })();
+  }
+});
+
+app.on("will-quit", () => {
+  void DatabaseManager.closeAll();
+  void performCleanup();
+});
+
+app.on("before-quit", () => {
+  void performCleanup();
+});
+
+if (process.platform !== "win32") {
+  process.on("SIGTERM", () => {
+    app.quit();
+  });
+
+  process.on("SIGINT", () => {
+    app.quit();
+  });
+}
+
+registerHandler("device-action", deviceActionHandler);
+
+registerHandler("show-message-box", async (_event, options: Electron.MessageBoxOptions) => {
+  if (mainWindow === null) {
+    return { response: 0, checkboxChecked: false };
+  }
+  return await dialog.showMessageBox(mainWindow, options);
+});
+
+registerHandler("fm-write-file-atomic", fmWriteFileAtomic);
+registerHandler("read-file", readFileAsBase64);
+registerHandler("load-protocols", loadProtocols);
+registerHandler("save-protocol", saveProtocol);
+registerHandler("catbox-upload", catboxUpload);
+
+const ALLOWED_GOOGLE_AUTH_DOMAINS = ["accounts.google.com"];
+
+registerHandler("googledrive-start-auth", async (event) => {
+  const result = await googledriveStartAuth(event);
+  const authUrl = result.authUrl;
+  if (result.success === true && typeof authUrl === "string" && authUrl !== "") {
+    try {
+      const urlObj = new URL(authUrl);
+      if (!ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
+        return { ...result, success: false, message: "Güvenilmeyen URL: " + urlObj.hostname };
+      }
+      await shell.openExternal(authUrl);
+    } catch (err: unknown) {
+      return { ...result, message: "Tarayıcı açılamadı: " + (err as Error).message };
+    }
+  }
+  return result;
+});
+registerHandler("googledrive-exchange-code", googledriveExchangeCode);
+registerHandler("googledrive-disconnect", googledriveDisconnect);
+registerHandler("googledrive-upload", googledriveUpload);
+
+registerHandler("uguu-upload", uguuUpload);
+
+registerHandler("whisper-load", whisperLoad);
+registerHandler("whisper-save", whisperSave);
+
+registerHandler("command-init", commandInit);
+registerHandler("command-write", commandWrite);
+registerHandler("command-paths", commandPaths);
+registerHandler("command-stage-attachments", commandStageAttachments);
+registerHandler("command-stage-temp", commandStageTemp);
+registerHandler("command-cleanup-temp", commandCleanupTemp);
+registerHandler("command-move-failed", commandMoveFailed);
+registerHandler("command-archive-copy", commandArchiveCopy);
+registerHandler("command-cleanup-job", commandCleanupJob);
+registerHandler("command-move", commandMove);
+
+registerHandler("capture-page", capturePageHandler);
+registerHandler("screenshot-capture", screenshotCaptureHandler);
+
+registerHandler(
+  "meta-define-command",
+  (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
+    MetaCommandManager.defineCommand(event, params)
+);
+registerHandler("meta-delete-command", (event, params: { name: string }) =>
+  MetaCommandManager.deleteCommand(event, params)
+);
+registerHandler("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
+registerHandler("meta-get-command", (event, params: { name: string }) =>
+  MetaCommandManager.getCommand(event, params)
+);
+
+registerHandler("logger:appendBatch", handleLoggerAppendBatch);
+
+registerHandler("copy-to-assets", copyToAssets);
+registerHandler("copy-file-to", copyFileTo);
+registerHandler("delete-asset", deleteAsset);
+registerHandler("generate-tree", generateTree);
+
+registerHandler(
+  "read-console-logs",
+  async (_event, tail: number = 100) => await readConsoleLogs(tail)
+);
+registerHandler("read-error-logs", async (_event, tail: number = 100) => await readErrorLogs(tail));
+
+registerHandler("get-log-paths", () => {
+  return {
+    sessionDir: logger.getSessionDir(),
+    logDir: logger.getLogDir(),
+  };
+});
+
+registerHandler("get-session-id", () => logger.getSessionId());
+
+registerHandler(
+  "read-all-logs",
+  async (_event, targetSessionId: string | null = null) => await readAllLogs(targetSessionId)
+);
+registerHandler("query-logs", async (_event, query: LogQueryParams = {}) => await queryLogs(query));
+registerHandler("list-sessions", async () => await listSessions());
+
+registerHandler("get-app-state", () => getAppState());
+
+registerHandler("write-state-snapshot", async () => {
+  await writeStateSnapshot();
+  return { success: true };
+});
+
+registerHandler(
+  "setup-webview-logger",
+  async (_event, webviewId: number, slot: string, provider: string) => {
+    await logger.logInternal(
+      LogCategory.WEBVIEW,
+      LogLevel.INFO,
+      `WebView logger setup for ${slot}/${provider}`,
+      {
+        webviewId,
+        slot,
+        provider,
+      }
+    );
+    return { success: true };
+  }
+);
+
+registerHandler("generate-correlation-id", (_event, prefix: string = "op") => {
+  return generateCorrelationId(prefix);
+});
+
+registerHandler(
+  "opencode-serve-start",
+  async (
+    _event,
+    options?: {
+      port?: number;
+      cors?: string[];
+    }
+  ) => {
+    try {
+      const result = await opencodeServerManager.start(options);
+      return { success: true, ...result };
+    } catch (err) {
+      await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Failed to start OpenCode serve", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Unknown error",
+      };
+    }
+  }
+);
+
+registerHandler("opencode-serve-stop", async () => {
+  try {
+    await opencodeServerManager.stop();
+    return { success: true };
+  } catch (err) {
+    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Failed to stop OpenCode serve", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
+});
+
+registerHandler("opencode-serve-status", () => {
+  return opencodeServerManager.getStatus();
+});
+
+registerHandler("opencode-serve-find-port", async (_event, start = 4096, end = 4110) => {
+  try {
+    const port = await opencodeServerManager.findAvailablePort(start as number, end as number);
+    if (port === null) {
+      return { error: `No available port found (${String(start)}-${String(end)})` };
+    }
+    return { port };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unknown error" };
+  }
+});
+
+registerHandler("opencode-serve-find-running", async (_event, start = 4096, end = 4110) => {
+  try {
+    return await opencodeServerManager.findRunningServer(start as number, end as number);
+  } catch (err) {
+    return { running: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+});
+
+registerHandler("opencode-serve-health", async (_event, url: string) => {
+  return await opencodeServerManager.checkHealth(url);
+});
+
+// OpenCode UI Session FS — OpenCode disk session database read/list/ensure
+registerHandler("opencode-ui-fs-list-sessions", (_event, dbPath?: string) => {
+  const options =
+    typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
+  return listOpencodeUiSessions(options);
+});
+
+registerHandler(
+  "opencode-ui-fs-ensure-session",
+  (_event, sessionId: string, title?: string, dbPath?: string) => {
+    const options =
+      typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
+    return ensureOpencodeUiSession(sessionId, title, options);
+  }
+);
+
+registerHandler("opencode-ui-fs-read-session", (_event, sessionId: string, dbPath?: string) => {
+  const options =
+    typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
+  return readOpencodeUiSession(sessionId, options);
+});
+
+registerHandler(
+  "opencode-ui-api-proxy",
+  async (_event, options: { url: string; method: string; body?: string }) => {
+    try {
+      const fetchOpts: RequestInit = { method: options.method };
+      if (options.body !== undefined && options.body !== "") {
+        fetchOpts.headers = { "Content-Type": "application/json" };
+        fetchOpts.body = options.body;
+      }
+      const res = await fetch(options.url, fetchOpts);
+      const text = await res.text();
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+      return { success: res.ok, status: res.status, data };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  }
+);
