@@ -43,7 +43,7 @@ test("AsistanAISend sends cleaned text to explicit target and stops relay", asyn
 
     assert.equal(result.success, true);
     assert.equal(sentProvider, "ai2");
-    assert.equal(sentText, "Merhaba AI2");
+    assert.equal(sentText, "Merhaba AI2\n<!-- hev-sender:Asistan -->");
     assert.equal(stopped, true);
   } finally {
     CoreEngine.sendMessage = originalSendMessage;
@@ -118,7 +118,7 @@ test("AIAsistanSend connects ai0 if needed and forwards cleaned message", async 
     assert.equal(result.success, true);
     assert.equal(connectCalled, true);
     assert.equal(sentProvider, "ai0");
-    assert.equal(sentText, "Asistana iletilecek mesaj");
+    assert.equal(sentText, "Asistana iletilecek mesaj\n<!-- hev-sender:ai1 -->");
   } finally {
     CoreEngine.sendMessage = originalSendMessage;
     SlotController.isConnected = originalIsConnected;

@@ -14,41 +14,39 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 
 import { Logger } from "./logger/index.js";
 import { SettingsManager } from "./settings-manager.js";
-import { getErrorMessage } from "@shared/index.js";
 import type { SlotId } from "@shared/index.js";
-import type { BaseProviderConfig } from "@shared/provider.js";
-import type { SlotStateMachine } from "./slot/state-machine.js";
-import { SlotStates, createSlotStateMachine } from "./slot/state-machine.js";
 import type { SlotStateType, TransitionResult } from "./slot/state-machine.js";
-
 import {
-  attachWebview,
-  detachWebview,
-  waitForDomReady,
-  clearDomReadyHandler,
-  getCurrentUrl,
-  ensureWebviewMounted,
-  markWebviewAttached,
-  markWebviewDetached,
-} from "./slot/webview-handler.js";
-
+  emitSlotEvent,
+  generateSlotCorrelationId,
+  logSlotEvent,
+  subscribeToSlotEvents,
+  subscribeToSpecificSlotEvent,
+  type SlotListener,
+} from "./slot/controller-events.js";
 import {
-  checkUrlExclusion,
-  setupUrlChangeHandler,
-  clearUrlChangeHandler,
-  handleUrlChange,
-  navigate as navigateWebview,
-} from "./slot/url-handler.js";
-
-import { normalizeUrl } from "./webview/methods/shared/url-utils.js";
-
+  cleanupInactiveWebviews as cleanupInactiveSlotWebviews,
+  cloneSlotState,
+  createSlotState,
+  ensureWebviewAttached as ensureSlotWebviewAttached,
+  ensureWebviewMounted as ensureSlotWebviewMounted,
+  getSlotState,
+  isValidSlot,
+  markSlotActive,
+  parkWebview as parkSlotWebview,
+  type SlotOperationResult,
+  type SlotStateData,
+  type WebviewElement,
+} from "./slot/controller-state.js";
+import { navigate as navigateWebview } from "./slot/url-handler.js";
 import {
-  startTimeout,
-  clearTimeout,
-  handleConnectTimeout,
-  handleConnectError,
-  cleanupAfterError,
-} from "./slot/timeout-handler.js";
+  cleanupSlotAfterError,
+  connectSlotLifecycle,
+  disconnectSlotLifecycle,
+  handleSlotUrlChange,
+  startSlotTraffic,
+  stopSlotTraffic,
+} from "./slot/controller-lifecycle.js";
 
 import {
   handleSettingsChange,
@@ -92,71 +90,9 @@ const CONFIG = {
   urlCheckDelayMs: 500,
 };
 
-type WebviewElement = HTMLElement & {
-  getURL?: () => string;
-  loadURL?: (url: string) => Promise<void>;
-  isLoading?: () => boolean;
-  src: string;
-};
-
-/**
- * Slot state - tüm slot modülleriyle uyumlu birleşik interface
- * Bu interface tüm alt modüllerin (webview-handler, url-handler, settings-sync, timeout-handler)
- * gerektirdiği alanları içerir.
- */
-interface SlotStateData {
-  state: string;
-  stateMachine: SlotStateMachine;
-
-  accountId: string | null;
-  providerId: string | null;
-  providerConfig: BaseProviderConfig | null;
-
-  webview: WebviewElement | null;
-  webviewRegistered: boolean;
-  domReady: boolean;
-
-  currentUrl: string;
-  urlExcluded: boolean;
-
-  trafficStarted: boolean;
-
-  correlationId: string;
-  error: Error | null;
-  lastActivity: number;
-
-  _overrideUrl?: string;
-  _pendingLoad?: boolean;
-  _targetUrl?: string;
-}
-
-interface SlotOperationResult {
-  success: boolean;
-  message: string;
-  correlationId?: string;
-  error?: string;
-}
-
-const createSlotState = (slotId: string): SlotStateData => ({
-  state: SlotState.EMPTY,
-  stateMachine: createSlotStateMachine(slotId, SlotStates.EMPTY),
-  accountId: null,
-  providerId: null,
-  providerConfig: null,
-  webview: null,
-  webviewRegistered: false,
-  domReady: false,
-  currentUrl: "",
-  urlExcluded: false,
-  trafficStarted: false,
-  correlationId: "",
-  error: null,
-  lastActivity: Date.now(),
-});
-
 class SlotControllerClass {
   _slots: Record<string, SlotStateData>;
-  _listeners: ((...args: unknown[]) => void)[];
+  _listeners: SlotListener[];
   _initialized: boolean;
   _boundLog: typeof this._log;
   _boundEmit: typeof this._emit;
@@ -235,14 +171,11 @@ class SlotControllerClass {
   }
 
   private _getSlot(slot: string): SlotStateData | null {
-    if (!this._isValidSlot(slot)) return null;
-    return this._slots[slot] ?? null;
+    return getSlotState(this._slots, slot);
   }
 
   getState(slot: string): SlotStateData | null {
-    const slotData = this._getSlot(slot);
-    if (!slotData) return null;
-    return { ...slotData };
+    return cloneSlotState(this._getSlot(slot));
   }
 
   isConnected(slot: string): boolean {
@@ -283,94 +216,32 @@ class SlotControllerClass {
   }
 
   ensureWebviewMounted(slot: SlotId): boolean {
-    const slotState = this._getSlot(slot);
-    if (!slotState?.webview) {
-      return false;
-    }
-
-    const moved = ensureWebviewMounted(slot, slotState.webview);
-    if (moved) {
-      slotState.lastActivity = Date.now();
-      this._log(slot, "debug", "Webview mounted to slot container");
-    }
-
-    return moved;
+    return ensureSlotWebviewMounted(this._slots, slot, this._boundLog);
   }
 
   ensureWebviewAttached(slot: SlotId): boolean {
-    const slotState = this._getSlot(slot);
-    if (!slotState?.webview) {
-      return false;
-    }
-
-    markWebviewAttached(slotState.webview);
-    slotState.lastActivity = Date.now();
-    return true;
+    return ensureSlotWebviewAttached(this._slots, slot);
   }
 
   markActive(slot: SlotId): boolean {
-    const slotState = this._getSlot(slot);
-    if (!slotState) {
-      return false;
-    }
-
-    slotState.lastActivity = Date.now();
-    return true;
+    return markSlotActive(this._slots, slot);
   }
 
   parkWebview(slot: SlotId, reason = "manual_park"): boolean {
-    const slotState = this._getSlot(slot);
-    if (!slotState || !slotState.webviewRegistered || !slotState.webview) {
-      return false;
-    }
-
-    markWebviewDetached(slotState.webview);
-    slotState.domReady = false;
-    slotState.currentUrl = "";
-    slotState.urlExcluded = false;
-    slotState.lastActivity = Date.now();
-
-    this._emit(slot, SlotEvent.WEBVIEW_DETACHED, {
+    return parkSlotWebview(
+      this._slots,
+      slot,
       reason,
-    });
-
-    if (reason === "inactive_cleanup") {
-      this._log(slot, "info", "Inactive webview parked");
-    } else {
-      this._log(slot, "debug", `Webview parked (${reason})`);
-    }
-
-    return true;
+      this._boundEmit,
+      this._boundLog,
+      SlotEvent.WEBVIEW_DETACHED
+    );
   }
 
   cleanupInactiveWebviews(inactivityThresholdMs = 30 * 60 * 1000): number {
-    const now = Date.now();
-    let detachedCount = 0;
-
-    (["ai0", "ai1", "ai2"] as SlotId[]).forEach((slot) => {
-      const slotState = this._getSlot(slot);
-      if (!slotState || !slotState.webviewRegistered || !slotState.webview) {
-        return;
-      }
-
-      const state = slotState.state;
-      const isConnected = state === SlotState.CONNECTED;
-      const isTransitioning = state === SlotState.CONNECTING || state === SlotState.DISCONNECTING;
-      if (isConnected || isTransitioning) {
-        return;
-      }
-
-      const inactive = now - slotState.lastActivity > inactivityThresholdMs;
-      if (!inactive) {
-        return;
-      }
-
-      if (this.parkWebview(slot, "inactive_cleanup")) {
-        detachedCount += 1;
-      }
-    });
-
-    return detachedCount;
+    return cleanupInactiveSlotWebviews(this._slots, inactivityThresholdMs, (slot, reason) =>
+      this.parkWebview(slot, reason)
+    );
   }
 
   registerWebview(slot: string, webview: HTMLElement): void {
@@ -455,178 +326,7 @@ class SlotControllerClass {
     slot: SlotId,
     options: { force?: boolean; url?: string; correlationId?: string } = {}
   ): Promise<SlotOperationResult> {
-    const slotState = this._getSlot(slot);
-    if (!slotState) {
-      return { success: false, message: "invalid-slot" };
-    }
-
-    const correlationId = this._generateCorrelationId(slot, "connect");
-
-    this._log(slot, "info", `Connect requested`, { correlationId });
-
-    if (slotState.state === SlotState.EMPTY) {
-      this._log(slot, "warning", "Cannot connect: no account assigned", { correlationId });
-      return { success: false, message: "no-account-assigned", correlationId };
-    }
-
-    if (slotState.state === SlotState.CONNECTED && options.force !== true) {
-      this._log(slot, "debug", "Already connected", { correlationId });
-      return { success: true, message: "already-connected", correlationId };
-    }
-
-    if (slotState.state === SlotState.CONNECTING) {
-      this._log(slot, "warning", "Connection already in progress", { correlationId });
-      return { success: false, message: "connection-in-progress", correlationId };
-    }
-
-    if (slotState.state === SlotState.ERROR) {
-      this._log(slot, "info", "Recovering from ERROR state", { correlationId });
-      slotState.error = null;
-      this._transition(slot, SlotState.ASSIGNED);
-    }
-
-    if (slotState.state === SlotState.CONNECTED && options.force === true) {
-      this._log(slot, "info", "Force reconnect - disconnecting first", { correlationId });
-      await this.disconnect(slot, { force: true });
-    }
-
-    if (!slotState.webview) {
-      this._log(slot, "error", "Cannot connect: webview not registered", { correlationId });
-      return { success: false, message: "webview-not-registered", correlationId };
-    }
-
-    if (options.url !== undefined && options.url !== "") {
-      slotState._overrideUrl = options.url;
-      this._log(slot, "debug", `URL override set: ${options.url}`, { correlationId });
-    }
-
-    slotState.correlationId = correlationId;
-
-    const transitionResult = this._transition(slot, SlotState.CONNECTING);
-    if (!transitionResult.success) {
-      this._log(
-        slot,
-        "error",
-        `Invalid state transition blocked: ${slotState.state} → connecting. ${transitionResult.error ?? "unknown"}`,
-        { correlationId }
-      );
-      return {
-        success: false,
-        message: "invalid-state-transition",
-        correlationId,
-        ...(transitionResult.error !== undefined ? { error: transitionResult.error } : {}),
-      };
-    }
-    this._emit(slot, SlotEvent.CONNECT_START, { correlationId });
-
-    startTimeout(slot, "connect", CONFIG.connectTimeoutMs, () => {
-      handleConnectTimeout(
-        slotState,
-        slot,
-        correlationId,
-        SlotState.ERROR,
-        this._boundLog,
-        this._boundEmit,
-        this._boundTransition,
-        SlotEvent.CONNECT_FAILED,
-        (s, cid) => {
-          void this._cleanupAfterError(s, cid);
-        }
-      );
-    });
-
-    try {
-      await attachWebview(
-        slotState,
-        slot,
-        correlationId,
-        this._boundLog,
-        this._boundEmit,
-        SlotEvent.WEBVIEW_ATTACHED
-      );
-
-      await waitForDomReady(slotState, slot, correlationId, this._boundLog);
-      slotState.domReady = true;
-      this._emit(slot, SlotEvent.WEBVIEW_DOM_READY, { correlationId });
-
-      if (slotState.providerConfig) {
-        try {
-          const webviewEl = slotState.webview as HTMLElement & {
-            send?: (channel: string, ...args: unknown[]) => void;
-          };
-          if (typeof webviewEl.send === "function") {
-            webviewEl.send("hayalet-set-provider", {
-              providerId: slotState.providerConfig.id,
-              slot: slot,
-            });
-            this._log(
-              slot,
-              "debug",
-              `Provider info sent to webview: ${slotState.providerConfig.id}`,
-              { correlationId }
-            );
-          }
-        } catch (sendErr) {
-          this._log(
-            slot,
-            "warning",
-            `Failed to send provider info to webview: ${getErrorMessage(sendErr)}`,
-            { correlationId }
-          );
-        }
-      }
-
-      await this._delay(CONFIG.urlCheckDelayMs);
-      const currentUrl = getCurrentUrl(slotState);
-      slotState.currentUrl = currentUrl;
-
-      const isExcluded = checkUrlExclusion(slotState, currentUrl);
-      slotState.urlExcluded = isExcluded;
-
-      if (isExcluded) {
-        this._emit(slot, SlotEvent.URL_EXCLUDED, { url: currentUrl, correlationId });
-        this._log(slot, "info", `URL excluded: ${currentUrl} - traffic disabled`, {
-          correlationId,
-        });
-      } else {
-        this._emit(slot, SlotEvent.URL_INCLUDED, { url: currentUrl, correlationId });
-        await this._startTraffic(slot, correlationId);
-      }
-
-      setupUrlChangeHandler(slotState, slot, correlationId, (s: string, url: string) => {
-        this._handleUrlChange(s as SlotId, url);
-      });
-
-      clearTimeout(slot, "connect");
-      this._transition(slot, SlotState.CONNECTED);
-      this._emit(slot, SlotEvent.CONNECT_COMPLETE, { correlationId, urlExcluded: isExcluded });
-
-      const elapsed = Date.now() - slotState.lastActivity;
-      this._log(
-        slot,
-        "success",
-        `Connected successfully (${elapsed}ms)${isExcluded ? " [URL excluded]" : ""}`,
-        { correlationId }
-      );
-
-      return { success: true, message: "connected", correlationId };
-    } catch (error) {
-      clearTimeout(slot, "connect");
-      return handleConnectError(
-        slotState,
-        slot,
-        correlationId,
-        error,
-        SlotState.ERROR,
-        this._boundLog,
-        this._boundEmit,
-        this._boundTransition,
-        SlotEvent.CONNECT_FAILED,
-        (s, cid) => {
-          void this._cleanupAfterError(s, cid);
-        }
-      );
-    }
+    return await connectSlotLifecycle(slot, options, this._getLifecycleContext());
   }
 
   async disconnect(slot: string, _options: { force?: boolean } = {}): Promise<SlotOperationResult> {
@@ -641,83 +341,7 @@ class SlotControllerClass {
     slot: string,
     _options: { force?: boolean } = {}
   ): Promise<SlotOperationResult> {
-    const slotState = this._getSlot(slot);
-    if (!slotState) {
-      return { success: false, message: "invalid-slot" };
-    }
-
-    const correlationId = this._generateCorrelationId(slot, "disconnect");
-
-    this._log(slot, "info", "Disconnect requested", { correlationId });
-
-    if (slotState.state === SlotState.EMPTY) {
-      return { success: true, message: "not-assigned", correlationId };
-    }
-
-    if (slotState.state === SlotState.ASSIGNED) {
-      this._log(slot, "debug", "Already disconnected (ASSIGNED state)", { correlationId });
-      return { success: true, message: "already-disconnected", correlationId };
-    }
-
-    if (slotState.state === SlotState.DISCONNECTING) {
-      return { success: false, message: "disconnect-in-progress", correlationId };
-    }
-
-    const transitionResult = this._transition(slot, SlotState.DISCONNECTING);
-    if (!transitionResult.success) {
-      this._log(
-        slot,
-        "error",
-        `Invalid state transition blocked: ${slotState.state} → disconnecting. ${transitionResult.error ?? "unknown"}`,
-        { correlationId }
-      );
-      return {
-        success: false,
-        message: "invalid-state-transition",
-        correlationId,
-        ...(transitionResult.error !== undefined ? { error: transitionResult.error } : {}),
-      };
-    }
-    this._emit(slot, SlotEvent.DISCONNECT_START, { correlationId });
-
-    try {
-      clearUrlChangeHandler(slot as SlotId);
-
-      if (slotState.trafficStarted) {
-        await this._stopTraffic(slot, correlationId);
-      }
-
-      await detachWebview(
-        slotState,
-        slot as SlotId,
-        correlationId,
-        this._boundLog,
-        this._boundEmit,
-        SlotEvent.WEBVIEW_DETACHED
-      );
-
-      slotState.domReady = false;
-      slotState.currentUrl = "";
-      slotState.urlExcluded = false;
-      slotState.trafficStarted = false;
-      slotState.correlationId = "";
-      slotState.error = null;
-
-      this._transition(slot, SlotState.ASSIGNED);
-      this._emit(slot, SlotEvent.DISCONNECT_COMPLETE, { correlationId });
-
-      this._log(slot, "success", "Disconnected successfully", { correlationId });
-      return { success: true, message: "disconnected", correlationId };
-    } catch (error) {
-      slotState.domReady = false;
-      slotState.trafficStarted = false;
-      this._transition(slot, SlotState.ASSIGNED);
-
-      this._log(slot, "warning", `Disconnect completed with errors: ${getErrorMessage(error)}`, {
-        correlationId,
-      });
-      return { success: true, message: "disconnected-with-errors", correlationId };
-    }
+    return await disconnectSlotLifecycle(slot, _options, this._getLifecycleContext());
   }
 
   navigate(slot: SlotId, url: string | null = null): void {
@@ -735,40 +359,12 @@ class SlotControllerClass {
     );
   }
 
-  subscribe(listener: (payload: unknown) => void) {
-    if (typeof listener === "function") {
-      this._listeners.push(listener);
-    }
-    return (): void => {
-      this._listeners = this._listeners.filter((l) => l !== listener);
-    };
+  subscribe(listener: (payload: unknown) => void): () => void {
+    return subscribeToSlotEvents(this._listeners, listener);
   }
 
-  on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void) {
-    type WrapperFunction = ((payload: unknown) => void) & {
-      _original: typeof listener;
-      _eventType: string;
-    };
-
-    const wrapper = ((payload: unknown): void => {
-      if (
-        payload !== null &&
-        payload !== undefined &&
-        typeof payload === "object" &&
-        "event" in payload &&
-        payload.event === eventType
-      ) {
-        listener(payload as { event?: string; slot?: string });
-      }
-    }) as WrapperFunction;
-
-    wrapper._original = listener;
-    wrapper._eventType = eventType;
-
-    this._listeners.push(wrapper);
-    return (): void => {
-      this._listeners = this._listeners.filter((l) => l !== wrapper);
-    };
+  on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void): () => void {
+    return subscribeToSpecificSlotEvent(this._listeners, eventType, listener);
   }
 
   _syncSlotWithSettings(slot: string, settings: Settings): void {
@@ -797,105 +393,18 @@ class SlotControllerClass {
   }
 
   _handleUrlChange(slot: SlotId, newUrl: string): void {
-    const slotState = this._getSlot(slot);
-    if (!slotState) return;
-
-    handleUrlChange(
-      slotState,
-      slot,
-      newUrl,
-      SlotState.CONNECTED,
-      this._boundLog,
-      this._boundEmit,
-      {
-        URL_CHANGED: SlotEvent.URL_CHANGED,
-        URL_EXCLUDED: SlotEvent.URL_EXCLUDED,
-        URL_INCLUDED: SlotEvent.URL_INCLUDED,
-      },
-      (s: SlotId, cid: string) => {
-        void this._startTraffic(s, cid);
-      },
-      (s: SlotId, cid: string) => {
-        void this._stopTraffic(s, cid);
-      }
-    );
-
-    // If navigated to provider's default page, reset conversation list to "Yeni Sohbet"
-    const baseUrl = slotState.providerConfig?.baseUrl;
-    if (baseUrl !== undefined && baseUrl !== "" && normalizeUrl(newUrl) === normalizeUrl(baseUrl)) {
-      this._emit(slot, SlotEvent.URL_CHANGED, { newUrl, isDefaultPage: true });
-    }
+    handleSlotUrlChange(slot, newUrl, this._getLifecycleContext());
   }
 
   async _startTraffic(slot: string, correlationId: string): Promise<void> {
-    const slotState = this._getSlot(slot);
-    if (!slotState || !slotState.webview || slotState.trafficStarted) {
-      await Promise.resolve();
-      return;
-    }
-
-    try {
-      slotState.trafficStarted = true;
-      this._emit(slot, SlotEvent.TRAFFIC_STARTED, { correlationId });
-      this._log(slot, "debug", "Traffic started", { correlationId });
-    } catch (err) {
-      this._log(slot, "warning", `Traffic start warning: ${getErrorMessage(err)}`, {
-        correlationId,
-      });
-    }
-    await Promise.resolve();
+    await startSlotTraffic(slot, correlationId, this._getLifecycleContext());
   }
   async _stopTraffic(slot: string, correlationId: string): Promise<void> {
-    const slotState = this._getSlot(slot);
-    if (slotState?.trafficStarted !== true) {
-      await Promise.resolve();
-      return;
-    }
-
-    try {
-      slotState.trafficStarted = false;
-      this._emit(slot, SlotEvent.TRAFFIC_STOPPED, { correlationId });
-      this._log(slot, "debug", "Traffic stopped", { correlationId });
-    } catch (err) {
-      this._log(slot, "warning", `Traffic stop warning: ${getErrorMessage(err)}`, {
-        correlationId,
-      });
-    }
-    await Promise.resolve();
+    await stopSlotTraffic(slot, correlationId, this._getLifecycleContext());
   }
 
   async _cleanupAfterError(slot: string, correlationId: string): Promise<void> {
-    const slotState = this._getSlot(slot);
-    if (!slotState) return;
-
-    await cleanupAfterError(
-      slotState,
-      slot,
-      correlationId,
-      this._boundLog,
-      (s: string) => {
-        clearUrlChangeHandler(s as SlotId);
-      },
-      (s: string) => {
-        clearDomReadyHandler(s as SlotId);
-      },
-      async (s: string, cid: string) => {
-        await this._stopTraffic(s, cid);
-      },
-      async (s: string, cid: string) => {
-        const innerSlot = this._getSlot(s);
-        if (innerSlot) {
-          await detachWebview(
-            innerSlot,
-            s as SlotId,
-            cid,
-            this._boundLog,
-            this._boundEmit,
-            SlotEvent.WEBVIEW_DETACHED
-          );
-        }
-      }
-    );
+    await cleanupSlotAfterError(slot, correlationId, this._getLifecycleContext());
   }
 
   /**
@@ -965,37 +474,54 @@ class SlotControllerClass {
   }
 
   _isValidSlot(slot: string): boolean {
-    return slot === "ai0" || slot === "ai1" || slot === "ai2";
+    return isValidSlot(slot);
   }
 
   _generateCorrelationId(slot: string, operation: string): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).slice(2, 8);
-    return `${slot}-${operation}-${timestamp}-${random}`;
+    return generateSlotCorrelationId(slot, operation);
+  }
+
+  private _getLifecycleContext(): Parameters<typeof connectSlotLifecycle>[2] {
+    return {
+      getSlot: this._getSlot.bind(this),
+      generateCorrelationId: this._generateCorrelationId.bind(this),
+      log: this._boundLog,
+      emit: this._boundEmit,
+      transition: this._boundTransition,
+      delay: this._delay.bind(this),
+      disconnect: this.disconnect.bind(this),
+      startTraffic: this._startTraffic.bind(this),
+      stopTraffic: this._stopTraffic.bind(this),
+      cleanupAfterError: this._cleanupAfterError.bind(this),
+      states: {
+        EMPTY: SlotState.EMPTY,
+        ASSIGNED: SlotState.ASSIGNED,
+        CONNECTING: SlotState.CONNECTING,
+        CONNECTED: SlotState.CONNECTED,
+        DISCONNECTING: SlotState.DISCONNECTING,
+        ERROR: SlotState.ERROR,
+      },
+      events: {
+        CONNECT_START: SlotEvent.CONNECT_START,
+        CONNECT_COMPLETE: SlotEvent.CONNECT_COMPLETE,
+        CONNECT_FAILED: SlotEvent.CONNECT_FAILED,
+        DISCONNECT_START: SlotEvent.DISCONNECT_START,
+        DISCONNECT_COMPLETE: SlotEvent.DISCONNECT_COMPLETE,
+        WEBVIEW_ATTACHED: SlotEvent.WEBVIEW_ATTACHED,
+        WEBVIEW_DETACHED: SlotEvent.WEBVIEW_DETACHED,
+        WEBVIEW_DOM_READY: SlotEvent.WEBVIEW_DOM_READY,
+        TRAFFIC_STARTED: SlotEvent.TRAFFIC_STARTED,
+        TRAFFIC_STOPPED: SlotEvent.TRAFFIC_STOPPED,
+        URL_CHANGED: SlotEvent.URL_CHANGED,
+        URL_EXCLUDED: SlotEvent.URL_EXCLUDED,
+        URL_INCLUDED: SlotEvent.URL_INCLUDED,
+      },
+      config: CONFIG,
+    };
   }
 
   _emit(slot: string, event: string, data: Record<string, unknown> = {}): void {
-    const payload = {
-      slot,
-      event,
-      data,
-      timestamp: Date.now(),
-      state: this._slots[slot]?.state,
-    };
-
-    this._listeners.forEach((listener) => {
-      try {
-        listener(payload);
-      } catch {}
-    });
-
-    if (event === SlotEvent.STATE_CHANGED) {
-      window.dispatchEvent(
-        new CustomEvent("slot-state-changed", {
-          detail: payload,
-        })
-      );
-    }
+    emitSlotEvent(this._listeners, this._slots, slot, event, data, SlotEvent.STATE_CHANGED);
   }
 
   _log(
@@ -1004,26 +530,7 @@ class SlotControllerClass {
     message: string,
     context: { correlationId?: string } = {}
   ): void {
-    const logContext = {
-      ...(context.correlationId !== undefined && context.correlationId !== ""
-        ? { correlationId: context.correlationId }
-        : {}),
-      slotId: slot,
-    };
-    const category = LogCategory.SLOT;
-    const formattedMessage = `[${slot.toUpperCase()}] ${message}`;
-
-    if (level === "error") {
-      Logger.panel(category, LogLevel.ERROR, formattedMessage, logContext);
-    } else if (level === "warning") {
-      Logger.warn(category, formattedMessage, logContext);
-    } else if (level === "debug") {
-      Logger.debug(category, formattedMessage, logContext);
-    } else if (level === "success") {
-      Logger.info(category, `✅ ${formattedMessage}`, logContext);
-    } else {
-      Logger.info(category, formattedMessage, logContext);
-    }
+    logSlotEvent(slot, level, message, context);
   }
 
   async _delay(ms: number): Promise<void> {

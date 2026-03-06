@@ -615,8 +615,9 @@ test("readOpencodeUiSession aggregates usage from assistant message tokens", asy
 
     assert.equal(result.success, true);
     assert.equal(result.session?.usage?.["prompt_tokens"], 120);
-    assert.equal(result.session?.usage?.["completion_tokens"], 100);
-    assert.equal(result.session?.usage?.["total_tokens"], 220);
+    assert.equal(result.session?.usage?.["completion_tokens"], 80);
+    assert.equal(result.session?.usage?.["reasoning_tokens"], 20);
+    assert.equal(result.session?.usage?.["total_tokens"], 200);
   } finally {
     fixture.cleanup();
   }

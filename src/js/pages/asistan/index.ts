@@ -21,7 +21,6 @@ import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import type { AppSettings } from "@shared/settings.js";
 import { ConnectButtonState } from "@shared/asistan.js";
 import type {
-  ButtonStateConfig,
   WebviewElement,
   SlotStateInfo,
   AsistanTrafficState,
@@ -45,6 +44,15 @@ import {
   resolveOpencodeUiDbPath,
 } from "./opencode-preferences.js";
 import { openTestResultsModal } from "./test-results-modal.js";
+import { bindAsistanBasicEvents } from "./event-bindings.js";
+import { populateAsistanProviderSelect } from "./provider-select.js";
+import {
+  applyConnectButtonState,
+  renderConnectedAiList,
+  updateOverlayView,
+  updateServerStatusView,
+  updateTrafficStatusView,
+} from "./view-helpers.js";
 
 export class AsistanController {
   _unsubSettings: (() => void) | null;
@@ -698,76 +706,59 @@ export class AsistanController {
   }
 
   _populateProviderSelect(): void {
-    if (!this.providerSelect) return;
-
-    this.providerSelect.innerHTML = "";
-
     const asistanProviders = ProviderRegistry.getAllAsistan();
-    const providerList = Array.isArray(asistanProviders) ? asistanProviders : [];
-    providerList.forEach((provider) => {
-      if (!this._isProviderOption(provider)) return;
-      const opt = document.createElement("option");
-      opt.value = provider.id;
-      opt.textContent = provider.name;
-      this.providerSelect?.appendChild(opt);
-    });
-
     const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const asistanAccounts = settings?.asistanAccounts as
-      | { id: string; provider?: string }[]
-      | undefined;
-    const asistanSlot = settings?.asistanSlot as { accountId?: string } | undefined;
-    const account = asistanAccounts?.find((acc) => acc.id === asistanSlot?.accountId);
-    if (
-      account?.provider !== undefined &&
-      account.provider !== "" &&
-      this.providerSelect.querySelector(`option[value="${account.provider}"]`) !== null
-    ) {
-      this.providerSelect.value = account.provider;
-    }
+    populateAsistanProviderSelect({
+      providerSelect: this.providerSelect,
+      providers: Array.isArray(asistanProviders) ? asistanProviders : [],
+      settings,
+      isProviderOption: (value: unknown): value is { id: string; name: string } =>
+        this._isProviderOption(value),
+    });
   }
 
   _setupEventListeners(): void {
-    this.connectBtn?.addEventListener("click", () => {
-      void this._toggleConnection();
-    });
-
-    this.ghostAgentBtn?.addEventListener("click", () => {
-      void this._handleGhostAgentButtonClick();
-    });
-
-    this.resumeLastSessionCheckbox?.addEventListener("change", () => {
-      void this._saveResumeTogglePreference(this.resumeLastSessionCheckbox?.checked === true);
-    });
-
-    this.keepServersOnAppCloseCheckbox?.addEventListener("change", () => {
-      void this._saveKeepServersOnClosePreference(
-        this.keepServersOnAppCloseCheckbox?.checked === true
-      );
-    });
-
-    this.catchCommandsCheckbox?.addEventListener("change", () => {
-      void this._saveAsistanCatchCommandsPreference(this.catchCommandsCheckbox?.checked === true);
-    });
-
-    this.providerSelect?.addEventListener("change", () => {
-      void this._onProviderChange();
-    });
-
-    this.opencodeSettingsBtn?.addEventListener("click", () => {
-      void this._openOpencodeSettingsModal();
-    });
-
-    this.memoryBtn?.addEventListener("click", () => {
-      this.memoryOverlay.open();
-    });
-
-    this.devtoolsBtn?.addEventListener("click", () => {
-      this._openDevTools();
-    });
-
-    this.testBtn?.addEventListener("click", () => {
-      void this._handleTestClick();
+    bindAsistanBasicEvents({
+      connectBtn: this.connectBtn,
+      ghostAgentBtn: this.ghostAgentBtn,
+      resumeLastSessionCheckbox: this.resumeLastSessionCheckbox,
+      keepServersOnAppCloseCheckbox: this.keepServersOnAppCloseCheckbox,
+      catchCommandsCheckbox: this.catchCommandsCheckbox,
+      providerSelect: this.providerSelect,
+      opencodeSettingsBtn: this.opencodeSettingsBtn,
+      memoryBtn: this.memoryBtn,
+      devtoolsBtn: this.devtoolsBtn,
+      testBtn: this.testBtn,
+      onConnectClick: () => {
+        void this._toggleConnection();
+      },
+      onGhostAgentClick: () => {
+        void this._handleGhostAgentButtonClick();
+      },
+      onResumeLastSessionChange: (enabled: boolean) => {
+        void this._saveResumeTogglePreference(enabled);
+      },
+      onKeepServersOnCloseChange: (enabled: boolean) => {
+        void this._saveKeepServersOnClosePreference(enabled);
+      },
+      onCatchCommandsChange: (enabled: boolean) => {
+        void this._saveAsistanCatchCommandsPreference(enabled);
+      },
+      onProviderChange: () => {
+        void this._onProviderChange();
+      },
+      onOpencodeSettingsClick: () => {
+        void this._openOpencodeSettingsModal();
+      },
+      onMemoryClick: () => {
+        this.memoryOverlay.open();
+      },
+      onDevtoolsClick: () => {
+        this._openDevTools();
+      },
+      onTestClick: () => {
+        void this._handleTestClick();
+      },
     });
 
     // Webview içinden gelen MCP toggle mesajlarını dinle
@@ -857,60 +848,7 @@ export class AsistanController {
   }
 
   _setButtonState(state: ConnectButtonState, errorMsg?: string): void {
-    if (!this.connectBtn) return;
-
-    const stateConfig: Record<ConnectButtonState, ButtonStateConfig> = {
-      [ConnectButtonState.IDLE]: {
-        text: "Başlat",
-        classes: ["btn-primary"],
-        disabled: false,
-      },
-      [ConnectButtonState.STARTING]: {
-        text: "Başlatılıyor...",
-        classes: ["btn-primary"],
-        disabled: true,
-      },
-      [ConnectButtonState.CANCEL_CONNECTING]: {
-        text: "Bağlantıyı İptal",
-        classes: ["btn-danger"],
-        disabled: false,
-      },
-      [ConnectButtonState.CONNECTED]: {
-        text: "Bağlantıyı Kes",
-        classes: ["btn-danger"],
-        disabled: false,
-      },
-      [ConnectButtonState.STOPPING]: {
-        text: "Kesiliyor...",
-        classes: ["btn-primary"],
-        disabled: true,
-      },
-      [ConnectButtonState.ERROR]: {
-        text: errorMsg ?? "Hata!",
-        classes: ["btn-primary"],
-        disabled: false,
-      },
-      [ConnectButtonState.SUCCESS_START]: {
-        text: "Bağlandı!",
-        classes: ["btn-primary"],
-        disabled: false,
-      },
-      [ConnectButtonState.SUCCESS_STOP]: {
-        text: "Kesildi!",
-        classes: ["btn-primary"],
-        disabled: false,
-      },
-    };
-
-    const config = stateConfig[state];
-
-    this.connectBtn.className = "btn " + config.classes.join(" ");
-    this.connectBtn.textContent = config.text;
-    this.connectBtn.disabled = config.disabled;
-
-    this.connectBtn.style.opacity = "";
-    this.connectBtn.style.transform = "";
-    this.connectBtn.style.transition = "";
+    applyConnectButtonState(this.connectBtn, state, errorMsg);
   }
 
   /**
@@ -1213,29 +1151,11 @@ export class AsistanController {
   }
 
   _updateServerStatus(status: { running: boolean; port?: number }): void {
-    const statusText = document.querySelector("#asistan-status-text");
-    const statusDetails = document.querySelector("#asistan-status-details");
-    const statusDot = document.querySelector("#asistan-status-dot");
-
-    if (!statusText) return;
-
-    statusText.textContent = formatConnectionIndicatorText({
-      isConnected: status.running,
-      isServerRunning: status.running,
-      ...(typeof status.port === "number" ? { port: status.port } : {}),
+    updateServerStatusView(status, {
+      statusText: document.querySelector("#asistan-status-text"),
+      statusDetails: document.querySelector("#asistan-status-details"),
+      statusDot: document.querySelector("#asistan-status-dot"),
     });
-
-    if (statusDetails) {
-      statusDetails.textContent = "";
-    }
-
-    if (status.running) {
-      statusDot?.classList.remove("status-disconnected", "status-error");
-      statusDot?.classList.add("status-connected");
-    } else {
-      statusDot?.classList.remove("status-connected", "status-error");
-      statusDot?.classList.add("status-disconnected");
-    }
   }
 
   async _onProviderChange(): Promise<void> {
@@ -1491,73 +1411,36 @@ export class AsistanController {
     title: string,
     subtitle: string
   ): void {
-    if (!overlayEl) return;
-
-    overlayEl.className = `webview-overlay ${stateClass}`; // Reset + state class
-
-    const titleEl = overlayEl.querySelector(".overlay-title");
-    const subtitleEl = overlayEl.querySelector(".overlay-subtitle");
-
-    if (titleEl) titleEl.textContent = title;
-    if (subtitleEl) subtitleEl.textContent = subtitle;
+    updateOverlayView(overlayEl, stateClass, title, subtitle);
   }
 
   _updateConnectedAIList(): void {
-    if (!this.connectedList) return;
-
-    const badges = [];
+    const nicknames = [];
 
     if (SlotController.isConnected("ai1") === true) {
-      const nickname = AppState.getNickname("ai1");
-      badges.push(`<span class="ai-badge ai1">${nickname}</span>`);
+      nicknames.push({ slotClass: "ai1", nickname: AppState.getNickname("ai1") });
     }
 
     if (SlotController.isConnected("ai2") === true) {
-      const nickname = AppState.getNickname("ai2");
-      badges.push(`<span class="ai-badge ai2">${nickname}</span>`);
+      nicknames.push({ slotClass: "ai2", nickname: AppState.getNickname("ai2") });
     }
 
-    if (badges.length === 0) {
-      this.connectedList.innerHTML = '<span class="ai-badge inactive">Bağlı AI yok</span>';
-    } else {
-      this.connectedList.innerHTML = badges.join("");
-    }
+    renderConnectedAiList(this.connectedList, nicknames);
   }
 
   _updateTrafficUI(trafficState: AsistanTrafficState | null): void {
     const state = trafficState as AsistanTrafficState;
     const status = state.state?.status;
     if (status === undefined) return;
-
-    const { loading, thinking, send } = status;
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const isConnected = slotState?.state === SlotState.CONNECTED;
 
     if (!isConnected) return;
 
-    if (this.statusDot) {
-      this.statusDot.classList.remove("loading", "thinking", "send-disabled");
-
-      if (loading === "busy") {
-        this.statusDot.classList.add("loading");
-      } else if (thinking === "busy") {
-        this.statusDot.classList.add("thinking");
-      } else if (send === "busy") {
-        this.statusDot.classList.add("send-disabled");
-      }
-    }
-
-    if (this.statusText) {
-      if (loading === "busy") {
-        this.statusText.textContent = "Yükleniyor...";
-      } else if (thinking === "busy") {
-        this.statusText.textContent = "Düşünüyor...";
-      } else if (send === "busy") {
-        this.statusText.textContent = "Gönderilemiyor";
-      } else {
-        this.statusText.textContent = "";
-      }
-    }
+    updateTrafficStatusView(state, {
+      statusDot: this.statusDot,
+      statusText: this.statusText,
+    });
   }
 
   _onSettingsChange(_settings: unknown, changedPaths: string[] = []): void {
