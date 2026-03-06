@@ -51,7 +51,10 @@ import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
 import { openTestResultsModal } from "./test-results-modal.js";
 import { bindAsistanBasicEvents } from "./event-bindings.js";
 import { populateAsistanProviderSelect } from "./provider-select.js";
-import { bindAsistanPrimaryWebviewEvents, bindAsistanWebviewIpcEvents } from "./webview-bindings.js";
+import {
+  bindAsistanPrimaryWebviewEvents,
+  bindAsistanWebviewIpcEvents,
+} from "./webview-bindings.js";
 import {
   applyConnectButtonState,
   renderConnectedAiList,
@@ -174,7 +177,9 @@ export class AsistanController {
     this.opencodeIndicator = document.getElementById("asistan-opencode-indicator");
     this.opencodeIndicatorDot = document.getElementById("asistan-opencode-indicator-dot");
     this.opencodeIndicatorText = document.getElementById("asistan-opencode-indicator-text");
-    this.opencodeActionBtn = document.getElementById("asistan-opencode-action-btn") as HTMLButtonElement | null;
+    this.opencodeActionBtn = document.getElementById(
+      "asistan-opencode-action-btn"
+    ) as HTMLButtonElement | null;
     this.opencodeSettingsBtn = document.getElementById(
       "asistan-opencode-settings-btn"
     ) as HTMLButtonElement | null;

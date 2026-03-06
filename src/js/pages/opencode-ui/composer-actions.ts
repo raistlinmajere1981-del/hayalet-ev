@@ -12,10 +12,7 @@ import {
 import { extractAssistantText } from "./message-content.js";
 import type { ComposerAttachment, RuntimeState } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 interface BuildMessageRequestInput {
   text: string;

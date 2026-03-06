@@ -6,10 +6,7 @@ export type ByIdFn = <T extends HTMLElement>(
   guard?: (element: T) => boolean
 ) => T | null;
 
-export function byId<T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-): T | null {
+export function byId<T extends HTMLElement>(id: string, guard?: (element: T) => boolean): T | null {
   const element = document.getElementById(id) as T | null;
   if (element == null) {
     return null;

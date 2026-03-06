@@ -108,8 +108,11 @@ Devam etmemi için "evet" yaz.
 5. hev_list_tools()                → Kategorize edilmiş güncel tool listesi
 6. hev_suggest_tool(intent)        → Amaca göre tool önerisi (lazy discovery)
 7. hev_fs_read({ file_path: ".rovo/_metadata/CHARACTER.md" }) → Karakter profilini yükle, Aktif Profil bölümündeki özelliklere göre davran
-8. hev_fs_read({ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }) → Statik DOM selector indeksini yükle; Electron/CDP işlemlerinde önce buradaki lookup'ı kullan
+8. hev_fs_read({ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }) → Donanım, OS, runtime ve shell/terminal profilini yükle; timeout, concurrency, ağır görev ve yerel bağımlılık kararlarında gerektiğinde kullan
+9. hev_fs_read({ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }) → Statik DOM selector indeksini yükle; Electron/CDP işlemlerinde önce buradaki lookup'ı kullan
 ```
+
+> **SYSTEM-INFO Kullanım Kuralı:** `.rovo/_metadata/SYSTEM-INFO.md` build sırasında otomatik üretilen bir ortam snapshot'ıdır. CPU/RAM/OS/runtime kapasitesi hakkında planlama, performans beklentisi ve yerel araç uyumluluğu kararlarında kullanılabilir; anlık `free RAM` gibi değerler runtime gerçeği değil, build-time referans kabul edilir.
 
 ## 🧭 Hardcoded Workflow Senaryoları (Tek Kaynak: AGENTS.md)
 
@@ -133,16 +136,16 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 
 - `typescript-fix-small`:
   1. `hev_dev_typescript_dashboard`
-  2. `hev_fs_show`
+  2. `hev_fs_read`
   3. `hev_dev_edit_lines`
   4. `hev_dev_check_syntax`
   5. `hev_dev_typescript_dashboard`
 
 - `file-edit-safe`:
-  1. `hev_fs_show`
+  1. `hev_fs_read`
   2. `hev_dev_edit_lines`
   3. `hev_dev_check_syntax`
-  4. `hev_fs_show` ile son kontrol
+  4. `hev_fs_read` ile son kontrol
 
 - `batch-refactor`:
   1. `hev_dev_analyze_project`
@@ -296,9 +299,10 @@ Memory akışı tamamen MCP üzerinden yürür.
 | --------------------------------- | ------------------------------ |
 | `.rovo/_metadata/VERSION-INFO.md` | Versiyon, dependency'ler       |
 | `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi (referans) |
+| `.rovo/_metadata/SYSTEM-INFO.md`  | Donanım, OS, runtime ve ortam profili |
 | `.rovo/_metadata/DOM-MANIFEST.json` | Statik DOM selector lookup indeksi |
 
-> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `DOM-MANIFEST.json` build sırasında statik tarama ile otomatik güncellenir; runtime Electron crawl/test içermez.
+> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `SYSTEM-INFO.md` ve `DOM-MANIFEST.json` build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
 
 ---
 

@@ -76,17 +76,15 @@ export async function toggleAsistanConnection(
     return;
   }
 
-  if (slotState?.state === SlotState.CONNECTED || controller._isServerRunning) {
+  if (slotState?.state === SlotState.CONNECTED) {
     controller._setButtonState(ConnectButtonState.STOPPING);
 
     try {
       Logger.debug(LogCategory.ASISTAN_CORE, "Webview disconnect başlatılıyor", {
-        slotState: slotState?.state,
+        slotState: slotState.state,
       });
 
-      if (slotState?.state === SlotState.CONNECTED) {
-        await SlotController.disconnect("ai0");
-      }
+      await SlotController.disconnect("ai0");
 
       Logger.debug(LogCategory.ASISTAN_CORE, "Sistem aktif sunucuları durduruluyor");
       await controller._stopSystemActiveServers();
@@ -137,7 +135,9 @@ export async function toggleAsistanConnection(
         const targetUrl = controller._resolveConnectUrl(result.url, providerId, options);
 
         const serverReady =
-          result.alreadyRunning === true ? true : await adapter.waitForReady(result.url, 90000, connectSignal);
+          result.alreadyRunning === true
+            ? true
+            : await adapter.waitForReady(result.url, 90000, connectSignal);
 
         if (controller._isConnectFlowCancelled(connectSignal)) {
           return;

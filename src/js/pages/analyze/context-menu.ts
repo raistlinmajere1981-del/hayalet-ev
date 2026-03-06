@@ -1,36 +1,20 @@
 /**
- * ContextMenu - Analyze sayfası context menu ve modal işlemleri
+ * Analyze message actions and read modal helpers.
  *
- * Bu modül mesaj context menu ve okuma modalını yönetir:
- * - Context menu oluşturma ve gösterme
- * - Read modal yönetimi
- * - Context action handling
+ * Bu modül mesaj aksiyonlarının davranışını ve okuma modalını yönetir.
  */
 
 import { AppState } from "../../modules/app-state.js";
 
-interface ContextPayload {
+export interface MessageActionPayload {
   provider: string;
   text?: string;
 }
 
+export type MessageAction = "read" | "prepend" | "append";
 type ActionCallback = () => void;
 
-let contextMenuEl: HTMLDivElement | null = null;
 let readModalEl: HTMLElement | null = null;
-
-export function initContextMenu(): void {
-  contextMenuEl = document.createElement("div");
-  contextMenuEl.className = "msg-context hidden";
-  contextMenuEl.innerHTML = `
-    <button data-action="read">Okuma modu</button>
-    <button data-action="prepend">Mesajın başına ekle</button>
-    <button data-action="append">Mesajın sonuna ekle</button>
-  `;
-  document.body.appendChild(contextMenuEl);
-
-  document.addEventListener("click", hideContextMenu);
-}
 
 export function initReadModal(): void {
   readModalEl = document.getElementById("read-modal");
@@ -38,38 +22,9 @@ export function initReadModal(): void {
   closeBtn?.addEventListener("click", hideReadModal);
 }
 
-export function showContextMenu(
-  event: MouseEvent,
-  payload: ContextPayload,
-  onAction?: ActionCallback
-): void {
-  event.preventDefault();
-
-  if (!contextMenuEl) return;
-
-  contextMenuEl.dataset["provider"] = payload.provider;
-  contextMenuEl.dataset["text"] = payload.text ?? "";
-  contextMenuEl.style.left = `${event.pageX}px`;
-  contextMenuEl.style.top = `${event.pageY}px`;
-  contextMenuEl.classList.remove("hidden");
-
-  contextMenuEl.querySelectorAll("button").forEach((btn) => {
-    btn.onclick = (e): void => {
-      const target = e.currentTarget as HTMLButtonElement;
-      const action = target.dataset["action"] ?? "";
-      handleContextAction(action, payload, onAction);
-      hideContextMenu();
-    };
-  });
-}
-
-function hideContextMenu(): void {
-  contextMenuEl?.classList.add("hidden");
-}
-
-function handleContextAction(
-  action: string,
-  payload: ContextPayload,
+export function applyMessageAction(
+  action: MessageAction,
+  payload: MessageActionPayload,
   onAction?: ActionCallback
 ): void {
   if (action === "read") {
@@ -77,26 +32,27 @@ function handleContextAction(
     return;
   }
 
-  if (action === "prepend" || action === "append") {
-    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
-    if (!textarea) return;
+  const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
+  if (!textarea) return;
 
-    const nickname = AppState.getNickname(payload.provider);
-    const prefix = `${nickname} : `;
-    const current = textarea.value;
+  const nickname = AppState.getNickname(payload.provider);
+  const prefix = `${nickname} : `;
+  const current = textarea.value;
 
-    const newVal =
-      action === "prepend"
-        ? `${prefix}${payload.text ?? ""}\n${current}`.trim()
-        : `${current}\n${prefix}${payload.text ?? ""}`.trim();
+  const newVal =
+    action === "prepend"
+      ? `${prefix}${payload.text ?? ""}\n${current}`.trim()
+      : `${current}\n${prefix}${payload.text ?? ""}`.trim();
 
-    textarea.value = newVal;
+  textarea.value = newVal;
 
-    onAction?.();
-  }
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  onAction?.();
 }
 
-export function showReadModal(payload: ContextPayload): void {
+export function showReadModal(payload: MessageActionPayload): void {
   if (!readModalEl) return;
 
   const body = document.getElementById("read-modal-body");

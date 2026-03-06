@@ -57,12 +57,7 @@ interface LifecycleConfig {
 interface LifecycleContext {
   getSlot: (slot: string) => SlotStateData | null;
   generateCorrelationId: (slot: string, operation: string) => string;
-  log: (
-    slot: string,
-    level: string,
-    message: string,
-    context?: { correlationId?: string }
-  ) => void;
+  log: (slot: string, level: string, message: string, context?: { correlationId?: string }) => void;
   emit: (slot: string, event: string, data?: Record<string, unknown>) => void;
   transition: (slot: string, newState: string, reason?: string) => TransitionResult;
   delay: (ms: number) => Promise<void>;
@@ -334,21 +329,14 @@ export async function disconnectSlotLifecycle(
     slotState.trafficStarted = false;
     context.transition(slot, context.states.ASSIGNED);
 
-    context.log(
-      slot,
-      "warning",
-      `Disconnect completed with errors: ${getErrorMessage(error)}`,
-      { correlationId }
-    );
+    context.log(slot, "warning", `Disconnect completed with errors: ${getErrorMessage(error)}`, {
+      correlationId,
+    });
     return { success: true, message: "disconnected-with-errors", correlationId };
   }
 }
 
-export function handleSlotUrlChange(
-  slot: SlotId,
-  newUrl: string,
-  context: LifecycleContext
-): void {
+export function handleSlotUrlChange(slot: SlotId, newUrl: string, context: LifecycleContext): void {
   const slotState = context.getSlot(slot);
   if (!slotState) {
     return;

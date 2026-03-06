@@ -363,7 +363,10 @@ class SlotControllerClass {
     return subscribeToSlotEvents(this._listeners, listener);
   }
 
-  on(eventType: string, listener: (payload: { event?: string; slot?: string }) => void): () => void {
+  on(
+    eventType: string,
+    listener: (payload: { event?: string; slot?: string }) => void
+  ): () => void {
     return subscribeToSpecificSlotEvent(this._listeners, eventType, listener);
   }
 

@@ -6,7 +6,7 @@ import { getErrorMessage } from "@shared/index.js";
  * Alt modüller:
  * - analyze/message-renderer.js: Mesaj render işlemleri
  * - analyze/upload-handler.js: Dosya yükleme işlemleri
- * - analyze/context-menu.js: Context menu ve modal
+ * - analyze/context-menu.js: Mesaj aksiyonları ve read modal
  * - analyze/draft-manager.js: Taslak yönetimi
  */
 
@@ -23,12 +23,7 @@ import { renderMessages, resetMessageRenderState } from "./analyze/message-rende
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
 import type { StagedFile } from "./analyze/upload-handler.js";
-import {
-  initContextMenu,
-  initReadModal,
-  showContextMenu,
-  showReadModal,
-} from "./analyze/context-menu.js";
+import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 
 interface ConversationSelectedDetail {
@@ -131,7 +126,6 @@ export class AnalyzeController {
     this.updateConnectionStates();
     this.refreshUploads();
 
-    initContextMenu();
     initReadModal();
     await this._initDraftSystem();
 
@@ -395,13 +389,10 @@ export class AnalyzeController {
   async _renderMessages(provider: "ai1" | "ai2"): Promise<void> {
     Logger.debug(LogCategory.ANALYZE, `_renderMessages called for: ${provider}`);
     const callbacks: RenderCallbacks = {
-      onContextMenu: (e: MouseEvent, payload: { provider: string; text: string }) => {
-        showContextMenu(e, payload, () => {
+      onMessageAction: (action, payload: { provider: string; text: string }) => {
+        applyMessageAction(action, payload, () => {
           this.updateSendButtonState();
         });
-      },
-      onDoubleClick: (payload: { provider: string; text: string }) => {
-        showReadModal(payload);
       },
     };
     const result = await renderMessages(provider, callbacks);

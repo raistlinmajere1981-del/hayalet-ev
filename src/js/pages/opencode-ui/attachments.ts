@@ -118,7 +118,9 @@ export function dedupeComposerAttachments(
   incoming: ComposerAttachment[]
 ): ComposerAttachment[] {
   const seen = new Set(
-    current.map((attachment) => `${attachment.name}:${attachment.size}:${attachment.base64.slice(0, 32)}`)
+    current.map(
+      (attachment) => `${attachment.name}:${attachment.size}:${attachment.base64.slice(0, 32)}`
+    )
   );
   const next = [...current];
   for (const attachment of incoming) {
@@ -145,8 +147,11 @@ export function renderAttachmentTrayHtml(attachments: ComposerAttachment[]): str
   return attachments
     .map((attachment) => {
       const sizeText = formatAttachmentSize(attachment.size);
-      const detail = [attachmentKindLabel(attachment), sizeText].filter((item) => item !== "").join(" • ");
-      const sourceLabel = attachment.source === "clipboard" ? "Panodan eklendi" : "Dosyadan eklendi";
+      const detail = [attachmentKindLabel(attachment), sizeText]
+        .filter((item) => item !== "")
+        .join(" • ");
+      const sourceLabel =
+        attachment.source === "clipboard" ? "Panodan eklendi" : "Dosyadan eklendi";
       return (
         '<div class="ds-attachment-chip" title="' +
         escapeHtml(`${attachment.name}\n${sourceLabel}`) +

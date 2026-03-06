@@ -1,10 +1,4 @@
-import {
-  asNumber,
-  asRecord,
-  asString,
-  parseRecord,
-  stringifyValue,
-} from "./shared.ts";
+import { asNumber, asRecord, asString, parseRecord, stringifyValue } from "./shared.ts";
 import type {
   JsonRecord,
   MessageRow,

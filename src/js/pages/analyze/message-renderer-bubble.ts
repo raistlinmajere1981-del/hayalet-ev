@@ -8,8 +8,10 @@ import {
 } from "./message-renderer-types.js";
 
 interface BubbleCallbacks {
-  onContextMenu?: (e: MouseEvent, data: { provider: string; text: string }) => void;
-  onDoubleClick?: (data: { provider: string; text: string }) => void;
+  onMessageAction?: (
+    action: "read" | "prepend" | "append",
+    data: { provider: string; text: string }
+  ) => void;
 }
 
 function formatTimestamp(timestamp: number | undefined): string {
@@ -44,11 +46,50 @@ export function createMessageBubble(
   meta.textContent = msg.author ?? msg.role;
   header.appendChild(meta);
 
+  const headerRight = document.createElement("div");
+  headerRight.className = "msg-header__right";
+
+  if (callbacks.onMessageAction && messageText.trim() !== "") {
+    const actions = document.createElement("div");
+    actions.className = "msg-actions";
+
+    const actionConfigs: Array<{
+      action: "read" | "prepend" | "append";
+      icon: string;
+      title: string;
+    }> = [
+      { action: "read", icon: "👁", title: "Okuma modu" },
+      { action: "prepend", icon: "↥", title: "Mesajin basina ekle" },
+      { action: "append", icon: "↧", title: "Mesajin sonuna ekle" },
+    ];
+
+    actionConfigs.forEach(({ action, icon, title }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "msg-action-btn";
+      button.textContent = icon;
+      button.title = title;
+      button.setAttribute("aria-label", title);
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        callbacks.onMessageAction?.(action, { provider, text: messageText });
+      });
+      actions.appendChild(button);
+    });
+
+    headerRight.appendChild(actions);
+  }
+
   if (msg.createdAt !== undefined) {
     const time = document.createElement("div");
     time.className = "msg-time";
     time.textContent = formatTimestamp(msg.createdAt);
-    header.appendChild(time);
+    headerRight.appendChild(time);
+  }
+
+  if (headerRight.childElementCount > 0) {
+    header.appendChild(headerRight);
   }
 
   bubble.appendChild(header);
@@ -76,18 +117,6 @@ export function createMessageBubble(
     });
 
     bubble.appendChild(attWrap);
-  }
-
-  if (callbacks.onContextMenu) {
-    bubble.addEventListener("contextmenu", (e) => {
-      callbacks.onContextMenu?.(e, { provider, text: messageText });
-    });
-  }
-
-  if (callbacks.onDoubleClick) {
-    bubble.addEventListener("dblclick", () => {
-      callbacks.onDoubleClick?.({ provider, text: messageText });
-    });
   }
 
   return bubble;

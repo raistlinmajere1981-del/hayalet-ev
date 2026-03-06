@@ -3,10 +3,7 @@ import { escapeHtml } from "./chat-utils.js";
 import { normalizeSessionId } from "./message-content.js";
 import type { OpencodeUiSessionSummary, RuntimeState, SessionTab } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 interface SessionListContext {
   runtime: RuntimeState;

@@ -50,9 +50,7 @@ interface SendBatchContext {
 
 interface SendProtocolContext {
   ensureReady: () => Promise<void>;
-  sendBatch: (
-    params: SendBatchParams
-  ) => Promise<{
+  sendBatch: (params: SendBatchParams) => Promise<{
     success: boolean;
     message?: string;
   }>;
@@ -206,13 +204,7 @@ export async function sendToTargetsWithContext(
 }
 
 export async function sendProtocolWithContext(
-  {
-    room = "",
-    scenario = "",
-    targets = [],
-    context = {},
-    mode = null,
-  }: SendProtocolParams = {},
+  { room = "", scenario = "", targets = [], context = {}, mode = null }: SendProtocolParams = {},
   sendContext: SendProtocolContext
 ): Promise<{ success: boolean; message?: string }> {
   await sendContext.ensureReady();
@@ -243,7 +235,8 @@ export async function sendProtocolWithContext(
     typeof payload.protocolKey === "string" && payload.protocolKey !== ""
       ? payload.protocolKey
       : undefined;
-  const resolveOptions = protocolKey !== undefined ? { fallbackTitle, protocolKey } : { fallbackTitle };
+  const resolveOptions =
+    protocolKey !== undefined ? { fallbackTitle, protocolKey } : { fallbackTitle };
   const resolvedMessage = await resolveComposedProtocolMessage(resolveOptions);
 
   payload.message = replaceProtocolTags(resolvedMessage.message);

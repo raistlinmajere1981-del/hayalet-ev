@@ -827,7 +827,10 @@ declare global {
       error?: string;
     }>;
 
-    opencodeUiSessionWatchStart: (sessionId: string, dbPath?: string) => Promise<{ success: boolean }>;
+    opencodeUiSessionWatchStart: (
+      sessionId: string,
+      dbPath?: string
+    ) => Promise<{ success: boolean }>;
     opencodeUiSessionWatchStop: () => Promise<{ success: boolean }>;
     opencodeUiOnSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
     opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;

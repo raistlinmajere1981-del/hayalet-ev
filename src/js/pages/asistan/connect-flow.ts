@@ -9,7 +9,7 @@ export function resolveAsistanConnectButtonState(options: {
     return ConnectButtonState.CANCEL_CONNECTING;
   }
 
-  if (options.slotState === "connected" || options.isServerRunning) {
+  if (options.slotState === "connected") {
     return ConnectButtonState.CONNECTED;
   }
 

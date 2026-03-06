@@ -101,10 +101,7 @@ export function ensureWebviewMounted(
   return moved;
 }
 
-export function ensureWebviewAttached(
-  slots: Record<string, SlotStateData>,
-  slot: SlotId
-): boolean {
+export function ensureWebviewAttached(slots: Record<string, SlotStateData>, slot: SlotId): boolean {
   const slotState = getSlotState(slots, slot);
   if (slotState?.webview == null) {
     return false;

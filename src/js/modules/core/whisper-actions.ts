@@ -187,7 +187,8 @@ export async function handleCaughtCommandWithContext(
   const nickAi2 = AppState.getNickname("ai2");
   const humanName = AppState.getNickname("user");
   const who = provider === "ai1" ? nickAi1 : provider === "ai2" ? nickAi2 : provider;
-  const argLabel = typeof payload.args === "string" && payload.args.length !== 0 ? payload.args : "";
+  const argLabel =
+    typeof payload.args === "string" && payload.args.length !== 0 ? payload.args : "";
   const cmdText = `++cmd:${commandName}${argLabel !== "" ? `(${argLabel})` : "()"}`;
   const sender = payload.source === "manual" ? humanName : who;
   const queuePayload = {

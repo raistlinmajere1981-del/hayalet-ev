@@ -72,7 +72,13 @@ export function updateAsistanConnectionUI(
 
     if (!hasAccount) {
       overlayVisible = true;
-      controller._updateOverlay(overlayEl, "empty", "🤖", "Asistan Seçilmedi", "Provider seçip bağlanın");
+      controller._updateOverlay(
+        overlayEl,
+        "empty",
+        "🤖",
+        "Asistan Seçilmedi",
+        "Provider seçip bağlanın"
+      );
     } else if (isConnectingUi) {
       overlayVisible = true;
       const stage = resolveOverlayStage({
@@ -153,7 +159,9 @@ export function updateAsistanConnectionUI(
     controller.statusText.textContent = formatConnectionIndicatorText({
       isConnected,
       isServerRunning: controller._isServerRunning,
-      ...(typeof controller._systemServerPort === "number" ? { port: controller._systemServerPort } : {}),
+      ...(typeof controller._systemServerPort === "number"
+        ? { port: controller._systemServerPort }
+        : {}),
     });
   }
 

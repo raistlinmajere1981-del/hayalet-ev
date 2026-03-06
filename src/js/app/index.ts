@@ -195,7 +195,9 @@ async function initApp(): Promise<void> {
     // --auto-connect: Asistan sayfasındaysa bağlan butonuna otomatik tıkla
     if (autoConnect && startPage === "asistan") {
       setTimeout(() => {
-        const connectBtn = document.getElementById("asistan-connect-btn") as HTMLButtonElement | null;
+        const connectBtn = document.getElementById(
+          "asistan-connect-btn"
+        ) as HTMLButtonElement | null;
         if (connectBtn !== null && !connectBtn.disabled) {
           connectBtn.click();
           Logger.panel(

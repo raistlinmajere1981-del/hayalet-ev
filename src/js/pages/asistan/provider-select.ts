@@ -35,7 +35,9 @@ export function populateAsistanProviderSelect({
     providerSelect.appendChild(option);
   });
 
-  const asistanAccounts = settings?.asistanAccounts as { id: string; provider?: string }[] | undefined;
+  const asistanAccounts = settings?.asistanAccounts as
+    | { id: string; provider?: string }[]
+    | undefined;
   const asistanSlot = settings?.asistanSlot as { accountId?: string } | undefined;
   const account = asistanAccounts?.find((entry) => entry.id === asistanSlot?.accountId);
   if (

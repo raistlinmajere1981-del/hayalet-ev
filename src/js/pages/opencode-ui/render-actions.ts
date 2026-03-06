@@ -2,10 +2,7 @@ import { escapeHtml } from "./chat-utils.js";
 import { normalizeString, toCompactLabel, toWorkspaceRelativePath } from "./message-content.js";
 import type { OpencodeUiTodoItem, OpencodeUiToolCall } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 export interface RenderContext {
   byId: ByIdFn;

@@ -142,17 +142,28 @@ async function launchOpencodeInstallFlow(): Promise<void> {
   }
 
   if (result.fallbackToBrowser === true) {
-    Toast.success("OpenCode install sayfası açıldı", "Terminal açılamadı, resmi kurulum sayfası açıldı.");
+    Toast.success(
+      "OpenCode install sayfası açıldı",
+      "Terminal açılamadı, resmi kurulum sayfası açıldı."
+    );
     return;
   }
 
-  Toast.success("OpenCode kurulum terminali açıldı", "Kurulum bitince aynı butonla tekrar kontrol edebilirsin.");
+  Toast.success(
+    "OpenCode kurulum terminali açıldı",
+    "Kurulum bitince aynı butonla tekrar kontrol edebilirsin."
+  );
 }
 
-export async function handleOpencodeActionButtonClick(elements: OpencodeIndicatorElements): Promise<void> {
+export async function handleOpencodeActionButtonClick(
+  elements: OpencodeIndicatorElements
+): Promise<void> {
   const electronApi = window.electronAPI;
   const actionButton = elements.actionButton ?? null;
-  const loadingMessage = getDetectedOpencodeVersion() !== null ? "Update kontrol ediliyor..." : "Kurulum hazırlanıyor...";
+  const loadingMessage =
+    getDetectedOpencodeVersion() !== null
+      ? "Update kontrol ediliyor..."
+      : "Kurulum hazırlanıyor...";
   const loadingToastId = Toast.loading("OpenCode", loadingMessage);
 
   setOpencodeActionButtonState(actionButton, {
@@ -191,7 +202,9 @@ export async function handleOpencodeActionButtonClick(elements: OpencodeIndicato
       throw new Error("OpenCode update IPC bulunamadı.");
     }
 
-    const result = (await electronApi.opencodeCheckUpdates(detectedVersion)) as OpencodeUpdateCheckResult;
+    const result = (await electronApi.opencodeCheckUpdates(
+      detectedVersion
+    )) as OpencodeUpdateCheckResult;
     if (result.success !== true) {
       throw new Error(result.error ?? "OpenCode update kontrolü başarısız oldu.");
     }
@@ -241,7 +254,9 @@ export async function handleOpencodeActionButtonClick(elements: OpencodeIndicato
   }
 }
 
-export async function openOpencodeSettingsModal(options: { onSaved?: () => void } = {}): Promise<void> {
+export async function openOpencodeSettingsModal(
+  options: { onSaved?: () => void } = {}
+): Promise<void> {
   const prefs = getOpencodePreferences(SettingsManager.getSnapshot() as AppSettings | null);
   const modalModule = await import("../../ui/modal-manager.js");
   const electronApi = window.electronAPI;
@@ -415,14 +430,16 @@ export async function openOpencodeSettingsModal(options: { onSaved?: () => void 
             }
 
             await SettingsManager.set("assistants.opencode", {
-              binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+              binaryPath:
+                lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
               defaultPort: parsedPort,
               version: lastValidation.version,
             });
 
             setCheckResult("Ayarlar kaydedildi.", "success");
             Logger.info(LogCategory.ASISTAN_CORE, "OpenCode ayarları güncellendi", {
-              binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+              binaryPath:
+                lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
               defaultPort: parsedPort,
               version: lastValidation.version,
             });

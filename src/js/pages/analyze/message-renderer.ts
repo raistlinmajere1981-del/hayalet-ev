@@ -22,8 +22,10 @@ import {
 import { createMessageBubble } from "./message-renderer-bubble.js";
 
 export interface RenderCallbacks {
-  onContextMenu?: (e: MouseEvent, data: { provider: string; text: string }) => void;
-  onDoubleClick?: (data: { provider: string; text: string }) => void;
+  onMessageAction?: (
+    action: "read" | "prepend" | "append",
+    data: { provider: string; text: string }
+  ) => void;
 }
 
 interface RenderState {

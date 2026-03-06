@@ -72,9 +72,10 @@ function filterModelItems(runtime: RuntimeState, ui: OverlayUiState): SelectItem
   const query = ui.searchQuery.trim().toLocaleLowerCase("tr");
 
   return runtime.modelItems.filter((item) => {
-    const label = `${item.label} ${item.subtitle ?? ""} ${item.providerName ?? item.providerId ?? ""}`
-      .trim()
-      .toLocaleLowerCase("tr");
+    const label =
+      `${item.label} ${item.subtitle ?? ""} ${item.providerName ?? item.providerId ?? ""}`
+        .trim()
+        .toLocaleLowerCase("tr");
     if (query !== "" && !label.includes(query)) {
       return false;
     }
@@ -112,7 +113,9 @@ function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
           const isHidden = item.isHidden === true;
           const isActive = runtime.activeModelKey === modelKey;
           const badges = [
-            isActive ? '<span class="model-settings__badge model-settings__badge--active">Secili</span>' : "",
+            isActive
+              ? '<span class="model-settings__badge model-settings__badge--active">Secili</span>'
+              : "",
             isDefault
               ? '<span class="model-settings__badge model-settings__badge--default">Default</span>'
               : "",
@@ -312,22 +315,22 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
         refresh();
       });
 
-    options.byId<HTMLElement>("model-settings-provider-list")?.addEventListener("click", (event) => {
-      const target = event.target as HTMLElement;
-      const providerId = target.closest<HTMLElement>("[data-provider-toggle]")?.dataset[
-        "providerToggle"
-      ];
-      if (providerId != null && providerId !== "") {
-        void toggleProviderVisibility(providerId);
-      }
-    });
+    options
+      .byId<HTMLElement>("model-settings-provider-list")
+      ?.addEventListener("click", (event) => {
+        const target = event.target as HTMLElement;
+        const providerId =
+          target.closest<HTMLElement>("[data-provider-toggle]")?.dataset["providerToggle"];
+        if (providerId != null && providerId !== "") {
+          void toggleProviderVisibility(providerId);
+        }
+      });
 
     options.byId<HTMLElement>("model-settings-model-list")?.addEventListener("click", (event) => {
       const target = event.target as HTMLElement;
 
-      const favoriteKey = target.closest<HTMLElement>("[data-model-favorite]")?.dataset[
-        "modelFavorite"
-      ];
+      const favoriteKey =
+        target.closest<HTMLElement>("[data-model-favorite]")?.dataset["modelFavorite"];
       if (favoriteKey != null && favoriteKey !== "") {
         void toggleModelFavorite(favoriteKey);
         return;
@@ -339,9 +342,8 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
         return;
       }
 
-      const defaultKey = target.closest<HTMLElement>("[data-model-default]")?.dataset[
-        "modelDefault"
-      ];
+      const defaultKey =
+        target.closest<HTMLElement>("[data-model-default]")?.dataset["modelDefault"];
       if (defaultKey != null && defaultKey !== "") {
         void setDefaultModel(defaultKey);
       }

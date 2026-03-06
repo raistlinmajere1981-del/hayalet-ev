@@ -31,7 +31,9 @@ interface BootstrapOpencodeUiAppOptions {
   startLiveMessageRefresh: () => void;
 }
 
-export async function bootstrapOpencodeUiApp(options: BootstrapOpencodeUiAppOptions): Promise<void> {
+export async function bootstrapOpencodeUiApp(
+  options: BootstrapOpencodeUiAppOptions
+): Promise<void> {
   const params = new URLSearchParams(window.location.search);
   const port = params.get("port") ?? "4096";
   const resumeSessionId = params.get("resumeSessionId") ?? "";
