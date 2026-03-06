@@ -135,6 +135,10 @@ export function initUIHelpers(): void {
     document.querySelectorAll<HTMLButtonElement>(".ds-right-tab[data-rtab]")
   );
   const rightPanels = Array.from(document.querySelectorAll<HTMLElement>(".ds-rtab-panel"));
+  const rightBody = document.querySelector<HTMLElement>(".ds-sidebar__body--right");
+  const rightTabsVisibilityBtn = document.getElementById(
+    "rtab-visibility-btn"
+  ) as HTMLButtonElement | null;
 
   const activateRightTab = function (name: string): void {
     rightTabs.forEach(function (tab) {
@@ -148,6 +152,22 @@ export function initUIHelpers(): void {
     });
   };
 
+  const setRightPanelsVisibility = function (visible: boolean): void {
+    if (rightBody != null) {
+      rightBody.classList.toggle("is-tabs-hidden", !visible);
+    }
+
+    if (rightTabsVisibilityBtn != null) {
+      rightTabsVisibilityBtn.textContent = visible ? "▾" : "▸";
+      rightTabsVisibilityBtn.setAttribute("title", visible ? "Sekmeleri gizle" : "Sekmeleri göster");
+      rightTabsVisibilityBtn.setAttribute(
+        "aria-label",
+        visible ? "Sağ panel sekmelerini gizle" : "Sağ panel sekmelerini göster"
+      );
+      rightTabsVisibilityBtn.setAttribute("aria-pressed", visible ? "false" : "true");
+    }
+  };
+
   rightTabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
       const name = tab.dataset["rtab"];
@@ -155,7 +175,13 @@ export function initUIHelpers(): void {
     });
   });
 
+  rightTabsVisibilityBtn?.addEventListener("click", function () {
+    const currentlyHidden = rightBody?.classList.contains("is-tabs-hidden") === true;
+    setRightPanelsVisibility(currentlyHidden);
+  });
+
   activateRightTab("health");
+  setRightPanelsVisibility(true);
 
   document.querySelectorAll(".ds-panel__header[data-toggle]").forEach(function (header) {
     header.addEventListener("click", function () {

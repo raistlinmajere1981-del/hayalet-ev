@@ -30,6 +30,7 @@
           </button>
           <button class="ds-workspace-add" id="workspace-add" title="Yeni Workspace">+</button>
         </div>
+        <div class="ds-workspace-bar__url" id="workspace-url-display" title="URL bilgisi">-</div>
         <button
           class="ds-workspace-bar__toggle-right ds-workspace-bar__toggle-right--active"
           id="toggle-right"
@@ -100,7 +101,7 @@
               />
               <div class="text-center">
                 <div class="text-sm font-medium text-secondary">OpenCode UI</div>
-                <div class="text-xs text-muted" id="server-url">Bağlantı bekleniyor...</div>
+                <div class="text-xs text-muted">Bağlantı bekleniyor...</div>
               </div>
             </div>
           </div>
@@ -123,6 +124,14 @@
                 <div class="ds-custom-select" id="model-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
                     <span class="ds-custom-select__label">Model ▾</span>
+                  </button>
+                  <div class="ds-custom-select__menu">
+                    <!-- JS tarafında populate edilir -->
+                  </div>
+                </div>
+                <div class="ds-custom-select" id="effort-dropdown">
+                  <button class="ds-custom-select__trigger" type="button">
+                    <span class="ds-custom-select__label">Effort ▾</span>
                   </button>
                   <div class="ds-custom-select__menu">
                     <!-- JS tarafında populate edilir -->
@@ -205,7 +214,17 @@
                 aria-controls="rtab-health"
                 tabindex="0"
               >
-                Health
+                Sunucu
+              </button>
+              <button
+                type="button"
+                id="rtab-visibility-btn"
+                class="ds-right-tabs__toggle"
+                title="Sekmeleri gizle"
+                aria-label="Sağ panel sekmelerini gizle"
+                aria-pressed="false"
+              >
+                ▾
               </button>
             </div>
 
@@ -235,14 +254,13 @@
                 aria-labelledby="rtab-btn-health"
               >
                 <div class="ds-panel" id="health-panel">
-                  <div class="ds-panel__header" data-toggle="health-panel-body">
+                  <div class="ds-panel__header">
                     <span class="ds-panel__icon">💊</span>
-                    <span class="ds-panel__title">DURUM</span>
+                    <span class="ds-panel__title">SUNUCU</span>
                     <span id="health-badge" class="ds-status-badge ds-status-badge--warning">
                       <span class="ds-status-badge__dot"></span>
                       <span>Bekleniyor</span>
                     </span>
-                    <span class="ds-panel__chevron">▾</span>
                   </div>
                   <div class="ds-panel__body" id="health-panel-body">
                     <div class="ds-kv-row">
@@ -266,8 +284,14 @@
                       <span class="ds-kv-row__label">Dizin</span>
                       <span class="ds-kv-row__value" id="working-dir">-</span>
                     </div>
-                    <div id="lsp-section" class="ds-side-subsection"></div>
-                    <div id="plugin-section" class="ds-side-subsection"></div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">LSP</span>
+                      <span class="ds-kv-row__value" id="lsp-status">-</span>
+                    </div>
+                    <div class="ds-kv-row">
+                      <span class="ds-kv-row__label">Plugin</span>
+                      <span class="ds-kv-row__value" id="plugin-status">-</span>
+                    </div>
                   </div>
                 </div>
               </section>

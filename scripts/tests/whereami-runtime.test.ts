@@ -83,6 +83,28 @@ test("returns transitioning during preparing-handoff", () => {
   assert.equal(result.shouldStop, false);
 });
 
+test("falls back to terminal when preparing-handoff runtime is stale and no processes are alive", () => {
+  const result = resolveWhereAmI({
+    control: {
+      workflowSessionId: "wf-stale",
+      desiredMode: "ghost-agent",
+      phase: "preparing-handoff",
+      updatedAt: "2026-03-02T10:00:00.000Z",
+    },
+    probes: {
+      mainProcess: false,
+      ghostProcess: false,
+      wrapperProcess: false,
+    },
+    nowIso: "2026-03-02T10:05:00.000Z",
+    maxStaleMs: 60000,
+  });
+
+  assert.equal(result.mode, "terminal");
+  assert.equal(result.shouldStop, false);
+  assert.match(result.reason, /stale runtime transition/i);
+});
+
 test("returns conflict and stop signal when runtime and process probes disagree", () => {
   const result = resolveWhereAmI({
     control: {

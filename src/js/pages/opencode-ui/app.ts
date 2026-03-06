@@ -79,6 +79,13 @@ interface SelectItem {
   value: string;
   label: string;
   subtitle?: string;
+  providerId?: string;
+  reasoningEfforts?: string[];
+}
+
+interface ModelMeta {
+  providerId: string;
+  reasoningEfforts: string[];
 }
 
 interface RuntimeState {
@@ -86,7 +93,9 @@ interface RuntimeState {
   dbPath: string;
   activeSessionId: string | null;
   activeModelId: string | null;
+  activeReasoningEffort: string | null;
   activeAgentId: string | null;
+  modelMetaById: Record<string, ModelMeta>;
   isSubmitting: boolean;
   lastRenderedMessageCount: number;
 }
@@ -96,14 +105,19 @@ const runtime: RuntimeState = {
   dbPath: "",
   activeSessionId: null,
   activeModelId: null,
+  activeReasoningEffort: null,
   activeAgentId: null,
+  modelMetaById: {},
   isSubmitting: false,
   lastRenderedMessageCount: 0,
 };
 
+const REASONING_EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
+
 const INITIAL_USAGE_TEXT = "Disk DB";
 let modeDropdown: CustomSelectAPI | null = null;
 let modelDropdown: CustomSelectAPI | null = null;
+let effortDropdown: CustomSelectAPI | null = null;
 
 function byId<T extends HTMLElement>(id: string, guard?: (element: T) => boolean): T | null {
   const element = document.getElementById(id) as T | null;
@@ -141,10 +155,11 @@ function sendSessionChangedToHost(sessionId: string | null): void {
   } catch (_error) {}
 }
 
-function setServerUrlLabel(baseUrl: string): void {
-  const serverUrlEl = byId<HTMLElement>("server-url");
-  if (serverUrlEl != null) {
-    serverUrlEl.textContent = baseUrl;
+function setWorkspaceUrlLabel(url: string): void {
+  const workspaceUrlEl = byId<HTMLElement>("workspace-url-display");
+  if (workspaceUrlEl != null) {
+    workspaceUrlEl.textContent = url;
+    workspaceUrlEl.setAttribute("title", url);
   }
 }
 
@@ -156,6 +171,25 @@ function getLogoFallback(): void {
     logoEl.style.display = "block";
     logoEl.removeAttribute("src");
   };
+}
+
+function showToast(message: string): void {
+  const existing = document.querySelector(".ds-toast");
+  if (existing != null) {
+    existing.remove();
+  }
+
+  const toast = document.createElement("div");
+  toast.className = "ds-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("ds-toast--fade");
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 2500);
 }
 
 function formatTimestamp(value: number): string {
@@ -192,6 +226,89 @@ function clearChatArea(): void {
 
 function normalizeString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function normalizeReasoningEfforts(raw: unknown): string[] {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return [];
+  }
+
+  const values = Object.keys(raw)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => REASONING_EFFORT_ORDER.includes(item));
+
+  if (values.length === 0) {
+    return [];
+  }
+
+  const unique = Array.from(new Set(values));
+  return REASONING_EFFORT_ORDER.filter((item) => unique.includes(item));
+}
+
+function extractModelMeta(modelRecord: Record<string, unknown>, providerId: string): ModelMeta {
+  const variants = modelRecord["variants"];
+  const reasoningEfforts = normalizeReasoningEfforts(variants);
+  return {
+    providerId,
+    reasoningEfforts,
+  };
+}
+
+function toReasoningEffortItems(modelId: string | null): SelectItem[] {
+  if (modelId == null || modelId === "") {
+    return [];
+  }
+
+  const meta = runtime.modelMetaById[modelId];
+  if (meta == null) {
+    return [];
+  }
+
+  return meta.reasoningEfforts.map((effort) => ({
+    value: effort,
+    label: `effort:${effort}`,
+    subtitle: modelId,
+  }));
+}
+
+interface BuildMessageRequestInput {
+  text: string;
+  modelId: string | null;
+  providerId: string | null;
+  agentId?: string | null;
+  reasoningEffort?: string | null;
+}
+
+export function buildMessageRequestBody(input: BuildMessageRequestInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    parts: [{ type: "text", text: input.text }],
+  };
+
+  if (
+    input.modelId != null &&
+    input.modelId !== "" &&
+    input.providerId != null &&
+    input.providerId !== ""
+  ) {
+    const modelPayload: Record<string, unknown> = {
+      providerID: input.providerId,
+      modelID: input.modelId,
+    };
+
+    if (input.reasoningEffort != null && input.reasoningEffort !== "") {
+      modelPayload["options"] = {
+        reasoningEffort: input.reasoningEffort,
+      };
+    }
+
+    body["model"] = modelPayload;
+  }
+
+  if (input.agentId != null && input.agentId !== "") {
+    body["agent"] = input.agentId;
+  }
+
+  return body;
 }
 
 function normalizeSessionId(payload: unknown): string {
@@ -683,17 +800,15 @@ async function sendMessage(): Promise<void> {
   scrollChatToBottom(true);
 
   try {
-    const body: Record<string, unknown> = {
-      parts: [{ type: "text", text }],
-    };
-
-    if (runtime.activeModelId != null && runtime.activeModelId !== "") {
-      body["model"] = runtime.activeModelId;
-    }
-
-    if (runtime.activeAgentId != null && runtime.activeAgentId !== "") {
-      body["agent"] = runtime.activeAgentId;
-    }
+    const modelMeta =
+      runtime.activeModelId != null ? runtime.modelMetaById[runtime.activeModelId] : undefined;
+    const body = buildMessageRequestBody({
+      text,
+      modelId: runtime.activeModelId,
+      providerId: modelMeta?.providerId ?? null,
+      agentId: runtime.activeAgentId,
+      reasoningEffort: runtime.activeReasoningEffort,
+    });
 
     const response = await apiCall<unknown>(
       "POST",
@@ -799,12 +914,53 @@ async function handleSessionAction(sessionId: string, action: string): Promise<v
   }
 
   if (action === "rename") {
-    const current = (await readSessionFromDisk(sessionId))?.title ?? "";
-    const next = window.prompt("Yeni session adi:", current);
-    const title = next?.trim();
-    if (title == null || title === "") return;
-    await apiCall("PATCH", `/session/${encodeURIComponent(sessionId)}`, { title });
-    await loadSessionListAndRender({ preserveActive: true });
+    const row = document.querySelector<HTMLElement>(
+      `.ds-session[data-session-id="${CSS.escape(sessionId)}"]`
+    );
+    const titleSpan = row?.querySelector<HTMLElement>(".ds-session__title");
+    if (titleSpan == null) return;
+
+    const current = titleSpan.textContent ?? "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "ds-session__title-input";
+    input.value = current;
+
+    const commitRename = async (): Promise<void> => {
+      const title = input.value.trim();
+      if (title !== "" && title !== current) {
+        try {
+          await apiCall("PATCH", `/session/${encodeURIComponent(sessionId)}`, { title });
+        } catch (_error) {}
+      }
+      await loadSessionListAndRender({ preserveActive: true });
+    };
+
+    let committed = false;
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        committed = true;
+        void commitRename();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        committed = true;
+        void loadSessionListAndRender({ preserveActive: true });
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      if (!committed) {
+        committed = true;
+        void commitRename();
+      }
+    });
+
+    titleSpan.textContent = "";
+    titleSpan.appendChild(input);
+    input.focus();
+    input.select();
     return;
   }
 
@@ -930,12 +1086,12 @@ function initChatEvents(): void {
 
   const attachFileBtn = byId<HTMLButtonElement>("attach-file-btn");
   attachFileBtn?.addEventListener("click", () => {
-    window.alert("Dosya ekleme bu iterasyonda aktif degil.");
+    showToast("Dosya ekleme bu iterasyonda aktif degil.");
   });
 
   const attachImageBtn = byId<HTMLButtonElement>("attach-image-btn");
   attachImageBtn?.addEventListener("click", () => {
-    window.alert("Clipboard yapistirma bu iterasyonda aktif degil.");
+    showToast("Clipboard yapistirma bu iterasyonda aktif degil.");
   });
 
   updateInputState();
@@ -970,7 +1126,7 @@ function normalizeAgentItems(data: unknown): SelectItem[] {
     .filter((item): item is SelectItem => item != null && item.value !== "");
 }
 
-function normalizeModelItems(payload: unknown): SelectItem[] {
+export function normalizeModelItems(payload: unknown): SelectItem[] {
   if (payload == null || typeof payload !== "object" || Array.isArray(payload)) {
     return [];
   }
@@ -986,12 +1142,17 @@ function normalizeModelItems(payload: unknown): SelectItem[] {
 
     const providerRecord = provider as Record<string, unknown>;
     const providerId = normalizeString(providerRecord["id"]);
-    const models = Array.isArray(providerRecord["models"]) ? providerRecord["models"] : [];
+    const modelsRaw = providerRecord["models"];
+    const models = Array.isArray(modelsRaw)
+      ? modelsRaw
+      : modelsRaw != null && typeof modelsRaw === "object"
+        ? Object.values(modelsRaw as Record<string, unknown>)
+        : [];
 
     models.forEach((model) => {
       if (typeof model === "string") {
         const label = providerId !== "" ? `${providerId}:${model}` : model;
-        items.push({ value: model, label });
+        items.push({ value: model, label, providerId, reasoningEfforts: [] });
         return;
       }
 
@@ -1009,7 +1170,14 @@ function normalizeModelItems(payload: unknown): SelectItem[] {
         const rawModelName = normalizeString(modelRecord["name"]);
         const modelName = rawModelName !== "" ? rawModelName : modelId;
         const label = providerId !== "" ? `${providerId}:${modelName}` : modelName;
-        items.push({ value: modelId, label, subtitle: modelId });
+        const modelMeta = extractModelMeta(modelRecord, providerId);
+        items.push({
+          value: modelId,
+          label,
+          subtitle: modelId,
+          providerId: modelMeta.providerId,
+          reasoningEfforts: modelMeta.reasoningEfforts,
+        });
       }
     });
   });
@@ -1046,6 +1214,28 @@ async function loadAgents(): Promise<void> {
   }
 }
 
+function refreshReasoningEffortDropdown(): void {
+  if (effortDropdown == null) {
+    return;
+  }
+
+  const items = toReasoningEffortItems(runtime.activeModelId);
+  if (items.length === 0) {
+    runtime.activeReasoningEffort = null;
+    effortDropdown.setError("Yok");
+    return;
+  }
+
+  const selected =
+    runtime.activeReasoningEffort != null &&
+    items.some((item) => item.value === runtime.activeReasoningEffort)
+      ? runtime.activeReasoningEffort
+      : (items[1]?.value ?? items[0]?.value ?? null);
+
+  runtime.activeReasoningEffort = selected;
+  effortDropdown.setItems(items, selected ?? undefined);
+}
+
 async function loadModels(): Promise<void> {
   if (modelDropdown == null) {
     return;
@@ -1054,10 +1244,19 @@ async function loadModels(): Promise<void> {
   try {
     const payload = await apiCall<unknown>("GET", "/config/providers");
     const items = normalizeModelItems(payload);
+    runtime.modelMetaById = {};
+    items.forEach((item) => {
+      runtime.modelMetaById[item.value] = {
+        providerId: item.providerId ?? "",
+        reasoningEfforts: item.reasoningEfforts ?? [],
+      };
+    });
 
     if (items.length === 0) {
       modelDropdown.setError("Yok");
       runtime.activeModelId = null;
+      runtime.activeReasoningEffort = null;
+      refreshReasoningEffortDropdown();
 
       const modelEl = byId<HTMLElement>("model");
       if (modelEl != null) {
@@ -1082,6 +1281,7 @@ async function loadModels(): Promise<void> {
 
     runtime.activeModelId = selected;
     modelDropdown.setItems(items, selected ?? undefined);
+    refreshReasoningEffortDropdown();
 
     const modelEl = byId<HTMLElement>("model");
     if (modelEl != null) {
@@ -1090,6 +1290,10 @@ async function loadModels(): Promise<void> {
     }
   } catch {
     modelDropdown.setError("Hata");
+    runtime.activeModelId = null;
+    runtime.activeReasoningEffort = null;
+    runtime.modelMetaById = {};
+    refreshReasoningEffortDropdown();
   }
 }
 
@@ -1120,11 +1324,16 @@ function initSelects(): void {
 
   modelDropdown = setupCustomSelect("model-dropdown", (value: string) => {
     runtime.activeModelId = value !== "" ? value : null;
+    refreshReasoningEffortDropdown();
 
     const modelEl = byId<HTMLElement>("model");
     if (modelEl != null) {
       modelEl.textContent = value !== "" ? value : "-";
     }
+  });
+
+  effortDropdown = setupCustomSelect("effort-dropdown", (value: string) => {
+    runtime.activeReasoningEffort = value !== "" ? value : null;
   });
 }
 
@@ -1159,6 +1368,7 @@ function startPeriodicRefresh(): void {
         await checkHealth();
         await loadStatusContext();
         await loadProviderContext();
+        await loadToolsFinalSnapshot();
       } catch (_error) {}
 
       if (!runtime.isSubmitting) {
@@ -1217,7 +1427,7 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
   runtime.dbPath = dbPath;
 
   setApiBaseUrl(baseUrl);
-  setServerUrlLabel(baseUrl);
+  setWorkspaceUrlLabel(window.location.href);
   getLogoFallback();
   updateUsagePlaceholders(INITIAL_USAGE_TEXT);
 

@@ -58,7 +58,7 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 
 > ⚠️ Onay formatı sunulmadan önce MCP bağımsız `npm run mode:status` çağrılır ve `npm run whereami` ile cross-check edilir.
 > ⚠️ `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken yapılır; diğer modlarda varsayılan muhatap `Kullanıcı` kabul edilir.
-> ⚠️ Bütün işlemlerde süreç başladığın noktaya dönmenle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır
+> ⚠️ Bütün işlemlerde süreç başladığı noktaya dönmekle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır
 
 ```
 [DEĞİŞİKLİK ONAYI]

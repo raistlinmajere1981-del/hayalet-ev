@@ -254,6 +254,96 @@ function parseMessages(messageRows: MessageRow[], partRows: PartRow[]): Opencode
   return messages;
 }
 
+function readUsageTokens(value: JsonRecord | null): { input: number; output: number } {
+  if (value === null) {
+    return { input: 0, output: 0 };
+  }
+
+  const input =
+    asNumber(value["input"]) ||
+    asNumber(value["prompt_tokens"]) ||
+    asNumber(value["inputTokens"]) ||
+    asNumber(value["promptTokens"]);
+
+  const outputBase =
+    asNumber(value["output"]) ||
+    asNumber(value["completion_tokens"]) ||
+    asNumber(value["outputTokens"]) ||
+    asNumber(value["completionTokens"]);
+
+  const reasoning = asNumber(value["reasoning"]) || asNumber(value["reasoning_tokens"]);
+
+  return {
+    input,
+    output: outputBase + reasoning,
+  };
+}
+
+function aggregateUsage(messageRows: MessageRow[], partRows: PartRow[]): Record<string, unknown> {
+  let messagePromptTokens = 0;
+  let messageCompletionTokens = 0;
+
+  for (const message of messageRows) {
+    const messageData = parseRecord(message.data);
+    if (messageData === null) {
+      continue;
+    }
+
+    const role = asString(messageData["role"]).trim();
+    if (role !== "assistant") {
+      continue;
+    }
+
+    const fromTokens = readUsageTokens(asRecord(messageData["tokens"]));
+    const fromUsage = readUsageTokens(asRecord(messageData["usage"]));
+
+    messagePromptTokens += fromTokens.input || fromUsage.input;
+    messageCompletionTokens += fromTokens.output || fromUsage.output;
+  }
+
+  if (messagePromptTokens > 0 || messageCompletionTokens > 0) {
+    return {
+      prompt_tokens: messagePromptTokens,
+      completion_tokens: messageCompletionTokens,
+      total_tokens: messagePromptTokens + messageCompletionTokens,
+    };
+  }
+
+  let promptTokens = 0;
+  let completionTokens = 0;
+
+  for (const part of partRows) {
+    const partData = parseRecord(part.data);
+    if (partData === null) {
+      continue;
+    }
+
+    const metadata =
+      asRecord(partData["metadata"]) ?? asRecord(asRecord(partData["state"])?.["metadata"]);
+    if (metadata === null) {
+      continue;
+    }
+
+    const usage = readUsageTokens(asRecord(metadata["usage"]));
+    if (usage.input === 0 && usage.output === 0) {
+      continue;
+    }
+
+    promptTokens += usage.input;
+    completionTokens += usage.output;
+  }
+
+  if (promptTokens === 0 && completionTokens === 0) {
+    return {};
+  }
+
+  return {
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: promptTokens + completionTokens,
+  };
+}
+
 export function listOpencodeUiSessions(
   options?: OpencodeUiStoreOptions
 ): OpencodeUiListSessionsResult {
@@ -471,7 +561,7 @@ export function readOpencodeUiSession(
         id: sessionRow.id,
         title: asString(sessionRow.title, "Untitled"),
         workspace_path: asString(sessionRow.directory),
-        usage: {},
+        usage: aggregateUsage(messageRows, partRows),
         messages,
       },
     };

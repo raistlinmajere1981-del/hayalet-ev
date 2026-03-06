@@ -74,6 +74,11 @@ export function defaultSettings(): AppSettings {
       lastOpencodeUiSessionId: null,
       lastActiveRelay: null,
       disabledMcpServers: [],
+      opencode: {
+        binaryPath: null,
+        defaultPort: 4096,
+        version: null,
+      },
     },
     logging: {
       level: "info",
@@ -311,6 +316,44 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   if (!Array.isArray(merged.assistants.disabledMcpServers)) {
     merged.assistants.disabledMcpServers = [];
+  }
+  if (!isPlainObject(merged.assistants.opencode)) {
+    merged.assistants.opencode = defaults.assistants?.opencode ?? {
+      binaryPath: null,
+      defaultPort: 4096,
+    };
+  }
+  if (
+    typeof merged.assistants.opencode.binaryPath !== "string" &&
+    merged.assistants.opencode.binaryPath !== null
+  ) {
+    merged.assistants.opencode.binaryPath = null;
+  }
+  if (
+    typeof merged.assistants.opencode.binaryPath === "string" &&
+    merged.assistants.opencode.binaryPath.trim() === ""
+  ) {
+    merged.assistants.opencode.binaryPath = null;
+  }
+  if (
+    typeof merged.assistants.opencode.defaultPort !== "number" ||
+    Number.isInteger(merged.assistants.opencode.defaultPort) !== true ||
+    merged.assistants.opencode.defaultPort < 1024 ||
+    merged.assistants.opencode.defaultPort > 65535
+  ) {
+    merged.assistants.opencode.defaultPort = 4096;
+  }
+  if (
+    typeof merged.assistants.opencode.version !== "string" &&
+    merged.assistants.opencode.version !== null
+  ) {
+    merged.assistants.opencode.version = null;
+  }
+  if (
+    typeof merged.assistants.opencode.version === "string" &&
+    merged.assistants.opencode.version.trim() === ""
+  ) {
+    merged.assistants.opencode.version = null;
   }
 
   if (!isPlainObject(merged.logging)) {

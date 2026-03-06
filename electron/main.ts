@@ -35,7 +35,7 @@ import {
   setMainWindow,
 } from "./window-manager.ts";
 import { parseStartupFlagsFromArgv } from "./startup-flags.ts";
-import { loadSettings } from "./settings-manager.ts";
+import { loadSettings, saveSettings } from "./settings-manager.ts";
 import { catboxUpload, uguuUpload } from "./webview-manager.ts";
 import {
   googledriveStartAuth,
@@ -67,6 +67,7 @@ import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
 import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
+import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
 
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
@@ -103,6 +104,86 @@ updateAppState({
   platform: process.platform,
   nodeVersion: process.version,
 });
+
+async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
+  try {
+    const settings = await loadSettings();
+    if (settings === null) return;
+
+    const settingsRecord = settings as unknown as Record<string, unknown>;
+    const assistantsRaw = settingsRecord["assistants"];
+    const assistants =
+      typeof assistantsRaw === "object" && assistantsRaw !== null
+        ? (assistantsRaw as Record<string, unknown>)
+        : ((settingsRecord["assistants"] = {}) as Record<string, unknown>);
+    const opencodeRaw = assistants["opencode"];
+    const opencode =
+      typeof opencodeRaw === "object" && opencodeRaw !== null
+        ? (opencodeRaw as Record<string, unknown>)
+        : ((assistants["opencode"] = {}) as Record<string, unknown>);
+
+    const defaultPortValue = opencode["defaultPort"];
+    if (
+      typeof defaultPortValue !== "number" ||
+      Number.isInteger(defaultPortValue) !== true ||
+      defaultPortValue < 1024 ||
+      defaultPortValue > 65535
+    ) {
+      opencode["defaultPort"] = 4096;
+    }
+
+    const configuredBinaryPath =
+      typeof opencode["binaryPath"] === "string" && opencode["binaryPath"].trim() !== ""
+        ? opencode["binaryPath"].trim()
+        : null;
+
+    const diagnosis = await opencodeServerManager.diagnoseBinary({
+      ...(configuredBinaryPath !== null ? { binaryPath: configuredBinaryPath } : {}),
+    });
+
+    const nextVersion =
+      diagnosis.available && typeof diagnosis.version === "string" && diagnosis.version.trim() !== ""
+        ? diagnosis.version.trim()
+        : null;
+    const detectedPathCandidate = (diagnosis.resolvedPath ?? diagnosis.command).trim();
+    const nextPath =
+      diagnosis.available === true
+        ? (detectedPathCandidate !== "" ? detectedPathCandidate : configuredBinaryPath)
+        : configuredBinaryPath;
+
+    const prevVersion =
+      typeof opencode["version"] === "string" && opencode["version"].trim() !== ""
+        ? opencode["version"].trim()
+        : null;
+    const prevPath =
+      typeof opencode["binaryPath"] === "string" && opencode["binaryPath"].trim() !== ""
+        ? opencode["binaryPath"].trim()
+        : null;
+
+    opencode["version"] = nextVersion;
+    opencode["binaryPath"] = nextPath;
+
+    if (prevVersion !== nextVersion || prevPath !== nextPath) {
+      await saveSettings(settings);
+    }
+
+    await logger.logInternal(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "Startup OpenCode binary probe completed",
+      {
+        available: diagnosis.available,
+        version: opencode["version"],
+        binaryPath: opencode["binaryPath"],
+        error: diagnosis.error,
+      }
+    );
+  } catch (error) {
+    await logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "Startup OpenCode probe failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -162,6 +243,8 @@ void app.whenReady().then(async () => {
       );
     }
 
+    await syncOpencodeBinarySettingsOnStartup();
+
     const startupFlags = parseStartupFlagsFromArgv(process.argv);
     mainWindow = createAppWindow({ startupFlags });
 
@@ -173,6 +256,7 @@ void app.whenReady().then(async () => {
     setupProviderHandlers();
     setupSettingsHandlers();
     setupMemoryHandlers();
+    setupOpencodeUiToolsHandlers();
 
     try {
       initWindowManager({ mainWindow });
@@ -437,6 +521,7 @@ registerHandler(
     options?: {
       port?: number;
       cors?: string[];
+      binaryPath?: string;
     }
   ) => {
     try {
@@ -495,6 +580,28 @@ registerHandler("opencode-serve-find-running", async (_event, start = 4096, end 
 
 registerHandler("opencode-serve-health", async (_event, url: string) => {
   return await opencodeServerManager.checkHealth(url);
+});
+
+registerHandler("opencode-serve-doctor", async (_event, options?: { binaryPath?: string }) => {
+  try {
+    const info = await opencodeServerManager.diagnoseBinary({
+      binaryPath: options?.binaryPath,
+    });
+    return {
+      success: true,
+      ...info,
+    };
+  } catch (err) {
+    const trimmedBinaryPath =
+      typeof options?.binaryPath === "string" ? options.binaryPath.trim() : "";
+    const command = trimmedBinaryPath !== "" ? trimmedBinaryPath : "opencode";
+    return {
+      success: false,
+      available: false,
+      command,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
 });
 
 // OpenCode UI Session FS — OpenCode disk session database read/list/ensure

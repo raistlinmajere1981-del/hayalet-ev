@@ -72,6 +72,11 @@ interface DefaultSettings {
     lastOpencodeUiSessionId: string | null;
     lastActiveRelay: string | null;
     disabledMcpServers: string[];
+    opencode: {
+      binaryPath: string | null;
+      defaultPort: number;
+      version: string | null;
+    };
   };
   logging: {
     level: string;
@@ -151,6 +156,11 @@ function getDefaultSettings(): DefaultSettings {
       lastOpencodeUiSessionId: null,
       lastActiveRelay: null,
       disabledMcpServers: [],
+      opencode: {
+        binaryPath: null,
+        defaultPort: 4096,
+        version: null,
+      },
     },
     logging: {
       level: LogLevel.INFO,

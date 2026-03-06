@@ -109,6 +109,15 @@ export interface AppSettings {
     lastActiveRelay?: string | null;
     /** Kullanıcının pasif yaptığı MCP sunucu isimleri */
     disabledMcpServers?: string[];
+    /** OpenCode server çalışma tercihleri */
+    opencode?: {
+      /** Boş/null ise PATH'teki `opencode` komutu kullanılır */
+      binaryPath?: string | null;
+      /** Server için tercih edilen başlangıç portu */
+      defaultPort?: number;
+      /** Son başarılı binary kontrolden bulunan sürüm */
+      version?: string | null;
+    };
   };
   logging?: {
     level?: string;

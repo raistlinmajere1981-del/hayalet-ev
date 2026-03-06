@@ -61,7 +61,12 @@ function runtimeExpectedMode(control) {
   return "hayalet-ev";
 }
 
-export function resolveWhereAmI({ control, probes, nowIso = new Date().toISOString(), maxStaleMs = 60000 }) {
+export function resolveWhereAmI({
+  control,
+  probes,
+  nowIso = new Date().toISOString(),
+  maxStaleMs = 60000,
+}) {
   const normalizedControl = normalizeControl(control, nowIso);
   const nowMs = toTimestampMs(nowIso);
   const updatedMs = toTimestampMs(normalizedControl.updatedAt);
@@ -84,11 +89,33 @@ export function resolveWhereAmI({ control, probes, nowIso = new Date().toISOStri
   }
 
   if (expected === "transitioning") {
-    return result("transitioning", false, `Runtime phase is ${normalizedControl.phase}.`, 0.92, observedSignals);
+    if (!probes.mainProcess && !probes.ghostProcess && !probes.wrapperProcess && staleRuntime) {
+      return result(
+        "terminal",
+        false,
+        "Stale runtime transition with no active processes; falling back to terminal mode.",
+        0.94,
+        observedSignals
+      );
+    }
+
+    return result(
+      "transitioning",
+      false,
+      `Runtime phase is ${normalizedControl.phase}.`,
+      0.92,
+      observedSignals
+    );
   }
 
   if (expected === inferred) {
-    return result(inferred, false, "Runtime and process probes agree.", staleRuntime ? 0.8 : 0.97, observedSignals);
+    return result(
+      inferred,
+      false,
+      "Runtime and process probes agree.",
+      staleRuntime ? 0.8 : 0.97,
+      observedSignals
+    );
   }
 
   if (expected === "hayalet-ev" && inferred === "terminal") {

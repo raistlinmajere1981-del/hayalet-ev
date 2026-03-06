@@ -13,6 +13,35 @@ export function getApiBaseUrl(): string {
   return opencodeUiBaseUrl;
 }
 
+function extractProxyErrorMessage(data: unknown): string {
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    return "";
+  }
+
+  const record = data as Record<string, unknown>;
+  const directMessage = record["message"];
+  if (typeof directMessage === "string" && directMessage !== "") {
+    return directMessage;
+  }
+
+  const errorField = record["error"];
+  if (Array.isArray(errorField) && errorField.length > 0) {
+    const first = errorField[0];
+    if (first != null && typeof first === "object") {
+      const message = (first as Record<string, unknown>)["message"];
+      if (typeof message === "string" && message !== "") {
+        return message;
+      }
+    }
+  }
+
+  return "";
+}
+
 export async function apiCall<T = Record<string, unknown>>(
   method: HttpMethod,
   path: string,
@@ -29,7 +58,11 @@ export async function apiCall<T = Record<string, unknown>>(
     const result = (await window.electronAPI["opencodeUiApiProxy"](proxyPayload)) as ApiProxyResult;
 
     if (!result.success) {
-      throw new Error(result.error ?? `HTTP ${String(result.status ?? "unknown")}`);
+      const detail =
+        result.error ??
+        extractProxyErrorMessage(result.data) ??
+        `HTTP ${String(result.status ?? "unknown")}`;
+      throw new Error(detail);
     }
 
     return (result.data ?? {}) as T;

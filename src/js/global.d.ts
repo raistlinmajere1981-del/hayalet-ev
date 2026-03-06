@@ -705,7 +705,7 @@ declare global {
       args?: Record<string, unknown>
     ) => Promise<IPCResult & { command?: string }>;
 
-    opencodeServeStart: (options?: { port?: number; cors?: string[] }) => Promise<{
+    opencodeServeStart: (options?: { port?: number; cors?: string[]; binaryPath?: string }) => Promise<{
       success: boolean;
       port?: number;
       url?: string;
@@ -739,6 +739,14 @@ declare global {
       running: boolean;
       port?: number;
       url?: string;
+      error?: string;
+    }>;
+    opencodeServeDoctor: (options?: { binaryPath?: string }) => Promise<{
+      success: boolean;
+      available: boolean;
+      command: string;
+      version?: string;
+      resolvedPath?: string;
       error?: string;
     }>;
 
@@ -787,6 +795,19 @@ declare global {
           toolCalls?: Array<{ name: string; args?: string; result?: string }>;
         }>;
       };
+      error?: string;
+    }>;
+
+    opencodeUiHevTools: () => Promise<{
+      success: boolean;
+      total: number;
+      generatedAt: string;
+      categories: Array<{
+        name: string;
+        count: number;
+        tools: Array<{ name: string; description: string }>;
+      }>;
+      toolNames: string[];
       error?: string;
     }>;
 

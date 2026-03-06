@@ -5,10 +5,19 @@ export type McpStatusMap = Record<string, unknown>;
 interface GlobalHealthResponse {
   healthy?: boolean;
   version?: string;
+  [key: string]: unknown;
 }
 
 interface PathResponse {
   path?: string;
+  directory?: string;
+  worktree?: string;
+}
+
+interface HevToolsResponse {
+  success?: boolean;
+  total?: number;
+  toolNames?: string[];
 }
 
 const TRANSITIONAL_MCP_STATUSES = new Set([
@@ -19,6 +28,19 @@ const TRANSITIONAL_MCP_STATUSES = new Set([
   "connecting",
   "pending",
 ]);
+
+const MANUAL_MCP_SERVER_NAMES = new Set(["hayalet-ev"]);
+const MCP_TOGGLE_PENDING = new Set<string>();
+let workspacePathForManualMcp = "";
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 function extractMcpStatus(raw: unknown): string {
   if (typeof raw === "string") {
@@ -33,6 +55,423 @@ function extractMcpStatus(raw: unknown): string {
   }
 
   return "";
+}
+
+function getMcpStatusBadge(status: string): {
+  label: string;
+  badgeType: "success" | "warning" | "error";
+} {
+  switch (status) {
+    case "connected":
+    case "ready":
+      return { label: "Aktif", badgeType: "success" };
+    case "starting":
+    case "initializing":
+    case "connecting":
+    case "restarting":
+    case "pending":
+      return { label: "Baslaniyor...", badgeType: "warning" };
+    case "disconnected":
+      return { label: "Bagli Degil", badgeType: "error" };
+    case "error":
+    case "failed":
+      return { label: "Hata", badgeType: "error" };
+    default:
+      return { label: "Bilinmiyor", badgeType: "warning" };
+  }
+}
+
+async function loadHevToolCount(): Promise<number | null> {
+  if (
+    window.electronAPI == null ||
+    typeof window.electronAPI["opencodeUiHevTools"] !== "function"
+  ) {
+    return null;
+  }
+
+  try {
+    const result = (await window.electronAPI["opencodeUiHevTools"]()) as HevToolsResponse;
+    if (result.success !== true) {
+      return null;
+    }
+
+    if (typeof result.total === "number" && Number.isFinite(result.total)) {
+      return result.total;
+    }
+
+    if (Array.isArray(result.toolNames)) {
+      return result.toolNames.filter((toolName) => typeof toolName === "string" && toolName !== "")
+        .length;
+    }
+  } catch (_error) {}
+
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && value !== undefined && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeStateLabel(value: string): string {
+  const normalized = value.trim().toLowerCase();
+
+  switch (normalized) {
+    case "healthy":
+    case "ready":
+    case "connected":
+    case "active":
+    case "ok":
+      return "Aktif";
+    case "starting":
+    case "initializing":
+    case "connecting":
+    case "restarting":
+    case "pending":
+      return "Baslatiliyor";
+    case "error":
+    case "failed":
+    case "unhealthy":
+      return "Hata";
+    case "disabled":
+    case "inactive":
+    case "off":
+      return "Kapali";
+    default:
+      return value;
+  }
+}
+
+function formatSummaryCount(value: number, unit: string): string {
+  return `${String(value)} ${unit}`;
+}
+
+function summarizeStatusValue(raw: unknown, unit: string): string | null {
+  if (typeof raw === "string" && raw.trim() !== "") {
+    return normalizeStateLabel(raw);
+  }
+
+  if (typeof raw === "boolean") {
+    return raw ? "Aktif" : "Kapali";
+  }
+
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return formatSummaryCount(raw, unit);
+  }
+
+  if (Array.isArray(raw)) {
+    return formatSummaryCount(raw.length, unit);
+  }
+
+  if (!isRecord(raw)) {
+    return null;
+  }
+
+  const statusValue = raw["status"] ?? raw["state"] ?? raw["health"];
+  if (typeof statusValue === "string" && statusValue.trim() !== "") {
+    return normalizeStateLabel(statusValue);
+  }
+
+  const countValue = raw["count"] ?? raw["total"] ?? raw["active"] ?? raw["loaded"];
+  if (typeof countValue === "number" && Number.isFinite(countValue)) {
+    return formatSummaryCount(countValue, unit);
+  }
+
+  const listValue = raw["servers"] ?? raw["items"] ?? raw["plugins"] ?? raw["list"];
+  if (Array.isArray(listValue)) {
+    return formatSummaryCount(listValue.length, unit);
+  }
+
+  const enabledValue = raw["enabled"] ?? raw["healthy"] ?? raw["ok"];
+  if (typeof enabledValue === "boolean") {
+    return enabledValue ? "Aktif" : "Kapali";
+  }
+
+  return null;
+}
+
+function resolveHealthSummary(
+  health: GlobalHealthResponse,
+  keys: string[],
+  unit: string
+): string | null {
+  for (const key of keys) {
+    const summary = summarizeStatusValue(health[key], unit);
+    if (summary !== null && summary !== "") {
+      return summary;
+    }
+  }
+
+  return null;
+}
+
+async function loadPluginSummaryFromApiClient(): Promise<string | null> {
+  const getPlugins = window.electronAPI?.APIClient?.getPlugins;
+  if (typeof getPlugins !== "function") {
+    return null;
+  }
+
+  try {
+    const result = await getPlugins();
+    if (!isRecord(result)) {
+      return null;
+    }
+
+    const plugins = result["plugins"];
+    if (Array.isArray(plugins)) {
+      return formatSummaryCount(plugins.length, "eklenti");
+    }
+
+    return summarizeStatusValue(plugins, "eklenti");
+  } catch (_error) {
+    return null;
+  }
+}
+
+function setHealthDetailValue(id: string, value: string): void {
+  const element = document.getElementById(id);
+  if (element != null) {
+    element.textContent = value;
+    element.setAttribute("title", value);
+  }
+}
+
+function buildLspSummary(health: GlobalHealthResponse): string {
+  return (
+    resolveHealthSummary(
+      health,
+      [
+        "lsp",
+        "lspStatus",
+        "lsp_status",
+        "lspServer",
+        "lspServers",
+        "languageServer",
+        "languageServers",
+      ],
+      "sunucu"
+    ) ?? "-"
+  );
+}
+
+function buildPluginSummary(health: GlobalHealthResponse, apiSummary: string | null): string {
+  return (
+    resolveHealthSummary(
+      health,
+      ["plugins", "plugin", "pluginStatus", "plugin_status", "pluginCount", "pluginsCount"],
+      "eklenti"
+    ) ??
+    apiSummary ??
+    "-"
+  );
+}
+
+function buildHealthBadgeLabel(healthy: boolean): string {
+  return healthy ? "Sağlıklı" : "Sorunlu";
+}
+
+function buildHealthBadgeClass(healthy: boolean): string {
+  return healthy ? "ds-status-badge--success" : "ds-status-badge--error";
+}
+
+function buildManualMcpConfig(name: string, enabled: boolean): Record<string, unknown> | null {
+  if (!MANUAL_MCP_SERVER_NAMES.has(name)) {
+    return null;
+  }
+
+  const workspacePath = workspacePathForManualMcp.trim();
+  if (workspacePath === "") {
+    return null;
+  }
+
+  if (name === "hayalet-ev") {
+    return {
+      type: "local",
+      command: ["npm", "--prefix", workspacePath, "run", "mcp:start"],
+      timeout: 60000,
+      enabled,
+    };
+  }
+
+  return null;
+}
+
+async function handleMcpToggleChange(input: HTMLInputElement): Promise<void> {
+  const serverName = (input.dataset["mcpName"] ?? "").trim();
+  const isManual = input.dataset["mcpManual"] === "1";
+
+  if (serverName === "") {
+    input.checked = !input.checked;
+    return;
+  }
+
+  if (!isManual) {
+    input.checked = !input.checked;
+    return;
+  }
+
+  if (MCP_TOGGLE_PENDING.has(serverName)) {
+    return;
+  }
+
+  const desiredEnabled = input.checked;
+  const config = buildManualMcpConfig(serverName, desiredEnabled);
+  if (config === null) {
+    input.checked = !desiredEnabled;
+    return;
+  }
+
+  MCP_TOGGLE_PENDING.add(serverName);
+  input.disabled = true;
+
+  try {
+    await apiCall("POST", "/mcp", {
+      name: serverName,
+      config,
+    });
+  } catch (_error) {
+    input.checked = !desiredEnabled;
+  } finally {
+    MCP_TOGGLE_PENDING.delete(serverName);
+    await checkHealth();
+  }
+}
+
+let mcpToggleHandlersBound = false;
+
+function bindMcpToggleHandlers(): void {
+  if (mcpToggleHandlersBound || typeof document === "undefined") {
+    return;
+  }
+
+  const listEl = document.getElementById("mcp-list");
+  if (listEl == null) {
+    return;
+  }
+
+  listEl.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    if (!target.classList.contains("ds-mcp-switch__input")) {
+      return;
+    }
+
+    void handleMcpToggleChange(target);
+  });
+
+  mcpToggleHandlersBound = true;
+}
+
+function renderMcpServerRows(
+  entries: Array<[string, unknown]>,
+  hevToolCount: number | null,
+  allowToggle: boolean
+): string {
+  return entries
+    .map(([name, raw]) => {
+      const status = extractMcpStatus(raw);
+      const isBusy = MCP_TOGGLE_PENDING.has(name);
+      const isConnected = status === "connected" || status === "ready";
+      const isTransitional = TRANSITIONAL_MCP_STATUSES.has(status) || isBusy;
+      const statusBadge = isBusy
+        ? { label: "Isleniyor...", badgeType: "warning" as const }
+        : getMcpStatusBadge(status);
+      const disabled = isTransitional || !allowToggle;
+      const switchClass = "ds-mcp-switch" + (disabled ? " ds-mcp-switch--disabled" : "");
+      const safeName = escapeHtml(name);
+      const countBadge =
+        name === "hayalet-ev" && typeof hevToolCount === "number"
+          ? '<span class="ds-mcp-tool-count">' + String(hevToolCount) + " tool</span>"
+          : "";
+
+      return (
+        '<div class="ds-item-row">' +
+        '<span class="ds-item-row__name">' +
+        safeName +
+        "</span>" +
+        countBadge +
+        '<span class="ds-status-badge ds-status-badge--' +
+        statusBadge.badgeType +
+        '">' +
+        statusBadge.label +
+        "</span>" +
+        '<label class="' +
+        switchClass +
+        '">' +
+        '<input type="checkbox" class="ds-mcp-switch__input" data-mcp-name="' +
+        safeName +
+        '" data-mcp-manual="' +
+        (allowToggle ? "1" : "0") +
+        '"' +
+        (isConnected ? " checked" : "") +
+        (disabled ? " disabled" : "") +
+        " />" +
+        '<span class="ds-mcp-switch__slider"></span>' +
+        "</label>" +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
+function renderMcpGroup(
+  title: string,
+  entries: Array<[string, unknown]>,
+  hevToolCount: number | null,
+  allowToggle: boolean
+): string {
+  if (entries.length === 0) {
+    return "";
+  }
+
+  return (
+    '<div class="ds-mcp-group">' +
+    '<div class="ds-mcp-group__header">' +
+    '<span class="ds-mcp-group__title">' +
+    title +
+    "</span>" +
+    '<span class="ds-mcp-group__count">' +
+    String(entries.length) +
+    "</span>" +
+    "</div>" +
+    renderMcpServerRows(entries, hevToolCount, allowToggle) +
+    "</div>"
+  );
+}
+
+function renderMcpServers(mcpServers: McpStatusMap, hevToolCount: number | null): void {
+  const panel = document.getElementById("mcp-panel");
+  if (panel != null) {
+    panel.classList.remove("is-hidden");
+  }
+
+  const listEl = document.getElementById("mcp-list");
+  const countEl = document.getElementById("mcp-count");
+  if (listEl == null) {
+    return;
+  }
+
+  const entries = Object.entries(mcpServers);
+  if (countEl != null) {
+    countEl.textContent = String(entries.length);
+  }
+
+  if (entries.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">MCP server bulunamadi</div>';
+    return;
+  }
+
+  const manualEntries = entries.filter(([name]) => MANUAL_MCP_SERVER_NAMES.has(name));
+  const builtInEntries = entries.filter(([name]) => !MANUAL_MCP_SERVER_NAMES.has(name));
+
+  const sections = [
+    renderMcpGroup("Built-in Sunucular", builtInEntries, null, false),
+    renderMcpGroup("Manuel Sunucular", manualEntries, hevToolCount, true),
+  ].filter((section) => section !== "");
+
+  listEl.innerHTML = sections.join("");
 }
 
 export function getUnresolvedMcpServers(mcpServers: McpStatusMap | undefined): string[] {
@@ -76,9 +515,13 @@ export interface McpSettledResult {
 }
 
 export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
-  const [globalHealth, mcpServers] = await Promise.all([
+  bindMcpToggleHandlers();
+
+  const [globalHealth, mcpServers, hevToolCount, pluginSummaryFromApi] = await Promise.all([
     apiCall<GlobalHealthResponse>("GET", "/global/health"),
     apiCall<McpStatusMap>("GET", "/mcp"),
+    loadHevToolCount(),
+    loadPluginSummaryFromApiClient(),
   ]);
 
   const versionEl = document.getElementById("version");
@@ -86,11 +529,22 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
     versionEl.textContent = globalHealth.version ?? "-";
   }
 
+  const healthy = globalHealth.healthy === true;
   const healthBadgeEl = document.getElementById("health-badge");
   if (healthBadgeEl != null) {
-    const healthy = globalHealth.healthy === true;
-    healthBadgeEl.textContent = healthy ? "Saglikli" : "Sorunlu";
+    healthBadgeEl.classList.remove("ds-status-badge--warning", "ds-status-badge--success", "ds-status-badge--error");
+    healthBadgeEl.classList.add(buildHealthBadgeClass(healthy));
+
+    const healthBadgeLabelEl = healthBadgeEl.querySelector("span:last-child");
+    if (healthBadgeLabelEl != null) {
+      healthBadgeLabelEl.textContent = buildHealthBadgeLabel(healthy);
+    }
   }
+
+  setHealthDetailValue("lsp-status", buildLspSummary(globalHealth));
+  setHealthDetailValue("plugin-status", buildPluginSummary(globalHealth, pluginSummaryFromApi));
+
+  renderMcpServers(mcpServers, hevToolCount);
 
   return { mcpServers };
 }
@@ -98,7 +552,9 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
 export async function loadStatusContext(): Promise<void> {
   const pathResult = await apiCall<PathResponse>("GET", "/path");
 
-  const path = typeof pathResult.path === "string" ? pathResult.path : "";
+  const path = pathResult.directory ?? pathResult.worktree ?? pathResult.path ?? "";
+  workspacePathForManualMcp = path;
+
   if (path !== "") {
     const workingDirEl = document.getElementById("working-dir");
     if (workingDirEl != null) {

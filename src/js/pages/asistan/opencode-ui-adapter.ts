@@ -8,8 +8,10 @@
  */
 
 import { LogCategory } from "@shared/logging-core";
+import type { AppSettings } from "@shared/settings.js";
 import type { AsistanProviderAdapter, ServerResult, ServerStatus } from "@shared/asistan.js";
 import { Logger } from "../../modules/logger/index.js";
+import { SettingsManager } from "../../modules/settings-manager.js";
 
 export class OpenCodeUiAdapter implements AsistanProviderAdapter {
   readonly id = "opencode-ui" as const;
@@ -18,6 +20,27 @@ export class OpenCodeUiAdapter implements AsistanProviderAdapter {
   private _isRunning = false;
   private _currentPort: number | null = null;
   private _serverUrl: string | null = null;
+
+  private _resolvePortRange(): { start: number; end: number } {
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const configuredPort = settings?.assistants?.opencode?.defaultPort;
+    const start =
+      typeof configuredPort === "number" &&
+      Number.isInteger(configuredPort) &&
+      configuredPort >= 1024 &&
+      configuredPort <= 65535
+        ? configuredPort
+        : 4096;
+    return { start, end: Math.min(start + 14, 65535) };
+  }
+
+  private _resolveBinaryPath(): string | undefined {
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const binaryPath = settings?.assistants?.opencode?.binaryPath;
+    if (typeof binaryPath !== "string") return undefined;
+    const trimmed = binaryPath.trim();
+    return trimmed !== "" ? trimmed : undefined;
+  }
 
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
@@ -28,7 +51,8 @@ export class OpenCodeUiAdapter implements AsistanProviderAdapter {
         return { success: false, error: "electronAPI mevcut değil" };
       }
 
-      const running = await electronApi.opencodeServeFindRunning(4096, 4110);
+      const portRange = this._resolvePortRange();
+      const running = await electronApi.opencodeServeFindRunning(portRange.start, portRange.end);
       if (running.running === true && running.port !== undefined && running.port !== 0) {
         this._isRunning = true;
         this._currentPort = running.port;
@@ -52,17 +76,23 @@ export class OpenCodeUiAdapter implements AsistanProviderAdapter {
       let port: number | undefined;
 
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
-        const portResult = await electronApi.opencodeServeFindPort(4096, 4110);
+        const portResult = await electronApi.opencodeServeFindPort(portRange.start, portRange.end);
         if (portResult.error !== undefined && portResult.error !== "") {
           throw new Error(portResult.error);
         }
         port = portResult.port;
       } else {
         port = parseInt(portSelection, 10);
+        if (Number.isNaN(port) || port < 1024 || port > 65535) {
+          throw new Error("Geçersiz port seçimi");
+        }
       }
+
+      const binaryPath = this._resolveBinaryPath();
 
       const result = await electronApi.opencodeServeStart({
         ...(typeof port === "number" ? { port } : {}),
+        ...(binaryPath !== undefined ? { binaryPath } : {}),
         cors: ["http://localhost:5173"],
       });
 

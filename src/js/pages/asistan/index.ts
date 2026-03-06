@@ -68,6 +68,10 @@ export class AsistanController {
   titleEl: HTMLElement | null;
   statusDot: HTMLElement | null;
   statusText: HTMLElement | null;
+  opencodeIndicator: HTMLElement | null;
+  opencodeIndicatorDot: HTMLElement | null;
+  opencodeIndicatorText: HTMLElement | null;
+  opencodeSettingsBtn: HTMLButtonElement | null;
   characterOverlay: CharacterOverlay;
   memoryOverlay: MemoryOverlay;
   memoryBtn: HTMLButtonElement | null;
@@ -109,6 +113,10 @@ export class AsistanController {
     this.titleEl = null;
     this.statusDot = null;
     this.statusText = null;
+    this.opencodeIndicator = null;
+    this.opencodeIndicatorDot = null;
+    this.opencodeIndicatorText = null;
+    this.opencodeSettingsBtn = null;
     this.characterOverlay = new CharacterOverlay();
     this.memoryOverlay = new MemoryOverlay();
     this.memoryBtn = null;
@@ -140,6 +148,12 @@ export class AsistanController {
     this.titleEl = document.getElementById("asistan-title");
     this.statusDot = document.getElementById("asistan-status-dot");
     this.statusText = document.getElementById("asistan-status-text");
+    this.opencodeIndicator = document.getElementById("asistan-opencode-indicator");
+    this.opencodeIndicatorDot = document.getElementById("asistan-opencode-indicator-dot");
+    this.opencodeIndicatorText = document.getElementById("asistan-opencode-indicator-text");
+    this.opencodeSettingsBtn = document.getElementById(
+      "asistan-opencode-settings-btn"
+    ) as HTMLButtonElement | null;
 
     this._populateProviderSelect();
     this._initActiveAdapter();
@@ -165,6 +179,7 @@ export class AsistanController {
     this.characterOverlay.init();
     this.memoryOverlay.init();
     this._setupEventListeners();
+    this._refreshOpencodeDoctorStatus();
     this._unsubSettings = SettingsManager.subscribe(
       ({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
         this._onSettingsChange(settings, changedPaths);
@@ -217,6 +232,286 @@ export class AsistanController {
       const catchCommandsValue = settings?.asistanSlot?.catchCommands;
       this.catchCommandsCheckbox.checked = catchCommandsValue === true;
     }
+  }
+
+  _normalizeOpencodePort(raw: unknown): number {
+    if (
+      typeof raw === "number" &&
+      Number.isInteger(raw) &&
+      raw >= 1024 &&
+      raw <= 65535
+    ) {
+      return raw;
+    }
+    return 4096;
+  }
+
+  _getOpencodePreferences(): { binaryPath: string | null; defaultPort: number } {
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const rawPath = settings?.assistants?.opencode?.binaryPath;
+    const binaryPath =
+      typeof rawPath === "string" && rawPath.trim() !== "" ? rawPath.trim() : null;
+    const defaultPort = this._normalizeOpencodePort(settings?.assistants?.opencode?.defaultPort);
+    return { binaryPath, defaultPort };
+  }
+
+  _setOpencodeIndicatorState(
+    state: "checking" | "ready" | "missing" | "error",
+    text: string,
+    title = ""
+  ): void {
+    if (this.opencodeIndicatorText) {
+      this.opencodeIndicatorText.textContent = text;
+    }
+    if (this.opencodeIndicator) {
+      this.opencodeIndicator.title = title;
+    }
+
+    const indicator = this.opencodeIndicator;
+    const dot = this.opencodeIndicatorDot;
+    if (!indicator || !dot) return;
+
+    indicator.classList.remove("is-ready", "is-missing", "is-error");
+    dot.classList.remove("status-ready", "status-missing", "status-error", "status-checking");
+
+    if (state === "ready") {
+      indicator.classList.add("is-ready");
+      dot.classList.add("status-ready");
+      return;
+    }
+
+    if (state === "missing") {
+      indicator.classList.add("is-missing");
+      dot.classList.add("status-missing");
+      return;
+    }
+
+    if (state === "error") {
+      indicator.classList.add("is-error");
+      dot.classList.add("status-error");
+      return;
+    }
+
+    dot.classList.add("status-checking");
+  }
+
+  _refreshOpencodeDoctorStatus(): void {
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const opencode = settings?.assistants?.opencode;
+    const defaultPort = this._normalizeOpencodePort(opencode?.defaultPort);
+    const binaryPath =
+      typeof opencode?.binaryPath === "string" && opencode.binaryPath.trim() !== ""
+        ? opencode.binaryPath.trim()
+        : null;
+    const version =
+      typeof opencode?.version === "string" && opencode.version.trim() !== ""
+        ? opencode.version.trim()
+        : null;
+
+    const titleLines = [`Varsayılan port: ${String(defaultPort)}`];
+    if (binaryPath !== null) {
+      titleLines.push(`Path: ${binaryPath}`);
+    }
+
+    if (version !== null) {
+      this._setOpencodeIndicatorState("ready", `OpenCode v${version}`, titleLines.join("\n"));
+      return;
+    }
+
+    this._setOpencodeIndicatorState("missing", "OpenCode bulunamadı", titleLines.join("\n"));
+  }
+
+  async _openOpencodeSettingsModal(): Promise<void> {
+    const prefs = this._getOpencodePreferences();
+    const modalModule = await import("../../ui/modal-manager.js");
+    const electronApi = window.electronAPI;
+
+    const content = document.createElement("div");
+    content.className = "opencode-settings-modal";
+    content.innerHTML = `
+      <div class="opencode-settings-row">
+        <label>Binary Path</label>
+        <input
+          class="input opencode-settings-input"
+          type="text"
+          placeholder="PATH'teki opencode için boş bırakın"
+          data-role="binary-path"
+        />
+        <p class="opencode-settings-help">
+          Boş bırakırsan sistem PATH içindeki <code>opencode</code> komutu kullanılır.
+        </p>
+      </div>
+      <div class="opencode-settings-actions">
+        <button class="btn btn-secondary btn-sm" data-action="browse" type="button">Dosya Seç</button>
+        <button class="btn btn-ghost btn-sm" data-action="reset" type="button">PATH Kullan</button>
+        <button class="btn btn-ghost btn-sm" data-action="check" type="button">Kontrol Et</button>
+      </div>
+      <div class="opencode-settings-row">
+        <label>Default Port</label>
+        <input
+          class="input opencode-settings-input"
+          type="number"
+          min="1024"
+          max="65535"
+          step="1"
+          data-role="default-port"
+        />
+      </div>
+      <div class="opencode-settings-check" data-role="check-result"></div>
+    `;
+
+    const binaryInput = content.querySelector<HTMLInputElement>('[data-role="binary-path"]');
+    const portInput = content.querySelector<HTMLInputElement>('[data-role="default-port"]');
+    const checkResult = content.querySelector<HTMLElement>('[data-role="check-result"]');
+    const browseBtn = content.querySelector<HTMLButtonElement>('[data-action="browse"]');
+    const resetBtn = content.querySelector<HTMLButtonElement>('[data-action="reset"]');
+    const checkBtn = content.querySelector<HTMLButtonElement>('[data-action="check"]');
+
+    if (binaryInput) binaryInput.value = prefs.binaryPath ?? "";
+    if (portInput) portInput.value = String(prefs.defaultPort);
+
+    const setCheckResult = (
+      message: string,
+      tone: "normal" | "success" | "error" = "normal"
+    ): void => {
+      if (!checkResult) return;
+      checkResult.textContent = message;
+      if (tone === "success") {
+        checkResult.style.color = "var(--color-success)";
+      } else if (tone === "error") {
+        checkResult.style.color = "var(--color-error)";
+      } else {
+        checkResult.style.color = "var(--text-secondary)";
+      }
+    };
+
+    let lastValidation: { binaryPath: string | null; version: string | null } | null = null;
+
+    const runDoctorCheck = async (): Promise<void> => {
+      if (electronApi === undefined || typeof electronApi.opencodeServeDoctor !== "function") {
+        setCheckResult("OpenCode doctor IPC bulunamadı.", "error");
+        return;
+      }
+
+      const value = binaryInput?.value.trim() ?? "";
+      setCheckResult("Kontrol ediliyor...");
+
+      try {
+        const result = await electronApi.opencodeServeDoctor(
+          value !== "" ? { binaryPath: value } : undefined
+        );
+        if (result.success !== true || result.available !== true) {
+          lastValidation = null;
+          setCheckResult(`Kontrol başarısız: ${result.error ?? "Bilinmeyen hata"}`, "error");
+          return;
+        }
+
+        const detectedPath =
+          typeof result.resolvedPath === "string" && result.resolvedPath.trim() !== ""
+            ? result.resolvedPath.trim()
+            : value !== ""
+              ? value
+              : null;
+        const detectedVersion =
+          typeof result.version === "string" && result.version.trim() !== ""
+            ? result.version.trim()
+            : null;
+
+        if (binaryInput && detectedPath !== null) {
+          binaryInput.value = detectedPath;
+        }
+
+        lastValidation = {
+          binaryPath: detectedPath,
+          version: detectedVersion,
+        };
+
+        setCheckResult(
+          `Kurulu: ${detectedVersion !== null ? `v${detectedVersion}` : "sürüm bilinmiyor"}`,
+          "success"
+        );
+      } catch (error) {
+        lastValidation = null;
+        setCheckResult(`Kontrol hatası: ${(error as Error).message}`, "error");
+      }
+    };
+
+    browseBtn?.addEventListener("click", () => {
+      void (async (): Promise<void> => {
+        if (electronApi === undefined || typeof electronApi.showOpenDialog !== "function") {
+          setCheckResult("Dosya seçici API bulunamadı.", "error");
+          return;
+        }
+        const selected = await electronApi.showOpenDialog({
+          title: "OpenCode Binary Seç",
+          properties: ["openFile"],
+        });
+        const pickedPath = selected.filePaths[0];
+        if (selected.canceled || pickedPath === undefined) return;
+        if (binaryInput) binaryInput.value = pickedPath;
+        setCheckResult("Binary path seçildi.");
+      })();
+    });
+
+    resetBtn?.addEventListener("click", () => {
+      if (binaryInput) binaryInput.value = "";
+      setCheckResult("PATH içindeki opencode kullanılacak.");
+    });
+
+    checkBtn?.addEventListener("click", () => {
+      void runDoctorCheck();
+    });
+
+    modalModule.ModalManager.open({
+      title: "OpenCode Ayarları",
+      content,
+      size: "medium",
+      buttons: [
+        { label: "Vazgeç", variant: "secondary" },
+        {
+          label: "Kaydet",
+          variant: "primary",
+          closeOnClick: false,
+          onClick: (): void => {
+            void (async (): Promise<void> => {
+              const normalizedPath = binaryInput?.value.trim() ?? "";
+              const normalizedPortText = portInput?.value.trim() ?? "";
+              const parsedPort = Number.parseInt(normalizedPortText, 10);
+              if (
+                Number.isInteger(parsedPort) !== true ||
+                parsedPort < 1024 ||
+                parsedPort > 65535
+              ) {
+                setCheckResult("Default port 1024-65535 aralığında olmalı.", "error");
+                return;
+              }
+
+              await runDoctorCheck();
+              if (lastValidation === null) {
+                setCheckResult("Kaydetmeden önce geçerli bir OpenCode binary doğrulaması gerekli.", "error");
+                return;
+              }
+
+              await SettingsManager.set("assistants.opencode", {
+                binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+                defaultPort: parsedPort,
+                version: lastValidation.version,
+              });
+
+              setCheckResult("Ayarlar kaydedildi.", "success");
+              Logger.info(LogCategory.ASISTAN_CORE, "OpenCode ayarları güncellendi", {
+                binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+                defaultPort: parsedPort,
+                version: lastValidation.version,
+              });
+              this._refreshOpencodeDoctorStatus();
+              modalModule.ModalManager.close();
+            })();
+          },
+        },
+      ],
+    });
+
   }
 
   _isResumeEnabled(options: { forceResume?: boolean } = {}): boolean {
@@ -467,6 +762,10 @@ export class AsistanController {
 
     this.providerSelect?.addEventListener("change", () => {
       void this._onProviderChange();
+    });
+
+    this.opencodeSettingsBtn?.addEventListener("click", () => {
+      void this._openOpencodeSettingsModal();
     });
 
     this.memoryBtn?.addEventListener("click", () => {
@@ -1448,6 +1747,17 @@ export class AsistanController {
     if (shouldRefreshToggles) {
       this._syncTogglePreferencesFromSettings();
     }
+
+    const shouldRefreshOpencodeIndicator =
+      changedPaths.includes("*") ||
+      changedPaths.some(
+        (path) => path === "assistants" || path.startsWith("assistants.opencode")
+      );
+
+    if (shouldRefreshOpencodeIndicator) {
+      this._refreshOpencodeDoctorStatus();
+    }
+
   }
 
   _setupWebviewEvents(webviewEl: WebviewElement): void {
@@ -1585,7 +1895,6 @@ export class AsistanController {
       clearTimeout(this._opencodeUrlSaveTimer);
       this._opencodeUrlSaveTimer = null;
     }
-
     this._unsubSettings?.();
     this._unsubSlot?.();
     this._unsubTraffic?.();

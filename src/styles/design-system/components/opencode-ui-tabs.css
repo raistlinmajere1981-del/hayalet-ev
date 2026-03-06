@@ -11,8 +11,8 @@
 }
 
 .ds-right-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  align-items: center;
   gap: var(--space-1);
   padding: var(--space-1);
   border-radius: var(--radius-lg);
@@ -21,6 +21,7 @@
 }
 
 .ds-right-tab {
+  flex: 1;
   height: var(--btn-height-xs);
   border-radius: var(--radius-sm);
   border: var(--border-1) solid transparent;
@@ -44,6 +45,38 @@
   background: var(--color-accent-muted);
 }
 
+.ds-right-tabs__toggle {
+  width: var(--btn-height-xs);
+  height: var(--btn-height-xs);
+  border-radius: var(--radius-sm);
+  border: var(--border-1) solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.ds-right-tabs__toggle:hover {
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+}
+
+.ds-right-tabs__toggle[aria-pressed="true"] {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
+}
+
+.ds-sidebar__body--right.is-tabs-hidden .ds-right-panels {
+  display: none;
+}
+
+.ds-sidebar__body--right.is-tabs-hidden .ds-right-secondary {
+  padding-top: 0;
+  border-top: none;
+}
+
 .ds-right-panels {
   flex: 1;
   min-height: 0;
@@ -56,6 +89,22 @@
 
 .ds-rtab-panel.is-active {
   display: block;
+}
+
+#health-panel > .ds-panel__header {
+  cursor: default;
+}
+
+#health-panel > .ds-panel__header:hover {
+  background: transparent;
+}
+
+#rtab-health .ds-kv-row__value {
+  max-width: 62%;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ds-right-secondary {

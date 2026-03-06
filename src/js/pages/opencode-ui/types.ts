@@ -2,7 +2,7 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export interface ApiProxyResult {
   success: boolean;
-  data?: Record<string, unknown>;
+  data?: unknown;
   error?: string;
   status?: number;
 }

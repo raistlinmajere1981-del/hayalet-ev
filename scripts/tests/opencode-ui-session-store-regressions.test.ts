@@ -335,3 +335,65 @@ test("readOpencodeUiSession parses user/assistant messages with files and tool c
     fixture.cleanup();
   }
 });
+
+test("readOpencodeUiSession aggregates usage from assistant message tokens", async () => {
+  const fixture = setupFixture();
+  const { db, dbPath } = fixture;
+
+  db.prepare(
+    `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    "ses_usage",
+    "proj_main",
+    "usage-session",
+    "/workspace/project",
+    "Usage Session",
+    "1.2.18",
+    1700000000000,
+    1700000005000
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_usage_assistant",
+    "ses_usage",
+    1700000005100,
+    1700000005100,
+    JSON.stringify({
+      role: "assistant",
+      providerID: "openai",
+      modelID: "gpt-5.3-codex",
+      tokens: {
+        input: 120,
+        output: 80,
+        reasoning: 20,
+      },
+    })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_usage_assistant_text",
+    "msg_usage_assistant",
+    "ses_usage",
+    1700000005110,
+    1700000005110,
+    JSON.stringify({ type: "text", text: "usage test" })
+  );
+
+  try {
+    const result = await readOpencodeUiSession("ses_usage", { dbPath });
+
+    assert.equal(result.success, true);
+    assert.equal(result.session?.usage?.["prompt_tokens"], 120);
+    assert.equal(result.session?.usage?.["completion_tokens"], 100);
+    assert.equal(result.session?.usage?.["total_tokens"], 220);
+  } finally {
+    fixture.cleanup();
+  }
+});

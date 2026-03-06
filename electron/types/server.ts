@@ -9,6 +9,7 @@
 export interface ServerOptions {
   port?: number;
   cors?: string[];
+  binaryPath?: string;
 }
 
 export interface ServerInfo {
@@ -19,4 +20,12 @@ export interface ServerInfo {
   startTime?: number;
   /** Mevcut çalışan sunucuya bağlanıldıysa true */
   alreadyRunning?: boolean;
+}
+
+export interface ServerBinaryInfo {
+  available: boolean;
+  command: string;
+  version?: string;
+  resolvedPath?: string;
+  error?: string;
 }

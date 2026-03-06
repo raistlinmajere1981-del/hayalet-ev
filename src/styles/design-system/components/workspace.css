@@ -50,6 +50,26 @@
   min-width: 0;
 }
 
+.ds-workspace-bar__url {
+  width: min(38vw, 560px);
+  min-width: 240px;
+  max-width: min(38vw, 560px);
+  height: var(--btn-height-sm);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--hover-overlay);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Right toggle (sidebar-right) */
 .ds-workspace-bar__toggle-right {
   display: flex;
@@ -145,4 +165,10 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .ds-workspace-bar__url {
+    display: none;
+  }
 }

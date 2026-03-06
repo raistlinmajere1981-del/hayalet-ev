@@ -111,6 +111,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeServeFindRunning: (start, end) =>
     ipcRenderer.invoke("opencode-serve-find-running", start, end),
   opencodeServeHealth: (url) => ipcRenderer.invoke("opencode-serve-health", url),
+  opencodeServeDoctor: (options) => ipcRenderer.invoke("opencode-serve-doctor", options),
 
   opencodeUiApiProxy: (options) => ipcRenderer.invoke("opencode-ui-api-proxy", options),
   opencodeUiFsListSessions: (dbPath) => ipcRenderer.invoke("opencode-ui-fs-list-sessions", dbPath),
@@ -118,6 +119,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("opencode-ui-fs-ensure-session", sessionId, title, dbPath),
   opencodeUiFsReadSession: (sessionId, dbPath) =>
     ipcRenderer.invoke("opencode-ui-fs-read-session", sessionId, dbPath),
+  opencodeUiHevTools: () => ipcRenderer.invoke("opencode-ui-hev-tools"),
 
   // Startup flags (read from process.argv)
   getStartupFlags: () => {

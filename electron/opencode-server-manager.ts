@@ -2,11 +2,11 @@ import type { ChildProcess } from "child_process";
 import { spawn } from "child_process";
 import * as net from "net";
 import { readFile, writeFile, unlink, mkdir } from "fs/promises";
-import { join, dirname } from "path";
+import { join, dirname, isAbsolute } from "path";
 import { getLoggerCore } from "./logger/index.js";
 import { Paths } from "./paths.js";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
-import type { ServerOptions, ServerInfo } from "./types/server.ts";
+import type { ServerOptions, ServerInfo, ServerBinaryInfo } from "./types/server.ts";
 import { SERVER_TIMEOUTS } from "@timeouts";
 
 function getPidFilePath(): string {
@@ -82,6 +82,143 @@ export class OpenCodeServerManager {
   private startTime: number | null = null;
   /** Kendi başlatmadığımız ama PID dosyası üzerinden sahiplendiğimiz harici process PID'i */
   private ownedExternalPid: number | null = null;
+
+  private resolveBinaryCommand(binaryPath?: string | null): string {
+    if (typeof binaryPath !== "string") return "opencode";
+    const trimmed = binaryPath.trim();
+    return trimmed !== "" ? trimmed : "opencode";
+  }
+
+  private parseVersion(raw: string): string | undefined {
+    const output = raw.trim();
+    if (output === "") return undefined;
+    const match = output.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)\b/);
+    return match?.[1];
+  }
+
+  private parseWhereisOutput(raw: string): string | undefined {
+    const line = raw.trim();
+    if (line === "") return undefined;
+    const colonIndex = line.indexOf(":");
+    const list = (colonIndex >= 0 ? line.slice(colonIndex + 1) : line)
+      .trim()
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token !== "");
+    return list.find((token) => token.startsWith("/"));
+  }
+
+  private async runCommandCapture(
+    command: string,
+    args: string[],
+    timeoutMs = 3000
+  ): Promise<{ exitCode: number | null; stdout: string; stderr: string; error?: string }> {
+    return await new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const finish = (payload: {
+        exitCode: number | null;
+        stdout: string;
+        stderr: string;
+        error?: string;
+      }): void => {
+        if (settled) return;
+        settled = true;
+        if (timer !== null) {
+          clearTimeout(timer);
+        }
+        resolve(payload);
+      };
+
+      const child = spawn(command, args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: false,
+      });
+
+      child.stdout.on("data", (data: unknown) => {
+        stdout += chunkToString(data);
+      });
+
+      child.stderr.on("data", (data: unknown) => {
+        stderr += chunkToString(data);
+      });
+
+      child.once("error", (error: Error) => {
+        finish({
+          exitCode: null,
+          stdout,
+          stderr,
+          error: error.message,
+        });
+      });
+
+      child.once("close", (code: number | null) => {
+        finish({
+          exitCode: code,
+          stdout,
+          stderr,
+        });
+      });
+
+      timer = setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {
+          // ignore
+        }
+        finish({
+          exitCode: null,
+          stdout,
+          stderr,
+          error: "Command timeout",
+        });
+      }, timeoutMs);
+    });
+  }
+
+  async diagnoseBinary(options: { binaryPath?: string | null } = {}): Promise<ServerBinaryInfo> {
+    const command = this.resolveBinaryCommand(options.binaryPath);
+    const versionProbe = await this.runCommandCapture(command, ["--version"], 3500);
+    const combinedOutput = `${versionProbe.stdout}\n${versionProbe.stderr}`.trim();
+
+    if (versionProbe.error !== undefined) {
+      return {
+        available: false,
+        command,
+        error: versionProbe.error,
+      };
+    }
+
+    if (versionProbe.exitCode !== 0) {
+      return {
+        available: false,
+        command,
+        error: combinedOutput !== "" ? combinedOutput : `Exit code ${String(versionProbe.exitCode)}`,
+      };
+    }
+
+    const version = this.parseVersion(combinedOutput);
+    let resolvedPath: string | undefined;
+
+    if (command.includes("/") || command.includes("\\")) {
+      resolvedPath = isAbsolute(command) ? command : join(Paths.getProjectRoot(), command);
+    } else if (process.platform !== "win32") {
+      const whereisResult = await this.runCommandCapture("whereis", [command], 1800);
+      if (whereisResult.exitCode === 0) {
+        resolvedPath = this.parseWhereisOutput(whereisResult.stdout);
+      }
+    }
+
+    return {
+      available: true,
+      command,
+      ...(version !== undefined ? { version } : {}),
+      ...(resolvedPath !== undefined ? { resolvedPath } : {}),
+    };
+  }
 
   private async isPortAvailable(port: number): Promise<boolean> {
     return await new Promise((resolve) => {
@@ -186,6 +323,15 @@ export class OpenCodeServerManager {
       port = foundPort;
     }
 
+    const binaryCommand = this.resolveBinaryCommand(options.binaryPath);
+    const binaryInfo = await this.diagnoseBinary({ binaryPath: binaryCommand });
+    if (!binaryInfo.available) {
+      throw new Error(
+        `OpenCode binary check failed (${binaryCommand}): ${binaryInfo.error ?? "unknown error"}`
+      );
+    }
+    const binaryExecutable = binaryInfo.resolvedPath ?? binaryInfo.command;
+
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"];
 
     // CORS ekle
@@ -196,6 +342,8 @@ export class OpenCodeServerManager {
 
     await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Starting OpenCode serve", {
       port,
+      binaryCommand,
+      binaryExecutable,
       args,
     });
 
@@ -204,7 +352,7 @@ export class OpenCodeServerManager {
     delete childEnv["NODE_OPTIONS"];
     delete childEnv["NODE_INSPECT_RESUME_ON_START"];
 
-    this.process = spawn("opencode", args, {
+    this.process = spawn(binaryExecutable, args, {
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,
       env: childEnv,
