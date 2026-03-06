@@ -18,32 +18,20 @@ type GhostProviderServerState = {
 type GhostExitAction = "close" | "return-main";
 
 interface GhostElectronAPI {
-  ghostBootstrap: () => Promise<{
+  ghostServerStatus?: () => Promise<{
     success: boolean;
-    target?: GhostLaunchTarget;
-    error?: string;
-  }>;
-  ghostProviderDetect?: (provider: GhostProvider) => Promise<{
-    success: boolean;
-    provider?: GhostProvider;
     server?: GhostProviderServerState;
     error?: string;
   }>;
-  ghostProviderConnect?: (payload: { provider: GhostProvider; autoStart?: boolean }) => Promise<{
+  ghostServerConnect?: (payload: { autoStart?: boolean }) => Promise<{
     success: boolean;
     target?: GhostLaunchTarget;
     server?: GhostProviderServerState;
     error?: string;
   }>;
-  ghostProviderStop?: (provider: GhostProvider) => Promise<{
+  ghostServerStop?: () => Promise<{
     success: boolean;
-    provider?: GhostProvider;
     server?: GhostProviderServerState;
-    error?: string;
-  }>;
-  ghostProviderSetPreferred?: (provider: GhostProvider) => Promise<{
-    success: boolean;
-    provider?: GhostProvider;
     error?: string;
   }>;
   ghostOpenTarget: (target: GhostLaunchTarget) => Promise<{ success: boolean; error?: string }>;

@@ -1,26 +1,43 @@
-export interface AdapterServerRuntimeStatus {
-  adapterId: string;
-  running: boolean;
-  port?: number;
-}
-
 export interface SystemActiveServerStatus {
   running: boolean;
-  adapterId?: string;
   port?: number;
 }
 
-export function resolveSystemActiveServerStatus(
-  statuses: AdapterServerRuntimeStatus[]
-): SystemActiveServerStatus {
-  const runningStatus = statuses.find((status) => status.running === true);
-  if (runningStatus === undefined) {
+export async function detectSystemActiveServerStatus(): Promise<SystemActiveServerStatus> {
+  const electronApi = window.electronAPI;
+  if (electronApi === undefined) {
     return { running: false };
   }
 
+  try {
+    if (typeof electronApi.opencodeServeStatus === "function") {
+      const status = await electronApi.opencodeServeStatus();
+      if (status.running === true) {
+        return {
+          running: true,
+          ...(typeof status.port === "number" ? { port: status.port } : {}),
+        };
+      }
+    }
+  } catch {
+    // Fallback below.
+  }
+
+  try {
+    if (typeof electronApi.opencodeServeFindRunning === "function") {
+      const status = await electronApi.opencodeServeFindRunning();
+      if (status.running === true) {
+        return {
+          running: true,
+          ...(typeof status.port === "number" ? { port: status.port } : {}),
+        };
+      }
+    }
+  } catch {
+    // Ignore and fall through.
+  }
+
   return {
-    running: true,
-    adapterId: runningStatus.adapterId,
-    ...(typeof runningStatus.port === "number" ? { port: runningStatus.port } : {}),
+    running: false,
   };
 }

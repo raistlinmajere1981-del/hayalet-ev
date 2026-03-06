@@ -7,23 +7,18 @@ interface AsistanOpencodeAccount {
 }
 
 export function normalizeOpencodePort(raw: unknown): number {
-  if (
-    typeof raw === "number" &&
-    Number.isInteger(raw) &&
-    raw >= 1024 &&
-    raw <= 65535
-  ) {
+  if (typeof raw === "number" && Number.isInteger(raw) && raw >= 1024 && raw <= 65535) {
     return raw;
   }
   return 4096;
 }
 
-export function getOpencodePreferences(
-  settings: AppSettings | null
-): { binaryPath: string | null; defaultPort: number } {
+export function getOpencodePreferences(settings: AppSettings | null): {
+  binaryPath: string | null;
+  defaultPort: number;
+} {
   const rawPath = settings?.assistants?.opencode?.binaryPath;
-  const binaryPath =
-    typeof rawPath === "string" && rawPath.trim() !== "" ? rawPath.trim() : null;
+  const binaryPath = typeof rawPath === "string" && rawPath.trim() !== "" ? rawPath.trim() : null;
   const defaultPort = normalizeOpencodePort(settings?.assistants?.opencode?.defaultPort);
   return { binaryPath, defaultPort };
 }

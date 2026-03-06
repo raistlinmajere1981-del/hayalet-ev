@@ -1,65 +1,12 @@
 import type { ChildProcess } from "child_process";
 import { spawn } from "child_process";
 import * as net from "net";
-import { readFile, writeFile, unlink, mkdir } from "fs/promises";
-import { join, dirname, isAbsolute } from "path";
+import { isAbsolute, join } from "path";
 import { getLoggerCore } from "./logger/index.js";
 import { Paths } from "./paths.js";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
 import type { ServerOptions, ServerInfo, ServerBinaryInfo } from "./types/server.ts";
 import { SERVER_TIMEOUTS } from "@timeouts";
-
-function getPidFilePath(): string {
-  return join(Paths.getProjectRoot(), "data", "servers", "opencode-server.pid");
-}
-
-async function writePidFile(pid: number): Promise<void> {
-  const pidFilePath = getPidFilePath();
-  await mkdir(dirname(pidFilePath), { recursive: true });
-  await writeFile(pidFilePath, String(pid), "utf-8");
-}
-
-async function readPidFile(): Promise<number | null> {
-  try {
-    const raw = await readFile(getPidFilePath(), "utf-8");
-    const pid = parseInt(raw.trim(), 10);
-    return isNaN(pid) ? null : pid;
-  } catch {
-    return null;
-  }
-}
-
-async function deletePidFile(): Promise<void> {
-  try {
-    await unlink(getPidFilePath());
-  } catch {
-    // dosya yoksa sorun değil
-  }
-}
-
-/** PID dosyası var ve process hâlâ ayaktaysa true ("biz başlattık" sahiplik kontrolü) */
-function isOwnedProcess(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForOwnedProcessExit(pid: number, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-
-  const waitOnce = async (): Promise<void> => {
-    if (!isOwnedProcess(pid) || Date.now() >= deadline) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, SERVER_TIMEOUTS.STARTUP_SETTLE));
-    await waitOnce();
-  };
-
-  await waitOnce();
-}
 
 const logger = getLoggerCore();
 
@@ -80,8 +27,7 @@ export class OpenCodeServerManager {
   private process: ChildProcess | null = null;
   private currentPort: number | null = null;
   private startTime: number | null = null;
-  /** Kendi başlatmadığımız ama PID dosyası üzerinden sahiplendiğimiz harici process PID'i */
-  private ownedExternalPid: number | null = null;
+  private usingExternalServer = false;
 
   private resolveBinaryCommand(binaryPath?: string | null): string {
     if (typeof binaryPath !== "string") return "opencode";
@@ -200,7 +146,8 @@ export class OpenCodeServerManager {
       return {
         available: false,
         command,
-        error: combinedOutput !== "" ? combinedOutput : `Exit code ${String(versionProbe.exitCode)}`,
+        error:
+          combinedOutput !== "" ? combinedOutput : `Exit code ${String(versionProbe.exitCode)}`,
       };
     }
 
@@ -275,6 +222,7 @@ export class OpenCodeServerManager {
             running: true,
             port,
             url: `http://127.0.0.1:${port}`,
+            source: "existing",
           };
         }
       } catch {}
@@ -294,21 +242,18 @@ export class OpenCodeServerManager {
     // Önce port aralığında çalışan bir sunucu ara
     const existing = await this.findRunningServer(options.port ?? 4096, options.port ?? 4110);
     if (existing.running === true && existing.port != null) {
-      // PID dosyası varsa: hayalet-ev veya ghost-agent başlatmış → sahiplenebiliriz
-      const savedPid = await readPidFile();
-      const ownedByUs = savedPid !== null && isOwnedProcess(savedPid);
-
       await logger.logInternal(
         LogCategory.MAIN,
         LogLevel.INFO,
         "Reusing existing OpenCode server instead of starting new one",
-        { port: existing.port, ownedByUs, savedPid }
+        { port: existing.port }
       );
       this.currentPort = existing.port;
-      this.ownedExternalPid = ownedByUs ? savedPid : null;
+      this.usingExternalServer = true;
       return {
         ...existing,
         alreadyRunning: true,
+        source: "existing",
       };
     }
 
@@ -364,13 +309,9 @@ export class OpenCodeServerManager {
 
     this.currentPort = port;
     this.startTime = Date.now();
+    this.usingExternalServer = false;
 
     const pid = this.process.pid;
-
-    // PID dosyasına yaz — ghost-agent da bu süreci kapatabilsin
-    if (typeof pid === "number") {
-      await writePidFile(pid);
-    }
 
     this.process.stdout?.on("data", (data: unknown) => {
       const output = chunkToString(data);
@@ -404,6 +345,7 @@ export class OpenCodeServerManager {
       url: `http://127.0.0.1:${port}`,
       ...(typeof pid === "number" ? { pid } : {}),
       ...(typeof this.startTime === "number" ? { startTime: this.startTime } : {}),
+      source: "started",
     };
   }
 
@@ -422,7 +364,6 @@ export class OpenCodeServerManager {
 
       const proc = this.process;
       const pid = proc.pid;
-      await deletePidFile();
       this.cleanup();
 
       const canKillGroup = process.platform !== "win32";
@@ -463,77 +404,28 @@ export class OpenCodeServerManager {
       return;
     }
 
-    // Bellekte sahiplik yoksa PID dosyasından sahiplenmeyi dene
-    if (this.ownedExternalPid === null) {
-      const savedPid = await readPidFile();
-      if (savedPid !== null && isOwnedProcess(savedPid)) {
-        this.ownedExternalPid = savedPid;
-      } else if (savedPid !== null) {
-        // Stale PID dosyası
-        await deletePidFile();
-      }
-    }
-
-    // PID dosyası üzerinden sahiplenilen harici process varsa → durdur
-    if (this.ownedExternalPid !== null) {
-      const pid = this.ownedExternalPid;
+    if (this.usingExternalServer) {
       await logger.logInternal(
         LogCategory.MAIN,
         LogLevel.INFO,
-        "Stopping OpenCode serve (owned external pid)",
+        "Skipping stop: OpenCode server is external",
         {
-          pid,
           port: this.currentPort,
         }
       );
-      const canKillGroup = process.platform !== "win32";
-      const tryKill = (signal: NodeJS.Signals, useGroup: boolean): boolean => {
-        try {
-          if (useGroup && canKillGroup) {
-            process.kill(-pid, signal);
-          } else {
-            process.kill(pid, signal);
-          }
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      const termByGroup = tryKill("SIGTERM", true);
-      if (!termByGroup) void tryKill("SIGTERM", false);
-
-      await deletePidFile();
-      this.ownedExternalPid = null;
-      this.currentPort = null;
-
-      await waitForOwnedProcessExit(pid, 5000);
-
-      if (isOwnedProcess(pid)) {
-        const killByGroup = tryKill("SIGKILL", true);
-        if (!killByGroup) void tryKill("SIGKILL", false);
-      }
-      return;
     }
 
-    // Harici sunucu (PID dosyası yok) → dokunma
-    await logger.logInternal(
-      LogCategory.MAIN,
-      LogLevel.INFO,
-      "Skipping stop: OpenCode server is external (no PID file)",
-      {
-        port: this.currentPort,
-      }
-    );
     this.currentPort = null;
+    this.startTime = null;
+    this.usingExternalServer = false;
   }
 
   getStatus(): ServerInfo {
-    if (this.currentPort === null || (this.process === null && this.ownedExternalPid === null)) {
+    if (this.currentPort === null) {
       return { running: false };
     }
 
-    const pid = this.process?.pid ?? this.ownedExternalPid ?? undefined;
+    const pid = this.process?.pid ?? undefined;
 
     return {
       running: true,
@@ -541,6 +433,7 @@ export class OpenCodeServerManager {
       url: `http://127.0.0.1:${this.currentPort}`,
       ...(typeof pid === "number" ? { pid } : {}),
       ...(typeof this.startTime === "number" ? { startTime: this.startTime } : {}),
+      source: this.process !== null ? "started" : "existing",
     };
   }
 
@@ -582,7 +475,7 @@ export class OpenCodeServerManager {
     this.process = null;
     this.currentPort = null;
     this.startTime = null;
-    this.ownedExternalPid = null;
+    this.usingExternalServer = false;
   }
 }
 

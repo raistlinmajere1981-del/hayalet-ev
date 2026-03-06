@@ -254,15 +254,15 @@ function getStore(projectRoot: string): MemoryStore {
   return store;
 }
 
-export function memoryWrite(
+export async function memoryWrite(
   projectRoot: string,
   args: MemoryStoreWriteArgs
-): { message: string; memory: MemoryItem } {
+): Promise<{ message: string; memory: MemoryItem }> {
   const content = args.content?.trim();
   if (content == null || content === "") throw new Error("content is required");
 
   const store = getStore(projectRoot);
-  const memory = store.writeMemory({
+  const memory = await store.writeMemory({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
     content,
     ...(args.summary !== undefined ? { summary: args.summary } : {}),
@@ -280,12 +280,12 @@ export function memoryWrite(
   };
 }
 
-export function memorySearch(
+export async function memorySearch(
   projectRoot: string,
   args: MemoryStoreSearchArgs
-): MemorySearchResponse {
+): Promise<MemorySearchResponse> {
   const store = getStore(projectRoot);
-  let raw = store.searchMemory({
+  let raw = await store.searchMemory({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
     ...(args.query !== undefined ? { query: args.query } : {}),
     ...(args.source_provider !== undefined ? { sourceProvider: args.source_provider } : {}),
@@ -295,7 +295,7 @@ export function memorySearch(
 
   const query = (args.query ?? "*").trim() !== "" ? (args.query ?? "*").trim() : "*";
   if (raw.total === 0 && query !== "*") {
-    raw = store.searchMemory({
+    raw = await store.searchMemory({
       ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
       query: "*",
       ...(args.source_provider !== undefined ? { sourceProvider: args.source_provider } : {}),
@@ -320,14 +320,14 @@ export function memorySearch(
   };
 }
 
-export function memoryUpdate(
+export async function memoryUpdate(
   projectRoot: string,
   args: MemoryStoreUpdateArgs
-): { updated: boolean; id: string } {
+): Promise<{ updated: boolean; id: string }> {
   if (args.id == null || args.id.trim() === "") throw new Error("id is required");
 
   const store = getStore(projectRoot);
-  const updated = store.updateMemory({
+  const updated = await store.updateMemory({
     id: args.id,
     ...(args.content !== undefined ? { content: args.content } : {}),
     ...(args.summary !== undefined ? { summary: args.summary } : {}),
@@ -342,20 +342,20 @@ export function memoryUpdate(
   return { updated, id: args.id };
 }
 
-export function memoryDelete(
+export async function memoryDelete(
   projectRoot: string,
   args: MemoryStoreDeleteArgs
-): { deleted: boolean; id: string } {
+): Promise<{ deleted: boolean; id: string }> {
   if (args.id == null || args.id.trim() === "") throw new Error("id is required");
   const store = getStore(projectRoot);
-  const deleted = store.deleteMemory(args.id);
+  const deleted = await store.deleteMemory(args.id);
   return { deleted, id: args.id };
 }
 
-export function memoryPrune(
+export async function memoryPrune(
   projectRoot: string,
   args: MemoryStorePruneArgs
-): { removed: number; maxItems: number } {
+): Promise<{ removed: number; maxItems: number }> {
   const store = getStore(projectRoot);
   const maxItems =
     typeof args.max_items === "number" && Number.isFinite(args.max_items)
@@ -367,7 +367,7 @@ export function memoryPrune(
       ? Math.max(0, Math.floor(args.older_than_days)) * 24 * 60 * 60 * 1000
       : undefined;
 
-  const removed = store.pruneMemory({
+  const removed = await store.pruneMemory({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
     maxItems,
     ...(olderThanMs !== undefined ? { olderThanMs } : {}),
@@ -376,15 +376,20 @@ export function memoryPrune(
   return { removed, maxItems };
 }
 
-export function memoryStats(projectRoot: string, args: MemoryStoreStatsArgs): MemoryStats {
+export async function memoryStats(
+  projectRoot: string,
+  args: MemoryStoreStatsArgs
+): Promise<MemoryStats> {
   const store = getStore(projectRoot);
-  return store.getStats({ ...(args.namespace !== undefined ? { namespace: args.namespace } : {}) });
+  return await store.getStats({
+    ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
+  });
 }
 
-export function memoryBootstrapPolicy(
+export async function memoryBootstrapPolicy(
   projectRoot: string,
   args: MemoryBootstrapPolicyArgs = {}
-): MemoryBootstrapPolicyReport {
+): Promise<MemoryBootstrapPolicyReport> {
   const store = getStore(projectRoot);
   const trimmedNamespace = args.namespace?.trim();
   const namespace =
@@ -424,6 +429,7 @@ export function memoryBootstrapPolicy(
         ? sanitizeFileTag(normalizedRelPath)
         : "policy-file";
 
+    /* eslint-disable no-await-in-loop */
     for (let index = 0; index < chunks.length; index++) {
       const chunk = chunks[index] ?? "";
       if (chunk === "") continue;
@@ -442,15 +448,17 @@ export function memoryBootstrapPolicy(
         bootstrap_version: 1,
       };
 
-      const existing = store.searchMemory({
-        namespace,
-        query: "*",
-        tags: [fileTag, chunkTag],
-        limit: 1,
-      }).items[0];
+      const existing = (
+        await store.searchMemory({
+          namespace,
+          query: "*",
+          tags: [fileTag, chunkTag],
+          limit: 1,
+        })
+      ).items[0];
 
       if (!existing) {
-        store.writeMemory({
+        await store.writeMemory({
           namespace,
           content: chunk,
           summary,
@@ -475,7 +483,7 @@ export function memoryBootstrapPolicy(
         continue;
       }
 
-      const didUpdate = store.updateMemory({
+      const didUpdate = await store.updateMemory({
         id: existing.id,
         content: chunk,
         summary,
@@ -490,7 +498,7 @@ export function memoryBootstrapPolicy(
       if (didUpdate) {
         updated++;
       } else {
-        store.writeMemory({
+        await store.writeMemory({
           namespace,
           content: chunk,
           summary,
@@ -504,6 +512,7 @@ export function memoryBootstrapPolicy(
         inserted++;
       }
     }
+    /* eslint-enable no-await-in-loop */
   }
 
   return {
@@ -521,7 +530,7 @@ export function memoryBootstrapPolicy(
 export const MEMORY_TOOL_DEFINITIONS = [
   {
     name: "hev_memory_write",
-    description: "SQLite tabanli ortak hafizaya yeni kayit ekle (provider-bagimsiz).",
+    description: "libSQL tabanli ortak hafizaya yeni kayit ekle (provider-bagimsiz).",
     inputSchema: {
       type: "object",
       properties: {
@@ -582,7 +591,7 @@ export const MEMORY_TOOL_DEFINITIONS = [
       agentGuidance: "Yeni bilgi/fact kaydederken kullan. Kisa ve atomik kayitlar yaz.",
       requiresConfirmation: false,
       riskLevel: "low",
-      tags: ["memory", "sqlite", "shared-context", "write"],
+      tags: ["memory", "libsql", "shared-context", "write"],
     },
   },
   {
@@ -646,7 +655,7 @@ export const MEMORY_TOOL_DEFINITIONS = [
       agentGuidance: "Yeni kayit yazmadan once arama yaparak tekrar eden bilgi olusumunu azalt.",
       requiresConfirmation: false,
       riskLevel: "low",
-      tags: ["memory", "sqlite", "search", "fts5"],
+      tags: ["memory", "libsql", "search"],
     },
   },
   {
@@ -708,7 +717,7 @@ export const MEMORY_TOOL_DEFINITIONS = [
       agentGuidance: "Yalnizca ilgili alanlari guncelle. Once hev_memory_search ile kaydi dogrula.",
       requiresConfirmation: false,
       riskLevel: "low",
-      tags: ["memory", "update", "sqlite"],
+      tags: ["memory", "update", "libsql"],
     },
   },
   {
@@ -734,7 +743,7 @@ export const MEMORY_TOOL_DEFINITIONS = [
       agentGuidance: "Silmeden once kaydi arayip dogrula.",
       requiresConfirmation: false,
       riskLevel: "medium",
-      tags: ["memory", "delete", "sqlite"],
+      tags: ["memory", "delete", "libsql"],
     },
   },
   {
@@ -797,7 +806,7 @@ export const MEMORY_TOOL_DEFINITIONS = [
       agentGuidance: "Prune ve tuning oncesi/sonrasi karsilastirma icin kullan.",
       requiresConfirmation: false,
       riskLevel: "low",
-      tags: ["memory", "stats", "sqlite"],
+      tags: ["memory", "stats", "libsql"],
     },
   },
   {

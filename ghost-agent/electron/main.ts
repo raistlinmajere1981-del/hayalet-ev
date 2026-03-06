@@ -1,6 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { mkdir, readFile, writeFile } from "fs/promises";
-import { existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import {
@@ -15,8 +14,6 @@ const GHOST_EXIT_WAIT_MS = 500;
 
 type GhostProvider = "opencode";
 
-const GHOST_PROVIDERS: GhostProvider[] = ["opencode"];
-
 type GhostLaunchTarget = {
   provider: GhostProvider;
   targetUrl: string;
@@ -24,7 +21,6 @@ type GhostLaunchTarget = {
 };
 
 type GhostServerConnectRequest = {
-  provider: GhostProvider;
   autoStart?: boolean;
 };
 
@@ -46,7 +42,6 @@ type AssistantRuntimeControl = {
   updatedAt: string;
 };
 
-const OPENCODE_DEFAULT_URL = process.env["OPENCODE_DEFAULT_URL"] ?? "https://opencode.ai";
 const moduleFilename = fileURLToPath(import.meta.url);
 const moduleDirname = dirname(moduleFilename);
 
@@ -59,10 +54,6 @@ let mainWindow: BrowserWindow | null = null;
 
 function getProjectRoot(): string {
   return process.cwd();
-}
-
-function getSettingsPath(): string {
-  return join(getProjectRoot(), "config", "settings.json");
 }
 
 function getAssistantRuntimePath(): string {
@@ -79,13 +70,6 @@ function isRecord(value: unknown): value is JsonRecord {
 
 function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
-}
-
-function normalizeGhostProvider(
-  _value: unknown,
-  fallback: GhostProvider = "opencode"
-): GhostProvider {
-  return fallback;
 }
 
 function getDefaultProviderServerUrl(port?: number): string {
@@ -146,36 +130,7 @@ async function writeAssistantRuntimeControl(
   return normalized;
 }
 
-async function loadSettingsSnapshot(): Promise<JsonRecord> {
-  const settingsPath = getSettingsPath();
-  if (!existsSync(settingsPath)) {
-    return {};
-  }
-
-  try {
-    const raw = await readFile(settingsPath, "utf-8");
-    const parsed: unknown = JSON.parse(raw);
-    return isRecord(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-async function saveSettingsSnapshot(settings: JsonRecord): Promise<void> {
-  const settingsPath = getSettingsPath();
-  await mkdir(dirname(settingsPath), { recursive: true });
-  await writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`, "utf-8");
-}
-
-async function persistPreferredProvider(provider: GhostProvider): Promise<void> {
-  const settings = await loadSettingsSnapshot();
-  const assistantsRaw = settings["assistants"];
-  const assistants: JsonRecord = isRecord(assistantsRaw) ? { ...assistantsRaw } : {};
-  assistants["preferred"] = provider;
-  await saveSettingsSnapshot({ ...settings, assistants });
-}
-
-async function detectProviderServer(provider: GhostProvider): Promise<GhostProviderServerState> {
+async function detectProviderServer(): Promise<GhostProviderServerState> {
   const running = await opencodeServerManager.findRunningServer(4096, 4110);
   const url =
     typeof running.url === "string" && running.url !== ""
@@ -185,26 +140,31 @@ async function detectProviderServer(provider: GhostProvider): Promise<GhostProvi
         : undefined;
 
   return {
-    provider,
+    provider: "opencode",
     running: running.running === true,
     ...(typeof running.port === "number" ? { port: running.port } : {}),
     ...(url !== undefined ? { url } : {}),
-    ...(running.running === true ? { alreadyRunning: true, source: "existing" as const } : {}),
+    ...(running.running === true
+      ? {
+          alreadyRunning: true,
+          ...(running.source !== undefined ? { source: running.source } : {}),
+        }
+      : {}),
   };
 }
 
-async function startProviderServer(provider: GhostProvider): Promise<GhostProviderServerState> {
+async function startProviderServer(): Promise<GhostProviderServerState> {
   const started = await opencodeServerManager.start({
     cors: ["http://localhost:5173"],
   });
-  const source = started.alreadyRunning === true ? "existing" : "started";
+  const source = started.source ?? (started.alreadyRunning === true ? "existing" : "started");
   const url =
     typeof started.url === "string" && started.url !== ""
       ? started.url
       : getDefaultProviderServerUrl(started.port);
 
   return {
-    provider,
+    provider: "opencode",
     running: started.running === true,
     ...(typeof started.port === "number" ? { port: started.port } : {}),
     ...(url !== "" ? { url } : {}),
@@ -213,32 +173,28 @@ async function startProviderServer(provider: GhostProvider): Promise<GhostProvid
   };
 }
 
-async function stopProviderServer(_provider: GhostProvider): Promise<void> {
+async function stopProviderServer(): Promise<void> {
   await opencodeServerManager.stop();
 }
 
 async function stopSystemActiveProviderServers(): Promise<void> {
-  const stopTasks = GHOST_PROVIDERS.map(async (provider) => {
-    const server = await detectProviderServer(provider);
-    if (server.running !== true) {
-      return;
-    }
+  const server = await detectProviderServer();
+  if (server.running !== true) {
+    return;
+  }
 
-    try {
-      await stopProviderServer(provider);
-      await logGhost("info", "Ghost exit stopped active provider server", {
-        provider,
-        port: server.port,
-      });
-    } catch (error) {
-      await logGhost("warn", "Ghost exit provider stop failed", {
-        provider,
-        error: (error as Error).message,
-      });
-    }
-  });
-
-  await Promise.all(stopTasks);
+  try {
+    await stopProviderServer();
+    await logGhost("info", "Ghost exit stopped active provider server", {
+      provider: "opencode",
+      port: server.port,
+    });
+  } catch (error) {
+    await logGhost("warn", "Ghost exit provider stop failed", {
+      provider: "opencode",
+      error: (error as Error).message,
+    });
+  }
 }
 
 async function waitForProviderReady(baseUrl: string, timeoutMs = 90000): Promise<boolean> {
@@ -289,16 +245,16 @@ async function connectProviderServer(request: GhostServerConnectRequest): Promis
   server?: GhostProviderServerState;
   error?: string;
 }> {
-  let server = await detectProviderServer(request.provider);
+  let server = await detectProviderServer();
 
   if (!server.running && request.autoStart !== false) {
-    server = await startProviderServer(request.provider);
+    server = await startProviderServer();
   }
 
   if (!server.running) {
     return {
       success: false,
-      error: `${request.provider} server is not running`,
+      error: "opencode server is not running",
     };
   }
 
@@ -311,7 +267,7 @@ async function connectProviderServer(request: GhostServerConnectRequest): Promis
   if (!ready) {
     return {
       success: false,
-      error: `${request.provider} server ready timeout`,
+      error: "opencode server ready timeout",
     };
   }
 
@@ -320,85 +276,49 @@ async function connectProviderServer(request: GhostServerConnectRequest): Promis
     url: serverUrl,
   };
 
-  const target = buildLaunchTargetForProvider(request.provider, normalizedServer);
+  const target = buildLaunchTargetForProvider("opencode", normalizedServer);
   return { success: true, target, server: normalizedServer };
 }
 
-async function resolveTargetFromSettings(): Promise<GhostLaunchTarget> {
-  const settings = await loadSettingsSnapshot();
-  const assistantsRaw = settings["assistants"];
-  const assistants: JsonRecord = isRecord(assistantsRaw) ? assistantsRaw : {};
-
-  const savedUrl = asString(assistants["lastOpencodeUrl"], "").trim();
-  const targetUrl = savedUrl !== "" ? savedUrl : OPENCODE_DEFAULT_URL;
-
-  return {
-    provider: "opencode",
-    targetUrl,
-    details: savedUrl !== "" ? "source:settings" : "source:default",
-  };
-}
-
 function setupIpcHandlers(): void {
-  ipcMain.handle("ghost-bootstrap", async () => {
+  ipcMain.handle("ghost-server-status", async () => {
     try {
-      const target = await resolveTargetFromSettings();
-      await logGhost("info", "ghost-bootstrap resolved target", {
-        provider: target.provider,
-        details: target.details,
-      });
-      return { success: true, target };
-    } catch (error) {
-      await logGhost("error", "ghost-bootstrap failed", {
-        error: (error as Error).message,
-      });
-      return { success: false, error: (error as Error).message };
-    }
-  });
-
-  ipcMain.handle("ghost-provider-detect", async (_event, providerRaw: unknown) => {
-    try {
-      const provider = normalizeGhostProvider(providerRaw);
-      const server = await detectProviderServer(provider);
-      await logGhost("debug", "ghost-provider-detect completed", {
-        provider,
+      const server = await detectProviderServer();
+      await logGhost("debug", "ghost-server-status completed", {
         running: server.running,
         port: server.port,
       });
-      return { success: true, provider, server };
+      return { success: true, server };
     } catch (error) {
-      await logGhost("error", "ghost-provider-detect failed", {
-        providerRaw,
+      await logGhost("error", "ghost-server-status failed", {
         error: (error as Error).message,
       });
       return { success: false, error: (error as Error).message };
     }
   });
 
-  ipcMain.handle("ghost-provider-connect", async (_event, payload: unknown) => {
+  ipcMain.handle("ghost-server-connect", async (_event, payload: unknown) => {
     try {
       const value = isRecord(payload) ? payload : {};
-      const provider = normalizeGhostProvider(value["provider"]);
       const autoStart = value["autoStart"] !== false;
-      const result = await connectProviderServer({ provider, autoStart });
+      const result = await connectProviderServer({ autoStart });
       if (result.success) {
-        await persistPreferredProvider(provider);
-        await logGhost("info", "ghost-provider-connect succeeded", {
-          provider,
+        await logGhost("info", "ghost-server-connect succeeded", {
+          provider: "opencode",
           autoStart,
           port: result.server?.port,
           source: result.server?.source,
         });
       } else {
-        await logGhost("warn", "ghost-provider-connect returned unsuccessful result", {
-          provider,
+        await logGhost("warn", "ghost-server-connect returned unsuccessful result", {
+          provider: "opencode",
           autoStart,
           error: result.error,
         });
       }
       return result;
     } catch (error) {
-      await logGhost("error", "ghost-provider-connect failed", {
+      await logGhost("error", "ghost-server-connect failed", {
         payload,
         error: (error as Error).message,
       });
@@ -406,19 +326,17 @@ function setupIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle("ghost-provider-stop", async (_event, providerRaw: unknown) => {
+  ipcMain.handle("ghost-server-stop", async () => {
     try {
-      const provider = normalizeGhostProvider(providerRaw);
-      await stopProviderServer(provider);
-      const server = await detectProviderServer(provider);
-      await logGhost("info", "ghost-provider-stop completed", {
-        provider,
+      await stopProviderServer();
+      const server = await detectProviderServer();
+      await logGhost("info", "ghost-server-stop completed", {
+        provider: "opencode",
         running: server.running,
       });
-      return { success: true, provider, server };
+      return { success: true, server };
     } catch (error) {
-      await logGhost("error", "ghost-provider-stop failed", {
-        providerRaw,
+      await logGhost("error", "ghost-server-stop failed", {
         error: (error as Error).message,
       });
       return { success: false, error: (error as Error).message };
@@ -452,21 +370,6 @@ function setupIpcHandlers(): void {
       }
     }
   );
-
-  ipcMain.handle("ghost-provider-set-preferred", async (_event, providerRaw: unknown) => {
-    try {
-      const provider = normalizeGhostProvider(providerRaw);
-      await persistPreferredProvider(provider);
-      await logGhost("info", "ghost-provider-set-preferred completed", { provider });
-      return { success: true, provider };
-    } catch (error) {
-      await logGhost("error", "ghost-provider-set-preferred failed", {
-        providerRaw,
-        error: (error as Error).message,
-      });
-      return { success: false, error: (error as Error).message };
-    }
-  });
 
   ipcMain.handle("ghost-open-target", async (_event, target: GhostLaunchTarget) => {
     if (mainWindow === null) {

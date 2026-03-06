@@ -1,6 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../../modules/logger/index.js";
-import { getErrorMessage } from "@shared/index.js";
 import { AppState } from "../../modules/app-state.js";
 import { VISIBLE_MESSAGE_COUNT, MESSAGE_HEIGHT_ESTIMATE } from "@limits";
 import {
@@ -12,31 +11,19 @@ import {
   shouldSkipRender,
   type RenderSnapshot,
 } from "./render-cache.js";
-
-function formatTimestamp(timestamp: number | undefined): string {
-  if (timestamp === undefined || Number.isNaN(timestamp)) return "";
-  const d = new Date(timestamp);
-  return d.toLocaleString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import {
+  isAttachmentData,
+  isDbAttachmentsResult,
+  isDbMessagesResult,
+  isMessageItem,
+  type AttachmentData,
+  type MessageItem,
+} from "./message-renderer-types.js";
+import { createMessageBubble } from "./message-renderer-bubble.js";
 
 export interface RenderCallbacks {
   onContextMenu?: (e: MouseEvent, data: { provider: string; text: string }) => void;
   onDoubleClick?: (data: { provider: string; text: string }) => void;
-}
-
-interface MessageItem {
-  id: string;
-  role: string;
-  content?: string;
-  text?: string;
-  author?: string;
-  createdAt?: number;
 }
 
 interface RenderState {
@@ -440,182 +427,5 @@ function loadMoreMessages(
     } else {
       loadMoreBtn.textContent = `Daha fazla göster (${newVisibleStart} mesaj)`;
     }
-  }
-}
-
-interface MessageData {
-  id: string;
-  role: string;
-  content?: string;
-  text?: string;
-  author?: string;
-  createdAt?: number;
-}
-
-interface AttachmentData {
-  messageId: string;
-  originalName?: string;
-  storedName?: string;
-  storedPath?: string;
-}
-
-interface DbMessagesResult {
-  data?: MessageItem[];
-}
-
-interface DbAttachmentsResult {
-  data?: AttachmentData[];
-  success?: boolean;
-}
-
-interface OpenPathResult {
-  success?: boolean;
-  message?: string;
-}
-
-function isMessageItem(value: unknown): value is MessageItem {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  return (
-    typeof maybe["id"] === "string" &&
-    typeof maybe["role"] === "string" &&
-    (maybe["content"] === undefined || typeof maybe["content"] === "string") &&
-    (maybe["text"] === undefined || typeof maybe["text"] === "string") &&
-    (maybe["author"] === undefined || typeof maybe["author"] === "string") &&
-    (maybe["createdAt"] === undefined || typeof maybe["createdAt"] === "number")
-  );
-}
-
-function isAttachmentData(value: unknown): value is AttachmentData {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  return (
-    typeof maybe["messageId"] === "string" &&
-    (maybe["originalName"] === undefined || typeof maybe["originalName"] === "string") &&
-    (maybe["storedName"] === undefined || typeof maybe["storedName"] === "string") &&
-    (maybe["storedPath"] === undefined || typeof maybe["storedPath"] === "string")
-  );
-}
-
-function isDbMessagesResult(value: unknown): value is DbMessagesResult {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  return maybe["data"] === undefined || Array.isArray(maybe["data"]);
-}
-
-function isDbAttachmentsResult(value: unknown): value is DbAttachmentsResult {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  const dataValid = maybe["data"] === undefined || Array.isArray(maybe["data"]);
-  const successValid = maybe["success"] === undefined || typeof maybe["success"] === "boolean";
-  return dataValid && successValid;
-}
-
-function isOpenPathResult(value: unknown): value is OpenPathResult {
-  if (value === null || value === undefined || typeof value !== "object") {
-    return false;
-  }
-  const maybe = value as Record<string, unknown>;
-  const successValid = maybe["success"] === undefined || typeof maybe["success"] === "boolean";
-  const messageValid = maybe["message"] === undefined || typeof maybe["message"] === "string";
-  return successValid && messageValid;
-}
-
-function createMessageBubble(
-  msg: MessageData,
-  provider: string,
-  attachmentsBasePath: string,
-  msgAttachments: AttachmentData[],
-  callbacks: RenderCallbacks
-): HTMLElement {
-  const bubble = document.createElement("div");
-  bubble.className = `msg-bubble ${msg.role === "assistant" ? "msg-ai" : "msg-user"}`;
-
-  const messageText = msg.content ?? msg.text ?? "";
-
-  const header = document.createElement("div");
-  header.className = "msg-header";
-
-  const meta = document.createElement("div");
-  meta.className = "msg-meta";
-  meta.textContent = msg.author ?? msg.role;
-  header.appendChild(meta);
-
-  if (msg.createdAt !== undefined) {
-    const time = document.createElement("div");
-    time.className = "msg-time";
-    time.textContent = formatTimestamp(msg.createdAt);
-    header.appendChild(time);
-  }
-
-  bubble.appendChild(header);
-
-  const text = document.createElement("div");
-  text.className = "msg-text";
-  text.textContent = messageText;
-  bubble.appendChild(text);
-
-  if (msgAttachments.length > 0) {
-    const attWrap = document.createElement("div");
-    attWrap.className = "msg-attachments";
-
-    msgAttachments.forEach((att: AttachmentData) => {
-      const link = document.createElement("button");
-      link.className = "attachment-link";
-      link.textContent = `📎 ${att.originalName ?? att.storedName ?? "dosya"}`;
-      link.addEventListener("click", () => {
-        const filePath =
-          att.storedPath ??
-          `${attachmentsBasePath}/${att.messageId}/${att.storedName ?? "unknown"}`;
-        void openAttachmentByPath(filePath);
-      });
-      attWrap.appendChild(link);
-    });
-
-    bubble.appendChild(attWrap);
-  }
-
-  if (callbacks.onContextMenu) {
-    bubble.addEventListener("contextmenu", (e) => {
-      callbacks.onContextMenu?.(e, { provider, text: messageText });
-    });
-  }
-
-  if (callbacks.onDoubleClick) {
-    bubble.addEventListener("dblclick", () => {
-      callbacks.onDoubleClick?.({ provider, text: messageText });
-    });
-  }
-
-  return bubble;
-}
-
-async function openAttachmentByPath(filePath: string): Promise<void> {
-  if (filePath === "") return;
-
-  try {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined) {
-      throw new Error("electronAPI bulunamadı");
-    }
-    const openPath = electronApi.openPath;
-    const rawRes: unknown =
-      typeof openPath === "function"
-        ? await openPath(filePath)
-        : { success: false, message: "açılamadı" };
-    const res = isOpenPathResult(rawRes) ? rawRes : null;
-    if (res?.success !== true) {
-      throw new Error(res?.message ?? "açılamadı");
-    }
-  } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, `Dosya açılamadı: ${getErrorMessage(err)}`);
   }
 }

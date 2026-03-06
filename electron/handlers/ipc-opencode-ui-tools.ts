@@ -27,8 +27,8 @@ export interface HevToolListResult {
 
 const CATEGORY_HEADER_RE = /^## (.+?) \((\d+) tools?\)$/;
 const TOOL_ROW_RE = /^\| `([^`]+)` \| (.+?) \|$/;
-const TOTAL_RE = /^\> \*\*Total Tools:\*\* (\d+)$/;
-const GENERATED_RE = /^\> \*\*Generated:\*\* (.+)$/;
+const TOTAL_RE = /^> \*\*Total Tools:\*\* (\d+)$/;
+const GENERATED_RE = /^> \*\*Generated:\*\* (.+)$/;
 
 function parseToolListMd(content: string): Omit<HevToolListResult, "success"> {
   const lines = content.split("\n");

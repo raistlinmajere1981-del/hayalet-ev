@@ -25,6 +25,10 @@ export function addMessage(
 ): HTMLElement | null {
   const chatMessages = document.getElementById("chat-messages") as HTMLElement;
   const chatEmpty = document.getElementById("chat-empty");
+  const hasFiles = Array.isArray(files) && files.length > 0;
+  if (role === "assistant" && text.trim() === "" && hasFiles !== true) {
+    return null;
+  }
   if (chatEmpty) chatEmpty.style.display = "none";
 
   const msgDiv = document.createElement("div");

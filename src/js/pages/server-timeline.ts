@@ -200,17 +200,24 @@ export function normalizeTimelineEvent(
   }
 
   const provider = getEntryText(entry, "provider");
-  const sender = getEntryText(entry, "sender") !== "" ? getEntryText(entry, "sender") : getProviderLabel(provider);
+  const sender =
+    getEntryText(entry, "sender") !== ""
+      ? getEntryText(entry, "sender")
+      : getProviderLabel(provider);
   const commandText = getEntryText(entry, "command");
   const args = getEntryText(entry, "args");
   const triggerSource = getEntryText(entry, "triggerSource");
   const triggerCommand = getEntryText(entry, "triggerCommand");
-  const sessionId = timelineToText(entry.sessionId) !== "" ? timelineToText(entry.sessionId) : fallbackSessionId;
+  const sessionId =
+    timelineToText(entry.sessionId) !== "" ? timelineToText(entry.sessionId) : fallbackSessionId;
   const displayTimestamp =
     getEntryText(entry, "timestamp") !== ""
       ? getEntryText(entry, "timestamp")
       : new Date(isoTimestamp).toLocaleString("tr-TR");
-  const detail = getEntryText(entry, "detail") !== "" ? getEntryText(entry, "detail") : timelineToText(entry.message);
+  const detail =
+    getEntryText(entry, "detail") !== ""
+      ? getEntryText(entry, "detail")
+      : timelineToText(entry.message);
   const command = commandText !== "" ? commandText : triggerCommand;
   const success =
     eventTypeRaw === "command-result"
@@ -303,7 +310,11 @@ function createThreadFromCatchEvent(
   getProviderLabel: (provider: string | null) => string
 ): TimelineThread {
   const resolvedCommand =
-    event.command !== "" ? event.command : event.triggerCommand !== "" ? event.triggerCommand : "Komut";
+    event.command !== ""
+      ? event.command
+      : event.triggerCommand !== ""
+        ? event.triggerCommand
+        : "Komut";
   const sender = event.sender !== "" ? event.sender : getProviderLabel(event.provider);
 
   return {

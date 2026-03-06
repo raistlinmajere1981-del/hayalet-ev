@@ -40,3 +40,37 @@ test("buildMessageRequestBody adds reasoning effort when selected", () => {
     },
   });
 });
+
+test("buildMessageRequestBody appends staged attachments as file parts", () => {
+  const body = buildMessageRequestBody({
+    text: "ekleri incele",
+    modelId: null,
+    providerId: null,
+    attachments: [
+      {
+        id: "att_1",
+        name: "note.txt",
+        mimeType: "text/plain",
+        base64: "bm90ZQ==",
+        size: 4,
+        source: "clipboard",
+      },
+    ],
+  });
+
+  assert.deepEqual(body, {
+    parts: [
+      { type: "text", text: "ekleri incele" },
+      {
+        type: "file",
+        filename: "note.txt",
+        name: "note.txt",
+        mime: "text/plain",
+        media_type: "text/plain",
+        url: "data:text/plain;base64,bm90ZQ==",
+        data: "bm90ZQ==",
+        base64: "bm90ZQ==",
+      },
+    ],
+  });
+});

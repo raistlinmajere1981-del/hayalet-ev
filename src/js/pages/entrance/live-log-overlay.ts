@@ -1,6 +1,23 @@
 import { LogCategory } from "@shared/logging-core";
 import { MAX_LOGS_SERVER } from "@limits";
 import { Logger } from "../../modules/logger/index.js";
+import {
+  appendEntries,
+  asText,
+  createInitialOverlayState,
+  decodeBase64ToUtf8,
+  isOverlayApp,
+  isRecord,
+  joinPath,
+  normalizeLogEntry,
+} from "./live-log-overlay-model.js";
+import {
+  renderDetail,
+  renderEntries,
+  setActiveTabUI,
+  setPauseButtonUI,
+  syncSessionSelect,
+} from "./live-log-overlay-render.js";
 
 interface SetupEntranceLiveLogOverlayOptions {
   formatLogCategory: (category: string) => string;
@@ -17,31 +34,17 @@ export function setupEntranceLiveLogOverlay({
     return;
   }
 
-  type OverlayApp = "hayalet-ev" | "mcp-server" | "ghost-agent";
-
-  interface OverlayLogEntry {
-    id: string;
-    app: OverlayApp;
-    sessionId: string;
-    timestamp: string;
-    level: string;
-    category: string;
-    message: string;
-    source: string;
-    visibility?: number;
-    correlationId?: string;
-    context?: Record<string, unknown>;
-  }
-
   const overlay = document.getElementById("live-log-overlay");
   const overlayBackdrop = document.getElementById("live-log-backdrop");
   const overlayContent = document.getElementById("live-log-content");
-  const openBtn = document.getElementById("report-modal-open");
-  const closeBtn = document.getElementById("live-log-close");
-  const pauseBtn = document.getElementById("live-log-pause");
-  const clearBtn = document.getElementById("live-log-clear");
+  const openBtn = document.getElementById("report-modal-open") as HTMLButtonElement | null;
+  const closeBtn = document.getElementById("live-log-close") as HTMLButtonElement | null;
+  const pauseBtn = document.getElementById("live-log-pause") as HTMLButtonElement | null;
+  const clearBtn = document.getElementById("live-log-clear") as HTMLButtonElement | null;
   const appTabs = document.getElementById("live-log-app-tabs");
-  const sessionSelect = document.getElementById("live-log-session-select") as HTMLSelectElement | null;
+  const sessionSelect = document.getElementById(
+    "live-log-session-select"
+  ) as HTMLSelectElement | null;
   const levelSelect = document.getElementById("live-log-level-select") as HTMLSelectElement | null;
   const searchInput = document.getElementById("live-log-search") as HTMLInputElement | null;
   const metrics = document.getElementById("live-log-metrics");
@@ -69,231 +72,23 @@ export function setupEntranceLiveLogOverlay({
   }
 
   const appButtons = Array.from(appTabs.querySelectorAll<HTMLButtonElement>("button[data-app]"));
-  const MAX_LOGS = Math.max(MAX_LOGS_SERVER * 20, 500);
-  const POLL_INTERVAL_MS = 2000;
+  const maxLogs = Math.max(MAX_LOGS_SERVER * 20, 500);
+  const pollIntervalMs = 2000;
+  const state = createInitialOverlayState();
 
-  const state = {
-    activeApp: "hayalet-ev" as OverlayApp,
-    paused: false,
-    baseLogsDir: "",
-    entriesByApp: {
-      "hayalet-ev": [],
-      "mcp-server": [],
-      "ghost-agent": [],
-    } as Record<OverlayApp, OverlayLogEntry[]>,
-    sessionsByApp: {
-      "hayalet-ev": [],
-      "mcp-server": [],
-      "ghost-agent": [],
-    } as Record<OverlayApp, string[]>,
-    selectedSessionByApp: {
-      "hayalet-ev": "",
-      "mcp-server": "",
-      "ghost-agent": "",
-    } as Record<OverlayApp, string>,
-    lastFingerprintByApp: {
-      "hayalet-ev": "",
-      "mcp-server": "",
-      "ghost-agent": "",
-    } as Record<OverlayApp, string>,
-    selectedEntryId: "",
-    pollTimer: null as ReturnType<typeof setInterval> | null,
-  };
-
-  const isRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === "object" && value !== null;
-  };
-
-  const asText = (value: unknown): string => {
-    return typeof value === "string" ? value : "";
-  };
-
-  const asRecord = (value: unknown): Record<string, unknown> | undefined => {
-    return isRecord(value) ? value : undefined;
-  };
-
-  const joinPath = (...parts: string[]): string => {
-    return parts
-      .filter((part) => part !== "")
-      .map((part, index) => {
-        if (index === 0) {
-          return part.replace(/[\\/]+$/g, "");
-        }
-        return part.replace(/^[\\/]+|[\\/]+$/g, "");
-      })
-      .join("/");
-  };
-
-  const decodeBase64ToUtf8 = (base64: string): string => {
-    try {
-      const binary = atob(base64);
-      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      return new TextDecoder().decode(bytes);
-    } catch {
-      return "";
-    }
-  };
-
-  const normalizeLogEntry = (
-    app: OverlayApp,
-    fallbackSessionId: string,
-    raw: Record<string, unknown>
-  ): OverlayLogEntry | null => {
-    const rawTimestamp = asText(raw["timestamp"]);
-    const fallbackTimestamp = asText(raw["isoTimestamp"]);
-    const timestamp = rawTimestamp !== "" ? rawTimestamp : fallbackTimestamp;
-    const message = asText(raw["message"]);
-
-    if (timestamp === "" || message === "") {
-      return null;
-    }
-
-    const rawLevel = asText(raw["level"]);
-    const fallbackLevel = asText(raw["type"]);
-    const levelRaw = rawLevel !== "" ? rawLevel : fallbackLevel;
-    const level = levelRaw !== "" ? levelRaw.toLowerCase() : "info";
-    const rawCategory = asText(raw["category"]);
-    const category = rawCategory !== "" ? rawCategory : "system";
-    const rawSource = asText(raw["source"]);
-    const source = rawSource !== "" ? rawSource : app;
-    const rawSessionId = asText(raw["sessionId"]);
-    const sessionId = rawSessionId !== "" ? rawSessionId : fallbackSessionId;
-    const correlationId = asText(raw["correlationId"]);
-
-    const visibilityValue = raw["visibility"];
-    const visibility = typeof visibilityValue === "number" ? visibilityValue : undefined;
-
-    const context = asRecord(raw["context"]) ?? asRecord(raw["meta"]);
-    const id = `${app}|${sessionId}|${timestamp}|${source}|${category}|${message}`;
-
-    return {
-      id,
-      app,
-      sessionId,
-      timestamp,
-      level,
-      category,
-      message,
-      source,
-      ...(visibility !== undefined ? { visibility } : {}),
-      ...(correlationId !== "" ? { correlationId } : {}),
-      ...(context !== undefined ? { context } : {}),
-    };
-  };
-
-  const setActiveTabUI = (): void => {
-    appButtons.forEach((button) => {
-      const isActive = button.dataset["app"] === state.activeApp;
-      button.classList.toggle("is-active", isActive);
+  const render = (): void => {
+    renderEntries({
+      state,
+      overlayContent,
+      levelSelect,
+      searchInput,
+      metrics,
+      detailMeta,
+      detailContext,
+      formatLogCategory,
+      escapeHtml,
+      maxLogs,
     });
-  };
-
-  const setPauseButtonUI = (): void => {
-    pauseBtn.textContent = state.paused ? "Resume" : "Pause";
-    pauseBtn.classList.toggle("is-active", state.paused);
-  };
-
-  const renderDetail = (entry: OverlayLogEntry | null): void => {
-    if (entry === null) {
-      detailMeta.textContent = "No entry selected";
-      detailContext.textContent = "";
-      return;
-    }
-
-    const when = new Date(entry.timestamp).toLocaleString("tr-TR");
-    const correlation = entry.correlationId ?? "-";
-    detailMeta.textContent =
-      `app=${entry.app} | session=${entry.sessionId} | level=${entry.level} | ` +
-      `source=${entry.source} | category=${entry.category} | ts=${when} | corr=${correlation}`;
-    detailContext.textContent =
-      entry.context !== undefined ? JSON.stringify(entry.context, null, 2) : "No context";
-  };
-
-  const renderEntries = (): void => {
-    const allEntries = state.entriesByApp[state.activeApp];
-    const levelFilter = levelSelect.value;
-    const searchFilter = searchInput.value.trim().toLowerCase();
-
-    const filtered = allEntries.filter((entry) => {
-      if (levelFilter !== "all" && entry.level !== levelFilter) {
-        return false;
-      }
-
-      if (searchFilter === "") {
-        return true;
-      }
-
-      const haystack =
-        `${entry.message} ${entry.category} ${entry.source} ${entry.sessionId}`.toLowerCase();
-      return haystack.includes(searchFilter);
-    });
-
-    metrics.textContent = `${filtered.length} / ${allEntries.length} entries`;
-    overlayContent.innerHTML = "";
-
-    if (filtered.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "log-empty-state";
-      empty.textContent = "Log bulunamadi";
-      overlayContent.appendChild(empty);
-      renderDetail(null);
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    filtered.slice(0, MAX_LOGS).forEach((entry) => {
-      const row = document.createElement("div");
-      row.className =
-        `log-entry log-level-${entry.level}` +
-        (entry.id === state.selectedEntryId ? " is-selected" : "");
-      row.dataset["entryId"] = entry.id;
-
-      const time = new Date(entry.timestamp).toLocaleTimeString("tr-TR");
-      const category = formatLogCategory(entry.category);
-      const safeLevel = escapeHtml(entry.level.toUpperCase());
-
-      row.innerHTML = `
-          <div class="log-entry-header">
-            <span class="log-time">${escapeHtml(time)}</span>
-            <span class="log-level log-level-badge-${entry.level}">${safeLevel}</span>
-            <span class="log-app">${escapeHtml(entry.app)}</span>
-            <span class="log-category">${escapeHtml(category)}</span>
-          </div>
-          <div class="log-message">${escapeHtml(entry.message)}</div>
-        `;
-
-      row.addEventListener("click", () => {
-        state.selectedEntryId = entry.id;
-        renderEntries();
-        renderDetail(entry);
-      });
-
-      fragment.appendChild(row);
-    });
-
-    overlayContent.appendChild(fragment);
-
-    const selected = filtered.find((entry) => entry.id === state.selectedEntryId) ?? null;
-    renderDetail(selected);
-  };
-
-  const appendEntries = (app: OverlayApp, incoming: OverlayLogEntry[]): void => {
-    if (incoming.length === 0) {
-      return;
-    }
-
-    const merged = [...incoming, ...state.entriesByApp[app]];
-    const unique = new Map<string, OverlayLogEntry>();
-
-    for (const entry of merged) {
-      if (!unique.has(entry.id)) {
-        unique.set(entry.id, entry);
-      }
-    }
-
-    state.entriesByApp[app] = Array.from(unique.values())
-      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      .slice(0, MAX_LOGS);
   };
 
   const ensureBaseLogsDir = async (): Promise<boolean> => {
@@ -330,37 +125,8 @@ export function setupEntranceLiveLogOverlay({
     }
   };
 
-  const syncSessionSelect = (): void => {
-    const sessions = state.sessionsByApp[state.activeApp];
-    sessionSelect.innerHTML = "";
-
-    if (sessions.length === 0) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "Session yok";
-      sessionSelect.appendChild(option);
-      sessionSelect.value = "";
-      return;
-    }
-
-    sessions.forEach((sessionId) => {
-      const option = document.createElement("option");
-      option.value = sessionId;
-      option.textContent = sessionId;
-      sessionSelect.appendChild(option);
-    });
-
-    const selected = state.selectedSessionByApp[state.activeApp];
-    if (selected !== "" && sessions.includes(selected)) {
-      sessionSelect.value = selected;
-    } else {
-      const fallback = sessions[0] ?? "";
-      state.selectedSessionByApp[state.activeApp] = fallback;
-      sessionSelect.value = fallback;
-    }
-  };
-
-  const loadSessions = async (app: OverlayApp): Promise<void> => {
+  const loadSessions = async (): Promise<void> => {
+    const app = state.activeApp;
     const ok = await ensureBaseLogsDir();
     if (!ok) {
       state.sessionsByApp[app] = [];
@@ -397,7 +163,7 @@ export function setupEntranceLiveLogOverlay({
     if (sessionId === "") {
       state.entriesByApp[app] = [];
       state.selectedEntryId = "";
-      renderEntries();
+      render();
       return;
     }
 
@@ -408,7 +174,7 @@ export function setupEntranceLiveLogOverlay({
       if (force) {
         state.entriesByApp[app] = [];
         state.selectedEntryId = "";
-        renderEntries();
+        render();
       }
       return;
     }
@@ -433,17 +199,17 @@ export function setupEntranceLiveLogOverlay({
           return null;
         }
       })
-      .filter((entry): entry is OverlayLogEntry => entry !== null)
+      .filter((entry) => entry !== null)
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      .slice(0, MAX_LOGS);
+      .slice(0, maxLogs);
 
     state.entriesByApp[app] = parsed;
-    renderEntries();
+    render();
   };
 
   const refreshActiveApp = async (forceLogs = false): Promise<void> => {
-    await loadSessions(state.activeApp);
-    syncSessionSelect();
+    await loadSessions();
+    syncSessionSelect(state, sessionSelect);
     await loadActiveSessionLogs(forceLogs);
   };
 
@@ -461,14 +227,14 @@ export function setupEntranceLiveLogOverlay({
         return;
       }
       void loadActiveSessionLogs(false);
-    }, POLL_INTERVAL_MS);
+    }, pollIntervalMs);
   };
 
   const openOverlay = (): void => {
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
-    setActiveTabUI();
-    setPauseButtonUI();
+    setActiveTabUI(state, appButtons);
+    setPauseButtonUI(state, pauseBtn);
     void (async (): Promise<void> => {
       await refreshActiveApp(true);
       startPolling();
@@ -497,12 +263,12 @@ export function setupEntranceLiveLogOverlay({
         }
         return normalizeLogEntry("hayalet-ev", fallbackSession, packet);
       })
-      .filter((entry): entry is OverlayLogEntry => entry !== null);
+      .filter((entry) => entry !== null);
 
-    appendEntries("hayalet-ev", incoming);
+    appendEntries(state, "hayalet-ev", incoming, maxLogs);
 
     if (!overlay.classList.contains("hidden") && state.activeApp === "hayalet-ev") {
-      renderEntries();
+      render();
     }
   };
 
@@ -521,14 +287,14 @@ export function setupEntranceLiveLogOverlay({
   appButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const app = button.dataset["app"];
-      if (app !== "hayalet-ev" && app !== "mcp-server" && app !== "ghost-agent") {
+      if (!isOverlayApp(app)) {
         return;
       }
 
       state.activeApp = app;
       state.selectedEntryId = "";
-      setActiveTabUI();
-      renderDetail(null);
+      setActiveTabUI(state, appButtons);
+      renderDetail(detailMeta, detailContext, null);
       void refreshActiveApp(true);
     });
   });
@@ -541,16 +307,16 @@ export function setupEntranceLiveLogOverlay({
   });
 
   levelSelect.addEventListener("change", () => {
-    renderEntries();
+    render();
   });
 
   searchInput.addEventListener("input", () => {
-    renderEntries();
+    render();
   });
 
   pauseBtn.addEventListener("click", () => {
     state.paused = !state.paused;
-    setPauseButtonUI();
+    setPauseButtonUI(state, pauseBtn);
     if (!state.paused) {
       void loadActiveSessionLogs(true);
     }
@@ -560,8 +326,8 @@ export function setupEntranceLiveLogOverlay({
     state.entriesByApp[state.activeApp] = [];
     state.selectedEntryId = "";
     state.lastFingerprintByApp[state.activeApp] = "";
-    renderEntries();
-    renderDetail(null);
+    render();
+    renderDetail(detailMeta, detailContext, null);
   });
 
   window.addEventListener("keydown", (event) => {
@@ -578,7 +344,7 @@ export function setupEntranceLiveLogOverlay({
     handleIncomingPayload(payload);
   });
 
-  setPauseButtonUI();
-  renderEntries();
+  setPauseButtonUI(state, pauseBtn);
+  render();
   Logger.debug(LogCategory.ENTRANCE, "Advanced live log overlay setup complete");
 }

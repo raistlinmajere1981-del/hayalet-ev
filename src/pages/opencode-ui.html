@@ -30,7 +30,6 @@
           </button>
           <button class="ds-workspace-add" id="workspace-add" title="Yeni Workspace">+</button>
         </div>
-        <div class="ds-workspace-bar__url" id="workspace-url-display" title="URL bilgisi">-</div>
         <button
           class="ds-workspace-bar__toggle-right ds-workspace-bar__toggle-right--active"
           id="toggle-right"
@@ -60,6 +59,25 @@
           <!-- New chat button -->
           <div class="px-2 py-2">
             <button class="btn btn-primary w-full" id="new-session-btn">+ Yeni Sohbet</button>
+          </div>
+
+          <div class="ds-session-tabs" id="session-tabs">
+            <button
+              class="ds-session-tab is-active"
+              id="session-tab-active"
+              data-tab="active"
+              type="button"
+            >
+              Aktif
+            </button>
+            <button
+              class="ds-session-tab"
+              id="session-tab-archived"
+              data-tab="archived"
+              type="button"
+            >
+              Arsiv
+            </button>
           </div>
 
           <!-- Session list -->
@@ -157,11 +175,16 @@
                 >
                   📋 Yapıştır
                 </button>
+                <input id="attach-file-input" type="file" multiple hidden />
               </div>
             </div>
 
-            <!-- Clipboard preview area -->
-            <div id="clipboard-preview-area" class="is-hidden px-2"></div>
+            <!-- Attachment chip area -->
+            <div
+              id="clipboard-preview-area"
+              class="ds-attachment-tray is-hidden"
+              aria-live="polite"
+            ></div>
 
             <!-- Input row -->
             <div class="ds-chat__input-row">
@@ -179,120 +202,190 @@
         <!-- ===== RIGHT SIDEBAR — Panels ===== -->
         <div class="ds-sidebar ds-sidebar--right" id="sidebar-right">
           <div class="ds-sidebar__body ds-sidebar__body--right">
-            <div class="ds-right-tabs" role="tablist" aria-label="OpenCode UI sağ panel sekmeleri">
-              <button
-                type="button"
-                id="rtab-btn-todo"
-                class="ds-right-tab"
-                data-rtab="todo"
-                role="tab"
-                aria-selected="false"
-                aria-controls="rtab-todo"
-                tabindex="-1"
+            <div class="ds-right-inspector">
+              <div
+                class="ds-right-tabs"
+                role="tablist"
+                aria-label="OpenCode UI sağ panel sekmeleri"
               >
-                Todo
-              </button>
-              <button
-                type="button"
-                id="rtab-btn-files"
-                class="ds-right-tab"
-                data-rtab="files"
-                role="tab"
-                aria-selected="false"
-                aria-controls="rtab-files"
-                tabindex="-1"
-              >
-                Files
-              </button>
-              <button
-                type="button"
-                id="rtab-btn-health"
-                class="ds-right-tab is-active"
-                data-rtab="health"
-                role="tab"
-                aria-selected="true"
-                aria-controls="rtab-health"
-                tabindex="0"
-              >
-                Sunucu
-              </button>
-              <button
-                type="button"
-                id="rtab-visibility-btn"
-                class="ds-right-tabs__toggle"
-                title="Sekmeleri gizle"
-                aria-label="Sağ panel sekmelerini gizle"
-                aria-pressed="false"
-              >
-                ▾
-              </button>
-            </div>
+                <button
+                  type="button"
+                  id="rtab-btn-todo"
+                  class="ds-right-tab"
+                  data-rtab="todo"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="rtab-todo"
+                  tabindex="-1"
+                >
+                  Todo
+                </button>
+                <button
+                  type="button"
+                  id="rtab-btn-files"
+                  class="ds-right-tab"
+                  data-rtab="files"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="rtab-files"
+                  tabindex="-1"
+                >
+                  Files
+                </button>
+                <button
+                  type="button"
+                  id="rtab-btn-health"
+                  class="ds-right-tab is-active"
+                  data-rtab="health"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="rtab-health"
+                  tabindex="0"
+                >
+                  Sunucu
+                </button>
+                <button
+                  type="button"
+                  id="rtab-btn-providers"
+                  class="ds-right-tab"
+                  data-rtab="providers"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="rtab-providers"
+                  tabindex="-1"
+                >
+                  Providers
+                </button>
+                <button
+                  type="button"
+                  id="rtab-visibility-btn"
+                  class="ds-right-tabs__toggle"
+                  title="Sekmeleri gizle"
+                  aria-label="Sağ panel sekmelerini gizle"
+                  aria-pressed="false"
+                >
+                  ▾
+                </button>
+              </div>
 
-            <div class="ds-right-panels">
-              <section
-                class="ds-rtab-panel"
-                id="rtab-todo"
-                role="tabpanel"
-                aria-labelledby="rtab-btn-todo"
-              >
-                <div class="empty-state">Henüz todo yok</div>
-              </section>
-
-              <section
-                class="ds-rtab-panel"
-                id="rtab-files"
-                role="tabpanel"
-                aria-labelledby="rtab-btn-files"
-              >
-                <div class="empty-state">Değişen dosya yok</div>
-              </section>
-
-              <section
-                class="ds-rtab-panel is-active"
-                id="rtab-health"
-                role="tabpanel"
-                aria-labelledby="rtab-btn-health"
-              >
-                <div class="ds-panel" id="health-panel">
-                  <div class="ds-panel__header">
-                    <span class="ds-panel__icon">💊</span>
-                    <span class="ds-panel__title">SUNUCU</span>
-                    <span id="health-badge" class="ds-status-badge ds-status-badge--warning">
-                      <span class="ds-status-badge__dot"></span>
-                      <span>Bekleniyor</span>
-                    </span>
+              <div class="ds-right-panels">
+                <section
+                  class="ds-rtab-panel"
+                  id="rtab-todo"
+                  role="tabpanel"
+                  aria-labelledby="rtab-btn-todo"
+                >
+                  <div class="ds-right-panel-card">
+                    <div class="ds-right-panel-card__meta">
+                      <div>
+                        <div class="ds-right-panel-card__eyebrow">Session Özeti</div>
+                        <div class="ds-right-panel-card__title">Todo</div>
+                      </div>
+                    </div>
+                    <div class="empty-state">Henüz todo yok</div>
                   </div>
-                  <div class="ds-panel__body" id="health-panel-body">
-                    <div class="ds-kv-row">
-                      <button class="btn btn-primary w-full is-hidden" id="mcp-accept-btn">
-                        ✅ MCP Terms Kabul Et
-                      </button>
+                </section>
+
+                <section
+                  class="ds-rtab-panel"
+                  id="rtab-files"
+                  role="tabpanel"
+                  aria-labelledby="rtab-btn-files"
+                >
+                  <div class="ds-right-panel-card">
+                    <div class="ds-right-panel-card__meta">
+                      <div>
+                        <div class="ds-right-panel-card__eyebrow">Workspace</div>
+                        <div class="ds-right-panel-card__title">Files</div>
+                      </div>
                     </div>
-                    <div class="ds-kv-row">
-                      <span class="ds-kv-row__label">Versiyon</span>
-                      <span class="ds-kv-row__value" id="version">-</span>
+                    <div class="empty-state">Değişen dosya yok</div>
+                  </div>
+                </section>
+
+                <section
+                  class="ds-rtab-panel is-active"
+                  id="rtab-health"
+                  role="tabpanel"
+                  aria-labelledby="rtab-btn-health"
+                >
+                  <div class="ds-right-panel-card ds-right-panel-card--health" id="health-panel">
+                    <div class="ds-right-panel-card__meta">
+                      <div>
+                        <div class="ds-right-panel-card__eyebrow">Sunucu Durumu</div>
+                        <div class="ds-right-panel-card__title">OpenCode Serve</div>
+                      </div>
+                      <span id="health-badge" class="ds-status-badge ds-status-badge--warning">
+                        <span class="ds-status-badge__dot"></span>
+                        <span>Bekleniyor</span>
+                      </span>
                     </div>
-                    <div class="ds-kv-row">
-                      <span class="ds-kv-row__label">Dizin</span>
-                      <span class="ds-kv-row__value" id="working-dir">-</span>
-                    </div>
-                    <div class="ds-kv-row">
-                      <span class="ds-kv-row__label">LSP</span>
-                      <span class="ds-kv-row__value" id="lsp-status">-</span>
-                    </div>
-                    <div class="ds-kv-row">
-                      <span class="ds-kv-row__label">Plugin</span>
-                      <span class="ds-kv-row__value" id="plugin-status">-</span>
+                    <div class="ds-panel__body ds-panel__body--compact" id="health-panel-body">
+                      <div class="ds-kv-row">
+                        <button class="btn btn-primary w-full is-hidden" id="mcp-accept-btn">
+                          ✅ MCP Terms Kabul Et
+                        </button>
+                      </div>
+                      <div class="ds-kv-row">
+                        <span class="ds-kv-row__label">Versiyon</span>
+                        <span class="ds-kv-row__value" id="version">-</span>
+                      </div>
+                      <div class="ds-kv-row ds-kv-row--url">
+                        <span class="ds-kv-row__label">URL</span>
+                        <div class="ds-kv-row__value ds-kv-row__value--url">
+                          <span id="workspace-url-display" title="URL bilgisi">-</span>
+                          <button
+                            type="button"
+                            class="btn btn-xs btn-secondary ds-copy-url-btn"
+                            id="btn-copy-url"
+                            title="URL'yi kopyala"
+                          >
+                            Kopyala
+                          </button>
+                        </div>
+                      </div>
+                      <div class="ds-kv-row">
+                        <span class="ds-kv-row__label">Dizin</span>
+                        <span class="ds-kv-row__value" id="working-dir">-</span>
+                      </div>
+                      <div class="ds-kv-row">
+                        <span class="ds-kv-row__label">LSP</span>
+                        <span class="ds-kv-row__value" id="lsp-status">-</span>
+                      </div>
+                      <div class="ds-kv-row">
+                        <span class="ds-kv-row__label">Plugin</span>
+                        <span class="ds-kv-row__value" id="plugin-status">-</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
+                </section>
+
+                <section
+                  class="ds-rtab-panel"
+                  id="rtab-providers"
+                  role="tabpanel"
+                  aria-labelledby="rtab-btn-providers"
+                >
+                  <div class="ds-right-panel-card" id="providers-panel">
+                    <div class="ds-right-panel-card__meta">
+                      <div>
+                        <div class="ds-right-panel-card__eyebrow">Runtime</div>
+                        <div class="ds-right-panel-card__title">Providers</div>
+                      </div>
+                    </div>
+                    <div class="ds-panel__body ds-panel__body--compact" id="providers-panel-body">
+                      <div id="providers-list">
+                        <div class="empty-state">Yükleniyor...</div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
 
             <div class="ds-right-secondary">
               <div class="ds-panel ds-panel--collapsed">
                 <div class="ds-panel__header" data-toggle="prompts-panel-body">
-                  <span class="ds-panel__icon">⚡</span>
                   <span class="ds-panel__title">HIZLI PROMPTLAR</span>
                   <span class="ds-panel__count" id="prompt-count">0</span>
                   <span class="ds-panel__chevron">▾</span>
@@ -340,7 +433,6 @@
 
               <div class="ds-panel ds-panel--collapsed is-hidden" id="mcp-panel">
                 <div class="ds-panel__header" data-toggle="mcp-panel-body">
-                  <span class="ds-panel__icon">🔧</span>
                   <span class="ds-panel__title">MCP SERVERS</span>
                   <span class="ds-panel__count" id="mcp-count">0</span>
                   <span class="ds-panel__chevron">▾</span>
@@ -352,7 +444,6 @@
 
               <div class="ds-panel ds-panel--collapsed">
                 <div class="ds-panel__header" data-toggle="tools-panel-body">
-                  <span class="ds-panel__icon">🛠️</span>
                   <span class="ds-panel__title">TOOLS</span>
                   <span class="ds-panel__count" id="tool-count">0</span>
                   <span class="ds-panel__chevron">▾</span>

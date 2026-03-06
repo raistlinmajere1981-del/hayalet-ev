@@ -159,7 +159,10 @@ export function initUIHelpers(): void {
 
     if (rightTabsVisibilityBtn != null) {
       rightTabsVisibilityBtn.textContent = visible ? "▾" : "▸";
-      rightTabsVisibilityBtn.setAttribute("title", visible ? "Sekmeleri gizle" : "Sekmeleri göster");
+      rightTabsVisibilityBtn.setAttribute(
+        "title",
+        visible ? "Sekmeleri gizle" : "Sekmeleri göster"
+      );
       rightTabsVisibilityBtn.setAttribute(
         "aria-label",
         visible ? "Sağ panel sekmelerini gizle" : "Sağ panel sekmelerini göster"

@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { DatabaseSync } from "node:sqlite";
+import { createClient } from "@libsql/client";
+import type { Client, InStatement, Row } from "@libsql/client";
 
 const TAG_SEPARATOR = "\u001f";
 
@@ -142,37 +144,68 @@ function parseMetadata(metadataJson: string | null): Record<string, unknown> | n
   }
 }
 
-function toFtsQuery(raw: string): string {
-  const words = raw
-    .split(/\s+/)
-    .map((word) => word.trim())
-    .filter((word) => word.length > 0)
-    .map((word) => word.replace(/"/g, '""'));
+function makePlaceholders(count: number): string {
+  return Array.from({ length: count }, () => "?").join(", ");
+}
 
-  if (words.length === 0) return "";
-  return words.map((word) => `"${word}"`).join(" AND ");
+function getRowValue(row: Row, key: string): unknown {
+  return (row as Record<string, unknown>)[key];
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "bigint") return Number(value);
+  return fallback;
+}
+
+function toMemoryRow(row: Row): MemoryRow {
+  return {
+    id: asString(getRowValue(row, "id")),
+    namespace: asString(getRowValue(row, "namespace")),
+    content: asString(getRowValue(row, "content")),
+    summary: asNullableString(getRowValue(row, "summary")),
+    source_provider: asNullableString(getRowValue(row, "source_provider")),
+    memory_type: asString(getRowValue(row, "memory_type")),
+    importance: asNumber(getRowValue(row, "importance")),
+    pinned: asNumber(getRowValue(row, "pinned")),
+    metadata_json: asNullableString(getRowValue(row, "metadata_json")),
+    created_at: asNumber(getRowValue(row, "created_at")),
+    updated_at: asNumber(getRowValue(row, "updated_at")),
+    last_accessed_at: asNumber(getRowValue(row, "last_accessed_at")),
+    access_count: asNumber(getRowValue(row, "access_count")),
+    tags_concat: asNullableString(getRowValue(row, "tags_concat")),
+  };
 }
 
 export class MemoryStore {
-  private readonly db: DatabaseSync;
+  private readonly client: Client;
 
-  private ftsEnabled = true;
+  private readonly ready: Promise<void>;
 
   constructor(options: MemoryStoreOptions) {
     mkdirSync(dirname(options.databasePath), { recursive: true });
-    this.db = new DatabaseSync(options.databasePath);
-    this.db.exec("PRAGMA journal_mode = WAL");
-    this.db.exec("PRAGMA synchronous = NORMAL");
-    this.db.exec("PRAGMA foreign_keys = ON");
-    this.db.exec("PRAGMA busy_timeout = 5000");
-    this.initializeSchema();
+    this.client = createClient({
+      url: pathToFileURL(options.databasePath).toString(),
+      concurrency: 4,
+    });
+    this.ready = this.initializeSchema();
   }
 
   close(): void {
-    this.db.close();
+    this.client.close();
   }
 
-  writeMemory(input: MemoryWriteInput): MemoryItem {
+  async writeMemory(input: MemoryWriteInput): Promise<MemoryItem> {
+    await this.ready;
+
     const content = input.content.trim();
     if (content === "") {
       throw new Error("content is required");
@@ -200,59 +233,55 @@ export class MemoryStore {
     const metadataJson = input.metadata ? JSON.stringify(input.metadata) : null;
     const tags = normalizeTags(input.tags);
 
-    const insertStmt = this.db.prepare(
-      `
-        INSERT INTO memories (
+    const statements: InStatement[] = [
+      {
+        sql: `
+          INSERT INTO memories (
+            id,
+            namespace,
+            content,
+            summary,
+            source_provider,
+            memory_type,
+            importance,
+            pinned,
+            metadata_json,
+            created_at,
+            updated_at,
+            last_accessed_at,
+            access_count
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `,
+        args: [
           id,
           namespace,
           content,
           summary,
-          source_provider,
-          memory_type,
+          sourceProvider,
+          memoryType,
           importance,
           pinned,
-          metadata_json,
-          created_at,
-          updated_at,
-          last_accessed_at,
-          access_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-      `
-    );
+          metadataJson,
+          createdAt,
+          updatedAt,
+          updatedAt,
+        ],
+      },
+      ...this.buildReplaceTagsStatements(id, tags),
+    ];
 
-    this.db.exec("BEGIN");
-    try {
-      insertStmt.run(
-        id,
-        namespace,
-        content,
-        summary,
-        sourceProvider,
-        memoryType,
-        importance,
-        pinned,
-        metadataJson,
-        createdAt,
-        updatedAt,
-        updatedAt
-      );
+    await this.client.batch(statements, "write");
 
-      this.replaceTags(id, tags);
-      this.syncFtsRow(id);
-      this.db.exec("COMMIT");
-    } catch (err) {
-      this.db.exec("ROLLBACK");
-      throw err;
-    }
-
-    const row = this.getMemoryById(id);
-    if (!row) {
+    const row = await this.getMemoryById(id);
+    if (row == null) {
       throw new Error("failed to read inserted memory");
     }
     return row;
   }
 
-  searchMemory(input: MemorySearchInput): MemorySearchResult {
+  async searchMemory(input: MemorySearchInput): Promise<MemorySearchResult> {
+    await this.ready;
+
     const limit = this.normalizeLimit(input.limit);
     const namespace = input.namespace?.trim();
     const sourceProvider = input.sourceProvider?.trim();
@@ -260,20 +289,20 @@ export class MemoryStore {
     const query = (input.query ?? "*").trim();
 
     const conditions: string[] = [];
-    const params: (string | number | null)[] = [];
+    const params: Array<string | number | null> = [];
 
-    if (namespace != null) {
+    if (namespace != null && namespace !== "") {
       conditions.push("m.namespace = ?");
       params.push(namespace);
     }
 
-    if (sourceProvider != null) {
+    if (sourceProvider != null && sourceProvider !== "") {
       conditions.push("m.source_provider = ?");
       params.push(sourceProvider);
     }
 
     if (tags.length > 0) {
-      const placeholders = tags.map(() => "?").join(", ");
+      const placeholders = makePlaceholders(tags.length);
       conditions.push(
         `m.id IN (
           SELECT memory_id
@@ -283,122 +312,58 @@ export class MemoryStore {
           HAVING COUNT(DISTINCT tag) = ?
         )`
       );
-      for (const tag of tags) params.push(tag);
-      params.push(tags.length);
+      params.push(...tags, tags.length);
     }
 
-    const isWildcard = query === "" || query === "*";
-    let usedLikeFallback = false;
-
-    if (!isWildcard) {
-      if (this.ftsEnabled) {
-        const ftsQuery = toFtsQuery(query);
-        if (ftsQuery !== "") {
-          conditions.push(
-            "m.id IN (SELECT memory_id FROM memories_fts WHERE memories_fts MATCH ?)"
-          );
-          params.push(ftsQuery);
-        }
-      } else {
-        conditions.push("(m.content LIKE ? OR COALESCE(m.summary, '') LIKE ?)");
-        params.push(`%${query}%`, `%${query}%`);
-        usedLikeFallback = true;
-      }
+    if (query !== "" && query !== "*") {
+      conditions.push(
+        `(
+          m.content LIKE ? OR
+          COALESCE(m.summary, '') LIKE ? OR
+          EXISTS (
+            SELECT 1
+            FROM memory_tags mt
+            WHERE mt.memory_id = m.id AND mt.tag LIKE ?
+          )
+        )`
+      );
+      const likeQuery = `%${query}%`;
+      params.push(likeQuery, likeQuery, likeQuery);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    const sql = `
-      SELECT
-        m.id,
-        m.namespace,
-        m.content,
-        m.summary,
-        m.source_provider,
-        m.memory_type,
-        m.importance,
-        m.pinned,
-        m.metadata_json,
-        m.created_at,
-        m.updated_at,
-        m.last_accessed_at,
-        m.access_count,
-        (
-          SELECT group_concat(tag, '${TAG_SEPARATOR}')
-          FROM memory_tags
-          WHERE memory_id = m.id
-        ) AS tags_concat
-      FROM memories m
-      ${whereClause}
-      ORDER BY m.pinned DESC, m.importance DESC, m.updated_at DESC
-      LIMIT ?
-    `;
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          m.id,
+          m.namespace,
+          m.content,
+          m.summary,
+          m.source_provider,
+          m.memory_type,
+          m.importance,
+          m.pinned,
+          m.metadata_json,
+          m.created_at,
+          m.updated_at,
+          m.last_accessed_at,
+          m.access_count,
+          (
+            SELECT group_concat(tag, '${TAG_SEPARATOR}')
+            FROM memory_tags
+            WHERE memory_id = m.id
+          ) AS tags_concat
+        FROM memories m
+        ${whereClause}
+        ORDER BY m.pinned DESC, m.importance DESC, m.updated_at DESC
+        LIMIT ?
+      `,
+      args: [...params, limit],
+    });
 
-    let rows: MemoryRow[];
-
-    try {
-      const stmt = this.db.prepare(sql);
-      rows = stmt.all(...params, limit) as unknown as MemoryRow[];
-    } catch (error) {
-      if (this.ftsEnabled && !isWildcard && !usedLikeFallback) {
-        const fallbackConditions = [...conditions];
-        const fallbackParams = [...params];
-        const ftsParam = fallbackParams.pop();
-
-        if (typeof ftsParam !== "string") {
-          throw error;
-        }
-
-        const ftsCondition =
-          "m.id IN (SELECT memory_id FROM memories_fts WHERE memories_fts MATCH ?)";
-        const ftsIndex = fallbackConditions.lastIndexOf(ftsCondition);
-        if (ftsIndex < 0) throw error;
-
-        fallbackConditions.splice(
-          ftsIndex,
-          1,
-          "(m.content LIKE ? OR COALESCE(m.summary, '') LIKE ?)"
-        );
-        fallbackParams.push(`%${query}%`, `%${query}%`);
-
-        const fallbackWhere =
-          fallbackConditions.length > 0 ? `WHERE ${fallbackConditions.join(" AND ")}` : "";
-
-        const fallbackSql = `
-          SELECT
-            m.id,
-            m.namespace,
-            m.content,
-            m.summary,
-            m.source_provider,
-            m.memory_type,
-            m.importance,
-            m.pinned,
-            m.metadata_json,
-            m.created_at,
-            m.updated_at,
-            m.last_accessed_at,
-            m.access_count,
-            (
-              SELECT group_concat(tag, '${TAG_SEPARATOR}')
-              FROM memory_tags
-              WHERE memory_id = m.id
-            ) AS tags_concat
-          FROM memories m
-          ${fallbackWhere}
-          ORDER BY m.pinned DESC, m.importance DESC, m.updated_at DESC
-          LIMIT ?
-        `;
-
-        const fallbackStmt = this.db.prepare(fallbackSql);
-        rows = fallbackStmt.all(...fallbackParams, limit) as unknown as MemoryRow[];
-      } else {
-        throw error;
-      }
-    }
-
-    const items = rows.map((row) => this.mapRow(row));
-    this.bumpAccess(items.map((item) => item.id));
+    const items = result.rows.map((row) => this.mapRow(toMemoryRow(row)));
+    await this.bumpAccess(items.map((item) => item.id));
 
     return {
       items,
@@ -406,9 +371,16 @@ export class MemoryStore {
     };
   }
 
-  updateMemory(input: MemoryUpdateInput): boolean {
+  async updateMemory(input: MemoryUpdateInput): Promise<boolean> {
+    await this.ready;
+
+    const existing = await this.getMemoryById(input.id);
+    if (existing == null) {
+      return false;
+    }
+
     const updates: string[] = [];
-    const params: (string | number | null)[] = [];
+    const params: Array<string | number | null> = [];
 
     if (input.content !== undefined) {
       const content = input.content.trim();
@@ -447,87 +419,82 @@ export class MemoryStore {
       params.push(JSON.stringify(input.metadata));
     }
 
-    if (updates.length === 0 && input.tags === undefined) {
+    const statements: InStatement[] = [];
+
+    if (updates.length > 0) {
+      updates.push("updated_at = ?");
+      params.push(Date.now());
+      statements.push({
+        sql: `
+          UPDATE memories
+          SET ${updates.join(", ")}
+          WHERE id = ?
+        `,
+        args: [...params, input.id],
+      });
+    }
+
+    if (input.tags !== undefined) {
+      statements.push(...this.buildReplaceTagsStatements(input.id, normalizeTags(input.tags)));
+    }
+
+    if (statements.length === 0) {
       return false;
     }
 
-    const now = Date.now();
-    updates.push("updated_at = ?");
-    params.push(now);
-
-    const updateStmt = this.db.prepare(`
-      UPDATE memories
-      SET ${updates.join(", ")}
-      WHERE id = ?
-    `);
-
-    const existsStmt = this.db.prepare("SELECT 1 FROM memories WHERE id = ?");
-
-    this.db.exec("BEGIN");
-    try {
-      let changed = 0;
-
-      if (updates.length > 0) {
-        const result = updateStmt.run(...params, input.id);
-        changed = Number((result as unknown as { changes: number }).changes);
-      }
-
-      if (changed === 0) {
-        const exists = existsStmt.get(input.id) as { 1: number } | undefined;
-        if (!exists) {
-          this.db.exec("ROLLBACK");
-          return false;
-        }
-      }
-
-      if (input.tags !== undefined) {
-        this.replaceTags(input.id, normalizeTags(input.tags));
-      }
-
-      this.syncFtsRow(input.id);
-      this.db.exec("COMMIT");
-      return true;
-    } catch (err) {
-      this.db.exec("ROLLBACK");
-      throw err;
-    }
+    await this.client.batch(statements, "write");
+    return true;
   }
 
-  deleteMemory(id: string): boolean {
-    const deleteStmt = this.db.prepare("DELETE FROM memories WHERE id = ?");
-    const deleteFtsStmt = this.db.prepare("DELETE FROM memories_fts WHERE memory_id = ?");
+  async deleteMemory(id: string): Promise<boolean> {
+    await this.ready;
 
-    this.db.exec("BEGIN");
-    try {
-      const result = deleteStmt.run(id);
-      const changed = Number((result as unknown as { changes: number }).changes);
-      if (changed > 0 && this.ftsEnabled) {
-        deleteFtsStmt.run(id);
-      }
-      this.db.exec("COMMIT");
-      return changed > 0;
-    } catch (err) {
-      this.db.exec("ROLLBACK");
-      throw err;
-    }
+    const result = await this.client.batch(
+      [
+        {
+          sql: "DELETE FROM memory_tags WHERE memory_id = ?",
+          args: [id],
+        },
+        {
+          sql: "DELETE FROM memories WHERE id = ?",
+          args: [id],
+        },
+      ],
+      "write"
+    );
+
+    return (result[1]?.rowsAffected ?? 0) > 0;
   }
 
-  pruneMemory(input: MemoryPruneInput): number {
+  async pruneMemory(input: MemoryPruneInput): Promise<number> {
+    await this.ready;
+
     const maxItems = Math.max(0, Math.floor(input.maxItems));
     const namespace = input.namespace?.trim();
     const threshold = input.olderThanMs;
 
-    const where = namespace != null ? "WHERE namespace = ? AND pinned = 0" : "WHERE pinned = 0";
-    const params: (string | number | null)[] = namespace != null ? [namespace] : [];
+    const conditions = ["pinned = 0"];
+    const params: Array<string | number | null> = [];
 
-    const selectStmt = this.db.prepare(`
-      SELECT id, updated_at
-      FROM memories
-      ${where}
-      ORDER BY updated_at DESC
-    `);
+    if (namespace != null && namespace !== "") {
+      conditions.push("namespace = ?");
+      params.push(namespace);
+    }
 
-    const rows = selectStmt.all(...params) as unknown as Array<{ id: string; updated_at: number }>;
+    const result = await this.client.execute({
+      sql: `
+        SELECT id, updated_at
+        FROM memories
+        WHERE ${conditions.join(" AND ")}
+        ORDER BY updated_at DESC
+      `,
+      args: params,
+    });
+
+    const rows = result.rows.map((row) => ({
+      id: asString(getRowValue(row, "id")),
+      updated_at: asNumber(getRowValue(row, "updated_at")),
+    }));
 
     const keepIds = new Set(rows.slice(0, maxItems).map((row) => row.id));
     const deleteIds: string[] = [];
@@ -545,206 +512,172 @@ export class MemoryStore {
     if (deleteIds.length === 0) return 0;
 
     const uniqueDeleteIds = Array.from(new Set(deleteIds));
-    const placeholders = uniqueDeleteIds.map(() => "?").join(", ");
+    const placeholders = makePlaceholders(uniqueDeleteIds.length);
 
-    const deleteStmt = this.db.prepare(`DELETE FROM memories WHERE id IN (${placeholders})`);
-    const deleteFtsStmt = this.db.prepare(
-      `DELETE FROM memories_fts WHERE memory_id IN (${placeholders})`
+    const deleteResults = await this.client.batch(
+      [
+        {
+          sql: `DELETE FROM memory_tags WHERE memory_id IN (${placeholders})`,
+          args: uniqueDeleteIds,
+        },
+        {
+          sql: `DELETE FROM memories WHERE id IN (${placeholders})`,
+          args: uniqueDeleteIds,
+        },
+      ],
+      "write"
     );
 
-    this.db.exec("BEGIN");
-    try {
-      const result = deleteStmt.run(...uniqueDeleteIds);
-
-      if (this.ftsEnabled) {
-        deleteFtsStmt.run(...uniqueDeleteIds);
-      }
-
-      this.db.exec("COMMIT");
-      return Number((result as unknown as { changes: number }).changes);
-    } catch (err) {
-      this.db.exec("ROLLBACK");
-      throw err;
-    }
+    return deleteResults[1]?.rowsAffected ?? 0;
   }
 
-  getStats(input: MemoryStatsInput = {}): MemoryStats {
+  async getStats(input: MemoryStatsInput = {}): Promise<MemoryStats> {
+    await this.ready;
+
     const namespace = input.namespace?.trim();
-    const where = namespace != null ? "WHERE namespace = ?" : "";
-    const params: (string | number | null)[] = namespace != null ? [namespace] : [];
+    const where = namespace != null && namespace !== "" ? "WHERE namespace = ?" : "";
+    const params: Array<string | number | null> =
+      namespace != null && namespace !== "" ? [namespace] : [];
 
-    const stmt = this.db.prepare(`
-      SELECT
-        COUNT(*) AS total_memories,
-        SUM(CASE WHEN pinned = 1 THEN 1 ELSE 0 END) AS pinned_memories,
-        AVG(importance) AS avg_importance,
-        MAX(updated_at) AS last_updated_at
-      FROM memories
-      ${where}
-    `);
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          COUNT(*) AS total_memories,
+          SUM(CASE WHEN pinned = 1 THEN 1 ELSE 0 END) AS pinned_memories,
+          AVG(importance) AS avg_importance,
+          MAX(updated_at) AS last_updated_at
+        FROM memories
+        ${where}
+      `,
+      args: params,
+    });
 
-    const row = stmt.get(...params) as {
-      total_memories: number;
-      pinned_memories: number | null;
-      avg_importance: number | null;
-      last_updated_at: number | null;
-    };
+    const row = result.rows[0];
+    if (row == null) {
+      return {
+        totalMemories: 0,
+        pinnedMemories: 0,
+        averageImportance: 0,
+        lastUpdatedAt: null,
+      };
+    }
+
+    const averageImportance = getRowValue(row, "avg_importance");
+    const lastUpdatedAt = getRowValue(row, "last_updated_at");
 
     return {
-      totalMemories: Number(row.total_memories),
-      pinnedMemories: Number(row.pinned_memories),
-      averageImportance: row.avg_importance != null ? Number(row.avg_importance.toFixed(2)) : 0,
-      lastUpdatedAt: row.last_updated_at ?? null,
+      totalMemories: asNumber(getRowValue(row, "total_memories")),
+      pinnedMemories: asNumber(getRowValue(row, "pinned_memories")),
+      averageImportance:
+        typeof averageImportance === "number" && Number.isFinite(averageImportance)
+          ? Number(averageImportance.toFixed(2))
+          : 0,
+      lastUpdatedAt:
+        typeof lastUpdatedAt === "number"
+          ? lastUpdatedAt
+          : typeof lastUpdatedAt === "bigint"
+            ? Number(lastUpdatedAt)
+            : null,
     };
   }
 
-  private initializeSchema(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS memories (
-        id TEXT PRIMARY KEY,
-        namespace TEXT NOT NULL,
-        content TEXT NOT NULL,
-        summary TEXT,
-        source_provider TEXT,
-        memory_type TEXT NOT NULL,
-        importance INTEGER NOT NULL DEFAULT 3,
-        pinned INTEGER NOT NULL DEFAULT 0,
-        metadata_json TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        last_accessed_at INTEGER NOT NULL,
-        access_count INTEGER NOT NULL DEFAULT 0
-      );
-
-      CREATE TABLE IF NOT EXISTS memory_tags (
-        memory_id TEXT NOT NULL,
-        tag TEXT NOT NULL,
-        PRIMARY KEY (memory_id, tag),
-        FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_memories_namespace_updated
-      ON memories(namespace, updated_at DESC);
-
-      CREATE INDEX IF NOT EXISTS idx_memories_provider
-      ON memories(source_provider);
-
-      CREATE INDEX IF NOT EXISTS idx_memories_pinned_importance
-      ON memories(pinned DESC, importance DESC, updated_at DESC);
-
-      CREATE INDEX IF NOT EXISTS idx_memory_tags_tag
-      ON memory_tags(tag);
-    `);
-
-    try {
-      this.db.exec(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-          memory_id UNINDEXED,
-          namespace UNINDEXED,
-          content,
-          summary,
-          tags,
-          tokenize='unicode61'
-        );
-      `);
-      this.ftsEnabled = true;
-    } catch {
-      this.ftsEnabled = false;
-    }
+  private async initializeSchema(): Promise<void> {
+    await this.client.batch(
+      [
+        `
+          CREATE TABLE IF NOT EXISTS memories (
+            id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            content TEXT NOT NULL,
+            summary TEXT,
+            source_provider TEXT,
+            memory_type TEXT NOT NULL,
+            importance INTEGER NOT NULL DEFAULT 3,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            metadata_json TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            last_accessed_at INTEGER NOT NULL,
+            access_count INTEGER NOT NULL DEFAULT 0
+          )
+        `,
+        `
+          CREATE TABLE IF NOT EXISTS memory_tags (
+            memory_id TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            PRIMARY KEY (memory_id, tag)
+          )
+        `,
+        `
+          CREATE INDEX IF NOT EXISTS idx_memories_namespace_updated
+          ON memories(namespace, updated_at DESC)
+        `,
+        `
+          CREATE INDEX IF NOT EXISTS idx_memories_provider
+          ON memories(source_provider)
+        `,
+        `
+          CREATE INDEX IF NOT EXISTS idx_memories_pinned_importance
+          ON memories(pinned DESC, importance DESC, updated_at DESC)
+        `,
+        `
+          CREATE INDEX IF NOT EXISTS idx_memory_tags_tag
+          ON memory_tags(tag)
+        `,
+      ],
+      "write"
+    );
   }
 
-  private normalizeLimit(limit?: number): number {
-    if (typeof limit !== "number" || Number.isNaN(limit)) return 20;
-    if (limit < 1) return 1;
-    if (limit > 200) return 200;
-    return Math.floor(limit);
+  private buildReplaceTagsStatements(memoryId: string, tags: string[]): InStatement[] {
+    return [
+      {
+        sql: "DELETE FROM memory_tags WHERE memory_id = ?",
+        args: [memoryId],
+      },
+      ...tags.map(
+        (tag): InStatement => ({
+          sql: `
+            INSERT INTO memory_tags (memory_id, tag)
+            VALUES (?, ?)
+          `,
+          args: [memoryId, tag],
+        })
+      ),
+    ];
   }
 
-  private replaceTags(memoryId: string, tags: string[]): void {
-    const deleteStmt = this.db.prepare("DELETE FROM memory_tags WHERE memory_id = ?");
-    const insertStmt = this.db.prepare(`
-      INSERT INTO memory_tags (memory_id, tag)
-      VALUES (?, ?)
-    `);
+  private async getMemoryById(id: string): Promise<MemoryItem | null> {
+    const result = await this.client.execute({
+      sql: `
+        SELECT
+          m.id,
+          m.namespace,
+          m.content,
+          m.summary,
+          m.source_provider,
+          m.memory_type,
+          m.importance,
+          m.pinned,
+          m.metadata_json,
+          m.created_at,
+          m.updated_at,
+          m.last_accessed_at,
+          m.access_count,
+          (
+            SELECT group_concat(tag, '${TAG_SEPARATOR}')
+            FROM memory_tags
+            WHERE memory_id = m.id
+          ) AS tags_concat
+        FROM memories m
+        WHERE m.id = ?
+        LIMIT 1
+      `,
+      args: [id],
+    });
 
-    deleteStmt.run(memoryId);
-    if (tags.length === 0) return;
-
-    for (const tag of tags) {
-      insertStmt.run(memoryId, tag);
-    }
-  }
-
-  private syncFtsRow(memoryId: string): void {
-    if (!this.ftsEnabled) return;
-
-    const selectStmt = this.db.prepare(`
-      SELECT
-        m.id,
-        m.namespace,
-        m.content,
-        m.summary,
-        (
-          SELECT group_concat(tag, ' ')
-          FROM memory_tags
-          WHERE memory_id = m.id
-        ) AS tags_text
-      FROM memories m
-      WHERE m.id = ?
-    `);
-
-    const row = selectStmt.get(memoryId) as
-      | {
-          id: string;
-          namespace: string;
-          content: string;
-          summary: string | null;
-          tags_text: string | null;
-        }
-      | undefined;
-
-    const deleteFtsStmt = this.db.prepare("DELETE FROM memories_fts WHERE memory_id = ?");
-    const insertFtsStmt = this.db.prepare(`
-      INSERT INTO memories_fts (memory_id, namespace, content, summary, tags)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-
-    deleteFtsStmt.run(memoryId);
-
-    if (!row) return;
-
-    insertFtsStmt.run(row.id, row.namespace, row.content, row.summary ?? "", row.tags_text ?? "");
-  }
-
-  private getMemoryById(id: string): MemoryItem | null {
-    const stmt = this.db.prepare(`
-      SELECT
-        m.id,
-        m.namespace,
-        m.content,
-        m.summary,
-        m.source_provider,
-        m.memory_type,
-        m.importance,
-        m.pinned,
-        m.metadata_json,
-        m.created_at,
-        m.updated_at,
-        m.last_accessed_at,
-        m.access_count,
-        (
-          SELECT group_concat(tag, '${TAG_SEPARATOR}')
-          FROM memory_tags
-          WHERE memory_id = m.id
-        ) AS tags_concat
-      FROM memories m
-      WHERE m.id = ?
-    `);
-
-    const row = stmt.get(id) as MemoryRow | undefined;
-
-    if (!row) return null;
-    return this.mapRow(row);
+    const row = result.rows[0];
+    return row != null ? this.mapRow(toMemoryRow(row)) : null;
   }
 
   private mapRow(row: MemoryRow): MemoryItem {
@@ -755,27 +688,42 @@ export class MemoryStore {
       summary: row.summary,
       sourceProvider: row.source_provider,
       memoryType: row.memory_type,
-      importance: row.importance,
+      importance: Number(row.importance),
       pinned: row.pinned === 1,
-      tags: row.tags_concat != null ? row.tags_concat.split(TAG_SEPARATOR).filter(Boolean) : [],
+      tags:
+        row.tags_concat != null && row.tags_concat !== ""
+          ? row.tags_concat.split(TAG_SEPARATOR)
+          : [],
       metadata: parseMetadata(row.metadata_json),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      lastAccessedAt: row.last_accessed_at,
-      accessCount: row.access_count,
+      createdAt: Number(row.created_at),
+      updatedAt: Number(row.updated_at),
+      lastAccessedAt: Number(row.last_accessed_at),
+      accessCount: Number(row.access_count),
     };
   }
 
-  private bumpAccess(ids: string[]): void {
+  private normalizeLimit(limit?: number): number {
+    if (typeof limit !== "number" || Number.isNaN(limit)) return 20;
+    if (limit < 1) return 1;
+    if (limit > 200) return 200;
+    return Math.floor(limit);
+  }
+
+  private async bumpAccess(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    const placeholders = ids.map(() => "?").join(", ");
-    const now = Date.now();
-    const stmt = this.db.prepare(`
-      UPDATE memories
-      SET access_count = access_count + 1,
-          last_accessed_at = ?
-      WHERE id IN (${placeholders})
-    `);
-    stmt.run(now, ...ids);
+
+    const uniqueIds = Array.from(new Set(ids));
+    const placeholders = makePlaceholders(uniqueIds.length);
+
+    await this.client.execute({
+      sql: `
+        UPDATE memories
+        SET
+          last_accessed_at = ?,
+          access_count = access_count + 1
+        WHERE id IN (${placeholders})
+      `,
+      args: [Date.now(), ...uniqueIds],
+    });
   }
 }

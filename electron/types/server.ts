@@ -20,6 +20,8 @@ export interface ServerInfo {
   startTime?: number;
   /** Mevcut çalışan sunucuya bağlanıldıysa true */
   alreadyRunning?: boolean;
+  /** Sunucunun kaynağı: harici mevcut süreç veya bu oturumda başlatılan süreç */
+  source?: "existing" | "started";
 }
 
 export interface ServerBinaryInfo {

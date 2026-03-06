@@ -12,16 +12,12 @@
         <div class="shell__title">Ghost Agent</div>
         <div class="shell__topbar-right">
           <div class="shell__provider-controls">
-            <label class="shell__provider-label" for="ghost-provider-select">Provider</label>
-            <select class="shell__provider-select" id="ghost-provider-select">
-              <option value="opencode">OpenCode</option>
-            </select>
             <button class="shell__action-btn" id="ghost-provider-connect-btn">
               Baslat / Baglan
             </button>
             <button class="shell__action-btn" id="ghost-provider-stop-btn">Durdur</button>
           </div>
-          <div class="shell__meta" id="provider-meta">Provider hazirlaniyor...</div>
+          <div class="shell__meta" id="provider-meta">OpenCode sunucusu hazirlaniyor...</div>
           <div class="shell__actions">
             <button class="shell__action-btn shell__action-btn--danger" id="ghost-close-btn">
               Kapat
@@ -36,7 +32,9 @@
             <div class="webview-overlay connecting" id="ghost-loading-overlay">
               <div class="overlay-icon" aria-hidden="true"></div>
               <div class="overlay-title" id="status-text">Baglaniyor...</div>
-              <div class="overlay-subtitle" id="status-hint">Hedef provider hazirlaniyor.</div>
+              <div class="overlay-subtitle" id="status-hint">
+                OpenCode sunucusu kontrol ediliyor.
+              </div>
             </div>
             <webview
               id="ghost-provider-view"

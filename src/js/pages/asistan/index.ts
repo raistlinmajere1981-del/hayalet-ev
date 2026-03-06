@@ -36,7 +36,7 @@ import {
 } from "./ghost-handoff.js";
 import { resolveOverlayStage, shouldKeepOverlayVisibleForToolsReady } from "./overlay-stage.js";
 import type { OverlayStage } from "./overlay-stage.js";
-import { resolveSystemActiveServerStatus } from "./system-server-control.js";
+import { detectSystemActiveServerStatus } from "./system-server-control.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
 import {
@@ -52,6 +52,7 @@ export class AsistanController {
   _unsubTraffic: (() => void) | null;
   _unsubAppState: (() => void) | null;
   _isServerRunning: boolean;
+  _systemServerPort: number | null;
   _activeAdapter: AsistanProviderAdapter | null;
   _disabledMcpServers: Set<string>;
   _opencodeUrlSaveTimer: ReturnType<typeof setTimeout> | null;
@@ -97,6 +98,7 @@ export class AsistanController {
     this._unsubTraffic = null;
     this._unsubAppState = null;
     this._isServerRunning = false;
+    this._systemServerPort = null;
     this._activeAdapter = null;
     this._disabledMcpServers = new Set();
     this._opencodeUrlSaveTimer = null;
@@ -472,19 +474,24 @@ export class AsistanController {
 
               await runDoctorCheck();
               if (lastValidation === null) {
-                setCheckResult("Kaydetmeden önce geçerli bir OpenCode binary doğrulaması gerekli.", "error");
+                setCheckResult(
+                  "Kaydetmeden önce geçerli bir OpenCode binary doğrulaması gerekli.",
+                  "error"
+                );
                 return;
               }
 
               await SettingsManager.set("assistants.opencode", {
-                binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+                binaryPath:
+                  lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
                 defaultPort: parsedPort,
                 version: lastValidation.version,
               });
 
               setCheckResult("Ayarlar kaydedildi.", "success");
               Logger.info(LogCategory.ASISTAN_CORE, "OpenCode ayarları güncellendi", {
-                binaryPath: lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
+                binaryPath:
+                  lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
                 defaultPort: parsedPort,
                 version: lastValidation.version,
               });
@@ -495,7 +502,6 @@ export class AsistanController {
         },
       ],
     });
-
   }
 
   _isResumeEnabled(options: { forceResume?: boolean } = {}): boolean {
@@ -1012,50 +1018,51 @@ export class AsistanController {
     this._connectOverlayStage = stage;
   }
 
-  _resolveSystemServerStatus(): { running: boolean; adapterId?: string; port?: number } {
-    const statuses = AsistanProviderRegistry.getAllAdapters().map((registeredAdapter) => {
-      const status = registeredAdapter.getServerStatus();
-      return {
-        adapterId: registeredAdapter.id,
-        running: status.running === true,
-        ...(typeof status.port === "number" ? { port: status.port } : {}),
-      };
-    });
+  async _resolveSystemServerStatus(): Promise<{ running: boolean; port?: number }> {
+    return await detectSystemActiveServerStatus();
+  }
 
-    return resolveSystemActiveServerStatus(statuses);
+  async _syncSystemServerStatus(options: { refreshUi?: boolean } = {}): Promise<void> {
+    const status = await this._resolveSystemServerStatus();
+    const nextPort = typeof status.port === "number" ? status.port : null;
+    const changed = this._isServerRunning !== status.running || this._systemServerPort !== nextPort;
+
+    this._isServerRunning = status.running;
+    this._systemServerPort = nextPort;
+
+    if (options.refreshUi === true || changed) {
+      this._updateConnectionUI(true);
+    }
   }
 
   async _stopSystemActiveServers(): Promise<void> {
-    const stopResults = await Promise.all(
-      AsistanProviderRegistry.getAllAdapters().map(async (registeredAdapter) => {
-        try {
-          const result = await registeredAdapter.stopServer();
-          if (result.success !== true && typeof result.error === "string" && result.error !== "") {
-            return `${registeredAdapter.id}: ${result.error}`;
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          return `${registeredAdapter.id}: ${message}`;
-        }
-        return null;
-      })
-    );
+    const electronApi = window.electronAPI;
+    const adapter = this._activeAdapter;
 
-    const errors = stopResults.filter((value): value is string => typeof value === "string");
+    if (electronApi !== undefined && typeof electronApi.opencodeServeStop === "function") {
+      const result = await electronApi.opencodeServeStop();
+      if (result.success !== true && typeof result.error === "string" && result.error !== "") {
+        throw new Error(result.error);
+      }
+    } else if (adapter !== null) {
+      const result = await adapter.stopServer();
+      if (result.success !== true && typeof result.error === "string" && result.error !== "") {
+        throw new Error(result.error);
+      }
+    }
 
+    this._systemServerPort = null;
     this._isServerRunning = false;
     this._updateServerStatus({ running: false });
-
-    if (errors.length > 0) {
-      throw new Error(errors.join(" | "));
-    }
   }
 
   async _toggleConnection(options: { forceResume?: boolean } = {}): Promise<void> {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const adapter = this._activeAdapter;
-    const systemServerStatus = this._resolveSystemServerStatus();
+    const systemServerStatus = await this._resolveSystemServerStatus();
     this._isServerRunning = systemServerStatus.running;
+    this._systemServerPort =
+      typeof systemServerStatus.port === "number" ? systemServerStatus.port : null;
 
     if (!adapter) {
       Logger.error(LogCategory.ASISTAN_CORE, "Aktif adapter bulunamadı");
@@ -1176,6 +1183,7 @@ export class AsistanController {
             running: true,
             ...(typeof serverStatus.port === "number" ? { port: serverStatus.port } : {}),
           });
+          this._systemServerPort = typeof serverStatus.port === "number" ? serverStatus.port : null;
 
           await SettingsManager.set("assistants.lastConnected", providerId);
 
@@ -1330,7 +1338,7 @@ export class AsistanController {
     }
   }
 
-  _updateConnectionUI(): void {
+  _updateConnectionUI(skipSystemServerSync = false): void {
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
 
     const isConnected = slotState?.state === SlotState.CONNECTED;
@@ -1453,16 +1461,13 @@ export class AsistanController {
     if (this.statusDot) {
       this.statusDot.classList.toggle("connected", isConnected);
     }
-    const systemServerStatus = this._resolveSystemServerStatus();
-    this._isServerRunning = systemServerStatus.running;
-
-    const serverRunning = systemServerStatus.running;
+    const serverRunning = this._isServerRunning;
 
     if (this.statusText) {
       this.statusText.textContent = formatConnectionIndicatorText({
         isConnected,
         isServerRunning: serverRunning,
-        ...(typeof systemServerStatus.port === "number" ? { port: systemServerStatus.port } : {}),
+        ...(typeof this._systemServerPort === "number" ? { port: this._systemServerPort } : {}),
       });
     }
 
@@ -1472,6 +1477,10 @@ export class AsistanController {
       } else {
         this.urlDisplay.textContent = "-";
       }
+    }
+
+    if (!skipSystemServerSync) {
+      void this._syncSystemServerStatus();
     }
   }
 
@@ -1582,14 +1591,11 @@ export class AsistanController {
 
     const shouldRefreshOpencodeIndicator =
       changedPaths.includes("*") ||
-      changedPaths.some(
-        (path) => path === "assistants" || path.startsWith("assistants.opencode")
-      );
+      changedPaths.some((path) => path === "assistants" || path.startsWith("assistants.opencode"));
 
     if (shouldRefreshOpencodeIndicator) {
       this._refreshOpencodeDoctorStatus();
     }
-
   }
 
   _setupWebviewEvents(webviewEl: WebviewElement): void {

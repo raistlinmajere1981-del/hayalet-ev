@@ -28,12 +28,15 @@ export interface OpencodeUiBootstrapDeps {
   }>;
 }
 
+type SessionTab = "active" | "archived";
+
 interface OpencodeUiSessionSummary {
   id: string;
   title: string;
   workspace_path: string;
   updated_at: number;
   created_at: number;
+  archived_at: number | null;
 }
 
 interface OpencodeUiToolCall {
@@ -49,12 +52,20 @@ interface OpencodeUiSessionMessage {
   toolCalls?: OpencodeUiToolCall[];
 }
 
+interface OpencodeUiTodoItem {
+  content: string;
+  status: string;
+  priority: string;
+}
+
 interface OpencodeUiSessionDetail {
   id: string;
   title: string;
   workspace_path: string;
   usage: Record<string, unknown>;
   messages: OpencodeUiSessionMessage[];
+  todos?: OpencodeUiTodoItem[];
+  changed_files?: string[];
 }
 
 interface OpencodeUiFsListResult {
@@ -75,6 +86,12 @@ interface OpencodeUiFsEnsureResult {
   error?: string;
 }
 
+interface OpencodeUiFsArchiveResult {
+  success: boolean;
+  archived?: boolean;
+  error?: string;
+}
+
 interface SelectItem {
   value: string;
   label: string;
@@ -88,28 +105,51 @@ interface ModelMeta {
   reasoningEfforts: string[];
 }
 
+interface ComposerAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  base64: string;
+  size: number;
+  source: "file-picker" | "clipboard";
+}
+
+interface ProviderItem {
+  id: string;
+  name: string;
+  badge: string;
+}
+
 interface RuntimeState {
   baseUrl: string;
   dbPath: string;
   activeSessionId: string | null;
+  sessionTab: SessionTab;
+  submittingSessionId: string | null;
   activeModelId: string | null;
   activeReasoningEffort: string | null;
   activeAgentId: string | null;
   modelMetaById: Record<string, ModelMeta>;
   isSubmitting: boolean;
   lastRenderedMessageCount: number;
+  lastRenderedSnapshotKey: string;
+  stagedAttachments: ComposerAttachment[];
 }
 
 const runtime: RuntimeState = {
   baseUrl: "http://127.0.0.1:4096",
   dbPath: "",
   activeSessionId: null,
+  sessionTab: "active",
+  submittingSessionId: null,
   activeModelId: null,
   activeReasoningEffort: null,
   activeAgentId: null,
   modelMetaById: {},
   isSubmitting: false,
   lastRenderedMessageCount: 0,
+  lastRenderedSnapshotKey: "",
+  stagedAttachments: [],
 };
 
 const REASONING_EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
@@ -160,6 +200,22 @@ function setWorkspaceUrlLabel(url: string): void {
   if (workspaceUrlEl != null) {
     workspaceUrlEl.textContent = url;
     workspaceUrlEl.setAttribute("title", url);
+  }
+}
+
+async function copyWorkspaceUrl(): Promise<void> {
+  const workspaceUrlEl = byId<HTMLElement>("workspace-url-display");
+  const url = workspaceUrlEl?.textContent.trim() ?? "";
+  if (url === "" || url === "-") {
+    showToast("Kopyalanacak URL yok");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("URL kopyalandi");
+  } catch {
+    showToast("URL kopyalanamadi");
   }
 }
 
@@ -222,10 +278,77 @@ function clearChatArea(): void {
   }
 
   runtime.lastRenderedMessageCount = 0;
+  runtime.lastRenderedSnapshotKey = "";
 }
 
 function normalizeString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function toCompactLabel(value: unknown): string {
+  const raw = normalizeString(value).trim();
+  if (raw === "") {
+    return "";
+  }
+
+  const slashParts = raw.split("/");
+  const lastSlash = slashParts[slashParts.length - 1] ?? raw;
+  const backslashParts = lastSlash.split("\\");
+  return (backslashParts[backslashParts.length - 1] ?? lastSlash).trim();
+}
+
+function toWorkspaceRelativePath(filePath: unknown, workspacePath: string): string {
+  const raw = normalizeString(filePath).trim();
+  if (raw === "") {
+    return "";
+  }
+
+  const workspace = normalizeString(workspacePath)
+    .trim()
+    .replace(/[\\/]+$/, "");
+  if (workspace === "") {
+    return raw;
+  }
+
+  if (raw === workspace) {
+    return ".";
+  }
+
+  if (raw.startsWith(`${workspace}/`)) {
+    return raw.slice(workspace.length + 1);
+  }
+
+  if (raw.startsWith(`${workspace}\\`)) {
+    return raw.slice(workspace.length + 1);
+  }
+
+  return raw;
+}
+
+function buildMessageSnapshotToken(message: OpencodeUiSessionMessage | undefined): string {
+  if (message == null) {
+    return "";
+  }
+
+  const text = normalizeString(message.text);
+  const tail = text.slice(-160);
+  const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
+  const files = Array.isArray(message.files) ? message.files : [];
+  const toolTail = toolCalls
+    .slice(-2)
+    .map((item) => normalizeString(item.name))
+    .join(",");
+  return `${message.role}:${String(text.length)}:${tail}:${String(toolCalls.length)}:${toolTail}:${String(files.length)}`;
+}
+
+function buildSessionSnapshotKey(messages: OpencodeUiSessionMessage[]): string {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return "0";
+  }
+
+  const last = messages[messages.length - 1];
+  const prev = messages.length > 1 ? messages[messages.length - 2] : undefined;
+  return `${String(messages.length)}|${buildMessageSnapshotToken(prev)}|${buildMessageSnapshotToken(last)}`;
 }
 
 function normalizeReasoningEfforts(raw: unknown): string[] {
@@ -277,12 +400,35 @@ interface BuildMessageRequestInput {
   providerId: string | null;
   agentId?: string | null;
   reasoningEffort?: string | null;
+  attachments?: ComposerAttachment[];
 }
 
 export function buildMessageRequestBody(input: BuildMessageRequestInput): Record<string, unknown> {
-  const body: Record<string, unknown> = {
-    parts: [{ type: "text", text: input.text }],
-  };
+  const parts: Array<Record<string, unknown>> = [];
+  const text = input.text.trim();
+  if (text !== "") {
+    parts.push({ type: "text", text });
+  }
+
+  const attachments = Array.isArray(input.attachments) ? input.attachments : [];
+  for (const attachment of attachments) {
+    if (attachment.base64 === "" || attachment.name === "") {
+      continue;
+    }
+
+    parts.push({
+      type: "file",
+      filename: attachment.name,
+      name: attachment.name,
+      mime: attachment.mimeType,
+      media_type: attachment.mimeType,
+      url: buildDataUrl(attachment.mimeType, attachment.base64),
+      data: attachment.base64,
+      base64: attachment.base64,
+    });
+  }
+
+  const body: Record<string, unknown> = { parts };
 
   if (
     input.modelId != null &&
@@ -361,6 +507,67 @@ function extractTextFromPart(part: unknown): string {
     return normalizeString(record["content_delta"]);
   }
 
+  if (type === "reasoning") {
+    const text = normalizeString(record["text"]).trim();
+    if (text !== "") {
+      return `Reasoning\n${text}`;
+    }
+
+    const metadata =
+      record["metadata"] != null &&
+      typeof record["metadata"] === "object" &&
+      !Array.isArray(record["metadata"])
+        ? (record["metadata"] as Record<string, unknown>)
+        : null;
+    const openai =
+      metadata?.["openai"] != null &&
+      typeof metadata["openai"] === "object" &&
+      !Array.isArray(metadata["openai"])
+        ? (metadata["openai"] as Record<string, unknown>)
+        : null;
+    if (normalizeString(openai?.["reasoningEncryptedContent"]).trim() !== "") {
+      return "Reasoning\nIcerik sifreli veya ozet bos.";
+    }
+
+    return "Reasoning";
+  }
+
+  if (type === "step-start") {
+    const snapshot = normalizeString(record["snapshot"]).trim();
+    return snapshot !== "" ? `Step start\nSnapshot: ${snapshot.slice(0, 12)}` : "Step start";
+  }
+
+  if (type === "step-finish") {
+    const lines = ["Step finish"];
+    const reason = normalizeString(record["reason"]).trim();
+    if (reason !== "") {
+      lines.push(`Reason: ${reason}`);
+    }
+
+    const tokens =
+      record["tokens"] != null &&
+      typeof record["tokens"] === "object" &&
+      !Array.isArray(record["tokens"])
+        ? (record["tokens"] as Record<string, unknown>)
+        : null;
+    const total = Number(tokens?.["total"] ?? 0);
+    if (Number.isFinite(total) && total > 0) {
+      lines.push(`Tokens: ${String(total)}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  if (type === "patch") {
+    const filesRaw = record["files"];
+    if (!Array.isArray(filesRaw) || filesRaw.length === 0) {
+      return "Patch";
+    }
+
+    const files = filesRaw.map((item) => toCompactLabel(item)).filter((item) => item !== "");
+    return files.length > 0 ? `Patch\nFiles:\n- ${files.join("\n- ")}` : "Patch";
+  }
+
   return "";
 }
 
@@ -431,6 +638,7 @@ function updateUsageFromSession(usage: Record<string, unknown> | undefined): voi
   const usageRecord = usage;
   const promptTokens = Number(usageRecord["prompt_tokens"] ?? 0);
   const completionTokens = Number(usageRecord["completion_tokens"] ?? 0);
+  const reasoningTokens = Number(usageRecord["reasoning_tokens"] ?? 0);
   const totalTokens = Number(usageRecord["total_tokens"] ?? promptTokens + completionTokens);
 
   if (!Number.isFinite(totalTokens) || totalTokens <= 0) {
@@ -450,16 +658,183 @@ function updateUsageFromSession(usage: Record<string, unknown> | undefined): voi
 
   const usageStatsEl = byId<HTMLElement>("usage-stats");
   if (usageStatsEl != null) {
-    usageStatsEl.innerHTML =
+    let statsHtml =
       '<span class="ds-progress__stat">Prompt: <span class="ds-progress__stat-value">' +
       String(promptTokens) +
       '</span></span><span class="ds-progress__stat">Completion: <span class="ds-progress__stat-value">' +
       String(completionTokens) +
       "</span></span>";
+    if (Number.isFinite(reasoningTokens) && reasoningTokens > 0) {
+      statsHtml +=
+        '<span class="ds-progress__stat">Reasoning: <span class="ds-progress__stat-value">' +
+        String(reasoningTokens) +
+        "</span></span>";
+    }
+    usageStatsEl.innerHTML = statsHtml;
   }
 }
 
-function renderHistoricToolCall(targetBubble: HTMLElement, toolCall: OpencodeUiToolCall): void {
+function renderTodoPanel(todos: OpencodeUiTodoItem[]): void {
+  const panel = byId<HTMLElement>("rtab-todo");
+  if (panel == null) {
+    return;
+  }
+
+  if (!Array.isArray(todos) || todos.length === 0) {
+    panel.innerHTML = buildRightTabPanelCard(
+      "Todo",
+      "Session Ozeti",
+      '<div class="empty-state">Henuz todo yok</div>',
+      "0"
+    );
+    return;
+  }
+
+  const items = todos
+    .map((todo) => {
+      const content = normalizeString(todo.content).trim();
+      if (content === "") {
+        return "";
+      }
+
+      const statusRaw = normalizeString(todo.status).trim().toLowerCase();
+      const priorityRaw = normalizeString(todo.priority).trim().toLowerCase();
+      const status = statusRaw !== "" ? statusRaw : "pending";
+      const priority = priorityRaw !== "" ? priorityRaw : "medium";
+      return (
+        '<div class="ds-todo-item ds-todo-item--' +
+        escapeHtml(status) +
+        '">' +
+        '<div class="ds-todo-item__badges">' +
+        '<span class="ds-todo-item__badge ds-todo-item__badge--status">' +
+        escapeHtml(status) +
+        "</span>" +
+        '<span class="ds-todo-item__badge ds-todo-item__badge--priority">' +
+        escapeHtml(priority) +
+        "</span>" +
+        "</div>" +
+        '<div class="ds-todo-item__content">' +
+        escapeHtml(content) +
+        "</div>" +
+        "</div>"
+      );
+    })
+    .filter((item) => item !== "");
+
+  panel.innerHTML = buildRightTabPanelCard(
+    "Todo",
+    "Session Ozeti",
+    '<div class="ds-todo-list">' + items.join("") + "</div>",
+    String(items.length)
+  );
+}
+
+function renderFilesPanel(files: string[], workspacePath: string): void {
+  const panel = byId<HTMLElement>("rtab-files");
+  if (panel == null) {
+    return;
+  }
+
+  if (!Array.isArray(files) || files.length === 0) {
+    panel.innerHTML = buildRightTabPanelCard(
+      "Files",
+      "Workspace",
+      '<div class="empty-state">Degisen dosya yok</div>',
+      "0"
+    );
+    return;
+  }
+
+  const items = files
+    .map((filePath) => {
+      const fullPath = normalizeString(filePath).trim();
+      if (fullPath === "") {
+        return "";
+      }
+
+      const compactLabel = toCompactLabel(fullPath);
+      const label = compactLabel !== "" ? compactLabel : fullPath;
+      const relativePath = toWorkspaceRelativePath(fullPath, workspacePath);
+      return (
+        '<div class="ds-file-item" title="' +
+        escapeHtml(fullPath) +
+        '">' +
+        '<div class="ds-file-item__name">' +
+        escapeHtml(label) +
+        "</div>" +
+        '<div class="ds-file-item__path">' +
+        escapeHtml(relativePath) +
+        "</div>" +
+        "</div>"
+      );
+    })
+    .filter((item) => item !== "");
+
+  if (items.length === 0) {
+    panel.innerHTML = buildRightTabPanelCard(
+      "Files",
+      "Workspace",
+      '<div class="empty-state">Degisen dosya yok</div>',
+      "0"
+    );
+    return;
+  }
+
+  panel.innerHTML = buildRightTabPanelCard(
+    "Files",
+    "Workspace",
+    '<div class="ds-file-list">' + items.join("") + "</div>",
+    String(items.length)
+  );
+}
+
+function buildRightTabPanelCard(
+  title: string,
+  eyebrow: string,
+  bodyMarkup: string,
+  countLabel?: string
+): string {
+  const countMarkup =
+    countLabel != null && countLabel !== ""
+      ? '<span class="ds-panel__count">' + escapeHtml(countLabel) + "</span>"
+      : "";
+
+  return (
+    '<div class="ds-right-panel-card">' +
+    '<div class="ds-right-panel-card__meta">' +
+    "<div>" +
+    '<div class="ds-right-panel-card__eyebrow">' +
+    escapeHtml(eyebrow) +
+    "</div>" +
+    '<div class="ds-right-panel-card__title">' +
+    escapeHtml(title) +
+    "</div>" +
+    "</div>" +
+    countMarkup +
+    "</div>" +
+    bodyMarkup +
+    "</div>"
+  );
+}
+
+function createHistoricAssistantToolHost(): HTMLElement | null {
+  const chatMessages = byId<HTMLElement>("chat-messages");
+  if (chatMessages == null) {
+    return null;
+  }
+
+  const chatEmpty = byId<HTMLElement>("chat-empty");
+  if (chatEmpty != null) {
+    chatEmpty.style.display = "none";
+  }
+
+  const host = document.createElement("div");
+  host.className = "ds-message ds-message--assistant";
+  chatMessages.appendChild(host);
+  return host;
+}
+
+function renderHistoricToolCall(targetContainer: HTMLElement, toolCall: OpencodeUiToolCall): void {
   const card = document.createElement("div");
   card.className = "ds-tool-call ds-tool-call--open";
 
@@ -485,7 +860,7 @@ function renderHistoricToolCall(targetBubble: HTMLElement, toolCall: OpencodeUiT
       : "") +
     "</div>";
 
-  targetBubble.parentElement?.appendChild(card);
+  targetContainer.appendChild(card);
 }
 
 async function listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]> {
@@ -545,39 +920,121 @@ async function readSessionFromDisk(sessionId: string): Promise<OpencodeUiSession
   return result.session ?? null;
 }
 
+async function archiveSessionInDisk(sessionId: string, archived = true): Promise<void> {
+  const electronApi = window.electronAPI;
+  if (electronApi === undefined) {
+    throw new Error("electronAPI mevcut degil");
+  }
+
+  const result = (await electronApi.opencodeUiFsArchiveSession(
+    sessionId,
+    archived,
+    dbPathArg()
+  )) as OpencodeUiFsArchiveResult;
+
+  if (result.success !== true) {
+    throw new Error(result.error ?? "Session arsivlenemedi");
+  }
+}
+
+function isSessionArchived(session: OpencodeUiSessionSummary): boolean {
+  return Number.isFinite(session.archived_at) && Number(session.archived_at) > 0;
+}
+
+function getSessionsForTab(
+  sessions: OpencodeUiSessionSummary[],
+  tab: SessionTab = runtime.sessionTab
+): OpencodeUiSessionSummary[] {
+  return sessions.filter((session) =>
+    tab === "archived" ? isSessionArchived(session) : !isSessionArchived(session)
+  );
+}
+
+function renderSessionTabs(sessions: OpencodeUiSessionSummary[]): void {
+  const activeBtn = byId<HTMLButtonElement>("session-tab-active");
+  const archivedBtn = byId<HTMLButtonElement>("session-tab-archived");
+  const activeCount = getSessionsForTab(sessions, "active").length;
+  const archivedCount = getSessionsForTab(sessions, "archived").length;
+
+  if (activeBtn != null) {
+    activeBtn.textContent = `Aktif (${String(activeCount)})`;
+    activeBtn.classList.toggle("is-active", runtime.sessionTab === "active");
+  }
+
+  if (archivedBtn != null) {
+    archivedBtn.textContent = `Arsiv (${String(archivedCount)})`;
+    archivedBtn.classList.toggle("is-active", runtime.sessionTab === "archived");
+  }
+}
+
+function getSessionVisualState(
+  session: OpencodeUiSessionSummary
+): "idle" | "active" | "working" | "archived" {
+  if (runtime.isSubmitting && session.id === runtime.submittingSessionId) {
+    return "working";
+  }
+
+  if (session.id === runtime.activeSessionId) {
+    return "active";
+  }
+
+  return isSessionArchived(session) ? "archived" : "idle";
+}
+
 function renderSessionList(sessions: OpencodeUiSessionSummary[]): void {
   const listEl = byId<HTMLElement>("session-list");
   const countEl = byId<HTMLElement>("session-count-label");
+  const visibleSessions = getSessionsForTab(sessions);
+
+  renderSessionTabs(sessions);
 
   if (countEl != null) {
-    countEl.textContent = `${String(sessions.length)} oturum`;
+    countEl.textContent =
+      runtime.sessionTab === "archived"
+        ? `${String(visibleSessions.length)} arsiv`
+        : `${String(visibleSessions.length)} oturum`;
   }
 
   if (listEl == null) {
     return;
   }
 
-  if (sessions.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">Oturum bulunamadi</div>';
+  if (visibleSessions.length === 0) {
+    listEl.innerHTML =
+      runtime.sessionTab === "archived"
+        ? '<div class="empty-state">Arsivlenmis oturum yok</div>'
+        : '<div class="empty-state">Oturum bulunamadi</div>';
     return;
   }
 
-  listEl.innerHTML = sessions
+  listEl.innerHTML = visibleSessions
     .map((session) => {
       const isActive = session.id === runtime.activeSessionId;
+      const archived = isSessionArchived(session);
+      const visualState = getSessionVisualState(session);
       const title = session.title !== "" ? session.title : "Untitled";
       const shortId = session.id.slice(0, 8);
       const updatedAt = formatTimestamp(Number(session.updated_at));
+      const archiveAction = archived
+        ? ""
+        : '<button class="ds-session__action ds-session__action--archive" data-action="archive" title="Arsivle">Arc</button>';
+      const forkAction = archived
+        ? ""
+        : '<button class="ds-session__action" data-action="fork" title="Fork">Fork</button>';
+      const renameAction = archived
+        ? ""
+        : '<button class="ds-session__action" data-action="rename" title="Duzenle">Edit</button>';
 
       return (
         '<div class="ds-session' +
         (isActive ? " ds-session--active" : "") +
+        (visualState === "working" ? " ds-session--working" : "") +
         '" data-session-id="' +
         escapeHtml(session.id) +
         '">' +
         '<div class="ds-session__header">' +
         '<span class="ds-session__indicator ds-session__indicator--' +
-        (isActive ? "active" : "idle") +
+        visualState +
         '"></span>' +
         '<span class="ds-session__title" title="' +
         escapeHtml(title) +
@@ -585,9 +1042,9 @@ function renderSessionList(sessions: OpencodeUiSessionSummary[]): void {
         escapeHtml(title) +
         "</span>" +
         '<span class="ds-session__badge ds-session__badge--' +
-        (isActive ? "active" : "idle") +
+        visualState +
         '">* ' +
-        (isActive ? "active" : "idle") +
+        visualState +
         "</span>" +
         "</div>" +
         '<span class="ds-session__meta">' +
@@ -596,8 +1053,9 @@ function renderSessionList(sessions: OpencodeUiSessionSummary[]): void {
         escapeHtml(updatedAt) +
         "</span>" +
         '<div class="ds-session__actions">' +
-        '<button class="ds-session__action" data-action="fork" title="Fork">Fork</button>' +
-        '<button class="ds-session__action" data-action="rename" title="Duzenle">Edit</button>' +
+        forkAction +
+        renameAction +
+        archiveAction +
         '<button class="ds-session__action ds-session__action--delete" data-action="delete" title="Sil">Del</button>' +
         "</div>" +
         "</div>"
@@ -606,16 +1064,40 @@ function renderSessionList(sessions: OpencodeUiSessionSummary[]): void {
     .join("");
 }
 
-async function loadSessionListAndRender(options: { preserveActive?: boolean } = {}): Promise<void> {
+async function syncActiveSessionToCurrentTab(sessions: OpencodeUiSessionSummary[]): Promise<void> {
+  const visibleSessions = getSessionsForTab(sessions);
+  const activeSessionVisible =
+    runtime.activeSessionId != null &&
+    visibleSessions.some((session) => session.id === runtime.activeSessionId);
+
+  if (activeSessionVisible) {
+    return;
+  }
+
+  setActiveSession(visibleSessions[0]?.id ?? null);
+  await loadActiveSessionHistory();
+}
+
+async function loadSessionListAndRender(
+  options: {
+    preserveActive?: boolean;
+    syncSelectionToTab?: boolean;
+  } = {}
+): Promise<void> {
   try {
     const sessions = await listSessionsFromDisk();
+    const visibleSessions = getSessionsForTab(sessions);
+
+    if (options.syncSelectionToTab === true) {
+      await syncActiveSessionToCurrentTab(sessions);
+    }
 
     if (
       options.preserveActive !== true &&
       (runtime.activeSessionId == null || runtime.activeSessionId === "") &&
-      sessions.length > 0
+      visibleSessions.length > 0
     ) {
-      setActiveSession(sessions[0]?.id ?? null);
+      setActiveSession(visibleSessions[0]?.id ?? null);
     }
 
     renderSessionList(sessions);
@@ -648,6 +1130,8 @@ async function loadActiveSessionHistory(): Promise<void> {
   const sessionId = runtime.activeSessionId;
   if (sessionId == null || sessionId === "") {
     clearChatArea();
+    renderTodoPanel([]);
+    renderFilesPanel([], "");
     updateUsagePlaceholders(INITIAL_USAGE_TEXT);
     return;
   }
@@ -655,6 +1139,8 @@ async function loadActiveSessionHistory(): Promise<void> {
   const detail = await readSessionFromDisk(sessionId);
   if (detail == null) {
     clearChatArea();
+    renderTodoPanel([]);
+    renderFilesPanel([], "");
     updateUsagePlaceholders(INITIAL_USAGE_TEXT);
     return;
   }
@@ -668,24 +1154,72 @@ async function loadActiveSessionHistory(): Promise<void> {
   }
 
   const messages = Array.isArray(detail.messages) ? detail.messages : [];
+  renderTodoPanel(Array.isArray(detail.todos) ? detail.todos : []);
+  renderFilesPanel(
+    Array.isArray(detail.changed_files) ? detail.changed_files : [],
+    detail.workspace_path
+  );
   for (const message of messages) {
     if (message.role === "user") {
       addMessage("user", message.text, undefined, message.files);
       continue;
     }
 
-    const bubble = addMessage("assistant", message.text);
     const toolCalls = Array.isArray(message.toolCalls) ? message.toolCalls : [];
-    if (bubble != null && toolCalls.length > 0) {
+    const bubble = addMessage("assistant", message.text);
+    const toolTarget =
+      bubble?.parentElement ?? (toolCalls.length > 0 ? createHistoricAssistantToolHost() : null);
+    if (toolTarget != null && toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
-        renderHistoricToolCall(bubble, toolCall);
+        renderHistoricToolCall(toolTarget, toolCall);
       }
     }
   }
 
   runtime.lastRenderedMessageCount = messages.length;
+  runtime.lastRenderedSnapshotKey = buildSessionSnapshotKey(messages);
   updateUsageFromSession(detail.usage);
   scrollChatToBottom(true);
+}
+
+let liveSyncInFlight = false;
+
+async function syncActiveSessionHistoryIfUpdated(): Promise<void> {
+  const sessionId = runtime.activeSessionId;
+  if (sessionId == null || sessionId === "") {
+    return;
+  }
+
+  if (liveSyncInFlight) {
+    return;
+  }
+
+  liveSyncInFlight = true;
+
+  try {
+    const detail = await readSessionFromDisk(sessionId);
+    if (detail == null) {
+      return;
+    }
+
+    if (runtime.activeSessionId !== sessionId) {
+      return;
+    }
+
+    const messages = Array.isArray(detail.messages) ? detail.messages : [];
+    const nextCount = messages.length;
+    const nextSnapshot = buildSessionSnapshotKey(messages);
+
+    if (
+      nextCount !== runtime.lastRenderedMessageCount ||
+      nextSnapshot !== runtime.lastRenderedSnapshotKey
+    ) {
+      await loadActiveSessionHistory();
+    }
+  } catch (_error) {
+  } finally {
+    liveSyncInFlight = false;
+  }
 }
 
 function setSendButtonState(): void {
@@ -704,7 +1238,293 @@ function setSendButtonState(): void {
 
   sendBtn.textContent = "↑";
   sendBtn.removeAttribute("data-mode");
-  sendBtn.disabled = chatInput.value.trim() === "";
+  sendBtn.disabled = chatInput.value.trim() === "" && runtime.stagedAttachments.length === 0;
+}
+
+function sanitizeAttachmentName(name: string, fallback: string): string {
+  const withoutReservedChars = name.trim().replace(/[<>:"/\\|?*]+/g, "_");
+  const cleaned = Array.from(withoutReservedChars, (char) => {
+    return char.charCodeAt(0) <= 0x1f ? "_" : char;
+  }).join("");
+  return cleaned !== "" ? cleaned : fallback;
+}
+
+function extensionFromMime(mimeType: string): string {
+  switch (mimeType) {
+    case "image/png":
+      return "png";
+    case "image/jpeg":
+      return "jpg";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
+    case "text/plain":
+      return "txt";
+    case "application/pdf":
+      return "pdf";
+    default:
+      return "bin";
+  }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function textToBase64(text: string): string {
+  return bytesToBase64(new TextEncoder().encode(text));
+}
+
+function buildDataUrl(mimeType: string, base64: string): string {
+  const safeMimeType = mimeType.trim() !== "" ? mimeType : "application/octet-stream";
+  return `data:${safeMimeType};base64,${base64}`;
+}
+
+function formatAttachmentSize(size: number): string {
+  if (!Number.isFinite(size) || size <= 0) {
+    return "";
+  }
+  if (size < 1024) {
+    return `${String(size)} B`;
+  }
+  if (size < 1024 * 1024) {
+    return `${String(Math.max(1, Math.round(size / 1024)))} KB`;
+  }
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentKindLabel(attachment: ComposerAttachment): string {
+  if (attachment.mimeType.startsWith("image/")) {
+    return "IMG";
+  }
+  if (attachment.mimeType.startsWith("text/")) {
+    return "TXT";
+  }
+  if (attachment.mimeType === "application/pdf") {
+    return "PDF";
+  }
+  return "FILE";
+}
+
+function createAttachmentId(): string {
+  return `att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function fileToComposerAttachment(
+  file: File,
+  source: ComposerAttachment["source"]
+): Promise<ComposerAttachment> {
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  const hasMimeType = file.type.trim() !== "";
+  const mimeType = hasMimeType ? file.type : "application/octet-stream";
+  const inferredExtension = hasMimeType ? extensionFromMime(file.type) : "bin";
+  return {
+    id: createAttachmentId(),
+    name: sanitizeAttachmentName(file.name, `attachment.${inferredExtension}`),
+    mimeType,
+    base64: bytesToBase64(bytes),
+    size: file.size,
+    source,
+  };
+}
+
+function createClipboardTextAttachment(text: string): ComposerAttachment | null {
+  const normalized = text.trim();
+  if (normalized === "") {
+    return null;
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return {
+    id: createAttachmentId(),
+    name: `clipboard-${timestamp}.txt`,
+    mimeType: "text/plain",
+    base64: textToBase64(normalized),
+    size: new TextEncoder().encode(normalized).length,
+    source: "clipboard",
+  };
+}
+
+function dedupeComposerAttachments(
+  current: ComposerAttachment[],
+  incoming: ComposerAttachment[]
+): ComposerAttachment[] {
+  const seen = new Set(
+    current.map(
+      (attachment) => `${attachment.name}:${attachment.size}:${attachment.base64.slice(0, 32)}`
+    )
+  );
+  const next = [...current];
+  for (const attachment of incoming) {
+    const key = `${attachment.name}:${attachment.size}:${attachment.base64.slice(0, 32)}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    next.push(attachment);
+  }
+  return next;
+}
+
+function setComposerAttachments(attachments: ComposerAttachment[]): void {
+  runtime.stagedAttachments = attachments;
+  renderAttachmentTray();
+  setSendButtonState();
+}
+
+function removeComposerAttachment(attachmentId: string): void {
+  setComposerAttachments(
+    runtime.stagedAttachments.filter((attachment) => attachment.id !== attachmentId)
+  );
+}
+
+function buildOutgoingAttachmentPreview(
+  attachments: ComposerAttachment[]
+): Array<{ name: string; fileName: string }> {
+  return attachments.map((attachment) => ({
+    name: attachment.name,
+    fileName: attachment.name,
+  }));
+}
+
+function renderAttachmentTray(): void {
+  const tray = byId<HTMLElement>("clipboard-preview-area");
+  if (tray == null) {
+    return;
+  }
+
+  if (runtime.stagedAttachments.length === 0) {
+    tray.classList.add("is-hidden");
+    tray.innerHTML = "";
+    return;
+  }
+
+  tray.classList.remove("is-hidden");
+  tray.innerHTML = runtime.stagedAttachments
+    .map((attachment) => {
+      const sizeText = formatAttachmentSize(attachment.size);
+      const detail = [attachmentKindLabel(attachment), sizeText]
+        .filter((item) => item !== "")
+        .join(" • ");
+      const sourceLabel =
+        attachment.source === "clipboard" ? "Panodan eklendi" : "Dosyadan eklendi";
+      return (
+        '<div class="ds-attachment-chip" title="' +
+        escapeHtml(`${attachment.name}\n${sourceLabel}`) +
+        '">' +
+        '<span class="ds-attachment-chip__meta">' +
+        escapeHtml(detail) +
+        "</span>" +
+        '<span class="ds-attachment-chip__name">' +
+        escapeHtml(attachment.name) +
+        "</span>" +
+        '<button type="button" class="ds-attachment-chip__remove" data-attachment-remove="' +
+        escapeHtml(attachment.id) +
+        '" aria-label="' +
+        escapeHtml(`${attachment.name} kaldir`) +
+        '">×</button>' +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
+function stageComposerAttachments(attachments: ComposerAttachment[]): void {
+  if (attachments.length === 0) {
+    return;
+  }
+
+  const next = dedupeComposerAttachments(runtime.stagedAttachments, attachments);
+  const addedCount = next.length - runtime.stagedAttachments.length;
+  setComposerAttachments(next);
+
+  if (addedCount > 0) {
+    showToast(`${String(addedCount)} ek hazir`);
+  } else {
+    showToast("Ayni ek zaten hazir");
+  }
+}
+
+async function stageFileList(
+  files: FileList | File[],
+  source: ComposerAttachment["source"]
+): Promise<void> {
+  const entries = Array.from(files);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const attachments = await Promise.all(
+    entries.map(async (file) => await fileToComposerAttachment(file, source))
+  );
+  stageComposerAttachments(attachments);
+}
+
+async function readClipboardAttachmentsFromEvent(event: ClipboardEvent): Promise<boolean> {
+  const clipboardData = event.clipboardData;
+  if (clipboardData == null) {
+    return false;
+  }
+
+  const directFiles = Array.from(clipboardData.files);
+  const itemFiles = Array.from(clipboardData.items)
+    .filter((item) => item.kind === "file")
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file != null);
+  const files = [...directFiles, ...itemFiles];
+  if (files.length > 0) {
+    event.preventDefault();
+    await stageFileList(files, "clipboard");
+    return true;
+  }
+
+  return false;
+}
+
+async function readClipboardAttachmentsFromSystem(): Promise<ComposerAttachment[]> {
+  const clipboardApi = navigator.clipboard as Clipboard & {
+    read?: () => Promise<ClipboardItem[]>;
+  };
+
+  if (typeof clipboardApi.read === "function") {
+    const items = await clipboardApi.read();
+    const attachmentGroups = await Promise.all(
+      items.map(async (item) => {
+        const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+        return await Promise.all(
+          imageTypes.map(async (type) => {
+            const blob = await item.getType(type);
+            const extension = extensionFromMime(type);
+            const file = new File([blob], `clipboard-${Date.now()}.${extension}`, { type });
+            return await fileToComposerAttachment(file, "clipboard");
+          })
+        );
+      })
+    );
+    const attachments = attachmentGroups.flat();
+
+    if (attachments.length > 0) {
+      return attachments;
+    }
+  }
+
+  if (typeof navigator.clipboard.readText === "function") {
+    const text = await navigator.clipboard.readText();
+    const textAttachment = createClipboardTextAttachment(text);
+    if (textAttachment != null) {
+      return [textAttachment];
+    }
+  }
+
+  return [];
 }
 
 async function withHistorySyncFallback(fallbackText: string): Promise<void> {
@@ -761,9 +1581,11 @@ async function ensureActiveSession(): Promise<string> {
   }
 
   const sessions = await listSessionsFromDisk();
-  if (sessions.length > 0) {
-    const firstId = sessions[0]?.id;
+  const visibleSessions = getSessionsForTab(sessions, "active");
+  if (visibleSessions.length > 0) {
+    const firstId = visibleSessions[0]?.id;
     if (typeof firstId === "string" && firstId !== "") {
+      runtime.sessionTab = "active";
       setActiveSession(firstId);
       return firstId;
     }
@@ -784,7 +1606,8 @@ async function sendMessage(): Promise<void> {
   }
 
   const text = chatInput.value.trim();
-  if (text === "") {
+  const stagedAttachments = [...runtime.stagedAttachments];
+  if (text === "" && stagedAttachments.length === 0) {
     setSendButtonState();
     return;
   }
@@ -793,10 +1616,13 @@ async function sendMessage(): Promise<void> {
   setSendButtonState();
 
   const sessionId = await ensureActiveSession();
+  runtime.submittingSessionId = sessionId;
+  await loadSessionListAndRender({ preserveActive: true });
 
+  const previousText = chatInput.value;
   chatInput.value = "";
   chatInput.style.height = "";
-  addMessage("user", text);
+  addMessage("user", text, undefined, buildOutgoingAttachmentPreview(stagedAttachments));
   scrollChatToBottom(true);
 
   try {
@@ -808,6 +1634,7 @@ async function sendMessage(): Promise<void> {
       providerId: modelMeta?.providerId ?? null,
       agentId: runtime.activeAgentId,
       reasoningEffort: runtime.activeReasoningEffort,
+      attachments: stagedAttachments,
     });
 
     const response = await apiCall<unknown>(
@@ -819,7 +1646,10 @@ async function sendMessage(): Promise<void> {
 
     await withHistorySyncFallback(fallbackText);
     await loadSessionListAndRender({ preserveActive: true });
+    setComposerAttachments([]);
   } catch (error) {
+    chatInput.value = previousText;
+    setComposerAttachments(stagedAttachments);
     addMessage(
       "assistant",
       "Mesaj gonderilemedi: " +
@@ -828,7 +1658,9 @@ async function sendMessage(): Promise<void> {
     scrollChatToBottom(true);
   } finally {
     runtime.isSubmitting = false;
+    runtime.submittingSessionId = null;
     setSendButtonState();
+    await loadSessionListAndRender({ preserveActive: true });
   }
 }
 
@@ -889,26 +1721,25 @@ async function activateSession(sessionId: string): Promise<void> {
 }
 
 async function handleSessionAction(sessionId: string, action: string): Promise<void> {
+  if (action === "archive") {
+    const confirmed = window.confirm("Bu session arsivlensin mi?");
+    if (!confirmed) return;
+
+    await archiveSessionInDisk(sessionId, true);
+    const sessions = await listSessionsFromDisk();
+    await syncActiveSessionToCurrentTab(sessions);
+    renderSessionList(sessions);
+    return;
+  }
+
   if (action === "delete") {
     const confirmed = window.confirm("Bu session silinsin mi?");
     if (!confirmed) return;
 
     await apiCall("DELETE", `/session/${encodeURIComponent(sessionId)}`);
-    if (runtime.activeSessionId === sessionId) {
-      setActiveSession(null);
-    }
-    await loadSessionListAndRender();
-
-    if (runtime.activeSessionId == null) {
-      const sessions = await listSessionsFromDisk();
-      const firstId = sessions[0]?.id ?? "";
-      if (firstId !== "") {
-        setActiveSession(firstId);
-        await loadActiveSessionHistory();
-      } else {
-        clearChatArea();
-      }
-    }
+    const sessions = await listSessionsFromDisk();
+    await syncActiveSessionToCurrentTab(sessions);
+    renderSessionList(sessions);
 
     return;
   }
@@ -920,7 +1751,7 @@ async function handleSessionAction(sessionId: string, action: string): Promise<v
     const titleSpan = row?.querySelector<HTMLElement>(".ds-session__title");
     if (titleSpan == null) return;
 
-    const current = titleSpan.textContent ?? "";
+    const current = titleSpan.textContent;
     const input = document.createElement("input");
     input.type = "text";
     input.className = "ds-session__title-input";
@@ -980,12 +1811,22 @@ async function handleSessionAction(sessionId: string, action: string): Promise<v
   }
 }
 
+async function switchSessionTab(tab: SessionTab): Promise<void> {
+  if (runtime.sessionTab === tab) {
+    return;
+  }
+
+  runtime.sessionTab = tab;
+  await loadSessionListAndRender({ preserveActive: true, syncSelectionToTab: true });
+}
+
 function initSessionEvents(): void {
   const newSessionBtn = byId<HTMLButtonElement>("new-session-btn");
   if (newSessionBtn != null) {
     newSessionBtn.addEventListener("click", () => {
       void (async (): Promise<void> => {
         try {
+          runtime.sessionTab = "active";
           const sessionId = await createServerSession("Yeni Sohbet");
           setActiveSession(sessionId);
           await loadSessionListAndRender({ preserveActive: true });
@@ -1015,6 +1856,16 @@ function initSessionEvents(): void {
       void loadSessionListAndRender({ preserveActive: true });
     });
   }
+
+  const activeTabBtn = byId<HTMLButtonElement>("session-tab-active");
+  activeTabBtn?.addEventListener("click", () => {
+    void switchSessionTab("active");
+  });
+
+  const archivedTabBtn = byId<HTMLButtonElement>("session-tab-archived");
+  archivedTabBtn?.addEventListener("click", () => {
+    void switchSessionTab("archived");
+  });
 
   const listEl = byId<HTMLElement>("session-list");
   if (listEl != null) {
@@ -1053,6 +1904,8 @@ function initChatEvents(): void {
   const sendBtn = byId<HTMLButtonElement>("send-btn");
   const pruneBtn = byId<HTMLButtonElement>("prune-btn");
   const clearBtn = byId<HTMLButtonElement>("clear-btn");
+  const attachInput = byId<HTMLInputElement>("attach-file-input");
+  const attachmentTray = byId<HTMLElement>("clipboard-preview-area");
 
   if (chatInput == null || sendBtn == null) {
     return;
@@ -1075,6 +1928,9 @@ function initChatEvents(): void {
       void sendMessage();
     }
   });
+  chatInput.addEventListener("paste", (event) => {
+    void readClipboardAttachmentsFromEvent(event);
+  });
 
   pruneBtn?.addEventListener("click", () => {
     pruneLastMessages();
@@ -1086,14 +1942,50 @@ function initChatEvents(): void {
 
   const attachFileBtn = byId<HTMLButtonElement>("attach-file-btn");
   attachFileBtn?.addEventListener("click", () => {
-    showToast("Dosya ekleme bu iterasyonda aktif degil.");
+    attachInput?.click();
+  });
+  attachInput?.addEventListener("change", () => {
+    const files = attachInput.files;
+    if (files == null || files.length === 0) {
+      return;
+    }
+    void stageFileList(files, "file-picker");
+    attachInput.value = "";
   });
 
   const attachImageBtn = byId<HTMLButtonElement>("attach-image-btn");
   attachImageBtn?.addEventListener("click", () => {
-    showToast("Clipboard yapistirma bu iterasyonda aktif degil.");
+    void (async (): Promise<void> => {
+      try {
+        const attachments = await readClipboardAttachmentsFromSystem();
+        if (attachments.length === 0) {
+          showToast("Clipboard'da eklenebilir icerik bulunamadi.");
+          return;
+        }
+        stageComposerAttachments(attachments);
+      } catch (error) {
+        showToast(
+          "Clipboard okunamadi: " +
+            (error instanceof Error && error.message !== "" ? error.message : String(error))
+        );
+      }
+    })();
+  });
+  attachmentTray?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const attachmentId = target.getAttribute("data-attachment-remove");
+    if (attachmentId == null || attachmentId === "") {
+      return;
+    }
+
+    removeComposerAttachment(attachmentId);
   });
 
+  renderAttachmentTray();
   updateInputState();
 }
 
@@ -1236,13 +2128,13 @@ function refreshReasoningEffortDropdown(): void {
   effortDropdown.setItems(items, selected ?? undefined);
 }
 
-async function loadModels(): Promise<void> {
+async function loadModels(payloadOverride?: unknown): Promise<void> {
   if (modelDropdown == null) {
     return;
   }
 
   try {
-    const payload = await apiCall<unknown>("GET", "/config/providers");
+    const payload = payloadOverride ?? (await apiCall<unknown>("GET", "/config/providers"));
     const items = normalizeModelItems(payload);
     runtime.modelMetaById = {};
     items.forEach((item) => {
@@ -1297,23 +2189,166 @@ async function loadModels(): Promise<void> {
   }
 }
 
-async function loadProviderContext(): Promise<void> {
-  try {
-    const payload = await apiCall<Record<string, unknown>>("GET", "/provider");
-    const accountEl = byId<HTMLElement>("account");
-    if (accountEl == null) return;
+function normalizeProviderItemsFromConfig(payload: unknown): ProviderItem[] {
+  if (payload == null || typeof payload !== "object" || Array.isArray(payload)) {
+    return [];
+  }
 
-    const connectedRaw = payload["connected"];
-    const connected = Array.isArray(connectedRaw)
-      ? connectedRaw.filter((item): item is string => typeof item === "string")
+  const providersRaw = (payload as Record<string, unknown>)["providers"];
+  if (!Array.isArray(providersRaw)) {
+    return [];
+  }
+
+  const deduped = new Map<string, ProviderItem>();
+
+  providersRaw.forEach((provider) => {
+    if (provider == null || typeof provider !== "object" || Array.isArray(provider)) {
+      return;
+    }
+
+    const record = provider as Record<string, unknown>;
+    const id = normalizeString(record["id"]);
+    if (id === "") {
+      return;
+    }
+
+    const name = normalizeString(record["name"]);
+    const type = normalizeString(record["type"]);
+    const badge = type !== "" ? type : "Config";
+
+    deduped.set(id, {
+      id,
+      name: name !== "" ? name : id,
+      badge,
+    });
+  });
+
+  return Array.from(deduped.values());
+}
+
+function normalizeConnectedProviderIds(payload: unknown): string[] {
+  const collectStringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value
+          .map((item) => {
+            if (typeof item === "string") {
+              return item.trim();
+            }
+
+            if (item != null && typeof item === "object" && !Array.isArray(item)) {
+              const record = item as Record<string, unknown>;
+              const id = normalizeString(record["id"]);
+              const name = normalizeString(record["name"]);
+              return id !== "" ? id : name;
+            }
+
+            return "";
+          })
+          .filter((item) => item !== "")
       : [];
 
-    accountEl.textContent = connected.length > 0 ? connected.join(", ") : "-";
-  } catch {
-    const accountEl = byId<HTMLElement>("account");
-    if (accountEl != null) {
-      accountEl.textContent = "-";
+  if (Array.isArray(payload)) {
+    return Array.from(new Set(collectStringArray(payload)));
+  }
+
+  if (payload == null || typeof payload !== "object") {
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+  const connected = collectStringArray(record["connected"]);
+  if (connected.length > 0) {
+    return Array.from(new Set(connected));
+  }
+
+  const providers = record["providers"];
+  if (Array.isArray(providers)) {
+    const activeIds = providers
+      .map((item) => {
+        if (item == null || typeof item !== "object" || Array.isArray(item)) {
+          return "";
+        }
+
+        const providerRecord = item as Record<string, unknown>;
+        const connectedValue = providerRecord["connected"];
+        const activeValue = providerRecord["active"];
+        if (connectedValue === true || activeValue === true) {
+          const id = normalizeString(providerRecord["id"]);
+          const name = normalizeString(providerRecord["name"]);
+          return id !== "" ? id : name;
+        }
+
+        return "";
+      })
+      .filter((item) => item !== "");
+
+    if (activeIds.length > 0) {
+      return Array.from(new Set(activeIds));
     }
+  }
+
+  return [];
+}
+
+function renderProviderRows(items: ProviderItem[]): string {
+  if (items.length === 0) {
+    return `<div class="empty-state">Provider bulunamadi</div>`;
+  }
+
+  return items
+    .map((item) => {
+      const safeName = escapeHtml(item.name);
+      const safeBadge = escapeHtml(item.badge);
+
+      return (
+        `<div class="ds-provider-row">` +
+        `<span class="ds-provider-name">${safeName}</span>` +
+        (safeBadge !== "" ? `<span class="ds-provider-badge">${safeBadge}</span>` : "") +
+        `</div>`
+      );
+    })
+    .join("");
+}
+
+function renderProvidersPanel(items: ProviderItem[]): void {
+  const listEl = byId<HTMLElement>("providers-list");
+  if (listEl == null) {
+    return;
+  }
+
+  listEl.innerHTML = renderProviderRows(items);
+}
+
+async function loadProviderContextAndModels(
+  providerPayloadOverride?: unknown,
+  configPayloadOverride?: unknown
+): Promise<void> {
+  try {
+    const providerPayload =
+      providerPayloadOverride ?? (await apiCall<Record<string, unknown>>("GET", "/provider"));
+    const configPayload =
+      configPayloadOverride ?? (await apiCall<Record<string, unknown>>("GET", "/config/providers"));
+
+    const connectedIds = normalizeConnectedProviderIds(providerPayload);
+    const catalog = normalizeProviderItemsFromConfig(configPayload);
+    const connectedSet = new Set(connectedIds);
+    const items = catalog
+      .map((item) => ({
+        ...item,
+        badge: connectedSet.has(item.id) ? "Connected" : "Available",
+      }))
+      .sort((left, right) => {
+        if (left.badge !== right.badge) {
+          return left.badge === "Connected" ? -1 : 1;
+        }
+        return left.name.localeCompare(right.name, "tr");
+      });
+
+    renderProvidersPanel(items);
+    await loadModels(configPayload);
+  } catch {
+    renderProvidersPanel([]);
+    await loadModels(configPayloadOverride);
   }
 }
 
@@ -1337,10 +2372,19 @@ function initSelects(): void {
   });
 }
 
-async function initializeSessionSelection(resumeSessionId: string): Promise<void> {
-  const sessions = await listSessionsFromDisk();
+function initUtilityActions(): void {
+  const copyUrlBtn = byId<HTMLButtonElement>("btn-copy-url");
+  copyUrlBtn?.addEventListener("click", () => {
+    void copyWorkspaceUrl();
+  });
+}
 
-  if (sessions.length === 0) {
+async function initializeSessionSelection(resumeSessionId: string): Promise<void> {
+  runtime.sessionTab = "active";
+  const sessions = await listSessionsFromDisk();
+  const visibleSessions = getSessionsForTab(sessions, "active");
+
+  if (visibleSessions.length === 0) {
     const createdId = await createServerSession("Yeni Sohbet");
     setActiveSession(createdId);
     await loadSessionListAndRender({ preserveActive: true });
@@ -1349,12 +2393,12 @@ async function initializeSessionSelection(resumeSessionId: string): Promise<void
   }
 
   const resumeId = resumeSessionId.trim();
-  const hasResume = resumeId !== "" && sessions.some((session) => session.id === resumeId);
+  const hasResume = resumeId !== "" && visibleSessions.some((session) => session.id === resumeId);
 
   if (hasResume) {
     setActiveSession(resumeId);
   } else {
-    setActiveSession(sessions[0]?.id ?? null);
+    setActiveSession(visibleSessions[0]?.id ?? null);
   }
 
   await loadSessionListAndRender({ preserveActive: true });
@@ -1367,7 +2411,6 @@ function startPeriodicRefresh(): void {
       try {
         await checkHealth();
         await loadStatusContext();
-        await loadProviderContext();
         await loadToolsFinalSnapshot();
       } catch (_error) {}
 
@@ -1381,6 +2424,12 @@ function startPeriodicRefresh(): void {
       }
     })();
   }, 15000);
+}
+
+function startLiveMessageRefresh(): void {
+  setInterval(() => {
+    void syncActiveSessionHistoryIfUpdated();
+  }, 1200);
 }
 
 export async function runOpencodeUiBootstrapPipeline(options: {
@@ -1435,6 +2484,7 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
 
   initUIHelpers();
   initSelects();
+  initUtilityActions();
   initSessionEvents();
   initChatEvents();
 
@@ -1465,7 +2515,7 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
   }
 
   try {
-    await Promise.all([loadAgents(), loadModels(), loadProviderContext()]);
+    await Promise.all([loadAgents(), loadProviderContextAndModels()]);
     await initializeSessionSelection(resumeSessionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -1477,6 +2527,7 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
   }
 
   startPeriodicRefresh();
+  startLiveMessageRefresh();
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {

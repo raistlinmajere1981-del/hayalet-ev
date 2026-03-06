@@ -1,12 +1,9 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  ghostBootstrap: () => ipcRenderer.invoke("ghost-bootstrap"),
-  ghostProviderDetect: (provider) => ipcRenderer.invoke("ghost-provider-detect", provider),
-  ghostProviderConnect: (payload) => ipcRenderer.invoke("ghost-provider-connect", payload),
-  ghostProviderStop: (provider) => ipcRenderer.invoke("ghost-provider-stop", provider),
-  ghostProviderSetPreferred: (provider) =>
-    ipcRenderer.invoke("ghost-provider-set-preferred", provider),
+  ghostServerStatus: () => ipcRenderer.invoke("ghost-server-status"),
+  ghostServerConnect: (payload) => ipcRenderer.invoke("ghost-server-connect", payload),
+  ghostServerStop: () => ipcRenderer.invoke("ghost-server-stop"),
   ghostOpenTarget: (target) => ipcRenderer.invoke("ghost-open-target", target),
   ghostExitAction: (action) => ipcRenderer.invoke("ghost-exit-action", action),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),

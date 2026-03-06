@@ -4,11 +4,9 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
-import { SlotController, SlotEvent } from "../modules/slot-controller.js";
-import { TrafficManager } from "../modules/traffic-manager.js";
+import { SlotController } from "../modules/slot-controller.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { ButtonStates } from "../ui/button-states.js";
-import type { AppSettings } from "@shared/settings.js";
 import {
   buildCommandTestMessage,
   buildInlineCommandSnippet,
@@ -16,40 +14,30 @@ import {
   parseCommandExecutionInput,
 } from "./server-command-utils.js";
 import {
-  buildTimelineThreads,
-  getStructuredEntries,
-  getTimelineSessionIds,
-  normalizeTimelineEvent,
-  registerTimelineEvent,
-  sortTimelineEvents,
-  timelineToText,
-} from "./server-timeline.js";
-import type { TimelineEvent, TimelineThread } from "./server-timeline.js";
-
-type CommandCategory = "ai1-ai2" | "ai0";
-type CommandSlot = "ai1" | "ai2" | "ai0";
-
-interface CommandCatalogItem {
-  name: string;
-  category: CommandCategory;
-  isCustom: boolean;
-  supportsTestMode: boolean;
-}
-
-interface CommandRunResult {
-  success?: boolean;
-  message?: string;
-  detail?: string;
-  [key: string]: unknown;
-}
-
-interface ServerCommandsApi {
-  list(): string[];
-  run(name: string, payload?: Record<string, unknown>): Promise<unknown>;
-  getDescriptionText(name: string): string;
-  listByCategory?: (category: CommandCategory) => string[];
-  getCatalog?: (category?: CommandCategory) => CommandCatalogItem[];
-}
+  buildSettingsWithDisabledCommands,
+  getCommandCatalog,
+  getDisabledCommandsForSlot,
+  isCommandEnabled,
+  normalizeSlot,
+  resolveCategoryForSlot,
+} from "./server/command-helpers.js";
+import type {
+  CommandCatalogItem,
+  CommandCategory,
+  CommandRunResult,
+  CommandSlot,
+  ServerCommandsApi,
+} from "./server/types.js";
+import {
+  handleTimelineLogEntry,
+  handleTimelineScroll,
+  initializeTimeline,
+  rebuildTimelineView,
+  type TimelineState,
+} from "./server/timeline-controller.js";
+import { initServerControllerPage } from "./server/init-controller.js";
+import type { ServerInitContext } from "./server/init-controller.js";
+import type { TimelineEvent } from "./server-timeline.js";
 
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
@@ -117,43 +105,24 @@ export class ServerController {
     return ServerCommands as unknown as ServerCommandsApi;
   }
 
-  private hasMoreTimelineSessions(): boolean {
-    return this.timelineSessionCursor < this.timelineSessionIds.length;
-  }
-
-  private isTimelineNearBottom(): boolean {
-    if (this.timelineLog === null) return false;
-    const distance =
-      this.timelineLog.scrollHeight - this.timelineLog.scrollTop - this.timelineLog.clientHeight;
-    return distance <= 72;
-  }
-
-  private scrollTimelineToBottom(): void {
-    if (this.timelineLog === null) return;
-    this.timelineLog.scrollTop = this.timelineLog.scrollHeight;
-  }
-
   private updateTimelineMeta(text: string): void {
     if (this.timelineMeta === null) return;
     this.timelineMeta.textContent = text;
   }
 
   private normalizeSlot(value: string): CommandSlot {
-    if (value === "ai0" || value === "ai1" || value === "ai2") {
-      return value;
-    }
-    return "ai1";
+    return normalizeSlot(value);
   }
 
   private resolveCategoryForSlot(slot: CommandSlot): CommandCategory {
-    return slot === "ai0" ? "ai0" : "ai1-ai2";
+    return resolveCategoryForSlot(slot);
   }
 
   private getSelectedCommandSlot(): CommandSlot {
     return this.normalizeSlot(this.commandSlotSelect?.value ?? "ai1");
   }
 
-  private syncCategoryWithSlot(): void {
+  syncCategoryWithSlot(): void {
     const slot = this.getSelectedCommandSlot();
     this.activeCategory = this.resolveCategoryForSlot(slot);
     this.updateCategoryTabs();
@@ -173,88 +142,21 @@ export class ServerController {
   }
 
   private getCommandCatalog(category: CommandCategory): CommandCatalogItem[] {
-    const commandApi = this.getServerCommandsApi();
-
-    if (typeof commandApi.getCatalog === "function") {
-      return commandApi.getCatalog(category);
-    }
-
-    if (typeof commandApi.listByCategory === "function") {
-      return commandApi.listByCategory(category).map((name) => ({
-        name,
-        category,
-        isCustom: false,
-        supportsTestMode: false,
-      }));
-    }
-
-    return commandApi.list().map((name) => ({
-      name,
-      category,
-      isCustom: false,
-      supportsTestMode: false,
-    }));
+    return getCommandCatalog(this.getServerCommandsApi(), category);
   }
 
   private getDisabledCommandsForSlot(slot: CommandSlot): string[] {
     const settings = SettingsManager.getSnapshot();
-
-    if (slot === "ai1" || slot === "ai2") {
-      const disabled = settings.slots[slot].disabledCommands;
-      return Array.isArray(disabled)
-        ? disabled.filter((item): item is string => typeof item === "string")
-        : [];
-    }
-
-    const asistanDisabled = settings.asistanSlot?.disabledCommands;
-    return Array.isArray(asistanDisabled)
-      ? asistanDisabled.filter((item): item is string => typeof item === "string")
-      : [];
+    return getDisabledCommandsForSlot(settings, slot);
   }
 
   private isCommandEnabled(slot: CommandSlot, commandName: string): boolean {
-    const disabled = this.getDisabledCommandsForSlot(slot);
-    return disabled.every((item) => item.toLowerCase() !== commandName.toLowerCase());
+    return isCommandEnabled(this.getDisabledCommandsForSlot(slot), commandName);
   }
 
   private async saveDisabledCommands(slot: CommandSlot, disabledCommands: string[]): Promise<void> {
-    const unique = Array.from(
-      new Set(disabledCommands.map((item) => item.trim()).filter((item) => item !== ""))
-    );
     const settings = SettingsManager.getSnapshot();
-
-    if (slot === "ai1" || slot === "ai2") {
-      const slotSettings = settings.slots[slot];
-      const next: AppSettings = {
-        ...settings,
-        slots: {
-          ...settings.slots,
-          [slot]: {
-            ...slotSettings,
-            disabledCommands: unique,
-          },
-        },
-      };
-      await SettingsManager.save(next as unknown as Record<string, unknown>);
-      return;
-    }
-
-    const asistanSlot = settings.asistanSlot ?? {
-      accountId: null,
-      catchCommands: false,
-      disabledCommands: [],
-      messageMethod: "injection",
-      fileMethod: "injection",
-    };
-
-    const next: AppSettings = {
-      ...settings,
-      asistanSlot: {
-        ...asistanSlot,
-        disabledCommands: unique,
-      },
-    };
-
+    const next = buildSettingsWithDisabledCommands(settings, slot, disabledCommands);
     await SettingsManager.save(next as unknown as Record<string, unknown>);
   }
 
@@ -299,7 +201,7 @@ export class ServerController {
     }
   }
 
-  private async runSelectedCommand(): Promise<void> {
+  async runSelectedCommand(): Promise<void> {
     const runButton = this.commandRunBtn;
     if (runButton === null) {
       return;
@@ -502,133 +404,7 @@ export class ServerController {
   }
 
   async init(): Promise<void> {
-    await SettingsManager.load();
-
-    this._unsubSettings ??= SettingsManager.subscribe(
-      ({ changedPaths }: { changedPaths: string[] }) => {
-        const shouldRenderCommandPanel =
-          changedPaths.includes("*") ||
-          changedPaths.some(
-            (path) =>
-              path.startsWith("slots") ||
-              path.startsWith("asistanSlot") ||
-              path.startsWith("accounts") ||
-              path.startsWith("asistanAccounts")
-          );
-
-        if (!shouldRenderCommandPanel) {
-          return;
-        }
-
-        this.renderCommandPanel();
-      }
-    );
-
-    this.controllerSelect = document.getElementById(
-      "server-controller-select"
-    ) as HTMLSelectElement | null;
-    this.timelineLog = document.getElementById("server-command-timeline");
-    this.timelineMeta = document.getElementById("server-timeline-meta");
-    this.delegateBtn = document.getElementById("server-delegate-btn") as HTMLButtonElement | null;
-    this.reclaimBtn = document.getElementById("server-reclaim-btn") as HTMLButtonElement | null;
-
-    this.commandSlotSelect = document.getElementById(
-      "server-command-slot-select"
-    ) as HTMLSelectElement | null;
-    this.commandList = document.getElementById("server-command-list");
-    this.commandDetail = document.getElementById(
-      "server-command-detail"
-    ) as HTMLTextAreaElement | null;
-    this.commandTestArgs = document.getElementById(
-      "server-command-test-args"
-    ) as HTMLInputElement | null;
-    this.commandRunBtn = document.getElementById("server-command-run") as HTMLButtonElement | null;
-    this.commandCategoryTabs = document.getElementById("server-command-category-tabs");
-
-    this.delegateBtn?.addEventListener("click", () => {
-      void this.assignControl();
-    });
-
-    this.reclaimBtn?.addEventListener("click", () => {
-      void this.reclaimControl();
-    });
-
-    this.controllerSelect?.addEventListener("change", () => {
-      this.updateControlButtons();
-    });
-
-    this.commandSlotSelect?.addEventListener("change", () => {
-      this.syncCategoryWithSlot();
-      this.renderCommandPanel();
-    });
-
-    this.commandCategoryTabs?.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      const button = target.closest<HTMLButtonElement>(".command-category-tab");
-      if (button === null) {
-        return;
-      }
-
-      const categoryValue = button.dataset["category"];
-      if (categoryValue !== "ai0" && categoryValue !== "ai1-ai2") {
-        return;
-      }
-      const category: CommandCategory = categoryValue;
-
-      if (category === "ai0") {
-        if (this.commandSlotSelect !== null) {
-          this.commandSlotSelect.value = "ai0";
-        }
-      } else if (this.commandSlotSelect !== null && this.commandSlotSelect.value === "ai0") {
-        this.commandSlotSelect.value = "ai1";
-      }
-
-      this.syncCategoryWithSlot();
-      this.renderCommandPanel();
-    });
-
-    this.commandRunBtn?.addEventListener("click", () => {
-      void this.runSelectedCommand();
-    });
-
-    this.commandTestArgs?.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") {
-        return;
-      }
-      event.preventDefault();
-      void this.runSelectedCommand();
-    });
-
-    this.timelineLog?.addEventListener("scroll", () => {
-      void this.handleTimelineScroll();
-    });
-
-    this.renderControllerOptions();
-    this.updateControlButtons();
-    this.syncCategoryWithSlot();
-    this.renderCommandPanel();
-
-    AppState.subscribe(() => {
-      this.renderControllerOptions();
-      this.updateControlButtons();
-    });
-
-    this._unsubSlotController ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
-      this.updateControlButtons();
-    });
-
-    this.unsubscribeTraffic = TrafficManager.onUpdate((_snapshot) => {
-      this.updateControlButtons();
-    });
-
-    this.logUnsubscribe = Logger.subscribe((entry) => {
-      this.handleLogEntry(entry);
-    });
-
-    await this.initializeTimeline();
+    await initServerControllerPage(this as unknown as ServerInitContext);
   }
 
   renderControllerOptions(): void {
@@ -760,249 +536,41 @@ export class ServerController {
   }
 
   private async initializeTimeline(): Promise<void> {
-    if (this.timelineInitialized) {
-      return;
-    }
-
-    this.timelineInitialized = true;
-    this.timelineEvents.clear();
-    this.timelineSessionIds = [];
-    this.timelineSessionCursor = 0;
-    this.timelineLoadedSessionIds.clear();
-
-    const loggerApi = window.electronAPI?.logger;
-    if (loggerApi !== undefined) {
-      try {
-        const sessionsPayload = await loggerApi.listSessions();
-        this.timelineSessionIds = getTimelineSessionIds(sessionsPayload);
-      } catch (error) {
-        Logger.warn(
-          LogCategory.SERVER_COMMANDS,
-          `Session listesi okunamadi: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-
-    if (this.timelineSessionIds.length > 0) {
-      await this.loadMoreTimelineSessions(false);
-    }
-
-    this.seedTimelineFromMemoryLogs();
-    this.rebuildTimeline(true);
-
-    if (!this.timelineLoading && !this.hasMoreTimelineSessions()) {
-      const total = this.timelineLoadedSessionIds.size;
-      this.updateTimelineMeta(
-        total > 0 ? `Tum session gecmisi yuklendi (${total} session)` : "Canli komut akisina bagli"
-      );
-    }
-  }
-
-  private seedTimelineFromMemoryLogs(): void {
-    const recent = Logger.getRecentLogs(500);
-    recent.forEach((entry) => {
-      const normalized = normalizeTimelineEvent(entry, {
-        fallbackSessionId: timelineToText(entry.sessionId),
-        getProviderLabel: this.getProviderLabel.bind(this),
-      });
-      if (normalized === null) {
-        return;
-      }
-      registerTimelineEvent(this.timelineEvents, normalized);
+    await initializeTimeline({
+      state: this as TimelineState,
+      batchSize: TIMELINE_SESSION_BATCH,
+      updateTimelineMeta: (text) => {
+        this.updateTimelineMeta(text);
+      },
+      getProviderLabel: (provider) => this.getProviderLabel(provider),
     });
   }
 
-  private async readSessionTimelineEvents(sessionId: string): Promise<TimelineEvent[]> {
-    const loggerApi = window.electronAPI?.logger;
-    if (loggerApi === undefined) {
-      return [];
-    }
-
-    try {
-      const payload = await loggerApi.readAllLogs(sessionId);
-      const entries = getStructuredEntries(payload);
-      const events = entries
-        .map((entry) =>
-          normalizeTimelineEvent(entry, {
-            fallbackSessionId: sessionId,
-            getProviderLabel: this.getProviderLabel.bind(this),
-          })
-        )
-        .filter((entry): entry is TimelineEvent => entry !== null);
-      return sortTimelineEvents(events);
-    } catch (error) {
-      Logger.warn(
-        LogCategory.SERVER_COMMANDS,
-        `Session logu okunamadi (${sessionId}): ${error instanceof Error ? error.message : String(error)}`
-      );
-      return [];
-    }
-  }
-
-  private async loadMoreTimelineSessions(preserveScroll: boolean): Promise<void> {
-    if (this.timelineLoading) {
-      return;
-    }
-
-    if (!this.hasMoreTimelineSessions()) {
-      return;
-    }
-
-    const timeline = this.timelineLog;
-    const prevHeight = preserveScroll && timeline !== null ? timeline.scrollHeight : 0;
-    const prevTop = preserveScroll && timeline !== null ? timeline.scrollTop : 0;
-
-    this.timelineLoading = true;
-    this.updateTimelineMeta("Gecmis komutlar yukleniyor...");
-
-    try {
-      const start = this.timelineSessionCursor;
-      const end = Math.min(this.timelineSessionIds.length, start + TIMELINE_SESSION_BATCH);
-      const batchSessionIds = this.timelineSessionIds.slice(start, end);
-      this.timelineSessionCursor = end;
-
-      await batchSessionIds.reduce<Promise<void>>(async (prev, sessionId) => {
-        await prev;
-        if (this.timelineLoadedSessionIds.has(sessionId)) {
-          return;
-        }
-        const events = await this.readSessionTimelineEvents(sessionId);
-        events.forEach((event) => {
-          registerTimelineEvent(this.timelineEvents, event);
-        });
-        this.timelineLoadedSessionIds.add(sessionId);
-      }, Promise.resolve());
-
-      this.rebuildTimeline(false);
-
-      if (preserveScroll && timeline !== null) {
-        const delta = timeline.scrollHeight - prevHeight;
-        timeline.scrollTop = prevTop + delta;
-      }
-    } finally {
-      this.timelineLoading = false;
-      const remaining = Math.max(0, this.timelineSessionIds.length - this.timelineSessionCursor);
-      if (remaining > 0) {
-        this.updateTimelineMeta(
-          `Yukariya kaydir: +${TIMELINE_SESSION_BATCH} session daha (${remaining} kaldi)`
-        );
-      } else {
-        this.updateTimelineMeta(
-          `Tum session gecmisi yuklendi (${this.timelineLoadedSessionIds.size} session)`
-        );
-      }
-    }
-  }
-
-  private async handleTimelineScroll(): Promise<void> {
-    if (this.timelineLog === null || this.timelineLoading) {
-      return;
-    }
-    if (this.timelineLog.scrollTop > TIMELINE_TOP_THRESHOLD) {
-      return;
-    }
-    if (!this.hasMoreTimelineSessions()) {
-      return;
-    }
-    await this.loadMoreTimelineSessions(true);
+  async handleTimelineScroll(): Promise<void> {
+    await handleTimelineScroll({
+      state: this as TimelineState,
+      topThreshold: TIMELINE_TOP_THRESHOLD,
+      batchSize: TIMELINE_SESSION_BATCH,
+      updateTimelineMeta: (text) => {
+        this.updateTimelineMeta(text);
+      },
+      getProviderLabel: (provider) => this.getProviderLabel(provider),
+    });
   }
 
   handleLogEntry(entry: LogEntry): void {
-    const normalized = normalizeTimelineEvent(entry, {
-      fallbackSessionId: timelineToText(entry.sessionId),
-      getProviderLabel: this.getProviderLabel.bind(this),
+    handleTimelineLogEntry({
+      state: this as TimelineState,
+      entry,
+      getProviderLabel: (provider) => this.getProviderLabel(provider),
     });
-    if (normalized === null) {
-      return;
-    }
-
-    const stickToBottom = this.isTimelineNearBottom();
-    const didAdd = registerTimelineEvent(this.timelineEvents, normalized);
-    if (!didAdd) {
-      return;
-    }
-
-    this.rebuildTimeline(stickToBottom);
-  }
-
-  private createTimelineThreadElement(thread: TimelineThread): HTMLElement {
-    const root = document.createElement("div");
-    root.className = `timeline-thread${thread.resultDetail === "" ? " is-pending" : ""}`;
-
-    const header = document.createElement("div");
-    header.className = "timeline-thread-header";
-
-    const actor = document.createElement("span");
-    const target = thread.provider !== "" ? this.getProviderLabel(thread.provider) : "AI";
-    actor.textContent = `${thread.sender} -> ${target}`;
-
-    const stamp = document.createElement("span");
-    stamp.textContent = thread.commandTimestamp;
-
-    header.appendChild(actor);
-    header.appendChild(stamp);
-
-    const commandLine = document.createElement("div");
-    commandLine.className = "timeline-thread-command";
-    if (thread.command !== "" && thread.command !== "Komut") {
-      commandLine.textContent = `Komut: ${buildInlineCommandSnippet(thread.command, thread.args)}`;
-    } else {
-      commandLine.textContent = `Komut: ${thread.command}`;
-    }
-
-    const resultLine = document.createElement("div");
-    resultLine.className = `timeline-thread-result${thread.resultSuccess === false ? " is-error" : ""}`;
-    if (thread.resultDetail !== "") {
-      resultLine.textContent = `Sonuc: ${thread.resultDetail}`;
-    } else {
-      resultLine.textContent = "Sonuc bekleniyor...";
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "timeline-thread-meta";
-    const metaParts: string[] = [];
-    if (thread.transportDetail !== "") {
-      metaParts.push(`gonderim: ${thread.transportDetail}`);
-    }
-    metaParts.push(`session: ${thread.sessionId}`);
-    if (thread.resultTimestamp !== "") {
-      metaParts.push(`result-ts: ${thread.resultTimestamp}`);
-    }
-    meta.textContent = metaParts.join(" | ");
-
-    root.appendChild(header);
-    root.appendChild(commandLine);
-    root.appendChild(resultLine);
-    root.appendChild(meta);
-
-    return root;
   }
 
   private rebuildTimeline(stickToBottom = false): void {
-    if (this.timelineLog === null) {
-      return;
-    }
-
-    const events = sortTimelineEvents(Array.from(this.timelineEvents.values()));
-    const threads = buildTimelineThreads(events, this.getProviderLabel.bind(this));
-
-    this.timelineLog.innerHTML = "";
-    if (threads.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "log-empty-state";
-      empty.textContent = "Henuz komut kaydi yok";
-      this.timelineLog.appendChild(empty);
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    threads.forEach((thread) => {
-      fragment.appendChild(this.createTimelineThreadElement(thread));
+    rebuildTimelineView({
+      state: this as TimelineState,
+      getProviderLabel: (provider) => this.getProviderLabel(provider),
+      stickToBottom,
     });
-    this.timelineLog.appendChild(fragment);
-
-    if (stickToBottom) {
-      this.scrollTimelineToBottom();
-    }
   }
 }

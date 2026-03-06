@@ -705,7 +705,11 @@ declare global {
       args?: Record<string, unknown>
     ) => Promise<IPCResult & { command?: string }>;
 
-    opencodeServeStart: (options?: { port?: number; cors?: string[]; binaryPath?: string }) => Promise<{
+    opencodeServeStart: (options?: {
+      port?: number;
+      cors?: string[];
+      binaryPath?: string;
+    }) => Promise<{
       success: boolean;
       port?: number;
       url?: string;
@@ -775,7 +779,17 @@ declare global {
         workspace_path: string;
         updated_at: number;
         created_at: number;
+        archived_at: number | null;
       }>;
+      error?: string;
+    }>;
+    opencodeUiFsArchiveSession: (
+      sessionId: string,
+      archived?: boolean,
+      dbPath?: string
+    ) => Promise<{
+      success: boolean;
+      archived?: boolean;
       error?: string;
     }>;
     opencodeUiFsReadSession: (

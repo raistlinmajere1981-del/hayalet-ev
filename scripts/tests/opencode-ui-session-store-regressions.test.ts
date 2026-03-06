@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import Database from "better-sqlite3";
 import test from "node:test";
 
 import {
@@ -12,7 +12,7 @@ import {
 } from "../../electron/opencode-ui-session-store.ts";
 
 interface DbFixture {
-  db: DatabaseSync;
+  db: Database.Database;
   dbPath: string;
   cleanup: () => void;
 }
@@ -20,7 +20,7 @@ interface DbFixture {
 function setupFixture(): DbFixture {
   const dir = mkdtempSync(join(tmpdir(), "opencode-ui-session-store-"));
   const dbPath = join(dir, "opencode.db");
-  const db = new DatabaseSync(dbPath);
+  const db = new Database(dbPath);
 
   db.exec(`
     CREATE TABLE project (
@@ -331,6 +331,230 @@ test("readOpencodeUiSession parses user/assistant messages with files and tool c
     assert.equal(assistant?.toolCalls?.[0]?.name, "bash");
     assert.match(assistant?.toolCalls?.[0]?.args ?? "", /pwd/);
     assert.match(assistant?.toolCalls?.[0]?.result ?? "", /workspace\/project/);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("readOpencodeUiSession reads structured assistant parts and latest todos", async () => {
+  const fixture = setupFixture();
+  const { db, dbPath } = fixture;
+
+  db.prepare(
+    `INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    "ses_text_variants",
+    "proj_main",
+    "text-variants",
+    "/workspace/project",
+    "Text Variants",
+    "1.2.17",
+    1700000000000,
+    1700000003000
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_assistant_content",
+    "ses_text_variants",
+    1700000000100,
+    1700000000100,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_assistant_delta",
+    "ses_text_variants",
+    1700000000200,
+    1700000000200,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_assistant_tool_only",
+    "ses_text_variants",
+    1700000000300,
+    1700000000300,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_assistant_structured",
+    "ses_text_variants",
+    1700000000400,
+    1700000000400,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO message (id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    "msg_assistant_todo",
+    "ses_text_variants",
+    1700000000500,
+    1700000000500,
+    JSON.stringify({ role: "assistant" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_content",
+    "msg_assistant_content",
+    "ses_text_variants",
+    1700000000110,
+    1700000000110,
+    JSON.stringify({ type: "text", content: "assistant content text" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_delta",
+    "msg_assistant_delta",
+    "ses_text_variants",
+    1700000000210,
+    1700000000210,
+    JSON.stringify({ type: "text", content_delta: "assistant delta text" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_tool_only",
+    "msg_assistant_tool_only",
+    "ses_text_variants",
+    1700000000310,
+    1700000000310,
+    JSON.stringify({
+      type: "tool",
+      tool: "bash",
+      state: {
+        input: { command: "pwd" },
+        output: "/workspace/project\n",
+      },
+    })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_step_start",
+    "msg_assistant_structured",
+    "ses_text_variants",
+    1700000000410,
+    1700000000410,
+    JSON.stringify({ type: "step-start", snapshot: "abc123def4567890" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_reasoning",
+    "msg_assistant_structured",
+    "ses_text_variants",
+    1700000000420,
+    1700000000420,
+    JSON.stringify({ type: "reasoning", text: "Plan next debugging step" })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_patch",
+    "msg_assistant_structured",
+    "ses_text_variants",
+    1700000000430,
+    1700000000430,
+    JSON.stringify({
+      type: "patch",
+      files: ["/workspace/project/src/js/pages/opencode-ui/app.ts", "/workspace/project/README.md"],
+    })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_step_finish",
+    "msg_assistant_structured",
+    "ses_text_variants",
+    1700000000440,
+    1700000000440,
+    JSON.stringify({
+      type: "step-finish",
+      reason: "tool-calls",
+      tokens: { total: 321 },
+    })
+  );
+
+  db.prepare(
+    `INSERT INTO part (id, message_id, session_id, time_created, time_updated, data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    "part_assistant_todo",
+    "msg_assistant_todo",
+    "ses_text_variants",
+    1700000000510,
+    1700000000510,
+    JSON.stringify({
+      type: "tool",
+      tool: "todowrite",
+      state: {
+        status: "completed",
+        input: {
+          todos: [
+            { content: "Investigate bug", status: "completed", priority: "high" },
+            { content: "Ship fix", status: "pending", priority: "medium" },
+          ],
+        },
+      },
+    })
+  );
+
+  try {
+    const result = await readOpencodeUiSession("ses_text_variants", { dbPath });
+
+    assert.equal(result.success, true);
+    assert.equal(result.session?.messages.length, 5);
+    assert.equal(result.session?.messages[0]?.text, "assistant content text");
+    assert.equal(result.session?.messages[1]?.text, "assistant delta text");
+    assert.equal(result.session?.messages[2]?.text, "");
+    assert.equal(result.session?.messages[2]?.toolCalls?.[0]?.name, "bash");
+    assert.match(result.session?.messages[3]?.text ?? "", /Step start/);
+    assert.match(result.session?.messages[3]?.text ?? "", /Reasoning/);
+    assert.match(result.session?.messages[3]?.text ?? "", /Patch/);
+    assert.match(result.session?.messages[3]?.text ?? "", /app\.ts/);
+    assert.match(result.session?.messages[3]?.text ?? "", /Step finish/);
+    assert.equal(result.session?.messages[4]?.toolCalls?.[0]?.name, "todowrite");
+    assert.equal(result.session?.todos?.length, 2);
+    assert.equal(result.session?.todos?.[0]?.content, "Investigate bug");
+    assert.equal(result.session?.todos?.[1]?.status, "pending");
+    assert.equal(result.session?.changed_files?.length, 2);
+    assert.equal(
+      result.session?.changed_files?.[0],
+      "/workspace/project/src/js/pages/opencode-ui/app.ts"
+    );
+    assert.equal(result.session?.changed_files?.[1], "/workspace/project/README.md");
   } finally {
     fixture.cleanup();
   }

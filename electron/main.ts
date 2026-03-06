@@ -45,6 +45,7 @@ import {
 } from "./googledrive-manager.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
 import {
+  archiveOpencodeUiSession,
   ensureOpencodeUiSession,
   listOpencodeUiSessions,
   readOpencodeUiSession,
@@ -142,13 +143,17 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
     });
 
     const nextVersion =
-      diagnosis.available && typeof diagnosis.version === "string" && diagnosis.version.trim() !== ""
+      diagnosis.available &&
+      typeof diagnosis.version === "string" &&
+      diagnosis.version.trim() !== ""
         ? diagnosis.version.trim()
         : null;
     const detectedPathCandidate = (diagnosis.resolvedPath ?? diagnosis.command).trim();
     const nextPath =
       diagnosis.available === true
-        ? (detectedPathCandidate !== "" ? detectedPathCandidate : configuredBinaryPath)
+        ? detectedPathCandidate !== ""
+          ? detectedPathCandidate
+          : configuredBinaryPath
         : configuredBinaryPath;
 
     const prevVersion =
@@ -554,8 +559,12 @@ registerHandler("opencode-serve-stop", async () => {
   }
 });
 
-registerHandler("opencode-serve-status", () => {
-  return opencodeServerManager.getStatus();
+registerHandler("opencode-serve-status", async () => {
+  const current = opencodeServerManager.getStatus();
+  if (current.running === true) {
+    return current;
+  }
+  return await opencodeServerManager.findRunningServer(4096, 4110);
 });
 
 registerHandler("opencode-serve-find-port", async (_event, start = 4096, end = 4110) => {
@@ -584,9 +593,9 @@ registerHandler("opencode-serve-health", async (_event, url: string) => {
 
 registerHandler("opencode-serve-doctor", async (_event, options?: { binaryPath?: string }) => {
   try {
-    const info = await opencodeServerManager.diagnoseBinary({
-      binaryPath: options?.binaryPath,
-    });
+    const info = await opencodeServerManager.diagnoseBinary(
+      options?.binaryPath !== undefined ? { binaryPath: options.binaryPath } : {}
+    );
     return {
       success: true,
       ...info,
@@ -625,6 +634,15 @@ registerHandler("opencode-ui-fs-read-session", (_event, sessionId: string, dbPat
     typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
   return readOpencodeUiSession(sessionId, options);
 });
+
+registerHandler(
+  "opencode-ui-fs-archive-session",
+  (_event, sessionId: string, archived?: boolean, dbPath?: string) => {
+    const options =
+      typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
+    return archiveOpencodeUiSession(sessionId, archived !== false, options);
+  }
+);
 
 registerHandler(
   "opencode-ui-api-proxy",

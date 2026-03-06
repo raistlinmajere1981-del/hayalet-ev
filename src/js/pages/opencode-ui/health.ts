@@ -20,6 +20,12 @@ interface HevToolsResponse {
   toolNames?: string[];
 }
 
+interface OpencodeConfigResponse {
+  plugin?: unknown;
+  plugins?: unknown;
+  [key: string]: unknown;
+}
+
 const TRANSITIONAL_MCP_STATUSES = new Set([
   "",
   "starting",
@@ -109,7 +115,9 @@ async function loadHevToolCount(): Promise<number | null> {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && value !== undefined && typeof value === "object" && !Array.isArray(value);
+  return (
+    value !== null && value !== undefined && typeof value === "object" && !Array.isArray(value)
+  );
 }
 
 function normalizeStateLabel(value: string): string {
@@ -205,7 +213,12 @@ function resolveHealthSummary(
 }
 
 async function loadPluginSummaryFromApiClient(): Promise<string | null> {
-  const getPlugins = window.electronAPI?.APIClient?.getPlugins;
+  const apiClient = window.electronAPI?.["APIClient"] as
+    | {
+        getPlugins?: () => Promise<unknown>;
+      }
+    | undefined;
+  const getPlugins = apiClient?.["getPlugins"];
   if (typeof getPlugins !== "function") {
     return null;
   }
@@ -227,6 +240,24 @@ async function loadPluginSummaryFromApiClient(): Promise<string | null> {
   }
 }
 
+async function loadPluginSummaryFromConfig(): Promise<string | null> {
+  try {
+    const result = await apiCall<OpencodeConfigResponse>("GET", "/config");
+    if (!isRecord(result)) {
+      return null;
+    }
+
+    const plugins = result["plugin"] ?? result["plugins"];
+    if (Array.isArray(plugins)) {
+      return formatSummaryCount(plugins.length, "eklenti");
+    }
+
+    return summarizeStatusValue(plugins, "eklenti");
+  } catch (_error) {
+    return null;
+  }
+}
+
 function setHealthDetailValue(id: string, value: string): void {
   const element = document.getElementById(id);
   if (element != null) {
@@ -236,21 +267,21 @@ function setHealthDetailValue(id: string, value: string): void {
 }
 
 function buildLspSummary(health: GlobalHealthResponse): string {
-  return (
-    resolveHealthSummary(
-      health,
-      [
-        "lsp",
-        "lspStatus",
-        "lsp_status",
-        "lspServer",
-        "lspServers",
-        "languageServer",
-        "languageServers",
-      ],
-      "sunucu"
-    ) ?? "-"
+  const summary = resolveHealthSummary(
+    health,
+    [
+      "lsp",
+      "lspStatus",
+      "lsp_status",
+      "lspServer",
+      "lspServers",
+      "languageServer",
+      "languageServers",
+    ],
+    "sunucu"
   );
+
+  return summary ?? "Sunucu endpointi veri sunmuyor";
 }
 
 function buildPluginSummary(health: GlobalHealthResponse, apiSummary: string | null): string {
@@ -261,7 +292,7 @@ function buildPluginSummary(health: GlobalHealthResponse, apiSummary: string | n
       "eklenti"
     ) ??
     apiSummary ??
-    "-"
+    "Sunucu endpointi veri sunmuyor"
   );
 }
 
@@ -517,12 +548,14 @@ export interface McpSettledResult {
 export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
   bindMcpToggleHandlers();
 
-  const [globalHealth, mcpServers, hevToolCount, pluginSummaryFromApi] = await Promise.all([
-    apiCall<GlobalHealthResponse>("GET", "/global/health"),
-    apiCall<McpStatusMap>("GET", "/mcp"),
-    loadHevToolCount(),
-    loadPluginSummaryFromApiClient(),
-  ]);
+  const [globalHealth, mcpServers, hevToolCount, pluginSummaryFromConfig, pluginSummaryFromApi] =
+    await Promise.all([
+      apiCall<GlobalHealthResponse>("GET", "/global/health"),
+      apiCall<McpStatusMap>("GET", "/mcp"),
+      loadHevToolCount(),
+      loadPluginSummaryFromConfig(),
+      loadPluginSummaryFromApiClient(),
+    ]);
 
   const versionEl = document.getElementById("version");
   if (versionEl != null) {
@@ -532,7 +565,11 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
   const healthy = globalHealth.healthy === true;
   const healthBadgeEl = document.getElementById("health-badge");
   if (healthBadgeEl != null) {
-    healthBadgeEl.classList.remove("ds-status-badge--warning", "ds-status-badge--success", "ds-status-badge--error");
+    healthBadgeEl.classList.remove(
+      "ds-status-badge--warning",
+      "ds-status-badge--success",
+      "ds-status-badge--error"
+    );
     healthBadgeEl.classList.add(buildHealthBadgeClass(healthy));
 
     const healthBadgeLabelEl = healthBadgeEl.querySelector("span:last-child");
@@ -542,7 +579,10 @@ export async function checkHealth(): Promise<{ mcpServers: McpStatusMap }> {
   }
 
   setHealthDetailValue("lsp-status", buildLspSummary(globalHealth));
-  setHealthDetailValue("plugin-status", buildPluginSummary(globalHealth, pluginSummaryFromApi));
+  setHealthDetailValue(
+    "plugin-status",
+    buildPluginSummary(globalHealth, pluginSummaryFromConfig ?? pluginSummaryFromApi)
+  );
 
   renderMcpServers(mcpServers, hevToolCount);
 

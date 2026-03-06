@@ -5,50 +5,69 @@
 .ds-sidebar__body--right {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: 100%;
   min-height: 0;
+  overflow-y: auto;
+}
+
+.ds-right-inspector {
+  display: flex;
+  flex-direction: column;
+  border: var(--border-1) solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, rgba(10, 20, 42, 0.92), rgba(7, 15, 30, 0.9)), var(--bg-surface);
+  overflow: hidden;
 }
 
 .ds-right-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1);
-  border-radius: var(--radius-lg);
-  border: var(--border-1) solid var(--border-glass);
-  background: var(--hover-overlay);
+  padding: var(--space-2);
+  border-bottom: var(--border-1) solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .ds-right-tab {
-  flex: 1;
-  height: var(--btn-height-xs);
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--btn-height-xs) + 2px);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
   border: var(--border-1) solid transparent;
   background: transparent;
   color: var(--text-muted);
   font-size: var(--text-xs);
-  font-weight: var(--font-medium);
-  letter-spacing: var(--tracking-wide);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0;
   cursor: pointer;
+  white-space: nowrap;
   transition: var(--transition-fast);
 }
 
 .ds-right-tab:hover {
   color: var(--text-secondary);
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ds-right-tab.is-active {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: var(--color-accent-muted);
+  color: var(--text-primary);
+  border-color: rgba(33, 240, 255, 0.45);
+  background: linear-gradient(180deg, rgba(12, 132, 160, 0.28), rgba(8, 82, 112, 0.18));
+  box-shadow: inset 0 0 0 1px rgba(33, 240, 255, 0.1);
 }
 
 .ds-right-tabs__toggle {
-  width: var(--btn-height-xs);
-  height: var(--btn-height-xs);
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--btn-height-xs) + 2px);
+  height: calc(var(--btn-height-xs) + 2px);
+  border-radius: var(--radius-md);
   border: var(--border-1) solid transparent;
   background: transparent;
   color: var(--text-muted);
@@ -59,28 +78,29 @@
 
 .ds-right-tabs__toggle:hover {
   color: var(--text-secondary);
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ds-right-tabs__toggle[aria-pressed="true"] {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: var(--color-accent-muted);
+  color: var(--text-primary);
+  border-color: rgba(33, 240, 255, 0.35);
+  background: rgba(33, 240, 255, 0.12);
+}
+
+.ds-sidebar__body--right.is-tabs-hidden .ds-right-inspector {
+  border-radius: var(--radius-lg);
+}
+
+.ds-sidebar__body--right.is-tabs-hidden .ds-right-tabs {
+  border-bottom: none;
 }
 
 .ds-sidebar__body--right.is-tabs-hidden .ds-right-panels {
   display: none;
 }
 
-.ds-sidebar__body--right.is-tabs-hidden .ds-right-secondary {
-  padding-top: 0;
-  border-top: none;
-}
-
 .ds-right-panels {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  padding: var(--space-3);
 }
 
 .ds-rtab-panel {
@@ -91,16 +111,58 @@
   display: block;
 }
 
-#health-panel > .ds-panel__header {
-  cursor: default;
+.ds-right-panel-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+    var(--bg-elevated);
 }
 
-#health-panel > .ds-panel__header:hover {
-  background: transparent;
+.ds-right-panel-card__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ds-right-panel-card__eyebrow {
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.ds-right-panel-card__title {
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  line-height: 1.25;
+}
+
+.ds-panel__body--compact {
+  padding: 0;
+}
+
+#rtab-health .ds-kv-row {
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+#rtab-health .ds-kv-row__label {
+  flex: 0 0 72px;
 }
 
 #rtab-health .ds-kv-row__value {
-  max-width: 62%;
+  flex: 1;
+  min-width: 0;
+  max-width: none;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
@@ -110,13 +172,34 @@
 .ds-right-secondary {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: var(--border-1) solid var(--border-glass);
+  gap: var(--space-1-5);
+  padding-top: 0;
+  border-top: none;
 }
 
-.ds-side-subsection {
-  margin-top: var(--space-2);
+.ds-right-secondary .ds-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
+    var(--hover-overlay);
+}
+
+.ds-right-secondary .ds-panel__header {
+  min-height: 42px;
+  padding: calc(var(--space-2) + 2px) var(--space-3);
+  gap: var(--space-2);
+}
+
+.ds-right-secondary .ds-panel__title {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+.ds-right-secondary .ds-panel__body {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.ds-right-secondary .ds-panel__chevron {
+  font-size: var(--text-2xs);
 }
 
 .ds-todo-summary {
@@ -129,10 +212,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1-5) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--hover-overlay);
-  margin-bottom: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 0;
 }
 
 .ds-todo-item--done {
@@ -156,10 +239,10 @@
   grid-template-rows: auto auto;
   column-gap: var(--space-2);
   row-gap: 2px;
-  padding: var(--space-1-5) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--hover-overlay);
-  margin-bottom: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 0;
 }
 
 .ds-file-item__icon {

@@ -22,8 +22,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
   return [
     {
       definition: getDefinition("hev_memory_write"),
-      handler: (args): unknown => {
-        const result = memoryWrite(PROJECT_ROOT, args as Parameters<typeof memoryWrite>[1]);
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryWrite(PROJECT_ROOT, args as Parameters<typeof memoryWrite>[1]);
         return {
           content: [
             {
@@ -36,9 +36,9 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_search"),
-      handler: (args): unknown => {
+      handler: async (args): Promise<unknown> => {
         const searchArgs = args as Parameters<typeof memorySearch>[1];
-        const result = memorySearch(PROJECT_ROOT, searchArgs);
+        const result = await memorySearch(PROJECT_ROOT, searchArgs);
         if (searchArgs.response_format === "prompt_compact") {
           return {
             content: [
@@ -61,8 +61,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_update"),
-      handler: (args): unknown => {
-        const result = memoryUpdate(PROJECT_ROOT, args as Parameters<typeof memoryUpdate>[1]);
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryUpdate(PROJECT_ROOT, args as Parameters<typeof memoryUpdate>[1]);
         const text = result.updated
           ? `✅ Memory guncellendi: ${result.id}`
           : `⚠️ Memory bulunamadi: ${result.id}`;
@@ -71,8 +71,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_delete"),
-      handler: (args): unknown => {
-        const result = memoryDelete(PROJECT_ROOT, args as Parameters<typeof memoryDelete>[1]);
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryDelete(PROJECT_ROOT, args as Parameters<typeof memoryDelete>[1]);
         const text = result.deleted
           ? `✅ Memory silindi: ${result.id}`
           : `⚠️ Memory bulunamadi: ${result.id}`;
@@ -81,8 +81,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_prune"),
-      handler: (args): unknown => {
-        const result = memoryPrune(PROJECT_ROOT, args as Parameters<typeof memoryPrune>[1]);
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryPrune(PROJECT_ROOT, args as Parameters<typeof memoryPrune>[1]);
         return {
           content: [
             {
@@ -95,8 +95,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_stats"),
-      handler: (args): unknown => {
-        const result = memoryStats(PROJECT_ROOT, args as Parameters<typeof memoryStats>[1]);
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryStats(PROJECT_ROOT, args as Parameters<typeof memoryStats>[1]);
         return {
           content: [
             {
@@ -109,8 +109,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
     },
     {
       definition: getDefinition("hev_memory_bootstrap_policy"),
-      handler: (args): unknown => {
-        const result = memoryBootstrapPolicy(
+      handler: async (args): Promise<unknown> => {
+        const result = await memoryBootstrapPolicy(
           PROJECT_ROOT,
           args as Parameters<typeof memoryBootstrapPolicy>[1]
         );

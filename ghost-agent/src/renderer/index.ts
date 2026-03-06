@@ -1,12 +1,19 @@
 import { GHOST_TIMEOUTS } from "@timeouts";
 import { buildGhostProviderFramePlan } from "./ghost-frame.js";
 import { evaluateGhostLoadingReadiness } from "./loading-readiness.js";
-import {
-  formatProviderMeta,
-  normalizeGhostProvider,
-  type GhostProvider,
-  type GhostProviderServerState,
-} from "./provider-state.js";
+
+const GHOST_PROVIDER = "opencode" as const;
+
+type GhostProvider = typeof GHOST_PROVIDER;
+
+type GhostProviderServerState = {
+  provider: GhostProvider;
+  running: boolean;
+  port?: number;
+  url?: string;
+  alreadyRunning?: boolean;
+  source?: "existing" | "started";
+};
 
 type LaunchTarget = {
   provider: GhostProvider;
@@ -14,29 +21,21 @@ type LaunchTarget = {
   details: string;
 };
 
-type BootstrapResponse = {
+type ServerStatusResponse = {
   success: boolean;
-  target?: LaunchTarget;
-  error?: string;
-};
-
-type ProviderDetectResponse = {
-  success: boolean;
-  provider?: GhostProvider;
   server?: GhostProviderServerState;
   error?: string;
 };
 
-type ProviderConnectResponse = {
+type ServerConnectResponse = {
   success: boolean;
   target?: LaunchTarget;
   server?: GhostProviderServerState;
   error?: string;
 };
 
-type ProviderStopResponse = {
+type ServerStopResponse = {
   success: boolean;
-  provider?: GhostProvider;
   server?: GhostProviderServerState;
   error?: string;
 };
@@ -64,7 +63,6 @@ const PROVIDER_READY_STABLE_URL_MS = GHOST_TIMEOUTS.PROVIDER_READY_STABLE_URL;
 const DID_FAIL_LOAD_ABORTED = -3;
 
 const providerMeta = document.getElementById("provider-meta");
-const providerSelect = document.getElementById("ghost-provider-select") as HTMLSelectElement | null;
 const providerConnectBtn = document.getElementById(
   "ghost-provider-connect-btn"
 ) as HTMLButtonElement | null;
@@ -81,7 +79,16 @@ const providerView = document.getElementById("ghost-provider-view") as GhostWebv
 
 let exitActionInFlight = false;
 let providerOperationInFlight = false;
-let activeProvider: GhostProvider | null = null;
+
+function formatServerMeta(server?: GhostProviderServerState): string {
+  if (server?.running !== true) {
+    return "opencode | server:idle";
+  }
+
+  const port = typeof server.port === "number" ? `:${String(server.port)}` : "";
+  const source = server.source ?? "existing";
+  return `opencode | server:running${port} source:${source}`;
+}
 
 function setOverlayState(state: OverlayState): void {
   if (!(loadingOverlay instanceof HTMLElement)) return;
@@ -112,16 +119,8 @@ function setGhostActionButtonsDisabled(disabled: boolean): void {
 }
 
 function setProviderControlsDisabled(disabled: boolean): void {
-  if (providerSelect) providerSelect.disabled = disabled;
   if (providerConnectBtn) providerConnectBtn.disabled = disabled;
   if (providerStopBtn) providerStopBtn.disabled = disabled;
-}
-
-function getSelectedProvider(): GhostProvider {
-  if (providerSelect instanceof HTMLSelectElement) {
-    return normalizeGhostProvider(providerSelect.value, activeProvider ?? "opencode");
-  }
-  return activeProvider ?? "opencode";
 }
 
 async function waitForProviderReady(
@@ -330,73 +329,53 @@ function loadProviderInFrame(target: LaunchTarget): { success: boolean; error?: 
   }
 }
 
-async function persistPreferredProvider(provider: GhostProvider): Promise<void> {
+async function refreshProviderStatus(): Promise<void> {
   const api = window.electronAPI;
-  if (api === undefined || typeof api.ghostProviderSetPreferred !== "function") {
+  if (api === undefined || typeof api.ghostServerStatus !== "function") {
+    setProviderMetaText("opencode | server API unavailable");
     return;
   }
 
   try {
-    await api.ghostProviderSetPreferred(provider);
-  } catch {
-    // non-blocking best effort
-  }
-}
-
-async function refreshProviderStatus(provider: GhostProvider): Promise<void> {
-  const api = window.electronAPI;
-  if (api === undefined || typeof api.ghostProviderDetect !== "function") {
-    setProviderMetaText(`${provider} | provider API unavailable`);
-    return;
-  }
-
-  try {
-    const response = (await api.ghostProviderDetect(provider)) as ProviderDetectResponse;
+    const response = (await api.ghostServerStatus()) as ServerStatusResponse;
     if (response.success !== true) {
-      setProviderMetaText(`${provider} | detect failed: ${response.error ?? "unknown"}`);
+      setProviderMetaText(`opencode | status failed: ${response.error ?? "unknown"}`);
       return;
     }
 
-    setProviderMetaText(formatProviderMeta(provider, response.server));
+    setProviderMetaText(formatServerMeta(response.server));
   } catch (error) {
-    setProviderMetaText(`${provider} | detect error: ${(error as Error).message}`);
+    setProviderMetaText(`opencode | status error: ${(error as Error).message}`);
   }
 }
 
-async function connectProvider(provider: GhostProvider, autoStart = true): Promise<void> {
+async function connectProvider(autoStart = true): Promise<void> {
   if (providerOperationInFlight || exitActionInFlight) return;
 
   const api = window.electronAPI;
-  if (api === undefined || typeof api.ghostProviderConnect !== "function") {
-    setStatus(
-      "Provider bridge unavailable",
-      "electronAPI.ghostProviderConnect is missing.",
-      "error"
-    );
+  if (api === undefined || typeof api.ghostServerConnect !== "function") {
+    setStatus("Server bridge unavailable", "electronAPI.ghostServerConnect is missing.", "error");
     return;
   }
 
   providerOperationInFlight = true;
   setProviderControlsDisabled(true);
   setStatus(
-    `${provider} baglaniyor`,
+    "OpenCode baglaniyor",
     autoStart ? "Sunucu kontrol ediliyor, gerekirse baslatiliyor." : "Calisan sunucu araniyor."
   );
 
   try {
-    const response = (await api.ghostProviderConnect({
-      provider,
+    const response = (await api.ghostServerConnect({
       autoStart,
-    })) as ProviderConnectResponse;
+    })) as ServerConnectResponse;
     if (response.success !== true || response.target === undefined) {
-      setStatus("Provider baglantisi basarisiz", response.error ?? "Bilinmeyen hata", "error");
-      await refreshProviderStatus(provider);
+      setStatus("Server baglantisi basarisiz", response.error ?? "Bilinmeyen hata", "error");
+      await refreshProviderStatus();
       return;
     }
 
-    activeProvider = provider;
-    setProviderMetaText(`${provider} | ${response.target.details}`);
-    await persistPreferredProvider(provider);
+    setProviderMetaText(formatServerMeta(response.server));
 
     const openResult = loadProviderInFrame(response.target);
     if (openResult.success !== true) {
@@ -405,7 +384,7 @@ async function connectProvider(provider: GhostProvider, autoStart = true): Promi
     }
 
     if (providerFrame !== null) {
-      providerFrame.dataset["provider"] = provider;
+      providerFrame.dataset["provider"] = GHOST_PROVIDER;
     }
 
     const readyResult = await waitForProviderReady();
@@ -418,99 +397,86 @@ async function connectProvider(provider: GhostProvider, autoStart = true): Promi
       return;
     }
 
-    setStatus("Baglanti tamamlandi", "Provider oturumu hazir.", "hidden");
+    setStatus("Baglanti tamamlandi", "OpenCode oturumu hazir.", "hidden");
   } catch (error) {
-    setStatus("Provider baglantisi basarisiz", (error as Error).message, "error");
+    setStatus("Server baglantisi basarisiz", (error as Error).message, "error");
   } finally {
     providerOperationInFlight = false;
     setProviderControlsDisabled(exitActionInFlight);
   }
 }
 
-async function stopProvider(provider: GhostProvider): Promise<void> {
+async function stopProvider(): Promise<void> {
   if (providerOperationInFlight || exitActionInFlight) return;
 
   const api = window.electronAPI;
-  if (api === undefined || typeof api.ghostProviderStop !== "function") {
-    setStatus("Provider bridge unavailable", "electronAPI.ghostProviderStop is missing.", "error");
+  if (api === undefined || typeof api.ghostServerStop !== "function") {
+    setStatus("Server bridge unavailable", "electronAPI.ghostServerStop is missing.", "error");
     return;
   }
 
   providerOperationInFlight = true;
   setProviderControlsDisabled(true);
-  setStatus(`${provider} baglantisi kesiliyor`, "Sunucu durdurma istegi gonderiliyor.");
+  setStatus("OpenCode baglantisi kesiliyor", "Sunucu durdurma istegi gonderiliyor.");
 
   try {
-    const response = (await api.ghostProviderStop(provider)) as ProviderStopResponse;
+    const response = (await api.ghostServerStop()) as ServerStopResponse;
     if (response.success !== true) {
-      setStatus("Provider durdurma basarisiz", response.error ?? "Bilinmeyen hata", "error");
+      setStatus("Server durdurma basarisiz", response.error ?? "Bilinmeyen hata", "error");
       return;
     }
 
-    activeProvider = null;
     clearProviderFrame();
 
     if (response.server?.running === true) {
       setStatus(
-        `${provider} baglantisi kapatildi`,
+        "OpenCode baglantisi kapatildi",
         "Harici sunucu calismaya devam ediyor. Yeniden baglanabilirsiniz.",
         "connecting"
       );
     } else {
       setStatus(
-        `${provider} durduruldu`,
+        "OpenCode durduruldu",
         "Yeniden baslatmak icin Baslat / Baglan butonunu kullanin.",
         "connecting"
       );
     }
 
-    setProviderMetaText(formatProviderMeta(provider, response.server));
+    setProviderMetaText(formatServerMeta(response.server));
   } catch (error) {
-    setStatus("Provider durdurma basarisiz", (error as Error).message, "error");
+    setStatus("Server durdurma basarisiz", (error as Error).message, "error");
   } finally {
     providerOperationInFlight = false;
     setProviderControlsDisabled(exitActionInFlight);
   }
 }
 
-function setupProviderControls(initialProvider: GhostProvider): void {
-  if (providerSelect instanceof HTMLSelectElement) {
-    providerSelect.value = initialProvider;
-    providerSelect.addEventListener("change", () => {
-      const provider = getSelectedProvider();
-      void persistPreferredProvider(provider);
-      void refreshProviderStatus(provider);
-    });
-  }
-
+function setupProviderControls(): void {
   providerConnectBtn?.addEventListener("click", () => {
-    void connectProvider(getSelectedProvider(), true);
+    void connectProvider(true);
   });
 
   providerStopBtn?.addEventListener("click", () => {
-    void stopProvider(getSelectedProvider());
+    void stopProvider();
   });
 }
 
 async function bootstrap(): Promise<void> {
   const api = window.electronAPI;
-  if (api === undefined || typeof api.ghostBootstrap !== "function") {
-    setStatus("Ghost bridge unavailable", "electronAPI.ghostBootstrap is missing.", "error");
+  if (
+    api === undefined ||
+    typeof api.ghostServerStatus !== "function" ||
+    typeof api.ghostServerConnect !== "function"
+  ) {
+    setStatus("Ghost bridge unavailable", "electronAPI ghost server koprusu eksik.", "error");
     return;
   }
 
-  setStatus("Baslatiliyor...", "Provider secimi ve sunucu durumu okunuyor.");
+  setStatus("Baslatiliyor...", "OpenCode sunucusu kontrol ediliyor.");
 
-  const response = (await api.ghostBootstrap()) as BootstrapResponse;
-  if (!response.success) {
-    setStatus("Ghost bootstrap basarisiz", response.error ?? "Hedef bilgi hazirlanamadi.", "error");
-    return;
-  }
-
-  const preferredProvider = normalizeGhostProvider(response.target?.provider, "opencode");
-  setupProviderControls(preferredProvider);
-  await refreshProviderStatus(preferredProvider);
-  await connectProvider(preferredProvider, true);
+  setupProviderControls();
+  await refreshProviderStatus();
+  await connectProvider(true);
 }
 
 setupGhostActionButtons();

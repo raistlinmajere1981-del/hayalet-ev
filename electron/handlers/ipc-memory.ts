@@ -2,7 +2,7 @@
  * IPC Memory Handlers
  *
  * Memory store işlemleri için IPC handler'ları.
- * MCP server ile aynı SQLite DB'yi kullanır: data/shared/assistant-memory.db
+ * MCP server ile aynı shared memory DB'yi kullanır: data/shared/assistant-memory.db
  */
 
 import { join } from "path";
@@ -30,7 +30,7 @@ export function setupMemoryHandlers(): void {
   // Search / list
   registerHandler(
     "memory-search",
-    (
+    async (
       _event,
       params: {
         namespace?: string;
@@ -48,7 +48,7 @@ export function setupMemoryHandlers(): void {
         if (params.sourceProvider !== undefined)
           searchArg["sourceProvider"] = params.sourceProvider;
         if (params.tags !== undefined) searchArg["tags"] = params.tags;
-        const result = store.searchMemory(searchArg);
+        const result = await store.searchMemory(searchArg);
         return { success: true, data: result };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -57,12 +57,12 @@ export function setupMemoryHandlers(): void {
   );
 
   // Stats
-  registerHandler("memory-stats", (_event, params: { namespace?: string }) => {
+  registerHandler("memory-stats", async (_event, params: { namespace?: string }) => {
     try {
       const store = getStore();
       const statsArg: MemoryStatsInput = {};
       if (params.namespace !== undefined) statsArg["namespace"] = params.namespace;
-      const result = store.getStats(statsArg);
+      const result = await store.getStats(statsArg);
       return { success: true, data: result };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -70,10 +70,10 @@ export function setupMemoryHandlers(): void {
   });
 
   // Delete single
-  registerHandler("memory-delete", (_event, params: { id: string }) => {
+  registerHandler("memory-delete", async (_event, params: { id: string }) => {
     try {
       const store = getStore();
-      const deleted = store.deleteMemory(params.id);
+      const deleted = await store.deleteMemory(params.id);
       return { success: true, deleted };
     } catch (err) {
       return { success: false, error: (err as Error).message };
@@ -83,7 +83,7 @@ export function setupMemoryHandlers(): void {
   // Update (pin, importance, content, tags)
   registerHandler(
     "memory-update",
-    (
+    async (
       _event,
       params: {
         id: string;
@@ -104,7 +104,7 @@ export function setupMemoryHandlers(): void {
         if (params.pinned !== undefined) updateArg["pinned"] = params.pinned;
         if (params.tags !== undefined) updateArg["tags"] = params.tags;
         if (params.memoryType !== undefined) updateArg["memoryType"] = params.memoryType;
-        const updated = store.updateMemory(updateArg);
+        const updated = await store.updateMemory(updateArg);
         return { success: true, updated };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -115,7 +115,7 @@ export function setupMemoryHandlers(): void {
   // Write new
   registerHandler(
     "memory-write",
-    (
+    async (
       _event,
       params: {
         namespace?: string;
@@ -138,7 +138,7 @@ export function setupMemoryHandlers(): void {
         if (params.importance !== undefined) writeArg["importance"] = params.importance;
         if (params.pinned !== undefined) writeArg["pinned"] = params.pinned;
         if (params.tags !== undefined) writeArg["tags"] = params.tags;
-        const item = store.writeMemory(writeArg);
+        const item = await store.writeMemory(writeArg);
         return { success: true, data: item };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -149,7 +149,7 @@ export function setupMemoryHandlers(): void {
   // Prune
   registerHandler(
     "memory-prune",
-    (
+    async (
       _event,
       params: {
         namespace?: string;
@@ -164,7 +164,7 @@ export function setupMemoryHandlers(): void {
         const pruneArg: MemoryPruneInput = { maxItems: params.maxItems };
         if (params.namespace !== undefined) pruneArg["namespace"] = params.namespace;
         if (olderThanMs !== undefined) pruneArg["olderThanMs"] = olderThanMs;
-        const deleted = store.pruneMemory(pruneArg);
+        const deleted = await store.pruneMemory(pruneArg);
         return { success: true, deleted };
       } catch (err) {
         return { success: false, error: (err as Error).message };
@@ -173,17 +173,19 @@ export function setupMemoryHandlers(): void {
   );
 
   // Delete all (namespace bazlı)
-  registerHandler("memory-delete-all", (_event, params: { namespace?: string }) => {
+  registerHandler("memory-delete-all", async (_event, params: { namespace?: string }) => {
     try {
       const store = getStore();
       // Tümünü getir, sil
       const searchAllArg: MemorySearchInput = { limit: 200 };
       if (params.namespace !== undefined) searchAllArg["namespace"] = params.namespace;
-      const result = store.searchMemory(searchAllArg);
+      const result = await store.searchMemory(searchAllArg);
       let count = 0;
+      /* eslint-disable no-await-in-loop */
       for (const item of result.items) {
-        if (store.deleteMemory(item.id)) count++;
+        if (await store.deleteMemory(item.id)) count++;
       }
+      /* eslint-enable no-await-in-loop */
       return { success: true, deleted: count };
     } catch (err) {
       return { success: false, error: (err as Error).message };

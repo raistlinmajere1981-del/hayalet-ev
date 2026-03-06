@@ -7,7 +7,7 @@
  * @module electron/database/sqlite-manager
  */
 
-import { DatabaseSync } from "node:sqlite";
+import Database from "better-sqlite3";
 import { join } from "path";
 import { mkdirSync } from "fs";
 import { getLoggerCore } from "../logger/index.js";
@@ -19,7 +19,7 @@ const logger = getLoggerCore();
 type AccountKey = string;
 
 interface DatabaseInstance {
-  db: DatabaseSync;
+  db: Database.Database;
   accountId: string;
   accountFolder: string;
   lastAccessed: number;
@@ -27,7 +27,7 @@ interface DatabaseInstance {
 
 const databasePool = new Map<AccountKey, DatabaseInstance>();
 
-function initializeSchema(db: DatabaseSync): void {
+function initializeSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
@@ -90,7 +90,7 @@ function initializeSchema(db: DatabaseSync): void {
   db.exec("PRAGMA foreign_keys = ON");
 }
 
-export function getDatabaseForAccount(accountId: string): DatabaseSync {
+export function getDatabaseForAccount(accountId: string): Database.Database {
   const existing = databasePool.get(accountId);
   if (existing !== undefined) {
     existing.lastAccessed = Date.now();
@@ -102,7 +102,7 @@ export function getDatabaseForAccount(accountId: string): DatabaseSync {
 
   mkdirSync(accountPath, { recursive: true });
 
-  const db = new DatabaseSync(dbPath);
+  const db = new Database(dbPath);
   db.exec("PRAGMA journal_mode = WAL");
 
   initializeSchema(db);

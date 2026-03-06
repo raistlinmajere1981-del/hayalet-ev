@@ -108,6 +108,7 @@ Devam etmemi için "evet" yaz.
 5. hev_list_tools()                → Kategorize edilmiş güncel tool listesi
 6. hev_suggest_tool(intent)        → Amaca göre tool önerisi (lazy discovery)
 7. hev_fs_read({ file_path: ".rovo/_metadata/CHARACTER.md" }) → Karakter profilini yükle, Aktif Profil bölümündeki özelliklere göre davran
+8. hev_fs_read({ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }) → Statik DOM selector indeksini yükle; Electron/CDP işlemlerinde önce buradaki lookup'ı kullan
 ```
 
 ## 🧭 Hardcoded Workflow Senaryoları (Tek Kaynak: AGENTS.md)
@@ -295,8 +296,9 @@ Memory akışı tamamen MCP üzerinden yürür.
 | --------------------------------- | ------------------------------ |
 | `.rovo/_metadata/VERSION-INFO.md` | Versiyon, dependency'ler       |
 | `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi (referans) |
+| `.rovo/_metadata/DOM-MANIFEST.json` | Statik DOM selector lookup indeksi |
 
-> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). Metadata dosyaları yalnızca offline fallback olarak kullanılmalıdır.
+> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `DOM-MANIFEST.json` build sırasında statik tarama ile otomatik güncellenir; runtime Electron crawl/test içermez.
 
 ---
 
@@ -357,6 +359,16 @@ AI0 Asistan webview içinde OpenCode MCP panel toggle testleri için:
   - `cycles`: OFF→ON tekrar sayısı
 
 Bu tool, AI0 webview'de ilgili MCP panelini açıp switch'leri OFF→ON yapar ve final state'i döndürür. Yeni session'larda manuel DOM keşfi yerine önce bu tool kullanılmalıdır.
+
+---
+
+## DOM Manifest (Statik)
+
+- Çıktı dosyası: `.rovo/_metadata/DOM-MANIFEST.json`
+- Üretici script: `scripts/generate-dom-manifest.js`
+- Build entegrasyonu: `npm run mcp:build` ve `npm run generate:docs` içinde otomatik çalışır
+- Kapsam: yalnızca statik tarama (`src`, `electron`, `ghost-agent`), Electron runtime testi/crawl yok
+- Kullanım kuralı: Electron/CDP adımlarında selector çözümleme için önce `lookup.id` ve `lookup.testid`, sonra gerekirse `lookup.query` kullanılır
 
 ---
 

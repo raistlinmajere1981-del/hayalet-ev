@@ -5,7 +5,7 @@
  */
 
 import type { Conversation, Message, IpcResult } from "@electron/types";
-import type { DatabaseSync } from "node:sqlite";
+import type Database from "better-sqlite3";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { hashString } from "./hash-utils.js";
@@ -42,7 +42,7 @@ export class SQLiteArchiveManager {
     this.accountId = accountId;
   }
 
-  private getDb(): DatabaseSync {
+  private getDb(): Database.Database {
     return getDatabaseForAccount(this.accountId);
   }
 
