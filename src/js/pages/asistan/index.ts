@@ -18,7 +18,6 @@ import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
-import type { ProviderTestSuite, ProviderTestResult } from "@shared/provider.js";
 import type { AppSettings } from "@shared/settings.js";
 import { ConnectButtonState } from "@shared/asistan.js";
 import type {
@@ -40,6 +39,12 @@ import type { OverlayStage } from "./overlay-stage.js";
 import { resolveSystemActiveServerStatus } from "./system-server-control.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
+import {
+  getOpencodePreferences,
+  normalizeOpencodePort,
+  resolveOpencodeUiDbPath,
+} from "./opencode-preferences.js";
+import { openTestResultsModal } from "./test-results-modal.js";
 
 export class AsistanController {
   _unsubSettings: (() => void) | null;
@@ -234,27 +239,6 @@ export class AsistanController {
     }
   }
 
-  _normalizeOpencodePort(raw: unknown): number {
-    if (
-      typeof raw === "number" &&
-      Number.isInteger(raw) &&
-      raw >= 1024 &&
-      raw <= 65535
-    ) {
-      return raw;
-    }
-    return 4096;
-  }
-
-  _getOpencodePreferences(): { binaryPath: string | null; defaultPort: number } {
-    const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const rawPath = settings?.assistants?.opencode?.binaryPath;
-    const binaryPath =
-      typeof rawPath === "string" && rawPath.trim() !== "" ? rawPath.trim() : null;
-    const defaultPort = this._normalizeOpencodePort(settings?.assistants?.opencode?.defaultPort);
-    return { binaryPath, defaultPort };
-  }
-
   _setOpencodeIndicatorState(
     state: "checking" | "ready" | "missing" | "error",
     text: string,
@@ -298,7 +282,7 @@ export class AsistanController {
   _refreshOpencodeDoctorStatus(): void {
     const settings = SettingsManager.getSnapshot() as AppSettings | null;
     const opencode = settings?.assistants?.opencode;
-    const defaultPort = this._normalizeOpencodePort(opencode?.defaultPort);
+    const defaultPort = normalizeOpencodePort(opencode?.defaultPort);
     const binaryPath =
       typeof opencode?.binaryPath === "string" && opencode.binaryPath.trim() !== ""
         ? opencode.binaryPath.trim()
@@ -322,7 +306,7 @@ export class AsistanController {
   }
 
   async _openOpencodeSettingsModal(): Promise<void> {
-    const prefs = this._getOpencodePreferences();
+    const prefs = getOpencodePreferences(SettingsManager.getSnapshot() as AppSettings | null);
     const modalModule = await import("../../ui/modal-manager.js");
     const electronApi = window.electronAPI;
 
@@ -958,37 +942,6 @@ export class AsistanController {
     return "";
   }
 
-  _getOpencodeUiDbPath(settings: AppSettings | null): string {
-    const accounts = settings?.asistanAccounts as
-      | Array<{ id?: string; provider?: string; dbPath?: string | null }>
-      | undefined;
-    const assignedAccountId = settings?.asistanSlot?.accountId;
-
-    const assignedAccount =
-      typeof assignedAccountId === "string" && assignedAccountId !== ""
-        ? accounts?.find((account) => account.id === assignedAccountId)
-        : undefined;
-
-    if (
-      assignedAccount?.provider === "opencode-ui" &&
-      typeof assignedAccount.dbPath === "string" &&
-      assignedAccount.dbPath.trim() !== ""
-    ) {
-      return assignedAccount.dbPath.trim();
-    }
-
-    const providerAccount = accounts?.find((account) => account.provider === "opencode-ui");
-    if (
-      providerAccount?.dbPath !== undefined &&
-      providerAccount.dbPath !== null &&
-      typeof providerAccount.dbPath === "string"
-    ) {
-      return providerAccount.dbPath.trim();
-    }
-
-    return "";
-  }
-
   _resolveConnectUrl(
     baseUrl: string,
     providerId: string,
@@ -1004,7 +957,7 @@ export class AsistanController {
           parsed.searchParams.set("resumeSessionId", resumeSessionId);
         }
 
-        const dbPath = this._getOpencodeUiDbPath(settings);
+        const dbPath = resolveOpencodeUiDbPath(settings);
         if (dbPath !== "") {
           parsed.searchParams.set("dbPath", dbPath);
         }
@@ -1349,7 +1302,7 @@ export class AsistanController {
         `Test completed: ${results.passed}/${results.totalTests} passed`
       );
 
-      this._showTestResultsModal(results);
+      await openTestResultsModal(results);
     } catch (error) {
       Logger.error(LogCategory.ASISTAN_CORE, `Provider test failed: ${(error as Error).message}`);
 
@@ -1375,138 +1328,6 @@ export class AsistanController {
       btn.disabled = false;
       btn.innerHTML = "🧪";
     }
-  }
-
-  _showTestResultsModal(results: ProviderTestSuite): void {
-    void import("../../ui/modal-manager.js").then((module) => {
-      const { ModalManager: modalManager } = module;
-
-      const content = this._generateTestResultsHTML(results);
-
-      modalManager.open({
-        title: `🧪 Test Results - ${results.providerName} (${results.slot.toUpperCase()})`,
-        content,
-        size: "large",
-        buttons: [
-          {
-            text: "📋 Copy JSON",
-            class: "btn-ghost",
-            onClick: (): void => {
-              void navigator.clipboard.writeText(JSON.stringify(results, null, 2));
-              Logger.info(LogCategory.ASISTAN_CORE, "Test results copied to clipboard");
-            },
-          },
-          {
-            text: "✖ Close",
-            class: "btn-primary",
-            onClick: (): void => {
-              modalManager.close();
-            },
-          },
-        ],
-      });
-    });
-  }
-
-  _generateTestResultsHTML(results: ProviderTestSuite): string {
-    const { passed, failed, skipped, warnings, totalTests, totalDuration, aborted, abortReason } =
-      results;
-
-    let html = `
-      <div class="test-results-summary">
-        <div class="test-stats">
-          <span class="stat-item stat-pass">✅ ${passed} Passed</span>
-          <span class="stat-item stat-fail">❌ ${failed} Failed</span>
-          ${warnings > 0 ? `<span class="stat-item stat-warning">⚠️ ${warnings} Warnings</span>` : ""}
-          ${skipped > 0 ? `<span class="stat-item stat-skip">⏭️ ${skipped} Skipped</span>` : ""}
-        </div>
-        <div class="test-meta">
-          <span>⏱️ Duration: ${(totalDuration / 1000).toFixed(2)}s</span>
-          <span>📊 Total: ${totalTests} tests</span>
-        </div>
-        ${aborted === true ? `<div class="test-aborted">⚠️ Aborted: ${abortReason ?? "unknown"}</div>` : ""}
-      </div>
-    `;
-
-    const categories: Record<string, ProviderTestResult[]> = {};
-    results.results.forEach((result) => {
-      categories[result.category] ??= [];
-      categories[result.category]?.push(result);
-    });
-
-    const categoryEmoji: Record<string, string> = {
-      preflight: "🚀",
-      dom: "📋",
-      interactive: "🎮",
-      scraping: "📝",
-      advanced: "🔬",
-    };
-
-    const categoryNames: Record<string, string> = {
-      preflight: "Pre-flight Checks",
-      dom: "DOM Tests",
-      interactive: "Interactive Tests",
-      scraping: "Scraping Tests",
-      advanced: "Advanced Tests",
-    };
-
-    for (const [category, tests] of Object.entries(categories)) {
-      html += `
-        <div class="test-category">
-          <h3 class="category-title">${categoryEmoji[category] ?? "📦"} ${categoryNames[category] ?? category}</h3>
-          <div class="test-results-list">
-      `;
-
-      tests.forEach((test) => {
-        const statusEmoji: Record<string, string> = {
-          pass: "✅",
-          fail: "❌",
-          skip: "⏭️",
-          warning: "⚠️",
-        };
-
-        html += `
-          <div class="test-result-item test-${test.status}">
-            <div class="test-header">
-              <span class="test-status">${statusEmoji[test.status] ?? "•"}</span>
-              <span class="test-name">${test.name}</span>
-              <span class="test-duration">${test.duration}ms</span>
-            </div>
-            <div class="test-message">${test.message}</div>
-        `;
-
-        if (test.details) {
-          html += '<div class="test-details">';
-
-          if (test.details.selector !== undefined && test.details.selector !== "") {
-            html += `<div class="detail-item"><strong>Selector:</strong> <code>${test.details.selector}</code></div>`;
-          }
-
-          if (test.details.error !== undefined && test.details.error !== "") {
-            html += `<div class="detail-item detail-error"><strong>Error:</strong> ${test.details.error}</div>`;
-          }
-
-          if (test.details.element) {
-            const el = test.details.element;
-            html += `<div class="detail-item"><strong>Element:</strong> ${el.tagName} (visible: ${String(el.visible)}, enabled: ${String(el.enabled)})</div>`;
-            if (el.textContent !== undefined && el.textContent !== "") {
-              html += `<div class="detail-item"><strong>Text:</strong> ${el.textContent.slice(0, 50)}...</div>`;
-            }
-          }
-
-          html += "</div>";
-        }
-
-        html += "</div>";
-      });
-
-      html += `
-          </div>
-        </div>
-      `;
-    }
-
-    return html;
   }
 
   _updateConnectionUI(): void {

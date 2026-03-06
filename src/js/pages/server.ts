@@ -15,6 +15,16 @@ import {
   extractExampleArgsFromDescription,
   parseCommandExecutionInput,
 } from "./server-command-utils.js";
+import {
+  buildTimelineThreads,
+  getStructuredEntries,
+  getTimelineSessionIds,
+  normalizeTimelineEvent,
+  registerTimelineEvent,
+  sortTimelineEvents,
+  timelineToText,
+} from "./server-timeline.js";
+import type { TimelineEvent, TimelineThread } from "./server-timeline.js";
 
 type CommandCategory = "ai1-ai2" | "ai0";
 type CommandSlot = "ai1" | "ai2" | "ai0";
@@ -39,40 +49,6 @@ interface ServerCommandsApi {
   getDescriptionText(name: string): string;
   listByCategory?: (category: CommandCategory) => string[];
   getCatalog?: (category?: CommandCategory) => CommandCatalogItem[];
-}
-
-type TimelineEventType = "command-catch" | "command-result" | "coreengine-ai-send";
-
-interface TimelineEvent {
-  eventKey: string;
-  eventType: TimelineEventType;
-  sessionId: string;
-  isoTimestamp: string;
-  displayTimestamp: string;
-  provider: string;
-  sender: string;
-  command: string;
-  args: string;
-  detail: string;
-  success: boolean | null;
-  triggerSource: string;
-  triggerCommand: string;
-}
-
-interface TimelineThread {
-  threadId: string;
-  sessionId: string;
-  provider: string;
-  sender: string;
-  command: string;
-  args: string;
-  commandTimestamp: string;
-  commandIsoTimestamp: string;
-  resultTimestamp: string;
-  resultIsoTimestamp: string;
-  resultDetail: string;
-  resultSuccess: boolean | null;
-  transportDetail: string;
 }
 
 const TIMELINE_SESSION_BATCH = 3;
@@ -139,222 +115,6 @@ export class ServerController {
 
   private getServerCommandsApi(): ServerCommandsApi {
     return ServerCommands as unknown as ServerCommandsApi;
-  }
-
-  private toText(value: unknown): string {
-    if (typeof value === "string") return value;
-    if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
-      return String(value);
-    }
-    if (value instanceof Error) return value.message;
-    if (value !== null && typeof value === "object") {
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return "";
-      }
-    }
-    return "";
-  }
-
-  private getMetaText(entry: LogEntry, key: string): string {
-    return this.toText(entry.meta?.[key]);
-  }
-
-  private getEntryText(entry: LogEntry, key: string): string {
-    const ctxValue = entry.context?.[key];
-    if (ctxValue !== undefined && ctxValue !== null) {
-      const text = this.toText(ctxValue);
-      if (text !== "") return text;
-    }
-    return this.getMetaText(entry, key);
-  }
-
-  private getEventType(entry: LogEntry): string {
-    const eventType = this.getEntryText(entry, "eventType");
-    if (eventType !== "") return eventType;
-    return this.toText(entry.source);
-  }
-
-  private isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null;
-  }
-
-  private toLogLevel(value: string): LogLevel {
-    const level = value.toLowerCase();
-    if (level === LogLevel.DEBUG) return LogLevel.DEBUG;
-    if (level === LogLevel.INFO) return LogLevel.INFO;
-    if (level === LogLevel.SUCCESS) return LogLevel.SUCCESS;
-    if (level === LogLevel.WARNING) return LogLevel.WARNING;
-    if (level === LogLevel.ERROR) return LogLevel.ERROR;
-    return LogLevel.INFO;
-  }
-
-  private normalizeIsoTimestamp(raw: string): string {
-    if (raw === "") return "";
-    const stamp = new Date(raw);
-    if (Number.isNaN(stamp.getTime())) return "";
-    return stamp.toISOString();
-  }
-
-  private isTimelineEventType(value: string): value is TimelineEventType {
-    return (
-      value === "command-catch" || value === "command-result" || value === "coreengine-ai-send"
-    );
-  }
-
-  private buildTimelineEventKey(event: Omit<TimelineEvent, "eventKey">): string {
-    return [
-      event.sessionId,
-      event.isoTimestamp,
-      event.eventType,
-      event.provider,
-      event.sender,
-      event.command,
-      event.args,
-      event.detail,
-      event.triggerSource,
-      event.triggerCommand,
-    ].join("|");
-  }
-
-  private buildPairKey(event: TimelineEvent): string {
-    return [
-      event.provider.toLowerCase(),
-      event.sender.toLowerCase(),
-      event.command.toLowerCase(),
-      event.args.toLowerCase(),
-    ].join("|");
-  }
-
-  private toLogEntry(value: unknown): LogEntry | null {
-    if (!this.isRecord(value)) return null;
-
-    const timestamp = this.toText(value["timestamp"]);
-    const message = this.toText(value["message"]);
-    if (timestamp === "" || message === "") {
-      return null;
-    }
-
-    const levelText = this.toText(value["level"]);
-    const categoryText = this.toText(value["category"]);
-    const sourceText = this.toText(value["source"]);
-    const sessionId = this.toText(value["sessionId"]);
-    const contextValue = value["context"];
-    const metaValue = value["meta"];
-
-    const entry: LogEntry = {
-      timestamp,
-      level: this.toLogLevel(levelText),
-      category: categoryText !== "" ? categoryText : LogCategory.COMMAND,
-      message,
-      source: sourceText !== "" ? sourceText : "renderer",
-      ...(sessionId !== "" ? { sessionId } : {}),
-      ...(this.isRecord(contextValue) ? { context: contextValue } : {}),
-      ...(this.isRecord(metaValue) ? { meta: metaValue } : {}),
-    };
-
-    return entry;
-  }
-
-  private getTimelineSessionIds(payload: unknown): string[] {
-    if (!Array.isArray(payload)) return [];
-
-    const entries = payload
-      .filter((item): item is Record<string, unknown> => this.isRecord(item))
-      .map((item) => {
-        const sessionId = this.toText(item["sessionId"]);
-        const startTime = this.toText(item["startTime"]);
-        return { sessionId, startTime };
-      })
-      .filter((item) => item.sessionId !== "");
-
-    entries.sort((a, b) => {
-      const aTime = a.startTime !== "" ? new Date(a.startTime).getTime() : 0;
-      const bTime = b.startTime !== "" ? new Date(b.startTime).getTime() : 0;
-      return bTime - aTime;
-    });
-
-    return Array.from(new Set(entries.map((item) => item.sessionId)));
-  }
-
-  private getStructuredEntries(payload: unknown): LogEntry[] {
-    if (!this.isRecord(payload)) return [];
-    const structured = payload["structured"];
-    if (!Array.isArray(structured)) return [];
-
-    return structured
-      .map((item) => this.toLogEntry(item))
-      .filter((entry): entry is LogEntry => entry !== null);
-  }
-
-  private normalizeTimelineEvent(entry: LogEntry, fallbackSessionId = ""): TimelineEvent | null {
-    const eventTypeRaw = this.getEventType(entry);
-    if (!this.isTimelineEventType(eventTypeRaw)) {
-      return null;
-    }
-
-    const isoTimestamp = this.normalizeIsoTimestamp(this.toText(entry.timestamp));
-    if (isoTimestamp === "") {
-      return null;
-    }
-
-    const provider = this.getEntryText(entry, "provider");
-    const sender =
-      this.getEntryText(entry, "sender") !== ""
-        ? this.getEntryText(entry, "sender")
-        : this.getProviderLabel(provider);
-    const commandText = this.getEntryText(entry, "command");
-    const args = this.getEntryText(entry, "args");
-    const triggerSource = this.getEntryText(entry, "triggerSource");
-    const triggerCommand = this.getEntryText(entry, "triggerCommand");
-    const sessionId =
-      this.toText(entry.sessionId) !== "" ? this.toText(entry.sessionId) : fallbackSessionId;
-    const displayTimestamp =
-      this.getEntryText(entry, "timestamp") !== ""
-        ? this.getEntryText(entry, "timestamp")
-        : new Date(isoTimestamp).toLocaleString("tr-TR");
-    const detail =
-      this.getEntryText(entry, "detail") !== ""
-        ? this.getEntryText(entry, "detail")
-        : this.toText(entry.message);
-    const command = commandText !== "" ? commandText : triggerCommand;
-    const success =
-      eventTypeRaw === "command-result"
-        ? entry.level === LogLevel.ERROR
-          ? false
-          : entry.level === LogLevel.SUCCESS
-            ? true
-            : null
-        : null;
-
-    const baseEvent: Omit<TimelineEvent, "eventKey"> = {
-      eventType: eventTypeRaw,
-      sessionId,
-      isoTimestamp,
-      displayTimestamp,
-      provider,
-      sender,
-      command,
-      args,
-      detail,
-      success,
-      triggerSource,
-      triggerCommand,
-    };
-
-    return {
-      ...baseEvent,
-      eventKey: this.buildTimelineEventKey(baseEvent),
-    };
-  }
-
-  private registerTimelineEvent(event: TimelineEvent): boolean {
-    if (this.timelineEvents.has(event.eventKey)) {
-      return false;
-    }
-    this.timelineEvents.set(event.eventKey, event);
-    return true;
   }
 
   private hasMoreTimelineSessions(): boolean {
@@ -1014,7 +774,7 @@ export class ServerController {
     if (loggerApi !== undefined) {
       try {
         const sessionsPayload = await loggerApi.listSessions();
-        this.timelineSessionIds = this.getTimelineSessionIds(sessionsPayload);
+        this.timelineSessionIds = getTimelineSessionIds(sessionsPayload);
       } catch (error) {
         Logger.warn(
           LogCategory.SERVER_COMMANDS,
@@ -1041,11 +801,14 @@ export class ServerController {
   private seedTimelineFromMemoryLogs(): void {
     const recent = Logger.getRecentLogs(500);
     recent.forEach((entry) => {
-      const normalized = this.normalizeTimelineEvent(entry, this.toText(entry.sessionId));
+      const normalized = normalizeTimelineEvent(entry, {
+        fallbackSessionId: timelineToText(entry.sessionId),
+        getProviderLabel: this.getProviderLabel.bind(this),
+      });
       if (normalized === null) {
         return;
       }
-      this.registerTimelineEvent(normalized);
+      registerTimelineEvent(this.timelineEvents, normalized);
     });
   }
 
@@ -1057,25 +820,16 @@ export class ServerController {
 
     try {
       const payload = await loggerApi.readAllLogs(sessionId);
-      const entries = this.getStructuredEntries(payload);
+      const entries = getStructuredEntries(payload);
       const events = entries
-        .map((entry) => this.normalizeTimelineEvent(entry, sessionId))
+        .map((entry) =>
+          normalizeTimelineEvent(entry, {
+            fallbackSessionId: sessionId,
+            getProviderLabel: this.getProviderLabel.bind(this),
+          })
+        )
         .filter((entry): entry is TimelineEvent => entry !== null);
-
-      const order: Record<TimelineEventType, number> = {
-        "command-catch": 0,
-        "coreengine-ai-send": 1,
-        "command-result": 2,
-      };
-
-      events.sort((a, b) => {
-        if (a.isoTimestamp === b.isoTimestamp) {
-          return order[a.eventType] - order[b.eventType];
-        }
-        return a.isoTimestamp.localeCompare(b.isoTimestamp);
-      });
-
-      return events;
+      return sortTimelineEvents(events);
     } catch (error) {
       Logger.warn(
         LogCategory.SERVER_COMMANDS,
@@ -1114,7 +868,7 @@ export class ServerController {
         }
         const events = await this.readSessionTimelineEvents(sessionId);
         events.forEach((event) => {
-          this.registerTimelineEvent(event);
+          registerTimelineEvent(this.timelineEvents, event);
         });
         this.timelineLoadedSessionIds.add(sessionId);
       }, Promise.resolve());
@@ -1154,156 +908,21 @@ export class ServerController {
   }
 
   handleLogEntry(entry: LogEntry): void {
-    const normalized = this.normalizeTimelineEvent(entry, this.toText(entry.sessionId));
+    const normalized = normalizeTimelineEvent(entry, {
+      fallbackSessionId: timelineToText(entry.sessionId),
+      getProviderLabel: this.getProviderLabel.bind(this),
+    });
     if (normalized === null) {
       return;
     }
 
     const stickToBottom = this.isTimelineNearBottom();
-    const didAdd = this.registerTimelineEvent(normalized);
+    const didAdd = registerTimelineEvent(this.timelineEvents, normalized);
     if (!didAdd) {
       return;
     }
 
     this.rebuildTimeline(stickToBottom);
-  }
-
-  private buildTimelineThreads(events: TimelineEvent[]): TimelineThread[] {
-    const threads: TimelineThread[] = [];
-    const pendingByKey = new Map<string, number[]>();
-
-    events.forEach((event) => {
-      if (event.eventType === "command-catch") {
-        const thread = this.createThreadFromCatchEvent(event);
-        threads.push(thread);
-
-        const pairKey = this.buildPairKey(event);
-        const pending = pendingByKey.get(pairKey) ?? [];
-        pending.push(threads.length - 1);
-        pendingByKey.set(pairKey, pending);
-        return;
-      }
-
-      if (event.eventType === "command-result") {
-        const pairKey = this.buildPairKey(event);
-        const pending = pendingByKey.get(pairKey);
-        let targetIndex = pending !== undefined && pending.length > 0 ? (pending.pop() ?? -1) : -1;
-
-        if (targetIndex < 0) {
-          targetIndex = this.findPendingThreadIndex(threads, event);
-        }
-
-        if (targetIndex >= 0) {
-          const target = threads[targetIndex];
-          if (target !== undefined) {
-            target.resultDetail = event.detail;
-            target.resultSuccess = event.success;
-            target.resultTimestamp = event.displayTimestamp;
-            target.resultIsoTimestamp = event.isoTimestamp;
-          }
-        } else {
-          threads.push(this.createThreadFromResultEvent(event));
-        }
-        return;
-      }
-
-      const transportIndex = this.findTransportThreadIndex(threads, event);
-      if (transportIndex >= 0) {
-        const target = threads[transportIndex];
-        if (target !== undefined) {
-          target.transportDetail = event.detail;
-        }
-        return;
-      }
-
-      if (event.triggerCommand !== "" || event.command !== "") {
-        const thread = this.createThreadFromCatchEvent(event);
-        thread.transportDetail = event.detail;
-        threads.push(thread);
-      }
-    });
-
-    return threads;
-  }
-
-  private findPendingThreadIndex(threads: TimelineThread[], event: TimelineEvent): number {
-    const eventCommand = event.command.toLowerCase();
-    const eventArgs = event.args.toLowerCase();
-    const eventSender = event.sender.toLowerCase();
-
-    for (let i = threads.length - 1; i >= 0; i -= 1) {
-      const thread = threads[i];
-      if (thread === undefined) continue;
-      if (thread.resultDetail !== "") continue;
-      if (event.provider !== "" && thread.provider !== event.provider) continue;
-      if (eventCommand !== "" && thread.command.toLowerCase() !== eventCommand) continue;
-      if (eventArgs !== "" && thread.args.toLowerCase() !== eventArgs) continue;
-      if (eventSender !== "" && thread.sender.toLowerCase() !== eventSender) continue;
-      return i;
-    }
-
-    return -1;
-  }
-
-  private findTransportThreadIndex(threads: TimelineThread[], event: TimelineEvent): number {
-    const triggerCommand = event.triggerCommand.toLowerCase();
-    const eventTime = new Date(event.isoTimestamp).getTime();
-
-    for (let i = threads.length - 1; i >= 0; i -= 1) {
-      const thread = threads[i];
-      if (thread === undefined) continue;
-      if (event.provider !== "" && thread.provider !== event.provider) continue;
-
-      if (triggerCommand !== "" && thread.command.toLowerCase() !== triggerCommand) {
-        continue;
-      }
-
-      const threadTime = new Date(thread.commandIsoTimestamp).getTime();
-      const withinWindow = Number.isFinite(threadTime)
-        ? Math.abs(eventTime - threadTime) <= 3 * 60 * 1000
-        : true;
-
-      if (triggerCommand !== "" || withinWindow) {
-        return i;
-      }
-    }
-
-    return -1;
-  }
-
-  private createThreadFromCatchEvent(event: TimelineEvent): TimelineThread {
-    const resolvedCommand =
-      event.command !== ""
-        ? event.command
-        : event.triggerCommand !== ""
-          ? event.triggerCommand
-          : "Komut";
-    const sender = event.sender !== "" ? event.sender : this.getProviderLabel(event.provider);
-
-    return {
-      threadId: `${event.sessionId}|${event.isoTimestamp}|${resolvedCommand}|${event.args}`,
-      sessionId: event.sessionId,
-      provider: event.provider,
-      sender,
-      command: resolvedCommand,
-      args: event.args,
-      commandTimestamp: event.displayTimestamp,
-      commandIsoTimestamp: event.isoTimestamp,
-      resultTimestamp: "",
-      resultIsoTimestamp: "",
-      resultDetail: "",
-      resultSuccess: null,
-      transportDetail: "",
-    };
-  }
-
-  private createThreadFromResultEvent(event: TimelineEvent): TimelineThread {
-    const thread = this.createThreadFromCatchEvent(event);
-    thread.resultDetail = event.detail;
-    thread.resultSuccess = event.success;
-    thread.resultTimestamp = event.displayTimestamp;
-    thread.resultIsoTimestamp = event.isoTimestamp;
-    return thread;
   }
 
   private createTimelineThreadElement(thread: TimelineThread): HTMLElement {
@@ -1364,20 +983,8 @@ export class ServerController {
       return;
     }
 
-    const order: Record<TimelineEventType, number> = {
-      "command-catch": 0,
-      "coreengine-ai-send": 1,
-      "command-result": 2,
-    };
-
-    const events = Array.from(this.timelineEvents.values()).sort((a, b) => {
-      if (a.isoTimestamp === b.isoTimestamp) {
-        return order[a.eventType] - order[b.eventType];
-      }
-      return a.isoTimestamp.localeCompare(b.isoTimestamp);
-    });
-
-    const threads = this.buildTimelineThreads(events);
+    const events = sortTimelineEvents(Array.from(this.timelineEvents.values()));
+    const threads = buildTimelineThreads(events, this.getProviderLabel.bind(this));
 
     this.timelineLog.innerHTML = "";
     if (threads.length === 0) {
