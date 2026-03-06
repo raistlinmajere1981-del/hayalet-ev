@@ -1,8 +1,18 @@
 import { escapeHtml } from "./chat-utils.js";
-import type { ModelMeta, ProviderItem, SelectItem } from "./types.js";
+import type {
+  ModelMeta,
+  ModelVariantOption,
+  OpencodeUiModelPreferences,
+  ProviderItem,
+  SelectItem,
+} from "./types.js";
 import { normalizeString } from "./message-content.js";
 
-const REASONING_EFFORT_ORDER = ["low", "medium", "high", "xhigh"];
+const MODEL_VARIANT_ORDER = ["none", "minimal", "low", "medium", "high", "max", "xhigh"];
+
+export function toModelKey(providerId: string, modelId: string): string {
+  return providerId !== "" ? `${providerId}:${modelId}` : modelId;
+}
 
 function normalizeReasoningEfforts(raw: unknown): string[] {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -11,42 +21,139 @@ function normalizeReasoningEfforts(raw: unknown): string[] {
 
   const values = Object.keys(raw)
     .map((item) => item.trim().toLowerCase())
-    .filter((item) => REASONING_EFFORT_ORDER.includes(item));
+    .filter((item) => MODEL_VARIANT_ORDER.includes(item));
 
   if (values.length === 0) {
     return [];
   }
 
   const unique = Array.from(new Set(values));
-  return REASONING_EFFORT_ORDER.filter((item) => unique.includes(item));
+  return MODEL_VARIANT_ORDER.filter((item) => unique.includes(item));
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function formatVariantSubtitle(options: Record<string, unknown>): string {
+  const reasoningEffort = normalizeString(options["reasoningEffort"]).trim();
+  if (reasoningEffort !== "") {
+    return `reasoning:${reasoningEffort}`;
+  }
+
+  const thinkingLevel = normalizeString(options["thinkingLevel"]).trim();
+  if (thinkingLevel !== "") {
+    return `thinking:${thinkingLevel}`;
+  }
+
+  const thinkingConfig = asRecord(options["thinkingConfig"]);
+  const thinkingBudget = Number(thinkingConfig?.["thinkingBudget"] ?? 0);
+  if (Number.isFinite(thinkingBudget) && thinkingBudget > 0) {
+    return `budget:${String(thinkingBudget)}`;
+  }
+
+  const textVerbosity = normalizeString(options["textVerbosity"]).trim();
+  if (textVerbosity !== "") {
+    return `verbosity:${textVerbosity}`;
+  }
+
+  return "";
+}
+
+function normalizeModelVariants(raw: unknown): ModelVariantOption[] {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return [];
+  }
+
+  const variants: ModelVariantOption[] = [];
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const normalizedKey = key.trim().toLowerCase();
+    if (normalizedKey === "") {
+      continue;
+    }
+
+    const options = asRecord(value) ?? {};
+    const subtitle = formatVariantSubtitle(options);
+    variants.push({
+      key: normalizedKey,
+      label: normalizedKey,
+      ...(subtitle !== "" ? { subtitle } : {}),
+      options,
+    });
+  }
+
+  if (variants.length <= 1) {
+    return variants;
+  }
+
+  return variants.sort((left, right) => {
+    const leftIndex = MODEL_VARIANT_ORDER.indexOf(left.key);
+    const rightIndex = MODEL_VARIANT_ORDER.indexOf(right.key);
+    const normalizedLeft = leftIndex >= 0 ? leftIndex : MODEL_VARIANT_ORDER.length;
+    const normalizedRight = rightIndex >= 0 ? rightIndex : MODEL_VARIANT_ORDER.length;
+
+    if (normalizedLeft !== normalizedRight) {
+      return normalizedLeft - normalizedRight;
+    }
+
+    return left.key.localeCompare(right.key, "en");
+  });
 }
 
 function extractModelMeta(modelRecord: Record<string, unknown>, providerId: string): ModelMeta {
+  const modelId =
+    normalizeString(modelRecord["id"]) ||
+    normalizeString(modelRecord["model"]) ||
+    normalizeString(modelRecord["modelID"]);
+  const providerName = normalizeString(modelRecord["providerName"]);
+  const modelName = normalizeString(modelRecord["name"]) || modelId;
   const variants = modelRecord["variants"];
+  const variantOptions = normalizeModelVariants(variants);
   const reasoningEfforts = normalizeReasoningEfforts(variants);
   return {
+    modelId,
+    modelKey: toModelKey(providerId, modelId),
     providerId,
+    providerName,
+    label: providerId !== "" ? `${providerId}:${modelName}` : modelName,
+    subtitle: modelId,
     reasoningEfforts,
+    variantOptions,
   };
 }
 
 export function toReasoningEffortItems(
-  modelMetaById: Record<string, ModelMeta>,
-  modelId: string | null
+  modelMetaByKey: Record<string, ModelMeta>,
+  modelKey: string | null
 ): SelectItem[] {
-  if (modelId == null || modelId === "") {
+  if (modelKey == null || modelKey === "") {
     return [];
   }
 
-  const meta = modelMetaById[modelId];
+  const meta = modelMetaByKey[modelKey];
   if (meta == null) {
     return [];
   }
 
+  if (meta.variantOptions.length > 0) {
+    return meta.variantOptions.map((variant) => {
+      const subtitle = variant.subtitle ?? meta.modelId;
+      return {
+        value: variant.key,
+        label: variant.label,
+        ...(subtitle !== "" ? { subtitle } : {}),
+      };
+    });
+  }
+
   return meta.reasoningEfforts.map((effort) => ({
     value: effort,
-    label: `effort:${effort}`,
-    subtitle: modelId,
+    label: effort,
+    subtitle: meta.modelId,
   }));
 }
 
@@ -95,6 +202,7 @@ export function normalizeModelItems(payload: unknown): SelectItem[] {
 
     const providerRecord = provider as Record<string, unknown>;
     const providerId = normalizeString(providerRecord["id"]);
+    const providerName = normalizeString(providerRecord["name"]) || providerId;
     const modelsRaw = providerRecord["models"];
     const models = Array.isArray(modelsRaw)
       ? modelsRaw
@@ -104,8 +212,19 @@ export function normalizeModelItems(payload: unknown): SelectItem[] {
 
     models.forEach((model) => {
       if (typeof model === "string") {
+        const modelKey = toModelKey(providerId, model);
         const label = providerId !== "" ? `${providerId}:${model}` : model;
-        items.push({ value: model, label, providerId, reasoningEfforts: [] });
+        items.push({
+          value: modelKey,
+          label,
+          subtitle: model,
+          providerId,
+          providerName,
+          modelId: model,
+          modelKey,
+          reasoningEfforts: [],
+          variantOptions: [],
+        });
         return;
       }
 
@@ -120,16 +239,21 @@ export function normalizeModelItems(payload: unknown): SelectItem[] {
           return;
         }
 
+        modelRecord["providerName"] = providerName;
         const rawModelName = normalizeString(modelRecord["name"]);
         const modelName = rawModelName !== "" ? rawModelName : modelId;
         const label = providerId !== "" ? `${providerId}:${modelName}` : modelName;
         const modelMeta = extractModelMeta(modelRecord, providerId);
         items.push({
-          value: modelId,
+          value: modelMeta.modelKey,
           label,
           subtitle: modelId,
           providerId: modelMeta.providerId,
+          providerName,
+          modelId,
+          modelKey: modelMeta.modelKey,
           reasoningEfforts: modelMeta.reasoningEfforts,
+          variantOptions: modelMeta.variantOptions,
         });
       }
     });
@@ -143,6 +267,130 @@ export function normalizeModelItems(payload: unknown): SelectItem[] {
   });
 
   return Array.from(deduped.values());
+}
+
+export function getEndpointDefaultModelKeys(payload: unknown): string[] {
+  if (payload == null || typeof payload !== "object" || Array.isArray(payload)) {
+    return [];
+  }
+
+  const defaultMap = (payload as Record<string, unknown>)["default"];
+  if (defaultMap == null || typeof defaultMap !== "object" || Array.isArray(defaultMap)) {
+    return [];
+  }
+
+  return Object.entries(defaultMap as Record<string, unknown>)
+    .map(([providerId, modelId]) => {
+      const normalizedProviderId = providerId.trim();
+      const normalizedModelId = typeof modelId === "string" ? modelId.trim() : "";
+      return normalizedProviderId !== "" && normalizedModelId !== ""
+        ? toModelKey(normalizedProviderId, normalizedModelId)
+        : "";
+    })
+    .filter((item) => item !== "");
+}
+
+export function applyModelPreferences(
+  items: SelectItem[],
+  preferences: OpencodeUiModelPreferences,
+  connectedProviderIds: string[]
+): SelectItem[] {
+  const hiddenProviders = new Set(preferences.hiddenProviders);
+  const hiddenModels = new Set(preferences.hiddenModels);
+  const favoriteModels = new Set(preferences.favoriteModels);
+  const connectedProviders = new Set(connectedProviderIds);
+
+  return items.map((item) => {
+    const providerId = item.providerId ?? "";
+    const modelKey = item.modelKey ?? item.value;
+    const providerHidden = providerId !== "" && hiddenProviders.has(providerId);
+    const modelHidden = modelKey !== "" && hiddenModels.has(modelKey);
+
+    return {
+      ...item,
+      isConnected: providerId !== "" && connectedProviders.has(providerId),
+      isFavorite: modelKey !== "" && favoriteModels.has(modelKey),
+      isHidden: providerHidden || modelHidden,
+    };
+  });
+}
+
+export function filterVisibleModelItems(items: SelectItem[]): SelectItem[] {
+  return items.filter((item) => item.isHidden !== true);
+}
+
+export function sortModelItems(items: SelectItem[]): SelectItem[] {
+  return [...items].sort((left, right) => {
+    if ((left.isFavorite === true) !== (right.isFavorite === true)) {
+      return left.isFavorite === true ? -1 : 1;
+    }
+    if ((left.isConnected === true) !== (right.isConnected === true)) {
+      return left.isConnected === true ? -1 : 1;
+    }
+    const providerCompare = (left.providerName ?? left.providerId ?? "").localeCompare(
+      right.providerName ?? right.providerId ?? "",
+      "tr"
+    );
+    if (providerCompare !== 0) {
+      return providerCompare;
+    }
+    return left.label.localeCompare(right.label, "tr");
+  });
+}
+
+export function chooseActiveModelKey(options: {
+  currentModelKey: string | null;
+  preferences: OpencodeUiModelPreferences;
+  endpointDefaultModelKeys: string[];
+  visibleItems: SelectItem[];
+}): string | null {
+  const { currentModelKey, preferences, endpointDefaultModelKeys, visibleItems } = options;
+  if (visibleItems.length === 0) {
+    return null;
+  }
+
+  const visibleKeys = new Set(
+    visibleItems.map((item) => item.modelKey ?? item.value).filter((item) => item !== "")
+  );
+
+  const candidates = [
+    currentModelKey,
+    preferences.lastSelectedModelKey,
+    preferences.defaultModelKey,
+    ...endpointDefaultModelKeys,
+    visibleItems[0]?.modelKey ?? visibleItems[0]?.value ?? null,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate != null && candidate !== "" && visibleKeys.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return visibleItems[0]?.modelKey ?? visibleItems[0]?.value ?? null;
+}
+
+export function enrichProviderItems(
+  providers: ProviderItem[],
+  items: SelectItem[],
+  preferences: OpencodeUiModelPreferences,
+  connectedProviderIds: string[]
+): ProviderItem[] {
+  const hiddenProviders = new Set(preferences.hiddenProviders);
+  const connectedSet = new Set(connectedProviderIds);
+
+  return providers.map((provider) => {
+    const providerModels = items.filter((item) => item.providerId === provider.id);
+    const visibleModels = providerModels.filter((item) => item.isHidden !== true);
+
+    return {
+      ...provider,
+      isConnected: connectedSet.has(provider.id),
+      isHidden: hiddenProviders.has(provider.id),
+      totalModels: providerModels.length,
+      visibleModels: visibleModels.length,
+    };
+  });
 }
 
 export function normalizeProviderItemsFromConfig(payload: unknown): ProviderItem[] {

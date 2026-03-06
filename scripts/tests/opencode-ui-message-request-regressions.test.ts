@@ -41,6 +41,33 @@ test("buildMessageRequestBody adds reasoning effort when selected", () => {
   });
 });
 
+test("buildMessageRequestBody preserves provider-specific variant options", () => {
+  const body = buildMessageRequestBody({
+    text: "anthropic thinking test",
+    modelId: "antigravity-claude-opus-4-6-thinking",
+    providerId: "google",
+    reasoningEffort: "max",
+    modelOptions: {
+      thinkingConfig: {
+        thinkingBudget: 32768,
+      },
+    },
+  });
+
+  assert.deepEqual(body, {
+    parts: [{ type: "text", text: "anthropic thinking test" }],
+    model: {
+      providerID: "google",
+      modelID: "antigravity-claude-opus-4-6-thinking",
+      options: {
+        thinkingConfig: {
+          thinkingBudget: 32768,
+        },
+      },
+    },
+  });
+});
+
 test("buildMessageRequestBody appends staged attachments as file parts", () => {
   const body = buildMessageRequestBody({
     text: "ekleri incele",

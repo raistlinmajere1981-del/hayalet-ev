@@ -23,6 +23,7 @@ interface BuildMessageRequestInput {
   providerId: string | null;
   agentId?: string | null;
   reasoningEffort?: string | null;
+  modelOptions?: Record<string, unknown> | null;
   attachments?: ComposerAttachment[];
 }
 
@@ -77,7 +78,13 @@ export function buildMessageRequestBody(input: BuildMessageRequestInput): Record
       modelID: input.modelId,
     };
 
-    if (input.reasoningEffort != null && input.reasoningEffort !== "") {
+    if (
+      input.modelOptions != null &&
+      typeof input.modelOptions === "object" &&
+      Object.keys(input.modelOptions).length > 0
+    ) {
+      modelPayload["options"] = { ...input.modelOptions };
+    } else if (input.reasoningEffort != null && input.reasoningEffort !== "") {
       modelPayload["options"] = {
         reasoningEffort: input.reasoningEffort,
       };
@@ -282,15 +289,20 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
 
   try {
     const modelMeta =
-      context.runtime.activeModelId != null
-        ? context.runtime.modelMetaById[context.runtime.activeModelId]
+      context.runtime.activeModelKey != null
+        ? context.runtime.modelMetaByKey[context.runtime.activeModelKey]
         : undefined;
+    const selectedVariant =
+      modelMeta?.variantOptions.find(
+        (variant) => variant.key === context.runtime.activeReasoningEffort
+      ) ?? null;
     const body = buildMessageRequestBody({
       text,
-      modelId: context.runtime.activeModelId,
+      modelId: modelMeta?.modelId ?? null,
       providerId: modelMeta?.providerId ?? null,
       agentId: context.runtime.activeAgentId,
       reasoningEffort: context.runtime.activeReasoningEffort,
+      modelOptions: selectedVariant?.options ?? null,
       attachments: stagedAttachments,
     });
 
@@ -302,7 +314,6 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
     const fallbackText = extractAssistantText(response);
 
     await context.withHistorySyncFallback(fallbackText);
-    await context.loadSessionListAndRender({ preserveActive: true });
     setComposerAttachments(context.runtime, [], context.byId);
   } catch (error) {
     chatInput.value = previousText;

@@ -32,7 +32,7 @@ export function setupCustomSelect(
     const item = (e.target as HTMLElement).closest(".ds-custom-select__item");
     if (!item) return;
     const value = (item as HTMLElement).dataset["value"] ?? "";
-    const text = item.textContent;
+    const text = (item as HTMLElement).dataset["label"] ?? item.textContent ?? "";
     menu.querySelectorAll(".ds-custom-select__item").forEach(function (el) {
       el.classList.remove("is-active");
     });
@@ -55,6 +55,7 @@ export function setupCustomSelect(
         btn.type = "button";
         btn.className = "ds-custom-select__item" + (item.value === activeValue ? " is-active" : "");
         (btn as HTMLElement).dataset["value"] = item.value;
+        (btn as HTMLElement).dataset["label"] = item.label;
 
         // Zengin içerik: label + subtitle + badge
         if (

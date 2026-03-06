@@ -97,12 +97,40 @@ export interface SelectItem {
   label: string;
   subtitle?: string;
   providerId?: string;
+  providerName?: string;
+  modelId?: string;
+  modelKey?: string;
   reasoningEfforts?: string[];
+  variantOptions?: ModelVariantOption[];
+  isConnected?: boolean;
+  isFavorite?: boolean;
+  isHidden?: boolean;
+}
+
+export interface ModelVariantOption {
+  key: string;
+  label: string;
+  subtitle?: string;
+  options: Record<string, unknown>;
 }
 
 export interface ModelMeta {
+  modelId: string;
+  modelKey: string;
   providerId: string;
+  providerName: string;
+  label: string;
+  subtitle: string;
   reasoningEfforts: string[];
+  variantOptions: ModelVariantOption[];
+}
+
+export interface OpencodeUiModelPreferences {
+  hiddenProviders: string[];
+  hiddenModels: string[];
+  favoriteModels: string[];
+  defaultModelKey: string | null;
+  lastSelectedModelKey: string | null;
 }
 
 export interface ComposerAttachment {
@@ -118,6 +146,10 @@ export interface ProviderItem {
   id: string;
   name: string;
   badge: string;
+  isConnected?: boolean;
+  isHidden?: boolean;
+  totalModels?: number;
+  visibleModels?: number;
 }
 
 export interface RuntimeState {
@@ -126,10 +158,14 @@ export interface RuntimeState {
   activeSessionId: string | null;
   sessionTab: SessionTab;
   submittingSessionId: string | null;
-  activeModelId: string | null;
+  activeModelKey: string | null;
   activeReasoningEffort: string | null;
   activeAgentId: string | null;
-  modelMetaById: Record<string, ModelMeta>;
+  modelMetaByKey: Record<string, ModelMeta>;
+  modelItems: SelectItem[];
+  providerItems: ProviderItem[];
+  modelPreferences: OpencodeUiModelPreferences;
+  endpointDefaultModelKeys: string[];
   isSubmitting: boolean;
   lastRenderedMessageCount: number;
   lastRenderedSnapshotKey: string;

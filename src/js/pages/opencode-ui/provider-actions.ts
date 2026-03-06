@@ -1,12 +1,19 @@
 import { apiCall } from "./api.js";
+import { loadOpencodeUiModelPreferences, saveOpencodeUiModelPreferences } from "./model-preferences.js";
 import {
+  applyModelPreferences,
+  chooseActiveModelKey,
+  enrichProviderItems,
+  filterVisibleModelItems,
+  getEndpointDefaultModelKeys,
   normalizeConnectedProviderIds,
   normalizeModelItems,
   normalizeProviderItemsFromConfig,
   renderProviderRows,
+  sortModelItems,
   toReasoningEffortItems,
 } from "./provider-catalog.js";
-import type { CustomSelectAPI, RuntimeState } from "./types.js";
+import type { CustomSelectAPI, OpencodeUiModelPreferences, RuntimeState } from "./types.js";
 
 type ByIdFn = <T extends HTMLElement>(
   id: string,
@@ -18,6 +25,74 @@ export interface ProviderContext {
   byId: ByIdFn;
   modelDropdown: CustomSelectAPI | null;
   effortDropdown: CustomSelectAPI | null;
+  onModelStateUpdated?: () => void;
+}
+
+const DEFAULT_VARIANT_ORDER = ["medium", "max", "high", "low", "xhigh", "minimal", "none"];
+
+async function ensureModelPreferencesLoaded(context: ProviderContext): Promise<void> {
+  const preferences = await loadOpencodeUiModelPreferences();
+  context.runtime.modelPreferences = preferences;
+}
+
+function setSelectedModelLabel(context: ProviderContext, modelKey: string | null): void {
+  const modelEl = context.byId<HTMLElement>("model");
+  if (modelEl == null) {
+    return;
+  }
+
+  if (modelKey == null || modelKey === "") {
+    modelEl.textContent = "-";
+    return;
+  }
+
+  const selectedMeta = context.runtime.modelMetaByKey[modelKey];
+  modelEl.textContent = selectedMeta?.label ?? modelKey;
+}
+
+function applyModelState(context: ProviderContext): void {
+  const preferredItems = applyModelPreferences(
+    context.runtime.modelItems,
+    context.runtime.modelPreferences,
+    context.runtime.providerItems.filter((item) => item.isConnected === true).map((item) => item.id)
+  );
+  const visibleItems = sortModelItems(filterVisibleModelItems(preferredItems));
+
+  context.runtime.modelItems = preferredItems;
+  context.runtime.providerItems = enrichProviderItems(
+    context.runtime.providerItems,
+    preferredItems,
+    context.runtime.modelPreferences,
+    context.runtime.providerItems.filter((item) => item.isConnected === true).map((item) => item.id)
+  );
+  renderProvidersPanel(context, renderProviderRows(context.runtime.providerItems));
+
+  if (context.modelDropdown == null) {
+    return;
+  }
+
+  if (visibleItems.length === 0) {
+    context.modelDropdown.setError("Yok");
+    context.runtime.activeModelKey = null;
+    context.runtime.activeReasoningEffort = null;
+    refreshReasoningEffortDropdown(context);
+    setSelectedModelLabel(context, null);
+    context.onModelStateUpdated?.();
+    return;
+  }
+
+  const selected = chooseActiveModelKey({
+    currentModelKey: context.runtime.activeModelKey,
+    preferences: context.runtime.modelPreferences,
+    endpointDefaultModelKeys: context.runtime.endpointDefaultModelKeys,
+    visibleItems,
+  });
+
+  context.runtime.activeModelKey = selected;
+  context.modelDropdown.setItems(visibleItems, selected ?? undefined);
+  refreshReasoningEffortDropdown(context);
+  setSelectedModelLabel(context, selected);
+  context.onModelStateUpdated?.();
 }
 
 export function refreshReasoningEffortDropdown(context: ProviderContext): void {
@@ -25,7 +100,10 @@ export function refreshReasoningEffortDropdown(context: ProviderContext): void {
     return;
   }
 
-  const items = toReasoningEffortItems(context.runtime.modelMetaById, context.runtime.activeModelId);
+  const items = toReasoningEffortItems(
+    context.runtime.modelMetaByKey,
+    context.runtime.activeModelKey
+  );
   if (items.length === 0) {
     context.runtime.activeReasoningEffort = null;
     context.effortDropdown.setError("Yok");
@@ -36,73 +114,111 @@ export function refreshReasoningEffortDropdown(context: ProviderContext): void {
     context.runtime.activeReasoningEffort != null &&
     items.some((item) => item.value === context.runtime.activeReasoningEffort)
       ? context.runtime.activeReasoningEffort
-      : (items[1]?.value ?? items[0]?.value ?? null);
+      : (() => {
+          for (const candidate of DEFAULT_VARIANT_ORDER) {
+            const matched = items.find((item) => item.value === candidate);
+            if (matched != null) {
+              return matched.value;
+            }
+          }
+
+          return items[0]?.value ?? null;
+        })();
 
   context.runtime.activeReasoningEffort = selected;
   context.effortDropdown.setItems(items, selected ?? undefined);
 }
 
+export async function selectActiveModelKey(
+  context: ProviderContext,
+  modelKey: string | null,
+  options: { persistSelection?: boolean } = {}
+): Promise<void> {
+  context.runtime.activeModelKey = modelKey != null && modelKey !== "" ? modelKey : null;
+  refreshReasoningEffortDropdown(context);
+  setSelectedModelLabel(context, context.runtime.activeModelKey);
+
+  if (options.persistSelection === true) {
+    const nextPreferences: OpencodeUiModelPreferences = {
+      ...context.runtime.modelPreferences,
+      lastSelectedModelKey: context.runtime.activeModelKey,
+    };
+    context.runtime.modelPreferences = await saveOpencodeUiModelPreferences(nextPreferences);
+    context.onModelStateUpdated?.();
+  }
+}
+
+export async function updateModelPreferences(
+  context: ProviderContext,
+  updater:
+    | OpencodeUiModelPreferences
+    | ((current: OpencodeUiModelPreferences) => OpencodeUiModelPreferences)
+): Promise<void> {
+  const current = context.runtime.modelPreferences;
+  const next = typeof updater === "function" ? updater(current) : updater;
+  context.runtime.modelPreferences = await saveOpencodeUiModelPreferences(next);
+  applyModelState(context);
+}
+
 export async function loadModels(
   context: ProviderContext,
-  payloadOverride?: unknown
+  payloadOverride?: unknown,
+  connectedProviderIds: string[] = [],
+  providerItemsOverride?: ReturnType<typeof normalizeProviderItemsFromConfig>
 ): Promise<void> {
   if (context.modelDropdown == null) {
     return;
   }
 
+  await ensureModelPreferencesLoaded(context);
+
   try {
     const payload = payloadOverride ?? (await apiCall<unknown>("GET", "/config/providers"));
-    const items = normalizeModelItems(payload);
-    context.runtime.modelMetaById = {};
-    items.forEach((item) => {
-      context.runtime.modelMetaById[item.value] = {
+    const modelItems = normalizeModelItems(payload);
+    const providerItems =
+      providerItemsOverride != null
+        ? providerItemsOverride
+        : normalizeProviderItemsFromConfig(payload);
+
+    context.runtime.modelMetaByKey = {};
+    modelItems.forEach((item) => {
+      const modelKey = item.modelKey ?? item.value;
+      const modelId = item.modelId ?? item.subtitle ?? "";
+      context.runtime.modelMetaByKey[modelKey] = {
+        modelId,
+        modelKey,
         providerId: item.providerId ?? "",
+        providerName: item.providerName ?? item.providerId ?? "",
+        label: item.label,
+        subtitle: item.subtitle ?? modelId,
         reasoningEfforts: item.reasoningEfforts ?? [],
+        variantOptions: item.variantOptions ?? [],
       };
     });
 
-    if (items.length === 0) {
-      context.modelDropdown.setError("Yok");
-      context.runtime.activeModelId = null;
-      context.runtime.activeReasoningEffort = null;
-      refreshReasoningEffortDropdown(context);
+    context.runtime.modelItems = modelItems;
+    context.runtime.providerItems = enrichProviderItems(
+      providerItems.map((item) => ({
+        ...item,
+        isConnected: connectedProviderIds.includes(item.id),
+      })),
+      modelItems,
+      context.runtime.modelPreferences,
+      connectedProviderIds
+    );
+    context.runtime.endpointDefaultModelKeys = getEndpointDefaultModelKeys(payload);
 
-      const modelEl = context.byId<HTMLElement>("model");
-      if (modelEl != null) {
-        modelEl.textContent = "-";
-      }
-      return;
-    }
-
-    const defaultMap =
-      payload != null && typeof payload === "object" && !Array.isArray(payload)
-        ? ((payload as Record<string, unknown>)["default"] as Record<string, unknown> | undefined)
-        : undefined;
-
-    const defaults = defaultMap != null ? Object.values(defaultMap) : [];
-    const defaultModelId = defaults.find((item): item is string => typeof item === "string") ?? "";
-
-    const selected =
-      context.runtime.activeModelId ??
-      (defaultModelId !== "" ? defaultModelId : null) ??
-      items[0]?.value ??
-      null;
-
-    context.runtime.activeModelId = selected;
-    context.modelDropdown.setItems(items, selected ?? undefined);
-    refreshReasoningEffortDropdown(context);
-
-    const modelEl = context.byId<HTMLElement>("model");
-    if (modelEl != null) {
-      const selectedLabel = items.find((item) => item.value === selected)?.label ?? selected ?? "-";
-      modelEl.textContent = selectedLabel;
-    }
+    applyModelState(context);
   } catch {
     context.modelDropdown.setError("Hata");
-    context.runtime.activeModelId = null;
+    context.runtime.activeModelKey = null;
     context.runtime.activeReasoningEffort = null;
-    context.runtime.modelMetaById = {};
+    context.runtime.modelMetaByKey = {};
+    context.runtime.modelItems = [];
+    context.runtime.providerItems = [];
+    context.runtime.endpointDefaultModelKeys = [];
     refreshReasoningEffortDropdown(context);
+    context.onModelStateUpdated?.();
   }
 }
 
@@ -133,6 +249,7 @@ export async function loadProviderContextAndModels(
       .map((item) => ({
         ...item,
         badge: connectedSet.has(item.id) ? "Connected" : "Available",
+        isConnected: connectedSet.has(item.id),
       }))
       .sort((left, right) => {
         if (left.badge !== right.badge) {
@@ -142,7 +259,7 @@ export async function loadProviderContextAndModels(
       });
 
     renderProvidersPanel(context, renderProviderRows(items));
-    await loadModels(context, configPayload);
+    await loadModels(context, configPayload, connectedIds, items);
   } catch {
     renderProvidersPanel(context, renderProviderRows([]));
     await loadModels(context, configPayloadOverride);
