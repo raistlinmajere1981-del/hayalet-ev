@@ -56,9 +56,10 @@
 }
 
 .asistan-session-controls {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px;
+  width: min(100%, 460px);
 }
 
 .asistan-resume-control {
@@ -77,6 +78,8 @@
   line-height: var(--leading-none);
   background: var(--bg-surface);
   user-select: none;
+  width: 100%;
+  min-width: 0;
 }
 
 .asistan-resume-control input {
@@ -88,6 +91,8 @@
 
 .asistan-resume-control span {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* === STATUS INDICATOR === */

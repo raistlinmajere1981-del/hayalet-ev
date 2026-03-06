@@ -28,6 +28,18 @@
   pointer-events: none;
 }
 
+/* Keep Electron webview hidden until overlay is fully dismissed. */
+.webview-wrapper webview {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.webview-wrapper.webview-content-blocked webview {
+  opacity: 0;
+  visibility: hidden;
+}
+
 /* === SPINNER (CSS) === */
 .webview-overlay .overlay-icon {
   width: var(--size-icon-lg);

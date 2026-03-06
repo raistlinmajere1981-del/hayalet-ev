@@ -87,6 +87,8 @@ export const GHOST_TIMEOUTS = {
 export const SERVER_TIMEOUTS = {
   /** Server başlatma sonrası stabilizasyon bekleme */
   STARTUP_SETTLE: 200,
+  /** OpenCode binary --version probe timeout */
+  BINARY_PROBE: 8_000,
 } as const;
 
 export const PROVIDER_TEST_TIMEOUTS = {

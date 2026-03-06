@@ -1539,10 +1539,13 @@ export class AsistanController {
       webviewEl.dataset["eventsSetup"] = "true";
     }
 
+    let overlayVisible = false;
+
     if (overlayEl) {
       overlayEl.classList.remove("hidden", "empty", "disconnected", "connecting", "error");
 
       if (!hasAccount) {
+        overlayVisible = true;
         this._updateOverlay(
           overlayEl,
           "empty",
@@ -1551,6 +1554,7 @@ export class AsistanController {
           "Provider seçip bağlanın"
         );
       } else if (isConnectingUi) {
+        overlayVisible = true;
         const stage = resolveOverlayStage({
           ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),
           connectFlowActive: this._connectFlowActive,
@@ -1558,6 +1562,7 @@ export class AsistanController {
         });
         this._updateOverlay(overlayEl, "connecting", "🔄", stage.title, stage.subtitle);
       } else if (shouldHoldToolsReadyOverlay) {
+        overlayVisible = true;
         const holdTitle =
           typeof this._connectOverlayStage?.title === "string" &&
           this._connectOverlayStage.title.trim() !== ""
@@ -1571,6 +1576,7 @@ export class AsistanController {
 
         this._updateOverlay(overlayEl, "connecting", "🔄", holdTitle, holdSubtitle);
       } else if (isError) {
+        overlayVisible = true;
         this._updateOverlay(
           overlayEl,
           "error",
@@ -1579,6 +1585,7 @@ export class AsistanController {
           slotState.error ?? "Tekrar deneyin"
         );
       } else if (!isConnected) {
+        overlayVisible = true;
         this._updateOverlay(
           overlayEl,
           "disconnected",
@@ -1592,6 +1599,10 @@ export class AsistanController {
           SlotController.ensureWebviewAttached("ai0");
         }
       }
+    }
+
+    if (mountEl) {
+      mountEl.classList.toggle("webview-content-blocked", overlayVisible);
     }
 
     const buttonState = resolveAsistanConnectButtonState({

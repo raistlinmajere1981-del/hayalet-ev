@@ -181,7 +181,11 @@ export class OpenCodeServerManager {
 
   async diagnoseBinary(options: { binaryPath?: string | null } = {}): Promise<ServerBinaryInfo> {
     const command = this.resolveBinaryCommand(options.binaryPath);
-    const versionProbe = await this.runCommandCapture(command, ["--version"], 3500);
+    const versionProbe = await this.runCommandCapture(
+      command,
+      ["--version"],
+      SERVER_TIMEOUTS.BINARY_PROBE
+    );
     const combinedOutput = `${versionProbe.stdout}\n${versionProbe.stderr}`.trim();
 
     if (versionProbe.error !== undefined) {
