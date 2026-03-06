@@ -66,150 +66,176 @@ async function initApp(): Promise<void> {
   }
 
   isInitializing = true;
+  let initSucceeded = false;
 
   // Inject ServerCommands into CoreEngine to break circular dependency
   registerServerCommands(ServerCommands);
 
   try {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined) {
-      const sessionId = "renderer-fallback";
-      Logger.init(sessionId);
-      Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
-    } else {
-      const sessionId = await electronApi.logger.getSessionId();
-      Logger.init(sessionId);
-      Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
+    try {
+      const electronApi = window.electronAPI;
+      if (electronApi === undefined) {
+        const sessionId = "renderer-fallback";
+        Logger.init(sessionId);
+        Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
+      } else {
+        const sessionId = await electronApi.logger.getSessionId();
+        Logger.init(sessionId);
+        Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
+      }
+    } catch (err) {
+      console.error("[App] Logger init error:", err instanceof Error ? err.message : String(err));
     }
-  } catch (err) {
-    console.error("[App] Logger init error:", err instanceof Error ? err.message : String(err));
-  }
 
-  setupUILogListener();
-  Logger.debug(LogCategory.SYSTEM, "UI log listener setup complete");
+    setupUILogListener();
+    Logger.debug(LogCategory.SYSTEM, "UI log listener setup complete");
 
-  SplashScreen.update(10, "Ayarlar yükleniyor...");
+    SplashScreen.update(10, "Ayarlar yükleniyor...");
 
-  TrafficManager.init();
+    TrafficManager.init();
 
-  await CoreEngine.init();
-  SplashScreen.update(30, "Komutlar yükleniyor...");
+    await CoreEngine.init();
+    SplashScreen.update(30, "Komutlar yükleniyor...");
 
-  await MetaCommandManager.loadCommands();
-  SplashScreen.update(40, "Arayüz hazırlanıyor...");
+    await MetaCommandManager.loadCommands();
+    SplashScreen.update(40, "Arayüz hazırlanıyor...");
 
-  try {
-    document.documentElement.setAttribute("spellcheck", "false");
-    document.body.setAttribute("spellcheck", "false");
-  } catch (e) {
-    Logger.debug(LogCategory.SYSTEM, "Spellcheck disable failed", {
-      error: getErrorMessage(e),
-    });
-  }
-  injectPageTemplates();
-  SplashScreen.update(50, "Modüller başlatılıyor...");
+    try {
+      document.documentElement.setAttribute("spellcheck", "false");
+      document.body.setAttribute("spellcheck", "false");
+    } catch (e) {
+      Logger.debug(LogCategory.SYSTEM, "Spellcheck disable failed", {
+        error: getErrorMessage(e),
+      });
+    }
+    injectPageTemplates();
+    SplashScreen.update(50, "Modüller başlatılıyor...");
 
-  try {
-    window.__hayalet_settings_unsub ??= SettingsManager.subscribe(
-      ({ changedPaths }: { changedPaths: string[] }) => {
-        const shouldUpdateIndicators =
-          changedPaths.includes("*") ||
-          changedPaths.some(
-            (path) =>
-              path.startsWith("user") ||
-              path.startsWith("accounts") ||
-              path.startsWith("asistanAccounts") ||
-              path.startsWith("slots") ||
-              path.startsWith("asistanSlot")
-          );
+    try {
+      window.__hayalet_settings_unsub ??= SettingsManager.subscribe(
+        ({ changedPaths }: { changedPaths: string[] }) => {
+          const shouldUpdateIndicators =
+            changedPaths.includes("*") ||
+            changedPaths.some(
+              (path) =>
+                path.startsWith("user") ||
+                path.startsWith("accounts") ||
+                path.startsWith("asistanAccounts") ||
+                path.startsWith("slots") ||
+                path.startsWith("asistanSlot")
+            );
 
-        if (!shouldUpdateIndicators) {
-          return;
-        }
-
-        try {
-          updateIndicatorAvatars();
-        } catch (_) {
-          void 0;
-        }
-      }
-    );
-  } catch (_) {
-    Logger.debug(LogCategory.SYSTEM, "Settings subscription failed", {
-      error: getErrorMessage(_),
-    });
-  }
-
-  await initControllers(controllers);
-  setControllers(controllers);
-
-  window.SlotController = SlotController;
-  window.WebviewManager = WebviewManager;
-  window.AppState = AppState;
-
-  registerWebviews();
-
-  const entranceController = controllers["entrance"] as
-    | { applyDefaultConnections?: () => void }
-    | undefined;
-  entranceController?.applyDefaultConnections?.();
-
-  setupNavigation();
-  setupWindowControls();
-  setupTopBarButtons();
-  setupTopBarRelayButtons();
-  setupReportPanel();
-
-  SplashScreen.update(90, "Son hazırlıklar...");
-
-  // Startup flag kontrolü: --start-page ve --auto-connect argümanları
-  const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
-    | { startPage: string | null; autoConnect: boolean }
-    | undefined;
-  const startPage = startupFlags?.startPage ?? "entrance";
-  const autoConnect = startupFlags?.autoConnect ?? false;
-
-  showPage(startPage);
-  updateIndicatorAvatars();
-  updateRelayIndicator();
-  AppState.subscribe(() => {
-    updateIndicatorAvatars();
-    updateRelayIndicator();
-  });
-
-  SlotController.on(SlotEvent.STATE_CHANGED, () => {
-    updateIndicatorAvatars();
-    updateRelayIndicator();
-    updateRelayButtonStates(); // Update relay button states on slot connection changes
-  });
-
-  Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, "Uygulama başlatıldı", {
-    visibility: LogVisibility.PANEL,
-  });
-
-  SplashScreen.complete();
-  await SplashScreen.hide();
-
-  // --auto-connect: Asistan sayfasındaysa bağlan butonuna otomatik tıkla
-  if (autoConnect && startPage === "asistan") {
-    setTimeout(() => {
-      const connectBtn = document.getElementById("asistan-connect-btn") as HTMLButtonElement | null;
-      if (connectBtn !== null && !connectBtn.disabled) {
-        connectBtn.click();
-        Logger.panel(
-          LogCategory.SYSTEM,
-          LogLevel.INFO,
-          "Auto-connect: asistan bağlan butonuna tıklandı",
-          {
-            visibility: LogVisibility.PANEL,
+          if (!shouldUpdateIndicators) {
+            return;
           }
-        );
-      }
-    }, 500);
-  }
 
-  isInitializing = false;
-  isInitialized = true;
+          try {
+            updateIndicatorAvatars();
+          } catch (_) {
+            void 0;
+          }
+        }
+      );
+    } catch (_) {
+      Logger.debug(LogCategory.SYSTEM, "Settings subscription failed", {
+        error: getErrorMessage(_),
+      });
+    }
+
+    await initControllers(controllers);
+    setControllers(controllers);
+
+    window.SlotController = SlotController;
+    window.WebviewManager = WebviewManager;
+    window.AppState = AppState;
+
+    registerWebviews();
+
+    const entranceController = controllers["entrance"] as
+      | { applyDefaultConnections?: () => void }
+      | undefined;
+    entranceController?.applyDefaultConnections?.();
+
+    setupNavigation();
+    setupWindowControls();
+    setupTopBarButtons();
+    setupTopBarRelayButtons();
+    setupReportPanel();
+
+    SplashScreen.update(90, "Son hazırlıklar...");
+
+    // Startup flag kontrolü: --start-page ve --auto-connect argümanları
+    const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
+      | { startPage: string | null; autoConnect: boolean }
+      | undefined;
+    const startPage = startupFlags?.startPage ?? "entrance";
+    const autoConnect = startupFlags?.autoConnect ?? false;
+
+    showPage(startPage);
+    updateIndicatorAvatars();
+    updateRelayIndicator();
+    AppState.subscribe(() => {
+      updateIndicatorAvatars();
+      updateRelayIndicator();
+    });
+
+    SlotController.on(SlotEvent.STATE_CHANGED, () => {
+      updateIndicatorAvatars();
+      updateRelayIndicator();
+      updateRelayButtonStates(); // Update relay button states on slot connection changes
+    });
+
+    Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, "Uygulama başlatıldı", {
+      visibility: LogVisibility.PANEL,
+    });
+
+    SplashScreen.complete();
+    await SplashScreen.hide();
+
+    // --auto-connect: Asistan sayfasındaysa bağlan butonuna otomatik tıkla
+    if (autoConnect && startPage === "asistan") {
+      setTimeout(() => {
+        const connectBtn = document.getElementById("asistan-connect-btn") as HTMLButtonElement | null;
+        if (connectBtn !== null && !connectBtn.disabled) {
+          connectBtn.click();
+          Logger.panel(
+            LogCategory.SYSTEM,
+            LogLevel.INFO,
+            "Auto-connect: asistan bağlan butonuna tıklandı",
+            {
+              visibility: LogVisibility.PANEL,
+            }
+          );
+        }
+      }, 500);
+    }
+
+    initSucceeded = true;
+    isInitialized = true;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    console.error("[App] initApp failed:", message);
+    try {
+      Logger.error(LogCategory.SYSTEM, `[app:init] ${message}`, {
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+    } catch {
+      void 0;
+    }
+    try {
+      SplashScreen.show();
+      SplashScreen.setStatus("Başlatma hatası");
+      SplashScreen.setProgress(100);
+      await SplashScreen.hide();
+    } catch {
+      void 0;
+    }
+  } finally {
+    isInitializing = false;
+    if (!initSucceeded) {
+      isInitialized = false;
+    }
+  }
 }
 
 export { showPage, getCurrentPage } from "./navigation.js";

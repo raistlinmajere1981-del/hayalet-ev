@@ -1,4 +1,4 @@
-import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell } from "electron";
+import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "./paths.ts";
@@ -180,6 +180,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   const { isDev = !Paths.isPackaged(), startupFlags } = options;
   const additionalArguments =
     startupFlags === undefined ? [] : buildPreloadAdditionalArguments(startupFlags);
+  const { workArea } = screen.getPrimaryDisplay();
 
   if (isDev) {
     process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
@@ -189,9 +190,14 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   const iconPath = Paths.getIconPath();
 
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    x: workArea.x,
+    y: workArea.y,
+    width: workArea.width,
+    height: workArea.height,
     frame: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: true,
     show: false,
     icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
@@ -278,7 +284,6 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
 
   win.once("ready-to-show", () => {
     win.show();
-    win.maximize();
   });
 
   return win;
@@ -339,7 +344,21 @@ export function windowToggleFullscreen(): void {
   try {
     if (_mainWindow === null) return;
     const isFull = _mainWindow.isFullScreen();
-    _mainWindow.setFullScreen(!isFull);
+    if (isFull) {
+      _mainWindow.setFullScreen(false);
+      _mainWindow.setResizable(false);
+      const { workArea } = screen.getDisplayMatching(_mainWindow.getBounds());
+      _mainWindow.setBounds(workArea);
+      void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window exited fullscreen", {
+        bounds: _mainWindow.getBounds(),
+      });
+      return;
+    }
+    _mainWindow.setResizable(true);
+    _mainWindow.setFullScreen(true);
+    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window entered fullscreen", {
+      bounds: _mainWindow.getBounds(),
+    });
   } catch (err) {
     void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "windowToggleFullscreen failed", {
       error: err instanceof Error ? err.message : String(err),

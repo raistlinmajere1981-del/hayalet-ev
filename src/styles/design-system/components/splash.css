@@ -1,6 +1,6 @@
 /**
  * Hayalet-ev Design System - Splash Screen
- * Centered card modal (NOT fullscreen)
+ * Fullscreen startup surface with centered splash card
  * @version 5.4.0
  */
 
@@ -27,17 +27,20 @@
 
 /* === SPLASH CARD === */
 .splash-content {
-  --splash-min-w: 320px;
-  --splash-max-w: 400px;
-  --splash-logo-size: 80px;
-  --splash-loader-w: 200px;
+  --splash-min-w: 360px;
+  --splash-max-w: 460px;
+  --splash-logo-size: 96px;
+  --splash-loader-w: 240px;
   --splash-loader-h: 4px;
 
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-6);
-  padding: var(--space-10) var(--space-12);
+  width: min(var(--splash-max-w), calc(100vw - var(--space-12)));
+  min-height: 300px;
+  padding: clamp(var(--space-10), 4vw, var(--space-14));
   background: var(--bg-glass);
   border: var(--border-1) solid var(--border-glass);
   border-radius: var(--radius-2xl);
@@ -139,6 +142,7 @@
     margin: var(--space-4);
     padding: var(--space-8);
     min-width: auto;
+    min-height: 260px;
   }
 
   .splash-logo {
