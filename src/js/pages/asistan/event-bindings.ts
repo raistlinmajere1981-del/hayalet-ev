@@ -6,6 +6,7 @@ interface BindAsistanBasicEventsOptions {
   catchCommandsCheckbox: HTMLInputElement | null;
   providerSelect: HTMLSelectElement | null;
   opencodeSettingsBtn: HTMLButtonElement | null;
+  opencodeActionBtn: HTMLButtonElement | null;
   memoryBtn: HTMLButtonElement | null;
   devtoolsBtn: HTMLButtonElement | null;
   testBtn: HTMLButtonElement | null;
@@ -16,6 +17,7 @@ interface BindAsistanBasicEventsOptions {
   onCatchCommandsChange: (enabled: boolean) => void;
   onProviderChange: () => void;
   onOpencodeSettingsClick: () => void;
+  onOpencodeActionClick: () => void;
   onMemoryClick: () => void;
   onDevtoolsClick: () => void;
   onTestClick: () => void;
@@ -35,6 +37,7 @@ export function bindAsistanBasicEvents(options: BindAsistanBasicEventsOptions): 
   });
   options.providerSelect?.addEventListener("change", options.onProviderChange);
   options.opencodeSettingsBtn?.addEventListener("click", options.onOpencodeSettingsClick);
+  options.opencodeActionBtn?.addEventListener("click", options.onOpencodeActionClick);
   options.memoryBtn?.addEventListener("click", options.onMemoryClick);
   options.devtoolsBtn?.addEventListener("click", options.onDevtoolsClick);
   options.testBtn?.addEventListener("click", options.onTestClick);

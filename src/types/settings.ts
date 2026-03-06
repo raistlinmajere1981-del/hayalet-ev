@@ -78,6 +78,14 @@ export interface GoogleDriveSettings {
   expiresAt?: number;
 }
 
+export interface OpencodeUiModelPreferences {
+  hiddenProviders?: string[];
+  hiddenModels?: string[];
+  favoriteModels?: string[];
+  defaultModelKey?: string | null;
+  lastSelectedModelKey?: string | null;
+}
+
 /** Ana ayar şeması */
 export interface AppSettings {
   version?: string;
@@ -118,6 +126,8 @@ export interface AppSettings {
       /** Son başarılı binary kontrolden bulunan sürüm */
       version?: string | null;
     };
+    /** OpenCode UI model seçim tercihleri */
+    opencodeUi?: OpencodeUiModelPreferences;
   };
   logging?: {
     level?: string;

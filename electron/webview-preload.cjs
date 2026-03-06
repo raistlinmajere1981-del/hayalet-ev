@@ -1,9 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 let __global_hayalet_slot = null;
+const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
+const opencodeUiSessionUpdatedHandlers = new Map();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
+  loadSettings: () => ipcRenderer.invoke("load-settings"),
+  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   readArchivesIndex: () => ipcRenderer.invoke("read-archives-index"),
@@ -81,6 +85,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiFsArchiveSession: (sessionId, archived, dbPath) =>
     ipcRenderer.invoke("opencode-ui-fs-archive-session", sessionId, archived, dbPath),
   opencodeUiHevTools: () => ipcRenderer.invoke("opencode-ui-hev-tools"),
+  opencodeUiSessionWatchStart: (sessionId, dbPath) =>
+    ipcRenderer.invoke("opencode-ui-session-watch-start", sessionId, dbPath),
+  opencodeUiSessionWatchStop: () => ipcRenderer.invoke("opencode-ui-session-watch-stop"),
+  opencodeUiOnSessionUpdated: (callback) => {
+    if (typeof callback !== "function" || opencodeUiSessionUpdatedHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    opencodeUiSessionUpdatedHandlers.set(callback, handler);
+    ipcRenderer.on(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
+  },
+  opencodeUiOffSessionUpdated: (callback) => {
+    const handler = opencodeUiSessionUpdatedHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
+    opencodeUiSessionUpdatedHandlers.delete(callback);
+  },
 });
 
 function setupProvider() {

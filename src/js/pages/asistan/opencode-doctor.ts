@@ -3,12 +3,31 @@ import type { AppSettings } from "@shared/settings.js";
 
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
+import { Toast } from "../../ui/toast-manager.js";
 import { getOpencodePreferences, normalizeOpencodePort } from "./opencode-preferences.js";
 
 interface OpencodeIndicatorElements {
   indicator: HTMLElement | null;
   indicatorDot: HTMLElement | null;
   indicatorText: HTMLElement | null;
+  actionButton?: HTMLButtonElement | null;
+}
+
+interface OpencodeUpdateCheckResult {
+  success: boolean;
+  installedVersion: string;
+  latestVersion?: string;
+  updateAvailable?: boolean;
+  releaseUrl?: string;
+  error?: string;
+}
+
+interface OpencodeInstallLaunchResult {
+  success: boolean;
+  command: string;
+  installUrl: string;
+  fallbackToBrowser?: boolean;
+  error?: string;
 }
 
 function setOpencodeIndicatorState(
@@ -52,6 +71,31 @@ function setOpencodeIndicatorState(
   dot.classList.add("status-checking");
 }
 
+function setOpencodeActionButtonState(
+  button: HTMLButtonElement | null | undefined,
+  options: {
+    label: string;
+    title: string;
+    disabled?: boolean;
+    busy?: boolean;
+  }
+): void {
+  if (button == null) return;
+  button.textContent = options.label;
+  button.title = options.title;
+  button.disabled = options.disabled === true;
+  button.classList.toggle("is-busy", options.busy === true);
+}
+
+function getDetectedOpencodeVersion(): string | null {
+  const settings = SettingsManager.getSnapshot() as AppSettings | null;
+  const version = settings?.assistants?.opencode?.version;
+  if (typeof version !== "string" || version.trim() === "") {
+    return null;
+  }
+  return version.trim();
+}
+
 export function refreshOpencodeDoctorStatus(elements: OpencodeIndicatorElements): void {
   const settings = SettingsManager.getSnapshot() as AppSettings | null;
   const opencode = settings?.assistants?.opencode;
@@ -72,10 +116,129 @@ export function refreshOpencodeDoctorStatus(elements: OpencodeIndicatorElements)
 
   if (version !== null) {
     setOpencodeIndicatorState(elements, "ready", `OpenCode v${version}`, titleLines.join("\n"));
+    setOpencodeActionButtonState(elements.actionButton, {
+      label: "Update kontrol",
+      title: `OpenCode v${version} için yeni sürüm kontrolü yap`,
+    });
     return;
   }
 
   setOpencodeIndicatorState(elements, "missing", "OpenCode bulunamadı", titleLines.join("\n"));
+  setOpencodeActionButtonState(elements.actionButton, {
+    label: "OpenCode kur",
+    title: "OpenCode kurulum terminalini aç",
+  });
+}
+
+async function launchOpencodeInstallFlow(): Promise<void> {
+  const electronApi = window.electronAPI;
+  if (electronApi === undefined || typeof electronApi.opencodeLaunchInstall !== "function") {
+    throw new Error("OpenCode install IPC bulunamadı.");
+  }
+
+  const result = (await electronApi.opencodeLaunchInstall()) as OpencodeInstallLaunchResult;
+  if (result.success !== true) {
+    throw new Error(result.error ?? "OpenCode kurulum akışı başlatılamadı.");
+  }
+
+  if (result.fallbackToBrowser === true) {
+    Toast.success("OpenCode install sayfası açıldı", "Terminal açılamadı, resmi kurulum sayfası açıldı.");
+    return;
+  }
+
+  Toast.success("OpenCode kurulum terminali açıldı", "Kurulum bitince aynı butonla tekrar kontrol edebilirsin.");
+}
+
+export async function handleOpencodeActionButtonClick(elements: OpencodeIndicatorElements): Promise<void> {
+  const electronApi = window.electronAPI;
+  const actionButton = elements.actionButton ?? null;
+  const loadingMessage = getDetectedOpencodeVersion() !== null ? "Update kontrol ediliyor..." : "Kurulum hazırlanıyor...";
+  const loadingToastId = Toast.loading("OpenCode", loadingMessage);
+
+  setOpencodeActionButtonState(actionButton, {
+    label: "Çalışıyor...",
+    title: "OpenCode işlemi devam ediyor",
+    disabled: true,
+    busy: true,
+  });
+
+  try {
+    if (electronApi === undefined || typeof electronApi.opencodeServeDoctor !== "function") {
+      throw new Error("OpenCode doctor IPC bulunamadı.");
+    }
+
+    const doctorResult = await electronApi.opencodeServeDoctor();
+    const detectedVersion =
+      doctorResult.success === true &&
+      doctorResult.available === true &&
+      typeof doctorResult.version === "string" &&
+      doctorResult.version.trim() !== ""
+        ? doctorResult.version.trim()
+        : null;
+
+    if (detectedVersion === null) {
+      Toast.update(loadingToastId, {
+        type: "info",
+        title: "OpenCode kurulum akışı başlatılıyor",
+        message: "Yüklü sürüm tespit edilemedi.",
+        closable: true,
+      });
+      await launchOpencodeInstallFlow();
+      return;
+    }
+
+    if (typeof electronApi.opencodeCheckUpdates !== "function") {
+      throw new Error("OpenCode update IPC bulunamadı.");
+    }
+
+    const result = (await electronApi.opencodeCheckUpdates(detectedVersion)) as OpencodeUpdateCheckResult;
+    if (result.success !== true) {
+      throw new Error(result.error ?? "OpenCode update kontrolü başarısız oldu.");
+    }
+
+    const latestVersion =
+      typeof result.latestVersion === "string" && result.latestVersion.trim() !== ""
+        ? result.latestVersion.trim()
+        : null;
+
+    if (result.updateAvailable === true && latestVersion !== null) {
+      Toast.update(loadingToastId, {
+        type: "warning",
+        title: `OpenCode v${latestVersion} mevcut`,
+        message: `Kurulu sürüm: v${result.installedVersion}`,
+        closable: true,
+        action: {
+          label: "Güncelle",
+          onClick: () => {
+            void launchOpencodeInstallFlow();
+          },
+        },
+      });
+      return;
+    }
+
+    Toast.update(loadingToastId, {
+      type: "success",
+      title: "OpenCode güncel",
+      message:
+        latestVersion !== null
+          ? `Kurulu sürüm v${result.installedVersion}, latest v${latestVersion}.`
+          : `Kurulu sürüm v${result.installedVersion}.`,
+      closable: true,
+    });
+  } catch (error) {
+    Toast.update(loadingToastId, {
+      type: "error",
+      title: "OpenCode işlemi başarısız",
+      message: (error as Error).message,
+      closable: true,
+    });
+    Logger.warn(LogCategory.ASISTAN_CORE, "OpenCode action button failure", {
+      error: (error as Error).message,
+    });
+  } finally {
+    refreshOpencodeDoctorStatus(elements);
+  }
 }
 
 export async function openOpencodeSettingsModal(options: { onSaved?: () => void } = {}): Promise<void> {

@@ -15,7 +15,8 @@ import {
 } from "./history-actions.js";
 import {
   loadProviderContextAndModels as loadProviderContextAndModelsFromModule,
-  refreshReasoningEffortDropdown as refreshReasoningEffortDropdownFromModule,
+  selectActiveModelKey as selectActiveModelKeyFromModule,
+  updateModelPreferences as updateModelPreferencesFromModule,
 } from "./provider-actions.js";
 import type { ProviderContext } from "./provider-actions.js";
 import {
@@ -27,7 +28,7 @@ import {
   updateUsagePlaceholders as updateUsagePlaceholdersFromModule,
 } from "./render-actions.js";
 import type { RenderContext } from "./render-actions.js";
-import { loadToolsFinalSnapshot } from "./tools-prompts.js";
+import { initQuickPromptPanel, loadToolsFinalSnapshot } from "./tools-prompts.js";
 import { addMessage } from "./chat-utils.js";
 import {
   buildMessageRequestBody,
@@ -48,6 +49,8 @@ import {
 import { setupCustomSelect } from "./ui-helpers.js";
 import { buildSessionSnapshotKey, normalizeSessionId } from "./message-content.js";
 import { normalizeAgentItems } from "./provider-catalog.js";
+import { DEFAULT_OPENCODE_UI_MODEL_PREFERENCES } from "./model-preferences.js";
+import { createModelSettingsOverlayController } from "./model-settings-overlay.js";
 import {
   byId,
   clearChatArea,
@@ -85,10 +88,14 @@ const runtime: RuntimeState = {
   activeSessionId: null,
   sessionTab: "active",
   submittingSessionId: null,
-  activeModelId: null,
+  activeModelKey: null,
   activeReasoningEffort: null,
   activeAgentId: null,
-  modelMetaById: {},
+  modelMetaByKey: {},
+  modelItems: [],
+  providerItems: [],
+  modelPreferences: { ...DEFAULT_OPENCODE_UI_MODEL_PREFERENCES },
+  endpointDefaultModelKeys: [],
   isSubmitting: false,
   lastRenderedMessageCount: 0,
   lastRenderedSnapshotKey: "",
@@ -100,10 +107,29 @@ const sessionStorage = createSessionStorage(runtime);
 let modeDropdown: CustomSelectAPI | null = null;
 let modelDropdown: CustomSelectAPI | null = null;
 let effortDropdown: CustomSelectAPI | null = null;
+let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlayController> | null =
+  null;
 
 function setActiveSession(sessionId: string | null): void {
   runtime.activeSessionId = sessionId;
   sendSessionChangedToHost(sessionId);
+  const api = window.electronAPI as
+    | undefined
+    | {
+        opencodeUiSessionWatchStart?: (sessionId: string, dbPath?: string) => Promise<unknown>;
+        opencodeUiSessionWatchStop?: () => Promise<unknown>;
+      };
+  if (!api) {
+    return;
+  }
+
+  const normalized = typeof sessionId === "string" ? sessionId.trim() : "";
+  const dbPath = runtime.dbPath.trim() !== "" ? runtime.dbPath.trim() : undefined;
+  if (normalized !== "") {
+    void api.opencodeUiSessionWatchStart?.(normalized, dbPath);
+  } else {
+    void api.opencodeUiSessionWatchStop?.();
+  }
 }
 export { buildMessageRequestBody };
 
@@ -200,6 +226,9 @@ function providerContext(): ProviderContext {
     byId,
     modelDropdown,
     effortDropdown,
+    onModelStateUpdated: () => {
+      refreshModelSettingsOverlay();
+    },
   };
 }
 
@@ -433,8 +462,21 @@ async function loadAgents(): Promise<void> {
   }
 }
 
-function refreshReasoningEffortDropdown(): void {
-  refreshReasoningEffortDropdownFromModule(providerContext());
+async function selectActiveModelKey(
+  modelKey: string | null,
+  options: { persistSelection?: boolean } = {}
+): Promise<void> {
+  await selectActiveModelKeyFromModule(providerContext(), modelKey, options);
+}
+
+async function updateModelPreferences(
+  updater: Parameters<typeof updateModelPreferencesFromModule>[1]
+): Promise<void> {
+  await updateModelPreferencesFromModule(providerContext(), updater);
+}
+
+function refreshModelSettingsOverlay(): void {
+  modelSettingsOverlayController?.refresh();
 }
 
 async function loadProviderContextAndModels(
@@ -454,13 +496,7 @@ function initSelects(): void {
   });
 
   modelDropdown = setupCustomSelect("model-dropdown", (value: string) => {
-    runtime.activeModelId = value !== "" ? value : null;
-    refreshReasoningEffortDropdown();
-
-    const modelEl = byId<HTMLElement>("model");
-    if (modelEl != null) {
-      modelEl.textContent = value !== "" ? value : "-";
-    }
+    return selectActiveModelKey(value !== "" ? value : null, { persistSelection: true });
   });
 
   effortDropdown = setupCustomSelect("effort-dropdown", (value: string) => {
@@ -473,6 +509,15 @@ function initUtilityActions(): void {
   copyUrlBtn?.addEventListener("click", () => {
     void copyWorkspaceUrl();
   });
+
+  modelSettingsOverlayController = createModelSettingsOverlayController({
+    runtime,
+    byId,
+    showToast,
+    updateModelPreferences,
+  });
+  modelSettingsOverlayController.init();
+  initQuickPromptPanel({ showToast });
 }
 
 async function initializeSessionSelection(resumeSessionId: string): Promise<void> {
@@ -533,5 +578,14 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
+  window.addEventListener("opencode-ui:mcp-changed", () => {
+    void (async (): Promise<void> => {
+      try {
+        await waitForMcpServersSettled({ timeoutMs: 20000, intervalMs: 1000 });
+        await loadToolsFinalSnapshot();
+      } catch (_error) {}
+    })();
+  });
+
   void bootstrapOpencodeUiApp();
 }

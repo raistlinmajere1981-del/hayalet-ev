@@ -753,6 +753,21 @@ declare global {
       resolvedPath?: string;
       error?: string;
     }>;
+    opencodeCheckUpdates: (installedVersion: string) => Promise<{
+      success: boolean;
+      installedVersion: string;
+      latestVersion?: string;
+      updateAvailable?: boolean;
+      releaseUrl?: string;
+      error?: string;
+    }>;
+    opencodeLaunchInstall: () => Promise<{
+      success: boolean;
+      command: string;
+      installUrl: string;
+      fallbackToBrowser?: boolean;
+      error?: string;
+    }>;
 
     opencodeUiApiProxy: (options: { url: string; method: string; body?: string }) => Promise<{
       success: boolean;
@@ -812,6 +827,11 @@ declare global {
       error?: string;
     }>;
 
+    opencodeUiSessionWatchStart: (sessionId: string, dbPath?: string) => Promise<{ success: boolean }>;
+    opencodeUiSessionWatchStop: () => Promise<{ success: boolean }>;
+    opencodeUiOnSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
+    opencodeUiOffSessionUpdated: (callback: (payload: { sessionId: string }) => void) => void;
+
     opencodeUiHevTools: () => Promise<{
       success: boolean;
       total: number;
@@ -822,6 +842,35 @@ declare global {
         tools: Array<{ name: string; description: string }>;
       }>;
       toolNames: string[];
+      error?: string;
+    }>;
+    opencodeUiQuickPromptsRead: () => Promise<{
+      success: boolean;
+      prompts: Array<{
+        id: string;
+        name: string;
+        content: string;
+        createdAt: number;
+      }>;
+      path: string;
+      error?: string;
+    }>;
+    opencodeUiQuickPromptsWrite: (
+      prompts: Array<{
+        id: string;
+        name: string;
+        content: string;
+        createdAt: number;
+      }>
+    ) => Promise<{
+      success: boolean;
+      prompts: Array<{
+        id: string;
+        name: string;
+        content: string;
+        createdAt: number;
+      }>;
+      path: string;
       error?: string;
     }>;
 

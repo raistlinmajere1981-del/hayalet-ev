@@ -42,7 +42,11 @@ import { toggleAsistanConnection } from "./connection-lifecycle.js";
 import { updateAsistanConnectionUI } from "./connection-ui.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
-import { refreshOpencodeDoctorStatus, openOpencodeSettingsModal } from "./opencode-doctor.js";
+import {
+  handleOpencodeActionButtonClick,
+  openOpencodeSettingsModal,
+  refreshOpencodeDoctorStatus,
+} from "./opencode-doctor.js";
 import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
 import { openTestResultsModal } from "./test-results-modal.js";
 import { bindAsistanBasicEvents } from "./event-bindings.js";
@@ -87,6 +91,7 @@ export class AsistanController {
   opencodeIndicator: HTMLElement | null;
   opencodeIndicatorDot: HTMLElement | null;
   opencodeIndicatorText: HTMLElement | null;
+  opencodeActionBtn: HTMLButtonElement | null;
   opencodeSettingsBtn: HTMLButtonElement | null;
   characterOverlay: CharacterOverlay;
   memoryOverlay: MemoryOverlay;
@@ -133,6 +138,7 @@ export class AsistanController {
     this.opencodeIndicator = null;
     this.opencodeIndicatorDot = null;
     this.opencodeIndicatorText = null;
+    this.opencodeActionBtn = null;
     this.opencodeSettingsBtn = null;
     this.characterOverlay = new CharacterOverlay();
     this.memoryOverlay = new MemoryOverlay();
@@ -168,6 +174,7 @@ export class AsistanController {
     this.opencodeIndicator = document.getElementById("asistan-opencode-indicator");
     this.opencodeIndicatorDot = document.getElementById("asistan-opencode-indicator-dot");
     this.opencodeIndicatorText = document.getElementById("asistan-opencode-indicator-text");
+    this.opencodeActionBtn = document.getElementById("asistan-opencode-action-btn") as HTMLButtonElement | null;
     this.opencodeSettingsBtn = document.getElementById(
       "asistan-opencode-settings-btn"
     ) as HTMLButtonElement | null;
@@ -256,6 +263,16 @@ export class AsistanController {
       indicator: this.opencodeIndicator,
       indicatorDot: this.opencodeIndicatorDot,
       indicatorText: this.opencodeIndicatorText,
+      actionButton: this.opencodeActionBtn,
+    });
+  }
+
+  async _handleOpencodeActionClick(): Promise<void> {
+    await handleOpencodeActionButtonClick({
+      indicator: this.opencodeIndicator,
+      indicatorDot: this.opencodeIndicatorDot,
+      indicatorText: this.opencodeIndicatorText,
+      actionButton: this.opencodeActionBtn,
     });
   }
 
@@ -436,6 +453,7 @@ export class AsistanController {
       catchCommandsCheckbox: this.catchCommandsCheckbox,
       providerSelect: this.providerSelect,
       opencodeSettingsBtn: this.opencodeSettingsBtn,
+      opencodeActionBtn: this.opencodeActionBtn,
       memoryBtn: this.memoryBtn,
       devtoolsBtn: this.devtoolsBtn,
       testBtn: this.testBtn,
@@ -459,6 +477,9 @@ export class AsistanController {
       },
       onOpencodeSettingsClick: () => {
         void this._openOpencodeSettingsModal();
+      },
+      onOpencodeActionClick: () => {
+        void this._handleOpencodeActionClick();
       },
       onMemoryClick: () => {
         this.memoryOverlay.open();

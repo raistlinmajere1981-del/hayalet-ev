@@ -204,6 +204,16 @@
   height: 9px;
 }
 
+.asistan-opencode-action-btn {
+  min-width: 122px;
+  justify-content: center;
+}
+
+.asistan-opencode-action-btn.is-busy {
+  opacity: 0.72;
+  cursor: progress;
+}
+
 .asistan-opencode-indicator.is-ready {
   border-color: rgba(16, 185, 129, 0.35);
   color: var(--text-primary);

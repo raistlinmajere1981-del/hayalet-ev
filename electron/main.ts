@@ -50,6 +50,7 @@ import {
   listOpencodeUiSessions,
   readOpencodeUiSession,
 } from "./opencode-ui-session-store.ts";
+import { OpencodeUiSessionWatcherRegistry } from "./opencode-ui-session-watcher.ts";
 
 import { readConsoleLogs, readErrorLogs, readAllLogs, queryLogs } from "./logger/log-reader.ts";
 import { listSessions, updateAppState, getAppState } from "./logger/session-manager.ts";
@@ -89,6 +90,7 @@ app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 // Note: If you experience GPU-related crashes on older systems, uncomment these lines:
 
 let mainWindow: BrowserWindow | null = null;
+const opencodeUiSessionWatchers = new OpencodeUiSessionWatcherRegistry();
 
 if (process.stdout.isTTY === true) {
   try {
@@ -633,6 +635,19 @@ registerHandler("opencode-ui-fs-read-session", (_event, sessionId: string, dbPat
   const options =
     typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;
   return readOpencodeUiSession(sessionId, options);
+});
+
+registerHandler(
+  "opencode-ui-session-watch-start",
+  (event, sessionId: string, dbPath?: string): { success: boolean } => {
+    opencodeUiSessionWatchers.start(event.sender, sessionId, dbPath);
+    return { success: true };
+  }
+);
+
+registerHandler("opencode-ui-session-watch-stop", (event): { success: boolean } => {
+  opencodeUiSessionWatchers.stop(event.sender);
+  return { success: true };
 });
 
 registerHandler(

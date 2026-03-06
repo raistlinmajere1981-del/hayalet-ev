@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify", "log:ui-notify-batch"]);
+const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
+const opencodeUiSessionUpdatedHandlers = new Map();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
@@ -112,6 +114,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("opencode-serve-find-running", start, end),
   opencodeServeHealth: (url) => ipcRenderer.invoke("opencode-serve-health", url),
   opencodeServeDoctor: (options) => ipcRenderer.invoke("opencode-serve-doctor", options),
+  opencodeCheckUpdates: (installedVersion) =>
+    ipcRenderer.invoke("opencode-check-updates", installedVersion),
+  opencodeLaunchInstall: () => ipcRenderer.invoke("opencode-launch-install"),
 
   opencodeUiApiProxy: (options) => ipcRenderer.invoke("opencode-ui-api-proxy", options),
   opencodeUiFsListSessions: (dbPath) => ipcRenderer.invoke("opencode-ui-fs-list-sessions", dbPath),
@@ -122,6 +127,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opencodeUiFsArchiveSession: (sessionId, archived, dbPath) =>
     ipcRenderer.invoke("opencode-ui-fs-archive-session", sessionId, archived, dbPath),
   opencodeUiHevTools: () => ipcRenderer.invoke("opencode-ui-hev-tools"),
+  opencodeUiQuickPromptsRead: () => ipcRenderer.invoke("opencode-ui-quick-prompts-read"),
+  opencodeUiQuickPromptsWrite: (prompts) =>
+    ipcRenderer.invoke("opencode-ui-quick-prompts-write", prompts),
+  opencodeUiSessionWatchStart: (sessionId, dbPath) =>
+    ipcRenderer.invoke("opencode-ui-session-watch-start", sessionId, dbPath),
+  opencodeUiSessionWatchStop: () => ipcRenderer.invoke("opencode-ui-session-watch-stop"),
+  opencodeUiOnSessionUpdated: (callback) => {
+    if (typeof callback !== "function" || opencodeUiSessionUpdatedHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    opencodeUiSessionUpdatedHandlers.set(callback, handler);
+    ipcRenderer.on(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
+  },
+  opencodeUiOffSessionUpdated: (callback) => {
+    const handler = opencodeUiSessionUpdatedHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(OPENCODE_UI_SESSION_UPDATED_CHANNEL, handler);
+    opencodeUiSessionUpdatedHandlers.delete(callback);
+  },
 
   // Startup flags (read from process.argv)
   getStartupFlags: () => {

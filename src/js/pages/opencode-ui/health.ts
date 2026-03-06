@@ -364,6 +364,13 @@ async function handleMcpToggleChange(input: HTMLInputElement): Promise<void> {
   } finally {
     MCP_TOGGLE_PENDING.delete(serverName);
     await checkHealth();
+    try {
+      window.dispatchEvent(
+        new CustomEvent("opencode-ui:mcp-changed", {
+          detail: { name: serverName, enabled: desiredEnabled },
+        })
+      );
+    } catch (_error) {}
   }
 }
 

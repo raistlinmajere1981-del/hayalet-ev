@@ -78,30 +78,51 @@ export async function initializeSessionSelection(
 }
 
 export function startPeriodicRefresh(context: BootstrapContext): void {
+  const lastCheckEl = context.byId<HTMLElement>("last-check");
+  if (lastCheckEl != null) {
+    lastCheckEl.textContent = `Son kontrol: ${new Date().toLocaleTimeString("tr-TR")}`;
+  }
+
   setInterval(() => {
     void (async (): Promise<void> => {
       try {
         await context.checkHealth();
-        await context.loadStatusContext();
-        await context.loadToolsFinalSnapshot();
       } catch (_error) {}
 
-      if (!context.runtime.isSubmitting) {
-        await context.loadSessionListAndRender({ preserveActive: true });
-      }
-
-      const lastCheckEl = context.byId<HTMLElement>("last-check");
       if (lastCheckEl != null) {
         lastCheckEl.textContent = `Son kontrol: ${new Date().toLocaleTimeString("tr-TR")}`;
       }
     })();
-  }, 15000);
+  }, 120000);
 }
 
+let sessionUpdatedListenerBound = false;
+
 export function startLiveMessageRefresh(context: BootstrapContext): void {
-  setInterval(() => {
+  const api = window.electronAPI as
+    | undefined
+    | {
+        opencodeUiOnSessionUpdated?: (callback: (payload: { sessionId: string }) => void) => void;
+      };
+
+  if (sessionUpdatedListenerBound) {
+    return;
+  }
+
+  if (!api?.opencodeUiOnSessionUpdated) {
+    setInterval(() => {
+      void context.syncActiveSessionHistoryIfUpdated();
+    }, 1200);
+    return;
+  }
+
+  sessionUpdatedListenerBound = true;
+  api.opencodeUiOnSessionUpdated((payload) => {
+    if (payload?.sessionId !== context.runtime.activeSessionId) {
+      return;
+    }
     void context.syncActiveSessionHistoryIfUpdated();
-  }, 1200);
+  });
 }
 
 export async function runOpencodeUiBootstrapPipeline(options: {

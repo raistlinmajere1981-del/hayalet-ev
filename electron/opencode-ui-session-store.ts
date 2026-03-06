@@ -40,7 +40,7 @@ export type {
 
 const DEFAULT_OPENCODE_DB_PATH = join(homedir(), ".local", "share", "opencode", "opencode.db");
 
-function resolveDbPath(options?: OpencodeUiStoreOptions): string {
+export function resolveOpencodeUiDbPath(options?: OpencodeUiStoreOptions): string {
   const candidate = options?.dbPath;
   if (typeof candidate === "string" && candidate.trim() !== "") {
     const trimmed = candidate.trim();
@@ -67,7 +67,7 @@ function sessionTableHasWorkspaceId(db: Database.Database): boolean {
 export function listOpencodeUiSessions(
   options?: OpencodeUiStoreOptions
 ): OpencodeUiListSessionsResult {
-  const dbPath = resolveDbPath(options);
+  const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
     return { success: false, error: `OpenCode session database not found: ${dbPath}` };
   }
@@ -117,7 +117,7 @@ export function archiveOpencodeUiSession(
     return { success: false, error: "Session ID is required" };
   }
 
-  const dbPath = resolveDbPath(options);
+  const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
     return { success: false, error: `OpenCode session database not found: ${dbPath}` };
   }
@@ -156,7 +156,7 @@ export function ensureOpencodeUiSession(
     return { success: false, error: "Session ID is required" };
   }
 
-  const dbPath = resolveDbPath(options);
+  const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
     return { success: false, error: `OpenCode session database not found: ${dbPath}` };
   }
@@ -274,7 +274,7 @@ export function readOpencodeUiSession(
     return { success: false, error: "Session ID is required" };
   }
 
-  const dbPath = resolveDbPath(options);
+  const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
     return { success: false, error: `OpenCode session database not found: ${dbPath}` };
   }

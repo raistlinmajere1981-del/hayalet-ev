@@ -16,6 +16,155 @@ import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
 
 const logger = getLoggerCore();
+const OPENCODE_INSTALL_URL = "https://opencode.ai/install";
+const OPENCODE_RELEASES_API_URL = "https://api.github.com/repos/anomalyco/opencode/releases/latest";
+const OPENCODE_RELEASES_PAGE_URL = "https://github.com/anomalyco/opencode/releases/latest";
+
+function normalizeVersion(version: string): string {
+  return version.trim().replace(/^v/i, "");
+}
+
+function compareSemver(a: string, b: string): number {
+  const aParts = normalizeVersion(a)
+    .split(".")
+    .map((part) => Number.parseInt(part.replace(/[^0-9].*$/, ""), 10) || 0);
+  const bParts = normalizeVersion(b)
+    .split(".")
+    .map((part) => Number.parseInt(part.replace(/[^0-9].*$/, ""), 10) || 0);
+  const maxLength = Math.max(aParts.length, bParts.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const aPart = aParts[index] ?? 0;
+    const bPart = bParts[index] ?? 0;
+    if (aPart > bPart) return 1;
+    if (aPart < bPart) return -1;
+  }
+
+  return 0;
+}
+
+function getOpencodeInstallCommand(currentPlatform: string): string {
+  if (currentPlatform === "win32") {
+    return "npm install -g opencode-ai";
+  }
+
+  return "curl -fsSL https://opencode.ai/install | bash";
+}
+
+function escapeShellSingleQuotes(input: string): string {
+  return input.replace(/'/g, "'\"'\"'");
+}
+
+function escapeAppleScriptString(input: string): string {
+  return input.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+async function spawnDetachedTerminal(
+  command: string,
+  args: string[],
+  options: { shell?: boolean } = {}
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn(command, args, {
+      detached: true,
+      stdio: "ignore",
+      shell: options.shell === true,
+    });
+
+    let settled = false;
+    proc.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
+    proc.once("spawn", () => {
+      if (settled) return;
+      settled = true;
+      proc.unref();
+      resolve();
+    });
+  });
+}
+
+async function launchOpencodeInstallTerminal(currentPlatform: string, installCommand: string): Promise<boolean> {
+  if (currentPlatform === "darwin") {
+    const script = [
+      'tell application "Terminal"',
+      "activate",
+      `do script "${escapeAppleScriptString(installCommand)}"`,
+      "end tell",
+    ].join("\n");
+    await spawnDetachedTerminal("osascript", ["-e", script]);
+    return true;
+  }
+
+  if (currentPlatform === "win32") {
+    await spawnDetachedTerminal("cmd", ["/c", "start", "cmd", "/K", installCommand], { shell: true });
+    return true;
+  }
+
+  const shellCommand = `${installCommand}; echo; exec bash`;
+  const linuxLaunchers: Array<{ command: string; args: string[]; shell?: boolean }> = [
+    {
+      command: "gnome-terminal",
+      args: ["--", "bash", "-lc", shellCommand],
+    },
+    {
+      command: "konsole",
+      args: ["-e", "bash", "-lc", shellCommand],
+    },
+    {
+      command: "x-terminal-emulator",
+      args: ["-e", "bash", "-lc", shellCommand],
+    },
+    {
+      command: "xfce4-terminal",
+      args: ["--command", `bash -lc '${escapeShellSingleQuotes(shellCommand)}'`],
+    },
+  ];
+
+  for (const launcher of linuxLaunchers) {
+    try {
+      await spawnDetachedTerminal(launcher.command, launcher.args, {
+        shell: launcher.shell === true,
+      });
+      return true;
+    } catch {
+      continue;
+    }
+  }
+
+  return false;
+}
+
+async function fetchLatestOpencodeVersion(): Promise<{ latestVersion: string; releaseUrl: string }> {
+  const response = await fetch(OPENCODE_RELEASES_API_URL, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "hayalet-ev-opencode-update-check",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub release check failed: HTTP ${String(response.status)}`);
+  }
+
+  const payload = (await response.json()) as { html_url?: unknown; tag_name?: unknown; name?: unknown };
+  const tagName = typeof payload.tag_name === "string" ? payload.tag_name.trim() : "";
+  const releaseName = typeof payload.name === "string" ? payload.name.trim() : "";
+  const latestVersion = normalizeVersion(tagName !== "" ? tagName : releaseName);
+  if (latestVersion === "") {
+    throw new Error("Latest OpenCode version parse edilemedi.");
+  }
+
+  return {
+    latestVersion,
+    releaseUrl:
+      typeof payload.html_url === "string" && payload.html_url.trim() !== ""
+        ? payload.html_url.trim()
+        : OPENCODE_RELEASES_PAGE_URL,
+  };
+}
 
 function getAssistantRuntimePath(): string {
   return join(Paths.getProjectRoot(), "data", "assistant-runtime.json");
@@ -202,6 +351,68 @@ export function setupWindowHandlers(): void {
         resolve({ success: true });
       }, 100);
     });
+  });
+
+  registerHandler("opencode-check-updates", async (_event, installedVersion: string) => {
+    const normalizedInstalledVersion = normalizeVersion(installedVersion);
+    if (normalizedInstalledVersion === "") {
+      return {
+        success: false,
+        installedVersion: "",
+        error: "Kurulu OpenCode sürümü boş geldi.",
+      };
+    }
+
+    const { latestVersion, releaseUrl } = await fetchLatestOpencodeVersion();
+    const updateAvailable = compareSemver(latestVersion, normalizedInstalledVersion) > 0;
+
+    await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "OpenCode update check completed", {
+      installedVersion: normalizedInstalledVersion,
+      latestVersion,
+      updateAvailable,
+      releaseUrl,
+    });
+
+    return {
+      success: true,
+      installedVersion: normalizedInstalledVersion,
+      latestVersion,
+      updateAvailable,
+      releaseUrl,
+    };
+  });
+
+  registerHandler("opencode-launch-install", async () => {
+    const currentPlatform = platform();
+    const installCommand = getOpencodeInstallCommand(currentPlatform);
+    const launched = await launchOpencodeInstallTerminal(currentPlatform, installCommand);
+
+    if (!launched) {
+      await shell.openExternal(OPENCODE_INSTALL_URL);
+      await logger.logInternal(LogCategory.IPC, LogLevel.WARNING, "OpenCode install fell back to browser", {
+        installUrl: OPENCODE_INSTALL_URL,
+        command: installCommand,
+      });
+      return {
+        success: true,
+        command: installCommand,
+        installUrl: OPENCODE_INSTALL_URL,
+        fallbackToBrowser: true,
+      };
+    }
+
+    await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "OpenCode install terminal launched", {
+      installUrl: OPENCODE_INSTALL_URL,
+      command: installCommand,
+      platform: currentPlatform,
+    });
+
+    return {
+      success: true,
+      command: installCommand,
+      installUrl: OPENCODE_INSTALL_URL,
+      fallbackToBrowser: false,
+    };
   });
 
   registerHandler("assistant-runtime-read", async () => {

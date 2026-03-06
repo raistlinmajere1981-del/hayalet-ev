@@ -147,6 +147,14 @@
                     <!-- JS tarafında populate edilir -->
                   </div>
                 </div>
+                <button
+                  type="button"
+                  class="ds-chat__action-btn ds-chat__action-btn--ghost"
+                  id="model-settings-btn"
+                  title="Model ayarlari"
+                >
+                  ⚙ Model
+                </button>
                 <div class="ds-custom-select" id="effort-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
                     <span class="ds-custom-select__label">Effort ▾</span>
@@ -427,6 +435,63 @@
                     <button class="ds-modal__btn ds-modal__btn--primary" id="prompt-modal-save">
                       Kaydet
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ds-modal" id="model-settings-modal">
+                <div class="ds-modal__overlay" id="model-settings-backdrop"></div>
+                <div class="ds-modal__content ds-modal__content--wide model-settings-modal">
+                  <div class="model-settings__header">
+                    <div>
+                      <h3 class="ds-modal__title">Model Ayarlari</h3>
+                      <p class="model-settings__subtitle">
+                        Provider ve model gorunurlugu, favoriler ve varsayilan model ayari
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      class="ds-chat__action-btn ds-chat__action-btn--ghost"
+                      id="model-settings-close"
+                      title="Kapat"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div class="model-settings__summary" id="model-settings-summary"></div>
+
+                  <div class="model-settings__filters">
+                    <input
+                      type="search"
+                      class="ds-modal__input"
+                      id="model-settings-search"
+                      placeholder="Provider veya model ara..."
+                    />
+                    <label class="model-settings__checkbox">
+                      <input type="checkbox" id="model-settings-favorites-only" />
+                      <span>Sadece favoriler</span>
+                    </label>
+                    <label class="model-settings__checkbox">
+                      <input type="checkbox" id="model-settings-show-hidden" />
+                      <span>Gizlileri goster</span>
+                    </label>
+                  </div>
+
+                  <div class="model-settings__layout">
+                    <section class="model-settings__panel model-settings__panel--providers">
+                      <div class="model-settings__panel-title">Providers</div>
+                      <div class="model-settings__provider-list" id="model-settings-provider-list">
+                        <div class="empty-state">Yukleniyor...</div>
+                      </div>
+                    </section>
+
+                    <section class="model-settings__panel model-settings__panel--models">
+                      <div class="model-settings__panel-title">Models</div>
+                      <div class="model-settings__model-list" id="model-settings-model-list">
+                        <div class="empty-state">Yukleniyor...</div>
+                      </div>
+                    </section>
                   </div>
                 </div>
               </div>
