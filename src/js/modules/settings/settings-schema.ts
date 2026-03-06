@@ -1,96 +1,19 @@
 import type { AppSettings, SlotSettings, MessageMethod, UploadMethod } from "@shared/settings.js";
 import { isAsistanProviderId } from "@shared/common.js";
+import {
+  DEFAULT_ASISTAN_ACCOUNT_ID,
+  DEFAULT_OPENCODE_UI_ACCOUNT_ID,
+  createDefaultAsistanAccount,
+  createDefaultOpencodeUiAccount,
+  createDefaultSettings,
+} from "@shared/settings-defaults.js";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
 }
 
-const DEFAULT_ASISTAN_ACCOUNT = {
-  id: "opencode_opencode_at_opencode_com",
-  email: "opencode@opencode.com",
-  provider: "opencode" as const,
-  nickname: "OpenCode",
-  avatarPath: "src/assets/opencode.png",
-};
-
-const DEFAULT_OPENCODE_UI_ACCOUNT = {
-  id: "opencode_ui_opencode_at_opencode_com",
-  email: "opencode-ui@opencode.com",
-  provider: "opencode-ui" as const,
-  nickname: "OpenCode UI",
-  avatarPath: "src/assets/opencode.png",
-  dbPath: "~/.local/share/opencode/opencode.db",
-};
-
 export function defaultSettings(): AppSettings {
-  const defaults: AppSettings = {
-    user: { nickname: "Kullanıcı", avatarPath: "src/assets/default.png" },
-    integrations: {
-      googledrive: {
-        connected: false,
-        email: "",
-        accessToken: "",
-        refreshToken: "",
-        expiresAt: 0,
-      },
-    },
-    accounts: [],
-    asistanAccounts: [DEFAULT_ASISTAN_ACCOUNT, DEFAULT_OPENCODE_UI_ACCOUNT],
-    slots: {
-      ai1: {
-        accountId: null,
-        catchCommands: true,
-        disabledCommands: [],
-        resumeLastSession: true,
-        rememberConnectionStatus: false,
-        lastConnectionState: "disconnected",
-        messageMethod: "injection",
-        fileMethod: "dragdrop",
-      },
-      ai2: {
-        accountId: null,
-        catchCommands: true,
-        disabledCommands: [],
-        resumeLastSession: true,
-        rememberConnectionStatus: false,
-        lastConnectionState: "disconnected",
-        messageMethod: "injection",
-        fileMethod: "dragdrop",
-      },
-    },
-    asistanSlot: {
-      accountId: "asistan-opencode-default",
-      catchCommands: false,
-      disabledCommands: [],
-      messageMethod: "injection",
-      fileMethod: "injection",
-    },
-    assistants: {
-      preferred: "opencode",
-      lastConnected: null,
-      resumeLastSession: true,
-      keepServersOnAppClose: false,
-      lastOpencodeUrl: null,
-      lastOpencodeUiSessionId: null,
-      lastActiveRelay: null,
-      disabledMcpServers: [],
-      opencode: {
-        binaryPath: null,
-        defaultPort: 4096,
-        version: null,
-      },
-    },
-    logging: {
-      level: "info",
-      verboseModules: [],
-      silentModules: [],
-      persistLevel: "info",
-      maxMemoryLogs: 200,
-      enableStateSnapshots: true,
-      snapshotInterval: 60000,
-    },
-  };
-  return defaults;
+  return createDefaultSettings();
 }
 
 function mergeDefaults(obj: unknown, defaults: Record<string, unknown>): Record<string, unknown> {
@@ -197,18 +120,18 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
 
   if (!Array.isArray(merged.asistanAccounts)) {
-    merged.asistanAccounts = [DEFAULT_ASISTAN_ACCOUNT, DEFAULT_OPENCODE_UI_ACCOUNT];
+    merged.asistanAccounts = [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];
   } else if (merged.asistanAccounts.length === 0) {
-    merged.asistanAccounts = [DEFAULT_ASISTAN_ACCOUNT, DEFAULT_OPENCODE_UI_ACCOUNT];
+    merged.asistanAccounts = [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];
   } else {
     // Ensure default asistan accounts exist
     if (
-      !merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_OPENCODE_UI_ACCOUNT.id)
+      !merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_OPENCODE_UI_ACCOUNT_ID)
     ) {
-      merged.asistanAccounts.splice(1, 0, DEFAULT_OPENCODE_UI_ACCOUNT);
+      merged.asistanAccounts.splice(1, 0, createDefaultOpencodeUiAccount());
     }
-    if (!merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_ASISTAN_ACCOUNT.id)) {
-      merged.asistanAccounts.unshift(DEFAULT_ASISTAN_ACCOUNT);
+    if (!merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_ASISTAN_ACCOUNT_ID)) {
+      merged.asistanAccounts.unshift(createDefaultAsistanAccount());
     }
   }
 
@@ -248,7 +171,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
 
   if (!isPlainObject(merged.asistanSlot)) {
     merged.asistanSlot = defaults.asistanSlot ?? {
-      accountId: "opencode_opencode_at_opencode_com",
+      accountId: DEFAULT_ASISTAN_ACCOUNT_ID,
       catchCommands: false,
       disabledCommands: [],
       messageMethod: "injection",
@@ -256,7 +179,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     };
   }
   if (merged.asistanSlot.accountId === "" || typeof merged.asistanSlot.accountId === "undefined") {
-    merged.asistanSlot.accountId = "opencode_opencode_at_opencode_com";
+    merged.asistanSlot.accountId = DEFAULT_ASISTAN_ACCOUNT_ID;
   }
   if (typeof merged.asistanSlot.catchCommands !== "boolean") {
     merged.asistanSlot.catchCommands = false;
@@ -354,6 +277,48 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.assistants.opencode.version.trim() === ""
   ) {
     merged.assistants.opencode.version = null;
+  }
+  if (!isPlainObject(merged.assistants.opencodeUi)) {
+    merged.assistants.opencodeUi = defaults.assistants?.opencodeUi ?? {
+      hiddenProviders: [],
+      hiddenModels: [],
+      favoriteModels: [],
+      defaultModelKey: null,
+      lastSelectedModelKey: null,
+    };
+  }
+  if (!Array.isArray(merged.assistants.opencodeUi.hiddenProviders)) {
+    merged.assistants.opencodeUi.hiddenProviders = [];
+  }
+  if (!Array.isArray(merged.assistants.opencodeUi.hiddenModels)) {
+    merged.assistants.opencodeUi.hiddenModels = [];
+  }
+  if (!Array.isArray(merged.assistants.opencodeUi.favoriteModels)) {
+    merged.assistants.opencodeUi.favoriteModels = [];
+  }
+  if (
+    typeof merged.assistants.opencodeUi.defaultModelKey !== "string" &&
+    merged.assistants.opencodeUi.defaultModelKey !== null
+  ) {
+    merged.assistants.opencodeUi.defaultModelKey = null;
+  }
+  if (
+    typeof merged.assistants.opencodeUi.lastSelectedModelKey !== "string" &&
+    merged.assistants.opencodeUi.lastSelectedModelKey !== null
+  ) {
+    merged.assistants.opencodeUi.lastSelectedModelKey = null;
+  }
+  if (
+    typeof merged.assistants.opencodeUi.defaultModelKey === "string" &&
+    merged.assistants.opencodeUi.defaultModelKey.trim() === ""
+  ) {
+    merged.assistants.opencodeUi.defaultModelKey = null;
+  }
+  if (
+    typeof merged.assistants.opencodeUi.lastSelectedModelKey === "string" &&
+    merged.assistants.opencodeUi.lastSelectedModelKey.trim() === ""
+  ) {
+    merged.assistants.opencodeUi.lastSelectedModelKey = null;
   }
 
   if (!isPlainObject(merged.logging)) {
