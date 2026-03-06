@@ -1,5 +1,8 @@
 import { apiCall } from "./api.js";
-import { loadOpencodeUiModelPreferences, saveOpencodeUiModelPreferences } from "./model-preferences.js";
+import {
+  loadOpencodeUiModelPreferences,
+  saveOpencodeUiModelPreferences,
+} from "./model-preferences.js";
 import {
   applyModelPreferences,
   chooseActiveModelKey,
@@ -15,10 +18,7 @@ import {
 } from "./provider-catalog.js";
 import type { CustomSelectAPI, OpencodeUiModelPreferences, RuntimeState } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 export interface ProviderContext {
   runtime: RuntimeState;
@@ -114,7 +114,7 @@ export function refreshReasoningEffortDropdown(context: ProviderContext): void {
     context.runtime.activeReasoningEffort != null &&
     items.some((item) => item.value === context.runtime.activeReasoningEffort)
       ? context.runtime.activeReasoningEffort
-      : (() => {
+      : ((): string | null => {
           for (const candidate of DEFAULT_VARIANT_ORDER) {
             const matched = items.find((item) => item.value === candidate);
             if (matched != null) {
@@ -175,10 +175,7 @@ export async function loadModels(
   try {
     const payload = payloadOverride ?? (await apiCall<unknown>("GET", "/config/providers"));
     const modelItems = normalizeModelItems(payload);
-    const providerItems =
-      providerItemsOverride != null
-        ? providerItemsOverride
-        : normalizeProviderItemsFromConfig(payload);
+    const providerItems = providerItemsOverride ?? normalizeProviderItemsFromConfig(payload);
 
     context.runtime.modelMetaByKey = {};
     modelItems.forEach((item) => {

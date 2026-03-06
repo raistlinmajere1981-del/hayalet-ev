@@ -89,7 +89,7 @@ export class OpencodeUiSessionWatcherRegistry {
     );
 
     const existing = this.entries.get(webContents.id);
-    if (existing && existing.sessionId === normalizedSessionId && existing.dbPath === resolvedDbPath) {
+    if (existing?.sessionId === normalizedSessionId && existing.dbPath === resolvedDbPath) {
       return;
     }
 
@@ -117,18 +117,24 @@ export class OpencodeUiSessionWatcherRegistry {
     for (const target of createWatchTargets(entry.dbPath)) {
       try {
         if (!existsSync(target)) continue;
-        const watcher = watch(target, { persistent: false }, () => scheduleCheck());
+        const watcher = watch(target, { persistent: false }, () => {
+          scheduleCheck();
+        });
         entry.watchers.push(watcher);
       } catch {}
     }
 
     try {
-      const watcher = watch(dirname(entry.dbPath), { persistent: false }, () => scheduleCheck());
+      const watcher = watch(dirname(entry.dbPath), { persistent: false }, () => {
+        scheduleCheck();
+      });
       entry.watchers.push(watcher);
     } catch {}
 
     // Fallback poll to avoid missing events on platforms where fs.watch is flaky.
-    entry.pollTimer = setInterval(() => scheduleCheck(), 2000);
+    entry.pollTimer = setInterval(() => {
+      scheduleCheck();
+    }, 2000);
 
     // Prime token and send an initial "updated" to let UI catch up without interval polling.
     scheduleCheck();

@@ -1,9 +1,6 @@
 import type { OpencodeUiSessionSummary, RuntimeState } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 export interface OpencodeUiToolsReadyPayload {
   ready: boolean;
@@ -43,7 +40,10 @@ export interface BootstrapContext {
   loadActiveSessionHistory: () => Promise<void>;
   checkHealth: () => Promise<{ mcpServers: Record<string, unknown> }>;
   loadStatusContext: () => Promise<void>;
-  loadToolsFinalSnapshot: () => Promise<{ status: "loaded" | "empty" | "error"; toolIds: string[] }>;
+  loadToolsFinalSnapshot: () => Promise<{
+    status: "loaded" | "empty" | "error";
+    toolIds: string[];
+  }>;
   syncActiveSessionHistoryIfUpdated: () => Promise<void>;
 }
 
@@ -64,8 +64,7 @@ export async function initializeSessionSelection(
   }
 
   const resumeId = resumeSessionId.trim();
-  const hasResume =
-    resumeId !== "" && visibleSessions.some((session) => session.id === resumeId);
+  const hasResume = resumeId !== "" && visibleSessions.some((session) => session.id === resumeId);
 
   if (hasResume) {
     context.setActiveSession(resumeId);
@@ -118,7 +117,7 @@ export function startLiveMessageRefresh(context: BootstrapContext): void {
 
   sessionUpdatedListenerBound = true;
   api.opencodeUiOnSessionUpdated((payload) => {
-    if (payload?.sessionId !== context.runtime.activeSessionId) {
+    if (payload.sessionId !== context.runtime.activeSessionId) {
       return;
     }
     void context.syncActiveSessionHistoryIfUpdated();

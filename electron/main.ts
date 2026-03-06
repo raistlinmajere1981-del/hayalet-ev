@@ -305,7 +305,7 @@ let cleanupDone = false;
 async function shouldKeepAssistantServersRunningOnClose(): Promise<boolean> {
   try {
     const settings = await loadSettings();
-    return settings?.assistants.keepServersOnAppClose === true;
+    return settings?.assistants?.keepServersOnAppClose === true;
   } catch {
     return false;
   }

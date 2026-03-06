@@ -32,7 +32,8 @@ export function setupCustomSelect(
     const item = (e.target as HTMLElement).closest(".ds-custom-select__item");
     if (!item) return;
     const value = (item as HTMLElement).dataset["value"] ?? "";
-    const text = (item as HTMLElement).dataset["label"] ?? item.textContent ?? "";
+    const datasetLabel = (item as HTMLElement).dataset["label"];
+    const text = typeof datasetLabel === "string" ? datasetLabel : item.textContent;
     menu.querySelectorAll(".ds-custom-select__item").forEach(function (el) {
       el.classList.remove("is-active");
     });

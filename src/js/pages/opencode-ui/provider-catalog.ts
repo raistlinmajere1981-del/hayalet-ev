@@ -105,12 +105,13 @@ function normalizeModelVariants(raw: unknown): ModelVariantOption[] {
 }
 
 function extractModelMeta(modelRecord: Record<string, unknown>, providerId: string): ModelMeta {
-  const modelId =
-    normalizeString(modelRecord["id"]) ||
-    normalizeString(modelRecord["model"]) ||
-    normalizeString(modelRecord["modelID"]);
+  const idFromId = normalizeString(modelRecord["id"]);
+  const idFromModel = normalizeString(modelRecord["model"]);
+  const idFromModelId = normalizeString(modelRecord["modelID"]);
+  const modelId = idFromId !== "" ? idFromId : idFromModel !== "" ? idFromModel : idFromModelId;
   const providerName = normalizeString(modelRecord["providerName"]);
-  const modelName = normalizeString(modelRecord["name"]) || modelId;
+  const rawModelName = normalizeString(modelRecord["name"]);
+  const modelName = rawModelName !== "" ? rawModelName : modelId;
   const variants = modelRecord["variants"];
   const variantOptions = normalizeModelVariants(variants);
   const reasoningEfforts = normalizeReasoningEfforts(variants);
@@ -202,7 +203,8 @@ export function normalizeModelItems(payload: unknown): SelectItem[] {
 
     const providerRecord = provider as Record<string, unknown>;
     const providerId = normalizeString(providerRecord["id"]);
-    const providerName = normalizeString(providerRecord["name"]) || providerId;
+    const rawProviderName = normalizeString(providerRecord["name"]);
+    const providerName = rawProviderName !== "" ? rawProviderName : providerId;
     const modelsRaw = providerRecord["models"];
     const models = Array.isArray(modelsRaw)
       ? modelsRaw

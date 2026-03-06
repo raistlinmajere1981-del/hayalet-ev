@@ -226,7 +226,7 @@ function providerContext(): ProviderContext {
     byId,
     modelDropdown,
     effortDropdown,
-    onModelStateUpdated: () => {
+    onModelStateUpdated: (): void => {
       refreshModelSettingsOverlay();
     },
   };
@@ -495,8 +495,8 @@ function initSelects(): void {
     runtime.activeAgentId = value !== "" ? value : null;
   });
 
-  modelDropdown = setupCustomSelect("model-dropdown", (value: string) => {
-    return selectActiveModelKey(value !== "" ? value : null, { persistSelection: true });
+  modelDropdown = setupCustomSelect("model-dropdown", (value: string): void => {
+    void selectActiveModelKey(value !== "" ? value : null, { persistSelection: true });
   });
 
   effortDropdown = setupCustomSelect("effort-dropdown", (value: string) => {

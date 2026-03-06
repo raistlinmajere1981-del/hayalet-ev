@@ -7,10 +7,7 @@ import type {
   RuntimeState,
 } from "./types.js";
 
-type ByIdFn = <T extends HTMLElement>(
-  id: string,
-  guard?: (element: T) => boolean
-) => T | null;
+type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
 interface HistoryContext {
   runtime: RuntimeState;
@@ -31,19 +28,14 @@ interface HistoryContext {
   renderHistoricToolCall: (targetContainer: HTMLElement, toolCall: OpencodeUiToolCall) => void;
   readSessionFromDisk: (sessionId: string) => Promise<OpencodeUiSessionDetail | null>;
   scrollChatToBottom: (force?: boolean) => void;
-  buildSessionSnapshotKey: (
-    messages: OpencodeUiSessionDetail["messages"] | undefined
-  ) => string;
+  buildSessionSnapshotKey: (messages: OpencodeUiSessionDetail["messages"] | undefined) => string;
   wait: (delayMs: number) => Promise<void>;
 }
 
 let liveSyncInFlight = false;
 const historyVisibleStarts = new Map<string, number>();
 
-function renderHistoryMessage(
-  context: HistoryContext,
-  message: OpencodeUiSessionMessage
-): void {
+function renderHistoryMessage(context: HistoryContext, message: OpencodeUiSessionMessage): void {
   if (message.role === "user") {
     context.addMessage("user", message.text, undefined, message.files);
     return;
@@ -82,18 +74,19 @@ function resolveVisibleStart(sessionId: string, totalMessages: number): number {
   return visibleStart;
 }
 
-async function renderSessionMessages(
+function renderSessionMessages(
   context: HistoryContext,
   detail: OpencodeUiSessionDetail,
   options: { preserveScrollOffset?: boolean } = {}
-): Promise<void> {
+): void {
   const chatMessages = context.byId<HTMLElement>("chat-messages");
   if (chatMessages == null) {
     return;
   }
 
-  const previousScrollHeight = options.preserveScrollOffset ? chatMessages.scrollHeight : 0;
-  const previousScrollTop = options.preserveScrollOffset ? chatMessages.scrollTop : 0;
+  const preserveScrollOffset = options.preserveScrollOffset === true;
+  const previousScrollHeight = preserveScrollOffset ? chatMessages.scrollHeight : 0;
+  const previousScrollTop = preserveScrollOffset ? chatMessages.scrollTop : 0;
   const messages = Array.isArray(detail.messages) ? detail.messages : [];
   const visibleStart = resolveVisibleStart(detail.id, messages.length);
   const visibleMessages = messages.slice(visibleStart);
@@ -118,7 +111,7 @@ async function renderSessionMessages(
   context.runtime.lastRenderedMessageCount = messages.length;
   context.runtime.lastRenderedSnapshotKey = context.buildSessionSnapshotKey(messages);
 
-  if (options.preserveScrollOffset) {
+  if (preserveScrollOffset) {
     requestAnimationFrame(() => {
       const nextScrollTop = chatMessages.scrollHeight - previousScrollHeight + previousScrollTop;
       chatMessages.scrollTop = Math.max(0, nextScrollTop);
@@ -144,7 +137,7 @@ async function loadMoreHistoryMessages(context: HistoryContext, sessionId: strin
   }
 
   historyVisibleStarts.set(sessionId, nextVisibleStart);
-  await renderSessionMessages(context, detail, { preserveScrollOffset: true });
+  renderSessionMessages(context, detail, { preserveScrollOffset: true });
 }
 
 export async function loadActiveSessionHistory(context: HistoryContext): Promise<void> {
@@ -179,7 +172,7 @@ export async function loadActiveSessionHistory(context: HistoryContext): Promise
     Array.isArray(detail.changed_files) ? detail.changed_files : [],
     detail.workspace_path
   );
-  await renderSessionMessages(context, detail);
+  renderSessionMessages(context, detail);
   context.updateUsageFromSession(detail.usage);
 }
 

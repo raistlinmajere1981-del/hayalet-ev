@@ -62,7 +62,7 @@ function createQuickPromptId(): string {
 }
 
 function loadLegacyQuickPrompts(): QuickPromptRecord[] {
-  if (typeof window === "undefined" || window.localStorage == null) {
+  if (typeof window === "undefined") {
     return [];
   }
 
@@ -93,7 +93,7 @@ function loadLegacyQuickPrompts(): QuickPromptRecord[] {
 }
 
 function clearLegacyQuickPrompts(): void {
-  if (typeof window === "undefined" || window.localStorage == null) {
+  if (typeof window === "undefined") {
     return;
   }
 
@@ -140,23 +140,29 @@ async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
   }
 }
 
-async function writeQuickPromptsToStore(prompts: QuickPromptRecord[]): Promise<QuickPromptRecord[]> {
+async function writeQuickPromptsToStore(
+  prompts: QuickPromptRecord[]
+): Promise<QuickPromptRecord[]> {
   const normalizedPrompts = normalizeQuickPromptRecords(prompts);
   const api = window.electronAPI;
   if (api == null || typeof api.opencodeUiQuickPromptsWrite !== "function") {
-    if (typeof window !== "undefined" && window.localStorage != null) {
+    if (typeof window !== "undefined") {
       window.localStorage.setItem(QUICK_PROMPTS_STORAGE_KEY, JSON.stringify(normalizedPrompts));
     }
     return normalizedPrompts;
   }
 
-  const result = (await api.opencodeUiQuickPromptsWrite(normalizedPrompts)) as QuickPromptStoreResponse;
+  const result = (await api.opencodeUiQuickPromptsWrite(
+    normalizedPrompts
+  )) as QuickPromptStoreResponse;
   if (result.success !== true) {
     throw new Error(result.error ?? "Promptlar kaydedilemedi.");
   }
 
   clearLegacyQuickPrompts();
-  return normalizeQuickPromptRecords(Array.isArray(result.prompts) ? result.prompts : normalizedPrompts);
+  return normalizeQuickPromptRecords(
+    Array.isArray(result.prompts) ? result.prompts : normalizedPrompts
+  );
 }
 
 function updateQuickPromptCount(count: number): void {
@@ -177,7 +183,9 @@ function openPromptModal(): void {
   const modal = document.getElementById("prompt-modal");
   const modalTitle = document.getElementById("prompt-modal-title");
   const modalName = document.getElementById("prompt-modal-name") as HTMLInputElement | null;
-  const modalContent = document.getElementById("prompt-modal-content") as HTMLTextAreaElement | null;
+  const modalContent = document.getElementById(
+    "prompt-modal-content"
+  ) as HTMLTextAreaElement | null;
 
   if (modal == null || modalTitle == null || modalName == null || modalContent == null) {
     return;
@@ -202,7 +210,9 @@ function applyQuickPrompt(prompt: QuickPromptRecord, options: QuickPromptPanelOp
 
   const existingValue = chatInput.value.trim();
   const nextValue =
-    existingValue === "" ? prompt.content : `${chatInput.value.replace(/\s+$/, "")}\n\n${prompt.content}`;
+    existingValue === ""
+      ? prompt.content
+      : `${chatInput.value.replace(/\s+$/, "")}\n\n${prompt.content}`;
 
   chatInput.value = nextValue;
   chatInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -294,7 +304,9 @@ function renderQuickPromptList(prompts: QuickPromptRecord[]): void {
   });
 }
 
-async function refreshQuickPromptList(options?: QuickPromptPanelOptions): Promise<QuickPromptRecord[]> {
+async function refreshQuickPromptList(
+  options?: QuickPromptPanelOptions
+): Promise<QuickPromptRecord[]> {
   try {
     const prompts = await readQuickPromptsFromStore();
     renderQuickPromptList(prompts);
@@ -345,7 +357,9 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
   const modalCancel = document.getElementById("prompt-modal-cancel") as HTMLButtonElement | null;
   const modalSave = document.getElementById("prompt-modal-save") as HTMLButtonElement | null;
   const modalName = document.getElementById("prompt-modal-name") as HTMLInputElement | null;
-  const modalContent = document.getElementById("prompt-modal-content") as HTMLTextAreaElement | null;
+  const modalContent = document.getElementById(
+    "prompt-modal-content"
+  ) as HTMLTextAreaElement | null;
 
   void refreshQuickPromptList(options);
 

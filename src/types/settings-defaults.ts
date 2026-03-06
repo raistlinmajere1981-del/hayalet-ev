@@ -39,7 +39,7 @@ export function createDefaultSettings(): AppSettings {
     clientSecret: "",
     authorizationCode: "",
     account: "",
-  } as NonNullable<AppSettings["integrations"]>["googledrive"];
+  } as NonNullable<NonNullable<AppSettings["integrations"]>["googledrive"]>;
 
   return {
     user: { nickname: "Kullanıcı", avatarPath: "src/assets/default.png" },

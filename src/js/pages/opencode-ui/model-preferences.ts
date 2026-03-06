@@ -1,4 +1,3 @@
-import type { AppSettings } from "@shared/settings.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import type { OpencodeUiModelPreferences } from "./types.js";
 
@@ -50,7 +49,7 @@ export function normalizeOpencodeUiModelPreferences(raw: unknown): OpencodeUiMod
 
 export async function loadOpencodeUiModelPreferences(): Promise<OpencodeUiModelPreferences> {
   try {
-    const settings = (await SettingsManager.load()) as AppSettings;
+    const settings = await SettingsManager.load();
     return normalizeOpencodeUiModelPreferences(settings.assistants?.opencodeUi);
   } catch {
     return { ...DEFAULT_OPENCODE_UI_MODEL_PREFERENCES };

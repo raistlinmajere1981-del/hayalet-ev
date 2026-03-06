@@ -27,10 +27,16 @@ function normalizeVersion(version: string): string {
 function compareSemver(a: string, b: string): number {
   const aParts = normalizeVersion(a)
     .split(".")
-    .map((part) => Number.parseInt(part.replace(/[^0-9].*$/, ""), 10) || 0);
+    .map((part) => {
+      const parsed = Number.parseInt(part.replace(/[^0-9].*$/, ""), 10);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    });
   const bParts = normalizeVersion(b)
     .split(".")
-    .map((part) => Number.parseInt(part.replace(/[^0-9].*$/, ""), 10) || 0);
+    .map((part) => {
+      const parsed = Number.parseInt(part.replace(/[^0-9].*$/, ""), 10);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    });
   const maxLength = Math.max(aParts.length, bParts.length);
 
   for (let index = 0; index < maxLength; index += 1) {
@@ -86,7 +92,10 @@ async function spawnDetachedTerminal(
   });
 }
 
-async function launchOpencodeInstallTerminal(currentPlatform: string, installCommand: string): Promise<boolean> {
+async function launchOpencodeInstallTerminal(
+  currentPlatform: string,
+  installCommand: string
+): Promise<boolean> {
   if (currentPlatform === "darwin") {
     const script = [
       'tell application "Terminal"',
@@ -99,7 +108,9 @@ async function launchOpencodeInstallTerminal(currentPlatform: string, installCom
   }
 
   if (currentPlatform === "win32") {
-    await spawnDetachedTerminal("cmd", ["/c", "start", "cmd", "/K", installCommand], { shell: true });
+    await spawnDetachedTerminal("cmd", ["/c", "start", "cmd", "/K", installCommand], {
+      shell: true,
+    });
     return true;
   }
 
@@ -123,21 +134,29 @@ async function launchOpencodeInstallTerminal(currentPlatform: string, installCom
     },
   ];
 
-  for (const launcher of linuxLaunchers) {
+  const tryLauncherAt = async (index: number): Promise<boolean> => {
+    const launcher = linuxLaunchers[index];
+    if (launcher == null) {
+      return false;
+    }
+
     try {
       await spawnDetachedTerminal(launcher.command, launcher.args, {
         shell: launcher.shell === true,
       });
       return true;
     } catch {
-      continue;
+      return await tryLauncherAt(index + 1);
     }
-  }
+  };
 
-  return false;
+  return await tryLauncherAt(0);
 }
 
-async function fetchLatestOpencodeVersion(): Promise<{ latestVersion: string; releaseUrl: string }> {
+async function fetchLatestOpencodeVersion(): Promise<{
+  latestVersion: string;
+  releaseUrl: string;
+}> {
   const response = await fetch(OPENCODE_RELEASES_API_URL, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -149,7 +168,11 @@ async function fetchLatestOpencodeVersion(): Promise<{ latestVersion: string; re
     throw new Error(`GitHub release check failed: HTTP ${String(response.status)}`);
   }
 
-  const payload = (await response.json()) as { html_url?: unknown; tag_name?: unknown; name?: unknown };
+  const payload = (await response.json()) as {
+    html_url?: unknown;
+    tag_name?: unknown;
+    name?: unknown;
+  };
   const tagName = typeof payload.tag_name === "string" ? payload.tag_name.trim() : "";
   const releaseName = typeof payload.name === "string" ? payload.name.trim() : "";
   const latestVersion = normalizeVersion(tagName !== "" ? tagName : releaseName);
@@ -389,10 +412,15 @@ export function setupWindowHandlers(): void {
 
     if (!launched) {
       await shell.openExternal(OPENCODE_INSTALL_URL);
-      await logger.logInternal(LogCategory.IPC, LogLevel.WARNING, "OpenCode install fell back to browser", {
-        installUrl: OPENCODE_INSTALL_URL,
-        command: installCommand,
-      });
+      await logger.logInternal(
+        LogCategory.IPC,
+        LogLevel.WARNING,
+        "OpenCode install fell back to browser",
+        {
+          installUrl: OPENCODE_INSTALL_URL,
+          command: installCommand,
+        }
+      );
       return {
         success: true,
         command: installCommand,
