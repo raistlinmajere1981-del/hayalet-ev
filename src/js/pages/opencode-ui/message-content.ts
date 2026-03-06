@@ -56,7 +56,7 @@ export function buildMessageSnapshotToken(message: OpencodeUiSessionMessage | un
   return `${message.role}:${String(text.length)}:${tail}:${String(toolCalls.length)}:${toolTail}:${String(files.length)}`;
 }
 
-export function buildSessionSnapshotKey(messages: OpencodeUiSessionMessage[]): string {
+export function buildSessionSnapshotKey(messages: OpencodeUiSessionMessage[] | undefined): string {
   if (!Array.isArray(messages) || messages.length === 0) {
     return "0";
   }

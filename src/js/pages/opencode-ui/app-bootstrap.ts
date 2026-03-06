@@ -1,0 +1,91 @@
+import type { OpencodeUiBootstrapDeps, OpencodeUiToolsReadyPayload } from "./bootstrap-actions.js";
+import { initUIHelpers } from "./ui-helpers.js";
+import type { ByIdFn } from "./host-helpers.js";
+import type { RuntimeState } from "./types.js";
+
+interface BootstrapOpencodeUiAppOptions {
+  runtime: RuntimeState;
+  initialUsageText: string;
+  providerConfig: unknown;
+  byId: ByIdFn;
+  setApiBaseUrl: (url: string) => void;
+  setWorkspaceUrlLabel: (url: string) => void;
+  getLogoFallback: () => void;
+  updateUsagePlaceholders: (text: string) => void;
+  initSelects: () => void;
+  initUtilityActions: () => void;
+  initSessionEvents: () => void;
+  initChatEvents: () => void;
+  sendStageToHost: (title: string, subtitle: string) => void;
+  sendToolsReadyToHost: (payload: OpencodeUiToolsReadyPayload) => void;
+  runOpencodeUiBootstrapPipeline: (options: {
+    deps: OpencodeUiBootstrapDeps;
+    emitStage: (title: string, subtitle: string) => void;
+    emitToolsReady: (payload: OpencodeUiToolsReadyPayload) => void;
+  }) => Promise<void>;
+  deps: OpencodeUiBootstrapDeps;
+  loadAgents: () => Promise<void>;
+  loadProviderContextAndModels: () => Promise<void>;
+  initializeSessionSelection: (resumeSessionId: string) => Promise<void>;
+  startPeriodicRefresh: () => void;
+  startLiveMessageRefresh: () => void;
+}
+
+export async function bootstrapOpencodeUiApp(options: BootstrapOpencodeUiAppOptions): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  const port = params.get("port") ?? "4096";
+  const resumeSessionId = params.get("resumeSessionId") ?? "";
+  const dbPath = params.get("dbPath") ?? "";
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  options.runtime.baseUrl = baseUrl;
+  options.runtime.dbPath = dbPath;
+
+  options.setApiBaseUrl(baseUrl);
+  options.setWorkspaceUrlLabel(window.location.href);
+  options.getLogoFallback();
+  options.updateUsagePlaceholders(options.initialUsageText);
+
+  window.__hayalet_provider_config = options.providerConfig as ProviderConfig;
+
+  initUIHelpers();
+  options.initSelects();
+  options.initUtilityActions();
+  options.initSessionEvents();
+  options.initChatEvents();
+
+  options.sendStageToHost("OpenCode UI basladi", "Sayfa modulleri hazirlaniyor");
+
+  try {
+    await options.runOpencodeUiBootstrapPipeline({
+      deps: options.deps,
+      emitStage: options.sendStageToHost,
+      emitToolsReady: options.sendToolsReadyToHost,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.sendStageToHost("Baglanti kismi", `Bootstrap hatasi: ${message}`);
+    options.sendToolsReadyToHost({
+      ready: true,
+      unresolvedServers: [],
+      mcpChecks: 0,
+      toolCount: 0,
+    });
+  }
+
+  try {
+    await Promise.all([options.loadAgents(), options.loadProviderContextAndModels()]);
+    await options.initializeSessionSelection(resumeSessionId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const errorArea = options.byId<HTMLElement>("error-area");
+    if (errorArea != null) {
+      errorArea.textContent = `Hata: ${message}`;
+    }
+    options.sendStageToHost("Baglanti kismi", `Session yukleme hatasi: ${message}`);
+  }
+
+  options.startPeriodicRefresh();
+  options.startLiveMessageRefresh();
+}
+import type { ProviderConfig } from "@shared/provider.js";

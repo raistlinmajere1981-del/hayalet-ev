@@ -10,7 +10,7 @@
  * 2. provider-registry.ts'de kaydedin
  */
 
-import { LogCategory, LogLevel } from "@shared/logging-core";
+import { LogCategory } from "@shared/logging-core";
 import { ASISTAN_TIMEOUTS } from "@timeouts";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
@@ -19,33 +19,35 @@ import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import type { AppSettings } from "@shared/settings.js";
-import { ConnectButtonState } from "@shared/asistan.js";
 import type {
+  ConnectButtonState,
   WebviewElement,
   SlotStateInfo,
   AsistanTrafficState,
   AsistanProviderAdapter,
 } from "@shared/asistan.js";
 import { AsistanProviderRegistry } from "./provider-registry.js";
-import { formatConnectionIndicatorText } from "./connection-indicator.js";
-import { resolveAsistanConnectButtonState } from "./connect-flow.js";
 import {
   createGhostHandoffRuntimePatch,
   shouldAutoEnableKeepServersOnClose,
 } from "./ghost-handoff.js";
-import { resolveOverlayStage, shouldKeepOverlayVisibleForToolsReady } from "./overlay-stage.js";
 import type { OverlayStage } from "./overlay-stage.js";
+import {
+  generateWorkflowSessionId,
+  syncAssistantRuntimeDefaults,
+  updateAssistantRuntimeState,
+} from "./assistant-runtime.js";
 import { detectSystemActiveServerStatus } from "./system-server-control.js";
+import { toggleAsistanConnection } from "./connection-lifecycle.js";
+import { updateAsistanConnectionUI } from "./connection-ui.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
-import {
-  getOpencodePreferences,
-  normalizeOpencodePort,
-  resolveOpencodeUiDbPath,
-} from "./opencode-preferences.js";
+import { refreshOpencodeDoctorStatus, openOpencodeSettingsModal } from "./opencode-doctor.js";
+import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
 import { openTestResultsModal } from "./test-results-modal.js";
 import { bindAsistanBasicEvents } from "./event-bindings.js";
 import { populateAsistanProviderSelect } from "./provider-select.js";
+import { bindAsistanPrimaryWebviewEvents, bindAsistanWebviewIpcEvents } from "./webview-bindings.js";
 import {
   applyConnectButtonState,
   renderConnectedAiList,
@@ -249,266 +251,19 @@ export class AsistanController {
     }
   }
 
-  _setOpencodeIndicatorState(
-    state: "checking" | "ready" | "missing" | "error",
-    text: string,
-    title = ""
-  ): void {
-    if (this.opencodeIndicatorText) {
-      this.opencodeIndicatorText.textContent = text;
-    }
-    if (this.opencodeIndicator) {
-      this.opencodeIndicator.title = title;
-    }
-
-    const indicator = this.opencodeIndicator;
-    const dot = this.opencodeIndicatorDot;
-    if (!indicator || !dot) return;
-
-    indicator.classList.remove("is-ready", "is-missing", "is-error");
-    dot.classList.remove("status-ready", "status-missing", "status-error", "status-checking");
-
-    if (state === "ready") {
-      indicator.classList.add("is-ready");
-      dot.classList.add("status-ready");
-      return;
-    }
-
-    if (state === "missing") {
-      indicator.classList.add("is-missing");
-      dot.classList.add("status-missing");
-      return;
-    }
-
-    if (state === "error") {
-      indicator.classList.add("is-error");
-      dot.classList.add("status-error");
-      return;
-    }
-
-    dot.classList.add("status-checking");
-  }
-
   _refreshOpencodeDoctorStatus(): void {
-    const settings = SettingsManager.getSnapshot() as AppSettings | null;
-    const opencode = settings?.assistants?.opencode;
-    const defaultPort = normalizeOpencodePort(opencode?.defaultPort);
-    const binaryPath =
-      typeof opencode?.binaryPath === "string" && opencode.binaryPath.trim() !== ""
-        ? opencode.binaryPath.trim()
-        : null;
-    const version =
-      typeof opencode?.version === "string" && opencode.version.trim() !== ""
-        ? opencode.version.trim()
-        : null;
-
-    const titleLines = [`Varsayılan port: ${String(defaultPort)}`];
-    if (binaryPath !== null) {
-      titleLines.push(`Path: ${binaryPath}`);
-    }
-
-    if (version !== null) {
-      this._setOpencodeIndicatorState("ready", `OpenCode v${version}`, titleLines.join("\n"));
-      return;
-    }
-
-    this._setOpencodeIndicatorState("missing", "OpenCode bulunamadı", titleLines.join("\n"));
+    refreshOpencodeDoctorStatus({
+      indicator: this.opencodeIndicator,
+      indicatorDot: this.opencodeIndicatorDot,
+      indicatorText: this.opencodeIndicatorText,
+    });
   }
 
   async _openOpencodeSettingsModal(): Promise<void> {
-    const prefs = getOpencodePreferences(SettingsManager.getSnapshot() as AppSettings | null);
-    const modalModule = await import("../../ui/modal-manager.js");
-    const electronApi = window.electronAPI;
-
-    const content = document.createElement("div");
-    content.className = "opencode-settings-modal";
-    content.innerHTML = `
-      <div class="opencode-settings-row">
-        <label>Binary Path</label>
-        <input
-          class="input opencode-settings-input"
-          type="text"
-          placeholder="PATH'teki opencode için boş bırakın"
-          data-role="binary-path"
-        />
-        <p class="opencode-settings-help">
-          Boş bırakırsan sistem PATH içindeki <code>opencode</code> komutu kullanılır.
-        </p>
-      </div>
-      <div class="opencode-settings-actions">
-        <button class="btn btn-secondary btn-sm" data-action="browse" type="button">Dosya Seç</button>
-        <button class="btn btn-ghost btn-sm" data-action="reset" type="button">PATH Kullan</button>
-        <button class="btn btn-ghost btn-sm" data-action="check" type="button">Kontrol Et</button>
-      </div>
-      <div class="opencode-settings-row">
-        <label>Default Port</label>
-        <input
-          class="input opencode-settings-input"
-          type="number"
-          min="1024"
-          max="65535"
-          step="1"
-          data-role="default-port"
-        />
-      </div>
-      <div class="opencode-settings-check" data-role="check-result"></div>
-    `;
-
-    const binaryInput = content.querySelector<HTMLInputElement>('[data-role="binary-path"]');
-    const portInput = content.querySelector<HTMLInputElement>('[data-role="default-port"]');
-    const checkResult = content.querySelector<HTMLElement>('[data-role="check-result"]');
-    const browseBtn = content.querySelector<HTMLButtonElement>('[data-action="browse"]');
-    const resetBtn = content.querySelector<HTMLButtonElement>('[data-action="reset"]');
-    const checkBtn = content.querySelector<HTMLButtonElement>('[data-action="check"]');
-
-    if (binaryInput) binaryInput.value = prefs.binaryPath ?? "";
-    if (portInput) portInput.value = String(prefs.defaultPort);
-
-    const setCheckResult = (
-      message: string,
-      tone: "normal" | "success" | "error" = "normal"
-    ): void => {
-      if (!checkResult) return;
-      checkResult.textContent = message;
-      if (tone === "success") {
-        checkResult.style.color = "var(--color-success)";
-      } else if (tone === "error") {
-        checkResult.style.color = "var(--color-error)";
-      } else {
-        checkResult.style.color = "var(--text-secondary)";
-      }
-    };
-
-    let lastValidation: { binaryPath: string | null; version: string | null } | null = null;
-
-    const runDoctorCheck = async (): Promise<void> => {
-      if (electronApi === undefined || typeof electronApi.opencodeServeDoctor !== "function") {
-        setCheckResult("OpenCode doctor IPC bulunamadı.", "error");
-        return;
-      }
-
-      const value = binaryInput?.value.trim() ?? "";
-      setCheckResult("Kontrol ediliyor...");
-
-      try {
-        const result = await electronApi.opencodeServeDoctor(
-          value !== "" ? { binaryPath: value } : undefined
-        );
-        if (result.success !== true || result.available !== true) {
-          lastValidation = null;
-          setCheckResult(`Kontrol başarısız: ${result.error ?? "Bilinmeyen hata"}`, "error");
-          return;
-        }
-
-        const detectedPath =
-          typeof result.resolvedPath === "string" && result.resolvedPath.trim() !== ""
-            ? result.resolvedPath.trim()
-            : value !== ""
-              ? value
-              : null;
-        const detectedVersion =
-          typeof result.version === "string" && result.version.trim() !== ""
-            ? result.version.trim()
-            : null;
-
-        if (binaryInput && detectedPath !== null) {
-          binaryInput.value = detectedPath;
-        }
-
-        lastValidation = {
-          binaryPath: detectedPath,
-          version: detectedVersion,
-        };
-
-        setCheckResult(
-          `Kurulu: ${detectedVersion !== null ? `v${detectedVersion}` : "sürüm bilinmiyor"}`,
-          "success"
-        );
-      } catch (error) {
-        lastValidation = null;
-        setCheckResult(`Kontrol hatası: ${(error as Error).message}`, "error");
-      }
-    };
-
-    browseBtn?.addEventListener("click", () => {
-      void (async (): Promise<void> => {
-        if (electronApi === undefined || typeof electronApi.showOpenDialog !== "function") {
-          setCheckResult("Dosya seçici API bulunamadı.", "error");
-          return;
-        }
-        const selected = await electronApi.showOpenDialog({
-          title: "OpenCode Binary Seç",
-          properties: ["openFile"],
-        });
-        const pickedPath = selected.filePaths[0];
-        if (selected.canceled || pickedPath === undefined) return;
-        if (binaryInput) binaryInput.value = pickedPath;
-        setCheckResult("Binary path seçildi.");
-      })();
-    });
-
-    resetBtn?.addEventListener("click", () => {
-      if (binaryInput) binaryInput.value = "";
-      setCheckResult("PATH içindeki opencode kullanılacak.");
-    });
-
-    checkBtn?.addEventListener("click", () => {
-      void runDoctorCheck();
-    });
-
-    modalModule.ModalManager.open({
-      title: "OpenCode Ayarları",
-      content,
-      size: "medium",
-      buttons: [
-        { label: "Vazgeç", variant: "secondary" },
-        {
-          label: "Kaydet",
-          variant: "primary",
-          closeOnClick: false,
-          onClick: (): void => {
-            void (async (): Promise<void> => {
-              const normalizedPath = binaryInput?.value.trim() ?? "";
-              const normalizedPortText = portInput?.value.trim() ?? "";
-              const parsedPort = Number.parseInt(normalizedPortText, 10);
-              if (
-                Number.isInteger(parsedPort) !== true ||
-                parsedPort < 1024 ||
-                parsedPort > 65535
-              ) {
-                setCheckResult("Default port 1024-65535 aralığında olmalı.", "error");
-                return;
-              }
-
-              await runDoctorCheck();
-              if (lastValidation === null) {
-                setCheckResult(
-                  "Kaydetmeden önce geçerli bir OpenCode binary doğrulaması gerekli.",
-                  "error"
-                );
-                return;
-              }
-
-              await SettingsManager.set("assistants.opencode", {
-                binaryPath:
-                  lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
-                defaultPort: parsedPort,
-                version: lastValidation.version,
-              });
-
-              setCheckResult("Ayarlar kaydedildi.", "success");
-              Logger.info(LogCategory.ASISTAN_CORE, "OpenCode ayarları güncellendi", {
-                binaryPath:
-                  lastValidation.binaryPath ?? (normalizedPath !== "" ? normalizedPath : null),
-                defaultPort: parsedPort,
-                version: lastValidation.version,
-              });
-              this._refreshOpencodeDoctorStatus();
-              modalModule.ModalManager.close();
-            })();
-          },
-        },
-      ],
+    await openOpencodeSettingsModal({
+      onSaved: () => {
+        this._refreshOpencodeDoctorStatus();
+      },
     });
   }
 
@@ -563,13 +318,13 @@ export class AsistanController {
   }
 
   async _triggerGhostHandoff(): Promise<void> {
-    const runtimePatch = createGhostHandoffRuntimePatch(this._generateWorkflowSessionId());
-    await this._updateAssistantRuntimeState(runtimePatch);
+    const runtimePatch = createGhostHandoffRuntimePatch(generateWorkflowSessionId());
+    await updateAssistantRuntimeState(runtimePatch);
 
     const electronApi = window.electronAPI;
     if (electronApi === undefined || typeof electronApi.windowClose !== "function") {
       Logger.error(LogCategory.ASISTAN_CORE, "Ghost handoff için pencere kapatma API bulunamadı");
-      await this._updateAssistantRuntimeState({ desiredMode: "soft", phase: "idle" });
+      await updateAssistantRuntimeState({ desiredMode: "soft", phase: "idle" });
       return;
     }
 
@@ -603,57 +358,12 @@ export class AsistanController {
     }
   }
 
-  _generateWorkflowSessionId(): string {
-    return `wf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  }
-
   async _syncAssistantRuntimeDefaults(): Promise<void> {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.assistantRuntimeRead !== "function") return;
-
-    try {
-      const response = await electronApi.assistantRuntimeRead();
-      const state = response.state;
-      if (!response.success || state === undefined) {
-        await electronApi.assistantRuntimeWrite({
-          workflowSessionId: this._generateWorkflowSessionId(),
-          desiredMode: "soft",
-          phase: "idle",
-        });
-        return;
-      }
-
-      if (state.workflowSessionId === "") {
-        await electronApi.assistantRuntimeWrite({
-          workflowSessionId: this._generateWorkflowSessionId(),
-        });
-      }
-    } catch (error) {
-      Logger.warn(LogCategory.ASISTAN_CORE, "Asistan runtime varsayılanları yazılamadı", {
-        error: (error as Error).message,
-      });
-    }
+    await syncAssistantRuntimeDefaults();
   }
 
   async _updateAssistantRuntimeState(patch: Record<string, unknown>): Promise<void> {
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.assistantRuntimeWrite !== "function")
-      return;
-
-    try {
-      const payload = { ...patch };
-      if (
-        (payload["workflowSessionId"] === undefined || payload["workflowSessionId"] === "") &&
-        (payload["phase"] === "preparing-handoff" || payload["phase"] === "in-ghost")
-      ) {
-        payload["workflowSessionId"] = this._generateWorkflowSessionId();
-      }
-      await electronApi.assistantRuntimeWrite(payload);
-    } catch (error) {
-      Logger.warn(LogCategory.ASISTAN_CORE, "Asistan runtime state güncellenemedi", {
-        error: (error as Error).message,
-      });
-    }
+    await updateAssistantRuntimeState(patch);
   }
 
   _scheduleSaveLastOpencodeUrl(url: string): void {
@@ -761,85 +471,36 @@ export class AsistanController {
       },
     });
 
-    // Webview içinden gelen MCP toggle mesajlarını dinle
     const ai0Webview = document.getElementById("ai0-webview");
-    ai0Webview?.addEventListener("ipc-message", ((
-      event: Event & { channel?: string; args?: unknown[] }
-    ) => {
-      if (event.channel === "mcp-toggle-change") {
-        const data = event.args?.[0] as { server: string; enabled: boolean } | undefined;
-        if (data?.server != null) {
-          void this._onMcpToggleFromHealth(data.server, data.enabled);
-        }
-      }
-      if (event.channel === "opencode-ui-connect-stage") {
-        const data = event.args?.[0] as { title?: string; subtitle?: string } | undefined;
-        const selectedProviderId = this.providerSelect?.value ?? this._activeAdapter?.id;
-        const providerIdForStageEvent = "opencode-ui";
-        const canShowStage =
-          selectedProviderId === providerIdForStageEvent &&
-          (this._connectFlowActive || this._providerToolsReady !== true);
-
-        if (canShowStage) {
-          const title = typeof data?.title === "string" ? data.title.trim() : "";
-          const subtitle = typeof data?.subtitle === "string" ? data.subtitle.trim() : "";
-          if (title !== "" && subtitle !== "") {
-            this._setConnectOverlayStage({ title, subtitle });
-            this._updateConnectionUI();
-          }
-        }
-      }
-
-      if (event.channel === "opencode-ui-tools-ready") {
-        const data = event.args?.[0] as
-          | { ready?: boolean; mcpStatus?: string; unresolvedServers?: string[] }
-          | undefined;
-        const selectedProviderId = this.providerSelect?.value ?? this._activeAdapter?.id;
-        const providerIdForToolsReadyEvent = "opencode-ui";
-        if (selectedProviderId === providerIdForToolsReadyEvent) {
-          this._providerToolsReady = data?.ready === true;
-
-          if (this._providerToolsReady !== true) {
-            const unresolved = Array.isArray(data?.unresolvedServers)
-              ? data.unresolvedServers.filter((item): item is string => typeof item === "string")
-              : [];
-            const unresolvedPreview = unresolved.slice(0, 3).join(", ");
-            const mcpStatus = typeof data?.mcpStatus === "string" ? data.mcpStatus.trim() : "";
-
-            this._setConnectOverlayStage({
-              title: "MCP sunucuları bekleniyor",
-              subtitle:
-                unresolvedPreview !== ""
-                  ? `Beklenen MCP: ${unresolvedPreview}`
-                  : mcpStatus !== ""
-                    ? `MCP durumu: ${mcpStatus}`
-                    : "MCP sunucuları hazırlanıyor",
-            });
-          }
-
-          this._updateConnectionUI();
-        }
-      }
-
-      if (event.channel === "opencode-ui-session-changed") {
-        const data = event.args?.[0] as { sessionId?: string | null } | undefined;
-        const sessionId = data?.sessionId;
-        if (typeof sessionId === "string" && sessionId !== "") {
-          void this._saveLastOpencodeUiSessionId(sessionId);
-          void this._updateAssistantRuntimeState({
-            workflowSessionId: sessionId,
-            phase: "idle",
-          });
-        }
-      }
-
-      if (event.channel === "assistant-runtime-control") {
-        const data = event.args?.[0] as Record<string, unknown> | undefined;
-        if (data !== undefined) {
-          void this._updateAssistantRuntimeState(data);
-        }
-      }
-    }) as EventListener);
+    bindAsistanWebviewIpcEvents({
+      webviewEl: ai0Webview,
+      providerSelect: this.providerSelect,
+      getActiveProviderId: () => this._activeAdapter?.id ?? null,
+      isConnectFlowActive: () => this._connectFlowActive,
+      getProviderToolsReady: () => this._providerToolsReady,
+      setProviderToolsReady: (ready: boolean) => {
+        this._providerToolsReady = ready;
+      },
+      setConnectOverlayStage: (stage: OverlayStage | null) => {
+        this._setConnectOverlayStage(stage);
+      },
+      updateConnectionUI: () => {
+        this._updateConnectionUI();
+      },
+      onMcpToggleFromHealth: async (server: string, enabled: boolean) => {
+        await this._onMcpToggleFromHealth(server, enabled);
+      },
+      onOpencodeSessionChanged: async (sessionId: string) => {
+        await this._saveLastOpencodeUiSessionId(sessionId);
+        await this._updateAssistantRuntimeState({
+          workflowSessionId: sessionId,
+          phase: "idle",
+        });
+      },
+      onAssistantRuntimeControl: async (patch: Record<string, unknown>) => {
+        await this._updateAssistantRuntimeState(patch);
+      },
+    });
   }
 
   _isConnected(): boolean {
@@ -995,159 +656,7 @@ export class AsistanController {
   }
 
   async _toggleConnection(options: { forceResume?: boolean } = {}): Promise<void> {
-    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-    const adapter = this._activeAdapter;
-    const systemServerStatus = await this._resolveSystemServerStatus();
-    this._isServerRunning = systemServerStatus.running;
-    this._systemServerPort =
-      typeof systemServerStatus.port === "number" ? systemServerStatus.port : null;
-
-    if (!adapter) {
-      Logger.error(LogCategory.ASISTAN_CORE, "Aktif adapter bulunamadı");
-      this._setButtonState(ConnectButtonState.ERROR, "Adapter yok");
-      return;
-    }
-
-    const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
-    if (isConnecting) {
-      this._setButtonState(ConnectButtonState.STOPPING);
-      this._cancelConnectFlow();
-
-      try {
-        Logger.info(LogCategory.ASISTAN_CORE, "Asistan bağlantı isteği iptal edildi", {
-          slotState: slotState?.state,
-        });
-
-        if (slotState?.state === SlotState.CONNECTING) {
-          await SlotController.disconnect("ai0");
-        }
-
-        await this._stopSystemActiveServers();
-        this._setButtonState(ConnectButtonState.SUCCESS_STOP);
-      } catch (err) {
-        const error = err as Error;
-        this._setButtonState(ConnectButtonState.ERROR, error.message);
-      } finally {
-        this._finishConnectFlow();
-        await new Promise((resolve) =>
-          setTimeout(resolve, ASISTAN_TIMEOUTS.STAGE_TRANSITION_SHORT)
-        );
-        this._updateConnectionUI();
-      }
-      return;
-    }
-
-    if (slotState?.state === SlotState.CONNECTED || this._isServerRunning) {
-      this._setButtonState(ConnectButtonState.STOPPING);
-
-      try {
-        Logger.debug(LogCategory.ASISTAN_CORE, "Webview disconnect başlatılıyor", {
-          slotState: slotState?.state,
-        });
-
-        if (slotState?.state === SlotState.CONNECTED) {
-          await SlotController.disconnect("ai0");
-        }
-
-        Logger.debug(LogCategory.ASISTAN_CORE, "Sistem aktif sunucuları durduruluyor");
-        await this._stopSystemActiveServers();
-
-        this._providerToolsReady = true;
-
-        this._setButtonState(ConnectButtonState.SUCCESS_STOP);
-        Logger.panel(LogCategory.ASISTAN_CORE, LogLevel.INFO, "Asistan bağlantısı kesildi");
-
-        await new Promise((resolve) => setTimeout(resolve, ASISTAN_TIMEOUTS.STAGE_TRANSITION_MID));
-        this._updateConnectionUI();
-      } catch (err) {
-        const error = err as Error;
-        Logger.error(LogCategory.ASISTAN_CORE, "Bağlantı kesme hatası", {
-          error: error.message,
-        });
-
-        this._isServerRunning = false;
-        this._providerToolsReady = true;
-        this._updateServerStatus({ running: false });
-
-        this._setButtonState(ConnectButtonState.ERROR, error.message);
-        await new Promise((resolve) => setTimeout(resolve, ASISTAN_TIMEOUTS.STAGE_TRANSITION_MID));
-        this._updateConnectionUI();
-      }
-      return;
-    }
-
-    if (slotState?.state === SlotState.ASSIGNED || slotState?.state === SlotState.EMPTY) {
-      const connectSignal = this._beginConnectFlow();
-      const providerId = this.providerSelect?.value ?? adapter.id;
-      this._providerToolsReady = providerId === "opencode-ui" ? false : true;
-
-      this._setConnectOverlayStage(null);
-      this._setButtonState(ConnectButtonState.CANCEL_CONNECTING);
-      this._updateConnectionUI();
-
-      try {
-        const result = await adapter.startServer("auto");
-
-        if (this._isConnectFlowCancelled(connectSignal)) {
-          return;
-        }
-
-        if (result.success === true && result.url !== undefined && result.url !== "") {
-          this._isServerRunning = true;
-
-          const targetUrl = this._resolveConnectUrl(result.url, providerId, options);
-
-          const serverReady =
-            result.alreadyRunning === true
-              ? true
-              : await adapter.waitForReady(result.url, 90000, connectSignal);
-
-          if (this._isConnectFlowCancelled(connectSignal)) {
-            return;
-          }
-
-          if (!serverReady) {
-            await this._stopSystemActiveServers();
-
-            Logger.error(LogCategory.ASISTAN_CORE, `${adapter.name} server timeout`, {
-              url: result.url,
-            });
-
-            return;
-          }
-
-          const serverStatus = adapter.getServerStatus();
-          this._updateServerStatus({
-            running: true,
-            ...(typeof serverStatus.port === "number" ? { port: serverStatus.port } : {}),
-          });
-          this._systemServerPort = typeof serverStatus.port === "number" ? serverStatus.port : null;
-
-          await SettingsManager.set("assistants.lastConnected", providerId);
-
-          if (targetUrl !== "") {
-            await SlotController.connect("ai0", { url: targetUrl });
-          } else {
-            await SlotController.connect("ai0", {});
-          }
-
-          if (this._isConnectFlowCancelled(connectSignal)) {
-            return;
-          }
-
-          Logger.success(LogCategory.ASISTAN_CORE, "Asistan bağlantısı başlatıldı", {
-            url: targetUrl,
-          });
-        } else {
-          Logger.error(LogCategory.ASISTAN_CORE, `${adapter.name} server başlatılamadı`, {
-            error: result.error,
-          });
-        }
-      } finally {
-        this._finishConnectFlow();
-        this._updateConnectionUI();
-      }
-    }
+    await toggleAsistanConnection(this, options);
   }
 
   _updateServerStatus(status: { running: boolean; port?: number }): void {
@@ -1259,149 +768,7 @@ export class AsistanController {
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {
-    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
-
-    const isConnected = slotState?.state === SlotState.CONNECTED;
-    const isConnecting = slotState?.state === SlotState.CONNECTING;
-    const isConnectingUi = isConnecting || this._connectFlowActive;
-    const isError = slotState?.state === SlotState.ERROR;
-    const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
-    const providerId = this.providerSelect?.value ?? this._activeAdapter?.id;
-    const shouldHoldToolsReadyOverlay = shouldKeepOverlayVisibleForToolsReady({
-      ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),
-      isConnected,
-      connectFlowActive: this._connectFlowActive,
-      toolsReady: this._providerToolsReady,
-    });
-
-    const webviewEl = document.getElementById("ai0-webview");
-    const mountEl = document.getElementById("ai0-webview-mount");
-    const overlayEl = document.getElementById("ai0-webview-overlay");
-
-    if (webviewEl && mountEl && !mountEl.contains(webviewEl)) {
-      SlotController.ensureWebviewMounted("ai0");
-      webviewEl.style.cssText = "position: relative; top: 0; left: 0; width: 100%; height: 100%;";
-    }
-
-    if (webviewEl !== null && webviewEl.dataset["eventsSetup"] === undefined) {
-      this._setupWebviewEvents(webviewEl);
-      webviewEl.dataset["eventsSetup"] = "true";
-    }
-
-    let overlayVisible = false;
-
-    if (overlayEl) {
-      overlayEl.classList.remove("hidden", "empty", "disconnected", "connecting", "error");
-
-      if (!hasAccount) {
-        overlayVisible = true;
-        this._updateOverlay(
-          overlayEl,
-          "empty",
-          "🤖",
-          "Asistan Seçilmedi",
-          "Provider seçip bağlanın"
-        );
-      } else if (isConnectingUi) {
-        overlayVisible = true;
-        const stage = resolveOverlayStage({
-          ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),
-          connectFlowActive: this._connectFlowActive,
-          stage: this._connectOverlayStage,
-        });
-        this._updateOverlay(overlayEl, "connecting", "🔄", stage.title, stage.subtitle);
-      } else if (shouldHoldToolsReadyOverlay) {
-        overlayVisible = true;
-        const holdTitle =
-          typeof this._connectOverlayStage?.title === "string" &&
-          this._connectOverlayStage.title.trim() !== ""
-            ? this._connectOverlayStage.title
-            : "Tool listesi yükleniyor";
-        const holdSubtitle =
-          typeof this._connectOverlayStage?.subtitle === "string" &&
-          this._connectOverlayStage.subtitle.trim() !== ""
-            ? this._connectOverlayStage.subtitle
-            : "MCP tool listesi hazırlanıyor";
-
-        this._updateOverlay(overlayEl, "connecting", "🔄", holdTitle, holdSubtitle);
-      } else if (isError) {
-        overlayVisible = true;
-        this._updateOverlay(
-          overlayEl,
-          "error",
-          "❌",
-          "Bağlantı Hatası",
-          slotState.error ?? "Tekrar deneyin"
-        );
-      } else if (!isConnected) {
-        overlayVisible = true;
-        this._updateOverlay(
-          overlayEl,
-          "disconnected",
-          "⚡",
-          "Asistan Bağlı Değil",
-          "Bağlan butonuna tıklayın"
-        );
-      } else {
-        overlayEl.classList.add("hidden");
-        if (webviewEl) {
-          SlotController.ensureWebviewAttached("ai0");
-        }
-      }
-    }
-
-    if (mountEl) {
-      mountEl.classList.toggle("webview-content-blocked", overlayVisible);
-    }
-
-    const buttonState = resolveAsistanConnectButtonState({
-      ...(slotState?.state !== undefined ? { slotState: slotState.state } : {}),
-      isServerRunning: this._isServerRunning,
-      connectFlowActive: this._connectFlowActive,
-    });
-    this._setButtonState(buttonState);
-
-    if (this.ghostAgentBtn) {
-      this.ghostAgentBtn.disabled = isConnectingUi;
-    }
-
-    if (this.devtoolsBtn) {
-      this.devtoolsBtn.disabled = !isConnected;
-    }
-
-    if (this.testBtn) {
-      this.testBtn.disabled = !isConnected;
-      if (!isConnected) {
-        this.testBtn.title = "Asistan bağlı değil";
-      } else {
-        this.testBtn.title = "AI0 provider test";
-      }
-    }
-
-    if (this.statusDot) {
-      this.statusDot.classList.toggle("connected", isConnected);
-    }
-    const serverRunning = this._isServerRunning;
-
-    if (this.statusText) {
-      this.statusText.textContent = formatConnectionIndicatorText({
-        isConnected,
-        isServerRunning: serverRunning,
-        ...(typeof this._systemServerPort === "number" ? { port: this._systemServerPort } : {}),
-      });
-    }
-
-    if (this.urlDisplay !== null) {
-      if (slotState?.currentUrl !== undefined && slotState.currentUrl !== "") {
-        this.urlDisplay.textContent = slotState.currentUrl;
-      } else {
-        this.urlDisplay.textContent = "-";
-      }
-    }
-
-    if (!skipSystemServerSync) {
-      void this._syncSystemServerStatus();
-    }
+    updateAsistanConnectionUI(this, skipSystemServerSync);
   }
 
   _updateOverlay(
@@ -1482,57 +849,16 @@ export class AsistanController {
   }
 
   _setupWebviewEvents(webviewEl: WebviewElement): void {
-    webviewEl.addEventListener("did-stop-loading", () => {
-      void (async (): Promise<void> => {
-        try {
-          if (typeof webviewEl.getWebContentsId !== "function") return;
-          webviewEl.getWebContentsId();
-        } catch (_) {
-          return;
-        }
-
-        const currentProviderId =
-          this.providerSelect?.value ?? AppState.getProviderIdForSlot("ai0");
-        const cfg =
-          typeof currentProviderId === "string" && currentProviderId !== ""
-            ? ProviderRegistry.getAny(currentProviderId)
-            : null;
-        if (cfg !== null) {
-          try {
-            const configScript = `
-              (function() {
-                try {
-                  window.__hayalet_slot = "ai0";
-                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                  return true;
-                } catch (e) {
-                  console.error('[Hayalet-Config-Inject] Failed:', e);
-                  return false;
-                }
-              })();
-            `;
-            await webviewEl.executeJavaScript?.(configScript);
-          } catch (_err) {
-            void _err;
-          }
-        }
-
+    bindAsistanPrimaryWebviewEvents({
+      webviewEl,
+      providerSelect: this.providerSelect,
+      urlDisplay: this.urlDisplay,
+      scheduleSaveLastOpencodeUrl: (url: string) => {
+        this._scheduleSaveLastOpencodeUrl(url);
+      },
+      syncDisabledMcpToHealth: () => {
         this._syncDisabledMcpToHealth();
-      })();
-    });
-
-    webviewEl.addEventListener("did-navigate", () => {
-      try {
-        const url = webviewEl.getURL?.() ?? "";
-        if (this.urlDisplay) {
-          this.urlDisplay.textContent = url;
-        }
-
-        const providerId = this.providerSelect?.value ?? AppState.getProviderIdForSlot("ai0");
-        if (providerId === "opencode") {
-          this._scheduleSaveLastOpencodeUrl(url);
-        }
-      } catch (_) {}
+      },
     });
   }
   /**

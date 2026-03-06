@@ -23,7 +23,7 @@ interface HistoryContext {
     role: "user" | "assistant",
     text: string,
     meta?: string,
-    files?: string[]
+    files?: Array<string | { name?: string; media_type?: string; fileName?: string; path?: string }>
   ) => HTMLElement | null;
   createHistoricAssistantToolHost: () => HTMLElement | null;
   renderHistoricToolCall: (targetContainer: HTMLElement, toolCall: OpencodeUiToolCall) => void;
