@@ -1,4 +1,8 @@
-import type { ProviderConfig, ProviderTestSuite } from "@shared/provider.js";
+import type {
+  ProviderConfig,
+  ProviderTestProgressEvent,
+  ProviderTestSuite,
+} from "@shared/provider.js";
 import type {
   MessageRecord,
   MessagePart,
@@ -527,6 +531,8 @@ declare global {
     ) => Promise<IPCResult | undefined>;
 
     testProvider: (params: { slot: "ai0" | "ai1" | "ai2" }) => Promise<ProviderTestSuite>;
+    onProviderTestProgress: (callback: (event: ProviderTestProgressEvent) => void) => void;
+    offProviderTestProgress: (callback: (event: ProviderTestProgressEvent) => void) => void;
 
     commandInit: () => Promise<{ jobs: Array<Record<string, unknown>> }>;
     commandWrite: (item: Record<string, unknown>) => Promise<IPCResult>;

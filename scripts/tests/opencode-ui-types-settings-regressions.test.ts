@@ -12,6 +12,12 @@ test("default settings scaffold assistants.lastOpencodeUiSessionId as null", () 
   assert.equal(settings.assistants?.lastOpencodeUiSessionId, null);
 });
 
+test("default settings use Turkish as app language", () => {
+  const settings = defaultSettings();
+
+  assert.equal(settings.general?.language, "tr");
+});
+
 test("normalize settings backfills missing assistants.lastOpencodeUiSessionId", () => {
   const normalized = normalizeSettings({
     assistants: {
@@ -60,6 +66,26 @@ test("normalize settings coerces invalid assistants.lastOpencodeUiSessionId to n
   });
 
   assert.equal(normalized.assistants?.lastOpencodeUiSessionId, null);
+});
+
+test("normalize settings preserves supported app language values", () => {
+  const normalized = normalizeSettings({
+    general: {
+      language: "en",
+    },
+  });
+
+  assert.equal(normalized.general?.language, "en");
+});
+
+test("normalize settings coerces invalid app language to Turkish", () => {
+  const normalized = normalizeSettings({
+    general: {
+      language: "de",
+    },
+  });
+
+  assert.equal(normalized.general?.language, "tr");
 });
 
 test("normalize settings backfills opencode-ui assistant account", () => {

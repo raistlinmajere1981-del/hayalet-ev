@@ -2,7 +2,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify", "log:ui-notify-batch"]);
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
+const PROVIDER_TEST_PROGRESS_CHANNEL = "provider-test:progress";
 const opencodeUiSessionUpdatedHandlers = new Map();
+const providerTestProgressHandlers = new Map();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
@@ -34,6 +36,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
   getProviderConfig: (providerId) => ipcRenderer.invoke("get-provider-config", providerId),
   testProvider: (params) => ipcRenderer.invoke("test-provider", params),
+  onProviderTestProgress: (callback) => {
+    if (typeof callback !== "function" || providerTestProgressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    providerTestProgressHandlers.set(callback, handler);
+    ipcRenderer.on(PROVIDER_TEST_PROGRESS_CHANNEL, handler);
+  },
+  offProviderTestProgress: (callback) => {
+    const handler = providerTestProgressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(PROVIDER_TEST_PROGRESS_CHANNEL, handler);
+    providerTestProgressHandlers.delete(callback);
+  },
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
 
   // Database API
