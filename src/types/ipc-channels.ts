@@ -10,7 +10,7 @@
  * // result tipi otomatik olarak DbGetConversationsResult olur
  */
 
-import type { ProviderTestSuite } from "./provider.js";
+import type { ProviderScenarioResult, ProviderTestSuite } from "./provider.js";
 
 // Database Channel Types
 
@@ -427,6 +427,10 @@ export interface IPCChannelMap {
   "minimize-window": { params: undefined; result: undefined };
   "maximize-window": { params: undefined; result: undefined };
   "close-window": { params: undefined; result: undefined };
+  "run-provider-scenario": {
+    params: { slot: "ai0" | "ai1" | "ai2"; scenarioId: string };
+    result: ProviderScenarioResult;
+  };
   "test-provider": {
     params: { slot: "ai0" | "ai1" | "ai2" };
     result: ProviderTestSuite;

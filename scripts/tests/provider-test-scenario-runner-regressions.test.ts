@@ -4,10 +4,12 @@ import test from "node:test";
 import {
   PROVIDER_TEST_PROMPT,
   runProviderTestScenario,
+  runScenario,
 } from "../../electron/provider-tester/scenario-runner.ts";
 
 test("provider test scenario emits ordered progress events and keeps soft failures non-fatal", async () => {
   const progress: string[] = [];
+  const scenarioIds = new Set<string>();
   const executed: string[] = [];
 
   const result = await runProviderTestScenario({
@@ -15,6 +17,7 @@ test("provider test scenario emits ordered progress events and keeps soft failur
     slot: "ai1",
     providerId: "chatgpt",
     emitProgress: (event) => {
+      scenarioIds.add(event.scenarioId);
       progress.push(`${event.type}:${event.stepId ?? "suite"}:${event.status ?? "na"}`);
     },
     steps: [
@@ -52,6 +55,8 @@ test("provider test scenario emits ordered progress events and keeps soft failur
   assert.equal(result.aborted, false);
   assert.equal(result.failed, 0);
   assert.equal(result.warnings, 1);
+  assert.equal(result.scenarioId, "webview-test");
+  assert.deepEqual([...scenarioIds], ["webview-test"]);
   assert.deepEqual(
     result.steps.map((step) => [step.id, step.status]),
     [
@@ -69,6 +74,37 @@ test("provider test scenario emits ordered progress events and keeps soft failur
     "step-start:final-bubbles:running",
     "step-complete:final-bubbles:pass",
     "completed:suite:na",
+  ]);
+});
+
+test("generic scenario runner emits scenario metadata for non-test scenarios", async () => {
+  const progress: string[] = [];
+
+  const result = await runScenario({
+    runId: "run-webview-sync",
+    scenarioId: "webview-sync",
+    slot: "ai2",
+    providerId: "grok",
+    emitProgress: (event) => {
+      progress.push(`${event.scenarioId}:${event.type}:${event.stepId ?? "suite"}`);
+    },
+    steps: [
+      {
+        id: "collect-urls",
+        name: "Collect Urls",
+        severity: "core",
+        run: async () => ({ status: "pass", message: "collected" }),
+      },
+    ],
+  });
+
+  assert.equal(result.scenarioId, "webview-sync");
+  assert.equal(result.aborted, false);
+  assert.deepEqual(progress, [
+    "webview-sync:started:suite",
+    "webview-sync:step-start:collect-urls",
+    "webview-sync:step-complete:collect-urls",
+    "webview-sync:completed:suite",
   ]);
 });
 

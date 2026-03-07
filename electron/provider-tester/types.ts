@@ -10,6 +10,7 @@ import type {
   ProviderTestResult,
   ProviderTestSelectorEvidence,
   ProviderTestSlot,
+  ProviderWebviewSyncMode,
   TestCategory,
 } from "../../src/types/provider.ts";
 import type { AppLanguage } from "../../src/types/settings.ts";
@@ -75,6 +76,7 @@ export interface RendererShell {
 export interface ProviderTestRunOptions {
   emitProgress: ((event: ProviderTestProgressEvent) => void) | undefined;
   appLanguage?: AppLanguage;
+  syncMode?: ProviderWebviewSyncMode;
 }
 
 // ─── Test Context ───

@@ -2,9 +2,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify", "log:ui-notify-batch"]);
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
-const PROVIDER_TEST_PROGRESS_CHANNEL = "provider-test:progress";
+const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const opencodeUiSessionUpdatedHandlers = new Map();
-const providerTestProgressHandlers = new Map();
+const providerScenarioProgressHandlers = new Map();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
@@ -35,20 +35,35 @@ contextBridge.exposeInMainWorld("electronAPI", {
   fmWriteFileAtomic: (payload) => ipcRenderer.invoke("fm-write-file-atomic", payload),
   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
   getProviderConfig: (providerId) => ipcRenderer.invoke("get-provider-config", providerId),
+  runProviderScenario: (params) => ipcRenderer.invoke("run-provider-scenario", params),
   testProvider: (params) => ipcRenderer.invoke("test-provider", params),
-  onProviderTestProgress: (callback) => {
-    if (typeof callback !== "function" || providerTestProgressHandlers.has(callback)) {
+  onProviderScenarioProgress: (callback) => {
+    if (typeof callback !== "function" || providerScenarioProgressHandlers.has(callback)) {
       return;
     }
     const handler = (_event, payload) => callback(payload);
-    providerTestProgressHandlers.set(callback, handler);
-    ipcRenderer.on(PROVIDER_TEST_PROGRESS_CHANNEL, handler);
+    providerScenarioProgressHandlers.set(callback, handler);
+    ipcRenderer.on(PROVIDER_SCENARIO_PROGRESS_CHANNEL, handler);
+  },
+  offProviderScenarioProgress: (callback) => {
+    const handler = providerScenarioProgressHandlers.get(callback);
+    if (!handler) return;
+    ipcRenderer.removeListener(PROVIDER_SCENARIO_PROGRESS_CHANNEL, handler);
+    providerScenarioProgressHandlers.delete(callback);
+  },
+  onProviderTestProgress: (callback) => {
+    if (typeof callback !== "function" || providerScenarioProgressHandlers.has(callback)) {
+      return;
+    }
+    const handler = (_event, payload) => callback(payload);
+    providerScenarioProgressHandlers.set(callback, handler);
+    ipcRenderer.on(PROVIDER_SCENARIO_PROGRESS_CHANNEL, handler);
   },
   offProviderTestProgress: (callback) => {
-    const handler = providerTestProgressHandlers.get(callback);
+    const handler = providerScenarioProgressHandlers.get(callback);
     if (!handler) return;
-    ipcRenderer.removeListener(PROVIDER_TEST_PROGRESS_CHANNEL, handler);
-    providerTestProgressHandlers.delete(callback);
+    ipcRenderer.removeListener(PROVIDER_SCENARIO_PROGRESS_CHANNEL, handler);
+    providerScenarioProgressHandlers.delete(callback);
   },
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
 

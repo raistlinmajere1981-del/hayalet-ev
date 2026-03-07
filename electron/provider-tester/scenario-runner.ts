@@ -1,7 +1,8 @@
 import type {
-  ProviderTestProgressEvent,
+  ProviderScenarioId,
+  ProviderScenarioProgressEvent,
   ProviderTestSlot,
-  ProviderTestStep,
+  ProviderScenarioStep,
 } from "../../src/types/provider.ts";
 
 export const PROVIDER_TEST_PROMPT =
@@ -22,29 +23,36 @@ export interface ScenarioStepDefinition {
   run: () => Promise<ScenarioStepResult>;
 }
 
-export interface RunProviderTestScenarioOptions {
+export interface RunScenarioOptions {
   runId: string;
+  scenarioId: ProviderScenarioId;
   slot: ProviderTestSlot;
   providerId: string;
   steps: ScenarioStepDefinition[];
-  emitProgress?: (event: ProviderTestProgressEvent) => void;
+  emitProgress?: (event: ProviderScenarioProgressEvent) => void;
 }
 
-export interface RunProviderTestScenarioResult {
+export interface RunScenarioResult {
+  scenarioId: ProviderScenarioId;
   aborted: boolean;
   abortReason?: string;
   failed: number;
   warnings: number;
-  steps: ProviderTestStep[];
+  steps: ProviderScenarioStep[];
 }
 
+export type RunProviderTestScenarioOptions = Omit<RunScenarioOptions, "scenarioId">;
+
+export type RunProviderTestScenarioResult = RunScenarioResult;
+
 function emit(
-  options: RunProviderTestScenarioOptions,
-  type: ProviderTestProgressEvent["type"],
-  payload: Partial<ProviderTestProgressEvent> = {}
+  options: RunScenarioOptions,
+  type: ProviderScenarioProgressEvent["type"],
+  payload: Partial<ProviderScenarioProgressEvent> = {}
 ): void {
   options.emitProgress?.({
     runId: options.runId,
+    scenarioId: options.scenarioId,
     slot: options.slot,
     providerId: options.providerId,
     type,
@@ -61,10 +69,8 @@ async function wait(delayMs: number | undefined): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-export async function runProviderTestScenario(
-  options: RunProviderTestScenarioOptions
-): Promise<RunProviderTestScenarioResult> {
-  const steps: ProviderTestStep[] = [];
+export async function runScenario(options: RunScenarioOptions): Promise<RunScenarioResult> {
+  const steps: ProviderScenarioStep[] = [];
   let aborted = false;
   let abortReason: string | undefined;
 
@@ -126,10 +132,20 @@ export async function runProviderTestScenario(
   });
 
   return {
+    scenarioId: options.scenarioId,
     aborted,
     ...(abortReason !== undefined ? { abortReason } : {}),
     failed: steps.filter((step) => step.status === "fail").length,
     warnings: steps.filter((step) => step.status === "warning").length,
     steps,
   };
+}
+
+export async function runProviderTestScenario(
+  options: RunProviderTestScenarioOptions
+): Promise<RunProviderTestScenarioResult> {
+  return await runScenario({
+    scenarioId: "webview-test",
+    ...options,
+  });
 }

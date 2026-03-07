@@ -1,5 +1,7 @@
 import type {
   ProviderConfig,
+  ProviderScenarioProgressEvent,
+  ProviderScenarioResult,
   ProviderTestProgressEvent,
   ProviderTestSuite,
 } from "@shared/provider.js";
@@ -146,6 +148,9 @@ declare global {
       options?: { scroll?: boolean }
     ) => Promise<void>;
     refreshAnalyzeMessages?: (provider: string) => Promise<void>;
+    ConversationListManager?: {
+      refresh: (options?: Record<string, unknown>) => Promise<void>;
+    };
 
     __hayalet_settings_unsub?: () => void;
     __hayalet_provider_config?: ProviderConfig;
@@ -530,7 +535,14 @@ declare global {
       files: Array<Record<string, unknown>>
     ) => Promise<IPCResult | undefined>;
 
+    runProviderScenario: (params: {
+      slot: "ai0" | "ai1" | "ai2";
+      scenarioId: string;
+      syncMode?: "soft" | "full" | "clean";
+    }) => Promise<ProviderScenarioResult>;
     testProvider: (params: { slot: "ai0" | "ai1" | "ai2" }) => Promise<ProviderTestSuite>;
+    onProviderScenarioProgress: (callback: (event: ProviderScenarioProgressEvent) => void) => void;
+    offProviderScenarioProgress: (callback: (event: ProviderScenarioProgressEvent) => void) => void;
     onProviderTestProgress: (callback: (event: ProviderTestProgressEvent) => void) => void;
     offProviderTestProgress: (callback: (event: ProviderTestProgressEvent) => void) => void;
 
