@@ -1,3 +1,8 @@
+import {
+  getRuntimeProviderConfig,
+  getRuntimeSelectorCandidates,
+} from "../shared/runtime-selectors.js";
+
 interface WebviewElement extends HTMLElement {
   executeJavaScript: (code: string) => Promise<unknown>;
   sendInputEvent: (event: { type: string; keyCode: string }) => void;
@@ -8,14 +13,26 @@ export async function sendMessage(
   { message }: { message: string }
 ): Promise<{ success: boolean; message: string }> {
   const fullText = ` ${message}`;
+  const runtimeConfig = await getRuntimeProviderConfig(webview);
+  const inputCandidates = getRuntimeSelectorCandidates(runtimeConfig, "inputField");
 
   const focusScript = `(function() {
-    const config = window.__hayalet_provider_config;
-    if (!config || !config.selectors?.inputField) {
+    const inputSelectorCandidates = ${JSON.stringify(inputCandidates)};
+    if (!inputSelectorCandidates.length) {
       return false;
     }
 
-    const textarea = document.querySelector(config.selectors.inputField);
+    let textarea = null;
+    for (const selector of inputSelectorCandidates) {
+      try {
+        textarea = document.querySelector(selector);
+        if (textarea) {
+          break;
+        }
+      } catch (_) {
+        void 0;
+      }
+    }
     if (textarea) {
       textarea.focus();
       if (typeof textarea.value !== 'undefined') textarea.value = '';

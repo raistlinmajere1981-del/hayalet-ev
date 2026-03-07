@@ -1,3 +1,8 @@
+import {
+  getRuntimeProviderConfig,
+  getRuntimeSelectorCandidates,
+} from "../shared/runtime-selectors.js";
+
 interface InjectResult {
   success?: boolean;
   message?: string;
@@ -16,25 +21,39 @@ export async function sendMessage(
   { message }: { message: string }
 ): Promise<{ success: boolean; message: string }> {
   const safeMessage = JSON.stringify(message);
+  const runtimeConfig = await getRuntimeProviderConfig(webview);
+  const inputCandidates = getRuntimeSelectorCandidates(runtimeConfig, "inputField");
+  const inputCandidatesLiteral = JSON.stringify(inputCandidates);
 
   const injectScript = `(function() {
     const message = ${safeMessage};
+    const inputSelectorCandidates = ${inputCandidatesLiteral};
 
     const config = window.__hayalet_provider_config;
     if (!config || !config.selectors) {
       return { success: false, message: 'Provider config bulunamadı' };
     }
 
-    const inputSelector = config.selectors.inputField;
+    const resolveInput = () => {
+      for (const selector of inputSelectorCandidates) {
+        try {
+          const found = document.querySelector(selector);
+          if (found) {
+            return { element: found, selector };
+          }
+        } catch (_) {
+          void 0;
+        }
+      }
+      return null;
+    };
+    const resolvedInput = resolveInput();
 
-    if (!inputSelector) {
+    if (!resolvedInput) {
       return { success: false, message: 'Configde input selector bulunamadi' };
     }
 
-    const textarea = document.querySelector(inputSelector);
-    if (!textarea) {
-      return { success: false, message: 'Textarea (' + inputSelector + ') bulunamadi' };
-    }
+    const textarea = resolvedInput.element;
 
     const inputType = config.inputType || 'direct';
 
@@ -113,9 +132,19 @@ export async function sendMessage(
       if (seedChar !== "") {
         if (seedChar === "\n") {
           await webview.executeJavaScript(`(function() {
-            const config = window.__hayalet_provider_config;
-            const inputSelector = config?.selectors?.inputField;
-            const el = inputSelector ? document.querySelector(inputSelector) : document.activeElement;
+            const inputSelectorCandidates = ${inputCandidatesLiteral};
+            let el = document.activeElement;
+            for (const selector of inputSelectorCandidates) {
+              try {
+                const found = document.querySelector(selector);
+                if (found) {
+                  el = found;
+                  break;
+                }
+              } catch (_) {
+                void 0;
+              }
+            }
             if (!el) return;
             const keydownEvent = new KeyboardEvent('keydown', {
               key: 'Enter',
@@ -150,10 +179,20 @@ export async function sendMessage(
         const safeRemaining = JSON.stringify(remainingText);
         const bulkResult = await webview.executeJavaScript(`(function() {
           try {
-            const config = window.__hayalet_provider_config;
-            const inputSelector = config?.selectors?.inputField;
+            const inputSelectorCandidates = ${inputCandidatesLiteral};
             const text = ${safeRemaining};
-            const el = inputSelector ? document.querySelector(inputSelector) : document.activeElement;
+            let el = document.activeElement;
+            for (const selector of inputSelectorCandidates) {
+              try {
+                const found = document.querySelector(selector);
+                if (found) {
+                  el = found;
+                  break;
+                }
+              } catch (_) {
+                void 0;
+              }
+            }
             if (!el || !text) return { success: false, inserted: false };
 
             const editableTarget =
@@ -220,9 +259,19 @@ export async function sendMessage(
         const ch = fullText[index] ?? "";
         if (ch === "\n") {
           await webview.executeJavaScript(`(function() {
-            const config = window.__hayalet_provider_config;
-            const inputSelector = config?.selectors?.inputField;
-            const el = inputSelector ? document.querySelector(inputSelector) : document.activeElement;
+            const inputSelectorCandidates = ${inputCandidatesLiteral};
+            let el = document.activeElement;
+            for (const selector of inputSelectorCandidates) {
+              try {
+                const found = document.querySelector(selector);
+                if (found) {
+                  el = found;
+                  break;
+                }
+              } catch (_) {
+                void 0;
+              }
+            }
             if (!el) return;
             
             const keydownEvent = new KeyboardEvent('keydown', {

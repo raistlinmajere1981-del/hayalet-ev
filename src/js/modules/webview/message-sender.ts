@@ -17,6 +17,7 @@ import { getProvider } from "./provider-factory.js";
 import type { ProviderModule } from "./provider-factory.js";
 import { waitForDomReady } from "./methods/shared/file-utils.js";
 import { isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
+import { resolveSelectorCandidates } from "../../../../shared/provider-selector-resolution";
 import type { AppSettings } from "@shared/settings.js";
 
 export interface MessageSenderWebview {
@@ -76,14 +77,26 @@ class MessageSenderClass {
     return typeof value === "object" && value !== null;
   }
 
-  private _getSendButtonSelector(config: unknown): string | string[] | null {
-    if (!this._isRecord(config)) return null;
+  private _getAppLanguage(): "tr" | "en" {
+    return this._settings?.general?.language === "en" ? "en" : "tr";
+  }
+
+  private _getSendButtonSelector(config: unknown): string[] {
+    if (!this._isRecord(config)) return [];
     const selectors = config["selectors"];
-    if (!this._isRecord(selectors)) return null;
-    const sendButton = selectors["sendButton"];
-    if (typeof sendButton === "string") return sendButton;
-    if (Array.isArray(sendButton)) return sendButton.filter((item) => typeof item === "string");
-    return null;
+    const selectorMatrix = config["selectorMatrix"];
+    if (!this._isRecord(selectors)) return [];
+    const matrixSelectors = this._isRecord(selectorMatrix)
+      ? (selectorMatrix["selectors"] as Record<string, unknown> | undefined)
+      : undefined;
+
+    return resolveSelectorCandidates(
+      (matrixSelectors?.["sendButton"] ?? selectors["sendButton"]) as
+        | string
+        | string[]
+        | Record<string, unknown>,
+      this._getAppLanguage()
+    );
   }
 
   setSettings(settings: AppSettings | null): void {
@@ -357,7 +370,7 @@ class MessageSenderClass {
     const providerConfig = ProviderRegistry.get(providerId);
     const sendButtonSelector = this._getSendButtonSelector(providerConfig);
 
-    if (sendButtonSelector === null) {
+    if (sendButtonSelector.length === 0) {
       const hasConfig = providerConfig !== null;
       const hasSelectors =
         this._isRecord(providerConfig) && this._isRecord(providerConfig["selectors"]);
@@ -373,9 +386,27 @@ class MessageSenderClass {
 
     const trySend = async (attempt: number): Promise<void> => {
       const script = `(function() {
-        const sendButton = document.querySelector(${sendSel});
+        const selectorCandidates = ${sendSel};
+        let sendButton = null;
+        let matchedSelector = null;
+        for (const selector of selectorCandidates) {
+          try {
+            sendButton = document.querySelector(selector);
+            if (sendButton) {
+              matchedSelector = selector;
+              break;
+            }
+          } catch (_) {
+            void 0;
+          }
+        }
         if (!sendButton) {
-          return { success: false, message: 'send button not found', retry: true };
+          return {
+            success: false,
+            message: 'send button not found',
+            retry: true,
+            debug: { selectorCandidates }
+          };
         }
         
         const disabledAttr = sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true';
@@ -385,7 +416,12 @@ class MessageSenderClass {
         
         if (isDisabled) {
           return { success: false, message: 'send button disabled', retry: true, 
-                   debug: { disabled: sendButton.disabled, ariaDisabled: sendButton.getAttribute('aria-disabled'), className: sendButton.className } };
+                   debug: {
+                     matchedSelector,
+                     disabled: sendButton.disabled,
+                     ariaDisabled: sendButton.getAttribute('aria-disabled'),
+                     className: sendButton.className
+                   } };
         }
         
         sendButton.click();
