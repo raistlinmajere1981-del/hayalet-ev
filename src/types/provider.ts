@@ -54,6 +54,17 @@ export interface TelemetryConfig {
   tokenPaths: string[];
 }
 
+export interface LocalizedSelectorEntry {
+  tr?: string;
+  en?: string;
+  fallbacks?: string[];
+  [locale: string]: string | string[] | undefined;
+}
+
+export interface ProviderSelectorMatrix {
+  selectors?: Record<string, LocalizedSelectorEntry>;
+}
+
 // Provider Config Types
 
 /** Mesaj ID stratejisi */
@@ -71,6 +82,7 @@ export interface BaseProviderConfig {
   lastVerified: string;
 
   selectors: BaseSelectors;
+  selectorMatrix?: ProviderSelectorMatrix;
   inputType: InputType;
   scrollerSelectors: string[];
   scrapeSelectors: ScrapeSelectors;
@@ -178,8 +190,37 @@ export type ProviderRegistryMap = Map<AllProviderId, RegisteredProvider>;
 /** Test result status */
 export type TestStatus = "pass" | "fail" | "skip" | "warning";
 
+export type ProviderTestSlot = "ai0" | "ai1" | "ai2";
+
+export type ProviderTestStepStatus = TestStatus | "pending" | "running";
+
+export type ProviderTestProgressEventType =
+  | "started"
+  | "step-start"
+  | "step-complete"
+  | "completed";
+
 /** Test category */
 export type TestCategory = "preflight" | "dom" | "interactive" | "scraping" | "advanced";
+
+export interface ProviderTestSelectorEvidence {
+  group: string;
+  key: string;
+  selector: string;
+  promotable: boolean;
+}
+
+export interface ProviderTestResultDetails {
+  selector?: string;
+  element?: {
+    tagName: string;
+    visible: boolean;
+    enabled: boolean;
+    textContent?: string;
+  };
+  selectorEvidence?: ProviderTestSelectorEvidence;
+  error?: string;
+}
 
 /** Single test result */
 export interface ProviderTestResult {
@@ -188,25 +229,38 @@ export interface ProviderTestResult {
   category: TestCategory;
   status: TestStatus;
   message: string; // User-facing message
-  details?: {
-    selector?: string;
-    element?: {
-      tagName: string;
-      visible: boolean;
-      enabled: boolean;
-      textContent?: string;
-    };
-    error?: string;
-  };
+  details?: ProviderTestResultDetails;
   duration: number; // ms
+  timestamp: number;
+}
+
+export interface ProviderTestStep {
+  id: string;
+  name: string;
+  status: ProviderTestStepStatus;
+  message?: string;
+  duration?: number;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+export interface ProviderTestProgressEvent {
+  runId: string;
+  slot: ProviderTestSlot;
+  providerId: string;
+  type: ProviderTestProgressEventType;
+  stepId?: string;
+  status?: ProviderTestStepStatus;
+  message?: string;
   timestamp: number;
 }
 
 /** Complete test suite results */
 export interface ProviderTestSuite {
+  runId?: string;
   providerId: string; // "chatgpt"
   providerName: string; // "ChatGPT"
-  slot: "ai1" | "ai2";
+  slot: ProviderTestSlot;
   url: string; // Tested page URL
   timestamp: number;
   totalTests: number;
@@ -216,6 +270,8 @@ export interface ProviderTestSuite {
   warnings: number;
   totalDuration: number; // ms
   results: ProviderTestResult[];
+  steps?: ProviderTestStep[];
+  refreshedConfig?: ProviderConfig;
   aborted?: boolean; // Pre-flight failed
   abortReason?: string;
 }
