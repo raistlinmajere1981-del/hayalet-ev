@@ -102,33 +102,69 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
   return async (opts: SelectorTestOptions): Promise<ProviderTestResult> => {
     const start = Date.now();
 
-    const script =
-      "(function() {" +
-      "  const el = document.querySelector(" +
-      JSON.stringify(opts.selector) +
-      ");" +
-      "  if (!el) return { exists: false };" +
-      "  const styles = window.getComputedStyle(el);" +
-      '  const isVisible = styles.display !== "none" && styles.visibility !== "hidden" && styles.opacity !== "0";' +
-      '  const isDisabled = el.disabled || el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";' +
-      '  const isEditable = el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "INPUT";' +
-      "  return {" +
-      "    exists: true," +
-      "    visible: isVisible," +
-      "    enabled: !isDisabled," +
-      "    disabled: isDisabled," +
-      "    editable: isEditable," +
-      "    tagName: el.tagName," +
-      '    textContent: (el.textContent || "").slice(0, 50)' +
-      "  };" +
-      "})()";
+    const selectors = opts.selectorCandidates?.length ? opts.selectorCandidates : [opts.selector];
+
+    const inspectSelector = async (
+      selector: string
+    ): Promise<ElementCheckResult & { matchedSelector: string }> => {
+      const script =
+        "(function() {" +
+        "  const el = document.querySelector(" +
+        JSON.stringify(selector) +
+        ");" +
+        "  if (!el) return { exists: false, matchedSelector: " +
+        JSON.stringify(selector) +
+        " };" +
+        "  const styles = window.getComputedStyle(el);" +
+        '  const isVisible = styles.display !== "none" && styles.visibility !== "hidden" && styles.opacity !== "0";' +
+        '  const isDisabled = el.disabled || el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";' +
+        '  const isEditable = el.isContentEditable || el.tagName === "TEXTAREA" || el.tagName === "INPUT";' +
+        "  return {" +
+        "    exists: true," +
+        "    visible: isVisible," +
+        "    enabled: !isDisabled," +
+        "    disabled: isDisabled," +
+        "    editable: isEditable," +
+        "    tagName: el.tagName," +
+        '    textContent: (el.textContent || "").slice(0, 50),' +
+        "    matchedSelector: " +
+        JSON.stringify(selector) +
+        "  };" +
+        "})()";
+
+      return (await executeScript(script)) as ElementCheckResult & { matchedSelector: string };
+    };
 
     try {
-      const result = (await executeScript(script)) as ElementCheckResult;
+      let result: (ElementCheckResult & { matchedSelector: string }) | null = null;
+      for (const selector of selectors) {
+        const candidate = await inspectSelector(selector);
+        result = candidate;
+        if (candidate.exists) {
+          break;
+        }
+      }
+
+      if (result === null) {
+        throw new Error("No selector candidates provided");
+      }
 
       const failedChecks = opts.checks.filter(
         (check) => result[check as keyof ElementCheckResult] !== true
       );
+
+      const details = {
+        selector: result.matchedSelector,
+        ...(opts.evidence !== undefined
+          ? {
+              selectorEvidence: {
+                ...opts.evidence,
+                selector: result.matchedSelector,
+              },
+            }
+          : {}),
+        element: result,
+      };
 
       if (failedChecks.length === 0) {
         return {
@@ -137,7 +173,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
           category: opts.category,
           status: "pass",
           message: `All checks passed: ${opts.checks.join(", ")}`,
-          details: { selector: opts.selector, element: result },
+          details,
           duration: Date.now() - start,
           timestamp: Date.now(),
         };
@@ -149,7 +185,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
         category: opts.category,
         status: "fail",
         message: `Failed checks: ${failedChecks.join(", ")}`,
-        details: { selector: opts.selector, element: result },
+        details,
         duration: Date.now() - start,
         timestamp: Date.now(),
       };

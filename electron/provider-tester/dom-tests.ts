@@ -24,7 +24,7 @@ export async function runDOMTests(ctx: TestContext): Promise<ProviderTestResult[
   return results;
 }
 
-async function testInputField(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testInputField(ctx: TestContext): Promise<ProviderTestResult> {
   return await ctx.testSelector({
     id: "input-field",
     name: "Input Field Accessibility",
@@ -34,7 +34,7 @@ async function testInputField(ctx: TestContext): Promise<ProviderTestResult> {
   });
 }
 
-async function testAttachButton(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testAttachButton(ctx: TestContext): Promise<ProviderTestResult> {
   if (ctx.config.selectors.attachButton === undefined || ctx.config.selectors.attachButton === "") {
     return ctx.createSkipResult(
       "attach-button",
@@ -52,7 +52,7 @@ async function testAttachButton(ctx: TestContext): Promise<ProviderTestResult> {
   });
 }
 
-async function testFileInput(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testFileInput(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   if (ctx.config.fileInputSelectors.length === 0) {
     return ctx.createSkipResult(
@@ -110,7 +110,7 @@ async function testFileInput(ctx: TestContext): Promise<ProviderTestResult> {
   }
 }
 
-async function testUploadTarget(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   if (ctx.config.uploadTargetSelectors.length === 0) {
     return ctx.createSkipResult(
@@ -168,7 +168,7 @@ async function testUploadTarget(ctx: TestContext): Promise<ProviderTestResult> {
   }
 }
 
-async function testCriticalSelectors(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   if (ctx.config.criticalSelectors.length === 0) {
     return ctx.createSkipResult(
