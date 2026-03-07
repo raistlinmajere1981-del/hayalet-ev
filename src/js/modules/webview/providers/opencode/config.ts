@@ -107,6 +107,15 @@ export const config = {
 
     filePreview: ['[data-type="file"]', '[data-component="file-attachment"]'],
   },
+  selectorMatrix: {
+    selectors: {
+      sendButton: {
+        tr: 'button[type="submit"][icon="arrow-up"][data-component="icon-button"]:not([disabled])',
+        en: 'button[type="submit"][icon="arrow-up"][data-component="icon-button"]:not([disabled])',
+        fallbacks: [],
+      },
+    },
+  },
 
   inputType: "contenteditable",
 

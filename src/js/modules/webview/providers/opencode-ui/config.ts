@@ -75,6 +75,15 @@ export const config = {
     voiceButton: "",
     filePreview: [".ds-file-chips"],
   },
+  selectorMatrix: {
+    selectors: {
+      sendButton: {
+        tr: '#send-btn:not([data-mode="stop"]):not([disabled])',
+        en: '#send-btn:not([data-mode="stop"]):not([disabled])',
+        fallbacks: ["#send-btn"],
+      },
+    },
+  },
 
   inputType: "direct",
 
