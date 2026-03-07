@@ -10,6 +10,7 @@
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext, ElementCheckResult, InteractiveTestsResult } from "./types.ts";
 import { PROVIDER_TEST } from "./types.ts";
+import { resolveSelectorCandidates } from "../../shared/provider-selector-resolution.ts";
 export type { InteractiveTestsResult } from "./types.ts";
 
 /**
@@ -51,7 +52,7 @@ export async function runInteractiveTests(ctx: TestContext): Promise<Interactive
   return { results, aborted };
 }
 
-async function testInputFieldAccessibility(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testInputFieldAccessibility(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const selector = ctx.config.selectors.inputField;
@@ -119,7 +120,7 @@ async function testInputFieldAccessibility(ctx: TestContext): Promise<ProviderTe
   }
 }
 
-async function testSendButtonDisabled(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testSendButtonDisabled(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const selector = ctx.config.selectors.sendButtonDisabled ?? ctx.config.selectors.sendButton;
@@ -193,7 +194,7 @@ async function testSendButtonDisabled(ctx: TestContext): Promise<ProviderTestRes
   }
 }
 
-async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTestResult> {
   const selectorsWithMic = ctx.config.selectors as { microphoneButton?: string };
   if (selectorsWithMic.microphoneButton === undefined || selectorsWithMic.microphoneButton === "") {
     return {
@@ -216,7 +217,7 @@ async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTestResul
   });
 }
 
-async function testTextInjection(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testTextInjection(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const message = PROVIDER_TEST.TEST_MESSAGE;
@@ -332,19 +333,30 @@ async function testTextInjection(ctx: TestContext): Promise<ProviderTestResult> 
   }
 }
 
-async function testSendButtonEnabled(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testSendButtonEnabled(ctx: TestContext): Promise<ProviderTestResult> {
   await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const selectorEntry =
+    ctx.config.selectorMatrix?.selectors?.["sendButton"] ?? ctx.config.selectors.sendButton;
+  const selectorCandidates = resolveSelectorCandidates(selectorEntry, ctx.appLanguage);
 
   return await ctx.testSelector({
     id: "send-button-enabled",
     name: "Send Button (Enabled State)",
     selector: ctx.config.selectors.sendButton,
+    selectorCandidates,
     category: "interactive",
     checks: ["exists", "visible", "enabled"],
+    evidence: {
+      group: "selectors",
+      key: "sendButton",
+      selector: ctx.config.selectors.sendButton,
+      promotable: true,
+    },
   });
 }
 
-async function testFileUpload(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testFileUpload(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
 
   if (ctx.config.fileInputSelectors.length === 0) {
@@ -405,7 +417,7 @@ async function testFileUpload(ctx: TestContext): Promise<ProviderTestResult> {
   }
 }
 
-async function testSendMessage(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testSendMessage(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const clicked = await ctx.clickElement(ctx.config.selectors.sendButton);
@@ -451,7 +463,7 @@ async function testSendMessage(ctx: TestContext): Promise<ProviderTestResult> {
   }
 }
 
-async function testStopButtonWhileThinking(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testStopButtonWhileThinking(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
 
   try {
@@ -524,7 +536,7 @@ async function testStopButtonWhileThinking(ctx: TestContext): Promise<ProviderTe
   }
 }
 
-async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -601,7 +613,7 @@ async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestRes
   }
 }
 
-async function testAIResponseInspect(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testAIResponseInspect(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const selector =

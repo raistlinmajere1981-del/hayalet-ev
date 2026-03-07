@@ -37,7 +37,7 @@ export async function runAdvancedTests(ctx: TestContext): Promise<ProviderTestRe
   return results;
 }
 
-async function testStopButton(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testStopButton(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const visible = await ctx.waitForCondition(async () => {
@@ -80,7 +80,7 @@ async function testStopButton(ctx: TestContext): Promise<ProviderTestResult> {
   }
 }
 
-async function testAssistantMessageScraping(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testAssistantMessageScraping(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
     const selector =
@@ -147,7 +147,7 @@ async function testAssistantMessageScraping(ctx: TestContext): Promise<ProviderT
   }
 }
 
-async function testMessageContainer(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testMessageContainer(ctx: TestContext): Promise<ProviderTestResult> {
   return await ctx.testSelector({
     id: "message-container",
     name: "Message Container",
@@ -157,7 +157,7 @@ async function testMessageContainer(ctx: TestContext): Promise<ProviderTestResul
   });
 }
 
-async function testVoiceButton(ctx: TestContext): Promise<ProviderTestResult> {
+export async function testVoiceButton(ctx: TestContext): Promise<ProviderTestResult> {
   if (ctx.config.selectors.voiceButton === undefined || ctx.config.selectors.voiceButton === "") {
     return ctx.createSkipResult(
       "voice-button",
