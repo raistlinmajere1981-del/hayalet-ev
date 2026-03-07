@@ -20,6 +20,19 @@ const allProviders = {
   ...asistanProviders,
 };
 
+function updateProviderMaps(id: string, config: unknown): void {
+  const record = config as Record<string, unknown>;
+  if (id in providers) {
+    (providers as Record<string, Record<string, unknown>>)[id] = record;
+  }
+
+  if (id in asistanProviders) {
+    (asistanProviders as Record<string, Record<string, unknown>>)[id] = record;
+  }
+
+  (allProviders as Record<string, Record<string, unknown>>)[id] = record;
+}
+
 const providerRegistry = {
   /**
    * Provider config'i getir (AI + Asistan)
@@ -27,7 +40,7 @@ const providerRegistry = {
    * @returns {Object|null}
    */
   get(id: string): Record<string, unknown> | null {
-    return allProviders[id as keyof typeof allProviders];
+    return allProviders[id as keyof typeof allProviders] ?? null;
   },
 
   /**
@@ -47,7 +60,7 @@ const providerRegistry = {
   },
 
   getAsistan(id: string): Record<string, unknown> | null {
-    return asistanProviders[id as keyof typeof asistanProviders];
+    return asistanProviders[id as keyof typeof asistanProviders] ?? null;
   },
   getAllAsistan(): Record<string, unknown>[] {
     return Object.values(asistanProviders);
@@ -57,13 +70,17 @@ const providerRegistry = {
   },
 
   getAny(id: string): Record<string, unknown> | null {
-    return allProviders[id as keyof typeof allProviders];
+    return allProviders[id as keyof typeof allProviders] ?? null;
   },
   getAllAny(): Record<string, unknown>[] {
     return Object.values(allProviders);
   },
   getAllAnyIds(): string[] {
     return Object.keys(allProviders);
+  },
+
+  update(id: string, config: unknown): void {
+    updateProviderMaps(id, config);
   },
 
   isAsistan(id: string): boolean {

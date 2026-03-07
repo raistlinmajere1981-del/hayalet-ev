@@ -6,12 +6,27 @@ import { registerHandler } from "./ipc-helpers.ts";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
+import { loadSettings } from "../settings-manager.ts";
+import {
+  collectPromotableSelectors,
+  resolvePromotionLocaleFromSettings,
+} from "../provider-tester/selector-evidence.ts";
+import { promoteProviderConfigFile } from "../provider-tester/selector-promotion.ts";
 
 const logger = getLoggerCore();
+const PROVIDER_TEST_PROGRESS_CHANNEL = "provider-test:progress";
 
 import type { ProviderTester as ProviderTesterType } from "../provider-tester/index.ts";
 let providerTesterCtor: typeof ProviderTesterType | null = null;
 type ProviderTesterConfig = ConstructorParameters<typeof ProviderTesterType>[1];
+
+async function importModuleByPath(modulePath: string, fresh = false): Promise<unknown> {
+  const moduleUrl = pathToFileURL(modulePath);
+  if (fresh) {
+    moduleUrl.searchParams.set("t", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  }
+  return await import(moduleUrl.href);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -51,6 +66,22 @@ function resolveProviderTesterExport(moduleValue: unknown): typeof ProviderTeste
   return typeof tester === "function" ? (tester as typeof ProviderTesterType) : null;
 }
 
+async function loadProviderConfigRecord(
+  cfgPath: string,
+  options: { fresh?: boolean } = {}
+): Promise<Record<string, unknown> | null> {
+  const mod: unknown = await importModuleByPath(cfgPath, options.fresh === true);
+  return resolveConfigRecord(mod);
+}
+
+async function loadProviderConfigExport(
+  cfgPath: string,
+  options: { fresh?: boolean } = {}
+): Promise<ProviderTesterConfig | null> {
+  const mod: unknown = await importModuleByPath(cfgPath, options.fresh === true);
+  return resolveConfigExport(mod);
+}
+
 export function setupProviderHandlers(): void {
   registerHandler("get-preload-path", () => {
     return Paths.getPreloadFileUrl("webview-preload.cjs");
@@ -64,8 +95,7 @@ export function setupProviderHandlers(): void {
     if (cfgPath.length === 0) return null;
 
     try {
-      const mod: unknown = await import(pathToFileURL(cfgPath).href);
-      const cfg = resolveConfigRecord(mod);
+      const cfg = await loadProviderConfigRecord(cfgPath, { fresh: true });
       if (cfg === null) return null;
       return {
         id: asString(cfg["id"]),
@@ -95,7 +125,7 @@ export function setupProviderHandlers(): void {
     }
   });
 
-  registerHandler("test-provider", async (event, { slot }: { slot: "ai1" | "ai2" }) => {
+  registerHandler("test-provider", async (event, { slot }: { slot: "ai0" | "ai1" | "ai2" }) => {
     try {
       if (providerTesterCtor === null) {
         const testerPathTs = join(
@@ -117,7 +147,7 @@ export function setupProviderHandlers(): void {
           throw new Error(`ProviderTester not found at ${testerPath}`);
         }
 
-        const testerModule: unknown = await import(pathToFileURL(testerPath).href);
+        const testerModule: unknown = await importModuleByPath(testerPath);
         providerTesterCtor = resolveProviderTesterExport(testerModule);
         if (providerTesterCtor === null) {
           throw new Error(`ProviderTester export not found at ${testerPath}`);
@@ -173,8 +203,7 @@ export function setupProviderHandlers(): void {
         throw new Error(`Provider config not found for ${providerId}`);
       }
 
-      const mod: unknown = await import(pathToFileURL(cfgPath).href);
-      const config = resolveConfigExport(mod);
+      const config = await loadProviderConfigExport(cfgPath);
 
       if (config === null) {
         throw new Error(`Invalid provider config for ${providerId}`);
@@ -200,6 +229,11 @@ export function setupProviderHandlers(): void {
         },
       };
 
+      const shellWrapper = {
+        executeJavaScript: async (script: string): Promise<unknown> =>
+          await event.sender.executeJavaScript(script),
+      };
+
       await logger.logInternal(
         LogCategory.IPC,
         LogLevel.INFO,
@@ -207,8 +241,35 @@ export function setupProviderHandlers(): void {
         { slot, providerId }
       );
 
-      const tester = new providerTesterCtor(webviewWrapper, config, slot);
+      const locale = resolvePromotionLocaleFromSettings(await loadSettings());
+
+      const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
+        emitProgress: (progressEvent) => {
+          event.sender.send(PROVIDER_TEST_PROGRESS_CHANNEL, progressEvent);
+        },
+        appLanguage: locale,
+      });
       const results = await tester.runTestSuite();
+
+      const promotions = collectPromotableSelectors({
+        locale,
+        aborted: results.aborted === true,
+        failed: results.failed,
+        warnings: results.warnings,
+        results: results.results,
+      });
+
+      let refreshedConfig: Record<string, unknown> | null = null;
+
+      if (promotions.length > 0) {
+        await promoteProviderConfigFile({
+          configPath: cfgPath,
+          locale,
+          promotions,
+        });
+
+        refreshedConfig = await loadProviderConfigRecord(cfgPath, { fresh: true });
+      }
 
       await logger.logInternal(
         LogCategory.IPC,
@@ -224,7 +285,7 @@ export function setupProviderHandlers(): void {
         }
       );
 
-      return results;
+      return refreshedConfig !== null ? { ...results, refreshedConfig } : results;
     } catch (err) {
       await logger.logInternal(
         LogCategory.IPC,
