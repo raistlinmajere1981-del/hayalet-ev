@@ -14,6 +14,7 @@ import { ServerCommands } from "../modules/server-commands.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { WebviewManager } from "../modules/webview-manager.js";
+import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { MetaCommandManager } from "../modules/meta-command-manager.js";
 import { SplashScreen } from "../ui/splash-screen.js";
 
@@ -148,6 +149,7 @@ async function initApp(): Promise<void> {
     window.SlotController = SlotController;
     window.WebviewManager = WebviewManager;
     window.AppState = AppState;
+    window.ConversationListManager = ConversationListManager;
 
     registerWebviews();
 
