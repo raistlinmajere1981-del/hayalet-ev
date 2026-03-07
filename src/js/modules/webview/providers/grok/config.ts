@@ -18,7 +18,7 @@ export const config = {
       'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"]',
 
     attachButton:
-      'button.group\/attach-button[aria-label="Ekle"], button.group\/attach-button[aria-label="Attach"], button[aria-label="Ekle"][aria-haspopup="menu"], button[aria-label="Attach"][aria-haspopup="menu"]',
+      'button.group/attach-button[aria-label="Ekle"], button.group/attach-button[aria-label="Attach"], button[aria-label="Ekle"][aria-haspopup="menu"], button[aria-label="Attach"][aria-haspopup="menu"]',
 
     attachMenuItem: 'div[role="menuitem"][data-radix-collection-item][data-orientation="vertical"]',
 
@@ -43,8 +43,8 @@ export const config = {
   messageIdStrategy: "content-hash",
   fileInputSelectors: ['input[data-testid="dmComposerAttachFileInput"]', 'input[type="file"]'],
   criticalSelectors: [
-    'button.group\/attach-button[aria-label="Ekle"]',
-    'button.group\/attach-button[aria-label="Attach"]',
+    'button.group/attach-button[aria-label="Ekle"]',
+    'button.group/attach-button[aria-label="Attach"]',
     '.ProseMirror[contenteditable="true"]',
     'p[data-placeholder="Ask Grok"]',
     'p[data-placeholder="Grok\'a Sor"]',
@@ -55,8 +55,8 @@ export const config = {
   ],
   contentContainers: ["div", "section", "article"],
   uploadTargetSelectors: [
-    'button.group\/attach-button[aria-label="Ekle"]',
-    'button.group\/attach-button[aria-label="Attach"]',
+    'button.group/attach-button[aria-label="Ekle"]',
+    'button.group/attach-button[aria-label="Attach"]',
     '[data-testid="dmComposerTextInput"] .ProseMirror[contenteditable="true"]',
     '.ProseMirror[contenteditable="true"]',
     '[data-testid="dmComposerTextInput"]',
