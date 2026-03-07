@@ -21,6 +21,16 @@ export interface ProviderSelectors {
   filePreview?: string[];
 }
 
+export interface LocalizedSelectorEntry {
+  tr?: string;
+  en?: string;
+  fallbacks?: string[];
+}
+
+export interface ProviderSelectorMatrix {
+  selectors?: Record<string, LocalizedSelectorEntry>;
+}
+
 export interface ScrapeSelectors {
   preferred?: string;
   fallback?: string;
@@ -37,6 +47,7 @@ export interface ProviderConfig {
   loginUrl?: string;
   lastVerified?: string;
   selectors: ProviderSelectors;
+  selectorMatrix?: ProviderSelectorMatrix;
   scrapeSelectors?: ScrapeSelectors;
   criticalSelectors?: string[];
   fileInputSelectors?: string[];
@@ -150,6 +161,10 @@ function extractConfigFromSource(source: string, providerId: string): ProviderCo
 
   // selectors object
   config.selectors = extractSelectorsObject(source, "selectors:");
+  const selectorMatrix = extractSelectorMatrix(source);
+  if (selectorMatrix !== undefined) {
+    config.selectorMatrix = selectorMatrix;
+  }
 
   // scrapeSelectors object
   const scrapeSelectors = extractSelectorsObject(source, "scrapeSelectors:");
@@ -167,30 +182,151 @@ function extractConfigFromSource(source: string, providerId: string): ProviderCo
   return config;
 }
 
+function findMatchingIndex(
+  source: string,
+  start: number,
+  openChar: string,
+  closeChar: string
+): number {
+  let depth = 1;
+  let quote: '"' | "'" | "`" | null = null;
+  let escaped = false;
+
+  for (let index = start + 1; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === undefined) {
+      continue;
+    }
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (quote !== null) {
+      if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      quote = char;
+      continue;
+    }
+
+    if (char === openChar) depth += 1;
+    if (char === closeChar) depth -= 1;
+    if (depth === 0) return index;
+  }
+
+  return -1;
+}
+
+function extractObjectContent(source: string, objectKey: string): string | null {
+  const objectStart = source.indexOf(objectKey);
+  if (objectStart === -1) return null;
+
+  const braceStart = source.indexOf("{", objectStart);
+  if (braceStart === -1) return null;
+
+  const braceEnd = findMatchingIndex(source, braceStart, "{", "}");
+  if (braceEnd === -1) return null;
+
+  return source.slice(braceStart + 1, braceEnd);
+}
+
+function extractStringArrayFromContent(source: string, arrayKey: string): string[] {
+  const result: string[] = [];
+  const arrayStart = source.indexOf(arrayKey);
+  if (arrayStart === -1) return result;
+
+  const bracketStart = source.indexOf("[", arrayStart);
+  if (bracketStart === -1) return result;
+
+  const bracketEnd = findMatchingIndex(source, bracketStart, "[", "]");
+  if (bracketEnd === -1) return result;
+
+  const arrayContent = source.slice(bracketStart + 1, bracketEnd);
+  const stringPattern = /["'`]([^"'`]+)["'`]/g;
+  let match;
+
+  while ((match = stringPattern.exec(arrayContent)) !== null) {
+    if (match[1] === undefined) continue;
+    const value = match[1].replace(/\s+/g, " ").trim();
+    if (value !== "" && !value.startsWith("//")) {
+      result.push(value);
+    }
+  }
+
+  return result;
+}
+
+function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefined {
+  const selectorMatrixContent = extractObjectContent(source, "selectorMatrix:");
+  if (!selectorMatrixContent) {
+    return undefined;
+  }
+
+  const selectorsContent = extractObjectContent(selectorMatrixContent, "selectors:");
+  if (!selectorsContent) {
+    return undefined;
+  }
+
+  const selectors: Record<string, LocalizedSelectorEntry> = {};
+  const entryPattern = /(\w+)\s*:\s*\{/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = entryPattern.exec(selectorsContent)) !== null) {
+    const key = match[1];
+    if (!key) continue;
+    const keyOffset = match.index + match[0].lastIndexOf("{");
+    const braceStart = keyOffset;
+    const braceEnd = findMatchingIndex(selectorsContent, braceStart, "{", "}");
+    if (braceEnd === -1) continue;
+
+    const entryContent = selectorsContent.slice(braceStart + 1, braceEnd);
+    const entry: LocalizedSelectorEntry = {};
+    const assignEntryValue = (locale: string | undefined, value: string | undefined): void => {
+      if (locale && value && locale !== "fallbacks") {
+        (entry as Record<string, string | string[] | undefined>)[locale] = value
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+    };
+    const patterns = [/(\w+)\s*:\s*`([^`]*)`/g, /(\w+)\s*:\s*"([^"]*)"/g, /(\w+)\s*:\s*'([^']*)'/g];
+
+    for (const pattern of patterns) {
+      let stringMatch: RegExpExecArray | null;
+      while ((stringMatch = pattern.exec(entryContent)) !== null) {
+        assignEntryValue(stringMatch[1], stringMatch[2]);
+      }
+    }
+
+    const fallbacks = extractStringArrayFromContent(entryContent, "fallbacks:");
+    if (fallbacks.length > 0) {
+      entry.fallbacks = fallbacks;
+    }
+
+    selectors[key] = entry;
+    entryPattern.lastIndex = braceEnd + 1;
+  }
+
+  return Object.keys(selectors).length > 0 ? { selectors } : undefined;
+}
+
 /**
  * Nested object içindeki string değerleri çıkar
  */
 function extractSelectorsObject(source: string, objectKey: string): Record<string, string> {
   const result: Record<string, string> = {};
-
-  // Object başlangıcını bul
-  const objectStart = source.indexOf(objectKey);
-  if (objectStart === -1) return result;
-
-  // İlk { karakterini bul
-  const braceStart = source.indexOf("{", objectStart);
-  if (braceStart === -1) return result;
-
-  // Eşleşen } karakterini bul
-  let braceCount = 1;
-  let braceEnd = braceStart + 1;
-  while (braceCount > 0 && braceEnd < source.length) {
-    if (source[braceEnd] === "{") braceCount++;
-    if (source[braceEnd] === "}") braceCount--;
-    braceEnd++;
-  }
-
-  const objectContent = source.slice(braceStart + 1, braceEnd - 1);
+  const objectContent = extractObjectContent(source, objectKey);
+  if (objectContent === null) return result;
 
   // Key-value çiftlerini parse et - backtick template literal'ları destekle
   // Pattern: key: `value` (içinde " ve ' olabilir)
@@ -232,38 +368,7 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
  * String array'i çıkar
  */
 function extractStringArray(source: string, arrayKey: string): string[] {
-  const result: string[] = [];
-
-  const arrayStart = source.indexOf(arrayKey);
-  if (arrayStart === -1) return result;
-
-  const bracketStart = source.indexOf("[", arrayStart);
-  if (bracketStart === -1) return result;
-
-  // Eşleşen ] karakterini bul
-  let bracketCount = 1;
-  let bracketEnd = bracketStart + 1;
-  while (bracketCount > 0 && bracketEnd < source.length) {
-    if (source[bracketEnd] === "[") bracketCount++;
-    if (source[bracketEnd] === "]") bracketCount--;
-    bracketEnd++;
-  }
-
-  const arrayContent = source.slice(bracketStart + 1, bracketEnd - 1);
-
-  // String değerleri çıkar
-  const stringPattern = /["'`]([^"'`]+)["'`]/g;
-  let match;
-
-  while ((match = stringPattern.exec(arrayContent)) !== null) {
-    if (match[1] === undefined) continue;
-    const value = match[1].replace(/\s+/g, " ").trim();
-    if (value !== "" && !value.startsWith("//")) {
-      result.push(value);
-    }
-  }
-
-  return result;
+  return extractStringArrayFromContent(source, arrayKey);
 }
 
 /**
@@ -298,6 +403,31 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
     for (const [key, value] of Object.entries(config.scrapeSelectors)) {
       if (typeof value === "string" && value.trim() !== "") {
         result.push({ category: "scrapeSelectors", key, selector: value });
+      }
+    }
+  }
+
+  if (config.selectorMatrix?.selectors) {
+    for (const [key, entry] of Object.entries(config.selectorMatrix.selectors)) {
+      for (const [locale, value] of Object.entries(entry)) {
+        if (locale === "fallbacks") continue;
+        if (typeof value === "string" && value.trim() !== "") {
+          result.push({ category: "selectorMatrix", key: `${key}.${locale}`, selector: value });
+        }
+      }
+
+      if (Array.isArray(entry.fallbacks)) {
+        entry.fallbacks.forEach((selector, index) => {
+          if (selector.trim() !== "") {
+            result.push({
+              category: "selectorMatrix",
+              key: `${key}.fallbacks[${index}]`,
+              selector,
+              isArray: true,
+              arrayIndex: index,
+            });
+          }
+        });
       }
     }
   }
