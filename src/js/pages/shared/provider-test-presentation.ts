@@ -1,4 +1,5 @@
 import type {
+  ProviderSessionPreview,
   ProviderTestResult,
   ProviderTestSlot,
   ProviderTestStep,
@@ -56,7 +57,10 @@ export interface ScenarioDisplayRow {
   name: string;
   status: ProviderTestStepStatus;
   message: string;
+  sessionPreview?: ProviderSessionPreview;
 }
+
+export const resolveScenarioSurface = resolveProviderTestSurface;
 
 export function resolveProviderTestSurface(slot: ProviderTestSlot): ProviderTestSurface {
   if (slot === "ai1") {
@@ -71,6 +75,7 @@ export function resolveProviderTestSurface(slot: ProviderTestSlot): ProviderTest
 export function buildScenarioProgressSummary(input: {
   slot: ProviderTestSlot;
   providerName: string;
+  scenarioTitle?: string;
   steps: Array<Pick<ProviderTestStep, "id" | "name" | "status">>;
 }): ScenarioProgressSummary {
   const completedSteps = input.steps.filter(
@@ -82,7 +87,7 @@ export function buildScenarioProgressSummary(input: {
     null;
 
   return {
-    title: `${input.providerName} testi calisiyor`,
+    title: `${input.providerName} ${input.scenarioTitle ?? "testi"} calisiyor`,
     completedSteps,
     totalSteps: input.steps.length,
     activeStepId: activeStep?.id ?? null,
@@ -91,11 +96,14 @@ export function buildScenarioProgressSummary(input: {
 }
 
 function toDisplayRow(item: ProviderTestResult | ProviderTestStep): ScenarioDisplayRow {
+  const sessionPreview = "details" in item ? item.details?.sessionPreview : undefined;
+
   return {
     id: item.id,
     name: item.name,
     status: item.status,
     message: item.message ?? "",
+    ...(sessionPreview !== undefined ? { sessionPreview } : {}),
   };
 }
 

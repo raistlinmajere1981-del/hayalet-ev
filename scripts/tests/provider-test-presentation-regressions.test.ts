@@ -6,9 +6,16 @@ import {
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
   resolveProviderTestSurface,
+  resolveScenarioSurface,
 } from "../../src/js/pages/shared/provider-test-presentation.ts";
 
 test("provider test surface uses opposite slot overlay for entrance slots", () => {
+  assert.deepEqual(resolveScenarioSurface("ai1"), {
+    kind: "overlay",
+    hostSlot: "ai2",
+    testedSlot: "ai1",
+  });
+
   assert.deepEqual(resolveProviderTestSurface("ai1"), {
     kind: "overlay",
     hostSlot: "ai2",
@@ -34,6 +41,7 @@ test("progress summary counts finished steps and exposes current title", () => {
   const summary = buildScenarioProgressSummary({
     slot: "ai2",
     providerName: "Grok",
+    scenarioTitle: "webview-sync",
     steps: [
       { id: "reset-default-page", name: "Reset", status: "pass" },
       { id: "disabled-send", name: "Disabled Send", status: "running" },
@@ -42,7 +50,7 @@ test("progress summary counts finished steps and exposes current title", () => {
   });
 
   assert.deepEqual(summary, {
-    title: "Grok testi calisiyor",
+    title: "Grok webview-sync calisiyor",
     completedSteps: 1,
     totalSteps: 3,
     activeStepId: "disabled-send",
@@ -129,6 +137,62 @@ test("display rows can be filtered by status from completed suite results", () =
       name: "Drag And Drop Surface",
       status: "warning",
       message: "partial",
+    },
+  ]);
+});
+
+test("display rows preserve structured session preview details for sync scenarios", () => {
+  const rows = filterScenarioDisplayRows({
+    filter: "all",
+    steps: [],
+    suite: {
+      providerId: "chatgpt",
+      providerName: "ChatGPT",
+      slot: "ai1",
+      url: "https://chatgpt.com",
+      timestamp: 0,
+      totalTests: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      warnings: 0,
+      totalDuration: 1000,
+      results: [
+        {
+          id: "report-sync-preview",
+          name: "Report Sync Preview",
+          category: "advanced",
+          status: "pass",
+          message: "Preview ready",
+          details: {
+            sessionPreview: {
+              total: 2,
+              sessions: [
+                { title: "First chat", url: "https://chatgpt.com/c/abc" },
+                { title: "Second chat", url: "https://chatgpt.com/c/def" },
+              ],
+            },
+          },
+          duration: 20,
+          timestamp: 0,
+        },
+      ],
+    },
+  });
+
+  assert.deepEqual(rows, [
+    {
+      id: "report-sync-preview",
+      name: "Report Sync Preview",
+      status: "pass",
+      message: "Preview ready",
+      sessionPreview: {
+        total: 2,
+        sessions: [
+          { title: "First chat", url: "https://chatgpt.com/c/abc" },
+          { title: "Second chat", url: "https://chatgpt.com/c/def" },
+        ],
+      },
     },
   ]);
 });
