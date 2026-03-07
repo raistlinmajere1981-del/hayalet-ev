@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-07T07:55:03.357Z",
+  "generatedAt": "2026-03-07T10:35:33.200Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -11,9 +11,9 @@
   "stats": {
     "filesScanned": 408,
     "ids": 368,
-    "testIds": 12,
-    "querySelectors": 100,
-    "totalSelectors": 480
+    "testIds": 13,
+    "querySelectors": 102,
+    "totalSelectors": 483
   },
   "lookup": {
     "id": {
@@ -138,6 +138,7 @@
       "compose-send-btn": "#compose-send-btn",
       "compose-start-btn": "#compose-start-btn",
       "compose-stop-btn": "#compose-stop-btn",
+      "composer-plus-btn": "#composer-plus-btn",
       "composer-submit-button": "#composer-submit-button",
       "conversation-ai1": "#conversation-ai1",
       "conversation-ai2": "#conversation-ai2",
@@ -263,7 +264,6 @@
       "prompt-modal-overlay": "#prompt-modal-overlay",
       "prompt-modal-save": "#prompt-modal-save",
       "prompt-modal-title": "#prompt-modal-title",
-      "prompt-textarea": "#prompt-textarea",
       "prompts-list": "#prompts-list",
       "prompts-panel-body": "#prompts-panel-body",
       "protocol-editor-title": "#protocol-editor-title",
@@ -389,6 +389,7 @@
     "testid": {
       "attachment": "[data-testid=\"attachment\"]",
       "attachment-preview": "[data-testid=\"attachment-preview\"]",
+      "composer-plus-btn": "[data-testid=\"composer-plus-btn\"]",
       "conversation-turn": "[data-testid=\"conversation-turn\"]",
       "dmComposerAttachFileInput": "[data-testid=\"dmComposerAttachFileInput\"]",
       "dmComposerTextInput": "[data-testid=\"dmComposerTextInput\"]",
@@ -434,7 +435,6 @@
       "page": ".page",
       "pin_btn": ".pin-btn",
       "prosemirror": ".ProseMirror",
-      "prosemirror_contenteditable": ".ProseMirror[contenteditable=",
       "protocol_tag_btn": ".protocol-tag-btn",
       "ql_editor_textarea": ".ql-editor.textarea",
       "result_item": ".result-item",
@@ -456,7 +456,6 @@
       "data_testid_drag": "[data-testid*=\"drag\"]",
       "data_testid_drop": "[data-testid*=\"drop\"]",
       "data_testid_file": "[data-testid*=\"file\"]",
-      "data_testid": "[data-testid=",
       "testid_attachment_preview": "[data-testid=\"attachment-preview\"]",
       "testid_conversation_turn": "[data-testid=\"conversation-turn\"]",
       "testid_dmcomposertextinput": "[data-testid=\"dmComposerTextInput\"]",
@@ -466,6 +465,7 @@
       "testid_stop_button_id_composer_submit_buttontestid_stop_button_button_aria_label": "[data-testid=\"stop-button\"], #composer-submit-button[data-testid=\"stop-button\"], button[aria-label=\"Stop streaming\"], button[aria-label=\"Yanıtlamayı durdur\"]",
       "testid_upload_drop_target": "[data-testid=\"upload-drop-target\"]",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
+      "button_data_testid": "], button[data-testid=",
       "selector": "*",
       "id_ai0_webview": "#ai0-webview",
       "id_asistan_status_details": "#asistan-status-details",
@@ -474,15 +474,18 @@
       "id_attach_file_btn": "#attach-file-btn",
       "id_chat_input": "#chat-input",
       "id_chat_messages": "#chat-messages",
+      "id_composer_plus_btn_data_testid": "#composer-plus-btn[data-testid=",
+      "id_composer_plus_btntestid_composer_plus_btn": "#composer-plus-btn[data-testid=\"composer-plus-btn\"]",
+      "id_composer_plus_btntestid_composer_plus_btn_buttontestid_composer_plus_btn_aria": "#composer-plus-btn[data-testid=\"composer-plus-btn\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
       "id_composer_submit_buttontestid_send_button_id_composer_submit_button": "#composer-submit-button[data-testid=\"send-button\"], #composer-submit-button",
       "id_mcp_list_ds_item_row": "#mcp-list .ds-item-row",
-      "id_prompt_textarea": "#prompt-textarea",
       "id_send_btn": "#send-btn",
       "id_session_list": "#session-list",
       "id_submit_btn": "#submit-btn",
       "id_tools_list_ds_panel_item": "#tools-list .ds-panel__item",
       "inputselectors_join": "+ inputSelectors.join(",
       "button": "button",
+      "button_group_attach_button_aria_label": "button.group/attach-button[aria-label=",
       "button_aria_haspopup_dialog": "button[aria-haspopup=dialog]",
       "button_data_test_id": "button[data-test-id=",
       "button_role_tab": "button[role=tab]",
