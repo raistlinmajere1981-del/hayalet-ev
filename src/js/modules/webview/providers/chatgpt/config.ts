@@ -10,7 +10,17 @@ export const config = {
     stopButton:
       '[data-testid="stop-button"], #composer-submit-button[data-testid="stop-button"], button[aria-label="Stop streaming"], button[aria-label="Yanıtlamayı durdur"]',
 
-    voiceButton: "",
+    voiceButton:
+      'button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"]',
+
+    dictateButton:
+      'button.composer-btn[aria-label="Dictate button"], button.composer-btn[aria-label="Dikte düğmesi"]',
+
+    attachButton:
+      '#composer-plus-btn[data-testid="composer-plus-btn"], button[data-testid="composer-plus-btn"][aria-label="Add files and more"], button[data-testid="composer-plus-btn"][aria-label="Dosyaları ve çok daha fazlasını ekle"]',
+
+    attachMenuItem:
+      'div[role="menuitem"].group.__menu-item[data-orientation="vertical"], div[role="menuitem"][data-radix-collection-item]',
 
     inputField: "#prompt-textarea",
 
@@ -49,12 +59,14 @@ export const config = {
   messageIdStrategy: "content-hash",
   fileInputSelectors: ['input[type="file"][multiple]', 'input[type="file"]'],
   uploadTargetSelectors: [
+    '#composer-plus-btn[data-testid="composer-plus-btn"]',
     '[data-testid="upload-drop-target"]',
     '[data-testid="prompt-textarea"]',
     "#prompt-textarea",
     "form textarea",
   ],
   criticalSelectors: [
+    '#composer-plus-btn[data-testid="composer-plus-btn"]',
     "#prompt-textarea",
     '[data-testid="prompt-textarea"]',
     '[data-testid="conversation-turn"]',

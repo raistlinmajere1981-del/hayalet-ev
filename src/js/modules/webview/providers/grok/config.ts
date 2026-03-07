@@ -11,7 +11,16 @@ export const config = {
     stopButton:
       'button[aria-label="Model yanıtını durdur"], button[aria-label="Stop model response"]',
 
-    voiceButton: 'button[aria-label="Ses moduna gir"], button[aria-label="Enter voice mode"]',
+    voiceButton:
+      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"], button[aria-label="Ses moduna gir"], button[aria-label="Enter voice mode"]',
+
+    dictateButton:
+      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"]',
+
+    attachButton:
+      'button.group\/attach-button[aria-label="Ekle"], button.group\/attach-button[aria-label="Attach"], button[aria-label="Ekle"][aria-haspopup="menu"], button[aria-label="Attach"][aria-haspopup="menu"]',
+
+    attachMenuItem: 'div[role="menuitem"][data-radix-collection-item][data-orientation="vertical"]',
 
     inputField:
       '[data-testid="dmComposerTextInput"] .ProseMirror[contenteditable="true"], .ProseMirror[contenteditable="true"], textarea[aria-label="Grok\'a her şeyi sor"], textarea[aria-label="Ask Grok anything"], textarea[aria-label*="Grok"]',
@@ -34,6 +43,8 @@ export const config = {
   messageIdStrategy: "content-hash",
   fileInputSelectors: ['input[data-testid="dmComposerAttachFileInput"]', 'input[type="file"]'],
   criticalSelectors: [
+    'button.group\/attach-button[aria-label="Ekle"]',
+    'button.group\/attach-button[aria-label="Attach"]',
     '.ProseMirror[contenteditable="true"]',
     'p[data-placeholder="Ask Grok"]',
     'p[data-placeholder="Grok\'a Sor"]',
@@ -44,6 +55,8 @@ export const config = {
   ],
   contentContainers: ["div", "section", "article"],
   uploadTargetSelectors: [
+    'button.group\/attach-button[aria-label="Ekle"]',
+    'button.group\/attach-button[aria-label="Attach"]',
     '[data-testid="dmComposerTextInput"] .ProseMirror[contenteditable="true"]',
     '.ProseMirror[contenteditable="true"]',
     '[data-testid="dmComposerTextInput"]',
