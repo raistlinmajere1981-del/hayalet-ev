@@ -287,67 +287,84 @@ export async function getSessionSummary(
   let fallbackSummary: Record<string, unknown> | null = null;
 
   if (!meta && !summary) {
+    const sessionDir = join(targetLogDir, sessionId);
     const structuredPath = join(targetLogDir, sessionId, "structured.jsonl");
 
     if (!existsSync(structuredPath)) {
-      return {
-        content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
-        isError: true,
-      };
-    }
-
-    try {
-      const structured = await readFile(structuredPath, "utf-8");
-      const entries = structured
-        .split("\n")
-        .map((line) => parseStructuredLine(line))
-        .filter((line): line is StructuredLine => line !== null);
-
-      const byLevel: Record<string, number> = {};
-      let errorCount = 0;
-      let warningCount = 0;
-
-      entries.forEach((entry) => {
-        const levelRaw =
-          typeof entry.level === "string"
-            ? entry.level
-            : typeof entry.type === "string"
-              ? entry.type
-              : "unknown";
-        const normalized = levelRaw.toLowerCase();
-        byLevel[normalized] = (byLevel[normalized] ?? 0) + 1;
-        if (normalized === "error") errorCount += 1;
-        if (normalized === "warning" || normalized === "warn") warningCount += 1;
-      });
-
-      const firstEntry = entries[0];
-      const lastEntry = entries.length > 0 ? entries[entries.length - 1] : undefined;
-
-      const firstTs = typeof firstEntry?.timestamp === "string" ? firstEntry.timestamp : undefined;
-      const lastTs = typeof lastEntry?.timestamp === "string" ? lastEntry.timestamp : undefined;
-
-      const duration =
-        firstTs !== undefined && lastTs !== undefined
-          ? Math.max(0, new Date(lastTs).getTime() - new Date(firstTs).getTime())
-          : undefined;
+      if (!existsSync(sessionDir)) {
+        return {
+          content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
+          isError: true,
+        };
+      }
 
       fallbackSummary = {
-        startTime: firstTs,
-        endTime: lastTs,
-        endReason: "from-structured",
-        ...(duration !== undefined ? { duration } : {}),
+        startTime: "unknown",
+        endTime: "N/A",
+        endReason: "incomplete",
+        duration: 0,
         stats: {
-          totalLogs: entries.length,
-          errorCount,
-          warningCount,
-          byLevel,
+          totalLogs: 0,
+          errorCount: 0,
+          warningCount: 0,
+          byLevel: {},
         },
       };
-    } catch {
-      return {
-        content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
-        isError: true,
-      };
+    } else {
+      try {
+        const structured = await readFile(structuredPath, "utf-8");
+        const entries = structured
+          .split("\n")
+          .map((line) => parseStructuredLine(line))
+          .filter((line): line is StructuredLine => line !== null);
+
+        const byLevel: Record<string, number> = {};
+        let errorCount = 0;
+        let warningCount = 0;
+
+        entries.forEach((entry) => {
+          const levelRaw =
+            typeof entry.level === "string"
+              ? entry.level
+              : typeof entry.type === "string"
+                ? entry.type
+                : "unknown";
+          const normalized = levelRaw.toLowerCase();
+          byLevel[normalized] = (byLevel[normalized] ?? 0) + 1;
+          if (normalized === "error") errorCount += 1;
+          if (normalized === "warning" || normalized === "warn") warningCount += 1;
+        });
+
+        const firstEntry = entries[0];
+        const lastEntry = entries.length > 0 ? entries[entries.length - 1] : undefined;
+
+        const firstTs =
+          typeof firstEntry?.timestamp === "string" ? firstEntry.timestamp : undefined;
+        const lastTs = typeof lastEntry?.timestamp === "string" ? lastEntry.timestamp : undefined;
+
+        const duration =
+          firstTs !== undefined && lastTs !== undefined
+            ? Math.max(0, new Date(lastTs).getTime() - new Date(firstTs).getTime())
+            : undefined;
+
+        fallbackSummary = {
+          startTime: firstTs,
+          endTime: lastTs,
+          endReason: "from-structured",
+          ...(duration !== undefined ? { duration } : {}),
+          stats: {
+            totalLogs: entries.length,
+            errorCount,
+            warningCount,
+            byLevel,
+          },
+        };
+      } catch {
+        return {
+          content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
+          isError: true,
+        };
+      }
     }
   }
 

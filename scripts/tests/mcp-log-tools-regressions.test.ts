@@ -70,3 +70,25 @@ test("getSessionSummary returns fallback summary for mcp default session", async
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("getSessionSummary returns incomplete summary when mcp default has no summary sources", async () => {
+  const root = await mkdtemp(join(tmpdir(), "hayalet-ev-log-tools-"));
+
+  try {
+    const sessionDir = join(root, "logs", "mcp-server", "default");
+    await mkdir(sessionDir, { recursive: true });
+
+    const result = await getSessionSummary(join(root, "logs", "mcp-server"), {
+      app: "mcp-server",
+      sessionId: "default",
+    });
+
+    const text = String(result.content[0]?.text ?? "");
+    assert.equal(result.isError, undefined);
+    assert.match(text, /Session Özeti: default/);
+    assert.match(text, /Durum: incomplete/);
+    assert.match(text, /Toplam Log: 0/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
