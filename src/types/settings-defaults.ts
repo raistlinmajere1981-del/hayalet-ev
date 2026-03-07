@@ -42,6 +42,9 @@ export function createDefaultSettings(): AppSettings {
   } as NonNullable<NonNullable<AppSettings["integrations"]>["googledrive"]>;
 
   return {
+    general: {
+      language: "tr",
+    },
     user: { nickname: "Kullanıcı", avatarPath: "src/assets/default.png" },
     integrations: {
       googledrive: defaultGoogleDrive,

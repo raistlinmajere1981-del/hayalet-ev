@@ -12,6 +12,10 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
 }
 
+function normalizeAppLanguage(value: unknown): "tr" | "en" {
+  return value === "en" ? "en" : "tr";
+}
+
 export function defaultSettings(): AppSettings {
   return createDefaultSettings();
 }
@@ -39,6 +43,10 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
 
   if (isPlainObject(r.user)) {
     out.user = r.user;
+  }
+
+  if (isPlainObject(r.general)) {
+    out.general = r.general;
   }
 
   const gd = r.integrations?.googledrive;
@@ -118,6 +126,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
   }
+
+  if (!isPlainObject(merged.general)) {
+    merged.general = defaults.general ?? { language: "tr" };
+  }
+  merged.general.language = normalizeAppLanguage(merged.general.language);
 
   if (!Array.isArray(merged.asistanAccounts)) {
     merged.asistanAccounts = [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];

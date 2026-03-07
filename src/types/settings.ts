@@ -52,10 +52,12 @@ export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "drag
 /** Message method tercihi */
 export type MessageMethod = "injection" | "xdotools";
 
+export type AppLanguage = "tr" | "en";
+
 /** Genel ayarlar */
 export interface GeneralSettings {
   theme?: "light" | "dark" | "system";
-  language?: string;
+  language?: AppLanguage;
   startMinimized?: boolean;
   closeToTray?: boolean;
   autoUpdate?: boolean;
