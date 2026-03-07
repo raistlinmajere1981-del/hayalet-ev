@@ -232,3 +232,155 @@
 .error-message strong {
   color: var(--color-error);
 }
+
+.scenario-overlay {
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(10px);
+  text-align: left;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scenario-overlay__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.scenario-overlay__eyebrow {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.scenario-overlay__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.scenario-overlay__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.scenario-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 120ms ease;
+}
+
+.scenario-summary-chip:hover {
+  transform: translateY(-1px);
+}
+
+.scenario-summary-chip.is-active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.scenario-summary-chip--pass {
+  color: #6ee7b7;
+}
+
+.scenario-summary-chip--fail {
+  color: #fca5a5;
+}
+
+.scenario-summary-chip--warning {
+  color: #fcd34d;
+}
+
+.scenario-summary-chip--skip {
+  color: #cbd5e1;
+}
+
+.scenario-overlay__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding-right: var(--space-1);
+}
+
+.scenario-step {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.scenario-step--pass {
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.scenario-step--warning,
+.scenario-step--running {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.scenario-step--skip {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.scenario-step--fail {
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+.scenario-step__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.scenario-step__name,
+.scenario-step__status {
+  font-size: var(--text-sm);
+}
+
+.scenario-step__message {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.scenario-step__status {
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.scenario-overlay__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.scenario-empty {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  padding: var(--space-3) 0;
+}

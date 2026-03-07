@@ -48,9 +48,14 @@ import {
   refreshOpencodeDoctorStatus,
 } from "./opencode-doctor.js";
 import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
-import { openTestResultsModal } from "./test-results-modal.js";
 import { bindAsistanBasicEvents } from "./event-bindings.js";
 import { populateAsistanProviderSelect } from "./provider-select.js";
+import {
+  buildScenarioProgressSummary,
+  buildScenarioStatusCounts,
+  filterScenarioDisplayRows,
+  type ScenarioStatusFilter,
+} from "../shared/provider-test-presentation.js";
 import {
   bindAsistanPrimaryWebviewEvents,
   bindAsistanWebviewIpcEvents,
@@ -62,6 +67,21 @@ import {
   updateServerStatusView,
   updateTrafficStatusView,
 } from "./view-helpers.js";
+import type {
+  ProviderTestProgressEvent,
+  ProviderTestStep,
+  ProviderTestSuite,
+} from "@shared/provider.js";
+
+interface ScenarioPanelState {
+  providerName: string;
+  phase: "launcher" | "running" | "completed";
+  filter: ScenarioStatusFilter;
+  runId: string | null;
+  steps: ProviderTestStep[];
+  message: string;
+  suite: ProviderTestSuite | null;
+}
 
 export class AsistanController {
   _unsubSettings: (() => void) | null;
@@ -99,6 +119,9 @@ export class AsistanController {
   characterOverlay: CharacterOverlay;
   memoryOverlay: MemoryOverlay;
   memoryBtn: HTMLButtonElement | null;
+  testPanel: HTMLElement | null;
+  scenarioPanelState: ScenarioPanelState | null;
+  providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
 
   _isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -146,6 +169,9 @@ export class AsistanController {
     this.characterOverlay = new CharacterOverlay();
     this.memoryOverlay = new MemoryOverlay();
     this.memoryBtn = null;
+    this.testPanel = null;
+    this.scenarioPanelState = null;
+    this.providerTestProgressHandler = null;
   }
 
   async init(): Promise<void> {
@@ -205,6 +231,7 @@ export class AsistanController {
     }
 
     this.memoryBtn = document.getElementById("asistan-memory-btn") as HTMLButtonElement | null;
+    this.testPanel = document.getElementById("ai0-test-side-panel");
     this.characterOverlay.init();
     this.memoryOverlay.init();
     this._setupEventListeners();
@@ -743,16 +770,194 @@ export class AsistanController {
     }
   }
 
-  async _handleTestClick(): Promise<void> {
-    const btn = this.testBtn;
-    if (!btn || btn.disabled) return;
+  _openTestPanel(): void {
+    if (this.scenarioPanelState?.phase === "running") {
+      return;
+    }
+
+    this.scenarioPanelState = {
+      providerName: this.titleEl?.textContent?.trim() || AppState.getNickname("ai0"),
+      phase: "launcher",
+      filter: "all",
+      runId: null,
+      steps: [],
+      message: "Senaryoyu baslatinca ilerleme adimlari burada gorunur.",
+      suite: null,
+    };
+    this._renderTestPanel();
+  }
+
+  _closeTestPanel(): void {
+    this.scenarioPanelState = null;
+    this.testPanel?.classList.add("hidden");
+  }
+
+  _updateTestProgress(event: ProviderTestProgressEvent): void {
+    const state = this.scenarioPanelState;
+    if (!state || event.slot !== "ai0") return;
+    if (state.runId !== null && event.runId !== state.runId) return;
+
+    if (state.runId === null) {
+      state.runId = event.runId;
+    }
+
+    if (event.type === "started") {
+      state.phase = "running";
+      state.message = `${state.providerName} testi hazirlaniyor`;
+    }
+
+    if (event.type === "step-start" && typeof event.stepId === "string") {
+      const existing = state.steps.find((step) => step.id === event.stepId);
+      if (existing) {
+        existing.status = "running";
+        if (typeof event.message === "string") {
+          existing.message = event.message;
+        }
+      } else {
+        state.steps.push({
+          id: event.stepId,
+          name: event.message ?? event.stepId,
+          status: "running",
+        });
+      }
+      state.message = event.message ?? state.message;
+    }
+
+    if (event.type === "step-complete" && typeof event.stepId === "string") {
+      const existing = state.steps.find((step) => step.id === event.stepId);
+      if (existing) {
+        if (event.status !== undefined) {
+          existing.status = event.status;
+        }
+        if (typeof event.message === "string") {
+          existing.message = event.message;
+        }
+      }
+      state.message = event.message ?? state.message;
+    }
+
+    if (event.type === "completed") {
+      state.phase = "completed";
+      state.message = event.message ?? state.message;
+    }
+
+    this._renderTestPanel();
+  }
+
+  _renderTestPanel(): void {
+    const state = this.scenarioPanelState;
+    const panel = this.testPanel;
+    if (!state || !panel) return;
+
+    panel.classList.remove("hidden");
+
+    const summary = buildScenarioProgressSummary({
+      slot: "ai0",
+      providerName: state.providerName,
+      steps: state.steps,
+    });
+    const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
+    const rows = filterScenarioDisplayRows({
+      filter: state.filter,
+      steps: state.steps,
+      suite: state.suite,
+    });
+    const summaryMarkup = `
+      <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
+        <button class="scenario-summary-chip scenario-summary-chip--pass${state.filter === "pass" ? " is-active" : ""}" type="button" data-filter-status="pass">
+          ${counts.pass} pass
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--fail${state.filter === "fail" ? " is-active" : ""}" type="button" data-filter-status="fail">
+          ${counts.fail} fail
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--warning${state.filter === "warning" ? " is-active" : ""}" type="button" data-filter-status="warning">
+          ${counts.warning} warning
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--skip${state.filter === "skip" ? " is-active" : ""}" type="button" data-filter-status="skip">
+          ${counts.skip} skip
+        </button>
+      </div>
+    `;
+
+    const stepMarkup =
+      rows.length === 0
+        ? `<div class="scenario-empty">${state.filter === "all" ? "Henüz adim baslamadi." : "Bu filtre icin sonuc yok."}</div>`
+        : rows
+            .map(
+              (row) => `
+                    <div class="scenario-step scenario-step--${row.status}">
+                      <div class="scenario-step__body">
+                        <span class="scenario-step__name">${row.name}</span>
+                        ${row.message !== "" ? `<span class="scenario-step__message">${row.message}</span>` : ""}
+                      </div>
+                      <span class="scenario-step__status">${row.status}</span>
+                    </div>
+                  `
+            )
+            .join("");
+
+    panel.innerHTML = `
+      <div class="asistan-test-panel__header">
+        <div>
+          <div class="scenario-overlay__eyebrow">AI0 senaryo testi</div>
+          <div class="asistan-test-panel__title">${summary.title}</div>
+          <div class="asistan-test-panel__subtitle">${state.message}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm asistan-test-panel__close" type="button">Kapat</button>
+      </div>
+          <div class="scenario-overlay__meta">
+            <span>${summary.completedSteps}/${summary.totalSteps || 0} adim tamamlandi</span>
+            <span>${summary.activeStepId ?? "hazir"}</span>
+          </div>
+          ${summaryMarkup}
+          <div class="asistan-test-panel__steps">${stepMarkup}</div>
+          <div class="asistan-test-panel__actions">
+            <button class="btn btn-primary btn-sm asistan-test-panel__start" type="button" ${state.phase === "running" ? "disabled" : ""}>
+              ${state.phase === "launcher" ? "Testi Baslat" : "Tekrar Calistir"}
+            </button>
+            ${state.suite ? '<button class="btn btn-secondary btn-sm asistan-test-panel__copy" type="button">JSON Kopyala</button>' : ""}
+          </div>
+        `;
+
+    panel.querySelector(".asistan-test-panel__close")?.addEventListener("click", () => {
+      this._closeTestPanel();
+    });
+    panel.querySelector(".asistan-test-panel__start")?.addEventListener("click", () => {
+      void this._startScenarioTest();
+    });
+    panel.querySelector(".asistan-test-panel__copy")?.addEventListener("click", () => {
+      if (state.suite) {
+        void navigator.clipboard.writeText(JSON.stringify(state.suite, null, 2));
+      }
+    });
+    panel.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset["filterStatus"] as ScenarioStatusFilter | undefined;
+        if (filter === undefined) return;
+        state.filter = state.filter === filter ? "all" : filter;
+        this._renderTestPanel();
+      });
+    });
+  }
+
+  async _startScenarioTest(): Promise<void> {
+    const state = this.scenarioPanelState;
+    if (!state || this.providerTestProgressHandler !== null) return;
+
+    const handler = (event: ProviderTestProgressEvent): void => {
+      this._updateTestProgress(event);
+    };
+    this.providerTestProgressHandler = handler;
+    window.electronAPI?.onProviderTestProgress?.(handler);
 
     try {
-      btn.classList.add("testing");
-      btn.disabled = true;
-      btn.innerHTML = "⏳";
-
-      Logger.info(LogCategory.ASISTAN_CORE, "Starting provider test for ai0");
+      state.phase = "running";
+      state.filter = "all";
+      state.runId = null;
+      state.steps = [];
+      state.suite = null;
+      state.message = `${state.providerName} testi baslatildi`;
+      this._renderTestPanel();
 
       const results = await window.electronAPI?.testProvider({ slot: "ai0" });
 
@@ -760,37 +965,47 @@ export class AsistanController {
         throw new Error("Test failed: No results returned");
       }
 
+      if (results.refreshedConfig) {
+        ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
+        const activeWebview = SlotController.getWebview("ai0") as
+          | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
+          | null;
+        activeWebview?.send?.("hayalet-set-provider", {
+          providerId: results.refreshedConfig.id,
+          slot: "ai0",
+        });
+      }
+
+      state.phase = "completed";
+      state.runId = results.runId ?? state.runId;
+      state.steps = results.steps ?? state.steps;
+      state.suite = results;
+      state.message = `${results.passed}/${results.totalTests} kontrol gecti`;
+      this._renderTestPanel();
+
       Logger.info(
         LogCategory.ASISTAN_CORE,
         `Test completed: ${results.passed}/${results.totalTests} passed`
       );
-
-      await openTestResultsModal(results);
     } catch (error) {
+      state.phase = "completed";
+      state.message = (error as Error).message;
+      this._renderTestPanel();
       Logger.error(LogCategory.ASISTAN_CORE, `Provider test failed: ${(error as Error).message}`);
-
-      const errorModal = await import("../../ui/modal-manager.js");
-      errorModal.ModalManager.open({
-        title: "❌ Test Failed",
-        content: `<div class="error-message">
-          <p><strong>Test execution failed:</strong></p>
-          <p>${(error as Error).message}</p>
-        </div>`,
-        buttons: [
-          {
-            text: "Close",
-            class: "btn-primary",
-            onClick: (): void => {
-              errorModal.ModalManager.close();
-            },
-          },
-        ],
-      });
     } finally {
-      btn.classList.remove("testing");
-      btn.disabled = false;
-      btn.innerHTML = "🧪";
+      if (this.providerTestProgressHandler) {
+        window.electronAPI?.offProviderTestProgress?.(this.providerTestProgressHandler);
+        this.providerTestProgressHandler = null;
+      }
     }
+  }
+
+  async _handleTestClick(): Promise<void> {
+    const btn = this.testBtn;
+    if (!btn || btn.disabled) return;
+    if (this.scenarioPanelState?.phase === "running") return;
+
+    this._openTestPanel();
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {

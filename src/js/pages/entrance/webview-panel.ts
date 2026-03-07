@@ -8,9 +8,21 @@ import { SlotController } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
+import {
+  buildScenarioProgressSummary,
+  buildScenarioStatusCounts,
+  filterScenarioDisplayRows,
+  resolveProviderTestSurface,
+  type ScenarioStatusFilter,
+} from "../shared/provider-test-presentation.js";
 
 import type { AppSettings } from "@shared/settings.js";
-import type { ProviderTestSuite, ProviderTestResult } from "@shared/provider.js";
+import type {
+  ProviderTestProgressEvent,
+  ProviderTestResult,
+  ProviderTestStep,
+  ProviderTestSuite,
+} from "@shared/provider.js";
 
 type SlotType = "ai1" | "ai2";
 
@@ -21,6 +33,18 @@ interface SlotState {
   connected: boolean;
   connecting: boolean;
   active: boolean;
+}
+
+interface ScenarioOverlayState {
+  testedSlot: SlotType;
+  hostSlot: SlotType;
+  providerName: string;
+  phase: "launcher" | "running" | "completed";
+  filter: ScenarioStatusFilter;
+  runId: string | null;
+  steps: ProviderTestStep[];
+  message: string;
+  suite: ProviderTestSuite | null;
 }
 
 interface WebviewElement extends HTMLElement {
@@ -36,6 +60,8 @@ export class WebviewPanel {
   trafficUnsub: (() => void) | null;
   loadLogState: Record<string, { lastStart: number; lastStop: number }>;
   sessionUrlSaveTimers: Record<SlotType, ReturnType<typeof setTimeout> | null>;
+  scenarioOverlayState: ScenarioOverlayState | null;
+  providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
 
   constructor() {
     this.ai1Webview = null;
@@ -49,6 +75,8 @@ export class WebviewPanel {
       ai1: null,
       ai2: null,
     };
+    this.scenarioOverlayState = null;
+    this.providerTestProgressHandler = null;
   }
 
   init(): void {
@@ -265,16 +293,224 @@ export class WebviewPanel {
     }
   }
 
-  async handleTestClick(slot: "ai1" | "ai2"): Promise<void> {
-    const btn = document.getElementById(`${slot}-test-btn`) as HTMLButtonElement | null;
-    if (!btn || btn.disabled === true) return;
+  isScenarioOverlayHost(slot: SlotType): boolean {
+    return this.scenarioOverlayState?.hostSlot === slot;
+  }
+
+  openTestLauncher(slot: SlotType): void {
+    if (this.scenarioOverlayState?.phase === "running") {
+      return;
+    }
+
+    const surface = resolveProviderTestSurface(slot);
+    if (surface.kind !== "overlay") {
+      return;
+    }
+
+    this.scenarioOverlayState = {
+      testedSlot: slot,
+      hostSlot: surface.hostSlot,
+      providerName: AppState.getNickname(slot),
+      phase: "launcher",
+      filter: "all",
+      runId: null,
+      steps: [],
+      message: "Senaryoyu baslatinca ilerleme adimlari burada gorunur.",
+      suite: null,
+    };
+
+    this.renderScenarioOverlay();
+  }
+
+  closeScenarioOverlay(): void {
+    const state = this.scenarioOverlayState;
+    if (!state) return;
+
+    const overlayEl = document.getElementById(`${state.hostSlot}-webview-overlay`);
+    if (overlayEl) {
+      overlayEl.innerHTML = `
+        <div class="overlay-icon"></div>
+        <div class="overlay-title"></div>
+        <div class="overlay-subtitle"></div>
+      `;
+    }
+
+    this.scenarioOverlayState = null;
+    this.applyGating(SettingsManager.getSnapshot(), ["*"]);
+  }
+
+  updateScenarioProgress(event: ProviderTestProgressEvent): void {
+    const state = this.scenarioOverlayState;
+    if (!state || event.slot !== state.testedSlot) return;
+    if (state.runId !== null && event.runId !== state.runId) return;
+
+    if (state.runId === null) {
+      state.runId = event.runId;
+    }
+
+    if (event.type === "started") {
+      state.phase = "running";
+      state.message = `${state.providerName} testi hazirlaniyor`;
+    }
+
+    if (event.type === "step-start" && typeof event.stepId === "string") {
+      const existing = state.steps.find((step) => step.id === event.stepId);
+      if (existing) {
+        existing.status = "running";
+        if (typeof event.message === "string") {
+          existing.message = event.message;
+        }
+      } else {
+        state.steps.push({
+          id: event.stepId,
+          name: event.message ?? event.stepId,
+          status: "running",
+        });
+      }
+      state.message = event.message ?? state.message;
+    }
+
+    if (event.type === "step-complete" && typeof event.stepId === "string") {
+      const existing = state.steps.find((step) => step.id === event.stepId);
+      if (existing) {
+        if (event.status !== undefined) {
+          existing.status = event.status;
+        }
+        if (typeof event.message === "string") {
+          existing.message = event.message;
+        }
+      }
+      state.message = event.message ?? state.message;
+    }
+
+    if (event.type === "completed") {
+      state.phase = "completed";
+      state.message = event.message ?? state.message;
+    }
+
+    this.renderScenarioOverlay();
+  }
+
+  renderScenarioOverlay(): void {
+    const state = this.scenarioOverlayState;
+    if (!state) return;
+
+    const overlayEl = document.getElementById(`${state.hostSlot}-webview-overlay`);
+    const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
+    if (!overlayEl || !mountEl) return;
+
+    overlayEl.className = "webview-overlay scenario-overlay";
+    overlayEl.classList.remove("hidden");
+    mountEl.classList.add("webview-content-blocked");
+
+    const summary = buildScenarioProgressSummary({
+      slot: state.testedSlot,
+      providerName: state.providerName,
+      steps: state.steps,
+    });
+    const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
+    const rows = filterScenarioDisplayRows({
+      filter: state.filter,
+      steps: state.steps,
+      suite: state.suite,
+    });
+    const summaryMarkup = `
+      <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
+        <button class="scenario-summary-chip scenario-summary-chip--pass${state.filter === "pass" ? " is-active" : ""}" type="button" data-filter-status="pass">
+          ${counts.pass} pass
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--fail${state.filter === "fail" ? " is-active" : ""}" type="button" data-filter-status="fail">
+          ${counts.fail} fail
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--warning${state.filter === "warning" ? " is-active" : ""}" type="button" data-filter-status="warning">
+          ${counts.warning} warning
+        </button>
+        <button class="scenario-summary-chip scenario-summary-chip--skip${state.filter === "skip" ? " is-active" : ""}" type="button" data-filter-status="skip">
+          ${counts.skip} skip
+        </button>
+      </div>
+    `;
+
+    const stepMarkup =
+      rows.length === 0
+        ? `<div class="scenario-empty">${state.filter === "all" ? "Henüz adim baslamadi." : "Bu filtre icin sonuc yok."}</div>`
+        : rows
+            .map(
+              (row) => `
+                    <div class="scenario-step scenario-step--${row.status}">
+                      <div class="scenario-step__body">
+                        <span class="scenario-step__name">${row.name}</span>
+                        ${row.message !== "" ? `<span class="scenario-step__message">${row.message}</span>` : ""}
+                      </div>
+                      <span class="scenario-step__status">${row.status}</span>
+                    </div>
+                  `
+            )
+            .join("");
+
+    const isRunning = state.phase === "running";
+    overlayEl.innerHTML = `
+      <div class="scenario-overlay__header">
+        <div>
+          <div class="scenario-overlay__eyebrow">${state.testedSlot.toUpperCase()} senaryo testi</div>
+          <div class="overlay-title">${summary.title}</div>
+          <div class="overlay-subtitle">${state.message}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button">Kapat</button>
+      </div>
+          <div class="scenario-overlay__meta">
+            <span>${summary.completedSteps}/${summary.totalSteps || 0} adim tamamlandi</span>
+            <span>${summary.activeStepId ?? "hazir"}</span>
+          </div>
+          ${summaryMarkup}
+          <div class="scenario-overlay__steps">${stepMarkup}</div>
+          <div class="scenario-overlay__actions">
+            <button class="btn btn-primary btn-sm scenario-overlay__start" type="button" ${isRunning ? "disabled" : ""}>
+              ${state.phase === "launcher" ? "Testi Baslat" : "Tekrar Calistir"}
+            </button>
+            ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
+          </div>
+        `;
+
+    overlayEl.querySelector(".scenario-overlay__close")?.addEventListener("click", () => {
+      this.closeScenarioOverlay();
+    });
+    overlayEl.querySelector(".scenario-overlay__start")?.addEventListener("click", () => {
+      void this.startScenarioTest(state.testedSlot);
+    });
+    overlayEl.querySelector(".scenario-overlay__copy")?.addEventListener("click", () => {
+      if (state.suite) {
+        void navigator.clipboard.writeText(JSON.stringify(state.suite, null, 2));
+      }
+    });
+    overlayEl.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset["filterStatus"] as ScenarioStatusFilter | undefined;
+        if (filter === undefined) return;
+        state.filter = state.filter === filter ? "all" : filter;
+        this.renderScenarioOverlay();
+      });
+    });
+  }
+
+  async startScenarioTest(slot: SlotType): Promise<void> {
+    const state = this.scenarioOverlayState;
+    if (!state || state.testedSlot !== slot || this.providerTestProgressHandler !== null) return;
+
+    const handler = (event: ProviderTestProgressEvent): void => {
+      this.updateScenarioProgress(event);
+    };
+    this.providerTestProgressHandler = handler;
+    window.electronAPI?.onProviderTestProgress?.(handler);
 
     try {
-      btn.classList.add("testing");
-      btn.disabled = true;
-      btn.innerHTML = "⏳";
-
-      Logger.info(LogCategory.ENTRANCE, `Starting provider test for ${slot}`);
+      state.phase = "running";
+      state.filter = "all";
+      state.steps = [];
+      state.runId = null;
+      state.suite = null;
+      state.message = `${state.providerName} testi baslatildi`;
+      this.renderScenarioOverlay();
 
       const results = await window.electronAPI?.testProvider({ slot });
 
@@ -282,39 +518,62 @@ export class WebviewPanel {
         throw new Error("Test failed: No results returned");
       }
 
+      if (results.refreshedConfig) {
+        ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
+        const activeWebview = SlotController.getWebview(slot) as
+          | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
+          | null;
+        activeWebview?.send?.("hayalet-set-provider", {
+          providerId: results.refreshedConfig.id,
+          slot,
+        });
+      }
+
+      state.phase = "completed";
+      state.runId = results.runId ?? state.runId;
+      state.steps = results.steps ?? state.steps;
+      state.suite = results;
+      state.message = `${results.passed}/${results.totalTests} kontrol gecti`;
+      this.renderScenarioOverlay();
+
       Logger.info(
         LogCategory.ENTRANCE,
         `Test completed: ${results.passed}/${results.totalTests} passed`
       );
-
-      this.showTestResultsModal(results);
     } catch (error) {
+      state.phase = "completed";
+      state.message = getErrorMessage(error as Error);
+      this.renderScenarioOverlay();
+
       Logger.error(
         LogCategory.ENTRANCE,
         `Provider test failed: ${getErrorMessage(error as Error)}`
       );
-
-      const errorModal = await import("../../ui/modal-manager.js");
-      errorModal.ModalManager.open({
-        title: "❌ Test Failed",
-        content: `<div class="error-message">
-          <p><strong>Test execution failed:</strong></p>
-          <p>${getErrorMessage(error as Error)}</p>
-        </div>`,
-        buttons: [
-          {
-            text: "Close",
-            class: "btn-primary",
-            onClick: (): void => {
-              errorModal.ModalManager.close();
-            },
-          },
-        ],
-      });
     } finally {
-      btn.classList.remove("testing");
-      btn.disabled = false;
-      btn.innerHTML = "🧪";
+      if (this.providerTestProgressHandler) {
+        window.electronAPI?.offProviderTestProgress?.(this.providerTestProgressHandler);
+        this.providerTestProgressHandler = null;
+      }
+    }
+  }
+
+  async handleTestClick(slot: "ai1" | "ai2"): Promise<void> {
+    const btn = document.getElementById(`${slot}-test-btn`) as HTMLButtonElement | null;
+    if (!btn || btn.disabled === true) return;
+    if (this.scenarioOverlayState?.phase === "running") return;
+
+    this.collapseSettingsAccordion();
+    this.openTestLauncher(slot);
+  }
+
+  collapseSettingsAccordion(): void {
+    const content = document.getElementById("settings-accordion-content");
+    const toggle = document.getElementById("settings-accordion-toggle") as HTMLElement | null;
+    if (!content || !toggle) return;
+
+    if (content.classList.contains("open")) {
+      content.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
     }
   }
 
@@ -461,6 +720,17 @@ export class WebviewPanel {
       const webviewEl = document.getElementById(`${provider}-webview`);
       const overlayEl = document.getElementById(`${provider}-webview-overlay`);
       const urlDisplay = document.getElementById(`${provider}-url-display`);
+      const hasScenarioOverlay = this.isScenarioOverlayHost(provider);
+
+      if (hasScenarioOverlay) {
+        this.setDevtoolsEnabled(provider, state.connected);
+        this.setTestButtonEnabled(provider, state.hasAccount);
+        if (webviewEl) {
+          webviewEl.style.display = state.connected || state.connecting ? "" : "none";
+        }
+        this.renderScenarioOverlay();
+        continue;
+      }
 
       if (!state.hasAccount) {
         this.setDevtoolsEnabled(provider, false);
