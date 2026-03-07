@@ -102,14 +102,14 @@ export class WebviewPanel {
       const ai1TestBtn = document.getElementById("ai1-test-btn");
       if (ai1TestBtn) {
         ai1TestBtn.addEventListener("click", () => {
-          void this.handleTestClick("ai1");
+          this.handleTestClick("ai1");
         });
       }
 
       const ai2TestBtn = document.getElementById("ai2-test-btn");
       if (ai2TestBtn) {
         ai2TestBtn.addEventListener("click", () => {
-          void this.handleTestClick("ai2");
+          this.handleTestClick("ai2");
         });
       }
     } catch (err) {
@@ -341,12 +341,10 @@ export class WebviewPanel {
 
   updateScenarioProgress(event: ProviderTestProgressEvent): void {
     const state = this.scenarioOverlayState;
-    if (!state || event.slot !== state.testedSlot) return;
+    if (event.slot !== state?.testedSlot) return;
     if (state.runId !== null && event.runId !== state.runId) return;
 
-    if (state.runId === null) {
-      state.runId = event.runId;
-    }
+    state.runId ??= event.runId;
 
     if (event.type === "started") {
       state.phase = "running";
@@ -459,7 +457,7 @@ export class WebviewPanel {
         <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button">Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
-            <span>${summary.completedSteps}/${summary.totalSteps || 0} adim tamamlandi</span>
+            <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
             <span>${summary.activeStepId ?? "hazir"}</span>
           </div>
           ${summaryMarkup}
@@ -494,14 +492,23 @@ export class WebviewPanel {
   }
 
   async startScenarioTest(slot: SlotType): Promise<void> {
+    if (
+      this.scenarioOverlayState?.testedSlot !== slot ||
+      this.providerTestProgressHandler !== null
+    ) {
+      return;
+    }
     const state = this.scenarioOverlayState;
-    if (!state || state.testedSlot !== slot || this.providerTestProgressHandler !== null) return;
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined) {
+      throw new Error("Electron API unavailable");
+    }
 
     const handler = (event: ProviderTestProgressEvent): void => {
       this.updateScenarioProgress(event);
     };
     this.providerTestProgressHandler = handler;
-    window.electronAPI?.onProviderTestProgress?.(handler);
+    electronApi.onProviderTestProgress(handler);
 
     try {
       state.phase = "running";
@@ -512,11 +519,7 @@ export class WebviewPanel {
       state.message = `${state.providerName} testi baslatildi`;
       this.renderScenarioOverlay();
 
-      const results = await window.electronAPI?.testProvider({ slot });
-
-      if (!results) {
-        throw new Error("Test failed: No results returned");
-      }
+      const results = await electronApi.testProvider({ slot });
 
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
@@ -550,14 +553,13 @@ export class WebviewPanel {
         `Provider test failed: ${getErrorMessage(error as Error)}`
       );
     } finally {
-      if (this.providerTestProgressHandler) {
-        window.electronAPI?.offProviderTestProgress?.(this.providerTestProgressHandler);
-        this.providerTestProgressHandler = null;
-      }
+      const progressHandler = this.providerTestProgressHandler;
+      electronApi.offProviderTestProgress(progressHandler);
+      this.providerTestProgressHandler = null;
     }
   }
 
-  async handleTestClick(slot: "ai1" | "ai2"): Promise<void> {
+  handleTestClick(slot: "ai1" | "ai2"): void {
     const btn = document.getElementById(`${slot}-test-btn`) as HTMLButtonElement | null;
     if (!btn || btn.disabled === true) return;
     if (this.scenarioOverlayState?.phase === "running") return;
@@ -568,7 +570,7 @@ export class WebviewPanel {
 
   collapseSettingsAccordion(): void {
     const content = document.getElementById("settings-accordion-content");
-    const toggle = document.getElementById("settings-accordion-toggle") as HTMLElement | null;
+    const toggle = document.getElementById("settings-accordion-toggle");
     if (!content || !toggle) return;
 
     if (content.classList.contains("open")) {
@@ -1062,6 +1064,12 @@ export class WebviewPanel {
   }
 
   destroy(): void {
+    const progressHandler = this.providerTestProgressHandler;
+    if (progressHandler !== null) {
+      window.electronAPI?.offProviderTestProgress(progressHandler);
+      this.providerTestProgressHandler = null;
+    }
+
     if (this.trafficUnsub) {
       this.trafficUnsub();
       this.trafficUnsub = null;
