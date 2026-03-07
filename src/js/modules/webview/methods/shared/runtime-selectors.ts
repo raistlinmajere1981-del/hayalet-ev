@@ -32,7 +32,9 @@ export async function getRuntimeProviderConfig(
     "(function() { return window.__hayalet_provider_config ?? null; })();"
   );
 
-  return config && typeof config === "object" ? (config as RuntimeProviderConfig) : null;
+  return config !== null && config !== undefined && typeof config === "object"
+    ? (config as RuntimeProviderConfig)
+    : null;
 }
 
 export function getRuntimeSelectorCandidates(

@@ -20,6 +20,9 @@ const allProviders = {
   ...asistanProviders,
 };
 
+type ProviderRecord = Record<string, unknown>;
+type ProviderMap = Record<string, ProviderRecord | undefined>;
+
 function updateProviderMaps(id: string, config: unknown): void {
   const record = config as Record<string, unknown>;
   if (id in providers) {
@@ -40,7 +43,7 @@ const providerRegistry = {
    * @returns {Object|null}
    */
   get(id: string): Record<string, unknown> | null {
-    return allProviders[id as keyof typeof allProviders] ?? null;
+    return (allProviders as ProviderMap)[id] ?? null;
   },
 
   /**
@@ -60,7 +63,7 @@ const providerRegistry = {
   },
 
   getAsistan(id: string): Record<string, unknown> | null {
-    return asistanProviders[id as keyof typeof asistanProviders] ?? null;
+    return (asistanProviders as ProviderMap)[id] ?? null;
   },
   getAllAsistan(): Record<string, unknown>[] {
     return Object.values(asistanProviders);
@@ -70,7 +73,7 @@ const providerRegistry = {
   },
 
   getAny(id: string): Record<string, unknown> | null {
-    return allProviders[id as keyof typeof allProviders] ?? null;
+    return (allProviders as ProviderMap)[id] ?? null;
   },
   getAllAny(): Record<string, unknown>[] {
     return Object.values(allProviders);

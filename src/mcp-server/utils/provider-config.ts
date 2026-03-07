@@ -269,12 +269,12 @@ function extractStringArrayFromContent(source: string, arrayKey: string): string
 
 function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefined {
   const selectorMatrixContent = extractObjectContent(source, "selectorMatrix:");
-  if (!selectorMatrixContent) {
+  if (selectorMatrixContent === null) {
     return undefined;
   }
 
   const selectorsContent = extractObjectContent(selectorMatrixContent, "selectors:");
-  if (!selectorsContent) {
+  if (selectorsContent === null) {
     return undefined;
   }
 
@@ -284,7 +284,7 @@ function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefin
 
   while ((match = entryPattern.exec(selectorsContent)) !== null) {
     const key = match[1];
-    if (!key) continue;
+    if (key === undefined || key === "") continue;
     const keyOffset = match.index + match[0].lastIndexOf("{");
     const braceStart = keyOffset;
     const braceEnd = findMatchingIndex(selectorsContent, braceStart, "{", "}");
@@ -293,7 +293,13 @@ function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefin
     const entryContent = selectorsContent.slice(braceStart + 1, braceEnd);
     const entry: LocalizedSelectorEntry = {};
     const assignEntryValue = (locale: string | undefined, value: string | undefined): void => {
-      if (locale && value && locale !== "fallbacks") {
+      if (
+        locale !== undefined &&
+        locale !== "" &&
+        value !== undefined &&
+        value !== "" &&
+        locale !== "fallbacks"
+      ) {
         (entry as Record<string, string | string[] | undefined>)[locale] = value
           .replace(/\s+/g, " ")
           .trim();
