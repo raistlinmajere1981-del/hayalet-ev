@@ -102,7 +102,10 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
   return async (opts: SelectorTestOptions): Promise<ProviderTestResult> => {
     const start = Date.now();
 
-    const selectors = opts.selectorCandidates?.length ? opts.selectorCandidates : [opts.selector];
+    const selectors =
+      Array.isArray(opts.selectorCandidates) && opts.selectorCandidates.length > 0
+        ? opts.selectorCandidates
+        : [opts.selector];
 
     const inspectSelector = async (
       selector: string
@@ -135,13 +138,29 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
       return (await executeScript(script)) as ElementCheckResult & { matchedSelector: string };
     };
 
+    const findFirstMatchingSelector = async (
+      candidates: string[],
+      index = 0
+    ): Promise<(ElementCheckResult & { matchedSelector: string }) | null> => {
+      const selector = candidates[index];
+      if (selector === undefined) {
+        return null;
+      }
+
+      const candidate = await inspectSelector(selector);
+      if (candidate.exists) {
+        return candidate;
+      }
+
+      return await findFirstMatchingSelector(candidates, index + 1);
+    };
+
     try {
-      let result: (ElementCheckResult & { matchedSelector: string }) | null = null;
-      for (const selector of selectors) {
-        const candidate = await inspectSelector(selector);
-        result = candidate;
-        if (candidate.exists) {
-          break;
+      let result = await findFirstMatchingSelector(selectors);
+      if (result === null && selectors.length > 0) {
+        const lastSelector = selectors[selectors.length - 1];
+        if (lastSelector !== undefined) {
+          result = await inspectSelector(lastSelector);
         }
       }
 

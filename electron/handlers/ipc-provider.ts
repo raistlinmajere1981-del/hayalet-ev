@@ -244,7 +244,7 @@ export function setupProviderHandlers(): void {
       const locale = resolvePromotionLocaleFromSettings(await loadSettings());
 
       const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
-        emitProgress: (progressEvent) => {
+        emitProgress: (progressEvent): void => {
           event.sender.send(PROVIDER_TEST_PROGRESS_CHANNEL, progressEvent);
         },
         appLanguage: locale,

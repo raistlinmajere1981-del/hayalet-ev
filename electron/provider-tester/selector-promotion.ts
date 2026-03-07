@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { Script } from "node:vm";
 
 import type { LocalizedSelectorEntry } from "../../src/types/provider.ts";
 import { resolveSelectorCandidates } from "../../shared/provider-selector-resolution.ts";
@@ -21,7 +22,7 @@ interface PromoteProviderConfigFileResult {
 
 function normalizeLocale(locale: string): string {
   const trimmed = locale.trim().toLowerCase();
-  if (!trimmed) {
+  if (trimmed === "") {
     return "";
   }
 
@@ -49,7 +50,7 @@ function findMatchingBracket(
   for (let index = openIndex; index < source.length; index += 1) {
     const char = source[index];
 
-    if (quote) {
+    if (quote !== null) {
       if (escaped) {
         escaped = false;
         continue;
@@ -175,7 +176,8 @@ function findNestedString(
 }
 
 function parseSelectorEntry(entrySource: string): LocalizedSelectorEntry {
-  return Function(`"use strict"; return (${entrySource});`)() as LocalizedSelectorEntry;
+  const script = new Script(`(${entrySource})`);
+  return script.runInNewContext({}) as LocalizedSelectorEntry;
 }
 
 function serializeSelectorEntry(entry: LocalizedSelectorEntry, baseIndent: string): string {
@@ -211,7 +213,7 @@ function promoteEntry(
   }
 
   const localeKey = normalizeLocale(locale);
-  if (!localeKey) {
+  if (localeKey === "") {
     return null;
   }
 

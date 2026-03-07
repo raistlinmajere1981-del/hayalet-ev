@@ -36,7 +36,7 @@ export function collectPromotableSelectors({
     }
 
     const evidence = result.details?.selectorEvidence;
-    if (!evidence || evidence.promotable !== true) {
+    if (evidence?.promotable !== true) {
       continue;
     }
 

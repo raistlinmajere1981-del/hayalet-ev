@@ -68,9 +68,12 @@ export async function runProviderTestScenario(
   let aborted = false;
   let abortReason: string | undefined;
 
-  emit(options, "started");
+  const runStepAt = async (index: number): Promise<void> => {
+    const step = options.steps[index];
+    if (step === undefined) {
+      return;
+    }
 
-  for (const step of options.steps) {
     const startedAt = Date.now();
     emit(options, "step-start", {
       stepId: step.id,
@@ -107,14 +110,19 @@ export async function runProviderTestScenario(
     if (step.severity === "core" && result.status === "fail") {
       aborted = true;
       abortReason = result.message;
-      break;
+      return;
     }
 
     await wait(step.delayAfterMs);
-  }
+    await runStepAt(index + 1);
+  };
+
+  emit(options, "started");
+
+  await runStepAt(0);
 
   emit(options, "completed", {
-    ...(aborted && abortReason !== undefined ? { message: abortReason } : { message: "completed" }),
+    message: abortReason ?? "completed",
   });
 
   return {

@@ -161,70 +161,70 @@ export class ProviderTester {
           name: "Reset Default Page",
           severity: "core",
           delayAfterMs: 700,
-          run: async () => await this.runResetDefaultPageStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runResetDefaultPageStep(),
         },
         {
           id: "disabled-send",
           name: "Disabled Send State",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runDisabledSendStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runDisabledSendStep(),
         },
         {
           id: "drag-drop-surface",
           name: "Drag And Drop Surface",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runDragDropStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runDragDropStep(),
         },
         {
           id: "inject-message",
           name: "Inject Message",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runInjectMessageStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runInjectMessageStep(),
         },
         {
           id: "enabled-send",
           name: "Enabled Send State",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runEnabledSendStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runEnabledSendStep(),
         },
         {
           id: "attach-file",
           name: "Attach File",
           severity: "soft",
           delayAfterMs: 400,
-          run: async () => await this.runAttachFileStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runAttachFileStep(),
         },
         {
           id: "send-thinking",
           name: "Send And Thinking",
           severity: "core",
           delayAfterMs: 700,
-          run: async () => await this.runSendThinkingStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runSendThinkingStep(),
         },
         {
           id: "final-bubbles",
           name: "Final Message Bubbles",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runFinalBubblesStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runFinalBubblesStep(),
         },
         {
           id: "scroll-behavior",
           name: "Scroll Behavior",
           severity: "core",
           delayAfterMs: 350,
-          run: async () => await this.runScrollStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runScrollStep(),
         },
         {
           id: "provider-capabilities",
           name: "Provider Capabilities",
           severity: "provider",
           delayAfterMs: 350,
-          run: async () => await this.runProviderCapabilitiesStep(),
+          run: async (): Promise<ScenarioStepResult> => await this.runProviderCapabilitiesStep(),
         },
       ],
     });
@@ -420,7 +420,9 @@ export class ProviderTester {
         })
       );
 
-      const found = checks.find((item) => item.exists && item.canScroll && item.nearBottom);
+      const found = checks.find(
+        (item) => item.exists && item.canScroll === true && item.nearBottom === true
+      );
       const result = createShellResult(
         "scroll-behavior",
         "Scroll Behavior",
