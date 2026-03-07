@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-07T10:35:33.200Z",
+  "generatedAt": "2026-03-07T15:58:18.696Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 408,
-    "ids": 368,
+    "filesScanned": 413,
+    "ids": 370,
     "testIds": 13,
-    "querySelectors": 102,
-    "totalSelectors": 483
+    "querySelectors": 109,
+    "totalSelectors": 492
   },
   "lookup": {
     "id": {
@@ -24,6 +24,7 @@
       "ai0-loading-indicator": "#ai0-loading-indicator",
       "ai0-send-indicator": "#ai0-send-indicator",
       "ai0-test-btn": "#ai0-test-btn",
+      "ai0-test-side-panel": "#ai0-test-side-panel",
       "ai0-thinking-indicator": "#ai0-thinking-indicator",
       "ai0-webview": "#ai0-webview",
       "ai0-webview-mount": "#ai0-webview-mount",
@@ -69,6 +70,7 @@
       "ai2-webview-mount": "#ai2-webview-mount",
       "ai2-webview-overlay": "#ai2-webview-overlay",
       "app": "#app",
+      "app-language-select": "#app-language-select",
       "archive-filter-ai1": "#archive-filter-ai1",
       "archive-filter-ai2": "#archive-filter-ai2",
       "archive-save": "#archive-save",
@@ -403,6 +405,9 @@
     },
     "query": {
       "archive_item_selected": ".archive-item.selected",
+      "asistan_test_panel_close": ".asistan-test-panel__close",
+      "asistan_test_panel_copy": ".asistan-test-panel__copy",
+      "asistan_test_panel_start": ".asistan-test-panel__start",
       "character_group": ".character-group",
       "character_pool_item_check": ".character-pool-item-check",
       "chat_history": ".chat-history",
@@ -438,6 +443,9 @@
       "protocol_tag_btn": ".protocol-tag-btn",
       "ql_editor_textarea": ".ql-editor.textarea",
       "result_item": ".result-item",
+      "scenario_overlay_close": ".scenario-overlay__close",
+      "scenario_overlay_copy": ".scenario-overlay__copy",
+      "scenario_overlay_start": ".scenario-overlay__start",
       "search_tabs_tab_btn": ".search-tabs .tab-btn",
       "side_nav_btn": ".side-nav-btn",
       "side_nav_menu": ".side-nav-menu",
@@ -477,13 +485,14 @@
       "id_composer_plus_btn_data_testid": "#composer-plus-btn[data-testid=",
       "id_composer_plus_btntestid_composer_plus_btn": "#composer-plus-btn[data-testid=\"composer-plus-btn\"]",
       "id_composer_plus_btntestid_composer_plus_btn_buttontestid_composer_plus_btn_aria": "#composer-plus-btn[data-testid=\"composer-plus-btn\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
+      "id_composer_submit_buttontestid_send_button": "#composer-submit-button[data-testid=\"send-button\"]",
       "id_composer_submit_buttontestid_send_button_id_composer_submit_button": "#composer-submit-button[data-testid=\"send-button\"], #composer-submit-button",
       "id_mcp_list_ds_item_row": "#mcp-list .ds-item-row",
       "id_send_btn": "#send-btn",
       "id_session_list": "#session-list",
       "id_submit_btn": "#submit-btn",
       "id_tools_list_ds_panel_item": "#tools-list .ds-panel__item",
-      "inputselectors_join": "+ inputSelectors.join(",
+      "inputselectorcandidates_join": "+ inputSelectorCandidates.join(",
       "button": "button",
       "button_group_attach_button_aria_label": "button.group/attach-button[aria-label=",
       "button_aria_haspopup_dialog": "button[aria-haspopup=dialog]",
