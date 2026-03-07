@@ -520,7 +520,7 @@ export class AsistanController {
         this._openDevTools();
       },
       onTestClick: () => {
-        void this._handleTestClick();
+        this._handleTestClick();
       },
     });
 
@@ -776,7 +776,10 @@ export class AsistanController {
     }
 
     this.scenarioPanelState = {
-      providerName: this.titleEl?.textContent?.trim() || AppState.getNickname("ai0"),
+      providerName:
+        typeof this.titleEl?.textContent === "string" && this.titleEl.textContent.trim() !== ""
+          ? this.titleEl.textContent.trim()
+          : AppState.getNickname("ai0"),
       phase: "launcher",
       filter: "all",
       runId: null,
@@ -797,9 +800,7 @@ export class AsistanController {
     if (!state || event.slot !== "ai0") return;
     if (state.runId !== null && event.runId !== state.runId) return;
 
-    if (state.runId === null) {
-      state.runId = event.runId;
-    }
+    state.runId ??= event.runId;
 
     if (event.type === "started") {
       state.phase = "running";
@@ -906,7 +907,7 @@ export class AsistanController {
         <button class="btn btn-ghost btn-sm asistan-test-panel__close" type="button">Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
-            <span>${summary.completedSteps}/${summary.totalSteps || 0} adim tamamlandi</span>
+            <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
             <span>${summary.activeStepId ?? "hazir"}</span>
           </div>
           ${summaryMarkup}
@@ -944,11 +945,16 @@ export class AsistanController {
     const state = this.scenarioPanelState;
     if (!state || this.providerTestProgressHandler !== null) return;
 
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined) {
+      throw new Error("Electron API unavailable");
+    }
+
     const handler = (event: ProviderTestProgressEvent): void => {
       this._updateTestProgress(event);
     };
     this.providerTestProgressHandler = handler;
-    window.electronAPI?.onProviderTestProgress?.(handler);
+    electronApi.onProviderTestProgress(handler);
 
     try {
       state.phase = "running";
@@ -959,11 +965,7 @@ export class AsistanController {
       state.message = `${state.providerName} testi baslatildi`;
       this._renderTestPanel();
 
-      const results = await window.electronAPI?.testProvider({ slot: "ai0" });
-
-      if (!results) {
-        throw new Error("Test failed: No results returned");
-      }
+      const results = await electronApi.testProvider({ slot: "ai0" });
 
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
@@ -993,14 +995,13 @@ export class AsistanController {
       this._renderTestPanel();
       Logger.error(LogCategory.ASISTAN_CORE, `Provider test failed: ${(error as Error).message}`);
     } finally {
-      if (this.providerTestProgressHandler) {
-        window.electronAPI?.offProviderTestProgress?.(this.providerTestProgressHandler);
-        this.providerTestProgressHandler = null;
-      }
+      const progressHandler = this.providerTestProgressHandler;
+      electronApi.offProviderTestProgress(progressHandler);
+      this.providerTestProgressHandler = null;
     }
   }
 
-  async _handleTestClick(): Promise<void> {
+  _handleTestClick(): void {
     const btn = this.testBtn;
     if (!btn || btn.disabled) return;
     if (this.scenarioPanelState?.phase === "running") return;
@@ -1175,6 +1176,12 @@ export class AsistanController {
   onHide(): void {}
 
   async destroy(): Promise<void> {
+    const progressHandler = this.providerTestProgressHandler;
+    if (progressHandler !== null) {
+      window.electronAPI?.offProviderTestProgress(progressHandler);
+      this.providerTestProgressHandler = null;
+    }
+
     if (this._isServerRunning) {
       await this._stopSystemActiveServers();
     }
