@@ -1,3 +1,5 @@
+import { WEBVIEW_SYNC_SCENARIO, WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
+
 export const config = {
   id: "grok",
   name: "Grok",
@@ -93,5 +95,28 @@ export const config = {
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
+  },
+  scenarios: {
+    webviewTest: WEBVIEW_TEST_SCENARIO,
+    webviewSync: WEBVIEW_SYNC_SCENARIO,
+  },
+  webviewSync: {
+    readiness: "verified",
+    sidebar: {
+      openButtonSelectors: [
+        'button[aria-label="Toggle sidebar"]',
+        'button[aria-label="Kenar çubuğunu aç/kapat"]',
+      ],
+      closeButtonSelectors: [
+        'button[data-sidebar="trigger"]',
+        'button[aria-label="Toggle sidebar"]',
+        'button[aria-label="Kenar çubuğunu aç/kapat"]',
+      ],
+    },
+    history: {
+      containerSelectors: ['ul[data-sidebar="menu"]'],
+      itemSelectors: ['ul[data-sidebar="menu"] a[href^="/c/"]'],
+      titleSelectors: ["span[data-state]", "span.select-none", 'a[href^="/c/"] span'],
+    },
   },
 };

@@ -65,6 +65,65 @@ export interface ProviderSelectorMatrix {
   selectors?: Record<string, LocalizedSelectorEntry>;
 }
 
+export type ProviderScenarioActionId =
+  | "navigate-default"
+  | "assert-disabled-send"
+  | "assert-drag-drop-surface"
+  | "inject-prompt"
+  | "assert-enabled-send"
+  | "assert-attach-flow"
+  | "send-and-wait-thinking"
+  | "assert-final-bubbles"
+  | "assert-scroll-behavior"
+  | "assert-provider-capabilities"
+  | "open-sidebar"
+  | "collect-session-urls"
+  | "open-session-urls"
+  | "wait-loading-idle"
+  | "report"
+  | (string & {});
+
+export type ProviderScenarioFailureMode = "abort" | "continue" | "warn";
+
+export interface ProviderScenarioStepDefinition {
+  id: string;
+  label: string;
+  action: ProviderScenarioActionId;
+  target?: string;
+  params?: Record<string, unknown>;
+  saveAs?: string;
+  loading?: boolean;
+  onFail?: ProviderScenarioFailureMode;
+}
+
+export interface ProviderScenarioDefinition {
+  id: ProviderScenarioId;
+  title: string;
+  description?: string;
+  steps: ProviderScenarioStepDefinition[];
+}
+
+export type ProviderWebviewSyncReadiness = "verified" | "estimated";
+
+export type ProviderWebviewSyncMode = "soft" | "full" | "clean";
+
+export interface ProviderWebviewSyncSidebarSelectors {
+  openButtonSelectors: string[];
+  closeButtonSelectors: string[];
+}
+
+export interface ProviderWebviewSyncHistorySelectors {
+  containerSelectors: string[];
+  itemSelectors: string[];
+  titleSelectors: string[];
+}
+
+export interface ProviderWebviewSyncConfig {
+  readiness: ProviderWebviewSyncReadiness;
+  sidebar: ProviderWebviewSyncSidebarSelectors;
+  history: ProviderWebviewSyncHistorySelectors;
+}
+
 // Provider Config Types
 
 /** Mesaj ID stratejisi */
@@ -98,6 +157,8 @@ export interface BaseProviderConfig {
   messageIdStrategy?: MessageIdStrategy;
   roleSelectors?: RoleSelectors;
   defaultPaths?: string[];
+  scenarios?: Record<string, ProviderScenarioDefinition>;
+  webviewSync?: ProviderWebviewSyncConfig;
 }
 
 /** ChatGPT config */
@@ -190,15 +251,21 @@ export type ProviderRegistryMap = Map<AllProviderId, RegisteredProvider>;
 /** Test result status */
 export type TestStatus = "pass" | "fail" | "skip" | "warning";
 
+export type ProviderScenarioId = "webview-test" | "webview-sync" | (string & {});
+
 export type ProviderTestSlot = "ai0" | "ai1" | "ai2";
 
-export type ProviderTestStepStatus = TestStatus | "pending" | "running";
+export type ProviderScenarioStepStatus = TestStatus | "pending" | "running";
 
-export type ProviderTestProgressEventType =
+export type ProviderScenarioProgressEventType =
   | "started"
   | "step-start"
   | "step-complete"
   | "completed";
+
+export type ProviderTestStepStatus = ProviderScenarioStepStatus;
+
+export type ProviderTestProgressEventType = ProviderScenarioProgressEventType;
 
 /** Test category */
 export type TestCategory = "preflight" | "dom" | "interactive" | "scraping" | "advanced";
@@ -210,6 +277,16 @@ export interface ProviderTestSelectorEvidence {
   promotable: boolean;
 }
 
+export interface ProviderSessionPreviewItem {
+  title: string;
+  url: string;
+}
+
+export interface ProviderSessionPreview {
+  total: number;
+  sessions: ProviderSessionPreviewItem[];
+}
+
 export interface ProviderTestResultDetails {
   selector?: string;
   element?: {
@@ -219,6 +296,7 @@ export interface ProviderTestResultDetails {
     textContent?: string;
   };
   selectorEvidence?: ProviderTestSelectorEvidence;
+  sessionPreview?: ProviderSessionPreview;
   error?: string;
 }
 
@@ -234,44 +312,53 @@ export interface ProviderTestResult {
   timestamp: number;
 }
 
-export interface ProviderTestStep {
+export interface ProviderScenarioStep {
   id: string;
   name: string;
-  status: ProviderTestStepStatus;
+  status: ProviderScenarioStepStatus;
   message?: string;
   duration?: number;
   startedAt?: number;
   completedAt?: number;
 }
 
-export interface ProviderTestProgressEvent {
+export type ProviderTestStep = ProviderScenarioStep;
+
+export interface ProviderScenarioProgressEvent {
   runId: string;
+  scenarioId: ProviderScenarioId;
   slot: ProviderTestSlot;
   providerId: string;
-  type: ProviderTestProgressEventType;
+  type: ProviderScenarioProgressEventType;
   stepId?: string;
-  status?: ProviderTestStepStatus;
+  status?: ProviderScenarioStepStatus;
   message?: string;
   timestamp: number;
 }
 
-/** Complete test suite results */
-export interface ProviderTestSuite {
+export type ProviderTestProgressEvent = ProviderScenarioProgressEvent;
+
+export interface ProviderScenarioResult {
   runId?: string;
-  providerId: string; // "chatgpt"
-  providerName: string; // "ChatGPT"
+  scenarioId: ProviderScenarioId;
+  providerId: string;
+  providerName: string;
   slot: ProviderTestSlot;
-  url: string; // Tested page URL
+  url: string;
   timestamp: number;
-  totalTests: number;
   passed: number;
   failed: number;
   skipped: number;
   warnings: number;
-  totalDuration: number; // ms
+  totalDuration: number;
   results: ProviderTestResult[];
-  steps?: ProviderTestStep[];
+  steps?: ProviderScenarioStep[];
   refreshedConfig?: ProviderConfig;
-  aborted?: boolean; // Pre-flight failed
+  aborted?: boolean;
   abortReason?: string;
+}
+
+/** Complete test suite results */
+export interface ProviderTestSuite extends ProviderScenarioResult {
+  totalTests: number;
 }

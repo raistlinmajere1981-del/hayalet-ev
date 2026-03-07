@@ -37,6 +37,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     // "isolatedModules": true, // verbatimModuleSyntax zaten isolatedModules'u implicitly enable eder (TS 5.0+)
 
     // === Path Alias ===

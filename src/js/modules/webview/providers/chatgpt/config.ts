@@ -1,3 +1,5 @@
+import { WEBVIEW_SYNC_SCENARIO, WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
+
 export const config = {
   id: "chatgpt",
   name: "ChatGPT",
@@ -109,5 +111,21 @@ export const config = {
   telemetry: {
     endpoints: [],
     tokenPaths: [],
+  },
+  scenarios: {
+    webviewTest: WEBVIEW_TEST_SCENARIO,
+    webviewSync: WEBVIEW_SYNC_SCENARIO,
+  },
+  webviewSync: {
+    readiness: "verified",
+    sidebar: {
+      openButtonSelectors: ['button[data-testid="open-sidebar-button"]'],
+      closeButtonSelectors: ['button[data-testid="close-sidebar-button"]'],
+    },
+    history: {
+      containerSelectors: ["#history"],
+      itemSelectors: ['#history a[data-sidebar-item="true"][href^="/c/"]'],
+      titleSelectors: ['span[dir="auto"]'],
+    },
   },
 };

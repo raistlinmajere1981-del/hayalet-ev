@@ -1,3 +1,5 @@
+import { WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
+
 /**
  * OpenCode Provider Configuration
  *
@@ -166,5 +168,8 @@ export const config = {
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
+  },
+  scenarios: {
+    webviewTest: WEBVIEW_TEST_SCENARIO,
   },
 };

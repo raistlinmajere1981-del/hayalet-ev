@@ -1,3 +1,5 @@
+import { WEBVIEW_SYNC_SCENARIO, WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
+
 export const config = {
   id: "gemini",
   name: "Gemini",
@@ -67,5 +69,27 @@ export const config = {
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
+  },
+  scenarios: {
+    webviewTest: WEBVIEW_TEST_SCENARIO,
+    webviewSync: WEBVIEW_SYNC_SCENARIO,
+  },
+  webviewSync: {
+    readiness: "estimated",
+    sidebar: {
+      openButtonSelectors: [
+        'button[aria-label="Open navigation menu"]',
+        'button[aria-label="Navigasyon menüsünü aç"]',
+      ],
+      closeButtonSelectors: [
+        'button[aria-label="Close navigation menu"]',
+        'button[aria-label="Navigasyon menüsünü kapat"]',
+      ],
+    },
+    history: {
+      containerSelectors: ['nav[role="navigation"]', "nav", 'div[role="navigation"]'],
+      itemSelectors: ['a[href^="/app/"]', 'a[href*="/app/"]'],
+      titleSelectors: ["span"],
+    },
   },
 };
