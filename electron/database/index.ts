@@ -164,6 +164,62 @@ export const databaseManager = {
     }
   },
 
+  async upsertConversationMetadata(
+    _event: IpcMainInvokeEvent | null,
+    params: {
+      accountId: string;
+      webUrl: string;
+      provider?: string;
+      title?: string | null;
+    }
+  ): Promise<
+    IpcResult<{
+      conversationId: string;
+      created: boolean;
+      title: string;
+      titleUpdated: boolean;
+    }>
+  > {
+    try {
+      const manager = getManager(params.accountId);
+      return await manager.upsertConversationMetadata(params);
+    } catch (err) {
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.ERROR,
+        "upsertConversationMetadata error",
+        {
+          accountId: params.accountId,
+          webUrl: params.webUrl,
+          error: err,
+        }
+      );
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
+  async resetConversationMessages(
+    _event: IpcMainInvokeEvent | null,
+    params: { accountId: string; webUrl: string }
+  ): Promise<IpcResult<{ conversationId: string; deletedCount: number }>> {
+    try {
+      const manager = getManager(params.accountId);
+      return await manager.resetConversationMessages(params.webUrl);
+    } catch (err) {
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.ERROR,
+        "resetConversationMessages error",
+        {
+          accountId: params.accountId,
+          webUrl: params.webUrl,
+          error: err,
+        }
+      );
+      return { success: false, error: (err as Error).message };
+    }
+  },
+
   async deleteConversation(
     _event: IpcMainInvokeEvent | null,
     { accountId, conversationId }: { accountId: string; conversationId: string }

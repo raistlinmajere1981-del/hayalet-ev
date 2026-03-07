@@ -35,6 +35,8 @@ interface SearchAttachmentResult {
   created_at: number;
 }
 
+type ConversationTitleSource = "system" | "synced" | "user";
+
 export class SQLiteArchiveManager {
   private accountId: string;
 
@@ -70,6 +72,28 @@ export class SQLiteArchiveManager {
     }
 
     return hashString(`${conversationId}-${domIndex}-${contentHash}`);
+  }
+
+  private buildAutoTitle(db: Database.Database): string {
+    const countStmt = db.prepare(
+      `SELECT COUNT(*) as count FROM conversations WHERE account_id = ?`
+    );
+    const count = (countStmt.get(this.accountId) as { count: number }).count;
+    return `Sohbet ${String(count + 1).padStart(3, "0")}`;
+  }
+
+  private normalizeConversationTitle(title?: string | null): string {
+    return typeof title === "string" ? title.trim() : "";
+  }
+
+  private getConversationIdentity(webUrl: string): {
+    conversationId: string;
+    provider: string;
+  } {
+    return {
+      conversationId: this.generateConversationId(webUrl),
+      provider: this.extractProvider(webUrl),
+    };
   }
 
   async getConversations(): Promise<IpcResult<Conversation[]>> {
@@ -162,23 +186,27 @@ export class SQLiteArchiveManager {
     const db = this.getDb();
 
     try {
-      const conversationId = this.generateConversationId(webUrl);
-      const provider = this.extractProvider(webUrl);
+      const { conversationId, provider } = this.getConversationIdentity(webUrl);
       const now = new Date().toISOString();
-
-      const countStmt = db.prepare(
-        `SELECT COUNT(*) as count FROM conversations WHERE account_id = ?`
-      );
-      const count = (countStmt.get(this.accountId) as { count: number }).count;
-      const autoTitle = `Sohbet ${String(count + 1).padStart(3, "0")}`;
+      const autoTitle = this.buildAutoTitle(db);
 
       const convStmt = db.prepare(`
-        INSERT INTO conversations (id, account_id, web_url, provider, title, summary, message_count, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+        INSERT INTO conversations (id, account_id, web_url, provider, title, title_source, summary, message_count, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           updated_at = excluded.updated_at
       `);
-      convStmt.run(conversationId, this.accountId, webUrl, provider, autoTitle, "", now, now);
+      convStmt.run(
+        conversationId,
+        this.accountId,
+        webUrl,
+        provider,
+        autoTitle,
+        "system",
+        "",
+        now,
+        now
+      );
 
       const hashStmt = db.prepare(
         `SELECT content_hash, dom_index, dom_id FROM messages WHERE conversation_id = ?`
@@ -285,6 +313,8 @@ export class SQLiteArchiveManager {
       if (data.title !== undefined) {
         updates.push("title = ?");
         params.push(data.title);
+        updates.push("title_source = ?");
+        params.push("user");
       }
       if (data.summary !== undefined) {
         updates.push("summary = ?");
@@ -314,6 +344,168 @@ export class SQLiteArchiveManager {
         conversationId,
         error: err,
       });
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
+  async upsertConversationMetadata(params: {
+    webUrl: string;
+    provider?: string;
+    title?: string | null;
+  }): Promise<
+    IpcResult<{
+      conversationId: string;
+      created: boolean;
+      title: string;
+      titleUpdated: boolean;
+    }>
+  > {
+    try {
+      const db = this.getDb();
+      const now = new Date().toISOString();
+      const normalizedTitle = this.normalizeConversationTitle(params.title);
+      const { conversationId, provider } = this.getConversationIdentity(params.webUrl);
+      const effectiveProvider =
+        typeof params.provider === "string" && params.provider.trim() !== ""
+          ? params.provider.trim()
+          : provider;
+
+      const existingStmt = db.prepare(
+        `SELECT title, title_source FROM conversations WHERE id = ? AND account_id = ? LIMIT 1`
+      );
+      const existing = existingStmt.get(conversationId, this.accountId) as
+        | { title: string | null; title_source: ConversationTitleSource | null }
+        | undefined;
+
+      if (existing === undefined) {
+        const nextTitle = normalizedTitle !== "" ? normalizedTitle : this.buildAutoTitle(db);
+        const titleSource: ConversationTitleSource = normalizedTitle !== "" ? "synced" : "system";
+        const insertStmt = db.prepare(`
+          INSERT INTO conversations (
+            id,
+            account_id,
+            web_url,
+            provider,
+            title,
+            title_source,
+            summary,
+            message_count,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, '', 0, ?, ?)
+        `);
+        insertStmt.run(
+          conversationId,
+          this.accountId,
+          params.webUrl,
+          effectiveProvider,
+          nextTitle,
+          titleSource,
+          now,
+          now
+        );
+        return {
+          success: true,
+          data: {
+            conversationId,
+            created: true,
+            title: nextTitle,
+            titleUpdated: normalizedTitle !== "",
+          },
+        };
+      }
+
+      const updates = ["web_url = ?", "provider = ?", "updated_at = ?"];
+      const values: Array<string> = [params.webUrl, effectiveProvider, now];
+      let nextTitle = existing.title ?? "";
+      let titleUpdated = false;
+
+      if (
+        normalizedTitle !== "" &&
+        existing.title_source !== "user" &&
+        existing.title !== normalizedTitle
+      ) {
+        updates.push("title = ?", "title_source = ?");
+        values.push(normalizedTitle, "synced");
+        nextTitle = normalizedTitle;
+        titleUpdated = true;
+      }
+
+      values.push(conversationId, this.accountId);
+      const updateStmt = db.prepare(`
+        UPDATE conversations
+        SET ${updates.join(", ")}
+        WHERE id = ? AND account_id = ?
+      `);
+      updateStmt.run(...values);
+
+      return {
+        success: true,
+        data: {
+          conversationId,
+          created: false,
+          title: nextTitle,
+          titleUpdated,
+        },
+      };
+    } catch (err) {
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.ERROR,
+        "upsertConversationMetadata error",
+        {
+          accountId: this.accountId,
+          params,
+          error: err,
+        }
+      );
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
+  async resetConversationMessages(
+    webUrl: string
+  ): Promise<IpcResult<{ conversationId: string; deletedCount: number }>> {
+    try {
+      const db = this.getDb();
+      const { conversationId } = this.getConversationIdentity(webUrl);
+      const countStmt = db.prepare(
+        `SELECT COUNT(*) as count FROM messages WHERE conversation_id = ? AND account_id = ?`
+      );
+      const deletedCount = (
+        countStmt.get(conversationId, this.accountId) as { count: number } | undefined
+      )?.count;
+
+      const deleteStmt = db.prepare(
+        `DELETE FROM messages WHERE conversation_id = ? AND account_id = ?`
+      );
+      deleteStmt.run(conversationId, this.accountId);
+
+      const updateStmt = db.prepare(`
+        UPDATE conversations
+        SET message_count = 0, updated_at = ?
+        WHERE id = ? AND account_id = ?
+      `);
+      updateStmt.run(new Date().toISOString(), conversationId, this.accountId);
+
+      return {
+        success: true,
+        data: {
+          conversationId,
+          deletedCount: deletedCount ?? 0,
+        },
+      };
+    } catch (err) {
+      await logger.logInternal(
+        LogCategory.DATABASE,
+        LogLevel.ERROR,
+        "resetConversationMessages error",
+        {
+          accountId: this.accountId,
+          webUrl,
+          error: err,
+        }
+      );
       return { success: false, error: (err as Error).message };
     }
   }

@@ -27,6 +27,40 @@ interface DatabaseInstance {
 
 const databasePool = new Map<AccountKey, DatabaseInstance>();
 
+function hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+  return rows.some((row) => row.name === columnName);
+}
+
+function ensureConversationSchema(db: Database.Database): void {
+  const addedTitleSource = !hasColumn(db, "conversations", "title_source");
+  if (addedTitleSource) {
+    db.exec("ALTER TABLE conversations ADD COLUMN title_source TEXT NOT NULL DEFAULT 'system'");
+  }
+
+  if (addedTitleSource) {
+    db.exec(`
+      UPDATE conversations
+      SET title_source = CASE
+        WHEN title IS NULL OR trim(title) = '' THEN 'system'
+        WHEN title GLOB 'Sohbet [0-9][0-9][0-9]*' THEN 'system'
+        ELSE 'user'
+      END
+    `);
+    return;
+  }
+
+  db.exec(`
+    UPDATE conversations
+    SET title_source = CASE
+      WHEN title IS NULL OR trim(title) = '' THEN 'system'
+      WHEN title GLOB 'Sohbet [0-9][0-9][0-9]*' THEN 'system'
+      ELSE 'user'
+    END
+    WHERE title_source IS NULL OR trim(title_source) = ''
+  `);
+}
+
 function initializeSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -35,6 +69,7 @@ function initializeSchema(db: Database.Database): void {
       web_url TEXT NOT NULL,
       provider TEXT,
       title TEXT,
+      title_source TEXT NOT NULL DEFAULT 'system',
       summary TEXT,
       message_count INTEGER DEFAULT 0,
       last_message_id TEXT,
@@ -45,6 +80,8 @@ function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_conv_account ON conversations(account_id);
     CREATE INDEX IF NOT EXISTS idx_conv_updated ON conversations(updated_at DESC);
   `);
+
+  ensureConversationSchema(db);
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
