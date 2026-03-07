@@ -40,9 +40,26 @@ export function createFilesystemBasicTools(): ToolEntry[] {
     {
       definition: WRITE_FILE_TOOL,
       handler: async (args): Promise<unknown> => {
+        const filePath = (args as { file_path?: unknown }).file_path;
+        const contentRaw = (args as { content?: unknown }).content;
+
+        if (typeof filePath !== "string" || filePath.trim() === "") {
+          return {
+            content: [{ type: "text", text: "❌ file_path parametresi zorunlu ve string olmalı" }],
+            isError: true,
+          };
+        }
+
+        if (typeof contentRaw !== "string") {
+          return {
+            content: [{ type: "text", text: "❌ content parametresi zorunlu ve string olmalı" }],
+            isError: true,
+          };
+        }
+
         return await writeFileContent({
-          file_path: (args as { file_path: string }).file_path,
-          content: sanitizeContent((args as { content: string }).content),
+          file_path: filePath,
+          content: sanitizeContent(contentRaw),
           overwrite: (args as { overwrite?: boolean }).overwrite ?? false,
           encoding: (args as { encoding?: "utf8" | "base64" | "latin1" }).encoding ?? "utf8",
         });
