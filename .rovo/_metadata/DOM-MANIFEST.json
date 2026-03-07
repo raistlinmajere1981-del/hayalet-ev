@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-07T15:58:18.696Z",
+  "generatedAt": "2026-03-07T21:32:55.400Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 413,
-    "ids": 370,
-    "testIds": 13,
-    "querySelectors": 109,
-    "totalSelectors": 492
+    "filesScanned": 414,
+    "ids": 373,
+    "testIds": 15,
+    "querySelectors": 120,
+    "totalSelectors": 508
   },
   "lookup": {
     "id": {
@@ -41,6 +41,7 @@
       "ai1-resume-last-session-check": "#ai1-resume-last-session-check",
       "ai1-send-indicator": "#ai1-send-indicator",
       "ai1-status-dot": "#ai1-status-dot",
+      "ai1-sync-btn": "#ai1-sync-btn",
       "ai1-test-btn": "#ai1-test-btn",
       "ai1-thinking-indicator": "#ai1-thinking-indicator",
       "ai1-title": "#ai1-title",
@@ -61,6 +62,7 @@
       "ai2-resume-last-session-check": "#ai2-resume-last-session-check",
       "ai2-send-indicator": "#ai2-send-indicator",
       "ai2-status-dot": "#ai2-status-dot",
+      "ai2-sync-btn": "#ai2-sync-btn",
       "ai2-test-btn": "#ai2-test-btn",
       "ai2-thinking-indicator": "#ai2-thinking-indicator",
       "ai2-title": "#ai2-title",
@@ -170,6 +172,7 @@
       "health-badge": "#health-badge",
       "health-panel": "#health-panel",
       "health-panel-body": "#health-panel-body",
+      "history": "#history",
       "indicator-avatar-ai0": "#indicator-avatar-ai0",
       "indicator-avatar-ai1": "#indicator-avatar-ai1",
       "indicator-avatar-ai2": "#indicator-avatar-ai2",
@@ -391,6 +394,7 @@
     "testid": {
       "attachment": "[data-testid=\"attachment\"]",
       "attachment-preview": "[data-testid=\"attachment-preview\"]",
+      "close-sidebar-button": "[data-testid=\"close-sidebar-button\"]",
       "composer-plus-btn": "[data-testid=\"composer-plus-btn\"]",
       "conversation-turn": "[data-testid=\"conversation-turn\"]",
       "dmComposerAttachFileInput": "[data-testid=\"dmComposerAttachFileInput\"]",
@@ -398,6 +402,7 @@
       "drag": "[data-testid=\"drag\"]",
       "drop": "[data-testid=\"drop\"]",
       "file": "[data-testid=\"file\"]",
+      "open-sidebar-button": "[data-testid=\"open-sidebar-button\"]",
       "prompt-textarea": "[data-testid=\"prompt-textarea\"]",
       "send-button": "[data-testid=\"send-button\"]",
       "stop-button": "[data-testid=\"stop-button\"]",
@@ -487,16 +492,24 @@
       "id_composer_plus_btntestid_composer_plus_btn_buttontestid_composer_plus_btn_aria": "#composer-plus-btn[data-testid=\"composer-plus-btn\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Add files and more\"], button[data-testid=\"composer-plus-btn\"][aria-label=\"Dosyaları ve çok daha fazlasını ekle\"]",
       "id_composer_submit_buttontestid_send_button": "#composer-submit-button[data-testid=\"send-button\"]",
       "id_composer_submit_buttontestid_send_button_id_composer_submit_button": "#composer-submit-button[data-testid=\"send-button\"], #composer-submit-button",
+      "id_history": "#history",
+      "id_history_a_data_sidebar_item": "#history a[data-sidebar-item=",
       "id_mcp_list_ds_item_row": "#mcp-list .ds-item-row",
       "id_send_btn": "#send-btn",
       "id_session_list": "#session-list",
       "id_submit_btn": "#submit-btn",
       "id_tools_list_ds_panel_item": "#tools-list .ds-panel__item",
       "inputselectorcandidates_join": "+ inputSelectorCandidates.join(",
+      "a_href": "a[href^=",
       "button": "button",
       "button_group_attach_button_aria_label": "button.group/attach-button[aria-label=",
       "button_aria_haspopup_dialog": "button[aria-haspopup=dialog]",
+      "button_aria_label": "button[aria-label=",
+      "button_data_sidebar": "button[data-sidebar=",
       "button_data_test_id": "button[data-test-id=",
+      "button_data_testid_2": "button[data-testid=",
+      "buttontestid_close_sidebar_button": "button[data-testid=\"close-sidebar-button\"]",
+      "buttontestid_open_sidebar_button": "button[data-testid=\"open-sidebar-button\"]",
       "button_role_tab": "button[role=tab]",
       "div_block_lg_hidden_div_inline_flex_items_center_gap_1_rounded_full": "div.block.lg\\\\:hidden div.inline-flex.items-center.gap-1.rounded-full",
       "div_flex_h_full_flex_col_overflow_y_auto": "div.flex.h-full.flex-col.overflow-y-auto",
@@ -510,9 +523,12 @@
       "input_type_checkbox_data_mcp_name": "input[type=checkbox][data-mcp-name]",
       "input_type_checkbox_role_switch_2": "input[type=checkbox][role=switch]",
       "main_div_overflow_y_auto": "main div.overflow-y-auto",
+      "nav_role": "nav[role=",
       "span": "span",
       "span_last_child": "span:last-child",
-      "span_data_star": "span[data-star]"
+      "span_data_star": "span[data-star]",
+      "span_dir": "span[dir=",
+      "ul_data_sidebar": "ul[data-sidebar="
     }
   }
 }

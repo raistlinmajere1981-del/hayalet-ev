@@ -327,7 +327,7 @@ export class WebviewPanel {
 
   hasVerifiedSyncScenario(slot: SlotType): boolean {
     const providerId = AppState.getProviderIdForSlot(slot);
-    if (!providerId) {
+    if (providerId == null || providerId === "") {
       return false;
     }
 
@@ -497,11 +497,14 @@ export class WebviewPanel {
                 row.id === "sync-open-session-urls"
                   ? "scenario-step__message scenario-step__message--sync-progress"
                   : "scenario-step__message";
-              const previewMarkup = row.sessionPreview?.sessions.length
-                ? `
+              const sessionPreview = row.sessionPreview;
+              const previewSessionCount = sessionPreview?.sessions.length ?? 0;
+              const previewMarkup =
+                sessionPreview !== undefined && previewSessionCount > 0
+                  ? `
                         <div class="scenario-step__preview-list" aria-label="Toplanan sessionlar">
-                          <div class="scenario-step__preview-header">${row.sessionPreview.total} session bulundu</div>
-                          ${row.sessionPreview.sessions
+                          <div class="scenario-step__preview-header">${sessionPreview.total} session bulundu</div>
+                          ${sessionPreview.sessions
                             .map(
                               (session) => `
                                 <div class="scenario-step__preview-item">
@@ -513,7 +516,7 @@ export class WebviewPanel {
                             .join("")}
                         </div>
                       `
-                : "";
+                  : "";
 
               return `
                     <div class="scenario-step scenario-step--${row.status}">

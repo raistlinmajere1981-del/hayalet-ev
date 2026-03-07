@@ -186,7 +186,7 @@ test("provider test scenario waits between steps when delays are configured", as
 
   assert.equal(startedAt.length, 2);
   assert.ok(
-    startedAt[1] - startedAt[0] >= 30,
-    `Expected at least 30ms delay between steps, got ${startedAt[1] - startedAt[0]}ms`
+    startedAt[1] - startedAt[0] >= 1000,
+    `Expected at least 1000ms delay between steps, got ${startedAt[1] - startedAt[0]}ms`
   );
 });

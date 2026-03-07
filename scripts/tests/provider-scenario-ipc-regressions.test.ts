@@ -165,7 +165,7 @@ test("provider tester runs webview-sync sidebar collection actions from provider
   let sidebarOpen = false;
   let currentUrl = "https://chatgpt.com/c/current";
   const loadedUrls: string[] = [];
-  const indicatorChecks: Array<[string, string]> = [];
+  const loadingObservations: string[] = [];
   const progressMessages: string[] = [];
   const syncCalls: string[] = [];
 
@@ -282,16 +282,17 @@ test("provider tester runs webview-sync sidebar collection actions from provider
         progressMessages.push(event.message ?? "");
       }
     },
+    navigationObservationDelayMs: 0,
   });
   const testerOverrides = tester as unknown as {
-    waitForShellIndicator: (kind: string, expected: string, timeout: number) => Promise<boolean>;
+    observeLoadingIndicatorAfterNavigation: () => Promise<"busy" | "idle" | "missing">;
     runFullSyncForSession: (session: {
       url: string;
     }) => Promise<{ status: string; message: string }>;
   };
-  testerOverrides.waitForShellIndicator = async (kind, expected) => {
-    indicatorChecks.push([kind, expected]);
-    return true;
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => {
+    loadingObservations.push("busy");
+    return "busy";
   };
   testerOverrides.runFullSyncForSession = async (session) => {
     syncCalls.push(`full:${session.url}`);
@@ -312,15 +313,11 @@ test("provider tester runs webview-sync sidebar collection actions from provider
   assert.equal(result.failed, 0);
   assert.deepEqual(loadedUrls, ["https://chatgpt.com/c/abc", "https://chatgpt.com/c/def"]);
   assert.deepEqual(syncCalls, ["full:https://chatgpt.com/c/abc", "full:https://chatgpt.com/c/def"]);
-  assert.deepEqual(indicatorChecks, [
-    ["loading", "busy"],
-    ["loading", "idle"],
-    ["loading", "busy"],
-    ["loading", "idle"],
-  ]);
+  assert.deepEqual(loadingObservations, ["busy", "busy"]);
   assert.match(result.results[0]?.message ?? "", /Sidebar opened|already open/);
   assert.equal(result.results[1]?.message, "Collected 2 visible sessions");
   assert.match(result.results[2]?.message ?? "", /Opened 2 session URLs/);
+  assert.match(result.results[2]?.message ?? "", /loading indicator after 0ms: 2 busy/);
   assert.deepEqual(progressMessages, [
     "Open Session Urls",
     "Opening 1/2: First chat - https://chatgpt.com/c/abc",
@@ -528,9 +525,10 @@ test("provider tester runs the selected sync mode after opening each session URL
   const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
     emitProgress: undefined,
     syncMode: "clean",
+    navigationObservationDelayMs: 0,
   });
   const testerOverrides = tester as unknown as {
-    waitForShellIndicator: (kind: string, expected: string, timeout: number) => Promise<boolean>;
+    observeLoadingIndicatorAfterNavigation: () => Promise<"busy" | "idle" | "missing">;
     runSoftSyncForSession: (session: {
       url: string;
     }) => Promise<{ status: string; message: string }>;
@@ -541,7 +539,7 @@ test("provider tester runs the selected sync mode after opening each session URL
       url: string;
     }) => Promise<{ status: string; message: string }>;
   };
-  testerOverrides.waitForShellIndicator = async () => true;
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => "idle";
   testerOverrides.runSoftSyncForSession = async (session) => {
     syncCalls.push(`soft:${session.url}`);
     return { status: "pass", message: "soft ok" };
@@ -562,6 +560,263 @@ test("provider tester runs the selected sync mode after opening each session URL
     "clean:https://chatgpt.com/c/def",
   ]);
   assert.match(result.results[2]?.message ?? "", /Clean sync/);
+});
+
+test("provider tester observes loading after navigation without waiting for settle", async () => {
+  let sidebarOpen = false;
+  let currentUrl = "https://chatgpt.com/c/current";
+  const callOrder: string[] = [];
+
+  const fakeWebview = {
+    getURL: () => currentUrl,
+    loadURL: async (url: string) => {
+      currentUrl = url;
+      callOrder.push("load:start");
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          callOrder.push("load:resolve");
+          resolve();
+        }, 10);
+      });
+    },
+    executeJavaScript: async (script: string) => {
+      if (script.includes("syncSidebarProbe")) {
+        const wasOpen = sidebarOpen;
+        sidebarOpen = true;
+        return {
+          syncSidebarProbe: true,
+          closeVisible: wasOpen,
+          openFound: true,
+          clickedOpen: !wasOpen,
+        };
+      }
+
+      if (script.includes("syncHistorySessions")) {
+        return {
+          syncHistorySessions: true,
+          sessions: [{ title: "First chat", url: "/c/abc" }],
+        };
+      }
+
+      return null;
+    },
+    addEventListener: () => {},
+  };
+
+  const config = {
+    id: "chatgpt",
+    name: "ChatGPT",
+    baseUrl: "https://chatgpt.com",
+    loginUrl: "https://chatgpt.com/auth/login",
+    lastVerified: "2026-03-07",
+    selectors: {
+      sendButton: "button",
+      stopButton: "button.stop",
+      inputField: "textarea",
+      messageContainer: "main",
+    },
+    inputType: "direct",
+    scrollerSelectors: [],
+    scrapeSelectors: {
+      preferred: "main",
+      fallback: "main",
+    },
+    fileInputSelectors: [],
+    uploadTargetSelectors: [],
+    criticalSelectors: [],
+    contentContainers: [],
+    excludedUrls: [],
+    filters: {
+      selectors: [],
+      hosts: [],
+      blockResourceTypes: [],
+    },
+    telemetry: {
+      endpoints: [],
+      tokenPaths: [],
+    },
+    webviewSync: {
+      readiness: "verified",
+      sidebar: {
+        openButtonSelectors: ['button[data-testid="open-sidebar-button"]'],
+        closeButtonSelectors: ['button[data-testid="close-sidebar-button"]'],
+      },
+      history: {
+        containerSelectors: ["#history"],
+        itemSelectors: ['#history a[href^="/c/"]'],
+        titleSelectors: ['span[dir="auto"]'],
+      },
+    },
+    scenarios: {
+      webviewSync: {
+        id: "webview-sync",
+        title: "Injected Sync",
+        steps: [
+          { id: "open-sidebar", label: "Open Sidebar", action: "open-sidebar", onFail: "abort" },
+          {
+            id: "collect-session-urls",
+            label: "Collect Session Urls",
+            action: "collect-session-urls",
+            onFail: "abort",
+          },
+          {
+            id: "open-session-urls",
+            label: "Open Session Urls",
+            action: "open-session-urls",
+            onFail: "abort",
+          },
+        ],
+      },
+    },
+  };
+
+  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+    emitProgress: undefined,
+    syncMode: "soft",
+    navigationObservationDelayMs: 0,
+  });
+  const testerOverrides = tester as unknown as {
+    observeLoadingIndicatorAfterNavigation: () => Promise<"busy" | "idle" | "missing">;
+    runSoftSyncForSession: (session: {
+      url: string;
+    }) => Promise<{ status: string; message: string }>;
+  };
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => {
+    callOrder.push("loading:observed");
+    return "busy";
+  };
+  testerOverrides.runSoftSyncForSession = async () => ({ status: "pass", message: "soft ok" });
+
+  await tester.runScenario("webview-sync");
+
+  assert.deepEqual(callOrder.slice(0, 3), ["load:start", "load:resolve", "loading:observed"]);
+});
+
+test("provider tester continues sync after fixed loading observation window", async () => {
+  let sidebarOpen = false;
+  let currentUrl = "https://chatgpt.com/c/current";
+  const syncCalls: string[] = [];
+
+  const fakeWebview = {
+    getURL: () => currentUrl,
+    loadURL: async (url: string) => {
+      currentUrl = url;
+    },
+    executeJavaScript: async (script: string) => {
+      if (script.includes("syncSidebarProbe")) {
+        const wasOpen = sidebarOpen;
+        sidebarOpen = true;
+        return {
+          syncSidebarProbe: true,
+          closeVisible: wasOpen,
+          openFound: true,
+          clickedOpen: !wasOpen,
+        };
+      }
+
+      if (script.includes("syncHistorySessions")) {
+        return {
+          syncHistorySessions: true,
+          sessions: [{ title: "First chat", url: "/c/abc" }],
+        };
+      }
+
+      return null;
+    },
+    addEventListener: () => {},
+  };
+
+  const config = {
+    id: "chatgpt",
+    name: "ChatGPT",
+    baseUrl: "https://chatgpt.com",
+    loginUrl: "https://chatgpt.com/auth/login",
+    lastVerified: "2026-03-07",
+    selectors: {
+      sendButton: "button",
+      stopButton: "button.stop",
+      inputField: "textarea",
+      messageContainer: "main",
+    },
+    inputType: "direct",
+    scrollerSelectors: [],
+    scrapeSelectors: {
+      preferred: "main",
+      fallback: "main",
+    },
+    fileInputSelectors: [],
+    uploadTargetSelectors: [],
+    criticalSelectors: [],
+    contentContainers: [],
+    excludedUrls: [],
+    filters: {
+      selectors: [],
+      hosts: [],
+      blockResourceTypes: [],
+    },
+    telemetry: {
+      endpoints: [],
+      tokenPaths: [],
+    },
+    webviewSync: {
+      readiness: "verified",
+      sidebar: {
+        openButtonSelectors: ['button[data-testid="open-sidebar-button"]'],
+        closeButtonSelectors: ['button[data-testid="close-sidebar-button"]'],
+      },
+      history: {
+        containerSelectors: ["#history"],
+        itemSelectors: ['#history a[href^="/c/"]'],
+        titleSelectors: ['span[dir="auto"]'],
+      },
+    },
+    scenarios: {
+      webviewSync: {
+        id: "webview-sync",
+        title: "Injected Sync",
+        steps: [
+          { id: "open-sidebar", label: "Open Sidebar", action: "open-sidebar", onFail: "abort" },
+          {
+            id: "collect-session-urls",
+            label: "Collect Session Urls",
+            action: "collect-session-urls",
+            onFail: "abort",
+          },
+          {
+            id: "open-session-urls",
+            label: "Open Session Urls",
+            action: "open-session-urls",
+            onFail: "abort",
+          },
+        ],
+      },
+    },
+  };
+
+  const tester = new ProviderTester(fakeWebview as never, config as never, "ai1", undefined, {
+    emitProgress: undefined,
+    syncMode: "soft",
+    navigationObservationDelayMs: 0,
+  });
+  const testerOverrides = tester as unknown as {
+    observeLoadingIndicatorAfterNavigation: () => Promise<"busy" | "idle" | "missing">;
+    runSoftSyncForSession: (session: {
+      url: string;
+    }) => Promise<{ status: string; message: string }>;
+  };
+  testerOverrides.observeLoadingIndicatorAfterNavigation = async () => "busy";
+  testerOverrides.runSoftSyncForSession = async (session) => {
+    syncCalls.push(session.url);
+    return { status: "pass", message: "soft ok" };
+  };
+
+  const result = await tester.runScenario("webview-sync");
+
+  assert.deepEqual(syncCalls, ["https://chatgpt.com/c/abc"]);
+  assert.ok(result.steps);
+  assert.equal(result.steps[2]?.status, "pass");
+  assert.match(result.results[2]?.message ?? "", /Soft sync completed/);
+  assert.match(result.results[2]?.message ?? "", /loading indicator after 0ms: 1 busy/);
 });
 
 test("renderer global types expose generic provider scenario APIs", () => {

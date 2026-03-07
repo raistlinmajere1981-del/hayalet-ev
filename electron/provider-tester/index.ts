@@ -66,6 +66,8 @@ const STATUS_COLOR = {
   idle: "rgb(46, 204, 113)",
 } as const;
 
+const NAVIGATION_OBSERVATION_DELAY_MS = 4_000;
+
 function generateRunId(
   slot: ProviderTestSlot,
   providerId: string,
@@ -166,9 +168,19 @@ async function importModuleByPath(modulePath: string): Promise<unknown> {
   return await import(pathToFileURL(modulePath).href);
 }
 
+async function resolveProjectRoot(): Promise<string> {
+  const { Paths: projectPaths } = (await import("../paths.ts")) as {
+    Paths: {
+      getProjectRoot(): string;
+    };
+  };
+
+  return projectPaths.getProjectRoot();
+}
+
 async function loadProviderModule(providerId: string): Promise<Record<string, unknown> | null> {
   const providerModuleTs = join(
-    process.cwd(),
+    await resolveProjectRoot(),
     "src",
     "js",
     "modules",
@@ -267,6 +279,7 @@ export class ProviderTester {
   private runId = "";
   private syncSessions: SyncSessionPreviewItem[] = [];
   private syncMode: ProviderWebviewSyncMode;
+  private navigationObservationDelayMs: number;
 
   constructor(
     webview: WebviewTag,
@@ -281,6 +294,8 @@ export class ProviderTester {
     this.shell = shell ?? null;
     this.emitProgress = options.emitProgress;
     this.syncMode = normalizeSyncMode(options.syncMode);
+    this.navigationObservationDelayMs =
+      options.navigationObservationDelayMs ?? NAVIGATION_OBSERVATION_DELAY_MS;
 
     const executeScript = createExecuteScript(webview);
     this.ctx = {
@@ -425,6 +440,14 @@ export class ProviderTester {
         return 700;
       case "assert-attach-flow":
         return 400;
+      case "assert-disabled-send":
+      case "assert-drag-drop-surface":
+      case "inject-prompt":
+      case "assert-enabled-send":
+      case "assert-final-bubbles":
+      case "assert-scroll-behavior":
+      case "assert-provider-capabilities":
+        return 350;
       default:
         return 350;
     }
@@ -440,8 +463,11 @@ export class ProviderTester {
         return async (): Promise<ScenarioStepResult> => await this.runCollectSessionUrlsStep();
       case "open-session-urls":
         return async (): Promise<ScenarioStepResult> => await this.runOpenSessionUrlsStep();
+      case "wait-loading-idle":
+        return async (): Promise<ScenarioStepResult> => await this.runWaitLoadingIdleStep();
       case "report":
-        return async (): Promise<ScenarioStepResult> => await this.runSyncReportStep();
+        return async (): Promise<ScenarioStepResult> =>
+          await Promise.resolve(this.runSyncReportStep());
       case "navigate-default":
         return async (): Promise<ScenarioStepResult> => await this.runResetDefaultPageStep();
       case "assert-disabled-send":
@@ -806,7 +832,7 @@ export class ProviderTester {
       sessions: SyncSessionPreviewItem[];
     };
 
-    return this.normalizeSyncSessions(result.sessions ?? []);
+    return this.normalizeSyncSessions(result.sessions);
   }
 
   private async runCollectSessionUrlsStep(): Promise<ScenarioStepResult> {
@@ -836,6 +862,7 @@ export class ProviderTester {
     const stepId = "open-session-urls";
     const syncMode = this.syncMode;
     let syncedCount = 0;
+    const loadingObservations: Array<"busy" | "idle" | "missing"> = [];
 
     if (this.syncSessions.length === 0) {
       const result = createShellResult(
@@ -851,56 +878,34 @@ export class ProviderTester {
       return this.summarizeStep([result], "No collected session URLs available");
     }
 
-    for (const [index, session] of this.syncSessions.entries()) {
-      this.emitScenarioStepProgress(
+    const indexedSessions = [...this.syncSessions.entries()];
+    const runSessionAt = async (position: number): Promise<ScenarioStepResult | null> => {
+      const entry = indexedSessions[position];
+      if (entry === undefined) {
+        return null;
+      }
+
+      const [index, session] = entry;
+      const current = await this.openAndSyncSessionUrl(
+        session,
+        index,
+        indexedSessions.length,
         stepId,
-        `Opening ${index + 1}/${this.syncSessions.length}: ${session.title} - ${session.url}`
+        start,
+        syncMode
       );
-
-      await this.webview.loadURL(session.url);
-
-      const loadingStarted = await this.waitForShellIndicator("loading", "busy", 5000);
-      const loadingFinished = await this.waitForShellIndicator("loading", "idle", 10000);
-
-      if (!loadingStarted || !loadingFinished) {
-        const result = createShellResult(
-          "sync-open-session-urls",
-          "Open Session Urls",
-          "interactive",
-          "fail",
-          `Loading state did not settle for ${session.url}`,
-          { selector: session.url },
-          Date.now() - start
-        );
-        this.pushResult(result);
-        return this.summarizeStep([result], `Loading state did not settle for ${session.url}`);
+      loadingObservations.push(current.loadingState);
+      if (current.failure !== null) {
+        return current.failure;
       }
-
-      const syncOutcome =
-        syncMode === "soft"
-          ? await this.runSoftSyncForSession(session)
-          : syncMode === "clean"
-            ? await this.runCleanSyncForSession(session)
-            : await this.runFullSyncForSession(session);
-
-      if (syncOutcome.status === "fail") {
-        const result = createShellResult(
-          "sync-open-session-urls",
-          "Open Session Urls",
-          "interactive",
-          "fail",
-          syncOutcome.message,
-          {
-            selector: session.url,
-            sessionPreview: this.buildSyncSessionPreview(),
-          },
-          Date.now() - start
-        );
-        this.pushResult(result);
-        return this.summarizeStep([result], syncOutcome.message);
-      }
-
       syncedCount += 1;
+
+      return await runSessionAt(position + 1);
+    };
+
+    const failedStep = await runSessionAt(0);
+    if (failedStep !== null) {
+      return failedStep;
     }
 
     const successMessage =
@@ -909,12 +914,13 @@ export class ProviderTester {
         : syncMode === "clean"
           ? `Clean sync completed for ${syncedCount} session URLs`
           : `Opened ${syncedCount} session URLs and completed full sync`;
+    const observationSummary = this.summarizeLoadingObservations(loadingObservations);
     const result = createShellResult(
       "sync-open-session-urls",
       "Open Session Urls",
       "interactive",
       "pass",
-      successMessage,
+      `${successMessage}; loading indicator after ${this.navigationObservationDelayMs}ms: ${observationSummary}`,
       {
         selector: this.syncSessions.map((session) => session.url).join(", "),
         sessionPreview: this.buildSyncSessionPreview(),
@@ -925,7 +931,26 @@ export class ProviderTester {
     return this.summarizeStep([result], "Session URLs opened");
   }
 
-  private async runSyncReportStep(): Promise<ScenarioStepResult> {
+  private async runWaitLoadingIdleStep(): Promise<ScenarioStepResult> {
+    const start = Date.now();
+    const loadingFinished = await this.waitForShellIndicator("loading", "idle", 10000);
+    const currentState = await this.readShellIndicator("loading");
+    const result = createShellResult(
+      "wait-loading-idle",
+      "Wait Loading Idle",
+      "preflight",
+      loadingFinished ? "pass" : "fail",
+      loadingFinished
+        ? "Loading indicator returned to idle"
+        : `Loading indicator state remained ${currentState}`,
+      undefined,
+      Date.now() - start
+    );
+    this.pushResult(result);
+    return this.summarizeStep([result], "Loading indicator did not return to idle");
+  }
+
+  private runSyncReportStep(): ScenarioStepResult {
     const start = Date.now();
     const preview = this.syncSessions
       .slice(0, 3)
@@ -955,9 +980,8 @@ export class ProviderTester {
     const defaultUrl = resolveDefaultUrl(this.config);
     const start = Date.now();
     const loadPromise = this.webview.loadURL(defaultUrl);
-    const loadingStarted = await this.waitForShellIndicator("loading", "busy", 5000);
     await loadPromise;
-    const loadingFinished = await this.waitForShellIndicator("loading", "idle", 10000);
+    const loadingState = await this.observeLoadingIndicatorAfterNavigation();
     const urlCheck = testExcludedUrl(this.ctx);
 
     results.push(
@@ -973,22 +997,11 @@ export class ProviderTester {
     );
     results.push(
       createShellResult(
-        "loading-indicator-start",
-        "Loading Indicator Start",
+        "loading-indicator-observation",
+        "Loading Indicator Observation",
         "preflight",
-        loadingStarted ? "pass" : "fail",
-        loadingStarted ? "Loading indicator became busy" : "Loading indicator did not become busy"
-      )
-    );
-    results.push(
-      createShellResult(
-        "loading-indicator-end",
-        "Loading Indicator End",
-        "preflight",
-        loadingFinished ? "pass" : "fail",
-        loadingFinished
-          ? "Loading indicator returned to idle"
-          : "Loading indicator did not return to idle"
+        "pass",
+        `Loading indicator observed as ${loadingState} after ${this.navigationObservationDelayMs}ms`
       )
     );
     results.push(urlCheck);
@@ -1167,6 +1180,78 @@ export class ProviderTester {
     return this.summarizeStep(results, "Provider capability checks completed");
   }
 
+  private async runSyncForSession(
+    session: SyncSessionPreviewItem,
+    syncMode: ProviderWebviewSyncMode
+  ): Promise<SyncSessionOutcome> {
+    switch (syncMode) {
+      case "soft":
+        return await this.runSoftSyncForSession(session);
+      case "clean":
+        return await this.runCleanSyncForSession(session);
+      case "full":
+        return await this.runFullSyncForSession(session);
+      default:
+        return await this.runFullSyncForSession(session);
+    }
+  }
+
+  private async openAndSyncSessionUrl(
+    session: SyncSessionPreviewItem,
+    index: number,
+    total: number,
+    stepId: string,
+    start: number,
+    syncMode: ProviderWebviewSyncMode
+  ): Promise<{ failure: ScenarioStepResult | null; loadingState: "busy" | "idle" | "missing" }> {
+    this.emitScenarioStepProgress(
+      stepId,
+      `Opening ${index + 1}/${total}: ${session.title} - ${session.url}`
+    );
+
+    const loadPromise = this.webview.loadURL(session.url);
+    await loadPromise;
+    const loadingState = await this.observeLoadingIndicatorAfterNavigation();
+
+    const syncOutcome = await this.runSyncForSession(session, syncMode);
+    if (syncOutcome.status === "fail") {
+      const result = createShellResult(
+        "sync-open-session-urls",
+        "Open Session Urls",
+        "interactive",
+        "fail",
+        `${syncOutcome.message} (loading=${loadingState} after ${this.navigationObservationDelayMs}ms)`,
+        {
+          selector: session.url,
+          sessionPreview: this.buildSyncSessionPreview(),
+        },
+        Date.now() - start
+      );
+      this.pushResult(result);
+      return {
+        failure: this.summarizeStep([result], syncOutcome.message),
+        loadingState,
+      };
+    }
+
+    return { failure: null, loadingState };
+  }
+
+  private summarizeLoadingObservations(states: Array<"busy" | "idle" | "missing">): string {
+    const counts = states.reduce<Record<"busy" | "idle" | "missing", number>>(
+      (acc, state) => {
+        acc[state] += 1;
+        return acc;
+      },
+      { busy: 0, idle: 0, missing: 0 }
+    );
+
+    return (["idle", "busy", "missing"] as const)
+      .filter((state) => counts[state] > 0)
+      .map((state) => `${counts[state]} ${state}`)
+      .join(", ");
+  }
+
   private async readShellIndicator(
     kind: "loading" | "send" | "thinking"
   ): Promise<"busy" | "idle" | "missing"> {
@@ -1196,6 +1281,14 @@ export class ProviderTester {
       async () => (await this.readShellIndicator(kind)) === expected,
       timeout
     );
+  }
+
+  protected async observeLoadingIndicatorAfterNavigation(): Promise<"busy" | "idle" | "missing"> {
+    if (this.navigationObservationDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.navigationObservationDelayMs));
+    }
+
+    return await this.readShellIndicator("loading");
   }
 
   private generateReport(

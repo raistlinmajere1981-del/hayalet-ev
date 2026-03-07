@@ -77,6 +77,7 @@ export interface ProviderTestRunOptions {
   emitProgress: ((event: ProviderTestProgressEvent) => void) | undefined;
   appLanguage?: AppLanguage;
   syncMode?: ProviderWebviewSyncMode;
+  navigationObservationDelayMs?: number;
 }
 
 // ─── Test Context ───

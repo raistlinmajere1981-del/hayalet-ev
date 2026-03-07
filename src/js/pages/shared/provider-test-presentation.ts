@@ -96,7 +96,7 @@ export function buildScenarioProgressSummary(input: {
 }
 
 function toDisplayRow(item: ProviderTestResult | ProviderTestStep): ScenarioDisplayRow {
-  const sessionPreview = "details" in item ? item.details?.sessionPreview : undefined;
+  const sessionPreview = "details" in item ? item.details.sessionPreview : undefined;
 
   return {
     id: item.id,

@@ -125,7 +125,7 @@ async function runProviderScenario(
   const scenarioId = request.scenarioId ?? "webview-test";
 
   try {
-    const ProviderTester = await ensureProviderTesterCtor();
+    const providerTesterCtor = await ensureProviderTesterCtor();
 
     const webviewIdRaw: unknown = await event.sender.executeJavaScript(`
       (function() {
@@ -212,7 +212,7 @@ async function runProviderScenario(
     );
 
     const locale = resolvePromotionLocaleFromSettings(await loadSettings());
-    const tester = new ProviderTester(webviewWrapper, config, slot, shellWrapper, {
+    const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
       emitProgress: (progressEvent): void => {
         event.sender.send(PROVIDER_SCENARIO_PROGRESS_CHANNEL, progressEvent);
       },
