@@ -11,17 +11,47 @@ import { getToolCount, getRegistryStats } from "../core/registry.js";
 
 const execAsync = promisify(exec);
 
+type CommandRunner = (
+  command: string,
+  options: { cwd: string; timeout: number }
+) => Promise<{ stdout: string; stderr: string }>;
+
+interface TestElectronArgs {
+  timeout?: number;
+  _runCommand?: CommandRunner;
+}
+
 /**
  * test_electron handler
  */
 export async function testElectron(
   projectRoot: string,
-  args?: { timeout?: number }
+  args?: TestElectronArgs
 ): Promise<ToolResult> {
   const timeout = args?.timeout ?? ELECTRON_TIMEOUTS.TEST_DEFAULT / 1000;
+  const runCommand: CommandRunner = args?._runCommand ?? (execAsync as CommandRunner);
 
   try {
-    const { stdout, stderr } = await execAsync("npm run start", {
+    const probe = await runCommand("npm run whereami:mode", {
+      cwd: projectRoot,
+      timeout: Math.min(5000, timeout * 1000),
+    });
+    const mode = probe.stdout.trim().toLowerCase();
+
+    if (mode === "hayalet-ev" || mode === "ghost-agent") {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Electron zaten aktif (mod: ${mode}). Mevcut oturum kullanıldı; yeniden başlatma atlandı.`,
+          },
+        ],
+      };
+    }
+  } catch {}
+
+  try {
+    const { stdout, stderr } = await runCommand("npm run start", {
       cwd: projectRoot,
       timeout: timeout * 1000,
     });
