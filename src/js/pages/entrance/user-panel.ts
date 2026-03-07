@@ -61,6 +61,10 @@ export class UserPanel {
     document.getElementById("gdrive-auth-code")?.addEventListener("change", (e) => {
       void this.saveGDriveCode((e.target as HTMLInputElement).value);
     });
+
+    document.getElementById("app-language-select")?.addEventListener("change", (e) => {
+      void this.saveAppLanguage((e.target as HTMLSelectElement).value);
+    });
   }
 
   render(): void {
@@ -100,10 +104,29 @@ export class UserPanel {
       "gdrive-client-secret"
     ) as HTMLInputElement | null;
     const authCodeEl = document.getElementById("gdrive-auth-code") as HTMLInputElement | null;
+    const appLanguageEl = document.getElementById(
+      "app-language-select"
+    ) as HTMLSelectElement | null;
 
     if (clientIdEl) clientIdEl.value = gd.clientId ?? "";
     if (clientSecretEl) clientSecretEl.value = gd.clientSecret ?? "";
     if (authCodeEl) authCodeEl.value = gd.authorizationCode ?? "";
+    if (appLanguageEl) appLanguageEl.value = settings.general?.language ?? "tr";
+  }
+
+  async saveAppLanguage(language: string): Promise<void> {
+    const nextLanguage = language === "en" ? "en" : "tr";
+    const current = this.settingsManager.getSnapshot();
+
+    if (current.general?.language === nextLanguage) {
+      return;
+    }
+
+    const updated = {
+      ...current,
+      general: { ...current.general, language: nextLanguage },
+    };
+    await this.settingsManager.save(updated);
   }
 
   async saveNickname(): Promise<void> {
