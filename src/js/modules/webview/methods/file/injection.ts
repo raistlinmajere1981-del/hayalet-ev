@@ -6,6 +6,11 @@
 
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
+import {
+  getRuntimeConfigCandidates,
+  getRuntimeProviderConfig,
+  getRuntimeSelectorCandidates,
+} from "../shared/runtime-selectors.js";
 
 interface FilePayload {
   name: string;
@@ -32,8 +37,15 @@ export async function attachFiles(
   }
 
   const filesPayload = JSON.stringify(files);
+  const runtimeConfig = await getRuntimeProviderConfig(webview);
+  const inputSelectors = getRuntimeConfigCandidates(
+    runtimeConfig?.fileInputSelectors ?? ['input[type="file"][multiple]', 'input[type="file"]']
+  );
+  const attachButtonCandidates = getRuntimeSelectorCandidates(runtimeConfig, "attachButton");
   const injectScript = `(async function() {
     const files = ${filesPayload};
+    const inputSelectorCandidates = ${JSON.stringify(inputSelectors)};
+    const attachButtonCandidates = ${JSON.stringify(attachButtonCandidates)};
     if (!files.length) {
       return { success: false, message: 'Dosya listesi boş' };
     }
@@ -56,19 +68,13 @@ export async function attachFiles(
     });
 
     const config = window.__hayalet_provider_config;
-    let inputSelectors = ['input[type="file"][multiple]', 'input[type="file"]'];
-    
-    if (config && config.fileInputSelectors) {
-      inputSelectors = config.fileInputSelectors;
-    } else if (config && config.selectors && config.selectors.fileInput) {
-      inputSelectors = [config.selectors.fileInput];
-    }
-
-    const attachButtonSelector = config?.selectors?.attachButton;
-    if (attachButtonSelector) {
+    for (const selector of attachButtonCandidates) {
       try {
-        const btn = document.querySelector(attachButtonSelector);
-        if (btn) btn.click();
+        const btn = document.querySelector(selector);
+        if (btn) {
+          btn.click();
+          break;
+        }
       } catch (err) {
         console.warn("[Hayalet-Injection] attach button click failed", err);
       }
@@ -95,9 +101,9 @@ export async function attachFiles(
       }
       return null;
     }
-
+    
     let input = null;
-    for (const selector of inputSelectors) {
+    for (const selector of inputSelectorCandidates) {
       try {
         input = querySelectorDeep(selector);
       } catch (_) {
@@ -109,7 +115,7 @@ export async function attachFiles(
     if (!input) {
       return { 
         success: false, 
-        message: 'Dosya inputu bulunamadı. Denenen selectorlar: ' + inputSelectors.join(', ') 
+        message: 'Dosya inputu bulunamadı. Denenen selectorlar: ' + inputSelectorCandidates.join(', ') 
       };
     }
 

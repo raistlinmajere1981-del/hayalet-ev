@@ -12,6 +12,13 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 import { AppState } from "../app-state.js";
 import { Logger } from "../logger/index.js";
 import { LogCategory } from "@shared/index.js";
+import { SettingsManager } from "../settings-manager.js";
+import { resolveSelectorCandidates } from "../../../../shared/provider-selector-resolution";
+
+function getAppLanguage(): "tr" | "en" {
+  const settings = SettingsManager.getSnapshot() as { general?: { language?: unknown } } | null;
+  return settings?.general?.language === "en" ? "en" : "tr";
+}
 
 export function buildProbeScript(provider: string): string {
   const providerId = AppState.getProviderIdForSlot(provider) ?? "";
@@ -32,6 +39,9 @@ export function buildProbeScript(provider: string): string {
       stopButton?: string;
       voiceButton?: string;
     };
+    selectorMatrix?: {
+      selectors?: Record<string, unknown>;
+    };
     scrollerSelectors?: string[];
     contentContainers?: string[];
   };
@@ -42,43 +52,51 @@ export function buildProbeScript(provider: string): string {
     stopButton?: string;
     voiceButton?: string;
   };
-  const sendSel = selectors.sendButtonBase ?? selectors.sendButton ?? "";
-  const stopSel = selectors.stopButton ?? "";
-  const voiceSel = selectors.voiceButton ?? "";
+  const locale = getAppLanguage();
+  const matrixSelectors = cfg.selectorMatrix?.selectors ?? {};
+  const sendSel = resolveSelectorCandidates(
+    (matrixSelectors["sendButton"] ?? selectors.sendButtonBase ?? selectors.sendButton ?? "") as
+      | string
+      | string[]
+      | Record<string, unknown>,
+    locale
+  );
+  const stopSel = resolveSelectorCandidates(selectors.stopButton ?? "", locale);
+  const voiceSel = resolveSelectorCandidates(selectors.voiceButton ?? "", locale);
   const scrollerSels = cfg.scrollerSelectors ?? [];
   const contentContainers = cfg.contentContainers ?? ["main", "section", "div", "article"];
 
   return `(() => {
     try {
-      const sendSelector = ${JSON.stringify(sendSel)};
-      const stopSelector = ${JSON.stringify(stopSel)};
-      const voiceSelector = ${JSON.stringify(voiceSel)};
+      const sendSelectorCandidates = ${JSON.stringify(sendSel)};
+      const stopSelectorCandidates = ${JSON.stringify(stopSel)};
+      const voiceSelectorCandidates = ${JSON.stringify(voiceSel)};
       const scrollerSelectors = ${JSON.stringify(scrollerSels)};
       const contentContainers = ${JSON.stringify(contentContainers)};
       const now = Date.now();
+
+      const findFirst = (candidates) => {
+        for (const selector of candidates) {
+          try {
+            const found = document.querySelector(selector);
+            if (found) return found;
+          } catch (_) {
+            void 0;
+          }
+        }
+        return null;
+      };
       
       const findSendButton = () => {
-        try {
-          return sendSelector ? document.querySelector(sendSelector) : null;
-        } catch (_) {
-          return null;
-        }
+        return findFirst(sendSelectorCandidates);
       };
       
       const findStopButton = () => {
-        try {
-          return stopSelector ? document.querySelector(stopSelector) : null;
-        } catch (_) {
-          return null;
-        }
+        return findFirst(stopSelectorCandidates);
       };
       
       const findVoiceButton = () => {
-        try {
-          return voiceSelector ? document.querySelector(voiceSelector) : null;
-        } catch (_) {
-          return null;
-        }
+        return findFirst(voiceSelectorCandidates);
       };
       
       const recordSend = () => {
@@ -95,11 +113,11 @@ export function buildProbeScript(provider: string): string {
           if (e.key === 'Enter' && !e.shiftKey && (e.target?.tagName === 'TEXTAREA' || e.target?.getAttribute('contenteditable') === 'true')) recordSend();
         }, true);
         document.addEventListener('click', (e) => {
-          const selectors = [sendSelector, stopSelector].filter(Boolean);
+          const selectors = [...sendSelectorCandidates, ...stopSelectorCandidates].filter(Boolean);
           const btn = selectors.some((sel) => e.target?.closest(sel)) || e.target?.closest('button');
           if (btn) recordSend();
         }, true);
-        [sendSelector, stopSelector].filter(Boolean).forEach((sel) => {
+        [...sendSelectorCandidates, ...stopSelectorCandidates].filter(Boolean).forEach((sel) => {
           document.addEventListener('mousedown', (ev) => {
             if (ev.target?.closest(sel)) recordSend();
           }, true);

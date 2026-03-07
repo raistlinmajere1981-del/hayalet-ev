@@ -6,6 +6,11 @@
 
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
+import {
+  getRuntimeConfigCandidates,
+  getRuntimeProviderConfig,
+  getRuntimeSelectorCandidates,
+} from "../shared/runtime-selectors.js";
 
 interface FilePayload {
   name: string;
@@ -32,8 +37,16 @@ export async function attachFiles(
   }
 
   const filesPayload = JSON.stringify(files);
+  const runtimeConfig = await getRuntimeProviderConfig(webview);
+  const uploadTargetCandidates = getRuntimeConfigCandidates(
+    runtimeConfig?.uploadTargetSelectors ??
+      runtimeConfig?.selectors?.["inputField"] ?? ["textarea", "form"]
+  );
+  const previewCandidates = getRuntimeSelectorCandidates(runtimeConfig, "filePreview");
   const dropScript = `(async function() {
     const files = ${filesPayload};
+    const uploadTargetCandidates = ${JSON.stringify(uploadTargetCandidates)};
+    const previewSelectorCandidates = ${JSON.stringify(previewCandidates)};
     if (!files.length) {
       return { success: false, message: 'Dosya listesi boş' };
     }
@@ -139,13 +152,6 @@ export async function attachFiles(
     cleanupDragOverlay();
 
     const config = window.__hayalet_provider_config;
-    let uploadTargets = ['textarea', 'form'];
-    
-    if (config?.uploadTargetSelectors) {
-      uploadTargets = config.uploadTargetSelectors;
-    } else if (config?.selectors?.inputField) {
-      uploadTargets = [config.selectors.inputField];
-    }
 
     function querySelectorDeep(selector) {
       try {
@@ -175,7 +181,7 @@ export async function attachFiles(
 
     let target = null;
     for (let attempt = 0; attempt < 8 && !target; attempt++) {
-      for (const selector of uploadTargets) {
+      for (const selector of uploadTargetCandidates) {
         try {
           const el = querySelectorDeep(selector);
           if (el) {
@@ -272,10 +278,12 @@ export async function attachFiles(
               '.attachment-preview',
               '.file-attachment'
             ];
-            
-            if (config?.selectors?.filePreview) {
-              previewSelectors = Array.isArray(config.selectors.filePreview) 
-                ? config.selectors.filePreview 
+
+            if (previewSelectorCandidates.length) {
+              previewSelectors = previewSelectorCandidates;
+            } else if (config?.selectors?.filePreview) {
+              previewSelectors = Array.isArray(config.selectors.filePreview)
+                ? config.selectors.filePreview
                 : [config.selectors.filePreview];
             }
 
