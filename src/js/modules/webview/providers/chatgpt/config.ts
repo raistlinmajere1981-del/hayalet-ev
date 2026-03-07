@@ -35,6 +35,15 @@ export const config = {
       'button[aria-label*="Kaldır"]',
     ],
   },
+  selectorMatrix: {
+    selectors: {
+      sendButton: {
+        tr: '#composer-submit-button[data-testid="send-button"]',
+        en: '#composer-submit-button[data-testid="send-button"]',
+        fallbacks: ["#composer-submit-button"],
+      },
+    },
+  },
 
   inputType: "direct",
   scrollerSelectors: [

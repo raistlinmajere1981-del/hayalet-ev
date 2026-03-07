@@ -12,6 +12,15 @@ export const config = {
     messageContainer: ".response-container-content",
     attachButton: 'button[data-test-id="local-images-files-uploader-button"]',
   },
+  selectorMatrix: {
+    selectors: {
+      sendButton: {
+        tr: "button.send-button",
+        en: "button.send-button",
+        fallbacks: [],
+      },
+    },
+  },
   inputType: "character-by-character",
   scrollerSelectors: [".chat-history"],
   scrapeSelectors: {

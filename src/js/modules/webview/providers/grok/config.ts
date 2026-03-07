@@ -27,6 +27,15 @@ export const config = {
 
     messageContainer: "main",
   },
+  selectorMatrix: {
+    selectors: {
+      sendButton: {
+        tr: 'button[type="submit"][aria-label="Gönder"]',
+        en: 'button[type="submit"][aria-label="Submit"]',
+        fallbacks: ['button[type="submit"]'],
+      },
+    },
+  },
 
   inputType: "character-by-character",
   scrollerSelectors: [
