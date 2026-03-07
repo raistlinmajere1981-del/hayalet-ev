@@ -12,16 +12,18 @@ import {
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
-  resolveProviderTestSurface,
+  resolveScenarioSurface,
   type ScenarioStatusFilter,
 } from "../shared/provider-test-presentation.js";
 
 import type { AppSettings } from "@shared/settings.js";
 import type {
+  ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
   ProviderTestResult,
   ProviderTestStep,
   ProviderTestSuite,
+  ProviderWebviewSyncMode,
 } from "@shared/provider.js";
 
 type SlotType = "ai1" | "ai2";
@@ -36,6 +38,9 @@ interface SlotState {
 }
 
 interface ScenarioOverlayState {
+  scenarioId: string;
+  scenarioTitle: string;
+  syncMode: ProviderWebviewSyncMode;
   testedSlot: SlotType;
   hostSlot: SlotType;
   providerName: string;
@@ -106,10 +111,24 @@ export class WebviewPanel {
         });
       }
 
+      const ai1SyncBtn = document.getElementById("ai1-sync-btn");
+      if (ai1SyncBtn) {
+        ai1SyncBtn.addEventListener("click", () => {
+          this.handleSyncClick("ai1");
+        });
+      }
+
       const ai2TestBtn = document.getElementById("ai2-test-btn");
       if (ai2TestBtn) {
         ai2TestBtn.addEventListener("click", () => {
           this.handleTestClick("ai2");
+        });
+      }
+
+      const ai2SyncBtn = document.getElementById("ai2-sync-btn");
+      if (ai2SyncBtn) {
+        ai2SyncBtn.addEventListener("click", () => {
+          this.handleSyncClick("ai2");
         });
       }
     } catch (err) {
@@ -293,21 +312,49 @@ export class WebviewPanel {
     }
   }
 
+  setSyncButtonEnabled(provider: string, enabled: boolean): void {
+    const btn = document.getElementById(`${provider}-sync-btn`) as HTMLButtonElement | null;
+    if (!btn) return;
+    btn.disabled = !enabled;
+    btn.classList.toggle("disabled", !enabled);
+
+    if (!enabled) {
+      btn.title = "Provider sync icin hazir degil";
+    } else {
+      btn.title = `${provider.toUpperCase()} provider sync`;
+    }
+  }
+
+  hasVerifiedSyncScenario(slot: SlotType): boolean {
+    const providerId = AppState.getProviderIdForSlot(slot);
+    if (!providerId) {
+      return false;
+    }
+
+    const providerConfig = ProviderRegistry.get(providerId) as {
+      webviewSync?: { readiness?: string };
+    } | null;
+    return providerConfig?.webviewSync?.readiness === "verified";
+  }
+
   isScenarioOverlayHost(slot: SlotType): boolean {
     return this.scenarioOverlayState?.hostSlot === slot;
   }
 
-  openTestLauncher(slot: SlotType): void {
+  openScenarioLauncher(slot: SlotType, scenarioId: string, scenarioTitle: string): void {
     if (this.scenarioOverlayState?.phase === "running") {
       return;
     }
 
-    const surface = resolveProviderTestSurface(slot);
+    const surface = resolveScenarioSurface(slot);
     if (surface.kind !== "overlay") {
       return;
     }
 
     this.scenarioOverlayState = {
+      scenarioId,
+      scenarioTitle,
+      syncMode: "full",
       testedSlot: slot,
       hostSlot: surface.hostSlot,
       providerName: AppState.getNickname(slot),
@@ -339,7 +386,7 @@ export class WebviewPanel {
     this.applyGating(SettingsManager.getSnapshot(), ["*"]);
   }
 
-  updateScenarioProgress(event: ProviderTestProgressEvent): void {
+  updateScenarioProgress(event: ProviderScenarioProgressEvent): void {
     const state = this.scenarioOverlayState;
     if (event.slot !== state?.testedSlot) return;
     if (state.runId !== null && event.runId !== state.runId) return;
@@ -348,7 +395,7 @@ export class WebviewPanel {
 
     if (event.type === "started") {
       state.phase = "running";
-      state.message = `${state.providerName} testi hazirlaniyor`;
+      state.message = `${state.providerName} ${state.scenarioTitle} hazirlaniyor`;
     }
 
     if (event.type === "step-start" && typeof event.stepId === "string") {
@@ -404,6 +451,7 @@ export class WebviewPanel {
     const summary = buildScenarioProgressSummary({
       slot: state.testedSlot,
       providerName: state.providerName,
+      scenarioTitle: state.scenarioTitle,
       steps: state.steps,
     });
     const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
@@ -412,6 +460,7 @@ export class WebviewPanel {
       steps: state.steps,
       suite: state.suite,
     });
+    const isRunning = state.phase === "running";
     const summaryMarkup = `
       <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
         <button class="scenario-summary-chip scenario-summary-chip--pass${state.filter === "pass" ? " is-active" : ""}" type="button" data-filter-status="pass">
@@ -428,46 +477,79 @@ export class WebviewPanel {
         </button>
       </div>
     `;
+    const syncModeMarkup =
+      state.scenarioId === "webview-sync"
+        ? `
+            <div class="scenario-sync-mode" role="group" aria-label="Sync modu secimi">
+              <button class="scenario-sync-mode__option${state.syncMode === "soft" ? " is-active" : ""}" type="button" data-sync-mode="soft" ${isRunning ? "disabled" : ""}>Soft</button>
+              <button class="scenario-sync-mode__option${state.syncMode === "full" ? " is-active" : ""}" type="button" data-sync-mode="full" ${isRunning ? "disabled" : ""}>Full</button>
+              <button class="scenario-sync-mode__option${state.syncMode === "clean" ? " is-active" : ""}" type="button" data-sync-mode="clean" ${isRunning ? "disabled" : ""}>Clean</button>
+            </div>
+          `
+        : "";
 
     const stepMarkup =
       rows.length === 0
         ? `<div class="scenario-empty">${state.filter === "all" ? "Henüz adim baslamadi." : "Bu filtre icin sonuc yok."}</div>`
         : rows
-            .map(
-              (row) => `
+            .map((row) => {
+              const messageClass =
+                row.id === "sync-open-session-urls"
+                  ? "scenario-step__message scenario-step__message--sync-progress"
+                  : "scenario-step__message";
+              const previewMarkup = row.sessionPreview?.sessions.length
+                ? `
+                        <div class="scenario-step__preview-list" aria-label="Toplanan sessionlar">
+                          <div class="scenario-step__preview-header">${row.sessionPreview.total} session bulundu</div>
+                          ${row.sessionPreview.sessions
+                            .map(
+                              (session) => `
+                                <div class="scenario-step__preview-item">
+                                  <span class="scenario-step__preview-title">${session.title}</span>
+                                  <span class="scenario-step__preview-url">${session.url}</span>
+                                </div>
+                              `
+                            )
+                            .join("")}
+                        </div>
+                      `
+                : "";
+
+              return `
                     <div class="scenario-step scenario-step--${row.status}">
                       <div class="scenario-step__body">
                         <span class="scenario-step__name">${row.name}</span>
-                        ${row.message !== "" ? `<span class="scenario-step__message">${row.message}</span>` : ""}
+                        ${row.message !== "" ? `<span class="${messageClass}">${row.message}</span>` : ""}
+                        ${previewMarkup}
                       </div>
                       <span class="scenario-step__status">${row.status}</span>
                     </div>
-                  `
-            )
+                  `;
+            })
             .join("");
 
-    const isRunning = state.phase === "running";
     overlayEl.innerHTML = `
       <div class="scenario-overlay__header">
-        <div>
-          <div class="scenario-overlay__eyebrow">${state.testedSlot.toUpperCase()} senaryo testi</div>
-          <div class="overlay-title">${summary.title}</div>
-          <div class="overlay-subtitle">${state.message}</div>
-        </div>
+            <div>
+              <div class="scenario-overlay__eyebrow">${state.testedSlot.toUpperCase()} ${state.scenarioTitle}</div>
+              <div class="overlay-title">${summary.title}</div>
+              <div class="overlay-subtitle">${state.message}</div>
+            </div>
         <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button">Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
             <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
             <span>${summary.activeStepId ?? "hazir"}</span>
           </div>
+          ${syncModeMarkup}
           ${summaryMarkup}
           <div class="scenario-overlay__steps">${stepMarkup}</div>
-          <div class="scenario-overlay__actions">
-            <button class="btn btn-primary btn-sm scenario-overlay__start" type="button" ${isRunning ? "disabled" : ""}>
-              ${state.phase === "launcher" ? "Testi Baslat" : "Tekrar Calistir"}
-            </button>
-            ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
-          </div>
+              <div class="scenario-overlay__actions">
+                <button class="btn btn-primary btn-sm scenario-overlay__start" type="button" ${isRunning ? "disabled" : ""}>
+                  ${state.phase === "launcher" ? "Senaryoyu Baslat" : "Tekrar Calistir"}
+                </button>
+                ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
+              </div>
         `;
 
     overlayEl.querySelector(".scenario-overlay__close")?.addEventListener("click", () => {
@@ -475,6 +557,14 @@ export class WebviewPanel {
     });
     overlayEl.querySelector(".scenario-overlay__start")?.addEventListener("click", () => {
       void this.startScenarioTest(state.testedSlot);
+    });
+    overlayEl.querySelectorAll<HTMLElement>("[data-sync-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextMode = button.dataset["syncMode"] as ProviderWebviewSyncMode | undefined;
+        if (nextMode === undefined) return;
+        state.syncMode = nextMode;
+        this.renderScenarioOverlay();
+      });
     });
     overlayEl.querySelector(".scenario-overlay__copy")?.addEventListener("click", () => {
       if (state.suite) {
@@ -504,11 +594,11 @@ export class WebviewPanel {
       throw new Error("Electron API unavailable");
     }
 
-    const handler = (event: ProviderTestProgressEvent): void => {
+    const handler = (event: ProviderScenarioProgressEvent): void => {
       this.updateScenarioProgress(event);
     };
     this.providerTestProgressHandler = handler;
-    electronApi.onProviderTestProgress(handler);
+    electronApi.onProviderScenarioProgress(handler);
 
     try {
       state.phase = "running";
@@ -516,10 +606,21 @@ export class WebviewPanel {
       state.steps = [];
       state.runId = null;
       state.suite = null;
-      state.message = `${state.providerName} testi baslatildi`;
+      state.message = `${state.providerName} ${state.scenarioTitle} baslatildi`;
       this.renderScenarioOverlay();
 
-      const results = await electronApi.testProvider({ slot });
+      const scenarioRequest =
+        state.scenarioId === "webview-sync"
+          ? {
+              slot,
+              scenarioId: state.scenarioId,
+              syncMode: state.syncMode,
+            }
+          : {
+              slot,
+              scenarioId: state.scenarioId,
+            };
+      const results = (await electronApi.runProviderScenario(scenarioRequest)) as ProviderTestSuite;
 
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
@@ -541,7 +642,7 @@ export class WebviewPanel {
 
       Logger.info(
         LogCategory.ENTRANCE,
-        `Test completed: ${results.passed}/${results.totalTests} passed`
+        `Scenario completed: ${state.scenarioId} ${results.passed}/${results.totalTests}`
       );
     } catch (error) {
       state.phase = "completed";
@@ -550,11 +651,11 @@ export class WebviewPanel {
 
       Logger.error(
         LogCategory.ENTRANCE,
-        `Provider test failed: ${getErrorMessage(error as Error)}`
+        `Scenario failed: ${state.scenarioId} ${getErrorMessage(error as Error)}`
       );
     } finally {
       const progressHandler = this.providerTestProgressHandler;
-      electronApi.offProviderTestProgress(progressHandler);
+      electronApi.offProviderScenarioProgress(progressHandler);
       this.providerTestProgressHandler = null;
     }
   }
@@ -565,7 +666,16 @@ export class WebviewPanel {
     if (this.scenarioOverlayState?.phase === "running") return;
 
     this.collapseSettingsAccordion();
-    this.openTestLauncher(slot);
+    this.openScenarioLauncher(slot, "webview-test", "webview-test");
+  }
+
+  handleSyncClick(slot: "ai1" | "ai2"): void {
+    const btn = document.getElementById(`${slot}-sync-btn`) as HTMLButtonElement | null;
+    if (!btn || btn.disabled === true) return;
+    if (this.scenarioOverlayState?.phase === "running") return;
+
+    this.collapseSettingsAccordion();
+    this.openScenarioLauncher(slot, "webview-sync", "webview-sync");
   }
 
   collapseSettingsAccordion(): void {
@@ -727,6 +837,10 @@ export class WebviewPanel {
       if (hasScenarioOverlay) {
         this.setDevtoolsEnabled(provider, state.connected);
         this.setTestButtonEnabled(provider, state.hasAccount);
+        this.setSyncButtonEnabled(
+          provider,
+          state.hasAccount && this.hasVerifiedSyncScenario(provider)
+        );
         if (webviewEl) {
           webviewEl.style.display = state.connected || state.connecting ? "" : "none";
         }
@@ -737,6 +851,7 @@ export class WebviewPanel {
       if (!state.hasAccount) {
         this.setDevtoolsEnabled(provider, false);
         this.setTestButtonEnabled(provider, false);
+        this.setSyncButtonEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
         if (webviewEl) webviewEl.style.display = "none";
         if (overlayEl) {
@@ -785,6 +900,7 @@ export class WebviewPanel {
 
       this.setDevtoolsEnabled(provider, true);
       this.setTestButtonEnabled(provider, true);
+      this.setSyncButtonEnabled(provider, this.hasVerifiedSyncScenario(provider));
 
       if (overlayEl) {
         overlayEl.classList.add("hidden");

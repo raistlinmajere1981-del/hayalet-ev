@@ -68,12 +68,15 @@ import {
   updateTrafficStatusView,
 } from "./view-helpers.js";
 import type {
+  ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
   ProviderTestStep,
   ProviderTestSuite,
 } from "@shared/provider.js";
 
 interface ScenarioPanelState {
+  scenarioId: string;
+  scenarioTitle: string;
   providerName: string;
   phase: "launcher" | "running" | "completed";
   filter: ScenarioStatusFilter;
@@ -770,12 +773,14 @@ export class AsistanController {
     }
   }
 
-  _openTestPanel(): void {
+  _openScenarioPanel(scenarioId: string, scenarioTitle: string): void {
     if (this.scenarioPanelState?.phase === "running") {
       return;
     }
 
     this.scenarioPanelState = {
+      scenarioId,
+      scenarioTitle,
       providerName:
         typeof this.titleEl?.textContent === "string" && this.titleEl.textContent.trim() !== ""
           ? this.titleEl.textContent.trim()
@@ -795,7 +800,7 @@ export class AsistanController {
     this.testPanel?.classList.add("hidden");
   }
 
-  _updateTestProgress(event: ProviderTestProgressEvent): void {
+  _updateTestProgress(event: ProviderScenarioProgressEvent): void {
     const state = this.scenarioPanelState;
     if (!state || event.slot !== "ai0") return;
     if (state.runId !== null && event.runId !== state.runId) return;
@@ -804,7 +809,7 @@ export class AsistanController {
 
     if (event.type === "started") {
       state.phase = "running";
-      state.message = `${state.providerName} testi hazirlaniyor`;
+      state.message = `${state.providerName} ${state.scenarioTitle} hazirlaniyor`;
     }
 
     if (event.type === "step-start" && typeof event.stepId === "string") {
@@ -855,6 +860,7 @@ export class AsistanController {
     const summary = buildScenarioProgressSummary({
       slot: "ai0",
       providerName: state.providerName,
+      scenarioTitle: state.scenarioTitle,
       steps: state.steps,
     });
     const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
@@ -898,12 +904,12 @@ export class AsistanController {
             .join("");
 
     panel.innerHTML = `
-      <div class="asistan-test-panel__header">
-        <div>
-          <div class="scenario-overlay__eyebrow">AI0 senaryo testi</div>
-          <div class="asistan-test-panel__title">${summary.title}</div>
-          <div class="asistan-test-panel__subtitle">${state.message}</div>
-        </div>
+        <div class="asistan-test-panel__header">
+          <div>
+            <div class="scenario-overlay__eyebrow">AI0 ${state.scenarioTitle}</div>
+            <div class="asistan-test-panel__title">${summary.title}</div>
+            <div class="asistan-test-panel__subtitle">${state.message}</div>
+          </div>
         <button class="btn btn-ghost btn-sm asistan-test-panel__close" type="button">Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
@@ -914,7 +920,7 @@ export class AsistanController {
           <div class="asistan-test-panel__steps">${stepMarkup}</div>
           <div class="asistan-test-panel__actions">
             <button class="btn btn-primary btn-sm asistan-test-panel__start" type="button" ${state.phase === "running" ? "disabled" : ""}>
-              ${state.phase === "launcher" ? "Testi Baslat" : "Tekrar Calistir"}
+              ${state.phase === "launcher" ? "Senaryoyu Baslat" : "Tekrar Calistir"}
             </button>
             ${state.suite ? '<button class="btn btn-secondary btn-sm asistan-test-panel__copy" type="button">JSON Kopyala</button>' : ""}
           </div>
@@ -950,11 +956,11 @@ export class AsistanController {
       throw new Error("Electron API unavailable");
     }
 
-    const handler = (event: ProviderTestProgressEvent): void => {
+    const handler = (event: ProviderScenarioProgressEvent): void => {
       this._updateTestProgress(event);
     };
     this.providerTestProgressHandler = handler;
-    electronApi.onProviderTestProgress(handler);
+    electronApi.onProviderScenarioProgress(handler);
 
     try {
       state.phase = "running";
@@ -962,10 +968,13 @@ export class AsistanController {
       state.runId = null;
       state.steps = [];
       state.suite = null;
-      state.message = `${state.providerName} testi baslatildi`;
+      state.message = `${state.providerName} ${state.scenarioTitle} baslatildi`;
       this._renderTestPanel();
 
-      const results = await electronApi.testProvider({ slot: "ai0" });
+      const results = (await electronApi.runProviderScenario({
+        slot: "ai0",
+        scenarioId: state.scenarioId,
+      })) as ProviderTestSuite;
 
       if (results.refreshedConfig) {
         ProviderRegistry.update(results.refreshedConfig.id, results.refreshedConfig);
@@ -987,16 +996,19 @@ export class AsistanController {
 
       Logger.info(
         LogCategory.ASISTAN_CORE,
-        `Test completed: ${results.passed}/${results.totalTests} passed`
+        `Scenario completed: ${state.scenarioId} ${results.passed}/${results.totalTests}`
       );
     } catch (error) {
       state.phase = "completed";
       state.message = (error as Error).message;
       this._renderTestPanel();
-      Logger.error(LogCategory.ASISTAN_CORE, `Provider test failed: ${(error as Error).message}`);
+      Logger.error(
+        LogCategory.ASISTAN_CORE,
+        `Scenario failed: ${state.scenarioId} ${(error as Error).message}`
+      );
     } finally {
       const progressHandler = this.providerTestProgressHandler;
-      electronApi.offProviderTestProgress(progressHandler);
+      electronApi.offProviderScenarioProgress(progressHandler);
       this.providerTestProgressHandler = null;
     }
   }
@@ -1006,7 +1018,7 @@ export class AsistanController {
     if (!btn || btn.disabled) return;
     if (this.scenarioPanelState?.phase === "running") return;
 
-    this._openTestPanel();
+    this._openScenarioPanel("webview-test", "webview-test");
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {
