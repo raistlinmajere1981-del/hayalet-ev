@@ -315,9 +315,11 @@ function buildManualMcpConfig(name: string, enabled: boolean): Record<string, un
   }
 
   if (name === "hayalet-ev") {
+    const normalizedWorkspacePath = workspacePath.replace(/[\\/]$/, "");
+    const launcherPath = `${normalizedWorkspacePath}/src/mcp-server/start.js`;
     return {
       type: "local",
-      command: ["npm", "--prefix", workspacePath, "run", "mcp:start"],
+      command: ["node", launcherPath],
       timeout: 60000,
       enabled,
     };

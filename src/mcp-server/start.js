@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * MCP Server Launcher
- * Wraps tsx to run TypeScript entry point
+ * Runs the TypeScript entry point via Node's `--import tsx` loader to avoid
+ * the tsx CLI IPC layer, which can fail before MCP initialize completes.
  */
 
 import { spawn } from "child_process";
@@ -17,16 +18,19 @@ dotenv.config({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Use tsx from root node_modules (shared after migration)
-const tsxPath = join(__dirname, "..", "..", "node_modules", ".bin", "tsx");
+const projectRoot = join(__dirname, "..", "..");
 const entryPoint = join(__dirname, "index.ts");
 
-const child = spawn(tsxPath, [entryPoint], {
-  stdio: "inherit",
-  shell: false,
-  env: globalThis.process.env,
-});
+const child = spawn(
+  globalThis.process.execPath,
+  ["--import", "tsx", entryPoint, ...globalThis.process.argv.slice(2)],
+  {
+    stdio: "inherit",
+    shell: false,
+    env: globalThis.process.env,
+    cwd: projectRoot,
+  }
+);
 
 child.on("error", (err) => {
   globalThis.console.error("Failed to start MCP server:", err);
