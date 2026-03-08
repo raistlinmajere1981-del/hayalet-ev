@@ -83,6 +83,15 @@ test("scenario JSON copy uses guarded helper flows instead of raw clipboard writ
   assert.match(asistanContent, /_copyScenarioSuiteJson/);
 });
 
+test("entrance overlay exposes an Asistan delivery action for completed webview-test results", () => {
+  const entranceContent = readFileSync(entrancePath, "utf8");
+
+  assert.match(entranceContent, /scenario-overlay__send-asistan/);
+  assert.match(entranceContent, /state\.scenarioId === "webview-test"/);
+  assert.match(entranceContent, /deliverScenarioResultsToAsistan/);
+  assert.match(entranceContent, /deliverToAsistan\(\{/);
+});
+
 test("only entrance page exposes sync buttons beside test buttons", () => {
   const entranceHtml = readFileSync(entranceHtmlPath, "utf8");
   const asistanHtml = readFileSync(asistanHtmlPath, "utf8");

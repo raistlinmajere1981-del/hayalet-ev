@@ -18,6 +18,12 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
+import { WebviewManager } from "../../modules/webview-manager.js";
+import {
+  registerAsistanDeliveryHandler,
+  type AsistanDeliveryRequest,
+  type AsistanDeliveryResult,
+} from "../../modules/asistan-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import type { AppSettings } from "@shared/settings.js";
 import type {
@@ -262,6 +268,7 @@ export class AsistanController {
 
     // Settings'ten disabled MCP listesini yükle
     this._loadDisabledMcpServers();
+    registerAsistanDeliveryHandler(this._handleDeliveryRequest.bind(this));
 
     this._updateConnectionUI();
     Logger.debug(LogCategory.ASISTAN_CORE, "AsistanController initialized");
@@ -796,6 +803,113 @@ export class AsistanController {
 
   async _toggleConnection(options: { forceResume?: boolean } = {}): Promise<void> {
     await toggleAsistanConnection(this, options);
+  }
+
+  async _handleDeliveryRequest(
+    request: AsistanDeliveryRequest
+  ): Promise<AsistanDeliveryResult> {
+    const message = request.message.trim();
+    if (message === "") {
+      return {
+        success: false,
+        message: "Gonderilecek mesaj bos",
+      };
+    }
+
+    try {
+      await this._ensureReadyForDelivery();
+      const sendResult = (await WebviewManager.send({
+        provider: "ai0",
+        text: message,
+      })) as { success?: boolean; message?: string };
+
+      if (sendResult.success !== true) {
+        return {
+          success: false,
+          message: sendResult.message ?? "Mesaj asistana gonderilemedi",
+        };
+      }
+
+      Logger.info(LogCategory.ASISTAN_CORE, "Asistan delivery completed", {
+        page: request.page ?? "generic",
+      });
+
+      return {
+        success: true,
+        message: "Mesaj asistana gonderildi",
+      };
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error);
+      Logger.error(LogCategory.ASISTAN_CORE, "Asistan delivery failed", {
+        page: request.page ?? "generic",
+        error: messageText,
+      });
+      return {
+        success: false,
+        message: messageText,
+      };
+    }
+  }
+
+  async _ensureReadyForDelivery(): Promise<void> {
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
+    if (!hasAccount) {
+      throw new Error("Asistan icin bagli hesap bulunamadi");
+    }
+
+    if (slotState?.state !== SlotState.CONNECTED) {
+      const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
+      if (!isConnecting) {
+        await this._toggleConnection();
+      }
+    }
+
+    const connected = await this._waitForDeliveryCondition(() => {
+      const nextState = SlotController.getState("ai0") as SlotStateInfo | null;
+      return nextState?.state === SlotState.CONNECTED;
+    });
+
+    if (!connected) {
+      throw new Error("Asistan baglantisi beklenen surede kurulamadı");
+    }
+
+    const ready = await this._waitForDeliveryCondition(() => {
+      const nextState = SlotController.getState("ai0") as (SlotStateInfo & {
+        domReady?: boolean;
+      }) | null;
+      const trafficState = TrafficManager.getState("ai0");
+      const loadingReady =
+        trafficState === null ||
+        trafficState.readyState === "ready" ||
+        trafficState.status.loading !== "busy";
+
+      return (
+        nextState?.state === SlotState.CONNECTED &&
+        nextState.domReady === true &&
+        this._providerToolsReady &&
+        loadingReady
+      );
+    }, 60000);
+
+    if (!ready) {
+      throw new Error("Asistan webview hazir duruma gelmedi");
+    }
+  }
+
+  async _waitForDeliveryCondition(
+    predicate: () => boolean,
+    timeoutMs = 90000,
+    intervalMs = 250
+  ): Promise<boolean> {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      if (predicate()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return false;
   }
 
   _updateServerStatus(status: { running: boolean; port?: number }): void {
@@ -1367,6 +1481,8 @@ export class AsistanController {
   onHide(): void {}
 
   async destroy(): Promise<void> {
+    registerAsistanDeliveryHandler(null);
+
     const progressHandler = this.providerTestProgressHandler;
     if (progressHandler !== null) {
       window.electronAPI?.offProviderTestProgress(progressHandler);

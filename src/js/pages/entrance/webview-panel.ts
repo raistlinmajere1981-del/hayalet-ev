@@ -6,6 +6,7 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
+import { deliverToAsistan } from "../../modules/asistan-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
@@ -46,6 +47,7 @@ interface ScenarioOverlayState {
   hostSlot: SlotType;
   providerName: string;
   phase: "launcher" | "running" | "completed";
+  deliveryInFlight: boolean;
   filter: ScenarioStatusFilter;
   runId: string | null;
   commands: ProviderScenarioCommandReport[];
@@ -360,6 +362,7 @@ export class WebviewPanel {
       hostSlot: surface.hostSlot,
       providerName: AppState.getNickname(slot),
       phase: "launcher",
+      deliveryInFlight: false,
       filter: "all",
       runId: null,
       commands: [],
@@ -486,6 +489,8 @@ export class WebviewPanel {
       commands: displayCommands,
     });
     const isRunning = state.phase === "running";
+    const canDeliverToAsistan =
+      state.scenarioId === "webview-test" && state.phase === "completed" && state.suite !== null;
     const summaryMarkup = `
       <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
         <button class="scenario-summary-chip scenario-summary-chip--pass${state.filter === "pass" ? " is-active" : ""}" type="button" data-filter-status="pass">
@@ -586,6 +591,13 @@ export class WebviewPanel {
                     : ""
                 }
                 ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
+                ${
+                  canDeliverToAsistan
+                    ? `<button class="btn btn-secondary btn-sm scenario-overlay__send-asistan" type="button" ${state.deliveryInFlight ? "disabled" : ""}>${
+                        state.deliveryInFlight ? "Asistana Iletiliyor" : "Sonuclari Asistana Ilet"
+                      }</button>`
+                    : ""
+                }
               </div>
         `;
 
@@ -615,6 +627,9 @@ export class WebviewPanel {
           this.renderScenarioOverlay();
         });
       }
+    });
+    overlayEl.querySelector(".scenario-overlay__send-asistan")?.addEventListener("click", () => {
+      void this.deliverScenarioResultsToAsistan();
     });
     overlayEl.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -671,6 +686,94 @@ export class WebviewPanel {
     Logger.info(LogCategory.ENTRANCE, "Test results copied to clipboard");
   }
 
+  private buildAsistanDeliveryMessage(results: ProviderTestSuite): string {
+    const completionMessage = buildScenarioCompletionMessage({
+      passed: results.passed,
+      totalTests: results.totalTests,
+      commands: results.commands,
+      ...(results.aborted !== undefined ? { aborted: results.aborted } : {}),
+      ...(results.abortReason !== undefined ? { abortReason: results.abortReason } : {}),
+    });
+    const notableResults = results.results
+      .filter((result) => result.status === "fail" || result.status === "warning")
+      .slice(0, 8);
+    const lines = [
+      `Entrance ${results.scenarioId} sonucu`,
+      `Slot: ${results.slot.toUpperCase()}`,
+      `Provider: ${results.providerName}`,
+      `Ozet: ${completionMessage}`,
+      `Sure: ${(results.totalDuration / 1000).toFixed(1)}s`,
+      `Pass: ${results.passed} | Fail: ${results.failed} | Warning: ${results.warnings} | Skip: ${results.skipped}`,
+    ];
+
+    if (results.aborted === true && results.abortReason !== undefined && results.abortReason !== "") {
+      lines.push(`Abort: ${results.abortReason}`);
+    }
+
+    if (notableResults.length > 0) {
+      lines.push("", "Dikkat ceken sonuclar:");
+      notableResults.forEach((result) => {
+        lines.push(`- [${result.status}] ${result.name}: ${result.message}`);
+      });
+    } else {
+      lines.push("", "Tum kontroller gecti veya yalnizca bilgi amacli sonuc dondu.");
+    }
+
+    if (results.runId !== undefined && results.runId !== "") {
+      lines.push("", `Run ID: ${results.runId}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  async deliverScenarioResultsToAsistan(): Promise<void> {
+    const state = this.scenarioOverlayState;
+    if (
+      !state ||
+      state.deliveryInFlight === true ||
+      state.scenarioId !== "webview-test" ||
+      state.suite === null
+    ) {
+      return;
+    }
+
+    state.deliveryInFlight = true;
+    state.message = "Sonuclar Asistan'a iletiliyor";
+    this.renderScenarioOverlay();
+
+    try {
+      const deliveryMessage = this.buildAsistanDeliveryMessage(state.suite);
+      const result = await deliverToAsistan({
+        message: deliveryMessage,
+        page: "entrance-webview-test",
+        metadata: {
+          slot: state.testedSlot,
+          scenarioId: state.scenarioId,
+          runId: state.suite.runId ?? "",
+        },
+      });
+
+      if (result.success !== true) {
+        throw new Error(result.message ?? "Asistan teslimi basarisiz");
+      }
+
+      state.message = "Sonuclar Asistan'a iletildi";
+      Logger.info(LogCategory.ENTRANCE, "Scenario results delivered to Asistan", {
+        slot: state.testedSlot,
+        scenarioId: state.scenarioId,
+      });
+    } catch (error) {
+      state.message = getErrorMessage(error as Error);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        `Scenario results could not be delivered to Asistan: ${getErrorMessage(error as Error)}`
+      );
+    } finally {
+      state.deliveryInFlight = false;
+      this.renderScenarioOverlay();
+    }
+  }
+
   async startScenarioTest(slot: SlotType): Promise<void> {
     if (
       this.scenarioOverlayState?.testedSlot !== slot ||
@@ -692,6 +795,7 @@ export class WebviewPanel {
 
     try {
       state.phase = "running";
+      state.deliveryInFlight = false;
       state.filter = "all";
       state.commands = [];
       state.runId = null;
