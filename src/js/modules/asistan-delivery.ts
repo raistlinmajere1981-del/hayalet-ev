@@ -13,9 +13,7 @@ export interface AsistanDeliveryResult {
   message?: string;
 }
 
-type AsistanDeliveryHandler = (
-  request: AsistanDeliveryRequest
-) => Promise<AsistanDeliveryResult>;
+type AsistanDeliveryHandler = (request: AsistanDeliveryRequest) => Promise<AsistanDeliveryResult>;
 
 let activeAsistanDeliveryHandler: AsistanDeliveryHandler | null = null;
 

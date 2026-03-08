@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-08T09:22:03.973Z",
+  "generatedAt": "2026-03-08T12:00:11.446Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 414,
-    "ids": 375,
+    "filesScanned": 415,
+    "ids": 382,
     "testIds": 15,
-    "querySelectors": 122,
-    "totalSelectors": 512
+    "querySelectors": 123,
+    "totalSelectors": 520
   },
   "lookup": {
     "id": {
@@ -21,6 +21,7 @@
       "account-list": "#account-list",
       "account-status-msg": "#account-status-msg",
       "add-prompt-btn": "#add-prompt-btn",
+      "ai0-avatar": "#ai0-avatar",
       "ai0-loading-indicator": "#ai0-loading-indicator",
       "ai0-send-indicator": "#ai0-send-indicator",
       "ai0-test-btn": "#ai0-test-btn",
@@ -85,15 +86,22 @@
       "archives-list": "#archives-list",
       "archives-provider-ai1": "#archives-provider-ai1",
       "archives-provider-ai2": "#archives-provider-ai2",
+      "asistan-avatar-action": "#asistan-avatar-action",
       "asistan-btn": "#asistan-btn",
       "asistan-catch-commands-check": "#asistan-catch-commands-check",
       "asistan-character-btn": "#asistan-character-btn",
       "asistan-connect-btn": "#asistan-connect-btn",
-      "asistan-connected-list": "#asistan-connected-list",
       "asistan-devtools-btn": "#asistan-devtools-btn",
       "asistan-ghost-agent-btn": "#asistan-ghost-agent-btn",
+      "asistan-identity-modal": "#asistan-identity-modal",
+      "asistan-identity-modal-cancel": "#asistan-identity-modal-cancel",
+      "asistan-identity-modal-close": "#asistan-identity-modal-close",
+      "asistan-identity-modal-save": "#asistan-identity-modal-save",
+      "asistan-identity-nickname-input": "#asistan-identity-nickname-input",
+      "asistan-identity-status-dot": "#asistan-identity-status-dot",
       "asistan-keep-servers-on-close": "#asistan-keep-servers-on-close",
       "asistan-memory-btn": "#asistan-memory-btn",
+      "asistan-nickname": "#asistan-nickname",
       "asistan-offline-mode-check": "#asistan-offline-mode-check",
       "asistan-opencode-action-btn": "#asistan-opencode-action-btn",
       "asistan-opencode-indicator": "#asistan-opencode-indicator",
@@ -105,7 +113,6 @@
       "asistan-status-details": "#asistan-status-details",
       "asistan-status-dot": "#asistan-status-dot",
       "asistan-status-text": "#asistan-status-text",
-      "asistan-title": "#asistan-title",
       "asistan-url-display": "#asistan-url-display",
       "asistan-webview-panel": "#asistan-webview-panel",
       "attach-file-btn": "#attach-file-btn",
@@ -453,6 +460,7 @@
       "result_item": ".result-item",
       "scenario_overlay_close": ".scenario-overlay__close",
       "scenario_overlay_copy": ".scenario-overlay__copy",
+      "scenario_overlay_send_asistan": ".scenario-overlay__send-asistan",
       "scenario_overlay_start": ".scenario-overlay__start",
       "scenario_overlay_stop": ".scenario-overlay__stop",
       "search_tabs_tab_btn": ".search-tabs .tab-btn",

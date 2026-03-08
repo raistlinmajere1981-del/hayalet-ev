@@ -334,7 +334,7 @@ export class AsistanController {
     this._updateIdentityStatusDot();
   }
 
-  _bindIdentityAction(elementId: string, onActivate: () => Promise<void>): void {
+  _bindIdentityAction(elementId: string, onActivate: () => void | Promise<void>): void {
     const element = document.getElementById(elementId);
     if (!(element instanceof HTMLElement)) {
       return;
@@ -426,29 +426,29 @@ export class AsistanController {
       return false;
     }
 
-    let hasChanges = false;
     const nextAccounts = accounts.map((account) => {
-      const nextAccount = { ...account };
-
-      if (
+      const nicknameChanged =
         typeof patch.nickname === "string" &&
         patch.nickname !== "" &&
-        patch.nickname !== account.nickname
-      ) {
-        nextAccount.nickname = patch.nickname;
-        hasChanges = true;
-      }
-
-      if (
+        patch.nickname !== account.nickname;
+      const avatarChanged =
         typeof patch.avatarPath === "string" &&
         patch.avatarPath !== "" &&
-        patch.avatarPath !== account.avatarPath
-      ) {
-        nextAccount.avatarPath = patch.avatarPath;
-        hasChanges = true;
+        patch.avatarPath !== account.avatarPath;
+
+      if (!nicknameChanged && !avatarChanged) {
+        return account;
       }
 
-      return nextAccount;
+      return {
+        ...account,
+        ...(nicknameChanged ? { nickname: patch.nickname } : {}),
+        ...(avatarChanged ? { avatarPath: patch.avatarPath } : {}),
+      };
+    });
+
+    const hasChanges = nextAccounts.some((account, index) => {
+      return account !== accounts[index];
     });
 
     if (!hasChanges) {
@@ -462,7 +462,7 @@ export class AsistanController {
     return true;
   }
 
-  async _editIdentityNickname(): Promise<void> {
+  _editIdentityNickname(): void {
     this._openIdentityNicknameModal();
   }
 
@@ -493,6 +493,7 @@ export class AsistanController {
           nickname: nextNickname,
         });
       }
+
       this._closeIdentityNicknameModal();
     } catch (error) {
       Logger.error(LogCategory.ASISTAN_CORE, "AI0 nickname güncellenemedi", {
@@ -505,9 +506,9 @@ export class AsistanController {
     return await new Promise((resolve, reject) => {
       const image = new Image();
 
-      image.onload = () => {
-        const width = image.naturalWidth || image.width;
-        const height = image.naturalHeight || image.height;
+      image.onload = (): void => {
+        const width = image.naturalWidth > 0 ? image.naturalWidth : image.width;
+        const height = image.naturalHeight > 0 ? image.naturalHeight : image.height;
 
         if (width === 0 || height === 0) {
           reject(new Error("Geçersiz avatar boyutu"));
@@ -538,7 +539,7 @@ export class AsistanController {
         resolve(base64);
       };
 
-      image.onerror = () => {
+      image.onerror = (): void => {
         reject(new Error("Avatar görseli yüklenemedi"));
       };
 
@@ -607,7 +608,11 @@ export class AsistanController {
   }
 
   _getCurrentProviderLabel(): string {
-    const selectedProviderLabel = this.providerSelect?.selectedOptions.item(0)?.textContent?.trim();
+    const selectedOption =
+      this.providerSelect === null ? null : this.providerSelect.selectedOptions.item(0);
+    const selectedProviderText = selectedOption === null ? null : selectedOption.textContent;
+    const selectedProviderLabel =
+      selectedProviderText === null ? undefined : selectedProviderText.trim();
     if (selectedProviderLabel !== undefined && selectedProviderLabel !== "") {
       return selectedProviderLabel;
     }
@@ -902,8 +907,8 @@ export class AsistanController {
     this._bindIdentityAction("asistan-avatar-action", async () => {
       await this._editIdentityAvatar();
     });
-    this._bindIdentityAction("asistan-nickname", async () => {
-      await this._editIdentityNickname();
+    this._bindIdentityAction("asistan-nickname", () => {
+      this._editIdentityNickname();
     });
     this._setupIdentityNicknameModalEvents();
 
@@ -1146,8 +1151,8 @@ export class AsistanController {
       throw new Error("Asistan icin bagli hesap bulunamadi");
     }
 
-    if (slotState?.state !== SlotState.CONNECTED) {
-      const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
+    if (slotState.state !== SlotState.CONNECTED) {
+      const isConnecting = slotState.state === SlotState.CONNECTING || this._connectFlowActive;
       if (!isConnecting) {
         await this._toggleConnection();
       }
@@ -1193,13 +1198,24 @@ export class AsistanController {
     intervalMs = 250
   ): Promise<boolean> {
     const startedAt = Date.now();
-    while (Date.now() - startedAt < timeoutMs) {
+
+    const poll = async (): Promise<boolean> => {
       if (predicate()) {
         return true;
       }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-    return false;
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        return false;
+      }
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, intervalMs);
+      });
+
+      return await poll();
+    };
+
+    return await poll();
   }
 
   _updateServerStatus(status: { running: boolean; port?: number }): void {

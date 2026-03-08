@@ -706,7 +706,11 @@ export class WebviewPanel {
       `Pass: ${results.passed} | Fail: ${results.failed} | Warning: ${results.warnings} | Skip: ${results.skipped}`,
     ];
 
-    if (results.aborted === true && results.abortReason !== undefined && results.abortReason !== "") {
+    if (
+      results.aborted === true &&
+      results.abortReason !== undefined &&
+      results.abortReason !== ""
+    ) {
       lines.push(`Abort: ${results.abortReason}`);
     }
 
