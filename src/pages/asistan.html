@@ -12,19 +12,7 @@
           <div class="slot-info asistan-slot-info">
             <div class="asistan-identity-row">
               <span class="slot-nickname" id="asistan-nickname">Asistan</span>
-
-              <div class="asistan-inline-tools">
-                <button class="btn btn-ghost btn-icon btn-sm" id="asistan-memory-btn" title="Memory Viewer">
-                  🧠
-                </button>
-                <button
-                  class="btn btn-ghost btn-icon btn-sm"
-                  id="asistan-character-btn"
-                  title="Karakter Profili"
-                >
-                  🎭
-                </button>
-              </div>
+              <span class="asistan-role-pill">AI0</span>
             </div>
 
             <div class="asistan-provider-meta">
@@ -35,15 +23,26 @@
           </div>
         </div>
 
-        <div class="asistan-connect-actions">
-          <button class="btn btn-sm btn-primary" id="asistan-connect-btn">Başlat</button>
-          <button class="btn btn-sm btn-secondary" id="asistan-ghost-agent-btn">Ghost Agent</button>
+        <div class="asistan-command-rail">
+          <div class="asistan-connect-actions">
+            <button class="btn btn-sm btn-primary" id="asistan-connect-btn">Başlat</button>
+            <button class="btn btn-sm btn-secondary" id="asistan-ghost-agent-btn">Ghost Agent</button>
+          </div>
+
+          <div class="asistan-inline-tools">
+            <button class="btn btn-ghost btn-icon btn-sm" id="asistan-memory-btn" title="Memory Viewer">
+              🧠
+            </button>
+            <button class="btn btn-ghost btn-icon btn-sm" id="asistan-character-btn" title="Karakter Profili">
+              🎭
+            </button>
+          </div>
         </div>
 
         <div class="asistan-session-controls">
           <label class="catch-label" for="asistan-resume-last-session" title="Bağlanınca son oturuma dön">
             <input type="checkbox" id="asistan-resume-last-session" />
-            <span>Son sessiona devam et</span>
+            <span>Son session</span>
           </label>
           <label
             class="catch-label"
@@ -51,7 +50,7 @@
             title="Pencere kapanınca servisleri açık bırak"
           >
             <input type="checkbox" id="asistan-keep-servers-on-close" />
-            <span>Kapanışta sunucuları kapatma</span>
+            <span>Sunucuları kapatma</span>
           </label>
           <label
             class="catch-label"
@@ -59,11 +58,11 @@
             title="Asistan komutlarını yakala ve işle"
           >
             <input type="checkbox" id="asistan-catch-commands-check" />
-            <span>Asistan komut yakala</span>
+            <span>Komut yakala</span>
           </label>
           <label class="catch-label" for="asistan-offline-mode-check" title="Offline mod">
             <input type="checkbox" id="asistan-offline-mode-check" />
-            <span>Offline mod</span>
+            <span>Offline</span>
           </label>
         </div>
       </div>
