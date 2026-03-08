@@ -11,11 +11,14 @@ interface RoomBridge {
   sendToRoom: (payload: Record<string, unknown>) => void;
 }
 
+type RoomHostLifecycleHandler = (payload: unknown, api: RoomHostApi) => Promise<void> | void;
+type RoomHostDisposeHandler = (api: RoomHostApi) => Promise<void> | void;
+
 interface RoomHostHooks {
-  onRoomReady: ((payload: unknown, api: RoomHostApi) => Promise<void> | void) | undefined;
-  onRoomEvent: ((payload: unknown, api: RoomHostApi) => Promise<void> | void) | undefined;
-  onRoomCommand: ((payload: unknown, api: RoomHostApi) => Promise<void> | void) | undefined;
-  dispose: ((api: RoomHostApi) => Promise<void> | void) | undefined;
+  onRoomReady: RoomHostLifecycleHandler | undefined;
+  onRoomEvent: RoomHostLifecycleHandler | undefined;
+  onRoomCommand: RoomHostLifecycleHandler | undefined;
+  dispose: RoomHostDisposeHandler | undefined;
 }
 
 interface RoomHostRegistration {
@@ -45,11 +48,24 @@ interface RoomHostApi {
   log: (level: "debug" | "info" | "warn" | "error", message: string) => void;
 }
 
+interface RoomHostExports {
+  onRoomReady?: RoomHostLifecycleHandler;
+  onRoomEvent?: RoomHostLifecycleHandler;
+  onRoomCommand?: RoomHostLifecycleHandler;
+  dispose?: RoomHostDisposeHandler;
+  commands?: Record<string, RoomCommandHandler>;
+  protocols?: Record<string, string>;
+}
+
+type RoomHostActivationResult = RoomHostExports | undefined;
+type RoomHostActivator = (
+  api: RoomHostApi
+) => RoomHostActivationResult | Promise<RoomHostActivationResult>;
 type RoomHostFactory =
-  | ((api: RoomHostApi) => Promise<unknown> | unknown)
+  | RoomHostActivator
   | {
-      activate?: (api: RoomHostApi) => Promise<unknown> | unknown;
-      default?: (api: RoomHostApi) => Promise<unknown> | unknown;
+      activate?: RoomHostActivator;
+      default?: RoomHostActivator;
     };
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -63,6 +79,26 @@ function isRoomCommandPayload(
   payload: unknown
 ): payload is { command?: string; payload?: Record<string, unknown> } {
   return payload !== null && typeof payload === "object" && Array.isArray(payload) === false;
+}
+
+function toHostExports(result: unknown): RoomHostExports {
+  if (result !== null && typeof result === "object" && Array.isArray(result) === false) {
+    return result as RoomHostExports;
+  }
+  return {};
+}
+
+function resolveHostActivator(exported: RoomHostFactory): RoomHostActivator | null {
+  if (typeof exported === "function") {
+    return exported;
+  }
+  if (typeof exported.activate === "function") {
+    return exported.activate;
+  }
+  if (typeof exported.default === "function") {
+    return exported.default;
+  }
+  return null;
 }
 
 class RoomHostRuntimeClass {
@@ -94,10 +130,7 @@ class RoomHostRuntimeClass {
       return true;
     }
 
-    if (registration.loadPromise === null) {
-      registration.loadPromise = this.loadRoomHost(registration);
-    }
-
+    registration.loadPromise ??= this.loadRoomHost(registration);
     return await registration.loadPromise;
   }
 
@@ -118,11 +151,7 @@ class RoomHostRuntimeClass {
     });
   }
 
-  async handleRuntimeMessage(
-    roomId: string,
-    channel: string,
-    payload: unknown
-  ): Promise<void> {
+  async handleRuntimeMessage(roomId: string, channel: string, payload: unknown): Promise<void> {
     const registration = this.rooms.get(roomId);
     if (registration === undefined) {
       return;
@@ -192,25 +221,19 @@ class RoomHostRuntimeClass {
     try {
       const source = await readFile(registration.room.hostEntryPath);
       if (typeof source !== "string" || source.trim() === "") {
-        Logger.warn(LogCategory.SYSTEM, `Room host entry missing: ${registration.room.hostEntryPath}`, {
-          context: { roomId: registration.room.id },
-        });
+        Logger.warn(
+          LogCategory.SYSTEM,
+          `Room host entry missing: ${registration.room.hostEntryPath}`,
+          {
+            context: { roomId: registration.room.id },
+          }
+        );
         registration.loaded = false;
         return false;
       }
 
-      const exported = this.evaluateHostFactory(
-        decodeRoomHostSource(source),
-        registration.room.id
-      );
-      const activate =
-        typeof exported === "function"
-          ? exported
-          : typeof exported?.activate === "function"
-            ? exported.activate
-            : typeof exported?.default === "function"
-              ? exported.default
-              : null;
+      const exported = this.evaluateHostFactory(decodeRoomHostSource(source), registration.room.id);
+      const activate = resolveHostActivator(exported);
 
       if (activate === null) {
         Logger.warn(LogCategory.SYSTEM, `Room host factory missing: ${registration.room.id}`, {
@@ -226,12 +249,16 @@ class RoomHostRuntimeClass {
       registration.loaded = true;
       return true;
     } catch (error) {
-      Logger.error(LogCategory.SYSTEM, new Error(`Room host load failed: ${getErrorMessage(error)}`), {
-        context: {
-          roomId: registration.room.id,
-          hostEntryPath: registration.room.hostEntryPath,
-        },
-      });
+      Logger.error(
+        LogCategory.SYSTEM,
+        new Error(`Room host load failed: ${getErrorMessage(error)}`),
+        {
+          context: {
+            roomId: registration.room.id,
+            hostEntryPath: registration.room.hostEntryPath,
+          },
+        }
+      );
       registration.loaded = false;
       return false;
     } finally {
@@ -242,46 +269,49 @@ class RoomHostRuntimeClass {
   private evaluateHostFactory(source: string, roomId: string): RoomHostFactory {
     const module = { exports: {} as RoomHostFactory };
     const exports = module.exports;
-    const evaluator = new Function("module", "exports", source);
+    const evaluator = new Function("module", "exports", source) as (
+      moduleRef: { exports: RoomHostFactory },
+      exportsRef: RoomHostFactory
+    ) => void;
 
     try {
       evaluator(module, exports);
       return module.exports;
     } catch (error) {
-      throw new Error(`Room host evaluation failed (${roomId}): ${getErrorMessage(error)}`);
+      throw new Error(`Room host evaluation failed (${roomId}): ${getErrorMessage(error)}`, {
+        cause: error,
+      });
     }
   }
 
-  private applyHostResult(registration: RoomHostRegistration, result: unknown): void {
+  private applyHostResult(
+    registration: RoomHostRegistration,
+    result: RoomHostActivationResult
+  ): void {
     const api = this.createApi(registration);
-    const data = toRecord(result);
+    const data = toHostExports(result);
 
     if (typeof data["onRoomReady"] === "function") {
-      registration.hooks.onRoomReady = data["onRoomReady"] as RoomHostHooks["onRoomReady"];
+      registration.hooks.onRoomReady = data["onRoomReady"];
     }
     if (typeof data["onRoomEvent"] === "function") {
-      registration.hooks.onRoomEvent = data["onRoomEvent"] as RoomHostHooks["onRoomEvent"];
+      registration.hooks.onRoomEvent = data["onRoomEvent"];
     }
     if (typeof data["onRoomCommand"] === "function") {
-      registration.hooks.onRoomCommand = data["onRoomCommand"] as RoomHostHooks["onRoomCommand"];
+      registration.hooks.onRoomCommand = data["onRoomCommand"];
     }
     if (typeof data["dispose"] === "function") {
-      registration.hooks.dispose = data["dispose"] as RoomHostHooks["dispose"];
+      registration.hooks.dispose = data["dispose"];
     }
 
-    const commands = toRecord(data["commands"]);
-    Object.entries(commands).forEach(([commandName, handler]) => {
-      if (typeof handler !== "function") {
-        return;
-      }
-      api.registerCommand(commandName, handler as RoomCommandHandler);
+    Object.entries(data.commands ?? {}).forEach(([commandName, handler]) => {
+      api.registerCommand(commandName, handler);
     });
 
-    const protocols = toRecord(data["protocols"]);
-    if (Object.keys(protocols).length > 0) {
+    if (data.protocols !== undefined && Object.keys(data.protocols).length > 0) {
       const protocolMap: Record<string, string> = {};
-      Object.entries(protocols).forEach(([key, value]) => {
-        protocolMap[key] = typeof value === "string" ? value : "";
+      Object.entries(data.protocols).forEach(([key, value]) => {
+        protocolMap[key] = value;
       });
       api.registerProtocols(protocolMap);
     }
@@ -290,13 +320,13 @@ class RoomHostRuntimeClass {
   private createApi(registration: RoomHostRegistration): RoomHostApi {
     return {
       room: { ...registration.room },
-      registerCommand: (commandName, handler, options = {}) => {
+      registerCommand: (commandName, handler, options = {}): void => {
         RoomCommandRegistry.registerHandler(registration.room.id, commandName, handler, options);
       },
-      registerProtocols: (protocols) => {
+      registerProtocols: (protocols): void => {
         RoomProtocolRegistry.registerRuntimeProtocols(registration.room.id, protocols);
       },
-      notifyRoom: (type, payload = {}) => {
+      notifyRoom: (type, payload = {}): void => {
         registration.bridge?.sendToRoom({
           type,
           payload,
@@ -305,13 +335,13 @@ class RoomHostRuntimeClass {
       sendProtocol: CoreEngine.sendProtocol.bind(CoreEngine),
       sendMessage: CoreEngine.sendMessage.bind(CoreEngine),
       sendToTargets: CoreEngine.sendToTargets.bind(CoreEngine),
-      getState: (key) => registration.state.get(key),
-      setState: (key, value) => {
+      getState: (key): unknown => registration.state.get(key),
+      setState: (key, value): unknown => {
         registration.state.set(key, value);
         return value;
       },
-      deleteState: (key) => registration.state.delete(key),
-      log: (level, message) => {
+      deleteState: (key): boolean => registration.state.delete(key),
+      log: (level, message): void => {
         const prefixed = `[Room:${registration.room.id}] ${message}`;
         if (level === "error") {
           Logger.error(LogCategory.SYSTEM, prefixed);

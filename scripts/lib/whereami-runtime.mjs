@@ -22,6 +22,7 @@ function withObserved(control, probes, runtimeAgeMs, staleRuntime) {
     mainProcess: probes.mainProcess,
     ghostProcess: probes.ghostProcess,
     wrapperProcess: probes.wrapperProcess,
+    opencodeServerRunning: probes.opencodeServerRunning === true,
   };
 }
 

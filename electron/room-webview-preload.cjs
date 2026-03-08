@@ -7,7 +7,7 @@ function emitToHost(channel, payload = {}) {
   try {
     ipcRenderer.sendToHost(channel, payload);
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -34,7 +34,9 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
   for (const handler of hostMessageHandlers) {
     try {
       handler(payload);
-    } catch (_) {}
+    } catch {
+      continue;
+    }
   }
 });
 
@@ -69,9 +71,11 @@ contextBridge.exposeInMainWorld("roomAPI", {
   },
 });
 
-window.addEventListener("load", () => {
-  emitToHost("room-ready", {
-    stage: "load",
-    url: window.location.href,
+if (typeof globalThis.addEventListener === "function") {
+  globalThis.addEventListener("load", () => {
+    emitToHost("room-ready", {
+      stage: "load",
+      url: globalThis.location?.href ?? "",
+    });
   });
-});
+}

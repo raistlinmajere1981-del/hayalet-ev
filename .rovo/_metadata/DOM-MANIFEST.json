@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-08T12:00:11.446Z",
+  "generatedAt": "2026-03-08T14:50:55.515Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 415,
-    "ids": 382,
+    "filesScanned": 429,
+    "ids": 390,
     "testIds": 15,
-    "querySelectors": 123,
-    "totalSelectors": 520
+    "querySelectors": 125,
+    "totalSelectors": 530
   },
   "lookup": {
     "id": {
@@ -308,6 +308,14 @@
       "report-modal-open": "#report-modal-open",
       "results-files": "#results-files",
       "results-messages": "#results-messages",
+      "rooms-installed-list": "#rooms-installed-list",
+      "rooms-overlay": "#rooms-overlay",
+      "rooms-overlay-close": "#rooms-overlay-close",
+      "rooms-overlay-import": "#rooms-overlay-import",
+      "rooms-overlay-open": "#rooms-overlay-open",
+      "rooms-overlay-refresh": "#rooms-overlay-refresh",
+      "rooms-overlay-summary": "#rooms-overlay-summary",
+      "rooms-workspace-list": "#rooms-workspace-list",
       "rtab-btn-files": "#rtab-btn-files",
       "rtab-btn-health": "#rtab-btn-health",
       "rtab-btn-providers": "#rtab-btn-providers",
@@ -474,6 +482,8 @@
       "data_component": "[data-component=",
       "data_component_markdown": "[data-component=\"markdown\"]",
       "data_component_user_message_data_slot_user_message_text": "[data-component=\"user-message\"] [data-slot=\"user-message-text\"]",
+      "data_room_nav": "[data-room-nav=",
+      "data_room_page": "[data-room-page=",
       "data_slot_session_turn_message_content": "[data-slot=\"session-turn-message-content\"]",
       "data_slot_session_turn_summary_section": "[data-slot=\"session-turn-summary-section\"]",
       "data_slot_session_turn_summary_section_data_component_markdown": "[data-slot=\"session-turn-summary-section\"] [data-component=\"markdown\"]",

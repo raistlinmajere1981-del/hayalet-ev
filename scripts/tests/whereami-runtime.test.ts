@@ -15,12 +15,14 @@ test("returns hayalet-ev when main process is alive in soft idle", () => {
       mainProcess: true,
       ghostProcess: false,
       wrapperProcess: true,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
   });
 
   assert.equal(result.mode, "hayalet-ev");
   assert.equal(result.shouldStop, false);
+  assert.equal(result.observedSignals.opencodeServerRunning, false);
 });
 
 test("returns ghost-agent when ghost process is alive in in-ghost phase", () => {
@@ -35,6 +37,7 @@ test("returns ghost-agent when ghost process is alive in in-ghost phase", () => 
       mainProcess: false,
       ghostProcess: true,
       wrapperProcess: true,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
   });
@@ -55,6 +58,7 @@ test("returns terminal when no runtime signal and no app processes", () => {
       mainProcess: false,
       ghostProcess: false,
       wrapperProcess: false,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
   });
@@ -75,6 +79,7 @@ test("returns transitioning during preparing-handoff", () => {
       mainProcess: true,
       ghostProcess: false,
       wrapperProcess: true,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
   });
@@ -95,6 +100,7 @@ test("falls back to terminal when preparing-handoff runtime is stale and no proc
       mainProcess: false,
       ghostProcess: false,
       wrapperProcess: false,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:05:00.000Z",
     maxStaleMs: 60000,
@@ -117,6 +123,7 @@ test("returns conflict and stop signal when runtime and process probes disagree"
       mainProcess: false,
       ghostProcess: true,
       wrapperProcess: true,
+      opencodeServerRunning: false,
     },
     nowIso: "2026-03-02T10:00:10.000Z",
   });

@@ -146,7 +146,7 @@ declare global {
       ready: (payload?: Record<string, unknown>) => boolean;
       sendCommand: (command: string, payload?: Record<string, unknown>) => boolean;
       sendEvent: (type: string, payload?: Record<string, unknown>) => boolean;
-      onHostMessage: (callback: (payload: unknown) => void) => (() => void);
+      onHostMessage: (callback: (payload: unknown) => void) => () => void;
       offHostMessage: (callback: (payload: unknown) => void) => void;
     };
 
@@ -528,10 +528,7 @@ declare global {
       path?: string;
       error?: string;
     }>;
-    roomsImportBundle: (payload: {
-      bundleFile: string;
-      overwriteWorkspace?: boolean;
-    }) => Promise<{
+    roomsImportBundle: (payload: { bundleFile: string; overwriteWorkspace?: boolean }) => Promise<{
       success: boolean;
       room?: InstalledRoomRecord;
       path?: string;

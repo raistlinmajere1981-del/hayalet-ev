@@ -19,9 +19,7 @@ export interface RoomCommandHandlerPayload extends Record<string, unknown> {
   roomPayload?: unknown;
 }
 
-export type RoomCommandHandler = (
-  payload: RoomCommandHandlerPayload
-) => Promise<unknown> | unknown;
+export type RoomCommandHandler = (payload: RoomCommandHandlerPayload) => unknown;
 
 interface RoomCommandEntry {
   metadata: RoomCommandMetadata;
@@ -40,7 +38,11 @@ function normalizeScope(scope: RoomCommandScope | undefined): RoomCommandScope {
   return scope ?? "system";
 }
 
-function normalizeDescription(description: string | undefined, roomId: string, name: string): string {
+function normalizeDescription(
+  description: string | undefined,
+  roomId: string,
+  name: string
+): string {
   const trimmed = description?.trim() ?? "";
   return trimmed !== "" ? trimmed : `${roomId} room command: ${name}`;
 }
@@ -191,9 +193,7 @@ class RoomCommandRegistryClass {
       .sort((left, right) => left.localeCompare(right));
   }
 
-  getCatalog(
-    category?: RoomCommandCategory
-  ): Array<{
+  getCatalog(category?: RoomCommandCategory): Array<{
     name: string;
     category: RoomCommandCategory;
     isCustom: boolean;

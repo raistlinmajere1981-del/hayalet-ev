@@ -307,7 +307,12 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
             editable = editableRaw;
           }
         }
-        if (key !== undefined && room !== undefined && scenario !== undefined && title !== undefined) {
+        if (
+          key !== undefined &&
+          room !== undefined &&
+          scenario !== undefined &&
+          title !== undefined
+        ) {
           parsed.push({
             key,
             room,

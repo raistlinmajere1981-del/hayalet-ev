@@ -45,7 +45,10 @@ class RoomRegistryClass {
   async refreshInstalledRooms(): Promise<InstalledRoomRecord[]> {
     const api = window.electronAPI;
     if (api === undefined || typeof api.roomsListInstalled !== "function") {
-      Logger.warn(LogCategory.SYSTEM, "RoomRegistry skipped: electronAPI.roomsListInstalled missing");
+      Logger.warn(
+        LogCategory.SYSTEM,
+        "RoomRegistry skipped: electronAPI.roomsListInstalled missing"
+      );
       this.installedRooms = [];
       RoomCommandRegistry.reset();
       RoomProtocolRegistry.reset();

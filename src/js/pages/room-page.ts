@@ -204,7 +204,7 @@ export class RoomPageController implements PageController {
 
     await RoomHostRuntime.ensureRoomHost(this.room, {
       sendToRoom: (payload) => {
-        webview?.send?.("room-host-message", payload);
+        webview.send?.("room-host-message", payload);
       },
     });
 
@@ -228,7 +228,8 @@ export class RoomPageController implements PageController {
     webview.addEventListener("did-start-loading", () => {
       const page = this.getPage();
       this.runtimeState = "loading";
-      this.lastRuntimeEvent = webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent =
+        webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }
@@ -237,7 +238,8 @@ export class RoomPageController implements PageController {
     webview.addEventListener("did-stop-loading", () => {
       const page = this.getPage();
       this.runtimeState = "ready";
-      this.lastRuntimeEvent = webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent =
+        webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }

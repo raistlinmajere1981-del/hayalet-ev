@@ -61,9 +61,10 @@ export async function initControllers(controllers: Record<string, PageController
   await controllers["archives"].init?.();
   await controllers["asistan"].init?.();
   const roomPageNames = Object.keys(controllers).filter((pageName) => pageName.startsWith("room-"));
-  for (const pageName of roomPageNames) {
+  await roomPageNames.reduce<Promise<void>>(async (previous, pageName) => {
+    await previous;
     await controllers[pageName]?.init?.();
-  }
+  }, Promise.resolve());
   await ConversationListManager.init();
 }
 

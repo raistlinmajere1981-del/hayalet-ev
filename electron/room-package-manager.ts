@@ -12,7 +12,11 @@ import type {
   RoomRegistryState,
   RoomWorkspaceEntry,
 } from "@shared/index.js";
-import { ROOM_SCHEMA_VERSION, normalizeRoomRelativePath, validateRoomManifest } from "@shared/index.js";
+import {
+  ROOM_SCHEMA_VERSION,
+  normalizeRoomRelativePath,
+  validateRoomManifest,
+} from "@shared/index.js";
 
 interface RoomManagerOptions {
   workspaceRoot?: string;
@@ -33,7 +37,9 @@ interface RoomBundleValidationResult {
   bundle?: RoomBundle;
 }
 
-function cloneCommandSpecs(commandSpecs: RoomCommandSpec[] | undefined): RoomCommandSpec[] | undefined {
+function cloneCommandSpecs(
+  commandSpecs: RoomCommandSpec[] | undefined
+): RoomCommandSpec[] | undefined {
   return commandSpecs?.map((item) => ({ ...item }));
 }
 
@@ -140,7 +146,11 @@ function validateRoomBundle(candidate: unknown): RoomBundleValidationResult {
       ? exportedAtRaw.trim()
       : new Date().toISOString();
 
-  if (errors.length > 0 || manifestValidation.valid !== true || manifestValidation.manifest === undefined) {
+  if (
+    errors.length > 0 ||
+    manifestValidation.valid !== true ||
+    manifestValidation.manifest === undefined
+  ) {
     return {
       valid: false,
       errors,
@@ -207,23 +217,23 @@ async function collectFilesRecursive(
   currentDir: string = baseDir
 ): Promise<Array<{ relativePath: string; absolutePath: string }>> {
   const entries = await readdir(currentDir, { withFileTypes: true });
-  const files: Array<{ relativePath: string; absolutePath: string }> = [];
+  const nestedFiles = await Promise.all(
+    entries.map(async (entry): Promise<Array<{ relativePath: string; absolutePath: string }>> => {
+      if (entry.name === "dist" || entry.name === "node_modules") {
+        return [];
+      }
+      const absolutePath = join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        return await collectFilesRecursive(baseDir, absolutePath);
+      }
+      const relativePath = absolutePath.slice(baseDir.length + 1).replace(/\\/g, "/");
+      return [{ relativePath, absolutePath }];
+    })
+  );
 
-  for (const entry of entries) {
-    if (entry.name === "dist" || entry.name === "node_modules") {
-      continue;
-    }
-    const absolutePath = join(currentDir, entry.name);
-    if (entry.isDirectory()) {
-      const nested = await collectFilesRecursive(baseDir, absolutePath);
-      files.push(...nested);
-      continue;
-    }
-    const relativePath = absolutePath.slice(baseDir.length + 1).replace(/\\/g, "/");
-    files.push({ relativePath, absolutePath });
-  }
-
-  return files.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+  return nestedFiles
+    .flat()
+    .sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
 export class RoomPackageManager {
@@ -265,51 +275,55 @@ export class RoomPackageManager {
     const workspaceRoot = this.getWorkspaceRoot();
     await this.ensureRoots();
     const entries = await readdir(workspaceRoot, { withFileTypes: true });
-    const rooms: RoomWorkspaceEntry[] = [];
-
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name.startsWith(".")) {
-        continue;
-      }
-
-      const dirPath = join(workspaceRoot, entry.name);
-      const manifestPath = join(dirPath, "manifest.json");
-      const errors: string[] = [];
-      let manifest: RoomManifest | undefined;
-
-      if (!existsSync(manifestPath)) {
-        errors.push("manifest.json missing");
-      } else {
-        try {
-          const validation = validateRoomManifest(await readJsonFile<unknown>(manifestPath));
-          errors.push(...validation.errors);
-          manifest = validation.manifest;
-
-          if (validation.valid && validation.manifest !== undefined) {
-            const uiEntryPath = join(dirPath, validation.manifest.uiEntry);
-            const hostEntryPath = join(dirPath, validation.manifest.hostEntry);
-            if (!existsSync(uiEntryPath)) {
-              errors.push(`uiEntry missing: ${validation.manifest.uiEntry}`);
-            }
-            if (!existsSync(hostEntryPath)) {
-              errors.push(`hostEntry missing: ${validation.manifest.hostEntry}`);
-            }
-          }
-        } catch (error) {
-          errors.push(`manifest read failed: ${error instanceof Error ? error.message : String(error)}`);
+    const rooms = await Promise.all(
+      entries.map(async (entry): Promise<RoomWorkspaceEntry | null> => {
+        if (!entry.isDirectory() || entry.name.startsWith(".")) {
+          return null;
         }
-      }
 
-      rooms.push({
-        dirName: entry.name,
-        dirPath,
-        valid: errors.length === 0 && manifest !== undefined,
-        errors,
-        ...(manifest !== undefined ? { manifest } : {}),
-      });
-    }
+        const dirPath = join(workspaceRoot, entry.name);
+        const manifestPath = join(dirPath, "manifest.json");
+        const errors: string[] = [];
+        let manifest: RoomManifest | undefined;
 
-    return rooms.sort((left, right) => left.dirName.localeCompare(right.dirName));
+        if (!existsSync(manifestPath)) {
+          errors.push("manifest.json missing");
+        } else {
+          try {
+            const validation = validateRoomManifest(await readJsonFile<unknown>(manifestPath));
+            errors.push(...validation.errors);
+            manifest = validation.manifest;
+
+            if (validation.valid && validation.manifest !== undefined) {
+              const uiEntryPath = join(dirPath, validation.manifest.uiEntry);
+              const hostEntryPath = join(dirPath, validation.manifest.hostEntry);
+              if (!existsSync(uiEntryPath)) {
+                errors.push(`uiEntry missing: ${validation.manifest.uiEntry}`);
+              }
+              if (!existsSync(hostEntryPath)) {
+                errors.push(`hostEntry missing: ${validation.manifest.hostEntry}`);
+              }
+            }
+          } catch (error) {
+            errors.push(
+              `manifest read failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        }
+
+        return {
+          dirName: entry.name,
+          dirPath,
+          valid: errors.length === 0 && manifest !== undefined,
+          errors,
+          ...(manifest !== undefined ? { manifest } : {}),
+        };
+      })
+    );
+
+    return rooms
+      .filter((room): room is RoomWorkspaceEntry => room !== null)
+      .sort((left, right) => left.dirName.localeCompare(right.dirName));
   }
 
   async listInstalledRooms(): Promise<InstalledRoomRecord[]> {
@@ -368,7 +382,10 @@ export class RoomPackageManager {
     const runtimeStat = await stat(record.runtimeEntryPath).catch(() => null);
     const hostStat = await stat(record.hostEntryPath).catch(() => null);
     if (runtimeStat?.isFile() !== true) {
-      return { success: false, error: `Installed runtime entry missing: ${record.runtimeEntryPath}` };
+      return {
+        success: false,
+        error: `Installed runtime entry missing: ${record.runtimeEntryPath}`,
+      };
     }
     if (hostStat?.isFile() !== true) {
       return { success: false, error: `Installed host entry missing: ${record.hostEntryPath}` };
@@ -450,10 +467,11 @@ export class RoomPackageManager {
       (entry) => entry.dirName === normalizedRoomId || entry.manifest?.id === normalizedRoomId
     );
 
-    if (target === undefined || target.manifest === undefined) {
+    if (target?.manifest === undefined) {
       return { success: false, error: `Room not found in workspace: ${normalizedRoomId}` };
     }
 
+    const targetManifest = target.manifest;
     if (target.valid !== true) {
       return {
         success: false,
@@ -462,26 +480,32 @@ export class RoomPackageManager {
     }
 
     const files = await collectFilesRecursive(target.dirPath);
+    const bundleEntries = await Promise.all(
+      files.map(async (file): Promise<[string, RoomBundleFile]> => {
+        const content = await readFile(file.absolutePath);
+        return [
+          file.relativePath,
+          {
+            encoding: "base64",
+            content: content.toString("base64"),
+          },
+        ];
+      })
+    );
     const bundleFiles: Record<string, RoomBundleFile> = {};
-
-    for (const file of files) {
-      const content = await readFile(file.absolutePath);
-      bundleFiles[file.relativePath] = {
-        encoding: "base64",
-        content: content.toString("base64"),
-      };
-    }
+    bundleEntries.forEach(([relativePath, file]) => {
+      bundleFiles[relativePath] = file;
+    });
 
     const bundle: RoomBundle = {
       schemaVersion: ROOM_SCHEMA_VERSION,
-      manifest: target.manifest,
+      manifest: targetManifest,
       files: bundleFiles,
       exportedAt: new Date().toISOString(),
     };
 
     const outputFile =
-      options.outputFile ??
-      join(target.dirPath, "dist", `${target.manifest.id}.hevroom.json`);
+      options.outputFile ?? join(target.dirPath, "dist", `${targetManifest.id}.hevroom.json`);
     await ensureDir(dirname(outputFile));
     await writeFile(outputFile, JSON.stringify(bundle, null, 2), "utf-8");
 
@@ -533,13 +557,19 @@ export class RoomPackageManager {
     await rm(workspaceDir, { recursive: true, force: true });
     await ensureDir(workspaceDir);
 
-    for (const [relativePath, file] of Object.entries(files)) {
-      const targetPath = join(workspaceDir, relativePath);
-      await ensureDir(dirname(targetPath));
-      await writeFile(targetPath, Buffer.from(file.content, "base64"));
-    }
+    await Promise.all(
+      Object.entries(files).map(async ([relativePath, file]): Promise<void> => {
+        const targetPath = join(workspaceDir, relativePath);
+        await ensureDir(dirname(targetPath));
+        await writeFile(targetPath, Buffer.from(file.content, "base64"));
+      })
+    );
 
-    await writeFile(join(workspaceDir, "manifest.json"), JSON.stringify(manifest, null, 2), "utf-8");
+    await writeFile(
+      join(workspaceDir, "manifest.json"),
+      JSON.stringify(manifest, null, 2),
+      "utf-8"
+    );
 
     const installResult = await this.installFromWorkspace(manifest.id);
     if (installResult.success !== true) {
@@ -595,7 +625,9 @@ export class RoomPackageManager {
     await writeFile(registryPath, JSON.stringify(normalized, null, 2), "utf-8");
   }
 
-  private async hydrateInstalledRoomRecord(record: InstalledRoomRecord): Promise<InstalledRoomRecord> {
+  private async hydrateInstalledRoomRecord(
+    record: InstalledRoomRecord
+  ): Promise<InstalledRoomRecord> {
     if (existsSync(record.manifestPath) === false) {
       return {
         ...record,
@@ -620,9 +652,6 @@ export class RoomPackageManager {
 let roomPackageManagerSingleton: RoomPackageManager | null = null;
 
 export function getRoomPackageManager(): RoomPackageManager {
-  if (roomPackageManagerSingleton === null) {
-    roomPackageManagerSingleton = new RoomPackageManager();
-  }
-
+  roomPackageManagerSingleton ??= new RoomPackageManager();
   return roomPackageManagerSingleton;
 }

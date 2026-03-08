@@ -20,7 +20,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   roomsInstallFromWorkspace: (roomId) => ipcRenderer.invoke("rooms-install-from-workspace", roomId),
   roomsRemoveInstalled: (roomId) => ipcRenderer.invoke("rooms-remove-installed", roomId),
   roomsExportToWorkspace: (payload) => ipcRenderer.invoke("rooms-export-to-workspace", payload),
-  roomsPackageFromWorkspace: (payload) => ipcRenderer.invoke("rooms-package-from-workspace", payload),
+  roomsPackageFromWorkspace: (payload) =>
+    ipcRenderer.invoke("rooms-package-from-workspace", payload),
   roomsImportBundle: (payload) => ipcRenderer.invoke("rooms-import-bundle", payload),
   commandInit: () => ipcRenderer.invoke("command-init"),
   commandWrite: (item) => ipcRenderer.invoke("command-write", item),

@@ -153,7 +153,7 @@ export function setupTopBarButtons(): void {
 
     if (sideNavMenu !== null) {
       sideNavMenu.addEventListener("click", (event) => {
-        const button = (event.target as Element | null)?.closest?.(".side-nav-btn");
+        const button = (event.target as Element | null)?.closest(".side-nav-btn");
         if (!(button instanceof HTMLElement)) {
           return;
         }

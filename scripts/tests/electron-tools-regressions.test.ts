@@ -12,8 +12,12 @@ test("testElectron should not start wrapper when runtime mode is already hayalet
   ): Promise<{ stdout: string; stderr: string }> => {
     calls.push(command);
 
-    if (command === "npm run whereami:mode") {
-      return { stdout: "hayalet-ev\n", stderr: "" };
+    if (command === "npm run mode:status") {
+      return {
+        stdout:
+          "\n> hayalet-ev@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"hayalet-ev\"\n}\n",
+        stderr: "",
+      };
     }
 
     if (command === "npm run start") {
@@ -31,5 +35,5 @@ test("testElectron should not start wrapper when runtime mode is already hayalet
   const text = String(result.content[0]?.text ?? "");
   assert.equal(result.isError, undefined);
   assert.match(text, /zaten aktif/i);
-  assert.deepEqual(calls, ["npm run whereami:mode"]);
+  assert.deepEqual(calls, ["npm run mode:status"]);
 });

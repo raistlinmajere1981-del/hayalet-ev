@@ -21,6 +21,21 @@ interface TestElectronArgs {
   _runCommand?: CommandRunner;
 }
 
+function parseModeStatusOutput(stdout: string): string | null {
+  const firstBrace = stdout.indexOf("{");
+  const lastBrace = stdout.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace < firstBrace) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stdout.slice(firstBrace, lastBrace + 1)) as { mode?: unknown };
+    return typeof parsed.mode === "string" ? parsed.mode.trim().toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * test_electron handler
  */
@@ -32,11 +47,11 @@ export async function testElectron(
   const runCommand: CommandRunner = args?._runCommand ?? (execAsync as CommandRunner);
 
   try {
-    const probe = await runCommand("npm run whereami:mode", {
+    const probe = await runCommand("npm run mode:status", {
       cwd: projectRoot,
       timeout: Math.min(5000, timeout * 1000),
     });
-    const mode = probe.stdout.trim().toLowerCase();
+    const mode = parseModeStatusOutput(probe.stdout);
 
     if (mode === "hayalet-ev" || mode === "ghost-agent") {
       return {

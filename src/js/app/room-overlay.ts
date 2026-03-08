@@ -117,7 +117,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
 
   refs.closeButton.addEventListener("click", close);
   refs.importButton.addEventListener("click", () => {
-    void (async () => {
+    void (async (): Promise<void> => {
       const api = window.electronAPI;
       if (api === undefined || typeof api.showOpenDialog !== "function") {
         Toast.error("Dosya secici hazir degil");
@@ -185,7 +185,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
 
     if (action === "install") {
-      void (async () => {
+      void (async (): Promise<void> => {
         const ok = await RoomRegistry.installFromWorkspace(roomId);
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
@@ -199,7 +199,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
 
     if (action === "package") {
-      void (async () => {
+      void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsPackageFromWorkspace !== "function") {
           Toast.error("Paketleme hazir degil");
@@ -236,7 +236,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
 
     if (action === "export") {
-      void (async () => {
+      void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsExportToWorkspace !== "function") {
           Toast.error("Export hazir degil");
@@ -259,7 +259,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
 
     if (action === "remove") {
-      void (async () => {
+      void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsRemoveInstalled !== "function") {
           Toast.error("Room remove hazir degil");

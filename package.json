@@ -38,7 +38,7 @@
     "clean:logs": "rm -rf logs/*",
     "clean:all": "npm run clean && npm run clean:logs",
     "mcp:start": "npm_config_loglevel=silent tsx src/mcp-server/index.ts",
-    "mcp:build": "tsc -p tsconfig.mcp.json && npx tsx scripts/generate-tool-list.js && npx tsx scripts/generate-version-info.js && npx tsx scripts/generate-system-info.js && npm run generate:dom-manifest",
+    "mcp:build": "tsc -p tsconfig.mcp.json && node scripts/sync-mcp-dist.mjs && npx tsx scripts/generate-tool-list.js && npx tsx scripts/generate-version-info.js && npx tsx scripts/generate-system-info.js && npm run generate:dom-manifest",
     "mcp:test": "npm_config_loglevel=silent tsx src/mcp-server/index.ts --version",
     "mcp:check": "tsc --noEmit -p tsconfig.mcp.json && eslint \"src/mcp-server/**/*.ts\"",
     "mcp:lint": "eslint \"src/mcp-server/**/*.ts\"",

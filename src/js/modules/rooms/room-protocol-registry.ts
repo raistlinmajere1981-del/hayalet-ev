@@ -32,6 +32,20 @@ class RoomProtocolRegistryClass {
     const nextEntries = new Map<string, RoomProtocolEntry>();
     const nextScenarioMap = new Map<string, string>();
     const activeRoomIds = new Set(rooms.map((room) => room.id));
+    const resolvedProtocols = (
+      await Promise.all(
+        rooms.map(
+          async (room) =>
+            await Promise.all(
+              (room.protocolSpecs ?? []).map(async (spec) => ({
+                room,
+                spec,
+                defaultBody: await this.readProtocolDefaultBody(room, spec),
+              }))
+            )
+        )
+      )
+    ).flat();
 
     Array.from(this.runtimeBodiesByRoom.keys()).forEach((roomId) => {
       if (activeRoomIds.has(roomId) === false) {
@@ -39,41 +53,38 @@ class RoomProtocolRegistryClass {
       }
     });
 
-    for (const room of rooms) {
-      for (const spec of room.protocolSpecs ?? []) {
-        const key = normalizeProtocolKey(spec.key);
-        if (key === "") {
-          continue;
-        }
-
-        const existing = nextEntries.get(key);
-        if (existing !== undefined && existing.roomId !== room.id) {
-          Logger.warn(
-            LogCategory.SYSTEM,
-            `Room protocol collision skipped: ${spec.key} (${existing.roomId} vs ${room.id})`,
-            {
-              context: {
-                protocolKey: spec.key,
-                existingRoomId: existing.roomId,
-                skippedRoomId: room.id,
-              },
-            }
-          );
-          continue;
-        }
-
-        const defaultBody = await this.readProtocolDefaultBody(room, spec);
-        nextEntries.set(key, {
-          roomId: room.id,
-          key: spec.key,
-          room: spec.room,
-          scenario: spec.scenario,
-          title: spec.title,
-          editable: spec.editable !== false,
-          defaultBody,
-        });
-        nextScenarioMap.set(buildScenarioKey(spec.room, spec.scenario), key);
+    for (const { room, spec, defaultBody } of resolvedProtocols) {
+      const key = normalizeProtocolKey(spec.key);
+      if (key === "") {
+        continue;
       }
+
+      const existing = nextEntries.get(key);
+      if (existing !== undefined && existing.roomId !== room.id) {
+        Logger.warn(
+          LogCategory.SYSTEM,
+          `Room protocol collision skipped: ${spec.key} (${existing.roomId} vs ${room.id})`,
+          {
+            context: {
+              protocolKey: spec.key,
+              existingRoomId: existing.roomId,
+              skippedRoomId: room.id,
+            },
+          }
+        );
+        continue;
+      }
+
+      nextEntries.set(key, {
+        roomId: room.id,
+        key: spec.key,
+        room: spec.room,
+        scenario: spec.scenario,
+        title: spec.title,
+        editable: spec.editable !== false,
+        defaultBody,
+      });
+      nextScenarioMap.set(buildScenarioKey(spec.room, spec.scenario), key);
     }
 
     this.entriesByKey = nextEntries;
@@ -112,7 +123,9 @@ class RoomProtocolRegistryClass {
     });
 
     Array.from(this.runtimeBodiesByRoom.entries()).forEach(([roomId, protocolMap]) => {
-      if (Array.from(this.entriesByKey.values()).some((entry) => entry.roomId === roomId) === false) {
+      if (
+        Array.from(this.entriesByKey.values()).some((entry) => entry.roomId === roomId) === false
+      ) {
         return;
       }
       Object.entries(protocolMap).forEach(([key, value]) => {
