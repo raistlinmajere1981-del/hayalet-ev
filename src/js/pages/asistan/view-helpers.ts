@@ -117,24 +117,6 @@ export function updateOverlayView(
   }
 }
 
-export function renderConnectedAiList(
-  connectedList: HTMLElement | null,
-  nicknames: Array<{ slotClass: string; nickname: string }>
-): void {
-  if (connectedList == null) {
-    return;
-  }
-
-  if (nicknames.length === 0) {
-    connectedList.innerHTML = '<span class="ai-badge inactive">Bağlı AI yok</span>';
-    return;
-  }
-
-  connectedList.innerHTML = nicknames
-    .map((item) => `<span class="ai-badge ${item.slotClass}">${item.nickname}</span>`)
-    .join("");
-}
-
 export function updateTrafficStatusView(
   trafficState: AsistanTrafficState,
   elements: {

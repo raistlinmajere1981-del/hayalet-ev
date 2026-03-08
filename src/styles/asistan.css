@@ -16,103 +16,195 @@
 
 /* === TOP BAR === */
 .asistan-topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-surface);
   border: var(--border-1) solid var(--border-glass);
   border-radius: var(--radius-card);
   margin: var(--space-4) var(--space-4) 0;
   gap: var(--space-3);
-  flex-wrap: wrap;
-  min-height: 48px;
+  min-height: 64px;
   backdrop-filter: var(--glass-blur);
 }
 
-.asistan-controls-left,
-.asistan-controls-right {
+.asistan-topbar-primary {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.asistan-primary-panel,
+.asistan-opencode-panel {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.78) 0%, rgba(15, 23, 42, 0.52) 100%),
+    var(--bg-elevated);
+  box-shadow: var(--shadow-3d-inset);
+}
+
+.asistan-primary-panel {
+  flex: 1 1 auto;
+}
+
+.asistan-identity-card {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-.asistan-controls-right {
-  margin-left: auto;
   min-width: 0;
-  justify-content: flex-end;
+  flex: 0 1 auto;
 }
 
-.asistan-controls-left .control-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.asistan-controls-left .control-group label {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.asistan-session-controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px;
-  width: min(100%, 460px);
-}
-
-.asistan-resume-control {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: var(--btn-height-sm);
-  min-height: var(--btn-height-sm);
-  max-height: var(--btn-height-sm);
-  padding: 0 var(--space-2);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-md);
-  box-sizing: border-box;
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-none);
+.asistan-topbar .slot-avatar-wrapper {
+  position: relative;
+  width: var(--size-avatar-md);
+  height: var(--size-avatar-md);
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   background: var(--bg-surface);
-  user-select: none;
+  border: var(--border-2) solid var(--border-default);
+}
+
+.asistan-topbar .slot-avatar-wrapper .avatar-placeholder {
   width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.asistan-topbar .slot-info {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
-.asistan-resume-control input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--color-accent);
-}
-
-.asistan-resume-control span {
+.asistan-topbar .slot-nickname {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.asistan-identity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.asistan-inline-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.asistan-inline-tools .btn-icon {
+  width: var(--size-control-md);
+  height: var(--size-control-md);
+}
+
+.asistan-provider-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.asistan-session-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px var(--space-2);
+  align-content: start;
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+
+.asistan-session-controls .catch-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.asistan-session-controls .catch-label:hover {
+  background: var(--hover-overlay);
+}
+
+.asistan-session-controls .catch-label input {
+  width: var(--size-dot-lg);
+  height: var(--size-dot-lg);
+  accent-color: var(--color-accent);
+}
+
+.asistan-session-controls .catch-label:has(input:checked) {
+  color: var(--color-success);
+}
+
+.asistan-opencode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: min(100%, 380px);
+  justify-self: end;
+  align-items: flex-end;
+}
+
+.asistan-chip-row,
+.asistan-opencode-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.asistan-chip-row,
+.asistan-opencode-actions {
+  justify-content: flex-end;
+}
+
+#asistan-url-display {
+  display: none;
+}
+
 /* === STATUS INDICATOR === */
-/* Base status container (shared between simple and extended) */
+.asistan-topbar-chip,
 .asistan-status,
-.asistan-status-extended {
+.asistan-status-extended,
+.asistan-opencode-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   height: var(--btn-height-sm);
   padding: 0 var(--space-3);
   background: var(--bg-surface);
+  border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-md);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
 .asistan-status-extended {
   min-width: 180px;
-  max-height: var(--btn-height-sm);
   overflow: hidden;
+  flex: 1 1 180px;
 }
 
 /* Status dot base - inherits from design-system .status-dot (indicators.css)
@@ -161,15 +253,18 @@
 /* Extended status info */
 .asistan-status-extended .status-info {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-0-5);
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--text-sm);
-  min-width: 130px;
+  min-width: 0;
 }
 
 .asistan-status-extended .status-info span {
   color: var(--text-primary);
   font-weight: var(--font-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .asistan-status-extended .status-info span:empty {
@@ -177,26 +272,14 @@
 }
 
 .asistan-status-extended .status-info small {
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
+  display: none;
 }
 
 .asistan-opencode-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: var(--btn-height-sm);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: var(--border-1) solid var(--border-default);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: var(--text-sm);
-  min-width: 190px;
+  justify-content: space-between;
+  min-width: 185px;
+  flex: 1 1 190px;
+  padding-right: var(--space-1);
 }
 
 .asistan-opencode-indicator .status-dot {
@@ -204,14 +287,36 @@
   height: 9px;
 }
 
+#asistan-opencode-indicator-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .asistan-opencode-action-btn {
-  min-width: 122px;
+  width: calc(var(--btn-height-sm) - 6px);
+  min-width: calc(var(--btn-height-sm) - 6px);
+  height: calc(var(--btn-height-sm) - 6px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--color-accent);
+  flex: 0 0 auto;
   justify-content: center;
 }
 
 .asistan-opencode-action-btn.is-busy {
   opacity: 0.72;
   cursor: progress;
+}
+
+.asistan-opencode-action-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.2);
+  color: var(--cyan-300);
 }
 
 .asistan-opencode-indicator.is-ready {
@@ -475,9 +580,8 @@
 @media (max-width: 768px) {
   /* --bp-md */
   .asistan-topbar {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
-    gap: var(--space-3);
   }
 
   .asistan-webview-panel {
@@ -491,10 +595,31 @@
     border-bottom: var(--border-1) solid var(--border-glass);
   }
 
-  .asistan-controls-left,
-  .asistan-controls-right {
-    justify-content: center;
-    flex-wrap: wrap;
+  .asistan-topbar-primary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .asistan-identity-card,
+  .asistan-opencode-panel {
+    min-width: 0;
+  }
+
+  .asistan-primary-panel,
+  .asistan-opencode-panel {
+    width: 100%;
+  }
+
+  .asistan-session-controls {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .asistan-chip-row,
+  .asistan-opencode-actions,
+  .asistan-status-extended,
+  .asistan-opencode-indicator {
+    width: 100%;
   }
 }
 
@@ -508,49 +633,18 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 #asistan-ghost-agent-btn,
 #asistan-connect-btn {
   min-width: var(--space-24);
+  height: var(--btn-height-sm);
+  justify-content: center;
 }
 
 #asistan-connect-btn {
-  min-width: var(--space-24);
-  height: var(--btn-height-sm);
   flex-shrink: 0;
-  border-color: var(--color-accent);
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(45, 212, 191, 0.18) 100%);
-  color: var(--text-primary);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 120ms ease,
-    color 160ms ease;
-}
-
-#asistan-connect-btn:hover:not(:disabled) {
-  border-color: var(--cyan-400);
-  background: var(--accent-gradient);
-  color: var(--text-inverse);
-  box-shadow: var(--glow-accent);
-}
-
-#asistan-connect-btn.btn-danger {
-  border-color: rgba(251, 191, 36, 0.45);
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(248, 113, 113, 0.18) 100%);
-  color: var(--slate-100);
-}
-
-#asistan-connect-btn.btn-danger:hover:not(:disabled) {
-  border-color: rgba(248, 113, 113, 0.6);
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.32) 0%, rgba(251, 191, 36, 0.24) 100%);
-  color: var(--text-on-brand);
-  box-shadow:
-    0 0 0 1px rgba(248, 113, 113, 0.4),
-    0 12px 24px rgba(239, 68, 68, 0.2);
 }
 
 #asistan-connect-btn:focus-visible {
@@ -560,14 +654,10 @@
 
 #asistan-provider-select {
   width: auto;
-  min-width: 170px;
-  height: var(--btn-height-sm);
-  padding: 0 var(--space-8) 0 var(--space-3);
+  min-width: 150px;
+  min-height: var(--size-control-md);
+  padding: var(--space-1) var(--space-2);
   flex-shrink: 0;
-}
-
-#asistan-connect-btn:active:not(:disabled) {
-  transform: scale(0.97);
 }
 
 /* Topbar içindeki tüm butonları aynı yüksekliğe sabitle */

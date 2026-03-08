@@ -2,11 +2,37 @@
   <div class="asistan-container">
     <!-- Üst Kontrol Paneli -->
     <div class="asistan-topbar">
-      <div class="asistan-controls-left">
-        <div class="control-group">
-          <select id="asistan-provider-select" class="select">
-            <!-- Provider'lar JS tarafında dinamik populate edilir -->
-          </select>
+      <div class="asistan-topbar-primary asistan-primary-panel">
+        <div class="asistan-identity-card">
+          <div class="slot-avatar-wrapper asistan-avatar-shell">
+            <div class="avatar-placeholder img-cover" id="ai0-avatar"></div>
+            <span class="slot-status-dot" id="asistan-identity-status-dot"></span>
+          </div>
+
+          <div class="slot-info asistan-slot-info">
+            <div class="asistan-identity-row">
+              <span class="slot-nickname" id="asistan-nickname">Asistan</span>
+
+              <div class="asistan-inline-tools">
+                <button class="btn btn-ghost btn-icon btn-sm" id="asistan-memory-btn" title="Memory Viewer">
+                  🧠
+                </button>
+                <button
+                  class="btn btn-ghost btn-icon btn-sm"
+                  id="asistan-character-btn"
+                  title="Karakter Profili"
+                >
+                  🎭
+                </button>
+              </div>
+            </div>
+
+            <div class="asistan-provider-meta">
+              <select id="asistan-provider-select" class="select-compact">
+                <!-- Provider'lar JS tarafında dinamik populate edilir -->
+              </select>
+            </div>
+          </div>
         </div>
 
         <div class="asistan-connect-actions">
@@ -15,76 +41,82 @@
         </div>
 
         <div class="asistan-session-controls">
-          <label class="asistan-resume-control" for="asistan-resume-last-session">
+          <label class="catch-label" for="asistan-resume-last-session" title="Bağlanınca son oturuma dön">
             <input type="checkbox" id="asistan-resume-last-session" />
             <span>Son sessiona devam et</span>
           </label>
-          <label class="asistan-resume-control" for="asistan-keep-servers-on-close">
+          <label
+            class="catch-label"
+            for="asistan-keep-servers-on-close"
+            title="Pencere kapanınca servisleri açık bırak"
+          >
             <input type="checkbox" id="asistan-keep-servers-on-close" />
             <span>Kapanışta sunucuları kapatma</span>
           </label>
-          <label class="asistan-resume-control" for="asistan-catch-commands-check">
+          <label
+            class="catch-label"
+            for="asistan-catch-commands-check"
+            title="Asistan komutlarını yakala ve işle"
+          >
             <input type="checkbox" id="asistan-catch-commands-check" />
-            <span>Asistan komut yakalama</span>
+            <span>Asistan komut yakala</span>
           </label>
-          <label class="asistan-resume-control" for="asistan-offline-mode-check">
+          <label class="catch-label" for="asistan-offline-mode-check" title="Offline mod">
             <input type="checkbox" id="asistan-offline-mode-check" />
             <span>Offline mod</span>
           </label>
         </div>
+      </div>
 
-        <!-- Gelişmiş Status Display -->
-        <div class="asistan-status-extended">
-          <span class="status-dot" id="asistan-status-dot"></span>
-          <div class="status-info">
-            <span id="asistan-status-text">Durduruldu</span>
-            <small id="asistan-status-details"></small>
+      <div class="asistan-opencode-panel">
+        <div class="asistan-chip-row">
+          <div class="asistan-status-extended asistan-topbar-chip">
+            <span class="status-dot" id="asistan-status-dot"></span>
+            <div class="status-info">
+              <span id="asistan-status-text">Durduruldu</span>
+              <small id="asistan-status-details"></small>
+            </div>
+          </div>
+
+          <div class="asistan-opencode-indicator asistan-topbar-chip" id="asistan-opencode-indicator" title="">
+            <span class="status-dot status-checking" id="asistan-opencode-indicator-dot"></span>
+            <span id="asistan-opencode-indicator-text">OpenCode kontrol ediliyor...</span>
+            <button
+              class="btn btn-ghost btn-icon btn-sm asistan-opencode-action-btn"
+              id="asistan-opencode-action-btn"
+              title="OpenCode durumu kontrol ediliyor"
+              type="button"
+              aria-label="OpenCode aksiyonu"
+            >
+              ↻
+            </button>
           </div>
         </div>
 
-        <div class="asistan-opencode-indicator" id="asistan-opencode-indicator" title="">
-          <span class="status-dot status-checking" id="asistan-opencode-indicator-dot"></span>
-          <span id="asistan-opencode-indicator-text">OpenCode kontrol ediliyor...</span>
+        <div class="asistan-opencode-actions">
+          <button
+            class="btn btn-ghost btn-icon btn-sm"
+            id="asistan-opencode-settings-btn"
+            title="OpenCode Ayarları"
+          >
+            ⚙️
+          </button>
+
+          <button
+            class="btn btn-ghost btn-icon btn-sm"
+            id="ai0-test-btn"
+            title="AI0 provider test"
+            disabled
+          >
+            🧪
+          </button>
+
+          <button class="btn btn-ghost btn-icon btn-sm" id="asistan-devtools-btn" title="DevTools">
+            🔧
+          </button>
         </div>
 
-        <button
-          class="btn btn-ghost btn-sm asistan-opencode-action-btn"
-          id="asistan-opencode-action-btn"
-          title="OpenCode durumu kontrol ediliyor"
-          type="button"
-        >
-          OpenCode kur
-        </button>
-
-        <button
-          class="btn btn-ghost btn-icon btn-sm"
-          id="asistan-opencode-settings-btn"
-          title="OpenCode Ayarları"
-        >
-          ⚙️
-        </button>
-
-        <button class="btn btn-ghost btn-icon btn-sm" id="asistan-memory-btn" title="Memory Viewer">
-          🧠
-        </button>
-        <button
-          class="btn btn-ghost btn-icon btn-sm"
-          id="asistan-character-btn"
-          title="Karakter Profili"
-        >
-          🎭
-        </button>
-        <button class="btn btn-ghost btn-icon btn-sm" id="asistan-devtools-btn" title="DevTools">
-          🔧
-        </button>
-        <button
-          class="btn btn-sm btn-secondary"
-          id="ai0-test-btn"
-          title="AI0 provider test"
-          disabled
-        >
-          🧪
-        </button>
+        <div id="asistan-url-display">-</div>
       </div>
     </div>
 

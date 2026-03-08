@@ -12,6 +12,7 @@
 
 import { LogCategory } from "@shared/logging-core";
 import { ASISTAN_TIMEOUTS } from "@timeouts";
+import { getMimeTypeFromPath } from "../../constants/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
@@ -63,7 +64,6 @@ import {
 } from "./webview-bindings.js";
 import {
   applyConnectButtonState,
-  renderConnectedAiList,
   updateOverlayView,
   updateServerStatusView,
   updateTrafficStatusView,
@@ -108,11 +108,9 @@ export class AsistanController {
   resumeLastSessionCheckbox: HTMLInputElement | null;
   keepServersOnAppCloseCheckbox: HTMLInputElement | null;
   catchCommandsCheckbox: HTMLInputElement | null;
-  connectedList: HTMLElement | null;
   devtoolsBtn: HTMLButtonElement | null;
   testBtn: HTMLButtonElement | null;
   urlDisplay: HTMLElement | null;
-  titleEl: HTMLElement | null;
   statusDot: HTMLElement | null;
   statusText: HTMLElement | null;
   opencodeIndicator: HTMLElement | null;
@@ -158,11 +156,9 @@ export class AsistanController {
     this.resumeLastSessionCheckbox = null;
     this.keepServersOnAppCloseCheckbox = null;
     this.catchCommandsCheckbox = null;
-    this.connectedList = null;
     this.devtoolsBtn = null;
     this.testBtn = null;
     this.urlDisplay = null;
-    this.titleEl = null;
     this.statusDot = null;
     this.statusText = null;
     this.opencodeIndicator = null;
@@ -197,11 +193,9 @@ export class AsistanController {
     this.catchCommandsCheckbox = document.getElementById(
       "asistan-catch-commands-check"
     ) as HTMLInputElement | null;
-    this.connectedList = document.getElementById("asistan-connected-list");
     this.devtoolsBtn = document.getElementById("asistan-devtools-btn") as HTMLButtonElement | null;
     this.testBtn = document.getElementById("ai0-test-btn") as HTMLButtonElement | null;
     this.urlDisplay = document.getElementById("asistan-url-display");
-    this.titleEl = document.getElementById("asistan-title");
     this.statusDot = document.getElementById("asistan-status-dot");
     this.statusText = document.getElementById("asistan-status-text");
     this.opencodeIndicator = document.getElementById("asistan-opencode-indicator");
@@ -218,6 +212,7 @@ export class AsistanController {
     this._initActiveAdapter();
     this._syncTogglePreferencesFromSettings();
     await this._syncAssistantRuntimeDefaults();
+    await this._syncIdentityCard();
 
     // AI0 webview'e preload ata — URL yüklenmeden önce olmalı (IPC bridge için)
     const ai0Wv = document.getElementById("ai0-webview");
@@ -251,11 +246,10 @@ export class AsistanController {
       if (p.slot === "ai0") {
         this._updateConnectionUI();
       }
-      this._updateConnectedAIList();
     });
 
     this._unsubAppState = AppState.subscribe(() => {
-      this._updateConnectedAIList();
+      void this._syncIdentityCard();
     });
 
     this._unsubTraffic = TrafficManager.onUpdate(
@@ -270,7 +264,6 @@ export class AsistanController {
     this._loadDisabledMcpServers();
 
     this._updateConnectionUI();
-    this._updateConnectedAIList();
     Logger.debug(LogCategory.ASISTAN_CORE, "AsistanController initialized");
   }
 
@@ -318,6 +311,95 @@ export class AsistanController {
         this._refreshOpencodeDoctorStatus();
       },
     });
+  }
+
+  async _syncIdentityCard(): Promise<void> {
+    const nicknameEl = document.getElementById("asistan-nickname");
+    if (nicknameEl != null) {
+      nicknameEl.textContent = AppState.getNickname("ai0");
+    }
+
+    await this._updateAvatar(AppState.getAvatar("ai0"));
+    this._updateIdentityStatusDot();
+  }
+
+  _getCurrentProviderLabel(): string {
+    const selectedProviderLabel = this.providerSelect?.selectedOptions.item(0)?.textContent?.trim();
+    if (selectedProviderLabel !== undefined && selectedProviderLabel !== "") {
+      return selectedProviderLabel;
+    }
+
+    const providerId = this._activeAdapter?.id ?? AppState.getProviderIdForSlot("ai0");
+    if (providerId !== null && providerId !== "") {
+      const provider = ProviderRegistry.getAsistan(providerId);
+      if (this._isProviderOption(provider)) {
+        return provider.name;
+      }
+      return providerId;
+    }
+
+    return AppState.getNickname("ai0");
+  }
+
+  _updateIdentityStatusDot(): void {
+    const dot = document.getElementById("asistan-identity-status-dot");
+    if (dot == null) {
+      return;
+    }
+
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    const isConnected = slotState?.state === SlotState.CONNECTED || this._isServerRunning;
+    dot.classList.toggle("connected", isConnected);
+  }
+
+  async _updateAvatar(avatarPath: string | null): Promise<void> {
+    const avatarElement = document.getElementById("ai0-avatar");
+    if (avatarElement == null) {
+      return;
+    }
+
+    const electronApi = window.electronAPI;
+    if (!electronApi?.readFile) {
+      avatarElement.innerHTML = "";
+      avatarElement.style.backgroundImage = "";
+      return;
+    }
+
+    const candidates = [avatarPath ?? "", "src/assets/default.png"];
+    const uniqueCandidates = candidates.filter(
+      (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
+    );
+
+    try {
+      const tryLoadCandidate = async (index: number): Promise<boolean> => {
+        const candidate = uniqueCandidates[index];
+        if (candidate === undefined) {
+          return false;
+        }
+
+        const imageData = await electronApi.readFile(candidate);
+        if (typeof imageData !== "string" || imageData === "") {
+          return await tryLoadCandidate(index + 1);
+        }
+
+        const mimeType = getMimeTypeFromPath(candidate);
+        avatarElement.innerHTML = "";
+        avatarElement.style.backgroundImage = `url(data:${mimeType};base64,${imageData})`;
+        return true;
+      };
+
+      const loaded = await tryLoadCandidate(0);
+      if (!loaded) {
+        avatarElement.innerHTML = "";
+        avatarElement.style.backgroundImage = "";
+      }
+    } catch (error) {
+      Logger.error(LogCategory.ASISTAN_CORE, "Asistan avatar yükleme hatası", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      avatarElement.innerHTML = "";
+      avatarElement.style.backgroundImage = "";
+    }
   }
 
   _isResumeEnabled(options: { forceResume?: boolean } = {}): boolean {
@@ -755,11 +837,8 @@ export class AsistanController {
 
     await SettingsManager.set("assistants.preferred", providerId);
 
-    if (this.titleEl) {
-      this.titleEl.textContent = provider.name;
-    }
-
     Logger.info(LogCategory.ASISTAN_CORE, `Provider değiştirildi: ${provider.name}`);
+    await this._syncIdentityCard();
     this._updateConnectionUI();
   }
 
@@ -782,10 +861,7 @@ export class AsistanController {
     this.scenarioPanelState = {
       scenarioId,
       scenarioTitle,
-      providerName:
-        typeof this.titleEl?.textContent === "string" && this.titleEl.textContent.trim() !== ""
-          ? this.titleEl.textContent.trim()
-          : AppState.getNickname("ai0"),
+      providerName: this._getCurrentProviderLabel(),
       phase: "launcher",
       filter: "all",
       runId: null,
@@ -1125,6 +1201,7 @@ export class AsistanController {
     }
 
     updateAsistanConnectionUI(this, skipSystemServerSync);
+    this._updateIdentityStatusDot();
   }
 
   _updateOverlay(
@@ -1135,20 +1212,6 @@ export class AsistanController {
     subtitle: string
   ): void {
     updateOverlayView(overlayEl, stateClass, title, subtitle);
-  }
-
-  _updateConnectedAIList(): void {
-    const nicknames = [];
-
-    if (SlotController.isConnected("ai1") === true) {
-      nicknames.push({ slotClass: "ai1", nickname: AppState.getNickname("ai1") });
-    }
-
-    if (SlotController.isConnected("ai2") === true) {
-      nicknames.push({ slotClass: "ai2", nickname: AppState.getNickname("ai2") });
-    }
-
-    renderConnectedAiList(this.connectedList, nicknames);
   }
 
   _updateTrafficUI(trafficState: AsistanTrafficState | null): void {
@@ -1178,6 +1241,21 @@ export class AsistanController {
 
     if (shouldRefreshProviderSelect) {
       this._populateProviderSelect();
+    }
+
+    const shouldRefreshIdentity =
+      changedPaths.includes("*") ||
+      changedPaths.some(
+        (path) =>
+          path.startsWith("asistanAccounts") ||
+          path === "asistanSlot" ||
+          path.startsWith("asistanSlot.") ||
+          path === "assistants" ||
+          path.startsWith("assistants.preferred")
+      );
+
+    if (shouldRefreshIdentity) {
+      void this._syncIdentityCard();
     }
 
     const shouldRefreshToggles =
@@ -1284,7 +1362,6 @@ export class AsistanController {
 
   onShow(): void {
     this._updateConnectionUI();
-    this._updateConnectedAIList();
   }
 
   onHide(): void {}

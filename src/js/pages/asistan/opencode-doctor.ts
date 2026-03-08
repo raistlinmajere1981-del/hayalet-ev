@@ -74,14 +74,16 @@ function setOpencodeIndicatorState(
 function setOpencodeActionButtonState(
   button: HTMLButtonElement | null | undefined,
   options: {
-    label: string;
+    icon: string;
+    ariaLabel: string;
     title: string;
     disabled?: boolean;
     busy?: boolean;
   }
 ): void {
   if (button == null) return;
-  button.textContent = options.label;
+  button.textContent = options.icon;
+  button.setAttribute("aria-label", options.ariaLabel);
   button.title = options.title;
   button.disabled = options.disabled === true;
   button.classList.toggle("is-busy", options.busy === true);
@@ -117,7 +119,8 @@ export function refreshOpencodeDoctorStatus(elements: OpencodeIndicatorElements)
   if (version !== null) {
     setOpencodeIndicatorState(elements, "ready", `OpenCode v${version}`, titleLines.join("\n"));
     setOpencodeActionButtonState(elements.actionButton, {
-      label: "Update kontrol",
+      icon: "↻",
+      ariaLabel: "OpenCode update kontrol",
       title: `OpenCode v${version} için yeni sürüm kontrolü yap`,
     });
     return;
@@ -125,7 +128,8 @@ export function refreshOpencodeDoctorStatus(elements: OpencodeIndicatorElements)
 
   setOpencodeIndicatorState(elements, "missing", "OpenCode bulunamadı", titleLines.join("\n"));
   setOpencodeActionButtonState(elements.actionButton, {
-    label: "OpenCode kur",
+    icon: "⬇",
+    ariaLabel: "OpenCode kur",
     title: "OpenCode kurulum terminalini aç",
   });
 }
@@ -167,7 +171,8 @@ export async function handleOpencodeActionButtonClick(
   const loadingToastId = Toast.loading("OpenCode", loadingMessage);
 
   setOpencodeActionButtonState(actionButton, {
-    label: "Çalışıyor...",
+    icon: "…",
+    ariaLabel: "OpenCode işlemi devam ediyor",
     title: "OpenCode işlemi devam ediyor",
     disabled: true,
     busy: true,
