@@ -34,6 +34,7 @@ async function getAiChatHandlers(): Promise<typeof import("./commands/ai-chat-co
   return await import("./commands/ai-chat-commands.js");
 }
 import { MetaCommandManager } from "./meta-command-manager.js";
+import { RoomCommandRegistry } from "./rooms/room-command-registry.js";
 import {
   getCommandDescription,
   getCommandDescriptionText,
@@ -129,6 +130,15 @@ function getCommandDefinition(commandName: string): CommandDefinition | null {
     return {
       name: commandName,
       category: "ai1-ai2",
+      supportsTestMode: false,
+    };
+  }
+
+  const roomMetadata = RoomCommandRegistry.getMetadata(commandName);
+  if (roomMetadata !== null) {
+    return {
+      name: roomMetadata.name,
+      category: roomMetadata.category,
       supportsTestMode: false,
     };
   }
@@ -319,6 +329,10 @@ const serverCommands = {
       return await MetaCommandManager.runCommand(commandName, args);
     }
 
+    if (RoomCommandRegistry.has(commandName)) {
+      return await RoomCommandRegistry.run(commandName, payload);
+    }
+
     Logger.warn(LogCategory.SERVER_COMMANDS, `Tanimsiz komut: ${commandName}`, {
       category: "server-command",
     });
@@ -331,7 +345,9 @@ const serverCommands = {
    */
   list(): string[] {
     const customCmds = MetaCommandManager.getCommandNames();
-    return [...COMMAND_LIST, ...customCmds];
+    return Array.from(
+      new Set([...COMMAND_LIST, ...customCmds, ...RoomCommandRegistry.listCommands()])
+    );
   },
 
   /**
@@ -343,10 +359,14 @@ const serverCommands = {
     );
 
     if (category !== "ai1-ai2") {
-      return builtIns;
+      return [...builtIns, ...RoomCommandRegistry.listCommands(category)];
     }
 
-    const merged = new Set([...builtIns, ...MetaCommandManager.getCommandNames()]);
+    const merged = new Set([
+      ...builtIns,
+      ...MetaCommandManager.getCommandNames(),
+      ...RoomCommandRegistry.listCommands(category),
+    ]);
     return Array.from(merged);
   },
 
@@ -374,7 +394,7 @@ const serverCommands = {
       supportsTestMode: false,
     }));
 
-    return [...builtIns, ...custom];
+    return [...builtIns, ...custom, ...RoomCommandRegistry.getCatalog(category)];
   },
 
   /**
@@ -393,7 +413,11 @@ const serverCommands = {
    */
   has(commandName: string): boolean {
     const key = commandName !== "" ? commandName.toLowerCase() : "";
-    return handlers[key] !== undefined || MetaCommandManager.hasCommand(commandName);
+    return (
+      handlers[key] !== undefined ||
+      MetaCommandManager.hasCommand(commandName) ||
+      RoomCommandRegistry.has(commandName)
+    );
   },
 
   /**
@@ -411,7 +435,11 @@ const serverCommands = {
    * @returns {string}
    */
   getDescriptionText(commandName: string): string {
-    return getCommandDescriptionText(commandName);
+    const builtIn = getCommandDescriptionText(commandName);
+    if (builtIn !== "") {
+      return builtIn;
+    }
+    return RoomCommandRegistry.getDescriptionText(commandName);
   },
 
   /**

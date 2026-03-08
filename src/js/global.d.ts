@@ -22,6 +22,7 @@ import type {
   HookCallback,
   RegistryListener,
 } from "./modules/asistan/tool-renderers/registry/types.js";
+import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../types/rooms.js";
 
 export {};
 
@@ -141,6 +142,13 @@ declare global {
      * @see electron/preload.cjs
      */
     electronAPI?: ElectronAPI;
+    roomAPI?: {
+      ready: (payload?: Record<string, unknown>) => boolean;
+      sendCommand: (command: string, payload?: Record<string, unknown>) => boolean;
+      sendEvent: (type: string, payload?: Record<string, unknown>) => boolean;
+      onHostMessage: (callback: (payload: unknown) => void) => (() => void);
+      offHostMessage: (callback: (payload: unknown) => void) => void;
+    };
 
     updateChatListOnNewEntry?: (
       provider: string,
@@ -489,6 +497,46 @@ declare global {
       message?: string;
     }>;
     saveProtocol: (key: string, content: string) => Promise<{ success: boolean; message?: string }>;
+    roomsListWorkspace: () => Promise<{
+      success: boolean;
+      rooms?: RoomWorkspaceEntry[];
+      error?: string;
+    }>;
+    roomsListInstalled: () => Promise<{
+      success: boolean;
+      rooms?: InstalledRoomRecord[];
+      error?: string;
+    }>;
+    roomsInstallFromWorkspace: (roomId: string) => Promise<{
+      success: boolean;
+      room?: InstalledRoomRecord;
+      error?: string;
+    }>;
+    roomsRemoveInstalled: (roomId: string) => Promise<{
+      success: boolean;
+      room?: InstalledRoomRecord;
+      error?: string;
+    }>;
+    roomsExportToWorkspace: (payload: { roomId: string; overwrite?: boolean }) => Promise<{
+      success: boolean;
+      room?: InstalledRoomRecord;
+      path?: string;
+      error?: string;
+    }>;
+    roomsPackageFromWorkspace: (payload: { roomId: string; outputFile?: string }) => Promise<{
+      success: boolean;
+      path?: string;
+      error?: string;
+    }>;
+    roomsImportBundle: (payload: {
+      bundleFile: string;
+      overwriteWorkspace?: boolean;
+    }) => Promise<{
+      success: boolean;
+      room?: InstalledRoomRecord;
+      path?: string;
+      error?: string;
+    }>;
     readDirectoryFiles: (
       dirPath: string
     ) => Promise<Array<{ name: string; path: string; isDirectory: boolean }>>;

@@ -100,6 +100,316 @@ button {
   display: none;
 }
 
+.room-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  min-height: 100%;
+}
+
+.room-shell-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.room-shell-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.room-shell-title {
+  font-size: var(--text-3xl);
+  line-height: 1.1;
+}
+
+.room-shell-subtitle {
+  max-width: 72ch;
+  color: var(--text-secondary);
+}
+
+.room-shell-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.room-shell-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.room-shell-panel--runtime {
+  min-height: 32rem;
+}
+
+.room-shell-message {
+  color: var(--text-secondary);
+}
+
+.room-runtime-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--bg-glass);
+  border: var(--border-1) solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.room-runtime-status[data-state="ready"] {
+  color: var(--color-success);
+}
+
+.room-runtime-status[data-state="error"] {
+  color: var(--color-danger);
+}
+
+.room-runtime-event {
+  min-height: 1.5rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  word-break: break-word;
+}
+
+.room-runtime-mount {
+  flex: 1;
+  min-height: 24rem;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-app);
+}
+
+.room-runtime-webview {
+  display: flex;
+  width: 100%;
+  min-height: 24rem;
+  height: 100%;
+  background: #fff;
+}
+
+.room-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.room-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.room-meta-label {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.room-meta-value {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.room-nav-icon {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+.room-manager-modal {
+  width: min(1080px, calc(100vw - 3rem));
+}
+
+.room-manager-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.room-manager-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.room-manager-summary {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.room-manager-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.room-manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.room-manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 26rem;
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-panel);
+}
+
+.room-manager-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.room-manager-section-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.room-manager-section-note {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.room-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 12rem;
+}
+
+.room-manager-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-glass);
+}
+
+.room-manager-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.room-manager-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.room-manager-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.room-manager-subtitle {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.room-manager-path {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  word-break: break-word;
+}
+
+.room-manager-errors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(220, 76, 100, 0.08);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.room-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.room-manager-state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--bg-app);
+  border: var(--border-1) solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.room-manager-state-badge[data-state="ready"],
+.room-manager-state-badge[data-state="linked"] {
+  color: var(--color-success);
+}
+
+.room-manager-state-badge[data-state="invalid"] {
+  color: var(--color-danger);
+}
+
+.room-manager-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) dashed var(--border-glass);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .room-shell-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .room-manager-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ========================================
  * TOPBAR
  * ======================================== */

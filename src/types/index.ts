@@ -16,6 +16,7 @@ export * from "./database.js";
 export * from "./traffic.js";
 export * from "./relay.js";
 export * from "./ipc-channels.js";
+export * from "./rooms.js";
 
 // Logging types
 export * from "./logging-core.js";

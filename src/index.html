@@ -307,6 +307,11 @@
 
           <!-- Canlı Log + Theme Dropdown - Yan yana -->
           <div class="top-bar-actions">
+            <button class="icon-btn" id="rooms-overlay-open" title="Oda Yonetimi">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M2 2h5v5H2V2zm7 0h5v5H9V2zM2 9h5v5H2V9zm7 0h5v5H9V9zm1-6v3h3V3h-3zM3 3v3h3V3H3zm0 7v3h3v-3H3zm7 0v3h3v-3h-3z" />
+              </svg>
+            </button>
             <button class="btn btn-ghost btn-xs" id="report-modal-open" title="Canlı Log Overlay">
               📊 Canlı Log
             </button>
@@ -339,6 +344,38 @@
             <button class="btn btn-ghost" id="report-modal-close">Kapat</button>
           </div>
           <div class="modal-body" id="report-modal-body"></div>
+        </div>
+      </div>
+
+      <div class="modal modal-document modal-wide hidden" id="rooms-overlay">
+        <div class="modal-content room-manager-modal">
+          <div class="modal-header">
+            <span class="modal-title">Oda Yonetimi</span>
+            <div class="room-manager-toolbar">
+              <button class="btn btn-primary btn-sm" id="rooms-overlay-import">Paket Sec</button>
+              <button class="btn btn-ghost btn-sm" id="rooms-overlay-refresh">Yenile</button>
+              <button class="btn btn-ghost btn-sm" id="rooms-overlay-close">Kapat</button>
+            </div>
+          </div>
+          <div class="modal-body room-manager-body">
+            <div class="room-manager-summary" id="rooms-overlay-summary"></div>
+            <div class="room-manager-grid">
+              <section class="room-manager-section">
+                <div class="room-manager-section-head">
+                  <div class="room-manager-section-title">Workspace Odalari</div>
+                  <div class="room-manager-section-note">rooms/ altindaki odalar</div>
+                </div>
+                <div class="room-manager-list" id="rooms-workspace-list"></div>
+              </section>
+              <section class="room-manager-section">
+                <div class="room-manager-section-head">
+                  <div class="room-manager-section-title">Yuklu Odalar</div>
+                  <div class="room-manager-section-note">Menuye eklenen odalar</div>
+                </div>
+                <div class="room-manager-list" id="rooms-installed-list"></div>
+              </section>
+            </div>
+          </div>
         </div>
       </div>
     </div>

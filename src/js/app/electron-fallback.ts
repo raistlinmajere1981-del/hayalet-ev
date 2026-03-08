@@ -130,6 +130,8 @@ export function ensureElectronApiFallback(): void {
     getPreloadPath: async (): Promise<string> => await Promise.resolve(""),
     showOpenDialog: async (): Promise<{ canceled: boolean; filePaths: string[] }> =>
       await Promise.resolve({ canceled: true, filePaths: [] }),
+    roomsImportBundle: async (): Promise<{ success: boolean; error?: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
     copyToAssets: async (p: string): Promise<{ success: boolean; path: string }> =>
       await Promise.resolve({ success: true, path: String(p) }),
     capturePage: async (): Promise<{ success: boolean }> =>

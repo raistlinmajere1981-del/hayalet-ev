@@ -29,6 +29,10 @@ export interface PathResolver {
   getLogsDir(): string;
   getCommandsDir(): string;
   getAssetsDir(): string;
+  getRoomsWorkspaceDir(): string;
+  getInstalledRoomsDir(): string;
+  getRoomsRegistryPath(): string;
+  getInstalledRoomDir(roomId: string): string;
 
   /** Account-specific paths */
   getAccountDir(accountId: string): string;

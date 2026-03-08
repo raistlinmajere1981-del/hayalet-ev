@@ -151,19 +151,18 @@ export function setupTopBarButtons(): void {
       });
     }
 
-    const navButtons = document.querySelectorAll(".side-nav-btn");
-    navButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const page = (btn as HTMLElement).dataset["page"];
+    if (sideNavMenu !== null) {
+      sideNavMenu.addEventListener("click", (event) => {
+        const button = (event.target as Element | null)?.closest?.(".side-nav-btn");
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+        const page = button.dataset["page"];
         if (page !== undefined && page !== "") {
           showPage(page);
-          navButtons.forEach((b) => {
-            b.classList.remove("active");
-          });
-          btn.classList.add("active");
         }
       });
-    });
+    }
   } catch (error) {
     Logger.debug(LogCategory.SYSTEM, `Top bar setup error: ${getErrorMessage(error)}`, {
       error: error instanceof Error ? error : new Error(String(error)),

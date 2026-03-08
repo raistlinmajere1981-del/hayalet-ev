@@ -2,6 +2,7 @@ import { SlotController, SlotState } from "./slot-controller.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { START_STOP_PROTOCOL_HEADERS } from "./protocol-default-headers.js";
+import { RoomProtocolRegistry } from "./rooms/room-protocol-registry.js";
 
 function isSlotReady(slot: string): boolean {
   const state = SlotController.getState(slot);
@@ -34,6 +35,15 @@ function buildProtocolPayload({
   context = {} as { starter?: string },
 }): ProtocolPayload | null {
   const connected = targets.filter((t) => isSlotReady(t));
+  const roomProtocol = RoomProtocolRegistry.resolve(room, scenario);
+
+  if (roomProtocol !== null) {
+    return {
+      message: roomProtocol.title,
+      protocolKey: roomProtocol.key,
+      targets: /** @type {any[]} */ connected,
+    };
+  }
 
   if (room === "analyze") {
     if (scenario === "user-ai-ai") {

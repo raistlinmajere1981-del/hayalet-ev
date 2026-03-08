@@ -357,7 +357,10 @@ async function cancelProviderScenario(
 }
 
 export function setupProviderHandlers(): void {
-  registerHandler("get-preload-path", () => {
+  registerHandler("get-preload-path", (_event, type?: string) => {
+    if (type === "room") {
+      return Paths.getPreloadFileUrl("room-webview-preload.cjs");
+    }
     return Paths.getPreloadFileUrl("webview-preload.cjs");
   });
 

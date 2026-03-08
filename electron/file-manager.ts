@@ -374,11 +374,6 @@ export async function saveProtocol(
     if (key.length === 0) throw new Error("Protokol anahtarı eksik");
 
     const protocols = await ensureProtocolsJson();
-
-    if (!(key in protocols)) {
-      throw new Error(`Bilinmeyen protokol anahtarı: ${key}`);
-    }
-
     protocols[key] = content;
     const protocolsPath = Paths.getProtocolsPath();
     await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");

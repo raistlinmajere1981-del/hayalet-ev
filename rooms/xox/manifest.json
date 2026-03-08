@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "xox",
+  "name": "XOX Room",
+  "version": "1.0.0",
+  "description": "Play XOX against an attached AI slot through room-scoped ++cmd commands.",
+  "menu": {
+    "label": "XOX",
+    "icon": "XO",
+    "order": 40
+  },
+  "uiEntry": "ui/index.html",
+  "hostEntry": "host/index.js",
+  "storageNamespace": "xox",
+  "permissions": [
+    "room-ui",
+    "ai-slots"
+  ],
+  "commandSpecs": [
+    {
+      "name": "XOXStartGame",
+      "description": "Start a new XOX game and send the room protocol to the selected AI slot.",
+      "scope": "room-ui"
+    },
+    {
+      "name": "XOXUserMove",
+      "description": "Apply the user move from the room UI and request the AI response.",
+      "scope": "room-ui"
+    },
+    {
+      "name": "XOXAIMove",
+      "description": "Apply the AI move returned with ++cmd:XOXAIMove({...}).",
+      "scope": "ai-slots"
+    },
+    {
+      "name": "XOXResetGame",
+      "description": "Reset the room game state to idle.",
+      "scope": "room-ui"
+    },
+    {
+      "name": "XOXSyncState",
+      "description": "Push the current XOX room state to the UI runtime.",
+      "scope": "system"
+    },
+    {
+      "name": "XOXShowResult",
+      "description": "Update the room result banner from host-side game logic.",
+      "scope": "system"
+    }
+  ],
+  "protocolSpecs": [
+    {
+      "key": "xox-start",
+      "room": "xox",
+      "scenario": "start",
+      "title": "[START][XOX]",
+      "editable": true
+    }
+  ]
+}

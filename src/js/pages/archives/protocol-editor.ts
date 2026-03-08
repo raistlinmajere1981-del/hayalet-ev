@@ -1,15 +1,17 @@
+import { RoomProtocolRegistry } from "../../modules/rooms/room-protocol-registry.js";
+
 export async function loadProtocolsFromApi(
   electronApi: (typeof window.electronAPI) | undefined
 ): Promise<Record<string, string>> {
   if (electronApi === undefined) {
-    return {};
+    return RoomProtocolRegistry.mergeProtocolMap({});
   }
 
   const result = await electronApi.loadProtocols();
   if (result.success === true && result.protocols !== undefined) {
-    return result.protocols;
+    return RoomProtocolRegistry.mergeProtocolMap(result.protocols);
   }
-  return {};
+  return RoomProtocolRegistry.mergeProtocolMap({});
 }
 
 export function renderProtocolListView(args: {

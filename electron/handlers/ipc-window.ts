@@ -324,6 +324,7 @@ export function setupWindowHandlers(): void {
       properties: options?.properties ?? ["openDirectory"],
       title: options?.title ?? "Klasör Seçin",
       buttonLabel: options?.buttonLabel ?? "Seç",
+      ...(Array.isArray(options?.filters) ? { filters: options.filters } : {}),
       ...(options?.defaultPath !== undefined && options.defaultPath.length > 0
         ? { defaultPath: options.defaultPath }
         : {}),

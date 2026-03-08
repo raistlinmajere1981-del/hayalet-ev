@@ -1,3 +1,5 @@
+import { RoomProtocolRegistry } from "./rooms/room-protocol-registry.js";
+
 type ProtocolMap = Record<string, string>;
 
 type LoadProtocolsResult = {
@@ -44,12 +46,12 @@ async function loadProtocolMap(): Promise<{ protocols: ProtocolMap | null; error
   try {
     const result = (await loadProtocols()) as LoadProtocolsResult;
     if (result.success === true && result.protocols !== undefined) {
-      return { protocols: result.protocols };
+      return { protocols: RoomProtocolRegistry.mergeProtocolMap(result.protocols) };
     }
-    return { protocols: null };
+    return { protocols: RoomProtocolRegistry.mergeProtocolMap({}) };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    return { protocols: null, error: err };
+    return { protocols: RoomProtocolRegistry.mergeProtocolMap({}), error: err };
   }
 }
 

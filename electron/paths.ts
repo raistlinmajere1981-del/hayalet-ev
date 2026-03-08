@@ -12,10 +12,12 @@
  * @module electron/paths
  */
 
-import { app } from "electron";
+import electron from "electron";
 import { join, dirname } from "path";
 import { pathToFileURL } from "url";
 import type { PathConfig, PathResolver } from "./types/paths.ts";
+
+const { app } = electron;
 
 // ========================================
 // CORE PATH DETECTION (Run Once)
@@ -128,6 +130,22 @@ const paths: PathResolver = {
 
   getAssetsDir(): string {
     return getConfig().assetsDir;
+  },
+
+  getRoomsWorkspaceDir(): string {
+    return join(getConfig().projectRoot, "rooms");
+  },
+
+  getInstalledRoomsDir(): string {
+    return join(getConfig().dataDir, "rooms");
+  },
+
+  getRoomsRegistryPath(): string {
+    return join(getConfig().configDir, "rooms.json");
+  },
+
+  getInstalledRoomDir(roomId: string): string {
+    return join(this.getInstalledRoomsDir(), roomId);
   },
 
   // --- Account-Specific Paths ---

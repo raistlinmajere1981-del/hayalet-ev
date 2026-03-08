@@ -16,6 +16,7 @@ import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { WebviewManager } from "../modules/webview-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { MetaCommandManager } from "../modules/meta-command-manager.js";
+import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { SplashScreen } from "../ui/splash-screen.js";
 
 import type { PageController } from "./types.js";
@@ -40,6 +41,7 @@ import {
   initControllers,
   registerWebviews,
 } from "./page-init.js";
+import { setupRoomOverlay } from "./room-overlay.js";
 
 // Extend Window interface for global access
 declare global {
@@ -99,7 +101,9 @@ async function initApp(): Promise<void> {
     SplashScreen.update(30, "Komutlar yükleniyor...");
 
     await MetaCommandManager.loadCommands();
-    SplashScreen.update(40, "Arayüz hazırlanıyor...");
+    SplashScreen.update(40, "Odalar hazırlanıyor...");
+    await RoomRegistry.loadInstalledRooms();
+    SplashScreen.update(45, "Arayüz hazırlanıyor...");
 
     try {
       document.documentElement.setAttribute("spellcheck", "false");
@@ -161,6 +165,7 @@ async function initApp(): Promise<void> {
     setupNavigation();
     setupWindowControls();
     setupTopBarButtons();
+    setupRoomOverlay(controllers);
     setupTopBarRelayButtons();
     setupReportPanel();
 

@@ -25,11 +25,13 @@ import asistanTemplate from "../../pages/asistan.html?raw";
 
 import type { PageController } from "./types.js";
 import { SLOTS, ASISTAN_SLOT } from "@slots";
+import { syncInstalledRoomChrome } from "./room-ui.js";
 
 export function injectPageTemplates(): void {
   const container = document.getElementById("pages-container");
   if (container) {
     container.innerHTML = `${entranceTemplate}${analyzeTemplate}${whisperTemplate}${serverTemplate}${asistanTemplate}${archivesTemplate}`;
+    syncInstalledRoomChrome();
   }
 }
 
@@ -51,12 +53,17 @@ export async function initControllers(controllers: Record<string, PageController
   controllers["server"] = new ServerController();
   controllers["archives"] = new ArchivesController();
   controllers["asistan"] = new AsistanController();
+  syncInstalledRoomChrome(controllers);
   await controllers["entrance"].init?.();
   await controllers["analyze"].init?.();
   await controllers["whisper"].init?.();
   await controllers["server"].init?.();
   await controllers["archives"].init?.();
   await controllers["asistan"].init?.();
+  const roomPageNames = Object.keys(controllers).filter((pageName) => pageName.startsWith("room-"));
+  for (const pageName of roomPageNames) {
+    await controllers[pageName]?.init?.();
+  }
   await ConversationListManager.init();
 }
 
