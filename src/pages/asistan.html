@@ -4,14 +4,30 @@
     <div class="asistan-topbar">
       <div class="asistan-topbar-primary asistan-primary-panel">
         <div class="asistan-identity-card">
-          <div class="slot-avatar-wrapper asistan-avatar-shell">
+          <div
+            class="slot-avatar-wrapper asistan-avatar-shell asistan-identity-action"
+            id="asistan-avatar-action"
+            role="button"
+            tabindex="0"
+            title="AI0 avatarını güncelle"
+            aria-label="AI0 avatarını güncelle"
+          >
             <div class="avatar-placeholder img-cover" id="ai0-avatar"></div>
             <span class="slot-status-dot" id="asistan-identity-status-dot"></span>
           </div>
 
           <div class="slot-info asistan-slot-info">
             <div class="asistan-identity-row">
-              <span class="slot-nickname" id="asistan-nickname">Asistan</span>
+              <span
+                class="slot-nickname asistan-identity-text-action"
+                id="asistan-nickname"
+                role="button"
+                tabindex="0"
+                title="AI0 nickname'ini güncelle"
+                aria-label="AI0 nickname'ini güncelle"
+              >
+                Asistan
+              </span>
               <span class="asistan-role-pill">AI0</span>
             </div>
 
@@ -26,21 +42,35 @@
         <div class="asistan-command-rail">
           <div class="asistan-connect-actions">
             <button class="btn btn-sm btn-primary" id="asistan-connect-btn">Başlat</button>
-            <button class="btn btn-sm btn-secondary" id="asistan-ghost-agent-btn">Ghost Agent</button>
+            <button class="btn btn-sm btn-secondary" id="asistan-ghost-agent-btn">
+              Ghost Agent
+            </button>
           </div>
 
           <div class="asistan-inline-tools">
-            <button class="btn btn-ghost btn-icon btn-sm" id="asistan-memory-btn" title="Memory Viewer">
+            <button
+              class="btn btn-ghost btn-icon btn-sm"
+              id="asistan-memory-btn"
+              title="Memory Viewer"
+            >
               🧠
             </button>
-            <button class="btn btn-ghost btn-icon btn-sm" id="asistan-character-btn" title="Karakter Profili">
+            <button
+              class="btn btn-ghost btn-icon btn-sm"
+              id="asistan-character-btn"
+              title="Karakter Profili"
+            >
               🎭
             </button>
           </div>
         </div>
 
         <div class="asistan-session-controls">
-          <label class="catch-label" for="asistan-resume-last-session" title="Bağlanınca son oturuma dön">
+          <label
+            class="catch-label"
+            for="asistan-resume-last-session"
+            title="Bağlanınca son oturuma dön"
+          >
             <input type="checkbox" id="asistan-resume-last-session" />
             <span>Son session</span>
           </label>
@@ -77,7 +107,11 @@
             </div>
           </div>
 
-          <div class="asistan-opencode-indicator asistan-topbar-chip" id="asistan-opencode-indicator" title="">
+          <div
+            class="asistan-opencode-indicator asistan-topbar-chip"
+            id="asistan-opencode-indicator"
+            title=""
+          >
             <span class="status-dot status-checking" id="asistan-opencode-indicator-dot"></span>
             <span id="asistan-opencode-indicator-text">OpenCode kontrol ediliyor...</span>
             <button
@@ -323,6 +357,41 @@
       </div>
     </div>
     <!-- /Karakter Profili Overlay -->
+
+    <!-- AI0 Nickname Overlay -->
+    <div class="modal hidden" id="asistan-identity-modal">
+      <div class="modal-content asistan-identity-modal">
+        <div class="modal-header">
+          <h2 class="modal-title">AI0 Nickname</h2>
+          <button class="modal-close" id="asistan-identity-modal-close" aria-label="Kapat">
+            ✕
+          </button>
+        </div>
+
+        <div class="modal-body asistan-identity-modal__body">
+          <label class="asistan-identity-modal__label" for="asistan-identity-nickname-input">
+            Görünecek isim
+          </label>
+          <input
+            id="asistan-identity-nickname-input"
+            class="asistan-identity-modal__input"
+            type="text"
+            maxlength="60"
+            placeholder="AI0 nickname"
+            autocomplete="off"
+          />
+          <p class="asistan-identity-modal__hint">
+            Kaydedildiğinde AI0 için tüm asistan hesaplarında aynı isim kullanılacak.
+          </p>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-ghost btn-sm" id="asistan-identity-modal-cancel">Vazgeç</button>
+          <button class="btn btn-sm btn-primary" id="asistan-identity-modal-save">Kaydet</button>
+        </div>
+      </div>
+    </div>
+    <!-- /AI0 Nickname Overlay -->
 
     <!-- Webview Paneli -->
     <div class="asistan-webview-panel" id="asistan-webview-panel">

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-07T21:32:55.400Z",
+  "generatedAt": "2026-03-08T09:22:03.973Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 414,
-    "ids": 373,
+    "ids": 375,
     "testIds": 15,
-    "querySelectors": 120,
-    "totalSelectors": 508
+    "querySelectors": 122,
+    "totalSelectors": 512
   },
   "lookup": {
     "id": {
@@ -39,6 +39,7 @@
       "ai1-nickname": "#ai1-nickname",
       "ai1-remember-connection-check": "#ai1-remember-connection-check",
       "ai1-resume-last-session-check": "#ai1-resume-last-session-check",
+      "ai1-scenario-overlay": "#ai1-scenario-overlay",
       "ai1-send-indicator": "#ai1-send-indicator",
       "ai1-status-dot": "#ai1-status-dot",
       "ai1-sync-btn": "#ai1-sync-btn",
@@ -60,6 +61,7 @@
       "ai2-nickname": "#ai2-nickname",
       "ai2-remember-connection-check": "#ai2-remember-connection-check",
       "ai2-resume-last-session-check": "#ai2-resume-last-session-check",
+      "ai2-scenario-overlay": "#ai2-scenario-overlay",
       "ai2-send-indicator": "#ai2-send-indicator",
       "ai2-status-dot": "#ai2-status-dot",
       "ai2-sync-btn": "#ai2-sync-btn",
@@ -413,6 +415,7 @@
       "asistan_test_panel_close": ".asistan-test-panel__close",
       "asistan_test_panel_copy": ".asistan-test-panel__copy",
       "asistan_test_panel_start": ".asistan-test-panel__start",
+      "asistan_test_panel_stop": ".asistan-test-panel__stop",
       "character_group": ".character-group",
       "character_pool_item_check": ".character-pool-item-check",
       "chat_history": ".chat-history",
@@ -451,6 +454,7 @@
       "scenario_overlay_close": ".scenario-overlay__close",
       "scenario_overlay_copy": ".scenario-overlay__copy",
       "scenario_overlay_start": ".scenario-overlay__start",
+      "scenario_overlay_stop": ".scenario-overlay__stop",
       "search_tabs_tab_btn": ".search-tabs .tab-btn",
       "side_nav_btn": ".side-nav-btn",
       "side_nav_menu": ".side-nav-menu",

@@ -14,6 +14,7 @@ import { LogCategory } from "@shared/logging-core";
 import { ASISTAN_TIMEOUTS } from "@timeouts";
 import { getMimeTypeFromPath } from "../../constants/index.js";
 import { Logger } from "../../modules/logger/index.js";
+import { FileManager } from "../../modules/file-manager.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
@@ -25,7 +26,7 @@ import {
   type AsistanDeliveryResult,
 } from "../../modules/asistan-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
-import type { AppSettings } from "@shared/settings.js";
+import type { Account, AppSettings } from "@shared/settings.js";
 import type {
   ConnectButtonState,
   WebviewElement,
@@ -92,6 +93,9 @@ interface ScenarioPanelState {
   message: string;
   suite: ProviderTestSuite | null;
 }
+
+const ASISTAN_CUSTOM_AVATAR_PATH = "src/assets/asistan.png";
+const ASISTAN_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
 
 export class AsistanController {
   _unsubSettings: (() => void) | null;
@@ -330,6 +334,278 @@ export class AsistanController {
     this._updateIdentityStatusDot();
   }
 
+  _bindIdentityAction(elementId: string, onActivate: () => Promise<void>): void {
+    const element = document.getElementById(elementId);
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+
+    element.addEventListener("click", () => {
+      void onActivate();
+    });
+    element.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      void onActivate();
+    });
+  }
+
+  _getIdentityNicknameModalElements(): {
+    overlay: HTMLElement | null;
+    input: HTMLInputElement | null;
+  } {
+    return {
+      overlay: document.getElementById("asistan-identity-modal"),
+      input: document.getElementById("asistan-identity-nickname-input") as HTMLInputElement | null,
+    };
+  }
+
+  _openIdentityNicknameModal(): void {
+    const { overlay, input } = this._getIdentityNicknameModalElements();
+    if (!(overlay instanceof HTMLElement) || !(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    input.value = AppState.getNickname("ai0");
+    overlay.classList.remove("hidden");
+
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  }
+
+  _closeIdentityNicknameModal(): void {
+    const { overlay } = this._getIdentityNicknameModalElements();
+    overlay?.classList.add("hidden");
+  }
+
+  _setupIdentityNicknameModalEvents(): void {
+    const { overlay, input } = this._getIdentityNicknameModalElements();
+    const closeBtn = document.getElementById("asistan-identity-modal-close");
+    const cancelBtn = document.getElementById("asistan-identity-modal-cancel");
+    const saveBtn = document.getElementById("asistan-identity-modal-save");
+
+    closeBtn?.addEventListener("click", () => {
+      this._closeIdentityNicknameModal();
+    });
+    cancelBtn?.addEventListener("click", () => {
+      this._closeIdentityNicknameModal();
+    });
+    saveBtn?.addEventListener("click", () => {
+      void this._saveIdentityNicknameFromModal();
+    });
+    overlay?.addEventListener("click", (event: MouseEvent) => {
+      if (event.target === overlay) {
+        this._closeIdentityNicknameModal();
+      }
+    });
+    input?.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void this._saveIdentityNicknameFromModal();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this._closeIdentityNicknameModal();
+      }
+    });
+  }
+
+  async _saveAsistanIdentityPatch(
+    patch: Partial<Pick<Account, "nickname" | "avatarPath">>
+  ): Promise<boolean> {
+    const settings = SettingsManager.getSnapshot() as AppSettings | null;
+    const accounts = Array.isArray(settings?.asistanAccounts) ? settings.asistanAccounts : [];
+
+    if (settings === null || accounts.length === 0) {
+      return false;
+    }
+
+    let hasChanges = false;
+    const nextAccounts = accounts.map((account) => {
+      const nextAccount = { ...account };
+
+      if (
+        typeof patch.nickname === "string" &&
+        patch.nickname !== "" &&
+        patch.nickname !== account.nickname
+      ) {
+        nextAccount.nickname = patch.nickname;
+        hasChanges = true;
+      }
+
+      if (
+        typeof patch.avatarPath === "string" &&
+        patch.avatarPath !== "" &&
+        patch.avatarPath !== account.avatarPath
+      ) {
+        nextAccount.avatarPath = patch.avatarPath;
+        hasChanges = true;
+      }
+
+      return nextAccount;
+    });
+
+    if (!hasChanges) {
+      return false;
+    }
+
+    await SettingsManager.save({
+      ...(settings as Record<string, unknown>),
+      asistanAccounts: nextAccounts,
+    });
+    return true;
+  }
+
+  async _editIdentityNickname(): Promise<void> {
+    this._openIdentityNicknameModal();
+  }
+
+  async _saveIdentityNicknameFromModal(): Promise<void> {
+    const { input } = this._getIdentityNicknameModalElements();
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const currentNickname = AppState.getNickname("ai0");
+    const nextNickname = input.value.trim().slice(0, 60);
+
+    if (nextNickname === "") {
+      input.focus();
+      input.select();
+      return;
+    }
+
+    if (nextNickname === currentNickname) {
+      this._closeIdentityNicknameModal();
+      return;
+    }
+
+    try {
+      const updated = await this._saveAsistanIdentityPatch({ nickname: nextNickname });
+      if (updated) {
+        Logger.info(LogCategory.ASISTAN_CORE, "AI0 nickname güncellendi", {
+          nickname: nextNickname,
+        });
+      }
+      this._closeIdentityNicknameModal();
+    } catch (error) {
+      Logger.error(LogCategory.ASISTAN_CORE, "AI0 nickname güncellenemedi", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async _convertImageToPngBase64(sourceDataUrl: string): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const image = new Image();
+
+      image.onload = () => {
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+
+        if (width === 0 || height === 0) {
+          reject(new Error("Geçersiz avatar boyutu"));
+          return;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext("2d");
+        if (context === null) {
+          reject(new Error("Avatar canvas context oluşturulamadı"));
+          return;
+        }
+
+        context.clearRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+
+        const pngDataUrl = canvas.toDataURL("image/png");
+        const base64 = pngDataUrl.split(",")[1] ?? "";
+
+        if (base64 === "") {
+          reject(new Error("Avatar PNG verisi üretilemedi"));
+          return;
+        }
+
+        resolve(base64);
+      };
+
+      image.onerror = () => {
+        reject(new Error("Avatar görseli yüklenemedi"));
+      };
+
+      image.src = sourceDataUrl;
+    });
+  }
+
+  async _editIdentityAvatar(): Promise<void> {
+    const electronApi = window.electronAPI;
+    if (
+      electronApi === undefined ||
+      typeof electronApi.showOpenDialog !== "function" ||
+      typeof electronApi.readFile !== "function"
+    ) {
+      return;
+    }
+
+    try {
+      const selection = await electronApi.showOpenDialog({
+        title: "AI0 avatar seç",
+        buttonLabel: "Kullan",
+        filters: [{ name: "Resimler", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+        properties: ["openFile"],
+      });
+
+      if (selection.canceled === true || selection.filePaths.length === 0) {
+        return;
+      }
+
+      const selectedPath = String(selection.filePaths[0] ?? "").trim();
+      if (selectedPath === "") {
+        return;
+      }
+
+      const sourceBase64 = await electronApi.readFile(selectedPath);
+      if (typeof sourceBase64 !== "string" || sourceBase64 === "") {
+        throw new Error("Avatar dosyası okunamadı");
+      }
+
+      const sourceDataUrl = `data:${getMimeTypeFromPath(selectedPath)};base64,${sourceBase64}`;
+      const pngBase64 = await this._convertImageToPngBase64(sourceDataUrl);
+      const savedPath = await FileManager.writeFileAtomic(
+        ASISTAN_CUSTOM_AVATAR_PATH,
+        pngBase64,
+        "base64"
+      );
+
+      if (savedPath === "") {
+        throw new Error("Avatar kaydedilemedi");
+      }
+
+      const updated = await this._saveAsistanIdentityPatch({
+        avatarPath: ASISTAN_CUSTOM_AVATAR_PATH,
+      });
+
+      if (updated) {
+        Logger.info(LogCategory.ASISTAN_CORE, "AI0 avatar güncellendi", {
+          avatarPath: ASISTAN_CUSTOM_AVATAR_PATH,
+        });
+      }
+    } catch (error) {
+      Logger.error(LogCategory.ASISTAN_CORE, "AI0 avatar güncellenemedi", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   _getCurrentProviderLabel(): string {
     const selectedProviderLabel = this.providerSelect?.selectedOptions.item(0)?.textContent?.trim();
     if (selectedProviderLabel !== undefined && selectedProviderLabel !== "") {
@@ -372,7 +648,13 @@ export class AsistanController {
       return;
     }
 
-    const candidates = [avatarPath ?? "", "src/assets/default.png"];
+    const preferredAvatarPath = avatarPath ?? "";
+    const candidates = [
+      preferredAvatarPath !== ASISTAN_DEFAULT_AVATAR_PATH ? preferredAvatarPath : "",
+      ASISTAN_CUSTOM_AVATAR_PATH,
+      preferredAvatarPath,
+      ASISTAN_DEFAULT_AVATAR_PATH,
+    ];
     const uniqueCandidates = candidates.filter(
       (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
     );
@@ -617,6 +899,14 @@ export class AsistanController {
       },
     });
 
+    this._bindIdentityAction("asistan-avatar-action", async () => {
+      await this._editIdentityAvatar();
+    });
+    this._bindIdentityAction("asistan-nickname", async () => {
+      await this._editIdentityNickname();
+    });
+    this._setupIdentityNicknameModalEvents();
+
     const ai0Webview = document.getElementById("ai0-webview");
     bindAsistanWebviewIpcEvents({
       webviewEl: ai0Webview,
@@ -805,9 +1095,7 @@ export class AsistanController {
     await toggleAsistanConnection(this, options);
   }
 
-  async _handleDeliveryRequest(
-    request: AsistanDeliveryRequest
-  ): Promise<AsistanDeliveryResult> {
+  async _handleDeliveryRequest(request: AsistanDeliveryRequest): Promise<AsistanDeliveryResult> {
     const message = request.message.trim();
     if (message === "") {
       return {
@@ -875,9 +1163,11 @@ export class AsistanController {
     }
 
     const ready = await this._waitForDeliveryCondition(() => {
-      const nextState = SlotController.getState("ai0") as (SlotStateInfo & {
-        domReady?: boolean;
-      }) | null;
+      const nextState = SlotController.getState("ai0") as
+        | (SlotStateInfo & {
+            domReady?: boolean;
+          })
+        | null;
       const trafficState = TrafficManager.getState("ai0");
       const loadingReady =
         trafficState === null ||

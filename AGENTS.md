@@ -57,8 +57,8 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 ### Zorunlu Onay Formatı
 
 > ⚠️ Onay formatı sunulmadan önce MCP bağımsız `npm run mode:status` çağrılır ve `npm run whereami` ile cross-check edilir.
-> ⚠️ `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken yapılır; diğer modlarda varsayılan muhatap `Kullanıcı` kabul edilir.
-> ⚠️ Bütün işlemlerde süreç başladığı noktaya dönmekle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır
+> ⚠️ `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken yapılır, bu kontrolde komut çalıştırılmaz, sadece görevi verenin AI olup olmadığı kontrol edilir.
+> ⚠️ Bütün işlemlerde süreç başladığı noktaya dönmekle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır.
 
 ```
 [DEĞİŞİKLİK ONAYI]
@@ -79,16 +79,14 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
   1. Dosyalar direkt düzenlenir
   2. Syntax doğrulanır
 
-Devam etmemi için "evet" yaz.
+Devam etmem için "evet" yaz.
 ```
 
 > **Kural:** "evet" (veya açık onay) gelmeden değişiklik uygulanmaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
-> **Kural:** `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken çalıştırılır.
-> **Kural:** Mod `terminal` veya `ghost-agent` ise varsayılan muhatap `Kullanıcı` kabul edilir.
-> **Kural:** Mod `hayalet-ev` iken aşağıdaki sinyallerden biri varsa muhatap `AI` seçilir:
+> **Kural:** Mod `hayalet-ev` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
 > - Karşı taraf mesajında kendini açıkça AI olarak tanıttıysa
 > **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
