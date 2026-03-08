@@ -76,7 +76,8 @@ function toDisplayRow(command: ProviderScenarioCommandReport): ScenarioDisplayRo
     (typeof command.output === "object" &&
     command.output !== null &&
     "sessionPreview" in command.output
-      ? ((command.output as { sessionPreview?: ProviderSessionPreview }).sessionPreview ?? undefined)
+      ? ((command.output as { sessionPreview?: ProviderSessionPreview }).sessionPreview ??
+        undefined)
       : undefined);
 
   return {

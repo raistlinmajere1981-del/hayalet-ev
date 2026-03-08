@@ -158,13 +158,6 @@ interface ScenarioCommandExecutionInput {
   total?: number;
 }
 
-interface DatabaseSyncResult {
-  success: boolean;
-  error?: string;
-  added?: number;
-  total?: number;
-}
-
 interface ConversationMetadataResult {
   success: boolean;
   error?: string;
@@ -173,15 +166,6 @@ interface ConversationMetadataResult {
     created: boolean;
     title: string;
     titleUpdated: boolean;
-  };
-}
-
-interface ResetConversationResult {
-  success: boolean;
-  error?: string;
-  data?: {
-    conversationId: string;
-    deletedCount: number;
   };
 }
 
@@ -422,7 +406,7 @@ export class ProviderTester {
         resolve();
       }, delayMs);
 
-      const handleAbort = () => {
+      const handleAbort = (): void => {
         clearTimeout(timeoutId);
         this.abortSignal?.removeEventListener("abort", handleAbort);
         reject(new ScenarioCancelledError());
@@ -453,7 +437,7 @@ export class ProviderTester {
       action: command.action,
       severity: this.resolveScenarioCommandSeverity(command),
       delayAfterMs: this.resolveScenarioCommandDelay(command.action),
-      resolveRuns: async (context) => await this.resolveScenarioCommandRuns(command, context),
+      resolveRuns: (context) => this.resolveScenarioCommandRuns(command, context),
     };
   }
 
@@ -464,10 +448,7 @@ export class ProviderTester {
       return "core";
     }
 
-    if (
-      command.action === "check" ||
-      command.action === "assert-provider-capabilities"
-    ) {
+    if (command.action === "check" || command.action === "assert-provider-capabilities") {
       return "provider";
     }
 
@@ -538,39 +519,37 @@ export class ProviderTester {
   private resolveScenarioCommandRuns(
     command: ProviderScenarioCommandDefinition,
     context: ScenarioCommandContext
-  ): Promise<ScenarioCommandRun[]> {
+  ): ScenarioCommandRun[] {
     if (!this.matchesScenarioCommandSyncMode(command)) {
-      return Promise.resolve([]);
+      return [];
     }
 
     if (command.forEach === undefined) {
-      return Promise.resolve([
+      return [
         this.createScenarioCommandRun(command, {
           command,
         }),
-      ]);
+      ];
     }
 
     const sourceItems = context.values[command.forEach];
     const sessions = Array.isArray(sourceItems)
-      ? sourceItems.filter((item): item is SyncSessionPreviewItem => this.isSyncSessionPreviewItem(item))
+      ? sourceItems.filter((item): item is SyncSessionPreviewItem =>
+          this.isSyncSessionPreviewItem(item)
+        )
       : [];
 
     if (sessions.length === 0) {
-      return Promise.resolve([
-        this.createEmptyScenarioCommandRun(command, command.forEach),
-      ]);
+      return [this.createEmptyScenarioCommandRun(command, command.forEach)];
     }
 
-    return Promise.resolve(
-      sessions.map((session, index) =>
-        this.createScenarioCommandRun(command, {
-          command,
-          session,
-          index,
-          total: sessions.length,
-        })
-      )
+    return sessions.map((session, index) =>
+      this.createScenarioCommandRun(command, {
+        command,
+        session,
+        index,
+        total: sessions.length,
+      })
     );
   }
 
@@ -585,7 +564,7 @@ export class ProviderTester {
       input: {
         source: sourceKey,
       },
-      run: async (): Promise<ScenarioCommandResult> => {
+      run: (): ScenarioCommandResult => {
         const start = Date.now();
         const result = createShellResult(
           command.id,
@@ -616,15 +595,10 @@ export class ProviderTester {
     const stepId =
       input.index === undefined ? command.id : `${command.id}-${(input.index ?? 0) + 1}`;
     const stepName = this.resolveScenarioCommandRunName(command, input);
-
-    return {
+    const scenarioCommandRun: ScenarioCommandRun = {
       stepId,
       stepName,
       action: command.action,
-      ...(command.saveAs !== undefined ? { saveOutputAs: command.saveAs } : {}),
-      ...(this.buildScenarioCommandInput(command, input) !== undefined
-        ? { input: this.buildScenarioCommandInput(command, input) }
-        : {}),
       run: async (): Promise<ScenarioCommandResult> =>
         await this.executeScenarioCommandRun(
           {
@@ -635,17 +609,24 @@ export class ProviderTester {
           stepName
         ),
     };
+
+    if (command.saveAs !== undefined) {
+      scenarioCommandRun.saveOutputAs = command.saveAs;
+    }
+
+    const commandInput = this.buildScenarioCommandInput(command, input);
+    if (commandInput !== undefined) {
+      scenarioCommandRun.input = commandInput;
+    }
+
+    return scenarioCommandRun;
   }
 
   private resolveScenarioCommandRunName(
     command: ProviderScenarioCommandDefinition,
     input: ScenarioCommandExecutionInput
   ): string {
-    if (
-      input.session === undefined ||
-      input.index === undefined ||
-      input.total === undefined
-    ) {
+    if (input.session === undefined || input.index === undefined || input.total === undefined) {
       return command.label;
     }
 
@@ -776,11 +757,7 @@ export class ProviderTester {
       case "refresh-conversation-list":
         return await this.executeRefreshConversationListScenarioCommand(stepId, stepName);
       default:
-        return this.createUnsupportedScenarioCommandResult(
-          input.command.action,
-          stepId,
-          stepName
-        );
+        return this.createUnsupportedScenarioCommandResult(input.command.action, stepId, stepName);
     }
   }
 
@@ -800,7 +777,9 @@ export class ProviderTester {
 
       const capturedResults = this.results.slice(beforeResults);
       this.results.length = beforeResults;
-      const detailSource = [...capturedResults].reverse().find((result) => result.details !== undefined);
+      const detailSource = [...capturedResults]
+        .reverse()
+        .find((result) => result.details !== undefined);
       const category = capturedResults[0]?.category ?? fallbackCategory;
       const result = createShellResult(
         stepId,
@@ -1861,30 +1840,22 @@ export class ProviderTester {
       return "missing";
     }
 
-    for (;;) {
+    const waitForSettledState = async (): Promise<"idle" | "missing"> => {
       this.throwIfCancelled();
       const state = await this.readShellIndicator("loading");
       if (state === "busy") {
         await this.waitForDelay(PROVIDER_TEST_INTERVALS.POLL);
-        continue;
+        return await waitForSettledState();
       }
 
-      if (state === "missing") {
-        if (this.navigationObservationDelayMs > 0) {
-          await this.waitForDelay(this.navigationObservationDelayMs);
-        }
-        return "missing";
+      if (this.navigationObservationDelayMs > 0) {
+        await this.waitForDelay(this.navigationObservationDelayMs);
       }
 
-      if (state === "idle") {
-        if (this.navigationObservationDelayMs > 0) {
-          await this.waitForDelay(this.navigationObservationDelayMs);
-        }
-        return "idle";
-      }
+      return state;
+    };
 
-      await this.waitForDelay(PROVIDER_TEST_INTERVALS.POLL);
-    }
+    return await waitForSettledState();
   }
 
   private generateReport(

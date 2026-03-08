@@ -16,6 +16,19 @@ import type {
   TestCategory,
 } from "../../src/types/provider.ts";
 import type { AppLanguage } from "../../src/types/settings.ts";
+import type { SyncMessagesParams } from "../types/index.ts";
+
+type UpsertConversationMetadataParams = {
+  accountId: string;
+  webUrl: string;
+  provider?: string;
+  title?: string | null;
+};
+
+type ResetConversationMessagesParams = {
+  accountId: string;
+  webUrl: string;
+};
 
 // ─── Constants ───
 
@@ -69,13 +82,19 @@ export interface RendererShell {
 }
 
 export interface ProviderTesterDatabaseManager {
-  syncMessages: (event: null, params: unknown) => Promise<{
+  syncMessages: (
+    event: null,
+    params: SyncMessagesParams
+  ) => Promise<{
     success: boolean;
     error?: string;
     added?: number;
     total?: number;
   }>;
-  upsertConversationMetadata: (event: null, params: unknown) => Promise<{
+  upsertConversationMetadata: (
+    event: null,
+    params: UpsertConversationMetadataParams
+  ) => Promise<{
     success: boolean;
     error?: string;
     data?: {
@@ -85,7 +104,10 @@ export interface ProviderTesterDatabaseManager {
       titleUpdated: boolean;
     };
   }>;
-  resetConversationMessages: (event: null, params: unknown) => Promise<{
+  resetConversationMessages: (
+    event: null,
+    params: ResetConversationMessagesParams
+  ) => Promise<{
     success: boolean;
     error?: string;
     data?: {

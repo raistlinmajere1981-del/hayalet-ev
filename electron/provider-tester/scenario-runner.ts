@@ -13,6 +13,7 @@ export const PROVIDER_TEST_PROMPT =
   "Sadece 1'den 20'ye kadar numaralari, her satirda bir tane olacak sekilde yaz. Baska hicbir sey ekleme.";
 
 export type ScenarioCommandSeverity = "core" | "soft" | "provider";
+type Awaitable<T> = T | Promise<T>;
 
 export class ScenarioCancelledError extends Error {
   constructor(message = "Scenario stopped by user") {
@@ -39,7 +40,7 @@ export interface ScenarioCommandRun {
   action: string;
   saveOutputAs?: string;
   input?: Record<string, unknown>;
-  run: () => Promise<ScenarioCommandResult>;
+  run: () => Awaitable<ScenarioCommandResult>;
 }
 
 export interface ScenarioCommandDefinition {
@@ -48,7 +49,7 @@ export interface ScenarioCommandDefinition {
   action: string;
   severity: ScenarioCommandSeverity;
   delayAfterMs?: number;
-  resolveRuns: (context: ScenarioCommandContext) => Promise<ScenarioCommandRun[]>;
+  resolveRuns: (context: ScenarioCommandContext) => Awaitable<ScenarioCommandRun[]>;
 }
 
 export interface RunCommandScenarioOptions {
@@ -105,29 +106,29 @@ async function wait(delayMs: number | undefined, signal?: AbortSignal): Promise<
     return;
   }
 
+  const abortSignal = signal;
   await new Promise<void>((resolve, reject) => {
+    let abortHandler: EventListener | null = null;
     let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
       timeoutId = null;
-      if (abortHandler !== undefined) {
-        signal?.removeEventListener("abort", abortHandler);
+      if (abortSignal !== undefined && abortHandler !== null) {
+        abortSignal.removeEventListener("abort", abortHandler);
       }
       resolve();
     }, delayMs);
 
-    const abortHandler =
-      signal === undefined
-        ? undefined
-        : () => {
-            if (timeoutId !== null) {
-              clearTimeout(timeoutId);
-              timeoutId = null;
-            }
-            signal.removeEventListener("abort", abortHandler);
-            reject(new ScenarioCancelledError());
-          };
-
-    if (abortHandler !== undefined) {
-      signal.addEventListener("abort", abortHandler, { once: true });
+    if (abortSignal !== undefined) {
+      abortHandler = (): void => {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (abortHandler !== null) {
+          abortSignal.removeEventListener("abort", abortHandler);
+        }
+        reject(new ScenarioCancelledError());
+      };
+      abortSignal.addEventListener("abort", abortHandler, { once: true });
     }
   });
 }
@@ -199,6 +200,8 @@ export async function runCommandScenario(
 
   emitCommand(options, "started");
 
+  // Scenario commands are intentionally serialized because later steps depend on earlier output.
+  /* eslint-disable no-await-in-loop */
   outer: for (let commandIndex = 0; commandIndex < options.commands.length; commandIndex += 1) {
     throwIfCancelled(options.signal);
 
@@ -245,7 +248,7 @@ export async function runCommandScenario(
           status: result.status,
           message: result.message,
           duration: completedAt - startedAt,
-          timestamp: result.result.timestamp ?? startedAt,
+          timestamp: result.result.timestamp,
         } satisfies ProviderTestResult;
         const suiteResults = result.results ?? [commandResult];
         results.push(...suiteResults);
@@ -340,6 +343,7 @@ export async function runCommandScenario(
       }
     }
   }
+  /* eslint-enable no-await-in-loop */
 
   emitCommand(options, "completed", {
     message: abortReason ?? "completed",

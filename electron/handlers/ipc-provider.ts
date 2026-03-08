@@ -23,6 +23,7 @@ const activeScenarioRuns = new Map<string, AbortController>();
 import type { ProviderTester as ProviderTesterType } from "../provider-tester/index.ts";
 let providerTesterCtor: typeof ProviderTesterType | null = null;
 type ProviderTesterConfig = ConstructorParameters<typeof ProviderTesterType>[1];
+type ProviderTesterOptions = NonNullable<ConstructorParameters<typeof ProviderTesterType>[4]>;
 type ProviderScenarioRequest = {
   slot: "ai0" | "ai1" | "ai2";
   scenarioId?: ProviderScenarioId;
@@ -236,17 +237,29 @@ async function runProviderScenario(
         : undefined;
 
     try {
-      const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
-        emitProgress: (progressEvent): void => {
+      const testerOptions: ProviderTesterOptions = {
+        emitProgress: (
+          progressEvent: Parameters<NonNullable<ProviderTesterOptions["emitProgress"]>>[0]
+        ): void => {
           event.sender.send(PROVIDER_SCENARIO_PROGRESS_CHANNEL, progressEvent);
         },
         appLanguage: locale,
         runId,
         syncMode: request.syncMode ?? "full",
-        defaultUrlOverride,
         databaseManager: DatabaseManager,
         abortSignal: abortController.signal,
-      });
+      };
+      if (defaultUrlOverride !== undefined) {
+        testerOptions.defaultUrlOverride = defaultUrlOverride;
+      }
+
+      const tester = new providerTesterCtor(
+        webviewWrapper,
+        config,
+        slot,
+        shellWrapper,
+        testerOptions
+      );
 
       const results = await tester.runScenario(scenarioId);
 
@@ -332,12 +345,9 @@ async function cancelProviderScenario(
   controller.abort();
   activeScenarioRuns.delete(runId);
 
-  await logger.logInternal(
-    LogCategory.IPC,
-    LogLevel.INFO,
-    "Provider scenario cancel requested",
-    { runId }
-  );
+  await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "Provider scenario cancel requested", {
+    runId,
+  });
 
   return {
     success: true,

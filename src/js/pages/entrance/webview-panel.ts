@@ -413,9 +413,7 @@ export class WebviewPanel {
     return !state.hasAccount || (!state.connected && !state.connecting);
   }
 
-  private dismissScenarioOverlayForUnavailableSlot(options?: {
-    cancelActiveRun?: boolean;
-  }): void {
+  private dismissScenarioOverlayForUnavailableSlot(options?: { cancelActiveRun?: boolean }): void {
     const state = this.scenarioOverlayState;
     if (!state) {
       return;
@@ -444,11 +442,12 @@ export class WebviewPanel {
       (event.type === "command-start" || event.type === "command-complete") &&
       event.commandReport !== undefined
     ) {
-      const existing = state.commands.find((command) => command.id === event.commandReport.id);
+      const commandReport = event.commandReport;
+      const existing = state.commands.find((command) => command.id === commandReport.id);
       if (existing) {
-        Object.assign(existing, event.commandReport);
+        Object.assign(existing, commandReport);
       } else {
-        state.commands.push({ ...event.commandReport });
+        state.commands.push({ ...commandReport });
       }
       state.message = event.message ?? state.message;
     }
@@ -631,7 +630,7 @@ export class WebviewPanel {
     const stepsEl = overlayEl.querySelector<HTMLElement>(".scenario-overlay__steps");
     if (!stepsEl) return;
 
-    const scrollToBottom = () => {
+    const scrollToBottom = (): void => {
       stepsEl.scrollTop = stepsEl.scrollHeight;
     };
 
@@ -726,14 +725,14 @@ export class WebviewPanel {
 
       state.phase = "completed";
       state.runId = results.runId ?? state.runId;
-      state.commands = results.commands ?? state.commands;
+      state.commands = results.commands;
       state.suite = results;
       const completionMessage = buildScenarioCompletionMessage({
         passed: results.passed,
         totalTests: results.totalTests,
         commands: state.commands,
-        aborted: results.aborted,
-        abortReason: results.abortReason,
+        ...(results.aborted !== undefined ? { aborted: results.aborted } : {}),
+        ...(results.abortReason !== undefined ? { abortReason: results.abortReason } : {}),
       });
       state.message = completionMessage;
       this.renderScenarioOverlay();
@@ -761,7 +760,7 @@ export class WebviewPanel {
   async stopScenarioTest(): Promise<void> {
     const state = this.scenarioOverlayState;
     const electronApi = window.electronAPI;
-    if (!state || state.phase !== "running" || electronApi === undefined) {
+    if (state?.phase !== "running" || electronApi === undefined) {
       return;
     }
 
