@@ -7,6 +7,7 @@
  * @module electron/provider-tester/interactive-tests
  */
 
+import { PROVIDER_TEST_DELAYS } from "../../shared/timeouts.ts";
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext, ElementCheckResult, InteractiveTestsResult } from "./types.ts";
 import { PROVIDER_TEST } from "./types.ts";
@@ -334,7 +335,9 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
 }
 
 export async function testSendButtonEnabled(ctx: TestContext): Promise<ProviderTestResult> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) =>
+    setTimeout(resolve, PROVIDER_TEST_DELAYS.SEND_BUTTON_ENABLED_SETTLE)
+  );
 
   const selectorEntry =
     ctx.config.selectorMatrix?.selectors?.["sendButton"] ?? ctx.config.selectors.sendButton;
@@ -436,7 +439,7 @@ export async function testSendMessage(ctx: TestContext): Promise<ProviderTestRes
           "})()"
       )) as boolean;
       return Boolean(isEmpty);
-    }, 3000);
+    }, PROVIDER_TEST.TIMEOUT_INPUT_CLEAR);
 
     if (!cleared) throw new Error("Input field not cleared after send");
 
@@ -479,7 +482,9 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
       };
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PROVIDER_TEST_DELAYS.STOP_BUTTON_THINKING_OBSERVE)
+    );
 
     const selector = ctx.config.selectors.stopButton;
     const script = `
@@ -539,7 +544,9 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
 export async function testUserMessageInspect(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   try {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) =>
+      setTimeout(resolve, PROVIDER_TEST_DELAYS.USER_MESSAGE_INSPECT_SETTLE)
+    );
 
     const selector = ctx.config.scrapeSelectors.userWrapper ?? ctx.config.scrapeSelectors.preferred;
     const script = `

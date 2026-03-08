@@ -1,36 +1,74 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  PROVIDER_TEST_PROMPT,
-  runProviderTestScenario,
-  runScenario,
-} from "../../electron/provider-tester/scenario-runner.ts";
+import { PROVIDER_TEST_PROMPT, runCommandScenario } from "../../electron/provider-tester/scenario-runner.ts";
 
-test("provider test scenario emits ordered progress events and keeps soft failures non-fatal", async () => {
+function createCommand(options: {
+  id: string;
+  name: string;
+  severity?: "core" | "soft" | "provider";
+  delayAfterMs?: number;
+  run: () => Promise<{
+    status: "pass" | "fail" | "warning" | "skip";
+    message: string;
+  }>;
+}) {
+  return {
+    id: options.id,
+    name: options.name,
+    action: options.id,
+    severity: options.severity ?? "core",
+    ...(options.delayAfterMs !== undefined ? { delayAfterMs: options.delayAfterMs } : {}),
+    resolveRuns: async () => [
+      {
+        stepId: options.id,
+        stepName: options.name,
+        action: options.id,
+        run: async () => {
+          const result = await options.run();
+          return {
+            ...result,
+            result: {
+              id: options.id,
+              name: options.name,
+              category: "advanced" as const,
+              status: result.status,
+              message: result.message,
+              duration: 0,
+              timestamp: Date.now(),
+            },
+          };
+        },
+      },
+    ],
+  };
+}
+
+test("command scenario emits ordered progress events and keeps soft failures non-fatal", async () => {
   const progress: string[] = [];
   const scenarioIds = new Set<string>();
   const executed: string[] = [];
 
-  const result = await runProviderTestScenario({
+  const result = await runCommandScenario({
     runId: "run-soft-pass",
+    scenarioId: "webview-test",
     slot: "ai1",
     providerId: "chatgpt",
+    commandStartDelayMs: 0,
     emitProgress: (event) => {
       scenarioIds.add(event.scenarioId);
-      progress.push(`${event.type}:${event.stepId ?? "suite"}:${event.status ?? "na"}`);
+      progress.push(`${event.type}:${event.commandId ?? "suite"}:${event.status ?? "na"}`);
     },
-    steps: [
-      {
+    commands: [
+      createCommand({
         id: "reset-default-page",
         name: "Reset Default Page",
-        severity: "core",
         run: async () => {
           executed.push("reset-default-page");
           return { status: "pass", message: "default page loaded" };
         },
-      },
-      {
+      }),
+      createCommand({
         id: "attach-file",
         name: "Attach File",
         severity: "soft",
@@ -38,16 +76,15 @@ test("provider test scenario emits ordered progress events and keeps soft failur
           executed.push("attach-file");
           return { status: "warning", message: "attach unsupported" };
         },
-      },
-      {
+      }),
+      createCommand({
         id: "final-bubbles",
         name: "Final Bubbles",
-        severity: "core",
         run: async () => {
           executed.push("final-bubbles");
           return { status: "pass", message: "bubbles present" };
         },
-      },
+      }),
     ],
   });
 
@@ -58,7 +95,7 @@ test("provider test scenario emits ordered progress events and keeps soft failur
   assert.equal(result.scenarioId, "webview-test");
   assert.deepEqual([...scenarioIds], ["webview-test"]);
   assert.deepEqual(
-    result.steps.map((step) => [step.id, step.status]),
+    result.commands.map((command) => [command.id, command.status]),
     [
       ["reset-default-page", "pass"],
       ["attach-file", "warning"],
@@ -67,74 +104,110 @@ test("provider test scenario emits ordered progress events and keeps soft failur
   );
   assert.deepEqual(progress, [
     "started:suite:na",
-    "step-start:reset-default-page:running",
-    "step-complete:reset-default-page:pass",
-    "step-start:attach-file:running",
-    "step-complete:attach-file:warning",
-    "step-start:final-bubbles:running",
-    "step-complete:final-bubbles:pass",
+    "command-start:reset-default-page:running",
+    "command-complete:reset-default-page:pass",
+    "command-start:attach-file:running",
+    "command-complete:attach-file:warning",
+    "command-start:final-bubbles:running",
+    "command-complete:final-bubbles:pass",
     "completed:suite:na",
   ]);
 });
 
-test("generic scenario runner emits scenario metadata for non-test scenarios", async () => {
+test("command scenario runner emits scenario metadata for non-test scenarios", async () => {
   const progress: string[] = [];
 
-  const result = await runScenario({
+  const result = await runCommandScenario({
     runId: "run-webview-sync",
     scenarioId: "webview-sync",
     slot: "ai2",
     providerId: "grok",
+    commandStartDelayMs: 0,
     emitProgress: (event) => {
-      progress.push(`${event.scenarioId}:${event.type}:${event.stepId ?? "suite"}`);
+      progress.push(`${event.scenarioId}:${event.type}:${event.commandId ?? "suite"}`);
     },
-    steps: [
-      {
+    commands: [
+      createCommand({
         id: "collect-urls",
         name: "Collect Urls",
-        severity: "core",
         run: async () => ({ status: "pass", message: "collected" }),
-      },
+      }),
     ],
   });
 
   assert.equal(result.scenarioId, "webview-sync");
   assert.equal(result.aborted, false);
+  assert.equal(result.commands.length, 1);
   assert.deepEqual(progress, [
     "webview-sync:started:suite",
-    "webview-sync:step-start:collect-urls",
-    "webview-sync:step-complete:collect-urls",
+    "webview-sync:command-start:collect-urls",
+    "webview-sync:command-complete:collect-urls",
     "webview-sync:completed:suite",
   ]);
 });
 
-test("provider test scenario aborts remaining steps after core failure", async () => {
+test("command scenario waits before each command when a pre-delay is configured", async () => {
+  const startedAt: number[] = [];
+
+  await runCommandScenario({
+    runId: "run-command-delays",
+    scenarioId: "webview-sync",
+    slot: "ai1",
+    providerId: "chatgpt",
+    commandStartDelayMs: 25,
+    commands: [
+      createCommand({
+        id: "first-command",
+        name: "First Command",
+        run: async () => {
+          startedAt.push(Date.now());
+          return { status: "pass", message: "first ok" };
+        },
+      }),
+      createCommand({
+        id: "second-command",
+        name: "Second Command",
+        run: async () => {
+          startedAt.push(Date.now());
+          return { status: "pass", message: "second ok" };
+        },
+      }),
+    ],
+  });
+
+  assert.equal(startedAt.length, 2);
+  assert.ok(
+    startedAt[1] - startedAt[0] >= 25,
+    `Expected at least 25ms command pre-delay, got ${startedAt[1] - startedAt[0]}ms`
+  );
+});
+
+test("command scenario aborts remaining commands after core failure", async () => {
   const executed: string[] = [];
 
-  const result = await runProviderTestScenario({
+  const result = await runCommandScenario({
     runId: "run-core-fail",
+    scenarioId: "webview-test",
     slot: "ai0",
     providerId: "opencode-ui",
-    emitProgress: () => {},
-    steps: [
-      {
+    commandStartDelayMs: 0,
+    commands: [
+      createCommand({
         id: "disabled-send",
         name: "Disabled Send",
-        severity: "core",
         run: async () => {
           executed.push("disabled-send");
           return { status: "fail", message: "send should be disabled" };
         },
-      },
-      {
+      }),
+      createCommand({
         id: "final-bubbles",
         name: "Final Bubbles",
-        severity: "core",
         run: async () => {
           executed.push("final-bubbles");
           return { status: "pass", message: "should not run" };
         },
-      },
+      }),
     ],
   });
 
@@ -142,8 +215,52 @@ test("provider test scenario aborts remaining steps after core failure", async (
   assert.equal(result.aborted, true);
   assert.equal(result.abortReason, "send should be disabled");
   assert.deepEqual(
-    result.steps.map((step) => [step.id, step.status]),
+    result.commands.map((command) => [command.id, command.status]),
     [["disabled-send", "fail"]]
+  );
+});
+
+test("command scenario marks the active command as warning when stopped by user", async () => {
+  const abortController = new AbortController();
+  const executed: string[] = [];
+
+  const resultPromise = runCommandScenario({
+    runId: "run-user-stop",
+    scenarioId: "webview-test",
+    slot: "ai2",
+    providerId: "grok",
+    commandStartDelayMs: 0,
+    signal: abortController.signal,
+    commands: [
+      createCommand({
+        id: "long-command",
+        name: "Long Command",
+        run: async () => {
+          executed.push("long-command");
+          await new Promise<void>((resolve) => setTimeout(resolve, 30));
+          return { status: "pass", message: "should be interrupted" };
+        },
+      }),
+      createCommand({
+        id: "never-runs",
+        name: "Never Runs",
+        run: async () => {
+          executed.push("never-runs");
+          return { status: "pass", message: "unexpected" };
+        },
+      }),
+    ],
+  });
+
+  setTimeout(() => abortController.abort(), 5);
+  const result = await resultPromise;
+
+  assert.deepEqual(executed, ["long-command"]);
+  assert.equal(result.aborted, true);
+  assert.equal(result.abortReason, "Scenario stopped by user");
+  assert.deepEqual(
+    result.commands.map((command) => [command.id, command.status]),
+    [["long-command", "warning"]]
   );
 });
 
@@ -154,39 +271,38 @@ test("provider test prompt stays deterministic for scroll and scrape assertions"
   );
 });
 
-test("provider test scenario waits between steps when delays are configured", async () => {
+test("command scenario uses the default one-second start delay when not overridden", async () => {
   const startedAt: number[] = [];
 
-  await runProviderTestScenario({
-    runId: "run-delays",
+  await runCommandScenario({
+    runId: "run-default-delay",
+    scenarioId: "webview-test",
     slot: "ai2",
     providerId: "grok",
-    steps: [
-      {
+    commands: [
+      createCommand({
         id: "first",
         name: "First",
-        severity: "core",
-        delayAfterMs: 35,
+        delayAfterMs: 0,
         run: async () => {
           startedAt.push(Date.now());
           return { status: "pass", message: "first ok" };
         },
-      },
-      {
+      }),
+      createCommand({
         id: "second",
         name: "Second",
-        severity: "core",
         run: async () => {
           startedAt.push(Date.now());
           return { status: "pass", message: "second ok" };
         },
-      },
+      }),
     ],
   });
 
   assert.equal(startedAt.length, 2);
   assert.ok(
     startedAt[1] - startedAt[0] >= 1000,
-    `Expected at least 1000ms delay between steps, got ${startedAt[1] - startedAt[0]}ms`
+    `Expected at least 1000ms default command start delay, got ${startedAt[1] - startedAt[0]}ms`
   );
 });

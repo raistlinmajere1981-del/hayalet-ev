@@ -540,6 +540,11 @@ declare global {
       scenarioId: string;
       syncMode?: "soft" | "full" | "clean";
     }) => Promise<ProviderScenarioResult>;
+    cancelProviderScenario: (params: { runId: string }) => Promise<{
+      success: boolean;
+      runId: string;
+      cancelled: boolean;
+    }>;
     testProvider: (params: { slot: "ai0" | "ai1" | "ai2" }) => Promise<ProviderTestSuite>;
     onProviderScenarioProgress: (callback: (event: ProviderScenarioProgressEvent) => void) => void;
     offProviderScenarioProgress: (callback: (event: ProviderScenarioProgressEvent) => void) => void;

@@ -48,6 +48,41 @@ test("renderers use generic scenario APIs for webview-test launch and progress",
   assert.match(asistanContent, /onProviderScenarioProgress\(handler\)/);
 });
 
+test("renderers expose stop controls wired to cancel the active scenario run", () => {
+  const entranceContent = readFileSync(entrancePath, "utf8");
+  const asistanContent = readFileSync(asistanPath, "utf8");
+
+  assert.match(entranceContent, /scenario-overlay__stop/);
+  assert.match(entranceContent, /void this\.stopScenarioTest\(\)/);
+  assert.match(entranceContent, /cancelProviderScenario\(\{\s*runId: state\.runId\s*\}\)/);
+
+  assert.match(asistanContent, /asistan-test-panel__stop/);
+  assert.match(asistanContent, /void this\._stopScenarioTest\(\)/);
+  assert.match(asistanContent, /cancelProviderScenario\(\{\s*runId: state\.runId\s*\}\)/);
+});
+
+test("renderers dismiss scenario surfaces when the tested slot becomes unavailable", () => {
+  const entranceContent = readFileSync(entrancePath, "utf8");
+  const asistanContent = readFileSync(asistanPath, "utf8");
+
+  assert.match(entranceContent, /dismissScenarioOverlayForUnavailableSlot/);
+  assert.match(entranceContent, /shouldDismissScenarioOverlayForSlotState\(testedState\)/);
+  assert.match(entranceContent, /shouldDismissScenarioOverlayForSlotState\(hostState\)/);
+  assert.match(entranceContent, /cancelActiveRun: overlayState\.phase === "running"/);
+
+  assert.match(asistanContent, /_dismissScenarioPanelForUnavailableSlot/);
+  assert.match(asistanContent, /const shouldDismissScenarioPanel = !hasAccount \|\| \(!isConnected && !isConnecting\)/);
+  assert.match(asistanContent, /this\._dismissScenarioPanelForUnavailableSlot\(\);/);
+});
+
+test("scenario JSON copy uses guarded helper flows instead of raw clipboard writes", () => {
+  const entranceContent = readFileSync(entrancePath, "utf8");
+  const asistanContent = readFileSync(asistanPath, "utf8");
+
+  assert.match(entranceContent, /copyScenarioSuiteJson/);
+  assert.match(asistanContent, /_copyScenarioSuiteJson/);
+});
+
 test("only entrance page exposes sync buttons beside test buttons", () => {
   const entranceHtml = readFileSync(entranceHtmlPath, "utf8");
   const asistanHtml = readFileSync(asistanHtmlPath, "utf8");
@@ -78,18 +113,37 @@ test("entrance renderer only enables sync for verified provider configs", () => 
 test("overlay and panel styles keep the result list scrollable", () => {
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
   const asistanCss = readFileSync("src/styles/asistan.css", "utf8");
+  const slotCss = readFileSync("src/styles/entrance/slot.css", "utf8");
 
   assert.match(entranceCss, /\.scenario-overlay__steps\s*\{[^}]*overflow:\s*auto/s);
   assert.match(entranceCss, /\.scenario-overlay\s*\{[^}]*margin:\s*0/s);
+  assert.match(entranceCss, /\.scenario-slot-overlay\s*\{/);
   assert.match(asistanCss, /\.asistan-test-panel__steps\s*\{[^}]*overflow:\s*auto/s);
+  assert.match(slotCss, /\.slot-card\s*\{[^}]*position:\s*relative/s);
+});
+
+test("entrance overlay auto-scrolls scenario results to the latest row", () => {
+  const entranceContent = readFileSync(entrancePath, "utf8");
+
+  assert.match(entranceContent, /scrollScenarioOverlayToBottom\(overlayEl\);/);
+  assert.match(entranceContent, /`\$\{state\.hostSlot\}-scenario-overlay`/);
+  assert.match(entranceContent, /stepsEl\.scrollTop\s*=\s*stepsEl\.scrollHeight/);
+  assert.match(entranceContent, /requestAnimationFrame\(scrollToBottom\)/);
+});
+
+test("entrance page provides dedicated scenario overlay hosts for full-slot coverage", () => {
+  const entranceHtml = readFileSync(entranceHtmlPath, "utf8");
+
+  assert.match(entranceHtml, /id="ai1-scenario-overlay"/);
+  assert.match(entranceHtml, /id="ai2-scenario-overlay"/);
 });
 
 test("entrance overlay renders a structured session preview list for sync results", () => {
   const entranceContent = readFileSync(entrancePath, "utf8");
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
 
-  assert.match(entranceContent, /row\.sessionPreview\?\.sessions\.length/);
-  assert.match(entranceContent, /row\.sessionPreview\.sessions\s*\.map/s);
+  assert.match(entranceContent, /sessionPreview\?\.sessions\.length/);
+  assert.match(entranceContent, /sessionPreview\.sessions\s*\.map/s);
   assert.match(entranceContent, /scenario-step__preview-list/);
   assert.match(entranceCss, /\.scenario-step__preview-list\s*\{/);
   assert.match(entranceCss, /\.scenario-step__preview-item\s*\{/);
@@ -100,7 +154,8 @@ test("entrance overlay gives sync URL progress messages dedicated styling", () =
   const entranceCss = readFileSync("src/styles/entrance/test.css", "utf8");
 
   assert.match(entranceContent, /scenario-step__message--sync-progress/);
-  assert.match(entranceContent, /row\.id === "sync-open-session-urls"/);
+  assert.match(entranceContent, /row\.id\.startsWith\("navigate-session"\)/);
+  assert.match(entranceContent, /row\.id\.startsWith\("sync-session"\)/);
   assert.match(entranceCss, /\.scenario-step__message--sync-progress\s*\{/);
   assert.match(entranceCss, /overflow-wrap:\s*anywhere/);
 });

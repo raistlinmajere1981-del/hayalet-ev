@@ -1,25 +1,35 @@
 import { existsSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
+import {
+  PROVIDER_SCENARIO_DELAYS,
+  PROVIDER_SCENARIO_TIMEOUTS,
+  PROVIDER_TEST_INTERVALS,
+  PROVIDER_TEST_TIMEOUTS,
+} from "../../shared/timeouts.ts";
 
 import type {
   ProviderConfig,
-  ProviderScenarioActionId,
+  ProviderScenarioCommandDefinition,
   ProviderScenarioDefinition,
   ProviderScenarioId,
-  ProviderScenarioStepDefinition,
   ProviderSessionPreview,
   ProviderTestProgressEvent,
   ProviderTestResult,
   ProviderTestSuite,
-  ProviderTestStep,
   ProviderTestSlot,
   ProviderWebviewSyncConfig,
   ProviderWebviewSyncMode,
   TestStatus,
 } from "../../src/types/provider.ts";
 
-import type { ProviderTestRunOptions, RendererShell, TestContext, WebviewTag } from "./types.ts";
+import type {
+  ProviderTesterDatabaseManager,
+  ProviderTestRunOptions,
+  RendererShell,
+  TestContext,
+  WebviewTag,
+} from "./types.ts";
 import {
   createClickElement,
   createExecuteScript,
@@ -29,10 +39,13 @@ import {
   waitForCondition,
 } from "./utils.ts";
 import {
-  runScenario as runConfiguredScenario,
-  type ScenarioStepDefinition as RuntimeScenarioStepDefinition,
-  type ScenarioStepResult,
-  type ScenarioStepSeverity,
+  runCommandScenario as runConfiguredCommandScenario,
+  ScenarioCancelledError,
+  type ScenarioCommandContext,
+  type ScenarioCommandDefinition as RuntimeScenarioCommandDefinition,
+  type ScenarioCommandRun,
+  type ScenarioCommandResult,
+  type ScenarioCommandSeverity,
 } from "./scenario-runner.ts";
 import { testExcludedUrl } from "./preflight-tests.ts";
 import {
@@ -65,8 +78,6 @@ const STATUS_COLOR = {
   busy: "rgb(231, 76, 60)",
   idle: "rgb(46, 204, 113)",
 } as const;
-
-const NAVIGATION_OBSERVATION_DELAY_MS = 4_000;
 
 function generateRunId(
   slot: ProviderTestSlot,
@@ -131,6 +142,20 @@ interface SyncSessionPreviewItem {
 interface SyncSessionOutcome {
   status: TestStatus;
   message: string;
+  details?: ProviderTestResult["details"];
+  output?: Record<string, unknown>;
+}
+
+interface AggregatedCommandStepResult {
+  status: TestStatus;
+  message: string;
+}
+
+interface ScenarioCommandExecutionInput {
+  command: ProviderScenarioCommandDefinition;
+  session?: SyncSessionPreviewItem;
+  index?: number;
+  total?: number;
 }
 
 interface DatabaseSyncResult {
@@ -211,17 +236,9 @@ async function loadProviderModule(providerId: string): Promise<Record<string, un
     : null;
 }
 
-async function loadDatabaseManager(): Promise<{
-  syncMessages: (...args: unknown[]) => Promise<DatabaseSyncResult>;
-  upsertConversationMetadata: (...args: unknown[]) => Promise<ConversationMetadataResult>;
-  resetConversationMessages: (...args: unknown[]) => Promise<ResetConversationResult>;
-}> {
+async function loadDatabaseManager(): Promise<ProviderTesterDatabaseManager> {
   const imported = (await import("../database/index.ts")) as {
-    databaseManager: {
-      syncMessages: (...args: unknown[]) => Promise<DatabaseSyncResult>;
-      upsertConversationMetadata: (...args: unknown[]) => Promise<ConversationMetadataResult>;
-      resetConversationMessages: (...args: unknown[]) => Promise<ResetConversationResult>;
-    };
+    databaseManager: ProviderTesterDatabaseManager;
   };
   return imported.databaseManager;
 }
@@ -279,7 +296,11 @@ export class ProviderTester {
   private runId = "";
   private syncSessions: SyncSessionPreviewItem[] = [];
   private syncMode: ProviderWebviewSyncMode;
+  private abortSignal: AbortSignal | undefined;
+  private commandStartDelayMs: number | undefined;
   private navigationObservationDelayMs: number;
+  private databaseManager: ProviderTesterDatabaseManager | null;
+  private defaultUrlOverride: string | undefined;
 
   constructor(
     webview: WebviewTag,
@@ -293,9 +314,17 @@ export class ProviderTester {
     this.slot = slot;
     this.shell = shell ?? null;
     this.emitProgress = options.emitProgress;
+    this.runId = options.runId ?? "";
     this.syncMode = normalizeSyncMode(options.syncMode);
+    this.abortSignal = options.abortSignal;
+    this.commandStartDelayMs = options.commandStartDelayMs;
     this.navigationObservationDelayMs =
-      options.navigationObservationDelayMs ?? NAVIGATION_OBSERVATION_DELAY_MS;
+      options.navigationObservationDelayMs ?? PROVIDER_SCENARIO_TIMEOUTS.NAVIGATION_SETTLE;
+    this.databaseManager = options.databaseManager ?? null;
+    this.defaultUrlOverride =
+      typeof options.defaultUrlOverride === "string" && options.defaultUrlOverride.trim() !== ""
+        ? options.defaultUrlOverride.trim()
+        : undefined;
 
     const executeScript = createExecuteScript(webview);
     this.ctx = {
@@ -303,6 +332,7 @@ export class ProviderTester {
       webview,
       config,
       appLanguage: options.appLanguage ?? "tr",
+      ...(this.abortSignal !== undefined ? { abortSignal: this.abortSignal } : {}),
       ...(this.shell !== null ? { shell: this.shell } : {}),
       executeScript,
       executeShellScript: async (script: string): Promise<unknown> => {
@@ -325,24 +355,32 @@ export class ProviderTester {
     this.startTime = Date.now();
     this.results = [];
     this.syncSessions = [];
-    this.runId = generateRunId(this.slot, this.config.id, scenarioId);
+    this.runId =
+      this.runId !== "" ? this.runId : generateRunId(this.slot, this.config.id, scenarioId);
     this.assertScenarioReadiness(scenarioId);
     const scenarioDefinition = this.resolveScenarioDefinition(scenarioId);
 
-    const scenario = await runConfiguredScenario({
+    const scenario = await runConfiguredCommandScenario({
       runId: this.runId,
       scenarioId,
       slot: this.slot,
       providerId: this.config.id,
       ...(this.emitProgress !== undefined ? { emitProgress: this.emitProgress } : {}),
-      steps: scenarioDefinition.steps.map((step) => this.createRuntimeScenarioStep(step)),
+      ...(this.commandStartDelayMs !== undefined
+        ? { commandStartDelayMs: this.commandStartDelayMs }
+        : {}),
+      ...(this.abortSignal !== undefined ? { signal: this.abortSignal } : {}),
+      commands: scenarioDefinition.commands.map((command) =>
+        this.createRuntimeScenarioCommand(command)
+      ),
     });
+    this.results = scenario.results;
 
     return this.generateReport(
       scenario.scenarioId,
-      scenario.steps,
       scenario.aborted,
-      scenario.abortReason
+      scenario.abortReason,
+      scenario.commands
     );
   }
 
@@ -356,24 +394,41 @@ export class ProviderTester {
     return results;
   }
 
-  private summarizeStep(results: ProviderTestResult[], fallback: string): ScenarioStepResult {
+  private summarizeStep(
+    results: ProviderTestResult[],
+    fallback: string
+  ): AggregatedCommandStepResult {
     return {
       status: aggregateStatus(results),
       message: aggregateMessage(results, fallback),
     };
   }
 
-  private emitScenarioStepProgress(stepId: string, message: string): void {
-    this.emitProgress?.({
-      runId: this.runId,
-      scenarioId: "webview-sync",
-      slot: this.slot,
-      providerId: this.config.id,
-      type: "step-start",
-      stepId,
-      status: "running",
-      message,
-      timestamp: Date.now(),
+  private throwIfCancelled(): void {
+    if (this.abortSignal?.aborted === true) {
+      throw new ScenarioCancelledError();
+    }
+  }
+
+  private async waitForDelay(delayMs: number): Promise<void> {
+    if (!Number.isFinite(delayMs) || delayMs <= 0) {
+      this.throwIfCancelled();
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.abortSignal?.removeEventListener("abort", handleAbort);
+        resolve();
+      }, delayMs);
+
+      const handleAbort = () => {
+        clearTimeout(timeoutId);
+        this.abortSignal?.removeEventListener("abort", handleAbort);
+        reject(new ScenarioCancelledError());
+      };
+
+      this.abortSignal?.addEventListener("abort", handleAbort, { once: true });
     });
   }
 
@@ -389,15 +444,822 @@ export class ProviderTester {
     return scenario;
   }
 
-  private createRuntimeScenarioStep(
-    step: ProviderScenarioStepDefinition
-  ): RuntimeScenarioStepDefinition {
+  private createRuntimeScenarioCommand(
+    command: ProviderScenarioCommandDefinition
+  ): RuntimeScenarioCommandDefinition {
     return {
-      id: step.id,
-      name: step.label,
-      severity: this.resolveScenarioStepSeverity(step),
-      delayAfterMs: this.resolveScenarioStepDelay(step.action),
-      run: this.resolveScenarioStepRunner(step.action),
+      id: command.id,
+      name: command.label,
+      action: command.action,
+      severity: this.resolveScenarioCommandSeverity(command),
+      delayAfterMs: this.resolveScenarioCommandDelay(command.action),
+      resolveRuns: async (context) => await this.resolveScenarioCommandRuns(command, context),
+    };
+  }
+
+  private resolveScenarioCommandSeverity(
+    command: ProviderScenarioCommandDefinition
+  ): ScenarioCommandSeverity {
+    if (command.onFail === "abort") {
+      return "core";
+    }
+
+    if (
+      command.action === "check" ||
+      command.action === "assert-provider-capabilities"
+    ) {
+      return "provider";
+    }
+
+    return "soft";
+  }
+
+  private resolveScenarioCommandDelay(action: string): number {
+    switch (action) {
+      case "click":
+      case "wait":
+      case "check":
+      case "collect-session-urls":
+        return action === "click"
+          ? PROVIDER_SCENARIO_DELAYS.COMMAND_CLICK
+          : action === "wait"
+            ? PROVIDER_SCENARIO_DELAYS.COMMAND_WAIT
+            : action === "check"
+              ? PROVIDER_SCENARIO_DELAYS.COMMAND_CHECK
+              : PROVIDER_SCENARIO_DELAYS.COMMAND_COLLECT_SESSION_URLS;
+      case "navigate":
+        return PROVIDER_SCENARIO_DELAYS.COMMAND_NAVIGATE;
+      case "sync-session":
+        return PROVIDER_SCENARIO_DELAYS.COMMAND_SYNC_SESSION;
+      case "refresh-conversation-list":
+        return PROVIDER_SCENARIO_DELAYS.COMMAND_REFRESH_CONVERSATION_LIST;
+      case "navigate-default":
+        return PROVIDER_SCENARIO_DELAYS.STEP_NAVIGATE_DEFAULT;
+      case "assert-disabled-send":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_DISABLED_SEND;
+      case "assert-drag-drop-surface":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_DRAG_DROP_SURFACE;
+      case "inject-prompt":
+        return PROVIDER_SCENARIO_DELAYS.STEP_INJECT_PROMPT;
+      case "assert-enabled-send":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_ENABLED_SEND;
+      case "assert-attach-flow":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_ATTACH_FLOW;
+      case "send-and-wait-thinking":
+        return PROVIDER_SCENARIO_DELAYS.STEP_SEND_AND_WAIT_THINKING;
+      case "assert-final-bubbles":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_FINAL_BUBBLES;
+      case "assert-scroll-behavior":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_SCROLL_BEHAVIOR;
+      case "assert-provider-capabilities":
+        return PROVIDER_SCENARIO_DELAYS.STEP_ASSERT_PROVIDER_CAPABILITIES;
+      default:
+        return PROVIDER_SCENARIO_DELAYS.COMMAND_DEFAULT;
+    }
+  }
+
+  private matchesScenarioCommandSyncMode(command: ProviderScenarioCommandDefinition): boolean {
+    if ((command.whenSyncModes?.length ?? 0) === 0) {
+      return true;
+    }
+
+    return command.whenSyncModes?.includes(this.syncMode) ?? false;
+  }
+
+  private isSyncSessionPreviewItem(value: unknown): value is SyncSessionPreviewItem {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+
+    const maybe = value as Record<string, unknown>;
+    return typeof maybe["title"] === "string" && typeof maybe["url"] === "string";
+  }
+
+  private resolveScenarioCommandRuns(
+    command: ProviderScenarioCommandDefinition,
+    context: ScenarioCommandContext
+  ): Promise<ScenarioCommandRun[]> {
+    if (!this.matchesScenarioCommandSyncMode(command)) {
+      return Promise.resolve([]);
+    }
+
+    if (command.forEach === undefined) {
+      return Promise.resolve([
+        this.createScenarioCommandRun(command, {
+          command,
+        }),
+      ]);
+    }
+
+    const sourceItems = context.values[command.forEach];
+    const sessions = Array.isArray(sourceItems)
+      ? sourceItems.filter((item): item is SyncSessionPreviewItem => this.isSyncSessionPreviewItem(item))
+      : [];
+
+    if (sessions.length === 0) {
+      return Promise.resolve([
+        this.createEmptyScenarioCommandRun(command, command.forEach),
+      ]);
+    }
+
+    return Promise.resolve(
+      sessions.map((session, index) =>
+        this.createScenarioCommandRun(command, {
+          command,
+          session,
+          index,
+          total: sessions.length,
+        })
+      )
+    );
+  }
+
+  private createEmptyScenarioCommandRun(
+    command: ProviderScenarioCommandDefinition,
+    sourceKey: string
+  ): ScenarioCommandRun {
+    return {
+      stepId: command.id,
+      stepName: command.label,
+      action: command.action,
+      input: {
+        source: sourceKey,
+      },
+      run: async (): Promise<ScenarioCommandResult> => {
+        const start = Date.now();
+        const result = createShellResult(
+          command.id,
+          command.label,
+          "advanced",
+          "fail",
+          `Scenario command source is empty: ${sourceKey}`,
+          undefined,
+          Date.now() - start
+        );
+        return {
+          status: "fail",
+          message: result.message,
+          result,
+          output: {
+            source: sourceKey,
+            empty: true,
+          },
+        };
+      },
+    };
+  }
+
+  private createScenarioCommandRun(
+    command: ProviderScenarioCommandDefinition,
+    input: ScenarioCommandExecutionInput
+  ): ScenarioCommandRun {
+    const stepId =
+      input.index === undefined ? command.id : `${command.id}-${(input.index ?? 0) + 1}`;
+    const stepName = this.resolveScenarioCommandRunName(command, input);
+
+    return {
+      stepId,
+      stepName,
+      action: command.action,
+      ...(command.saveAs !== undefined ? { saveOutputAs: command.saveAs } : {}),
+      ...(this.buildScenarioCommandInput(command, input) !== undefined
+        ? { input: this.buildScenarioCommandInput(command, input) }
+        : {}),
+      run: async (): Promise<ScenarioCommandResult> =>
+        await this.executeScenarioCommandRun(
+          {
+            ...input,
+            command,
+          },
+          stepId,
+          stepName
+        ),
+    };
+  }
+
+  private resolveScenarioCommandRunName(
+    command: ProviderScenarioCommandDefinition,
+    input: ScenarioCommandExecutionInput
+  ): string {
+    if (
+      input.session === undefined ||
+      input.index === undefined ||
+      input.total === undefined
+    ) {
+      return command.label;
+    }
+
+    return `${command.label} ${input.index + 1}/${input.total} - ${input.session.title}`;
+  }
+
+  private buildScenarioCommandInput(
+    command: ProviderScenarioCommandDefinition,
+    input: ScenarioCommandExecutionInput
+  ): Record<string, unknown> | undefined {
+    const baseInput: Record<string, unknown> = {};
+
+    if (command.target !== undefined) {
+      baseInput["target"] = command.target;
+    }
+    if (command.params !== undefined) {
+      baseInput["params"] = command.params;
+    }
+    if (input.session !== undefined) {
+      baseInput["session"] = {
+        title: input.session.title,
+        url: input.session.url,
+      };
+    }
+    if (input.index !== undefined && input.total !== undefined) {
+      baseInput["index"] = input.index + 1;
+      baseInput["total"] = input.total;
+    }
+
+    return Object.keys(baseInput).length > 0 ? baseInput : undefined;
+  }
+
+  private async executeScenarioCommandRun(
+    input: ScenarioCommandExecutionInput,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    this.throwIfCancelled();
+
+    switch (input.command.action) {
+      case "navigate-default":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "preflight",
+          async () => await this.runResetDefaultPageStep()
+        );
+      case "assert-disabled-send":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runDisabledSendStep()
+        );
+      case "assert-drag-drop-surface":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "dom",
+          async () => await this.runDragDropStep()
+        );
+      case "inject-prompt":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runInjectMessageStep()
+        );
+      case "assert-enabled-send":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runEnabledSendStep()
+        );
+      case "assert-attach-flow":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runAttachFileStep()
+        );
+      case "send-and-wait-thinking":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "interactive",
+          async () => await this.runSendThinkingStep()
+        );
+      case "assert-final-bubbles":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "scraping",
+          async () => await this.runFinalBubblesStep()
+        );
+      case "assert-scroll-behavior":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "scraping",
+          async () => await this.runScrollStep()
+        );
+      case "assert-provider-capabilities":
+        return await this.executeAggregatedTestScenarioCommand(
+          stepId,
+          stepName,
+          "advanced",
+          async () => await this.runProviderCapabilitiesStep()
+        );
+      case "click":
+        return await this.executeClickScenarioCommand(input.command, stepId, stepName);
+      case "wait":
+        return await this.executeWaitScenarioCommand(input.command, stepId, stepName);
+      case "check":
+        return await this.executeCheckScenarioCommand(input.command, stepId, stepName);
+      case "collect-session-urls":
+        return await this.executeCollectSessionUrlsScenarioCommand(stepId, stepName);
+      case "navigate":
+        return await this.executeNavigateScenarioCommand(input.session, stepId, stepName);
+      case "sync-session":
+        return await this.executeSyncSessionScenarioCommand(
+          input.command,
+          input.session,
+          stepId,
+          stepName
+        );
+      case "refresh-conversation-list":
+        return await this.executeRefreshConversationListScenarioCommand(stepId, stepName);
+      default:
+        return this.createUnsupportedScenarioCommandResult(
+          input.command.action,
+          stepId,
+          stepName
+        );
+    }
+  }
+
+  private async executeAggregatedTestScenarioCommand(
+    stepId: string,
+    stepName: string,
+    fallbackCategory: ProviderTestResult["category"],
+    run: () => Promise<AggregatedCommandStepResult>
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    const beforeResults = this.results.length;
+
+    try {
+      this.throwIfCancelled();
+      const summary = await run();
+      this.throwIfCancelled();
+
+      const capturedResults = this.results.slice(beforeResults);
+      this.results.length = beforeResults;
+      const detailSource = [...capturedResults].reverse().find((result) => result.details !== undefined);
+      const category = capturedResults[0]?.category ?? fallbackCategory;
+      const result = createShellResult(
+        stepId,
+        stepName,
+        category,
+        summary.status,
+        summary.message,
+        detailSource?.details,
+        Date.now() - start
+      );
+
+      return {
+        status: summary.status,
+        message: summary.message,
+        result,
+        ...(capturedResults.length > 0 ? { results: capturedResults } : {}),
+        output: {
+          capturedResultCount: capturedResults.length,
+        },
+      };
+    } catch (error) {
+      this.results.length = beforeResults;
+      if (error instanceof ScenarioCancelledError) {
+        throw error;
+      }
+
+      const result = createShellResult(
+        stepId,
+        stepName,
+        fallbackCategory,
+        "fail",
+        error instanceof Error ? error.message : String(error),
+        undefined,
+        Date.now() - start
+      );
+      return {
+        status: "fail",
+        message: result.message,
+        result,
+      };
+    }
+  }
+
+  private createUnsupportedScenarioCommandResult(
+    action: string,
+    stepId: string,
+    stepName: string
+  ): ScenarioCommandResult {
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "advanced",
+      "fail",
+      `Unsupported scenario command action: ${action}`
+    );
+
+    return {
+      status: "fail",
+      message: result.message,
+      result,
+      output: {
+        action,
+      },
+    };
+  }
+
+  private getScenarioCommandTimeoutMs(
+    command: ProviderScenarioCommandDefinition,
+    fallbackMs: number
+  ): number {
+    const timeoutMs = command.params?.["timeoutMs"];
+    return typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? timeoutMs
+      : fallbackMs;
+  }
+
+  private resolveScenarioCommandSyncMode(
+    command: ProviderScenarioCommandDefinition
+  ): ProviderWebviewSyncMode {
+    const explicitMode = command.params?.["mode"];
+    if (explicitMode === "soft" || explicitMode === "full" || explicitMode === "clean") {
+      return explicitMode;
+    }
+
+    if (command.params?.["modeSource"] === "syncMode") {
+      return this.syncMode;
+    }
+
+    return this.syncMode;
+  }
+
+  private async executeClickScenarioCommand(
+    command: ProviderScenarioCommandDefinition,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    if (command.target !== "sync-sidebar-open-button") {
+      return this.createUnsupportedScenarioCommandResult(
+        `click:${command.target ?? "unknown"}`,
+        stepId,
+        stepName
+      );
+    }
+
+    const beforeState = await this.probeSyncSidebar(false);
+    const alreadyOpen = beforeState.historyVisible || beforeState.closeVisible;
+    if (alreadyOpen) {
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "preflight",
+        "pass",
+        "Sidebar already open",
+        undefined,
+        Date.now() - start
+      );
+      return {
+        status: "pass",
+        message: result.message,
+        result,
+        output: {
+          target: command.target,
+          clicked: false,
+          alreadyOpen: true,
+        },
+      };
+    }
+
+    if (!beforeState.openFound) {
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "preflight",
+        "fail",
+        "Sidebar open button not found",
+        undefined,
+        Date.now() - start
+      );
+      return {
+        status: "fail",
+        message: result.message,
+        result,
+        output: {
+          target: command.target,
+          clicked: false,
+          alreadyOpen: false,
+        },
+      };
+    }
+
+    const afterClickState = await this.probeSyncSidebar(true);
+    const clicked = afterClickState.clickedOpen;
+    const becameVisible = afterClickState.historyVisible || afterClickState.closeVisible;
+    const status: TestStatus = clicked || becameVisible ? "pass" : "fail";
+    const message = clicked
+      ? "Sidebar open button clicked"
+      : becameVisible
+        ? "Sidebar became visible"
+        : "Sidebar open button click failed";
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "preflight",
+      status,
+      message,
+      undefined,
+      Date.now() - start
+    );
+
+    return {
+      status,
+      message,
+      result,
+      output: {
+        target: command.target,
+        clicked,
+        alreadyOpen: false,
+        historyVisible: afterClickState.historyVisible,
+        closeVisible: afterClickState.closeVisible,
+      },
+    };
+  }
+
+  private async executeWaitScenarioCommand(
+    command: ProviderScenarioCommandDefinition,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    if (command.target !== "sync-sidebar-ready") {
+      return this.createUnsupportedScenarioCommandResult(
+        `wait:${command.target ?? "unknown"}`,
+        stepId,
+        stepName
+      );
+    }
+
+    const timeoutMs = this.getScenarioCommandTimeoutMs(
+      command,
+      PROVIDER_SCENARIO_TIMEOUTS.SIDEBAR_READY
+    );
+    const ready = await waitForCondition(
+      async () => {
+        const state = await this.probeSyncSidebar(false);
+        return state.historyVisible || state.closeVisible;
+      },
+      timeoutMs,
+      this.abortSignal
+    );
+    const state = await this.probeSyncSidebar(false);
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "preflight",
+      ready ? "pass" : "fail",
+      ready ? "Sidebar ready" : "Sidebar did not become ready",
+      undefined,
+      Date.now() - start
+    );
+
+    return {
+      status: result.status,
+      message: result.message,
+      result,
+      output: {
+        target: command.target,
+        timeoutMs,
+        ready,
+        historyVisible: state.historyVisible,
+        closeVisible: state.closeVisible,
+      },
+    };
+  }
+
+  private async executeCheckScenarioCommand(
+    command: ProviderScenarioCommandDefinition,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    if (command.target !== "sync-sidebar-ready") {
+      return this.createUnsupportedScenarioCommandResult(
+        `check:${command.target ?? "unknown"}`,
+        stepId,
+        stepName
+      );
+    }
+
+    const state = await this.probeSyncSidebar(false);
+    const ready = state.historyVisible || state.closeVisible;
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "preflight",
+      ready ? "pass" : "fail",
+      ready ? "Sidebar is visible" : "Sidebar is not visible",
+      undefined,
+      Date.now() - start
+    );
+
+    return {
+      status: result.status,
+      message: result.message,
+      result,
+      output: {
+        target: command.target,
+        ready,
+        historyVisible: state.historyVisible,
+        closeVisible: state.closeVisible,
+        openFound: state.openFound,
+      },
+    };
+  }
+
+  private async executeCollectSessionUrlsScenarioCommand(
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    const sessions = await this.collectVisibleSyncSessions();
+    this.syncSessions = sessions;
+    const preview = this.buildSyncSessionPreview();
+    const status: TestStatus = sessions.length > 0 ? "pass" : "fail";
+    const message =
+      sessions.length > 0
+        ? `Collected ${sessions.length} visible sessions`
+        : "No visible sessions found in sidebar";
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "scraping",
+      status,
+      message,
+      {
+        selector: sessions.map((session) => session.url).join(", "),
+        ...(preview.total > 0 ? { sessionPreview: preview } : {}),
+      },
+      Date.now() - start
+    );
+
+    return {
+      status,
+      message,
+      result,
+      output: sessions.map((session) => ({
+        title: session.title,
+        url: session.url,
+      })),
+    };
+  }
+
+  private async executeNavigateScenarioCommand(
+    session: SyncSessionPreviewItem | undefined,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    if (session === undefined) {
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "interactive",
+        "fail",
+        "Navigate command is missing a session"
+      );
+      return {
+        status: "fail",
+        message: result.message,
+        result,
+      };
+    }
+
+    try {
+      await this.webview.loadURL(session.url);
+      const loadingState = await this.observeLoadingIndicatorAfterNavigation();
+      const finalUrl = this.webview.getURL();
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "interactive",
+        "pass",
+        `Opened ${session.title}; loading indicator settled as ${loadingState}`,
+        {
+          selector: session.url,
+        },
+        Date.now() - start
+      );
+
+      return {
+        status: "pass",
+        message: result.message,
+        result,
+        output: {
+          title: session.title,
+          url: session.url,
+          finalUrl,
+          matched: finalUrl === session.url,
+          loadingState,
+        },
+      };
+    } catch (error) {
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "interactive",
+        "fail",
+        (error as Error).message,
+        {
+          selector: session.url,
+          error: (error as Error).message,
+        },
+        Date.now() - start
+      );
+      return {
+        status: "fail",
+        message: result.message,
+        result,
+        output: {
+          title: session.title,
+          url: session.url,
+        },
+      };
+    }
+  }
+
+  private async executeSyncSessionScenarioCommand(
+    command: ProviderScenarioCommandDefinition,
+    session: SyncSessionPreviewItem | undefined,
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    if (session === undefined) {
+      const result = createShellResult(
+        stepId,
+        stepName,
+        "interactive",
+        "fail",
+        "Sync command is missing a session"
+      );
+      return {
+        status: "fail",
+        message: result.message,
+        result,
+      };
+    }
+
+    const syncMode = this.resolveScenarioCommandSyncMode(command);
+    const outcome =
+      syncMode === "soft"
+        ? await this.runSoftSyncForSession(session)
+        : syncMode === "clean"
+          ? await this.runCleanSyncForSession(session)
+          : await this.runFullSyncForSession(session);
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "interactive",
+      outcome.status,
+      outcome.message,
+      outcome.details,
+      Date.now() - start
+    );
+
+    return {
+      status: outcome.status,
+      message: outcome.message,
+      result,
+      output: {
+        syncMode,
+        ...(outcome.output ?? {}),
+      },
+    };
+  }
+
+  private async executeRefreshConversationListScenarioCommand(
+    stepId: string,
+    stepName: string
+  ): Promise<ScenarioCommandResult> {
+    const start = Date.now();
+    await this.refreshConversationList();
+    const result = createShellResult(
+      stepId,
+      stepName,
+      "advanced",
+      "pass",
+      "Conversation list refreshed",
+      undefined,
+      Date.now() - start
+    );
+
+    return {
+      status: "pass",
+      message: result.message,
+      result,
+      output: {
+        refreshed: this.shell !== null,
+      },
     };
   }
 
@@ -412,93 +1274,21 @@ export class ProviderTester {
     }
   }
 
-  private resolveScenarioStepSeverity(step: ProviderScenarioStepDefinition): ScenarioStepSeverity {
-    if (step.onFail === "abort") {
-      return "core";
-    }
-
-    if (step.action === "assert-provider-capabilities") {
-      return "provider";
-    }
-
-    return "soft";
-  }
-
-  private resolveScenarioStepDelay(action: ProviderScenarioActionId): number {
-    switch (action) {
-      case "open-sidebar":
-        return 250;
-      case "collect-session-urls":
-        return 150;
-      case "open-session-urls":
-      case "wait-loading-idle":
-        return 250;
-      case "report":
-        return 0;
-      case "navigate-default":
-      case "send-and-wait-thinking":
-        return 700;
-      case "assert-attach-flow":
-        return 400;
-      case "assert-disabled-send":
-      case "assert-drag-drop-surface":
-      case "inject-prompt":
-      case "assert-enabled-send":
-      case "assert-final-bubbles":
-      case "assert-scroll-behavior":
-      case "assert-provider-capabilities":
-        return 350;
-      default:
-        return 350;
-    }
-  }
-
-  private resolveScenarioStepRunner(
-    action: ProviderScenarioActionId
-  ): () => Promise<ScenarioStepResult> {
-    switch (action) {
-      case "open-sidebar":
-        return async (): Promise<ScenarioStepResult> => await this.runOpenSidebarStep();
-      case "collect-session-urls":
-        return async (): Promise<ScenarioStepResult> => await this.runCollectSessionUrlsStep();
-      case "open-session-urls":
-        return async (): Promise<ScenarioStepResult> => await this.runOpenSessionUrlsStep();
-      case "wait-loading-idle":
-        return async (): Promise<ScenarioStepResult> => await this.runWaitLoadingIdleStep();
-      case "report":
-        return async (): Promise<ScenarioStepResult> =>
-          await Promise.resolve(this.runSyncReportStep());
-      case "navigate-default":
-        return async (): Promise<ScenarioStepResult> => await this.runResetDefaultPageStep();
-      case "assert-disabled-send":
-        return async (): Promise<ScenarioStepResult> => await this.runDisabledSendStep();
-      case "assert-drag-drop-surface":
-        return async (): Promise<ScenarioStepResult> => await this.runDragDropStep();
-      case "inject-prompt":
-        return async (): Promise<ScenarioStepResult> => await this.runInjectMessageStep();
-      case "assert-enabled-send":
-        return async (): Promise<ScenarioStepResult> => await this.runEnabledSendStep();
-      case "assert-attach-flow":
-        return async (): Promise<ScenarioStepResult> => await this.runAttachFileStep();
-      case "send-and-wait-thinking":
-        return async (): Promise<ScenarioStepResult> => await this.runSendThinkingStep();
-      case "assert-final-bubbles":
-        return async (): Promise<ScenarioStepResult> => await this.runFinalBubblesStep();
-      case "assert-scroll-behavior":
-        return async (): Promise<ScenarioStepResult> => await this.runScrollStep();
-      case "assert-provider-capabilities":
-        return async (): Promise<ScenarioStepResult> => await this.runProviderCapabilitiesStep();
-      default:
-        throw new Error(`Unsupported provider scenario action: ${action}`);
-    }
-  }
-
   private getWebviewSyncConfig(): ProviderWebviewSyncConfig {
     if (this.config.webviewSync === undefined) {
       throw new Error(`Provider ${this.config.id} is missing webviewSync config`);
     }
 
     return this.config.webviewSync;
+  }
+
+  private async resolveDatabaseManager(): Promise<ProviderTesterDatabaseManager> {
+    if (this.databaseManager !== null) {
+      return this.databaseManager;
+    }
+
+    this.databaseManager = await loadDatabaseManager();
+    return this.databaseManager;
   }
 
   private async resolveSlotAccountId(): Promise<string> {
@@ -550,8 +1340,12 @@ export class ProviderTester {
   private async performFullSyncForSession(
     session: SyncSessionPreviewItem,
     accountId: string
-  ): Promise<{ added: number; total: number }> {
-    const databaseManager = await loadDatabaseManager();
+  ): Promise<{
+    added: number;
+    total: number;
+    metadata?: ConversationMetadataResult["data"];
+  }> {
+    const databaseManager = await this.resolveDatabaseManager();
     const messages = await this.scrapeActiveConversationMessages();
     const syncResult = await databaseManager.syncMessages(null, {
       accountId,
@@ -578,6 +1372,7 @@ export class ProviderTester {
     return {
       added: syncResult.added ?? 0,
       total: syncResult.total ?? messages.length,
+      metadata: metadataResult.data,
     };
   }
 
@@ -589,7 +1384,7 @@ export class ProviderTester {
       return { status: "fail", message: `No account assigned for ${this.slot}` };
     }
 
-    const databaseManager = await loadDatabaseManager();
+    const databaseManager = await this.resolveDatabaseManager();
     const result = await databaseManager.upsertConversationMetadata(null, {
       accountId,
       webUrl: session.url,
@@ -600,8 +1395,20 @@ export class ProviderTester {
       return { status: "fail", message: result.error ?? `Soft sync failed for ${session.url}` };
     }
 
-    await this.refreshConversationList();
-    return { status: "pass", message: `Soft sync saved ${session.title}` };
+    return {
+      status: "pass",
+      message: `Soft sync saved ${session.title}`,
+      details: {
+        selector: session.url,
+      },
+      output: {
+        title: session.title,
+        url: session.url,
+        conversationId: result.data?.conversationId ?? "",
+        created: result.data?.created ?? false,
+        titleUpdated: result.data?.titleUpdated ?? false,
+      },
+    };
   }
 
   protected async runFullSyncForSession(
@@ -614,10 +1421,21 @@ export class ProviderTester {
 
     try {
       const syncResult = await this.performFullSyncForSession(session, accountId);
-      await this.refreshConversationList();
       return {
         status: "pass",
         message: `Full sync added ${syncResult.added} messages for ${session.title}`,
+        details: {
+          selector: session.url,
+        },
+        output: {
+          title: session.title,
+          url: session.url,
+          added: syncResult.added,
+          total: syncResult.total,
+          conversationId: syncResult.metadata?.conversationId ?? "",
+          created: syncResult.metadata?.created ?? false,
+          titleUpdated: syncResult.metadata?.titleUpdated ?? false,
+        },
       };
     } catch (error) {
       return { status: "fail", message: (error as Error).message };
@@ -632,7 +1450,7 @@ export class ProviderTester {
       return { status: "fail", message: `No account assigned for ${this.slot}` };
     }
 
-    const databaseManager = await loadDatabaseManager();
+    const databaseManager = await this.resolveDatabaseManager();
     const resetResult = await databaseManager.resetConversationMessages(null, {
       accountId,
       webUrl: session.url,
@@ -646,10 +1464,22 @@ export class ProviderTester {
 
     try {
       const syncResult = await this.performFullSyncForSession(session, accountId);
-      await this.refreshConversationList();
       return {
         status: "pass",
         message: `Clean sync reset ${resetResult.data?.deletedCount ?? 0} messages and imported ${syncResult.added} for ${session.title}`,
+        details: {
+          selector: session.url,
+        },
+        output: {
+          title: session.title,
+          url: session.url,
+          deletedCount: resetResult.data?.deletedCount ?? 0,
+          added: syncResult.added,
+          total: syncResult.total,
+          conversationId: syncResult.metadata?.conversationId ?? "",
+          created: syncResult.metadata?.created ?? false,
+          titleUpdated: syncResult.metadata?.titleUpdated ?? false,
+        },
       };
     } catch (error) {
       return { status: "fail", message: (error as Error).message };
@@ -709,58 +1539,6 @@ export class ProviderTester {
       historyVisible: boolean;
       clickedOpen: boolean;
     };
-  }
-
-  private async runOpenSidebarStep(): Promise<ScenarioStepResult> {
-    const start = Date.now();
-    const initialState = await this.probeSyncSidebar(false);
-
-    if (initialState.historyVisible || initialState.closeVisible) {
-      const result = createShellResult(
-        "sync-open-sidebar",
-        "Open Sidebar",
-        "preflight",
-        "pass",
-        "Sidebar already open",
-        undefined,
-        Date.now() - start
-      );
-      this.pushResult(result);
-      return this.summarizeStep([result], "Sidebar already open");
-    }
-
-    if (!initialState.openFound) {
-      const result = createShellResult(
-        "sync-open-sidebar",
-        "Open Sidebar",
-        "preflight",
-        "fail",
-        "Sidebar open button not found",
-        undefined,
-        Date.now() - start
-      );
-      this.pushResult(result);
-      return this.summarizeStep([result], "Sidebar open button not found");
-    }
-
-    await this.probeSyncSidebar(true);
-
-    const becameVisible = await waitForCondition(async () => {
-      const state = await this.probeSyncSidebar(false);
-      return state.historyVisible || state.closeVisible;
-    }, 3000);
-
-    const result = createShellResult(
-      "sync-open-sidebar",
-      "Open Sidebar",
-      "preflight",
-      becameVisible ? "pass" : "fail",
-      becameVisible ? "Sidebar opened" : "Sidebar did not open",
-      undefined,
-      Date.now() - start
-    );
-    this.pushResult(result);
-    return this.summarizeStep([result], "Sidebar did not open");
   }
 
   private normalizeSyncSessions(rawSessions: SyncSessionPreviewItem[]): SyncSessionPreviewItem[] {
@@ -835,149 +1613,9 @@ export class ProviderTester {
     return this.normalizeSyncSessions(result.sessions);
   }
 
-  private async runCollectSessionUrlsStep(): Promise<ScenarioStepResult> {
-    const start = Date.now();
-    const sessions = await this.collectVisibleSyncSessions();
-    this.syncSessions = sessions;
-
-    const result = createShellResult(
-      "sync-collect-session-urls",
-      "Collect Session Urls",
-      "scraping",
-      sessions.length > 0 ? "pass" : "fail",
-      sessions.length > 0
-        ? `Collected ${sessions.length} visible sessions`
-        : "No visible sessions found in sidebar",
-      sessions.length > 0
-        ? { selector: sessions.map((session) => session.url).join(", ") }
-        : undefined,
-      Date.now() - start
-    );
-    this.pushResult(result);
-    return this.summarizeStep([result], "No visible sessions found in sidebar");
-  }
-
-  private async runOpenSessionUrlsStep(): Promise<ScenarioStepResult> {
-    const start = Date.now();
-    const stepId = "open-session-urls";
-    const syncMode = this.syncMode;
-    let syncedCount = 0;
-    const loadingObservations: Array<"busy" | "idle" | "missing"> = [];
-
-    if (this.syncSessions.length === 0) {
-      const result = createShellResult(
-        "sync-open-session-urls",
-        "Open Session Urls",
-        "interactive",
-        "fail",
-        "No collected session URLs available",
-        undefined,
-        Date.now() - start
-      );
-      this.pushResult(result);
-      return this.summarizeStep([result], "No collected session URLs available");
-    }
-
-    const indexedSessions = [...this.syncSessions.entries()];
-    const runSessionAt = async (position: number): Promise<ScenarioStepResult | null> => {
-      const entry = indexedSessions[position];
-      if (entry === undefined) {
-        return null;
-      }
-
-      const [index, session] = entry;
-      const current = await this.openAndSyncSessionUrl(
-        session,
-        index,
-        indexedSessions.length,
-        stepId,
-        start,
-        syncMode
-      );
-      loadingObservations.push(current.loadingState);
-      if (current.failure !== null) {
-        return current.failure;
-      }
-      syncedCount += 1;
-
-      return await runSessionAt(position + 1);
-    };
-
-    const failedStep = await runSessionAt(0);
-    if (failedStep !== null) {
-      return failedStep;
-    }
-
-    const successMessage =
-      syncMode === "soft"
-        ? `Soft sync completed for ${syncedCount} session URLs`
-        : syncMode === "clean"
-          ? `Clean sync completed for ${syncedCount} session URLs`
-          : `Opened ${syncedCount} session URLs and completed full sync`;
-    const observationSummary = this.summarizeLoadingObservations(loadingObservations);
-    const result = createShellResult(
-      "sync-open-session-urls",
-      "Open Session Urls",
-      "interactive",
-      "pass",
-      `${successMessage}; loading indicator after ${this.navigationObservationDelayMs}ms: ${observationSummary}`,
-      {
-        selector: this.syncSessions.map((session) => session.url).join(", "),
-        sessionPreview: this.buildSyncSessionPreview(),
-      },
-      Date.now() - start
-    );
-    this.pushResult(result);
-    return this.summarizeStep([result], "Session URLs opened");
-  }
-
-  private async runWaitLoadingIdleStep(): Promise<ScenarioStepResult> {
-    const start = Date.now();
-    const loadingFinished = await this.waitForShellIndicator("loading", "idle", 10000);
-    const currentState = await this.readShellIndicator("loading");
-    const result = createShellResult(
-      "wait-loading-idle",
-      "Wait Loading Idle",
-      "preflight",
-      loadingFinished ? "pass" : "fail",
-      loadingFinished
-        ? "Loading indicator returned to idle"
-        : `Loading indicator state remained ${currentState}`,
-      undefined,
-      Date.now() - start
-    );
-    this.pushResult(result);
-    return this.summarizeStep([result], "Loading indicator did not return to idle");
-  }
-
-  private runSyncReportStep(): ScenarioStepResult {
-    const start = Date.now();
-    const preview = this.syncSessions
-      .slice(0, 3)
-      .map((session) => `${session.title} -> ${session.url}`)
-      .join(" | ");
-    const hasSessions = this.syncSessions.length > 0;
-
-    const result = createShellResult(
-      "sync-report-preview",
-      "Report Sync Preview",
-      "advanced",
-      hasSessions ? "pass" : "warning",
-      hasSessions ? `Preview: ${preview}` : "No visible sessions collected yet",
-      hasSessions
-        ? {
-            sessionPreview: this.buildSyncSessionPreview(),
-          }
-        : undefined,
-      Date.now() - start
-    );
-    this.pushResult(result);
-    return this.summarizeStep([result], "No visible sessions collected yet");
-  }
-
-  private async runResetDefaultPageStep(): Promise<ScenarioStepResult> {
+  private async runResetDefaultPageStep(): Promise<AggregatedCommandStepResult> {
     const results: ProviderTestResult[] = [];
-    const defaultUrl = resolveDefaultUrl(this.config);
+    const defaultUrl = this.defaultUrlOverride ?? resolveDefaultUrl(this.config);
     const start = Date.now();
     const loadPromise = this.webview.loadURL(defaultUrl);
     await loadPromise;
@@ -1001,7 +1639,7 @@ export class ProviderTester {
         "Loading Indicator Observation",
         "preflight",
         "pass",
-        `Loading indicator observed as ${loadingState} after ${this.navigationObservationDelayMs}ms`
+        `Loading indicator settled as ${loadingState}`
       )
     );
     results.push(urlCheck);
@@ -1010,7 +1648,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Default page reset failed");
   }
 
-  private async runDisabledSendStep(): Promise<ScenarioStepResult> {
+  private async runDisabledSendStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testInputField(this.ctx),
       await testInputFieldAccessibility(this.ctx),
@@ -1019,7 +1657,9 @@ export class ProviderTester {
         "send-indicator-disabled",
         "Send Indicator Disabled",
         "interactive",
-        (await this.waitForShellIndicator("send", "busy", 4000)) ? "pass" : "fail",
+        (await this.waitForShellIndicator("send", "busy", PROVIDER_TEST_TIMEOUTS.SEND_INDICATOR))
+          ? "pass"
+          : "fail",
         (await this.readShellIndicator("send")) === "busy"
           ? "Topbar send indicator is busy/disabled"
           : "Topbar send indicator did not show disabled state"
@@ -1029,7 +1669,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Disabled send state failed");
   }
 
-  private async runDragDropStep(): Promise<ScenarioStepResult> {
+  private async runDragDropStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testUploadTarget(this.ctx),
       await testCriticalSelectors(this.ctx),
@@ -1038,14 +1678,18 @@ export class ProviderTester {
     return this.summarizeStep(results, "Drag and drop surface failed");
   }
 
-  private async runInjectMessageStep(): Promise<ScenarioStepResult> {
+  private async runInjectMessageStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([await testTextInjection(this.ctx)]);
     return this.summarizeStep(results, "Message injection failed");
   }
 
-  private async runEnabledSendStep(): Promise<ScenarioStepResult> {
+  private async runEnabledSendStep(): Promise<AggregatedCommandStepResult> {
     const enabledResult = await testSendButtonEnabled(this.ctx);
-    const indicatorStatus = await this.waitForShellIndicator("send", "idle", 4000);
+    const indicatorStatus = await this.waitForShellIndicator(
+      "send",
+      "idle",
+      PROVIDER_TEST_TIMEOUTS.SEND_INDICATOR
+    );
     const indicatorNow = await this.readShellIndicator("send");
     const indicatorResult = createShellResult(
       "send-indicator-enabled",
@@ -1060,7 +1704,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Enabled send state failed");
   }
 
-  private async runAttachFileStep(): Promise<ScenarioStepResult> {
+  private async runAttachFileStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testAttachButton(this.ctx),
       await testFileInput(this.ctx),
@@ -1069,7 +1713,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Attach step completed with warnings");
   }
 
-  private async runSendThinkingStep(): Promise<ScenarioStepResult> {
+  private async runSendThinkingStep(): Promise<AggregatedCommandStepResult> {
     const sendResult = await testSendMessage(this.ctx);
     const thinkingBusy = await this.waitForShellIndicator("thinking", "busy", 8000);
     const thinkingResult = createShellResult(
@@ -1087,7 +1731,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Send/thinking step failed");
   }
 
-  private async runFinalBubblesStep(): Promise<ScenarioStepResult> {
+  private async runFinalBubblesStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testUserMessageInspect(this.ctx),
       await testAIResponseInspect(this.ctx),
@@ -1097,7 +1741,7 @@ export class ProviderTester {
     return this.summarizeStep(results, "Final message bubble checks failed");
   }
 
-  private async runScrollStep(): Promise<ScenarioStepResult> {
+  private async runScrollStep(): Promise<AggregatedCommandStepResult> {
     const start = Date.now();
     try {
       const checks = await Promise.all(
@@ -1172,84 +1816,12 @@ export class ProviderTester {
     }
   }
 
-  private async runProviderCapabilitiesStep(): Promise<ScenarioStepResult> {
+  private async runProviderCapabilitiesStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([
       await testMicrophoneButton(this.ctx),
       await testVoiceButton(this.ctx),
     ]);
     return this.summarizeStep(results, "Provider capability checks completed");
-  }
-
-  private async runSyncForSession(
-    session: SyncSessionPreviewItem,
-    syncMode: ProviderWebviewSyncMode
-  ): Promise<SyncSessionOutcome> {
-    switch (syncMode) {
-      case "soft":
-        return await this.runSoftSyncForSession(session);
-      case "clean":
-        return await this.runCleanSyncForSession(session);
-      case "full":
-        return await this.runFullSyncForSession(session);
-      default:
-        return await this.runFullSyncForSession(session);
-    }
-  }
-
-  private async openAndSyncSessionUrl(
-    session: SyncSessionPreviewItem,
-    index: number,
-    total: number,
-    stepId: string,
-    start: number,
-    syncMode: ProviderWebviewSyncMode
-  ): Promise<{ failure: ScenarioStepResult | null; loadingState: "busy" | "idle" | "missing" }> {
-    this.emitScenarioStepProgress(
-      stepId,
-      `Opening ${index + 1}/${total}: ${session.title} - ${session.url}`
-    );
-
-    const loadPromise = this.webview.loadURL(session.url);
-    await loadPromise;
-    const loadingState = await this.observeLoadingIndicatorAfterNavigation();
-
-    const syncOutcome = await this.runSyncForSession(session, syncMode);
-    if (syncOutcome.status === "fail") {
-      const result = createShellResult(
-        "sync-open-session-urls",
-        "Open Session Urls",
-        "interactive",
-        "fail",
-        `${syncOutcome.message} (loading=${loadingState} after ${this.navigationObservationDelayMs}ms)`,
-        {
-          selector: session.url,
-          sessionPreview: this.buildSyncSessionPreview(),
-        },
-        Date.now() - start
-      );
-      this.pushResult(result);
-      return {
-        failure: this.summarizeStep([result], syncOutcome.message),
-        loadingState,
-      };
-    }
-
-    return { failure: null, loadingState };
-  }
-
-  private summarizeLoadingObservations(states: Array<"busy" | "idle" | "missing">): string {
-    const counts = states.reduce<Record<"busy" | "idle" | "missing", number>>(
-      (acc, state) => {
-        acc[state] += 1;
-        return acc;
-      },
-      { busy: 0, idle: 0, missing: 0 }
-    );
-
-    return (["idle", "busy", "missing"] as const)
-      .filter((state) => counts[state] > 0)
-      .map((state) => `${counts[state]} ${state}`)
-      .join(", ");
   }
 
   private async readShellIndicator(
@@ -1279,23 +1851,47 @@ export class ProviderTester {
     if (this.shell === null) return false;
     return await waitForCondition(
       async () => (await this.readShellIndicator(kind)) === expected,
-      timeout
+      timeout,
+      this.abortSignal
     );
   }
 
   protected async observeLoadingIndicatorAfterNavigation(): Promise<"busy" | "idle" | "missing"> {
-    if (this.navigationObservationDelayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, this.navigationObservationDelayMs));
+    if (this.shell === null) {
+      return "missing";
     }
 
-    return await this.readShellIndicator("loading");
+    for (;;) {
+      this.throwIfCancelled();
+      const state = await this.readShellIndicator("loading");
+      if (state === "busy") {
+        await this.waitForDelay(PROVIDER_TEST_INTERVALS.POLL);
+        continue;
+      }
+
+      if (state === "missing") {
+        if (this.navigationObservationDelayMs > 0) {
+          await this.waitForDelay(this.navigationObservationDelayMs);
+        }
+        return "missing";
+      }
+
+      if (state === "idle") {
+        if (this.navigationObservationDelayMs > 0) {
+          await this.waitForDelay(this.navigationObservationDelayMs);
+        }
+        return "idle";
+      }
+
+      await this.waitForDelay(PROVIDER_TEST_INTERVALS.POLL);
+    }
   }
 
   private generateReport(
     scenarioId: ProviderScenarioId,
-    steps: ProviderTestStep[],
     aborted: boolean,
-    abortReason?: string
+    abortReason?: string,
+    commands: ProviderTestSuite["commands"] = []
   ): ProviderTestSuite {
     const totalDuration = Date.now() - this.startTime;
     const passed = this.results.filter((r) => r.status === "pass").length;
@@ -1318,7 +1914,7 @@ export class ProviderTester {
       warnings,
       totalDuration,
       results: this.results,
-      steps,
+      commands,
       aborted,
       ...(aborted && abortReason !== undefined ? { abortReason } : {}),
     };

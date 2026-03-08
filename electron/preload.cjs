@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getPreloadPath: (type) => ipcRenderer.invoke("get-preload-path", type),
   getProviderConfig: (providerId) => ipcRenderer.invoke("get-provider-config", providerId),
   runProviderScenario: (params) => ipcRenderer.invoke("run-provider-scenario", params),
+  cancelProviderScenario: (params) => ipcRenderer.invoke("cancel-provider-scenario", params),
   testProvider: (params) => ipcRenderer.invoke("test-provider", params),
   onProviderScenarioProgress: (callback) => {
     if (typeof callback !== "function" || providerScenarioProgressHandlers.has(callback)) {

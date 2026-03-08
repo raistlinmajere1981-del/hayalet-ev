@@ -5,7 +5,16 @@
  * Tüm katmanlar (renderer, electron, mcp-server, ghost-agent) bu dosyadan import eder.
  *
  * Import:
- *   import { TIMEOUTS, DELAYS, CDP_TIMEOUTS } from "@timeouts";
+ *   import {
+ *     TIMEOUTS,
+ *     DELAYS,
+ *     CDP_TIMEOUTS,
+ *     PROVIDER_TEST_TIMEOUTS,
+ *     PROVIDER_TEST_DELAYS,
+ *     PROVIDER_TEST_INTERVALS,
+ *     PROVIDER_SCENARIO_DELAYS,
+ *     PROVIDER_SCENARIO_TIMEOUTS,
+ *   } from "@timeouts";
  *
  * Tüm değerler milisaniye (ms) cinsindendir.
  */
@@ -100,10 +109,92 @@ export const PROVIDER_TEST_TIMEOUTS = {
   RESPONSE_WAIT: 15_000,
   /** Stop butonu timeout */
   STOP_BUTTON: 500,
+  /** Input alaninin send sonrasi temizlenmesi */
+  INPUT_CLEAR: 3_000,
+  /** Topbar send indicator state degisimi */
+  SEND_INDICATOR: 4_000,
   /** Toplam test timeout */
   TOTAL: 60_000,
   /** Yeniden deneme gecikmesi */
   RETRY_DELAY: 500,
+} as const;
+
+export const PROVIDER_TEST_DELAYS = {
+  /** Send butonunun enable durumunu gozlemeden once kisa bekleme */
+  SEND_BUTTON_ENABLED_SETTLE: 500,
+  /** AI dusunurken stop butonunu gozlemlemek icin bekleme */
+  STOP_BUTTON_THINKING_OBSERVE: 2_000,
+  /** User message inspect oncesi scrape settle */
+  USER_MESSAGE_INSPECT_SETTLE: 1_000,
+} as const;
+
+export const PROVIDER_TEST_INTERVALS = {
+  /** Provider tester condition polling araligi */
+  POLL: 100,
+} as const;
+
+export const PROVIDER_SCENARIO_TIMEOUTS = {
+  /** Generic scenario wait command fallback timeout */
+  COMMAND_DEFAULT: 3_000,
+  /** Sync sidebar ready olana kadar bekleme */
+  SIDEBAR_READY: 3_000,
+  /** Navigation sonrasi loading settle bekleme */
+  NAVIGATION_SETTLE: 4_000,
+} as const;
+
+export const PROVIDER_SCENARIO_DELAYS = {
+  /** Step-based senaryolarda adimlar arasi minimum bekleme */
+  MIN_STEP: 1_000,
+  /** Command-based senaryolarda her komut run oncesi zorunlu bekleme */
+  COMMAND_START: 1_000,
+  /** Click command sonrasi bekleme */
+  COMMAND_CLICK: 100,
+  /** Wait command sonrasi bekleme */
+  COMMAND_WAIT: 100,
+  /** Check command sonrasi bekleme */
+  COMMAND_CHECK: 100,
+  /** Session collect command sonrasi bekleme */
+  COMMAND_COLLECT_SESSION_URLS: 100,
+  /** Navigate command sonrasi ek bekleme */
+  COMMAND_NAVIGATE: 0,
+  /** Sync command sonrasi ek bekleme */
+  COMMAND_SYNC_SESSION: 0,
+  /** Conversation list refresh sonrasi ek bekleme */
+  COMMAND_REFRESH_CONVERSATION_LIST: 0,
+  /** Command action bulunamazsa kullanilan fallback */
+  COMMAND_DEFAULT: 50,
+  /** Legacy open-sidebar step beklemesi */
+  STEP_OPEN_SIDEBAR: 250,
+  /** Legacy collect-session-urls step beklemesi */
+  STEP_COLLECT_SESSION_URLS: 150,
+  /** Legacy open-session-urls step beklemesi */
+  STEP_OPEN_SESSION_URLS: 250,
+  /** Legacy wait-loading-idle step beklemesi */
+  STEP_WAIT_LOADING_IDLE: 250,
+  /** Legacy report step beklemesi */
+  STEP_REPORT: 0,
+  /** Default page navigation sonrasi bekleme */
+  STEP_NAVIGATE_DEFAULT: 700,
+  /** Send + thinking adimi sonrasi bekleme */
+  STEP_SEND_AND_WAIT_THINKING: 700,
+  /** Attach flow adimi sonrasi bekleme */
+  STEP_ASSERT_ATTACH_FLOW: 400,
+  /** Disabled send adimi sonrasi bekleme */
+  STEP_ASSERT_DISABLED_SEND: 350,
+  /** Drag-drop adimi sonrasi bekleme */
+  STEP_ASSERT_DRAG_DROP_SURFACE: 350,
+  /** Prompt injection adimi sonrasi bekleme */
+  STEP_INJECT_PROMPT: 350,
+  /** Enabled send adimi sonrasi bekleme */
+  STEP_ASSERT_ENABLED_SEND: 350,
+  /** Final bubbles adimi sonrasi bekleme */
+  STEP_ASSERT_FINAL_BUBBLES: 350,
+  /** Scroll behavior adimi sonrasi bekleme */
+  STEP_ASSERT_SCROLL_BEHAVIOR: 350,
+  /** Provider capability adimi sonrasi bekleme */
+  STEP_ASSERT_PROVIDER_CAPABILITIES: 350,
+  /** Legacy step fallback */
+  STEP_DEFAULT: 350,
 } as const;
 
 // ============================================================

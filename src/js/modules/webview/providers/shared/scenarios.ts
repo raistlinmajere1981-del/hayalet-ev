@@ -1,10 +1,11 @@
+import { PROVIDER_SCENARIO_TIMEOUTS } from "../../../../../../shared/timeouts.ts";
 import type { ProviderScenarioDefinition } from "../../../../../types/provider.ts";
 
 export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
   id: "webview-test",
   title: "Webview Test",
   description: "Runs the shared webview validation scenario using preset actions.",
-  steps: [
+  commands: [
     {
       id: "reset-default-page",
       label: "Reset Default Page",
@@ -73,32 +74,75 @@ export const WEBVIEW_TEST_SCENARIO: ProviderScenarioDefinition = {
 export const WEBVIEW_SYNC_SCENARIO: ProviderScenarioDefinition = {
   id: "webview-sync",
   title: "Webview Sync",
-  description: "Collects visible session titles and URLs from the provider sidebar.",
-  steps: [
+  description: "Runs provider sync commands through the shared scenario engine.",
+  commands: [
     {
       id: "open-sidebar",
       label: "Open Sidebar",
-      action: "open-sidebar",
+      action: "click",
+      target: "sync-sidebar-open-button",
+      onFail: "abort",
+    },
+    {
+      id: "wait-sidebar-ready",
+      label: "Wait Sidebar Ready",
+      action: "wait",
+      target: "sync-sidebar-ready",
+      params: {
+        timeoutMs: PROVIDER_SCENARIO_TIMEOUTS.SIDEBAR_READY,
+      },
+      onFail: "abort",
+    },
+    {
+      id: "check-sidebar-ready",
+      label: "Check Sidebar Ready",
+      action: "check",
+      target: "sync-sidebar-ready",
       onFail: "abort",
     },
     {
       id: "collect-session-urls",
       label: "Collect Session Urls",
       action: "collect-session-urls",
+      saveAs: "syncSessions",
       onFail: "abort",
     },
     {
-      id: "open-session-urls",
-      label: "Open Session Urls",
-      action: "open-session-urls",
+      id: "soft-sync-session",
+      label: "Soft Sync Session",
+      action: "sync-session",
+      forEach: "syncSessions",
+      params: {
+        mode: "soft",
+      },
+      whenSyncModes: ["soft", "full", "clean"],
       onFail: "abort",
+    },
+    {
+      id: "navigate-session",
+      label: "Navigate Session",
+      action: "navigate",
+      forEach: "syncSessions",
+      whenSyncModes: ["full", "clean"],
       loading: true,
+      onFail: "abort",
     },
     {
-      id: "report-sync-preview",
-      label: "Report Sync Preview",
-      action: "report",
-      onFail: "warn",
+      id: "sync-session",
+      label: "Sync Session",
+      action: "sync-session",
+      forEach: "syncSessions",
+      params: {
+        modeSource: "syncMode",
+      },
+      whenSyncModes: ["full", "clean"],
+      onFail: "abort",
+    },
+    {
+      id: "refresh-conversation-list",
+      label: "Refresh Conversation List",
+      action: "refresh-conversation-list",
+      onFail: "abort",
     },
   ],
 };

@@ -8,6 +8,7 @@ import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
 import { loadSettings } from "../settings-manager.ts";
+import { DatabaseManager } from "../database/index.ts";
 import {
   collectPromotableSelectors,
   resolvePromotionLocaleFromSettings,
@@ -17,6 +18,7 @@ import type { ProviderScenarioId, ProviderWebviewSyncMode } from "../../src/type
 
 const logger = getLoggerCore();
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
+const activeScenarioRuns = new Map<string, AbortController>();
 
 import type { ProviderTester as ProviderTesterType } from "../provider-tester/index.ts";
 let providerTesterCtor: typeof ProviderTesterType | null = null;
@@ -26,6 +28,18 @@ type ProviderScenarioRequest = {
   scenarioId?: ProviderScenarioId;
   syncMode?: ProviderWebviewSyncMode;
 };
+type ProviderScenarioCancelRequest = {
+  runId: string;
+};
+
+function generateProviderScenarioRunId(
+  slot: ProviderScenarioRequest["slot"],
+  providerId: string,
+  scenarioId: ProviderScenarioId
+): string {
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `provider-scenario-${scenarioId}-${slot}-${providerId}-${Date.now()}-${suffix}`;
+}
 
 async function importModuleByPath(modulePath: string, fresh = false): Promise<unknown> {
   const moduleUrl = pathToFileURL(modulePath);
@@ -204,64 +218,83 @@ async function runProviderScenario(
         await event.sender.executeJavaScript(script),
     };
 
+    const runId = generateProviderScenarioRunId(slot, providerId, scenarioId);
+    const abortController = new AbortController();
+    activeScenarioRuns.set(runId, abortController);
+
     await logger.logInternal(
       LogCategory.IPC,
       LogLevel.INFO,
       `Starting provider scenario ${scenarioId} for ${providerId} on ${slot}`,
-      { slot, providerId, scenarioId }
+      { slot, providerId, scenarioId, runId }
     );
 
     const locale = resolvePromotionLocaleFromSettings(await loadSettings());
-    const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
-      emitProgress: (progressEvent): void => {
-        event.sender.send(PROVIDER_SCENARIO_PROGRESS_CHANNEL, progressEvent);
-      },
-      appLanguage: locale,
-      syncMode: request.syncMode ?? "full",
-    });
+    const defaultUrlOverride =
+      scenarioId === "webview-test" && slot === "ai0" && providerId === "opencode-ui"
+        ? webviewContents.getURL()
+        : undefined;
 
-    const results = await tester.runScenario(scenarioId);
-
-    let refreshedConfig: Record<string, unknown> | null = null;
-
-    if (scenarioId === "webview-test") {
-      const promotions = collectPromotableSelectors({
-        locale,
-        aborted: results.aborted === true,
-        failed: results.failed,
-        warnings: results.warnings,
-        results: results.results,
+    try {
+      const tester = new providerTesterCtor(webviewWrapper, config, slot, shellWrapper, {
+        emitProgress: (progressEvent): void => {
+          event.sender.send(PROVIDER_SCENARIO_PROGRESS_CHANNEL, progressEvent);
+        },
+        appLanguage: locale,
+        runId,
+        syncMode: request.syncMode ?? "full",
+        defaultUrlOverride,
+        databaseManager: DatabaseManager,
+        abortSignal: abortController.signal,
       });
 
-      if (promotions.length > 0) {
-        await promoteProviderConfigFile({
-          configPath: cfgPath,
+      const results = await tester.runScenario(scenarioId);
+
+      let refreshedConfig: Record<string, unknown> | null = null;
+
+      if (scenarioId === "webview-test") {
+        const promotions = collectPromotableSelectors({
           locale,
-          promotions,
+          aborted: results.aborted === true,
+          failed: results.failed,
+          warnings: results.warnings,
+          results: results.results,
         });
 
-        refreshedConfig = await loadProviderConfigRecord(cfgPath, { fresh: true });
+        if (promotions.length > 0) {
+          await promoteProviderConfigFile({
+            configPath: cfgPath,
+            locale,
+            promotions,
+          });
+
+          refreshedConfig = await loadProviderConfigRecord(cfgPath, { fresh: true });
+        }
       }
+
+      await logger.logInternal(
+        LogCategory.IPC,
+        LogLevel.INFO,
+        `Provider scenario completed: ${scenarioId}`,
+        {
+          slot,
+          providerId,
+          scenarioId,
+          runId,
+          passed: results.passed,
+          failed: results.failed,
+          skipped: results.skipped,
+          warnings: results.warnings,
+          aborted: results.aborted === true,
+        }
+      );
+
+      return refreshedConfig !== null
+        ? ({ ...results, refreshedConfig } as Record<string, unknown>)
+        : (results as unknown as Record<string, unknown>);
+    } finally {
+      activeScenarioRuns.delete(runId);
     }
-
-    await logger.logInternal(
-      LogCategory.IPC,
-      LogLevel.INFO,
-      `Provider scenario completed: ${scenarioId}`,
-      {
-        slot,
-        providerId,
-        scenarioId,
-        passed: results.passed,
-        failed: results.failed,
-        skipped: results.skipped,
-        warnings: results.warnings,
-      }
-    );
-
-    return refreshedConfig !== null
-      ? ({ ...results, refreshedConfig } as Record<string, unknown>)
-      : (results as unknown as Record<string, unknown>);
   } catch (err) {
     await logger.logInternal(
       LogCategory.IPC,
@@ -279,6 +312,38 @@ async function runProviderScenario(
     );
     throw err;
   }
+}
+
+async function cancelProviderScenario(
+  _event: IpcMainInvokeEvent,
+  request: ProviderScenarioCancelRequest
+): Promise<{ success: boolean; runId: string; cancelled: boolean }> {
+  const runId = request.runId.trim();
+  const controller = runId === "" ? undefined : activeScenarioRuns.get(runId);
+
+  if (controller === undefined) {
+    return {
+      success: false,
+      runId,
+      cancelled: false,
+    };
+  }
+
+  controller.abort();
+  activeScenarioRuns.delete(runId);
+
+  await logger.logInternal(
+    LogCategory.IPC,
+    LogLevel.INFO,
+    "Provider scenario cancel requested",
+    { runId }
+  );
+
+  return {
+    success: true,
+    runId,
+    cancelled: true,
+  };
 }
 
 export function setupProviderHandlers(): void {
@@ -327,6 +392,12 @@ export function setupProviderHandlers(): void {
   registerHandler("run-provider-scenario", async (event, request: ProviderScenarioRequest) => {
     return await runProviderScenario(event, request);
   });
+  registerHandler(
+    "cancel-provider-scenario",
+    async (event, request: ProviderScenarioCancelRequest) => {
+      return await cancelProviderScenario(event, request);
+    }
+  );
 
   registerHandler("test-provider", async (event, { slot }: { slot: "ai0" | "ai1" | "ai2" }) => {
     return await runProviderScenario(event, { slot, scenarioId: "webview-test" });

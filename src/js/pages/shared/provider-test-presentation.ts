@@ -1,10 +1,8 @@
 import type {
+  ProviderScenarioCommandReport,
+  ProviderScenarioCommandStatus,
   ProviderSessionPreview,
-  ProviderTestResult,
   ProviderTestSlot,
-  ProviderTestStep,
-  ProviderTestSuite,
-  ProviderTestStepStatus,
   TestStatus,
 } from "../../../types/provider.ts";
 
@@ -55,7 +53,7 @@ export interface ScenarioStatusCounts {
 export interface ScenarioDisplayRow {
   id: string;
   name: string;
-  status: ProviderTestStepStatus;
+  status: ProviderScenarioCommandStatus;
   message: string;
   sessionPreview?: ProviderSessionPreview;
 }
@@ -72,76 +70,87 @@ export function resolveProviderTestSurface(slot: ProviderTestSlot): ProviderTest
   return { kind: "side-panel", hostSlot: "ai0", testedSlot: slot };
 }
 
-export function buildScenarioProgressSummary(input: {
-  slot: ProviderTestSlot;
-  providerName: string;
-  scenarioTitle?: string;
-  steps: Array<Pick<ProviderTestStep, "id" | "name" | "status">>;
-}): ScenarioProgressSummary {
-  const completedSteps = input.steps.filter(
-    (step) => step.status !== "pending" && step.status !== "running"
-  ).length;
-  const activeStep =
-    input.steps.find((step) => step.status === "running") ??
-    input.steps.find((step) => step.status === "pending") ??
-    null;
+function toDisplayRow(command: ProviderScenarioCommandReport): ScenarioDisplayRow {
+  const sessionPreview =
+    command.details?.sessionPreview ??
+    (typeof command.output === "object" &&
+    command.output !== null &&
+    "sessionPreview" in command.output
+      ? ((command.output as { sessionPreview?: ProviderSessionPreview }).sessionPreview ?? undefined)
+      : undefined);
 
   return {
-    title: `${input.providerName} ${input.scenarioTitle ?? "testi"} calisiyor`,
-    completedSteps,
-    totalSteps: input.steps.length,
-    activeStepId: activeStep?.id ?? null,
-    hasFailures: input.steps.some((step) => step.status === "fail"),
-  };
-}
-
-function toDisplayRow(item: ProviderTestResult | ProviderTestStep): ScenarioDisplayRow {
-  const sessionPreview = "details" in item ? item.details.sessionPreview : undefined;
-
-  return {
-    id: item.id,
-    name: item.name,
-    status: item.status,
-    message: item.message ?? "",
+    id: command.id,
+    name: command.name,
+    status: command.status,
+    message: command.message,
     ...(sessionPreview !== undefined ? { sessionPreview } : {}),
   };
 }
 
-export function buildScenarioStatusCounts(input: {
-  steps: Array<Pick<ProviderTestStep, "status">>;
-  suite?: Pick<
-    ProviderTestSuite,
-    "totalTests" | "passed" | "failed" | "warnings" | "skipped"
-  > | null;
-}): ScenarioStatusCounts {
-  if (input.suite) {
-    return {
-      all: input.suite.totalTests,
-      pass: input.suite.passed,
-      fail: input.suite.failed,
-      warning: input.suite.warnings,
-      skip: input.suite.skipped,
-    };
-  }
+export function buildScenarioProgressSummary(input: {
+  slot: ProviderTestSlot;
+  providerName: string;
+  scenarioTitle?: string;
+  commands: Array<Pick<ProviderScenarioCommandReport, "id" | "name" | "status">>;
+}): ScenarioProgressSummary {
+  const completedSteps = input.commands.filter((command) => command.status !== "running").length;
+  const activeStep = input.commands.find((command) => command.status === "running") ?? null;
 
   return {
-    all: input.steps.length,
-    pass: input.steps.filter((step) => step.status === "pass").length,
-    fail: input.steps.filter((step) => step.status === "fail").length,
-    warning: input.steps.filter((step) => step.status === "warning").length,
-    skip: input.steps.filter((step) => step.status === "skip").length,
+    title: `${input.providerName} ${input.scenarioTitle ?? "testi"} calisiyor`,
+    completedSteps,
+    totalSteps: input.commands.length,
+    activeStepId: activeStep?.id ?? null,
+    hasFailures: input.commands.some((command) => command.status === "fail"),
   };
+}
+
+export function buildScenarioStatusCounts(input: {
+  commands: Array<Pick<ProviderScenarioCommandReport, "status">>;
+}): ScenarioStatusCounts {
+  return {
+    all: input.commands.length,
+    pass: input.commands.filter((command) => command.status === "pass").length,
+    fail: input.commands.filter((command) => command.status === "fail").length,
+    warning: input.commands.filter((command) => command.status === "warning").length,
+    skip: input.commands.filter((command) => command.status === "skip").length,
+  };
+}
+
+export function buildScenarioCompletionMessage(input: {
+  passed?: number;
+  totalTests?: number;
+  commands?: Array<Pick<ProviderScenarioCommandReport, "status">>;
+  aborted?: boolean;
+  abortReason?: string;
+}): string {
+  if (input.aborted === true) {
+    return input.abortReason?.trim() !== "" && input.abortReason !== undefined
+      ? input.abortReason
+      : "Senaryo durduruldu";
+  }
+
+  const fallbackCommands = input.commands ?? [];
+  const passed =
+    typeof input.passed === "number"
+      ? input.passed
+      : fallbackCommands.filter((command) => command.status === "pass").length;
+  const totalTests =
+    typeof input.totalTests === "number" ? input.totalTests : fallbackCommands.length;
+
+  if (totalTests <= 0) {
+    return "Senaryo tamamlandi";
+  }
+
+  return `${passed}/${totalTests} kontrol gecti`;
 }
 
 export function filterScenarioDisplayRows(input: {
   filter: ScenarioStatusFilter;
-  steps: ProviderTestStep[];
-  suite?: Pick<ProviderTestSuite, "results"> | null;
+  commands: ProviderScenarioCommandReport[];
 }): ScenarioDisplayRow[] {
-  const rows =
-    input.suite && input.suite.results.length > 0
-      ? input.suite.results.map((result) => toDisplayRow(result))
-      : input.steps.map((step) => toDisplayRow(step));
+  const rows = input.commands.map((command) => toDisplayRow(command));
 
   if (input.filter === "all") {
     return rows;

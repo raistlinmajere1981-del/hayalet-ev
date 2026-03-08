@@ -4,6 +4,8 @@
  * @module electron/provider-tester/types
  */
 
+import { PROVIDER_TEST_TIMEOUTS } from "../../shared/timeouts.ts";
+
 import type {
   ProviderConfig,
   ProviderTestProgressEvent,
@@ -15,15 +17,6 @@ import type {
 } from "../../src/types/provider.ts";
 import type { AppLanguage } from "../../src/types/settings.ts";
 
-const PROVIDER_TEST_TIMEOUTS = {
-  DOM_TEST: 3_000,
-  SEND_MESSAGE: 8_000,
-  RESPONSE_WAIT: 15_000,
-  STOP_BUTTON: 500,
-  TOTAL: 60_000,
-  RETRY_DELAY: 500,
-} as const;
-
 // ─── Constants ───
 
 export const PROVIDER_TEST = {
@@ -33,6 +26,8 @@ export const PROVIDER_TEST = {
   TIMEOUT_SEND_MESSAGE: PROVIDER_TEST_TIMEOUTS.SEND_MESSAGE,
   TIMEOUT_RESPONSE_WAIT: PROVIDER_TEST_TIMEOUTS.RESPONSE_WAIT,
   TIMEOUT_STOP_BUTTON: PROVIDER_TEST_TIMEOUTS.STOP_BUTTON,
+  TIMEOUT_INPUT_CLEAR: PROVIDER_TEST_TIMEOUTS.INPUT_CLEAR,
+  TIMEOUT_SEND_INDICATOR: PROVIDER_TEST_TIMEOUTS.SEND_INDICATOR,
   TIMEOUT_TOTAL: PROVIDER_TEST_TIMEOUTS.TOTAL,
   RETRY_DOM_CHECK: 3,
   RETRY_DELAY: PROVIDER_TEST_TIMEOUTS.RETRY_DELAY,
@@ -73,11 +68,43 @@ export interface RendererShell {
   executeJavaScript(script: string): Promise<unknown>;
 }
 
+export interface ProviderTesterDatabaseManager {
+  syncMessages: (event: null, params: unknown) => Promise<{
+    success: boolean;
+    error?: string;
+    added?: number;
+    total?: number;
+  }>;
+  upsertConversationMetadata: (event: null, params: unknown) => Promise<{
+    success: boolean;
+    error?: string;
+    data?: {
+      conversationId: string;
+      created: boolean;
+      title: string;
+      titleUpdated: boolean;
+    };
+  }>;
+  resetConversationMessages: (event: null, params: unknown) => Promise<{
+    success: boolean;
+    error?: string;
+    data?: {
+      conversationId: string;
+      deletedCount: number;
+    };
+  }>;
+}
+
 export interface ProviderTestRunOptions {
   emitProgress: ((event: ProviderTestProgressEvent) => void) | undefined;
   appLanguage?: AppLanguage;
+  runId?: string;
   syncMode?: ProviderWebviewSyncMode;
+  defaultUrlOverride?: string;
+  commandStartDelayMs?: number;
   navigationObservationDelayMs?: number;
+  databaseManager?: ProviderTesterDatabaseManager;
+  abortSignal?: AbortSignal;
 }
 
 // ─── Test Context ───
@@ -91,12 +118,17 @@ export interface TestContext {
   webview: WebviewTag;
   config: ProviderConfig;
   appLanguage: AppLanguage;
+  abortSignal?: AbortSignal;
   shell?: RendererShell;
   executeScript: (script: string) => Promise<unknown>;
   executeShellScript: (script: string) => Promise<unknown>;
   clickElement: (selector: string) => Promise<boolean>;
   isElementVisible: (selector: string) => Promise<boolean>;
-  waitForCondition: (condition: () => Promise<boolean>, timeout: number) => Promise<boolean>;
+  waitForCondition: (
+    condition: () => Promise<boolean>,
+    timeout: number,
+    signal?: AbortSignal
+  ) => Promise<boolean>;
   createSkipResult: (
     id: string,
     name: string,

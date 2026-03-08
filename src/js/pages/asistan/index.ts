@@ -51,6 +51,7 @@ import { resolveOpencodeUiDbPath } from "./opencode-preferences.js";
 import { bindAsistanBasicEvents } from "./event-bindings.js";
 import { populateAsistanProviderSelect } from "./provider-select.js";
 import {
+  buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
@@ -68,9 +69,9 @@ import {
   updateTrafficStatusView,
 } from "./view-helpers.js";
 import type {
+  ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
-  ProviderTestStep,
   ProviderTestSuite,
 } from "@shared/provider.js";
 
@@ -81,7 +82,7 @@ interface ScenarioPanelState {
   phase: "launcher" | "running" | "completed";
   filter: ScenarioStatusFilter;
   runId: string | null;
-  steps: ProviderTestStep[];
+  commands: ProviderScenarioCommandReport[];
   message: string;
   suite: ProviderTestSuite | null;
 }
@@ -788,7 +789,7 @@ export class AsistanController {
       phase: "launcher",
       filter: "all",
       runId: null,
-      steps: [],
+      commands: [],
       message: "Senaryoyu baslatinca ilerleme adimlari burada gorunur.",
       suite: null,
     };
@@ -798,6 +799,37 @@ export class AsistanController {
   _closeTestPanel(): void {
     this.scenarioPanelState = null;
     this.testPanel?.classList.add("hidden");
+  }
+
+  _requestScenarioCancellation(runId: string | null): void {
+    if (runId === null || runId.trim() === "") {
+      return;
+    }
+
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined) {
+      return;
+    }
+
+    void electronApi.cancelProviderScenario({ runId }).catch((error) => {
+      Logger.warn(
+        LogCategory.ASISTAN_CORE,
+        `Scenario cancel request failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    });
+  }
+
+  _dismissScenarioPanelForUnavailableSlot(): void {
+    const state = this.scenarioPanelState;
+    if (!state) {
+      return;
+    }
+
+    if (state.phase === "running") {
+      this._requestScenarioCancellation(state.runId);
+    }
+
+    this._closeTestPanel();
   }
 
   _updateTestProgress(event: ProviderScenarioProgressEvent): void {
@@ -812,32 +844,15 @@ export class AsistanController {
       state.message = `${state.providerName} ${state.scenarioTitle} hazirlaniyor`;
     }
 
-    if (event.type === "step-start" && typeof event.stepId === "string") {
-      const existing = state.steps.find((step) => step.id === event.stepId);
+    if (
+      (event.type === "command-start" || event.type === "command-complete") &&
+      event.commandReport !== undefined
+    ) {
+      const existing = state.commands.find((command) => command.id === event.commandReport.id);
       if (existing) {
-        existing.status = "running";
-        if (typeof event.message === "string") {
-          existing.message = event.message;
-        }
+        Object.assign(existing, event.commandReport);
       } else {
-        state.steps.push({
-          id: event.stepId,
-          name: event.message ?? event.stepId,
-          status: "running",
-        });
-      }
-      state.message = event.message ?? state.message;
-    }
-
-    if (event.type === "step-complete" && typeof event.stepId === "string") {
-      const existing = state.steps.find((step) => step.id === event.stepId);
-      if (existing) {
-        if (event.status !== undefined) {
-          existing.status = event.status;
-        }
-        if (typeof event.message === "string") {
-          existing.message = event.message;
-        }
+        state.commands.push({ ...event.commandReport });
       }
       state.message = event.message ?? state.message;
     }
@@ -857,17 +872,18 @@ export class AsistanController {
 
     panel.classList.remove("hidden");
 
+    const displayCommands =
+      state.commands.length > 0 ? state.commands : (state.suite?.commands ?? []);
     const summary = buildScenarioProgressSummary({
       slot: "ai0",
       providerName: state.providerName,
       scenarioTitle: state.scenarioTitle,
-      steps: state.steps,
+      commands: displayCommands,
     });
-    const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
+    const counts = buildScenarioStatusCounts({ commands: displayCommands });
     const rows = filterScenarioDisplayRows({
       filter: state.filter,
-      steps: state.steps,
-      suite: state.suite,
+      commands: displayCommands,
     });
     const summaryMarkup = `
       <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
@@ -910,7 +926,7 @@ export class AsistanController {
             <div class="asistan-test-panel__title">${summary.title}</div>
             <div class="asistan-test-panel__subtitle">${state.message}</div>
           </div>
-        <button class="btn btn-ghost btn-sm asistan-test-panel__close" type="button">Kapat</button>
+        <button class="btn btn-ghost btn-sm asistan-test-panel__close" type="button" ${state.phase === "running" ? "disabled" : ""}>Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
             <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
@@ -922,6 +938,11 @@ export class AsistanController {
             <button class="btn btn-primary btn-sm asistan-test-panel__start" type="button" ${state.phase === "running" ? "disabled" : ""}>
               ${state.phase === "launcher" ? "Senaryoyu Baslat" : "Tekrar Calistir"}
             </button>
+            ${
+              state.phase === "running"
+                ? '<button class="btn btn-secondary btn-sm asistan-test-panel__stop" type="button">Durdur</button>'
+                : ""
+            }
             ${state.suite ? '<button class="btn btn-secondary btn-sm asistan-test-panel__copy" type="button">JSON Kopyala</button>' : ""}
           </div>
         `;
@@ -932,9 +953,15 @@ export class AsistanController {
     panel.querySelector(".asistan-test-panel__start")?.addEventListener("click", () => {
       void this._startScenarioTest();
     });
+    panel.querySelector(".asistan-test-panel__stop")?.addEventListener("click", () => {
+      void this._stopScenarioTest();
+    });
     panel.querySelector(".asistan-test-panel__copy")?.addEventListener("click", () => {
       if (state.suite) {
-        void navigator.clipboard.writeText(JSON.stringify(state.suite, null, 2));
+        void this._copyScenarioSuiteJson(state.suite).catch((error) => {
+          state.message = error instanceof Error ? error.message : String(error);
+          this._renderTestPanel();
+        });
       }
     });
     panel.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
@@ -945,6 +972,39 @@ export class AsistanController {
         this._renderTestPanel();
       });
     });
+  }
+
+  async _copyTextToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+
+      try {
+        textarea.focus();
+        textarea.select();
+        return document.execCommand("copy");
+      } finally {
+        textarea.remove();
+      }
+    }
+  }
+
+  async _copyScenarioSuiteJson(results: ProviderTestSuite): Promise<void> {
+    const copied = await this._copyTextToClipboard(JSON.stringify(results, null, 2));
+    if (!copied) {
+      throw new Error("Clipboard kopyalama basarisiz");
+    }
+
+    Logger.info(LogCategory.ASISTAN_CORE, "Test results copied to clipboard");
   }
 
   async _startScenarioTest(): Promise<void> {
@@ -966,7 +1026,7 @@ export class AsistanController {
       state.phase = "running";
       state.filter = "all";
       state.runId = null;
-      state.steps = [];
+      state.commands = [];
       state.suite = null;
       state.message = `${state.providerName} ${state.scenarioTitle} baslatildi`;
       this._renderTestPanel();
@@ -989,14 +1049,21 @@ export class AsistanController {
 
       state.phase = "completed";
       state.runId = results.runId ?? state.runId;
-      state.steps = results.steps ?? state.steps;
+      state.commands = results.commands ?? state.commands;
       state.suite = results;
-      state.message = `${results.passed}/${results.totalTests} kontrol gecti`;
+      const completionMessage = buildScenarioCompletionMessage({
+        passed: results.passed,
+        totalTests: results.totalTests,
+        commands: state.commands,
+        aborted: results.aborted,
+        abortReason: results.abortReason,
+      });
+      state.message = completionMessage;
       this._renderTestPanel();
 
       Logger.info(
         LogCategory.ASISTAN_CORE,
-        `Scenario completed: ${state.scenarioId} ${results.passed}/${results.totalTests}`
+        `Scenario completed: ${state.scenarioId} ${completionMessage}`
       );
     } catch (error) {
       state.phase = "completed";
@@ -1013,6 +1080,30 @@ export class AsistanController {
     }
   }
 
+  async _stopScenarioTest(): Promise<void> {
+    const state = this.scenarioPanelState;
+    const electronApi = window.electronAPI;
+    if (!state || state.phase !== "running" || electronApi === undefined) {
+      return;
+    }
+
+    if (state.runId === null) {
+      state.message = "Durdurma istegi icin senaryo baslatiliyor";
+      this._renderTestPanel();
+      return;
+    }
+
+    state.message = "Durdurma istegi gonderildi";
+    this._renderTestPanel();
+
+    try {
+      await electronApi.cancelProviderScenario({ runId: state.runId });
+    } catch (error) {
+      state.message = (error as Error).message;
+      this._renderTestPanel();
+    }
+  }
+
   _handleTestClick(): void {
     const btn = this.testBtn;
     if (!btn || btn.disabled) return;
@@ -1022,6 +1113,16 @@ export class AsistanController {
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    const hasAccount = slotState?.accountId !== undefined && slotState.accountId !== "";
+    const isConnected = slotState?.state === SlotState.CONNECTED;
+    const isConnecting = slotState?.state === SlotState.CONNECTING || this._connectFlowActive;
+    const shouldDismissScenarioPanel = !hasAccount || (!isConnected && !isConnecting);
+
+    if (shouldDismissScenarioPanel) {
+      this._dismissScenarioPanelForUnavailableSlot();
+    }
+
     updateAsistanConnectionUI(this, skipSystemServerSync);
   }
 

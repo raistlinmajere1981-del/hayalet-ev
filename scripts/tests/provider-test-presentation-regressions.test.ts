@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
@@ -37,155 +38,104 @@ test("provider test surface uses side panel for ai0", () => {
   });
 });
 
-test("progress summary counts finished steps and exposes current title", () => {
+test("progress summary counts finished commands and exposes the active command id", () => {
   const summary = buildScenarioProgressSummary({
     slot: "ai2",
     providerName: "Grok",
     scenarioTitle: "webview-sync",
-    steps: [
-      { id: "reset-default-page", name: "Reset", status: "pass" },
-      { id: "disabled-send", name: "Disabled Send", status: "running" },
-      { id: "final-bubbles", name: "Bubbles", status: "pending" },
+    commands: [
+      { id: "collect-urls", name: "Collect Urls", status: "pass" },
+      { id: "navigate-session-1", name: "Navigate Session 1", status: "running" },
+      { id: "sync-session-1", name: "Sync Session 1", status: "pass" },
     ],
   });
 
   assert.deepEqual(summary, {
     title: "Grok webview-sync calisiyor",
-    completedSteps: 1,
+    completedSteps: 2,
     totalSteps: 3,
-    activeStepId: "disabled-send",
+    activeStepId: "navigate-session-1",
     hasFailures: false,
   });
 });
 
-test("status counts prefer completed suite totals when available", () => {
+test("status counts are derived from command reports", () => {
   const counts = buildScenarioStatusCounts({
-    steps: [
-      { id: "reset", name: "Reset", status: "pass" },
-      { id: "attach", name: "Attach", status: "warning" },
+    commands: [
+      { id: "collect", name: "Collect", status: "pass" },
+      { id: "soft-sync-1", name: "Soft Sync 1", status: "pass" },
+      { id: "soft-sync-2", name: "Soft Sync 2", status: "warning" },
+      { id: "navigate", name: "Navigate", status: "fail" },
+      { id: "refresh", name: "Refresh", status: "skip" },
     ],
-    suite: {
-      providerId: "chatgpt",
-      providerName: "ChatGPT",
-      slot: "ai1",
-      url: "https://chatgpt.com",
-      timestamp: 0,
-      totalTests: 20,
-      passed: 16,
-      failed: 1,
-      skipped: 1,
-      warnings: 2,
-      totalDuration: 1000,
-      results: [],
-    },
   });
 
   assert.deepEqual(counts, {
-    all: 20,
-    pass: 16,
+    all: 5,
+    pass: 2,
     fail: 1,
-    warning: 2,
+    warning: 1,
     skip: 1,
   });
 });
 
-test("display rows can be filtered by status from completed suite results", () => {
+test("display rows can be filtered by status from command reports", () => {
   const rows = filterScenarioDisplayRows({
     filter: "warning",
-    steps: [
-      { id: "step-pass", name: "Step Pass", status: "pass", message: "step pass" },
-      { id: "step-warning", name: "Step Warning", status: "warning", message: "step warning" },
+    commands: [
+      {
+        id: "collect-urls",
+        name: "Collect Urls",
+        status: "pass",
+        message: "collected",
+      },
+      {
+        id: "attach-file",
+        name: "Attach File",
+        status: "warning",
+        message: "partial",
+      },
     ],
-    suite: {
-      providerId: "chatgpt",
-      providerName: "ChatGPT",
-      slot: "ai2",
-      url: "https://chatgpt.com",
-      timestamp: 0,
-      totalTests: 3,
-      passed: 1,
-      failed: 1,
-      skipped: 0,
-      warnings: 1,
-      totalDuration: 1000,
-      results: [
-        {
-          id: "pass-1",
-          name: "Default Page Navigation",
-          category: "preflight",
-          status: "pass",
-          message: "ok",
-          duration: 10,
-          timestamp: 0,
-        },
-        {
-          id: "warning-1",
-          name: "Drag And Drop Surface",
-          category: "dom",
-          status: "warning",
-          message: "partial",
-          duration: 20,
-          timestamp: 0,
-        },
-      ],
-    },
   });
 
   assert.deepEqual(rows, [
     {
-      id: "warning-1",
-      name: "Drag And Drop Surface",
+      id: "attach-file",
+      name: "Attach File",
       status: "warning",
       message: "partial",
     },
   ]);
 });
 
-test("display rows preserve structured session preview details for sync scenarios", () => {
+test("display rows preserve structured session preview details for sync commands", () => {
   const rows = filterScenarioDisplayRows({
     filter: "all",
-    steps: [],
-    suite: {
-      providerId: "chatgpt",
-      providerName: "ChatGPT",
-      slot: "ai1",
-      url: "https://chatgpt.com",
-      timestamp: 0,
-      totalTests: 1,
-      passed: 1,
-      failed: 0,
-      skipped: 0,
-      warnings: 0,
-      totalDuration: 1000,
-      results: [
-        {
-          id: "report-sync-preview",
-          name: "Report Sync Preview",
-          category: "advanced",
-          status: "pass",
-          message: "Preview ready",
-          details: {
-            sessionPreview: {
-              total: 2,
-              sessions: [
-                { title: "First chat", url: "https://chatgpt.com/c/abc" },
-                { title: "Second chat", url: "https://chatgpt.com/c/def" },
-              ],
-            },
+    commands: [
+      {
+        id: "collect-session-urls",
+        name: "Collect Session Urls",
+        status: "pass",
+        message: "Collected 2 visible sessions",
+        details: {
+          sessionPreview: {
+            total: 2,
+            sessions: [
+              { title: "First chat", url: "https://chatgpt.com/c/abc" },
+              { title: "Second chat", url: "https://chatgpt.com/c/def" },
+            ],
           },
-          duration: 20,
-          timestamp: 0,
         },
-      ],
-    },
+      },
+    ],
   });
 
   assert.deepEqual(rows, [
     {
-      id: "report-sync-preview",
-      name: "Report Sync Preview",
+      id: "collect-session-urls",
+      name: "Collect Session Urls",
       status: "pass",
-      message: "Preview ready",
+      message: "Collected 2 visible sessions",
       sessionPreview: {
         total: 2,
         sessions: [
@@ -195,4 +145,45 @@ test("display rows preserve structured session preview details for sync scenario
       },
     },
   ]);
+});
+
+test("display rows include running commands while a scenario is active", () => {
+  const rows = filterScenarioDisplayRows({
+    filter: "all",
+    commands: [
+      {
+        id: "navigate-session-1",
+        name: "Navigate Session 1",
+        status: "running",
+        message: "Navigate Session 1",
+      },
+    ],
+  });
+
+  assert.deepEqual(rows, [
+    {
+      id: "navigate-session-1",
+      name: "Navigate Session 1",
+      status: "running",
+      message: "Navigate Session 1",
+    },
+  ]);
+});
+
+test("completion message falls back to command counts when suite totals are missing", () => {
+  const message = buildScenarioCompletionMessage({
+    commands: [
+      { status: "pass" },
+      { status: "pass" },
+      { status: "fail" },
+    ],
+  });
+
+  assert.equal(message, "2/3 kontrol gecti");
+});
+
+test("completion message avoids undefined totals when there are no commands", () => {
+  const message = buildScenarioCompletionMessage({});
+
+  assert.equal(message, "Senaryo tamamlandi");
 });

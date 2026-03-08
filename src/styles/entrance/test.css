@@ -296,6 +296,10 @@
   overflow: hidden;
 }
 
+.scenario-slot-overlay {
+  z-index: calc(var(--z-elevated) + 1);
+}
+
 .scenario-overlay__header {
   display: flex;
   justify-content: space-between;

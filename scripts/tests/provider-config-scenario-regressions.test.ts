@@ -16,17 +16,17 @@ test("provider configs expose webview-test scenario metadata", () => {
     assert.ok(config.scenarios.webviewTest, `${config.id} should define webviewTest`);
     assert.equal(config.scenarios.webviewTest.id, "webview-test");
     assert.ok(
-      config.scenarios.webviewTest.steps.length >= 5,
-      `${config.id} should seed webview-test steps`
+      (config.scenarios.webviewTest.commands?.length ?? 0) >= 5,
+      `${config.id} should seed webview-test commands`
     );
   }
 });
 
-test("webview-test scenario steps keep stable preset actions", () => {
+test("webview-test scenario commands keep stable preset actions", () => {
   const scenario = chatgptConfig.scenarios.webviewTest;
 
   assert.deepEqual(
-    scenario.steps.slice(0, 4).map((step) => [step.id, step.action]),
+    scenario.commands.slice(0, 4).map((command) => [command.id, command.action]),
     [
       ["reset-default-page", "navigate-default"],
       ["disabled-send", "assert-disabled-send"],
@@ -66,8 +66,17 @@ test("chatgpt, grok, and gemini expose a webview-sync scenario scaffold", () => 
     assert.ok(config.scenarios.webviewSync, `${config.id} should define webviewSync`);
     assert.equal(config.scenarios.webviewSync.id, "webview-sync");
     assert.deepEqual(
-      config.scenarios.webviewSync.steps.map((step) => step.action),
-      ["open-sidebar", "collect-session-urls", "open-session-urls", "report"]
+      config.scenarios.webviewSync.commands?.map((command) => command.action),
+      [
+        "click",
+        "wait",
+        "check",
+        "collect-session-urls",
+        "sync-session",
+        "navigate",
+        "sync-session",
+        "refresh-conversation-list",
+      ]
     );
     assert.ok(config.webviewSync, `${config.id} should define webviewSync selectors`);
     assert.ok(config.webviewSync.sidebar.openButtonSelectors.length > 0);

@@ -6,9 +6,12 @@
  * @module electron/provider-tester/utils
  */
 
+import { PROVIDER_TEST_INTERVALS } from "../../shared/timeouts.ts";
+
 import type { ProviderTestResult, TestCategory } from "../../src/types/provider.ts";
 
 import type { WebviewTag, ElementCheckResult, SelectorTestOptions } from "./types.ts";
+import { ScenarioCancelledError } from "./scenario-runner.ts";
 
 /**
  * Execute JavaScript in webview context
@@ -62,14 +65,18 @@ export function createIsElementVisible(executeScript: (script: string) => Promis
  */
 export async function waitForCondition(
   condition: () => Promise<boolean>,
-  timeout: number
+  timeout: number,
+  signal?: AbortSignal
 ): Promise<boolean> {
   const start = Date.now();
   const poll = async (): Promise<boolean> => {
+    if (signal?.aborted === true) {
+      throw new ScenarioCancelledError();
+    }
     if (Date.now() - start >= timeout) return false;
     const ok = await condition();
     if (ok) return true;
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, PROVIDER_TEST_INTERVALS.POLL));
     return await poll();
   };
   return await poll();

@@ -65,7 +65,9 @@ export interface ProviderSelectorMatrix {
   selectors?: Record<string, LocalizedSelectorEntry>;
 }
 
-export type ProviderScenarioActionId =
+export type ProviderScenarioFailureMode = "abort" | "continue" | "warn";
+
+export type ProviderScenarioCommandActionId =
   | "navigate-default"
   | "assert-disabled-send"
   | "assert-drag-drop-surface"
@@ -76,31 +78,33 @@ export type ProviderScenarioActionId =
   | "assert-final-bubbles"
   | "assert-scroll-behavior"
   | "assert-provider-capabilities"
-  | "open-sidebar"
+  | "click"
+  | "wait"
+  | "check"
+  | "navigate"
   | "collect-session-urls"
-  | "open-session-urls"
-  | "wait-loading-idle"
-  | "report"
+  | "sync-session"
+  | "refresh-conversation-list"
   | (string & {});
 
-export type ProviderScenarioFailureMode = "abort" | "continue" | "warn";
-
-export interface ProviderScenarioStepDefinition {
+export interface ProviderScenarioCommandDefinition {
   id: string;
   label: string;
-  action: ProviderScenarioActionId;
+  action: ProviderScenarioCommandActionId;
   target?: string;
   params?: Record<string, unknown>;
   saveAs?: string;
+  forEach?: string;
   loading?: boolean;
   onFail?: ProviderScenarioFailureMode;
+  whenSyncModes?: ProviderWebviewSyncMode[];
 }
 
 export interface ProviderScenarioDefinition {
   id: ProviderScenarioId;
   title: string;
   description?: string;
-  steps: ProviderScenarioStepDefinition[];
+  commands: ProviderScenarioCommandDefinition[];
 }
 
 export type ProviderWebviewSyncReadiness = "verified" | "estimated";
@@ -255,17 +259,14 @@ export type ProviderScenarioId = "webview-test" | "webview-sync" | (string & {})
 
 export type ProviderTestSlot = "ai0" | "ai1" | "ai2";
 
-export type ProviderScenarioStepStatus = TestStatus | "pending" | "running";
-
 export type ProviderScenarioProgressEventType =
   | "started"
-  | "step-start"
-  | "step-complete"
+  | "command-start"
+  | "command-complete"
   | "completed";
 
-export type ProviderTestStepStatus = ProviderScenarioStepStatus;
-
 export type ProviderTestProgressEventType = ProviderScenarioProgressEventType;
+export type ProviderScenarioCommandStatus = TestStatus | "running";
 
 /** Test category */
 export type TestCategory = "preflight" | "dom" | "interactive" | "scraping" | "advanced";
@@ -312,17 +313,20 @@ export interface ProviderTestResult {
   timestamp: number;
 }
 
-export interface ProviderScenarioStep {
+export interface ProviderScenarioCommandReport {
   id: string;
   name: string;
-  status: ProviderScenarioStepStatus;
-  message?: string;
-  duration?: number;
+  action: ProviderScenarioCommandActionId | (string & {});
+  status: ProviderScenarioCommandStatus;
+  message: string;
+  duration: number;
+  timestamp: number;
   startedAt?: number;
   completedAt?: number;
+  input?: Record<string, unknown>;
+  output?: unknown;
+  details?: ProviderTestResultDetails;
 }
-
-export type ProviderTestStep = ProviderScenarioStep;
 
 export interface ProviderScenarioProgressEvent {
   runId: string;
@@ -330,9 +334,11 @@ export interface ProviderScenarioProgressEvent {
   slot: ProviderTestSlot;
   providerId: string;
   type: ProviderScenarioProgressEventType;
-  stepId?: string;
-  status?: ProviderScenarioStepStatus;
+  commandId?: string;
+  commandName?: string;
+  status?: ProviderScenarioCommandStatus;
   message?: string;
+  commandReport?: ProviderScenarioCommandReport;
   timestamp: number;
 }
 
@@ -352,7 +358,7 @@ export interface ProviderScenarioResult {
   warnings: number;
   totalDuration: number;
   results: ProviderTestResult[];
-  steps?: ProviderScenarioStep[];
+  commands: ProviderScenarioCommandReport[];
   refreshedConfig?: ProviderConfig;
   aborted?: boolean;
   abortReason?: string;

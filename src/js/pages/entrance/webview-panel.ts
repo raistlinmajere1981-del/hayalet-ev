@@ -9,6 +9,7 @@ import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
+  buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
@@ -18,10 +19,10 @@ import {
 
 import type { AppSettings } from "@shared/settings.js";
 import type {
+  ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
   ProviderTestResult,
-  ProviderTestStep,
   ProviderTestSuite,
   ProviderWebviewSyncMode,
 } from "@shared/provider.js";
@@ -47,7 +48,7 @@ interface ScenarioOverlayState {
   phase: "launcher" | "running" | "completed";
   filter: ScenarioStatusFilter;
   runId: string | null;
-  steps: ProviderTestStep[];
+  commands: ProviderScenarioCommandReport[];
   message: string;
   suite: ProviderTestSuite | null;
 }
@@ -361,7 +362,7 @@ export class WebviewPanel {
       phase: "launcher",
       filter: "all",
       runId: null,
-      steps: [],
+      commands: [],
       message: "Senaryoyu baslatinca ilerleme adimlari burada gorunur.",
       suite: null,
     };
@@ -373,17 +374,58 @@ export class WebviewPanel {
     const state = this.scenarioOverlayState;
     if (!state) return;
 
-    const overlayEl = document.getElementById(`${state.hostSlot}-webview-overlay`);
+    this.resetScenarioOverlayState(state);
+    this.applyGating(SettingsManager.getSnapshot(), ["*"]);
+  }
+
+  private resetScenarioOverlayState(state: ScenarioOverlayState): void {
+    const overlayEl = document.getElementById(`${state.hostSlot}-scenario-overlay`);
     if (overlayEl) {
-      overlayEl.innerHTML = `
-        <div class="overlay-icon"></div>
-        <div class="overlay-title"></div>
-        <div class="overlay-subtitle"></div>
-      `;
+      overlayEl.innerHTML = "";
+      overlayEl.className = "webview-overlay hidden scenario-slot-overlay";
     }
 
+    const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
+    mountEl?.classList.remove("webview-content-blocked");
+
     this.scenarioOverlayState = null;
-    this.applyGating(SettingsManager.getSnapshot(), ["*"]);
+  }
+
+  private requestScenarioCancellation(runId: string | null): void {
+    if (runId === null || runId.trim() === "") {
+      return;
+    }
+
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined) {
+      return;
+    }
+
+    void electronApi.cancelProviderScenario({ runId }).catch((error) => {
+      Logger.warn(
+        LogCategory.ENTRANCE,
+        `Scenario cancel request failed: ${getErrorMessage(error as Error)}`
+      );
+    });
+  }
+
+  private shouldDismissScenarioOverlayForSlotState(state: SlotState): boolean {
+    return !state.hasAccount || (!state.connected && !state.connecting);
+  }
+
+  private dismissScenarioOverlayForUnavailableSlot(options?: {
+    cancelActiveRun?: boolean;
+  }): void {
+    const state = this.scenarioOverlayState;
+    if (!state) {
+      return;
+    }
+
+    if (options?.cancelActiveRun === true) {
+      this.requestScenarioCancellation(state.runId);
+    }
+
+    this.resetScenarioOverlayState(state);
   }
 
   updateScenarioProgress(event: ProviderScenarioProgressEvent): void {
@@ -398,32 +440,15 @@ export class WebviewPanel {
       state.message = `${state.providerName} ${state.scenarioTitle} hazirlaniyor`;
     }
 
-    if (event.type === "step-start" && typeof event.stepId === "string") {
-      const existing = state.steps.find((step) => step.id === event.stepId);
+    if (
+      (event.type === "command-start" || event.type === "command-complete") &&
+      event.commandReport !== undefined
+    ) {
+      const existing = state.commands.find((command) => command.id === event.commandReport.id);
       if (existing) {
-        existing.status = "running";
-        if (typeof event.message === "string") {
-          existing.message = event.message;
-        }
+        Object.assign(existing, event.commandReport);
       } else {
-        state.steps.push({
-          id: event.stepId,
-          name: event.message ?? event.stepId,
-          status: "running",
-        });
-      }
-      state.message = event.message ?? state.message;
-    }
-
-    if (event.type === "step-complete" && typeof event.stepId === "string") {
-      const existing = state.steps.find((step) => step.id === event.stepId);
-      if (existing) {
-        if (event.status !== undefined) {
-          existing.status = event.status;
-        }
-        if (typeof event.message === "string") {
-          existing.message = event.message;
-        }
+        state.commands.push({ ...event.commandReport });
       }
       state.message = event.message ?? state.message;
     }
@@ -440,25 +465,26 @@ export class WebviewPanel {
     const state = this.scenarioOverlayState;
     if (!state) return;
 
-    const overlayEl = document.getElementById(`${state.hostSlot}-webview-overlay`);
+    const overlayEl = document.getElementById(`${state.hostSlot}-scenario-overlay`);
     const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
     if (!overlayEl || !mountEl) return;
 
-    overlayEl.className = "webview-overlay scenario-overlay";
+    overlayEl.className = "webview-overlay scenario-slot-overlay scenario-overlay";
     overlayEl.classList.remove("hidden");
     mountEl.classList.add("webview-content-blocked");
 
+    const displayCommands =
+      state.commands.length > 0 ? state.commands : (state.suite?.commands ?? []);
     const summary = buildScenarioProgressSummary({
       slot: state.testedSlot,
       providerName: state.providerName,
       scenarioTitle: state.scenarioTitle,
-      steps: state.steps,
+      commands: displayCommands,
     });
-    const counts = buildScenarioStatusCounts({ steps: state.steps, suite: state.suite });
+    const counts = buildScenarioStatusCounts({ commands: displayCommands });
     const rows = filterScenarioDisplayRows({
       filter: state.filter,
-      steps: state.steps,
-      suite: state.suite,
+      commands: displayCommands,
     });
     const isRunning = state.phase === "running";
     const summaryMarkup = `
@@ -494,6 +520,10 @@ export class WebviewPanel {
         : rows
             .map((row) => {
               const messageClass =
+                row.id.startsWith("navigate-session") ||
+                row.id.startsWith("sync-session") ||
+                row.id.startsWith("soft-sync-session") ||
+                row.id === "open-session-urls" ||
                 row.id === "sync-open-session-urls"
                   ? "scenario-step__message scenario-step__message--sync-progress"
                   : "scenario-step__message";
@@ -538,7 +568,7 @@ export class WebviewPanel {
               <div class="overlay-title">${summary.title}</div>
               <div class="overlay-subtitle">${state.message}</div>
             </div>
-        <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button">Kapat</button>
+        <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button" ${isRunning ? "disabled" : ""}>Kapat</button>
       </div>
           <div class="scenario-overlay__meta">
             <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
@@ -551,15 +581,25 @@ export class WebviewPanel {
                 <button class="btn btn-primary btn-sm scenario-overlay__start" type="button" ${isRunning ? "disabled" : ""}>
                   ${state.phase === "launcher" ? "Senaryoyu Baslat" : "Tekrar Calistir"}
                 </button>
+                ${
+                  isRunning
+                    ? '<button class="btn btn-secondary btn-sm scenario-overlay__stop" type="button">Durdur</button>'
+                    : ""
+                }
                 ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
               </div>
         `;
+
+    this.scrollScenarioOverlayToBottom(overlayEl);
 
     overlayEl.querySelector(".scenario-overlay__close")?.addEventListener("click", () => {
       this.closeScenarioOverlay();
     });
     overlayEl.querySelector(".scenario-overlay__start")?.addEventListener("click", () => {
       void this.startScenarioTest(state.testedSlot);
+    });
+    overlayEl.querySelector(".scenario-overlay__stop")?.addEventListener("click", () => {
+      void this.stopScenarioTest();
     });
     overlayEl.querySelectorAll<HTMLElement>("[data-sync-mode]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -571,7 +611,10 @@ export class WebviewPanel {
     });
     overlayEl.querySelector(".scenario-overlay__copy")?.addEventListener("click", () => {
       if (state.suite) {
-        void navigator.clipboard.writeText(JSON.stringify(state.suite, null, 2));
+        void this.copyScenarioSuiteJson(state.suite).catch((error) => {
+          state.message = getErrorMessage(error as Error);
+          this.renderScenarioOverlay();
+        });
       }
     });
     overlayEl.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
@@ -582,6 +625,51 @@ export class WebviewPanel {
         this.renderScenarioOverlay();
       });
     });
+  }
+
+  private scrollScenarioOverlayToBottom(overlayEl: HTMLElement): void {
+    const stepsEl = overlayEl.querySelector<HTMLElement>(".scenario-overlay__steps");
+    if (!stepsEl) return;
+
+    const scrollToBottom = () => {
+      stepsEl.scrollTop = stepsEl.scrollHeight;
+    };
+
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
+  }
+
+  private async copyTextToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+
+      try {
+        textarea.focus();
+        textarea.select();
+        return document.execCommand("copy");
+      } finally {
+        textarea.remove();
+      }
+    }
+  }
+
+  private async copyScenarioSuiteJson(results: ProviderTestSuite): Promise<void> {
+    const copied = await this.copyTextToClipboard(JSON.stringify(results, null, 2));
+    if (!copied) {
+      throw new Error("Clipboard kopyalama basarisiz");
+    }
+
+    Logger.info(LogCategory.ENTRANCE, "Test results copied to clipboard");
   }
 
   async startScenarioTest(slot: SlotType): Promise<void> {
@@ -606,7 +694,7 @@ export class WebviewPanel {
     try {
       state.phase = "running";
       state.filter = "all";
-      state.steps = [];
+      state.commands = [];
       state.runId = null;
       state.suite = null;
       state.message = `${state.providerName} ${state.scenarioTitle} baslatildi`;
@@ -638,14 +726,21 @@ export class WebviewPanel {
 
       state.phase = "completed";
       state.runId = results.runId ?? state.runId;
-      state.steps = results.steps ?? state.steps;
+      state.commands = results.commands ?? state.commands;
       state.suite = results;
-      state.message = `${results.passed}/${results.totalTests} kontrol gecti`;
+      const completionMessage = buildScenarioCompletionMessage({
+        passed: results.passed,
+        totalTests: results.totalTests,
+        commands: state.commands,
+        aborted: results.aborted,
+        abortReason: results.abortReason,
+      });
+      state.message = completionMessage;
       this.renderScenarioOverlay();
 
       Logger.info(
         LogCategory.ENTRANCE,
-        `Scenario completed: ${state.scenarioId} ${results.passed}/${results.totalTests}`
+        `Scenario completed: ${state.scenarioId} ${completionMessage}`
       );
     } catch (error) {
       state.phase = "completed";
@@ -660,6 +755,30 @@ export class WebviewPanel {
       const progressHandler = this.providerTestProgressHandler;
       electronApi.offProviderScenarioProgress(progressHandler);
       this.providerTestProgressHandler = null;
+    }
+  }
+
+  async stopScenarioTest(): Promise<void> {
+    const state = this.scenarioOverlayState;
+    const electronApi = window.electronAPI;
+    if (!state || state.phase !== "running" || electronApi === undefined) {
+      return;
+    }
+
+    if (state.runId === null) {
+      state.message = "Durdurma istegi icin senaryo baslatiliyor";
+      this.renderScenarioOverlay();
+      return;
+    }
+
+    state.message = "Durdurma istegi gonderildi";
+    this.renderScenarioOverlay();
+
+    try {
+      await electronApi.cancelProviderScenario({ runId: state.runId });
+    } catch (error) {
+      state.message = getErrorMessage(error as Error);
+      this.renderScenarioOverlay();
     }
   }
 
@@ -707,8 +826,12 @@ export class WebviewPanel {
             text: "📋 Copy JSON",
             class: "btn-ghost",
             onClick: (): void => {
-              void navigator.clipboard.writeText(JSON.stringify(results, null, 2));
-              Logger.info(LogCategory.ENTRANCE, "Test results copied to clipboard");
+              void this.copyScenarioSuiteJson(results).catch((error) => {
+                Logger.error(
+                  LogCategory.ENTRANCE,
+                  `Test results copy failed: ${getErrorMessage(error as Error)}`
+                );
+              });
             },
           },
           {
@@ -827,6 +950,21 @@ export class WebviewPanel {
   applyGating(settings: AppSettings | null, _changedPaths: string[] = []): void {
     settings ??= SettingsManager.getSnapshot();
     this.applyTitles();
+
+    const overlayState = this.scenarioOverlayState;
+    if (overlayState) {
+      const testedState = this.getSlotState(settings, overlayState.testedSlot);
+      const hostState = this.getSlotState(settings, overlayState.hostSlot);
+      const shouldDismissOverlay =
+        this.shouldDismissScenarioOverlayForSlotState(testedState) ||
+        this.shouldDismissScenarioOverlayForSlotState(hostState);
+
+      if (shouldDismissOverlay) {
+        this.dismissScenarioOverlayForUnavailableSlot({
+          cancelActiveRun: overlayState.phase === "running",
+        });
+      }
+    }
 
     const providers: SlotType[] = ["ai1", "ai2"];
 

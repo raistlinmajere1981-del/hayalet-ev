@@ -428,8 +428,16 @@ export interface IPCChannelMap {
   "maximize-window": { params: undefined; result: undefined };
   "close-window": { params: undefined; result: undefined };
   "run-provider-scenario": {
-    params: { slot: "ai0" | "ai1" | "ai2"; scenarioId: string };
+    params: {
+      slot: "ai0" | "ai1" | "ai2";
+      scenarioId: string;
+      syncMode?: "soft" | "full" | "clean";
+    };
     result: ProviderScenarioResult;
+  };
+  "cancel-provider-scenario": {
+    params: { runId: string };
+    result: { success: boolean; runId: string; cancelled: boolean };
   };
   "test-provider": {
     params: { slot: "ai0" | "ai1" | "ai2" };
