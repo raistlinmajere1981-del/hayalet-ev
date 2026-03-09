@@ -7,6 +7,7 @@ import { CommandManager } from "../command-manager.js";
 import type { CommandJob } from "../command-manager.js";
 import { ErrorBoundary } from "../error-boundary.js";
 import { FileManager } from "../file-manager.js";
+import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 import { RelayManager } from "../relay-manager.js";
 import { SettingsManager } from "../settings-manager.js";
@@ -35,6 +36,10 @@ export interface CoreRuntimeHandles {
   slotTrafficStartedUnsub: (() => void) | null;
   slotTrafficStoppedUnsub: (() => void) | null;
   slotDisconnectCompleteUnsub: (() => void) | null;
+}
+
+function whisperT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.whisper.runtime.${key}`, params);
 }
 
 interface CoreRuntimeEngineRef {
@@ -66,9 +71,12 @@ export async function initializeCoreRuntime(
     try {
       WebviewManager.cleanupInactiveWebviews();
     } catch (error) {
-      Logger.warn(LogCategory.SYSTEM, `Cleanup error: ${getErrorMessage(error)}`, {
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
+      Logger.warnT(
+        LogCategory.SYSTEM,
+        "app.logs.runtimeActions.cleanupError",
+        { message: getErrorMessage(error) },
+        { error: error instanceof Error ? error : new Error(String(error)) }
+      );
     }
   }, TIMEOUTS.CLEANUP_INTERVAL);
 
@@ -94,12 +102,11 @@ export async function initializeCoreRuntime(
     RelayManager.init(params.coreEngine as never);
     relay = RelayManager;
   } catch (error) {
-    Logger.warn(
+    Logger.warnT(
       LogCategory.SYSTEM,
-      `RelayManager init failed: ${error instanceof Error ? error.message : String(error)}`,
-      {
-        error: error instanceof Error ? error : new Error(String(error)),
-      }
+      "app.logs.runtimeActions.relayInitFailed",
+      { message: error instanceof Error ? error.message : String(error) },
+      { error: error instanceof Error ? error : new Error(String(error)) }
     );
   }
 
@@ -114,7 +121,7 @@ export async function initializeCoreRuntime(
         text
       );
       if (!result.success) {
-        throw new Error(result.message ?? "Whisper kuyruğa alınamadı");
+        throw new Error(result.message ?? whisperT("sendFailed"));
       }
     }
   );
@@ -248,9 +255,10 @@ export async function handleRelayDisconnectAutoStop(
       await context.relay.stopAIAssistantSession();
     }
   } catch (error) {
-    Logger.warn(
+    Logger.warnT(
       LogCategory.RELAY,
-      `Relay auto-stop on disconnect failed: ${error instanceof Error ? error.message : String(error)}`,
+      "app.logs.runtimeActions.relayAutoStopFailed",
+      { message: error instanceof Error ? error.message : String(error) },
       {
         error: error instanceof Error ? error : new Error(String(error)),
         context: { slot },

@@ -1,10 +1,10 @@
 /**
- * MessageSender - Webview mesaj gönderim yönetimi
+ * MessageSender - Webview message delivery management
  *
- * Bu modül AI webview'larına mesaj ve dosya gönderimini yönetir:
- * - Mesaj injection/xdotools metodları
- * - Dosya yükleme (dragdrop, injection, link-based)
- * - Send button tetikleme
+ * This module manages message and file delivery to AI webviews:
+ * - Message injection/XDotools methods
+ * - File uploads (dragdrop, injection, link-based)
+ * - Send button triggering
  */
 
 import { Logger } from "../logger/index.js";
@@ -12,6 +12,7 @@ import { LogCategory } from "@shared/logging-core";
 import { TrafficManager } from "../traffic-manager.js";
 import { FileManager } from "../file-manager.js";
 import { AppState } from "../app-state.js";
+import { AppI18n } from "../i18n/index.js";
 import { ProviderRegistry } from "./provider-registry.js";
 import { getProvider } from "./provider-factory.js";
 import type { ProviderModule } from "./provider-factory.js";
@@ -68,6 +69,14 @@ type FileFn = (
   opts: { files: unknown[]; provider: string }
 ) => Promise<FileResult>;
 
+function messageSenderT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.messageSender.${key}`, params);
+}
+
+function messageSenderLogKey(key: string): string {
+  return `app.messageSender.logs.${key}`;
+}
+
 class MessageSenderClass {
   _settings: AppSettings | null;
 
@@ -114,7 +123,7 @@ class MessageSenderClass {
   }
 
   /**
-   * URL excluded mı kontrol et
+   * Check whether the URL is excluded
    * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
    */
   isUrlExcluded(providerSlot: string, url: string): boolean {
@@ -124,10 +133,15 @@ class MessageSenderClass {
   async send({ provider, text, attachments = [], webview }: SendOptions): Promise<SendResult> {
     const currentUrl = webview.getURL?.() ?? "";
     if (this.isUrlExcluded(provider, currentUrl)) {
-      Logger.debug(LogCategory.WEBVIEW, "URL excluded, send operation disabled", {
-        provider,
-        currentUrl,
-      });
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("urlExcluded"),
+        { provider, currentUrl },
+        {
+          provider,
+          currentUrl,
+        }
+      );
       throw new Error(`URL excluded from operations: ${currentUrl}`);
     }
 
@@ -162,11 +176,17 @@ class MessageSenderClass {
         await webview.executeJavaScript(configScript);
       }
     } catch (err) {
-      Logger.debug(LogCategory.WEBVIEW, "Provider config injection skipped", {
-        provider,
-        providerId,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("providerConfigInjectionSkipped"),
+        { provider, providerId, message: errorMessage },
+        {
+          provider,
+          providerId,
+          error: errorMessage,
+        }
+      );
     }
 
     const slots = this._settings?.slots as
@@ -211,10 +231,16 @@ class MessageSenderClass {
     try {
       webview.focus?.();
     } catch (err) {
-      Logger.debug(LogCategory.WEBVIEW, "Webview focus failed", {
-        provider,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("webviewFocusFailed"),
+        { provider, message: errorMessage },
+        {
+          provider,
+          error: errorMessage,
+        }
+      );
     }
 
     const isLinkBased = ["tmpfile", "catbox", "uguu", "googledrive"].includes(fileMethodName);
@@ -249,10 +275,15 @@ class MessageSenderClass {
     }
 
     if (finalMessage.trim().length > 0) {
-      Logger.debug(LogCategory.WEBVIEW, "Adding message to input field", {
-        provider,
-        messageMethod: messageMethodName,
-      });
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("addingMessage"),
+        { provider, messageMethod: messageMethodName },
+        {
+          provider,
+          messageMethod: messageMethodName,
+        }
+      );
       const sendResult = await (
         messageFn as (
           wv: MessageSenderWebview,
@@ -260,14 +291,24 @@ class MessageSenderClass {
         ) => Promise<{ success?: boolean; message?: string }>
       )(webview, { message: finalMessage });
       if (sendResult.success !== true) {
-        throw new Error(sendResult.message ?? "Mesaj metin alanına yazılamadı.");
+        throw new Error(sendResult.message ?? messageSenderT("inputWriteFailed"));
       }
     }
 
-    Logger.info(LogCategory.WEBVIEW, "Waiting for send button to be enabled", { provider });
+    Logger.infoT(
+      LogCategory.WEBVIEW,
+      messageSenderLogKey("waitingSendEnabled"),
+      { provider },
+      { provider }
+    );
     await TrafficManager.waitForSendEnabled(provider, 20000);
 
-    Logger.info(LogCategory.WEBVIEW, "Triggering send button", { provider });
+    Logger.infoT(
+      LogCategory.WEBVIEW,
+      messageSenderLogKey("triggeringSend"),
+      { provider },
+      { provider }
+    );
 
     const urlBeforeSend = webview.getURL?.() ?? "";
     if (isDefaultPage(urlBeforeSend, providerId)) {
@@ -278,13 +319,13 @@ class MessageSenderClass {
 
     return {
       success: true,
-      message: "Gönderim başarılı",
+      message: messageSenderT("sendSuccess"),
       files: fileResult,
     };
   }
 
   /**
-   * Link-based dosya yükleme (catbox, uguu, googledrive, tmpfile)
+   * Link-based file upload (catbox, uguu, googledrive, tmpfile)
    * @private
    */
   async _handleLinkBasedUpload(
@@ -297,29 +338,52 @@ class MessageSenderClass {
     const files = await FileManager.readUploadFiles(attachments);
     if (files.length === 0) return null;
 
-    Logger.debug(LogCategory.WEBVIEW, "Uploading files", {
-      provider,
-      fileCount: files.length,
-      fileMethod: fileMethodName,
-    });
+    Logger.debugT(
+      LogCategory.WEBVIEW,
+      messageSenderLogKey("uploadingFiles"),
+      {
+        provider,
+        fileCount: files.length,
+        fileMethod: fileMethodName,
+      },
+      {
+        provider,
+        fileCount: files.length,
+        fileMethod: fileMethodName,
+      }
+    );
 
     const fileResult = await fileFn(webview, { files, provider });
 
     if (fileResult.success !== true) {
-      Logger.debug(LogCategory.WEBVIEW, "File upload failed", {
-        provider,
-        fileMethod: fileMethodName,
-        error: fileResult.message ?? "unknown error",
-      });
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("fileUploadFailed"),
+        {
+          provider,
+          fileMethod: fileMethodName,
+          message: fileResult.message ?? messageSenderT("unknownUploadError"),
+        },
+        {
+          provider,
+          fileMethod: fileMethodName,
+          error: fileResult.message ?? messageSenderT("unknownUploadError"),
+        }
+      );
       throw new Error(fileResult.message ?? `${fileMethodName} upload failed`);
     }
 
     if ((fileResult.uploadedLinks?.length ?? 0) === 0) {
-      Logger.debug(LogCategory.WEBVIEW, "File upload returned no links", {
-        provider,
-        fileMethod: fileMethodName,
-        rawResult: fileResult,
-      });
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("fileUploadNoLinks"),
+        { provider, fileMethod: fileMethodName },
+        {
+          provider,
+          fileMethod: fileMethodName,
+          rawResult: fileResult,
+        }
+      );
       throw new Error(
         `${fileMethodName} upload returned no links. Check Google Drive auth and IPC response.`
       );
@@ -329,7 +393,7 @@ class MessageSenderClass {
   }
 
   /**
-   * Direct dosya yükleme (injection, dragdrop, xdotools)
+   * Direct file upload (injection, dragdrop, xdotools)
    * @private
    */
   async _handleDirectUpload(
@@ -342,26 +406,43 @@ class MessageSenderClass {
     const files = await FileManager.readUploadFiles(attachments);
     if (files.length === 0) return null;
 
-    Logger.info(LogCategory.WEBVIEW, "Attaching files", {
-      provider,
-      fileCount: files.length,
-      fileMethod: fileMethodName,
-    });
+    Logger.infoT(
+      LogCategory.WEBVIEW,
+      messageSenderLogKey("attachingFiles"),
+      {
+        provider,
+        fileCount: files.length,
+        fileMethod: fileMethodName,
+      },
+      {
+        provider,
+        fileCount: files.length,
+        fileMethod: fileMethodName,
+      }
+    );
 
     const fileResult = await fileFn(webview, { files, provider });
 
     if (fileResult.success !== true) {
-      Logger.warn(LogCategory.WEBVIEW, "File attachment failed", {
-        provider,
-        error: fileResult.message,
-      });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        messageSenderLogKey("fileAttachmentFailed"),
+        {
+          provider,
+          message: fileResult.message ?? messageSenderT("unknownUploadError"),
+        },
+        {
+          provider,
+          error: fileResult.message ?? messageSenderT("unknownUploadError"),
+        }
+      );
     }
 
     return fileResult;
   }
 
   /**
-   * Send button'a tıkla
+   * Click the send button
    * @private
    */
   async _triggerSendButton(
@@ -377,7 +458,7 @@ class MessageSenderClass {
       const hasSelectors =
         this._isRecord(providerConfig) && this._isRecord(providerConfig["selectors"]);
       throw new Error(
-        `Provider config bulunamadı: providerId="${providerId}", provider="${provider}", hasConfig=${String(hasConfig)}, hasSelectors=${String(hasSelectors)}`
+        `Provider config not found: providerId="${providerId}", provider="${provider}", hasConfig=${String(hasConfig)}, hasSelectors=${String(hasSelectors)}`
       );
     }
 
@@ -442,12 +523,20 @@ class MessageSenderClass {
       }
 
       if (res?.retry !== true || attempt >= maxRetries - 1) {
-        Logger.debug(LogCategory.WEBVIEW, "Send button trigger failed", {
-          provider,
-          message: res?.message ?? "unknown",
-          debug: res?.debug ?? {},
-        });
-        throw new Error("Send butonu tetiklenemedi");
+        Logger.debugT(
+          LogCategory.WEBVIEW,
+          messageSenderLogKey("sendTriggerFailed"),
+          {
+            provider,
+            message: res?.message ?? messageSenderT("unknownSendError"),
+          },
+          {
+            provider,
+            message: res?.message ?? messageSenderT("unknownSendError"),
+            debug: res?.debug ?? {},
+          }
+        );
+        throw new Error(messageSenderT("sendTriggerFailed"));
       }
 
       await new Promise((resolve) => setTimeout(resolve, retryInterval));

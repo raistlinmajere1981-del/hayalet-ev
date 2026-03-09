@@ -1,13 +1,13 @@
 import { LogCategory } from "@shared/logging-core";
 /**
- * TrafficManager - Webview traffic gösterge takibi (Orchestrator)
+ * TrafficManager - webview traffic indicator orchestrator
  *
- * Alt modüller:
- * - traffic/loading-tracker.js: Sayfa yükleme durumu
- * - traffic/thinking-tracker.js: AI thinking durumu
- * - traffic/send-tracker.js: Send button durumu
- * - traffic/probe-script-builder.js: Probe script oluşturucu
- * - traffic/webview-events.js: Webview event yönetimi
+ * Child modules:
+ * - traffic/loading-tracker.js: page loading state
+ * - traffic/thinking-tracker.js: AI thinking state
+ * - traffic/send-tracker.js: send button state
+ * - traffic/probe-script-builder.js: probe script builder
+ * - traffic/webview-events.js: webview event management
  */
 
 import { Logger } from "./logger/index.js";
@@ -45,7 +45,7 @@ type TrafficWebview = RawWebviewElement & {
 };
 
 const TIMING_CONFIG = {
-  pollIntervalMs: 4000, // Relay sırasında LatencyInfo birikimine karşı optimize edildi (4s)
+  pollIntervalMs: 4000, // Tuned to reduce LatencyInfo buildup during relay mode (4s)
   loading: {
     maxWaitForScrollMs: 15000,
     autoScrollIntervalMs: 1000,
@@ -159,8 +159,8 @@ class TrafficManagerClass {
   }
 
   /**
-   * Bir sonraki URL değişiminde loading tetiklemeyi atla
-   * Mesaj gönderiminde default page'den çıkışta kullanılır
+   * Skip the loading trigger on the next URL change.
+   * Used when a message leaves the default page.
    * @param {string} provider - ai0, ai1, ai2
    */
   skipNextLoadingFor(provider: string): void {
@@ -204,19 +204,19 @@ class TrafficManagerClass {
   }
 
   cacheIndicators(): void {
-    // Asistan (AI0) göstergeleri
+    // Assistant (AI0) indicators
     if (this.indicators["ai0"]) {
       this.indicators["ai0"].loading = document.getElementById("ai0-loading-indicator");
       this.indicators["ai0"].send = document.getElementById("ai0-send-indicator");
       this.indicators["ai0"].thinking = document.getElementById("ai0-thinking-indicator");
     }
-    // AI1 göstergeleri
+    // AI1 indicators
     if (this.indicators["ai1"]) {
       this.indicators["ai1"].loading = document.getElementById("ai1-loading-indicator");
       this.indicators["ai1"].send = document.getElementById("ai1-send-indicator");
       this.indicators["ai1"].thinking = document.getElementById("ai1-thinking-indicator");
     }
-    // AI2 göstergeleri
+    // AI2 indicators
     if (this.indicators["ai2"]) {
       this.indicators["ai2"].loading = document.getElementById("ai2-loading-indicator");
       this.indicators["ai2"].send = document.getElementById("ai2-send-indicator");
@@ -237,7 +237,7 @@ class TrafficManagerClass {
     if (provider === "") return;
     const trafficWebview = this.toTrafficWebview(webviewEl);
     if (!trafficWebview) {
-      Logger.warn(LogCategory.TRAFFIC, `Webview not attachable for ${provider}`);
+      Logger.warnT(LogCategory.TRAFFIC, "app.logs.traffic.webviewNotAttachable", { provider });
       return;
     }
     this.webviews[provider] = trafficWebview;
@@ -271,7 +271,7 @@ class TrafficManagerClass {
       const previousHref = viewState.lastHref;
       viewState.lastHref = href;
 
-      // Default page'den conversation page'e geçiş kontrolü
+      // Detect transitions from the default page to a conversation page.
       const providerId = AppState.getProviderIdForSlot(provider) ?? "";
       const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
       const isOnDefaultPage = isDefaultPage(href, providerId);
@@ -312,9 +312,10 @@ class TrafficManagerClass {
       delete this._runners[provider];
       this.setAllUnreachable(provider);
     } catch (err) {
-      Logger.debug(
+      Logger.debugT(
         LogCategory.TRAFFIC,
-        `TrafficManager.stop error for ${provider}: ${getErrorMessage(err)}`,
+        "app.logs.traffic.stopError",
+        { provider, message: getErrorMessage(err) },
         { provider, error: getErrorMessage(err) }
       );
     }
@@ -322,17 +323,22 @@ class TrafficManagerClass {
       try {
         clearTimeout(this.pollTimer);
       } catch (e) {
-        Logger.debug(LogCategory.TRAFFIC, "Failed to clear poll timer", {
-          error: getErrorMessage(e),
-        });
+        Logger.debugT(
+          LogCategory.TRAFFIC,
+          "app.logs.traffic.clearPollTimerFailed",
+          { message: getErrorMessage(e) },
+          {
+            error: getErrorMessage(e),
+          }
+        );
       }
       this.pollTimer = null;
     }
   }
 
   /**
-   * Cleanup method - tüm timer ve kaynakları temizle
-   * Uygulama kapanırken çağrılmalı
+   * Cleanup method - clears all timers and resources.
+   * Should be called during application shutdown.
    */
   destroy(): void {
     Object.keys(this._runners).forEach((provider) => {
@@ -342,14 +348,19 @@ class TrafficManagerClass {
       try {
         clearTimeout(this.pollTimer);
       } catch (e) {
-        Logger.debug(LogCategory.TRAFFIC, "Failed to clear poll timer on destroy", {
-          error: getErrorMessage(e),
-        });
+        Logger.debugT(
+          LogCategory.TRAFFIC,
+          "app.logs.traffic.clearPollTimerOnDestroyFailed",
+          { message: getErrorMessage(e) },
+          {
+            error: getErrorMessage(e),
+          }
+        );
       }
       this.pollTimer = null;
     }
     this.listeners = [];
-    Logger.info(LogCategory.TRAFFIC, "TrafficManager destroyed");
+    Logger.infoT(LogCategory.TRAFFIC, "app.logs.traffic.destroyed");
   }
 
   startPolling(): void {
@@ -378,10 +389,15 @@ class TrafficManagerClass {
             }
             runner.nextProbeAt = Date.now() + (runner.backoffMs ?? TIMING_CONFIG.pollIntervalMs);
           } catch (err) {
-            Logger.debug(LogCategory.TRAFFIC, "Probe cycle failed", {
-              provider,
-              error: getErrorMessage(err),
-            });
+            Logger.debugT(
+              LogCategory.TRAFFIC,
+              "app.logs.traffic.probeCycleFailed",
+              { provider, message: getErrorMessage(err) },
+              {
+                provider,
+                error: getErrorMessage(err),
+              }
+            );
             runner.backoffMs = Math.min(
               (runner.backoffMs ?? TIMING_CONFIG.pollIntervalMs) * 2,
               INTERVALS.BACKOFF_MAX
@@ -397,9 +413,14 @@ class TrafficManagerClass {
           })
         );
       } catch (err) {
-        Logger.debug(LogCategory.TRAFFIC, "Polling loop failed", {
-          error: getErrorMessage(err),
-        });
+        Logger.debugT(
+          LogCategory.TRAFFIC,
+          "app.logs.traffic.pollingLoopFailed",
+          { message: getErrorMessage(err) },
+          {
+            error: getErrorMessage(err),
+          }
+        );
       } finally {
         this.pollTimer = setTimeout(
           () => {
@@ -456,20 +477,30 @@ class TrafficManagerClass {
       } | null;
 
       if (data?.error !== undefined && data.error !== "") {
-        Logger.error(LogCategory.TRAFFIC, `Probe error for ${provider}`, {
-          provider,
-          error: data.error,
-        });
+        Logger.errorT(
+          LogCategory.TRAFFIC,
+          "app.logs.traffic.probeError",
+          { provider, message: data.error },
+          {
+            provider,
+            error: data.error,
+          }
+        );
         return false;
       }
 
       const ok = await this.handleProbe(provider, data, isLoading);
       return ok === true;
     } catch (err) {
-      Logger.debug(LogCategory.TRAFFIC, "Probe execution failed", {
-        provider,
-        error: getErrorMessage(err),
-      });
+      Logger.debugT(
+        LogCategory.TRAFFIC,
+        "app.logs.traffic.probeExecutionFailed",
+        { provider, message: getErrorMessage(err) },
+        {
+          provider,
+          error: getErrorMessage(err),
+        }
+      );
       this.setAllUnreachable(provider);
       return false;
     } finally {
@@ -494,9 +525,10 @@ class TrafficManagerClass {
     const viewState = this.state[provider];
 
     if (!data || (data.error !== undefined && data.error !== "")) {
-      Logger.debug(
+      Logger.debugT(
         LogCategory.TRAFFIC,
-        `probe data error for ${provider}: ${String(data?.error ?? "no-data")}`,
+        "app.logs.traffic.probeDataError",
+        { provider, message: String(data?.error ?? "no-data") },
         { provider, error: String(data?.error ?? "no-data") }
       );
       this.setAllUnreachable(provider);
@@ -543,10 +575,15 @@ class TrafficManagerClass {
             this.loadingTracker.clearJustEnded(st);
             this.state[provider] = st;
           } catch (err) {
-            Logger.debug(LogCategory.TRAFFIC, "Failed to clear loadingJustEnded state", {
-              provider,
-              error: getErrorMessage(err),
-            });
+            Logger.debugT(
+              LogCategory.TRAFFIC,
+              "app.logs.traffic.clearLoadingJustEndedFailed",
+              { provider, message: getErrorMessage(err) },
+              {
+                provider,
+                error: getErrorMessage(err),
+              }
+            );
           }
         }, DELAYS.STATE_CLEAR);
       }
@@ -564,10 +601,15 @@ class TrafficManagerClass {
             this.thinkingTracker.clearJustEnded(st);
             this.state[provider] = st;
           } catch (err) {
-            Logger.debug(LogCategory.TRAFFIC, "Failed to clear thinkingJustEnded state", {
-              provider,
-              error: getErrorMessage(err),
-            });
+            Logger.debugT(
+              LogCategory.TRAFFIC,
+              "app.logs.traffic.clearThinkingJustEndedFailed",
+              { provider, message: getErrorMessage(err) },
+              {
+                provider,
+                error: getErrorMessage(err),
+              }
+            );
           }
         }, DELAYS.STATE_CLEAR);
       }
@@ -582,7 +624,10 @@ class TrafficManagerClass {
       this.loadingTracker.endLoading(viewState, now);
       viewState.loadingFromDefaultTransition = false;
       this.setIndicator(provider, "loading", "idle");
-      this.logEvent({ message: `loading synced to idle due to thinking for ${provider}` });
+      this.logEvent({
+        messageKey: "app.logs.traffic.loadingSyncedToIdleDueToThinking",
+        messageParams: { provider },
+      });
     }
 
     const sendResult = this.sendTracker.handleProbe(
@@ -598,9 +643,9 @@ class TrafficManagerClass {
     return true;
   }
 
-  logEvent(event: { message: string }): void {
+  logEvent(event: { messageKey: string; messageParams?: Record<string, string> }): void {
     try {
-      Logger.debug(LogCategory.TRAFFIC, event.message);
+      Logger.debugT(LogCategory.TRAFFIC, event.messageKey, event.messageParams);
     } catch (_) {
       /* noop */
     }
@@ -650,9 +695,9 @@ class TrafficManagerClass {
   }
 
   /**
-   * Cluster'a thinking glow efekti ekle/kaldır
+   * Add or remove the thinking glow effect on the cluster.
    * @param {string} provider - ai0, ai1, ai2
-   * @param {string} status - busy veya idle
+   * @param {string} status - busy or idle
    */
   _updateClusterThinkingGlow(provider: string, status: string): void {
     const cluster = document.getElementById(`cluster-${provider}`);

@@ -1,9 +1,9 @@
 /**
- * WebviewEvents - Traffic webview event yönetimi
+ * WebviewEvents - traffic webview event management
  *
- * Bu modül webview navigation eventlerini yönetir:
- * - Event listener attachment/detachment
- * - Navigation event handling
+ * Handles webview navigation events:
+ * - event listener attachment/detachment
+ * - navigation event handling
  * - DOM ready handling
  */
 
@@ -80,10 +80,10 @@ export function attachWebviewEvents(
   const ensureBridge = (): void => {
     try {
       if (typeof webviewEl.getWebContentsId !== "function") return;
-      webviewEl.getWebContentsId(); // Hazır değilse hata fırlatır
-      if (webviewEl.isLoading?.() === true) return; // Yükleme devam ediyorsa bekle
+      webviewEl.getWebContentsId(); // Throws if not ready
+      if (webviewEl.isLoading?.() === true) return; // Wait while loading is still in progress
     } catch (_) {
-      return; // Webview henüz hazır değil
+      return; // The webview is not ready yet
     }
 
     const script = buildProbeScript(provider);
@@ -220,9 +220,14 @@ export function detachWebviewEvents(provider: string): void {
       void 0;
     }
   } catch (err) {
-    Logger.warn(LogCategory.TRAFFIC, "Error detaching webview events", {
-      error: getErrorMessage(err),
-    });
+    Logger.warnT(
+      LogCategory.TRAFFIC,
+      "app.logs.traffic.detachEventsFailed",
+      { message: getErrorMessage(err) },
+      {
+        error: getErrorMessage(err),
+      }
+    );
   }
 
   delete webviewHandlers[provider];

@@ -35,20 +35,27 @@ async function clearPartitionCache(partitionName: string): Promise<ClearResult> 
 
     await ses.clearCache();
 
-    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Cache cleared for partition", {
-      partition: partitionName,
-      storages: [...CLEARABLE_STORAGES, "httpcache"],
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.session.logs.cacheClearedForPartition",
+      { partition: partitionName },
+      {
+        partition: partitionName,
+        storages: [...CLEARABLE_STORAGES, "httpcache"],
+      }
+    );
 
     return {
       success: true,
       cleared: [...CLEARABLE_STORAGES, "httpcache"],
     };
   } catch (error) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `Cache clear error: ${(error as Error).message}`,
+      "electron.session.logs.cacheClearError",
+      { message: (error as Error).message },
       {
         partition: partitionName,
         error: {
@@ -68,7 +75,7 @@ async function clearPartitionCache(partitionName: string): Promise<ClearResult> 
 }
 
 export async function clearStartupCache(): Promise<{ main: ClearResult; assistant: ClearResult }> {
-  await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Startup cache clearing started", {});
+  await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.session.logs.startupCacheClearingStarted");
 
   const results = {
     main: await clearPartitionCache(PARTITIONS.MAIN),
@@ -77,10 +84,13 @@ export async function clearStartupCache(): Promise<{ main: ClearResult; assistan
 
   const totalSuccess = results.main.success && results.assistant.success;
 
-  await logger.logInternal(
+  await logger.logInternalT(
     LogCategory.MAIN,
     LogLevel.INFO,
-    `Startup cache clearing ${totalSuccess ? "completed" : "partially failed"}`,
+    totalSuccess
+      ? "electron.session.logs.startupCacheClearingCompleted"
+      : "electron.session.logs.startupCacheClearingPartiallyFailed",
+    undefined,
     { mainSuccess: results.main.success, assistantSuccess: results.assistant.success }
   );
 

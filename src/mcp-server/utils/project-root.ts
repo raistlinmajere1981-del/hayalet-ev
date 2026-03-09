@@ -1,12 +1,11 @@
 /**
  * Project Root Resolver
  *
- * Circular dependency sorunlarını önlemek için PROJECT_ROOT'u
- * ayrı bir dosyada tanımlıyoruz.
+ * PROJECT_ROOT lives in a dedicated file to avoid circular dependencies.
  *
- * Kaynak ve build klasör yapıları farklı olduğu için sabit klasör derinliğine
- * güvenmek kırılgan. Bunun yerine dosya konumundan yukarı yürüyüp repo
- * işaretçilerini buluyoruz.
+ * Source and build directory layouts differ, so relying on a fixed folder
+ * depth is brittle. Instead, walk upward from the current file and find
+ * repository markers.
  */
 
 import { existsSync } from "node:fs";

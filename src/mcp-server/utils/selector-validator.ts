@@ -1,7 +1,7 @@
 /**
  * Selector Validator
  *
- * CDP üzerinden webview'larda selector'ları test eder.
+ * Tests selectors inside webviews through CDP.
  */
 
 import WebSocket from "ws";
@@ -83,7 +83,7 @@ function selectorValidatorT(
 // ============================================
 
 /**
- * Tüm webview target'larını bul ve provider'a göre etiketle
+ * Find all webview targets and label them by provider
  */
 export async function discoverWebviews(
   providerConfigs: ProviderConfig[]
@@ -93,7 +93,7 @@ export async function discoverWebviews(
   return targets
     .filter((t) => t.type === "page" || t.type === "webview")
     .map((t) => {
-      // URL'e göre provider belirle
+      // Resolve the provider from the URL.
       let provider: string | undefined;
       for (const config of providerConfigs) {
         if (t.url.includes(config.baseUrl.replace("https://", "").replace("http://", ""))) {
@@ -124,7 +124,7 @@ export async function discoverWebviews(
 }
 
 /**
- * Belirli bir provider'ın webview'ını bul
+ * Find the webview for a specific provider
  */
 export async function findProviderWebview(
   provider: string,
@@ -139,7 +139,7 @@ export async function findProviderWebview(
 // ============================================
 
 /**
- * Webview'a bağlan
+ * Connect to a webview
  */
 async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSocket> {
   return await new Promise((resolve, reject) => {
@@ -167,11 +167,11 @@ async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSock
 // ============================================
 
 /**
- * Webview'da tek bir selector'ı test et
+ * Test a single selector inside a webview
  */
 export async function testSelector(ws: WebSocket, selector: string): Promise<SelectorTestResult> {
   try {
-    // JavaScript'te selector'ı test et
+    // Test the selector in JavaScript.
     const jsCode = `
       (() => {
         try {
@@ -260,7 +260,7 @@ export async function testSelector(ws: WebSocket, selector: string): Promise<Sel
 }
 
 /**
- * Webview'da element inspect et (detaylı)
+ * Inspect an element inside the webview (detailed).
  */
 export async function inspectElement(
   ws: WebSocket,
@@ -385,7 +385,12 @@ export async function inspectElement(
     ).result?.value;
 
     if (!value) {
-      return { found: false, count: 0, elements: [], error: "Sonuç alınamadı" };
+      return {
+        found: false,
+        count: 0,
+        elements: [],
+        error: createMcpTranslatorSync()("mcpServer.devTools.selectorValidator.noResult"),
+      };
     }
 
     return value;
@@ -404,7 +409,7 @@ export async function inspectElement(
 // ============================================
 
 /**
- * Provider'ın tüm selector'larını doğrula
+ * Validate all selectors for a provider.
  */
 export async function validateProviderSelectors(
   webview: WebviewTarget,
@@ -413,12 +418,12 @@ export async function validateProviderSelectors(
 ): Promise<ProviderValidationResult> {
   const timestamp = new Date().toISOString();
 
-  // Kategori filtresi
+  // Category filter.
   const filteredSelectors = categories
     ? selectors.filter((s) => categories.includes(s.category))
     : selectors;
 
-  // Sonuç objesi
+  // Result object.
   const result: ProviderValidationResult = {
     provider: webview.provider ?? "unknown",
     url: webview.url,
@@ -433,13 +438,13 @@ export async function validateProviderSelectors(
     },
   };
 
-  // Webview'a bağlan
+  // Connect to the webview.
   let ws: WebSocket;
   try {
     ws = await connectToWebview(webview.webSocketDebuggerUrl);
     result.connected = true;
 
-    // Runtime'ı etkinleştir
+    // Enable the runtime.
     await sendCDPCommand(ws, "Runtime.enable");
   } catch (error) {
     result.error = (error as Error).message;
@@ -447,7 +452,7 @@ export async function validateProviderSelectors(
   }
 
   try {
-    // Her selector'ı test et
+    // Test each selector.
     for (const sel of filteredSelectors) {
       // eslint-disable-next-line no-await-in-loop
       const testResult = await testSelector(ws, sel.selector);

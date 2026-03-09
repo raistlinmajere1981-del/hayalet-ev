@@ -1,7 +1,7 @@
 /**
  * Slot Module - Barrel Export
  *
- * Tüm slot alt modüllerini tek noktadan export eder.
+ * Re-exports all slot submodules from one place.
  */
 
 export * from "./webview-handler.js";

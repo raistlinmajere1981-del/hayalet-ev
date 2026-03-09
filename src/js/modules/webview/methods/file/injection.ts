@@ -4,6 +4,7 @@
  * Provider-agnostic implementation using runtime config
  */
 
+import { AppI18n } from "../../../i18n/index.js";
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 import {
@@ -17,6 +18,10 @@ interface FilePayload {
   path?: string;
   base64?: string;
   mimeType?: string;
+}
+
+function uploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.upload.${key}`, params);
 }
 
 export async function attachFiles(
@@ -33,9 +38,12 @@ export async function attachFiles(
 
   const validation = validateFiles(files);
   if (!validation.valid) {
-    return createErrorResponse(validation.message ?? "Validation failed");
+    return createErrorResponse(validation.message ?? uploadT("validationFailed"));
   }
 
+  const emptyFilesMessage = JSON.stringify(uploadT("noFiles"));
+  const fileInputNotFoundPrefix = JSON.stringify(uploadT("fileInputNotFound"));
+  const filesInjectedMessage = JSON.stringify(uploadT("filesInjected"));
   const filesPayload = JSON.stringify(files);
   const runtimeConfig = await getRuntimeProviderConfig(webview);
   const inputSelectors = getRuntimeConfigCandidates(
@@ -47,7 +55,7 @@ export async function attachFiles(
     const inputSelectorCandidates = ${JSON.stringify(inputSelectors)};
     const attachButtonCandidates = ${JSON.stringify(attachButtonCandidates)};
     if (!files.length) {
-      return { success: false, message: 'Dosya listesi boş' };
+      return { success: false, message: ${emptyFilesMessage} };
     }
 
     function base64ToUint8(base64) {
@@ -113,9 +121,9 @@ export async function attachFiles(
     }
 
     if (!input) {
-      return { 
-        success: false, 
-        message: 'Dosya inputu bulunamadı. Denenen selectorlar: ' + inputSelectorCandidates.join(', ') 
+      return {
+        success: false,
+        message: ${fileInputNotFoundPrefix} + ': ' + inputSelectorCandidates.join(', ')
       };
     }
 
@@ -123,9 +131,9 @@ export async function attachFiles(
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
-    return { 
-      success: true, 
-      message: 'Dosyalar input ile eklendi', 
+    return {
+      success: true,
+      message: ${filesInjectedMessage},
       count: dataTransfer.files.length,
       foundSelector: input.tagName.toLowerCase() + (input.id ? '#' + input.id : '') + (input.className ? '.' + input.className.split(' ').join('.') : '')
     };
@@ -136,7 +144,7 @@ export async function attachFiles(
     | undefined;
   return {
     success: result?.success === true,
-    message: result?.message ?? "Dosya inject denemesi yapıldı",
+    message: result?.message ?? uploadT("injectionAttempted"),
     count: result?.count ?? files.length,
   };
 }

@@ -36,8 +36,8 @@ async function ensureCommandDirs(): Promise<CommandDirs> {
 
 /**
  * Main Process: Command Queue Persistence Layer
- * Bu modül SADECE dosya I/O işlemlerini yapar.
- * Queue management renderer tarafında (src/js/modules/command-manager.js)
+ * This module handles file I/O only.
+ * Queue management lives in the renderer (`src/js/modules/command-manager.js`).
  */
 
 export async function commandInit(
@@ -224,12 +224,12 @@ export async function commandArchiveCopy(
     targetDir === undefined ||
     targetDir.length === 0
   ) {
-    return { success: false, message: "Parametre eksik" };
+    return { success: false, message: "Parameters are missing" };
   }
   try {
     const { root } = await ensureCommandDirs();
     const srcDir = join(root, jobId);
-    if (!existsSync(srcDir)) return { success: false, message: "Kaynak klasör yok" };
+    if (!existsSync(srcDir)) return { success: false, message: "Source directory is missing" };
     if (!existsSync(targetDir)) await mkdir(targetDir, { recursive: true });
     const entries = await readdir(srcDir, { withFileTypes: true });
     await Promise.all(

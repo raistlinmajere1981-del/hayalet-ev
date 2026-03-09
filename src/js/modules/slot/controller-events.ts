@@ -106,7 +106,7 @@ export function logSlotEvent(
   } else if (level === "debug") {
     Logger.debug(category, formattedMessage, logContext);
   } else if (level === "success") {
-    Logger.info(category, `✅ ${formattedMessage}`, logContext);
+    Logger.info(category, formattedMessage, { ...logContext, outcome: "success" });
   } else {
     Logger.info(category, formattedMessage, logContext);
   }

@@ -13,7 +13,7 @@ function getElectronAPI(): ElectronApiSettingsBridge | null {
 export async function ipcLoadSettings(): Promise<unknown> {
   const api = getElectronAPI();
   if (api === null || typeof api.loadSettings !== "function") {
-    Logger.error(LogCategory.SETTINGS, "electronAPI.loadSettings not available!");
+    Logger.errorT(LogCategory.SETTINGS, "app.logs.settings.loadBridgeUnavailable");
     throw new Error("electronAPI.loadSettings not available");
   }
   return await api.loadSettings();
@@ -22,7 +22,7 @@ export async function ipcLoadSettings(): Promise<unknown> {
 export async function ipcSaveSettings(settings: Record<string, unknown>): Promise<boolean> {
   const api = getElectronAPI();
   if (api === null || typeof api.saveSettings !== "function") {
-    Logger.error(LogCategory.SETTINGS, "electronAPI.saveSettings not available!");
+    Logger.errorT(LogCategory.SETTINGS, "app.logs.settings.saveBridgeUnavailable");
     throw new Error("electronAPI.saveSettings not available");
   }
   return await api.saveSettings(settings);

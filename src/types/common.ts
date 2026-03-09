@@ -55,7 +55,7 @@ export type EventListener<T = unknown> = (payload: T) => void;
 /** Unsubscribe function. */
 export type Unsubscribe = () => void;
 
-// Result Types (IPC için)
+// Result Types (for IPC)
 
 /** Base result type. */
 export interface BaseResult {
@@ -122,7 +122,7 @@ export interface LogEntry {
 
 // Error Handling Utilities
 
-/** Error benzeri obje tipi */
+/** Error-like object shape. */
 export interface ErrorLike {
   message?: string;
   name?: string;
@@ -130,11 +130,11 @@ export interface ErrorLike {
 }
 
 /**
- * Unknown tipindeki error'dan güvenli şekilde mesaj çıkarır
- * TypeScript'te catch bloklarında error tipi 'unknown' olduğu için bu helper gerekli
+ * Safely extract a message from an unknown error value.
+ * This helper exists because TypeScript treats catch-block errors as `unknown`.
  *
- * @param error - Herhangi bir tipte error
- * @returns Error mesajı string olarak
+ * @param error - Any error-like value
+ * @returns The error message as a string
  */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {

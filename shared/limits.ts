@@ -1,24 +1,24 @@
 /**
  * Shared Limit Constants
  *
- * Merkezi limit/boyut sabitleri — tüm katmanlar (renderer, electron, mcp) buradan import eder.
- * @limits alias ile erişilir.
+ * Centralized limit/size constants shared across renderer, Electron, and MCP layers.
+ * Available through the `@limits` alias.
  */
 
-/** Slot state machine geçmiş (history) maksimum kayıt sayısı */
+/** Maximum slot state-machine history size. */
 export const MAX_HISTORY_SIZE = 50;
 
-/** Entrance report log paneli maksimum log satır sayısı (terminal/genel) */
+/** Maximum line count for the entrance report log panel (terminal/general). */
 export const MAX_LOGS_TERMINAL = 100;
 
-/** Entrance live overlay maksimum log satır sayısı (server log akışı) */
+/** Maximum line count for the entrance live overlay (server log stream). */
 export const MAX_LOGS_SERVER = 50;
 
-/** Analyze sayfası sanal liste — aynı anda görüntülenen mesaj sayısı */
+/** Analyze page virtual list — number of messages rendered at once. */
 export const VISIBLE_MESSAGE_COUNT = 50;
 
-/** Analyze sayfası sanal liste — mesaj yükseklik tahmini (px) */
+/** Analyze page virtual list — estimated message height (px). */
 export const MESSAGE_HEIGHT_ESTIMATE = 80;
 
-/** Log writer — chunk başına maksimum satır sayısı */
+/** Log writer — maximum lines per chunk. */
 export const MAX_CHUNK_LINES = 10000;

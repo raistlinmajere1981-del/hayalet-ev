@@ -1,5 +1,5 @@
 /**
- * Command Types - Komut sistemi tipleri
+ * Command Types - command system types
  *
  * @module src/js/types/commands
  */
@@ -8,10 +8,10 @@ import type { SlotId, Attachment } from "./common.js";
 
 // Command Job Types
 
-/** Komut durumu */
+/** Command status */
 export type CommandJobStatus = "pending" | "processing" | "done" | "failed";
 
-/** Temel komut job'ı */
+/** Basic command job */
 export interface CommandJob {
   id: string;
   command: string;
@@ -25,13 +25,13 @@ export interface CommandJob {
   error?: string;
 }
 
-/** Komut payload'ı */
+/** Command payload */
 export interface CommandPayload {
   message?: string;
   files?: string[];
   attachments?: Attachment[];
   options?: Record<string, unknown>;
-  // Server command utils için ek alanlar
+  // Extra fields used by the server command utilities.
   provider?: string;
   args?: string;
   sender?: string;
@@ -41,7 +41,7 @@ export interface CommandPayload {
   [key: string]: unknown;
 }
 
-/** Komut sonucu */
+/** Command result */
 export interface CommandResult {
   success: boolean;
   message?: string;
@@ -51,7 +51,7 @@ export interface CommandResult {
 
 // Command Definition Types
 
-/** Komut tanımı */
+/** Command definition */
 export interface CommandDefinition {
   name: string;
   description: string;
@@ -61,10 +61,10 @@ export interface CommandDefinition {
   handler: CommandHandler;
 }
 
-/** Komut handler fonksiyonu */
+/** Command handler function */
 export type CommandHandler = (args: CommandArgs) => Promise<CommandResult>;
 
-/** Komut argümanları */
+/** Command arguments */
 export interface CommandArgs {
   raw: string;
   command: string;
@@ -76,7 +76,7 @@ export interface CommandArgs {
 
 // Meta Command Types
 
-/** Meta komut tanımı (kullanıcı tanımlı) */
+/** Meta command definition (user-defined) */
 export interface MetaCommand {
   name: string;
   description: string;
@@ -86,7 +86,7 @@ export interface MetaCommand {
   updatedAt?: number;
 }
 
-/** Meta komut listesi sonucu */
+/** Meta command list result */
 export interface MetaCommandListResult {
   success: boolean;
   commands?: Record<string, MetaCommand>;

@@ -49,10 +49,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
-      Logger.info(
+      Logger.infoT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStarting", { name: this.name }),
-        {}
+        "shell.assistant.logs.providerServeStarting",
+        { name: this.name }
       );
 
       const electronApi = window.electronAPI;
@@ -60,7 +60,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         return { success: false, error: assistantT("errors.electronApiUnavailable") };
       }
 
-      // Önce çalışan bir sunucu var mı kontrol et
+      // Check whether a server is already running first.
       const portRange = this._resolvePortRange();
       const running = await electronApi.opencodeServeFindRunning(portRange.start, portRange.end);
       if (running.running === true && running.port !== undefined && running.port !== 0) {
@@ -68,12 +68,13 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         this._currentPort = running.port;
         const url = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
 
-        Logger.info(
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeAttached", { name: this.name }),
+          "shell.assistant.logs.providerServeAttached",
+          { name: this.name },
           {
-          url,
-          port: this._currentPort,
+            url,
+            port: this._currentPort,
           }
         );
 
@@ -84,7 +85,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         };
       }
 
-      // Çalışan sunucu yok — yeni başlat
+      // No running server was found, so start a new one.
       let port: number | undefined;
 
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
@@ -113,12 +114,13 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         this._currentPort = result.port ?? port ?? 4096;
         const url = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
 
-        Logger.info(
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeStarted", { name: this.name }),
+          "shell.assistant.logs.providerServeStarted",
+          { name: this.name },
           {
-          url,
-          port: this._currentPort,
+            url,
+            port: this._currentPort,
           }
         );
 
@@ -138,11 +140,12 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       const err = e as Error;
       this._isRunning = false;
       this._currentPort = null;
-      Logger.error(
+      Logger.errorT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStartError", { name: this.name }),
+        "shell.assistant.logs.providerServeStartError",
+        { name: this.name },
         {
-        error: err.message,
+          error: err.message,
         }
       );
       return { success: false, error: err.message };
@@ -151,10 +154,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
   async stopServer(): Promise<ServerResult> {
     try {
-      Logger.info(
+      Logger.infoT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStopping", { name: this.name }),
-        {}
+        "shell.assistant.logs.providerServeStopping",
+        { name: this.name }
       );
 
       const electronApi = window.electronAPI;
@@ -168,11 +171,11 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       this._isRunning = false;
       this._currentPort = null;
 
-      if (result.success === true) {
-        Logger.info(
+        if (result.success === true) {
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeStopped", { name: this.name }),
-          {}
+          "shell.assistant.logs.providerServeStopped",
+          { name: this.name }
         );
       }
 
@@ -181,11 +184,12 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       const err = e as Error;
       this._isRunning = false;
       this._currentPort = null;
-      Logger.error(
+      Logger.errorT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStopError", { name: this.name }),
+        "shell.assistant.logs.providerServeStopError",
+        { name: this.name },
         {
-        error: err.message,
+          error: err.message,
         }
       );
       return { success: false, error: err.message };
@@ -194,7 +198,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
   async waitForReady(url: string, timeoutMs = 90000, signal?: AbortSignal): Promise<boolean> {
     const start = Date.now();
-    const checkInterval = 500; // 500ms aralıklarla kontrol
+    const checkInterval = 500; // Poll every 500ms
     let port: number | null;
     const electronApi = window.electronAPI;
 
@@ -231,7 +235,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       }
 
       try {
-        // CSP bypass: IPC üzerinden health check
+        // CSP bypass: run the health check over IPC.
         const healthFn = electronApi["opencodeServeHealth"] as
           | ((healthUrl: string) => Promise<unknown>)
           | undefined;
@@ -256,11 +260,21 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
     }
 
     if (signal?.aborted === true) {
-      Logger.info(LogCategory.ASSISTANT_CORE, `Server ready check cancelled: ${url}`, {});
+      Logger.infoT(
+        LogCategory.ASSISTANT_CORE,
+        "shell.assistant.logs.providerReadyCheckCancelled",
+        { name: this.name },
+        { url }
+      );
       return false;
     }
 
-    Logger.warn(LogCategory.ASSISTANT_CORE, `Server ready timeout: ${url}`, { timeoutMs });
+    Logger.warnT(
+      LogCategory.ASSISTANT_CORE,
+      "shell.assistant.logs.providerServerTimeout",
+      { name: this.name },
+      { timeoutMs, url }
+    );
     return false;
   }
 
@@ -271,12 +285,12 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
     };
   }
 
-  /** Server çalışıyor mu? */
+  /** Whether the server is running. */
   get isRunning(): boolean {
     return this._isRunning;
   }
 
-  /** Çalışıyorsa false'a set et (dış kontrol için) */
+  /** Update the running flag for external health probes. */
   setRunning(value: boolean): void {
     this._isRunning = value;
     if (!value) {

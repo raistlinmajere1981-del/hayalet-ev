@@ -1,6 +1,6 @@
 import { LogCategory } from "@shared/logging-core";
 /**
- * Conversation Store - Konuşma CRUD İşlemleri
+ * Conversation Store - conversation CRUD operations
  *
  * @module src/js/modules/database/conversation-store
  */
@@ -33,7 +33,7 @@ function toConversationArray(value: unknown): Conversation[] {
 
 const conversationStore = {
   /**
-   * Konuşmaları listele
+   * List conversations.
    * @param {string} accountId - Account ID
    * @returns {Promise<Array>}
    */
@@ -52,15 +52,18 @@ const conversationStore = {
 
       return toConversationArray(result.data);
     } catch (err) {
-      Logger.error(LogCategory.DATABASE, `ConversationStore.list error: ${getErrorMessage(err)}`, {
-        context: { accountId },
-      });
+      Logger.errorT(
+        LogCategory.DATABASE,
+        "app.logs.database.storeOperationFailed",
+        { store: "ConversationStore", operation: "list", message: getErrorMessage(err) },
+        { context: { accountId } }
+      );
       return [];
     }
   },
 
   /**
-   * Tek bir konuşmayı getir
+   * Return a single conversation.
    * @param {string} accountId - Account ID
    * @param {string} conversationId
    * @returns {Promise<Object|null>}
@@ -70,15 +73,18 @@ const conversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c: Conversation) => c.id === conversationId) ?? null;
     } catch (err) {
-      Logger.error(LogCategory.DATABASE, `ConversationStore.get error: ${getErrorMessage(err)}`, {
-        context: { accountId, conversationId },
-      });
+      Logger.errorT(
+        LogCategory.DATABASE,
+        "app.logs.database.storeOperationFailed",
+        { store: "ConversationStore", operation: "get", message: getErrorMessage(err) },
+        { context: { accountId, conversationId } }
+      );
       return null;
     }
   },
 
   /**
-   * Konuşmayı güncelle
+   * Update a conversation.
    * @param {string} accountId - Account ID
    * @param {string} conversationId
    * @param {Object} data - { title?, summary? }
@@ -106,9 +112,10 @@ const conversationStore = {
         ...(typeof result.error === "string" ? { error: result.error } : {}),
       };
     } catch (err) {
-      Logger.error(
+      Logger.errorT(
         LogCategory.DATABASE,
-        `ConversationStore.update error: ${getErrorMessage(err)}`,
+        "app.logs.database.storeOperationFailed",
+        { store: "ConversationStore", operation: "update", message: getErrorMessage(err) },
         { context: { accountId, conversationId, data } }
       );
       return { success: false, error: getErrorMessage(err) };
@@ -116,7 +123,7 @@ const conversationStore = {
   },
 
   /**
-   * Konuşmayı sil
+   * Delete a conversation.
    * @param {string} accountId - Account ID
    * @param {string} conversationId
    * @returns {Promise<{ success: boolean; error?: string }>}
@@ -141,9 +148,10 @@ const conversationStore = {
         ...(typeof result.error === "string" ? { error: result.error } : {}),
       };
     } catch (err) {
-      Logger.error(
+      Logger.errorT(
         LogCategory.DATABASE,
-        `ConversationStore.delete error: ${getErrorMessage(err)}`,
+        "app.logs.database.storeOperationFailed",
+        { store: "ConversationStore", operation: "delete", message: getErrorMessage(err) },
         { context: { accountId, conversationId } }
       );
       return { success: false, error: getErrorMessage(err) };
@@ -151,7 +159,7 @@ const conversationStore = {
   },
 
   /**
-   * URL'ye göre konuşma bul
+   * Find a conversation by URL.
    * @param {string} accountId - Account ID
    * @param {string} webUrl
    * @returns {Promise<Object|null>}
@@ -161,9 +169,10 @@ const conversationStore = {
       const conversations = await this.list(accountId);
       return conversations.find((c: Conversation) => c.webUrl === webUrl) ?? null;
     } catch (err) {
-      Logger.error(
+      Logger.errorT(
         LogCategory.DATABASE,
-        `ConversationStore.findByUrl error: ${getErrorMessage(err)}`,
+        "app.logs.database.storeOperationFailed",
+        { store: "ConversationStore", operation: "findByUrl", message: getErrorMessage(err) },
         { context: { accountId, webUrl } }
       );
       return null;

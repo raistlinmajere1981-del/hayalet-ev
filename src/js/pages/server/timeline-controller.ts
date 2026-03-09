@@ -1,5 +1,6 @@
 import { LogCategory, Logger } from "../../modules/logger/index.js";
 import type { LogEntry } from "../../modules/logger/index.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import { buildInlineCommandSnippet } from "../server-command-utils.js";
 import {
   buildTimelineThreads,
@@ -11,6 +12,10 @@ import {
   timelineToText,
 } from "../server-timeline.js";
 import type { TimelineEvent, TimelineThread } from "../server-timeline.js";
+
+function timelineT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.server.timeline.${key}`, params);
+}
 
 export interface TimelineState {
   timelineEvents: Map<string, TimelineEvent>;
@@ -46,6 +51,7 @@ export function createTimelineThreadElement(
 
   const header = document.createElement("div");
   header.className = "timeline-thread-header";
+  const commandFallback = timelineT("commandFallback");
 
   const actor = document.createElement("span");
   const target = thread.provider !== "" ? getProviderLabel(thread.provider) : "AI";
@@ -59,29 +65,29 @@ export function createTimelineThreadElement(
 
   const commandLine = document.createElement("div");
   commandLine.className = "timeline-thread-command";
-  if (thread.command !== "" && thread.command !== "Komut") {
-    commandLine.textContent = `Komut: ${buildInlineCommandSnippet(thread.command, thread.args)}`;
+  if (thread.command !== "" && thread.command !== commandFallback) {
+    commandLine.textContent = `${timelineT("commandLabel")}: ${buildInlineCommandSnippet(thread.command, thread.args)}`;
   } else {
-    commandLine.textContent = `Komut: ${thread.command}`;
+    commandLine.textContent = `${timelineT("commandLabel")}: ${thread.command}`;
   }
 
   const resultLine = document.createElement("div");
   resultLine.className = `timeline-thread-result${thread.resultSuccess === false ? " is-error" : ""}`;
   if (thread.resultDetail !== "") {
-    resultLine.textContent = `Sonuc: ${thread.resultDetail}`;
+    resultLine.textContent = `${timelineT("resultLabel")}: ${thread.resultDetail}`;
   } else {
-    resultLine.textContent = "Sonuc bekleniyor...";
+    resultLine.textContent = timelineT("pendingResult");
   }
 
   const meta = document.createElement("div");
   meta.className = "timeline-thread-meta";
   const metaParts: string[] = [];
   if (thread.transportDetail !== "") {
-    metaParts.push(`gonderim: ${thread.transportDetail}`);
+    metaParts.push(`${timelineT("transportLabel")}: ${thread.transportDetail}`);
   }
-  metaParts.push(`session: ${thread.sessionId}`);
+  metaParts.push(`${timelineT("sessionLabel")}: ${thread.sessionId}`);
   if (thread.resultTimestamp !== "") {
-    metaParts.push(`result-ts: ${thread.resultTimestamp}`);
+    metaParts.push(`${timelineT("resultTimestampLabel")}: ${thread.resultTimestamp}`);
   }
   meta.textContent = metaParts.join(" | ");
 
@@ -110,7 +116,7 @@ export function rebuildTimelineView(args: {
   if (threads.length === 0) {
     const empty = document.createElement("div");
     empty.className = "log-empty-state";
-    empty.textContent = "Henuz komut kaydi yok";
+    empty.textContent = AppI18n.t("app.server.page.timelineEmpty");
     state.timelineLog.appendChild(empty);
     return;
   }
@@ -168,7 +174,10 @@ export async function readSessionTimelineEvents(args: {
   } catch (error) {
     Logger.warn(
       LogCategory.SERVER_COMMANDS,
-      `Session logu okunamadi (${sessionId}): ${error instanceof Error ? error.message : String(error)}`
+      timelineT("sessionLogReadFailed", {
+        sessionId,
+        message: error instanceof Error ? error.message : String(error),
+      })
     );
     return [];
   }
@@ -195,7 +204,7 @@ export async function loadMoreTimelineSessions(args: {
   const prevTop = preserveScroll && timeline !== null ? timeline.scrollTop : 0;
 
   state.timelineLoading = true;
-  updateTimelineMeta("Gecmis komutlar yukleniyor...");
+  updateTimelineMeta(timelineT("loadingHistory"));
 
   try {
     const start = state.timelineSessionCursor;
@@ -225,10 +234,10 @@ export async function loadMoreTimelineSessions(args: {
     state.timelineLoading = false;
     const remaining = Math.max(0, state.timelineSessionIds.length - state.timelineSessionCursor);
     if (remaining > 0) {
-      updateTimelineMeta(`Yukariya kaydir: +${batchSize} session daha (${remaining} kaldi)`);
+      updateTimelineMeta(timelineT("scrollForMore", { batchSize, remaining }));
     } else {
       updateTimelineMeta(
-        `Tum session gecmisi yuklendi (${state.timelineLoadedSessionIds.size} session)`
+        timelineT("historyLoaded", { count: state.timelineLoadedSessionIds.size })
       );
     }
   }
@@ -259,7 +268,9 @@ export async function initializeTimeline(args: {
     } catch (error) {
       Logger.warn(
         LogCategory.SERVER_COMMANDS,
-        `Session listesi okunamadi: ${error instanceof Error ? error.message : String(error)}`
+        timelineT("sessionListReadFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        })
       );
     }
   }
@@ -279,9 +290,7 @@ export async function initializeTimeline(args: {
 
   if (!state.timelineLoading && !hasMoreTimelineSessions(state)) {
     const total = state.timelineLoadedSessionIds.size;
-    updateTimelineMeta(
-      total > 0 ? `Tum session gecmisi yuklendi (${total} session)` : "Canli komut akisina bagli"
-    );
+    updateTimelineMeta(total > 0 ? timelineT("historyLoaded", { count: total }) : timelineT("liveConnected"));
   }
 }
 

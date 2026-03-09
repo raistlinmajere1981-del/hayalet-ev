@@ -319,10 +319,11 @@ export function setupWindowHandlers(): void {
       try {
         await prepareRuntimeForWindowClose();
       } catch (error) {
-        await logger.logInternal(
+        await logger.logInternalT(
           LogCategory.IPC,
           LogLevel.WARNING,
-          "prepareRuntimeForWindowClose failed",
+          "electron.ipcWindow.logs.prepareRuntimeForWindowCloseFailed",
+          { message: error instanceof Error ? error.message : String(error) },
           {
             error: error instanceof Error ? error.message : String(error),
           }
@@ -359,19 +360,31 @@ export function setupWindowHandlers(): void {
         : {}),
     };
 
-    await logger.logInternal(LogCategory.IPC, LogLevel.DEBUG, "show-open-dialog called", {
-      options: dialogOptions,
-    });
+    await logger.logInternalT(
+      LogCategory.IPC,
+      LogLevel.DEBUG,
+      "electron.ipcWindow.logs.showOpenDialogCalled",
+      undefined,
+      {
+        options: dialogOptions,
+      }
+    );
 
     const result =
       focusedWindow !== undefined
         ? await dialog.showOpenDialog(focusedWindow, dialogOptions)
         : await dialog.showOpenDialog(dialogOptions);
 
-    await logger.logInternal(LogCategory.IPC, LogLevel.DEBUG, "show-open-dialog result", {
-      canceled: result.canceled,
-      filePathsCount: result.filePaths.length,
-    });
+    await logger.logInternalT(
+      LogCategory.IPC,
+      LogLevel.DEBUG,
+      "electron.ipcWindow.logs.showOpenDialogResult",
+      undefined,
+      {
+        canceled: result.canceled,
+        filePathsCount: result.filePaths.length,
+      }
+    );
     return result;
   });
 
@@ -419,12 +432,21 @@ export function setupWindowHandlers(): void {
     const { latestVersion, releaseUrl } = await fetchLatestOpencodeVersion();
     const updateAvailable = compareSemver(latestVersion, normalizedInstalledVersion) > 0;
 
-    await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "OpenCode update check completed", {
-      installedVersion: normalizedInstalledVersion,
-      latestVersion,
-      updateAvailable,
-      releaseUrl,
-    });
+    await logger.logInternalT(
+      LogCategory.IPC,
+      LogLevel.INFO,
+      "electron.ipcWindow.logs.opencodeUpdateCheckCompleted",
+      {
+        installedVersion: normalizedInstalledVersion,
+        latestVersion,
+      },
+      {
+        installedVersion: normalizedInstalledVersion,
+        latestVersion,
+        updateAvailable,
+        releaseUrl,
+      }
+    );
 
     return {
       success: true,
@@ -442,10 +464,11 @@ export function setupWindowHandlers(): void {
 
     if (!launched) {
       await shell.openExternal(OPENCODE_INSTALL_URL);
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.WARNING,
-        "OpenCode install fell back to browser",
+        "electron.ipcWindow.logs.opencodeInstallFellBackToBrowser",
+        undefined,
         {
           installUrl: OPENCODE_INSTALL_URL,
           command: installCommand,
@@ -459,11 +482,17 @@ export function setupWindowHandlers(): void {
       };
     }
 
-    await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "OpenCode install terminal launched", {
-      installUrl: OPENCODE_INSTALL_URL,
-      command: installCommand,
-      platform: currentPlatform,
-    });
+    await logger.logInternalT(
+      LogCategory.IPC,
+      LogLevel.INFO,
+      "electron.ipcWindow.logs.opencodeInstallTerminalLaunched",
+      undefined,
+      {
+        installUrl: OPENCODE_INSTALL_URL,
+        command: installCommand,
+        platform: currentPlatform,
+      }
+    );
 
     return {
       success: true,

@@ -50,10 +50,10 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
 
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
-      Logger.info(
+      Logger.infoT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStarting", { name: this.name }),
-        {}
+        "shell.assistant.logs.providerServeStarting",
+        { name: this.name }
       );
 
       const electronApi = window.electronAPI;
@@ -70,13 +70,14 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
 
         const pageUrl = `/pages/opencode-ui.html?port=${String(this._currentPort)}`;
 
-        Logger.info(
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeAttached", { name: this.name }),
+          "shell.assistant.logs.providerServeAttached",
+          { name: this.name },
           {
-          pageUrl,
-          serverUrl: this._serverUrl,
-          port: this._currentPort,
+            pageUrl,
+            serverUrl: this._serverUrl,
+            port: this._currentPort,
           }
         );
 
@@ -116,13 +117,14 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
         this._serverUrl = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
         const pageUrl = `/pages/opencode-ui.html?port=${String(this._currentPort)}`;
 
-        Logger.info(
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeStarted", { name: this.name }),
+          "shell.assistant.logs.providerServeStarted",
+          { name: this.name },
           {
-          pageUrl,
-          serverUrl: this._serverUrl,
-          port: this._currentPort,
+            pageUrl,
+            serverUrl: this._serverUrl,
+            port: this._currentPort,
           }
         );
 
@@ -144,11 +146,12 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
       this._isRunning = false;
       this._currentPort = null;
       this._serverUrl = null;
-      Logger.error(
+      Logger.errorT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStartError", { name: this.name }),
+        "shell.assistant.logs.providerServeStartError",
+        { name: this.name },
         {
-        error: err.message,
+          error: err.message,
         }
       );
       return { success: false, error: err.message };
@@ -157,10 +160,10 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
 
   async stopServer(): Promise<ServerResult> {
     try {
-      Logger.info(
+      Logger.infoT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStopping", { name: this.name }),
-        {}
+        "shell.assistant.logs.providerServeStopping",
+        { name: this.name }
       );
 
       const electronApi = window.electronAPI;
@@ -177,10 +180,10 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
       this._serverUrl = null;
 
       if (result.success === true) {
-        Logger.info(
+        Logger.infoT(
           LogCategory.ASSISTANT_CORE,
-          assistantT("logs.providerServeStopped", { name: this.name }),
-          {}
+          "shell.assistant.logs.providerServeStopped",
+          { name: this.name }
         );
       }
 
@@ -190,11 +193,12 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
       this._isRunning = false;
       this._currentPort = null;
       this._serverUrl = null;
-      Logger.error(
+      Logger.errorT(
         LogCategory.ASSISTANT_CORE,
-        assistantT("logs.providerServeStopError", { name: this.name }),
+        "shell.assistant.logs.providerServeStopError",
+        { name: this.name },
         {
-        error: err.message,
+          error: err.message,
         }
       );
       return { success: false, error: err.message };
@@ -264,17 +268,24 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
     }
 
     if (signal?.aborted === true) {
-      Logger.info(
+      Logger.infoT(
         LogCategory.ASSISTANT_CORE,
-        `OpenCode UI server ready check cancelled: ${serverUrl}`,
-        {}
+        "shell.assistant.logs.providerReadyCheckCancelled",
+        { name: this.name },
+        { serverUrl }
       );
       return false;
     }
 
-    Logger.warn(LogCategory.ASSISTANT_CORE, `OpenCode UI server ready timeout: ${serverUrl}`, {
-      timeoutMs,
-    });
+    Logger.warnT(
+      LogCategory.ASSISTANT_CORE,
+      "shell.assistant.logs.providerServerTimeout",
+      { name: this.name },
+      {
+        timeoutMs,
+        serverUrl,
+      }
+    );
     return false;
   }
 

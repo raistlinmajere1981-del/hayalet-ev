@@ -1,6 +1,7 @@
 import { generateUniqueId } from "../constants/index.js";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
+import { AppI18n } from "./i18n/index.js";
 
 import { getErrorMessage } from "@shared/index.js";
 
@@ -76,6 +77,10 @@ function toRecord(value: unknown): Record<string, unknown> {
   }
   return {};
 }
+
+function commandQueueT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.commandQueue.${key}`, params);
+}
 class CommandManagerClass {
   queue: CommandJob[];
   processing: boolean;
@@ -95,7 +100,7 @@ class CommandManagerClass {
       if (typeof commandInit !== "function") {
         Logger.warn(
           LogCategory.COMMAND,
-          "CommandManager init skipped: electronAPI.commandInit yok",
+          commandQueueT("initSkipped"),
           {
             category: "command",
           }
@@ -106,7 +111,7 @@ class CommandManagerClass {
       this.queue = [];
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      Logger.error(LogCategory.COMMAND, `CommandManager init hatası: ${message}`, {
+      Logger.error(LogCategory.COMMAND, commandQueueT("initFailed", { message }), {
         category: "command",
       });
     }
@@ -131,7 +136,9 @@ class CommandManagerClass {
       try {
         l(payload);
       } catch (err) {
-        Logger.warn(LogCategory.COMMAND, `Listener error: ${getErrorMessage(err)}`, {
+        Logger.warn(LogCategory.COMMAND, commandQueueT("listenerError", {
+          message: getErrorMessage(err),
+        }), {
           category: "command",
         });
       }
@@ -167,10 +174,17 @@ class CommandManagerClass {
         try {
           cleaned[key] = JSON.parse(JSON.stringify(value)) as unknown;
         } catch (e) {
-          Logger.debug(LogCategory.COMMAND, "sanitizePayload failed", {
-            key,
-            error: getErrorMessage(e),
-          });
+          Logger.debug(
+            LogCategory.COMMAND,
+            commandQueueT("sanitizePayloadFailed", {
+              key,
+              message: getErrorMessage(e),
+            }),
+            {
+              key,
+              error: getErrorMessage(e),
+            }
+          );
         }
       });
       return cleaned;
@@ -271,7 +285,7 @@ class CommandManagerClass {
     if (typeof mover === "function") {
       mover(id, "done").catch(() => {});
     }
-    Logger.info(LogCategory.COMMAND, `Komut tamamlandı (${id})`, { category: "command" });
+    Logger.info(LogCategory.COMMAND, commandQueueT("completed", { id }), { category: "command" });
     return true;
   }
 
@@ -280,7 +294,7 @@ class CommandManagerClass {
     if (typeof mover === "function") {
       mover(id, "failed").catch(() => {});
     }
-    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `Komut hatası (${id}): ${reason}`, {
+    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, commandQueueT("failed", { id, reason }), {
       category: "command",
     });
     return false;
@@ -299,7 +313,7 @@ class CommandManagerClass {
       };
       void writer(safeJob).catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
-        Logger.error(LogCategory.COMMAND, `Komut dosyası yazılamadı: ${message}`, {
+        Logger.error(LogCategory.COMMAND, commandQueueT("writeFailed", { message }), {
           category: "command",
         });
       });
@@ -313,7 +327,7 @@ class CommandManagerClass {
   clearQueue(): void {
     this.queue = [];
     this.processing = false;
-    Logger.info(LogCategory.COMMAND, "Komut kuyruğu temizlendi", {
+    Logger.info(LogCategory.COMMAND, commandQueueT("cleared"), {
       category: "command",
       visibility: 2,
     });

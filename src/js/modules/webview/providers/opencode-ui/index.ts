@@ -1,5 +1,5 @@
 /**
- * OpenCode UI Provider - Ana modül
+ * OpenCode UI Provider - main module
  */
 
 export { config } from "./config.js";

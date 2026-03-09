@@ -1,12 +1,12 @@
 /**
  * Hayalet-ev Design System - Theme Base
- * Tema bağımsız değişken tanımları ve fallback'ler
+ * Theme-agnostic variable definitions and fallbacks
  * @version 5.4.0
  */
 
 :root {
   /* === SEMANTIC COLOR ALIASES === */
-  /* Temalar bu değişkenleri override eder */
+  /* Themes override these variables */
 
   /* Background */
   --bg-app: var(--slate-900);

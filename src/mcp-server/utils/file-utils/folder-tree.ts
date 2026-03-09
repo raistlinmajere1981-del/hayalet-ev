@@ -4,7 +4,7 @@ import type { FolderEntry } from "@shared/index-mcp.js";
 import { IGNORE_DIRS } from "./constants.js";
 
 /**
- * Klasör yapısını recursive olarak oku
+ * Read a folder tree recursively.
  */
 export async function readFolderStructure(
   folderPath: string,
@@ -60,7 +60,7 @@ export async function readFolderStructure(
 }
 
 /**
- * Klasör yapısını string olarak formatla
+ * Format the folder structure as text.
  */
 export function formatFolderStructure(entries: FolderEntry[], indent: string = ""): string {
   const lines: string[] = [];

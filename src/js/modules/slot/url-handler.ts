@@ -1,9 +1,9 @@
 /**
- * UrlHandler - Slot URL işlemleri
+ * UrlHandler - slot URL operations
  *
- * Bu modül slot webview URL değişikliklerini yönetir:
- * - URL değişiklik takibi
- * - URL exclusion kontrolü
+ * Handles slot webview URL changes:
+ * - URL change tracking
+ * - URL exclusion checks
  * - Navigation event handling
  */
 

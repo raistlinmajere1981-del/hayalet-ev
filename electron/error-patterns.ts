@@ -1,8 +1,8 @@
 /**
  * Error Pattern Database for Hayalet-ev
  *
- * Bilinen hata pattern'leri ve çözüm ipuçları.
- * AI debugging için otomatik hint sistemi.
+ * Known error patterns and resolution hints.
+ * Automatic hinting for AI debugging flows.
  */
 
 import type { ErrorHint, MatchedHint } from "./types/error-patterns.ts";
@@ -13,7 +13,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "Cannot read propert(?:y|ies) ['\"]?click['\"]? of (?:null|undefined)",
     category: "dom-selector",
     suggestion:
-      "Selector muhtemelen değişti. Provider'ın DOM yapısını kontrol et ve config.js'deki selector'ları güncelle.",
+      "The selector likely changed. Inspect the provider DOM and update the selectors in config.js.",
     checkFiles: [
       "src/js/modules/webview/providers/{provider}/config.js",
       "src/js/modules/webview/providers/{provider}/index.js",
@@ -25,7 +25,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "Cannot read propert(?:y|ies) .* of (?:null|undefined)",
     category: "null-reference",
     suggestion:
-      "Null/undefined değerine erişim hatası. Optional chaining (?.) kullanılmalı veya değerin varlığı kontrol edilmeli.",
+      "A null/undefined access occurred. Use optional chaining (?.) or guard the value before access.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -34,7 +34,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "querySelector.*returned null",
     category: "dom-selector",
     suggestion:
-      "DOM elementi bulunamadı. Selector'ın doğruluğunu ve elementin yüklenip yüklenmediğini kontrol et.",
+      "The DOM element was not found. Verify the selector and ensure the element has loaded.",
     checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
     relatedDocs: [],
     severity: "medium",
@@ -43,7 +43,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "net::ERR_INTERNET_DISCONNECTED",
     category: "network",
-    suggestion: "İnternet bağlantısı yok. Ağ bağlantısını kontrol et.",
+    suggestion: "No internet connection was detected. Check network connectivity.",
     checkFiles: [],
     relatedDocs: [],
     severity: "high",
@@ -52,7 +52,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "net::ERR_NAME_NOT_RESOLVED",
     category: "network",
     suggestion:
-      "DNS çözümlemesi başarısız. Domain adının doğru olduğunu ve DNS sunucusuna erişilebildiğini kontrol et.",
+      "DNS resolution failed. Verify the domain name and confirm the DNS server is reachable.",
     checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
     relatedDocs: [],
     severity: "high",
@@ -60,7 +60,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "net::ERR_CONNECTION_REFUSED",
     category: "network",
-    suggestion: "Bağlantı reddedildi. Hedef sunucunun çalışıp çalışmadığını kontrol et.",
+    suggestion: "The connection was refused. Check whether the target server is running.",
     checkFiles: [],
     relatedDocs: [],
     severity: "high",
@@ -68,7 +68,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "net::ERR_CONNECTION_TIMED_OUT",
     category: "network",
-    suggestion: "Bağlantı zaman aşımına uğradı. Ağ bağlantısını ve sunucu durumunu kontrol et.",
+    suggestion: "The connection timed out. Check network connectivity and server health.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -76,7 +76,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "net::ERR_SSL",
     category: "network",
-    suggestion: "SSL/TLS hatası. Sertifika geçerliliğini kontrol et.",
+    suggestion: "An SSL/TLS error occurred. Verify certificate validity.",
     checkFiles: [],
     relatedDocs: [],
     severity: "high",
@@ -85,7 +85,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "CORS",
     category: "network",
     suggestion:
-      "Cross-Origin Resource Sharing hatası. Webview'de CORS genellikle sorun olmaz, ancak external API çağrılarında dikkat et.",
+      "A Cross-Origin Resource Sharing error occurred. CORS is usually not an issue in webviews, but external API calls still need attention.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -95,7 +95,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "ipcRenderer\\.invoke.*timed out",
     category: "ipc",
     suggestion:
-      "IPC çağrısı zaman aşımına uğradı. Main process'in yanıt verip vermediğini kontrol et.",
+      "The IPC call timed out. Check whether the main process is responding.",
     checkFiles: ["electron/main.js", "electron/preload.cjs"],
     relatedDocs: [],
     severity: "high",
@@ -104,7 +104,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
     pattern: "No handler registered for.*channel",
     category: "ipc",
     suggestion:
-      "IPC kanalı için handler tanımlı değil. Main process'te ipcMain.handle() tanımını kontrol et.",
+      "No handler is registered for the IPC channel. Check the ipcMain.handle() registration in the main process.",
     checkFiles: ["electron/main.js"],
     relatedDocs: [],
     severity: "high",
@@ -112,7 +112,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "contextBridge.*not available",
     category: "ipc",
-    suggestion: "contextBridge mevcut değil. Preload script'in doğru yüklendiğinden emin ol.",
+    suggestion: "contextBridge is unavailable. Ensure the preload script was loaded correctly.",
     checkFiles: ["electron/preload.cjs", "electron/webview-preload.cjs"],
     relatedDocs: [],
     severity: "critical",
@@ -121,7 +121,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "ENOENT.*no such file",
     category: "filesystem",
-    suggestion: "Dosya veya dizin bulunamadı. Yolun doğruluğunu ve dosyanın varlığını kontrol et.",
+    suggestion: "The file or directory was not found. Verify the path and confirm the file exists.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -129,7 +129,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "EACCES.*permission denied",
     category: "filesystem",
-    suggestion: "Dosya erişim izni yok. Dosya/dizin izinlerini kontrol et.",
+    suggestion: "File access was denied. Check the file or directory permissions.",
     checkFiles: [],
     relatedDocs: [],
     severity: "high",
@@ -137,7 +137,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "EEXIST.*file already exists",
     category: "filesystem",
-    suggestion: "Dosya zaten mevcut. Üzerine yazma veya farklı isim kullanmayı değerlendir.",
+    suggestion: "The file already exists. Consider overwriting it or using a different name.",
     checkFiles: [],
     relatedDocs: [],
     severity: "low",
@@ -146,7 +146,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "ChatGPT.*session.*expired",
     category: "provider-auth",
-    suggestion: "ChatGPT oturumu sona ermiş. Webview'de yeniden giriş yapılmalı.",
+    suggestion: "The ChatGPT session expired. Sign in again in the webview.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -154,7 +154,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Gemini.*quota.*exceeded",
     category: "provider-limit",
-    suggestion: "Gemini API kotası aşıldı. Bir süre bekle veya farklı hesap kullan.",
+    suggestion: "The Gemini API quota was exceeded. Wait for recovery or use another account.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -162,7 +162,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "rate.?limit",
     category: "provider-limit",
-    suggestion: "Rate limit hatası. İstek sıklığını azalt veya bekle.",
+    suggestion: "A rate limit error occurred. Reduce request frequency or wait before retrying.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -171,7 +171,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "out of memory|heap.*exceeded",
     category: "memory",
-    suggestion: "Bellek yetersiz. Uygulamayı yeniden başlat veya bellek kullanımını optimize et.",
+    suggestion: "Memory is exhausted. Restart the app or reduce memory usage.",
     checkFiles: [],
     relatedDocs: [],
     severity: "critical",
@@ -179,7 +179,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Maximum call stack size exceeded",
     category: "stack-overflow",
-    suggestion: "Sonsuz döngü veya aşırı derin recursion var. Kod mantığını kontrol et.",
+    suggestion: "An infinite loop or deep recursion is likely present. Inspect the control flow.",
     checkFiles: [],
     relatedDocs: [],
     severity: "critical",
@@ -188,7 +188,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Webview.*crashed",
     category: "webview-crash",
-    suggestion: "Webview çöktü. Sayfayı yeniden yükle veya webview'i yeniden oluştur.",
+    suggestion: "The webview crashed. Reload the page or recreate the webview.",
     checkFiles: ["src/js/modules/webview-manager.js"],
     relatedDocs: [],
     severity: "critical",
@@ -196,7 +196,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "did-fail-load",
     category: "webview-load",
-    suggestion: "Webview sayfa yükleme hatası. URL'in doğruluğunu ve ağ bağlantısını kontrol et.",
+    suggestion: "The webview failed to load the page. Verify the URL and network connection.",
     checkFiles: ["src/js/modules/webview/providers/{provider}/config.js"],
     relatedDocs: [],
     severity: "high",
@@ -205,7 +205,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "JSON\\.parse.*Unexpected token",
     category: "parse",
-    suggestion: "JSON parse hatası. Gelen verinin geçerli JSON olduğundan emin ol.",
+    suggestion: "A JSON parse error occurred. Make sure the input is valid JSON.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",
@@ -213,7 +213,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "SyntaxError.*Unexpected",
     category: "syntax",
-    suggestion: "JavaScript syntax hatası. Kod içeriğini kontrol et.",
+    suggestion: "A JavaScript syntax error occurred. Review the code content.",
     checkFiles: [],
     relatedDocs: [],
     severity: "high",
@@ -222,7 +222,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Command.*timeout",
     category: "command",
-    suggestion: "Komut zaman aşımına uğradı. Webview'in yanıt verip vermediğini kontrol et.",
+    suggestion: "The command timed out. Check whether the webview is still responding.",
     checkFiles: ["src/js/modules/command-executor.js", "electron/command-manager.js"],
     relatedDocs: [],
     severity: "medium",
@@ -230,7 +230,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Job.*failed",
     category: "command",
-    suggestion: "İş başarısız oldu. Hata detaylarını ve webview durumunu kontrol et.",
+    suggestion: "The job failed. Review the error details and the webview state.",
     checkFiles: ["src/js/modules/command-executor.js"],
     relatedDocs: [],
     severity: "medium",
@@ -239,7 +239,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Google.*auth.*failed|OAuth.*error",
     category: "googledrive",
-    suggestion: "Google Drive kimlik doğrulama hatası. Credentials'ı yenile veya yeniden bağlan.",
+    suggestion: "A Google Drive authentication error occurred. Refresh the credentials or reconnect the account.",
     checkFiles: ["electron/googledrive-manager.js"],
     relatedDocs: [],
     severity: "high",
@@ -247,7 +247,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Drive.*quota",
     category: "googledrive",
-    suggestion: "Google Drive kotası dolu. Yer açın veya farklı hesap kullanın.",
+    suggestion: "Google Drive quota is full. Free up space or use another account.",
     checkFiles: [],
     relatedDocs: [],
     severity: "medium",

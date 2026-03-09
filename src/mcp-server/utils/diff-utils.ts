@@ -1,13 +1,16 @@
 /**
  * Diff Utilities
  *
- * Dosya ve içerik karşılaştırma araçları
- * - Unified diff formatı
- * - Satır bazlı karşılaştırma
- * - Değişiklik özeti
+ * File and content comparison helpers:
+ * - Unified diff formatting
+ * - Line-based comparison
+ * - Change summaries
  */
 
 import { readFileSync, existsSync } from "fs";
+import { createMcpTranslatorSync } from "./i18n/index.js";
+
+const diffUtilsT = createMcpTranslatorSync();
 
 // ============================================
 // Types
@@ -42,14 +45,14 @@ export interface ContentDiffResult {
 // ============================================
 
 /**
- * İki string array'ini karşılaştır
+ * Compare two string arrays
  */
 function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
-  // LCS (Longest Common Subsequence) tabanlı basit diff
+  // Simple LCS (Longest Common Subsequence)-based diff.
   const oldLen = oldLines.length;
   const newLen = newLines.length;
 
-  // DP matrix
+  // DP matrix.
   const dp: number[][] = Array.from({ length: oldLen + 1 }, () =>
     Array.from({ length: newLen + 1 }, () => 0)
   );
@@ -69,7 +72,7 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
     }
   }
 
-  // Backtrack to find diff
+  // Backtrack to find the diff.
   let i = oldLen;
   let j = newLen;
   const tempResult: DiffLine[] = [];
@@ -107,7 +110,7 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
 }
 
 /**
- * Diff'i unified format'a çevir
+ * Convert a diff into unified format
  */
 function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
   if (diff.length === 0) {
@@ -123,10 +126,10 @@ function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
     if (line == null) continue;
 
     if (line.type !== "unchanged") {
-      // Değişiklik var, context ile birlikte ekle
+      // Add the change with surrounding context.
       const contextStart = Math.max(lastChangeIndex + 1, i - contextLines);
 
-      // Önceki context satırlarını ekle
+      // Include the preceding context lines.
       for (let c = contextStart; c < i; c++) {
         const contextLine = diff[c];
         if (contextLine?.type === "unchanged" && !currentHunk.includes(contextLine)) {
@@ -137,17 +140,17 @@ function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
       currentHunk.push(line);
       lastChangeIndex = i;
     } else if (i - lastChangeIndex <= contextLines) {
-      // Değişiklikten sonraki context
+      // Include context after the change.
       currentHunk.push(line);
     } else if (currentHunk.length > 0) {
-      // Hunk'ı bitir
+      // Finish the current hunk.
       lines.push(...formatHunk(currentHunk));
       lines.push("");
       currentHunk = [];
     }
   }
 
-  // Son hunk
+  // Flush the final hunk.
   if (currentHunk.length > 0) {
     lines.push(...formatHunk(currentHunk));
   }
@@ -162,7 +165,7 @@ function formatHunk(hunk: DiffLine[]): string[] {
     return lines;
   }
 
-  // Hunk header
+  // Hunk header.
   const oldLineEntry = hunk.find((l) => l.lineNumber?.old != null && l.lineNumber.old > 0);
   const newLineEntry = hunk.find((l) => l.lineNumber?.new != null && l.lineNumber.new > 0);
   const oldStart = oldLineEntry?.lineNumber?.old ?? 1;
@@ -199,7 +202,7 @@ function formatHunk(hunk: DiffLine[]): string[] {
 // ============================================
 
 /**
- * İki dosyayı karşılaştır
+ * Compare two files
  */
 export function diffFiles(file1: string, file2: string): DiffResult {
   if (!existsSync(file1)) {
@@ -210,7 +213,7 @@ export function diffFiles(file1: string, file2: string): DiffResult {
       additions: 0,
       deletions: 0,
       changes: [],
-      summary: `Hata: ${file1} bulunamadı`,
+      summary: diffUtilsT("mcpServer.fs.diffUtils.fileNotFound", { filePath: file1 }),
     };
   }
 
@@ -222,7 +225,7 @@ export function diffFiles(file1: string, file2: string): DiffResult {
       additions: 0,
       deletions: 0,
       changes: [],
-      summary: `Hata: ${file2} bulunamadı`,
+      summary: diffUtilsT("mcpServer.fs.diffUtils.fileNotFound", { filePath: file2 }),
     };
   }
 
@@ -239,9 +242,9 @@ export function diffFiles(file1: string, file2: string): DiffResult {
 
   let summary: string;
   if (identical) {
-    summary = "✅ Dosyalar aynı";
+    summary = diffUtilsT("mcpServer.fs.diffUtils.filesIdentical");
   } else {
-    summary = `📊 ${additions} ekleme, ${deletions} silme\n\n`;
+    summary = diffUtilsT("mcpServer.fs.diffUtils.diffSummary", { additions, deletions }) + "\n\n";
     summary += toUnifiedFormat(diff);
   }
 
@@ -257,7 +260,7 @@ export function diffFiles(file1: string, file2: string): DiffResult {
 }
 
 /**
- * İki metin bloğunu karşılaştır
+ * Compare two text blocks
  */
 export function diffContent(
   content1: string,
@@ -289,11 +292,11 @@ export function diffContent(
 }
 
 /**
- * Dosya içeriğini satır numaralarıyla göster
+ * Show file content with line numbers
  */
 export function showFileContent(filePath: string, startLine?: number, endLine?: number): string {
   if (!existsSync(filePath)) {
-    return `Hata: ${filePath} bulunamadı`;
+    return diffUtilsT("mcpServer.fs.diffUtils.fileNotFound", { filePath });
   }
 
   const content = readFileSync(filePath, "utf-8");
@@ -314,7 +317,7 @@ export function showFileContent(filePath: string, startLine?: number, endLine?: 
 }
 
 /**
- * Dosya değişiklik özeti (git diff benzeri)
+ * File summary (git-diff style)
  */
 export function getFileSummary(filePath: string): {
   lines: number;
@@ -331,7 +334,7 @@ export function getFileSummary(filePath: string): {
   const words = content.split(/\s+/).filter((w) => w.length > 0).length;
   const chars = content.length;
 
-  // Detect language from extension
+  // Detect the language from the file extension.
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
   const languageMap: Record<string, string> = {
     ts: "TypeScript",
@@ -389,7 +392,7 @@ export function applyUnifiedPatch(originalContent: string, patch: string): Patch
       success: false,
       appliedLines: 0,
       failedHunks: 0,
-      message: "Patch boş",
+      message: diffUtilsT("mcpServer.fs.diffUtils.patchEmpty"),
     };
   }
 
@@ -408,7 +411,7 @@ export function applyUnifiedPatch(originalContent: string, patch: string): Patch
           success: false,
           appliedLines: 0,
           failedHunks: hunks.length,
-          message: `Geçersiz hunk header: ${line}`,
+          message: diffUtilsT("mcpServer.fs.diffUtils.invalidHunkHeader", { line }),
         };
       }
 
@@ -496,7 +499,7 @@ export function applyUnifiedPatch(originalContent: string, patch: string): Patch
       success: false,
       appliedLines,
       failedHunks,
-      message: `Patch uygulanamadı (${failedHunks} hunk başarısız)`,
+      message: diffUtilsT("mcpServer.fs.diffUtils.patchApplyFailed", { failedHunks }),
       content: updatedLines.join("\n"),
     };
   }
@@ -505,7 +508,7 @@ export function applyUnifiedPatch(originalContent: string, patch: string): Patch
     success: true,
     appliedLines,
     failedHunks: 0,
-    message: `Patch uygulandı (${appliedLines} satır)`,
+    message: diffUtilsT("mcpServer.fs.diffUtils.patchApplied", { appliedLines }),
     content: updatedLines.join("\n"),
   };
 }

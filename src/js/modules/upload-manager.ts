@@ -1,9 +1,11 @@
 /**
  * UploadManager - Centralized Upload Management
  *
- * Bu modül tüm dosya yükleme işlemlerini ve servis kontrollerini yönetir.
- * webview/methods/shared altındaki dağınık yapıyı replace eder.
+ * This module manages file uploads and service availability checks.
+ * It replaces the scattered logic under webview/methods/shared.
  */
+
+import { AppI18n } from "./i18n/index.js";
 
 interface FilePayload {
   name: string;
@@ -18,6 +20,22 @@ interface UploadError {
 }
 
 type ServiceName = "CATBOX" | "UGUU" | "TMPFILE" | "GOOGLEDRIVE";
+
+function uploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.upload.${key}`, params);
+}
+
+function getServiceLabel(serviceName: string): string {
+  const labels: Record<string, string> = {
+    CATBOX: "Catbox",
+    UGUU: "Uguu",
+    TMPFILE: "Tmpfile",
+    GOOGLEDRIVE: "Google Drive",
+    Drive: "Drive",
+  };
+
+  return labels[serviceName] ?? serviceName;
+}
 
 const UPLOAD_SERVICES: Record<ServiceName, { ipcMethod: string; available: () => boolean }> = {
   CATBOX: {
@@ -58,14 +76,16 @@ const uploadManager = {
 
   validateFiles(files: FilePayload[]): { valid: boolean; message?: string } {
     if (files.length === 0) {
-      return { valid: false, message: "Aktarılacak dosya bulunamadı" };
+      return { valid: false, message: uploadT("noFiles") };
     }
 
     for (const file of files) {
       if (file.name === "" || file.base64 === undefined || file.base64 === "") {
         return {
           valid: false,
-          message: `Geçersiz dosya: ${file.name !== "" ? file.name : "isimsiz"}`,
+          message: uploadT("invalidFile", {
+            name: file.name !== "" ? file.name : uploadT("untitledFile"),
+          }),
         };
       }
     }
@@ -131,7 +151,7 @@ const uploadManager = {
     files: FilePayload[]
   ): Promise<{ uploadedLinks: string[]; errors: UploadError[] }> {
     if (!this.isServiceAvailable("GOOGLEDRIVE")) {
-      throw new Error("Google Drive IPC servisi mevcut değil");
+      throw new Error(uploadT("googleDriveIpcUnavailable"));
     }
 
     const payloadFiles = files.map((f) => ({
@@ -142,7 +162,7 @@ const uploadManager = {
 
     const googledriveUpload = window.electronAPI?.googledriveUpload;
     if (googledriveUpload === undefined) {
-      throw new Error("Google Drive IPC servisi mevcut değil");
+      throw new Error(uploadT("googleDriveIpcUnavailable"));
     }
 
     const resultRaw: unknown = await googledriveUpload({
@@ -158,7 +178,7 @@ const uploadManager = {
     };
 
     if (result.success !== true) {
-      throw new Error(result.message ?? "Google Drive yükleme başarısız");
+      throw new Error(result.message ?? uploadT("googleDriveUploadFailed"));
     }
 
     const uploaded = result.uploadedLinks ?? result.uploaded ?? result.data?.uploadedLinks ?? [];
@@ -179,6 +199,7 @@ const uploadManager = {
     errors: UploadError[] = [],
     serviceName = ""
   ): UploadResponse {
+    const resolvedServiceName = getServiceLabel(serviceName);
     if (uploadedLinks.length === 0) {
       const errorSummary = errors
         .map((err) =>
@@ -188,7 +209,10 @@ const uploadManager = {
         .join("; ");
       return {
         success: false,
-        message: `${serviceName} yükleme başarısız: ${errorSummary !== "" ? errorSummary : "bilinmeyen hata"}`,
+        message: uploadT("uploadFailed", {
+          service: resolvedServiceName,
+          reason: errorSummary !== "" ? errorSummary : uploadT("unknownError"),
+        }),
         errors,
         injected: false,
       };
@@ -196,7 +220,7 @@ const uploadManager = {
 
     return {
       success: true,
-      message: `${uploadedLinks.length} dosya yüklendi ve linki hazır`,
+      message: uploadT("uploadSuccess", { count: uploadedLinks.length }),
       uploadedLinks,
       ...(errors.length > 0 ? { errors } : {}),
       injected: false,
@@ -204,12 +228,24 @@ const uploadManager = {
   },
 
   createError(message: string, errors: UploadError[] = [], serviceName = ""): UploadResponse {
+    const resolvedServiceName = serviceName !== "" ? getServiceLabel(serviceName) : "";
     return {
       success: false,
-      message: serviceName !== "" ? `${serviceName} hatası: ${message}` : message,
+      message:
+        resolvedServiceName !== ""
+          ? uploadT("serviceError", { service: resolvedServiceName, message })
+          : message,
       errors,
       injected: false,
     };
+  },
+
+  serviceUnavailable(serviceName: string): UploadResponse {
+    return this.createError(uploadT("serviceUnavailable", { service: getServiceLabel(serviceName) }));
+  },
+
+  t(key: string, params?: Record<string, string | number>): string {
+    return uploadT(key, params);
   },
 };
 

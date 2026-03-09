@@ -1,7 +1,7 @@
 /**
  * Development Tools - Diagram Generator
  *
- * Modül bağımlılık diagramı oluşturma (Mermaid/DOT)
+ * Generate module dependency diagrams (Mermaid/DOT).
  */
 
 import { readFileSync } from "fs";
@@ -87,23 +87,23 @@ export async function generateDiagram(
 
 export const DIAGRAM_GENERATOR_TOOL = {
   name: "hev_dev_generate_diagram",
-  description: "Modül bağımlılık diagramı oluştur (Mermaid veya DOT formatında)",
+  description: "Generate a module dependency diagram (Mermaid or DOT format)",
   inputSchema: {
     type: "object" as const,
     properties: {
       format: {
         type: "string" as const,
         enum: ["mermaid", "dot"],
-        description: "Çıktı formatı",
+        description: "Output format",
         default: "mermaid",
       },
       module: {
         type: "string" as const,
-        description: "Sadece belirli modülü filtrele (örn: 'webview', 'traffic')",
+        description: "Filter a specific module only (for example: 'webview', 'traffic')",
       },
       depth: {
         type: "integer" as const,
-        description: "Maksimum derinlik",
+        description: "Maximum depth",
         default: 10,
       },
     },

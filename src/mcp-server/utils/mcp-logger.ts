@@ -10,6 +10,7 @@
 
 import { appendFile, existsSync, mkdirSync, readdirSync, statSync } from "fs";
 import { join } from "path";
+import { createMcpTranslatorSync, readMcpAppLanguageSync } from "./i18n/index.js";
 import { PROJECT_ROOT } from "./project-root.js";
 
 const LOG_BASE_DIR = join(PROJECT_ROOT, "logs", "mcp-server");
@@ -20,6 +21,8 @@ interface MCPLogEntry {
   timestamp: string;
   level: LogLevel;
   category: "mcp-tool" | "mcp-server";
+  message: string;
+  locale?: string;
   toolName?: string;
   operation: "start" | "success" | "error";
   duration?: number;
@@ -44,6 +47,7 @@ interface UnifiedLogEntry {
   category: "mcp";
   source: "mcp-server";
   message: string;
+  locale?: string;
   context?: {
     toolName?: string;
     operation?: string;
@@ -97,14 +101,72 @@ class MCPLogger {
     }
   }
 
+  private getTranslator(): {
+    locale: string;
+    t: ReturnType<typeof createMcpTranslatorSync>;
+  } {
+    const locale = readMcpAppLanguageSync();
+    return {
+      locale,
+      t: createMcpTranslatorSync(locale),
+    };
+  }
+
+  private buildLifecycleMessage(
+    operation: MCPLogEntry["operation"],
+    toolName?: string,
+    duration?: number,
+    errorMessage?: string
+  ): { locale: string; message: string } {
+    const { locale, t } = this.getTranslator();
+    const resolvedToolName = toolName?.trim() !== "" ? toolName : t("mcpServer.logs.unknownTool");
+
+    if (operation === "start") {
+      return {
+        locale,
+        message: t("mcpServer.logs.toolStart", { toolName: resolvedToolName }),
+      };
+    }
+
+    if (operation === "success") {
+      return {
+        locale,
+        message: t("mcpServer.logs.toolSuccess", {
+          toolName: resolvedToolName,
+          ...(duration !== undefined ? { duration } : {}),
+        }),
+      };
+    }
+
+    if (resolvedToolName === "general") {
+      return {
+        locale,
+        message: t("mcpServer.logs.generalError", {
+          message: errorMessage ?? "",
+        }),
+      };
+    }
+
+    return {
+      locale,
+      message: t("mcpServer.logs.toolError", {
+        toolName: resolvedToolName,
+        message: errorMessage ?? "",
+      }),
+    };
+  }
+
   /**
    * Log MCP tool start
    */
   async logToolStart(toolName: string, args: unknown, agentContext?: unknown): Promise<void> {
+    const lifecycle = this.buildLifecycleMessage("start", toolName);
     const entry: MCPLogEntry = {
       timestamp: new Date().toISOString(),
       level: "info",
       category: "mcp-tool",
+      message: lifecycle.message,
+      locale: lifecycle.locale,
       toolName,
       operation: "start",
       args: this.sanitizeArgs(args),
@@ -126,10 +188,13 @@ class MCPLogger {
     duration: number,
     agentContext?: unknown
   ): Promise<void> {
+    const lifecycle = this.buildLifecycleMessage("success", toolName, duration);
     const entry: MCPLogEntry = {
       timestamp: new Date().toISOString(),
       level: "info",
       category: "mcp-tool",
+      message: lifecycle.message,
+      locale: lifecycle.locale,
       toolName,
       operation: "success",
       duration,
@@ -152,10 +217,13 @@ class MCPLogger {
     duration?: number,
     agentContext?: unknown
   ): Promise<void> {
+    const lifecycle = this.buildLifecycleMessage("error", toolName, duration, error.message);
     const entry: MCPLogEntry = {
       timestamp: new Date().toISOString(),
       level: "error",
       category: "mcp-tool",
+      message: lifecycle.message,
+      locale: lifecycle.locale,
       toolName,
       operation: "error",
       ...(duration !== undefined ? { duration } : {}),
@@ -171,7 +239,7 @@ class MCPLogger {
 
     await this.writeToLog(entry);
     // Write to stderr (avoid circular dependency with Logger)
-    process.stderr.write(`[MCP Tool] ${toolName} error: ${error.message}\n`);
+    process.stderr.write(`${entry.message}\n`);
   }
 
   /**
@@ -190,7 +258,12 @@ class MCPLogger {
       // 1. Write to mcp-tools.jsonl (detailed MCP logs)
       const mcpLogPath = join(sessionDir, "mcp-tools.jsonl");
       appendFile(mcpLogPath, JSON.stringify(entry) + "\n", "utf-8", (err) => {
-        if (err) process.stderr.write(`[MCPLogger] Failed to write mcp-tools.jsonl: ${err}\n`);
+        if (err) {
+          const { t } = this.getTranslator();
+          process.stderr.write(
+            `${t("mcpServer.logs.writeMcpToolsFailed", { message: String(err) })}\n`
+          );
+        }
       });
 
       // 2. Write to structured.jsonl (unified logs)
@@ -200,7 +273,8 @@ class MCPLogger {
         level: entry.level,
         category: "mcp",
         source: "mcp-server",
-        message: `[${entry.operation}] ${entry.toolName ?? "unknown"}`,
+        message: entry.message,
+        locale: entry.locale,
         context: {
           ...(entry.toolName != null ? { toolName: entry.toolName } : {}),
           operation: entry.operation,
@@ -211,13 +285,18 @@ class MCPLogger {
       };
 
       appendFile(structuredPath, JSON.stringify(unifiedEntry) + "\n", "utf-8", (err) => {
-        if (err)
-          process.stderr.write(`[MCPLogger] Failed to write structured.jsonl: ${String(err)}\n`);
+        if (err) {
+          const { t } = this.getTranslator();
+          process.stderr.write(
+            `${t("mcpServer.logs.writeStructuredFailed", { message: String(err) })}\n`
+          );
+        }
       });
 
       return;
     } catch (error) {
-      process.stderr.write(`[MCPLogger] Failed to write log: ${String(error)}\n`);
+      const { t } = this.getTranslator();
+      process.stderr.write(`${t("mcpServer.logs.writeFailed", { message: String(error) })}\n`);
       return;
     }
   }
@@ -252,6 +331,11 @@ class MCPLogger {
 // Singleton instance
 const logger = new MCPLogger();
 
+function writeLoggerInternalError(key: string, params?: Record<string, string | number>): void {
+  const t = createMcpTranslatorSync();
+  process.stderr.write(`${t(`mcpServer.logs.${key}`, params)}\n`);
+}
+
 // ============================================================================
 // Export Functions (backward compatible + new API)
 // ============================================================================
@@ -264,7 +348,7 @@ export function logToolCall(toolName: string, args: unknown): { startTime: numbe
   const startTime = Date.now();
   logger
     .logToolStart(toolName, args)
-    .catch((err) => process.stderr.write(`[MCPLogger] logToolStart failed: ${String(err)}\n`));
+    .catch((err) => writeLoggerInternalError("startLogFailed", { message: String(err) }));
   return { startTime };
 }
 
@@ -279,7 +363,7 @@ export function logToolSuccess(
 ): void {
   logger
     .logToolSuccess(toolName, result, duration, agentContext)
-    .catch((err) => process.stderr.write(`[MCPLogger] logToolSuccess failed: ${String(err)}\n`));
+    .catch((err) => writeLoggerInternalError("successLogFailed", { message: String(err) }));
 }
 
 /**
@@ -294,10 +378,10 @@ export function logToolError(
   const duration = startTime != null && startTime > 0 ? Date.now() - startTime : undefined;
   logger
     .logToolError(toolName, error, duration)
-    .catch((err) => process.stderr.write(`[MCPLogger] logToolError failed: ${String(err)}\n`));
+    .catch((err) => writeLoggerInternalError("errorLogFailed", { message: String(err) }));
 
   // Keep stderr output for MCP client (required by MCP protocol)
-  console.error(`[MCP ERROR] ${toolName}: ${error.message}`);
+  console.error(createMcpTranslatorSync()("mcpServer.logs.toolError", { toolName, message: error.message }));
 }
 
 /**
@@ -307,7 +391,7 @@ export function logError(message: string, error?: Error): void {
   const err = error ?? new Error(message);
   logger
     .logToolError("general", err)
-    .catch((e) => process.stderr.write(`[MCPLogger] logError failed: ${String(e)}\n`));
+    .catch((e) => writeLoggerInternalError("generalLogFailed", { message: String(e) }));
 }
 
 // ============================================================================

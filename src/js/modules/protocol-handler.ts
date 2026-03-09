@@ -13,9 +13,14 @@ function isSlotReady(slot: string): boolean {
   }
 
   if (state.urlExcluded === true) {
-    Logger.debug(LogCategory.SYSTEM, `Slot ${slot} URL excluded, skipping protocol`, {
-      category: "protocol",
-    });
+    Logger.debugT(
+      LogCategory.SYSTEM,
+      "app.logs.protocolHandler.slotUrlExcluded",
+      { slot },
+      {
+        category: "protocol",
+      }
+    );
     return false;
   }
 

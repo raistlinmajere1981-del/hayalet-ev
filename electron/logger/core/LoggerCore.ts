@@ -12,7 +12,7 @@
 
 import type { IpcMainInvokeEvent } from "electron";
 import { BrowserWindow } from "electron";
-import type { LogEntry, LogLevel, LogCategory } from "@shared/index.js";
+import type { LogEntry, LogLevel, LogCategory, TranslationParams } from "@shared/index.js";
 
 import type {
   LogBatchPayload,
@@ -28,6 +28,7 @@ import { ErrorWriter } from "../writers/ErrorWriter.js";
 import { PerformanceWriter } from "../writers/PerformanceWriter.js";
 import { matchErrorPattern } from "../../error-patterns.js";
 import { buildSessionStats } from "./session-stats.js";
+import { createElectronTranslator } from "../../i18n/language-service.ts";
 
 export class LoggerCore {
   private static instance: LoggerCore | null = null;
@@ -88,7 +89,7 @@ export class LoggerCore {
 
     this.isInitialized = true;
 
-    await this.logInternal(LC.SYSTEM, LL.INFO, "LoggerCore initialized", {
+    await this.logInternalT(LC.SYSTEM, LL.INFO, "electron.logger.initialized", undefined, {
       sessionId: this.sessionManager.getSessionId(),
       sessionDir,
     });
@@ -209,6 +210,7 @@ export class LoggerCore {
         level: entry.level,
         category: entry.category,
         message: entry.message,
+        locale: entry.locale,
         timestamp: entry.timestamp,
         visibility,
         source: entry.source ?? "main",
@@ -247,19 +249,32 @@ export class LoggerCore {
     category: LogCategory | string,
     level: LogLevel,
     message: string,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
+    locale?: string
   ): Promise<void> {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       category,
       message,
+      ...(locale !== undefined ? { locale } : {}),
       sessionId: this.sessionManager.getSessionId(),
       source: "main",
       ...(context !== undefined ? { context } : {}),
     };
 
     await this.processEntry(entry);
+  }
+
+  public async logInternalT(
+    category: LogCategory | string,
+    level: LogLevel,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): Promise<void> {
+    const translator = await createElectronTranslator();
+    await this.logInternal(category, level, translator.t(key, params), context, translator.locale);
   }
 
   public getSessionId(): string {
@@ -277,7 +292,7 @@ export class LoggerCore {
   public async shutdown(): Promise<void> {
     if (!this.isInitialized) return;
 
-    await this.logInternal(LC.SYSTEM, LL.INFO, "LoggerCore shutting down");
+    await this.logInternalT(LC.SYSTEM, LL.INFO, "electron.logger.shuttingDown");
     this.flushUIBroadcastQueue();
 
     await Promise.all([

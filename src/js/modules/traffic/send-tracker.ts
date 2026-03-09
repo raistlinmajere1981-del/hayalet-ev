@@ -35,13 +35,19 @@ export class SendTracker {
     const indicator = this.getSendStatus(sendState);
 
     if (indicator !== prevIndicator) {
-      Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Send button state changed", {
-        provider,
-        sendState,
-        indicator,
-        previousIndicator: prevIndicator,
-        probeCount: this.probeCount,
-      });
+      Logger.panelT(
+        LogCategory.TRAFFIC,
+        LogLevel.INFO,
+        "app.logs.traffic.sendStateChanged",
+        { provider, sendState, indicator, previousIndicator: prevIndicator },
+        {
+          provider,
+          sendState,
+          indicator,
+          previousIndicator: prevIndicator,
+          probeCount: this.probeCount,
+        }
+      );
     }
 
     // Periodic debug removed - state changes are logged via Logger.panel above

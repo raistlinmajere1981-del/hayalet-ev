@@ -11,7 +11,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-5); /* 20px - daha geniş spacing */
+  gap: var(--space-5); /* 20px - wider spacing */
   background: var(--bg-surface);
   border: var(--border-2) dashed var(--border-default);
   border-radius: var(--radius-lg);
@@ -73,7 +73,7 @@
 
 /* === TEXT === */
 .webview-overlay .overlay-title {
-  font-size: var(--text-xl); /* 20px - daha büyük */
+  font-size: var(--text-xl); /* 20px - larger */
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;

@@ -23,6 +23,10 @@ import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
 import type { AppSettings } from "@shared/settings.js";
 
+function syncLogKey(key: string): string {
+  return `app.logs.webviewSync.${key}`;
+}
+
 interface WebviewElement {
   getURL?: () => string;
   executeJavaScript: (script: string) => Promise<unknown>;
@@ -152,15 +156,20 @@ class ConversationSyncerClass {
           }
         } catch (_err: unknown) {
           const errorMessage = _err instanceof Error ? _err.message : String(_err);
-          Logger.warn(LogCategory.WEBVIEW, "Failed to check loading state", {
-            provider,
-            error: errorMessage,
-          });
+          Logger.warnT(
+            LogCategory.WEBVIEW,
+            syncLogKey("loadingStateCheckFailed"),
+            { provider, message: errorMessage },
+            {
+              provider,
+              error: errorMessage,
+            }
+          );
         }
       })();
     });
 
-    Logger.info(LogCategory.WEBVIEW, "ConversationSyncer initialized");
+    Logger.infoT(LogCategory.WEBVIEW, syncLogKey("initialized"));
   }
 
   /**
@@ -188,16 +197,26 @@ class ConversationSyncerClass {
     }
 
     if (webview === null || webview === undefined) {
-      Logger.error(LogCategory.WEBVIEW, "Webview not found", { provider });
-      return { success: false, message: "Webview bulunamadı" };
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        syncLogKey("webviewNotFound"),
+        { provider },
+        { provider }
+      );
+      return { success: false, message: "Webview not found" };
     }
 
     const currentUrl = webview.getURL?.() ?? "";
     if (this.isUrlExcluded(provider, currentUrl)) {
-      Logger.warn(LogCategory.WEBVIEW, "URL excluded, sync operation disabled", {
-        provider,
-        currentUrl,
-      });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        syncLogKey("urlExcludedSync"),
+        { provider, currentUrl },
+        {
+          provider,
+          currentUrl,
+        }
+      );
       return { success: false, message: "URL excluded from operations" };
     }
 
@@ -207,7 +226,12 @@ class ConversationSyncerClass {
     }
 
     if (this._syncInProgress[provider] === true) {
-      Logger.debug(LogCategory.WEBVIEW, "sync skipped: already in progress", { provider });
+      Logger.debugT(
+        LogCategory.WEBVIEW,
+        syncLogKey("syncAlreadyInProgress"),
+        { provider },
+        { provider }
+      );
       return { success: false, message: "sync-in-progress" };
     }
     this._syncInProgress[provider] = true;
@@ -307,7 +331,12 @@ class ConversationSyncerClass {
       const accountInfo = AppState.getAccountForSlot(provider);
 
       if (accountInfo?.id === undefined || accountInfo.id === "") {
-        Logger.warn(LogCategory.WEBVIEW, "Sync skipped: No account info for slot", { provider });
+        Logger.warnT(
+          LogCategory.WEBVIEW,
+          syncLogKey("noAccountAssigned"),
+          { provider },
+          { provider }
+        );
         this._syncInProgress[provider] = false;
         return { success: false, message: "No account assigned to slot" };
       }
@@ -349,12 +378,14 @@ class ConversationSyncerClass {
         try {
           PendingArchiveHandler.processPending(provider, result);
         } catch (err) {
-          Logger.warn(
+          const errorMessage = getErrorMessage(err);
+          Logger.warnT(
             LogCategory.WEBVIEW,
-            "Pending archive processing failed in syncConversation",
+            syncLogKey("pendingProcessingFailedDuringSync"),
+            { provider, message: errorMessage },
             {
               provider,
-              error: getErrorMessage(err),
+              error: errorMessage,
             }
           );
         }
@@ -377,7 +408,13 @@ class ConversationSyncerClass {
       };
       return result;
     } catch (error) {
-      Logger.error(LogCategory.WEBVIEW, "Sync failed", { provider, error: getErrorMessage(error) });
+      const errorMessage = getErrorMessage(error);
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        syncLogKey("syncFailed"),
+        { provider, message: errorMessage },
+        { provider, error: errorMessage }
+      );
       return { success: false, message: getErrorMessage(error) };
     } finally {
       this._syncInProgress[provider] = false;
@@ -389,16 +426,26 @@ class ConversationSyncerClass {
     webview: Electron.WebviewTag | WebviewElement | null | undefined
   ): Promise<SyncResult> {
     if (webview === null || webview === undefined) {
-      Logger.error(LogCategory.WEBVIEW, "Webview not found", { provider });
-      return { success: false, message: "Webview bulunamadı" };
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        syncLogKey("webviewNotFound"),
+        { provider },
+        { provider }
+      );
+      return { success: false, message: "Webview not found" };
     }
 
     const currentUrl = webview.getURL?.() ?? "";
     if (this.isUrlExcluded(provider, currentUrl)) {
-      Logger.warn(LogCategory.WEBVIEW, "URL excluded, latest-message sync disabled", {
-        provider,
-        currentUrl,
-      });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        syncLogKey("urlExcludedLatestMessage"),
+        { provider, currentUrl },
+        {
+          provider,
+          currentUrl,
+        }
+      );
       return { success: false, message: "URL excluded from operations" };
     }
 
@@ -453,10 +500,16 @@ class ConversationSyncerClass {
         newEntry: false,
       };
     } catch (error) {
-      Logger.error(LogCategory.WEBVIEW, "Latest message sync failed", {
-        provider,
-        error: getErrorMessage(error),
-      });
+      const errorMessage = getErrorMessage(error);
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        syncLogKey("latestMessageSyncFailed"),
+        { provider, message: errorMessage },
+        {
+          provider,
+          error: errorMessage,
+        }
+      );
       return { success: false, message: getErrorMessage(error) };
     }
   }
@@ -480,10 +533,15 @@ class ConversationSyncerClass {
     this._setSyncStatus(provider, "syncing");
 
     try {
-      Logger.info(LogCategory.WEBVIEW, "syncProvider called", {
-        provider,
-        source: opts.from ?? "manual",
-      });
+      Logger.infoT(
+        LogCategory.WEBVIEW,
+        syncLogKey("syncProviderCalled"),
+        { provider, source: opts.from ?? "manual" },
+        {
+          provider,
+          source: opts.from ?? "manual",
+        }
+      );
 
       const webview = this._resolveWebviewFn?.(provider);
       const res = await this.syncConversation(provider, webview);
@@ -514,9 +572,14 @@ class ConversationSyncerClass {
       if (shouldRetryByReadiness) {
         const tried = this._syncRetryCounts[provider] ?? 0;
         if (tried < this.syncRetryLimit) {
-          Logger.debug(
+          Logger.debugT(
             LogCategory.WEBVIEW,
-            "SyncProvider: assistant not readable, scheduling retry",
+            syncLogKey("assistantRetryScheduled"),
+            {
+              provider,
+              tried,
+              messageCount: messages?.length ?? 0,
+            },
             {
               provider,
               tried,
@@ -568,7 +631,12 @@ class ConversationSyncerClass {
       return res;
     } catch (err) {
       const message = err instanceof Error ? getErrorMessage(err) : String(err);
-      Logger.error(LogCategory.WEBVIEW, "syncProvider error", { provider, error: message });
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        syncLogKey("syncProviderError"),
+        { provider, message },
+        { provider, error: message }
+      );
       this._setSyncStatus(provider, "error", message);
       return { success: false, message };
     }
@@ -588,10 +656,15 @@ class ConversationSyncerClass {
           cb(null, res);
         } catch (_e: unknown) {
           const errorMessage = _e instanceof Error ? _e.message : String(_e);
-          Logger.warn(LogCategory.WEBVIEW, "Stable callback failed", {
-            provider,
-            error: errorMessage,
-          });
+          Logger.warnT(
+            LogCategory.WEBVIEW,
+            syncLogKey("stableCallbackFailed"),
+            { provider, message: errorMessage },
+            {
+              provider,
+              error: errorMessage,
+            }
+          );
         }
       }
 
@@ -599,14 +672,24 @@ class ConversationSyncerClass {
         PendingArchiveHandler.processPending(provider, res);
       } catch (_e: unknown) {
         const errorMessage = _e instanceof Error ? _e.message : String(_e);
-        Logger.warn(LogCategory.WEBVIEW, "Pending archive processing failed", {
-          provider,
-          error: errorMessage,
-        });
+        Logger.warnT(
+          LogCategory.WEBVIEW,
+          syncLogKey("pendingProcessingFailed"),
+          { provider, message: errorMessage },
+          {
+            provider,
+            error: errorMessage,
+          }
+        );
       }
     } catch (_e: unknown) {
       const errorMessage = _e instanceof Error ? _e.message : String(_e);
-      Logger.warn(LogCategory.WEBVIEW, "Notify stable failed", { provider, error: errorMessage });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        syncLogKey("notifyStableFailed"),
+        { provider, message: errorMessage },
+        { provider, error: errorMessage }
+      );
     }
   }
 
@@ -692,7 +775,7 @@ class ConversationSyncerClass {
     this._coreEngine = null;
     this._resolveWebviewFn = null;
 
-    Logger.debug(LogCategory.WEBVIEW, "ConversationSyncer destroyed");
+    Logger.debugT(LogCategory.WEBVIEW, syncLogKey("destroyed"));
   }
 }
 

@@ -567,7 +567,7 @@ export class AssistantController {
         const height = image.naturalHeight > 0 ? image.naturalHeight : image.height;
 
         if (width === 0 || height === 0) {
-          reject(new Error("Geçersiz avatar boyutu"));
+          reject(new Error(assistantT("errors.avatarInvalidDimensions")));
           return;
         }
 
@@ -577,7 +577,7 @@ export class AssistantController {
 
         const context = canvas.getContext("2d");
         if (context === null) {
-          reject(new Error("Avatar canvas context oluşturulamadı"));
+          reject(new Error(assistantT("errors.avatarCanvasUnavailable")));
           return;
         }
 
@@ -588,7 +588,7 @@ export class AssistantController {
         const base64 = pngDataUrl.split(",")[1] ?? "";
 
         if (base64 === "") {
-          reject(new Error("Avatar PNG verisi üretilemedi"));
+          reject(new Error(assistantT("errors.avatarPngGenerationFailed")));
           return;
         }
 
@@ -596,7 +596,7 @@ export class AssistantController {
       };
 
       image.onerror = (): void => {
-        reject(new Error("Avatar görseli yüklenemedi"));
+        reject(new Error(assistantT("errors.avatarImageLoadFailed")));
       };
 
       image.src = sourceDataUrl;

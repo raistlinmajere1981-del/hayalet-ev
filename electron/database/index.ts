@@ -22,10 +22,56 @@ import {
 import { collectSearchAccountIds } from "./search-account-ids.js";
 import { rmSync, existsSync } from "fs";
 import type { SyncMessagesParams } from "@electron/types";
+import type { TranslationParams } from "../../src/types/i18n.ts";
+import { translateElectronMessage } from "../i18n/language-service.ts";
 
 const logger = getLoggerCore();
 
 const activeManagers = new Map<string, SQLiteArchiveManager>();
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return typeof error === "string" && error !== "" ? error : "unknown";
+}
+
+async function logDatabaseInfo(
+  key: string,
+  params?: TranslationParams,
+  context?: Record<string, unknown>
+): Promise<void> {
+  await logger.logInternalT(
+    LogCategory.DATABASE,
+    LogLevel.INFO,
+    `electron.database.logs.${key}`,
+    params,
+    context
+  );
+}
+
+async function logDatabaseError(operation: string, context: Record<string, unknown>): Promise<void> {
+  await logger.logInternalT(
+    LogCategory.DATABASE,
+    LogLevel.ERROR,
+    "electron.database.logs.operationFailed",
+    {
+      operation,
+      message: getErrorMessage(context.error),
+    },
+    context
+  );
+}
 
 function getManager(accountId: string): SQLiteArchiveManager {
   if (!activeManagers.has(accountId)) {
@@ -64,21 +110,19 @@ export const databaseManager = {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       if (accountId.length === 0) {
-        return { success: false, error: "Account ID gerekli" };
+        return {
+          success: false,
+          error: await translateElectronMessage("electron.database.accountIdRequired"),
+        };
       }
 
       getDatabaseForAccount(accountId);
 
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.INFO,
-        "Account database initialized",
-        { accountId }
-      );
+      await logDatabaseInfo("accountDatabaseInitialized", { accountId }, { accountId });
 
       return { success: true };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "initAccount error", {
+      await logDatabaseError("initAccount", {
         accountId,
         error: err,
       });
@@ -94,7 +138,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.getConversations();
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getConversations error", {
+      await logDatabaseError("getConversations", {
         accountId,
         error: err,
       });
@@ -110,7 +154,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.getMessages(conversationId);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getMessages error", {
+      await logDatabaseError("getMessages", {
         accountId,
         conversationId,
         error: err,
@@ -133,7 +177,7 @@ export const databaseManager = {
       const manager = getManager(params.accountId);
       return await manager.syncMessages(params);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "syncMessages error", {
+      await logDatabaseError("syncMessages", {
         accountId: params.accountId,
         webUrl: params.webUrl,
         error: err,
@@ -156,7 +200,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.updateConversation(conversationId, data);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "updateConversation error", {
+      await logDatabaseError("updateConversation", {
         params,
         error: err,
       });
@@ -184,16 +228,11 @@ export const databaseManager = {
       const manager = getManager(params.accountId);
       return await manager.upsertConversationMetadata(params);
     } catch (err) {
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.ERROR,
-        "upsertConversationMetadata error",
-        {
-          accountId: params.accountId,
-          webUrl: params.webUrl,
-          error: err,
-        }
-      );
+      await logDatabaseError("upsertConversationMetadata", {
+        accountId: params.accountId,
+        webUrl: params.webUrl,
+        error: err,
+      });
       return { success: false, error: (err as Error).message };
     }
   },
@@ -206,16 +245,11 @@ export const databaseManager = {
       const manager = getManager(params.accountId);
       return await manager.resetConversationMessages(params.webUrl);
     } catch (err) {
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.ERROR,
-        "resetConversationMessages error",
-        {
-          accountId: params.accountId,
-          webUrl: params.webUrl,
-          error: err,
-        }
-      );
+      await logDatabaseError("resetConversationMessages", {
+        accountId: params.accountId,
+        webUrl: params.webUrl,
+        error: err,
+      });
       return { success: false, error: (err as Error).message };
     }
   },
@@ -228,7 +262,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.deleteConversation(conversationId);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "deleteConversation error", {
+      await logDatabaseError("deleteConversation", {
         accountId,
         conversationId,
         error: err,
@@ -245,7 +279,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.searchMessages(query, limit);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchMessages error", {
+      await logDatabaseError("searchMessages", {
         accountId,
         query,
         error: err,
@@ -276,7 +310,7 @@ export const databaseManager = {
         mimeType
       );
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "saveAttachment error", {
+      await logDatabaseError("saveAttachment", {
         params,
         error: err,
       });
@@ -292,7 +326,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.getAttachments(conversationId);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getAttachments error", {
+      await logDatabaseError("getAttachments", {
         accountId,
         conversationId,
         error: err,
@@ -309,7 +343,7 @@ export const databaseManager = {
       const manager = getManager(accountId);
       return await manager.searchAttachments(query, limit);
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchAttachments error", {
+      await logDatabaseError("searchAttachments", {
         accountId,
         query,
         error: err,
@@ -388,7 +422,7 @@ export const databaseManager = {
         data: { messages, attachments },
       };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchAllAccounts error", {
+      await logDatabaseError("searchAllAccounts", {
         query,
         limit,
         error: err,
@@ -430,7 +464,7 @@ export const databaseManager = {
       const accountFolder = getAccountFolder(accountId);
       if (existsSync(accountFolder)) {
         rmSync(accountFolder, { recursive: true, force: true });
-        await logger.logInternal(LogCategory.DATABASE, LogLevel.INFO, "Account folder deleted", {
+        await logDatabaseInfo("accountFolderDeleted", { accountId }, {
           accountId,
           folder: accountFolder,
         });
@@ -438,7 +472,7 @@ export const databaseManager = {
 
       return { success: true };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "deleteAccount error", {
+      await logDatabaseError("deleteAccount", {
         accountId,
         error: err,
       });
@@ -455,14 +489,9 @@ export const databaseManager = {
       activeManagers.clear();
       closeAllDatabases();
 
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.INFO,
-        "SQLite databases cleanup complete",
-        {}
-      );
+      await logDatabaseInfo("cleanupComplete");
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "Cleanup error", {
+      await logDatabaseError("cleanup", {
         error: err,
       });
     }

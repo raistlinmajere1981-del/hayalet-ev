@@ -62,7 +62,7 @@ const audioManager = {
     }
 
     isInitialized = true;
-    Logger.debug(LogCategory.UI_AUDIO, "Initialized (placeholder mode)");
+    Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.initializedPlaceholder");
   },
 
   register(id: string, url: string): boolean {
@@ -70,10 +70,15 @@ const audioManager = {
       const audio = new window.Audio(url);
       audio.load();
       audioCache.set(id, audio);
-      Logger.debug(LogCategory.UI_AUDIO, "Sound registered", { id, url });
+      Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.soundRegistered", { id }, { id, url });
       return true;
     } catch (error) {
-      Logger.debug(LogCategory.UI_AUDIO, "Failed to register sound", { id, error });
+      Logger.debugT(
+        LogCategory.UI_AUDIO,
+        "app.logs.uiAudio.soundRegisterFailed",
+        { id, message: error instanceof Error ? error.message : String(error) },
+        { id, error }
+      );
       return false;
     }
   },
@@ -83,7 +88,7 @@ const audioManager = {
 
     const audio = audioCache.get(id);
     if (!audio) {
-      Logger.debug(LogCategory.UI_AUDIO, "Sound not found (placeholder mode)", { id });
+      Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.soundNotFoundPlaceholder", { id }, { id });
       return;
     }
 
@@ -118,7 +123,12 @@ const audioManager = {
    */
   setVolume(volume: number): void {
     globalVolume = Math.max(0, Math.min(1, volume));
-    Logger.debug(LogCategory.UI_AUDIO, "Volume set", { volume: globalVolume });
+    Logger.debugT(
+      LogCategory.UI_AUDIO,
+      "app.logs.uiAudio.volumeSet",
+      { volume: globalVolume },
+      { volume: globalVolume }
+    );
   },
 
   getVolume(): number {
@@ -126,13 +136,14 @@ const audioManager = {
   },
 
   mute(): void {
+    const previousMuteState = isMuted;
     isMuted = true;
-    Logger.debug(LogCategory.UI_AUDIO, "Muted", { previousMuteState: isMuted });
+    Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.muted", undefined, { previousMuteState });
   },
 
   unmute(): void {
     isMuted = false;
-    Logger.debug(LogCategory.UI_AUDIO, "Unmuted");
+    Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.unmuted");
   },
 
   toggleMute(): boolean {

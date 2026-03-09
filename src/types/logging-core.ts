@@ -103,6 +103,7 @@ export interface LogEntry {
   level: LogLevel;
   category: LogCategory | string; // Allow custom categories
   message: string;
+  locale?: string; // Locale that was active when the log entry was emitted
 
   visibility?: LogVisibility; // UI display level (1-3)
   correlationId?: string; // Track operation flow

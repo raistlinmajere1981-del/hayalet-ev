@@ -895,7 +895,7 @@
   border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
-/* Topbar içindeki tüm butonları aynı yüksekliğe sabitle */
+/* Keep all buttons in the top bar at the same height */
 .assistant-topbar .btn-sm {
   flex-shrink: 0;
   height: 34px;
@@ -1023,7 +1023,7 @@
   color: var(--text-muted);
 }
 
-/* Yeni kayıt formu */
+/* New record form */
 .memory-new-form {
   display: flex;
   flex-direction: column;
@@ -1151,7 +1151,7 @@
   background: #dc2626;
 }
 
-/* Sağ panel */
+/* Right panel */
 .memory-list-panel {
   flex: 1;
   display: flex;
@@ -1218,7 +1218,7 @@
   font-size: 2rem;
 }
 
-/* Memory kartı */
+/* Memory card */
 .memory-card {
   background: var(--bg-elevated);
   border: var(--border-1) solid var(--border-default);

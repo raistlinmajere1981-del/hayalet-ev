@@ -43,7 +43,8 @@ interface ProbeData {
 
 interface LoadingEvent {
   type: string;
-  message: string;
+  messageKey: string;
+  messageParams?: Record<string, string>;
 }
 
 interface CheckResult {
@@ -71,7 +72,7 @@ export class LoadingTracker {
 
     try {
       if (typeof webview.getWebContentsId !== "function") return false;
-      webview.getWebContentsId(); // Hazır değilse hata fırlatır
+      webview.getWebContentsId(); // Throws if not ready
       if (webview.isLoading?.() === true) return false;
     } catch (_) {
       return false;
@@ -241,14 +242,21 @@ export class LoadingTracker {
       indicator = "busy";
       event = {
         type: "loading-started",
-        message: `loading started for ${provider}: ${currentHref}`,
+        messageKey: "app.logs.traffic.loadingStartedEvent",
+        messageParams: { provider, href: currentHref },
       };
 
-      Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Loading started", {
-        provider,
-        href: currentHref,
-        probeCount: this.probeCount,
-      });
+      Logger.panelT(
+        LogCategory.TRAFFIC,
+        LogLevel.INFO,
+        "app.logs.traffic.loadingStartedPanel",
+        { provider, href: currentHref },
+        {
+          provider,
+          href: currentHref,
+          probeCount: this.probeCount,
+        }
+      );
     }
 
     if (viewState.loadingActive === true) {
@@ -265,15 +273,26 @@ export class LoadingTracker {
         indicator = "idle";
         event = {
           type: "loading-ended",
-          message: `loading ended (${result.reason ?? "unknown"}) for ${provider}: ${currentHref}`,
+          messageKey: "app.logs.traffic.loadingEndedEvent",
+          messageParams: {
+            provider,
+            reason: result.reason ?? "unknown",
+            href: currentHref,
+          },
         };
 
-        Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Loading ended", {
-          provider,
-          reason: result.reason,
-          href: currentHref,
-          probeCount: this.probeCount,
-        });
+        Logger.panelT(
+          LogCategory.TRAFFIC,
+          LogLevel.INFO,
+          "app.logs.traffic.loadingEndedPanel",
+          { provider, reason: result.reason ?? "unknown", href: currentHref },
+          {
+            provider,
+            reason: result.reason,
+            href: currentHref,
+            probeCount: this.probeCount,
+          }
+        );
       } else {
         indicator = "busy";
       }

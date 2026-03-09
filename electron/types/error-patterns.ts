@@ -1,7 +1,7 @@
 /**
  * Error Pattern Type Definitions
  *
- * Hata pattern veritabanı ve eşleştirme sonuçları için tip tanımları.
+ * Type definitions for the error pattern database and match results.
  *
  * @module electron/types/error-patterns
  */

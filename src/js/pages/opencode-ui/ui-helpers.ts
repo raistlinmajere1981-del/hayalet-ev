@@ -7,9 +7,9 @@ import type { CustomSelectAPI, CustomSelectCallback, CustomSelectItem } from "./
 import { t } from "./i18n.js";
 
 /**
- * Custom select dropdown oluştur
+ * Create a custom select dropdown.
  * @param dropdownId - Dropdown container element ID
- * @param onSelect - Seçim callback (value, text)
+ * @param onSelect - Selection callback (value, text)
  * @returns Custom select API
  */
 export function setupCustomSelect(
@@ -59,7 +59,7 @@ export function setupCustomSelect(
         (btn as HTMLElement).dataset["value"] = item.value;
         (btn as HTMLElement).dataset["label"] = item.label;
 
-        // Zengin içerik: label + subtitle + badge
+        // Rich content: label + subtitle + badge
         if (
           (item.subtitle !== undefined && item.subtitle !== "") ||
           (item.badge !== undefined && item.badge !== "")
@@ -110,7 +110,7 @@ export function setupCustomSelect(
 }
 
 /**
- * Sidebar toggle butonunu ayarla
+ * Set up the sidebar toggle button.
  */
 export function setupSidebarToggle(btnId: string, sidebarId: string): void {
   const btn = document.getElementById(btnId) as HTMLElement;
@@ -122,7 +122,7 @@ export function setupSidebarToggle(btnId: string, sidebarId: string): void {
 }
 
 /**
- * T\u00fcm UI helper'lar\u0131 ba\u015flat
+ * Initialize all UI helpers.
  */
 export function initUIHelpers(): void {
   setupSidebarToggle("toggle-left", "sidebar-left");

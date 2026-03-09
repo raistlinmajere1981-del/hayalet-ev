@@ -1,27 +1,27 @@
 /**
  * Shared UI Constants
  *
- * Animasyon, buton durumu ve scroll sınırı sabitleri.
- * @ui-constants alias ile erişilir.
+ * Animation, button-state, and scroll-threshold constants.
+ * Available through the `@ui-constants` alias.
  */
 
-/** GSAP animasyon varsayılan süresi (saniye) */
+/** Default GSAP animation duration (seconds). */
 export const DEFAULT_DURATION = 0.3;
 
-/** Slide animasyonu mesafesi (px) */
+/** Slide animation distance (px). */
 export const SLIDE_DISTANCE = 30;
 
-/** Buton başarı durumu görüntüleme süresi (ms) */
+/** Button success-state display duration (ms). */
 export const DEFAULT_SUCCESS_DURATION = 1500;
 
-/** Buton hata durumu görüntüleme süresi (ms) */
+/** Button error-state display duration (ms). */
 export const DEFAULT_ERROR_DURATION = 2000;
 
-/** Splash screen minimum görüntüleme süresi (ms) */
+/** Minimum splash-screen display duration (ms). */
 export const MINIMUM_DISPLAY_TIME = 2000;
 
-/** Splash screen gizleme animasyon süresi (ms) — CSS --duration-slow ile eşleşir */
+/** Splash-screen hide animation duration (ms) — matches CSS `--duration-slow`. */
 export const HIDE_ANIMATION_DURATION = 400;
 
-/** Scroll altında sayılma eşiği (px) — konteynır alt kenarına bu kadar yakınsa "altta" sayılır */
+/** Bottom-scroll threshold (px) — treated as "at bottom" within this distance from the container edge. */
 export const SCROLL_THRESHOLD = 80;

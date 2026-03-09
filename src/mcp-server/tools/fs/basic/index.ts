@@ -1,7 +1,7 @@
 /**
  * Basic Filesystem Tools - Export Hub
  *
- * Temel dosya CRUD operasyonları için merkezi export noktası
+ * Central export entry point for basic file CRUD operations.
  *
  * @module fs/basic
  */

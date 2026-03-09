@@ -14,10 +14,11 @@ export const handleIPC =
     try {
       return await handlerFn(event, ...args);
     } catch (err) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.ERROR,
-        `IPC handler error: ${(err as Error).message}`,
+        "electron.ipc.logs.handlerError",
+        { message: (err as Error).message },
         {
           error: {
             name: (err as Error).name,
@@ -55,10 +56,11 @@ export const handleLoggerAppendBatch = async (
     });
     return { success: true };
   } catch (err) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.IPC,
       LogLevel.ERROR,
-      `Logger batch append failed: ${(err as Error).message}`,
+      "electron.ipc.logs.loggerBatchAppendFailed",
+      { message: (err as Error).message },
       {
         entriesCount: Array.isArray(entries) ? entries.length : 0,
         error: {

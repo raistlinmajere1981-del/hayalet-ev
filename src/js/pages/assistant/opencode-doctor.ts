@@ -276,9 +276,14 @@ export async function handleOpencodeActionButtonClick(
       message: (error as Error).message,
       closable: true,
     });
-    Logger.warn(LogCategory.ASSISTANT_CORE, "OpenCode action button failure", {
-      error: (error as Error).message,
-    });
+    Logger.warnT(
+      LogCategory.ASSISTANT_CORE,
+      "shell.assistant.logs.opencodeActionButtonFailure",
+      { message: (error as Error).message },
+      {
+        error: (error as Error).message,
+      }
+    );
   } finally {
     refreshOpencodeDoctorStatus(elements);
   }

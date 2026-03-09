@@ -5,17 +5,20 @@
  * Users pick features from the pool and save them to `.rovo/_metadata/CHARACTER.md`.
  */
 
+import type { AppLanguage } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { translateCatalog } from "../../../../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
 
 interface CharacterFeature {
   id: string;
-  label: string;
+  translationKey: string;
   categoryId: string;
 }
 
 interface CharacterCategory {
   id: string;
-  label: string;
+  translationKey: string;
   icon: string;
   features: CharacterFeature[];
 }
@@ -29,177 +32,189 @@ function characterT(key: string, params?: Record<string, string | number>): stri
   return AppI18n.t(`shell.assistant.characterOverlay.${key}`, params);
 }
 
-const LABEL_TRANSLATION_KEYS: Record<string, string> = {
-  "İletişim Tonu": "categories.tone",
-  Resmi: "features.toneFormal",
-  "Yarı-resmi": "features.toneSemiformal",
-  Samimi: "features.toneFriendly",
-  "Arkadaşça": "features.toneCasual",
-  "Emoji: Çok": "features.toneEmojiLots",
-  "Emoji: Az": "features.toneEmojiFew",
-  "Emoji: Hiç": "features.toneEmojiNone",
-  "Mizah: Zaman zaman": "features.toneHumorSometimes",
-  "Mizah: Hiç": "features.toneHumorNone",
-  "Yanıt Stili": "categories.style",
-  "Direkt sonuca git": "features.styleDirect",
-  "Adım adım açıkla": "features.styleStepByStep",
-  "Kod önce, açıklama sonra": "features.styleCodeFirst",
-  "Açıklama önce, kod sonra": "features.styleExplainFirst",
-  "Alternatif çözümler sun": "features.styleAlternatives",
-  "Tek en iyi çözümü ver": "features.styleBestOnly",
-  "Belirsizlikte mutlaka sor": "features.styleAskUnclear",
-  "Varsayımla ilerle": "features.styleAssume",
-  Proaktiflik: "categories.proactivity",
-  "Sadece isteneni yap": "features.proMinimal",
-  "İlgili riskleri belirt": "features.proRisks",
-  "Bağlantılı iyileştirmeler öner": "features.proSuggest",
-  "Tam analiz — her kararı yorumla": "features.proFullAnalysis",
-  "Detay Seviyesi": "categories.detail",
-  "Minimal — sonuç + tek cümle": "features.detailMinimal",
-  "Normal — açıklama + önemli notlar": "features.detailNormal",
-  "Verbose — tüm adımlar + gerekçeler": "features.detailVerbose",
-  "Dil Tercihi": "categories.language",
-  "Türkçe ağırlıklı": "features.langTurkish",
-  "Teknik terimler İngilizce, açıklama Türkçe": "features.langMixed",
-  "Tam İngilizce": "features.langEnglish",
-  "Uzmanlık Odağı": "categories.focus",
-  "Frontend öncelikli": "features.focusFrontend",
-  "Backend öncelikli": "features.focusBackend",
-  "Full-stack dengeli": "features.focusFullstack",
-  "TypeScript / tip güvenliği odaklı": "features.focusTypescript",
-  "Performans odaklı": "features.focusPerformance",
-  "Güvenlik odaklı": "features.focusSecurity",
-  "UX / kullanıcı deneyimi odaklı": "features.focusUx",
-  Kişilik: "categories.personality",
-  "Mentor — öğretir, gerekçe açıklar": "features.personalityMentor",
-  "Ortak — birlikte düşünür": "features.personalityPartner",
-  "Eleştirmen — kodu sorgular, alternatif önerir": "features.personalityCritic",
-  "Pragmatik — en hızlı çalışanı önerir": "features.personalityPragmatic",
-  "Asistan — sadece yapar, yorum yapmaz": "features.personalityAssistant",
-};
+const PROFILE_LABEL_LOCALES: AppLanguage[] = ["tr", "en"];
+const EMPTY_PROFILE_HINT_PATTERN =
+  /> \*(Henüz bir profil tanımlanmadı\..*?|No profile has been defined yet\..*?)\*/;
+const LAST_UPDATED_PATTERN = /\*\*(Son güncelleme|Last updated):\*\* .*/;
 
-function translateCharacterLabel(label: string): string {
-  const key = LABEL_TRANSLATION_KEYS[label];
-  return key !== undefined ? characterT(key) : label;
+function translateCharacterCatalogKey(
+  key: string,
+  locale: AppLanguage = AppI18n.getLocale()
+): string {
+  if (locale === AppI18n.getLocale()) {
+    return characterT(key);
+  }
+
+  const pack = getBuiltInLanguagePack(locale);
+  const fallbackCatalog = getBuiltInLanguagePack("en")?.catalog;
+  return pack ? translateCatalog(pack.catalog, `shell.assistant.characterOverlay.${key}`, undefined, fallbackCatalog) : characterT(key);
+}
+
+function getCategoryLabel(category: CharacterCategory, locale?: AppLanguage): string {
+  return translateCharacterCatalogKey(category.translationKey, locale);
+}
+
+function getFeatureLabel(feature: CharacterFeature, locale?: AppLanguage): string {
+  return translateCharacterCatalogKey(feature.translationKey, locale);
+}
+
+function normalizeProfileLabel(label: string): string {
+  return label.trim().toLocaleLowerCase("tr-TR");
 }
 
 // === Feature Pool ===
 const CATEGORIES: CharacterCategory[] = [
   {
     id: "tone",
-    label: "İletişim Tonu",
+    translationKey: "categories.tone",
     icon: "🗣️",
     features: [
-      { id: "tone-formal", label: "Resmi", categoryId: "tone" },
-      { id: "tone-semiformal", label: "Yarı-resmi", categoryId: "tone" },
-      { id: "tone-friendly", label: "Samimi", categoryId: "tone" },
-      { id: "tone-casual", label: "Arkadaşça", categoryId: "tone" },
-      { id: "tone-emoji-lots", label: "Emoji: Çok", categoryId: "tone" },
-      { id: "tone-emoji-few", label: "Emoji: Az", categoryId: "tone" },
-      { id: "tone-emoji-none", label: "Emoji: Hiç", categoryId: "tone" },
-      { id: "tone-humor-sometimes", label: "Mizah: Zaman zaman", categoryId: "tone" },
-      { id: "tone-humor-none", label: "Mizah: Hiç", categoryId: "tone" },
+      { id: "tone-formal", translationKey: "features.toneFormal", categoryId: "tone" },
+      { id: "tone-semiformal", translationKey: "features.toneSemiformal", categoryId: "tone" },
+      { id: "tone-friendly", translationKey: "features.toneFriendly", categoryId: "tone" },
+      { id: "tone-casual", translationKey: "features.toneCasual", categoryId: "tone" },
+      { id: "tone-emoji-lots", translationKey: "features.toneEmojiLots", categoryId: "tone" },
+      { id: "tone-emoji-few", translationKey: "features.toneEmojiFew", categoryId: "tone" },
+      { id: "tone-emoji-none", translationKey: "features.toneEmojiNone", categoryId: "tone" },
+      {
+        id: "tone-humor-sometimes",
+        translationKey: "features.toneHumorSometimes",
+        categoryId: "tone",
+      },
+      { id: "tone-humor-none", translationKey: "features.toneHumorNone", categoryId: "tone" },
     ],
   },
   {
     id: "style",
-    label: "Yanıt Stili",
+    translationKey: "categories.style",
     icon: "📝",
     features: [
-      { id: "style-direct", label: "Direkt sonuca git", categoryId: "style" },
-      { id: "style-stepbystep", label: "Adım adım açıkla", categoryId: "style" },
-      { id: "style-code-first", label: "Kod önce, açıklama sonra", categoryId: "style" },
-      { id: "style-explain-first", label: "Açıklama önce, kod sonra", categoryId: "style" },
-      { id: "style-alternatives", label: "Alternatif çözümler sun", categoryId: "style" },
-      { id: "style-best-only", label: "Tek en iyi çözümü ver", categoryId: "style" },
-      { id: "style-ask-unclear", label: "Belirsizlikte mutlaka sor", categoryId: "style" },
-      { id: "style-assume", label: "Varsayımla ilerle", categoryId: "style" },
+      { id: "style-direct", translationKey: "features.styleDirect", categoryId: "style" },
+      {
+        id: "style-stepbystep",
+        translationKey: "features.styleStepByStep",
+        categoryId: "style",
+      },
+      { id: "style-code-first", translationKey: "features.styleCodeFirst", categoryId: "style" },
+      {
+        id: "style-explain-first",
+        translationKey: "features.styleExplainFirst",
+        categoryId: "style",
+      },
+      {
+        id: "style-alternatives",
+        translationKey: "features.styleAlternatives",
+        categoryId: "style",
+      },
+      { id: "style-best-only", translationKey: "features.styleBestOnly", categoryId: "style" },
+      {
+        id: "style-ask-unclear",
+        translationKey: "features.styleAskUnclear",
+        categoryId: "style",
+      },
+      { id: "style-assume", translationKey: "features.styleAssume", categoryId: "style" },
     ],
   },
   {
     id: "proactivity",
-    label: "Proaktiflik",
+    translationKey: "categories.proactivity",
     icon: "⚡",
     features: [
-      { id: "pro-minimal", label: "Sadece isteneni yap", categoryId: "proactivity" },
-      { id: "pro-risks", label: "İlgili riskleri belirt", categoryId: "proactivity" },
-      { id: "pro-suggest", label: "Bağlantılı iyileştirmeler öner", categoryId: "proactivity" },
+      { id: "pro-minimal", translationKey: "features.proMinimal", categoryId: "proactivity" },
+      { id: "pro-risks", translationKey: "features.proRisks", categoryId: "proactivity" },
+      { id: "pro-suggest", translationKey: "features.proSuggest", categoryId: "proactivity" },
       {
         id: "pro-fullanalysis",
-        label: "Tam analiz — her kararı yorumla",
+        translationKey: "features.proFullAnalysis",
         categoryId: "proactivity",
       },
     ],
   },
   {
     id: "detail",
-    label: "Detay Seviyesi",
+    translationKey: "categories.detail",
     icon: "🔍",
     features: [
-      { id: "detail-minimal", label: "Minimal — sonuç + tek cümle", categoryId: "detail" },
-      { id: "detail-normal", label: "Normal — açıklama + önemli notlar", categoryId: "detail" },
-      { id: "detail-verbose", label: "Verbose — tüm adımlar + gerekçeler", categoryId: "detail" },
+      { id: "detail-minimal", translationKey: "features.detailMinimal", categoryId: "detail" },
+      { id: "detail-normal", translationKey: "features.detailNormal", categoryId: "detail" },
+      { id: "detail-verbose", translationKey: "features.detailVerbose", categoryId: "detail" },
     ],
   },
   {
     id: "language",
-    label: "Dil Tercihi",
+    translationKey: "categories.language",
     icon: "🌐",
     features: [
-      { id: "lang-turkish", label: "Türkçe ağırlıklı", categoryId: "language" },
-      {
-        id: "lang-mixed",
-        label: "Teknik terimler İngilizce, açıklama Türkçe",
-        categoryId: "language",
-      },
-      { id: "lang-english", label: "Tam İngilizce", categoryId: "language" },
+      { id: "lang-turkish", translationKey: "features.langTurkish", categoryId: "language" },
+      { id: "lang-mixed", translationKey: "features.langMixed", categoryId: "language" },
+      { id: "lang-english", translationKey: "features.langEnglish", categoryId: "language" },
     ],
   },
   {
     id: "focus",
-    label: "Uzmanlık Odağı",
+    translationKey: "categories.focus",
     icon: "🎯",
     features: [
-      { id: "focus-frontend", label: "Frontend öncelikli", categoryId: "focus" },
-      { id: "focus-backend", label: "Backend öncelikli", categoryId: "focus" },
-      { id: "focus-fullstack", label: "Full-stack dengeli", categoryId: "focus" },
-      { id: "focus-typescript", label: "TypeScript / tip güvenliği odaklı", categoryId: "focus" },
-      { id: "focus-performance", label: "Performans odaklı", categoryId: "focus" },
-      { id: "focus-security", label: "Güvenlik odaklı", categoryId: "focus" },
-      { id: "focus-ux", label: "UX / kullanıcı deneyimi odaklı", categoryId: "focus" },
+      { id: "focus-frontend", translationKey: "features.focusFrontend", categoryId: "focus" },
+      { id: "focus-backend", translationKey: "features.focusBackend", categoryId: "focus" },
+      { id: "focus-fullstack", translationKey: "features.focusFullstack", categoryId: "focus" },
+      {
+        id: "focus-typescript",
+        translationKey: "features.focusTypescript",
+        categoryId: "focus",
+      },
+      {
+        id: "focus-performance",
+        translationKey: "features.focusPerformance",
+        categoryId: "focus",
+      },
+      { id: "focus-security", translationKey: "features.focusSecurity", categoryId: "focus" },
+      { id: "focus-ux", translationKey: "features.focusUx", categoryId: "focus" },
     ],
   },
   {
     id: "personality",
-    label: "Kişilik",
+    translationKey: "categories.personality",
     icon: "🧩",
     features: [
-      { id: "pers-mentor", label: "Mentor — öğretir, gerekçe açıklar", categoryId: "personality" },
-      { id: "pers-partner", label: "Ortak — birlikte düşünür", categoryId: "personality" },
+      {
+        id: "pers-mentor",
+        translationKey: "features.personalityMentor",
+        categoryId: "personality",
+      },
+      {
+        id: "pers-partner",
+        translationKey: "features.personalityPartner",
+        categoryId: "personality",
+      },
       {
         id: "pers-critic",
-        label: "Eleştirmen — kodu sorgular, alternatif önerir",
+        translationKey: "features.personalityCritic",
         categoryId: "personality",
       },
       {
         id: "pers-pragmatic",
-        label: "Pragmatik — en hızlı çalışanı önerir",
+        translationKey: "features.personalityPragmatic",
         categoryId: "personality",
       },
       {
         id: "pers-assistant",
-        label: "Asistan — sadece yapar, yorum yapmaz",
+        translationKey: "features.personalityAssistant",
         categoryId: "personality",
       },
     ],
   },
 ];
 
-// Flat map: id -> feature
 const FEATURE_MAP = new Map<string, CharacterFeature>();
+const FEATURE_LABEL_INDEX = new Map<string, string>();
 for (const cat of CATEGORIES) {
   for (const f of cat.features) {
     FEATURE_MAP.set(f.id, f);
+    FEATURE_LABEL_INDEX.set(normalizeProfileLabel(f.id), f.id);
+    for (const locale of PROFILE_LABEL_LOCALES) {
+      FEATURE_LABEL_INDEX.set(normalizeProfileLabel(getFeatureLabel(f, locale)), f.id);
+    }
   }
 }
 
@@ -240,6 +255,7 @@ export class CharacterOverlay {
   private selected: Set<string> = new Set();
   // Saved disk state used for change detection
   private savedSelected: Set<string> = new Set();
+  private unsubscribeI18n: (() => void) | null = null;
 
   init(): void {
     this.overlay = document.getElementById("character-overlay");
@@ -291,6 +307,12 @@ export class CharacterOverlay {
       });
     });
 
+    this.unsubscribeI18n ??= AppI18n.subscribe(() => {
+      this._renderPool();
+      this._renderActivePanel();
+      this._checkConflicts();
+    });
+
     // Render the pool
     this._renderPool();
   }
@@ -314,7 +336,7 @@ export class CharacterOverlay {
   private async _loadFromDisk(): Promise<void> {
     try {
       const api = window.electronAPI;
-      if (!api) throw new Error("electronAPI yok");
+      if (!api) throw new Error("electronAPI is unavailable");
       const b64 = await api.readFile(CHARACTER_MD_PATH);
       if (b64 == null || b64 === "") {
         this.selected = new Set();
@@ -344,12 +366,9 @@ export class CharacterOverlay {
       .filter((l) => l.startsWith("- "));
     for (const line of lines) {
       const label = line.slice(2).trim();
-      // Resolve the id from the label
-      for (const [id, feature] of FEATURE_MAP) {
-        if (feature.label === label) {
-          result.add(id);
-          break;
-        }
+      const featureId = FEATURE_LABEL_INDEX.get(normalizeProfileLabel(label));
+      if (featureId !== undefined) {
+        result.add(featureId);
       }
     }
     return result;
@@ -362,17 +381,17 @@ export class CharacterOverlay {
 
     try {
       const api = window.electronAPI;
-      if (!api) throw new Error("electronAPI yok");
+      if (!api) throw new Error("electronAPI is unavailable");
       const b64 = await api.readFile(CHARACTER_MD_PATH);
-      if (b64 == null || b64 === "") throw new Error("Dosya okunamadı");
+      if (b64 == null || b64 === "") throw new Error("Could not read the character profile file");
       const current = atob(b64);
       const updated = current
         .replace(
           /<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/,
           `<!--PROFILE_START-->\n${profileBlock}<!--PROFILE_END-->`
         )
-        .replace(/> \*Henüz bir profil tanımlanmadı\..*?\*/, "")
-        .replace(/\*\*Son güncelleme:\*\* .*/, `**Son güncelleme:** ${timestamp}`);
+        .replace(EMPTY_PROFILE_HINT_PATTERN, "")
+        .replace(LAST_UPDATED_PATTERN, (_match, label: string) => `**${label}:** ${timestamp}`);
 
       await api.fmWriteFileAtomic({ path: CHARACTER_MD_PATH, data: updated, encoding: "utf-8" });
       this.savedSelected = new Set(this.selected);
@@ -390,7 +409,17 @@ export class CharacterOverlay {
         }, 2000);
       }
     } catch (err) {
-      console.error("[CharacterOverlay] Kaydetme hatası:", err);
+      if (this.saveBtn) {
+        const originalText = this.saveBtn.textContent;
+        this.saveBtn.classList.remove("saved");
+        this.saveBtn.textContent = AppI18n.t("shell.assistant.buttonStates.error");
+        setTimeout(() => {
+          if (this.saveBtn) {
+            this.saveBtn.textContent = originalText;
+          }
+        }, 2000);
+      }
+      console.error("[CharacterOverlay] Save failed:", err);
     }
   }
 
@@ -401,9 +430,9 @@ export class CharacterOverlay {
     for (const cat of CATEGORIES) {
       const activeInCat = cat.features.filter((f) => this.selected.has(f.id));
       if (activeInCat.length === 0) continue;
-      block += `\n### ${cat.icon} ${cat.label}\n`;
+      block += `\n### ${cat.icon} ${getCategoryLabel(cat)}\n`;
       for (const f of activeInCat) {
-        block += `- ${f.label}\n`;
+        block += `- ${getFeatureLabel(f)}\n`;
       }
     }
     return block + "\n";
@@ -422,7 +451,7 @@ export class CharacterOverlay {
       const header = document.createElement("div");
       header.className = "character-accordion-header";
       header.innerHTML = `
-        <span class="character-accordion-title">${cat.icon} ${translateCharacterLabel(cat.label)}</span>
+        <span class="character-accordion-title">${cat.icon} ${getCategoryLabel(cat)}</span>
         <span class="character-accordion-meta">
           <span class="character-accordion-badge" data-badge="${cat.id}"></span>
           <span class="character-accordion-chevron">▶</span>
@@ -441,7 +470,7 @@ export class CharacterOverlay {
         item.dataset["featureId"] = feature.id;
         item.innerHTML = `
           <span class="character-pool-item-check"></span>
-          <span class="character-pool-item-label">${translateCharacterLabel(feature.label)}</span>
+          <span class="character-pool-item-label">${getFeatureLabel(feature)}</span>
         `;
         item.addEventListener("click", () => {
           this._toggleFeature(feature.id);
@@ -516,7 +545,7 @@ export class CharacterOverlay {
 
       const label = document.createElement("div");
       label.className = "character-group-label";
-      label.textContent = `${cat.icon} ${translateCharacterLabel(cat.label)}`;
+      label.textContent = `${cat.icon} ${getCategoryLabel(cat)}`;
 
       const chips = document.createElement("div");
       chips.className = "character-group-chips";
@@ -525,7 +554,7 @@ export class CharacterOverlay {
         const chip = document.createElement("span");
         chip.className = "character-chip";
         chip.title = characterT("removeTitle");
-        chip.innerHTML = `${translateCharacterLabel(f.label)} <span class="character-chip-remove">✕</span>`;
+        chip.innerHTML = `${getFeatureLabel(f)} <span class="character-chip-remove">✕</span>`;
         chip.addEventListener("click", () => {
           this._toggleFeature(f.id);
         });
@@ -550,8 +579,8 @@ export class CharacterOverlay {
         if (fa && fb) {
           conflictMessages.push(
             characterT("conflictMessage", {
-              a: translateCharacterLabel(fa.label),
-              b: translateCharacterLabel(fb.label),
+              a: getFeatureLabel(fa),
+              b: getFeatureLabel(fb),
             })
           );
         }

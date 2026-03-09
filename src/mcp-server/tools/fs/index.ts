@@ -1,7 +1,7 @@
 /**
  * Filesystem Tools - Export Hub
  *
- * Tüm filesystem tool'ları için merkezi export noktası
+ * Central export entry point for filesystem tools.
  */
 
 // Function exports (internal use only - tool handlers removed as duplicates)

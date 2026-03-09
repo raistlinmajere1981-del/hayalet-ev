@@ -26,7 +26,7 @@
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  height: 50px; /* Sadece görünen küçük çizgi alanı */
+  height: 50px; /* Only the small visible line area */
   width: var(--side-nav-trigger-width);
   background: linear-gradient(to left, var(--bg-elevated), transparent);
   opacity: 0.6;
@@ -42,7 +42,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 2px; /* İnce çizgi */
+  width: 2px; /* Thin line */
   height: var(--size-avatar-md);
   background: var(--text-muted);
   border-radius: var(--radius-full);
@@ -50,7 +50,7 @@
   transition: var(--transition-fast);
 }
 
-/* Trigger sadece menü açık olduğunda gizlenir */
+/* The trigger is hidden only when the menu is open */
 .side-nav-overlay.is-open .side-nav-trigger {
   opacity: 0;
   pointer-events: none;
@@ -72,7 +72,7 @@
   transition: transform var(--duration-normal) var(--ease-out);
 }
 
-/* Menü sadece .is-open class'ı ile açılır (JavaScript kontrollü) */
+/* The menu opens only with the .is-open class (JavaScript-controlled) */
 .side-nav-overlay.is-open .side-nav-menu {
   transform: translateX(0);
 }

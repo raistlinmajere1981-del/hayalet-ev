@@ -1,12 +1,13 @@
 import { LogCategory, LogLevel } from "@shared/logging-core";
+import type { TranslationParams } from "@shared/i18n.js";
 /**
- * BaseRelay - Tüm relay tiplerinin miras alacağı temel sınıf
+ * BaseRelay - base class for all relay types
  *
- * Bu abstract class, relay'lerin ortak davranışlarını tanımlar:
- * - UI göstergesi güncelleme
+ * This abstract class defines shared relay behavior:
+ * - UI indicator updates
  * - Event dispatch
  * - Logging
- * - Temel state yönetimi
+ * - Basic state management
  */
 
 import { Logger } from "../logger/index.js";
@@ -82,7 +83,7 @@ export class BaseRelay {
   }
 
   /**
-   * Relay aktif mi?
+   * Whether the relay is active.
    * @returns {boolean}
    */
   get isActive(): boolean {
@@ -90,7 +91,7 @@ export class BaseRelay {
   }
 
   /**
-   * Session bilgisi
+   * Session information.
    * @returns {Object|null}
    */
   get session(): RelaySession | null {
@@ -98,7 +99,7 @@ export class BaseRelay {
   }
 
   /**
-   * Forward sayısı
+   * Forward count.
    * @returns {number}
    */
   get forwardCount(): number {
@@ -106,9 +107,9 @@ export class BaseRelay {
   }
 
   /**
-   * Relay oturumu başlat - alt sınıflar override etmeli
+   * Start the relay session. Subclasses must override this.
    * @abstract
-   * @param {Object} _opts - Oturum seçenekleri
+   * @param {Object} _opts - Session options
    */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   start(_opts = {}): Promise<void> {
@@ -116,7 +117,7 @@ export class BaseRelay {
   }
 
   /**
-   * Relay oturumu durdur - alt sınıflar override etmeli
+   * Stop the relay session. Subclasses must override this.
    * @abstract
    */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -129,10 +130,10 @@ export class BaseRelay {
   }
 
   /**
-   * AI thinking tamamlandığında çağrılır - alt sınıflar override etmeli
+   * Called when AI thinking completes. Subclasses must override this.
    * @abstract
-   * @param {string} _provider - AI slot (ai1 veya ai2)
-   * @param {Object} _syncResult - Conversation sync sonucu
+   * @param {string} _provider - AI slot (ai1 or ai2)
+   * @param {Object} _syncResult - Conversation sync result
    */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   handleThinkingComplete(_provider: string, _syncResult: SyncResult | null): Promise<void> {
@@ -140,7 +141,7 @@ export class BaseRelay {
   }
 
   /**
-   * Bu relay bu provider'ı yönetiyor mu?
+   * Whether this relay manages the given provider.
    * @param {string} _provider - AI slot
    * @returns {boolean}
    */
@@ -149,11 +150,11 @@ export class BaseRelay {
   }
 
   /**
-   * Log event ekle
+   * Add a log event.
    * @protected
-   * @param {string} level - Log seviyesi (info, warning, error)
-   * @param {string} message - Log mesajı
-   * @param {Object} context - Ek context
+   * @param {string} level - Log level (info, warning, error)
+   * @param {string} message - Log message
+   * @param {Object} context - Extra context
    */
   _log(level: string, message: string, context: Record<string, unknown> = {}): void {
     const logContext = {
@@ -173,11 +174,34 @@ export class BaseRelay {
     }
   }
 
+  _logT(
+    level: string,
+    key: string,
+    params?: TranslationParams,
+    context: Record<string, unknown> = {}
+  ): void {
+    const logContext = {
+      relayType: this.constructor.name,
+      ...context,
+      ...(this._session?.id !== undefined ? { sessionId: this._session.id } : {}),
+    };
+
+    if (level === "error") {
+      Logger.errorT(LogCategory.RELAY, key, params, logContext);
+    } else if (level === "warning" || level === "warn") {
+      Logger.warnT(LogCategory.RELAY, key, params, logContext);
+    } else if (level === "debug") {
+      Logger.debugT(LogCategory.RELAY, key, params, logContext);
+    } else {
+      Logger.infoT(LogCategory.RELAY, key, params, logContext);
+    }
+  }
+
   /**
-   * Custom event dispatch et
+   * Dispatch a custom event.
    * @protected
-   * @param {string} eventName - Event adı
-   * @param {Object} detail - Event detayları
+   * @param {string} eventName - Event name
+   * @param {Object} detail - Event details
    */
   _dispatchEvent(eventName: string, detail: Record<string, unknown> = {}): void {
     try {
@@ -195,12 +219,12 @@ export class BaseRelay {
   }
 
   /**
-   * UI göstergesini güncelle
+   * Update the UI indicator.
    * @protected
    * @param {string} elementId - DOM element ID
-   * @param {string} text - Gösterilecek metin
-   * @param {string[]} addClasses - Eklenecek CSS class'ları
-   * @param {string[]} removeClasses - Kaldırılacak CSS class'ları
+   * @param {string} text - Text to display
+   * @param {string[]} addClasses - CSS classes to add
+   * @param {string[]} removeClasses - CSS classes to remove
    */
   _updateIndicatorElement(
     elementId: string,
@@ -225,7 +249,7 @@ export class BaseRelay {
   }
 
   /**
-   * Session state'i sıfırla
+   * Reset the session state.
    * @protected
    */
   _resetState(): void {
@@ -235,9 +259,9 @@ export class BaseRelay {
   }
 
   /**
-   * Unique session ID oluştur
+   * Generate a unique session ID.
    * @protected
-   * @param {string} prefix - ID prefix'i
+   * @param {string} prefix - ID prefix
    * @returns {string}
    */
   _generateSessionId(prefix = LogCategory.RELAY): string {

@@ -2,6 +2,7 @@ import {
   getRuntimeProviderConfig,
   getRuntimeSelectorCandidates,
 } from "../shared/runtime-selectors.js";
+import { AppI18n } from "../../../i18n/index.js";
 
 interface InjectResult {
   success?: boolean;
@@ -16,6 +17,10 @@ interface WebviewElement extends HTMLElement {
   sendInputEvent: (event: { type: string; keyCode: string }) => void;
 }
 
+function composerT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.messageComposer.${key}`, params);
+}
+
 export async function sendMessage(
   webview: WebviewElement,
   { message }: { message: string }
@@ -24,14 +29,22 @@ export async function sendMessage(
   const runtimeConfig = await getRuntimeProviderConfig(webview);
   const inputCandidates = getRuntimeSelectorCandidates(runtimeConfig, "inputField");
   const inputCandidatesLiteral = JSON.stringify(inputCandidates);
+  const localizedMessages = JSON.stringify({
+    providerConfigMissing: composerT("providerConfigMissing"),
+    inputSelectorMissing: composerT("inputSelectorMissing"),
+    focusPrepared: composerT("focusPrepared"),
+    contentEditableWritten: composerT("contentEditableWritten"),
+    textareaWritten: composerT("textareaWritten"),
+  });
 
   const injectScript = `(function() {
     const message = ${safeMessage};
     const inputSelectorCandidates = ${inputCandidatesLiteral};
+    const localizedMessages = ${localizedMessages};
 
     const config = window.__hayalet_provider_config;
     if (!config || !config.selectors) {
-      return { success: false, message: 'Provider config bulunamadı' };
+      return { success: false, message: localizedMessages.providerConfigMissing };
     }
 
     const resolveInput = () => {
@@ -50,7 +63,7 @@ export async function sendMessage(
     const resolvedInput = resolveInput();
 
     if (!resolvedInput) {
-      return { success: false, message: 'Configde input selector bulunamadi' };
+      return { success: false, message: localizedMessages.inputSelectorMissing };
     }
 
     const textarea = resolvedInput.element;
@@ -63,7 +76,7 @@ export async function sendMessage(
       if (typeof textarea.textContent !== 'undefined') textarea.textContent = '';
       return {
         success: true,
-        message: 'Textarea temizlendi ve odaklandı',
+        message: localizedMessages.focusPrepared,
         providerId: config.id,
         inputType: inputType
       };
@@ -96,7 +109,7 @@ export async function sendMessage(
       
       return {
         success: true,
-        message: 'Mesaj ProseMirror/contenteditable içine yazıldı',
+        message: localizedMessages.contentEditableWritten,
         providerId: config.id,
         inputType: inputType,
         isProseMirror: isProseMirror
@@ -114,7 +127,7 @@ export async function sendMessage(
 
     return {
       success: true,
-      message: 'Mesaj textarea içine yazıldı',
+      message: localizedMessages.textareaWritten,
       providerId: config.id,
       inputType: inputType
     };
@@ -122,7 +135,7 @@ export async function sendMessage(
 
   const result = await webview.executeJavaScript(injectScript);
   if (result?.success !== true) {
-    return { success: false, message: result?.message ?? "Mesaj eklenemedi" };
+    return { success: false, message: result?.message ?? composerT("inputWriteFailed") };
   }
 
   if (result.inputType === "character-by-character") {
@@ -250,7 +263,7 @@ export async function sendMessage(
       if (insertedFast) {
         return {
           success: true,
-          message: "Mesaj hızlı ekleme ile yazıldı",
+          message: composerT("fastInsertWritten"),
         };
       }
 
@@ -313,13 +326,15 @@ export async function sendMessage(
     } catch (err) {
       return {
         success: false,
-        message: `Metin yazılamadı: ${err instanceof Error ? err.message : String(err)}`,
+        message: composerT("writeFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
       };
     }
   }
 
   return {
     success: true,
-    message: "Mesaj textarea içine yazıldı",
+    message: composerT("textareaWritten"),
   };
 }

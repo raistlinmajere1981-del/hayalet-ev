@@ -31,16 +31,23 @@ export async function loadSettings(): Promise<AppSettings | null> {
     const defaults = createDefaultSettings();
     const jsonString = JSON.stringify(defaults, null, 2);
     await writeFile(getSettingsPath(), jsonString, { encoding: "utf-8", mode: 0o644 });
-    await logger.logInternal(LogCategory.SETTINGS, LogLevel.INFO, "Created default settings.json", {
+    await logger.logInternalT(
+      LogCategory.SETTINGS,
+      LogLevel.INFO,
+      "electron.settings.createdDefaultFile",
+      undefined,
+      {
       settingsPath: getSettingsPath(),
-    });
+      }
+    );
 
     return defaults;
   } catch (error) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SETTINGS,
       LogLevel.ERROR,
-      `Error loading settings: ${(error as Error).message}`,
+      "electron.settings.loadFailed",
+      { message: (error as Error).message },
       {
         settingsPath: getSettingsPath(),
         error: {
@@ -71,10 +78,11 @@ export async function saveSettings(
 
     return true;
   } catch (error) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SETTINGS,
       LogLevel.ERROR,
-      `Error saving settings: ${(error as Error).message}`,
+      "electron.settings.saveFailed",
+      { message: (error as Error).message },
       {
         settingsPath: getSettingsPath(),
         error: {

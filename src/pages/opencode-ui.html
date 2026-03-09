@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr" data-theme="obsidian">
+<html lang="en" data-theme="obsidian">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,7 +20,7 @@
         <button
           class="ds-workspace-bar__toggle-left ds-workspace-bar__toggle-left--active"
           id="toggle-left"
-          title="Sol paneli aç/kapat"
+          title="Toggle left panel"
           data-i18n-title="workspace.toggleLeftTitle"
         >
           ☰
@@ -32,7 +32,7 @@
           <button
             class="ds-workspace-add"
             id="workspace-add"
-            title="Yeni Workspace"
+          title="New Workspace"
             data-i18n-title="workspace.addTitle"
           >
             +
@@ -41,7 +41,7 @@
         <button
           class="ds-workspace-bar__toggle-right ds-workspace-bar__toggle-right--active"
           id="toggle-right"
-          title="Sağ paneli aç/kapat"
+          title="Toggle right panel"
           data-i18n-title="workspace.toggleRightTitle"
         >
           ☰
@@ -56,12 +56,12 @@
             <span class="ds-sidebar__icon">💬</span>
             <span class="ds-sidebar__title">Sessions</span>
             <span class="ds-sidebar__subtitle" id="session-count-label">
-              0 oturum
+              0 sessions
             </span>
             <button
               class="ds-sidebar__refresh-btn"
               id="session-refresh-btn"
-              title="Oturumları yenile"
+              title="Refresh sessions"
               data-i18n-title="session.refreshTitle"
             >
               ↻
@@ -71,7 +71,7 @@
           <!-- New chat button -->
           <div class="px-2 py-2">
             <button class="btn btn-primary w-full" id="new-session-btn" data-i18n-text="session.newConversation">
-              + Yeni Sohbet
+              + New Chat
             </button>
           </div>
 
@@ -83,7 +83,7 @@
               type="button"
               data-i18n-text="session.tabActive"
             >
-              Aktif
+              Active
             </button>
             <button
               class="ds-session-tab"
@@ -92,14 +92,14 @@
               type="button"
               data-i18n-text="session.tabArchived"
             >
-              Arsiv
+              Archived
             </button>
           </div>
 
           <!-- Session list -->
           <div class="ds-sidebar__body">
             <div class="ds-session-list" id="session-list">
-              <div class="empty-state" data-i18n-text="common.loading">Yükleniyor...</div>
+              <div class="empty-state" data-i18n-text="common.loading">Loading...</div>
             </div>
           </div>
 
@@ -107,7 +107,7 @@
           <div class="ds-sidebar__footer" id="usage-footer">
             <div class="ds-usage">
               <div class="ds-usage__header">
-                <span class="ds-usage__title" data-i18n-text="usage.title">Token Kullanımı</span>
+                <span class="ds-usage__title" data-i18n-text="usage.title">Token Usage</span>
                 <span class="ds-usage__value" id="usage-value">—</span>
               </div>
               <div class="ds-progress">
@@ -115,7 +115,7 @@
                   <div class="ds-progress__fill" id="usage-fill"></div>
                 </div>
                 <div class="ds-progress__stats" id="usage-stats">
-                  <span class="ds-progress__stat" data-i18n-text="common.loading">Yükleniyor...</span>
+                  <span class="ds-progress__stat" data-i18n-text="common.loading">Loading...</span>
                 </div>
               </div>
             </div>
@@ -136,7 +136,7 @@
               <div class="text-center">
                 <div class="text-sm font-medium text-secondary">OpenCode UI</div>
                 <div class="text-xs text-muted" data-i18n-text="chat.waitingConnection">
-                  Bağlantı bekleniyor...
+                  Waiting for connection...
                 </div>
               </div>
             </div>
@@ -153,7 +153,7 @@
                     <span class="ds-custom-select__label">Mode ▾</span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- JS tarafında populate edilir -->
+                    <!-- Populated by JavaScript -->
                   </div>
                 </div>
                 <!-- Custom Model Dropdown -->
@@ -162,14 +162,14 @@
                     <span class="ds-custom-select__label">Model ▾</span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- JS tarafında populate edilir -->
+                    <!-- Populated by JavaScript -->
                   </div>
                 </div>
                 <button
                   type="button"
                   class="ds-chat__action-btn ds-chat__action-btn--ghost"
                   id="model-settings-btn"
-                  title="Model ayarlari"
+                  title="Model settings"
                   data-i18n-title="modelSettings.openTitle"
                   data-i18n-text="modelSettings.openLabel"
                 >
@@ -180,7 +180,7 @@
                     <span class="ds-custom-select__label">Effort ▾</span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- JS tarafında populate edilir -->
+                    <!-- Populated by JavaScript -->
                   </div>
                 </div>
               </div>
@@ -188,7 +188,7 @@
                 <button
                   class="ds-chat__action-btn"
                   id="prune-btn"
-                  title="Son mesaj çiftini kaldır"
+                  title="Remove the last message pair"
                   data-i18n-title="chat.pruneTitle"
                   data-i18n-text="chat.pruneLabel"
                 >
@@ -197,23 +197,23 @@
                 <button
                   class="ds-chat__action-btn ds-chat__action-btn--danger"
                   id="clear-btn"
-                  title="Tüm sohbeti temizle"
+                  title="Clear the whole chat"
                   data-i18n-title="chat.clearTitle"
                   data-i18n-text="chat.clearLabel"
                 >
                   🗑 Clear
                 </button>
                 <button class="ds-chat__attach-btn" id="attach-file-btn" data-i18n-text="chat.attachFileLabel">
-                  📎 Dosya
+                  📎 File
                 </button>
                 <button
                   class="ds-chat__attach-btn"
                   id="attach-image-btn"
-                  title="Clipboard'dan görsel yapıştır (Ctrl+V)"
+                  title="Paste an image from the clipboard (Ctrl+V)"
                   data-i18n-title="chat.attachClipboardTitle"
                   data-i18n-text="chat.attachClipboardLabel"
                 >
-                  📋 Yapıştır
+                  📋 Paste
                 </button>
                 <input id="attach-file-input" type="file" multiple hidden />
               </div>
@@ -231,11 +231,11 @@
               <textarea
                 class="ds-chat__textarea"
                 id="chat-input"
-                placeholder="Mesajinizi yazin... (Enter yeni satir, Ctrl+Enter gonder)"
+                placeholder="Write your message... (Enter for newline, Ctrl+Enter to send)"
                 data-i18n-placeholder="chat.inputPlaceholder"
                 rows="3"
               ></textarea>
-              <button class="ds-chat__send" id="send-btn" title="Gönder" data-i18n-title="chat.sendTitle">
+              <button class="ds-chat__send" id="send-btn" title="Send" data-i18n-title="chat.sendTitle">
                 ↑
               </button>
             </div>
@@ -249,7 +249,7 @@
               <div
                 class="ds-right-tabs"
                 role="tablist"
-                aria-label="OpenCode UI sağ panel sekmeleri"
+                aria-label="OpenCode UI right panel tabs"
                 data-i18n-aria-label="panel.rightTabsAria"
               >
                 <button
@@ -287,7 +287,7 @@
                   tabindex="0"
                   data-i18n-text="panel.serverTab"
                 >
-                  Sunucu
+                  Server
                 </button>
                 <button
                   type="button"
@@ -305,8 +305,8 @@
                   type="button"
                   id="rtab-visibility-btn"
                   class="ds-right-tabs__toggle"
-                  title="Sekmeleri gizle"
-                  aria-label="Sağ panel sekmelerini gizle"
+                  title="Hide tabs"
+                  aria-label="Hide right panel tabs"
                   aria-pressed="false"
                   data-i18n-title="panel.tabsHideTitle"
                   data-i18n-aria-label="panel.tabsHideAria"
@@ -326,14 +326,14 @@
                     <div class="ds-right-panel-card__meta">
                       <div>
                         <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.todoEyebrow">
-                          Session Özeti
+                          Session Summary
                         </div>
                         <div class="ds-right-panel-card__title" data-i18n-text="panel.todoTitle">
                           Todo
                         </div>
                       </div>
                     </div>
-                    <div class="empty-state" data-i18n-text="panel.todoEmpty">Henüz todo yok</div>
+                    <div class="empty-state" data-i18n-text="panel.todoEmpty">No todo items yet</div>
                   </div>
                 </section>
 
@@ -354,7 +354,7 @@
                         </div>
                       </div>
                     </div>
-                    <div class="empty-state" data-i18n-text="panel.filesEmpty">Değişen dosya yok</div>
+                    <div class="empty-state" data-i18n-text="panel.filesEmpty">No changed files</div>
                   </div>
                 </section>
 
@@ -368,7 +368,7 @@
                     <div class="ds-right-panel-card__meta">
                       <div>
                         <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.serverEyebrow">
-                          Sunucu Durumu
+                          Server Status
                         </div>
                         <div class="ds-right-panel-card__title" data-i18n-text="panel.serverTitle">
                           OpenCode Serve
@@ -376,7 +376,7 @@
                       </div>
                       <span id="health-badge" class="ds-status-badge ds-status-badge--warning">
                         <span class="ds-status-badge__dot"></span>
-                        <span data-i18n-text="panel.serverWaiting">Bekleniyor</span>
+                        <span data-i18n-text="panel.serverWaiting">Waiting</span>
                       </span>
                     </div>
                     <div class="ds-panel__body ds-panel__body--compact" id="health-panel-body">
@@ -386,31 +386,31 @@
                           id="mcp-accept-btn"
                           data-i18n-text="health.acceptTerms"
                         >
-                          ✅ MCP Terms Kabul Et
+                          ✅ Accept MCP Terms
                         </button>
                       </div>
                       <div class="ds-kv-row">
-                        <span class="ds-kv-row__label" data-i18n-text="health.versionLabel">Versiyon</span>
+                        <span class="ds-kv-row__label" data-i18n-text="health.versionLabel">Version</span>
                         <span class="ds-kv-row__value" id="version">-</span>
                       </div>
                       <div class="ds-kv-row ds-kv-row--url">
                         <span class="ds-kv-row__label" data-i18n-text="health.urlLabel">URL</span>
                         <div class="ds-kv-row__value ds-kv-row__value--url">
-                          <span id="workspace-url-display" title="URL bilgisi">-</span>
+                          <span id="workspace-url-display" title="URL details">-</span>
                           <button
                             type="button"
                             class="btn btn-xs btn-secondary ds-copy-url-btn"
                             id="btn-copy-url"
-                            title="URL'yi kopyala"
+                            title="Copy URL"
                             data-i18n-title="health.copyUrlTitle"
                             data-i18n-text="health.copyUrlLabel"
                           >
-                            Kopyala
+                            Copy
                           </button>
                         </div>
                       </div>
                       <div class="ds-kv-row">
-                        <span class="ds-kv-row__label" data-i18n-text="health.directoryLabel">Dizin</span>
+                        <span class="ds-kv-row__label" data-i18n-text="health.directoryLabel">Directory</span>
                         <span class="ds-kv-row__value" id="working-dir">-</span>
                       </div>
                       <div class="ds-kv-row">
@@ -444,7 +444,7 @@
                     </div>
                     <div class="ds-panel__body ds-panel__body--compact" id="providers-panel-body">
                       <div id="providers-list">
-                        <div class="empty-state" data-i18n-text="panel.providersLoading">Yükleniyor...</div>
+                        <div class="empty-state" data-i18n-text="panel.providersLoading">Loading...</div>
                       </div>
                     </div>
                   </div>
@@ -455,16 +455,16 @@
             <div class="ds-right-secondary">
               <div class="ds-panel ds-panel--collapsed">
                 <div class="ds-panel__header" data-toggle="prompts-panel-body">
-                  <span class="ds-panel__title" data-i18n-text="panel.promptsTitle">HIZLI PROMPTLAR</span>
+                  <span class="ds-panel__title" data-i18n-text="panel.promptsTitle">QUICK PROMPTS</span>
                   <span class="ds-panel__count" id="prompt-count">0</span>
                   <span class="ds-panel__chevron">▾</span>
                 </div>
                 <div class="ds-panel__body" id="prompts-panel-body">
                   <button class="ds-panel__add" id="add-prompt-btn" data-i18n-text="panel.addPrompt">
-                    + Yeni Prompt Ekle
+                    + Add New Prompt
                   </button>
                   <div id="prompts-list">
-                    <div class="empty-state" data-i18n-text="common.loading">Yükleniyor...</div>
+                    <div class="empty-state" data-i18n-text="common.loading">Loading...</div>
                   </div>
                 </div>
               </div>
@@ -473,25 +473,25 @@
                 <div class="ds-modal__overlay" id="prompt-modal-overlay"></div>
                 <div class="ds-modal__content">
                   <h3 class="ds-modal__title" id="prompt-modal-title" data-i18n-text="prompt.modalTitle">
-                    Yeni Prompt
+                    New Prompt
                   </h3>
                   <div class="ds-modal__field">
-                    <label class="ds-modal__label" data-i18n-text="prompt.nameLabel">İsim</label>
+                    <label class="ds-modal__label" data-i18n-text="prompt.nameLabel">Name</label>
                     <input
                       type="text"
                       class="ds-modal__input"
                       id="prompt-modal-name"
-                      placeholder="Prompt ismi..."
+                      placeholder="Prompt name..."
                       data-i18n-placeholder="prompt.namePlaceholder"
                     />
                   </div>
                   <div class="ds-modal__field">
-                    <label class="ds-modal__label" data-i18n-text="prompt.contentLabel">İçerik</label>
+                    <label class="ds-modal__label" data-i18n-text="prompt.contentLabel">Content</label>
                     <textarea
                       class="ds-modal__textarea"
                       id="prompt-modal-content"
                       rows="5"
-                      placeholder="Prompt içeriği..."
+                      placeholder="Prompt content..."
                       data-i18n-placeholder="prompt.contentPlaceholder"
                     ></textarea>
                   </div>
@@ -501,14 +501,14 @@
                       id="prompt-modal-cancel"
                       data-i18n-text="prompt.cancel"
                     >
-                      İptal
+                      Cancel
                     </button>
                     <button
                       class="ds-modal__btn ds-modal__btn--primary"
                       id="prompt-modal-save"
                       data-i18n-text="prompt.save"
                     >
-                      Kaydet
+                      Save
                     </button>
                   </div>
                 </div>
@@ -519,16 +519,16 @@
                 <div class="ds-modal__content ds-modal__content--wide model-settings-modal">
                   <div class="model-settings__header">
                     <div>
-                      <h3 class="ds-modal__title" data-i18n-text="modelSettings.title">Model Ayarlari</h3>
+                      <h3 class="ds-modal__title" data-i18n-text="modelSettings.title">Model Settings</h3>
                       <p class="model-settings__subtitle" data-i18n-text="modelSettings.subtitle">
-                        Provider ve model gorunurlugu, favoriler ve varsayilan model ayari
+                        Provider and model visibility, favorites, and default model selection
                       </p>
                     </div>
                     <button
                       type="button"
                       class="ds-chat__action-btn ds-chat__action-btn--ghost"
                       id="model-settings-close"
-                      title="Kapat"
+                      title="Close"
                       data-i18n-title="modelSettings.closeTitle"
                     >
                       ✕
@@ -542,16 +542,16 @@
                       type="search"
                       class="ds-modal__input"
                       id="model-settings-search"
-                      placeholder="Provider veya model ara..."
+                      placeholder="Search providers or models..."
                       data-i18n-placeholder="modelSettings.searchPlaceholder"
                     />
                     <label class="model-settings__checkbox">
                       <input type="checkbox" id="model-settings-favorites-only" />
-                      <span data-i18n-text="modelSettings.favoritesOnly">Sadece favoriler</span>
+                      <span data-i18n-text="modelSettings.favoritesOnly">Favorites only</span>
                     </label>
                     <label class="model-settings__checkbox">
                       <input type="checkbox" id="model-settings-show-hidden" />
-                      <span data-i18n-text="modelSettings.showHidden">Gizlileri goster</span>
+                      <span data-i18n-text="modelSettings.showHidden">Show hidden</span>
                     </label>
                   </div>
 
@@ -561,7 +561,7 @@
                         Providers
                       </div>
                       <div class="model-settings__provider-list" id="model-settings-provider-list">
-                        <div class="empty-state" data-i18n-text="modelSettings.providersLoading">Yukleniyor...</div>
+                        <div class="empty-state" data-i18n-text="modelSettings.providersLoading">Loading...</div>
                       </div>
                     </section>
 
@@ -570,7 +570,7 @@
                         Models
                       </div>
                       <div class="model-settings__model-list" id="model-settings-model-list">
-                        <div class="empty-state" data-i18n-text="modelSettings.modelsLoading">Yukleniyor...</div>
+                        <div class="empty-state" data-i18n-text="modelSettings.modelsLoading">Loading...</div>
                       </div>
                     </section>
                   </div>
@@ -599,11 +599,11 @@
                     class="ds-panel__search"
                     id="tool-search"
                     type="text"
-                    placeholder="🔍 Tool ara..."
+                    placeholder="🔍 Search tools..."
                     data-i18n-placeholder="panel.toolsSearchPlaceholder"
                   />
                   <div id="tools-list">
-                    <div class="empty-state" data-i18n-text="common.loading">Yükleniyor...</div>
+                    <div class="empty-state" data-i18n-text="common.loading">Loading...</div>
                   </div>
                 </div>
               </div>

@@ -211,10 +211,11 @@ export class OpenCodeServerManager {
       try {
         const healthResult = await this.checkHealth(`http://127.0.0.1:${port}/global/health`);
         if (healthResult.success) {
-          await logger.logInternal(
+          await logger.logInternalT(
             LogCategory.MAIN,
             LogLevel.INFO,
-            "Found existing OpenCode server",
+            "electron.opencodeServer.logs.foundExistingServer",
+            { port },
             { port }
           );
           return {
@@ -241,10 +242,11 @@ export class OpenCodeServerManager {
     // First, look for a running server in the port range.
     const existing = await this.findRunningServer(options.port ?? 4096, options.port ?? 4110);
     if (existing.running === true && existing.port != null) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,
-        "Reusing existing OpenCode server instead of starting new one",
+        "electron.opencodeServer.logs.reusingExistingServer",
+        { port: existing.port },
         { port: existing.port }
       );
       this.currentPort = existing.port;
@@ -282,18 +284,24 @@ export class OpenCodeServerManager {
 
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"];
 
-    // CORS ekle
+    // Add configured CORS origins.
     const cors = options.cors ?? ["http://localhost:5173"];
     cors.forEach((origin) => {
       args.push("--cors", origin);
     });
 
-    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Starting OpenCode serve", {
-      port,
-      binaryCommand,
-      binaryExecutable,
-      args,
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.opencodeServer.logs.startingServe",
+      { port },
+      {
+        port,
+        binaryCommand,
+        binaryExecutable,
+        args,
+      }
+    );
 
     const childEnv = { ...process.env };
     delete childEnv["CDP_PORT"];
@@ -314,27 +322,45 @@ export class OpenCodeServerManager {
 
     this.process.stdout?.on("data", (data: unknown) => {
       const output = chunkToString(data);
-      void logger.logInternal(LogCategory.MAIN, LogLevel.DEBUG, "OpenCode serve stdout", {
+      void logger.logInternalT(LogCategory.MAIN, LogLevel.DEBUG, "electron.opencodeServer.logs.stdout", undefined, {
         output,
       });
     });
 
     this.process.stderr?.on("data", (data: unknown) => {
       const error = chunkToString(data);
-      void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "OpenCode serve stderr", {
-        error,
-      });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.WARNING,
+        "electron.opencodeServer.logs.stderr",
+        undefined,
+        {
+          error,
+        }
+      );
     });
 
     this.process.on("close", (code) => {
-      void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "OpenCode serve closed", { code });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.INFO,
+        "electron.opencodeServer.logs.closed",
+        { code: code ?? "null" },
+        { code }
+      );
       this.cleanup();
     });
 
     this.process.on("error", (err) => {
-      void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "OpenCode serve error", {
-        error: err.message,
-      });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.ERROR,
+        "electron.opencodeServer.logs.error",
+        { message: err.message },
+        {
+          error: err.message,
+        }
+      );
       this.cleanup();
     });
 
@@ -351,10 +377,11 @@ export class OpenCodeServerManager {
   async stop(): Promise<void> {
     // If the process was started by this manager, stop it directly.
     if (this.process !== null) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,
-        "Stopping OpenCode serve (own process)",
+        "electron.opencodeServer.logs.stoppingOwnProcess",
+        undefined,
         {
           pid: this.process.pid,
           port: this.currentPort,
@@ -404,10 +431,11 @@ export class OpenCodeServerManager {
     }
 
     if (this.usingExternalServer) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,
-        "Skipping stop: OpenCode server is external",
+        "electron.opencodeServer.logs.skippingExternalStop",
+        undefined,
         {
           port: this.currentPort,
         }

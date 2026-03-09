@@ -1,7 +1,7 @@
 import { parseCodeStructure } from "./parse-structure.js";
 
 /**
- * Collapsed view oluştur - fonksiyon/class gövdelerini gizle
+ * Create a collapsed view by hiding function/class bodies.
  */
 export function createCollapsedView(content: string, extension: string): string {
   const structures = parseCodeStructure(content, extension);
@@ -38,7 +38,7 @@ export function createCollapsedView(content: string, extension: string): string 
 }
 
 /**
- * Satır numaralı içerik oluştur
+ * Create line-numbered content.
  */
 export function addLineNumbers(content: string): string {
   const lines = content.split("\n");

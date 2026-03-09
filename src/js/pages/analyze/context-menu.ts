@@ -1,7 +1,7 @@
 /**
  * Analyze message actions and read modal helpers.
  *
- * Bu modül mesaj aksiyonlarının davranışını ve okuma modalını yönetir.
+ * Manages message action behavior and the read modal.
  */
 
 import { AppState } from "../../modules/app-state.js";

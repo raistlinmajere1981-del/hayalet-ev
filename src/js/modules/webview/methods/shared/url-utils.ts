@@ -1,11 +1,11 @@
 /**
- * URL Utilities - Merkezi URL işleme fonksiyonları
+ * URL Utilities - centralized URL processing helpers
  *
- * Bu modül daha önce farklı dosyalarda (slot-controller, webview-manager, traffic-manager, app.js)
- * tekrarlanan URL fonksiyonlarını tek bir yerde toplar.
+ * Collects URL helpers that were previously duplicated across
+ * slot-controller, webview-manager, traffic-manager, and app.js.
  *
- * NOT: isSlotUrlExcluded fonksiyonu slot-aware URL kontrolü için merkezi çözümdür.
- * Tüm modüller kendi wrapper metodları yerine bu fonksiyonu kullanmalıdır.
+ * Note: isSlotUrlExcluded is the central solution for slot-aware URL checks.
+ * Modules should use it instead of local wrapper helpers.
  */
 
 import { ProviderRegistry } from "../../provider-registry.js";
@@ -16,9 +16,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * URL'i normalize et (query string ve hash kaldır, trailing slash temizle)
- * @param {string} url - Normalize edilecek URL
- * @returns {string} - Normalize edilmiş URL
+ * Normalize a URL by removing the query string, hash, and trailing slash.
+ * @param {string} url - URL to normalize
+ * @returns {string} - Normalized URL
  */
 export function normalizeUrl(url: string): string {
   if (url === "") return "";
@@ -32,12 +32,12 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * URL'in provider'ın default (ana) sayfası olup olmadığını kontrol et
- * Default page = baseUrl ile aynı veya sadece trailing slash farkı olan URL
- * Örn: chatgpt.com, chatgpt.com/, grok.com, gemini.google.com
- * @param {string} url - Kontrol edilecek URL
+ * Check whether the URL is the provider's default page.
+ * Default page = same as baseUrl, optionally with a trailing slash.
+ * Examples: chatgpt.com, chatgpt.com/, grok.com, gemini.google.com
+ * @param {string} url - URL to check
  * @param {string} providerId - Provider ID (chatgpt, grok, gemini)
- * @returns {boolean} - URL default page mi?
+ * @returns {boolean} - Whether the URL is a default page
  */
 export function isDefaultPage(url: string, providerId: string): boolean {
   if (url === "" || providerId === "") return false;
@@ -64,10 +64,10 @@ export function isDefaultPage(url: string, providerId: string): boolean {
 }
 
 /**
- * URL'in exclude listesinde olup olmadığını kontrol et
- * @param {string} url - Kontrol edilecek URL
- * @param {string[]} excludedUrls - Exclude edilmiş URL listesi (wildcard destekler)
- * @returns {boolean} - URL exclude edilmiş mi?
+ * Check whether the URL appears in the exclusion list.
+ * @param {string} url - URL to check
+ * @param {string[]} excludedUrls - Excluded URL list (supports wildcards)
+ * @returns {boolean} - Whether the URL is excluded
  */
 export function isUrlExcluded(url: string, excludedUrls: string[]): boolean {
   if (url === "" || excludedUrls.length === 0) return false;
@@ -90,22 +90,22 @@ export function isUrlExcluded(url: string, excludedUrls: string[]): boolean {
 }
 
 /**
- * Slot-aware URL exclusion kontrolü (MERKEZİ FONKSİYON)
+ * Slot-aware URL exclusion check (central function)
  *
- * Bu fonksiyon tüm modüllerde tekrar eden isUrlExcluded wrapper metodlarının
- * yerine kullanılmalıdır. Provider config'i otomatik olarak çözer.
+ * Use this instead of repeated isUrlExcluded wrappers across modules.
+ * It resolves the provider config automatically.
  *
- * @param {string} providerSlot - Slot ID (ai0, ai1, ai2)
- * @param {string} url - Kontrol edilecek URL
- * @returns {boolean} - URL excluded mı?
+  * @param {string} providerSlot - Slot ID (ai0, ai1, ai2)
+ * @param {string} url - URL to check
+ * @returns {boolean} - Whether the URL is excluded
  *
- * @example
- * // Eski kullanım (her modülde tekrar):
+  * @example
+ * // Old usage (repeated in each module):
  * // const providerId = AppState.getProviderIdForSlot(slot);
  * // const cfg = ProviderRegistry.get(providerId);
  * // return checkUrlExcluded(url, cfg.excludedUrls);
  *
- * // Yeni kullanım (merkezi):
+ * // New usage (centralized):
  * import { isSlotUrlExcluded } from "./url-utils.js";
  * if (isSlotUrlExcluded("ai1", currentUrl)) return;
  */

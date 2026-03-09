@@ -1,4 +1,5 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 
 export type RoomCommandCategory = "ai1-ai2" | "ai0";
@@ -45,6 +46,10 @@ function normalizeDescription(
 ): string {
   const trimmed = description?.trim() ?? "";
   return trimmed !== "" ? trimmed : `${roomId} room command: ${name}`;
+}
+
+function roomCommandT(key: string): string {
+  return AppI18n.t(`app.roomPage.commandErrors.${key}`);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -99,9 +104,14 @@ class RoomCommandRegistryClass {
         const nextExisting = nextEntries.get(key);
         const current = nextExisting ?? this.entries.get(key);
         if (current !== undefined && current.metadata.roomId !== room.id) {
-          Logger.warn(
+          Logger.warnT(
             LogCategory.SERVER_COMMANDS,
-            `Room command collision skipped: ${spec.name} (${current.metadata.roomId} vs ${room.id})`,
+            "app.logs.roomCommandRegistry.collisionSkipped",
+            {
+              commandName: spec.name,
+              existingRoomId: current.metadata.roomId,
+              skippedRoomId: room.id,
+            },
             {
               context: {
                 commandName: spec.name,
@@ -222,16 +232,16 @@ class RoomCommandRegistryClass {
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
     const entry = this.entries.get(normalizeCommandName(commandName));
     if (entry === undefined) {
-      return { success: false, message: "Tanimsiz room komutu" };
+      return { success: false, message: roomCommandT("undefinedCommand") };
     }
 
     if (entry.handler === undefined) {
-      return { success: false, message: "Room host hazir degil" };
+      return { success: false, message: roomCommandT("hostNotReady") };
     }
 
     const provider = typeof payload["provider"] === "string" ? payload["provider"] : "";
     if (isScopeAllowed(entry.metadata.scope, provider) !== true) {
-      return { success: false, message: "Room komutu kapsam disi" };
+      return { success: false, message: roomCommandT("outOfScope") };
     }
 
     const rawArgs = typeof payload["args"] === "string" ? payload["args"] : "";

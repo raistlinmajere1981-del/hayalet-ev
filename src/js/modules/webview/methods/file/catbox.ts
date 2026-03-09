@@ -21,11 +21,11 @@ export async function attachFiles(
 }> {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message ?? "Validation failed");
+    return UploadManager.createError(validation.message ?? UploadManager.t("validationFailed"));
   }
 
   if (!UploadManager.isServiceAvailable("CATBOX")) {
-    return UploadManager.createError("Catbox servisi mevcut değil");
+    return UploadManager.serviceUnavailable("Catbox");
   }
 
   try {
@@ -37,7 +37,11 @@ export async function attachFiles(
     return UploadManager.formatResponse(uploadedLinks, uploadErrors, "Catbox");
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    Logger.error(LogCategory.WEBVIEW, "Catbox upload failed", { error: errorMsg });
+    Logger.error(
+      LogCategory.WEBVIEW,
+      UploadManager.t("uploadFailed", { service: "Catbox", reason: errorMsg }),
+      { error: errorMsg }
+    );
     return UploadManager.createError(errorMsg, [], "Catbox");
   }
 }

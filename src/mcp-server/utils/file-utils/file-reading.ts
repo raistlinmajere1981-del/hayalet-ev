@@ -4,9 +4,14 @@ import type { FileContent } from "@shared/index-mcp.js";
 import { BINARY_EXTENSIONS, CODE_EXTENSIONS, COLLAPSE_THRESHOLD } from "./constants.js";
 import { addLineNumbers, createCollapsedView } from "./collapsed-view.js";
 import { parseCodeStructure } from "./parse-structure.js";
+import { createMcpTranslatorSync } from "../i18n/index.js";
+
+function fileReadingT(key: string, params?: Record<string, string | number>): string {
+  return createMcpTranslatorSync()(`mcpServer.fileUtils.fileReading.${key}`, params);
+}
 
 /**
- * Dosya oku ve collapsed view uygula (gerekirse)
+ * Read a file and apply collapsed view when needed.
  */
 export async function readFileWithCollapse(filePath: string): Promise<FileContent> {
   try {
@@ -52,7 +57,7 @@ export async function readFileWithCollapse(filePath: string): Promise<FileConten
 }
 
 /**
- * Belirli satır aralıklarını genişlet
+ * Expand specific line ranges.
  */
 export async function expandLineRanges(
   filePath: string,
@@ -93,7 +98,7 @@ export async function expandLineRanges(
 }
 
 /**
- * Kod sembollerini (fonksiyon, class vb.) bul ve genişlet
+ * Find code symbols (function, class, etc.) and expand them.
  */
 export async function expandSymbols(filePath: string, patterns: string[]): Promise<string> {
   const content = await readFile(filePath, "utf-8");
@@ -175,7 +180,7 @@ export async function expandSymbols(filePath: string, patterns: string[]): Promi
   }
 
   if (matchedRanges.length === 0) {
-    return `Pattern bulunamadı: ${patterns.join(", ")}`;
+    return fileReadingT("patternNotFound", { patterns: patterns.join(", ") });
   }
 
   return await expandLineRanges(filePath, matchedRanges);

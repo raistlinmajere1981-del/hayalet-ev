@@ -1,11 +1,14 @@
 /**
  * Provider Config Parser
  *
- * Provider config dosyalarını okur ve selector'ları parse eder.
+ * Reads provider config files and parses selector metadata.
  */
 
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { createMcpTranslatorSync } from "./i18n/index.js";
+
+const mcpT = createMcpTranslatorSync();
 
 // ============================================
 // Types
@@ -85,16 +88,12 @@ export type ProviderId = (typeof PROVIDERS)[number];
 // Config Parser
 // ============================================
 
-/**
- * Provider config dosya yolunu al
- */
+/** Resolve the provider config file path. */
 export function getConfigPath(projectRoot: string, provider: string): string {
   return join(projectRoot, "src/js/modules/webview/providers", provider, "config.ts");
 }
 
-/**
- * Mevcut provider'ları listele
- */
+/** List providers that currently have a config file. */
 export function listProviders(projectRoot: string): ProviderInfo[] {
   return PROVIDERS.map((id) => {
     const configPath = getConfigPath(projectRoot, id);
@@ -108,8 +107,8 @@ export function listProviders(projectRoot: string): ProviderInfo[] {
 }
 
 /**
- * Config dosyasından config objesini parse et
- * TypeScript dosyasını regex ile parse eder (runtime eval olmadan)
+ * Parse the config object from the provider source file.
+ * Uses regex-based extraction without runtime evaluation.
  */
 export function parseProviderConfig(projectRoot: string, provider: string): ProviderConfig | null {
   const configPath = getConfigPath(projectRoot, provider);
@@ -122,15 +121,17 @@ export function parseProviderConfig(projectRoot: string, provider: string): Prov
     const content = readFileSync(configPath, "utf-8");
     return extractConfigFromSource(content, provider);
   } catch (error) {
-    // Write to stderr (config parse error)
-    process.stderr.write(`Config parse hatası (${provider}): ${String(error)}\n`);
+    process.stderr.write(
+      `${mcpT("mcpServer.providerConfig.parseError", {
+        provider,
+        message: String(error),
+      })}\n`
+    );
     return null;
   }
 }
 
-/**
- * TypeScript source'dan config objesini çıkar
- */
+/** Extract the config object from a TypeScript source string. */
 function extractConfigFromSource(source: string, providerId: string): ProviderConfig {
   const config: ProviderConfig = {
     id: providerId,
@@ -326,16 +327,14 @@ function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefin
   return Object.keys(selectors).length > 0 ? { selectors } : undefined;
 }
 
-/**
- * Nested object içindeki string değerleri çıkar
- */
+/** Extract string values from a nested object literal. */
 function extractSelectorsObject(source: string, objectKey: string): Record<string, string> {
   const result: Record<string, string> = {};
   const objectContent = extractObjectContent(source, objectKey);
   if (objectContent === null) return result;
 
-  // Key-value çiftlerini parse et - backtick template literal'ları destekle
-  // Pattern: key: `value` (içinde " ve ' olabilir)
+  // Parse key-value pairs and support backtick template literals.
+  // Pattern: key: `value` (may contain " and ')
   const backtickPattern = /(\w+):\s*`([^`]*)`/g;
   let match;
 
@@ -347,7 +346,7 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
     }
   }
 
-  // Pattern: key: "value" (içinde ' olabilir)
+  // Pattern: key: "value" (may contain ')
   const doubleQuotePattern = /(\w+):\s*"([^"]*)"/g;
   while ((match = doubleQuotePattern.exec(objectContent)) !== null) {
     const key = match[1];
@@ -357,7 +356,7 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
     }
   }
 
-  // Pattern: key: 'value' (içinde " olabilir)
+  // Pattern: key: 'value' (may contain ")
   const singleQuotePattern = /(\w+):\s*'([^']*)'/g;
   while ((match = singleQuotePattern.exec(objectContent)) !== null) {
     const key = match[1];
@@ -370,16 +369,12 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
   return result;
 }
 
-/**
- * String array'i çıkar
- */
+/** Extract a string array from the source. */
 function extractStringArray(source: string, arrayKey: string): string[] {
   return extractStringArrayFromContent(source, arrayKey);
 }
 
-/**
- * Config'deki tüm selector'ları düz listeye çevir
- */
+/** Flatten every selector in the config into a single list. */
 export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
   const result: FlatSelector[] = [];
 
@@ -438,7 +433,7 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
     }
   }
 
-  // Array selector'lar
+  // Array selectors
   const arrayCategories = [
     "criticalSelectors",
     "fileInputSelectors",
@@ -466,9 +461,7 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
   return result;
 }
 
-/**
- * Selector'ı kategoriye göre grupla
- */
+/** Group selectors by category. */
 export function groupSelectorsByCategory(
   selectors: FlatSelector[]
 ): Record<string, FlatSelector[]> {

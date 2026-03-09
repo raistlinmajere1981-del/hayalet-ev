@@ -1420,7 +1420,7 @@ export class WebviewPanel {
     } else if (level === "warning") {
       Logger.warn(LogCategory.WEBVIEW, message, meta);
     } else if (level === "success") {
-      Logger.info(LogCategory.WEBVIEW, `✅ ${message}`, meta);
+      Logger.info(LogCategory.WEBVIEW, message, { ...meta, outcome: "success" });
     } else {
       Logger.info(LogCategory.WEBVIEW, message, meta);
     }

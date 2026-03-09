@@ -1,6 +1,7 @@
 import { Logger } from "./logger/index.js";
 import { FileManager } from "./file-manager.js";
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "./i18n/index.js";
 
 interface ScreenshotOpts {
   tag?: string;
@@ -14,6 +15,10 @@ interface ScreenshotResult {
   dataUrl?: string;
   data?: string;
   path?: string;
+}
+
+function screenshotT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.screenshot.${key}`, params);
 }
 
 class ScreenshotManagerClass {
@@ -30,7 +35,7 @@ class ScreenshotManagerClass {
         res = (await window.electronAPI.capturePage("region", region)) as ScreenshotResult | null;
       }
     } catch (err) {
-      Logger.warn("screenshot", `capturePage başarısız: ${getErrorMessage(err)}`);
+      Logger.warn("screenshot", screenshotT("capturePageFailed", { message: getErrorMessage(err) }));
     }
     if (res?.success !== true || (res.dataUrl === undefined && res.data === undefined)) {
       res = (await this.captureSystem("", {
@@ -49,7 +54,10 @@ class ScreenshotManagerClass {
         res = (await window.electronAPI.capturePage("window", "")) as ScreenshotResult | null;
       }
     } catch (err) {
-      Logger.warn("screenshot", `captureWindow fallback: ${getErrorMessage(err)}`);
+      Logger.warn(
+        "screenshot",
+        screenshotT("captureWindowFallback", { message: getErrorMessage(err) })
+      );
     }
     if (res?.success !== true || (res.dataUrl === undefined && res.data === undefined)) {
       res = (await this.captureSystem("", opts)) as unknown as ScreenshotResult;
@@ -69,7 +77,7 @@ class ScreenshotManagerClass {
         return await this.persist(res, tag, opts.format);
       }
     } catch (err) {
-      Logger.error("screenshot", `captureSystem hata: ${getErrorMessage(err)}`);
+      Logger.error("screenshot", screenshotT("captureSystemFailed", { message: getErrorMessage(err) }));
     }
     try {
       if (window.electronAPI?.capturePage !== undefined) {
@@ -80,7 +88,10 @@ class ScreenshotManagerClass {
       }
       return "";
     } catch (err) {
-      Logger.error("screenshot", `captureSystem fallback hata: ${getErrorMessage(err)}`);
+      Logger.error(
+        "screenshot",
+        screenshotT("captureSystemFallbackFailed", { message: getErrorMessage(err) })
+      );
       return "";
     }
   }
@@ -104,10 +115,10 @@ class ScreenshotManagerClass {
       if (target === "") return "";
       const base64 = (dataUrl.split(",")[1] ?? "").trim();
       await FileManager.writeFileAtomic(target, base64, "base64");
-      Logger.info("screenshot", `Screenshot kaydedildi: ${target}`);
+      Logger.info("screenshot", screenshotT("saved", { path: target }));
       return target;
     } catch (err) {
-      Logger.error("screenshot", `Screenshot yazılamadı: ${getErrorMessage(err)}`);
+      Logger.error("screenshot", screenshotT("writeFailed", { message: getErrorMessage(err) }));
       return "";
     }
   }

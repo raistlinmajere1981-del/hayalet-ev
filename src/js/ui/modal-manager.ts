@@ -220,7 +220,10 @@ const modalApi = {
 
     document.addEventListener("keydown", handleKeyDown);
 
-    Logger.info(LogCategory.UI_MODAL, "Opened", { id, title: options.title });
+    Logger.infoT(LogCategory.UI_MODAL, "app.logs.uiModal.opened", undefined, {
+      id,
+      title: options.title,
+    });
 
     return instance;
   },
@@ -249,7 +252,9 @@ const modalApi = {
 
       instance.options.onClose?.();
 
-      Logger.debug(LogCategory.UI_MODAL, "Closed", { id: modalId });
+      Logger.debugT(LogCategory.UI_MODAL, "app.logs.uiModal.closed", undefined, {
+        id: modalId,
+      });
     }, 200);
   },
 

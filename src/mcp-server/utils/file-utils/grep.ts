@@ -4,7 +4,7 @@ import type { GrepMatch } from "@shared/index-mcp.js";
 import { BINARY_EXTENSIONS, IGNORE_DIRS } from "./constants.js";
 
 /**
- * Dosya içeriğinde pattern ara
+ * Search for a pattern inside file content.
  */
 export async function grepFile(
   filePath: string,
@@ -43,7 +43,7 @@ export async function grepFile(
 }
 
 /**
- * Recursive olarak dosyalarda ara
+ * Search files recursively.
  */
 export async function grepDirectory(
   dirPath: string,
@@ -94,7 +94,7 @@ export async function grepDirectory(
         }
       }
     } catch {
-      // erişim hatası durumunda devam et
+      // Continue when an entry cannot be accessed.
     }
   }
 
@@ -103,7 +103,7 @@ export async function grepDirectory(
 }
 
 /**
- * Basit glob pattern matching
+ * Simple glob pattern matching.
  */
 export function matchGlob(path: string, pattern: string): boolean {
   const placeholder = "\x00GLOBSTAR\x00";

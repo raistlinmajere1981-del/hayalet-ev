@@ -1,8 +1,8 @@
 /**
  * CDP (Chrome DevTools Protocol) Connection Manager
  *
- * Electron uygulamasına WebSocket üzerinden bağlanır ve
- * JavaScript kodlarını uzaktan çalıştırır.
+ * Connects to the Electron app over WebSocket and
+ * executes JavaScript remotely.
  */
 
 import WebSocket from "ws";
@@ -46,7 +46,7 @@ interface EvaluateResult {
 }
 
 /**
- * Electron debug endpoint'lerini keşfet
+ * Discover Electron debug endpoints
  */
 export async function discoverTargets(): Promise<CDPTarget[]> {
   try {
@@ -73,7 +73,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
   } catch (error) {
     const err = error as Error & { code?: string };
 
-    // Timeout hatası
+    // Timeout error.
     if (err.name === "AbortError") {
       const timeoutError = new Error(
         cdpConnectionT("connectionTimeout", { port: CDP_PORT })
@@ -82,7 +82,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
       throw timeoutError;
     }
 
-    // Connection refused
+    // Connection refused.
     if (err.code === "ECONNREFUSED" || err.message.includes("ECONNREFUSED")) {
       const connectionError = new Error(
         cdpConnectionT("connectionRefused", { port: CDP_PORT })
@@ -91,7 +91,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
       throw connectionError;
     }
 
-    // fetch failed (genel ağ hatası)
+    // fetch failed (generic network error).
     if (err.message.includes("fetch failed")) {
       const fetchError = new Error(
         cdpConnectionT("fetchFailed", { port: CDP_PORT })
@@ -105,21 +105,21 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
 }
 
 /**
- * Ana pencere hedefini bul
+ * Find the main window target
  */
 async function findMainWindow(): Promise<CDPTarget | null> {
   const targets = await discoverTargets();
 
-  // Önce "page" tipinde hedef ara
+  // Prefer a "page" target first.
   const pageTarget = targets.find((t) => t.type === "page");
   if (pageTarget) return pageTarget;
 
-  // Yoksa ilk hedefi döndür
+  // Otherwise return the first target.
   return targets[0] ?? null;
 }
 
 /**
- * Belirli bir hedefe WebSocket bağlantısı aç
+ * Open a WebSocket connection to a specific target
  */
 async function connectToTarget(wsUrl: string): Promise<WebSocket> {
   return await new Promise((resolve, reject) => {
@@ -140,7 +140,7 @@ async function connectToTarget(wsUrl: string): Promise<WebSocket> {
       }
     });
 
-    // WebSocket bağlantı timeout
+    // WebSocket connection timeout.
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -167,7 +167,7 @@ function rawDataToText(data: WebSocket.RawData): string {
 }
 
 /**
- * CDP komutu gönder ve yanıt bekle
+ * Send a CDP command and wait for the response.
  */
 export async function sendCDPCommand(
   ws: WebSocket,
@@ -192,7 +192,7 @@ export async function sendCDPCommand(
           }
         }
       } catch {
-        // JSON parse hatası, devam et
+        // Ignore JSON parse errors and keep listening.
       }
     };
 
@@ -215,7 +215,7 @@ export async function sendCDPCommand(
 }
 
 /**
- * JavaScript kodunu Electron'da çalıştır
+ * Execute JavaScript inside Electron.
  */
 export async function evaluateJS(
   ws: WebSocket,
@@ -249,7 +249,7 @@ export async function evaluateJS(
 }
 
 /**
- * Electron'a bağlan, komutu çalıştır ve bağlantıyı kapat
+ * Connect to Electron, run the command, and close the connection.
  */
 export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): Promise<T> {
   const target = await findMainWindow();
@@ -260,7 +260,7 @@ export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): 
   const ws = await connectToTarget(target.webSocketDebuggerUrl);
 
   try {
-    // Runtime'ı etkinleştir
+    // Enable the runtime.
     await sendCDPCommand(ws, "Runtime.enable");
     return await action(ws);
   } finally {
@@ -282,7 +282,7 @@ interface ConnectionStatus {
 }
 
 /**
- * Electron bağlantı durumunu kontrol et
+ * Check the Electron connection status.
  */
 export async function checkConnection(): Promise<ConnectionStatus> {
   try {

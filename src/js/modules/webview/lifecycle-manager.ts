@@ -1,14 +1,14 @@
 import { LogCategory } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
 /**
- * LifecycleManager - Webview yaşam döngüsü yönetimi
+ * LifecycleManager - Webview lifecycle management
  *
- * Bu modül webview'ların kayıt, bağlama, ayırma ve bellek yönetimini sağlar:
- * - register: Webview'ı kaydet
- * - attach: Webview'ı slot'a bağla
- * - detach: Webview'ı slot'tan ayır
- * - destroy: Webview'ı tamamen kaldır
- * - cleanupInactive: İnaktif webview'ları temizle
+ * This module manages webview registration, attachment, detachment, and cleanup:
+ * - register: register a webview
+ * - attach: attach a webview to a slot
+ * - detach: detach a webview from a slot
+ * - destroy: remove a webview completely
+ * - cleanupInactive: clean up inactive webviews
  */
 
 import { Logger } from "../logger/index.js";
@@ -19,6 +19,10 @@ import { SlotController } from "../slot-controller.js";
 import { ProviderRegistry } from "./provider-registry.js";
 
 import { ConversationSyncer } from "./conversation-syncer.js";
+
+function lifecycleLogKey(key: string): string {
+  return `app.logs.webviewLifecycle.${key}`;
+}
 
 class LifecycleManagerClass {
   webviews: Record<string, Electron.WebviewTag>;
@@ -97,9 +101,9 @@ class LifecycleManagerClass {
   }
 
   /**
-   * Webview'ı slot'a bağla
+   * Attach a webview to a slot
    * @param {string} provider - Slot ID
-   * @param {HTMLElement} webview - Webview elementi
+   * @param {HTMLElement} webview - Webview element
    * @param {Object} opts - { providerId, onReady }
    */
   attach(
@@ -121,11 +125,16 @@ class LifecycleManagerClass {
 
     const { providerId, onReady } = opts;
 
-    try {
-      if (providerId === undefined || providerId === "") {
-        Logger.warn(LogCategory.WEBVIEW, "attach: no provider configured for slot", { provider });
-        return;
-      }
+      try {
+        if (providerId === undefined || providerId === "") {
+          Logger.warnT(
+            LogCategory.WEBVIEW,
+            lifecycleLogKey("noProviderConfigured"),
+            { provider },
+            { provider }
+          );
+          return;
+        }
 
       const cfg = ProviderRegistry.get(providerId);
       const defaultPage =
@@ -153,10 +162,15 @@ class LifecycleManagerClass {
           }
         } catch (_err) {
           const errorMessage = _err instanceof Error ? _err.message : String(_err);
-          Logger.warn(LogCategory.WEBVIEW, "Failed to get webview URL", {
-            provider,
-            error: errorMessage,
-          });
+          Logger.warnT(
+            LogCategory.WEBVIEW,
+            lifecycleLogKey("urlReadFailed"),
+            { provider, message: errorMessage },
+            {
+              provider,
+              error: errorMessage,
+            }
+          );
         }
 
         const targetParts = defaultPage.split("?");
@@ -173,7 +187,12 @@ class LifecycleManagerClass {
         const needsReload = !hasCurrentSource || urlMismatch;
 
         if (defaultPage !== "" && needsReload) {
-          Logger.info(LogCategory.WEBVIEW, "attach: loading URL", { provider, url: defaultPage });
+          Logger.infoT(
+            LogCategory.WEBVIEW,
+            lifecycleLogKey("loadingUrl"),
+            { provider, url: defaultPage },
+            { provider, url: defaultPage }
+          );
           webview.setAttribute("src", defaultPage);
         }
 
@@ -195,27 +214,50 @@ class LifecycleManagerClass {
         }
       }
 
-      if (onReady && typeof onReady === "function") {
-        const handleReady = (): void => {
-          try {
-            onReady();
-            Logger.info(LogCategory.WEBVIEW, "attach: onReady callback executed after dom-ready", {
-              provider,
-            });
-          } catch (err) {
-            Logger.error(LogCategory.WEBVIEW, "attach: onReady callback error", {
-              provider,
-              error: getErrorMessage(err),
-            });
-          }
-        };
-        webview.addEventListener("dom-ready", handleReady, true);
-      }
+        if (onReady && typeof onReady === "function") {
+          const handleReady = (): void => {
+            try {
+              onReady();
+              Logger.infoT(
+                LogCategory.WEBVIEW,
+                lifecycleLogKey("onReadyCompleted"),
+                { provider },
+                { provider }
+              );
+            } catch (err) {
+              const errorMessage = getErrorMessage(err);
+              Logger.errorT(
+                LogCategory.WEBVIEW,
+                lifecycleLogKey("onReadyFailed"),
+                { provider, message: errorMessage },
+                {
+                  provider,
+                  error: errorMessage,
+                }
+              );
+            }
+          };
+          webview.addEventListener("dom-ready", handleReady, true);
+        }
 
-      Logger.info(LogCategory.WEBVIEW, "attach: webview attached", { provider });
-    } catch (err) {
-      Logger.error(LogCategory.WEBVIEW, "attach error", { provider, error: getErrorMessage(err) });
-    }
+        Logger.infoT(
+          LogCategory.WEBVIEW,
+          lifecycleLogKey("attached"),
+          { provider },
+          { provider }
+        );
+      } catch (err) {
+        const errorMessage = getErrorMessage(err);
+        Logger.errorT(
+          LogCategory.WEBVIEW,
+          lifecycleLogKey("attachFailed"),
+          { provider, message: errorMessage },
+          {
+            provider,
+            error: errorMessage,
+          }
+        );
+      }
   }
 
   detach(
@@ -250,11 +292,16 @@ class LifecycleManagerClass {
     } catch (_err) {
     } finally {
       delete this.webviews[provider];
-      Logger.info(LogCategory.WEBVIEW, "webview detached", {
-        provider,
-        cleanup: !!cleanupDom,
-        skipTrafficStop: !!skipTrafficStop,
-      });
+      Logger.infoT(
+        LogCategory.WEBVIEW,
+        lifecycleLogKey("detached"),
+        { provider },
+        {
+          provider,
+          cleanup: !!cleanupDom,
+          skipTrafficStop: !!skipTrafficStop,
+        }
+      );
     }
   }
 
@@ -279,12 +326,23 @@ class LifecycleManagerClass {
       delete this.webviews[provider];
       delete this._lastActivity[provider];
 
-      Logger.info(LogCategory.WEBVIEW, "Webview destroyed to free memory", { provider });
+      Logger.infoT(
+        LogCategory.WEBVIEW,
+        lifecycleLogKey("destroyed"),
+        { provider },
+        { provider }
+      );
     } catch (err) {
-      Logger.error(LogCategory.WEBVIEW, "Webview destroy failed", {
-        provider,
-        error: getErrorMessage(err),
-      });
+      const errorMessage = getErrorMessage(err);
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        lifecycleLogKey("destroyFailed"),
+        { provider, message: errorMessage },
+        {
+          provider,
+          error: errorMessage,
+        }
+      );
     }
   }
 
@@ -313,10 +371,18 @@ class LifecycleManagerClass {
       const isConnected = SlotController.isConnected(provider) === true;
 
       if (inactive && !isVisible && !isConnected) {
-        Logger.info(LogCategory.WEBVIEW, "Detaching inactive webview", {
-          provider,
-          idleMinutes: Math.floor((now - lastActivity) / 60000),
-        });
+        Logger.infoT(
+          LogCategory.WEBVIEW,
+          lifecycleLogKey("detachingInactive"),
+          {
+            provider,
+            idleMinutes: Math.floor((now - lastActivity) / 60000),
+          },
+          {
+            provider,
+            idleMinutes: Math.floor((now - lastActivity) / 60000),
+          }
+        );
         this.detach(provider, { cleanupDom: true, skipTrafficStop: false });
       }
     }
@@ -330,23 +396,35 @@ class LifecycleManagerClass {
           .setupWebviewLogger(webContentsId, provider, providerId)
           .then(() => {})
           .catch((err) => {
-            Logger.warn(LogCategory.WEBVIEW, "Webview logger setup failed", {
-              provider,
-              providerId,
-              error: getErrorMessage(err),
-            });
+            const errorMessage = getErrorMessage(err);
+            Logger.warnT(
+              LogCategory.WEBVIEW,
+              lifecycleLogKey("loggerSetupFailed"),
+              { provider, providerId, message: errorMessage },
+              {
+                provider,
+                providerId,
+                error: errorMessage,
+              }
+            );
           });
       }
     } catch (_err) {
-      Logger.warn(LogCategory.WEBVIEW, "Failed to attach webview handlers", {
-        provider,
-        error: getErrorMessage(_err),
-      });
+      const errorMessage = getErrorMessage(_err);
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        lifecycleLogKey("handlerAttachFailed"),
+        { provider, message: errorMessage },
+        {
+          provider,
+          error: errorMessage,
+        }
+      );
     }
   }
 
   /**
-   * Tüm kayıtlı webview'ları getir
+   * Return all registered webviews.
    * @returns {Object}
    */
   getAll(): Record<string, Electron.WebviewTag> {

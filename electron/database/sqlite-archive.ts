@@ -9,7 +9,7 @@ import type Database from "better-sqlite3";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { loadSettings } from "../settings-manager.ts";
-import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE, type TranslationParams } from "../../src/types/i18n.ts";
 import { loadAvailableLanguage } from "../i18n/language-service.ts";
 import { translateCatalog } from "../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
@@ -40,6 +40,50 @@ async function archiveT(key: string): Promise<string> {
     `electron.archive.${key}`,
     undefined,
     fallbackCatalog
+  );
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return typeof error === "string" && error !== "" ? error : "unknown";
+}
+
+async function logDatabaseInfo(
+  key: string,
+  params?: TranslationParams,
+  context?: Record<string, unknown>
+): Promise<void> {
+  await logger.logInternalT(
+    LogCategory.DATABASE,
+    LogLevel.INFO,
+    `electron.database.logs.${key}`,
+    params,
+    context
+  );
+}
+
+async function logDatabaseError(operation: string, context: Record<string, unknown>): Promise<void> {
+  await logger.logInternalT(
+    LogCategory.DATABASE,
+    LogLevel.ERROR,
+    "electron.database.logs.operationFailed",
+    {
+      operation,
+      message: getErrorMessage(context.error),
+    },
+    context
   );
 }
 
@@ -101,12 +145,13 @@ export class SQLiteArchiveManager {
     return hashString(`${conversationId}-${domIndex}-${contentHash}`);
   }
 
-  private buildAutoTitle(db: Database.Database): string {
+  private async buildAutoTitle(db: Database.Database): Promise<string> {
     const countStmt = db.prepare(
       `SELECT COUNT(*) as count FROM conversations WHERE account_id = ?`
     );
     const count = (countStmt.get(this.accountId) as { count: number }).count;
-    return `Sohbet ${String(count + 1).padStart(3, "0")}`;
+    const prefix = await archiveT("autoTitlePrefix");
+    return `${prefix} ${String(count + 1).padStart(3, "0")}`;
   }
 
   private normalizeConversationTitle(title?: string | null): string {
@@ -141,12 +186,13 @@ export class SQLiteArchiveManager {
         created_at: string;
         updated_at: string;
       }>;
+      const untitledConversation = await archiveT("untitledConversation");
 
       const conversations = rows.map((row) => ({
         id: row.id,
         web_url: row.web_url,
         webUrl: row.web_url,
-        title: row.title ?? "İsimsiz Konuşma",
+        title: row.title ?? untitledConversation,
         summary: row.summary ?? "",
         message_count: row.message_count,
         messageCount: row.message_count,
@@ -157,7 +203,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: conversations };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getConversations error", {
+      await logDatabaseError("getConversations", {
         accountId: this.accountId,
         error: err,
       });
@@ -199,7 +245,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: messages };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getMessages error", {
+      await logDatabaseError("getMessages", {
         accountId: this.accountId,
         conversationId,
         error: err,
@@ -215,7 +261,7 @@ export class SQLiteArchiveManager {
     try {
       const { conversationId, provider } = this.getConversationIdentity(webUrl);
       const now = new Date().toISOString();
-      const autoTitle = this.buildAutoTitle(db);
+      const autoTitle = await this.buildAutoTitle(db);
 
       const convStmt = db.prepare(`
         INSERT INTO conversations (id, account_id, web_url, provider, title, title_source, summary, message_count, created_at, updated_at)
@@ -306,7 +352,7 @@ export class SQLiteArchiveManager {
       `);
       updateStmt.run(totalCount, now, conversationId);
 
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.INFO, "syncMessages complete", {
+      await logDatabaseInfo("syncMessagesComplete", { added: addedCount, total: totalCount }, {
         accountId: this.accountId,
         conversationId,
         added: addedCount,
@@ -320,7 +366,7 @@ export class SQLiteArchiveManager {
         total: totalCount,
       };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "syncMessages error", {
+      await logDatabaseError("syncMessages", {
         accountId: this.accountId,
         webUrl,
         error: err,
@@ -370,7 +416,7 @@ export class SQLiteArchiveManager {
 
       return { success: true };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "updateConversation error", {
+      await logDatabaseError("updateConversation", {
         accountId: this.accountId,
         conversationId,
         error: err,
@@ -409,7 +455,8 @@ export class SQLiteArchiveManager {
         | undefined;
 
       if (existing === undefined) {
-        const nextTitle = normalizedTitle !== "" ? normalizedTitle : this.buildAutoTitle(db);
+        const nextTitle =
+          normalizedTitle !== "" ? normalizedTitle : await this.buildAutoTitle(db);
         const titleSource: ConversationTitleSource = normalizedTitle !== "" ? "synced" : "system";
         const insertStmt = db.prepare(`
           INSERT INTO conversations (
@@ -480,16 +527,11 @@ export class SQLiteArchiveManager {
         },
       };
     } catch (err) {
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.ERROR,
-        "upsertConversationMetadata error",
-        {
-          accountId: this.accountId,
-          params,
-          error: err,
-        }
-      );
+      await logDatabaseError("upsertConversationMetadata", {
+        accountId: this.accountId,
+        params,
+        error: err,
+      });
       return { success: false, error: (err as Error).message };
     }
   }
@@ -527,16 +569,11 @@ export class SQLiteArchiveManager {
         },
       };
     } catch (err) {
-      await logger.logInternal(
-        LogCategory.DATABASE,
-        LogLevel.ERROR,
-        "resetConversationMessages error",
-        {
-          accountId: this.accountId,
-          webUrl,
-          error: err,
-        }
-      );
+      await logDatabaseError("resetConversationMessages", {
+        accountId: this.accountId,
+        webUrl,
+        error: err,
+      });
       return { success: false, error: (err as Error).message };
     }
   }
@@ -550,7 +587,7 @@ export class SQLiteArchiveManager {
 
       return { success: true };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "deleteConversation error", {
+      await logDatabaseError("deleteConversation", {
         accountId: this.accountId,
         conversationId,
         error: err,
@@ -598,7 +635,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: messages };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchMessages error", {
+      await logDatabaseError("searchMessages", {
         accountId: this.accountId,
         query,
         error: err,
@@ -648,7 +685,7 @@ export class SQLiteArchiveManager {
         new Date().toISOString()
       );
 
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.INFO, "Attachment saved", {
+      await logDatabaseInfo("attachmentSaved", { originalName }, {
         attachmentId,
         messageId,
         originalName,
@@ -656,7 +693,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: { attachmentId, storedPath: relativePath } };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "saveAttachment error", {
+      await logDatabaseError("saveAttachment", {
         accountId: this.accountId,
         conversationId,
         messageId,
@@ -708,7 +745,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: attachments };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "getAttachments error", {
+      await logDatabaseError("getAttachments", {
         accountId: this.accountId,
         conversationId,
         error: err,
@@ -756,7 +793,7 @@ export class SQLiteArchiveManager {
 
       return { success: true, data: attachments };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "searchAttachments error", {
+      await logDatabaseError("searchAttachments", {
         accountId: this.accountId,
         query,
         error: err,
@@ -772,13 +809,13 @@ export class SQLiteArchiveManager {
       const stmt = db.prepare(`DELETE FROM conversations WHERE account_id = ?`);
       stmt.run(this.accountId);
 
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.INFO, "Account data cleared", {
+      await logDatabaseInfo("accountDataCleared", { accountId: this.accountId }, {
         accountId: this.accountId,
       });
 
       return { success: true };
     } catch (err) {
-      await logger.logInternal(LogCategory.DATABASE, LogLevel.ERROR, "clearAccountData error", {
+      await logDatabaseError("clearAccountData", {
         accountId: this.accountId,
         error: err,
       });

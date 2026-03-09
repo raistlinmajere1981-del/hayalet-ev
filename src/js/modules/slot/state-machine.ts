@@ -1,15 +1,15 @@
 /**
  * Slot State Machine - Robust State Management
  *
- * Bu modül SlotController için type-safe ve validasyonlu state machine sağlar.
- * Geçersiz state transition'larını engeller ve debugging için history tutar.
+ * Provides a type-safe, validated state machine for SlotController.
+ * Prevents invalid state transitions and keeps history for debugging.
  *
  * Features:
- * - Type-safe state ve event tanımları
- * - Transition validation (izin verilen geçişler)
+ * - Type-safe state and event definitions
+ * - Transition validation (allowed transitions)
  * - State history tracking
- * - Guard conditions (koşullu geçişler)
- * - Side effects (geçiş sonrası aksiyonlar)
+ * - Guard conditions
+ * - Side effects
  */
 
 import { Logger } from "../logger/index.js";
@@ -31,32 +31,32 @@ export type SlotStateType = (typeof slotStates)[keyof typeof slotStates];
 
 const ALLOWED_TRANSITIONS: Record<SlotStateType, SlotStateType[]> = {
   [slotStates.EMPTY]: [
-    slotStates.ASSIGNED, // Account atandığında
+    slotStates.ASSIGNED, // When an account is assigned
   ],
   [slotStates.ASSIGNED]: [
-    slotStates.EMPTY, // Account kaldırıldığında
-    slotStates.CONNECTING, // Bağlantı başlatıldığında
-    slotStates.ERROR, // Hata durumunda
+    slotStates.EMPTY, // When the account is removed
+    slotStates.CONNECTING, // When a connection starts
+    slotStates.ERROR, // On error
   ],
   [slotStates.CONNECTING]: [
-    slotStates.CONNECTED, // Bağlantı başarılı
-    slotStates.ASSIGNED, // Bağlantı iptal edildi
-    slotStates.ERROR, // Bağlantı hatası
+    slotStates.CONNECTED, // Connection succeeded
+    slotStates.ASSIGNED, // Connection cancelled
+    slotStates.ERROR, // Connection error
     slotStates.DISCONNECTING, // Force disconnect during connect
   ],
   [slotStates.CONNECTED]: [
     slotStates.DISCONNECTING, // Normal disconnect
-    slotStates.ERROR, // Bağlantı koptu
+    slotStates.ERROR, // Connection dropped
     slotStates.CONNECTING, // Force reconnect
   ],
   [slotStates.DISCONNECTING]: [
-    slotStates.ASSIGNED, // Disconnect tamamlandı
-    slotStates.EMPTY, // Account da kaldırıldı
-    slotStates.ERROR, // Disconnect hatası
+    slotStates.ASSIGNED, // Disconnect completed
+    slotStates.EMPTY, // Account was also removed
+    slotStates.ERROR, // Disconnect error
   ],
   [slotStates.ERROR]: [
-    slotStates.EMPTY, // Account kaldırıldı
-    slotStates.ASSIGNED, // Recovery (manuel veya otomatik)
+    slotStates.EMPTY, // Account removed
+    slotStates.ASSIGNED, // Recovery (manual or automatic)
     slotStates.CONNECTING, // Retry connection
   ],
 };
@@ -102,18 +102,23 @@ export class SlotStateMachine {
   }
 
   /**
-   * State geçişi yap
-   * @returns true eğer geçiş başarılı, false eğer geçersiz
+   * Perform a state transition.
+   * @returns True if the transition succeeds, false if invalid
    */
   transition(targetState: SlotStateType, context?: TransitionContext): TransitionResult {
     const fromState = this._currentState;
 
     if (fromState === targetState) {
-      Logger.debug(LogCategory.SLOT, `No-op transition: ${fromState} → ${targetState}`, {
-        slotId: this._slotId,
-        state: targetState,
-        correlationId: context?.correlationId,
-      });
+      Logger.debugT(
+        LogCategory.SLOT,
+        "app.logs.slotStateMachine.noOpTransition",
+        { fromState, targetState },
+        {
+          slotId: this._slotId,
+          state: targetState,
+          correlationId: context?.correlationId,
+        }
+      );
 
       return {
         success: true,
@@ -126,13 +131,22 @@ export class SlotStateMachine {
     if (!this.canTransitionTo(targetState)) {
       const error = `Invalid transition: ${fromState} → ${targetState}. Allowed: [${this.getAvailableTransitions().join(", ")}]`;
 
-      Logger.debug(LogCategory.SLOT, error, {
-        slotId: this._slotId,
-        fromState,
-        toState: targetState,
-        allowedTransitions: this.getAvailableTransitions(),
-        correlationId: context?.correlationId,
-      });
+      Logger.debugT(
+        LogCategory.SLOT,
+        "app.logs.slotStateMachine.invalidTransition",
+        {
+          fromState,
+          targetState,
+          allowedTransitions: this.getAvailableTransitions().join(", "),
+        },
+        {
+          slotId: this._slotId,
+          fromState,
+          toState: targetState,
+          allowedTransitions: this.getAvailableTransitions(),
+          correlationId: context?.correlationId,
+        }
+      );
 
       return {
         success: false,
@@ -145,12 +159,17 @@ export class SlotStateMachine {
     if (context?.guard && !context.guard(fromState, targetState)) {
       const error = `Transition guard rejected: ${fromState} → ${targetState}`;
 
-      Logger.debug(LogCategory.SLOT, error, {
-        slotId: this._slotId,
-        fromState,
-        toState: targetState,
-        correlationId: context.correlationId,
-      });
+      Logger.debugT(
+        LogCategory.SLOT,
+        "app.logs.slotStateMachine.guardRejected",
+        { fromState, targetState },
+        {
+          slotId: this._slotId,
+          fromState,
+          toState: targetState,
+          correlationId: context.correlationId,
+        }
+      );
 
       return {
         success: false,
@@ -178,12 +197,17 @@ export class SlotStateMachine {
       this._history.pop();
     }
 
-    Logger.panel(
+    Logger.panelT(
       LogCategory.SLOT,
       LogLevel.INFO,
-      `${this._slotId}: ${fromState} → ${targetState}${
-        context?.reason !== undefined && context.reason !== "" ? ` (${context.reason})` : ""
-      }`,
+      "app.logs.slotStateMachine.transitioned",
+      {
+        slotId: this._slotId,
+        fromState,
+        targetState,
+        reasonSuffix:
+          context?.reason !== undefined && context.reason !== "" ? ` (${context.reason})` : "",
+      },
       {
         slotId: this._slotId,
         fromState,
@@ -198,13 +222,22 @@ export class SlotStateMachine {
       try {
         callback(fromState, targetState, context);
       } catch (err) {
-        Logger.debug(LogCategory.SLOT, err instanceof Error ? err.message : String(err), {
-          slotId: this._slotId,
-          fromState,
-          toState: targetState,
-          operation: "transition-callback",
-          correlationId: context?.correlationId,
-        });
+        Logger.debugT(
+          LogCategory.SLOT,
+          "app.logs.slotStateMachine.transitionCallbackError",
+          {
+            fromState,
+            targetState,
+            message: err instanceof Error ? err.message : String(err),
+          },
+          {
+            slotId: this._slotId,
+            fromState,
+            toState: targetState,
+            operation: "transition-callback",
+            correlationId: context?.correlationId,
+          }
+        );
       }
     }
 
@@ -212,13 +245,22 @@ export class SlotStateMachine {
       try {
         context.sideEffect(fromState, targetState);
       } catch (err) {
-        Logger.debug(LogCategory.SLOT, err instanceof Error ? err.message : String(err), {
-          slotId: this._slotId,
-          fromState,
-          toState: targetState,
-          operation: "side-effect",
-          correlationId: context.correlationId,
-        });
+        Logger.debugT(
+          LogCategory.SLOT,
+          "app.logs.slotStateMachine.sideEffectError",
+          {
+            fromState,
+            targetState,
+            message: err instanceof Error ? err.message : String(err),
+          },
+          {
+            slotId: this._slotId,
+            fromState,
+            toState: targetState,
+            operation: "side-effect",
+            correlationId: context.correlationId,
+          }
+        );
       }
     }
 
@@ -230,8 +272,8 @@ export class SlotStateMachine {
   }
 
   /**
-   * Transition callback ekle
-   * @returns Unsubscribe fonksiyonu
+   * Add a transition callback.
+   * @returns Unsubscribe function
    */
   onTransition(
     callback: (from: SlotStateType, to: SlotStateType, context?: TransitionContext) => void
@@ -256,7 +298,7 @@ export class SlotStateMachine {
   }
 
   /**
-   * Debugging için state machine durumunu döndür
+   * Return state-machine debug info.
    */
   getDebugInfo(): SlotStateMachineDebugInfo {
     return {

@@ -21,11 +21,11 @@ export async function attachFiles(
 }> {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message ?? "Validation failed");
+    return UploadManager.createError(validation.message ?? UploadManager.t("validationFailed"));
   }
 
   if (!UploadManager.isServiceAvailable("UGUU")) {
-    return UploadManager.createError("Uguu servisi mevcut değil");
+    return UploadManager.serviceUnavailable("Uguu");
   }
 
   try {
@@ -34,7 +34,11 @@ export async function attachFiles(
     return UploadManager.formatResponse(uploadedLinks, uploadErrors, "Uguu");
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    Logger.error(LogCategory.WEBVIEW, "Uguu upload failed", { error: errorMsg });
+    Logger.error(
+      LogCategory.WEBVIEW,
+      UploadManager.t("uploadFailed", { service: "Uguu", reason: errorMsg }),
+      { error: errorMsg }
+    );
     return UploadManager.createError(errorMsg, [], "Uguu");
   }
 }

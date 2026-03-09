@@ -98,7 +98,7 @@ const buttonStates = {
       button.textContent = text;
     }
 
-    Logger.debug(LogCategory.UI, "Loading state set", {
+    Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.loadingSet", undefined, {
       text: text ?? data.originalText,
     });
   },
@@ -135,7 +135,7 @@ const buttonStates = {
       }, duration);
     }
 
-    Logger.debug(LogCategory.UI, "Success state set", {
+    Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.successSet", undefined, {
       text: text ?? data.originalText,
     });
   },
@@ -172,7 +172,7 @@ const buttonStates = {
       }, duration);
     }
 
-    Logger.debug(LogCategory.UI, "Error state set", {
+    Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.errorSet", undefined, {
       text: text ?? data.originalText,
     });
   },
@@ -192,7 +192,7 @@ const buttonStates = {
     button.disabled = data.originalDisabled;
     data.state = "idle";
 
-    Logger.debug(LogCategory.UI, "Button reset", {
+    Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.reset", undefined, {
       text: data.originalText,
     });
   },
@@ -216,7 +216,7 @@ const buttonStates = {
   },
 
   destroy(): void {
-    Logger.debug(LogCategory.UI, "Destroy called - WeakMap will auto-cleanup on GC");
+    Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.destroyed");
   },
 
   /**

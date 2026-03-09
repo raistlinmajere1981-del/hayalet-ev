@@ -3,6 +3,7 @@ import { AppState } from "../app-state.js";
 import { CommandManager } from "../command-manager.js";
 import type { CommandJob } from "../command-manager.js";
 import { FileManager } from "../file-manager.js";
+import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { ProtocolHandler } from "../protocol-handler.js";
 import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
@@ -57,6 +58,10 @@ interface SendProtocolContext {
   relay: RelayRef | null;
 }
 
+function commandT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.commands.${key}`, params);
+}
+
 export function replaceProtocolTags(text: string): string {
   return text
     .replace(/<AI0>/g, AppState.getNickname("ai0"))
@@ -81,7 +86,7 @@ export async function sendBatchWithContext(
     (target): target is string => typeof target === "string" && target !== ""
   );
   if (list.length === 0) {
-    return { success: false, message: "Hedef yok" };
+    return { success: false, message: commandT("executor.targetRequired") };
   }
 
   const attachmentItems = attachments.map((attachment: string | AttachmentInput) => {
@@ -116,12 +121,16 @@ export async function sendBatchWithContext(
           commandDir: string;
         };
         staged = stageResult;
-        Logger.info(LogCategory.COMMAND, `Dosyalar komut için hazırlandı (${jobId})`, {
+        Logger.info(
+          LogCategory.COMMAND,
+          commandT("executor.attachmentsStagedLog", { jobId, count: staged.staged.length }),
+          {
           context: {
             jobId,
             count: staged.staged.length,
           },
-        });
+          }
+        );
       }
 
       const stagedEntries = staged.staged.map((entry) => {
@@ -164,7 +173,7 @@ export async function sendBatchWithContext(
   );
 
   void CommandManager.enqueue(jobs);
-  Logger.info(LogCategory.COMMAND, `Komut kuyruğa alındı (${jobs.length} iş)`, {
+  Logger.info(LogCategory.COMMAND, commandT("executor.queuedLog", { count: jobs.length }), {
     context: {
       targets: list,
       page,
@@ -216,18 +225,18 @@ export async function sendProtocolWithContext(
     context,
   });
   if (!payload) {
-    Logger.warn(LogCategory.SYSTEM, `Bilinmeyen protokol: ${room}:${scenario}`, {
+    Logger.warn(LogCategory.SYSTEM, commandT("executor.unknownProtocolLog", { room, scenario }), {
       context: { room, scenario },
     });
-    return { success: false, message: "Bilinmeyen protokol" };
+    return { success: false, message: commandT("executor.unknownProtocol") };
   }
 
   const targetList = ((payload.targets as string[] | undefined) ?? []).filter(
     (target) => SlotController.isConnected(target) === true
   );
   if (targetList.length === 0) {
-    Logger.warn(LogCategory.SYSTEM, "Protokol gönderilemedi, bağlı AI yok");
-    return { success: false, message: "Bağlı hedef yok" };
+    Logger.warn(LogCategory.SYSTEM, commandT("executor.protocolSendSkippedNoConnectedAi"));
+    return { success: false, message: commandT("executor.noConnectedTarget") };
   }
 
   const fallbackTitle = typeof payload.message === "string" ? payload.message : "";
@@ -242,14 +251,18 @@ export async function sendProtocolWithContext(
   payload.message = replaceProtocolTags(resolvedMessage.message);
 
   if (resolvedMessage.error !== undefined) {
-    Logger.error(LogCategory.SYSTEM, `Protokol yüklenemedi: ${resolvedMessage.error.message}`, {
+    Logger.error(
+      LogCategory.SYSTEM,
+      commandT("executor.protocolLoadError", { message: resolvedMessage.error.message }),
+      {
       error: resolvedMessage.error,
       context: { protocolKey },
-    });
+      }
+    );
   }
 
   if (protocolKey !== undefined && resolvedMessage.bodyLoaded) {
-    Logger.info(LogCategory.SYSTEM, `Protokol gövdesi yüklendi: ${protocolKey}`);
+    Logger.info(LogCategory.SYSTEM, commandT("executor.protocolBodyLoaded", { protocolKey }));
   }
 
   const attachments = (
@@ -281,7 +294,9 @@ export async function sendProtocolWithContext(
         });
         Logger.info(
           LogCategory.SYSTEM,
-          `Started sequential protocol session for ${orderedTargets.join(", ")}`,
+          commandT("executor.sequentialProtocolStarted", {
+            targets: orderedTargets.join(", "),
+          }),
           {
             context: { targets: orderedTargets },
           }
@@ -291,7 +306,9 @@ export async function sendProtocolWithContext(
     } catch (error) {
       Logger.error(
         LogCategory.SYSTEM,
-        `Failed to start sequential session: ${error instanceof Error ? error.message : String(error)}`,
+        commandT("executor.sequentialProtocolStartFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
         {
           error: error instanceof Error ? error : new Error(String(error)),
         }
@@ -326,7 +343,9 @@ export async function sendProtocolWithContext(
   } catch (error) {
     Logger.warn(
       LogCategory.RELAY,
-      `Failed to apply relay action from protocol: ${error instanceof Error ? error.message : String(error)}`,
+      commandT("executor.protocolRelayActionFailed", {
+        message: error instanceof Error ? error.message : String(error),
+      }),
       {
         error: error instanceof Error ? error : new Error(String(error)),
         context: { room, scenario },
@@ -338,7 +357,11 @@ export async function sendProtocolWithContext(
     Logger.panel(
       LogCategory.SYSTEM,
       LogLevel.INFO,
-      `Protokol gönderildi: ${room}:${scenario} -> ${targetList.join(", ")}`,
+      commandT("executor.protocolSentLog", {
+        room,
+        scenario,
+        targets: targetList.join(", "),
+      }),
       {
         context: { room, scenario, targets: targetList },
       }
@@ -346,7 +369,11 @@ export async function sendProtocolWithContext(
   } else {
     Logger.error(
       LogCategory.SYSTEM,
-      `Protokol hata: ${result.message ?? "bilinmiyor"} (${room}:${scenario})`,
+      commandT("executor.protocolErrorLog", {
+        message: result.message ?? commandT("executor.unknownMessage"),
+        room,
+        scenario,
+      }),
       {
         context: { room, scenario, message: result.message },
       }

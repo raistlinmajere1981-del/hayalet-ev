@@ -1,9 +1,9 @@
 /**
  * Webview Module - Barrel Export
  *
- * Tüm webview alt modüllerini tek noktadan export eder.
+ * Re-exports all webview submodules from one place.
  *
- * Kullanım:
+ * Usage:
  *   import { LifecycleManager, MessageSender, ConversationSyncer } from "./webview";
  *   import { WebviewManager } from "./webview-manager.js"; // Facade
  */

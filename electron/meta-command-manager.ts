@@ -79,10 +79,11 @@ export function loadCustomCommands(): CommandsMap {
     const content = fs.readFileSync(getCommandsFile(), "utf-8");
     return parseCommandsMap(content);
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `loadCustomCommands error: ${(err as Error).message}`,
+      "electron.metaCommand.logs.loadCustomCommandsError",
+      { message: (err as Error).message },
       {
         error: {
           name: (err as Error).name,
@@ -100,10 +101,11 @@ function saveCustomCommands(commands: CommandsMap): void {
     ensureConfigDir();
     fs.writeFileSync(getCommandsFile(), JSON.stringify(commands, null, 2), "utf-8");
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `saveCustomCommands error: ${(err as Error).message}`,
+      "electron.metaCommand.logs.saveCustomCommandsError",
+      { message: (err as Error).message },
       {
         error: {
           name: (err as Error).name,
@@ -162,10 +164,11 @@ export async function defineCommand(
       name: normalizedName,
     });
 
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.INFO,
-      logMessage,
+      isUpdate ? "electron.metaCommand.commandUpdated" : "electron.metaCommand.commandCreated",
+      { name: normalizedName },
       { commandName: normalizedName, isUpdate, createdBy: createdBy ?? "unknown" }
     );
 
@@ -175,10 +178,11 @@ export async function defineCommand(
       command: commands[normalizedName],
     };
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `defineCommand error: ${(err as Error).message}`,
+      "electron.metaCommand.logs.defineCommandError",
+      { message: (err as Error).message },
       {
         commandName: name,
         error: {
@@ -213,13 +217,25 @@ export async function deleteCommand(
     saveCustomCommands(commands);
 
     const successMessage = await metaCommandT("commandDeleted", { name: key });
-    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, successMessage, {});
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.metaCommand.commandDeleted",
+      { name: key },
+      { commandName: key }
+    );
 
     return { success: true, message: successMessage };
   } catch (err) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, await metaCommandT("deleteError"), {
-      error: err,
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.metaCommand.logs.deleteCommandError",
+      { message: (err as Error).message },
+      {
+        error: err,
+      }
+    );
     return { success: false, error: (err as Error).message };
   }
 }
@@ -233,10 +249,11 @@ export function listCommands(_event: IpcMainInvokeEvent): {
     const commands = loadCustomCommands();
     return { success: true, commands };
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `listCommands error: ${(err as Error).message}`,
+      "electron.metaCommand.logs.listCommandsError",
+      { message: (err as Error).message },
       {
         error: {
           name: (err as Error).name,
@@ -271,10 +288,11 @@ export async function getCommand(
       ? { success: true, command }
       : { success: false, error: await metaCommandT("commandNotFound", { name }) };
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `getCommand error: ${(err as Error).message}`,
+      "electron.metaCommand.logs.getCommandError",
+      { message: (err as Error).message },
       {
         commandName: name,
         error: {

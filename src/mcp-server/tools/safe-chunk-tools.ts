@@ -1,8 +1,8 @@
 /**
- * Safe Chunk Tools - Büyük dosyalar için güvenli parçalama
+ * Safe Chunk Tools - safe chunking for large files
  *
- * PROBLEM: LLM output token limiti (8192) nedeniyle büyük dosyalar incomplete oluşuyor
- * ÇÖZÜM: Streaming write + checksum validation + rollback
+ * Problem: large files may become incomplete because of LLM output token limits.
+ * Solution: streaming writes + checksum validation + rollback.
  */
 
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
@@ -91,12 +91,12 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
 // ============================================
 
 /**
- * hev_fs_start_chunked_session - Güvenli chunk yazma başlat
+ * hev_fs_start_chunked_session - start a safe chunked write session
  *
- * KULLANIM:
- * 1. Session başlat (toplam chunk sayısını belirt)
- * 2. Her chunk için hev_fs_write_chunk çağır
- * 3. hev_fs_finalize_chunked ile dosyayı oluştur
+ * Usage:
+ * 1. Start the session (provide the total chunk count)
+ * 2. Call hev_fs_write_chunk for each chunk
+ * 3. Call hev_fs_finalize_chunked to assemble the file
  */
 export function startChunkedSession(
   filePath: string,
@@ -311,7 +311,7 @@ export async function writeChunk(
 // ============================================
 
 /**
- * hev_fs_finalize_chunked - Chunk'ları birleştir ve dosyayı oluştur
+ * hev_fs_finalize_chunked - merge chunks and write the file
  */
 export async function finalizeChunked(
   sessionId: string,
@@ -457,7 +457,7 @@ export async function finalizeChunked(
 // ============================================
 
 /**
- * hev_fs_chunk_session_status - Session durumunu göster
+ * hev_fs_chunk_session_status - show the session status
  */
 export function getSessionStatus(sessionId: string): {
   success: boolean;

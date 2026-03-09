@@ -1,9 +1,9 @@
 /**
- * AIAIRelay - İki AI arasındaki iletişimi yöneten relay
+ * AIAIRelay - relay that manages communication between two AIs
  *
- * Bu sınıf AI-to-AI konuşmalarını yönetir:
- * - Basit relay: AI1 ↔ AI2 mesaj iletimi
- * - Protokol relay: Structured protocol ile başlayan oturumlar
+ * This class manages AI-to-AI conversations:
+ * - Simple relay: AI1 ↔ AI2 message forwarding
+ * - Protocol relay: sessions that start with a structured protocol
  */
 
 import { BaseRelay } from "./base-relay.js";
@@ -45,7 +45,7 @@ export class AIAIRelay extends BaseRelay {
   }
 
   /**
-   * Bu relay bu provider'ı yönetiyor mu?
+   * Does this relay manage this provider?
    * @param {string} provider - AI slot
    * @returns {boolean}
    */
@@ -54,7 +54,7 @@ export class AIAIRelay extends BaseRelay {
   }
 
   /**
-   * Basit AI-AI relay oturumu başlat
+   * Start a simple AI-to-AI relay session.
    * @param {Object} opts - { providers: ['ai1', 'ai2'] }
    */
   override async start(opts: { providers?: string[] } = {}): Promise<void> {
@@ -69,15 +69,17 @@ export class AIAIRelay extends BaseRelay {
       this._lastMessageTimes = { [provider0]: 0, [provider1]: 0 };
     }
 
-    this._log("info", `AI-AI Relay started: ${this._providers.join(",")}`);
+    this._logT("info", "app.logs.aiaiRelay.started", {
+      providers: this._providers.join(","),
+    });
     this._dispatchEvent("relay-changed", { active: true, type: "ai-ai" });
     await Promise.resolve();
   }
 
   /**
-   * Protokol tabanlı AI-AI oturumu başlat
-   * Önce providers[0]'a protokol gönderir, yanıt alınca providers[1]'e iletir,
-   * sonra relay aktif olarak mesajları ileri geri taşır.
+   * Start a protocol-based AI-AI session.
+   * Send the protocol to providers[0], forward the response to providers[1],
+   * then keep relaying messages in both directions while the session stays active.
    *
    * @param {Object} opts - { providers, protocolPayload, attachments }
    */
@@ -118,7 +120,10 @@ export class AIAIRelay extends BaseRelay {
       const message = typeof protocolMessage === "string" ? protocolMessage : "";
       const attachments = this._session.attachments ?? [];
 
-      this._log("info", `Protocol session ${id}: sending to ${first}`);
+      this._logT("info", "app.logs.aiaiRelay.protocolSending", {
+        sessionId: id,
+        provider: first,
+      });
 
       if (this.coreEngine.sendToTargets !== undefined) {
         await this.coreEngine.sendToTargets({
@@ -129,25 +134,28 @@ export class AIAIRelay extends BaseRelay {
         });
       }
 
-      this._log("info", `Protocol session ${id}: sent to ${first}`);
+      this._logT("info", "app.logs.aiaiRelay.protocolSent", {
+        sessionId: id,
+        provider: first,
+      });
       this._dispatchEvent("relay-changed", { active: true, type: "ai-ai-protocol" });
     } catch (err) {
-      this._log("warning", `startProtocolSession error: ${getErrorMessage(err)}`);
+      this._logT("warning", "app.logs.aiaiRelay.protocolStartError", {
+        message: getErrorMessage(err),
+      });
       throw err;
     }
   }
 
   override async stop(): Promise<void> {
-    const wasProtocol = this._session?.type === "protocol";
     const sessionId = this._session?.id;
 
     if (sessionId !== undefined && sessionId !== "") {
-      this._log(
-        "info",
-        `${wasProtocol === true ? "Protocol session" : "Relay"} ${sessionId} stopped`
-      );
+      this._logT("info", "app.logs.aiaiRelay.stoppedWithSession", {
+        sessionId,
+      });
     } else {
-      this._log("info", "AI-AI Relay stopped");
+      this._logT("info", "app.logs.aiaiRelay.stopped");
     }
 
     this._resetState();
@@ -159,16 +167,16 @@ export class AIAIRelay extends BaseRelay {
   }
 
   /**
-   * Protokol oturumunu durdur (alias for stop)
+   * Stop the protocol session (alias for stop).
    */
   override async stopProtocolSession(): Promise<void> {
     await this.stop();
   }
 
   /**
-   * AI thinking tamamlandığında çağrılır
-   * @param {string} provider - AI slot (ai1 veya ai2)
-   * @param {Object} syncResult - Conversation sync sonucu
+   * Called when AI thinking completes.
+   * @param {string} provider - AI slot (ai1 or ai2)
+   * @param {Object} syncResult - Conversation sync result
    */
   override async handleThinkingComplete(
     provider: string,
@@ -198,12 +206,14 @@ export class AIAIRelay extends BaseRelay {
 
       await this._handleSimpleRelayFlow(provider, text);
     } catch (err) {
-      this._log("warning", `handleThinkingComplete error: ${getErrorMessage(err)}`);
+      this._logT("warning", "app.logs.aiaiRelay.handleThinkingCompleteError", {
+        message: getErrorMessage(err),
+      });
     }
   }
 
   /**
-   * Protokol akışını yönet
+   * Handle the protocol flow.
    * @private
    */
   async _handleProtocolFlow(provider: string, text: string): Promise<void> {
@@ -218,7 +228,10 @@ export class AIAIRelay extends BaseRelay {
       if (s.lastMessageTimes[ai1] === now) return;
       s.lastMessageTimes[ai1] = now;
 
-      this._log("info", `Protocol session ${s.id}: ${ai1} replied`, {
+      this._logT("info", "app.logs.aiaiRelay.protocolReplyReceived", {
+        sessionId: s.id,
+        provider: ai1,
+      }, {
         excerpt: text.slice(0, 200),
       });
 
@@ -237,12 +250,17 @@ export class AIAIRelay extends BaseRelay {
             attachments: s.attachments ?? [],
           });
         }
-        this._log("info", `Protocol session ${s.id}: forwarded ${ai1} -> ${ai2}`);
+        this._logT("info", "app.logs.aiaiRelay.protocolForwarded", {
+          sessionId: s.id,
+          from: ai1,
+          to: ai2,
+        });
       } catch (e) {
-        this._log(
-          "warning",
-          `Protocol session ${s.id}: forward to ${ai2} failed: ${getErrorMessage(e)}`
-        );
+        this._logT("warning", "app.logs.aiaiRelay.protocolForwardToFailed", {
+          sessionId: s.id,
+          to: ai2,
+          message: getErrorMessage(e),
+        });
       }
       return;
     }
@@ -256,9 +274,15 @@ export class AIAIRelay extends BaseRelay {
       s.forwardCount = (s.forwardCount ?? 0) + 1;
       this._forwardCount = s.forwardCount;
 
-      this._log(
+      this._logT(
         "info",
-        `Protocol session ${s.id}: forwarding ${ai2} -> ${ai1} (#${s.forwardCount})`,
+        "app.logs.aiaiRelay.protocolForwarding",
+        {
+          sessionId: s.id,
+          from: ai2,
+          to: ai1,
+          count: s.forwardCount ?? 0,
+        },
         { excerpt: text.slice(0, 200) }
       );
 
@@ -271,10 +295,12 @@ export class AIAIRelay extends BaseRelay {
           });
         }
       } catch (e) {
-        this._log(
-          "warning",
-          `Protocol session ${s.id}: forward ${ai2}->${ai1} failed: ${getErrorMessage(e)}`
-        );
+        this._logT("warning", "app.logs.aiaiRelay.protocolForwardFailed", {
+          sessionId: s.id,
+          from: ai2,
+          to: ai1,
+          message: getErrorMessage(e),
+        });
       }
       return;
     }
@@ -287,9 +313,15 @@ export class AIAIRelay extends BaseRelay {
       s.forwardCount = (s.forwardCount ?? 0) + 1;
       this._forwardCount = s.forwardCount;
 
-      this._log(
+      this._logT(
         "info",
-        `Protocol session ${s.id}: forwarding ${ai1} -> ${ai2} (#${s.forwardCount})`,
+        "app.logs.aiaiRelay.protocolForwarding",
+        {
+          sessionId: s.id,
+          from: ai1,
+          to: ai2,
+          count: s.forwardCount ?? 0,
+        },
         { excerpt: text.slice(0, 200) }
       );
 
@@ -302,16 +334,18 @@ export class AIAIRelay extends BaseRelay {
           });
         }
       } catch (e) {
-        this._log(
-          "warning",
-          `Protocol session ${s.id}: forward ${ai1}->${ai2} failed: ${getErrorMessage(e)}`
-        );
+        this._logT("warning", "app.logs.aiaiRelay.protocolForwardFailed", {
+          sessionId: s.id,
+          from: ai1,
+          to: ai2,
+          message: getErrorMessage(e),
+        });
       }
     }
   }
 
   /**
-   * Basit relay akışını yönet
+   * Handle the simple relay flow.
    * @private
    */
   async _handleSimpleRelayFlow(provider: string, text: string): Promise<void> {
@@ -321,20 +355,31 @@ export class AIAIRelay extends BaseRelay {
 
     const target = this._determineTarget(provider);
     if (target === "") {
-      this._log("warning", "Could not determine relay target");
+      this._logT("warning", "app.logs.aiaiRelay.targetUndetermined");
       return;
     }
 
     if (SlotController.isConnected(target) === false) {
-      this._log("info", `Relay skipped: target ${target} not connected`);
+      this._logT("info", "app.logs.aiaiRelay.relaySkippedTargetNotConnected", {
+        target,
+      });
       return;
     }
 
     this._forwardCount += 1;
-    this._log("info", `Relay forwarding (#${this._forwardCount}) ${provider} -> ${target}`, {
-      job: { from: provider, to: target },
-      excerpt: text.slice(0, 200),
-    });
+    this._logT(
+      "info",
+      "app.logs.aiaiRelay.relayForwarding",
+      {
+        count: this._forwardCount,
+        from: provider,
+        to: target,
+      },
+      {
+        job: { from: provider, to: target },
+        excerpt: text.slice(0, 200),
+      }
+    );
 
     try {
       if (this.coreEngine.sendMessage !== undefined) {
@@ -345,18 +390,25 @@ export class AIAIRelay extends BaseRelay {
         });
       }
     } catch (err) {
-      this._log("warning", `Relay forwarding failed: ${getErrorMessage(err)}`, {
-        from: provider,
-        to: target,
-      });
+      this._logT(
+        "warning",
+        "app.logs.aiaiRelay.relayForwardingFailed",
+        {
+          message: getErrorMessage(err),
+        },
+        {
+          from: provider,
+          to: target,
+        }
+      );
     }
   }
 
   /**
-   * Kaynak provider'a göre hedef provider'ı belirle
+   * Determine the target provider from the source provider.
    * @private
-   * @param {string} source - Kaynak AI slot
-   * @returns {string} - Hedef AI slot
+   * @param {string} source - Source AI slot
+   * @returns {string} - Target AI slot
    */
   _determineTarget(source: string): string {
     const idx = this._providers.indexOf(source);
@@ -365,10 +417,10 @@ export class AIAIRelay extends BaseRelay {
   }
 
   /**
-   * Thinking state değişimini takip et
+   * Track thinking-state transitions.
    * @param {string} provider - AI slot
-   * @param {string} thinkingState - Yeni thinking state
-   * @returns {boolean} - Thinking tamamlandı mı?
+   * @param {string} thinkingState - New thinking state
+   * @returns {boolean} - Did thinking finish?
    */
   checkThinkingTransition(provider: string, thinkingState: string): boolean {
     const prev = this._prevThinking[provider] ?? "idle";

@@ -31,9 +31,14 @@ class RoomRegistryClass {
       try {
         listener(snapshot);
       } catch (error) {
-        Logger.warn(LogCategory.SYSTEM, "RoomRegistry listener failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        Logger.warnT(
+          LogCategory.SYSTEM,
+          "app.logs.roomRegistry.listenerFailed",
+          { message: error instanceof Error ? error.message : String(error) },
+          {
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
       }
     });
   }
@@ -45,10 +50,7 @@ class RoomRegistryClass {
   async refreshInstalledRooms(): Promise<InstalledRoomRecord[]> {
     const api = window.electronAPI;
     if (api === undefined || typeof api.roomsListInstalled !== "function") {
-      Logger.warn(
-        LogCategory.SYSTEM,
-        "RoomRegistry skipped: electronAPI.roomsListInstalled missing"
-      );
+      Logger.warnT(LogCategory.SYSTEM, "app.logs.roomRegistry.installedRoomsUnavailable");
       this.installedRooms = [];
       RoomCommandRegistry.reset();
       RoomProtocolRegistry.reset();
@@ -73,9 +75,14 @@ class RoomRegistryClass {
       RoomCommandRegistry.reset();
       RoomProtocolRegistry.reset();
       RoomHostRuntime.syncInstalledRooms([]);
-      Logger.warn(LogCategory.SYSTEM, "RoomRegistry refresh failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      Logger.warnT(
+        LogCategory.SYSTEM,
+        "app.logs.roomRegistry.refreshFailed",
+        { message: error instanceof Error ? error.message : String(error) },
+        {
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     }
 
     this.emit();
@@ -92,9 +99,14 @@ class RoomRegistryClass {
       const result = await api.roomsListWorkspace();
       return result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
     } catch (error) {
-      Logger.warn(LogCategory.SYSTEM, "RoomRegistry workspace listing failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      Logger.warnT(
+        LogCategory.SYSTEM,
+        "app.logs.roomRegistry.workspaceListingFailed",
+        { message: error instanceof Error ? error.message : String(error) },
+        {
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
       return [];
     }
   }

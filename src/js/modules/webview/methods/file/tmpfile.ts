@@ -21,11 +21,11 @@ export async function attachFiles(
 }> {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message ?? "Validation failed");
+    return UploadManager.createError(validation.message ?? UploadManager.t("validationFailed"));
   }
 
   if (!UploadManager.isServiceAvailable("TMPFILE")) {
-    return UploadManager.createError("Tmpfile servisi mevcut değil");
+    return UploadManager.serviceUnavailable("Tmpfile");
   }
 
   try {
@@ -37,7 +37,11 @@ export async function attachFiles(
     return UploadManager.formatResponse(uploadedLinks, uploadErrors, "Tmpfile");
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    Logger.error(LogCategory.WEBVIEW, "Tmpfile upload failed", { error: errorMsg });
+    Logger.error(
+      LogCategory.WEBVIEW,
+      UploadManager.t("uploadFailed", { service: "Tmpfile", reason: errorMsg }),
+      { error: errorMsg }
+    );
     return UploadManager.createError(errorMsg, [], "Tmpfile");
   }
 }

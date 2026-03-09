@@ -1,10 +1,10 @@
 /**
- * WebviewHandler - Slot webview işlemleri
+ * WebviewHandler - Slot webview operations
  *
- * Bu modül slot'a bağlı webview'ların yaşam döngüsünü yönetir:
- * - attach: Webview'ı slot'a bağla ve src ayarla
- * - detach: Webview'ı slot'tan ayır
- * - waitForDomReady: DOM hazır olana kadar bekle
+ * This module manages the lifecycle of slot-bound webviews:
+ * - attach: attach the webview to the slot and set src
+ * - detach: detach the webview from the slot
+ * - waitForDomReady: wait until the DOM is ready
  */
 
 import { TIMEOUTS } from "@timeouts";
@@ -185,8 +185,8 @@ export async function detachWebview(
 const domReadyHandlers: Record<string, DomReadyHandlerInfo> = {};
 
 /**
- * DOM ready olana kadar bekle
- * Event listener'ları ÖNCE ekler, SONRA src set eder (race condition önleme)
+ * Wait until DOM ready.
+ * Attach event listeners first, then set `src` to avoid race conditions.
  */
 export async function waitForDomReady(
   slotState: WebviewHandlerSlotState,
@@ -241,7 +241,7 @@ export async function waitForDomReady(
     webview.addEventListener("dom-ready", handler, { once: true });
     webview.addEventListener("did-fail-load", errorHandler as EventListener, { once: true });
 
-    // SONRA src set et (race condition önleme)
+    // Set `src` afterwards to avoid race conditions.
     if (
       slotState._pendingLoad === true &&
       slotState._targetUrl !== undefined &&

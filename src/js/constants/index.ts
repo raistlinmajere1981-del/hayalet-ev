@@ -1,7 +1,7 @@
 /**
  * Constants barrel export
  *
- * Tüm sabitleri tek noktadan export eder
+ * Re-export all constants from a single entry point.
  */
 
 export { TIMEOUTS, INTERVALS, DELAYS } from "@timeouts";

@@ -27,7 +27,8 @@ interface ProbeData {
 
 interface ThinkingEvent {
   type: string;
-  message: string;
+  messageKey: string;
+  messageParams?: Record<string, string>;
 }
 
 interface ProbeResult {
@@ -71,27 +72,41 @@ export class ThinkingTracker {
       if (indicator === "busy") {
         event = {
           type: "thinking-started",
-          message: `thinking started for ${provider} (stop button visible)`,
+          messageKey: "app.logs.traffic.thinkingStartedEvent",
+          messageParams: { provider },
         };
 
-        Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Thinking state started", {
-          provider,
-          lastSend,
-          probeCount: this.probeCount,
-          stopVisible,
-        });
+        Logger.panelT(
+          LogCategory.TRAFFIC,
+          LogLevel.INFO,
+          "app.logs.traffic.thinkingStartedPanel",
+          { provider },
+          {
+            provider,
+            lastSend,
+            probeCount: this.probeCount,
+            stopVisible,
+          }
+        );
       } else {
         viewState = this.endThinking(viewState, now);
         event = {
           type: "thinking-ended",
-          message: `thinking ended for ${provider} (stop button hidden)`,
+          messageKey: "app.logs.traffic.thinkingEndedEvent",
+          messageParams: { provider },
         };
 
-        Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Thinking state ended", {
-          provider,
-          probeCount: this.probeCount,
-          stopVisible,
-        });
+        Logger.panelT(
+          LogCategory.TRAFFIC,
+          LogLevel.INFO,
+          "app.logs.traffic.thinkingEndedPanel",
+          { provider },
+          {
+            provider,
+            probeCount: this.probeCount,
+            stopVisible,
+          }
+        );
       }
     }
 

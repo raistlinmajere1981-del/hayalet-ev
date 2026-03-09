@@ -2,24 +2,24 @@ import { LogCategory } from "@shared/logging-core";
 /**
  * Meta Command Manager - Renderer Process
  *
- * AI'ların dinamik olarak yeni komutlar tanımlamasını sağlar.
- * Komutlar JavaScript kodu olarak saklanır ve çalıştırılır.
+ * Allows AIs to define new commands dynamically.
+ * Commands are stored and executed as JavaScript code.
  *
- * Komut Formatı:
- * ++meta:DefineCommand(KomutAdi, "açıklama", `
+ * Command format:
+ * ++meta:DefineCommand(CommandName, "description", `
  *   async function(args, context) {
  *     // context: { Logger, AppState, TrafficManager, ... }
- *     // Logger kullanımı:
- *     context.Logger.info(context.LogCategory.SYSTEM, "Komut çalıştırıldı");
+ *     // Logger usage:
+ *     context.Logger.infoT(context.LogCategory.SYSTEM, "app.commandQueue.completed", { id: "example" });
  *     return { success: true, result: "..." };
  *   }
  * `)
  *
- * ++meta:DeleteCommand(KomutAdi)
+ * ++meta:DeleteCommand(CommandName)
  * ++meta:ListCommands()
  *
- * NOTE: Unified Logger sistemi kullanılıyor.
- * Context'te Logger ve LogCategory enum'ları mevcut.
+ * NOTE: The Unified Logger system is used.
+ * Logger and LogCategory enum values are available in the context.
  */
 
 import { Logger } from "./logger/index.js";
@@ -28,6 +28,7 @@ import { TrafficManager } from "./traffic-manager.js";
 import { SlotController } from "./slot-controller.js";
 import { WebviewManager } from "./webview-manager.js";
 import { RelayManager } from "./relay-manager.js";
+import { AppI18n } from "./i18n/index.js";
 
 interface CustomCommand {
   name: string;
@@ -52,7 +53,7 @@ let _customCommands: Record<string, CustomCommand> = {};
 let _compiledHandlers: Record<string, CompiledHandler> = {};
 
 /**
- * Context objesi - custom komutlara geçirilir
+ * Context object passed to custom commands
  *
  * Available in context:
  * - Logger: Unified logging system
@@ -96,7 +97,7 @@ function compileCommand(name: string, code: string): CompiledHandler | null {
   } catch (err) {
     Logger.error(
       LogCategory.META_COMMAND,
-      `Komut derleme hatası (${name}): ${(err as Error).message}`
+      `Command compilation error (${name}): ${(err as Error).message}`
     );
     return null;
   }
@@ -120,12 +121,16 @@ async function loadCommands(): Promise<void> {
 
       Logger.info(
         LogCategory.META_COMMAND,
-        `${Object.keys(_customCommands).length} custom komut yüklendi`
+        AppI18n.t("app.logs.metaCommandManager.customCommandsLoaded", {
+          count: Object.keys(_customCommands).length,
+        })
       );
     }
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
-    Logger.error(LogCategory.META_COMMAND, `loadCommands hatası: ${error.message}`);
+    Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.loadCommandsError", {
+      message: error.message,
+    });
   }
 }
 
@@ -138,7 +143,7 @@ async function defineCommand(
   try {
     const testHandler = compileCommand(name, code);
     if (testHandler === null) {
-      return { success: false, error: "Kod derleme hatası" };
+      return { success: false, error: "Code compilation error" };
     }
 
     const result = (await window.electronAPI?.["metaDefineCommand"]?.({
@@ -156,14 +161,16 @@ async function defineCommand(
         _customCommands[name] = parsedCommand;
         _compiledHandlers[name.toLowerCase()] = testHandler;
 
-        Logger.info(LogCategory.META_COMMAND, `Komut tanımlandı: ${name}`);
+        Logger.infoT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.commandDefined", {
+          name,
+        });
       } catch {
-        return { success: false, error: "Komut ayrıştırma hatası" };
+        return { success: false, error: "Command parse error" };
       }
     }
 
     if (result === undefined) {
-      return { success: false, error: "API hatası" };
+      return { success: false, error: "API error" };
     }
 
     return {
@@ -173,7 +180,9 @@ async function defineCommand(
     };
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
-    Logger.error(LogCategory.META_COMMAND, `defineCommand hatası: ${error.message}`);
+    Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.defineCommandError", {
+      message: error.message,
+    });
     return { success: false, error: error.message };
   }
 }
@@ -195,7 +204,9 @@ async function deleteCommand(name: string): Promise<CommandResult> {
     return result as CommandResult;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
-    Logger.error(LogCategory.META_COMMAND, `deleteCommand hatası: ${error.message}`);
+    Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.deleteCommandError", {
+      message: error.message,
+    });
     return { success: false, error: error.message };
   }
 }
@@ -212,7 +223,7 @@ async function runCommand(name: string, args: unknown[] = []): Promise<CommandRe
   const handler = _compiledHandlers[name.toLowerCase()];
 
   if (handler === undefined) {
-    return { success: false, error: `Custom komut bulunamadı: ${name}` };
+    return { success: false, error: `Custom command not found: ${name}` };
   }
 
   try {
@@ -222,7 +233,10 @@ async function runCommand(name: string, args: unknown[] = []): Promise<CommandRe
     return { success: true, result };
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
-    Logger.error(LogCategory.META_COMMAND, `Çalıştırma hatası (${name}): ${error.message}`);
+    Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.runCommandError", {
+      name,
+      message: error.message,
+    });
     return { success: false, error: error.message };
   }
 }

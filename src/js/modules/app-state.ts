@@ -1,6 +1,7 @@
 import { SettingsManager } from "./settings-manager.js";
 import { Logger, LogCategory } from "./logger/index.js";
 import type { Account, AppSettings } from "@shared/settings.js";
+import { AppI18n } from "./i18n/index.js";
 
 interface AppStateSnapshot {
   activeProvider: string | null;
@@ -13,6 +14,21 @@ interface AppStateSnapshot {
     active: boolean;
     sourceSlot: string | null;
   };
+}
+
+function getDefaultUserNickname(): string {
+  return AppI18n.t("entrance.user.defaultNickname");
+}
+
+function isLegacyDefaultNickname(value: string): boolean {
+  const normalized = value
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\u0131/g, "i");
+
+  return normalized === "user" || normalized === "kullanici";
 }
 
 class AppStateClass {
@@ -104,10 +120,14 @@ class AppStateClass {
   getNickname(provider: string): string {
     const settings = this.getSettings();
     if (settings === null) {
-      return provider === "user" ? "Kullanıcı" : provider.toUpperCase();
+      return provider === "user" ? getDefaultUserNickname() : provider.toUpperCase();
     }
     if (provider === "user") {
-      return settings.user?.nickname ?? "Kullanıcı";
+      const nickname = settings.user?.nickname?.trim() ?? "";
+      if (nickname === "" || isLegacyDefaultNickname(nickname)) {
+        return getDefaultUserNickname();
+      }
+      return nickname;
     }
     const account = this.getAccountForSlot(provider);
     return String(account?.nickname ?? account?.email ?? provider.toUpperCase());
@@ -163,7 +183,9 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
-        Logger.error(LogCategory.SYSTEM, `Listener error: ${(err as Error).message}`, {
+        Logger.errorT(LogCategory.SYSTEM, "app.logs.appState.listenerError", {
+          message: err instanceof Error ? err.message : String(err),
+        }, {
           error: err,
         });
       }

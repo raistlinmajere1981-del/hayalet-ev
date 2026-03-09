@@ -1,7 +1,7 @@
 /**
  * OpenCode Provider - Conversation Scraper
  *
- * DOM'dan mesajları çeker ve yapılandırılmış formata dönüştürür
+ * Reads messages from the DOM and converts them into a structured format.
  */
 
 interface ScrapedMessage {
@@ -48,7 +48,7 @@ export function scrapeMessages(): ScrapedMessage[] {
       }
     });
   } else {
-    // Fallback: Ayrı ayrı mesajları topla
+    // Fallback: collect user and assistant messages separately.
     userMessages.forEach((node) => {
       const el = node as HTMLElement;
       const text = el.innerText.trim();

@@ -4,6 +4,7 @@
  * Provider-agnostic implementation using runtime config for DOM selectors
  */
 
+import { AppI18n } from "../../../i18n/index.js";
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";
 import {
@@ -17,6 +18,10 @@ interface FilePayload {
   path?: string;
   base64?: string;
   mimeType?: string;
+}
+
+function uploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.upload.${key}`, params);
 }
 
 export async function attachFiles(
@@ -33,9 +38,13 @@ export async function attachFiles(
 
   const validation = validateFiles(files);
   if (!validation.valid) {
-    return createErrorResponse(validation.message ?? "Validation failed");
+    return createErrorResponse(validation.message ?? uploadT("validationFailed"));
   }
 
+  const emptyFilesMessage = JSON.stringify(uploadT("noFiles"));
+  const dropTargetNotFoundMessage = JSON.stringify(uploadT("dropTargetNotFound"));
+  const dragDropSuccessMessage = JSON.stringify(uploadT("dragDropSuccess"));
+  const dragDropAttemptedMessage = uploadT("dragDropAttempted");
   const filesPayload = JSON.stringify(files);
   const runtimeConfig = await getRuntimeProviderConfig(webview);
   const uploadTargetCandidates = getRuntimeConfigCandidates(
@@ -48,7 +57,7 @@ export async function attachFiles(
     const uploadTargetCandidates = ${JSON.stringify(uploadTargetCandidates)};
     const previewSelectorCandidates = ${JSON.stringify(previewCandidates)};
     if (!files.length) {
-      return { success: false, message: 'Dosya listesi boş' };
+      return { success: false, message: ${emptyFilesMessage} };
     }
 
     function base64ToUint8(base64) {
@@ -202,7 +211,7 @@ export async function attachFiles(
     }
 
     if (!target) {
-      return { success: false, message: 'Drop hedefi bulunamadı' };
+      return { success: false, message: ${dropTargetNotFoundMessage} };
     }
 
     let cx = 10;
@@ -300,8 +309,9 @@ export async function attachFiles(
             resolve({
               success: hasPreview,
               message: hasPreview
-                ? 'Dosyalar drag-drop ile eklendi'
-                : 'Drag-drop tetiklendi ama ' + providerName + ' dosyayı kabul etmedi (preview oluşmadı)',
+                ? ${dragDropSuccessMessage}
+                : ${JSON.stringify(uploadT("dragDropPreviewMissing"))}
+                    .replace('{{provider}}', providerName),
               count: dataTransfer.files.length,
               target: (target?.tagName ?? 'unknown').toLowerCase() + (target?.id ? '#' + target.id : ''),
             });
@@ -316,7 +326,7 @@ export async function attachFiles(
     | undefined;
   return {
     success: result?.success === true,
-    message: result?.message ?? "Dosya drag-drop denemesi yapıldı",
+    message: result?.message ?? dragDropAttemptedMessage,
     count: result?.count ?? files.length,
   };
 }

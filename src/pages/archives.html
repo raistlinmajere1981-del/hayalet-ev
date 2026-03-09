@@ -1,90 +1,90 @@
 <div class="page hidden" id="page-archives">
   <div class="archives-wrapper">
-    <!-- ÜST BÖLÜM: Sohbet Listesi + Detay + Arama -->
+    <!-- Top section: conversation list + detail + search -->
     <div class="archives-top">
-      <!-- Sol: Sohbet Listesi -->
+      <!-- Left: conversation list -->
       <div class="archives-sidebar">
         <div class="sidebar-header">
-          <h3>Sohbetler</h3>
+          <h3 id="archives-sidebar-title">Conversations</h3>
           <div class="provider-toggle">
             <label class="toggle-label">
-              <input type="radio" name="archives-provider" value="ai1" checked />
+              <input type="radio" name="archives-provider" value="ai1" id="archive-filter-ai1" checked />
               <span id="archives-provider-ai1">AI1</span>
             </label>
             <label class="toggle-label">
-              <input type="radio" name="archives-provider" value="ai2" />
+              <input type="radio" name="archives-provider" value="ai2" id="archive-filter-ai2" />
               <span id="archives-provider-ai2">AI2</span>
             </label>
           </div>
         </div>
         <div class="archives-list" id="archives-list">
-          <div class="empty">Kayıt yok</div>
+          <div class="empty">No entries</div>
         </div>
       </div>
 
-      <!-- Orta: Detay Paneli -->
+      <!-- Center: detail panel -->
       <div class="archives-detail">
         <div class="detail-header">
-          <h3>Sohbet Detayları</h3>
+          <h3 id="archives-detail-title">Conversation Details</h3>
         </div>
 
         <div class="detail-content" id="detail-content">
           <div class="empty-state" id="detail-empty">
-            <p>Detayları görmek için bir sohbet seçin</p>
+            <p id="archives-detail-empty-text">Select a conversation to view details</p>
           </div>
 
           <form class="conversation-form hidden" id="conversation-form">
             <div class="form-group">
-              <label for="archive-title">Başlık</label>
+              <label for="archive-title" id="archives-title-label">Title</label>
               <input
                 type="text"
                 id="archive-title"
                 class="form-input"
-                placeholder="Sohbet başlığı"
+                placeholder="Conversation title"
               />
             </div>
 
             <div class="form-group">
-              <label for="archive-summary">Özet</label>
+              <label for="archive-summary" id="archives-summary-label">Summary</label>
               <textarea
                 id="archive-summary"
                 class="form-input"
                 rows="3"
-                placeholder="Sohbet özeti..."
+                placeholder="Conversation summary..."
               ></textarea>
             </div>
 
             <div class="form-group">
-              <label>Web URL</label>
+              <label id="archives-weburl-label">Web URL</label>
               <div class="url-display-group">
                 <span class="url-display" id="archive-weburl-display">-</span>
-                <button type="button" class="icon-btn" id="btn-copy-url" title="URL'yi kopyala">
+                <button type="button" class="icon-btn" id="btn-copy-url" title="Copy URL">
                   📋
                 </button>
               </div>
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary" id="archive-save">Kaydet</button>
-              <button type="button" class="btn btn-danger" id="btn-delete">🗑️ Sil</button>
+              <button type="submit" class="btn btn-primary" id="archive-save">Save</button>
+              <button type="button" class="btn btn-danger" id="btn-delete">🗑️ Delete</button>
             </div>
             <div class="form-hint" id="archive-status"></div>
           </form>
         </div>
       </div>
 
-      <!-- Sağ: Arama Paneli -->
+      <!-- Right: search panel -->
       <div class="archives-search">
         <div class="search-header">
-          <h3>Arama</h3>
+          <h3 id="archives-search-title">Search</h3>
           <div class="search-scope">
             <label class="scope-label">
               <input type="radio" name="search-scope" value="current" checked />
-              <span>Mevcut Hesap</span>
+              <span id="archives-scope-current">Current Account</span>
             </label>
             <label class="scope-label">
               <input type="radio" name="search-scope" value="all" />
-              <span>Tüm Hesaplar</span>
+              <span id="archives-scope-all">All Accounts</span>
             </label>
           </div>
         </div>
@@ -94,7 +94,7 @@
             type="text"
             id="search-input"
             class="form-input"
-            placeholder="Mesaj veya dosya ara..."
+            placeholder="Search messages or files..."
             autocomplete="off"
           />
           <button type="button" class="btn-clear hidden" id="btn-clear-search">×</button>
@@ -102,16 +102,18 @@
 
         <div class="search-tabs">
           <button class="tab-btn active" data-tab="messages">
-            Mesajlar <span class="tab-count" id="messages-count">0</span>
+            <span id="archives-messages-tab-label">Messages</span>
+            <span class="tab-count" id="messages-count">0</span>
           </button>
           <button class="tab-btn" data-tab="files">
-            Dosyalar <span class="tab-count" id="files-count">0</span>
+            <span id="archives-files-tab-label">Files</span>
+            <span class="tab-count" id="files-count">0</span>
           </button>
         </div>
 
         <div class="search-results" id="search-results">
           <div class="search-empty" id="search-empty">
-            <p>Aramaya başlamak için yukarıya yazın</p>
+            <p id="archives-search-empty-text">Type above to start searching</p>
           </div>
 
           <div class="results-panel active" id="results-messages"></div>
@@ -120,22 +122,22 @@
       </div>
     </div>
 
-    <!-- ALT BÖLÜM: Protokol Editörü -->
+    <!-- Bottom section: protocol editor -->
     <div class="archives-bottom">
-      <!-- Sol: Protokol Listesi -->
+      <!-- Left: protocol list -->
       <div class="protocol-sidebar">
         <div class="protocol-header">
-          <h3>📜 Protokoller</h3>
+          <h3 id="archives-protocol-list-title">📜 Protocols</h3>
         </div>
         <div class="protocol-list" id="protocol-list">
-          <div class="empty">Yükleniyor...</div>
+          <div class="empty" id="archives-protocol-list-loading">Loading...</div>
         </div>
       </div>
 
-      <!-- Sağ: Protokol Editörü -->
+      <!-- Right: protocol editor -->
       <div class="protocol-editor">
         <div class="protocol-editor-header">
-          <h3 id="protocol-editor-title">Protokol seçin</h3>
+          <h3 id="protocol-editor-title">Select a protocol</h3>
           <div class="protocol-tag-buttons hidden" id="protocol-tag-buttons">
             <button type="button" class="btn btn-ghost btn-xs protocol-tag-btn" data-tag="<AI0>">
               &lt;AI0&gt;
@@ -147,16 +149,16 @@
               &lt;AI2&gt;
             </button>
           </div>
-          <button class="btn btn-primary btn-sm hidden" id="btn-protocol-save">💾 Kaydet</button>
+          <button class="btn btn-primary btn-sm hidden" id="btn-protocol-save">💾 Save</button>
         </div>
         <div class="protocol-editor-content">
           <div class="empty-state" id="protocol-empty">
-            <p>Düzenlemek için soldan bir protokol seçin</p>
+            <p id="archives-protocol-empty-text">Select a protocol from the left to edit</p>
           </div>
           <textarea
             class="protocol-textarea hidden"
             id="protocol-textarea"
-            placeholder="Protokol içeriği..."
+            placeholder="Protocol content..."
           ></textarea>
         </div>
         <div class="form-hint" id="protocol-status"></div>

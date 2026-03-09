@@ -1,7 +1,12 @@
 import { readFile, writeFile } from "fs/promises";
+import { createMcpTranslatorSync } from "../i18n/index.js";
+
+function findReplaceT(key: string, params?: Record<string, string | number>): string {
+  return createMcpTranslatorSync()(`mcpServer.fileUtils.findReplace.${key}`, params);
+}
 
 /**
- * Dosyada bul ve değiştir
+ * Find and replace text in a file.
  */
 export async function findAndReplace(
   filePath: string,
@@ -74,8 +79,12 @@ export async function findAndReplace(
 
       const errorMsg =
         suggestions.length > 0
-          ? `Pattern bulunamadı. Yakın eşleşmeler:\n${suggestions.join("\n")}\n\n💡 İpucu: ignore_whitespace: true kullanın veya hev_fs_show ile dosya içeriğini kontrol edin.`
-          : `Pattern bulunamadı. Dosyada "${firstSearchTerm?.substring(0, 50) ?? find.substring(0, 50)}" içeren satır yok.\n\n💡 İpucu: hev_fs_show ile dosya içeriğini kontrol edin.`;
+          ? findReplaceT("patternNotFoundWithSuggestions", {
+              suggestions: suggestions.join("\n"),
+            })
+          : findReplaceT("patternNotFoundLineMissing", {
+              term: firstSearchTerm?.substring(0, 50) ?? find.substring(0, 50),
+            });
 
       return { success: false, replacements: 0, error: errorMsg };
     }
@@ -105,7 +114,7 @@ export async function findAndReplace(
       return {
         success: true,
         replacements: occurrences,
-        preview: previewLines.join("\n") + `\n(Total: ${occurrences} değişiklik)`,
+        preview: previewLines.join("\n") + `\n(${findReplaceT("previewTotal", { count: occurrences })})`,
       };
     }
 

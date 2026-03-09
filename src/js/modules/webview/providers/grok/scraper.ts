@@ -1,8 +1,8 @@
 /**
- * Grok mesajlarını scrape et
+ * Scrape Grok messages.
  *
- * NOT: normalizeText ve hashString fonksiyonları webview injection sınırlaması
- * nedeniyle inline tanımlanmıştır. Tek kaynak (single source of truth):
+ * Note: normalizeText and hashString are defined inline because of
+ * webview injection constraints. Single source of truth:
  * @see ../shared/scraper-helpers.ts
  *
  * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number }>}

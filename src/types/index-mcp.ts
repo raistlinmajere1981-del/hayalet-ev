@@ -79,7 +79,7 @@ export interface ProviderInfo {
 // Filesystem Tool Types
 // ============================================
 
-/** Dosya içeriği sonucu */
+/** File content result */
 export interface FileContent {
   path: string;
   content: string;
@@ -88,7 +88,7 @@ export interface FileContent {
   error?: string;
 }
 
-/** Kod parçası (expand için) */
+/** Code chunk (used by expand) */
 export interface CodeChunk {
   startLine: number;
   endLine: number;
@@ -96,7 +96,7 @@ export interface CodeChunk {
   symbol?: string;
 }
 
-/** Grep sonucu */
+/** Grep result */
 export interface GrepMatch {
   file: string;
   line: number;
@@ -112,7 +112,7 @@ export interface GrepResult {
   filesSearched: number;
 }
 
-/** Klasör içeriği */
+/** Folder entry */
 export interface FolderEntry {
   name: string;
   type: "file" | "directory";
@@ -121,7 +121,7 @@ export interface FolderEntry {
   children?: FolderEntry[];
 }
 
-/** Bash komut sonucu */
+/** Bash command result */
 export interface BashResult {
   stdout: string;
   stderr: string;
@@ -130,17 +130,17 @@ export interface BashResult {
   timedOut?: boolean;
 }
 
-/** Find & Replace sonucu */
+/** Find & Replace result */
 export interface ReplaceResult {
   file: string;
   replacements: number;
   success: boolean;
   error?: string;
-  preview?: string; // Dry run mode için önizleme
-  contextPreview?: string; // Değişiklik bölgesinin context'i (±5 satır)
+  preview?: string; // Preview for dry-run mode
+  contextPreview?: string; // Context around the changed region (±5 lines)
 }
 
-/** Technical Plan tipleri */
+/** Technical plan types */
 export interface CodeSnippet {
   startLine: number;
   endLine: number;
@@ -163,7 +163,7 @@ export interface TechnicalPlan {
   logicalChanges: LogicalChange[];
 }
 
-/** Collapsed view için kod yapısı */
+/** Code structure for collapsed view */
 export interface CodeStructure {
   type: "function" | "class" | "method" | "interface" | "type" | "const" | "variable";
   name: string;

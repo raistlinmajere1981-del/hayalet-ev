@@ -4,7 +4,7 @@ import { LogCategory } from "@shared/logging-core";
  *
  * Future implementation for Canvas/WebGL based visualizations.
  * Planned features:
- * - Game board rendering (tavla, satranç)
+ * - Game board rendering (backgammon, chess)
  * - Particle effects
  * - Data visualizations
  * - Custom drawing canvas
@@ -58,7 +58,7 @@ const canvasManager = {
 
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        Logger.debug(LogCategory.UI_CANVAS, "Failed to get 2D context");
+        Logger.debugT(LogCategory.UI_CANVAS, "app.logs.uiCanvas.contextUnavailable");
         return null;
       }
 
@@ -77,16 +77,24 @@ const canvasManager = {
         },
       };
 
-      Logger.debug(LogCategory.UI_CANVAS, "Canvas created", { width, height });
+      Logger.debugT(LogCategory.UI_CANVAS, "app.logs.uiCanvas.created", undefined, {
+        width,
+        height,
+      });
       return instance;
     } catch (error) {
-      Logger.debug(LogCategory.UI_CANVAS, "Failed to create canvas", { error });
+      Logger.debugT(
+        LogCategory.UI_CANVAS,
+        "app.logs.uiCanvas.createFailed",
+        { message: error instanceof Error ? error.message : String(error) },
+        { error }
+      );
       return null;
     }
   },
 
   createBoard(_container: HTMLElement, _gameType: "backgammon" | "chess" | "checkers"): null {
-    Logger.warn(LogCategory.UI_CANVAS, "Game board canvas not yet implemented");
+    Logger.warnT(LogCategory.UI_CANVAS, "app.logs.uiCanvas.boardNotImplemented");
     return null;
   },
 

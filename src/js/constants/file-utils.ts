@@ -1,7 +1,7 @@
 /**
- * Dosya yolundan extension çıkar
- * @param {string} filePath - Dosya yolu
- * @returns {string} Extension (lowercase, noktasız)
+ * Extract the extension from a file path.
+ * @param {string} filePath - File path
+ * @returns {string} Extension (lowercase, no dot)
  */
 export function getExtension(filePath: string): string {
   if (filePath === "") return "";
@@ -9,9 +9,9 @@ export function getExtension(filePath: string): string {
 }
 
 /**
- * Dosya yolundan dosya adını çıkar
- * @param {string} filePath - Dosya yolu
- * @returns {string} Dosya adı
+ * Extract the file name from a path.
+ * @param {string} filePath - File path
+ * @returns {string} File name
  */
 export function getFilename(filePath: string): string {
   if (filePath === "") return "";
@@ -19,7 +19,7 @@ export function getFilename(filePath: string): string {
 }
 
 /**
- * Extension'dan MIME type belirle
+ * Resolve the MIME type from an extension.
  * @param {string} ext - Extension (png, jpg, etc.)
  * @returns {string} MIME type
  */
@@ -49,8 +49,8 @@ export function getMimeType(ext: string): string {
 }
 
 /**
- * Dosya yolundan MIME type belirle
- * @param {string} filePath - Dosya yolu
+ * Resolve the MIME type from a file path.
+ * @param {string} filePath - File path
  * @returns {string} MIME type
  */
 export function getMimeTypeFromPath(filePath: string): string {
@@ -59,18 +59,18 @@ export function getMimeTypeFromPath(filePath: string): string {
 }
 
 /**
- * Benzersiz ID oluştur
- * @param {string} prefix - ID prefix'i (örn: "cmd", "relay", "whisper")
- * @returns {string} Benzersiz ID
+ * Generate a unique ID.
+ * @param {string} prefix - ID prefix (for example: "cmd", "relay", "whisper")
+ * @returns {string} Unique ID
  */
 export function generateUniqueId(prefix = "id"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 /**
- * Email adresini dosya/klasör adı için güvenli formata çevir
- * @param {string} email - Email adresi
- * @returns {string} Sanitized email (örn: "user_at_gmail_com")
+ * Convert an email address into a file/folder-safe representation.
+ * @param {string} email - Email address
+ * @returns {string} Sanitized email (for example: "user_at_gmail_com")
  */
 export function sanitizeEmail(email: string): string {
   if (email === "") return "";
@@ -78,11 +78,11 @@ export function sanitizeEmail(email: string): string {
 }
 
 /**
- * Email ve provider'dan deterministik account ID oluştur.
- * Aynı email+provider her zaman aynı ID'yi üretir.
- * @param {string} email - Kullanıcı email adresi
+ * Build a deterministic account ID from email and provider.
+ * The same email+provider pair always produces the same ID.
+ * @param {string} email - User email address
  * @param {string} provider - AI provider (chatgpt, grok, gemini, opencode)
- * @returns {string} Account ID (örn: "chatgpt_user_at_gmail_com")
+ * @returns {string} Account ID (for example: "chatgpt_user_at_gmail_com")
  */
 export function generateAccountId(email: string, provider: string): string {
   if (email === "" || provider === "") return "";
@@ -90,7 +90,7 @@ export function generateAccountId(email: string, provider: string): string {
 }
 
 /**
- * Base64 string'i UTF-8 text'e decode et
+ * Decode a Base64 string into UTF-8 text.
  * @param {string} base64 - Base64 encoded string
  * @returns {string} Decoded UTF-8 text
  */

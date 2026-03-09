@@ -28,7 +28,19 @@
         "commandDetailPlaceholder": "Select a command to view details"
       },
       "timeline": {
-        "commandFallback": "Command"
+        "commandFallback": "Command",
+        "commandLabel": "Command",
+        "resultLabel": "Result",
+        "pendingResult": "Waiting for result...",
+        "transportLabel": "transport",
+        "sessionLabel": "session",
+        "resultTimestampLabel": "result-ts",
+        "loadingHistory": "Loading command history...",
+        "scrollForMore": "Scroll up: +{{batchSize}} more sessions ({{remaining}} left)",
+        "historyLoaded": "Full session history loaded ({{count}} sessions)",
+        "liveConnected": "Connected to the live command stream",
+        "sessionLogReadFailed": "Session log could not be read ({{sessionId}}): {{message}}",
+        "sessionListReadFailed": "Session list could not be read: {{message}}"
       }
     },
     "analyze": {
@@ -56,6 +68,7 @@
         "emptySlot": "— Empty slot —",
         "newConversation": "New Chat",
         "logs": {
+          "userSelected": "Conversation selected for {{provider}}: {{conversationId}}",
           "resetToNewConversation": "{{slot}} returned to the default page, selection reset to New Chat",
           "refreshError": "Conversation list refresh error: {{message}}"
         }
@@ -64,6 +77,13 @@
         "empty": "No files yet.",
         "count": "{{count}} file(s) added.",
         "removeTitle": "Remove"
+      },
+      "draft": {
+        "logs": {
+          "pathPrepareFailed": "Draft path could not be prepared: {{message}}",
+          "readFailed": "Draft could not be read: {{message}}",
+          "writeFailed": "Draft could not be written: {{message}}"
+        }
       },
       "bubble": {
         "attachmentFallback": "file",
@@ -163,11 +183,44 @@
         "queuedForAccount": "Whisper queued ({{accountId}}/{{slot}})",
         "sendFailed": "Whisper could not be sent",
         "queuedCommandLog": "[{{timestamp}}] {{sender}} - Command queued: {{commandText}}",
-        "destroyWarning": "Whisper destroy warning: {{message}}"
+        "destroyWarning": "Whisper destroy warning: {{message}}",
+        "loadFailed": "Whisper data could not be loaded ({{accountId}}): {{message}}",
+        "saveFailed": "Whisper data could not be saved ({{accountId}}): {{message}}",
+        "invalidAccountId": "A valid accountId is required",
+        "added": "Whisper added ({{accountId}})",
+        "completed": "Whisper completed ({{accountId}})",
+        "deleted": "Whisper deleted ({{accountId}})",
+        "scheduledMessage": "Scheduled Whisper Entry: {{text}}",
+        "deliveryFailed": "Whisper could not be delivered ({{accountId}}/{{slot}}): {{message}}"
       }
     },
     "archives": {
       "page": {
+        "sidebarTitle": "Conversations",
+        "detailTitle": "Conversation Details",
+        "detailEmpty": "Select a conversation to view details",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Conversation title",
+        "summaryLabel": "Summary",
+        "summaryPlaceholder": "Conversation summary...",
+        "webUrlLabel": "Web URL",
+        "webUrlEmpty": "-",
+        "copyUrlTitle": "Copy URL",
+        "saveButton": "Save",
+        "deleteButton": "Delete",
+        "searchTitle": "Search",
+        "scopeCurrent": "Current Account",
+        "scopeAll": "All Accounts",
+        "searchPlaceholder": "Search messages or files...",
+        "messagesTab": "Messages",
+        "filesTab": "Files",
+        "searchEmpty": "Type above to start searching",
+        "protocolListTitle": "📜 Protocols",
+        "protocolLoading": "Loading...",
+        "protocolEditorPlaceholderTitle": "Select a protocol",
+        "protocolEmpty": "Select a protocol from the left to edit",
+        "protocolPlaceholder": "Protocol content...",
+        "protocolSaveButton": "Save",
         "empty": "No entries",
         "deleteTitle": "Delete conversation",
         "urlCopied": "URL copied",
@@ -232,6 +285,81 @@
         "archiveReadError": "Archive could not be read: {{message}}"
       }
     },
+    "upload": {
+      "validationFailed": "Validation failed",
+      "noFiles": "No files were provided for upload",
+      "untitledFile": "untitled",
+      "invalidFile": "Invalid file: {{name}}",
+      "serviceUnavailable": "{{service}} service is unavailable",
+      "googleDriveIpcUnavailable": "Google Drive IPC service is unavailable",
+      "googleDriveUploadFailed": "Google Drive upload failed",
+      "googleDriveError": "Google Drive error",
+      "fileInputNotFound": "File input could not be found. Tried selectors",
+      "filesInjected": "Files were added through the input element",
+      "injectionAttempted": "File injection was attempted",
+      "dropTargetNotFound": "Drop target could not be found",
+      "dragDropSuccess": "Files were added through drag and drop",
+      "dragDropPreviewMissing": "Drag-drop was triggered but {{provider}} did not accept the file (no preview was created)",
+      "dragDropAttempted": "File drag-drop was attempted",
+      "xdotoolsNotImplemented": "The XDotools file method is not implemented yet",
+      "uploadFailed": "{{service}} upload failed: {{reason}}",
+      "uploadSuccess": "{{count}} file(s) uploaded and ready as links",
+      "serviceError": "{{service}} error: {{message}}",
+      "unknownError": "unknown error"
+    },
+    "messageComposer": {
+      "providerConfigMissing": "Provider config could not be found",
+      "inputSelectorMissing": "No input selector was found in the provider config",
+      "focusPrepared": "Textarea cleared and focused",
+      "contentEditableWritten": "Message written into the ProseMirror/contenteditable field",
+      "textareaWritten": "Message written into the textarea",
+      "inputWriteFailed": "The message input field could not be updated",
+      "fastInsertWritten": "Message written with fast insertion",
+      "writeFailed": "Text could not be written: {{message}}",
+      "textareaMissing": "Composer textarea/div could not be found",
+      "characterByCharacterWritten": "Message written character by character"
+    },
+    "messageSender": {
+      "inputWriteFailed": "The message text could not be written into the input field",
+      "sendSuccess": "Send completed successfully",
+      "sendTriggerFailed": "The send button could not be triggered",
+      "unknownUploadError": "unknown upload error",
+      "unknownSendError": "unknown send error",
+      "logs": {
+        "urlExcluded": "{{provider}} send was skipped because the URL is excluded: {{currentUrl}}",
+        "providerConfigInjectionSkipped": "{{provider}} provider config injection was skipped ({{providerId}}): {{message}}",
+        "webviewFocusFailed": "{{provider}} webview focus failed: {{message}}",
+        "addingMessage": "Writing the message into {{provider}} input with {{messageMethod}}",
+        "waitingSendEnabled": "Waiting for {{provider}} send button to become enabled",
+        "triggeringSend": "Triggering the {{provider}} send button",
+        "uploadingFiles": "{{provider}} is uploading {{fileCount}} file(s) with {{fileMethod}}",
+        "fileUploadFailed": "{{provider}} {{fileMethod}} upload failed: {{message}}",
+        "fileUploadNoLinks": "{{provider}} {{fileMethod}} upload completed without any returned links",
+        "attachingFiles": "{{provider}} is attaching {{fileCount}} file(s) with {{fileMethod}}",
+        "fileAttachmentFailed": "{{provider}} file attachment failed: {{message}}",
+        "sendTriggerFailed": "{{provider}} send button trigger failed: {{message}}"
+      }
+    },
+    "fileManager": {
+      "readFailed": "File could not be read: {{path}}",
+      "archiveCopyFailed": "commandArchiveCopy failed: {{message}}",
+      "moveFailed": "commandMoveFailed failed: {{message}}",
+      "ensureDirsFailed": "ensureDirs failed: {{message}}",
+      "stageAttachmentsFailed": "commandStageAttachments failed: {{message}}",
+      "missingParameters": "Parameters are missing",
+      "apiUnavailable": "API is unavailable",
+      "writeAtomicFailed": "writeFileAtomic failed: {{message}}",
+      "tempPathFailed": "tempPath failed: {{message}}",
+      "unknown": "unknown"
+    },
+    "screenshot": {
+      "capturePageFailed": "capturePage failed: {{message}}",
+      "captureWindowFallback": "captureWindow fallback failed: {{message}}",
+      "captureSystemFailed": "captureSystem failed: {{message}}",
+      "captureSystemFallbackFailed": "captureSystem fallback failed: {{message}}",
+      "saved": "Screenshot saved: {{path}}",
+      "writeFailed": "Screenshot could not be written: {{message}}"
+    },
     "roomPage": {
       "page": {
         "badge": "Room",
@@ -257,6 +385,11 @@
         "runtimeReady": "Room runtime ready.",
         "roomEvent": "Room event",
         "commandSent": "The room runtime sent a command."
+      },
+      "commandErrors": {
+        "undefinedCommand": "Undefined room command",
+        "hostNotReady": "Room host is not ready",
+        "outOfScope": "Room command is out of scope"
       }
     },
     "commands": {
@@ -350,6 +483,9 @@
       },
       "executor": {
         "jobStarting": "Job starting: {{provider}}",
+        "targetRequired": "No target selected",
+        "attachmentsStagedLog": "Command files staged ({{jobId}}, {{count}} files)",
+        "queuedLog": "Command queued ({{count}} jobs)",
         "queuedDetail": "Queued for delivery",
         "jobFailed": "Job failed: {{provider}} - {{message}}",
         "jobCompleted": "Job completed: {{provider}} ({{duration}}ms)",
@@ -357,7 +493,19 @@
         "archiveCopyDeferred": "Archive copy deferred until sync",
         "syncCleanupError": "Sync/cleanup error: {{message}}",
         "commandFailError": "commandFail error",
-        "commandError": "Command error: {{provider}} - {{message}}"
+        "commandError": "Command error: {{provider}} - {{message}}",
+        "unknownProtocolLog": "Unknown protocol: {{room}}:{{scenario}}",
+        "unknownProtocol": "Unknown protocol",
+        "protocolSendSkippedNoConnectedAi": "Protocol could not be sent: no connected AI",
+        "noConnectedTarget": "No connected target",
+        "protocolBodyLoaded": "Protocol body loaded: {{protocolKey}}",
+        "protocolLoadError": "Protocol could not be loaded: {{message}}",
+        "sequentialProtocolStarted": "Started sequential protocol session for {{targets}}",
+        "sequentialProtocolStartFailed": "Failed to start sequential session: {{message}}",
+        "protocolRelayActionFailed": "Failed to apply relay action from protocol: {{message}}",
+        "protocolSentLog": "Protocol sent: {{room}}:{{scenario}} -> {{targets}}",
+        "protocolErrorLog": "Protocol error: {{message}} ({{room}}:{{scenario}})",
+        "unknownMessage": "unknown"
       },
       "catalog": {
         "DeviceManager": {
@@ -623,6 +771,16 @@
       "confirm": "Confirm",
       "ok": "OK",
       "save": "Save"
+    },
+    "commandQueue": {
+      "initSkipped": "CommandManager init skipped: electronAPI.commandInit is unavailable",
+      "initFailed": "CommandManager init error: {{message}}",
+      "completed": "Command completed ({{id}})",
+      "failed": "Command failed ({{id}}): {{reason}}",
+      "listenerError": "Command listener failed: {{message}}",
+      "writeFailed": "Command file could not be written: {{message}}",
+      "cleared": "Command queue cleared",
+      "sanitizePayloadFailed": "Payload field {{key}} was skipped during sanitization: {{message}}"
     },
     "assistant": {
       "identityModal": {
@@ -900,6 +1058,10 @@
         "electronApiUnavailable": "electronAPI is unavailable",
         "invalidPortSelection": "Invalid port selection",
         "providerServeStartFailed": "Failed to start {{name}} serve",
+        "avatarInvalidDimensions": "Invalid avatar dimensions",
+        "avatarCanvasUnavailable": "Avatar canvas context could not be created",
+        "avatarPngGenerationFailed": "Avatar PNG data could not be generated",
+        "avatarImageLoadFailed": "Avatar image could not be loaded",
         "avatarFileReadFailed": "The avatar file could not be read",
         "avatarSaveFailed": "The avatar could not be saved",
         "connectionWaitTimeout": "The assistant connection could not be established in time",
@@ -942,6 +1104,7 @@
         "providerServeStopping": "Stopping {{name}} serve...",
         "providerServeStopped": "{{name}} serve stopped",
         "providerServeStopError": "{{name}} serve stop error",
+        "providerReadyCheckCancelled": "{{name}} ready check cancelled",
         "providerChanged": "Provider changed: {{providerName}}",
         "devtoolsOpened": "DevTools opened",
         "webviewMissing": "Webview not found",
@@ -953,10 +1116,12 @@
         "disabledMcpSaveFailed": "The disabled MCP list could not be saved",
         "runtimeDefaultsWriteFailed": "Assistant runtime defaults could not be written",
         "runtimeStateUpdateFailed": "Assistant runtime state could not be updated",
-        "opencodeSettingsUpdated": "OpenCode settings updated"
+        "opencodeSettingsUpdated": "OpenCode settings updated",
+        "opencodeActionButtonFailure": "OpenCode action button failed: {{message}}"
       }
     },
     "logs": {
+      "appInitFailed": "Application initialization failed: {{message}}",
       "loggerInitialized": "Unified logger initialized",
       "uiLogListenerReady": "UI log listener ready",
       "spellcheckDisableFailed": "Failed to disable spellcheck: {{message}}",
@@ -983,7 +1148,236 @@
       "relayError": "{{relay}} relay error: {{message}}",
       "relayButtonSetupError": "Relay button setup error: {{message}}",
       "relayButtonStates": "Button states - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}",
-      "relayButtonStateUpdateError": "Relay button state update error: {{message}}"
+      "relayButtonStateUpdateError": "Relay button state update error: {{message}}",
+      "logger": {
+        "alreadyInitialized": "Logger is already initialized",
+        "initialized": "Unified logger initialized",
+        "operationStart": "Operation started: {{name}}",
+        "operationSuccess": "Operation completed successfully: {{name}}",
+        "operationFailed": "Operation failed: {{name}} {{result}}",
+        "operationNotFound": "Operation not found: {{correlationId}}",
+        "notInitialized": "Logger is not initialized yet; call Logger.init() first",
+        "batchSendFailed": "Failed to send the log batch to main: {{message}}",
+        "toastIntegrationFailed": "Toast integration failed: {{message}}",
+        "listenerError": "Log listener error: {{message}}",
+        "shutdownComplete": "Logger shutdown complete"
+      },
+      "webviewLifecycle": {
+        "noProviderConfigured": "No provider is configured for {{provider}}",
+        "urlReadFailed": "Could not read the current URL for {{provider}}: {{message}}",
+        "loadingUrl": "{{provider}} is loading {{url}}",
+        "onReadyCompleted": "{{provider}} onReady callback executed after dom-ready",
+        "onReadyFailed": "{{provider}} onReady callback failed: {{message}}",
+        "attached": "{{provider}} webview attached",
+        "attachFailed": "{{provider}} webview attach failed: {{message}}",
+        "detached": "{{provider}} webview detached",
+        "destroyed": "{{provider}} webview destroyed to free memory",
+        "destroyFailed": "{{provider}} webview destroy failed: {{message}}",
+        "detachingInactive": "Detaching inactive webview {{provider}} after {{idleMinutes}} minute(s)",
+        "loggerSetupFailed": "{{provider}} webview logger setup failed ({{providerId}}): {{message}}",
+        "handlerAttachFailed": "{{provider}} webview handler attach failed: {{message}}"
+      },
+      "webviewSync": {
+        "loadingStateCheckFailed": "{{provider}} loading-state check failed: {{message}}",
+        "initialized": "Conversation syncer initialized",
+        "webviewNotFound": "Webview not found for {{provider}}",
+        "urlExcludedSync": "{{provider}} sync was skipped because the URL is excluded: {{currentUrl}}",
+        "urlExcludedLatestMessage": "{{provider}} latest-message sync was skipped because the URL is excluded: {{currentUrl}}",
+        "syncAlreadyInProgress": "{{provider}} sync skipped because another sync is already in progress",
+        "noAccountAssigned": "{{provider}} sync skipped because no account is assigned",
+        "pendingProcessingFailedDuringSync": "{{provider}} pending archive processing failed during sync: {{message}}",
+        "syncFailed": "{{provider}} sync failed: {{message}}",
+        "latestMessageSyncFailed": "{{provider}} latest-message sync failed: {{message}}",
+        "syncProviderCalled": "{{provider}} sync requested from {{source}}",
+        "assistantRetryScheduled": "{{provider}} assistant output is not readable yet; scheduling retry #{{tried}}",
+        "syncProviderError": "{{provider}} syncProvider error: {{message}}",
+        "stableCallbackFailed": "{{provider}} stable callback failed: {{message}}",
+        "pendingProcessingFailed": "{{provider}} pending archive processing failed: {{message}}",
+        "notifyStableFailed": "{{provider}} stable notification failed: {{message}}",
+        "destroyed": "Conversation syncer destroyed"
+      },
+      "pendingArchive": {
+        "processPendingError": "Pending archive queue processing failed: {{message}}",
+        "missingInfo": "Pending archive skipped because required data is missing for job {{jobId}}",
+        "processingAttachments": "Processing {{count}} attachment(s) for message {{messageId}}",
+        "attachmentSaveBridgeUnavailable": "Attachment could not be saved because the database bridge is unavailable: {{file}}",
+        "attachmentSaveFailed": "Attachment could not be saved: {{file}} ({{message}})",
+        "attachmentsProcessed": "Pending archive attachments processed for job {{jobId}}",
+        "processingFailed": "Pending archive processing failed for job {{jobId}}: {{message}}",
+        "cleanupFailed": "Pending archive cleanup failed for job {{jobId}}: {{message}}"
+      },
+      "roomHost": {
+        "disposeFailed": "Room host dispose failed for {{roomId}}: {{message}}",
+        "entryMissing": "Room host entry is missing: {{path}}",
+        "factoryMissing": "Room host factory is missing for {{roomId}}",
+        "loadFailed": "Room host failed to load for {{roomId}}: {{message}}",
+        "roomMessage": "Room {{roomId}}: {{message}}"
+      },
+      "runtimeActions": {
+        "cleanupError": "Core runtime cleanup failed: {{message}}",
+        "relayInitFailed": "Relay manager initialization failed: {{message}}",
+        "relayAutoStopFailed": "Relay auto-stop after disconnect failed: {{message}}"
+      },
+      "database": {
+        "storeOperationFailed": "{{store}}.{{operation}} failed: {{message}}"
+      },
+      "uiModal": {
+        "opened": "Modal opened",
+        "closed": "Modal closed"
+      },
+      "uiCanvas": {
+        "contextUnavailable": "2D canvas context is unavailable",
+        "created": "Canvas created",
+        "createFailed": "Canvas could not be created: {{message}}",
+        "boardNotImplemented": "Game board canvas is not implemented yet"
+      },
+      "uiAudio": {
+        "initializedPlaceholder": "Audio manager initialized in placeholder mode",
+        "soundRegistered": "Sound registered: {{id}}",
+        "soundRegisterFailed": "Sound registration failed for {{id}}: {{message}}",
+        "soundNotFoundPlaceholder": "Sound not found in placeholder mode: {{id}}",
+        "volumeSet": "Audio volume set to {{volume}}",
+        "muted": "Audio muted",
+        "unmuted": "Audio unmuted"
+      },
+      "uiButtonStates": {
+        "loadingSet": "Button loading state set",
+        "successSet": "Button success state set",
+        "errorSet": "Button error state set",
+        "reset": "Button reset",
+        "destroyed": "ButtonStates destroy called"
+      },
+      "settings": {
+        "listenerError": "Settings listener error: {{message}}",
+        "broadcastChannelCreateFailed": "BroadcastChannel could not be created for {{channelName}}: {{message}}",
+        "loadBridgeUnavailable": "electronAPI.loadSettings is unavailable",
+        "saveBridgeUnavailable": "electronAPI.saveSettings is unavailable",
+        "resetToDefaults": "Resetting all settings to default values"
+      },
+      "traffic": {
+        "webviewNotAttachable": "Webview is not attachable for {{provider}}",
+        "stopError": "Traffic manager stop failed for {{provider}}: {{message}}",
+        "clearPollTimerFailed": "Poll timer could not be cleared: {{message}}",
+        "clearPollTimerOnDestroyFailed": "Poll timer could not be cleared during destroy: {{message}}",
+        "destroyed": "Traffic manager destroyed",
+        "detachEventsFailed": "Webview events could not be detached: {{message}}",
+        "loadingStartedEvent": "Loading started for {{provider}}: {{href}}",
+        "loadingStartedPanel": "Loading started for {{provider}}",
+        "loadingEndedEvent": "Loading ended ({{reason}}) for {{provider}}: {{href}}",
+        "loadingEndedPanel": "Loading ended for {{provider}} ({{reason}})",
+        "thinkingStartedEvent": "Thinking started for {{provider}} (stop button visible)",
+        "thinkingStartedPanel": "Thinking started for {{provider}}",
+        "thinkingEndedEvent": "Thinking ended for {{provider}} (stop button hidden)",
+        "thinkingEndedPanel": "Thinking ended for {{provider}}",
+        "sendStateChanged": "Send button state changed for {{provider}}: {{previousIndicator}} -> {{indicator}} ({{sendState}})",
+        "loadingSyncedToIdleDueToThinking": "Loading synced to idle due to thinking for {{provider}}",
+        "probeCycleFailed": "Probe cycle failed for {{provider}}: {{message}}",
+        "pollingLoopFailed": "Traffic polling loop failed: {{message}}",
+        "probeError": "Probe error for {{provider}}: {{message}}",
+        "probeExecutionFailed": "Probe execution failed for {{provider}}: {{message}}",
+        "probeDataError": "Probe data error for {{provider}}: {{message}}",
+        "clearLoadingJustEndedFailed": "loadingJustEnded could not be cleared for {{provider}}: {{message}}",
+        "clearThinkingJustEndedFailed": "thinkingJustEnded could not be cleared for {{provider}}: {{message}}"
+      },
+      "relayManager": {
+        "initialized": "RelayManager initialized with AI-AI and AI-Assistant relays",
+        "assistantCommandCatchError": "Assistant command catch failed: {{message}}",
+        "trafficUpdateHandlerError": "Traffic update handler failed: {{message}}",
+        "syncCompleteHandlerError": "Sync-complete handler failed: {{message}}"
+      },
+      "aiaiRelay": {
+        "started": "AI-AI relay started: {{providers}}",
+        "protocolSending": "Protocol session {{sessionId}}: sending to {{provider}}",
+        "protocolSent": "Protocol session {{sessionId}}: sent to {{provider}}",
+        "protocolStartError": "Protocol session start failed: {{message}}",
+        "stoppedWithSession": "Relay session {{sessionId}} stopped",
+        "stopped": "AI-AI relay stopped",
+        "handleThinkingCompleteError": "AI-AI relay thinking-complete handling failed: {{message}}",
+        "protocolReplyReceived": "Protocol session {{sessionId}}: {{provider}} replied",
+        "protocolForwarded": "Protocol session {{sessionId}}: forwarded {{from}} -> {{to}}",
+        "protocolForwardToFailed": "Protocol session {{sessionId}}: forward to {{to}} failed: {{message}}",
+        "protocolForwarding": "Protocol session {{sessionId}}: forwarding {{from}} -> {{to}} (#{{count}})",
+        "protocolForwardFailed": "Protocol session {{sessionId}}: forward {{from}} -> {{to}} failed: {{message}}",
+        "targetUndetermined": "Relay target could not be determined",
+        "relaySkippedTargetNotConnected": "Relay skipped because target {{target}} is not connected",
+        "relayForwarding": "Relay forwarding (#{{count}}) {{from}} -> {{to}}",
+        "relayForwardingFailed": "Relay forwarding failed: {{message}}"
+      },
+      "aiAssistantRelay": {
+        "started": "AI-Assistant relay started: {{source}} <-> {{target}}",
+        "protocolSending": "Sending protocol to {{provider}}",
+        "protocolSent": "Protocol sent to {{provider}}",
+        "protocolSendFailed": "Failed to send protocol: {{message}}",
+        "protocolLoadError": "Protocol load error: {{message}}",
+        "stoppedWithSession": "AI-Assistant relay {{sessionId}} stopped ({{source}} <-> {{target}})",
+        "stopped": "AI-Assistant relay stopped",
+        "handleThinkingCompleteError": "AI-Assistant relay thinking-complete handling failed: {{message}}",
+        "duplicateMessageBlocked": "Duplicate message detected for {{provider}}; blocking",
+        "protocolReplyReceived": "Session {{sessionId}}: AI ({{provider}}) replied to protocol",
+        "ignoringMessageInState": "Ignoring message in state {{state}} from {{provider}}",
+        "forwardSkippedTargetNotConnected": "Forward skipped because target {{target}} is not connected",
+        "forwarding": "AI-Assistant relay forwarding (#{{count}}) {{from}} -> {{to}}",
+        "forwardingFailed": "AI-Assistant relay forwarding failed: {{message}}",
+        "providerNotRecognized": "Provider {{provider}} is not recognized in relay flow",
+        "targetNull": "Relay target is null for provider {{provider}}",
+        "thinkingTransition": "Thinking transition: {{provider}} {{previousState}} -> {{thinkingState}}"
+      },
+      "errorBoundary": {
+        "initialized": "ErrorBoundary initialized",
+        "reported": "[{{source}}{{operationSuffix}}] {{message}}"
+      },
+      "slotController": {
+        "initialized": "SlotController initialized",
+        "webviewRegistered": "Webview registered",
+        "unregisterConnected": "Connected slot is being unregistered; disconnecting first",
+        "unregisterDisconnectFailed": "Disconnect during unregister failed for {{slot}}: {{message}}",
+        "unregisterDisconnectError": "Disconnect error during unregister for {{slot}}: {{message}}",
+        "webviewUnregistered": "Webview unregistered",
+        "manualRecovery": "Manual recovery from ERROR state",
+        "invalidTransitionBlocked": "Invalid state transition blocked: {{oldState}} -> {{newState}}"
+      },
+      "slotStateMachine": {
+        "noOpTransition": "No-op slot transition skipped: {{fromState}} -> {{targetState}}",
+        "invalidTransition": "Invalid slot transition: {{fromState}} -> {{targetState}}. Allowed: [{{allowedTransitions}}]",
+        "guardRejected": "Slot transition guard rejected: {{fromState}} -> {{targetState}}",
+        "transitioned": "{{slotId}}: {{fromState}} -> {{targetState}}{{reasonSuffix}}",
+        "transitionCallbackError": "Slot transition callback failed for {{fromState}} -> {{targetState}}: {{message}}",
+        "sideEffectError": "Slot transition side effect failed for {{fromState}} -> {{targetState}}: {{message}}"
+      },
+      "deviceManager": {
+        "actionError": "Device action failed: {{message}}",
+        "fallbackCalled": "Device fallback called for action {{action}}"
+      },
+      "metaCommandManager": {
+        "customCommandsLoaded": "{{count}} custom command(s) loaded",
+        "loadCommandsError": "Custom commands could not be loaded: {{message}}",
+        "commandDefined": "Custom command defined: {{name}}",
+        "defineCommandError": "Custom command definition failed: {{message}}",
+        "deleteCommandError": "Custom command delete failed: {{message}}",
+        "runCommandError": "Custom command run failed for {{name}}: {{message}}"
+      },
+      "ipcClient": {
+        "invokeFailed": "IPC invoke failed for {{channel}}: {{message}}"
+      },
+      "protocolHandler": {
+        "slotUrlExcluded": "Protocol handling skipped because {{slot}} has an excluded URL"
+      },
+      "appState": {
+        "listenerError": "App state listener failed: {{message}}"
+      },
+      "coreEngine": {
+        "setConnection": "Connection state update for {{provider}} => {{now}} (force={{force}}, prev={{prev}})",
+        "destroyed": "CoreEngine destroyed"
+      },
+      "roomRegistry": {
+        "listenerFailed": "Room registry listener failed: {{message}}",
+        "installedRoomsUnavailable": "Room registry refresh skipped because electronAPI.roomsListInstalled is unavailable",
+        "refreshFailed": "Room registry refresh failed: {{message}}",
+        "workspaceListingFailed": "Workspace room listing failed: {{message}}"
+      },
+      "roomCommandRegistry": {
+        "collisionSkipped": "Room command collision skipped: {{commandName}} ({{existingRoomId}} vs {{skippedRoomId}})"
+      }
     }
   },
   "providerTest": {
@@ -1085,7 +1479,21 @@
   "electron": {
     "archive": {
       "fallbackUserAuthor": "User",
-      "fallbackAssistantAuthor": "Assistant"
+      "fallbackAssistantAuthor": "Assistant",
+      "autoTitlePrefix": "Conversation",
+      "untitledConversation": "Untitled Conversation"
+    },
+    "database": {
+      "accountIdRequired": "Account ID is required",
+      "logs": {
+        "accountDatabaseInitialized": "Account database initialized for {{accountId}}",
+        "accountFolderDeleted": "Account folder deleted for {{accountId}}",
+        "cleanupComplete": "SQLite database cleanup completed",
+        "syncMessagesComplete": "Message sync completed ({{added}} added, {{total}} total)",
+        "attachmentSaved": "Attachment saved: {{originalName}}",
+        "accountDataCleared": "Account data cleared for {{accountId}}",
+        "operationFailed": "Database operation failed ({{operation}}): {{message}}"
+      }
     },
     "googleDrive": {
       "clientConfigMissing": "Google Client ID/Secret is not configured",
@@ -1095,13 +1503,110 @@
       "disconnectFailed": "Disconnect failed",
       "noFilesProvided": "No files were provided",
       "authorizationMissing": "Google Drive authorization is missing",
-      "uploadFailed": "Upload failed"
+      "uploadFailed": "Upload failed",
+      "untrustedUrl": "Untrusted URL: {{hostname}}",
+      "browserOpenFailed": "Could not open the browser: {{message}}"
     },
     "window": {
       "trayShow": "Show",
       "trayFullscreen": "Fullscreen",
       "trayQuit": "Quit",
-      "devPageReloaded": "Development mode: page reloaded"
+      "devPageReloaded": "Development mode: page reloaded",
+      "logs": {
+        "mainWindowUnavailable": "Main window is not available",
+        "minimizedToTray": "Window minimized to tray",
+        "minimizeToTrayFailed": "Could not minimize the window to the tray: {{message}}",
+        "trayIconPathMissing": "Tray icon path is not configured",
+        "creatingTrayIcon": "Creating the tray icon",
+        "trayClicked": "Tray icon clicked",
+        "trayDoubleClicked": "Tray icon double-clicked",
+        "trayCreated": "Tray icon created",
+        "trayCreationFailed": "Tray icon could not be created: {{message}}",
+        "restoredFromTray": "Window restored from tray",
+        "minimizeFailed": "Window minimize failed: {{message}}",
+        "closeFailed": "Window close failed: {{message}}",
+        "exitedFullscreen": "Window exited fullscreen",
+        "enteredFullscreen": "Window entered fullscreen",
+        "toggleFullscreenFailed": "Window fullscreen toggle failed: {{message}}",
+        "externalLinkOpened": "An external link was opened in the system browser",
+        "externalPopupOpened": "An external popup was opened in the system browser"
+      }
+    },
+    "logger": {
+      "initialized": "LoggerCore initialized",
+      "shuttingDown": "LoggerCore shutting down"
+    },
+    "settings": {
+      "createdDefaultFile": "Default settings.json created",
+      "loadFailed": "Settings could not be loaded: {{message}}",
+      "saveFailed": "Settings could not be saved: {{message}}"
+    },
+    "session": {
+      "logs": {
+        "cacheClearedForPartition": "Cache cleared for partition {{partition}}",
+        "cacheClearError": "Cache clear error: {{message}}",
+        "startupCacheClearingStarted": "Startup cache clearing started",
+        "startupCacheClearingCompleted": "Startup cache clearing completed",
+        "startupCacheClearingPartiallyFailed": "Startup cache clearing partially failed"
+      }
+    },
+    "main": {
+      "logs": {
+        "ttyCleanupFailed": "TTY cleanup failed: {{message}}",
+        "startupOpencodeBinaryProbeCompleted": "Startup OpenCode binary probe completed",
+        "startupOpencodeProbeFailed": "Startup OpenCode probe failed: {{message}}",
+        "anotherInstanceRunningExiting": "Another instance is already running. Exiting.",
+        "secondInstanceFocused": "Second instance attempted; focused the existing window",
+        "unifiedLoggerInitialized": "Unified logger initialized",
+        "loggerInitializationFailed": "Logger initialization failed: {{message}}",
+        "startupCacheClearFailed": "Startup cache clear failed: {{message}}",
+        "initWindowManagerFailed": "initWindowManager failed: {{message}}",
+        "trayIconPathError": "Tray icon path error: {{message}}",
+        "createAppWindowCriticalFailed": "CRITICAL: createAppWindow failed",
+        "cleanupStarted": "Cleanup started",
+        "opencodeServeCleanupDone": "OpenCode serve cleanup completed",
+        "opencodeServeCleanupFailed": "OpenCode serve cleanup failed: {{message}}",
+        "sessionClosing": "Session closing (reason: {{reason}})",
+        "webviewLoggerSetup": "Webview logger setup for {{slot}}/{{provider}}",
+        "failedToStartOpencodeServe": "Failed to start OpenCode serve: {{message}}",
+        "failedToStopOpencodeServe": "Failed to stop OpenCode serve: {{message}}"
+      }
+    },
+    "opencodeServer": {
+      "logs": {
+        "foundExistingServer": "Existing OpenCode server found on port {{port}}",
+        "reusingExistingServer": "Reusing the existing OpenCode server on port {{port}}",
+        "startingServe": "Starting OpenCode serve on port {{port}}",
+        "stdout": "OpenCode serve stdout received",
+        "stderr": "OpenCode serve stderr received",
+        "closed": "OpenCode serve process closed (code: {{code}})",
+        "error": "OpenCode serve process error: {{message}}",
+        "stoppingOwnProcess": "Stopping the OpenCode serve process",
+        "skippingExternalStop": "Stop skipped because the OpenCode server is external"
+      }
+    },
+    "ipc": {
+      "logs": {
+        "handlerError": "IPC handler error: {{message}}",
+        "loggerBatchAppendFailed": "Logger batch append failed: {{message}}"
+      }
+    },
+    "serverCommands": {
+      "logs": {
+        "commandReceived": "Server command received: {{name}}",
+        "whisperAdded": "WhisperManager entry added for {{accountId}}",
+        "whisperError": "WhisperManager error: {{message}}",
+        "deviceAction": "DeviceManager action executed: {{action}}",
+        "deviceError": "DeviceManager error: {{message}}",
+        "screenshotSaved": "ScreenshotManager saved {{path}}",
+        "screenshotError": "ScreenshotManager error: {{message}}",
+        "windowAction": "WindowManager action executed: {{action}}",
+        "windowError": "WindowManager error: {{message}}",
+        "restartRequested": "Restart requested",
+        "restartError": "Restart error: {{message}}",
+        "listFilesError": "ListFiles error: {{message}}",
+        "undefinedCommand": "Undefined command: {{commandName}}"
+      }
     },
     "metaCommand": {
       "commandNameRequired": "Command name is required",
@@ -1110,12 +1615,37 @@
       "commandUpdated": "Command updated: {{name}}",
       "commandDeleted": "Command deleted: {{name}}",
       "commandNotFound": "Command not found: {{name}}",
-      "deleteError": "deleteCommand error"
+      "deleteError": "deleteCommand error",
+      "logs": {
+        "loadCustomCommandsError": "Custom commands could not be loaded: {{message}}",
+        "saveCustomCommandsError": "Custom commands could not be saved: {{message}}",
+        "defineCommandError": "defineCommand failed: {{message}}",
+        "deleteCommandError": "deleteCommand failed: {{message}}",
+        "listCommandsError": "listCommands failed: {{message}}",
+        "getCommandError": "getCommand failed: {{message}}"
+      }
+    },
+    "ipcProvider": {
+      "logs": {
+        "scenarioStarted": "Starting provider scenario {{scenarioId}} for {{providerId}} on {{slot}}",
+        "scenarioCompleted": "Provider scenario completed: {{scenarioId}} for {{providerId}} on {{slot}}",
+        "scenarioFailed": "Provider scenario failed for {{slot}}/{{scenarioId}}: {{message}}",
+        "scenarioCancelRequested": "Provider scenario cancel requested: {{runId}}",
+        "configLoadFailed": "Provider config could not be loaded for {{providerId}}: {{message}}"
+      }
     },
     "ipcWindow": {
       "openDialogTitle": "Select Folder",
       "openDialogButtonLabel": "Select",
-      "installedOpencodeVersionMissing": "The installed OpenCode version is empty."
+      "installedOpencodeVersionMissing": "The installed OpenCode version is empty.",
+      "logs": {
+        "prepareRuntimeForWindowCloseFailed": "prepareRuntimeForWindowClose failed: {{message}}",
+        "showOpenDialogCalled": "show-open-dialog called",
+        "showOpenDialogResult": "show-open-dialog result",
+        "opencodeUpdateCheckCompleted": "OpenCode update check completed (installed: {{installedVersion}}, latest: {{latestVersion}})",
+        "opencodeInstallFellBackToBrowser": "OpenCode install fell back to the browser",
+        "opencodeInstallTerminalLaunched": "OpenCode install terminal launched"
+      }
     },
     "screenshot": {
       "windowNotFound": "Window not found"
@@ -1132,6 +1662,45 @@
     }
   },
   "mcpServer": {
+    "logs": {
+      "unknownTool": "unknown",
+      "toolStart": "Tool started: {{toolName}}",
+      "toolSuccess": "Tool completed: {{toolName}} ({{duration}}ms)",
+      "toolError": "Tool failed: {{toolName}} - {{message}}",
+      "generalError": "MCP error: {{message}}",
+      "writeMcpToolsFailed": "mcp-tools.jsonl could not be written: {{message}}",
+      "writeStructuredFailed": "structured.jsonl could not be written: {{message}}",
+      "writeFailed": "MCP log write failed: {{message}}",
+      "startLogFailed": "Tool-start logging failed: {{message}}",
+      "successLogFailed": "Tool-success logging failed: {{message}}",
+      "errorLogFailed": "Tool-error logging failed: {{message}}",
+      "generalLogFailed": "General MCP logging failed: {{message}}"
+    },
+    "providerConfig": {
+      "parseError": "Provider config parse error ({{provider}}): {{message}}"
+    },
+    "handlers": {
+      "unknownTool": "❌ Unknown tool: {{name}}\n\nRegistered tools: {{count}}\n\nUse hev_list_tools to see all available tools.",
+      "toolInputParseError": "❌ JSON parse error: tool_input was sent as a string and could not be parsed.\n\n💡 tool_input must be a JSON object, not a string.\nIncoming value: {{value}}...",
+      "executionError": "❌ Error in {{name}}:\n{{message}}"
+    },
+    "logUtils": {
+      "sessionNotFound": "Session not found: {{sessionId}}",
+      "errorLogMissing": "Error log file was not found",
+      "structuredLogMissing": "Structured log file was not found",
+      "consoleLogMissing": "Console log file was not found",
+      "readError": "Log read error: {{message}}"
+    },
+    "fileUtils": {
+      "findReplace": {
+        "patternNotFoundWithSuggestions": "Pattern not found. Close matches:\n{{suggestions}}\n\nTip: use ignore_whitespace: true or inspect the file with hev_fs_show.",
+        "patternNotFoundLineMissing": "Pattern not found. No line contains \"{{term}}\".\n\nTip: inspect the file with hev_fs_show.",
+        "previewTotal": "Total: {{count}} changes"
+      },
+      "fileReading": {
+        "patternNotFound": "Pattern not found: {{patterns}}"
+      }
+    },
     "logTools": {
       "sessionMissing": "Log session not found. The application may not have been started yet.",
       "errorLogsTitle": "📕 Error Logs (Session: {{sessionId}})",
@@ -3053,6 +3622,23 @@
       }
     },
     "fs": {
+      "recycle": {
+        "noUndoableOperation": "No operation available to undo",
+        "operationNotFound": "Operation not found",
+        "fileNotInTrash": "File not found in the trash",
+        "fileNotFound": "File not found",
+        "undoSuccess": "Operation undone: {{operationType}}",
+        "undoError": "Undo error: {{message}}"
+      },
+      "diffUtils": {
+        "fileNotFound": "Error: {{filePath}} was not found",
+        "filesIdentical": "✅ Files are identical",
+        "diffSummary": "📊 {{additions}} additions, {{deletions}} deletions",
+        "patchEmpty": "Patch is empty",
+        "invalidHunkHeader": "Invalid hunk header: {{line}}",
+        "patchApplyFailed": "Patch could not be applied ({{failedHunks}} hunks failed)",
+        "patchApplied": "Patch applied ({{appliedLines}} lines)"
+      },
       "errors": {
         "pathTraversalDetected": "Path traversal detected. '..' is not allowed.",
         "pathValidationFailed": "Path validation failed"

@@ -2,6 +2,7 @@ import { generateUniqueId } from "../constants/index.js";
 import { WHISPER_TIMEOUTS } from "@timeouts";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
+import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import type { Account } from "@shared/settings.js";
 
@@ -23,6 +24,10 @@ interface WhisperData {
 }
 
 type SenderFn = (accountId: string, text: string, whisperId: string) => void | Promise<void>;
+
+function whisperT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.whisper.runtime.${key}`, params);
+}
 
 function getRegisteredAccounts(): Account[] {
   const settings = SettingsManager.getSnapshot();
@@ -155,7 +160,10 @@ class WhisperManagerClass {
       }
     } catch (e) {
       const err = e as Error;
-      Logger.warn(LogCategory.WHISPER, `Whisper yüklenemedi (${accountId}): ${err.message}`);
+      Logger.warn(
+        LogCategory.WHISPER,
+        whisperT("loadFailed", { accountId, message: err.message })
+      );
     }
 
     return { pending: [], done: [] };
@@ -179,14 +187,17 @@ class WhisperManagerClass {
       });
     } catch (e) {
       const err = e as Error;
-      Logger.error(LogCategory.WHISPER, `Whisper kaydedilemedi (${accountId}): ${err.message}`);
+      Logger.error(
+        LogCategory.WHISPER,
+        whisperT("saveFailed", { accountId, message: err.message })
+      );
     }
   }
 
   WhisperManagerAdd(accountIdRaw: string | undefined, text: string, when: unknown): WhisperRecord {
     const accountId = resolveAccountId(accountIdRaw ?? "");
     if (accountId === "") {
-      throw new Error("Geçerli bir accountId gerekli");
+      throw new Error(whisperT("invalidAccountId"));
     }
 
     const rec: WhisperRecord = {
@@ -203,7 +214,7 @@ class WhisperManagerClass {
     this.data[accountId].pending.push(rec);
     this.sortPending(accountId);
     void this.saveAccount(accountId);
-    Logger.panel(LogCategory.WHISPER, LogLevel.INFO, `Whisper eklendi (${accountId})`);
+    Logger.panel(LogCategory.WHISPER, LogLevel.INFO, whisperT("added", { accountId }));
     this.notify();
 
     return rec;
@@ -228,7 +239,7 @@ class WhisperManagerClass {
 
     data.done.push({ ...rec, done: true, doneAt: Date.now(), queued: false });
     void this.saveAccount(accountId);
-    Logger.success(LogCategory.WHISPER, `Whisper tamamlandı (${accountId})`);
+    Logger.success(LogCategory.WHISPER, whisperT("completed", { accountId }));
     this.notify();
     return true;
   }
@@ -251,7 +262,7 @@ class WhisperManagerClass {
     }
 
     void this.saveAccount(accountId);
-    Logger.info(LogCategory.WHISPER, `Whisper silindi (${accountId})`);
+    Logger.info(LogCategory.WHISPER, whisperT("deleted", { accountId }));
     this.notify();
     return true;
   }
@@ -315,12 +326,12 @@ class WhisperManagerClass {
           if (slot === null) {
             Logger.warn(
               LogCategory.WHISPER,
-              `Whisper teslim edilemedi, hesap slota bağlı değil (${accountId})`
+              whisperT("accountSlotMissing", { accountId })
             );
             return;
           }
 
-          const msg = `Zamanlı Fısıltı Kaydı: ${record.text}`;
+          const msg = whisperT("scheduledMessage", { text: record.text });
           this.markQueued(accountId, record.id);
 
           if (typeof this.sender !== "function") {
@@ -335,7 +346,11 @@ class WhisperManagerClass {
             Logger.panel(
               LogCategory.WHISPER,
               LogLevel.ERROR,
-              `Whisper gönderilemedi (${accountId}/${slot}): ${err.message}`
+              whisperT("deliveryFailed", {
+                accountId,
+                slot,
+                message: err.message,
+              })
             );
             this.markReady(accountId, record.id);
           }

@@ -11,12 +11,12 @@ export function escapeHtml(str: string): string {
 }
 
 /**
- * Chat mesajı DOM'a ekler.
+ * Append a chat message to the DOM.
  * @param role - "user" | "assistant"
- * @param text - Ham metin (veya renderFn varsa renderFn'e verilir)
- * @param extra - Zaman yanına eklenen ek metin
- * @param files - Dosya ekleri
- * @param renderFn - Opsiyonel markdown render fonksiyonu (chat.ts inject eder)
+ * @param text - Raw text (or input passed to renderFn when provided)
+ * @param extra - Extra text shown next to the timestamp
+ * @param files - File attachments
+ * @param renderFn - Optional markdown render function (injected by chat.ts)
  */
 export function addMessage(
   role: string,
@@ -64,7 +64,7 @@ export function addMessage(
           ? fileEntry
           : typeof fileEntry === "object"
             ? String(fileEntry.name ?? fileEntry.fileName ?? fileEntry.path ?? "ek")
-            : "ek";
+            : "attachment";
       const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
       let icon = "FILE";
       if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].indexOf(ext) !== -1) {

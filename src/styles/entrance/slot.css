@@ -102,7 +102,7 @@
   min-width: var(--space-24);
 }
 
-/* Metodlar dikey düzen (üstte mesaj, altta dosya) */
+/* Methods vertical layout (message on top, file below) */
 .slot-methods-column {
   display: flex;
   flex-direction: column;

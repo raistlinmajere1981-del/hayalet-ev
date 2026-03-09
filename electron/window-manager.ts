@@ -3,13 +3,8 @@ import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "./paths.ts";
 import { buildPreloadAdditionalArguments, type StartupFlags } from "./startup-flags.ts";
-import { loadSettings } from "./settings-manager.ts";
 import type { TranslationParams } from "../src/types/i18n.ts";
-import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
-import { loadAvailableLanguage } from "./i18n/language-service.ts";
-import { translateCatalog } from "../shared/i18n/catalog.js";
-import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
-import { normalizeAppLanguage } from "../shared/i18n/locale.js";
+import { translateElectronMessage } from "./i18n/language-service.ts";
 
 // Extend Electron types for runtime-supported features
 interface ExtendedWebPreferences extends Electron.WebPreferences {
@@ -22,22 +17,6 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
-
-async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
-  let settings: { general?: { language?: unknown } } = {};
-  try {
-    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
-  } catch {
-    settings = {};
-  }
-
-  const locale = normalizeAppLanguage(settings.general?.language);
-  const activePack =
-    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
-  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
-
-  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
-}
 
 async function windowT(key: string, params?: TranslationParams): Promise<string> {
   return await translateElectronMessage(`electron.window.${key}`, params);
@@ -72,7 +51,11 @@ export function setTrayIconPath(iconPath: string): void {
 
 export async function minimizeToTray(): Promise<void> {
   if (_mainWindow === null) {
-    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "_mainWindow is not available", {});
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.window.logs.mainWindowUnavailable"
+    );
     return;
   }
 
@@ -83,12 +66,13 @@ export async function minimizeToTray(): Promise<void> {
 
     _isMinimizedToTray = true;
     _mainWindow.hide();
-    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window minimized to tray", {});
+    await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.window.logs.minimizedToTray");
   } catch (err) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `minimizeToTray error: ${(err as Error).message}`,
+      "electron.window.logs.minimizeToTrayFailed",
+      { message: (err as Error).message },
       {
         error: {
           name: (err as Error).name,
@@ -106,7 +90,11 @@ function createTrayInternal(): void {
   }
 
   if (_trayIconPath === null || _trayIconPath.length === 0) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Tray icon path is not set", {});
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.window.logs.trayIconPathMissing"
+    );
     return;
   }
 
@@ -114,34 +102,49 @@ function createTrayInternal(): void {
     const icon = nativeImage.createFromPath(_trayIconPath);
 
     // Log tray icon path for debugging
-    void logger.logInternal(LogCategory.MAIN, LogLevel.DEBUG, "Creating tray icon", {
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.DEBUG,
+      "electron.window.logs.creatingTrayIcon",
+      undefined,
+      {
       iconPath: _trayIconPath,
       iconSize: icon.getSize(),
-    });
+      }
+    );
 
     _tray = new Tray(icon.resize({ width: 22, height: 22 }));
 
     void updateTrayMenu();
 
     _tray.on("click", () => {
-      void logger.logInternal(LogCategory.MAIN, LogLevel.DEBUG, "Tray clicked", {});
+      void logger.logInternalT(LogCategory.MAIN, LogLevel.DEBUG, "electron.window.logs.trayClicked");
       restoreFromTray();
     });
 
     _tray.on("double-click", () => {
-      void logger.logInternal(LogCategory.MAIN, LogLevel.DEBUG, "Tray double-clicked", {});
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.DEBUG,
+        "electron.window.logs.trayDoubleClicked"
+      );
       restoreFromTray();
       _mainWindow?.maximize();
     });
 
-    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Tray created", {
-      iconPath: _trayIconPath,
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.window.logs.trayCreated",
+      undefined,
+      { iconPath: _trayIconPath }
+    );
   } catch (err) {
-    void logger.logInternal(
+    void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.ERROR,
-      `Tray creation error: ${(err as Error).message}`,
+      "electron.window.logs.trayCreationFailed",
+      { message: (err as Error).message },
       {
         error: {
           name: (err as Error).name,
@@ -203,7 +206,7 @@ function restoreFromTray(): void {
   if (_mainWindow !== null) {
     _mainWindow.show();
     _mainWindow.focus();
-    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window restored from tray", {});
+    void logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.window.logs.restoredFromTray");
   }
 }
 
@@ -360,9 +363,15 @@ export function windowMinimize(): void {
   try {
     _mainWindow?.minimize();
   } catch (err) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "windowMinimize failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.WARNING,
+      "electron.window.logs.minimizeFailed",
+      { message: err instanceof Error ? err.message : String(err) },
+      {
+        error: err instanceof Error ? err.message : String(err),
+      }
+    );
   }
 }
 
@@ -370,9 +379,15 @@ export function windowClose(): void {
   try {
     _mainWindow?.close();
   } catch (err) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "windowClose failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.WARNING,
+      "electron.window.logs.closeFailed",
+      { message: err instanceof Error ? err.message : String(err) },
+      {
+        error: err instanceof Error ? err.message : String(err),
+      }
+    );
   }
 }
 
@@ -385,20 +400,38 @@ export function windowToggleFullscreen(): void {
       _mainWindow.setResizable(false);
       const { workArea } = screen.getDisplayMatching(_mainWindow.getBounds());
       _mainWindow.setBounds(workArea);
-      void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window exited fullscreen", {
-        bounds: _mainWindow.getBounds(),
-      });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.INFO,
+        "electron.window.logs.exitedFullscreen",
+        undefined,
+        {
+          bounds: _mainWindow.getBounds(),
+        }
+      );
       return;
     }
     _mainWindow.setResizable(true);
     _mainWindow.setFullScreen(true);
-    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Window entered fullscreen", {
-      bounds: _mainWindow.getBounds(),
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.window.logs.enteredFullscreen",
+      undefined,
+      {
+        bounds: _mainWindow.getBounds(),
+      }
+    );
   } catch (err) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "windowToggleFullscreen failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.WARNING,
+      "electron.window.logs.toggleFullscreenFailed",
+      { message: err instanceof Error ? err.message : String(err) },
+      {
+        error: err instanceof Error ? err.message : String(err),
+      }
+    );
   }
 }
 
@@ -518,10 +551,11 @@ function setupWebviewNavigationGuard(): void {
       if (!isUrlAllowedInWebview(url, currentUrl)) {
         event.preventDefault();
         void shell.openExternal(url);
-        void logger.logInternal(
+        void logger.logInternalT(
           LogCategory.WEBVIEW,
           LogLevel.INFO,
-          "External link opened in browser",
+          "electron.window.logs.externalLinkOpened",
+          undefined,
           { url, currentUrl }
         );
       }
@@ -532,10 +566,11 @@ function setupWebviewNavigationGuard(): void {
       const currentUrl = contents.getURL();
       if (!isUrlAllowedInWebview(url, currentUrl)) {
         void shell.openExternal(url);
-        void logger.logInternal(
+        void logger.logInternalT(
           LogCategory.WEBVIEW,
           LogLevel.INFO,
-          "External popup opened in browser",
+          "electron.window.logs.externalPopupOpened",
+          undefined,
           { url, currentUrl }
         );
         return { action: "deny" };

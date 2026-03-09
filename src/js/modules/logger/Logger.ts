@@ -33,8 +33,10 @@ import type {
   LogVisibility,
   LogOperation,
 } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 
 import { LogLevel as LL, LogVisibility as LV, LogCategory as LC } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 
 interface LoggerConfig {
   sessionId: string;
@@ -43,6 +45,10 @@ interface LoggerConfig {
   batchInterval: number;
   enableConsoleOverride: boolean;
   enableToastIntegration: boolean;
+}
+
+function loggerT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.logger.${key}`, params);
 }
 
 class Logger {
@@ -75,7 +81,7 @@ class Logger {
     const logger = Logger.getInstance();
 
     if (logger.isInitialized) {
-      console.warn("[Logger] Already initialized");
+      console.warn(loggerT("alreadyInitialized"));
       return;
     }
 
@@ -89,7 +95,7 @@ class Logger {
     logger.startBatchTimer();
 
     // Log initialization (use debug to avoid toast trigger during init)
-    Logger.debug(LC.SYSTEM, "Logger initialized", {
+    Logger.debugT(LC.SYSTEM, "app.logs.logger.initialized", undefined, {
       sessionId,
       config: logger.config,
     });
@@ -108,6 +114,16 @@ class Logger {
     Logger.getInstance().log(category, level, message, LV.TOAST, context);
   }
 
+  public static toastT(
+    category: LogCategory | string,
+    level: LogLevel,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().logLocalized(category, level, key, LV.TOAST, params, context);
+  }
+
   public static panel(
     category: LogCategory | string,
     level: LogLevel,
@@ -115,6 +131,16 @@ class Logger {
     context?: Record<string, unknown>
   ): void {
     Logger.getInstance().log(category, level, message, LV.PANEL, context);
+  }
+
+  public static panelT(
+    category: LogCategory | string,
+    level: LogLevel,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().logLocalized(category, level, key, LV.PANEL, params, context);
   }
 
   /**
@@ -129,12 +155,30 @@ class Logger {
     Logger.getInstance().log(category, LL.DEBUG, message, LV.VERBOSE, context);
   }
 
+  public static debugT(
+    category: LogCategory | string,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().logLocalized(category, LL.DEBUG, key, LV.VERBOSE, params, context);
+  }
+
   public static success(
     category: LogCategory | string,
     message: string,
     context?: Record<string, unknown>
   ): void {
     Logger.toast(category, LL.SUCCESS, message, context);
+  }
+
+  public static successT(
+    category: LogCategory | string,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.toastT(category, LL.SUCCESS, key, params, context);
   }
 
   public static error(
@@ -159,6 +203,15 @@ class Logger {
     Logger.toast(category, LL.ERROR, message, errorContext);
   }
 
+  public static errorT(
+    category: LogCategory | string,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.toastT(category, LL.ERROR, key, params, context);
+  }
+
   public static warn(
     category: LogCategory | string,
     message: string,
@@ -167,12 +220,30 @@ class Logger {
     Logger.panel(category, LL.WARNING, message, context);
   }
 
+  public static warnT(
+    category: LogCategory | string,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.panelT(category, LL.WARNING, key, params, context);
+  }
+
   public static info(
     category: LogCategory | string,
     message: string,
     context?: Record<string, unknown>
   ): void {
     Logger.panel(category, LL.INFO, message, context);
+  }
+
+  public static infoT(
+    category: LogCategory | string,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.panelT(category, LL.INFO, key, params, context);
   }
 
   public static startOperation(
@@ -193,7 +264,7 @@ class Logger {
 
     logger.activeOperations.set(correlationId, operation);
 
-    Logger.debug(category, `[OPERATION START] ${name}`, {
+    Logger.debugT(category, "app.logs.logger.operationStart", { name }, {
       correlationId,
       operationName: name,
       ...context,
@@ -212,7 +283,7 @@ class Logger {
     const operation = logger.activeOperations.get(correlationId);
 
     if (!operation) {
-      Logger.warn(LC.SYSTEM, `Operation not found: ${correlationId}`);
+      Logger.warnT(LC.SYSTEM, "app.logs.logger.operationNotFound", { correlationId });
       return;
     }
 
@@ -227,16 +298,24 @@ class Logger {
       delete operation.result;
     }
 
-    const message = `[OPERATION ${success ? "SUCCESS" : "FAILED"}] ${operation.name}`;
+    const resultText = typeof result === "string" && result.trim() !== "" ? result : undefined;
 
-    Logger.debug(operation.category, message, {
-      correlationId,
-      operationName: operation.name,
-      duration,
-      status: operation.status,
-      result,
-      ...context,
-    });
+    Logger.debugT(
+      operation.category,
+      success ? "app.logs.logger.operationSuccess" : "app.logs.logger.operationFailed",
+      {
+        name: operation.name,
+        ...(resultText !== undefined ? { result: resultText } : {}),
+      },
+      {
+        correlationId,
+        operationName: operation.name,
+        duration,
+        status: operation.status,
+        result,
+        ...context,
+      }
+    );
 
     logger.activeOperations.delete(correlationId);
   }
@@ -254,15 +333,30 @@ class Logger {
     });
   }
 
+  public static withCorrelationT(
+    correlationId: string,
+    category: LogCategory | string,
+    level: LogLevel,
+    key: string,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    Logger.getInstance().logLocalized(category, level, key, LV.VERBOSE, params, {
+      correlationId,
+      ...context,
+    });
+  }
+
   private log(
     category: LogCategory | string,
     level: LogLevel,
     message: string,
     visibility: LogVisibility,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
+    locale?: string
   ): void {
     if (!this.isInitialized) {
-      console.warn("[Logger] Not initialized, call Logger.init() first");
+      console.warn(loggerT("notInitialized"));
       return;
     }
 
@@ -271,6 +365,7 @@ class Logger {
       level,
       category,
       message,
+      ...(locale !== undefined ? { locale } : {}),
       visibility,
       sessionId: this.config.sessionId,
       source: "renderer",
@@ -289,6 +384,19 @@ class Logger {
     }
 
     this.notifyListeners(entry);
+  }
+
+  private logLocalized(
+    category: LogCategory | string,
+    level: LogLevel,
+    key: string,
+    visibility: LogVisibility,
+    params?: TranslationParams,
+    context?: Record<string, unknown>
+  ): void {
+    const locale = AppI18n.getLocale();
+    const message = AppI18n.t(key, params);
+    this.log(category, level, message, visibility, context, locale);
   }
 
   private queueForIPC(entry: LogEntry): void {
@@ -311,7 +419,7 @@ class Logger {
     }
 
     appendBatch(batch).catch((error: Error) => {
-      console.error("[Logger] Failed to send batch to main:", error);
+      console.error(loggerT("batchSendFailed", { message: error.message }), error);
     });
   }
 
@@ -338,7 +446,12 @@ class Logger {
         title: entry.message,
       });
     } catch (error: unknown) {
-      console.error("[Logger] Toast integration failed:", error);
+      console.error(
+        loggerT("toastIntegrationFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        error
+      );
     }
   }
 
@@ -347,7 +460,12 @@ class Logger {
       try {
         listener(entry);
       } catch (error: unknown) {
-        console.error("[Logger] Listener error:", error);
+        console.error(
+          loggerT("listenerError", {
+            message: error instanceof Error ? error.message : String(error),
+          }),
+          error
+        );
       }
     }
   }
@@ -455,7 +573,7 @@ class Logger {
       clearInterval(logger.batchTimer);
     }
 
-    Logger.info(LC.SYSTEM, "Logger shutdown complete");
+    Logger.infoT(LC.SYSTEM, "app.logs.logger.shutdownComplete");
   }
 }
 

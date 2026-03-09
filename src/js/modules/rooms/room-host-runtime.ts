@@ -202,9 +202,12 @@ class RoomHostRuntimeClass {
     try {
       await registration.hooks.dispose?.(api);
     } catch (error) {
-      Logger.warn(LogCategory.SYSTEM, `Room host dispose failed: ${getErrorMessage(error)}`, {
-        context: { roomId },
-      });
+      Logger.warnT(
+        LogCategory.SYSTEM,
+        "app.logs.roomHost.disposeFailed",
+        { roomId, message: getErrorMessage(error) },
+        { context: { roomId } }
+      );
     }
 
     RoomCommandRegistry.unregisterRoom(roomId);
@@ -221,9 +224,10 @@ class RoomHostRuntimeClass {
     try {
       const source = await readFile(registration.room.hostEntryPath);
       if (typeof source !== "string" || source.trim() === "") {
-        Logger.warn(
+        Logger.warnT(
           LogCategory.SYSTEM,
-          `Room host entry missing: ${registration.room.hostEntryPath}`,
+          "app.logs.roomHost.entryMissing",
+          { path: registration.room.hostEntryPath },
           {
             context: { roomId: registration.room.id },
           }
@@ -236,9 +240,14 @@ class RoomHostRuntimeClass {
       const activate = resolveHostActivator(exported);
 
       if (activate === null) {
-        Logger.warn(LogCategory.SYSTEM, `Room host factory missing: ${registration.room.id}`, {
-          context: { roomId: registration.room.id },
-        });
+        Logger.warnT(
+          LogCategory.SYSTEM,
+          "app.logs.roomHost.factoryMissing",
+          { roomId: registration.room.id },
+          {
+            context: { roomId: registration.room.id },
+          }
+        );
         registration.loaded = false;
         return false;
       }
@@ -249,14 +258,16 @@ class RoomHostRuntimeClass {
       registration.loaded = true;
       return true;
     } catch (error) {
-      Logger.error(
+      Logger.errorT(
         LogCategory.SYSTEM,
-        new Error(`Room host load failed: ${getErrorMessage(error)}`),
+        "app.logs.roomHost.loadFailed",
+        { roomId: registration.room.id, message: getErrorMessage(error) },
         {
           context: {
             roomId: registration.room.id,
             hostEntryPath: registration.room.hostEntryPath,
           },
+          error: getErrorMessage(error),
         }
       );
       registration.loaded = false;
@@ -342,20 +353,31 @@ class RoomHostRuntimeClass {
       },
       deleteState: (key): boolean => registration.state.delete(key),
       log: (level, message): void => {
-        const prefixed = `[Room:${registration.room.id}] ${message}`;
         if (level === "error") {
-          Logger.error(LogCategory.SYSTEM, prefixed);
+          Logger.errorT(LogCategory.SYSTEM, "app.logs.roomHost.roomMessage", {
+            roomId: registration.room.id,
+            message,
+          });
           return;
         }
         if (level === "warn") {
-          Logger.warn(LogCategory.SYSTEM, prefixed);
+          Logger.warnT(LogCategory.SYSTEM, "app.logs.roomHost.roomMessage", {
+            roomId: registration.room.id,
+            message,
+          });
           return;
         }
         if (level === "debug") {
-          Logger.debug(LogCategory.SYSTEM, prefixed);
+          Logger.debugT(LogCategory.SYSTEM, "app.logs.roomHost.roomMessage", {
+            roomId: registration.room.id,
+            message,
+          });
           return;
         }
-        Logger.info(LogCategory.SYSTEM, prefixed);
+        Logger.infoT(LogCategory.SYSTEM, "app.logs.roomHost.roomMessage", {
+          roomId: registration.room.id,
+          message,
+        });
       },
     };
   }

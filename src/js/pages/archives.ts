@@ -44,6 +44,7 @@ export class ArchivesController {
   activeTab: string;
   _searchTimeout: ReturnType<typeof setTimeout> | null;
   _unsubSettings: (() => void) | null;
+  _unsubI18n: (() => void) | null;
 
   // Protocol editor state
   _protocols: Record<string, string>;
@@ -84,6 +85,7 @@ export class ArchivesController {
     this.activeTab = "messages";
     this._searchTimeout = null;
     this._unsubSettings = null;
+    this._unsubI18n = null;
 
     this.listEl = null;
     this.titleEl = null;
@@ -121,26 +123,8 @@ export class ArchivesController {
     await this.loadIndex();
     await this.loadProtocols();
     this.applyNames();
-
-    this._unsubSettings ??= SettingsManager.subscribe(
-      ({ changedPaths }: { changedPaths: string[] }) => {
-        const shouldApplyNames =
-          changedPaths.includes("*") ||
-          changedPaths.some(
-            (path) =>
-              path.startsWith("accounts") ||
-              isAssistantAccountsSettingsPath(path) ||
-              path.startsWith("slots") ||
-              isAssistantSlotSettingsPath(path)
-          );
-
-        if (!shouldApplyNames) {
-          return;
-        }
-
-        this.applyNames();
-      }
-    );
+    this.ensureSubscriptions();
+    this.applyTranslations();
   }
 
   cacheElements(): void {
@@ -248,6 +232,32 @@ export class ArchivesController {
           this.insertTagAtCursor(this.protocolTextareaEl, tag);
         }
       });
+    });
+  }
+
+  ensureSubscriptions(): void {
+    this._unsubSettings ??= SettingsManager.subscribe(
+      ({ changedPaths }: { changedPaths: string[] }) => {
+        const shouldApplyNames =
+          changedPaths.includes("*") ||
+          changedPaths.some(
+            (path) =>
+              path.startsWith("accounts") ||
+              isAssistantAccountsSettingsPath(path) ||
+              path.startsWith("slots") ||
+              isAssistantSlotSettingsPath(path)
+          );
+
+        if (!shouldApplyNames) {
+          return;
+        }
+
+        this.applyNames();
+      }
+    );
+
+    this._unsubI18n ??= AppI18n.subscribe(() => {
+      this.applyTranslations();
     });
   }
 
@@ -367,7 +377,7 @@ export class ArchivesController {
 
     if (this.titleEl) this.titleEl.value = entry?.title ?? "";
     if (this.summaryEl) this.summaryEl.value = entry?.summary ?? "";
-    if (this.webUrlDisplayEl) this.webUrlDisplayEl.textContent = entry?.webUrl ?? "-";
+    if (this.webUrlDisplayEl) this.webUrlDisplayEl.textContent = entry?.webUrl ?? archivesT("page.webUrlEmpty");
     if (this.messageCountEl) this.messageCountEl.textContent = String(entry?.messageCount ?? 0);
 
     this._selectedEntry = entry;
@@ -471,6 +481,8 @@ export class ArchivesController {
     void this.loadSettings().then(() => {
       this.applyNames();
     });
+    this.ensureSubscriptions();
+    this.applyTranslations();
     void this.loadIndex();
     void this.loadProtocols();
     this.clearStatus();
@@ -481,12 +493,6 @@ export class ArchivesController {
     if (this._searchTimeout) {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
-    }
-    try {
-      this._unsubSettings?.();
-      this._unsubSettings = null;
-    } catch (_) {
-      void 0;
     }
   }
 
@@ -601,5 +607,82 @@ export class ArchivesController {
   /** Show the protocol status message. */
   setProtocolStatus(text: string, type = "info"): void {
     setProtocolStatusView(this.protocolStatusEl, text, type);
+  }
+
+  private setElementText(id: string, text: string): void {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = text;
+    }
+  }
+
+  private applyTranslations(): void {
+    this.setElementText("archives-sidebar-title", archivesT("page.sidebarTitle"));
+    this.setElementText("archives-detail-title", archivesT("page.detailTitle"));
+    this.setElementText("archives-detail-empty-text", archivesT("page.detailEmpty"));
+    this.setElementText("archives-title-label", archivesT("page.titleLabel"));
+    this.setElementText("archives-summary-label", archivesT("page.summaryLabel"));
+    this.setElementText("archives-weburl-label", archivesT("page.webUrlLabel"));
+    this.setElementText("archives-search-title", archivesT("page.searchTitle"));
+    this.setElementText("archives-scope-current", archivesT("page.scopeCurrent"));
+    this.setElementText("archives-scope-all", archivesT("page.scopeAll"));
+    this.setElementText("archives-messages-tab-label", archivesT("page.messagesTab"));
+    this.setElementText("archives-files-tab-label", archivesT("page.filesTab"));
+    this.setElementText("archives-search-empty-text", archivesT("page.searchEmpty"));
+    this.setElementText("archives-protocol-list-title", archivesT("page.protocolListTitle"));
+    this.setElementText("archives-protocol-list-loading", archivesT("page.protocolLoading"));
+    this.setElementText("archives-protocol-empty-text", archivesT("page.protocolEmpty"));
+
+    if (this.titleEl) {
+      this.titleEl.placeholder = archivesT("page.titlePlaceholder");
+    }
+    if (this.summaryEl) {
+      this.summaryEl.placeholder = archivesT("page.summaryPlaceholder");
+    }
+    if (this.searchInputEl) {
+      this.searchInputEl.placeholder = archivesT("page.searchPlaceholder");
+    }
+    if (this.protocolTextareaEl) {
+      this.protocolTextareaEl.placeholder = archivesT("page.protocolPlaceholder");
+    }
+
+    const copyUrlButton = document.getElementById("btn-copy-url");
+    if (copyUrlButton) {
+      copyUrlButton.title = archivesT("page.copyUrlTitle");
+    }
+
+    const saveButton = document.getElementById("archive-save");
+    if (saveButton) {
+      saveButton.textContent = archivesT("page.saveButton");
+    }
+
+    const deleteButton = document.getElementById("btn-delete");
+    if (deleteButton) {
+      deleteButton.textContent = `🗑️ ${archivesT("page.deleteButton")}`;
+    }
+
+    const protocolSaveButton = document.getElementById("btn-protocol-save");
+    if (protocolSaveButton) {
+      protocolSaveButton.textContent = `💾 ${archivesT("page.protocolSaveButton")}`;
+    }
+
+    if (this._selectedProtocolKey === null && this.protocolEditorTitleEl) {
+      this.protocolEditorTitleEl.textContent = archivesT("page.protocolEditorPlaceholderTitle");
+    }
+
+    this.fillForm(this._selectedEntry);
+    this.renderList();
+    this.renderProtocolList();
+
+    if (this._selectedProtocolKey !== null) {
+      this.selectProtocol(this._selectedProtocolKey);
+    }
+
+    if (this.searchQuery === "") {
+      this.clearSearchResults();
+      return;
+    }
+
+    this.renderSearchResults();
   }
 }

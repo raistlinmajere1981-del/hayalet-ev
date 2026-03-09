@@ -1,11 +1,11 @@
 import { LogCategory } from "@shared/logging-core";
 /**
- * PendingArchiveHandler - Bekleyen arşiv işlemleri yönetimi
+ * PendingArchiveHandler - pending archive operation management
  *
- * Bu modül AI yanıtı tamamlandığında işlenecek arşiv kopyalama işlemlerini yönetir:
- * - Pending archive kayıt
- * - Stable durumda işleme
- * - Cleanup işlemleri
+ * Manages archive-copy operations that should run after an AI response completes:
+ * - pending archive registration
+ * - processing during stable state
+ * - cleanup work
  */
 
 import { Logger } from "../logger/index.js";
@@ -94,7 +94,12 @@ class PendingArchiveHandlerClass {
         void this._processEntry(entry, provider, message, conversationId);
       }
     } catch (e) {
-      Logger.warn(LogCategory.WEBVIEW, "processPending error", { error: getErrorMessage(e) });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        "app.logs.pendingArchive.processPendingError",
+        { message: getErrorMessage(e) },
+        { error: getErrorMessage(e) }
+      );
     }
   }
 
@@ -114,22 +119,32 @@ class PendingArchiveHandlerClass {
         conversationId === undefined ||
         conversationId === ""
       ) {
-        Logger.warn(LogCategory.WEBVIEW, "Missing info for archive processing", {
-          jobId: entry.jobId,
-          accountId: accountInfo?.id,
-          messageId: message?.id,
-          conversationId,
-        });
+        Logger.warnT(
+          LogCategory.WEBVIEW,
+          "app.logs.pendingArchive.missingInfo",
+          { jobId: entry.jobId },
+          {
+            jobId: entry.jobId,
+            accountId: accountInfo?.id,
+            messageId: message?.id,
+            conversationId,
+          }
+        );
         return;
       }
 
       const stagedFiles = entry.stagedFiles ?? [];
 
-      Logger.info(LogCategory.WEBVIEW, "Processing attachments for message", {
-        attachmentCount: stagedFiles.length,
-        messageId: message.id,
-        jobId: entry.jobId,
-      });
+      Logger.infoT(
+        LogCategory.WEBVIEW,
+        "app.logs.pendingArchive.processingAttachments",
+        { count: stagedFiles.length, messageId: message.id },
+        {
+          attachmentCount: stagedFiles.length,
+          messageId: message.id,
+          jobId: entry.jobId,
+        }
+      );
 
       await stagedFiles.reduce(async (prev, file) => {
         await prev;
@@ -138,10 +153,15 @@ class PendingArchiveHandlerClass {
 
         const saveAttachment = window.electronAPI?.dbSaveAttachment;
         if (typeof saveAttachment !== "function") {
-          Logger.error(LogCategory.WEBVIEW, "Attachment save failed", {
-            file: file.name,
-            error: "dbSaveAttachment-not-available",
-          });
+          Logger.errorT(
+            LogCategory.WEBVIEW,
+            "app.logs.pendingArchive.attachmentSaveBridgeUnavailable",
+            { file: file.name },
+            {
+              file: file.name,
+              error: "dbSaveAttachment-not-available",
+            }
+          );
           return;
         }
 
@@ -156,23 +176,38 @@ class PendingArchiveHandlerClass {
         const res = isDbSaveAttachmentResult(rawRes) ? rawRes : null;
 
         if (res?.success !== true) {
-          Logger.error(LogCategory.WEBVIEW, "Attachment save failed", {
-            file: file.name,
-            error: res?.error ?? "unknown",
-          });
+          Logger.errorT(
+            LogCategory.WEBVIEW,
+            "app.logs.pendingArchive.attachmentSaveFailed",
+            { file: file.name, message: res?.error ?? "unknown" },
+            {
+              file: file.name,
+              error: res?.error ?? "unknown",
+            }
+          );
         }
       }, Promise.resolve());
 
-      Logger.info(LogCategory.WEBVIEW, "Attachments processed successfully", {
-        jobId: entry.jobId,
-      });
+      Logger.infoT(
+        LogCategory.WEBVIEW,
+        "app.logs.pendingArchive.attachmentsProcessed",
+        { jobId: entry.jobId },
+        {
+          jobId: entry.jobId,
+        }
+      );
 
       this._cleanup(entry);
     } catch (e) {
-      Logger.warn(LogCategory.WEBVIEW, "Pending archive processing error", {
-        jobId: entry.jobId,
-        error: getErrorMessage(e),
-      });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        "app.logs.pendingArchive.processingFailed",
+        { jobId: entry.jobId, message: getErrorMessage(e) },
+        {
+          jobId: entry.jobId,
+          error: getErrorMessage(e),
+        }
+      );
     }
   }
 
@@ -183,10 +218,15 @@ class PendingArchiveHandlerClass {
         (entry.temp ?? []).map((t: string) => ({ tempPath: t }))
       );
     } catch (e) {
-      Logger.warn(LogCategory.WEBVIEW, "Archive cleanup error", {
-        jobId: entry.jobId,
-        error: getErrorMessage(e),
-      });
+      Logger.warnT(
+        LogCategory.WEBVIEW,
+        "app.logs.pendingArchive.cleanupFailed",
+        { jobId: entry.jobId, message: getErrorMessage(e) },
+        {
+          jobId: entry.jobId,
+          error: getErrorMessage(e),
+        }
+      );
     }
   }
 

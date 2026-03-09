@@ -1,7 +1,7 @@
 /**
- * OpenCode Provider - Ana modül
+ * OpenCode Provider - main module
  *
- * Mesaj gönderme ve dosya işlemleri için export'lar
+ * Exports for message sending and file operations.
  */
 
 export * from "./scraper.js";

@@ -1,19 +1,24 @@
 import { LogCategory } from "@shared/logging-core";
 /**
- * DraftManager - Analyze sayfası draft yönetimi
+ * DraftManager - draft management for the Analyze page
  *
- * Bu modül compose alanındaki taslak mesajı yönetir:
- * - Draft kaydetme (beforeunload)
- * - Draft yükleme
+ * Manages the draft message in the compose area:
+ * - draft persistence on `beforeunload`
+ * - draft loading
  * - Base64 decode
  */
 
 import { Logger } from "../../modules/logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { FileManager } from "../../modules/file-manager.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import type { StagedFile } from "./upload-handler.js";
 
 let draftPath = "";
+
+function draftT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.analyze.draft.${key}`, params);
+}
 
 interface DraftPayload {
   message?: string;
@@ -48,8 +53,8 @@ function isStagedFile(value: unknown): value is StagedFile {
 }
 
 /**
- * Base64 encoded string'i decode et
- * @param {string} data - Base64 encoded string
+ * Decode a Base64-encoded string.
+ * @param {string} data - Base64-encoded string
  * @returns {string}
  */
 function decodeBase64(data: string): string {
@@ -67,19 +72,19 @@ function decodeBase64(data: string): string {
 }
 
 /**
- * Draft sistemini başlat
+ * Initialize the draft system.
  * @returns {Promise<void>}
  */
 export function initDraft(): void {
   try {
     draftPath = "data/analyze-draft.json";
   } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, `Draft yolu hazırlanamadı: ${getErrorMessage(err)}`);
+    Logger.warn(LogCategory.ANALYZE, draftT("logs.pathPrepareFailed", { message: getErrorMessage(err) }));
   }
 }
 
 /**
- * Draft'ı yükle
+ * Load the draft.
  * @returns {Promise<{message: string, files: Array}>}
  */
 export async function loadDraft(): Promise<{ message: string; files: StagedFile[] }> {
@@ -106,14 +111,14 @@ export async function loadDraft(): Promise<{ message: string; files: StagedFile[
       files,
     };
   } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, `Draft okunamadı: ${getErrorMessage(err)}`);
+    Logger.warn(LogCategory.ANALYZE, draftT("logs.readFailed", { message: getErrorMessage(err) }));
     return { message: "", files: [] };
   }
 }
 
 /**
- * Draft'ı kaydet
- * @param {string} message - Compose input değeri
+ * Persist the draft.
+ * @param {string} message - Compose input value
  * @param {Array} files - Staged files
  * @returns {Promise<void>}
  */
@@ -125,6 +130,6 @@ export async function persistDraft(message: string, files: unknown[]): Promise<v
     const json = JSON.stringify(payload, null, 2);
     await FileManager.writeFileAtomic(draftPath, json, "utf-8");
   } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, `Draft yazılamadı: ${getErrorMessage(err)}`);
+    Logger.warn(LogCategory.ANALYZE, draftT("logs.writeFailed", { message: getErrorMessage(err) }));
   }
 }

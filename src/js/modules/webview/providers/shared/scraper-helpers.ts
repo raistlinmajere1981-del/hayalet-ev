@@ -1,25 +1,25 @@
 /**
  * Scraper Helper Functions
  *
- * Bu modül scraper'lar için ortak yardımcı fonksiyonları içerir.
- * Scraper'lar webview'a toString() ile inject edildiği için,
- * bu fonksiyonlar her scraper içinde inline olarak tanımlanmalıdır.
+ * Shared helper functions for scrapers.
+ * Because scrapers are injected into the webview via `toString()`,
+ * these functions must be defined inline inside each scraper.
  *
- * Bu dosya "tek kaynak" (single source of truth) olarak kullanılır:
- * - Scraper'lar bu fonksiyonları kopyalayıp kendi içlerinde tanımlar
- * - Değişiklik gerektiğinde sadece bu dosya güncellenir ve scraper'lara kopyalanır
+ * This file is used as the single source of truth:
+ * - scrapers copy these functions into their own body
+ * - when changes are needed, update this file and propagate them to the scrapers
  *
- * NOT: Bu fonksiyonlar doğrudan import edilmez, referans olarak kullanılır.
- * Webview injection sınırlaması nedeniyle her scraper kendi kopyasını içermelidir.
+ * Note: these functions are not imported directly; they are used as references.
+ * Due to webview injection constraints, each scraper must keep its own copy.
  */
 
 /**
- * Metin normalizasyonu - hash tutarlılığı için
+ * Normalize text for hash consistency.
  *
- * @param str - Normalize edilecek metin
- * @returns Normalize edilmiş metin
+ * @param str - Text to normalize
+ * @returns Normalized text
  *
- * İşlemler:
+ * Operations:
  * - Windows line endings (\r\n) → Unix (\n)
  * - Old Mac line endings (\r) → Unix (\n)
  * - Multiple spaces/tabs → single space
@@ -39,14 +39,14 @@ export function normalizeText(str: string): string {
 }
 
 /**
- * Hash fonksiyonu (djb2 algoritması)
+ * Hash function (djb2 algorithm)
  *
- * @param str - Hash'lenecek metin
+ * @param str - Text to hash
  * @returns Hexadecimal hash string
  *
- * NOT: Fonksiyon içinde normalizeText çağrılır.
- * Bu, hash tutarlılığı için gereklidir - aynı içerik
- * farklı whitespace ile geldiğinde aynı hash'i üretir.
+ * Note: normalizeText is called inside the function.
+ * This preserves hash consistency so equivalent content with different
+ * whitespace still yields the same hash.
  */
 export function hashString(str: string): string {
   if (str === "") return "0";

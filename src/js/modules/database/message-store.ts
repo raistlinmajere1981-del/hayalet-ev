@@ -4,7 +4,7 @@ import { getErrorMessage } from "@shared/index.js";
 
 const messageStore = {
   /**
-   * Mesajları listele
+   * List messages.
    * @param {string} accountId - Account ID
    * @param {string} conversationId
    * @returns {Promise<Array>}
@@ -26,19 +26,22 @@ const messageStore = {
 
       return result?.data ?? [];
     } catch (err) {
-      Logger.error(LogCategory.DATABASE, `MessageStore.list error: ${getErrorMessage(err)}`, {
-        context: { accountId, conversationId },
-      });
+      Logger.errorT(
+        LogCategory.DATABASE,
+        "app.logs.database.storeOperationFailed",
+        { store: "MessageStore", operation: "list", message: getErrorMessage(err) },
+        { context: { accountId, conversationId } }
+      );
       return [];
     }
   },
 
   /**
-   * Mesajları senkronize et (incremental sync)
+   * Synchronize messages (incremental sync).
    * @param {Object} params
    * @param {string} params.accountId - Account ID
-   * @param {string} params.webUrl - Konuşma URL'i
-   * @param {Array} params.messages - Scrape edilmiş mesajlar
+   * @param {string} params.webUrl - Conversation URL
+   * @param {Array} params.messages - Scraped messages
    * @param {Object} params.authors - { user: "...", assistant: "..." }
    * @returns {Promise<{ success: boolean, conversationId?: string, added?: number, total?: number }>}
    */
@@ -93,15 +96,18 @@ const messageStore = {
 
       return result ?? { success: false, error: "API not available" };
     } catch (err) {
-      Logger.error(LogCategory.DATABASE, `MessageStore.sync error: ${getErrorMessage(err)}`, {
-        context: { webUrl: params.webUrl, accountId: params.accountId },
-      });
+      Logger.errorT(
+        LogCategory.DATABASE,
+        "app.logs.database.storeOperationFailed",
+        { store: "MessageStore", operation: "sync", message: getErrorMessage(err) },
+        { context: { webUrl: params.webUrl, accountId: params.accountId } }
+      );
       return { success: false, error: getErrorMessage(err) };
     }
   },
 
   /**
-   * Mesajlarda arama yap (FTS5)
+   * Search messages (FTS5).
    * @param {string} accountId - Account ID
    * @param {string} query
    * @param {number} limit
@@ -124,9 +130,12 @@ const messageStore = {
 
       return result?.data ?? [];
     } catch (err) {
-      Logger.error(LogCategory.DATABASE, `MessageStore.search error: ${getErrorMessage(err)}`, {
-        context: { accountId, query },
-      });
+      Logger.errorT(
+        LogCategory.DATABASE,
+        "app.logs.database.storeOperationFailed",
+        { store: "MessageStore", operation: "search", message: getErrorMessage(err) },
+        { context: { accountId, query } }
+      );
       return [];
     }
   },

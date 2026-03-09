@@ -2,19 +2,19 @@
  * TypeScript Language Service Manager
  *
  * Lazy-initialized, multi-tsconfig, auto-dispose TS Language Service.
- * Dosya yoluna göre doğru tsconfig'i seçer ve LanguageService instance'ı oluşturur.
- * Belirli süre kullanılmadığında bellekten atılır (HDD swap riski nedeniyle).
+ * Selects the correct tsconfig based on file path and creates a LanguageService instance.
+ * Disposes inactive instances to avoid unnecessary memory pressure.
  *
  * Capabilities:
- *   - getTypeInfo(file, line, col)       → hover benzeri tip bilgisi
+ *   - getTypeInfo(file, line, col)       → hover-style type information
  *   - getDefinition(file, line, col)     → go-to-definition
- *   - getReferences(file, line, col)     → find-all-references
- *   - getCompletions(file, line, col)    → code completion
- *   - getQuickFixes(file, line, col)     → code actions / quick fixes
- *   - getDiagnostics(file)               → dosya hataları
+  *   - getReferences(file, line, col)     → find-all-references
+  *   - getCompletions(file, line, col)    → code completion
+  *   - getQuickFixes(file, line, col)     → code actions / quick fixes
+ *   - getDiagnostics(file)               → file diagnostics
  *   - getRenameEdits(file, line, col, newName) → safe rename
- *   - getDocumentSymbols(file)           → dosya sembol ağacı
- *   - getSignatureHelp(file, line, col)  → fonksiyon imza yardımı
+ *   - getDocumentSymbols(file)           → document symbol tree
+ *   - getSignatureHelp(file, line, col)  → function signature help
  *
  * @version 1.0.0
  */

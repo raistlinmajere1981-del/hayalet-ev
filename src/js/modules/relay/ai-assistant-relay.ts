@@ -88,7 +88,10 @@ export class AIAssistantRelay extends BaseRelay {
       createdAt: Date.now(),
     };
 
-    this._log("info", `AI-Assistant relay started: ${source} ↔ ${this._targetSlot}`);
+    this._logT("info", "app.logs.aiAssistantRelay.started", {
+      source,
+      target: this._targetSlot,
+    });
     this._dispatchEvent("relay-changed", {
       active: true,
       type: "ai-assistant",
@@ -108,7 +111,9 @@ export class AIAssistantRelay extends BaseRelay {
       const protocol = await this._loadProtocol();
 
       this._sessionState = "protocol-sent";
-      this._log("info", `Sending protocol to ${aiSlot}`, {
+      this._logT("info", "app.logs.aiAssistantRelay.protocolSending", {
+        provider: aiSlot,
+      }, {
         sessionId: this._session?.id,
         protocolLength: protocol.length,
       });
@@ -122,10 +127,14 @@ export class AIAssistantRelay extends BaseRelay {
         page: "ai-assistant-protocol",
       });
 
-      this._log("info", `Protocol sent to ${aiSlot}`);
+      this._logT("info", "app.logs.aiAssistantRelay.protocolSent", {
+        provider: aiSlot,
+      });
     } catch (e) {
       const err = e as Error;
-      this._log("warning", `Failed to send protocol: ${err.message}`);
+      this._logT("warning", "app.logs.aiAssistantRelay.protocolSendFailed", {
+        message: err.message,
+      });
       this._sessionState = "relay-active";
     }
   }
@@ -141,7 +150,9 @@ export class AIAssistantRelay extends BaseRelay {
     });
 
     if (resolvedMessage.error !== undefined) {
-      this._log("warning", `Protocol load error: ${resolvedMessage.error.message}`);
+      this._logT("warning", "app.logs.aiAssistantRelay.protocolLoadError", {
+        message: resolvedMessage.error.message,
+      });
     }
 
     return resolvedMessage.message;
@@ -152,12 +163,13 @@ export class AIAssistantRelay extends BaseRelay {
     const source = this._sourceSlot;
 
     if (sessionId !== undefined && sessionId !== "") {
-      this._log(
-        "info",
-        `AI-Assistant relay ${sessionId} stopped (${source ?? "unknown"} ↔ ${this._targetSlot})`
-      );
+      this._logT("info", "app.logs.aiAssistantRelay.stoppedWithSession", {
+        sessionId,
+        source: source ?? "-",
+        target: this._targetSlot,
+      });
     } else {
-      this._log("info", "AI-Assistant relay stopped");
+      this._logT("info", "app.logs.aiAssistantRelay.stopped");
     }
 
     this._sourceSlot = null;
@@ -199,7 +211,9 @@ export class AIAssistantRelay extends BaseRelay {
       await this._handleStateMachine(provider, text);
     } catch (e) {
       const err = e as Error;
-      this._log("warning", `handleThinkingComplete error: ${err.message}`);
+      this._logT("warning", "app.logs.aiAssistantRelay.handleThinkingCompleteError", {
+        message: err.message,
+      });
     }
   }
 
@@ -212,7 +226,9 @@ export class AIAssistantRelay extends BaseRelay {
     const now = Date.now();
 
     if (this._lastMessageTimes[provider] === now) {
-      this._log("warning", `Duplicate message detected for ${provider} - blocking`);
+      this._logT("warning", "app.logs.aiAssistantRelay.duplicateMessageBlocked", {
+        provider,
+      });
       return;
     }
     this._lastMessageTimes[provider] = now;
@@ -220,7 +236,10 @@ export class AIAssistantRelay extends BaseRelay {
     const sessionId = this._session?.id ?? "unknown";
 
     if (this._sessionState === "protocol-sent" && provider === this._sourceSlot) {
-      this._log("info", `Session ${sessionId}: AI (${provider}) replied to protocol`, {
+      this._logT("info", "app.logs.aiAssistantRelay.protocolReplyReceived", {
+        sessionId,
+        provider,
+      }, {
         excerpt: text.slice(0, 200),
       });
 
@@ -235,7 +254,10 @@ export class AIAssistantRelay extends BaseRelay {
       return;
     }
 
-    this._log("debug", `Ignoring message in state ${this._sessionState} from ${provider}`);
+    this._logT("debug", "app.logs.aiAssistantRelay.ignoringMessageInState", {
+      state: this._sessionState,
+      provider,
+    });
   }
 
   /**
@@ -244,15 +266,26 @@ export class AIAssistantRelay extends BaseRelay {
    */
   async _forwardMessage(from: string, to: string | null, text: string): Promise<boolean> {
     if (to === null || SlotController.isConnected(to) === false) {
-      this._log("info", `Forward skipped: target ${to ?? "unknown"} not connected`);
+      this._logT("info", "app.logs.aiAssistantRelay.forwardSkippedTargetNotConnected", {
+        target: to ?? "-",
+      });
       return false;
     }
 
     this._forwardCount += 1;
-    this._log("info", `AI-Assistant relay forwarding (#${this._forwardCount}) ${from} -> ${to}`, {
-      job: { from, to },
-      excerpt: text.slice(0, 200),
-    });
+    this._logT(
+      "info",
+      "app.logs.aiAssistantRelay.forwarding",
+      {
+        count: this._forwardCount,
+        from,
+        to,
+      },
+      {
+        job: { from, to },
+        excerpt: text.slice(0, 200),
+      }
+    );
 
     try {
       if (this.coreEngine.sendMessage === undefined) {
@@ -266,10 +299,15 @@ export class AIAssistantRelay extends BaseRelay {
       return true;
     } catch (e) {
       const err = e as Error;
-      this._log("warning", `AI-Assistant relay forwarding failed: ${err.message}`, {
-        from,
-        to,
-      });
+      this._logT(
+        "warning",
+        "app.logs.aiAssistantRelay.forwardingFailed",
+        { message: err.message },
+        {
+          from,
+          to,
+        }
+      );
       return false;
     }
   }
@@ -286,12 +324,16 @@ export class AIAssistantRelay extends BaseRelay {
     } else if (provider === this._targetSlot) {
       target = this._sourceSlot;
     } else {
-      this._log("warning", `Provider ${provider} not recognized in relay flow`);
+      this._logT("warning", "app.logs.aiAssistantRelay.providerNotRecognized", {
+        provider,
+      });
       return;
     }
 
     if (target === null) {
-      this._log("warning", `Target is null for provider ${provider}`);
+      this._logT("warning", "app.logs.aiAssistantRelay.targetNull", {
+        provider,
+      });
       return;
     }
 
@@ -303,7 +345,11 @@ export class AIAssistantRelay extends BaseRelay {
     const transitionDetected = prev !== "idle" && thinkingState === "idle";
 
     if (prev !== thinkingState) {
-      this._log("debug", `Thinking transition: ${provider} ${prev} → ${thinkingState}`);
+      this._logT("debug", "app.logs.aiAssistantRelay.thinkingTransition", {
+        provider,
+        previousState: prev,
+        thinkingState,
+      });
     }
 
     this._prevThinking[provider] = thinkingState;

@@ -52,7 +52,7 @@ class RelayManagerClass {
 
     window.addEventListener("sync-complete", this._boundSyncComplete);
 
-    Logger.info(LogCategory.RELAY, "RelayManager initialized with AI-AI and AI-Assistant relays");
+    Logger.infoT(LogCategory.RELAY, "app.logs.relayManager.initialized");
   }
 
   /**
@@ -189,7 +189,9 @@ class RelayManagerClass {
 
       return true;
     } catch (err) {
-      Logger.warn(LogCategory.RELAY, `Assistant command catch error: ${getErrorMessage(err)}`);
+      Logger.warnT(LogCategory.RELAY, "app.logs.relayManager.assistantCommandCatchError", {
+        message: getErrorMessage(err),
+      });
       return false;
     }
   }
@@ -247,10 +249,15 @@ class RelayManagerClass {
         await activeRelay.handleThinkingComplete(provider, syncResult);
       }
     } catch (err) {
-      Logger.warn(LogCategory.RELAY, `Traffic update handler error: ${getErrorMessage(err)}`, {
-        provider: snapshot.provider,
-        error: getErrorMessage(err),
-      });
+      Logger.warnT(
+        LogCategory.RELAY,
+        "app.logs.relayManager.trafficUpdateHandlerError",
+        { message: getErrorMessage(err) },
+        {
+          provider: snapshot.provider,
+          error: getErrorMessage(err),
+        }
+      );
     }
   }
 
@@ -314,10 +321,15 @@ class RelayManagerClass {
         );
       } catch (err) {
         const detail = (event as CustomEvent).detail as { provider?: string } | undefined;
-        Logger.warn(LogCategory.RELAY, `Sync complete handler error: ${getErrorMessage(err)}`, {
-          provider: detail?.provider,
-          error: getErrorMessage(err),
-        });
+        Logger.warnT(
+          LogCategory.RELAY,
+          "app.logs.relayManager.syncCompleteHandlerError",
+          { message: getErrorMessage(err) },
+          {
+            provider: detail?.provider,
+            error: getErrorMessage(err),
+          }
+        );
       }
     })();
   }

@@ -1,7 +1,7 @@
 /**
  * App Types
  *
- * app modülü için ortak tip tanımları.
+ * Shared type definitions for the app module.
  */
 
 export interface PageController {

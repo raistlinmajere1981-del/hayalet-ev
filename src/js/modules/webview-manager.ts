@@ -4,11 +4,11 @@ import type { WebviewTag } from "electron";
 /**
  * WebviewManager - Facade Pattern
  *
- * Bu modül tüm webview alt sistemlerini koordine eder:
- * - LifecycleManager: Yaşam döngüsü (register, attach, detach, destroy)
- * - MessageSender: Mesaj ve dosya gönderimi
- * - ConversationSyncer: Konuşma senkronizasyonu ve arşivleme
- * - PendingArchiveHandler: Bekleyen arşiv işlemleri
+ * Coordinates all webview subsystems:
+ * - LifecycleManager: lifecycle operations (register, attach, detach, destroy)
+ * - MessageSender: message and file delivery
+ * - ConversationSyncer: conversation sync and archiving
+ * - PendingArchiveHandler: pending archive operations
  */
 
 import { getProvider } from "./webview/provider-factory.js";
@@ -49,8 +49,8 @@ class WebviewManagerClass {
   }
 
   /**
-   * Ayarları güncelle ve alt modüllere dağıt
-   * @param {Object} settings - Uygulama ayarları
+   * Update settings and distribute them to child modules.
+   * @param {Object} settings - Application settings
    */
   setSettings(settings: AppSettings): void {
     this.settings = settings;
@@ -59,9 +59,9 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı kaydet
+   * Register a webview
    * @param {string} provider - Slot ID
-   * @param {HTMLElement} webview - Webview elementi
+   * @param {HTMLElement} webview - Webview element
    */
   register(provider: string, webview: WebviewTag): void {
     if (isSlotId(provider)) {
@@ -73,9 +73,9 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı slot'a bağla
+   * Attach a webview to a slot
    * @param {string} provider - Slot ID
-   * @param {WebviewTag} webview - Webview elementi
+   * @param {WebviewTag} webview - Webview element
    * @param {Object} opts - { onReady }
    */
   attach(provider: string, webview: WebviewTag, opts: Record<string, unknown> = {}): void {
@@ -95,7 +95,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı slot'tan ayır
+   * Detach a webview from a slot
    * @param {string} provider - Slot ID
    * @param {Object} opts - { cleanupDom, skipTrafficStop }
    */
@@ -109,7 +109,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı çöz
+   * Resolve the webview for a slot or provider.
    * @param {string} provider - Slot ID
    * @returns {HTMLElement|null}
    */
@@ -139,7 +139,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı tamamen yok et
+   * Destroy the webview completely.
    * @param {string} provider - Slot ID
    */
   destroyWebview(provider: string): void {
@@ -152,7 +152,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Webview'ı aktif olarak işaretle
+   * Mark the webview as active.
    * @param {string} provider - Slot ID
    */
   markActive(provider: string): void {
@@ -169,7 +169,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Mesaj ve dosya gönder
+   * Send a message and attachments.
    * @param {Object} opts - { provider, text, attachments }
    * @returns {Promise<Object>}
    */
@@ -190,7 +190,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * ConversationSyncer'ı başlat
+   * Initialize the ConversationSyncer.
    * @param {Object} coreEngine - CoreEngine instance
    */
   initSyncer(coreEngine: SyncCoreEngine): void {
@@ -198,9 +198,9 @@ class WebviewManagerClass {
   }
 
   /**
-   * Konuşmayı senkronize et
+   * Synchronize the conversation.
    * @param {string} provider - Slot ID
-   * @param {HTMLElement} webview - Webview elementi (optional)
+   * @param {HTMLElement} webview - Optional webview element
    * @param {Object} options - { catchEnabled }
    * @returns {Promise<Object>}
    */
@@ -221,7 +221,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Provider'ı senkronize et (eski SyncHandler.syncProvider)
+   * Synchronize the provider (legacy SyncHandler.syncProvider).
    * @param {string} provider - Slot ID
    * @param {Object} opts - { from }
    * @returns {Promise<Object>}
@@ -231,7 +231,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Stable listener ekle
+   * Add a stable listener.
    * @param {string} provider - Slot ID
    * @param {Function} callback - Callback
    */
@@ -240,7 +240,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Son sync sonucunu getir
+   * Return the last sync result.
    * @param {string} provider - Slot ID
    * @returns {Object|null}
    */
@@ -249,7 +249,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Bekleyen arşiv ekle
+   * Add a pending archive entry.
    * @param {string} provider - Slot ID
    * @param {Object} entry - { jobId, folder, temp }
    */
@@ -261,7 +261,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Slot için provider modülünü getir
+   * Return the provider module for a slot.
    * @param {string} providerSlot - Slot ID
    * @returns {Object|null}
    */
@@ -271,7 +271,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * URL excluded mı kontrol et
+   * Check whether the URL is excluded.
    * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
    * @param {string} providerSlot - Slot ID
    * @param {string} url - URL
@@ -282,7 +282,7 @@ class WebviewManagerClass {
   }
 
   /**
-   * Tüm webview referanslarını getir
+   * Return all webview references.
    * @returns {Object}
    */
   get webviews(): unknown {

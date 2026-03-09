@@ -30,7 +30,12 @@ export class Emitter {
       try {
         fn(payload);
       } catch (err: unknown) {
-        Logger.warn(LogCategory.SETTINGS, "Listener error", { error: getErrorMessage(err) });
+        Logger.warnT(
+          LogCategory.SETTINGS,
+          "app.logs.settings.listenerError",
+          { message: getErrorMessage(err) },
+          { error: getErrorMessage(err) }
+        );
       }
     }
   }
@@ -59,9 +64,15 @@ export function createSettingsBroadcast(channelName = "hayalet-settings"): {
       },
     };
   } catch (err) {
-    Logger.warn(LogCategory.SETTINGS, `Failed to create BroadcastChannel: ${channelName}`, {
-      error: getErrorMessage(err),
-    });
+    Logger.warnT(
+      LogCategory.SETTINGS,
+      "app.logs.settings.broadcastChannelCreateFailed",
+      { channelName, message: getErrorMessage(err) },
+      {
+        channelName,
+        error: getErrorMessage(err),
+      }
+    );
     return {
       post: (): void => {},
       on: () => () => {},

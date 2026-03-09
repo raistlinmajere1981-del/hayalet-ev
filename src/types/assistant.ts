@@ -12,14 +12,14 @@
 // ============================================
 
 export enum ConnectButtonState {
-  IDLE = "idle", // "Başlat" - initial state
-  STARTING = "starting", // "Başlatılıyor..." - server is starting
-  CANCEL_CONNECTING = "cancel_connecting", // "Bağlantıyı İptal" - cancellable while connecting
-  CONNECTED = "connected", // "Bağlantıyı Kes" - active connection
-  STOPPING = "stopping", // "Kesiliyor..." - connection is stopping
-  ERROR = "error", // "Hata!" - error state
-  SUCCESS_START = "success_start", // "Bağlandı!" - temporary success message
-  SUCCESS_STOP = "success_stop", // "Kesildi!" - temporary success message
+  IDLE = "idle", // Start
+  STARTING = "starting", // Starting...
+  CANCEL_CONNECTING = "cancel_connecting", // Cancel Connection
+  CONNECTED = "connected", // Disconnect
+  STOPPING = "stopping", // Disconnecting...
+  ERROR = "error", // Error!
+  SUCCESS_START = "success_start", // Connected!
+  SUCCESS_STOP = "success_stop", // Disconnected!
 }
 
 // ============================================

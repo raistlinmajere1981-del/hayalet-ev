@@ -1,7 +1,7 @@
-/** Collapsed view için maksimum dosya boyutu (byte) */
+/** Maximum file size for collapsed view (bytes) */
 export const COLLAPSE_THRESHOLD = 5000;
 
-/** Desteklenen kod dosyası uzantıları */
+/** Supported code file extensions */
 export const CODE_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
@@ -26,7 +26,7 @@ export const CODE_EXTENSIONS = new Set([
   ".svelte",
 ]);
 
-/** Binary dosya uzantıları (atlanacak) */
+/** Binary file extensions (skipped) */
 export const BINARY_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -62,7 +62,7 @@ export const BINARY_EXTENSIONS = new Set([
   ".sqlite3",
 ]);
 
-/** Ignore edilecek dizinler */
+/** Directories to ignore */
 export const IGNORE_DIRS = new Set([
   "node_modules",
   ".git",

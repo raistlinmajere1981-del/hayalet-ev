@@ -1,18 +1,18 @@
 /**
  * IPC Client - Type-Safe IPC Wrapper
  *
- * Bu modül renderer process'ten main process'e type-safe IPC çağrıları yapmayı sağlar.
+ * Provides type-safe IPC calls from the renderer process to the main process.
  *
  * @example
  * import { IPC } from "./ipc-client.js";
  *
- * // Type-safe çağrı - params ve result tipleri otomatik
+ * // Type-safe call - params and result types are inferred automatically
  * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
  * if (result.success) {
  *   // result.data is typed as DbConversation[]
  * }
  *
- * // Hata durumunda null döner
+ * // Returns null on error
  * const safeResult = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
  */
 
@@ -53,10 +53,10 @@ class IPCClientClass {
   /**
    * Type-safe IPC invoke
    *
-   * @param channel - IPC kanal adı
-   * @param params - Kanal parametreleri (tip otomatik)
-   * @returns Promise<Result> - Kanal sonucu (tip otomatik)
-   * @throws Error - IPC hatası durumunda
+   * @param channel - IPC channel name
+   * @param params - Channel params (typed automatically)
+   * @returns Promise<Result> - Channel result (typed automatically)
+   * @throws Error - When the IPC call fails
    *
    * @example
    * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
@@ -66,16 +66,16 @@ class IPCClientClass {
   }
 
   /**
-   * Safe IPC invoke - hata durumunda null döner, exception fırlatmaz
+   * Safe IPC invoke - returns null on error and never throws.
    *
-   * @param channel - IPC kanal adı
-   * @param params - Kanal parametreleri
-   * @returns Promise<Result | null> - Sonuç veya null
+   * @param channel - IPC channel name
+   * @param params - Channel params
+   * @returns Promise<Result | null> - Result or null
    *
    * @example
    * const result = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
    * if (result) {
-   *   // result tipi otomatik
+   *   // result type is inferred automatically
    * }
    */
   async safeInvoke<T extends IPCChannel>(
@@ -85,10 +85,15 @@ class IPCClientClass {
     try {
       return (await this.api.invoke(channel, params)) as IPCResult<T>;
     } catch (error) {
-      Logger.error(LogCategory.IPC, `IPC invoke failed: ${channel} - ${getErrorMessage(error)}`, {
-        error: error instanceof Error ? error : new Error(String(error)),
-        context: { channel },
-      });
+      Logger.errorT(
+        LogCategory.IPC,
+        "app.logs.ipcClient.invokeFailed",
+        { channel, message: getErrorMessage(error) },
+        {
+          error: error instanceof Error ? error : new Error(String(error)),
+          context: { channel },
+        }
+      );
       return null;
     }
   }
@@ -96,8 +101,8 @@ class IPCClientClass {
   /**
    * IPC send (fire-and-forget)
    *
-   * @param channel - IPC kanal adı
-   * @param params - Kanal parametreleri
+   * @param channel - IPC channel name
+   * @param params - Channel params
    */
   send<T extends IPCChannel>(channel: T, params?: IPCParams<T>): void {
     this.api.send(channel, params);
@@ -106,9 +111,9 @@ class IPCClientClass {
   /**
    * IPC event listener
    *
-   * @param channel - IPC kanal adı
+   * @param channel - IPC channel name
    * @param callback - Event callback
-   * @returns Unsubscribe fonksiyonu
+   * @returns Unsubscribe function
    */
   on<T extends IPCChannel>(channel: T, callback: (result: IPCResult<T>) => void): () => void {
     return this.api.on(channel, (data) => {

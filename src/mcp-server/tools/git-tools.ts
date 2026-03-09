@@ -1,11 +1,11 @@
 /**
  * Git PR Tools for MCP Server
  *
- * GitHub CLI (gh) entegrasyonu ile PR workflow'ları:
- * - git_fork_setup: Fork ve branch hazırlığı
- * - git_create_pr: PR oluştur
- * - git_check_guidelines: Contribution guidelines kontrolü
- * - git_pr_status: Mevcut PR durumu
+ * PR workflows built on top of the GitHub CLI (`gh`):
+ * - git_fork_setup: fork and branch preparation
+ * - git_create_pr: create a PR
+ * - git_check_guidelines: inspect contribution guidelines
+ * - git_pr_status: current PR status
  */
 
 import { spawn } from "child_process";
@@ -33,7 +33,7 @@ function chunkToString(data: unknown): string {
   return String(data);
 }
 
-// Helper: Shell komutu çalıştır
+// Helper: run a shell command.
 async function runCommand(
   cmd: string,
   cwd?: string
@@ -66,7 +66,7 @@ async function runCommand(
   });
 }
 
-// Helper: gh CLI kontrolü
+// Helper: check `gh` CLI availability.
 async function checkGhCli(): Promise<{ available: boolean; user?: string; error?: string }> {
   const t = createGitTranslator();
   const ghCheck = await runCommand("command -v gh");
@@ -97,7 +97,7 @@ export async function gitForkSetup(
   shallow: boolean = true
 ): Promise<{ success: boolean; message: string; repoPath?: string }> {
   const t = createGitTranslator();
-  // gh CLI kontrolü
+  // Check `gh` CLI availability.
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
     return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
@@ -120,7 +120,7 @@ export async function gitForkSetup(
   }
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  // 1. Fork kontrolü ve oluşturma
+  // 1. Check the fork and create it if needed.
   output += `${t("forkSetup.steps.checkFork")}\n`;
   const forkCheck = await runCommand(
     `gh repo view ${ghUser}/${safeRepoName} --json name 2>/dev/null`
@@ -144,7 +144,7 @@ export async function gitForkSetup(
     output += `${t("forkSetup.forkExists")}\n`;
   }
 
-  // 2. Clone veya mevcut repo kontrolü
+  // 2. Clone the repository or reuse the existing checkout.
   output += `\n${t("forkSetup.steps.prepareRepository")}\n`;
   try {
     await access(join(repoPath, ".git"));
@@ -168,17 +168,17 @@ export async function gitForkSetup(
           })}`,
       };
     }
-    // Upstream ekle
+    // Add the upstream remote.
     await runCommand(`git remote add upstream https://github.com/${repo}.git`, repoPath);
   }
   output += `${t("forkSetup.repositoryReady")}\n`;
 
-  // 3. Upstream'den güncelle
+  // 3. Fetch updates from upstream.
   output += `\n${t("forkSetup.steps.fetchUpstream")}\n`;
   await runCommand(`git fetch upstream`, repoPath);
   output += `${t("forkSetup.fetchCompleted")}\n`;
 
-  // 4. Feature branch oluştur (opsiyonel)
+  // 4. Create the feature branch (optional).
   if (featureBranch !== undefined && featureBranch.length > 0) {
     output += `\n${t("forkSetup.steps.createFeatureBranch")}\n`;
     const branchCheck = await runCommand(
@@ -214,7 +214,7 @@ export async function gitCreatePr(
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
   const repoPath = cwd ?? process.cwd();
 
-  // gh CLI kontrolü
+  // Check `gh` CLI availability.
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
     return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
@@ -223,7 +223,7 @@ export async function gitCreatePr(
   let output = `${t("createPr.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
-  // 1. Git repo kontrolü
+  // 1. Check the git repository.
   const gitCheck = await runCommand("git rev-parse --git-dir", repoPath);
   if (!gitCheck.success) {
     return { success: false, message: t("createPr.notGitRepository") };
@@ -241,7 +241,7 @@ export async function gitCreatePr(
     };
   }
 
-  // 3. Uncommitted değişiklik kontrolü
+  // 3. Check for uncommitted changes.
   const statusResult = await runCommand("git status --porcelain", repoPath);
   if (statusResult.output !== "") {
     output += `\n${t("createPr.steps.commitChanges")}\n`;
@@ -283,7 +283,7 @@ export async function gitCreatePr(
   }
   output += `${t("createPr.pushCompleted")}\n`;
 
-  // 7. Mevcut PR kontrolü
+  // 7. Check for an existing PR.
   output += `\n${t("createPr.steps.checkExistingPr")}\n`;
   const prCheckResult = await runCommand(
     `gh pr list --repo ${upstreamRepo} --head ${originUser}:${currentBranch} --json number,url --jq '.[0].url'`,
@@ -295,7 +295,7 @@ export async function gitCreatePr(
     return { success: true, message: output, prUrl: prCheckResult.output };
   }
 
-  // 8. PR oluştur
+  // 8. Create the PR.
   output += `\n${t("createPr.steps.createPr")}\n`;
   const bodyArg =
     body !== undefined && body.length > 0 ? `--body "${body.replace(/"/g, '\\"')}"` : "";
@@ -386,7 +386,7 @@ export async function gitCheckGuidelines(
     output += `\n${t("guidelines.prTemplateMissing")}\n`;
   }
 
-  // DCO/Sign-off kontrolü
+  // DCO / sign-off check.
   checks["dcoRequired"] = false;
   const filesToCheck = ["CONTRIBUTING.md", "README.md", ".github/CONTRIBUTING.md"];
 
@@ -408,7 +408,7 @@ export async function gitCheckGuidelines(
     output += `\n${t("guidelines.dcoNotDetected")}\n`;
   }
 
-  // CI/CD kontrolü
+  // CI/CD check.
   checks["hasCI"] = false;
   try {
     await access(join(repoPath, ".github/workflows"));
@@ -423,7 +423,7 @@ export async function gitCheckGuidelines(
     output += `\n${t("guidelines.ciMissing")}\n`;
   }
 
-  // Makefile kontrolü
+  // Makefile check.
   try {
     await access(join(repoPath, "Makefile"));
     const makefile = await readFile(join(repoPath, "Makefile"), "utf-8");
@@ -472,14 +472,14 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
   const remotesResult = await runCommand("git remote -v | head -4", repoPath);
   output += `\n${t("status.remotes")}\n${remotesResult.output}\n`;
 
-  // Commit farkı
+  // Commit diff.
   const diffResult = await runCommand(
     "git rev-list --count upstream/main..HEAD 2>/dev/null || echo 0",
     repoPath
   );
   output += `\n${t("status.ahead", { count: diffResult.output })}\n`;
 
-  // Değişiklik durumu
+  // Change status.
   const statusResult = await runCommand("git status --short", repoPath);
   if (statusResult.output !== "") {
     output += `\n${t("status.changes")}\n${statusResult.output}\n`;
@@ -487,7 +487,7 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
     output += `\n${t("status.clean")}\n`;
   }
 
-  // Açık PR'lar
+  // Open PRs.
   const upstreamResult = await runCommand("git remote get-url upstream 2>/dev/null", repoPath);
   if (upstreamResult.success) {
     const upstreamRepo = upstreamResult.output

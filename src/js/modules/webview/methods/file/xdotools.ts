@@ -4,6 +4,8 @@
  * Provider-agnostic implementation
  */
 
+import { AppI18n } from "../../../i18n/index.js";
+
 interface FilePayload {
   name: string;
   path?: string;
@@ -17,19 +19,23 @@ interface AttachResult {
   injected?: boolean;
 }
 
+function uploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.upload.${key}`, params);
+}
+
 export async function attachFiles(
   _webview: HTMLElement,
   { files }: { files: FilePayload[] }
 ): Promise<AttachResult> {
   if (files.length === 0) {
-    return await Promise.resolve({ success: false, message: "Aktarılacak dosya bulunamadı" });
+    return await Promise.resolve({ success: false, message: uploadT("noFiles") });
   }
 
   // TODO: Implement actual XDotools integration
 
   return await Promise.resolve({
     success: false,
-    message: "XDotools file method henüz implement edilmedi",
+    message: uploadT("xdotoolsNotImplemented"),
     injected: false,
   });
 }

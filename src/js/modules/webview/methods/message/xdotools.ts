@@ -2,10 +2,15 @@ import {
   getRuntimeProviderConfig,
   getRuntimeSelectorCandidates,
 } from "../shared/runtime-selectors.js";
+import { AppI18n } from "../../../i18n/index.js";
 
 interface WebviewElement extends HTMLElement {
   executeJavaScript: (code: string) => Promise<unknown>;
   sendInputEvent: (event: { type: string; keyCode: string }) => void;
+}
+
+function composerT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.messageComposer.${key}`, params);
 }
 
 export async function sendMessage(
@@ -44,7 +49,7 @@ export async function sendMessage(
 
   const focused = await webview.executeJavaScript(focusScript);
   if (focused !== true) {
-    return { success: false, message: "Composer textarea/div bulunamadı" };
+    return { success: false, message: composerT("textareaMissing") };
   }
 
   try {
@@ -54,12 +59,14 @@ export async function sendMessage(
   } catch (err) {
     return {
       success: false,
-      message: `Metin yazılamadı: ${err instanceof Error ? err.message : String(err)}`,
+      message: composerT("writeFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      }),
     };
   }
 
   return {
     success: true,
-    message: "Mesaj karakter karakter yazıldı",
+    message: composerT("characterByCharacterWritten"),
   };
 }

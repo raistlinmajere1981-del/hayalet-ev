@@ -45,10 +45,11 @@ const defaultHandler =
   async (
     payload: CommandPayload = {}
   ): Promise<{ success: boolean; command: string; args: string; detail: string }> => {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.INFO,
-      `Server command: ${name}`,
+      "electron.serverCommands.logs.commandReceived",
+      { name },
       { args: payload.args ?? "", payload }
     );
     return { success: true, command: name, args: payload.args ?? "", detail: "OK" };
@@ -149,7 +150,7 @@ handlers["whispermanager"] = async (payload: CommandPayload = {}): Promise<unkno
   if (accountId === "" || text === "") {
     return {
       success: false,
-      message: 'Kullanım: ++cmd:WhisperManager(<accountId>, "<mesaj>", "<zaman>")',
+      message: 'Usage: ++cmd:WhisperManager(<accountId>, "<message>", "<time>")',
     };
   }
 
@@ -178,10 +179,11 @@ handlers["whispermanager"] = async (payload: CommandPayload = {}): Promise<unkno
       payload: { pending, done: current.done },
     });
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.INFO,
-      `WhisperManager added for ${accountId}`,
+      "electron.serverCommands.logs.whisperAdded",
+      { accountId },
       { accountId, args: argsLabel, record: rec }
     );
 
@@ -193,10 +195,11 @@ handlers["whispermanager"] = async (payload: CommandPayload = {}): Promise<unkno
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `WhisperManager error: ${message}`,
+      "electron.serverCommands.logs.whisperError",
+      { message },
       { accountId, error: err }
     );
     return { success: false, message };
@@ -210,19 +213,21 @@ handlers["devicemanager"] = async (payload: CommandPayload = {}): Promise<unknow
     const params = parts.slice(1);
     const res = await deviceActionHandler(null, action, params);
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.INFO,
-      `DeviceManager ${action}`,
+      "electron.serverCommands.logs.deviceAction",
+      { action },
       { action, params, result: res }
     );
     return { success: res.success === true, result: res };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `DeviceManager error: ${message}`,
+      "electron.serverCommands.logs.deviceError",
+      { message },
       { error: err }
     );
     return { success: false, message };
@@ -238,10 +243,11 @@ handlers["screenshotmanager"] = async (payload: CommandPayload = {}): Promise<un
     const res = await screenshotCaptureHandler(null, options);
     if (res.success === true) {
       const savedPath = typeof res.path === "string" ? res.path : "in-memory";
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.SERVER_COMMANDS,
         LogLevel.INFO,
-        `ScreenshotManager saved ${savedPath}`,
+        "electron.serverCommands.logs.screenshotSaved",
+        { path: savedPath },
         { path: res.path, options }
       );
       return { success: true, path: res.path, dataUrl: res.dataUrl };
@@ -249,10 +255,11 @@ handlers["screenshotmanager"] = async (payload: CommandPayload = {}): Promise<un
     return { success: false, message: res.message };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `ScreenshotManager error: ${message}`,
+      "electron.serverCommands.logs.screenshotError",
+      { message },
       { error: err }
     );
     return { success: false, message };
@@ -277,19 +284,21 @@ handlers["windowmanager"] = async (payload: CommandPayload = {}): Promise<unknow
       result = true;
     }
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.INFO,
-      `WindowManager action=${action}`,
+      "electron.serverCommands.logs.windowAction",
+      { action },
       { action, result }
     );
     return { success: result, action, executed: result };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `WindowManager error: ${message}`,
+      "electron.serverCommands.logs.windowError",
+      { message },
       { error: err }
     );
     return { success: false, message };
@@ -298,14 +307,19 @@ handlers["windowmanager"] = async (payload: CommandPayload = {}): Promise<unknow
 
 handlers["restart"] = async (_payload: CommandPayload = {}): Promise<unknown> => {
   try {
-    await logger.logInternal(LogCategory.SERVER_COMMANDS, LogLevel.INFO, "Restart requested", {});
+    await logger.logInternalT(
+      LogCategory.SERVER_COMMANDS,
+      LogLevel.INFO,
+      "electron.serverCommands.logs.restartRequested"
+    );
     return { success: true, message: "restart requested" };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `Restart error: ${message}`,
+      "electron.serverCommands.logs.restartError",
+      { message },
       { error: err }
     );
     return { success: false, message };
@@ -319,10 +333,11 @@ handlers["listfiles"] = async (_payload: CommandPayload = {}): Promise<unknown> 
     return { success: true, command: "ListFiles", path: baseDir, fileName: "root", lines: 0 };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `ListFiles error: ${message}`,
+      "electron.serverCommands.logs.listFilesError",
+      { message },
       { error: err }
     );
     return { success: false, message };
@@ -342,10 +357,11 @@ const serverCommands = {
     const handler = handlers[key];
     if (handler !== undefined) return await handler(payload);
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.SERVER_COMMANDS,
       LogLevel.ERROR,
-      `Undefined command: ${commandName}`,
+      "electron.serverCommands.logs.undefinedCommand",
+      { commandName },
       { commandName, payload }
     );
     return { success: false, message: "Undefined command" };

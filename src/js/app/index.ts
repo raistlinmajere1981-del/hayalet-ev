@@ -243,7 +243,7 @@ async function initApp(): Promise<void> {
     const message = getErrorMessage(error);
     console.error("[App] initApp failed:", message);
     try {
-      Logger.error(LogCategory.SYSTEM, `[app:init] ${message}`, {
+      Logger.errorT(LogCategory.SYSTEM, "app.logs.appInitFailed", { message }, {
         error: error instanceof Error ? error : new Error(String(error)),
       });
     } catch {

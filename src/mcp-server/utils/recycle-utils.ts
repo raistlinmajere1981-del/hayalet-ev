@@ -1,10 +1,10 @@
 /**
  * Recycle Bin Utilities
  *
- * Silinen dosyalar için çöp kutusu sistemi
- * - Dosyalar .rovo/trash/ altına taşınır
- * - Timestamp ile saklanır
- * - Geri yükleme ve kalıcı silme desteği
+ * Trash system for deleted files.
+ * - Files move under `.rovo/trash/`
+ * - Entries are stored with timestamps
+ * - Supports restore and permanent delete flows
  */
 
 import {
@@ -20,6 +20,7 @@ import {
   copyFileSync,
 } from "fs";
 import { join, basename, dirname, relative } from "path";
+import { createMcpTranslatorSync } from "./i18n/index.js";
 
 // ============================================
 // Constants
@@ -27,7 +28,8 @@ import { join, basename, dirname, relative } from "path";
 
 const TRASH_DIR = ".rovo/trash";
 const OPERATION_LOG = ".rovo/operation-log.json";
-const MAX_OPERATIONS = 100; // Son 100 işlem saklanır
+const MAX_OPERATIONS = 100; // Keep the most recent 100 operations.
+const mcpT = createMcpTranslatorSync();
 
 // ============================================
 // Types
@@ -78,9 +80,7 @@ function parseOperationLog(raw: string): OperationLog {
 // Trash Operations
 // ============================================
 
-/**
- * Çöp kutusu dizinini hazırla
- */
+/** Ensure that the trash directory exists. */
 export function ensureTrashDir(projectRoot: string): string {
   const trashPath = join(projectRoot, TRASH_DIR);
   if (!existsSync(trashPath)) {
@@ -89,9 +89,7 @@ export function ensureTrashDir(projectRoot: string): string {
   return trashPath;
 }
 
-/**
- * Dosyayı çöp kutusuna taşı
- */
+/** Move a file or directory into the trash. */
 export function moveToTrash(projectRoot: string, filePath: string): TrashItem | null {
   if (!existsSync(filePath)) {
     return null;
@@ -106,7 +104,7 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
   const stats = statSync(filePath);
   const isDirectory = stats.isDirectory();
 
-  // Taşı
+  // Move the file into the trash location.
   renameSync(filePath, trashPath);
 
   const item: TrashItem = {
@@ -117,7 +115,7 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
     isDirectory,
   };
 
-  // Operation log'a kaydet
+  // Record the action for undo support.
   logOperation(projectRoot, {
     id: generateId(),
     type: "delete",
@@ -129,9 +127,7 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
   return item;
 }
 
-/**
- * Çöp kutusundaki dosyaları listele
- */
+/** List files currently stored in the trash. */
 export function listTrash(projectRoot: string): TrashItem[] {
   const trashDir = join(projectRoot, TRASH_DIR);
   if (!existsSync(trashDir)) {
@@ -164,31 +160,29 @@ export function listTrash(projectRoot: string): TrashItem[] {
   return items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
 }
 
-/**
- * Çöp kutusundan geri yükle
- */
+/** Restore a file from the trash. */
 export function restoreFromTrash(
   projectRoot: string,
   trashPath: string
 ): { success: boolean; restoredTo?: string; error?: string } {
   if (!existsSync(trashPath)) {
-    return { success: false, error: "Dosya çöp kutusunda bulunamadı" };
+    return { success: false, error: mcpT("mcpServer.fs.recycle.fileNotInTrash") };
   }
 
   const fileName = basename(trashPath);
 
-  // Parse original path from filename
+  // Parse the original path from the trash filename.
   const parts = fileName.split("__");
   const originalRelative = parts.slice(1).join("/");
   const originalPath = join(projectRoot, originalRelative);
 
-  // Hedef dizini oluştur
+  // Recreate the destination directory when needed.
   const targetDir = dirname(originalPath);
   if (!existsSync(targetDir)) {
     mkdirSync(targetDir, { recursive: true });
   }
 
-  // Hedefte dosya varsa yeniden adlandır
+  // Rename the restored file if the destination already exists.
   let finalPath = originalPath;
   if (existsSync(originalPath)) {
     const ext = originalPath.includes(".") ? "." + originalPath.split(".").pop() : "";
@@ -201,9 +195,7 @@ export function restoreFromTrash(
   return { success: true, restoredTo: finalPath };
 }
 
-/**
- * Çöp kutusunu boşalt
- */
+/** Empty the trash directory. */
 export function emptyTrash(
   projectRoot: string,
   olderThanDays?: number
@@ -225,7 +217,7 @@ export function emptyTrash(
     const trashPath = join(trashDir, file);
     const stats = statSync(trashPath);
 
-    // Yaş kontrolü
+    // Skip entries newer than the retention cutoff.
     if (olderThanDays != null && olderThanDays > 0 && stats.mtimeMs > cutoff) {
       continue;
     }
@@ -242,16 +234,14 @@ export function emptyTrash(
 // Backup Operations
 // ============================================
 
-/**
- * Dosyanın yedeğini al
- */
+/** Create a backup copy for a file. */
 export function createBackup(
   projectRoot: string,
   filePath: string,
   suffix?: string
 ): { success: boolean; backupPath?: string; error?: string } {
   if (!existsSync(filePath)) {
-    return { success: false, error: "Dosya bulunamadı" };
+    return { success: false, error: mcpT("mcpServer.fs.recycle.fileNotFound") };
   }
 
   const timestamp = suffix ?? new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -261,7 +251,7 @@ export function createBackup(
 
   copyFileSync(filePath, backupPath);
 
-  // Operation log'a kaydet
+  // Record the backup for undo support.
   logOperation(projectRoot, {
     id: generateId(),
     type: "backup",
@@ -274,7 +264,7 @@ export function createBackup(
 }
 
 // ============================================
-// Operation Log (Undo desteği)
+// Operation Log (undo support)
 // ============================================
 
 function generateId(): string {
@@ -315,9 +305,7 @@ export function getOperationHistory(projectRoot: string, limit: number = 20): Op
   return log.operations.slice(0, limit);
 }
 
-/**
- * Son işlemi geri al
- */
+/** Undo the latest undoable operation. */
 export function undoLastOperation(projectRoot: string): {
   success: boolean;
   message: string;
@@ -327,18 +315,18 @@ export function undoLastOperation(projectRoot: string): {
   const opIndex = log.operations.findIndex((op) => op.canUndo);
 
   if (opIndex === -1) {
-    return { success: false, message: "Geri alınacak işlem yok" };
+    return { success: false, message: mcpT("mcpServer.fs.recycle.noUndoableOperation") };
   }
 
   const operation = log.operations[opIndex];
   if (!operation) {
-    return { success: false, message: "İşlem bulunamadı" };
+    return { success: false, message: mcpT("mcpServer.fs.recycle.operationNotFound") };
   }
 
   try {
     switch (operation.type) {
       case "delete": {
-        // Çöp kutusundan geri yükle
+        // Restore from trash.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.backupPath)) {
             const targetDir = dirname(file.path);
@@ -351,7 +339,7 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "create": {
-        // Oluşturulan dosyayı sil
+        // Remove the file that was created.
         for (const file of operation.files) {
           if (existsSync(file.path)) {
             moveToTrash(projectRoot, file.path);
@@ -360,7 +348,7 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "replace": {
-        // Orijinal içeriği geri yükle
+        // Restore the original content.
         for (const file of operation.files) {
           if (file.originalContent !== undefined) {
             writeFileSync(file.path, file.originalContent, "utf-8");
@@ -375,7 +363,7 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "move": {
-        // Taşımayı geri al
+        // Undo the move.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.path)) {
             renameSync(file.path, file.backupPath);
@@ -384,7 +372,7 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "backup": {
-        // Backup dosyasını sil
+        // Delete the backup file.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.backupPath)) {
             unlinkSync(file.backupPath);
@@ -394,13 +382,20 @@ export function undoLastOperation(projectRoot: string): {
       }
     }
 
-    // İşlemi undo edildi olarak işaretle
+    // Mark the operation as no longer undoable.
     const op = log.operations[opIndex];
     if (op) op.canUndo = false;
     saveOperationLog(projectRoot, log);
 
-    return { success: true, message: `İşlem geri alındı: ${operation.type}`, operation };
+    return {
+      success: true,
+      message: mcpT("mcpServer.fs.recycle.undoSuccess", { operationType: operation.type }),
+      operation,
+    };
   } catch (error) {
-    return { success: false, message: `Geri alma hatası: ${(error as Error).message}` };
+    return {
+      success: false,
+      message: mcpT("mcpServer.fs.recycle.undoError", { message: (error as Error).message }),
+    };
   }
 }

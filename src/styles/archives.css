@@ -4,7 +4,7 @@
  * @version 6.0.0
  */
 
-/* === WRAPPER LAYOUT (Üst/Alt ikiye bölünmüş) === */
+/* === WRAPPER LAYOUT (split into top and bottom sections) === */
 .archives-wrapper {
   display: flex;
   flex-direction: column;
@@ -15,7 +15,7 @@
   box-sizing: border-box;
 }
 
-/* === ÜST BÖLÜM: Sidebar + Detay + Arama === */
+/* === TOP SECTION: Sidebar + Details + Search === */
 .archives-top {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr 1fr;
@@ -25,7 +25,7 @@
   overflow: hidden;
 }
 
-/* === ALT BÖLÜM: Protokol Editörü === */
+/* === BOTTOM SECTION: Protocol Editor === */
 .archives-bottom {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;

@@ -1,7 +1,8 @@
 /**
  * File Utilities facade
  *
- * Public API backward-compatible tutulur; implementasyon alt modüllere ayrılmıştır.
+ * Keeps the public API backward-compatible while delegating implementation
+ * to focused submodules.
  */
 
 export {

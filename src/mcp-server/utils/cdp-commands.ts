@@ -1,13 +1,15 @@
 /**
- * CDP UI Otomasyon Komutları
+ * CDP UI Automation Commands
  *
- * Electron içindeki DOM elementleriyle etkileşim için
- * yüksek seviye komutlar.
+ * High-level commands for interacting with DOM elements inside Electron.
  */
 
 import type WebSocket from "ws";
 import { withConnection, evaluateJS, sendCDPCommand } from "./cdp-connection.js";
 import { CDP_TIMEOUTS } from "@timeouts";
+import { createMcpTranslatorSync } from "./i18n/index.js";
+
+const cdpCommandT = createMcpTranslatorSync();
 
 /** Click result */
 interface ClickResult {
@@ -64,14 +66,14 @@ interface KeyModifiers {
 }
 
 /**
- * Selector ile element'e tıkla
+ * Click an element by selector
  */
 export async function clickBySelector(selector: string): Promise<ClickResult> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
       (function() {
         const el = document.querySelector(${JSON.stringify(selector)});
-        if (!el) return { success: false, error: "Element bulunamadı: " + ${JSON.stringify(selector)} };
+        if (!el) return { success: false, error: ${JSON.stringify(cdpCommandT("mcpServer.cdpTools.clickBySelector.notFound", { selector }))} };
         el.click();
         return { success: true, tagName: el.tagName, id: el.id, className: el.className };
       })()
@@ -81,7 +83,7 @@ export async function clickBySelector(selector: string): Promise<ClickResult> {
 }
 
 /**
- * Metin içeriğine göre element'e tıkla
+ * Click an element by matching visible text
  */
 export async function clickByText(text: string, tagName = "*"): Promise<ClickResult> {
   return await withConnection(async (ws: WebSocket) => {
@@ -90,7 +92,7 @@ export async function clickByText(text: string, tagName = "*"): Promise<ClickRes
         const xpath = "//${tagName}[contains(text(), ${JSON.stringify(text)})]";
         const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
         const el = result.singleNodeValue;
-        if (!el) return { success: false, error: "Metin içeren element bulunamadı: " + ${JSON.stringify(text)} };
+        if (!el) return { success: false, error: ${JSON.stringify(cdpCommandT("mcpServer.cdpTools.clickByText.notFound", { text, tagName }))} };
         el.click();
         return { success: true, tagName: el.tagName, textContent: el.textContent.substring(0, 50) };
       })()
@@ -100,7 +102,7 @@ export async function clickByText(text: string, tagName = "*"): Promise<ClickRes
 }
 
 /**
- * Input alanına değer yaz
+ * Fill an input field
  */
 export async function fillInput(
   selector: string,
@@ -111,12 +113,12 @@ export async function fillInput(
     const script = `
       (function() {
         const el = document.querySelector(${JSON.stringify(selector)});
-        if (!el) return { success: false, error: "Input bulunamadı: " + ${JSON.stringify(selector)} };
+        if (!el) return { success: false, error: ${JSON.stringify(cdpCommandT("mcpServer.cdpTools.fillInput.notFound", { selector }))} };
         
         if (${String(clear)}) el.value = "";
         el.value = ${JSON.stringify(value)};
         
-        // Input event'lerini tetikle
+        // Trigger input events.
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
         
@@ -132,7 +134,7 @@ export async function fillInput(
 }
 
 /**
- * Sayfa yapısını al (debug için)
+ * Read the page structure (for debugging)
  */
 export async function getPageStructure(maxDepth = 3): Promise<Record<string, unknown>> {
   return await withConnection(async (ws: WebSocket) => {
@@ -142,7 +144,7 @@ export async function getPageStructure(maxDepth = 3): Promise<Record<string, unk
           if (depth > maxDepth || !el) return null;
           
           const children = Array.from(el.children ?? [])
-            .slice(0, 10) // Max 10 child per element
+            .slice(0, 10) // Max 10 child nodes per element.
             .map(child => getStructure(child, depth + 1, maxDepth))
             .filter(Boolean);
           
@@ -169,7 +171,7 @@ export async function getPageStructure(maxDepth = 3): Promise<Record<string, unk
 }
 
 /**
- * Element'in varlığını kontrol et
+ * Check whether an element exists
  */
 export async function checkElement(selector: string): Promise<ElementInfo> {
   return await withConnection(async (ws: WebSocket) => {
@@ -197,7 +199,7 @@ export async function checkElement(selector: string): Promise<ElementInfo> {
 }
 
 /**
- * Tüm eşleşen elementleri bul
+ * Find all matching elements
  */
 export async function findElements(selector: string, limit = 20): Promise<ElementListItem[]> {
   return await withConnection(async (ws: WebSocket) => {
@@ -219,36 +221,36 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
 }
 
 /**
- * Screenshot al (CDP üzerinden)
+ * Capture a screenshot through CDP
  *
- * Not: Çift monitör ortamlarında pencere arka plandayken screenshot
- * alamıyor. Bu yüzden önce Page.bringToFront çağrılıyor.
+ * Note: On multi-monitor setups, screenshots can fail while the window is in the
+ * background. Call Page.bringToFront first to improve reliability.
  */
 export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
   return await withConnection(async (ws: WebSocket) => {
-    // Pencereyi öne getir (çift monitör/arka plan sorunu için gerekli)
+    // Bring the window to the front first.
     await sendCDPCommand(ws, "Page.bringToFront", {}, CDP_TIMEOUTS.COMMAND_FAST);
 
-    // Page domain'ini etkinleştir
+    // Enable the Page domain.
     await sendCDPCommand(ws, "Page.enable", {}, CDP_TIMEOUTS.COMMAND_FAST);
 
-    // Screenshot al
+    // Capture the screenshot.
     const result = await sendCDPCommand(
       ws,
       "Page.captureScreenshot",
       {
         format,
         quality: format === "jpeg" ? quality : undefined,
-        fromSurface: true, // Compositor surface'den al (daha güvenilir)
+        fromSurface: true, // Read from the compositor surface for better reliability.
       },
       CDP_TIMEOUTS.SCREENSHOT
     );
-    return result["data"] as string; // Base64 encoded
+    return result["data"] as string; // Base64 encoded.
   });
 }
 
 /**
- * Pencere boyutunu al
+ * Read the window dimensions
  */
 export async function getWindowInfo(): Promise<WindowInfo> {
   return await withConnection(async (ws: WebSocket) => {
@@ -272,7 +274,7 @@ export async function getWindowInfo(): Promise<WindowInfo> {
 }
 
 /**
- * Belirli bir konuma scroll yap
+ * Scroll to a specific position
  */
 export async function scrollTo(
   x = 0,
@@ -291,7 +293,7 @@ export async function scrollTo(
 }
 
 /**
- * Keyboard event gönder
+ * Send a keyboard event
  */
 export async function pressKey(
   key: string,
@@ -321,7 +323,7 @@ export async function pressKey(
 }
 
 /**
- * Arbitrary JavaScript çalıştır
+ * Execute arbitrary JavaScript
  */
 export async function executeScript(code: string, timeout?: number): Promise<unknown> {
   return await withConnection(async (ws: WebSocket) => {

@@ -14,10 +14,17 @@ const callDevice = async (
     }
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
-    Logger.error("device", `deviceAction error: ${getErrorMessage(error)}`);
+    Logger.errorT("device", "app.logs.deviceManager.actionError", {
+      message: getErrorMessage(error),
+    });
     return { success: false, message: getErrorMessage(error) };
   }
-  Logger.info("device", `Fallback device stub called: ${action} ${JSON.stringify(payload)}`);
+  Logger.infoT(
+    "device",
+    "app.logs.deviceManager.fallbackCalled",
+    { action },
+    { action, payload }
+  );
   return { success: true, message: "stub" };
 };
 

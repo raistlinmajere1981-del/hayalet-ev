@@ -110,7 +110,7 @@
   border: var(--border-1) solid var(--color-accent);
 }
 
-/* Avatar 2 satır yüksekliğinde */
+/* Avatar spans two rows in height */
 .account-avatar-2row {
   width: var(--size-avatar-md);
   height: var(--size-avatar-md);
@@ -127,7 +127,7 @@
   background-position: center;
 }
 
-/* Info grid: üstte nickname+provider, altta email */
+/* Info grid: nickname+provider on top, email below */
 .account-info-grid {
   flex: 1;
   min-width: 0;

@@ -28,7 +28,19 @@
         "commandDetailPlaceholder": "Komut seçerek detay görüntüleyin"
       },
       "timeline": {
-        "commandFallback": "Komut"
+        "commandFallback": "Komut",
+        "commandLabel": "Komut",
+        "resultLabel": "Sonuç",
+        "pendingResult": "Sonuç bekleniyor...",
+        "transportLabel": "gönderim",
+        "sessionLabel": "session",
+        "resultTimestampLabel": "result-ts",
+        "loadingHistory": "Komut geçmişi yükleniyor...",
+        "scrollForMore": "Yukarı kaydır: +{{batchSize}} session daha ({{remaining}} kaldı)",
+        "historyLoaded": "Tüm session geçmişi yüklendi ({{count}} session)",
+        "liveConnected": "Canlı komut akışına bağlı",
+        "sessionLogReadFailed": "Session logu okunamadı ({{sessionId}}): {{message}}",
+        "sessionListReadFailed": "Session listesi okunamadı: {{message}}"
       }
     },
     "analyze": {
@@ -56,6 +68,7 @@
         "emptySlot": "— Slot boş —",
         "newConversation": "Yeni Sohbet",
         "logs": {
+          "userSelected": "{{provider}} için konuşma seçildi: {{conversationId}}",
           "resetToNewConversation": "{{slot}} varsayılan sayfaya döndü, seçim Yeni Sohbet olarak sıfırlandı",
           "refreshError": "Listeyi yenileme hatası: {{message}}"
         }
@@ -64,6 +77,13 @@
         "empty": "Henüz dosya yok.",
         "count": "{{count}} dosya eklendi.",
         "removeTitle": "Kaldır"
+      },
+      "draft": {
+        "logs": {
+          "pathPrepareFailed": "Draft yolu hazırlanamadı: {{message}}",
+          "readFailed": "Draft okunamadı: {{message}}",
+          "writeFailed": "Draft yazılamadı: {{message}}"
+        }
       },
       "bubble": {
         "attachmentFallback": "dosya",
@@ -163,11 +183,44 @@
         "queuedForAccount": "Whisper kuyruğa alındı ({{accountId}}/{{slot}})",
         "sendFailed": "Whisper gönderilemedi",
         "queuedCommandLog": "[{{timestamp}}] {{sender}} - Komut kuyruğa alındı: {{commandText}}",
-        "destroyWarning": "Whisper destroy uyarısı: {{message}}"
+        "destroyWarning": "Whisper destroy uyarısı: {{message}}",
+        "loadFailed": "Whisper verisi yüklenemedi ({{accountId}}): {{message}}",
+        "saveFailed": "Whisper verisi kaydedilemedi ({{accountId}}): {{message}}",
+        "invalidAccountId": "Geçerli bir accountId gerekli",
+        "added": "Whisper eklendi ({{accountId}})",
+        "completed": "Whisper tamamlandı ({{accountId}})",
+        "deleted": "Whisper silindi ({{accountId}})",
+        "scheduledMessage": "Zamanlı Fısıltı Kaydı: {{text}}",
+        "deliveryFailed": "Whisper gönderilemedi ({{accountId}}/{{slot}}): {{message}}"
       }
     },
     "archives": {
       "page": {
+        "sidebarTitle": "Sohbetler",
+        "detailTitle": "Sohbet Detayları",
+        "detailEmpty": "Detayları görmek için bir sohbet seçin",
+        "titleLabel": "Başlık",
+        "titlePlaceholder": "Sohbet başlığı",
+        "summaryLabel": "Özet",
+        "summaryPlaceholder": "Sohbet özeti...",
+        "webUrlLabel": "Web URL",
+        "webUrlEmpty": "-",
+        "copyUrlTitle": "URL'yi kopyala",
+        "saveButton": "Kaydet",
+        "deleteButton": "Sil",
+        "searchTitle": "Arama",
+        "scopeCurrent": "Mevcut Hesap",
+        "scopeAll": "Tüm Hesaplar",
+        "searchPlaceholder": "Mesaj veya dosya ara...",
+        "messagesTab": "Mesajlar",
+        "filesTab": "Dosyalar",
+        "searchEmpty": "Aramaya başlamak için yukarıya yazın",
+        "protocolListTitle": "📜 Protokoller",
+        "protocolLoading": "Yükleniyor...",
+        "protocolEditorPlaceholderTitle": "Protokol seçin",
+        "protocolEmpty": "Düzenlemek için soldan bir protokol seçin",
+        "protocolPlaceholder": "Protokol içeriği...",
+        "protocolSaveButton": "Kaydet",
         "empty": "Kayıt yok",
         "deleteTitle": "Sohbeti Sil",
         "urlCopied": "URL kopyalandı",
@@ -232,6 +285,81 @@
         "archiveReadError": "Arşiv okunamadı: {{message}}"
       }
     },
+    "upload": {
+      "validationFailed": "Doğrulama başarısız",
+      "noFiles": "Yüklenecek dosya bulunamadı",
+      "untitledFile": "isimsiz",
+      "invalidFile": "Geçersiz dosya: {{name}}",
+      "serviceUnavailable": "{{service}} servisi mevcut değil",
+      "googleDriveIpcUnavailable": "Google Drive IPC servisi mevcut değil",
+      "googleDriveUploadFailed": "Google Drive yükleme başarısız",
+      "googleDriveError": "Google Drive hatası",
+      "fileInputNotFound": "Dosya inputu bulunamadı. Denenen selectorlar",
+      "filesInjected": "Dosyalar input ile eklendi",
+      "injectionAttempted": "Dosya inject denemesi yapıldı",
+      "dropTargetNotFound": "Drop hedefi bulunamadı",
+      "dragDropSuccess": "Dosyalar drag-drop ile eklendi",
+      "dragDropPreviewMissing": "Drag-drop tetiklendi ama {{provider}} dosyayı kabul etmedi (preview oluşmadı)",
+      "dragDropAttempted": "Dosya drag-drop denemesi yapıldı",
+      "xdotoolsNotImplemented": "XDotools dosya yöntemi henüz implement edilmedi",
+      "uploadFailed": "{{service}} yükleme başarısız: {{reason}}",
+      "uploadSuccess": "{{count}} dosya yüklendi ve linkleri hazır",
+      "serviceError": "{{service}} hatası: {{message}}",
+      "unknownError": "bilinmeyen hata"
+    },
+    "messageComposer": {
+      "providerConfigMissing": "Provider yapılandırması bulunamadı",
+      "inputSelectorMissing": "Provider yapılandırmasında input selector bulunamadı",
+      "focusPrepared": "Textarea temizlendi ve odaklandı",
+      "contentEditableWritten": "Mesaj ProseMirror/contenteditable alanına yazıldı",
+      "textareaWritten": "Mesaj textarea alanına yazıldı",
+      "inputWriteFailed": "Mesaj giriş alanı güncellenemedi",
+      "fastInsertWritten": "Mesaj hızlı ekleme ile yazıldı",
+      "writeFailed": "Metin yazılamadı: {{message}}",
+      "textareaMissing": "Composer textarea/div bulunamadı",
+      "characterByCharacterWritten": "Mesaj karakter karakter yazıldı"
+    },
+    "messageSender": {
+      "inputWriteFailed": "Mesaj metni giriş alanına yazılamadı",
+      "sendSuccess": "Gönderim başarıyla tamamlandı",
+      "sendTriggerFailed": "Gönder butonu tetiklenemedi",
+      "unknownUploadError": "bilinmeyen yükleme hatası",
+      "unknownSendError": "bilinmeyen gönderim hatası",
+      "logs": {
+        "urlExcluded": "{{provider}} gönderimi atlandı çünkü URL hariç tutuluyor: {{currentUrl}}",
+        "providerConfigInjectionSkipped": "{{provider}} provider config inject işlemi atlandı ({{providerId}}): {{message}}",
+        "webviewFocusFailed": "{{provider}} webview focus başarısız: {{message}}",
+        "addingMessage": "Mesaj {{provider}} giriş alanına {{messageMethod}} ile yazılıyor",
+        "waitingSendEnabled": "{{provider}} gönder butonunun aktifleşmesi bekleniyor",
+        "triggeringSend": "{{provider}} gönder butonu tetikleniyor",
+        "uploadingFiles": "{{provider}} için {{fileCount}} dosya {{fileMethod}} ile yükleniyor",
+        "fileUploadFailed": "{{provider}} {{fileMethod}} yükleme hatası: {{message}}",
+        "fileUploadNoLinks": "{{provider}} {{fileMethod}} yüklemesi bağlantı döndürmeden tamamlandı",
+        "attachingFiles": "{{provider}} için {{fileCount}} dosya {{fileMethod}} ile ekleniyor",
+        "fileAttachmentFailed": "{{provider}} dosya ekleme başarısız: {{message}}",
+        "sendTriggerFailed": "{{provider}} gönder butonu tetiklenemedi: {{message}}"
+      }
+    },
+    "fileManager": {
+      "readFailed": "Dosya okunamadı: {{path}}",
+      "archiveCopyFailed": "commandArchiveCopy başarısız: {{message}}",
+      "moveFailed": "commandMoveFailed başarısız: {{message}}",
+      "ensureDirsFailed": "ensureDirs başarısız: {{message}}",
+      "stageAttachmentsFailed": "commandStageAttachments başarısız: {{message}}",
+      "missingParameters": "Parametre eksik",
+      "apiUnavailable": "API kullanılamıyor",
+      "writeAtomicFailed": "writeFileAtomic başarısız: {{message}}",
+      "tempPathFailed": "tempPath başarısız: {{message}}",
+      "unknown": "bilinmiyor"
+    },
+    "screenshot": {
+      "capturePageFailed": "capturePage başarısız: {{message}}",
+      "captureWindowFallback": "captureWindow fallback başarısız: {{message}}",
+      "captureSystemFailed": "captureSystem başarısız: {{message}}",
+      "captureSystemFallbackFailed": "captureSystem fallback başarısız: {{message}}",
+      "saved": "Screenshot kaydedildi: {{path}}",
+      "writeFailed": "Screenshot yazılamadı: {{message}}"
+    },
     "roomPage": {
       "page": {
         "badge": "Oda",
@@ -257,6 +385,11 @@
         "runtimeReady": "Room runtime hazır.",
         "roomEvent": "Room event",
         "commandSent": "Room runtime bir komut gönderdi."
+      },
+      "commandErrors": {
+        "undefinedCommand": "Tanımsız room komutu",
+        "hostNotReady": "Room host hazır değil",
+        "outOfScope": "Room komutu kapsam dışı"
       }
     },
     "commands": {
@@ -350,6 +483,9 @@
       },
       "executor": {
         "jobStarting": "Job başlatılıyor: {{provider}}",
+        "targetRequired": "Hedef seçilmedi",
+        "attachmentsStagedLog": "Komut dosyaları hazırlandı ({{jobId}}, {{count}} dosya)",
+        "queuedLog": "Komut kuyruğa alındı ({{count}} iş)",
         "queuedDetail": "Gönderim kuyruğa alındı",
         "jobFailed": "Job başarısız: {{provider}} - {{message}}",
         "jobCompleted": "Job tamamlandı: {{provider}} ({{duration}}ms)",
@@ -357,7 +493,19 @@
         "archiveCopyDeferred": "Arşiv kopyası sync sonrasına ertelendi",
         "syncCleanupError": "Sync/temizlik hatası: {{message}}",
         "commandFailError": "commandFail hatası",
-        "commandError": "Komut hata: {{provider}} - {{message}}"
+        "commandError": "Komut hata: {{provider}} - {{message}}",
+        "unknownProtocolLog": "Bilinmeyen protokol: {{room}}:{{scenario}}",
+        "unknownProtocol": "Bilinmeyen protokol",
+        "protocolSendSkippedNoConnectedAi": "Protokol gönderilemedi: bağlı AI yok",
+        "noConnectedTarget": "Bağlı hedef yok",
+        "protocolBodyLoaded": "Protokol gövdesi yüklendi: {{protocolKey}}",
+        "protocolLoadError": "Protokol yüklenemedi: {{message}}",
+        "sequentialProtocolStarted": "Sıralı protokol oturumu başlatıldı: {{targets}}",
+        "sequentialProtocolStartFailed": "Sıralı oturum başlatılamadı: {{message}}",
+        "protocolRelayActionFailed": "Protokolden relay aksiyonu uygulanamadı: {{message}}",
+        "protocolSentLog": "Protokol gönderildi: {{room}}:{{scenario}} -> {{targets}}",
+        "protocolErrorLog": "Protokol hatası: {{message}} ({{room}}:{{scenario}})",
+        "unknownMessage": "bilinmiyor"
       },
       "catalog": {
         "DeviceManager": {
@@ -623,6 +771,16 @@
       "confirm": "Onayla",
       "ok": "Tamam",
       "save": "Kaydet"
+    },
+    "commandQueue": {
+      "initSkipped": "CommandManager init atlandı: electronAPI.commandInit mevcut değil",
+      "initFailed": "CommandManager init hatası: {{message}}",
+      "completed": "Komut tamamlandı ({{id}})",
+      "failed": "Komut hatası ({{id}}): {{reason}}",
+      "listenerError": "Komut dinleyicisi başarısız: {{message}}",
+      "writeFailed": "Komut dosyası yazılamadı: {{message}}",
+      "cleared": "Komut kuyruğu temizlendi",
+      "sanitizePayloadFailed": "{{key}} alanı sanitization sırasında atlandı: {{message}}"
     },
     "assistant": {
       "identityModal": {
@@ -900,6 +1058,10 @@
         "electronApiUnavailable": "electronAPI mevcut değil",
         "invalidPortSelection": "Geçersiz port seçimi",
         "providerServeStartFailed": "{{name}} serve başlatılamadı",
+        "avatarInvalidDimensions": "Geçersiz avatar boyutu",
+        "avatarCanvasUnavailable": "Avatar canvas context oluşturulamadı",
+        "avatarPngGenerationFailed": "Avatar PNG verisi üretilemedi",
+        "avatarImageLoadFailed": "Avatar görseli yüklenemedi",
         "avatarFileReadFailed": "Avatar dosyası okunamadı",
         "avatarSaveFailed": "Avatar kaydedilemedi",
         "connectionWaitTimeout": "Asistan bağlantısı beklenen sürede kurulamadı",
@@ -942,6 +1104,7 @@
         "providerServeStopping": "{{name}} serve durduruluyor...",
         "providerServeStopped": "{{name}} serve durduruldu",
         "providerServeStopError": "{{name}} serve durdurma hatası",
+        "providerReadyCheckCancelled": "{{name}} hazır kontrolü iptal edildi",
         "providerChanged": "Provider değiştirildi: {{providerName}}",
         "devtoolsOpened": "DevTools açıldı",
         "webviewMissing": "Webview bulunamadı",
@@ -953,10 +1116,12 @@
         "disabledMcpSaveFailed": "Disabled MCP listesi kaydedilemedi",
         "runtimeDefaultsWriteFailed": "Asistan runtime varsayılanları yazılamadı",
         "runtimeStateUpdateFailed": "Asistan runtime state güncellenemedi",
-        "opencodeSettingsUpdated": "OpenCode ayarları güncellendi"
+        "opencodeSettingsUpdated": "OpenCode ayarları güncellendi",
+        "opencodeActionButtonFailure": "OpenCode aksiyon butonu başarısız: {{message}}"
       }
     },
     "logs": {
+      "appInitFailed": "Uygulama başlatılamadı: {{message}}",
       "loggerInitialized": "Birleşik logger başlatıldı",
       "uiLogListenerReady": "UI log dinleyicisi hazır",
       "spellcheckDisableFailed": "Yazım denetimi kapatılamadı: {{message}}",
@@ -983,7 +1148,236 @@
       "relayError": "{{relay}} relay hatası: {{message}}",
       "relayButtonSetupError": "Relay buton kurulumu hatası: {{message}}",
       "relayButtonStates": "Buton durumları - ai1={{ai1}}, ai2={{ai2}}, ai0={{ai0}}",
-      "relayButtonStateUpdateError": "Relay buton durum güncelleme hatası: {{message}}"
+      "relayButtonStateUpdateError": "Relay buton durum güncelleme hatası: {{message}}",
+      "logger": {
+        "alreadyInitialized": "Logger zaten başlatılmış",
+        "initialized": "Birleşik logger başlatıldı",
+        "operationStart": "İşlem başlatıldı: {{name}}",
+        "operationSuccess": "İşlem başarıyla tamamlandı: {{name}}",
+        "operationFailed": "İşlem başarısız: {{name}} {{result}}",
+        "operationNotFound": "İşlem bulunamadı: {{correlationId}}",
+        "notInitialized": "Logger henüz başlatılmadı; önce Logger.init() çağrılmalı",
+        "batchSendFailed": "Log batch'i main process'e gönderilemedi: {{message}}",
+        "toastIntegrationFailed": "Toast entegrasyonu başarısız: {{message}}",
+        "listenerError": "Log listener hatası: {{message}}",
+        "shutdownComplete": "Logger kapatma işlemi tamamlandı"
+      },
+      "webviewLifecycle": {
+        "noProviderConfigured": "{{provider}} için provider yapılandırılmamış",
+        "urlReadFailed": "{{provider}} için mevcut URL okunamadı: {{message}}",
+        "loadingUrl": "{{provider}} için {{url}} yükleniyor",
+        "onReadyCompleted": "{{provider}} onReady callback'i dom-ready sonrasında çalıştı",
+        "onReadyFailed": "{{provider}} onReady callback'i başarısız: {{message}}",
+        "attached": "{{provider}} webview bağlandı",
+        "attachFailed": "{{provider}} webview bağlama başarısız: {{message}}",
+        "detached": "{{provider}} webview ayrıldı",
+        "destroyed": "{{provider}} webview belleği boşaltmak için yok edildi",
+        "destroyFailed": "{{provider}} webview yok etme başarısız: {{message}}",
+        "detachingInactive": "{{provider}} inaktif webview {{idleMinutes}} dakika sonra ayrılıyor",
+        "loggerSetupFailed": "{{provider}} webview logger kurulumu başarısız ({{providerId}}): {{message}}",
+        "handlerAttachFailed": "{{provider}} webview handler bağlama başarısız: {{message}}"
+      },
+      "webviewSync": {
+        "loadingStateCheckFailed": "{{provider}} loading-state kontrolü başarısız: {{message}}",
+        "initialized": "Conversation syncer başlatıldı",
+        "webviewNotFound": "{{provider}} için webview bulunamadı",
+        "urlExcludedSync": "{{provider}} sync atlandı çünkü URL hariç tutuluyor: {{currentUrl}}",
+        "urlExcludedLatestMessage": "{{provider}} latest-message sync atlandı çünkü URL hariç tutuluyor: {{currentUrl}}",
+        "syncAlreadyInProgress": "{{provider}} sync atlandı çünkü başka bir sync zaten çalışıyor",
+        "noAccountAssigned": "{{provider}} sync atlandı çünkü hesaba bağlı değil",
+        "pendingProcessingFailedDuringSync": "{{provider}} için sync sırasında pending archive işlemesi başarısız: {{message}}",
+        "syncFailed": "{{provider}} sync başarısız: {{message}}",
+        "latestMessageSyncFailed": "{{provider}} latest-message sync başarısız: {{message}}",
+        "syncProviderCalled": "{{provider}} sync isteği {{source}} kaynağından geldi",
+        "assistantRetryScheduled": "{{provider}} assistant çıktısı henüz okunabilir değil; retry #{{tried}} planlandı",
+        "syncProviderError": "{{provider}} syncProvider hatası: {{message}}",
+        "stableCallbackFailed": "{{provider}} stable callback başarısız: {{message}}",
+        "pendingProcessingFailed": "{{provider}} pending archive işlemesi başarısız: {{message}}",
+        "notifyStableFailed": "{{provider}} stable bildirimi başarısız: {{message}}",
+        "destroyed": "Conversation syncer yok edildi"
+      },
+      "pendingArchive": {
+        "processPendingError": "Pending archive kuyruğu işlenemedi: {{message}}",
+        "missingInfo": "Gerekli veriler eksik olduğu için pending archive atlandı (job {{jobId}})",
+        "processingAttachments": "{{messageId}} mesajı için {{count}} ek dosya işleniyor",
+        "attachmentSaveBridgeUnavailable": "Veritabanı köprüsü kullanılamadığı için ek dosya kaydedilemedi: {{file}}",
+        "attachmentSaveFailed": "Ek dosya kaydedilemedi: {{file}} ({{message}})",
+        "attachmentsProcessed": "Pending archive ek dosyaları işlendi (job {{jobId}})",
+        "processingFailed": "Pending archive işlemesi başarısız (job {{jobId}}): {{message}}",
+        "cleanupFailed": "Pending archive temizliği başarısız (job {{jobId}}): {{message}}"
+      },
+      "roomHost": {
+        "disposeFailed": "{{roomId}} için room host dispose başarısız: {{message}}",
+        "entryMissing": "Room host entry dosyası eksik: {{path}}",
+        "factoryMissing": "{{roomId}} için room host factory bulunamadı",
+        "loadFailed": "{{roomId}} için room host yüklenemedi: {{message}}",
+        "roomMessage": "Oda {{roomId}}: {{message}}"
+      },
+      "runtimeActions": {
+        "cleanupError": "Core runtime temizliği başarısız: {{message}}",
+        "relayInitFailed": "Relay manager başlatılamadı: {{message}}",
+        "relayAutoStopFailed": "Disconnect sonrası relay auto-stop başarısız: {{message}}"
+      },
+      "database": {
+        "storeOperationFailed": "{{store}}.{{operation}} başarısız: {{message}}"
+      },
+      "uiModal": {
+        "opened": "Modal açıldı",
+        "closed": "Modal kapandı"
+      },
+      "uiCanvas": {
+        "contextUnavailable": "2D canvas context kullanılamıyor",
+        "created": "Canvas oluşturuldu",
+        "createFailed": "Canvas oluşturulamadı: {{message}}",
+        "boardNotImplemented": "Oyun tahtası canvas'ı henüz uygulanmadı"
+      },
+      "uiAudio": {
+        "initializedPlaceholder": "Audio manager placeholder modunda başlatıldı",
+        "soundRegistered": "Ses kaydedildi: {{id}}",
+        "soundRegisterFailed": "{{id}} için ses kaydı başarısız: {{message}}",
+        "soundNotFoundPlaceholder": "Placeholder modunda ses bulunamadı: {{id}}",
+        "volumeSet": "Ses seviyesi {{volume}} olarak ayarlandı",
+        "muted": "Ses kapatıldı",
+        "unmuted": "Ses açıldı"
+      },
+      "uiButtonStates": {
+        "loadingSet": "Buton loading durumuna alındı",
+        "successSet": "Buton success durumuna alındı",
+        "errorSet": "Buton error durumuna alındı",
+        "reset": "Buton sıfırlandı",
+        "destroyed": "ButtonStates destroy çağrıldı"
+      },
+      "settings": {
+        "listenerError": "Ayar dinleyicisi hatası: {{message}}",
+        "broadcastChannelCreateFailed": "{{channelName}} için BroadcastChannel oluşturulamadı: {{message}}",
+        "loadBridgeUnavailable": "electronAPI.loadSettings kullanılamıyor",
+        "saveBridgeUnavailable": "electronAPI.saveSettings kullanılamıyor",
+        "resetToDefaults": "Tüm ayarlar varsayılan değerlere sıfırlanıyor"
+      },
+      "traffic": {
+        "webviewNotAttachable": "{{provider}} için webview bağlanabilir değil",
+        "stopError": "{{provider}} için traffic manager stop başarısız: {{message}}",
+        "clearPollTimerFailed": "Poll timer temizlenemedi: {{message}}",
+        "clearPollTimerOnDestroyFailed": "Destroy sırasında poll timer temizlenemedi: {{message}}",
+        "destroyed": "Traffic manager kapatıldı",
+        "detachEventsFailed": "Webview event'leri ayrılamadı: {{message}}",
+        "loadingStartedEvent": "{{provider}} için yükleme başladı: {{href}}",
+        "loadingStartedPanel": "{{provider}} için yükleme başladı",
+        "loadingEndedEvent": "{{provider}} için yükleme bitti ({{reason}}): {{href}}",
+        "loadingEndedPanel": "{{provider}} için yükleme bitti ({{reason}})",
+        "thinkingStartedEvent": "{{provider}} için düşünme başladı (stop butonu görünür)",
+        "thinkingStartedPanel": "{{provider}} için düşünme başladı",
+        "thinkingEndedEvent": "{{provider}} için düşünme bitti (stop butonu gizli)",
+        "thinkingEndedPanel": "{{provider}} için düşünme bitti",
+        "sendStateChanged": "{{provider}} için gönder butonu durumu değişti: {{previousIndicator}} -> {{indicator}} ({{sendState}})",
+        "loadingSyncedToIdleDueToThinking": "{{provider}} için thinking nedeniyle loading idle durumuna senkronlandı",
+        "probeCycleFailed": "{{provider}} için probe cycle başarısız: {{message}}",
+        "pollingLoopFailed": "Traffic polling loop başarısız: {{message}}",
+        "probeError": "{{provider}} için probe hatası: {{message}}",
+        "probeExecutionFailed": "{{provider}} için probe execution başarısız: {{message}}",
+        "probeDataError": "{{provider}} için probe data hatası: {{message}}",
+        "clearLoadingJustEndedFailed": "{{provider}} için loadingJustEnded temizlenemedi: {{message}}",
+        "clearThinkingJustEndedFailed": "{{provider}} için thinkingJustEnded temizlenemedi: {{message}}"
+      },
+      "relayManager": {
+        "initialized": "RelayManager AI-AI ve AI-Assistant relay'leriyle başlatıldı",
+        "assistantCommandCatchError": "Assistant command catch başarısız: {{message}}",
+        "trafficUpdateHandlerError": "Traffic update handler başarısız: {{message}}",
+        "syncCompleteHandlerError": "Sync-complete handler başarısız: {{message}}"
+      },
+      "aiaiRelay": {
+        "started": "AI-AI relay başladı: {{providers}}",
+        "protocolSending": "Protocol oturumu {{sessionId}}: {{provider}} hedefine gönderiliyor",
+        "protocolSent": "Protocol oturumu {{sessionId}}: {{provider}} hedefine gönderildi",
+        "protocolStartError": "Protocol oturumu başlatılamadı: {{message}}",
+        "stoppedWithSession": "Relay oturumu {{sessionId}} durduruldu",
+        "stopped": "AI-AI relay durduruldu",
+        "handleThinkingCompleteError": "AI-AI relay thinking-complete işlemesi başarısız: {{message}}",
+        "protocolReplyReceived": "Protocol oturumu {{sessionId}}: {{provider}} yanıt verdi",
+        "protocolForwarded": "Protocol oturumu {{sessionId}}: {{from}} -> {{to}} iletildi",
+        "protocolForwardToFailed": "Protocol oturumu {{sessionId}}: {{to}} hedefine iletim başarısız: {{message}}",
+        "protocolForwarding": "Protocol oturumu {{sessionId}}: {{from}} -> {{to}} iletiliyor (#{{count}})",
+        "protocolForwardFailed": "Protocol oturumu {{sessionId}}: {{from}} -> {{to}} iletimi başarısız: {{message}}",
+        "targetUndetermined": "Relay hedefi belirlenemedi",
+        "relaySkippedTargetNotConnected": "{{target}} hedefi bağlı olmadığı için relay atlandı",
+        "relayForwarding": "Relay iletimi (#{{count}}) {{from}} -> {{to}}",
+        "relayForwardingFailed": "Relay iletimi başarısız: {{message}}"
+      },
+      "aiAssistantRelay": {
+        "started": "AI-Assistant relay başladı: {{source}} <-> {{target}}",
+        "protocolSending": "Protocol {{provider}} hedefine gönderiliyor",
+        "protocolSent": "Protocol {{provider}} hedefine gönderildi",
+        "protocolSendFailed": "Protocol gönderilemedi: {{message}}",
+        "protocolLoadError": "Protocol yükleme hatası: {{message}}",
+        "stoppedWithSession": "AI-Assistant relay {{sessionId}} durduruldu ({{source}} <-> {{target}})",
+        "stopped": "AI-Assistant relay durduruldu",
+        "handleThinkingCompleteError": "AI-Assistant relay thinking-complete işlemesi başarısız: {{message}}",
+        "duplicateMessageBlocked": "{{provider}} için yinelenen mesaj algılandı; engellendi",
+        "protocolReplyReceived": "Oturum {{sessionId}}: AI ({{provider}}) protocol'e yanıt verdi",
+        "ignoringMessageInState": "{{provider}} için {{state}} durumundaki mesaj yok sayıldı",
+        "forwardSkippedTargetNotConnected": "{{target}} hedefi bağlı olmadığı için forward atlandı",
+        "forwarding": "AI-Assistant relay iletimi (#{{count}}) {{from}} -> {{to}}",
+        "forwardingFailed": "AI-Assistant relay iletimi başarısız: {{message}}",
+        "providerNotRecognized": "{{provider}} relay akışında tanınmadı",
+        "targetNull": "{{provider}} için relay hedefi null",
+        "thinkingTransition": "Thinking geçişi: {{provider}} {{previousState}} -> {{thinkingState}}"
+      },
+      "errorBoundary": {
+        "initialized": "ErrorBoundary başlatıldı",
+        "reported": "[{{source}}{{operationSuffix}}] {{message}}"
+      },
+      "slotController": {
+        "initialized": "SlotController başlatıldı",
+        "webviewRegistered": "Webview kaydedildi",
+        "unregisterConnected": "Bağlı slot unregister ediliyor; önce disconnect çalıştırılıyor",
+        "unregisterDisconnectFailed": "{{slot}} için unregister sırasında disconnect başarısız: {{message}}",
+        "unregisterDisconnectError": "{{slot}} için unregister sırasında disconnect hatası: {{message}}",
+        "webviewUnregistered": "Webview kayıttan çıkarıldı",
+        "manualRecovery": "ERROR durumundan manuel kurtarma çalıştırıldı",
+        "invalidTransitionBlocked": "Geçersiz state geçişi engellendi: {{oldState}} -> {{newState}}"
+      },
+      "slotStateMachine": {
+        "noOpTransition": "No-op slot geçişi atlandı: {{fromState}} -> {{targetState}}",
+        "invalidTransition": "Geçersiz slot geçişi: {{fromState}} -> {{targetState}}. İzin verilenler: [{{allowedTransitions}}]",
+        "guardRejected": "Slot transition guard reddetti: {{fromState}} -> {{targetState}}",
+        "transitioned": "{{slotId}}: {{fromState}} -> {{targetState}}{{reasonSuffix}}",
+        "transitionCallbackError": "{{fromState}} -> {{targetState}} için slot transition callback başarısız: {{message}}",
+        "sideEffectError": "{{fromState}} -> {{targetState}} için slot transition side effect başarısız: {{message}}"
+      },
+      "deviceManager": {
+        "actionError": "Device action başarısız: {{message}}",
+        "fallbackCalled": "{{action}} işlemi için device fallback çağrıldı"
+      },
+      "metaCommandManager": {
+        "customCommandsLoaded": "{{count}} özel komut yüklendi",
+        "loadCommandsError": "Özel komutlar yüklenemedi: {{message}}",
+        "commandDefined": "Özel komut tanımlandı: {{name}}",
+        "defineCommandError": "Özel komut tanımlama başarısız: {{message}}",
+        "deleteCommandError": "Özel komut silme başarısız: {{message}}",
+        "runCommandError": "{{name}} için özel komut çalıştırma başarısız: {{message}}"
+      },
+      "ipcClient": {
+        "invokeFailed": "{{channel}} için IPC invoke başarısız: {{message}}"
+      },
+      "protocolHandler": {
+        "slotUrlExcluded": "{{slot}} için URL hariç tutulduğu için protocol handling atlandı"
+      },
+      "appState": {
+        "listenerError": "App state dinleyicisi başarısız: {{message}}"
+      },
+      "coreEngine": {
+        "setConnection": "{{provider}} için bağlantı durumu güncellemesi => {{now}} (force={{force}}, prev={{prev}})",
+        "destroyed": "CoreEngine kapatıldı"
+      },
+      "roomRegistry": {
+        "listenerFailed": "Room registry listener başarısız: {{message}}",
+        "installedRoomsUnavailable": "electronAPI.roomsListInstalled kullanılamadığı için room registry yenilemesi atlandı",
+        "refreshFailed": "Room registry yenilemesi başarısız: {{message}}",
+        "workspaceListingFailed": "Workspace room listesi alınamadı: {{message}}"
+      },
+      "roomCommandRegistry": {
+        "collisionSkipped": "Room command çakışması nedeniyle atlandı: {{commandName}} ({{existingRoomId}} vs {{skippedRoomId}})"
+      }
     }
   },
   "providerTest": {
@@ -1085,7 +1479,21 @@
   "electron": {
     "archive": {
       "fallbackUserAuthor": "Kullanıcı",
-      "fallbackAssistantAuthor": "Asistan"
+      "fallbackAssistantAuthor": "Asistan",
+      "autoTitlePrefix": "Sohbet",
+      "untitledConversation": "İsimsiz Konuşma"
+    },
+    "database": {
+      "accountIdRequired": "Hesap kimliği gerekli",
+      "logs": {
+        "accountDatabaseInitialized": "{{accountId}} için hesap veritabanı başlatıldı",
+        "accountFolderDeleted": "{{accountId}} için hesap klasörü silindi",
+        "cleanupComplete": "SQLite veritabanı temizliği tamamlandı",
+        "syncMessagesComplete": "Mesaj senkronizasyonu tamamlandı ({{added}} eklendi, toplam {{total}})",
+        "attachmentSaved": "Ek dosya kaydedildi: {{originalName}}",
+        "accountDataCleared": "{{accountId}} için hesap verisi temizlendi",
+        "operationFailed": "Veritabanı işlemi başarısız ({{operation}}): {{message}}"
+      }
     },
     "googleDrive": {
       "clientConfigMissing": "Google Client ID/Secret ayarlı değil",
@@ -1095,13 +1503,110 @@
       "disconnectFailed": "Bağlantı kesme başarısız",
       "noFilesProvided": "Dosya yok",
       "authorizationMissing": "Google Drive yetkilendirmesi eksik",
-      "uploadFailed": "Yükleme başarısız"
+      "uploadFailed": "Yükleme başarısız",
+      "untrustedUrl": "Güvenilmeyen URL: {{hostname}}",
+      "browserOpenFailed": "Tarayıcı açılamadı: {{message}}"
     },
     "window": {
       "trayShow": "Göster",
       "trayFullscreen": "Tam Ekran",
       "trayQuit": "Çıkış",
-      "devPageReloaded": "Geliştirme modu: sayfa yenilendi"
+      "devPageReloaded": "Geliştirme modu: sayfa yenilendi",
+      "logs": {
+        "mainWindowUnavailable": "Ana pencere kullanılamıyor",
+        "minimizedToTray": "Pencere sistem tepsisine küçültüldü",
+        "minimizeToTrayFailed": "Pencere sistem tepsisine küçültülemedi: {{message}}",
+        "trayIconPathMissing": "Tray ikon yolu yapılandırılmamış",
+        "creatingTrayIcon": "Tray ikonu oluşturuluyor",
+        "trayClicked": "Tray ikonuna tıklandı",
+        "trayDoubleClicked": "Tray ikonuna çift tıklandı",
+        "trayCreated": "Tray ikonu oluşturuldu",
+        "trayCreationFailed": "Tray ikonu oluşturulamadı: {{message}}",
+        "restoredFromTray": "Pencere tray'den geri yüklendi",
+        "minimizeFailed": "Pencere küçültme başarısız: {{message}}",
+        "closeFailed": "Pencere kapatma başarısız: {{message}}",
+        "exitedFullscreen": "Pencere tam ekrandan çıktı",
+        "enteredFullscreen": "Pencere tam ekrana geçti",
+        "toggleFullscreenFailed": "Pencere tam ekran geçişi başarısız: {{message}}",
+        "externalLinkOpened": "Harici bağlantı sistem tarayıcısında açıldı",
+        "externalPopupOpened": "Harici popup sistem tarayıcısında açıldı"
+      }
+    },
+    "logger": {
+      "initialized": "LoggerCore başlatıldı",
+      "shuttingDown": "LoggerCore kapatılıyor"
+    },
+    "settings": {
+      "createdDefaultFile": "Varsayılan settings.json oluşturuldu",
+      "loadFailed": "Ayarlar yüklenemedi: {{message}}",
+      "saveFailed": "Ayarlar kaydedilemedi: {{message}}"
+    },
+    "session": {
+      "logs": {
+        "cacheClearedForPartition": "{{partition}} partition için cache temizlendi",
+        "cacheClearError": "Cache temizleme hatası: {{message}}",
+        "startupCacheClearingStarted": "Başlangıç cache temizliği başlatıldı",
+        "startupCacheClearingCompleted": "Başlangıç cache temizliği tamamlandı",
+        "startupCacheClearingPartiallyFailed": "Başlangıç cache temizliği kısmen başarısız oldu"
+      }
+    },
+    "main": {
+      "logs": {
+        "ttyCleanupFailed": "TTY temizleme başarısız: {{message}}",
+        "startupOpencodeBinaryProbeCompleted": "Başlangıç OpenCode binary probe tamamlandı",
+        "startupOpencodeProbeFailed": "Başlangıç OpenCode probe başarısız: {{message}}",
+        "anotherInstanceRunningExiting": "Başka bir instance zaten çalışıyor. Çıkılıyor.",
+        "secondInstanceFocused": "İkinci instance denendi; mevcut pencere odaklandı",
+        "unifiedLoggerInitialized": "Birleşik logger başlatıldı",
+        "loggerInitializationFailed": "Logger başlatılamadı: {{message}}",
+        "startupCacheClearFailed": "Başlangıç cache temizliği başarısız: {{message}}",
+        "initWindowManagerFailed": "initWindowManager başarısız: {{message}}",
+        "trayIconPathError": "Tray ikon yolu hatası: {{message}}",
+        "createAppWindowCriticalFailed": "KRİTİK: createAppWindow başarısız",
+        "cleanupStarted": "Temizlik süreci başlatıldı",
+        "opencodeServeCleanupDone": "OpenCode serve temizliği tamamlandı",
+        "opencodeServeCleanupFailed": "OpenCode serve temizliği başarısız: {{message}}",
+        "sessionClosing": "Session kapatılıyor (neden: {{reason}})",
+        "webviewLoggerSetup": "{{slot}}/{{provider}} için webview logger kurulumu yapıldı",
+        "failedToStartOpencodeServe": "OpenCode serve başlatılamadı: {{message}}",
+        "failedToStopOpencodeServe": "OpenCode serve durdurulamadı: {{message}}"
+      }
+    },
+    "opencodeServer": {
+      "logs": {
+        "foundExistingServer": "{{port}} portunda mevcut OpenCode sunucusu bulundu",
+        "reusingExistingServer": "{{port}} portundaki mevcut OpenCode sunucusu yeniden kullanılıyor",
+        "startingServe": "{{port}} portunda OpenCode serve başlatılıyor",
+        "stdout": "OpenCode serve stdout verisi alındı",
+        "stderr": "OpenCode serve stderr verisi alındı",
+        "closed": "OpenCode serve süreci kapandı (kod: {{code}})",
+        "error": "OpenCode serve süreci hatası: {{message}}",
+        "stoppingOwnProcess": "OpenCode serve süreci durduruluyor",
+        "skippingExternalStop": "OpenCode sunucusu harici olduğu için durdurma atlandı"
+      }
+    },
+    "ipc": {
+      "logs": {
+        "handlerError": "IPC handler hatası: {{message}}",
+        "loggerBatchAppendFailed": "Logger batch append başarısız: {{message}}"
+      }
+    },
+    "serverCommands": {
+      "logs": {
+        "commandReceived": "Sunucu komutu alındı: {{name}}",
+        "whisperAdded": "{{accountId}} için WhisperManager kaydı eklendi",
+        "whisperError": "WhisperManager hatası: {{message}}",
+        "deviceAction": "DeviceManager aksiyonu çalıştırıldı: {{action}}",
+        "deviceError": "DeviceManager hatası: {{message}}",
+        "screenshotSaved": "ScreenshotManager kaydetti: {{path}}",
+        "screenshotError": "ScreenshotManager hatası: {{message}}",
+        "windowAction": "WindowManager aksiyonu çalıştırıldı: {{action}}",
+        "windowError": "WindowManager hatası: {{message}}",
+        "restartRequested": "Yeniden başlatma istendi",
+        "restartError": "Yeniden başlatma hatası: {{message}}",
+        "listFilesError": "ListFiles hatası: {{message}}",
+        "undefinedCommand": "Tanımsız komut: {{commandName}}"
+      }
     },
     "metaCommand": {
       "commandNameRequired": "Komut adı gerekli",
@@ -1110,12 +1615,37 @@
       "commandUpdated": "Komut güncellendi: {{name}}",
       "commandDeleted": "Komut silindi: {{name}}",
       "commandNotFound": "Komut bulunamadı: {{name}}",
-      "deleteError": "deleteCommand hatası"
+      "deleteError": "deleteCommand hatası",
+      "logs": {
+        "loadCustomCommandsError": "Özel komutlar yüklenemedi: {{message}}",
+        "saveCustomCommandsError": "Özel komutlar kaydedilemedi: {{message}}",
+        "defineCommandError": "defineCommand başarısız: {{message}}",
+        "deleteCommandError": "deleteCommand başarısız: {{message}}",
+        "listCommandsError": "listCommands başarısız: {{message}}",
+        "getCommandError": "getCommand başarısız: {{message}}"
+      }
+    },
+    "ipcProvider": {
+      "logs": {
+        "scenarioStarted": "{{slot}} üzerinde {{providerId}} için {{scenarioId}} provider senaryosu başlatılıyor",
+        "scenarioCompleted": "{{slot}} üzerinde {{providerId}} için {{scenarioId}} provider senaryosu tamamlandı",
+        "scenarioFailed": "{{slot}}/{{scenarioId}} için provider senaryosu başarısız: {{message}}",
+        "scenarioCancelRequested": "Provider senaryosu iptal isteği gönderildi: {{runId}}",
+        "configLoadFailed": "{{providerId}} için provider yapılandırması yüklenemedi: {{message}}"
+      }
     },
     "ipcWindow": {
       "openDialogTitle": "Klasör Seçin",
       "openDialogButtonLabel": "Seç",
-      "installedOpencodeVersionMissing": "Kurulu OpenCode sürümü boş geldi."
+      "installedOpencodeVersionMissing": "Kurulu OpenCode sürümü boş geldi.",
+      "logs": {
+        "prepareRuntimeForWindowCloseFailed": "prepareRuntimeForWindowClose başarısız: {{message}}",
+        "showOpenDialogCalled": "show-open-dialog çağrıldı",
+        "showOpenDialogResult": "show-open-dialog sonucu alındı",
+        "opencodeUpdateCheckCompleted": "OpenCode güncelleme kontrolü tamamlandı (kurulu: {{installedVersion}}, son: {{latestVersion}})",
+        "opencodeInstallFellBackToBrowser": "OpenCode kurulum akışı tarayıcıya düştü",
+        "opencodeInstallTerminalLaunched": "OpenCode kurulum terminali başlatıldı"
+      }
     },
     "screenshot": {
       "windowNotFound": "Pencere bulunamadı"
@@ -1132,6 +1662,45 @@
     }
   },
   "mcpServer": {
+    "logs": {
+      "unknownTool": "bilinmiyor",
+      "toolStart": "Tool başlatıldı: {{toolName}}",
+      "toolSuccess": "Tool tamamlandı: {{toolName}} ({{duration}}ms)",
+      "toolError": "Tool başarısız: {{toolName}} - {{message}}",
+      "generalError": "MCP hatası: {{message}}",
+      "writeMcpToolsFailed": "mcp-tools.jsonl yazılamadı: {{message}}",
+      "writeStructuredFailed": "structured.jsonl yazılamadı: {{message}}",
+      "writeFailed": "MCP log yazımı başarısız: {{message}}",
+      "startLogFailed": "Tool-start loglama başarısız: {{message}}",
+      "successLogFailed": "Tool-success loglama başarısız: {{message}}",
+      "errorLogFailed": "Tool-error loglama başarısız: {{message}}",
+      "generalLogFailed": "Genel MCP loglama başarısız: {{message}}"
+    },
+    "providerConfig": {
+      "parseError": "Provider config parse hatası ({{provider}}): {{message}}"
+    },
+    "handlers": {
+      "unknownTool": "❌ Bilinmeyen tool: {{name}}\n\nKayıtlı tool sayısı: {{count}}\n\nTüm mevcut tool'ları görmek için hev_list_tools kullanın.",
+      "toolInputParseError": "❌ JSON parse hatası: tool_input string olarak gönderildi ve parse edilemedi.\n\n💡 tool_input string değil, JSON object olmalı.\nGelen değer: {{value}}...",
+      "executionError": "❌ {{name}} içinde hata:\n{{message}}"
+    },
+    "logUtils": {
+      "sessionNotFound": "Session bulunamadı: {{sessionId}}",
+      "errorLogMissing": "Error log dosyası bulunamadı",
+      "structuredLogMissing": "Structured log dosyası bulunamadı",
+      "consoleLogMissing": "Console log dosyası bulunamadı",
+      "readError": "Log okuma hatası: {{message}}"
+    },
+    "fileUtils": {
+      "findReplace": {
+        "patternNotFoundWithSuggestions": "Pattern bulunamadı. Yakın eşleşmeler:\n{{suggestions}}\n\nİpucu: ignore_whitespace: true kullanın veya dosyayı hev_fs_show ile inceleyin.",
+        "patternNotFoundLineMissing": "Pattern bulunamadı. Dosyada \"{{term}}\" içeren satır yok.\n\nİpucu: dosyayı hev_fs_show ile inceleyin.",
+        "previewTotal": "Toplam: {{count}} değişiklik"
+      },
+      "fileReading": {
+        "patternNotFound": "Pattern bulunamadı: {{patterns}}"
+      }
+    },
     "logTools": {
       "sessionMissing": "Log session bulunamadı. Uygulama hiç çalıştırılmamış olabilir.",
       "errorLogsTitle": "📕 Hata Logları (Session: {{sessionId}})",
@@ -3053,6 +3622,23 @@
       }
     },
     "fs": {
+      "recycle": {
+        "noUndoableOperation": "Geri alınacak işlem yok",
+        "operationNotFound": "İşlem bulunamadı",
+        "fileNotInTrash": "Dosya çöp kutusunda bulunamadı",
+        "fileNotFound": "Dosya bulunamadı",
+        "undoSuccess": "İşlem geri alındı: {{operationType}}",
+        "undoError": "Geri alma hatası: {{message}}"
+      },
+      "diffUtils": {
+        "fileNotFound": "Hata: {{filePath}} bulunamadı",
+        "filesIdentical": "✅ Dosyalar aynı",
+        "diffSummary": "📊 {{additions}} ekleme, {{deletions}} silme",
+        "patchEmpty": "Patch boş",
+        "invalidHunkHeader": "Geçersiz hunk header: {{line}}",
+        "patchApplyFailed": "Patch uygulanamadı ({{failedHunks}} hunk başarısız)",
+        "patchApplied": "Patch uygulandı ({{appliedLines}} satır)"
+      },
       "errors": {
         "pathTraversalDetected": "Path traversal tespit edildi. '..' kullanımına izin verilmez.",
         "pathValidationFailed": "Path doğrulaması başarısız"

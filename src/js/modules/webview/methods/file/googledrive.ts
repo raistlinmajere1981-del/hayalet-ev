@@ -21,7 +21,7 @@ export async function attachFiles(
 }> {
   const validation = UploadManager.validateFiles(files);
   if (!validation.valid) {
-    return UploadManager.createError(validation.message ?? "Validation failed");
+    return UploadManager.createError(validation.message ?? UploadManager.t("validationFailed"));
   }
 
   try {
@@ -29,8 +29,12 @@ export async function attachFiles(
 
     return UploadManager.formatResponse(uploadedLinks, errors, "Drive");
   } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : "Google Drive hatası";
-    Logger.error(LogCategory.WEBVIEW, "Google Drive upload failed", { error: errorMsg });
+    const errorMsg = err instanceof Error ? err.message : UploadManager.t("googleDriveError");
+    Logger.error(
+      LogCategory.WEBVIEW,
+      UploadManager.t("uploadFailed", { service: "Google Drive", reason: errorMsg }),
+      { error: errorMsg }
+    );
     return UploadManager.createError(errorMsg, [], "Google Drive");
   }
 }

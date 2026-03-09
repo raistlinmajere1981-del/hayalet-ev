@@ -1,11 +1,11 @@
 /**
- * ProbeScriptBuilder - Webview probe script oluşturucu
+ * ProbeScriptBuilder - webview probe script builder
  *
- * Bu modül webview içinde çalıştırılacak probe script'ini oluşturur.
- * Probe script:
- * - Send/Stop/Voice butonlarını tespit eder
- * - Scroll durumunu takip eder
- * - Kullanıcı etkileşimlerini dinler
+ * Builds the probe script that runs inside the webview.
+ * The probe script:
+ * - detects Send/Stop/Voice buttons
+ * - tracks scroll state
+ * - listens for user interactions
  */
 
 import { ProviderRegistry } from "../webview/provider-registry.js";

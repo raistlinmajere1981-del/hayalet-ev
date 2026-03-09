@@ -128,7 +128,10 @@ class ConversationListManagerClass {
     SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
 
     if (!options.isInitial) {
-      Logger.info(LogCategory.WEBVIEW, `User selected: ${provider} -> ${conversationId}`);
+      Logger.info(
+        LogCategory.WEBVIEW,
+        conversationListT("logs.userSelected", { provider, conversationId })
+      );
     }
 
     window.dispatchEvent(

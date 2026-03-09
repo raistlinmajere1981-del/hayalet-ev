@@ -1,5 +1,5 @@
 /**
- * Traffic Types - State tracking tipleri
+ * Traffic Types - state tracking types
  *
  * @module src/js/types/traffic
  */
@@ -8,7 +8,7 @@ import type { SlotId, ProviderId } from "./common.js";
 
 // Traffic State Types
 
-/** Slot durumu */
+/** Slot state */
 export interface SlotState {
   slot: SlotId;
   provider: ProviderId | null;
@@ -21,10 +21,10 @@ export interface SlotState {
   error?: string;
 }
 
-/** Tüm slotların durumu */
+/** State of all slots */
 export type TrafficState = Record<SlotId, SlotState>;
 
-/** State değişiklik event'i */
+/** State-change event */
 export interface StateChangeEvent {
   slot: SlotId;
   field: keyof SlotState;
@@ -35,7 +35,7 @@ export interface StateChangeEvent {
 
 // Loading Tracker Types
 
-/** Loading durumu */
+/** Loading state */
 export interface LoadingState {
   isLoading: boolean;
   startedAt?: number;
@@ -43,7 +43,7 @@ export interface LoadingState {
   url?: string;
 }
 
-/** Loading event'i */
+/** Loading event */
 export interface LoadingEvent {
   slot: SlotId;
   type: "start" | "progress" | "complete" | "error";
@@ -54,21 +54,21 @@ export interface LoadingEvent {
 
 // Thinking Tracker Types
 
-/** Thinking durumu */
+/** Thinking state */
 export interface ThinkingState {
   isThinking: boolean;
   startedAt?: number;
   indicator?: ThinkingIndicator;
 }
 
-/** Thinking göstergesi */
+/** Thinking indicator */
 export interface ThinkingIndicator {
   visible: boolean;
   element?: string;
   text?: string;
 }
 
-/** Thinking event'i */
+/** Thinking event */
 export interface ThinkingEvent {
   slot: SlotId;
   type: "start" | "stop";
@@ -77,7 +77,7 @@ export interface ThinkingEvent {
 
 // Send Tracker Types
 
-/** Gönderim durumu */
+/** Send state */
 export interface SendState {
   isSending: boolean;
   startedAt?: number;
@@ -85,7 +85,7 @@ export interface SendState {
   attachments?: number;
 }
 
-/** Gönderim event'i */
+/** Send event */
 export interface SendEvent {
   slot: SlotId;
   type: "start" | "complete" | "error";
@@ -97,7 +97,7 @@ export interface SendEvent {
 
 // Probe Types
 
-/** Probe sonucu */
+/** Probe result */
 export interface ProbeResult {
   slot: SlotId;
   timestamp: number;
@@ -110,7 +110,7 @@ export interface ProbeResult {
   error?: string;
 }
 
-/** Probe script oluşturucu options */
+/** Probe-script builder options */
 export interface ProbeScriptOptions {
   provider: ProviderId;
   checkInput?: boolean;

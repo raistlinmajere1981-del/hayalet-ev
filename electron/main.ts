@@ -42,6 +42,7 @@ import {
   googledriveExchangeCode,
   googledriveDisconnect,
   googledriveUpload,
+  googleDriveT,
 } from "./googledrive-manager.ts";
 import { opencodeServerManager } from "./opencode-server-manager.ts";
 import {
@@ -98,9 +99,15 @@ if (process.stdout.isTTY === true) {
   try {
     process.stdout.write("\x1b" + "[?1004l");
   } catch (e) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "TTY cleanup failed", {
-      error: e,
-    });
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.WARNING,
+      "electron.main.logs.ttyCleanupFailed",
+      { message: e instanceof Error ? e.message : String(e) },
+      {
+        error: e,
+      }
+    );
   }
 }
 
@@ -176,10 +183,11 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
       await saveSettings(settings);
     }
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.INFO,
-      "Startup OpenCode binary probe completed",
+      "electron.main.logs.startupOpencodeBinaryProbeCompleted",
+      undefined,
       {
         available: diagnosis.available,
         version: opencode["version"],
@@ -188,20 +196,25 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
       }
     );
   } catch (error) {
-    await logger.logInternal(LogCategory.MAIN, LogLevel.WARNING, "Startup OpenCode probe failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.WARNING,
+      "electron.main.logs.startupOpencodeProbeFailed",
+      { message: error instanceof Error ? error.message : String(error) },
+      {
+        error: error instanceof Error ? error.message : String(error),
+      }
+    );
   }
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  void logger.logInternal(
+  void logger.logInternalT(
     LogCategory.MAIN,
     LogLevel.INFO,
-    "Another instance is already running. Exiting...",
-    {}
+    "electron.main.logs.anotherInstanceRunningExiting"
   );
   app.quit();
 } else {
@@ -211,11 +224,10 @@ if (!gotTheLock) {
         mainWindow.restore();
       }
       mainWindow.focus();
-      void logger.logInternal(
+      void logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.INFO,
-        "Second instance attempted - focused existing window",
-        {}
+        "electron.main.logs.secondInstanceFocused"
       );
     }
   });
@@ -225,12 +237,13 @@ void app.whenReady().then(async () => {
   try {
     try {
       await initLogger();
-      await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Unified logger initialized", {});
+      await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.main.logs.unifiedLoggerInitialized");
     } catch (e: unknown) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.ERROR,
-        `Logger initialization failed: ${(e as Error).message}`,
+        "electron.main.logs.loggerInitializationFailed",
+        { message: (e as Error).message },
         {
           error: {
             name: (e as Error).name,
@@ -244,10 +257,11 @@ void app.whenReady().then(async () => {
     try {
       await SessionManager.clearStartupCache();
     } catch (e: unknown) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.WARNING,
-        `Startup cache clear failed: ${(e as Error).message}`,
+        "electron.main.logs.startupCacheClearFailed",
+        { message: (e as Error).message },
         { error: { message: (e as Error).message } }
       );
     }
@@ -272,27 +286,45 @@ void app.whenReady().then(async () => {
     try {
       initWindowManager({ mainWindow });
     } catch (e) {
-      void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "initWindowManager failed", {
-        error: e,
-      });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.ERROR,
+        "electron.main.logs.initWindowManagerFailed",
+        { message: e instanceof Error ? e.message : String(e) },
+        {
+          error: e,
+        }
+      );
     }
 
     try {
       const iconPath = Paths.getIconPath();
       setTrayIconPath(iconPath);
     } catch (e) {
-      await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Tray icon path error", {
-        error: e,
-      });
+      await logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.ERROR,
+        "electron.main.logs.trayIconPathError",
+        { message: e instanceof Error ? e.message : String(e) },
+        {
+          error: e,
+        }
+      );
     }
   } catch (err: unknown) {
     const errorDetails =
       err instanceof Error
         ? { name: err.name, message: err.message, stack: err.stack }
         : { raw: String(err) };
-    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "CRITICAL: createAppWindow failed", {
-      error: errorDetails,
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.main.logs.createAppWindowCriticalFailed",
+      undefined,
+      {
+        error: errorDetails,
+      }
+    );
     console.error("CRITICAL ERROR:", err);
     process.exit(1);
   }
@@ -321,9 +353,15 @@ async function performCleanup(): Promise<void> {
 
   const keepServersOnAppClose = await shouldKeepAssistantServersRunningOnClose();
 
-  await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Cleanup started", {
-    keepServersOnAppClose,
-  });
+  await logger.logInternalT(
+    LogCategory.MAIN,
+    LogLevel.INFO,
+    "electron.main.logs.cleanupStarted",
+    undefined,
+    {
+      keepServersOnAppClose,
+    }
+  );
 
   try {
     if (keepServersOnAppClose) {
@@ -348,22 +386,40 @@ async function performCleanup(): Promise<void> {
         console.info("[MAIN] OpenCode serve not running, skipping");
       }
     }
-    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "OpenCode serve cleanup done", {
-      keepServersOnAppClose,
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.main.logs.opencodeServeCleanupDone",
+      undefined,
+      {
+        keepServersOnAppClose,
+      }
+    );
   } catch (err: unknown) {
     console.info(
       `[MAIN] OpenCode serve cleanup failed: ${err instanceof Error ? err.message : String(err)}`
     );
-    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "OpenCode serve cleanup failed", {
-      error: err,
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.main.logs.opencodeServeCleanupFailed",
+      { message: err instanceof Error ? err.message : String(err) },
+      {
+        error: err,
+      }
+    );
   }
 
   try {
-    await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Session closing", {
-      reason: "normal",
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.main.logs.sessionClosing",
+      { reason: "normal" },
+      {
+        reason: "normal",
+      }
+    );
     await shutdownLogger();
     console.info("[MAIN] Logger shutdown complete");
   } catch (err: unknown) {
@@ -423,11 +479,20 @@ registerHandler("googledrive-start-auth", async (event) => {
     try {
       const urlObj = new URL(authUrl);
       if (!ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
-        return { ...result, success: false, message: "Güvenilmeyen URL: " + urlObj.hostname };
+        return {
+          ...result,
+          success: false,
+          message: await googleDriveT("untrustedUrl", { hostname: urlObj.hostname }),
+        };
       }
       await shell.openExternal(authUrl);
     } catch (err: unknown) {
-      return { ...result, message: "Tarayıcı açılamadı: " + (err as Error).message };
+      return {
+        ...result,
+        message: await googleDriveT("browserOpenFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      };
     }
   }
   return result;
@@ -507,10 +572,11 @@ registerHandler("write-state-snapshot", async () => {
 registerHandler(
   "setup-webview-logger",
   async (_event, webviewId: number, slot: string, provider: string) => {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.WEBVIEW,
       LogLevel.INFO,
-      `WebView logger setup for ${slot}/${provider}`,
+      "electron.main.logs.webviewLoggerSetup",
+      { slot, provider },
       {
         webviewId,
         slot,
@@ -539,9 +605,15 @@ registerHandler(
       const result = await opencodeServerManager.start(options);
       return { success: true, ...result };
     } catch (err) {
-      await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Failed to start OpenCode serve", {
-        error: err instanceof Error ? err.message : String(err),
-      });
+      await logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.ERROR,
+        "electron.main.logs.failedToStartOpencodeServe",
+        { message: err instanceof Error ? err.message : String(err) },
+        {
+          error: err instanceof Error ? err.message : String(err),
+        }
+      );
       return {
         success: false,
         error: err instanceof Error ? err.message : "Unknown error",
@@ -555,9 +627,15 @@ registerHandler("opencode-serve-stop", async () => {
     await opencodeServerManager.stop();
     return { success: true };
   } catch (err) {
-    await logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "Failed to stop OpenCode serve", {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.ERROR,
+      "electron.main.logs.failedToStopOpencodeServe",
+      { message: err instanceof Error ? err.message : String(err) },
+      {
+        error: err instanceof Error ? err.message : String(err),
+      }
+    );
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

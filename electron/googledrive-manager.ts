@@ -79,7 +79,7 @@ async function translateElectronMessage(
   return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
 }
 
-async function googleDriveT(
+export async function googleDriveT(
   key: string,
   params?: TranslationParams,
   settings?: Settings

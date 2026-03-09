@@ -35,19 +35,19 @@ export async function expandCodeChunks(
   patterns: string[] = []
 ): Promise<{ content: string; error?: string }> {
   try {
-    // Önce patterns ile ara
+    // Search by symbol patterns first.
     if (patterns.length > 0) {
       const content = await expandSymbols(filePath, patterns);
       return { content };
     }
 
-    // Line ranges ile genişlet
+    // Expand via explicit line ranges.
     if (lineRanges.length > 0) {
       const content = await expandLineRanges(filePath, lineRanges);
       return { content };
     }
 
-    // Hiçbiri verilmediyse tüm dosyayı göster
+    // If no filter is provided, return the whole file.
     const fileContent = await readFile(filePath, "utf-8");
     return { content: addLineNumbers(fileContent) };
   } catch (error) {
@@ -125,11 +125,11 @@ export async function findAndReplaceCode(
     });
   }
 
-  // Context preview oluştur (değişiklik yapıldıysa)
+  // Build a context preview when a change was applied.
   let contextPreview: string | undefined;
   if (result.success && result.replacements > 0) {
     try {
-      // İlk değişikliğin olduğu satırı bul
+      // Find the first changed line.
       const content = await readFile(filePath, "utf-8");
       const lines = content.split("\n");
       let firstChangeLineIndex = -1;
@@ -143,7 +143,7 @@ export async function findAndReplaceCode(
       }
 
       if (firstChangeLineIndex >= 0) {
-        // Değişiklik yapılan ilk satır etrafında context preview
+        // Show context around the first changed line.
         contextPreview = await getContextPreview(
           filePath,
           firstChangeLineIndex,
@@ -152,7 +152,7 @@ export async function findAndReplaceCode(
         );
       }
     } catch (err) {
-      // Context preview oluşturulamazsa sessizce devam et
+      // Continue silently if the context preview cannot be built.
     }
   }
 

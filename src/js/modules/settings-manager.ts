@@ -163,10 +163,7 @@ class SettingsManagerClass {
   }
 
   async resetToDefaults(): Promise<boolean> {
-    Logger.warn(
-      LogCategory.SETTINGS,
-      "resetToDefaults() called - resetting all settings to default values"
-    );
+    Logger.warnT(LogCategory.SETTINGS, "app.logs.settings.resetToDefaults");
     const defaults = defaultSettings();
     return await this.save(defaults as unknown as Record<string, unknown>);
   }

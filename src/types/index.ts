@@ -1,7 +1,7 @@
 /**
  * Hayalet-ev Unified Type Definitions
  *
- * Merkezi type tanımları - tüm modüller buradan import eder
+ * Centralized type definitions imported by all modules
  *
  * @module src/types
  * @version 2.0.0

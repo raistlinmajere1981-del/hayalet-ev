@@ -3,6 +3,8 @@
  * @param {Array} files - Files to validate
  * @returns {Object} Validation result
  */
+import { AppI18n } from "../../../i18n/index.js";
+
 interface FilePayload {
   name: string;
   base64?: string;
@@ -15,16 +17,22 @@ interface UploadError {
   error: string;
 }
 
+function uploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.upload.${key}`, params);
+}
+
 export function validateFiles(files: FilePayload[]): { valid: boolean; message?: string } {
   if (files.length === 0) {
-    return { valid: false, message: "Aktarılacak dosya bulunamadı" };
+    return { valid: false, message: uploadT("noFiles") };
   }
 
   for (const file of files) {
     if (file.name === "" || file.base64 === "") {
       return {
         valid: false,
-        message: `Geçersiz dosya: ${file.name}`,
+        message: uploadT("invalidFile", {
+          name: file.name !== "" ? file.name : uploadT("untitledFile"),
+        }),
       };
     }
   }
@@ -46,7 +54,10 @@ export function createErrorResponse(
 ): { success: boolean; message: string; errors: UploadError[]; injected: boolean } {
   return {
     success: false,
-    message: serviceName !== "" ? `${serviceName} hatası: ${message}` : message,
+    message:
+      serviceName !== ""
+        ? uploadT("serviceError", { service: serviceName, message })
+        : message,
     errors,
     injected: false,
   };

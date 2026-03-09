@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 import { detectContextAwareDuplicates } from "../duplicate-detector.js";
 
 /**
- * Değişiklik bölgesinin context preview'ını oluştur
+ * Build a context preview for a changed region.
  */
 export async function getContextPreview(
   filePath: string,

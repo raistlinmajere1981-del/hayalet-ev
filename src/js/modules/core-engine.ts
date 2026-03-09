@@ -124,9 +124,15 @@ class CoreEngineClass {
     const force = opts.force === true;
     const url = opts.url;
 
-    Logger.debug(
+    Logger.debugT(
       LogCategory.SYSTEM,
-      `setConnection ${provider} => ${String(now)} (force=${String(force)}, prev=${String(prev)})`,
+      "app.logs.coreEngine.setConnection",
+      {
+        provider,
+        now: String(now),
+        force: String(force),
+        prev: String(prev),
+      },
       {
         context: { provider, now, force, prev, ...(url !== undefined ? { url } : {}) },
       }
@@ -283,7 +289,7 @@ class CoreEngineClass {
     });
   }
 
-  /** Protokol metnindeki <AI0>, <AI1>, <AI2> etiketlerini nickname ile değiştirir */
+  /** Replace <AI0>, <AI1>, and <AI2> tags in protocol text with nicknames. */
   replaceProtocolTags(text: string): string {
     return replaceProtocolTags(text);
   }
@@ -335,7 +341,7 @@ class CoreEngineClass {
       })
       .catch(() => {});
     this.initialized = false;
-    Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, "CoreEngine destroyed");
+    Logger.panelT(LogCategory.SYSTEM, LogLevel.INFO, "app.logs.coreEngine.destroyed");
   }
 }
 

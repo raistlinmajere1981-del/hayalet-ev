@@ -223,10 +223,11 @@ async function runProviderScenario(
     const abortController = new AbortController();
     activeScenarioRuns.set(runId, abortController);
 
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.IPC,
       LogLevel.INFO,
-      `Starting provider scenario ${scenarioId} for ${providerId} on ${slot}`,
+      "electron.ipcProvider.logs.scenarioStarted",
+      { scenarioId, providerId, slot },
       { slot, providerId, scenarioId, runId }
     );
 
@@ -285,10 +286,11 @@ async function runProviderScenario(
         }
       }
 
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.INFO,
-        `Provider scenario completed: ${scenarioId}`,
+        "electron.ipcProvider.logs.scenarioCompleted",
+        { scenarioId, providerId, slot },
         {
           slot,
           providerId,
@@ -309,10 +311,11 @@ async function runProviderScenario(
       activeScenarioRuns.delete(runId);
     }
   } catch (err) {
-    await logger.logInternal(
+    await logger.logInternalT(
       LogCategory.IPC,
       LogLevel.ERROR,
-      `Provider scenario failed: ${(err as Error).message}`,
+      "electron.ipcProvider.logs.scenarioFailed",
+      { slot, scenarioId, message: (err as Error).message },
       {
         slot,
         scenarioId,
@@ -345,9 +348,13 @@ async function cancelProviderScenario(
   controller.abort();
   activeScenarioRuns.delete(runId);
 
-  await logger.logInternal(LogCategory.IPC, LogLevel.INFO, "Provider scenario cancel requested", {
-    runId,
-  });
+  await logger.logInternalT(
+    LogCategory.IPC,
+    LogLevel.INFO,
+    "electron.ipcProvider.logs.scenarioCancelRequested",
+    { runId },
+    { runId }
+  );
 
   return {
     success: true,
@@ -385,10 +392,11 @@ export function setupProviderHandlers(): void {
         telemetry: cfg["telemetry"] ?? null,
       };
     } catch (err) {
-      await logger.logInternal(
+      await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.ERROR,
-        `Error loading provider config: ${(err as Error).message}`,
+        "electron.ipcProvider.logs.configLoadFailed",
+        { providerId, message: (err as Error).message },
         {
           providerId,
           error: {

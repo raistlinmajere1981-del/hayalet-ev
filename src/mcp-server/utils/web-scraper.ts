@@ -1,6 +1,6 @@
 /**
  * Web Scraper Utility
- * HTML'den temiz metin çıkarma ve içerik işleme
+ * Extract clean text from HTML and process page content
  */
 
 import * as cheerio from "cheerio";
@@ -8,7 +8,7 @@ import type { AnyNode } from "domhandler";
 import { WEB_TIMEOUTS } from "@timeouts";
 import { createMcpTranslatorSync, readMcpAppLanguageSync } from "./i18n/index.js";
 
-// Kaldırılacak elementler (noise)
+// Elements to remove as noise.
 const REMOVE_SELECTORS = [
   "script",
   "style",
@@ -46,7 +46,7 @@ const REMOVE_SELECTORS = [
   "[aria-hidden='true']",
 ];
 
-// İçerik için öncelikli elementler
+// Preferred content containers.
 const CONTENT_SELECTORS = [
   "article",
   "main",
@@ -82,13 +82,13 @@ export interface FetchOptions {
 
 const DEFAULT_OPTIONS: FetchOptions = {
   timeout: WEB_TIMEOUTS.PAGE_FETCH,
-  maxLength: 50000, // ~50KB metin
+  maxLength: 50000, // ~50KB text
   includeLinks: true,
   userAgent: "Mozilla/5.0 (compatible; Hayalet-ev/1.0; +https://github.com/)",
 };
 
 /**
- * URL'den sayfa içeriğini çek ve temizle
+ * Fetch page content from a URL and clean it.
  */
 export async function fetchAndParse(
   url: string,
@@ -100,7 +100,7 @@ export async function fetchAndParse(
   const acceptLanguage =
     locale === "en" ? "en-US,en;q=0.9,tr-TR,tr;q=0.7" : "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7";
 
-  // URL doğrulama
+  // URL validation.
   const parsedUrl = new URL(url);
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     throw new Error(t("mcpServer.webTools.scraper.errors.httpHttpsOnly"));
@@ -150,21 +150,21 @@ export async function fetchAndParse(
 }
 
 /**
- * HTML'i parse et ve temiz içerik çıkar
+ * Parse HTML and extract clean content.
  */
 export function parseHTML(html: string, url: string, options: FetchOptions = {}): ScrapedContent {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const t = createMcpTranslatorSync();
   const $ = cheerio.load(html);
-  // $ used in commented code
+  // $ is also referenced from explanatory comments below.
   void $; // Prevent unused warning
 
-  // Noise elementleri kaldır
+  // Remove noisy elements.
   REMOVE_SELECTORS.forEach((selector) => {
     $(selector).remove();
   });
 
-  // Metadata çıkar
+  // Extract metadata.
   const title =
     ($("title").text().trim().length > 0 ? $("title").text().trim() : null) ??
     $('meta[property="og:title"]').attr("content") ??
@@ -179,7 +179,7 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
   const language =
     $("html").attr("lang") ?? $('meta[http-equiv="content-language"]').attr("content");
 
-  // Ana içeriği bul
+  // Find the main content container.
   let contentElement = null;
   for (const selector of CONTENT_SELECTORS) {
     const el = $(selector).first();
@@ -189,14 +189,14 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
     }
   }
 
-  // Fallback: body kullan
+  // Fallback to the body element.
   contentElement ??= $("body");
 
-  // İçeriği temizle ve çıkar
+  // Extract cleaned text and markdown.
   const content = extractText(contentElement, $, opts.includeLinks ?? false);
   const markdown = extractMarkdown(contentElement, $, opts.includeLinks ?? false);
 
-  // Uzunluk limiti uygula
+  // Apply the length limit.
   const truncatedContent = content.slice(0, opts.maxLength ?? 50000);
   const truncatedMarkdown = markdown.slice(0, opts.maxLength ?? 50000);
 
@@ -223,7 +223,7 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
 }
 
 /**
- * Element'ten temiz metin çıkar
+ * Extract clean text from an element.
  */
 function extractText(
   element: cheerio.Cheerio<AnyNode>,
@@ -232,7 +232,7 @@ function extractText(
 ): string {
   const lines: string[] = [];
 
-  // Her bloğu işle
+  // Process each block.
   element.find("p, h1, h2, h3, h4, h5, h6, li, td, th, pre, blockquote, div").each((_, el) => {
     const $el = $(el);
     const tagName = el.type === "tag" ? el.tagName.toLowerCase() : "";
@@ -244,25 +244,25 @@ function extractText(
 
     let text = $el.text().trim();
 
-    // Boş veya çok kısa içeriği atla
+    // Skip empty or very short content.
     if (text.length < 3) return;
 
-    // Heading'ler için format
+    // Format headings.
     if (tagName.startsWith("h")) {
       text = `\n## ${text}\n`;
     }
 
-    // Liste elemanları
+    // List items.
     if (tagName === "li") {
       text = `• ${text}`;
     }
 
-    // Code blokları
+    // Code blocks.
     if (tagName === "pre") {
       text = `\n\`\`\`\n${text}\n\`\`\`\n`;
     }
 
-    // Alıntılar
+    // Quotes.
     if (tagName === "blockquote") {
       text = `> ${text}`;
     }
@@ -270,7 +270,7 @@ function extractText(
     lines.push(text);
   });
 
-  // Tekrarlanan boş satırları temizle
+  // Remove repeated blank lines.
   return lines
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -278,7 +278,7 @@ function extractText(
 }
 
 /**
- * Element'ten Markdown çıkar
+ * Extract Markdown from an element.
  */
 function extractMarkdown(
   element: cheerio.Cheerio<AnyNode>,
@@ -293,7 +293,7 @@ function extractMarkdown(
       const $el = $(el);
       const tagName = el.type === "tag" ? el.tagName.toLowerCase() : "";
 
-      // İç içe elementleri atla (sadece üst seviye işle)
+      // Skip nested elements and process only the top level.
       if ($el.parents("p, li, h1, h2, h3, h4, h5, h6").length > 0) {
         return;
       }
@@ -352,7 +352,7 @@ function extractMarkdown(
 }
 
 /**
- * Inline elementleri işle (bold, italic, link, code)
+ * Process inline elements (bold, italic, link, code).
  */
 function processInlineElements(
   $el: cheerio.Cheerio<AnyNode>,
@@ -379,17 +379,17 @@ function processInlineElements(
     html = html.replace(/<a[^>]*>(.*?)<\/a>/gi, "$1");
   }
 
-  // Kalan HTML tag'lerini kaldır
+  // Remove remaining HTML tags.
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
 /**
- * Metni belirli uzunlukta özetle (basit truncate)
+ * Truncate text to a target length.
  */
 export function truncateText(text: string, maxLength: number, suffix = "..."): string {
   if (text.length <= maxLength) return text;
 
-  // Kelime sınırında kes
+  // Cut at a word boundary.
   const truncated = text.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
 
@@ -401,7 +401,7 @@ export function truncateText(text: string, maxLength: number, suffix = "..."): s
 }
 
 /**
- * URL'in erişilebilir olup olmadığını kontrol et
+ * Check whether a URL is reachable.
  */
 export async function checkUrlAccessible(
   url: string,

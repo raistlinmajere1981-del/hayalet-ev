@@ -7,6 +7,7 @@
 
 import { getHandler, getToolCount, getRegisteredToolNames, getRegistryStats } from "./registry.js";
 import { logToolCall, logToolSuccess, logToolError } from "../utils/mcp-logger.js";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 interface LoggingAdapter {
   logToolCall: (name: string, args: unknown) => { startTime: number };
@@ -21,6 +22,8 @@ const defaultLoggingAdapter: LoggingAdapter = {
   logToolError,
   now: () => Date.now(),
 };
+
+const handlerT = createMcpTranslatorSync();
 
 export async function executeHandlerWithLogging(
   name: string,
@@ -56,15 +59,18 @@ export async function handleToolCall(
       content: [
         {
           type: "text",
-          text: `❌ Unknown tool: ${name}\n\nRegistered tools: ${getToolCount()}\n\nUse hev_list_tools to see all available tools.`,
+          text: handlerT("mcpServer.handlers.unknownTool", {
+            name,
+            count: getToolCount(),
+          }),
         },
       ],
       isError: true,
     };
   }
 
-  // Guard: LLM bazen tool_input'u string olarak gönderir (JSON parse hatası)
-  // Bu durumda otomatik olarak parse etmeye çalış
+  // Guard: some LLMs occasionally send tool_input as a raw string.
+  // Try to parse it automatically before failing.
   let safeArgs = args;
   if (typeof args === "string") {
     try {
@@ -74,10 +80,9 @@ export async function handleToolCall(
         content: [
           {
             type: "text",
-            text:
-              `❌ JSON parse hatası: tool_input string olarak gönderildi ve parse edilemedi.\n\n` +
-              `💡 tool_input bir JSON object olmalı, string değil.\n` +
-              `Gelen değer: ${String(args).slice(0, 200)}...`,
+            text: handlerT("mcpServer.handlers.toolInputParseError", {
+              value: String(args).slice(0, 200),
+            }),
           },
         ],
         isError: true,
@@ -93,7 +98,10 @@ export async function handleToolCall(
       content: [
         {
           type: "text",
-          text: `❌ Error in ${name}:\n${errorMessage}`,
+          text: handlerT("mcpServer.handlers.executionError", {
+            name,
+            message: errorMessage,
+          }),
         },
       ],
       isError: true,

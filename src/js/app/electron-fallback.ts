@@ -1,8 +1,8 @@
 /**
  * Electron API Fallback
  *
- * Electron ortamı dışında (web/dev) çalışırken
- * window.electronAPI'nin mock implementasyonunu sağlar.
+ * Provides a mock implementation of `window.electronAPI`
+ * when running outside Electron (web/dev).
  */
 
 import { getFilename } from "../constants/index.js";

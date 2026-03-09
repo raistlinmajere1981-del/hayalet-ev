@@ -46,7 +46,7 @@ export function createDefaultSettings(): AppSettings {
     general: {
       language: DEFAULT_APP_LANGUAGE,
     },
-    user: { nickname: "Kullanıcı", avatarPath: "src/assets/default.png" },
+    user: { nickname: "User", avatarPath: "src/assets/default.png" },
     integrations: {
       googledrive: defaultGoogleDrive,
     },

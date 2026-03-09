@@ -1,12 +1,12 @@
 /**
- * ErrorBoundary - Global hata yakalama ve yönetimi
+ * ErrorBoundary - global error capture and handling
  *
- * Bu modül renderer process'te oluşan hataları yakalar ve güvenli bir şekilde
- * işler. Kritik hataların tüm uygulamayı etkilemesini önler.
+ * Captures renderer-process errors and handles them safely.
+ * Prevents critical failures from taking down the entire application.
  *
- * Kullanım:
- * - Async fonksiyonları wrap etmek için: ErrorBoundary.wrap()
- * - Global hata yakalama için: ErrorBoundary.init()
+ * Usage:
+ * - Wrap async functions: ErrorBoundary.wrap()
+ * - Install global handlers: ErrorBoundary.init()
  */
 
 import { Logger, LogCategory, LogVisibility } from "./logger/index.js";
@@ -71,14 +71,14 @@ class ErrorBoundaryClass {
     });
 
     this._initialized = true;
-    Logger.info(LogCategory.SYSTEM, "ErrorBoundary initialized", {
+    Logger.infoT(LogCategory.SYSTEM, "app.logs.errorBoundary.initialized", undefined, {
       visibility: LogVisibility.PANEL,
     });
   }
 
   /**
-   * Async fonksiyonu güvenli bir şekilde çalıştır
-   * Hata oluşursa loglar ve null döner
+   * Run an async function safely.
+   * Logs the error and returns null when it fails.
    *
    * @example
    * const result = await ErrorBoundary.wrap(
@@ -135,7 +135,7 @@ class ErrorBoundaryClass {
   }
 
   /**
-   * Son hataları getir (debugging için)
+   * Return recent errors for debugging.
    */
   getRecentErrors(): ErrorReport[] {
     return [...this._recentErrors];
@@ -162,19 +162,26 @@ class ErrorBoundaryClass {
       this._recentErrors.pop();
     }
 
-    const logMessage =
-      context.operation !== undefined && context.operation !== ""
-        ? `[${context.source}:${context.operation}] ${report.message}`
-        : `[${context.source}] ${report.message}`;
-
-    Logger.error(LogCategory.SYSTEM, logMessage, {
+    Logger.errorT(
+      LogCategory.SYSTEM,
+      "app.logs.errorBoundary.reported",
+      {
+        source: context.source,
+        operationSuffix:
+          context.operation !== undefined && context.operation !== ""
+            ? `:${context.operation}`
+            : "",
+        message: report.message,
+      },
+      {
       error: error instanceof Error ? error : new Error(String(error)),
       context: {
         source: context.source,
         operation: context.operation,
         ...context.metadata,
       },
-    });
+      }
+    );
 
     for (const callback of this._errorCallbacks) {
       try {

@@ -2,6 +2,7 @@ import { Logger } from "./logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import { getMimeType, getFilename, generateUniqueId } from "../constants/index.js";
+import { AppI18n } from "./i18n/index.js";
 
 interface FileEntry {
   name?: string;
@@ -21,6 +22,10 @@ interface StageResult {
   staged: unknown[];
   temp: string[];
   commandDir: string;
+}
+
+function fileManagerT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.fileManager.${key}`, params);
 }
 
 class FileManagerClass {
@@ -48,7 +53,10 @@ class FileManagerClass {
       return res.paths ?? {};
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      Logger.error(LogCategory.FILE_MANAGER, `ensureDirs hata: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.FILE_MANAGER,
+        fileManagerT("ensureDirsFailed", { message: getErrorMessage(error) })
+      );
       return {};
     }
   }
@@ -77,7 +85,7 @@ class FileManagerClass {
           return { name: base, base64: data, mimeType };
         } catch (err) {
           const error = err as Error;
-          Logger.warn(LogCategory.FILE_MANAGER, `Dosya okunamadı: ${path}`, {
+          Logger.warn(LogCategory.FILE_MANAGER, fileManagerT("readFailed", { path }), {
             error: error.message,
           });
           return null;
@@ -111,7 +119,9 @@ class FileManagerClass {
     if (stagedRes?.success !== true) {
       Logger.error(
         LogCategory.FILE_MANAGER,
-        `commandStageAttachments hata: ${stagedRes?.message ?? "bilinmiyor"}`,
+        fileManagerT("stageAttachmentsFailed", {
+          message: stagedRes?.message ?? fileManagerT("unknown"),
+        }),
         { jobId }
       );
       return { staged: [], temp: [], commandDir: "" };
@@ -127,10 +137,12 @@ class FileManagerClass {
     jobId: string,
     targetDir: string
   ): Promise<{ success?: boolean; message?: string }> {
-    if (jobId === "" || targetDir === "") return { success: false, message: "parametre eksik" };
+    if (jobId === "" || targetDir === "") {
+      return { success: false, message: fileManagerT("missingParameters") };
+    }
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      return { success: false, message: "API not available" };
+      return { success: false, message: fileManagerT("apiUnavailable") };
     }
     const res = (await electronApi.commandArchiveCopy({
       jobId,
@@ -139,7 +151,9 @@ class FileManagerClass {
     if (res?.success !== true) {
       Logger.warn(
         LogCategory.FILE_MANAGER,
-        `commandArchiveCopy başarısız: ${res?.message ?? "bilinmiyor"}`,
+        fileManagerT("archiveCopyFailed", {
+          message: res?.message ?? fileManagerT("unknown"),
+        }),
         { jobId, targetDir }
       );
     }
@@ -161,7 +175,7 @@ class FileManagerClass {
   ): Promise<{ success?: boolean; message?: string } | undefined> {
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      return { success: false, message: "API not available" };
+      return { success: false, message: fileManagerT("apiUnavailable") };
     }
     const tempPaths = tempEntries.map((t) => t.tempPath).filter((p): p is string => Boolean(p));
     const res = (await electronApi.commandMoveFailed({
@@ -171,7 +185,9 @@ class FileManagerClass {
     if (res?.success !== true) {
       Logger.warn(
         LogCategory.FILE_MANAGER,
-        `commandMoveFailed başarısız: ${res?.message ?? "bilinmiyor"}`,
+        fileManagerT("moveFailed", {
+          message: res?.message ?? fileManagerT("unknown"),
+        }),
         { jobId }
       );
     }
@@ -228,7 +244,10 @@ class FileManagerClass {
       return res.path ?? "";
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      Logger.error(LogCategory.FILE_MANAGER, `writeFileAtomic hata: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.FILE_MANAGER,
+        fileManagerT("writeAtomicFailed", { message: getErrorMessage(error) })
+      );
       return "";
     }
   }
@@ -244,7 +263,10 @@ class FileManagerClass {
       return res != null ? res.path : "";
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      Logger.error(LogCategory.FILE_MANAGER, `tempPath hata: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.FILE_MANAGER,
+        fileManagerT("tempPathFailed", { message: getErrorMessage(error) })
+      );
       return "";
     }
   }

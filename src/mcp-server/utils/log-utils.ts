@@ -1,10 +1,13 @@
 /**
- * LogUtils - MCP Server log yardımcı fonksiyonları
+ * LogUtils - MCP Server log helpers
  */
 
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { createMcpTranslatorSync } from "./i18n/index.js";
+
+const logUtilsT = createMcpTranslatorSync();
 
 /** Log filter options */
 interface LogFilters {
@@ -22,7 +25,7 @@ interface SessionInfo {
 }
 
 /**
- * En son session'ı bul
+ * Find the latest session
  */
 export async function findLatestSession(logDir: string): Promise<string | null> {
   try {
@@ -42,7 +45,7 @@ export async function findLatestSession(logDir: string): Promise<string | null> 
 }
 
 /**
- * Session loglarını oku
+ * Read session logs
  */
 export async function readSessionLogs(
   logDir: string,
@@ -52,7 +55,7 @@ export async function readSessionLogs(
   const sessionDir = join(logDir, sessionId);
 
   if (!existsSync(sessionDir)) {
-    return `Session bulunamadı: ${sessionId}`;
+    return logUtilsT("mcpServer.logUtils.sessionNotFound", { sessionId });
   }
 
   try {
@@ -61,7 +64,7 @@ export async function readSessionLogs(
       if (existsSync(errorPath)) {
         return await readFile(errorPath, "utf-8");
       }
-      return "Error log dosyası bulunamadı";
+      return logUtilsT("mcpServer.logUtils.errorLogMissing");
     }
 
     if (type === "structured") {
@@ -69,21 +72,21 @@ export async function readSessionLogs(
       if (existsSync(structuredPath)) {
         return await readFile(structuredPath, "utf-8");
       }
-      return "Structured log dosyası bulunamadı";
+      return logUtilsT("mcpServer.logUtils.structuredLogMissing");
     }
 
-    // Önce tek console.log dosyasını kontrol et
+    // Check the single console.log file first.
     const singleConsolePath = join(sessionDir, "console.log");
     if (existsSync(singleConsolePath)) {
       return await readFile(singleConsolePath, "utf-8");
     }
 
-    // Fallback: console-*.log pattern (chunk'lı loglar)
+    // Fallback: console-*.log pattern (chunked logs).
     const files = await readdir(sessionDir);
     const consoleFiles = files.filter((f) => f.startsWith("console-") && f.endsWith(".log")).sort();
 
     if (consoleFiles.length === 0) {
-      return "Console log dosyası bulunamadı";
+      return logUtilsT("mcpServer.logUtils.consoleLogMissing");
     }
 
     let content = "";
@@ -95,12 +98,12 @@ export async function readSessionLogs(
     return content;
   } catch (err) {
     const error = err as Error;
-    return `Log okuma hatası: ${error.message}`;
+    return logUtilsT("mcpServer.logUtils.readError", { message: error.message });
   }
 }
 
 /**
- * Logları filtrele
+ * Filter logs
  */
 export function filterLogs(content: string, filters: LogFilters = {}): string[] {
   const { source, level, contains, correlationId, tail = 50 } = filters;
@@ -130,7 +133,7 @@ export function filterLogs(content: string, filters: LogFilters = {}): string[] 
 }
 
 /**
- * Session meta ve summary bilgilerini oku
+ * Read session metadata and summary info
  */
 export async function readSessionInfo(logDir: string, sessionId: string): Promise<SessionInfo> {
   const sessionDir = join(logDir, sessionId);
@@ -151,7 +154,7 @@ export async function readSessionInfo(logDir: string, sessionId: string): Promis
       summary = JSON.parse(await readFile(summaryPath, "utf-8")) as Record<string, unknown>;
     }
   } catch {
-    // Ignore parse errors
+    // Ignore parse errors.
   }
 
   return { meta, summary };

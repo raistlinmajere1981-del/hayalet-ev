@@ -1,10 +1,10 @@
 /**
- * TimeoutHandler - Slot timeout ve hata yönetimi
+ * TimeoutHandler - slot timeout and error handling
  *
- * Bu modül slot işlemlerinin timeout ve hata durumlarını yönetir:
- * - Timeout başlatma/temizleme
- * - Bağlantı hatası yönetimi
- * - Hata sonrası temizlik
+ * Handles timeout and error scenarios for slot operations:
+ * - start/clear timeouts
+ * - connection error handling
+ * - post-error cleanup
  */
 
 import { getErrorMessage } from "@shared/index.js";

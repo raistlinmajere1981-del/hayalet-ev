@@ -1,19 +1,20 @@
 import { LogCategory, LogLevel } from "@shared/logging-core";
 /**
- * SlotController - Merkezi Slot Yaşam Döngüsü Yöneticisi (Orchestrator)
+ * SlotController - central slot lifecycle orchestrator
  *
- * Tüm slot işlemlerini (account assignment, connection, webview, traffic)
- * tek bir state machine ile yönetir.
+ * Manages all slot operations (account assignment, connection, webview, traffic)
+ * through a single state machine.
  *
- * Alt modüller:
+ * Child modules:
  * - slot/webview-handler.js: Webview attach/detach/dom-ready
- * - slot/url-handler.js: URL değişiklik takibi ve exclusion
- * - slot/timeout-handler.js: Timeout ve hata yönetimi
- * - slot/settings-sync.js: Settings senkronizasyonu
+ * - slot/url-handler.js: URL change tracking and exclusion
+ * - slot/timeout-handler.js: timeout and error handling
+ * - slot/settings-sync.js: settings synchronization
  */
 
 import { Logger } from "./logger/index.js";
 import { SettingsManager } from "./settings-manager.js";
+import { AppI18n } from "./i18n/index.js";
 import type { SlotId } from "@shared/index.js";
 import type { SlotStateType, TransitionResult } from "./slot/state-machine.js";
 import {
@@ -97,12 +98,12 @@ class SlotControllerClass {
   _boundLog: typeof this._log;
   _boundEmit: typeof this._emit;
   _boundTransition: typeof this._transition;
-  // Race condition fix: Operation locks per slot
+  // Race-condition guard: one operation lock per slot.
   _operationLocks: Record<string, Promise<unknown> | null>;
 
   constructor() {
     this._slots = {
-      ai0: createSlotState("ai0"), // Asistan slotu
+      ai0: createSlotState("ai0"), // Assistant slot
       ai1: createSlotState("ai1"),
       ai2: createSlotState("ai2"),
     };
@@ -166,7 +167,7 @@ class SlotControllerClass {
     );
 
     this._initialized = true;
-    Logger.info(LogCategory.SLOT, "SlotController initialized");
+    Logger.infoT(LogCategory.SLOT, "app.logs.slotController.initialized");
     await Promise.resolve();
   }
 
@@ -249,14 +250,14 @@ class SlotControllerClass {
     if (!slotState) return;
 
     if (slotState.webviewRegistered && slotState.webview === webview) {
-      return; // Çift register'u önle
+      return; // Prevent duplicate registration.
     }
 
     slotState.webview = webview as WebviewElement;
     slotState.webviewRegistered = true;
     slotState.lastActivity = Date.now();
 
-    this._log(slot, "info", "Webview registered");
+    this._log(slot, "info", AppI18n.t("app.logs.slotController.webviewRegistered"));
     this._emit(slot, SlotEvent.WEBVIEW_REGISTERED, { webview });
   }
 
@@ -266,20 +267,32 @@ class SlotControllerClass {
 
     // Race condition fix: Await disconnect to prevent state inconsistency
     if (slotState.state === SlotState.CONNECTED) {
-      this._log(slot, "warning", "Unregistering connected slot - disconnecting first");
+      this._log(slot, "warning", AppI18n.t("app.logs.slotController.unregisterConnected"));
       this.disconnect(slot, { force: true })
         .then((result: { success?: boolean; message?: string }) => {
           if (result.success !== true) {
-            Logger.panel(LogCategory.SLOT, LogLevel.ERROR, "Disconnect during unregister failed", {
-              slot,
-              error: result.message,
-            });
+            Logger.panelT(
+              LogCategory.SLOT,
+              LogLevel.ERROR,
+              "app.logs.slotController.unregisterDisconnectFailed",
+              { slot, message: result.message ?? "" },
+              {
+                slot,
+                error: result.message,
+              }
+            );
           }
         })
         .catch((err) => {
-          Logger.panel(LogCategory.SLOT, LogLevel.ERROR, "disconnect error during unregister", {
-            error: err,
-          });
+          Logger.panelT(
+            LogCategory.SLOT,
+            LogLevel.ERROR,
+            "app.logs.slotController.unregisterDisconnectError",
+            { slot, message: err instanceof Error ? err.message : String(err) },
+            {
+              error: err,
+            }
+          );
         });
       return; // Exit early - disconnect will handle cleanup
     }
@@ -288,7 +301,7 @@ class SlotControllerClass {
     slotState.webviewRegistered = false;
     slotState.domReady = false;
 
-    this._log(slot, "info", "Webview unregistered");
+    this._log(slot, "info", AppI18n.t("app.logs.slotController.webviewUnregistered"));
     this._emit(slot, SlotEvent.WEBVIEW_DETACHED, {});
   }
 
@@ -302,7 +315,7 @@ class SlotControllerClass {
       return { success: false, message: "not-in-error-state" };
     }
 
-    this._log(slot, "info", "Manual recovery from ERROR state");
+    this._log(slot, "info", AppI18n.t("app.logs.slotController.manualRecovery"));
     slotState.error = null;
 
     if (slotState.accountId !== null && slotState.accountId !== "") {
@@ -433,7 +446,7 @@ class SlotControllerClass {
     });
 
     if (result.success) {
-      // Legacy state alanını da güncelle (backward compatibility)
+      // Keep the legacy state field in sync for backward compatibility.
       slotState.state = newState;
       slotState.lastActivity = Date.now();
 
@@ -448,7 +461,10 @@ class SlotControllerClass {
       this._log(
         slot,
         "error",
-        `Invalid state transition blocked: ${oldState} → ${newState}. ${result.error ?? "unknown"}`
+        AppI18n.t("app.logs.slotController.invalidTransitionBlocked", {
+          oldState,
+          newState,
+        })
       );
     }
 
