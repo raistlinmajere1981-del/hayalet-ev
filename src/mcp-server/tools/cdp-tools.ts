@@ -7,10 +7,11 @@ import type { ToolResult } from "@shared/index-mcp.js";
 /**
  * CDP (Chrome DevTools Protocol) MCP Tools
  *
- * Electron uygulamasını uzaktan kontrol etmek için tool handler'lar.
+ * Tool handlers for remotely controlling the Electron application.
  */
 
 import { checkConnection, discoverTargets as _discoverTargets } from "../utils/cdp-connection.js";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 import {
   clickBySelector,
@@ -28,13 +29,30 @@ import {
 
 import { logToolError } from "../utils/mcp-logger.js";
 
+function cdpT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.cdpTools.${key}`, params);
+}
+
 /**
- * CDP hatalarını logla ve hata sonucu döndür
+ * Log CDP errors and return an error result
  */
-function cdpError(toolName: string, error: Error, message?: string): ToolResult {
+function cdpError(
+  toolName: string,
+  error: Error,
+  key = "errors.generic",
+  params?: Record<string, string | number | boolean>
+): ToolResult {
   logToolError(toolName, error, {});
   return {
-    content: [{ type: "text", text: `❌ ${message ?? error.message}` }],
+    content: [
+      {
+        type: "text",
+        text: cdpT(key, {
+          message: error.message,
+          ...(params ?? {}),
+        }),
+      },
+    ],
     isError: true,
   };
 }
@@ -44,27 +62,25 @@ function isNonEmptyString(value: string | undefined): value is string {
 }
 
 /**
- * Electron bağlantı durumunu kontrol et
+ * Check the Electron connection status
  */
 export async function checkElectronConnection(): Promise<ToolResult> {
   try {
     const status = await checkConnection();
 
     if (status.connected) {
+      const notAvailable = cdpT("common.notAvailable");
       return {
         content: [
           {
             type: "text",
-            text: `✅ Electron bağlantısı aktif
-
-📡 **Bağlantı Bilgileri:**
-- Port: ${status.port}
-- Hedef sayısı: ${status.targetsCount ?? 0}
-
-🪟 **Ana Pencere:**
-- Başlık: ${status.mainWindow?.title ?? "N/A"}
-- URL: ${status.mainWindow?.url ?? "N/A"}
-- Tip: ${status.mainWindow?.type ?? "N/A"}`,
+            text: cdpT("checkConnection.connected", {
+              port: status.port,
+              targetsCount: status.targetsCount ?? 0,
+              title: status.mainWindow?.title ?? notAvailable,
+              url: status.mainWindow?.url ?? notAvailable,
+              windowType: status.mainWindow?.type ?? notAvailable,
+            }),
           },
         ],
       };
@@ -73,29 +89,21 @@ export async function checkElectronConnection(): Promise<ToolResult> {
         content: [
           {
             type: "text",
-            text: `❌ Electron bağlantısı yok
-
-**Hata:** ${status.error ?? "unknown"}
-
-**Çözüm:**
-1. Hayalet-ev uygulamasını başlatın: \`npm start\`
-2. Uygulama otomatik olarak port ${status.port}'da debug modunda başlar
-3. Tekrar deneyin`,
+            text: cdpT("checkConnection.disconnected", {
+              error: status.error ?? cdpT("common.unknown"),
+              port: status.port,
+            }),
           },
         ],
       };
     }
   } catch (err) {
-    return cdpError(
-      "hev_check_electron_connection",
-      err as Error,
-      `Hata: ${(err as Error).message}`
-    );
+    return cdpError("hev_check_electron_connection", err as Error, "errors.connectionCheck");
   }
 }
 
 /**
- * Electron'a komut gönder (JavaScript çalıştır)
+ * Send a command to Electron (execute JavaScript)
  */
 export async function sendCommandToElectron(
   args: Record<string, unknown> = {}
@@ -104,7 +112,7 @@ export async function sendCommandToElectron(
 
   if (command == null || command === "") {
     return {
-      content: [{ type: "text", text: "❌ 'command' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("sendCommand.missingCommand") }],
       isError: true,
     };
   }
@@ -116,21 +124,18 @@ export async function sendCommandToElectron(
       content: [
         {
           type: "text",
-          text: `✅ Komut çalıştırıldı${isNonEmptyString(description) ? ` (${description})` : ""}
-
-**Sonuç:**
-\`\`\`json
-${JSON.stringify(result, null, 2)}
-\`\`\``,
+          text: cdpT("sendCommand.success", {
+            suffix:
+              isNonEmptyString(description) === true
+                ? cdpT("sendCommand.descriptionSuffix", { description })
+                : "",
+            result: JSON.stringify(result, null, 2),
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError(
-      "hev_send_command_to_electron",
-      err as Error,
-      `Komut hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_send_command_to_electron", err as Error, "errors.command");
   }
 }
 
@@ -398,16 +403,12 @@ export async function toggleMcpPanelServers(
         typeof result === "object" && result !== null && (result as { ok?: boolean }).ok !== true,
     };
   } catch (err) {
-    return cdpError(
-      "hev_toggle_mcp_panel_servers",
-      err as Error,
-      `MCP panel toggle hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_toggle_mcp_panel_servers", err as Error, "errors.toggleMcpPanel");
   }
 }
 
 /**
- * Electron penceresinin ekran görüntüsünü al
+ * Capture a screenshot of the Electron window
  */
 export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<ToolResult> {
   const {
@@ -429,31 +430,29 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
         content: [
           {
             type: "text",
-            text: `✅ Screenshot kaydedildi: ${savePath}\n\nBoyut: ${buffer.length} bytes`,
+            text: cdpT("takeScreenshot.saved", {
+              savePath,
+              sizeBytes: buffer.length,
+            }),
           },
         ],
       };
     }
 
-    // Base64 olarak döndür (küçük önizleme için)
+    // Return as Base64 (for small previews)
     return {
       content: [
         {
           type: "text",
-          text: `✅ Screenshot alındı (${format.toUpperCase()})
-
-**Boyut:** ~${Math.round((base64Data.length * 0.75) / 1024)} KB
-
-**Kullanım:** Dosyaya kaydetmek için \`savePath\` parametresi ekleyin.`,
+          text: cdpT("takeScreenshot.preview", {
+            format: format.toUpperCase(),
+            sizeKB: Math.round((base64Data.length * 0.75) / 1024),
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError(
-      "hev_take_cdp_screenshot",
-      err as Error,
-      `Screenshot hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_take_cdp_screenshot", err as Error, "errors.screenshot");
   }
 }
 
@@ -468,35 +467,34 @@ export async function getElectronWindowInfo(): Promise<ToolResult> {
       content: [
         {
           type: "text",
-          text: `🪟 **Electron Pencere Bilgileri:**
-
-- **Başlık:** ${info.title}
-- **URL:** ${info.url}
-- **İç Boyut:** ${info.innerWidth} x ${info.innerHeight}
-- **Dış Boyut:** ${info.outerWidth} x ${info.outerHeight}
-- **Pixel Ratio:** ${info.devicePixelRatio}
-- **Scroll Pozisyonu:** (${info.scrollX}, ${info.scrollY})`,
+          text: cdpT("windowInfo.success", {
+            title: info.title,
+            url: info.url,
+            innerWidth: info.innerWidth,
+            innerHeight: info.innerHeight,
+            outerWidth: info.outerWidth,
+            outerHeight: info.outerHeight,
+            devicePixelRatio: info.devicePixelRatio,
+            scrollX: info.scrollX,
+            scrollY: info.scrollY,
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError(
-      "hev_get_electron_window_info",
-      err as Error,
-      `Hata: ${(err as Error).message}`
-    );
+    return cdpError("hev_get_electron_window_info", err as Error, "errors.windowInfo");
   }
 }
 
 /**
- * CSS selector ile elemente tıkla
+ * Click an element by CSS selector
  */
 export async function clickElementBySelector(args: Record<string, unknown>): Promise<ToolResult> {
   const { selector } = args as { selector?: string };
 
   if (!isNonEmptyString(selector)) {
     return {
-      content: [{ type: "text", text: "❌ 'selector' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("clickBySelector.missingSelector") }],
       isError: true,
     };
   }
@@ -509,36 +507,32 @@ export async function clickElementBySelector(args: Record<string, unknown>): Pro
         content: [
           {
             type: "text",
-            text: `✅ Tıklama başarılı
-
-**Element:** <${result.tagName?.toLowerCase() ?? "unknown"}${isNonEmptyString(result.id) ? ` id="${result.id}"` : ""}${isNonEmptyString(result.className) ? ` class="${result.className}"` : ""}>`,
+            text: cdpT("clickBySelector.success", {
+              element: `<${result.tagName?.toLowerCase() ?? cdpT("common.unknown")}${isNonEmptyString(result.id) ? ` id="${result.id}"` : ""}${isNonEmptyString(result.className) ? ` class="${result.className}"` : ""}>`,
+            }),
           },
         ],
       };
     } else {
       return {
-        content: [{ type: "text", text: `❌ ${result.error ?? "unknown"}` }],
+        content: [{ type: "text", text: cdpT("clickBySelector.notFound", { selector }) }],
         isError: true,
       };
     }
   } catch (err) {
-    return cdpError(
-      "hev_click_element_by_selector",
-      err as Error,
-      `Tıklama hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_click_element_by_selector", err as Error, "errors.click");
   }
 }
 
 /**
- * Metin içeriğine göre elemente tıkla
+ * Click an element by text content
  */
 export async function clickElementByText(args: Record<string, unknown>): Promise<ToolResult> {
   const { text, tagName = "*" } = args as { text?: string; tagName?: string };
 
   if (!isNonEmptyString(text)) {
     return {
-      content: [{ type: "text", text: "❌ 'text' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("clickByText.missingText") }],
       isError: true,
     };
   }
@@ -551,30 +545,26 @@ export async function clickElementByText(args: Record<string, unknown>): Promise
         content: [
           {
             type: "text",
-            text: `✅ Tıklama başarılı
-
-**Element:** <${result.tagName?.toLowerCase() ?? "unknown"}>
-**İçerik:** "${result.textContent ?? ""}"`,
+            text: cdpT("clickByText.success", {
+              tagName: result.tagName?.toLowerCase() ?? cdpT("common.unknown"),
+              textContent: result.textContent ?? cdpT("common.empty"),
+            }),
           },
         ],
       };
     } else {
       return {
-        content: [{ type: "text", text: `❌ ${result.error ?? "unknown"}` }],
+        content: [{ type: "text", text: cdpT("clickByText.notFound", { text, tagName }) }],
         isError: true,
       };
     }
   } catch (err) {
-    return cdpError(
-      "hev_click_element_by_text",
-      err as Error,
-      `Tıklama hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_click_element_by_text", err as Error, "errors.click");
   }
 }
 
 /**
- * Input alanına değer yaz
+ * Fill a value into an input field
  */
 export async function fillInputField(args: Record<string, unknown>): Promise<ToolResult> {
   const {
@@ -585,7 +575,7 @@ export async function fillInputField(args: Record<string, unknown>): Promise<Too
 
   if (!isNonEmptyString(selector) || value === undefined) {
     return {
-      content: [{ type: "text", text: "❌ 'selector' ve 'value' parametreleri gerekli" }],
+      content: [{ type: "text", text: cdpT("fillInput.missingSelectorValue") }],
       isError: true,
     };
   }
@@ -598,29 +588,25 @@ export async function fillInputField(args: Record<string, unknown>): Promise<Too
         content: [
           {
             type: "text",
-            text: `✅ Input dolduruldu
-
-**Yeni değer:** "${result.newValue ?? ""}"`,
+            text: cdpT("fillInput.success", {
+              newValue: result.newValue ?? cdpT("common.empty"),
+            }),
           },
         ],
       };
     } else {
       return {
-        content: [{ type: "text", text: `❌ ${result.error ?? "unknown"}` }],
+        content: [{ type: "text", text: cdpT("fillInput.notFound", { selector }) }],
         isError: true,
       };
     }
   } catch (err) {
-    return cdpError(
-      "hev_fill_input_field",
-      err as Error,
-      `Input hatası: ${(err as Error).message}`
-    );
+    return cdpError("hev_fill_input_field", err as Error, "errors.fillInput");
   }
 }
 
 /**
- * Sayfa yapısını al (DOM tree)
+ * Retrieve the page structure (DOM tree)
  */
 export async function getPageDomStructure(args: Record<string, unknown>): Promise<ToolResult> {
   const { maxDepth = 3 } = args as { maxDepth?: number };
@@ -632,32 +618,28 @@ export async function getPageDomStructure(args: Record<string, unknown>): Promis
       content: [
         {
           type: "text",
-          text: `📄 **Sayfa Yapısı:**
-
-**Başlık:** ${String(structure["title"])}
-**URL:** ${String(structure["url"])}
-
-**DOM Yapısı:**
-\`\`\`json
-${JSON.stringify(structure["body"], null, 2)}
-\`\`\``,
+          text: cdpT("pageDomStructure.success", {
+            title: String(structure["title"]),
+            url: String(structure["url"]),
+            body: JSON.stringify(structure["body"], null, 2),
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError("hev_get_page_dom_structure", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_get_page_dom_structure", err as Error, "errors.pageDomStructure");
   }
 }
 
 /**
- * Element bul ve bilgilerini göster
+ * Find an element and show its details
  */
 export async function inspectElement(args: Record<string, unknown>): Promise<ToolResult> {
   const { selector } = args as { selector?: string };
 
   if (!isNonEmptyString(selector)) {
     return {
-      content: [{ type: "text", text: "❌ 'selector' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("inspectElement.missingSelector") }],
       isError: true,
     };
   }
@@ -670,27 +652,29 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
         content: [
           {
             type: "text",
-            text: `✅ Element bulundu
-
-**Selector:** \`${info.selector}\`
-**Tag:** ${info.tagName ?? "unknown"}
-**ID:** ${info.id ?? "(yok)"}
-**Class:** ${info.className ?? "(yok)"}
-**Görünür:** ${info.visible === true ? "Evet" : "Hayır"}
-**Devre dışı:** ${info.disabled === true ? "Evet" : "Hayır"}
-**Boyut:** ${info.bounds?.width ?? 0}x${info.bounds?.height ?? 0}
-**Pozisyon:** (${Math.round(info.bounds?.x ?? 0)}, ${Math.round(info.bounds?.y ?? 0)})
-**İçerik:** "${info.textContent ?? "(boş)"}"`,
+            text: cdpT("inspectElement.success", {
+              selector: info.selector,
+              tagName: info.tagName ?? cdpT("common.unknown"),
+              id: info.id ?? cdpT("common.none"),
+              className: info.className ?? cdpT("common.none"),
+              visible: info.visible === true ? cdpT("common.yes") : cdpT("common.no"),
+              disabled: info.disabled === true ? cdpT("common.yes") : cdpT("common.no"),
+              width: info.bounds?.width ?? 0,
+              height: info.bounds?.height ?? 0,
+              x: Math.round(info.bounds?.x ?? 0),
+              y: Math.round(info.bounds?.y ?? 0),
+              textContent: info.textContent ?? cdpT("common.empty"),
+            }),
           },
         ],
       };
     } else {
       return {
-        content: [{ type: "text", text: `❌ Element bulunamadı: \`${selector}\`` }],
+        content: [{ type: "text", text: cdpT("inspectElement.notFound", { selector }) }],
       };
     }
   } catch (err) {
-    return cdpError("hev_inspect_element", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_inspect_element", err as Error, "errors.inspectElement");
   }
 }
 
@@ -702,7 +686,7 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
 
   if (!isNonEmptyString(selector)) {
     return {
-      content: [{ type: "text", text: "❌ 'selector' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("queryElements.missingSelector") }],
       isError: true,
     };
   }
@@ -712,7 +696,7 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
 
     if (elements.length === 0) {
       return {
-        content: [{ type: "text", text: `❌ Hiç element bulunamadı: \`${selector}\`` }],
+        content: [{ type: "text", text: cdpT("queryElements.noneFound", { selector }) }],
       };
     }
 
@@ -727,21 +711,21 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
       content: [
         {
           type: "text",
-          text: `✅ ${elements.length} element bulundu
-
-**Selector:** \`${selector}\`
-
-${list}`,
+          text: cdpT("queryElements.success", {
+            count: elements.length,
+            selector,
+            list,
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError("hev_query_elements", err as Error, `Hata: ${(err as Error).message}`);
+    return cdpError("hev_query_elements", err as Error, "errors.queryElements");
   }
 }
 
 /**
- * Klavye tuşu gönder
+ * Send a keyboard key
  */
 export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolResult> {
   const {
@@ -754,7 +738,7 @@ export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolR
 
   if (!isNonEmptyString(key)) {
     return {
-      content: [{ type: "text", text: "❌ 'key' parametresi gerekli" }],
+      content: [{ type: "text", text: cdpT("sendKeyPress.missingKey") }],
       isError: true,
     };
   }
@@ -770,14 +754,15 @@ export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolR
       content: [
         {
           type: "text",
-          text: `✅ Tuş gönderildi: ${modifiers !== "" ? modifiers + "+" : ""}${key}
-
-**Hedef element:** <${result.target?.toLowerCase() ?? "unknown"}>`,
+          text: cdpT("sendKeyPress.success", {
+            keyCombo: `${modifiers !== "" ? modifiers + "+" : ""}${key}`,
+            target: result.target?.toLowerCase() ?? cdpT("common.unknown"),
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError("hev_send_key_press", err as Error, `Tuş hatası: ${(err as Error).message}`);
+    return cdpError("hev_send_key_press", err as Error, "errors.keyPress");
   }
 }
 
@@ -798,13 +783,14 @@ export async function scrollPage(args: Record<string, unknown>): Promise<ToolRes
       content: [
         {
           type: "text",
-          text: `✅ Scroll yapıldı
-
-**Yeni pozisyon:** (${result.scrollX}, ${result.scrollY})`,
+          text: cdpT("scrollPage.success", {
+            scrollX: result.scrollX,
+            scrollY: result.scrollY,
+          }),
         },
       ],
     };
   } catch (err) {
-    return cdpError("hev_scroll_page", err as Error, `Scroll hatası: ${(err as Error).message}`);
+    return cdpError("hev_scroll_page", err as Error, "errors.scroll");
   }
 }

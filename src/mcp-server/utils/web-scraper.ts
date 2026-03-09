@@ -6,6 +6,7 @@
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import { WEB_TIMEOUTS } from "@timeouts";
+import { createMcpTranslatorSync, readMcpAppLanguageSync } from "./i18n/index.js";
 
 // Kaldırılacak elementler (noise)
 const REMOVE_SELECTORS = [
@@ -94,11 +95,15 @@ export async function fetchAndParse(
   options: FetchOptions = {}
 ): Promise<ScrapedContent> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const t = createMcpTranslatorSync();
+  const locale = readMcpAppLanguageSync();
+  const acceptLanguage =
+    locale === "en" ? "en-US,en;q=0.9,tr-TR,tr;q=0.7" : "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7";
 
   // URL doğrulama
   const parsedUrl = new URL(url);
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-    throw new Error("Sadece HTTP/HTTPS URL'leri desteklenir");
+    throw new Error(t("mcpServer.webTools.scraper.errors.httpHttpsOnly"));
   }
 
   // Fetch with timeout
@@ -113,19 +118,28 @@ export async function fetchAndParse(
       headers: {
         "User-Agent": opts.userAgent ?? "Mozilla/5.0",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Language": acceptLanguage,
       },
     });
 
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(
+        t("mcpServer.webTools.scraper.errors.httpStatus", {
+          status: response.status,
+          statusText: response.statusText,
+        })
+      );
     }
 
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) {
-      throw new Error(`Desteklenmeyen içerik tipi: ${contentType}`);
+      throw new Error(
+        t("mcpServer.webTools.scraper.errors.unsupportedContentType", {
+          contentType,
+        })
+      );
     }
 
     const html = await response.text();
@@ -140,6 +154,7 @@ export async function fetchAndParse(
  */
 export function parseHTML(html: string, url: string, options: FetchOptions = {}): ScrapedContent {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  const t = createMcpTranslatorSync();
   const $ = cheerio.load(html);
   // $ used in commented code
   void $; // Prevent unused warning
@@ -154,7 +169,7 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
     ($("title").text().trim().length > 0 ? $("title").text().trim() : null) ??
     $('meta[property="og:title"]').attr("content") ??
     ($("h1").first().text().trim().length > 0 ? $("h1").first().text().trim() : null) ??
-    "Başlık bulunamadı";
+    t("mcpServer.webTools.scraper.titleMissing");
 
   const description =
     $('meta[name="description"]').attr("content") ??

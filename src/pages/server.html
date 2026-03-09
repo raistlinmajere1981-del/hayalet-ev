@@ -6,8 +6,12 @@
           <option value="ai1">AI1</option>
           <option value="ai2">AI2</option>
         </select>
-        <button class="btn btn-secondary" id="server-delegate-btn">Kontrolü Devret</button>
-        <button class="btn btn-secondary" id="server-reclaim-btn">Kontrolü Devral</button>
+        <button class="btn btn-secondary" id="server-delegate-btn" data-shell-i18n-text="server.page.delegateButton">
+          Delegate Control
+        </button>
+        <button class="btn btn-secondary" id="server-reclaim-btn" data-shell-i18n-text="server.page.reclaimButton">
+          Reclaim Control
+        </button>
       </div>
     </div>
 
@@ -15,12 +19,12 @@
       <div class="server-workspace-left">
         <div class="server-panels">
           <div class="server-panel glass-panel server-timeline-panel">
-            <div class="panel-title">Komut Akışı (Komut → Sonuç)</div>
-            <div class="server-timeline-meta" id="server-timeline-meta">
-              Yukarı kaydırdıkça 3 session daha yüklenir
+            <div class="panel-title" data-shell-i18n-text="server.page.timelineTitle">Command Flow (Command → Result)</div>
+            <div class="server-timeline-meta" id="server-timeline-meta" data-shell-i18n-text="server.page.timelineHint">
+              Scroll up to load 3 more sessions
             </div>
             <div class="log-list server-timeline-list" id="server-command-timeline">
-              <div class="log-empty-state">Henüz komut kaydı yok</div>
+              <div class="log-empty-state" data-shell-i18n-text="server.page.timelineEmpty">No command history yet</div>
             </div>
           </div>
         </div>
@@ -28,11 +32,11 @@
 
       <div class="server-workspace-right">
         <div class="server-panel glass-panel server-command-panel">
-          <div class="panel-title">Komut Yönetim Paneli</div>
+          <div class="panel-title" data-shell-i18n-text="server.page.commandPanelTitle">Command Control Panel</div>
           <div class="command-manager">
             <div class="command-toolbar-row">
               <div class="command-toolbar-group">
-                <label for="server-command-slot-select">Slot</label>
+                <label for="server-command-slot-select" data-shell-i18n-text="server.page.slotLabel">Slot</label>
                 <select id="server-command-slot-select" class="select">
                   <option value="ai1">AI1</option>
                   <option value="ai2">AI2</option>
@@ -65,25 +69,34 @@
                 id="server-command-test-args"
                 class="input"
                 type="text"
-                placeholder="Test argümanı (opsiyonel)"
+                placeholder="Optional test argument"
+                data-shell-i18n-placeholder="server.page.testArgsPlaceholder"
               />
-              <button id="server-command-run" class="btn btn-primary btn-sm" type="button">
-                Komutu Çalıştır
+              <button
+                id="server-command-run"
+                class="btn btn-primary btn-sm"
+                type="button"
+                data-shell-i18n-text="server.page.runCommandButton"
+              >
+                Run Command
               </button>
             </div>
 
             <div class="command-list" id="server-command-list">
-              <div class="log-empty-state">Bu kategori için komut bulunamadı</div>
+              <div class="log-empty-state" data-shell-i18n-text="server.page.emptyCategory">
+                No commands were found for this category
+              </div>
             </div>
 
             <div class="command-detail">
-              <label for="server-command-detail">Komut Detayı</label>
+              <label for="server-command-detail" data-shell-i18n-text="server.page.commandDetailLabel">Command Details</label>
               <textarea
                 id="server-command-detail"
                 class="form-input guide-text"
                 rows="8"
                 readonly
-                placeholder="Komut seçerek detay görüntüleyin"
+                placeholder="Select a command to view details"
+                data-shell-i18n-placeholder="server.page.commandDetailPlaceholder"
               ></textarea>
             </div>
           </div>

@@ -1,11 +1,18 @@
 /**
  * Progress Indicator Utility
  *
- * Uzun süren işlemler için progress göstergesi.
- * MCP notification + stderr üzerinden mesaj gönderir.
+ * Progress reporting for long-running operations.
+ * Sends updates through MCP notifications and stderr.
  */
 
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { createMcpTranslatorSync } from "./i18n/index.js";
+
+const progressTranslator = createMcpTranslatorSync();
+
+function progressT(key: string, params?: Record<string, string | number | boolean>): string {
+  return progressTranslator(`mcpServer.progress.${key}`, params);
+}
 
 // Global server reference (set from index.ts)
 let mcpServer: Server | null = null;
@@ -16,47 +23,47 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
- * MCP Server referansını ayarla (index.ts'den çağrılır)
+ * Set the MCP server reference from index.ts.
  */
 export function setMcpServer(server: Server): void {
   mcpServer = server;
 }
 
 /**
- * Progress token'ı ayarla (request'ten gelen)
+ * Set the active progress token from the request metadata.
  */
 export function setProgressToken(token: string | number | null): void {
   currentProgressToken = token;
 }
 
 export interface ProgressOptions {
-  /** İşlem adı */
+  /** Human-readable operation name */
   operation: string;
-  /** Toplam adım sayısı (biliniyorsa) */
+  /** Total step count when known */
   total?: number;
   /** Heartbeat interval (ms) */
   interval?: number;
-  /** Sessiz mod (sadece önemli adımları göster) */
+  /** Quiet mode prints only important updates */
   quiet?: boolean;
-  /** Progress token (MCP notification için) */
+  /** Progress token for MCP notifications */
   progressToken?: string | number;
 }
 
 export interface ProgressTracker {
-  /** Mevcut adımı güncelle */
+  /** Update the current progress step */
   update: (current: number, message?: string) => void;
-  /** Mesaj göster */
+  /** Emit an informational message */
   log: (message: string) => void;
-  /** İşlem tamamlandı */
+  /** Mark the operation as completed */
   done: (message?: string) => void;
-  /** Hata ile sonlandır */
+  /** Mark the operation as failed */
   fail: (error: string) => void;
-  /** Heartbeat'i durdur */
+  /** Stop the heartbeat without marking completion */
   stop: () => void;
 }
 
 /**
- * MCP notification gönder (varsa)
+ * Send an MCP progress notification when available.
  */
 async function sendProgressNotification(
   progress: number,
@@ -77,20 +84,12 @@ async function sendProgressNotification(
       } as Record<string, unknown>,
     });
   } catch {
-    // Notification başarısız olursa sessizce devam et
+    // Ignore notification failures.
   }
 }
 
 /**
- * Progress tracker oluştur
- *
- * Kullanım:
- * ```ts
- * const progress = createProgress({ operation: "Proje analizi", total: 100 });
- * progress.update(25, "Dosyalar taranıyor...");
- * progress.update(50, "Bağımlılıklar analiz ediliyor...");
- * progress.done("Tamamlandı!");
- * ```
+ * Create a progress tracker for a long-running operation.
  */
 export function createProgress(options: ProgressOptions): ProgressTracker {
   const { operation, total, interval = 2000, quiet = false, progressToken } = options;
@@ -100,38 +99,40 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
   let heartbeatTimer: NodeJS.Timeout | null = null;
   let isRunning = true;
 
-  // Progress token'ı override et (tool'dan gelebilir)
   if (progressToken !== undefined) {
     setProgressToken(progressToken);
   }
 
-  // Başlangıç mesajı
+  const startedMessage = progressT("started", { operation });
   if (!quiet) {
-    console.error(`[PROGRESS] ⏳ ${operation} başladı...`);
+    console.error(`[PROGRESS] ⏳ ${startedMessage}`);
   }
 
-  // MCP notification gönder
-  void sendProgressNotification(0, total, `${operation} başladı...`);
+  void sendProgressNotification(0, total, startedMessage);
 
-  // Heartbeat - işlemin devam ettiğini göster
   heartbeatTimer = setInterval(() => {
     if (!isRunning) return;
 
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
     const progressStr =
       total !== undefined
-        ? `${currentStep}/${total} (${Math.round((currentStep / total) * 100)}%)`
-        : `${currentStep} adım`;
+        ? progressT("ratio", {
+            current: currentStep,
+            total,
+            percentage: Math.round((currentStep / total) * 100),
+          })
+        : progressT("steps", { current: currentStep });
+    const heartbeatMessage = progressT("ongoing", { operation });
+    const messageSuffix = lastMessage !== "" ? ` - ${lastMessage}` : "";
 
     console.error(
-      `[PROGRESS] ⏳ ${operation} devam ediyor... [${elapsed}s] ${progressStr}${lastMessage !== "" ? ` - ${lastMessage}` : ""}`
+      `[PROGRESS] ⏳ ${heartbeatMessage} [${elapsed}s] ${progressStr}${messageSuffix}`
     );
 
-    // Heartbeat notification
     void sendProgressNotification(
       currentStep,
       total,
-      `${operation} devam ediyor... ${lastMessage}`
+      `${heartbeatMessage}${lastMessage !== "" ? ` ${lastMessage}` : ""}`.trim()
     );
   }, interval);
 
@@ -145,7 +146,6 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
             total !== undefined ? `[${Math.round((current / total) * 100)}%]` : `[${current}]`;
           console.error(`[PROGRESS] ${progressStr} ${message}`);
         }
-        // MCP notification
         void sendProgressNotification(current, total, message);
       }
     },
@@ -163,15 +163,15 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
       }
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      const finalMessage = message ?? "Tamamlandı";
-      console.error(`[PROGRESS] ✅ ${operation} ${finalMessage} (${elapsed}s)`);
+      const finalMessage = message ?? progressT("completedDefault");
+      const completedMessage = progressT("completed", {
+        operation,
+        message: finalMessage,
+        elapsed,
+      });
+      console.error(`[PROGRESS] ✅ ${completedMessage}`);
 
-      // Final notification (total'a ulaştı)
-      void sendProgressNotification(
-        total ?? currentStep,
-        total,
-        `✅ ${operation} ${finalMessage} (${elapsed}s)`
-      );
+      void sendProgressNotification(total ?? currentStep, total, `✅ ${completedMessage}`);
       setProgressToken(null);
     },
 
@@ -183,14 +183,14 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
       }
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.error(`[PROGRESS] ❌ ${operation} başarısız: ${error} (${elapsed}s)`);
+      const failedMessage = progressT("failed", {
+        operation,
+        error,
+        elapsed,
+      });
+      console.error(`[PROGRESS] ❌ ${failedMessage}`);
 
-      // Error notification
-      void sendProgressNotification(
-        currentStep,
-        total,
-        `❌ ${operation} başarısız: ${error} (${elapsed}s)`
-      );
+      void sendProgressNotification(currentStep, total, `❌ ${failedMessage}`);
       setProgressToken(null);
     },
 
@@ -206,8 +206,7 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
 }
 
 /**
- * Uzun işlem için timeout wrapper
- * İşlem belirtilen süreden uzun sürerse progress mesajı gösterir
+ * Wrap an async operation and surface progress when it exceeds a timeout.
  */
 export async function withTimeout<T>(
   operation: string,

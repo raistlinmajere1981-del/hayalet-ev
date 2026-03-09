@@ -8,6 +8,7 @@ import {
   memoryWrite,
   MEMORY_TOOL_DEFINITIONS,
 } from "../../tools/memory-tools.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type { ToolContext, ToolEntry } from "../registry.js";
 
 function getDefinition(name: string): (typeof MEMORY_TOOL_DEFINITIONS)[number] {
@@ -18,6 +19,9 @@ function getDefinition(name: string): (typeof MEMORY_TOOL_DEFINITIONS)[number] {
 
 export function createMemoryTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT } = context;
+
+  const memoryHandlerT = (key: string, params?: Record<string, string | number | boolean>) =>
+    createMcpTranslatorSync()(`mcpServer.memoryTools.handler.${key}`, params);
 
   return [
     {
@@ -64,8 +68,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
       handler: async (args): Promise<unknown> => {
         const result = await memoryUpdate(PROJECT_ROOT, args as Parameters<typeof memoryUpdate>[1]);
         const text = result.updated
-          ? `✅ Memory guncellendi: ${result.id}`
-          : `⚠️ Memory bulunamadi: ${result.id}`;
+          ? memoryHandlerT("updated", { id: result.id })
+          : memoryHandlerT("notFound", { id: result.id });
         return { content: [{ type: "text", text }] };
       },
     },
@@ -74,8 +78,8 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
       handler: async (args): Promise<unknown> => {
         const result = await memoryDelete(PROJECT_ROOT, args as Parameters<typeof memoryDelete>[1]);
         const text = result.deleted
-          ? `✅ Memory silindi: ${result.id}`
-          : `⚠️ Memory bulunamadi: ${result.id}`;
+          ? memoryHandlerT("deleted", { id: result.id })
+          : memoryHandlerT("notFound", { id: result.id });
         return { content: [{ type: "text", text }] };
       },
     },
@@ -87,7 +91,10 @@ export function createMemoryTools(context: ToolContext): ToolEntry[] {
           content: [
             {
               type: "text",
-              text: `🧹 Memory prune tamamlandi. Silinen: ${result.removed}, max_items: ${result.maxItems}`,
+              text: memoryHandlerT("pruned", {
+                removed: result.removed,
+                maxItems: result.maxItems,
+              }),
             },
           ],
         };

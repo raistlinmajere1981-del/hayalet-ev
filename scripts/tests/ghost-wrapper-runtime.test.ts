@@ -206,13 +206,13 @@ test("buildMainAppLaunchArgs keeps default launch arguments on normal cycle", ()
   assert.deepEqual(args, ["/tmp/main.js", "--no-sandbox"]);
 });
 
-test("buildMainAppLaunchArgs enables asistan startup flags after ghost return", () => {
+test("buildMainAppLaunchArgs enables assistant startup flags after ghost return", () => {
   const args = buildMainAppLaunchArgs("/tmp/main.js", true);
 
   assert.deepEqual(args, [
     "/tmp/main.js",
     "--no-sandbox",
-    "--start-page=asistan",
+    "--start-page=assistant",
     "--auto-connect",
   ]);
 });

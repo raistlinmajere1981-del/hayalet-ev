@@ -4,12 +4,39 @@ import { existsSync } from "fs";
 import type { IpcMainInvokeEvent } from "electron";
 import { nativeImage, BrowserWindow } from "electron";
 import screenshot from "screenshot-desktop";
+import { loadSettings } from "./settings-manager.ts";
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import { loadAvailableLanguage } from "./i18n/language-service.ts";
+import { translateCatalog } from "../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 
 interface CaptureResult {
   success: boolean;
   dataUrl?: string;
   path?: string | null;
   message?: string;
+}
+
+async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function screenshotT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.screenshot.${key}`, params);
 }
 
 export async function capturePageHandler(
@@ -19,7 +46,7 @@ export async function capturePageHandler(
 ): Promise<CaptureResult> {
   try {
     const win = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getAllWindows()[0];
-    if (win === undefined) throw new Error("Pencere bulunamadı");
+    if (win === undefined) throw new Error(await screenshotT("windowNotFound"));
     const bounds = win.getBounds();
     let rect = { x: 0, y: 0, width: bounds.width, height: bounds.height };
     if (region.length > 0) {

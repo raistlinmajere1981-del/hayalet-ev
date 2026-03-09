@@ -16,6 +16,7 @@ import {
   sortModelItems,
   toReasoningEffortItems,
 } from "./provider-catalog.js";
+import { localeCompare, t } from "./i18n.js";
 import type { CustomSelectAPI, OpencodeUiModelPreferences, RuntimeState } from "./types.js";
 
 type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
@@ -72,7 +73,7 @@ function applyModelState(context: ProviderContext): void {
   }
 
   if (visibleItems.length === 0) {
-    context.modelDropdown.setError("Yok");
+    context.modelDropdown.setError(t("provider.none"));
     context.runtime.activeModelKey = null;
     context.runtime.activeReasoningEffort = null;
     refreshReasoningEffortDropdown(context);
@@ -106,7 +107,7 @@ export function refreshReasoningEffortDropdown(context: ProviderContext): void {
   );
   if (items.length === 0) {
     context.runtime.activeReasoningEffort = null;
-    context.effortDropdown.setError("Yok");
+    context.effortDropdown.setError(t("provider.none"));
     return;
   }
 
@@ -207,7 +208,7 @@ export async function loadModels(
 
     applyModelState(context);
   } catch {
-    context.modelDropdown.setError("Hata");
+    context.modelDropdown.setError(t("provider.error"));
     context.runtime.activeModelKey = null;
     context.runtime.activeReasoningEffort = null;
     context.runtime.modelMetaByKey = {};
@@ -245,14 +246,14 @@ export async function loadProviderContextAndModels(
     const items = catalog
       .map((item) => ({
         ...item,
-        badge: connectedSet.has(item.id) ? "Connected" : "Available",
+        badge: connectedSet.has(item.id) ? t("provider.connected") : t("provider.available"),
         isConnected: connectedSet.has(item.id),
       }))
       .sort((left, right) => {
         if (left.badge !== right.badge) {
-          return left.badge === "Connected" ? -1 : 1;
+          return left.badge === t("provider.connected") ? -1 : 1;
         }
-        return left.name.localeCompare(right.name, "tr");
+        return localeCompare(left.name, right.name);
       });
 
     renderProvidersPanel(context, renderProviderRows(items));

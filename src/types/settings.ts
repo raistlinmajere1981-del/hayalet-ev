@@ -1,14 +1,39 @@
 /**
- * Settings Types - Ayar yapılandırma tipleri
+ * Settings Types
  *
  * @module src/js/types/settings
  */
 
-import type { SlotId, ProviderId, AllProviderId, AsistanProviderId } from "./common.js";
+import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
+import type { AppLanguage } from "./i18n.js";
+export type { AppLanguage } from "./i18n.js";
+
+export const ASSISTANT_SLOT_SETTINGS_KEY = "assistantSlot";
+export const ASSISTANT_ACCOUNTS_SETTINGS_KEY = "assistantAccounts";
+export const LEGACY_ASSISTANT_SLOT_SETTINGS_KEY = "asistanSlot";
+export const LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY = "asistanAccounts";
+
+function matchesSettingsPath(path: string, key: string): boolean {
+  return path === key || path.startsWith(`${key}.`);
+}
+
+export function isAssistantSlotSettingsPath(path: string): boolean {
+  return (
+    matchesSettingsPath(path, ASSISTANT_SLOT_SETTINGS_KEY) ||
+    matchesSettingsPath(path, LEGACY_ASSISTANT_SLOT_SETTINGS_KEY)
+  );
+}
+
+export function isAssistantAccountsSettingsPath(path: string): boolean {
+  return (
+    matchesSettingsPath(path, ASSISTANT_ACCOUNTS_SETTINGS_KEY) ||
+    matchesSettingsPath(path, LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY)
+  );
+}
 
 // Account Types
 
-/** Hesap bilgisi */
+/** Account metadata. */
 export interface Account {
   id: string;
   provider: AllProviderId;
@@ -23,7 +48,7 @@ export interface Account {
   lastSessionUrl?: string | null;
 }
 
-/** Slot-Account eşleştirmesi */
+/** Slot-to-account mapping. */
 export interface SlotAssignment {
   slot: SlotId;
   accountId: string | null;
@@ -31,7 +56,7 @@ export interface SlotAssignment {
 
 // Settings Schema Types
 
-/** Slot ayarları */
+/** Slot settings. */
 export interface SlotSettings {
   accountId: string | null;
   provider?: ProviderId | null;
@@ -46,15 +71,13 @@ export interface SlotSettings {
   lastConnectionState?: "connected" | "disconnected" | null;
 }
 
-/** Upload method tercihi */
+/** Preferred upload method. */
 export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "dragdrop" | "injection";
 
-/** Message method tercihi */
+/** Preferred message injection method. */
 export type MessageMethod = "injection" | "xdotools";
 
-export type AppLanguage = "tr" | "en";
-
-/** Genel ayarlar */
+/** Global application settings. */
 export interface GeneralSettings {
   theme?: "light" | "dark" | "system";
   language?: AppLanguage;
@@ -63,7 +86,7 @@ export interface GeneralSettings {
   autoUpdate?: boolean;
 }
 
-/** Upload ayarları */
+/** Upload settings. */
 export interface UploadSettings {
   preferredMethod: UploadMethod;
   fallbackMethod?: UploadMethod;
@@ -71,7 +94,7 @@ export interface UploadSettings {
   allowedTypes?: string[];
 }
 
-/** Google Drive ayarları */
+/** Google Drive settings. */
 export interface GoogleDriveSettings {
   connected: boolean;
   email?: string;
@@ -88,7 +111,7 @@ export interface OpencodeUiModelPreferences {
   lastSelectedModelKey?: string | null;
 }
 
-/** Ana ayar şeması */
+/** Root application settings schema. */
 export interface AppSettings {
   version?: string;
   general?: GeneralSettings;
@@ -104,31 +127,31 @@ export interface AppSettings {
     ai2: SlotSettings;
     [key: string]: SlotSettings; // Dynamic slot access
   };
-  asistanSlot?: SlotSettings; // AI0 slot
+  assistantSlot?: SlotSettings; // AI0 slot
   accounts: Account[];
-  asistanAccounts?: Account[]; // AI0 accounts
+  assistantAccounts?: Account[]; // AI0 accounts
   upload?: UploadSettings;
   googleDrive?: GoogleDriveSettings;
   assistants?: {
-    preferred?: AsistanProviderId;
-    lastConnected?: AsistanProviderId | null;
+    preferred?: AssistantProviderId;
+    lastConnected?: AssistantProviderId | null;
     resumeLastSession?: boolean;
     keepServersOnAppClose?: boolean;
     lastOpencodeUrl?: string | null;
     lastOpencodeUiSessionId?: string | null;
     lastActiveRelay?: string | null;
-    /** Kullanıcının pasif yaptığı MCP sunucu isimleri */
+    /** MCP servers disabled by the user. */
     disabledMcpServers?: string[];
-    /** OpenCode server çalışma tercihleri */
+    /** OpenCode server startup preferences. */
     opencode?: {
-      /** Boş/null ise PATH'teki `opencode` komutu kullanılır */
+      /** Uses the PATH `opencode` binary when empty or null. */
       binaryPath?: string | null;
-      /** Server için tercih edilen başlangıç portu */
+      /** Preferred starting port for the server. */
       defaultPort?: number;
-      /** Son başarılı binary kontrolden bulunan sürüm */
+      /** Version resolved from the last successful binary probe. */
       version?: string | null;
     };
-    /** OpenCode UI model seçim tercihleri */
+    /** OpenCode UI model selection preferences. */
     opencodeUi?: OpencodeUiModelPreferences;
   };
   logging?: {
@@ -140,12 +163,12 @@ export interface AppSettings {
     enableStateSnapshots?: boolean;
     snapshotInterval?: number;
   };
-  [key: string]: unknown; // Ek alanlar için
+  [key: string]: unknown; // Additional forward-compatible fields
 }
 
 // Settings Events
 
-/** Ayar değişiklik event'i */
+/** Settings change event. */
 export interface SettingsChangeEvent {
   path: string;
   oldValue: unknown;
@@ -153,5 +176,5 @@ export interface SettingsChangeEvent {
   timestamp: number;
 }
 
-/** Ayar listener callback */
+/** Settings listener callback. */
 export type SettingsListener = (event: SettingsChangeEvent) => void;

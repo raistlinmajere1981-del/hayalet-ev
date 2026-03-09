@@ -7,27 +7,37 @@
  * @module mcp-server/tools/log/streaming
  */
 
-import { watch, readFileSync, statSync, existsSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync, statSync, watch } from "fs";
 import { readdir } from "fs/promises";
-import { PROJECT_ROOT } from "../../utils/project-root.js";
+import { join } from "path";
 import type { LogEntry } from "@shared/index.js";
+import type { TranslationParams } from "../../../types/i18n.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
+import { PROJECT_ROOT } from "../../utils/project-root.js";
 
-// ============================================================================
-// Types
-// ============================================================================
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+const streamingToolDefinitionTranslator = createMcpTranslatorSync();
+
+function streamingToolT(key: string, params?: TranslationParams): string {
+  return streamingToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.streaming.${key}`, params);
+}
+
+function streamingT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.streaming.${key}`, params);
+}
 
 export interface StreamLogsRealtimeArgs {
-  sessionId?: string; // Specific session or latest
-  tail?: number; // Start from last N lines (default: 50)
-  follow?: boolean; // Follow mode (default: true)
+  sessionId?: string;
+  tail?: number;
+  follow?: boolean;
   filter?: {
-    level?: string[]; // Filter by level: error, warn, info, debug
-    category?: string[]; // Filter by category
-    contains?: string; // Filter by message content
-    regex?: string; // Filter by regex pattern
-    correlationId?: string; // Filter by correlation ID
-    source?: string; // Filter by source (e.g., 'ai1-webview')
+    level?: string[];
+    category?: string[];
+    contains?: string;
+    regex?: string;
+    correlationId?: string;
+    source?: string;
   };
 }
 
@@ -39,84 +49,64 @@ export interface StreamLogsRealtimeResult {
   message: string;
 }
 
-// ============================================================================
-// Real-time Streaming Implementation
-// ============================================================================
-
-/**
- * Stream logs in real-time (tail -f like)
- *
- * This function:
- * 1. Reads initial logs (with tail option)
- * 2. Sets up file watcher for new entries
- * 3. Streams new logs to stderr as they arrive
- * 4. Runs until interrupted (Ctrl+C)
- */
 export async function streamLogsRealtime(
   args: StreamLogsRealtimeArgs
 ): Promise<StreamLogsRealtimeResult> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
-  const sessionId = args.sessionId ?? (await getLatestSessionId(logDir));
+  const sessionId = args.sessionId ?? (await getLatestSessionId(logDir, t));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
+  const divider = "─".repeat(57);
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new Error(streamingT(t, "sessionNotFound", { sessionId }));
   }
 
-  // Read initial logs
   const initialLogs = readInitialLogs(structuredPath, args);
 
-  // Print initial logs to stderr
-  process.stderr.write("\n╔═══════════════════════════════════════════════════════════╗\n");
-  process.stderr.write("║       🔴 REAL-TIME LOG STREAMING (tail -f)              ║\n");
-  process.stderr.write("╚═══════════════════════════════════════════════════════════╝\n\n");
-  process.stderr.write(`Session: ${sessionId}\n`);
-  process.stderr.write(`Log file: ${structuredPath}\n`);
-  process.stderr.write(`Filter: ${JSON.stringify(args.filter ?? {})}\n`);
-  process.stderr.write(`\n─────────────────────────────────────────────────────────\n`);
-  process.stderr.write(`Showing last ${initialLogs.length} entries...\n`);
-  process.stderr.write(`─────────────────────────────────────────────────────────\n\n`);
+  process.stderr.write(`\n${streamingT(t, "bannerTitle")}\n`);
+  process.stderr.write(`${divider}\n`);
+  process.stderr.write(`${streamingT(t, "sessionLine", { sessionId })}\n`);
+  process.stderr.write(`${streamingT(t, "logFileLine", { path: structuredPath })}\n`);
+  process.stderr.write(
+    `${streamingT(t, "filterLine", { filters: JSON.stringify(args.filter ?? {}) })}\n`
+  );
+  process.stderr.write(`${divider}\n`);
+  process.stderr.write(
+    `${streamingT(t, "showingLastEntries", { count: initialLogs.length })}\n\n`
+  );
 
-  // Print initial logs
   initialLogs.forEach((entry) => {
-    printLogEntry(entry);
+    printLogEntry(entry, t);
   });
 
-  // If follow mode is disabled, return here
   if (args.follow === false) {
     return {
       sessionId,
       logPath: structuredPath,
       initialLogs,
       streaming: false,
-      message: `Returned ${initialLogs.length} log entries (follow mode disabled)`,
+      message: streamingT(t, "followDisabledResult", { count: initialLogs.length }),
     };
   }
 
-  // Start real-time streaming
-  process.stderr.write(`\n─────────────────────────────────────────────────────────\n`);
-  process.stderr.write("🔴 STREAMING LIVE... (Press Ctrl+C to stop)\n");
-  process.stderr.write(`─────────────────────────────────────────────────────────\n\n`);
+  process.stderr.write(`\n${divider}\n`);
+  process.stderr.write(`${streamingT(t, "liveStreamingTitle")}\n`);
+  process.stderr.write(`${streamingT(t, "pressCtrlC")}\n`);
+  process.stderr.write(`${divider}\n\n`);
 
-  await startFileWatcher(structuredPath, args.filter ?? {});
+  await startFileWatcher(structuredPath, args.filter ?? {}, t);
 
   return {
     sessionId,
     logPath: structuredPath,
     initialLogs,
     streaming: true,
-    message: "Real-time streaming started",
+    message: streamingT(t, "streamingStarted"),
   };
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Read initial logs from file (with tail support)
- */
 function readInitialLogs(filePath: string, args: StreamLogsRealtimeArgs): LogEntry[] {
   const content = readFileSync(filePath, "utf-8");
   const lines = content.split("\n").filter((line) => line.trim() !== "");
@@ -130,11 +120,10 @@ function readInitialLogs(filePath: string, args: StreamLogsRealtimeArgs): LogEnt
         entries.push(entry);
       }
     } catch {
-      // Skip invalid lines
+      // Skip invalid lines.
     }
   }
 
-  // Apply tail
   const tail = args.tail ?? 50;
   if (tail > 0) {
     entries = entries.slice(-tail);
@@ -143,95 +132,84 @@ function readInitialLogs(filePath: string, args: StreamLogsRealtimeArgs): LogEnt
   return entries;
 }
 
-/**
- * Start file watcher for real-time updates
- */
 async function startFileWatcher(
   filePath: string,
-  filter: StreamLogsRealtimeArgs["filter"]
+  filter: StreamLogsRealtimeArgs["filter"],
+  t: McpTranslator
 ): Promise<void> {
   await new Promise((resolve, reject) => {
     let filePosition = 0;
+    const divider = "─".repeat(57);
 
-    // Get initial file size
     try {
       const stats = statSync(filePath);
       filePosition = stats.size;
     } catch (err) {
-      reject(new Error(`Failed to stat file: ${String(err)}`));
+      reject(new Error(streamingT(t, "statFailed", { message: String(err) })));
       return;
     }
 
-    // Watch file for changes
     const watcher = watch(filePath, { persistent: true }, (eventType) => {
       if (eventType === "change") {
         try {
-          // Read new content
           const content = readFileSync(filePath, "utf-8");
           const newContent = content.substring(filePosition);
           filePosition = content.length;
 
-          if (newContent.trim() === "") return;
+          if (newContent.trim() === "") {
+            return;
+          }
 
-          // Parse and print new lines
           const newLines = newContent.split("\n").filter((line) => line.trim() !== "");
 
           for (const line of newLines) {
             try {
               const entry = JSON.parse(line) as LogEntry;
               if (matchesFilter(entry, filter ?? {})) {
-                printLogEntry(entry);
+                printLogEntry(entry, t);
               }
             } catch {
-              // Skip incomplete or invalid lines
+              // Skip incomplete or invalid lines.
             }
           }
         } catch (err) {
-          process.stderr.write(`\n⚠️  Error reading file: ${String(err)}\n`);
+          process.stderr.write(`\n${streamingT(t, "readError", { message: String(err) })}\n`);
         }
       }
     });
 
-    // Handle Ctrl+C
     process.on("SIGINT", () => {
-      process.stderr.write("\n\n─────────────────────────────────────────────────────────\n");
-      process.stderr.write("🛑 Streaming stopped by user\n");
-      process.stderr.write("─────────────────────────────────────────────────────────\n\n");
+      process.stderr.write(`\n\n${divider}\n`);
+      process.stderr.write(`${streamingT(t, "stoppedByUser")}\n`);
+      process.stderr.write(`${divider}\n\n`);
 
       watcher.close();
       resolve(undefined);
     });
 
-    // Handle errors
     watcher.on("error", (err) => {
-      process.stderr.write(`\n❌ Watcher error: ${err}\n`);
+      process.stderr.write(`\n${streamingT(t, "watcherError", { message: String(err) })}\n`);
       watcher.close();
       reject(err);
     });
   });
 }
 
-/**
- * Check if log entry matches filter criteria
- */
 function matchesFilter(entry: LogEntry, filter: StreamLogsRealtimeArgs["filter"]): boolean {
   if (!filter) return true;
 
-  // Level filter
-  if (filter.level && filter.level.length > 0) {
-    if (!filter.level.includes(entry.level)) {
-      return false;
-    }
+  if (filter.level && filter.level.length > 0 && !filter.level.includes(entry.level)) {
+    return false;
   }
 
-  // Category filter
-  if (filter.category && filter.category.length > 0) {
-    if (!filter.category.includes(String(entry.category))) {
-      return false;
-    }
+  if (
+    filter.category &&
+    filter.category.length > 0 &&
+    !filter.category.includes(String(entry.category))
+  ) {
+    return false;
   }
 
-  // Contains filter
   if (filter.contains != null && filter.contains !== "") {
     const search = filter.contains.toLowerCase();
     if (!entry.message.toLowerCase().includes(search)) {
@@ -239,7 +217,6 @@ function matchesFilter(entry: LogEntry, filter: StreamLogsRealtimeArgs["filter"]
     }
   }
 
-  // Regex filter
   if (filter.regex != null && filter.regex !== "") {
     try {
       const regex = new RegExp(filter.regex, "i");
@@ -247,18 +224,16 @@ function matchesFilter(entry: LogEntry, filter: StreamLogsRealtimeArgs["filter"]
         return false;
       }
     } catch {
-      // Invalid regex, skip filter
+      // Ignore invalid regex values.
     }
   }
 
-  // Correlation ID filter
   if (filter.correlationId != null && filter.correlationId !== "") {
     if (entry.correlationId !== filter.correlationId) {
       return false;
     }
   }
 
-  // Source filter (from context)
   if (filter.source != null && filter.source !== "") {
     const source =
       entry.context && typeof entry.context === "object" && "source" in entry.context
@@ -272,15 +247,11 @@ function matchesFilter(entry: LogEntry, filter: StreamLogsRealtimeArgs["filter"]
   return true;
 }
 
-/**
- * Print log entry to stderr with colors
- */
-function printLogEntry(entry: LogEntry): void {
+function printLogEntry(entry: LogEntry, t: McpTranslator): void {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString("en-US", { hour12: false });
   const level = entry.level.toUpperCase().padEnd(7);
   const category = String(entry.category).padEnd(15).substring(0, 15);
 
-  // Color codes
   const colors = {
     reset: "\x1b[0m",
     red: "\x1b[31m",
@@ -291,15 +262,13 @@ function printLogEntry(entry: LogEntry): void {
     cyan: "\x1b[36m",
   };
 
-  // Level color
   let levelColor: string;
   if (entry.level === "error") levelColor = colors.red;
   else if (entry.level === "warning") levelColor = colors.yellow;
   else if (entry.level === "success") levelColor = colors.green;
   else if (entry.level === "info") levelColor = colors.blue;
-  else levelColor = colors.gray; // debug
+  else levelColor = colors.gray;
 
-  // Format: [HH:MM:SS] [ERROR  ] [category      ] Message
   process.stderr.write(
     `${colors.gray}[${timestamp}]${colors.reset} ` +
       `${levelColor}[${level}]${colors.reset} ` +
@@ -307,7 +276,6 @@ function printLogEntry(entry: LogEntry): void {
       `${entry.message}\n`
   );
 
-  // Print context if exists (indented)
   if (entry.context && Object.keys(entry.context).length > 0) {
     const contextStr = JSON.stringify(entry.context, null, 2)
       .split("\n")
@@ -316,9 +284,10 @@ function printLogEntry(entry: LogEntry): void {
     process.stderr.write(contextStr + "\n");
   }
 
-  // Print error details if exists
   if (entry.error) {
-    process.stderr.write(`  ${colors.red}Error: ${entry.error.message}${colors.reset}\n`);
+    process.stderr.write(
+      `  ${colors.red}${streamingT(t, "errorLabel")}: ${entry.error.message}${colors.reset}\n`
+    );
     if (entry.error.stack != null && entry.error.stack !== "") {
       const stackLines = entry.error.stack.split("\n").slice(0, 3);
       stackLines.forEach((line) => {
@@ -328,10 +297,7 @@ function printLogEntry(entry: LogEntry): void {
   }
 }
 
-/**
- * Get latest session ID from logs directory
- */
-async function getLatestSessionId(logDir: string): Promise<string> {
+async function getLatestSessionId(logDir: string, t: McpTranslator): Promise<string> {
   const sessions = await readdir(logDir);
   const sorted = sessions
     .filter((name) => !name.startsWith("."))
@@ -339,40 +305,35 @@ async function getLatestSessionId(logDir: string): Promise<string> {
     .reverse();
 
   if (sorted.length === 0) {
-    throw new Error("No sessions found in logs directory");
+    throw new Error(streamingT(t, "noSessionsFound"));
   }
 
   const latest = sorted[0];
   if (latest == null || latest === "") {
-    throw new Error("Failed to get latest session");
+    throw new Error(streamingT(t, "failedToGetLatestSession"));
   }
 
   return latest;
 }
 
-// ============================================================================
-// Tool Definition
-// ============================================================================
-
 export const STREAM_LOGS_REALTIME_TOOL = {
   name: "hev_stream_logs_realtime",
-  description:
-    "Real-time log streaming (tail -f like). Streams log entries as they arrive. Press Ctrl+C to stop.",
+  description: streamingToolT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       sessionId: {
         type: "string",
-        description: "Session ID to stream (omit for latest session)",
+        description: streamingToolT("sessionId"),
       },
       tail: {
         type: "integer",
-        description: "Show last N entries before streaming (default: 50)",
+        description: streamingToolT("tail"),
         default: 50,
       },
       follow: {
         type: "boolean",
-        description: "Follow mode - stream new entries (default: true)",
+        description: streamingToolT("follow"),
         default: true,
       },
       filter: {
@@ -381,28 +342,28 @@ export const STREAM_LOGS_REALTIME_TOOL = {
           level: {
             type: "array",
             items: { type: "string" },
-            description: "Filter by level: error, warn, info, debug",
+            description: streamingToolT("filterLevel"),
           },
           category: {
             type: "array",
             items: { type: "string" },
-            description: "Filter by category",
+            description: streamingToolT("filterCategory"),
           },
           contains: {
             type: "string",
-            description: "Filter by message content (case-insensitive)",
+            description: streamingToolT("filterContains"),
           },
           regex: {
             type: "string",
-            description: "Filter by regex pattern",
+            description: streamingToolT("filterRegex"),
           },
           correlationId: {
             type: "string",
-            description: "Filter by correlation ID",
+            description: streamingToolT("filterCorrelationId"),
           },
           source: {
             type: "string",
-            description: "Filter by source (e.g., 'ai1-webview', 'mcp-server')",
+            description: streamingToolT("filterSource"),
           },
         },
       },
@@ -414,14 +375,13 @@ export const STREAM_LOGS_REALTIME_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Real-time debugging during development",
-      "Monitor application behavior live",
-      "Track specific operations with filters",
-      "Watch for errors as they occur",
+      streamingToolT("useCases.realtimeDebugging"),
+      streamingToolT("useCases.monitorBehavior"),
+      streamingToolT("useCases.trackFilteredOperations"),
+      streamingToolT("useCases.watchErrors"),
     ],
     relatedTools: ["hev_read_electron_logs", "hev_analyze_errors"],
-    agentGuidance:
-      "Use for real-time log monitoring. Streams continuously until interrupted. Perfect for debugging live issues.",
+    agentGuidance: streamingToolT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["logging", "streaming", "real-time", "tail", "debug"],

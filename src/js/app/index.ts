@@ -1,8 +1,8 @@
 /**
  * App Entry Point - Orchestrator
  *
- * Tüm modülleri koordine eder ve uygulama yaşam döngüsünü yönetir.
- * Her modülün detay implementasyonu kendi dosyasındadır.
+ * Coordinates all modules and manages the application lifecycle.
+ * Each module keeps its own implementation details in its own file.
  */
 
 import { AppState } from "../modules/app-state.js";
@@ -17,10 +17,16 @@ import { WebviewManager } from "../modules/webview-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { MetaCommandManager } from "../modules/meta-command-manager.js";
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
 
 import type { PageController } from "./types.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
+import { bootstrapShellI18n, shellT } from "./shell-i18n.js";
 import {
   setupNavigation,
   setupWindowControls,
@@ -43,7 +49,7 @@ import {
 } from "./page-init.js";
 import { setupRoomOverlay } from "./room-overlay.js";
 
-// Extend Window interface for global access
+// Extend the Window interface for shared module access.
 declare global {
   interface Window {
     SlotController: typeof SlotController;
@@ -62,7 +68,7 @@ let isInitializing = false;
 let isInitialized = false;
 
 async function initApp(): Promise<void> {
-  // Prevent duplicate initialization
+  // Prevent duplicate initialization.
   if (isInitializing || isInitialized) {
     console.warn("[App] Already initialized or initializing, skipping");
     return;
@@ -71,50 +77,58 @@ async function initApp(): Promise<void> {
   isInitializing = true;
   let initSucceeded = false;
 
-  // Inject ServerCommands into CoreEngine to break circular dependency
+  // Inject ServerCommands into CoreEngine to break the circular dependency.
   registerServerCommands(ServerCommands);
 
   try {
     try {
-      const electronApi = window.electronAPI;
-      if (electronApi === undefined) {
-        const sessionId = "renderer-fallback";
-        Logger.init(sessionId);
-        Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
-      } else {
-        const sessionId = await electronApi.logger.getSessionId();
-        Logger.init(sessionId);
-        Logger.debug(LogCategory.SYSTEM, "Unified logger initialized", { sessionId });
+        const electronApi = window.electronAPI;
+        if (electronApi === undefined) {
+          const sessionId = "renderer-fallback";
+          Logger.init(sessionId);
+          Logger.debug(LogCategory.SYSTEM, shellT("logs.loggerInitialized"), { sessionId });
+        } else {
+          const sessionId = await electronApi.logger.getSessionId();
+          Logger.init(sessionId);
+          Logger.debug(LogCategory.SYSTEM, shellT("logs.loggerInitialized"), { sessionId });
+        }
+      } catch (err) {
+        console.error("[App] Logger init error:", err instanceof Error ? err.message : String(err));
       }
-    } catch (err) {
-      console.error("[App] Logger init error:", err instanceof Error ? err.message : String(err));
-    }
 
     setupUILogListener();
-    Logger.debug(LogCategory.SYSTEM, "UI log listener setup complete");
+    Logger.debug(LogCategory.SYSTEM, shellT("logs.uiLogListenerReady"));
 
-    SplashScreen.update(10, "Ayarlar yükleniyor...");
+    await SettingsManager.load();
+    await AppI18n.bootstrap(SettingsManager);
+    bootstrapShellI18n();
+
+    SplashScreen.update(10, AppI18n.t("app.startup.loadingSettings"));
 
     TrafficManager.init();
 
     await CoreEngine.init();
-    SplashScreen.update(30, "Komutlar yükleniyor...");
+    SplashScreen.update(30, AppI18n.t("app.startup.loadingCommands"));
 
     await MetaCommandManager.loadCommands();
-    SplashScreen.update(40, "Odalar hazırlanıyor...");
+    SplashScreen.update(40, AppI18n.t("app.startup.loadingRooms"));
     await RoomRegistry.loadInstalledRooms();
-    SplashScreen.update(45, "Arayüz hazırlanıyor...");
+    SplashScreen.update(45, AppI18n.t("app.startup.preparingUi"));
 
     try {
       document.documentElement.setAttribute("spellcheck", "false");
       document.body.setAttribute("spellcheck", "false");
     } catch (e) {
-      Logger.debug(LogCategory.SYSTEM, "Spellcheck disable failed", {
-        error: getErrorMessage(e),
-      });
+      Logger.debug(
+        LogCategory.SYSTEM,
+        shellT("logs.spellcheckDisableFailed", { message: getErrorMessage(e) }),
+        {
+          error: getErrorMessage(e),
+        }
+      );
     }
     injectPageTemplates();
-    SplashScreen.update(50, "Modüller başlatılıyor...");
+    SplashScreen.update(50, AppI18n.t("app.startup.startingModules"));
 
     try {
       window.__hayalet_settings_unsub ??= SettingsManager.subscribe(
@@ -125,9 +139,9 @@ async function initApp(): Promise<void> {
               (path) =>
                 path.startsWith("user") ||
                 path.startsWith("accounts") ||
-                path.startsWith("asistanAccounts") ||
+                isAssistantAccountsSettingsPath(path) ||
                 path.startsWith("slots") ||
-                path.startsWith("asistanSlot")
+                isAssistantSlotSettingsPath(path)
             );
 
           if (!shouldUpdateIndicators) {
@@ -142,9 +156,13 @@ async function initApp(): Promise<void> {
         }
       );
     } catch (_) {
-      Logger.debug(LogCategory.SYSTEM, "Settings subscription failed", {
-        error: getErrorMessage(_),
-      });
+      Logger.debug(
+        LogCategory.SYSTEM,
+        shellT("logs.settingsSubscriptionFailed", { message: getErrorMessage(_) }),
+        {
+          error: getErrorMessage(_),
+        }
+      );
     }
 
     await initControllers(controllers);
@@ -169,9 +187,9 @@ async function initApp(): Promise<void> {
     setupTopBarRelayButtons();
     setupReportPanel();
 
-    SplashScreen.update(90, "Son hazırlıklar...");
+    SplashScreen.update(90, AppI18n.t("app.startup.finalizing"));
 
-    // Startup flag kontrolü: --start-page ve --auto-connect argümanları
+    // Startup flag handling: --start-page and --auto-connect arguments.
     const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
       | { startPage: string | null; autoConnect: boolean }
       | undefined;
@@ -192,25 +210,25 @@ async function initApp(): Promise<void> {
       updateRelayButtonStates(); // Update relay button states on slot connection changes
     });
 
-    Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, "Uygulama başlatıldı", {
+    Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, shellT("logs.appStarted"), {
       visibility: LogVisibility.PANEL,
     });
 
     SplashScreen.complete();
     await SplashScreen.hide();
 
-    // --auto-connect: Asistan sayfasındaysa bağlan butonuna otomatik tıkla
-    if (autoConnect && startPage === "asistan") {
+    // --auto-connect: click the assistant connect button automatically on the assistant page.
+    if (autoConnect && startPage === "assistant") {
       setTimeout(() => {
         const connectBtn = document.getElementById(
-          "asistan-connect-btn"
+          "assistant-connect-btn"
         ) as HTMLButtonElement | null;
         if (connectBtn !== null && !connectBtn.disabled) {
           connectBtn.click();
           Logger.panel(
             LogCategory.SYSTEM,
             LogLevel.INFO,
-            "Auto-connect: asistan bağlan butonuna tıklandı",
+            shellT("logs.autoConnectClicked"),
             {
               visibility: LogVisibility.PANEL,
             }
@@ -233,7 +251,7 @@ async function initApp(): Promise<void> {
     }
     try {
       SplashScreen.show();
-      SplashScreen.setStatus("Başlatma hatası");
+      SplashScreen.setStatus(AppI18n.t("app.startup.startupError"));
       SplashScreen.setProgress(100);
       await SplashScreen.hide();
     } catch {

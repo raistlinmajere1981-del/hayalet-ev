@@ -1,11 +1,12 @@
 /**
  * Development Tools - Line Editor
  *
- * Satır bazlı dosya düzenleme (büyük dosyalar için find_and_replace alternatifi)
+ * Line-based file editing (a find-and-replace alternative for large files)
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { getContextPreview } from "../../utils/file-utils.js";
 import { analyzeScopeImpact, validateBracketBalance } from "./scope-validator.js";
 import {
@@ -26,6 +27,14 @@ interface EditLinesResult {
   willBreakScope?: boolean;
 }
 
+function lineEditorT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.lineEditor.${key}`, params);
+}
+
+function lineEditorDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.lineEditor.definition.${key}`, params);
+}
+
 export async function editLines(
   filePath: string,
   options: {
@@ -43,7 +52,7 @@ export async function editLines(
   projectRoot?: string
 ): Promise<EditLinesResult> {
   if (!existsSync(filePath)) {
-    return { success: false, message: `Dosya bulunamadı: ${filePath}` };
+    return { success: false, message: lineEditorT("runtime.fileNotFound", { filePath }) };
   }
 
   const originalContent = readFileSync(filePath, "utf-8");
@@ -52,7 +61,10 @@ export async function editLines(
   const end = options.endLine ?? start + 1;
 
   if (start < 0 || start >= lines.length) {
-    return { success: false, message: `Geçersiz başlangıç satırı: ${options.startLine}` };
+    return {
+      success: false,
+      message: lineEditorT("runtime.invalidStartLine", { startLine: options.startLine }),
+    };
   }
 
   switch (options.operation) {
@@ -64,7 +76,7 @@ export async function editLines(
         .join("\n");
       return {
         success: true,
-        message: "Satırlar gösteriliyor",
+        message: lineEditorT("runtime.showingLines"),
         preview,
         linesAffected: showEnd - start,
       };
@@ -81,7 +93,7 @@ export async function editLines(
         if (scopeCheck.willBreakScope) {
           return {
             success: false,
-            message: "⚠️  Scope kırılma riski tespit edildi!",
+            message: lineEditorT("runtime.scopeRiskDetected"),
             scopeWarnings: scopeCheck.warnings,
             willBreakScope: true,
             linesAffected: 0,
@@ -101,8 +113,8 @@ export async function editLines(
           if (!prettierCheck.balanced) {
             return {
               success: false,
-              message: "⚠️  Syntax error detected (Prettier)",
-              bracketIssues: [prettierCheck.error ?? "Unknown syntax error"],
+              message: lineEditorT("runtime.syntaxErrorPrettier"),
+              bracketIssues: [prettierCheck.error ?? lineEditorT("runtime.unknownSyntaxError")],
               linesAffected: 0,
             };
           }
@@ -112,7 +124,7 @@ export async function editLines(
           if (!bracketCheck.balanced) {
             return {
               success: false,
-              message: "⚠️  Parantez dengesi bozulacak!",
+              message: lineEditorT("runtime.bracketBalanceWillBreak"),
               bracketIssues: bracketCheck.details,
               linesAffected: 0,
             };
@@ -133,7 +145,9 @@ export async function editLines(
       return {
         success: true,
         message:
-          options.dryRun === true ? "Dry run: silme yapılacak" : `${end - start} satır silindi`,
+          options.dryRun === true
+            ? lineEditorT("runtime.deleteDryRun")
+            : lineEditorT("runtime.deletedLines", { count: end - start }),
         linesAffected: end - start,
         ...(contextPreview != null ? { contextPreview } : {}),
       };
@@ -142,7 +156,7 @@ export async function editLines(
     case "insert":
     case "insert_after": {
       if (options.content == null) {
-        return { success: false, message: "İçerik gerekli" };
+        return { success: false, message: lineEditorT("runtime.contentRequired") };
       }
       const insertLines = options.content.split("\n");
       const newLines = [...lines.slice(0, start + 1), ...insertLines, ...lines.slice(start + 1)];
@@ -167,8 +181,8 @@ export async function editLines(
         success: true,
         message:
           options.dryRun === true
-            ? "Dry run: ekleme yapılacak"
-            : `${insertLines.length} satır eklendi (sonra)`,
+            ? lineEditorT("runtime.insertDryRun")
+            : lineEditorT("runtime.insertedAfter", { count: insertLines.length }),
         linesAffected: insertLines.length,
         ...(contextPreview != null ? { contextPreview } : {}),
       };
@@ -176,7 +190,7 @@ export async function editLines(
 
     case "insert_before": {
       if (options.content == null) {
-        return { success: false, message: "İçerik gerekli" };
+        return { success: false, message: lineEditorT("runtime.contentRequired") };
       }
       const insertLines = options.content.split("\n");
       const newLines = [...lines.slice(0, start), ...insertLines, ...lines.slice(start)];
@@ -196,8 +210,8 @@ export async function editLines(
         success: true,
         message:
           options.dryRun === true
-            ? "Dry run: ekleme yapılacak"
-            : `${insertLines.length} satır eklendi (önce)`,
+            ? lineEditorT("runtime.insertDryRun")
+            : lineEditorT("runtime.insertedBefore", { count: insertLines.length }),
         linesAffected: insertLines.length,
         ...(contextPreview != null ? { contextPreview } : {}),
       };
@@ -205,7 +219,7 @@ export async function editLines(
 
     case "replace": {
       if (options.content == null) {
-        return { success: false, message: "İçerik gerekli" };
+        return { success: false, message: lineEditorT("runtime.contentRequired") };
       }
 
       const safeMode = options.safeMode ?? true; // Default: true for safety
@@ -224,7 +238,9 @@ export async function editLines(
           if (scopeCheck.willBreakScope) {
             return {
               success: false,
-              message: `⚠️  Scope kırılma riski tespit edildi!\n${scopeCheck.warnings.join("\n")}\n\nBu kontrolü atlamak için force: true kullanın.`,
+              message: lineEditorT("runtime.scopeRiskWithWarnings", {
+                warnings: scopeCheck.warnings.join("\n"),
+              }),
               scopeWarnings: scopeCheck.warnings,
               willBreakScope: true,
               linesAffected: 0,
@@ -246,8 +262,8 @@ export async function editLines(
           if (!prettierCheck.balanced) {
             return {
               success: false,
-              message: "⚠️  Syntax error detected (Prettier)",
-              bracketIssues: [prettierCheck.error ?? "Unknown syntax error"],
+              message: lineEditorT("runtime.syntaxErrorPrettier"),
+              bracketIssues: [prettierCheck.error ?? lineEditorT("runtime.unknownSyntaxError")],
               linesAffected: 0,
             };
           }
@@ -257,7 +273,7 @@ export async function editLines(
           if (!bracketCheck.balanced) {
             return {
               success: false,
-              message: "⚠️  Parantez dengesi bozulacak!",
+              message: lineEditorT("runtime.bracketBalanceWillBreak"),
               bracketIssues: bracketCheck.details,
               linesAffected: 0,
             };
@@ -286,12 +302,13 @@ export async function editLines(
         } catch (err: unknown) {
           syntaxValid = false;
           const error = err as { stderr?: { toString(): string }; message?: string };
-          syntaxError = error.stderr?.toString() ?? error.message ?? "Syntax hatası";
+          syntaxError =
+            error.stderr?.toString() ?? error.message ?? lineEditorT("runtime.syntaxError");
 
           if (options.dryRun !== true) {
             return {
               success: false,
-              message: "Syntax hatası tespit edildi, değişiklik yapılmadı",
+              message: lineEditorT("runtime.syntaxDetectedNoChanges"),
               syntaxValid: false,
               syntaxError,
             };
@@ -314,8 +331,8 @@ export async function editLines(
         success: true,
         message:
           options.dryRun === true
-            ? "Dry run: değişiklik yapılacak"
-            : `${end - start} satır değiştirildi`,
+            ? lineEditorT("runtime.replaceDryRun")
+            : lineEditorT("runtime.replacedLines", { count: end - start }),
         linesAffected: end - start,
         ...(contextPreview != null ? { contextPreview } : {}),
         syntaxValid,
@@ -324,57 +341,55 @@ export async function editLines(
     }
 
     default:
-      return { success: false, message: "Bilinmeyen işlem" };
+      return { success: false, message: lineEditorT("runtime.unknownOperation") };
   }
 }
 
 export const LINE_EDITOR_TOOL = {
   name: "hev_dev_edit_lines",
-  description:
-    "Satır bazlı dosya düzenleme. operation: 'replace'|'delete'|'insert'|'insert_after'|'insert_before'|'show'. replace/delete için start_line+end_line gerekli, insert için start_line+content gerekli. Önce hev_fs_read ile satır numaralarını öğren.",
+  description: lineEditorDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu",
+        description: lineEditorDefT("filePath"),
       },
       operation: {
         type: "string" as const,
         enum: ["replace", "delete", "insert", "insert_after", "insert_before", "show"],
-        description:
-          "İşlem türü: replace (satırları değiştir), delete (sil), insert/insert_after (sonra ekle), insert_before (önce ekle), show (göster)",
+        description: lineEditorDefT("operation"),
       },
       start_line: {
         type: "integer" as const,
-        description: "Başlangıç satırı (1-indexed)",
+        description: lineEditorDefT("startLine"),
       },
       end_line: {
         type: "integer" as const,
-        description: "Bitiş satırı (dahil, delete/replace için)",
+        description: lineEditorDefT("endLine"),
       },
       content: {
         type: "string" as const,
-        description: "Yeni içerik (replace/insert için)",
+        description: lineEditorDefT("content"),
       },
       dry_run: {
         type: "boolean" as const,
-        description: "Değişiklikleri uygulama, sadece önizle",
+        description: lineEditorDefT("dryRun"),
         default: false,
       },
       validate_brackets: {
         type: "boolean" as const,
-        description: "Parantez dengesi kontrolü (default: true)",
+        description: lineEditorDefT("validateBrackets"),
         default: true,
       },
       safe_mode: {
         type: "boolean" as const,
-        description: "Scope kırılma kontrolü (default: true)",
+        description: lineEditorDefT("safeMode"),
         default: true,
       },
       force: {
         type: "boolean" as const,
-        description: "Güvenlik kontrollerini atla (dikkatli kullan!)",
+        description: lineEditorDefT("force"),
         default: false,
       },
     },
@@ -386,13 +401,12 @@ export const LINE_EDITOR_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Precise line-based editing for large files",
-      "Safe replacements with bracket validation",
-      "Scope-aware deletions",
+      lineEditorDefT("useCases.preciseEditing"),
+      lineEditorDefT("useCases.safeReplacement"),
+      lineEditorDefT("useCases.scopeAwareDeletion"),
     ],
     relatedTools: ["hev_fs_find_and_replace", "hev_fs_show", "hev_dev_check_syntax"],
-    agentGuidance:
-      "Advanced line editor with safety checks. ALWAYS use hev_fs_read first to get line numbers. Has safe_mode and bracket validation. Use for large files where find_and_replace is risky. operation: replace (start_line, end_line, content), delete (start_line, end_line), insert/insert_after (start_line, content), insert_before (start_line, content), show (start_line, end_line).",
+    agentGuidance: lineEditorDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["line-editing", "safe", "scope-aware", "bracket-validation", "precise"],

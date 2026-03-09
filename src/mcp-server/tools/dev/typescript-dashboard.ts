@@ -1,11 +1,12 @@
 /**
  * Development Tools - TypeScript Error Dashboard
  *
- * TypeScript hatalarını analiz edip dashboard formatında gösterir
+ * Analyzes TypeScript errors and presents them in dashboard format
  */
 
 import { execSync } from "child_process";
 import _fs from "fs";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
 interface DashboardOptions {
@@ -26,30 +27,44 @@ interface DashboardResult {
 }
 
 const ERROR_DESCRIPTIONS: Record<string, string> = {
-  TS2722: "Cannot invoke possibly undefined",
-  TS2532: "Object is possibly undefined",
-  TS18048: "Possibly undefined",
-  TS2345: "Type mismatch",
-  TS2339: "Property does not exist",
-  TS2749: "Value used as type",
-  TS2304: "Cannot find name",
-  TS2322: "Type not assignable",
-  TS2305: "Module has no exported member",
-  TS2306: "File is not a module",
+  TS2722: "cannotInvokePossiblyUndefined",
+  TS2532: "objectPossiblyUndefined",
+  TS18048: "possiblyUndefined",
+  TS2345: "typeMismatch",
+  TS2339: "propertyDoesNotExist",
+  TS2749: "valueUsedAsType",
+  TS2304: "cannotFindName",
+  TS2322: "typeNotAssignable",
+  TS2305: "moduleMissingExport",
+  TS2306: "fileNotModule",
 };
 
 const ERROR_CATEGORIES: Record<string, string> = {
-  TS2722: "Undefined Safety",
-  TS2532: "Undefined Safety",
-  TS18048: "Undefined Safety",
-  TS2345: "Type Safety",
-  TS2322: "Type Safety",
-  TS2339: "Type Safety",
-  TS2749: "Type Usage",
-  TS2304: "Module/Import",
-  TS2305: "Module/Import",
-  TS2306: "Module/Import",
+  TS2722: "undefinedSafety",
+  TS2532: "undefinedSafety",
+  TS18048: "undefinedSafety",
+  TS2345: "typeSafety",
+  TS2322: "typeSafety",
+  TS2339: "typeSafety",
+  TS2749: "typeUsage",
+  TS2304: "moduleImport",
+  TS2305: "moduleImport",
+  TS2306: "moduleImport",
 };
+
+function tsDashboardT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.typescriptDashboard.${key}`, params);
+}
+
+function tsDashboardDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(
+    `mcpServer.devTools.typescriptDashboard.definition.${key}`,
+    params
+  );
+}
 
 export function generateTypescriptDashboard(
   options: DashboardOptions = {},
@@ -90,7 +105,10 @@ export function generateTypescriptDashboard(
       .map(([code, count]) => ({
         code,
         count,
-        description: ERROR_DESCRIPTIONS[code] ?? "Unknown error",
+        description: tsDashboardT(
+          `runtime.errorDescriptions.${ERROR_DESCRIPTIONS[code] ?? "unknown"}`,
+          ERROR_DESCRIPTIONS[code] !== undefined ? undefined : { code }
+        ),
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
@@ -140,7 +158,7 @@ export function generateTypescriptDashboard(
     logToolError("typescript-dashboard", error as Error, {});
     return {
       success: false,
-      output: `❌ Error: ${String(error)}`,
+      output: tsDashboardT("runtime.error", { message: String(error) }),
       total_errors: 0,
       by_error_code: {},
       by_file: {},
@@ -198,61 +216,87 @@ function formatDashboard(data: {
 }): string {
   const statsLine =
     data.executionTime != null && data.allFiles !== undefined && data.allFolders !== undefined
-      ? `⏱️  ${data.executionTime}s | 📁 ${data.allFolders} folders (${data.foldersWithErrors ?? 0} with errors) | 📄 ${data.allFiles} files (${data.filesWithErrors ?? 0} with errors)\n`
+      ? tsDashboardT("runtime.statsLine", {
+          executionTime: data.executionTime,
+          allFolders: data.allFolders,
+          foldersWithErrors: data.foldersWithErrors ?? 0,
+          allFiles: data.allFiles,
+          filesWithErrors: data.filesWithErrors ?? 0,
+        }) + "\n"
       : "";
 
   let output = "";
 
   // Header
-  output += "📊 TypeScript Error Dashboard\n";
+  output += `${tsDashboardT("runtime.title")}\n`;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-  output += `Total: ${data.total} errors\n`;
+  output += `${tsDashboardT("runtime.totalErrors", { total: data.total })}\n`;
   if (statsLine !== "") output += statsLine;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
   // Top Error Codes
-  output += "🔴 Top Error Codes:\n";
+  output += `${tsDashboardT("runtime.topErrorCodesTitle")}\n`;
   data.topErrors.forEach((err, idx) => {
     const percentage = ((err.count / data.total) * 100).toFixed(1);
     const bar = generateBar(err.count, data.total);
-    output += `  ${idx + 1}. ${err.code} (${err.description}): ${err.count} errors ${bar} ${percentage}%\n`;
+    output +=
+      tsDashboardT("runtime.errorCodeLine", {
+        index: idx + 1,
+        code: err.code,
+        description: err.description,
+        count: err.count,
+        bar,
+        percentage,
+      }) + "\n";
   });
   output += "\n";
 
   // Top Files
-  output += "📁 Top Files:\n";
+  output += `${tsDashboardT("runtime.topFilesTitle")}\n`;
   data.topFiles.forEach((file, idx) => {
     const shortPath = file.file.replace(data.projectRoot, ".");
-    output += `  ${idx + 1}. ${shortPath}: ${file.count} errors\n`;
+    output +=
+      tsDashboardT("runtime.topFileLine", {
+        index: idx + 1,
+        shortPath,
+        count: file.count,
+      }) + "\n";
   });
   output += "\n";
 
   // Category Breakdown
-  output += "📋 By Category:\n";
+  output += `${tsDashboardT("runtime.byCategoryTitle")}\n`;
   const byCategory: Record<string, number> = {};
   Object.entries(data.byErrorCode).forEach(([code, count]) => {
-    const category = ERROR_CATEGORIES[code] ?? "Other";
+    const category = ERROR_CATEGORIES[code] ?? "other";
     byCategory[category] = (byCategory[category] ?? 0) + count;
   });
   Object.entries(byCategory)
     .sort((a, b) => b[1] - a[1])
     .forEach(([category, count]) => {
-      output += `  ${category}: ${count} errors\n`;
+      output +=
+        tsDashboardT("runtime.categoryLine", {
+          category: tsDashboardT(`runtime.categories.${category}`),
+          count,
+        }) + "\n";
     });
   output += "\n";
 
   // Recommendations
-  output += "💡 Recommended Actions:\n";
+  output += `${tsDashboardT("runtime.recommendedActionsTitle")}\n`;
   if (data.topErrors[0]) {
     const topError = data.topErrors[0];
-    output += `  → Focus on ${topError.code} (${topError.description})\n`;
-    output += `    ${topError.count} errors in this category\n`;
+    output += tsDashboardT("runtime.focusTopError", {
+      code: topError.code,
+      description: topError.description,
+    }) + "\n";
+    output += tsDashboardT("runtime.errorsInCategory", { count: topError.count }) + "\n";
 
     // Suggest fix strategy
     if (["TS2722", "TS2532", "TS18048"].includes(topError.code)) {
-      output += `\n  🔧 Use: hev_dev_fix_typescript_batch\n`;
-      output += `     error_codes: ["${topError.code}"]\n`;
-      output += `     fix_strategy: "add_guards"\n`;
+      output += `\n${tsDashboardT("runtime.fixerTitle")}\n`;
+      output += `${tsDashboardT("runtime.fixerErrorCodes", { code: topError.code })}\n`;
+      output += `${tsDashboardT("runtime.fixerStrategy")}\n`;
     }
   }
 
@@ -272,31 +316,30 @@ function generateBar(count: number, total: number, width: number = 10): string {
 
 export const TYPESCRIPT_DASHBOARD_TOOL = {
   name: "hev_dev_typescript_dashboard",
-  description:
-    "TypeScript hatalarını analiz edip dashboard formatında gösterir (error count, top files, categories)",
+  description: tsDashboardDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       sort_by: {
         type: "string",
         enum: ["count", "severity", "file"],
-        description: "Sıralama kriteri",
+        description: tsDashboardDefT("sortBy"),
         default: "count",
       },
       group_by: {
         type: "string",
         enum: ["error_code", "file", "category"],
-        description: "Gruplama kriteri",
+        description: tsDashboardDefT("groupBy"),
         default: "error_code",
       },
       show_trend: {
         type: "boolean",
-        description: "Trend göster (önceki run'larla karşılaştır)",
+        description: tsDashboardDefT("showTrend"),
         default: false,
       },
       limit: {
         type: "number",
-        description: "Gösterilecek maksimum item sayısı",
+        description: tsDashboardDefT("limit"),
         default: 10,
       },
     },
@@ -307,13 +350,12 @@ export const TYPESCRIPT_DASHBOARD_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Analyze TypeScript errors by category",
-      "Identify most common error codes",
-      "Get overview of type issues in project",
+      tsDashboardDefT("useCases.byCategory"),
+      tsDashboardDefT("useCases.commonCodes"),
+      tsDashboardDefT("useCases.projectOverview"),
     ],
     relatedTools: ["hev_dev_fix_typescript_batch", "hev_dev_typescript_type_helper"],
-    agentGuidance:
-      "Use FIRST to understand TypeScript error landscape. Shows analytics with grouping and sorting. Helps prioritize fixes.",
+    agentGuidance: tsDashboardDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["typescript", "analytics", "dashboard", "error-analysis"],

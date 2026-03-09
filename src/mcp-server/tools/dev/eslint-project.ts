@@ -6,6 +6,7 @@
 
 import { execSync } from "child_process";
 // import { globSync } from "glob";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
@@ -29,6 +30,17 @@ interface LintProjectResult {
   files_with_issues: number;
 }
 
+function lintProjectT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.lintProject.${key}`, params);
+}
+
+function lintProjectDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.lintProject.definition.${key}`, params);
+}
+
 export function lintProject(
   options: LintProjectOptions = {},
   projectRoot: string
@@ -41,11 +53,14 @@ export function lintProject(
     format = "stylish",
   } = options;
 
-  const progress = createProgress({ operation: "ESLint Project", interval: 5000 });
+  const progress = createProgress({
+    operation: lintProjectT("progress.operation"),
+    interval: 5000,
+  });
 
   try {
     const cwd = projectRoot;
-    progress.update(0, "Dosyalar taranıyor...");
+    progress.update(0, lintProjectT("progress.scanning"));
 
     // Build ESLint command
     const fixArg = fix ? " --fix" : "";
@@ -55,7 +70,7 @@ export function lintProject(
 
     const cmd = `npx eslint "${pattern}"${formatArg}${cacheArg}${fixArg}${maxWarningsArg}`;
 
-    progress.update(25, "ESLint çalıştırılıyor...");
+    progress.update(25, lintProjectT("progress.running"));
 
     try {
       const output = execSync(cmd, {
@@ -65,11 +80,11 @@ export function lintProject(
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
       });
 
-      progress.done("✓ Hata bulunamadı");
+      progress.done(lintProjectT("progress.noIssues"));
 
       return {
         success: true,
-        output: output.length > 0 ? output : "✓ Tüm dosyalar temiz",
+        output: output.length > 0 ? output : lintProjectT("runtime.allFilesClean"),
         error_count: 0,
         warning_count: 0,
         fixable_error_count: 0,
@@ -81,13 +96,17 @@ export function lintProject(
       const error = err as { stdout?: string; stderr?: string; status?: number };
       const output = error.stdout ?? error.stderr ?? "";
 
-      progress.update(75, "Sonuçlar parse ediliyor...");
+      progress.update(75, lintProjectT("progress.parsing"));
 
       // Parse ESLint output
       const stats = parseEslintOutput(output);
 
       progress.fail(
-        `${stats.error_count} hata, ${stats.warning_count} uyarı (${stats.files_with_issues} dosya)`
+        lintProjectT("progress.summary", {
+          errorCount: stats.error_count,
+          warningCount: stats.warning_count,
+          filesWithIssues: stats.files_with_issues,
+        })
       );
 
       return {
@@ -102,7 +121,7 @@ export function lintProject(
 
     return {
       success: false,
-      output: (error as Error).message,
+      output: lintProjectT("runtime.error", { message: (error as Error).message }),
       error_count: 0,
       warning_count: 0,
       fixable_error_count: 0,
@@ -162,34 +181,34 @@ function countFilesFromOutput(output: string): number {
 
 export const LINT_PROJECT_TOOL = {
   name: "hev_dev_lint_project",
-  description: "Proje genelinde ESLint çalıştır (glob pattern ile batch linting)",
+  description: lintProjectDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       pattern: {
         type: "string" as const,
-        description: "Glob pattern (örn: 'src/**/*.ts', 'mcp-server/**/*.ts')",
+        description: lintProjectDefT("pattern"),
         default: "**/*.{js,ts,jsx,tsx}",
       },
       fix: {
         type: "boolean" as const,
-        description: "Otomatik düzeltme yap",
+        description: lintProjectDefT("fix"),
         default: false,
       },
       max_warnings: {
         type: "number" as const,
-        description: "Maksimum uyarı sayısı (-1 = sınırsız)",
+        description: lintProjectDefT("maxWarnings"),
         default: -1,
       },
       cache: {
         type: "boolean" as const,
-        description: "Cache kullan (daha hızlı)",
+        description: lintProjectDefT("cache"),
         default: true,
       },
       format: {
         type: "string" as const,
         enum: ["stylish", "compact", "json", "codeframe"],
-        description: "Çıktı formatı",
+        description: lintProjectDefT("format"),
         default: "stylish",
       },
     },
@@ -200,13 +219,12 @@ export const LINT_PROJECT_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Run ESLint across entire project",
-      "Batch linting with glob patterns",
-      "Project-wide code quality check",
+      lintProjectDefT("useCases.projectWide"),
+      lintProjectDefT("useCases.batchLinting"),
+      lintProjectDefT("useCases.codeQuality"),
     ],
     relatedTools: ["hev_dev_eslint_dashboard"],
-    agentGuidance:
-      "Use for project-wide linting. Supports glob patterns and caching. Use fix=false first to see issues.",
+    agentGuidance: lintProjectDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["eslint", "linting", "batch", "project-wide"],

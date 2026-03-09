@@ -2,6 +2,8 @@
  * OpenCode UI chat utilities.
  */
 
+import { formatTime, t } from "./i18n.js";
+
 export function escapeHtml(str: string): string {
   const div = document.createElement("div");
   div.textContent = str;
@@ -84,7 +86,7 @@ export function addMessage(
   copyBtn.type = "button";
   copyBtn.className = "ds-msg-copy";
   copyBtn.textContent = "📋";
-  copyBtn.title = "Mesaji kopyala";
+  copyBtn.title = t("chat.copyMessageTitle");
   copyBtn.addEventListener("click", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -104,7 +106,7 @@ export function addMessage(
   bubbleDiv.appendChild(copyBtn);
 
   const now = new Date();
-  const stamp = now.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  const stamp = formatTime(now);
   const timeDiv = document.createElement("div");
   timeDiv.className = "ds-message__meta";
   timeDiv.title = extra != null && extra !== "" ? stamp + " · " + extra : stamp;

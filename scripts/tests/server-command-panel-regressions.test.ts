@@ -13,10 +13,10 @@ test("extractExampleArgsFromDescription picks matching command args from detail 
     "📌 Asistanin son cevabini hedef AI slotuna tek sefer gonderir.",
     "",
     "Ornek:",
-    "++cmd:AsistanAISend(ai1) Mesaji AI1'e ilet",
+    "++cmd:AssistantAISend(ai1) Mesaji AI1'e ilet",
   ].join("\n");
 
-  const args = extractExampleArgsFromDescription("AsistanAISend", detail);
+  const args = extractExampleArgsFromDescription("AssistantAISend", detail);
 
   assert.equal(args, "ai1");
 });
@@ -30,9 +30,9 @@ test("extractExampleArgsFromDescription returns empty for no-arg command", () =>
 });
 
 test("extractExampleArgsFromDescription ignores other command examples", () => {
-  const detail = "++cmd:AsistanAISend(ai2) hedefe gonder";
+  const detail = "++cmd:AssistantAISend(ai2) hedefe gonder";
 
-  const args = extractExampleArgsFromDescription("AIAsistanSend", detail);
+  const args = extractExampleArgsFromDescription("AIAssistantSend", detail);
 
   assert.equal(args, "");
 });
@@ -50,9 +50,9 @@ test("buildInlineCommandSnippet formats command without args", () => {
 });
 
 test("parseCommandExecutionInput parses inline command input", () => {
-  const parsed = parseCommandExecutionInput("++cmd:AsistanAISend(ai2)", "PlayMusic");
+  const parsed = parseCommandExecutionInput("++cmd:AssistantAISend(ai2)", "PlayMusic");
 
-  assert.equal(parsed.commandName, "AsistanAISend");
+  assert.equal(parsed.commandName, "AssistantAISend");
   assert.equal(parsed.args, "ai2");
   assert.equal(parsed.inputWasInlineCommand, true);
 });

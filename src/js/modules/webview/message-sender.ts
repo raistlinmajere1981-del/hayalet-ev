@@ -17,8 +17,10 @@ import { getProvider } from "./provider-factory.js";
 import type { ProviderModule } from "./provider-factory.js";
 import { waitForDomReady } from "./methods/shared/file-utils.js";
 import { isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
+import { resolveSelectorLanguage } from "../../../../shared/i18n/locale.js";
 import { resolveSelectorCandidates } from "../../../../shared/provider-selector-resolution";
 import type { AppSettings } from "@shared/settings.js";
+import type { SelectorLanguage } from "@shared/i18n.js";
 
 export interface MessageSenderWebview {
   getURL?: () => string;
@@ -77,8 +79,8 @@ class MessageSenderClass {
     return typeof value === "object" && value !== null;
   }
 
-  private _getAppLanguage(): "tr" | "en" {
-    return this._settings?.general?.language === "en" ? "en" : "tr";
+  private _getSelectorLanguage(): SelectorLanguage {
+    return resolveSelectorLanguage(this._settings?.general?.language);
   }
 
   private _getSendButtonSelector(config: unknown): string[] {
@@ -95,7 +97,7 @@ class MessageSenderClass {
         | string
         | string[]
         | Record<string, unknown>,
-      this._getAppLanguage()
+      this._getSelectorLanguage()
     );
   }
 
@@ -170,10 +172,10 @@ class MessageSenderClass {
     const slots = this._settings?.slots as
       | Record<string, { messageMethod?: string; fileMethod?: string }>
       | undefined;
-    const asistanSlot = this._settings?.asistanSlot as
+    const assistantSlot = this._settings?.assistantSlot as
       | { messageMethod?: string; fileMethod?: string }
       | undefined;
-    const slotConfig = provider === "ai0" ? asistanSlot : slots?.[provider];
+    const slotConfig = provider === "ai0" ? assistantSlot : slots?.[provider];
 
     const messageMethodName = slotConfig?.messageMethod;
     if (messageMethodName === undefined || messageMethodName === "") {

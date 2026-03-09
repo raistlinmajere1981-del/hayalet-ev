@@ -40,7 +40,7 @@ interface RelayRef {
   startSession?: (payload: { providers: string[] }) => Promise<void>;
   stopProtocolSession?: () => Promise<void>;
   stopSession?: () => Promise<void>;
-  stopAIAsistanSession?: () => Promise<void>;
+  stopAIAssistantSession?: () => Promise<void>;
 }
 
 interface SendBatchContext {
@@ -317,9 +317,9 @@ export async function sendProtocolWithContext(
           void sendContext.relay.stopSession?.();
         }
       }
-      if (scenario === "ai-asistan-stop") {
+      if (scenario === "ai-assistant-stop") {
         if (sendContext.relay !== null) {
-          void sendContext.relay.stopAIAsistanSession?.();
+          void sendContext.relay.stopAIAssistantSession?.();
         }
       }
     }

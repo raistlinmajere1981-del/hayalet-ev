@@ -1,13 +1,14 @@
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 /**
- * AnalyzeController - Analyze odası controller'ı (Orchestrator)
+ * AnalyzeController - Analyze page controller (orchestrator)
  *
- * Alt modüller:
- * - analyze/message-renderer.js: Mesaj render işlemleri
- * - analyze/upload-handler.js: Dosya yükleme işlemleri
- * - analyze/context-menu.js: Mesaj aksiyonları ve read modal
- * - analyze/draft-manager.js: Taslak yönetimi
+ * Submodules:
+ * - analyze/message-renderer.js: Message rendering
+ * - analyze/upload-handler.js: File upload flow
+ * - analyze/context-menu.js: Message actions and the read modal
+ * - analyze/draft-manager.js: Draft management
  */
 
 import { SettingsManager } from "../modules/settings-manager.js";
@@ -15,9 +16,14 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { Logger } from "../modules/logger/index.js";
 import { AppState } from "../modules/app-state.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
@@ -34,6 +40,10 @@ interface ConversationSelectedDetail {
 interface DraftState {
   message: string;
   files: StagedFile[];
+}
+
+function analyzeT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.analyze.${key}`, params);
 }
 
 function isConversationSelectedDetail(value: unknown): value is ConversationSelectedDetail {
@@ -68,6 +78,7 @@ export class AnalyzeController {
   _unsubSettings: (() => void) | null;
   _unsubSlotController: (() => void) | null;
   _unsubAppState: (() => void) | null;
+  _unsubI18n: (() => void) | null;
   _boundActions: boolean;
 
   constructor() {
@@ -78,6 +89,7 @@ export class AnalyzeController {
     this._unsubSettings = null;
     this._unsubSlotController = null;
     this._unsubAppState = null;
+    this._unsubI18n = null;
     this._boundActions = false;
   }
 
@@ -94,9 +106,9 @@ export class AnalyzeController {
             (path) =>
               path.startsWith("user") ||
               path.startsWith("accounts") ||
-              path.startsWith("asistanAccounts") ||
+              isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
-              path.startsWith("asistanSlot")
+              isAssistantSlotSettingsPath(path)
           );
 
         if (!shouldRefreshAnalyzeHeader) {
@@ -123,6 +135,14 @@ export class AnalyzeController {
       this.applyNames();
     });
 
+    this._unsubI18n ??= AppI18n.subscribe(() => {
+      this.applyNames();
+      this.updateConnectionStates();
+      this.refreshUploads();
+      void this._renderMessages("ai1");
+      void this._renderMessages("ai2");
+    });
+
     this.updateConnectionStates();
     this.refreshUploads();
 
@@ -132,20 +152,23 @@ export class AnalyzeController {
     window.addEventListener("conversation-selected", (e) => {
       const rawDetail: unknown = (e as CustomEvent<unknown>).detail;
       const detail = isConversationSelectedDetail(rawDetail) ? rawDetail : {};
-      Logger.debug(LogCategory.ANALYZE, "conversation-selected event received", { detail });
+      Logger.debug(LogCategory.ANALYZE, analyzeT("logs.conversationSelectedReceived"), { detail });
       if (detail.provider !== undefined) {
         if (detail.isNew === true) {
           Logger.debug(
             LogCategory.ANALYZE,
-            `New conversation selected for ${detail.provider} - clearing messages`
+            analyzeT("logs.newConversationSelected", { provider: detail.provider })
           );
           this._clearSlotMessages(detail.provider);
         } else {
-          Logger.debug(LogCategory.ANALYZE, `Rendering messages for provider: ${detail.provider}`);
+          Logger.debug(
+            LogCategory.ANALYZE,
+            analyzeT("logs.renderMessagesForProvider", { provider: detail.provider })
+          );
           void this._renderMessages(detail.provider);
         }
       } else {
-        Logger.warn(LogCategory.ANALYZE, "conversation-selected event without provider", {
+        Logger.warn(LogCategory.ANALYZE, analyzeT("logs.conversationSelectedMissingProvider"), {
           detail,
         });
       }
@@ -269,9 +292,9 @@ export class AnalyzeController {
     const messageArea = document.getElementById(`${slot}-message-area`);
 
     if (status) {
-      if (!hasAccount) status.textContent = "Slot boş";
-      else if (connected) status.textContent = "Bağlı";
-      else status.textContent = "Bağlı değil";
+      if (!hasAccount) status.textContent = analyzeT("page.slotEmptyStatus");
+      else if (connected) status.textContent = analyzeT("page.connectedStatus");
+      else status.textContent = analyzeT("page.disconnectedStatus");
     }
 
     if (card) {
@@ -337,12 +360,12 @@ export class AnalyzeController {
       void this.handleAnalyzeStop();
     });
 
-    // Double-click prevention: Check if button is already in loading state
+    // Prevent duplicate sends while the button is already loading.
     const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
     if (sendBtn) {
       sendBtn.addEventListener("click", () => {
         if (ButtonStates.isLoading(sendBtn)) {
-          Logger.debug(LogCategory.ANALYZE, "Send button clicked while loading - ignoring");
+          Logger.debug(LogCategory.ANALYZE, analyzeT("logs.sendIgnoredWhileLoading"));
           return;
         }
         this.handleSend();
@@ -356,13 +379,13 @@ export class AnalyzeController {
       this.updateSendButtonState();
     });
 
-    // Ctrl+Enter ile mesaj gönderme (double-click prevention ile)
+    // Allow Ctrl+Enter sending while still preventing duplicate dispatches.
     document.getElementById("compose-input")?.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
         const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
         if (sendBtn && ButtonStates.isLoading(sendBtn)) {
-          Logger.debug(LogCategory.ANALYZE, "Ctrl+Enter pressed while sending - ignoring");
+          Logger.debug(LogCategory.ANALYZE, analyzeT("logs.sendShortcutIgnoredWhileLoading"));
           return;
         }
         this.handleSend();
@@ -383,11 +406,11 @@ export class AnalyzeController {
       container.innerHTML = "";
     }
     this.lastMessages[provider as "ai1" | "ai2"] = "";
-    Logger.info(LogCategory.ANALYZE, `${provider} mesajları temizlendi (Yeni Sohbet)`);
+    Logger.info(LogCategory.ANALYZE, analyzeT("logs.slotMessagesCleared", { provider }));
   }
 
   async _renderMessages(provider: "ai1" | "ai2"): Promise<void> {
-    Logger.debug(LogCategory.ANALYZE, `_renderMessages called for: ${provider}`);
+    Logger.debug(LogCategory.ANALYZE, analyzeT("logs.renderMessagesStarted", { provider }));
     const callbacks: RenderCallbacks = {
       onMessageAction: (action, payload: { provider: string; text: string }) => {
         applyMessageAction(action, payload, () => {
@@ -396,7 +419,7 @@ export class AnalyzeController {
       },
     };
     const result = await renderMessages(provider, callbacks);
-    Logger.debug(LogCategory.ANALYZE, `_renderMessages completed for ${provider}`, {
+    Logger.debug(LogCategory.ANALYZE, analyzeT("logs.renderMessagesCompleted", { provider }), {
       lastMessage: result.lastMessage.substring(0, 50),
     });
     this.lastMessages[provider] = result.lastMessage;
@@ -466,10 +489,10 @@ export class AnalyzeController {
     if ((!shouldSendAi1 && !shouldSendAi2) || (msg === "" && !hasFiles)) return;
 
     if (sendBtn) {
-      ButtonStates.setLoading(sendBtn, "Gönderiliyor...");
+      ButtonStates.setLoading(sendBtn, analyzeT("page.buttons.sending"));
     }
 
-    Logger.debug(LogCategory.ANALYZE, "Gönderim başlatılıyor");
+    Logger.debug(LogCategory.ANALYZE, analyzeT("logs.sendStarting"));
 
     const targets: string[] = [];
     const textByProvider: Record<string, string> = {};
@@ -526,14 +549,17 @@ export class AnalyzeController {
           }, Promise.resolve());
         }
         if (sendBtn) {
-          ButtonStates.setSuccess(sendBtn, "Gönderildi!", 1500);
+          ButtonStates.setSuccess(sendBtn, analyzeT("page.buttons.sent"), 1500);
         }
-        Logger.success(LogCategory.ANALYZE, "Mesaj gönderildi");
+        Logger.success(LogCategory.ANALYZE, analyzeT("logs.sendSuccess"));
       } catch (error) {
         if (sendBtn) {
-          ButtonStates.setError(sendBtn, "Hata!", 1500);
+          ButtonStates.setError(sendBtn, analyzeT("page.buttons.error"), 1500);
         }
-        Logger.error(LogCategory.ANALYZE, `Gönderim hatası: ${getErrorMessage(error)}`);
+        Logger.error(
+          LogCategory.ANALYZE,
+          analyzeT("logs.sendError", { message: getErrorMessage(error) })
+        );
       }
     };
 
@@ -552,7 +578,7 @@ export class AnalyzeController {
   async handleAnalyzeStart(): Promise<void> {
     const targets = this._getConnectedAIs();
     if (targets.length === 0) {
-      Logger.warn(LogCategory.ANALYZE, "Analiz protokolü gönderilemedi: bağlı AI yok");
+      Logger.warn(LogCategory.ANALYZE, analyzeT("logs.protocolSendSkippedNoConnectedAi"));
       return;
     }
     await CoreEngine.sendProtocol({
@@ -566,7 +592,7 @@ export class AnalyzeController {
   async handleAnalyzeStop(): Promise<void> {
     const targets = this._getConnectedAIs();
     if (targets.length === 0) {
-      Logger.warn(LogCategory.ANALYZE, "Analiz sonlandırma mesajı gönderilemedi: bağlı AI yok");
+      Logger.warn(LogCategory.ANALYZE, analyzeT("logs.protocolStopSkippedNoConnectedAi"));
       return;
     }
 

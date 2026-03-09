@@ -70,6 +70,13 @@ export const config = {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
   },
+  uiLanguage: {
+    support: "partial",
+    syncMode: "manual",
+    supportedLocales: ["tr", "en"],
+    persistence: ["account", "session"],
+    notes: "Gemini language appears provider-managed and needs targeted settings-flow automation.",
+  },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
     webviewSync: WEBVIEW_SYNC_SCENARIO,

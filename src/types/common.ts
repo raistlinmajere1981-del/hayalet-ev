@@ -1,39 +1,39 @@
 /**
- * Common Types - Genel amaçlı type tanımları
+ * Common types.
  *
  * @module src/js/types/common
  */
 
 // Slot & Provider Types
 
-/** AI slot tanımlayıcısı */
+/** AI slot identifier. */
 export type SlotId = "ai0" | "ai1" | "ai2";
 
-/** Kullanıcı tarafından atanabilir slotlar */
+/** User-assignable slots. */
 export type UserSlotId = "ai1" | "ai2";
 
-/** Asistan slotu */
-export type AsistanSlotId = "ai0";
+/** Assistant slot. */
+export type AssistantSlotId = "ai0";
 
-/** Ana AI provider'ları */
+/** Primary AI providers. */
 export type ProviderId = "chatgpt" | "gemini" | "grok" | "opencode";
 
-/** Asistan provider'ları */
-export type AsistanProviderId = "opencode" | "opencode-ui";
+/** Assistant providers. */
+export type AssistantProviderId = "opencode" | "opencode-ui";
 
-/** Asistan provider listesi (runtime guard için) */
-export const ASISTAN_PROVIDER_IDS = ["opencode", "opencode-ui"] as const;
+/** Assistant provider list for runtime guards. */
+export const ASSISTANT_PROVIDER_IDS = ["opencode", "opencode-ui"] as const;
 
-/** Asistan provider type guard */
-export function isAsistanProviderId(value: unknown): value is AsistanProviderId {
-  return typeof value === "string" && (ASISTAN_PROVIDER_IDS as readonly string[]).includes(value);
+/** Assistant provider type guard. */
+export function isAssistantProviderId(value: unknown): value is AssistantProviderId {
+  return typeof value === "string" && (ASSISTANT_PROVIDER_IDS as readonly string[]).includes(value);
 }
 
-/** Tüm provider'lar */
-export type AllProviderId = ProviderId | AsistanProviderId;
+/** All providers. */
+export type AllProviderId = ProviderId | AssistantProviderId;
 
-/** Özel sayfalar */
-export type SpecialPage = "settings" | "archives" | "webview" | "asistan";
+/** Special pages. */
+export type SpecialPage = "settings" | "archives" | "webview" | "assistant";
 
 // Generic Utility Types
 
@@ -43,33 +43,33 @@ export type Nullable<T> = T | null;
 /** Optional type */
 export type Optional<T> = T | undefined;
 
-/** Callback fonksiyon tipi */
+/** Callback function type. */
 export type Callback<T = void> = () => T;
 
-/** Async callback fonksiyon tipi */
+/** Async callback function type. */
 export type AsyncCallback<T = void> = () => Promise<T>;
 
-/** Event listener tipi */
+/** Event listener type. */
 export type EventListener<T = unknown> = (payload: T) => void;
 
-/** Unsubscribe fonksiyonu */
+/** Unsubscribe function. */
 export type Unsubscribe = () => void;
 
 // Result Types (IPC için)
 
-/** Temel sonuç tipi */
+/** Base result type. */
 export interface BaseResult {
   success: boolean;
   message?: string;
   error?: string;
 }
 
-/** Veri içeren sonuç tipi */
+/** Data-carrying result type. */
 export interface DataResult<T> extends BaseResult {
   data?: T;
 }
 
-/** Liste sonuç tipi */
+/** List result type. */
 export interface ListResult<T> extends BaseResult {
   items?: T[];
   total?: number;
@@ -77,7 +77,7 @@ export interface ListResult<T> extends BaseResult {
 
 // File Types
 
-/** Dosya bilgisi */
+/** File metadata. */
 export interface FileInfo {
   path: string;
   name: string;
@@ -86,13 +86,13 @@ export interface FileInfo {
   data?: string; // base64
 }
 
-/** Yüklenen dosya */
+/** Uploaded file. */
 export interface UploadedFile extends FileInfo {
   url?: string;
   uploadedAt?: number;
 }
 
-/** Attachment (mesaja eklenen dosya) */
+/** Attachment added to a message. */
 export interface Attachment {
   id?: string;
   name: string;
@@ -105,10 +105,10 @@ export interface Attachment {
 
 // Logging Types
 
-/** Log seviyesi */
+/** Log level. */
 export type LogLevel = "debug" | "info" | "warning" | "error";
 
-/** Log kaynağı */
+/** Log source. */
 export type LogSource = string;
 
 /** Log entry */

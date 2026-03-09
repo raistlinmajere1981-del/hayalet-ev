@@ -6,6 +6,13 @@ import type { IpcMainInvokeEvent } from "electron";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "./paths.ts";
+import { loadSettings } from "./settings-manager.ts";
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import { loadAvailableLanguage } from "./i18n/language-service.ts";
+import { translateCatalog } from "../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 
 const logger = getLoggerCore();
 
@@ -14,6 +21,26 @@ interface ResultBase {
   message?: string;
   path?: string;
   [key: string]: unknown;
+}
+
+async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function fileManagerT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.fileManager.${key}`, params);
 }
 
 async function ensureDir(dirPath: string): Promise<void> {
@@ -72,7 +99,7 @@ export async function fmWriteFileAtomic(
 ): Promise<ResultBase> {
   try {
     const { path: targetPath, data, encoding = "utf-8" } = payload;
-    if (targetPath.length === 0) throw new Error("path eksik");
+    if (targetPath.length === 0) throw new Error(await fileManagerT("pathMissing"));
     const dir = dirname(targetPath);
     await ensureDir(dir);
     const tmpPath = `${targetPath}.${Date.now()}.tmp`;
@@ -109,7 +136,7 @@ export async function copyToAssets(
 ): Promise<ResultBase> {
   try {
     if (srcPath.length === 0 || !existsSync(srcPath)) {
-      throw new Error("Kaynak dosya bulunamadı");
+      throw new Error(await fileManagerT("sourceFileMissing"));
     }
     const assetsDir = Paths.getAssetsDir();
     if (!existsSync(assetsDir)) {
@@ -185,8 +212,10 @@ export async function copyFileTo(
   destDir: string
 ): Promise<ResultBase> {
   try {
-    if (srcPath.length === 0 || destDir.length === 0) throw new Error("Parametre eksik");
-    if (!existsSync(srcPath)) throw new Error("Kaynak dosya yok");
+    if (srcPath.length === 0 || destDir.length === 0) {
+      throw new Error(await fileManagerT("parametersMissing"));
+    }
+    if (!existsSync(srcPath)) throw new Error(await fileManagerT("sourceFileMissing"));
     await mkdir(destDir, { recursive: true });
     const base = basename(srcPath);
     let candidate = base;
@@ -303,7 +332,7 @@ export async function generateTree(
 
 export async function openPath(targetPath: string): Promise<ResultBase> {
   try {
-    if (targetPath.length === 0) throw new Error("path eksik");
+    if (targetPath.length === 0) throw new Error(await fileManagerT("pathMissing"));
     const absolutePath = resolve(Paths.getProjectRoot(), targetPath);
     const res = await shell.openPath(absolutePath);
     if (res.length > 0) throw new Error(res);
@@ -318,7 +347,7 @@ export async function openPath(targetPath: string): Promise<ResultBase> {
 // ========================================
 
 const DEFAULT_PROTOCOL_KEYS = [
-  "AI-asistan",
+  "AI-assistant",
   "analyze-AI1-AI2",
   "analyze-AI2-AI1",
   "analyze-user-AI-AI",
@@ -338,13 +367,13 @@ async function ensureProtocolsJson(): Promise<Record<string, string>> {
     protocols[key] = "";
   });
 
-  // data/ klasörünü oluştur ve JSON'ı yaz
+  // Create the data/ directory and write the JSON file.
   await ensureDir(Paths.getDataDir());
   await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
   await logger.logInternal(
     LogCategory.SYSTEM,
     LogLevel.INFO,
-    "protocols.json oluşturuldu (ilk çalıştırma)"
+    await fileManagerT("protocolsCreatedFirstRun")
   );
   return protocols;
 }
@@ -356,12 +385,13 @@ export async function loadProtocols(
     const protocols = await ensureProtocolsJson();
     return { success: true, protocols };
   } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     await logger.logInternal(
       LogCategory.SYSTEM,
       LogLevel.ERROR,
-      `protocols.json okunamadı: ${(error as Error).message}`
+      await fileManagerT("protocolsReadFailed", { message })
     );
-    return { success: false, message: (error as Error).message };
+    return { success: false, message };
   }
 }
 
@@ -371,20 +401,25 @@ export async function saveProtocol(
   content: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    if (key.length === 0) throw new Error("Protokol anahtarı eksik");
+    if (key.length === 0) throw new Error(await fileManagerT("protocolKeyMissing"));
 
     const protocols = await ensureProtocolsJson();
     protocols[key] = content;
     const protocolsPath = Paths.getProtocolsPath();
     await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
-    await logger.logInternal(LogCategory.SYSTEM, LogLevel.INFO, `Protokol güncellendi: ${key}`);
+    await logger.logInternal(
+      LogCategory.SYSTEM,
+      LogLevel.INFO,
+      await fileManagerT("protocolUpdated", { key })
+    );
     return { success: true };
   } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     await logger.logInternal(
       LogCategory.SYSTEM,
       LogLevel.ERROR,
-      `Protokol kaydedilemedi: ${(error as Error).message}`
+      await fileManagerT("protocolSaveFailed", { message })
     );
-    return { success: false, message: (error as Error).message };
+    return { success: false, message };
   }
 }

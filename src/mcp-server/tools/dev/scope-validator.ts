@@ -1,7 +1,7 @@
 /**
  * Development Tools - Scope Validator
  *
- * Satır edit işlemlerinde scope bütünlüğünü kontrol eder
+ * Validates scope integrity for line-based edits.
  */
 
 import { readFileSync, existsSync } from "fs";
@@ -10,6 +10,7 @@ import traverseImport from "@babel/traverse";
 import { countBracketsContextAware } from "./structure-visualizer.js";
 import type { NodePath } from "@babel/traverse";
 import type * as t from "@babel/types";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 type TraverseFn = (...args: unknown[]) => unknown;
 
@@ -24,6 +25,13 @@ const traverse: TraverseFn =
     : typeof traverseModule.default === "function"
       ? traverseModule.default
       : (traverseModule.default?.default ?? fallbackTraverse);
+
+function scopeValidatorT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.scopeValidator.${key}`, params);
+}
 
 interface ScopeInfo {
   type: string;
@@ -44,7 +52,7 @@ interface ScopeValidationResult {
 }
 
 /**
- * Analyze scope impact of a line range deletion/replacement
+ * Analyze the scope impact of a line-range deletion or replacement.
  */
 export function analyzeScopeImpact(
   filePath: string,
@@ -61,7 +69,7 @@ export function analyzeScopeImpact(
       willBreakScope: false,
       affectedScopes: [],
       brokenScopes: [],
-      warnings: ["File not found"],
+      warnings: [scopeValidatorT("runtime.fileNotFound")],
       bracketIssues: [],
     };
   }
@@ -69,7 +77,7 @@ export function analyzeScopeImpact(
   const content = readFileSync(filePath, "utf-8");
   const ext = filePath.split(".").pop();
 
-  // Only for JS/TS files
+  // Only validate JS/TS-like files.
   if (!["js", "ts", "jsx", "tsx", "mjs", "cjs"].includes(ext ?? "")) {
     return {
       success: true,
@@ -82,7 +90,7 @@ export function analyzeScopeImpact(
   }
 
   try {
-    // Debug logs removed - MCP server should not write to stdout
+    // Debug logs are intentionally omitted. The MCP server should not write to stdout.
 
     const ast = parse(content, {
       sourceType: "module",
@@ -256,17 +264,16 @@ export function analyzeScopeImpact(
       },
     });
 
-    // Helper: Detect wrapper pattern (small arrow functions used in type casts)
+    // Detect wrapper patterns such as short arrow callbacks.
     const isWrapperPattern = (scope: ScopeInfo): boolean => {
-      // Arrow functions < 10 lines are often wrappers/callbacks
-      // These are safe to edit as they're typically simple functions
+      // Short arrow functions are often wrappers or callbacks and are usually safe.
       if (scope.type === "arrow" && scope.endLine - scope.startLine < 10) {
         return true;
       }
       return false;
     };
 
-    // Helper: Check if a scope is nested inside another scope
+    // Check whether a scope is nested inside another scope.
     const isNestedInside = (child: ScopeInfo, parent: ScopeInfo): boolean => {
       return (
         child.startLine >= parent.startLine &&
@@ -275,15 +282,15 @@ export function analyzeScopeImpact(
       );
     };
 
-    // Find safe parent scopes (import/export/wrapper patterns)
+    // Track safe parent scopes such as imports, exports, and wrapper callbacks.
     const safeParentScopes: ScopeInfo[] = [];
 
-    // Check which scopes are affected
+    // Check which scopes are affected.
     for (const scope of scopes) {
       const scopeStart = scope.startLine;
       const scopeEnd = scope.endLine;
 
-      // Check if delete range intersects with scope
+      // Check whether the edit range intersects the scope.
       const intersects =
         (startLine >= scopeStart && startLine <= scopeEnd) ||
         (endLine >= scopeStart && endLine <= scopeEnd) ||
@@ -292,49 +299,58 @@ export function analyzeScopeImpact(
       if (intersects) {
         affectedScopes.push(scope);
 
-        // 🛡️ SAFE TYPES: Import/Export statements are single-line and safe to edit
+        // Import/export statements are single-line and safe to edit.
         const isSafeType = ["import", "export"].includes(scope.type);
 
-        // 🛡️ WRAPPER PATTERN: Small arrow functions (< 10 lines) used in type casts/callbacks
+        // Small arrow functions often behave like safe wrappers.
         const isWrapper = isWrapperPattern(scope);
 
         if (isSafeType || isWrapper) {
-          // Import/Export and wrapper patterns are safe, skip scope breaking checks
+          // Safe patterns can skip scope-breaking checks.
           safeParentScopes.push(scope);
           continue;
         }
 
-        // 🛡️ NESTED IN SAFE PARENT: If this scope is nested inside a safe parent, skip it too
+        // If the scope is inside a safe parent, skip it as well.
         const isNestedInSafeParent = safeParentScopes.some((parent) =>
           isNestedInside(scope, parent)
         );
         if (isNestedInSafeParent) {
-          // This scope is inside a wrapper/safe pattern, skip validation
+          // This scope is inside a safe wrapper pattern.
           continue;
         }
 
-        // Check if scope closing bracket is in delete range
-        // Critical: if endLine is in delete range, scope will break
+        // If the closing line falls inside the edit range, the scope will break.
         if (scopeEnd >= startLine && scopeEnd <= endLine) {
           brokenScopes.push(scope);
           warnings.push(
-            `⚠️  Scope kırılma riski: ${scope.type} '${scope.name}' (L${scope.startLine}-${scope.endLine}) kapanışı silinecek!`
+            scopeValidatorT("runtime.scopeBreakClosing", {
+              type: scope.type,
+              name: scope.name,
+              startLine: scope.startLine,
+              endLine: scope.endLine,
+            })
           );
         }
 
-        // Check if scope opening is in range but not closing
+        // If the opening line is inside the range but the closing line is not, it will also break.
         if (scopeStart >= startLine && scopeStart <= endLine && scopeEnd > endLine) {
           brokenScopes.push(scope);
           warnings.push(
-            `⚠️  Scope kırılma riski: ${scope.type} '${scope.name}' (L${scope.startLine}-${scope.endLine}) başlangıcı silinecek!`
+            scopeValidatorT("runtime.scopeBreakOpening", {
+              type: scope.type,
+              name: scope.name,
+              startLine: scope.startLine,
+              endLine: scope.endLine,
+            })
           );
         }
       }
     }
   } catch (err) {
-    // AST parse failed, fallback to simple bracket check
+    // If AST parsing fails, the caller can still rely on bracket-level checks.
     const error = err as Error;
-    warnings.push(`AST parsing başarısız: ${error.message}`);
+    warnings.push(scopeValidatorT("runtime.astParsingFailed", { message: error.message }));
   }
 
   return {
@@ -348,10 +364,10 @@ export function analyzeScopeImpact(
 }
 
 /**
- * Check if content change is only a variable rename
+ * Check whether the content change is only a variable rename.
  */
 function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
-  // Normalize by replacing all identifiers with placeholder
+  // Normalize by replacing all identifiers with a placeholder.
   const normalize = (s: string): unknown => {
     return s
       .replace(/\b[a-z_$][a-zA-Z0-9_$]*\b/g, "VAR") // identifiers
@@ -363,10 +379,10 @@ function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
 }
 
 /**
- * Check if content change is only a type annotation change
+ * Check whether the content change is only a type annotation update.
  */
 function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
-  // Remove type annotations and compare structure
+  // Remove type annotations and compare the remaining structure.
   const removeTypes = (s: string): unknown => {
     return s
       .replace(/:\s*[A-Z][a-zA-Z0-9<>[\]|&,\s]*(?=[,;)])/g, ": TYPE") // type annotations
@@ -379,17 +395,17 @@ function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
 }
 
 /**
- * Check if only optional chaining was added
+ * Check whether the edit only adds optional chaining.
  */
 function isOnlyOptionalChainingAddition(oldContent: string, newContent: string): boolean {
-  // Remove optional chaining operators and compare
+  // Remove optional chaining operators and compare.
   const removeOptional = (s: string): string => s.replace(/\?\./g, ".").replace(/\??\[/g, "[");
 
   return removeOptional(oldContent) === removeOptional(newContent);
 }
 
 /**
- * Validate bracket balance before/after edit
+ * Validate bracket balance before and after an edit.
  */
 export function validateBracketBalance(
   oldContent: string,
@@ -411,26 +427,34 @@ export function validateBracketBalance(
     const newOpenCount = newBrackets.open[openChar]?.length ?? 0;
     const newCloseCount = newBrackets.close[closeChar]?.length ?? 0;
 
-    // Check if edit broke the balance
+    // Check whether the edit broke the balance.
     const wasBalanced = oldOpenCount === oldCloseCount;
     const isBalanced = newOpenCount === newCloseCount;
 
     if (wasBalanced && !isBalanced) {
-      // 🔍 Smart detection: Check if it's a benign change
+      // Skip harmless structural rewrites that alter bracket counts indirectly.
       const isBenignChange =
         isOnlyVariableRename(oldContent, newContent) ||
         isOnlyTypeChange(oldContent, newContent) ||
         isOnlyOptionalChainingAddition(oldContent, newContent);
 
       if (isBenignChange) {
-        // False positive - bracket count changed due to syntax change, not actual imbalance
+        // False positive: syntax changed, but bracket integrity did not.
         continue;
       }
 
       const diff = Math.abs(newOpenCount - newCloseCount);
       const missing = newOpenCount > newCloseCount ? closeChar : openChar;
       issues.push(
-        `Parantez dengesi bozuldu: '${openChar}${closeChar}' çifti - ${diff} adet '${missing}' ${newOpenCount > newCloseCount ? "eksik" : "fazla"}`
+        scopeValidatorT("runtime.bracketBalanceBroken", {
+          pair: `${openChar}${closeChar}`,
+          diff,
+          missing,
+          direction:
+            newOpenCount > newCloseCount
+              ? scopeValidatorT("runtime.balanceDirection.missing")
+              : scopeValidatorT("runtime.balanceDirection.extra"),
+        })
       );
     }
   }

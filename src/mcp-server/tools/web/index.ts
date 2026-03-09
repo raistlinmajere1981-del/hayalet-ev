@@ -1,7 +1,7 @@
 /**
  * Web Tools - Export Hub
  *
- * Tüm web araçları için merkezi export noktası
+ * Central export hub for all web tools
  * - Web search (DuckDuckGo)
  * - Content fetch & scrape
  *

@@ -50,9 +50,9 @@ export function getDisabledCommandsForSlot(settings: AppSettings, slot: CommandS
       : [];
   }
 
-  const asistanDisabled = settings.asistanSlot?.disabledCommands;
-  return Array.isArray(asistanDisabled)
-    ? asistanDisabled.filter((item): item is string => typeof item === "string")
+  const assistantDisabled = settings.assistantSlot?.disabledCommands;
+  return Array.isArray(assistantDisabled)
+    ? assistantDisabled.filter((item): item is string => typeof item === "string")
     : [];
 }
 
@@ -83,7 +83,7 @@ export function buildSettingsWithDisabledCommands(
     };
   }
 
-  const asistanSlot = settings.asistanSlot ?? {
+  const assistantSlot = settings.assistantSlot ?? {
     accountId: null,
     catchCommands: false,
     disabledCommands: [],
@@ -93,8 +93,8 @@ export function buildSettingsWithDisabledCommands(
 
   return {
     ...settings,
-    asistanSlot: {
-      ...asistanSlot,
+    assistantSlot: {
+      ...assistantSlot,
       disabledCommands: unique,
     },
   };

@@ -1,8 +1,8 @@
 /**
  * Navigation & Window Controls
  *
- * Sayfa geçişleri, pencere kontrolleri, üst bar butonları
- * ve side navigation yönetimi.
+ * Handles page transitions, window controls, top bar buttons,
+ * and side navigation state.
  */
 
 import { getErrorMessage } from "@shared/index.js";
@@ -11,21 +11,49 @@ import { WindowManager } from "../modules/window-manager.js";
 import { ThemeManager } from "../ui/theme-manager.js";
 
 import type { PageController } from "./types.js";
+import { shellT } from "./shell-i18n.js";
 
 const SPECIAL_PAGES = ["settings", "archives", "webview"];
+const ASSISTANT_PAGE = "assistant";
+const LEGACY_ASSISTANT_PAGE = "asistan";
 
 let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};
 
+function normalizePageName(pageName: string): string {
+  return pageName === LEGACY_ASSISTANT_PAGE ? ASSISTANT_PAGE : pageName;
+}
+
+function resolvePageDomNames(pageName: string): string[] {
+  return pageName === ASSISTANT_PAGE ? [ASSISTANT_PAGE, LEGACY_ASSISTANT_PAGE] : [pageName];
+}
+
+function findPageElement(pageName: string): HTMLElement | null {
+  for (const domPageName of resolvePageDomNames(pageName)) {
+    const element = document.getElementById(`page-${domPageName}`);
+    if (element instanceof HTMLElement) {
+      return element;
+    }
+  }
+  return null;
+}
+
+function matchesPageDataset(candidate: string | undefined, pageName: string): boolean {
+  if (candidate === undefined || candidate === "") {
+    return false;
+  }
+  return normalizePageName(candidate) === pageName;
+}
+
 /**
- * Controller referanslarını set et (index.ts'den çağrılır)
+ * Sets the shared controller references.
  */
 export function setControllers(c: Record<string, PageController>): void {
   controllers = c;
 }
 
 /**
- * Aktif sayfa adını döndür
+ * Returns the active page name.
  */
 export function getCurrentPage(): string | null {
   return currentPage;
@@ -40,9 +68,13 @@ export function setupNavigation(): void {
       }
     }) as EventListener);
   } catch (error) {
-    Logger.debug(LogCategory.SYSTEM, `Navigation setup error: ${getErrorMessage(error)}`, {
+    Logger.debug(
+      LogCategory.SYSTEM,
+      shellT("logs.navigationSetupError", { message: getErrorMessage(error) }),
+      {
       error: error instanceof Error ? error : new Error(String(error)),
-    });
+      }
+    );
   }
 }
 
@@ -50,10 +82,11 @@ export function setupNavigation(): void {
  * @param {string} pageName
  */
 export function showPage(pageName: string): void {
+  const normalizedPageName = normalizePageName(pageName);
   const previousPage = currentPage;
   if (
     previousPage !== null &&
-    previousPage !== pageName &&
+    previousPage !== normalizedPageName &&
     controllers[previousPage] !== undefined
   ) {
     const controller = controllers[previousPage];
@@ -65,17 +98,17 @@ export function showPage(pageName: string): void {
     page.classList.add("hidden");
   });
 
-  const pageElement = document.getElementById(`page-${pageName}`);
+  const pageElement = findPageElement(normalizedPageName);
   if (pageElement !== null) {
     pageElement.classList.remove("hidden");
-    currentPage = pageName;
+    currentPage = normalizedPageName;
 
-    const controller = controllers[pageName];
+    const controller = controllers[normalizedPageName];
     if (controller?.onShow !== undefined) {
       controller.onShow();
     }
 
-    setActiveNavigation(pageName);
+    setActiveNavigation(normalizedPageName);
   }
 }
 
@@ -100,14 +133,7 @@ export function setupWindowControls(): void {
 
 export function setupTopBarButtons(): void {
   try {
-    const asistanBtn = document.getElementById("asistan-btn");
     const themeToggle = document.getElementById("theme-toggle");
-
-    if (asistanBtn !== null) {
-      asistanBtn.addEventListener("click", () => {
-        showPage("asistan");
-      });
-    }
 
     if (themeToggle !== null) {
       themeToggle.textContent = ThemeManager.getIcon();
@@ -116,9 +142,13 @@ export function setupTopBarButtons(): void {
         ThemeManager.next();
         themeToggle.textContent = ThemeManager.getIcon();
 
-        Logger.debug(LogCategory.UI_THEME, `Tema değiştirildi: ${ThemeManager.current}`, {
+        Logger.debug(
+          LogCategory.UI_THEME,
+          shellT("logs.themeChanged", { theme: ThemeManager.current }),
+          {
           visibility: LogVisibility.VERBOSE,
-        });
+          }
+        );
       });
 
       ThemeManager.onChange(() => {
@@ -164,9 +194,13 @@ export function setupTopBarButtons(): void {
       });
     }
   } catch (error) {
-    Logger.debug(LogCategory.SYSTEM, `Top bar setup error: ${getErrorMessage(error)}`, {
+    Logger.debug(
+      LogCategory.SYSTEM,
+      shellT("logs.topBarSetupError", { message: getErrorMessage(error) }),
+      {
       error: error instanceof Error ? error : new Error(String(error)),
-    });
+      }
+    );
   }
 }
 
@@ -174,13 +208,14 @@ export function setupTopBarButtons(): void {
  * @param {string} pageName
  */
 export function setActiveNavigation(pageName: string): void {
+  const normalizedPageName = normalizePageName(pageName);
   const menuItems = document.querySelectorAll(".menu-item");
   menuItems.forEach((mi) => {
     mi.classList.remove("active");
   });
-  if (SPECIAL_PAGES.includes(pageName) === false) {
+  if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
     menuItems.forEach((mi) => {
-      if ((mi as HTMLElement).dataset["page"] === pageName) {
+      if (matchesPageDataset((mi as HTMLElement).dataset["page"], normalizedPageName)) {
         mi.classList.add("active");
       }
     });
@@ -190,27 +225,15 @@ export function setActiveNavigation(pageName: string): void {
   sideNavBtns.forEach((btn) => {
     btn.classList.remove("active");
   });
-  if (SPECIAL_PAGES.includes(pageName) === false) {
+  if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
     sideNavBtns.forEach((btn) => {
-      if ((btn as HTMLElement).dataset["page"] === pageName) {
+      if (matchesPageDataset((btn as HTMLElement).dataset["page"], normalizedPageName)) {
         btn.classList.add("active");
       }
     });
   }
-
-  /** @type {Record<string, HTMLElement | null>} */
-  const iconMap: Record<string, HTMLElement | null> = {
-    asistan: document.getElementById("asistan-btn"),
-  };
-  Object.values(iconMap).forEach((btn) => {
-    if (btn !== null) btn.classList.remove("active");
-  });
-  const activeIcon = iconMap[pageName];
-  if (activeIcon !== undefined && activeIcon !== null) {
-    activeIcon.classList.add("active");
-  }
 }
 
 export function setupReportPanel(): void {
-  // Bu fonksiyon geriye dönük uyumluluk için boş bırakıldı
+  // Kept for backward compatibility.
 }

@@ -14,7 +14,7 @@ test("reads startup flags from legacy CLI arguments", () => {
     "--auto-connect",
   ]);
 
-  assert.equal(flags.startPage, "asistan");
+  assert.equal(flags.startPage, "assistant");
   assert.equal(flags.autoConnect, true);
 });
 
@@ -26,17 +26,17 @@ test("reads startup flags from hayalet-prefixed preload arguments", () => {
     "--hayalet-auto-connect=1",
   ]);
 
-  assert.equal(flags.startPage, "asistan");
+  assert.equal(flags.startPage, "assistant");
   assert.equal(flags.autoConnect, true);
 });
 
 test("serializes startup flags into preload additional arguments", () => {
   const args = buildPreloadAdditionalArguments({
-    startPage: "asistan",
+    startPage: "assistant",
     autoConnect: true,
   });
 
-  assert.deepEqual(args, ["--hayalet-start-page=asistan", "--hayalet-auto-connect=1"]);
+  assert.deepEqual(args, ["--hayalet-start-page=assistant", "--hayalet-auto-connect=1"]);
 });
 
 test("omits empty startup flags while serializing preload arguments", () => {

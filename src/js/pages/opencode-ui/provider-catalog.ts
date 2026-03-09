@@ -1,4 +1,5 @@
 import { escapeHtml } from "./chat-utils.js";
+import { localeCompare, t } from "./i18n.js";
 import type {
   ModelMeta,
   ModelVariantOption,
@@ -329,14 +330,14 @@ export function sortModelItems(items: SelectItem[]): SelectItem[] {
     if ((left.isConnected === true) !== (right.isConnected === true)) {
       return left.isConnected === true ? -1 : 1;
     }
-    const providerCompare = (left.providerName ?? left.providerId ?? "").localeCompare(
-      right.providerName ?? right.providerId ?? "",
-      "tr"
+    const providerCompare = localeCompare(
+      left.providerName ?? left.providerId ?? "",
+      right.providerName ?? right.providerId ?? ""
     );
     if (providerCompare !== 0) {
       return providerCompare;
     }
-    return left.label.localeCompare(right.label, "tr");
+    return localeCompare(left.label, right.label);
   });
 }
 
@@ -498,7 +499,7 @@ export function normalizeConnectedProviderIds(payload: unknown): string[] {
 
 export function renderProviderRows(items: ProviderItem[]): string {
   if (items.length === 0) {
-    return '<div class="empty-state">Provider bulunamadi</div>';
+    return `<div class="empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
   }
 
   return items

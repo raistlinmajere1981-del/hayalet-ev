@@ -7,9 +7,14 @@
 
 import WebSocket from "ws";
 import { CDP_TIMEOUTS } from "@timeouts";
+import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 const CDP_HOST = process.env["CDP_HOST"] ?? "localhost";
+
+function cdpConnectionT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
+}
 
 /** CDP Target interface */
 interface CDPTarget {
@@ -57,7 +62,12 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(
+        cdpConnectionT("httpStatus", {
+          status: response.status,
+          statusText: response.statusText,
+        })
+      );
     }
     return (await response.json()) as CDPTarget[];
   } catch (error) {
@@ -66,7 +76,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
     // Timeout hatası
     if (err.name === "AbortError") {
       const timeoutError = new Error(
-        `Electron bağlantı zaman aşımı (5s). Port ${CDP_PORT} açık mı kontrol edin.`
+        cdpConnectionT("connectionTimeout", { port: CDP_PORT })
       ) as Error & { cause?: unknown };
       timeoutError.cause = error;
       throw timeoutError;
@@ -75,8 +85,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
     // Connection refused
     if (err.code === "ECONNREFUSED" || err.message.includes("ECONNREFUSED")) {
       const connectionError = new Error(
-        `Electron'a bağlanılamadı (port ${CDP_PORT}). ` +
-          `Uygulama --remote-debugging-port=${CDP_PORT} ile başlatıldığından emin olun.`
+        cdpConnectionT("connectionRefused", { port: CDP_PORT })
       ) as Error & { cause?: unknown };
       connectionError.cause = error;
       throw connectionError;
@@ -85,7 +94,7 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
     // fetch failed (genel ağ hatası)
     if (err.message.includes("fetch failed")) {
       const fetchError = new Error(
-        `Electron'a bağlanılamadı (port ${CDP_PORT}). Uygulama çalışıyor mu?`
+        cdpConnectionT("fetchFailed", { port: CDP_PORT })
       ) as Error & { cause?: unknown };
       fetchError.cause = error;
       throw fetchError;
@@ -127,7 +136,7 @@ async function connectToTarget(wsUrl: string): Promise<WebSocket> {
     ws.on("error", (err: Error) => {
       if (!resolved) {
         resolved = true;
-        reject(new Error(`WebSocket hatası: ${err.message}`));
+        reject(new Error(cdpConnectionT("websocketError", { message: err.message })));
       }
     });
 
@@ -136,7 +145,7 @@ async function connectToTarget(wsUrl: string): Promise<WebSocket> {
       if (!resolved) {
         resolved = true;
         ws.terminate();
-        reject(new Error("WebSocket bağlantı zaman aşımı"));
+        reject(new Error(cdpConnectionT("websocketTimeout")));
       }
     }, CDP_TIMEOUTS.WEBSOCKET_CONNECT);
   });
@@ -175,7 +184,9 @@ export async function sendCDPCommand(
           clearTimeout(timeoutId);
           ws.off("message", messageHandler);
           if (response.error) {
-            reject(new Error(`CDP Hatası: ${response.error.message}`));
+            reject(
+              new Error(cdpConnectionT("cdpError", { message: response.error.message }))
+            );
           } else {
             resolve(response.result ?? {});
           }
@@ -187,7 +198,7 @@ export async function sendCDPCommand(
 
     const timeoutId = setTimeout(() => {
       ws.off("message", messageHandler);
-      reject(new Error(`CDP komut zaman aşımı: ${method}`));
+      reject(new Error(cdpConnectionT("commandTimeout", { method })));
     }, timeout);
 
     ws.on("message", messageHandler);
@@ -197,7 +208,7 @@ export async function sendCDPCommand(
     } catch (e) {
       const err = e as Error;
       ws.off("message", messageHandler);
-      reject(new Error(`WebSocket gönderim hatası: ${err.message}`));
+      reject(new Error(cdpConnectionT("websocketSendError", { message: err.message })));
       return;
     }
   });
@@ -225,7 +236,12 @@ export async function evaluateJS(
 
   if (result.exceptionDetails) {
     throw new Error(
-      `JavaScript hatası: ${result.exceptionDetails.exception?.description ?? result.exceptionDetails.text ?? "unknown"}`
+      cdpConnectionT("javascriptError", {
+        message:
+          result.exceptionDetails.exception?.description ??
+          result.exceptionDetails.text ??
+          cdpConnectionT("unknown"),
+      })
     );
   }
 
@@ -238,7 +254,7 @@ export async function evaluateJS(
 export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): Promise<T> {
   const target = await findMainWindow();
   if (!target) {
-    throw new Error("Electron penceresi bulunamadı. Uygulama çalışıyor mu?");
+    throw new Error(cdpConnectionT("windowNotFound"));
   }
 
   const ws = await connectToTarget(target.webSocketDebuggerUrl);

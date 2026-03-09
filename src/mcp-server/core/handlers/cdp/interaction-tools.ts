@@ -5,20 +5,27 @@ import {
   sendKeyPress,
   scrollPage,
 } from "../../../tools/cdp-tools.js";
+import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
+
+const cdpToolDefinitionTranslator = createMcpTranslatorSync();
+
+function cdpToolT(key: string): string {
+  return cdpToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.cdp.${key}`);
+}
 
 export function createCdpInteractionTools(): ToolEntry[] {
   return [
     {
       definition: {
         name: "hev_click_element_by_selector",
-        description: "CSS selector ile bir elemente tıkla.",
+        description: cdpToolT("clickBySelector.description"),
         inputSchema: {
           type: "object",
           properties: {
             selector: {
               type: "string",
-              description: "CSS selector (örn: #myButton, .btn-primary, button[type='submit'])",
+              description: cdpToolT("clickBySelector.selector"),
             },
           },
           required: ["selector"],
@@ -28,10 +35,13 @@ export function createCdpInteractionTools(): ToolEntry[] {
           subcategory: "cdp-interaction",
           priority: "high",
           complexity: "simple",
-          useCases: ["UI automation", "Button clicks", "Element interaction"],
+          useCases: [
+            cdpToolT("clickBySelector.useCases.uiAutomation"),
+            cdpToolT("clickBySelector.useCases.buttonClicks"),
+            cdpToolT("clickBySelector.useCases.elementInteraction"),
+          ],
           relatedTools: ["hev_click_element_by_text", "hev_inspect_element", "hev_query_elements"],
-          agentGuidance:
-            "CSS selector ile element tıkla. Önce hev_inspect_element ile elementin var olduğunu doğrula.",
+          agentGuidance: cdpToolT("clickBySelector.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "click", "interaction", "automation"],
@@ -42,14 +52,14 @@ export function createCdpInteractionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_click_element_by_text",
-        description: "Metin içeriğine göre bir elemente tıkla.",
+        description: cdpToolT("clickByText.description"),
         inputSchema: {
           type: "object",
           properties: {
-            text: { type: "string", description: "Aranacak metin içeriği" },
+            text: { type: "string", description: cdpToolT("clickByText.text") },
             tagName: {
               type: "string",
-              description: "Tag filtresi (button, a, div vb.)",
+              description: cdpToolT("clickByText.tagName"),
               default: "*",
             },
           },
@@ -60,9 +70,13 @@ export function createCdpInteractionTools(): ToolEntry[] {
           subcategory: "cdp-interaction",
           priority: "high",
           complexity: "simple",
-          useCases: ["Text-based interaction", "Button clicks by label", "Link clicks"],
+          useCases: [
+            cdpToolT("clickByText.useCases.textBasedInteraction"),
+            cdpToolT("clickByText.useCases.buttonClicksByLabel"),
+            cdpToolT("clickByText.useCases.linkClicks"),
+          ],
           relatedTools: ["hev_click_element_by_selector", "hev_query_elements"],
-          agentGuidance: "Metin ile element bul ve tıkla. Selector bilmiyorsan bu tool kullanışlı.",
+          agentGuidance: cdpToolT("clickByText.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "click", "text", "automation"],
@@ -73,18 +87,18 @@ export function createCdpInteractionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_fill_input_field",
-        description: "Bir input alanına değer yaz.",
+        description: cdpToolT("fillInput.description"),
         inputSchema: {
           type: "object",
           properties: {
             selector: {
               type: "string",
-              description: "Input elementinin CSS selector'ı",
+              description: cdpToolT("fillInput.selector"),
             },
-            value: { type: "string", description: "Yazılacak değer" },
+            value: { type: "string", description: cdpToolT("fillInput.value") },
             clear: {
               type: "boolean",
-              description: "Önce mevcut değeri temizle",
+              description: cdpToolT("fillInput.clear"),
               default: true,
             },
           },
@@ -95,9 +109,13 @@ export function createCdpInteractionTools(): ToolEntry[] {
           subcategory: "cdp-interaction",
           priority: "high",
           complexity: "simple",
-          useCases: ["Form filling", "Input automation", "Text entry"],
+          useCases: [
+            cdpToolT("fillInput.useCases.formFilling"),
+            cdpToolT("fillInput.useCases.inputAutomation"),
+            cdpToolT("fillInput.useCases.textEntry"),
+          ],
           relatedTools: ["hev_send_key_press", "hev_click_element_by_selector"],
-          agentGuidance: "Input field'a değer yaz. clear=true ile önce mevcut içeriği temizler.",
+          agentGuidance: cdpToolT("fillInput.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "input", "form", "automation"],
@@ -108,18 +126,22 @@ export function createCdpInteractionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_send_key_press",
-        description: "Klavye tuşu gönder (Enter, Escape, Tab vb.).",
+        description: cdpToolT("sendKeyPress.description"),
         inputSchema: {
           type: "object",
           properties: {
             key: {
               type: "string",
-              description: "Tuş adı (Enter, Escape, Tab, ArrowDown vb.)",
+              description: cdpToolT("sendKeyPress.key"),
             },
-            ctrl: { type: "boolean", description: "Ctrl tuşu basılı", default: false },
-            alt: { type: "boolean", description: "Alt tuşu basılı", default: false },
-            shift: { type: "boolean", description: "Shift tuşu basılı", default: false },
-            meta: { type: "boolean", description: "Meta/Cmd tuşu basılı", default: false },
+            ctrl: { type: "boolean", description: cdpToolT("sendKeyPress.ctrl"), default: false },
+            alt: { type: "boolean", description: cdpToolT("sendKeyPress.alt"), default: false },
+            shift: {
+              type: "boolean",
+              description: cdpToolT("sendKeyPress.shift"),
+              default: false,
+            },
+            meta: { type: "boolean", description: cdpToolT("sendKeyPress.meta"), default: false },
           },
           required: ["key"],
         },
@@ -128,10 +150,13 @@ export function createCdpInteractionTools(): ToolEntry[] {
           subcategory: "cdp-interaction",
           priority: "medium",
           complexity: "simple",
-          useCases: ["Keyboard automation", "Form submission", "Navigation keys"],
+          useCases: [
+            cdpToolT("sendKeyPress.useCases.keyboardAutomation"),
+            cdpToolT("sendKeyPress.useCases.formSubmission"),
+            cdpToolT("sendKeyPress.useCases.navigationKeys"),
+          ],
           relatedTools: ["hev_fill_input_field", "hev_click_element_by_selector"],
-          agentGuidance:
-            "Klavye tuşu gönder. Enter ile form submit, Tab ile navigation, Escape ile cancel işlemleri.",
+          agentGuidance: cdpToolT("sendKeyPress.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "keyboard", "key", "automation"],
@@ -142,16 +167,16 @@ export function createCdpInteractionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_scroll_page",
-        description: "Sayfada belirli bir konuma scroll yap.",
+        description: cdpToolT("scrollPage.description"),
         inputSchema: {
           type: "object",
           properties: {
-            x: { type: "number", description: "Yatay scroll pozisyonu", default: 0 },
-            y: { type: "number", description: "Dikey scroll pozisyonu", default: 0 },
+            x: { type: "number", description: cdpToolT("scrollPage.x"), default: 0 },
+            y: { type: "number", description: cdpToolT("scrollPage.y"), default: 0 },
             behavior: {
               type: "string",
               enum: ["smooth", "instant"],
-              description: "Scroll animasyonu",
+              description: cdpToolT("scrollPage.behavior"),
               default: "smooth",
             },
           },
@@ -161,10 +186,13 @@ export function createCdpInteractionTools(): ToolEntry[] {
           subcategory: "cdp-navigation",
           priority: "low",
           complexity: "simple",
-          useCases: ["Page scrolling", "Element visibility", "Long page navigation"],
+          useCases: [
+            cdpToolT("scrollPage.useCases.pageScrolling"),
+            cdpToolT("scrollPage.useCases.elementVisibility"),
+            cdpToolT("scrollPage.useCases.longPageNavigation"),
+          ],
           relatedTools: ["hev_take_cdp_screenshot", "hev_inspect_element"],
-          agentGuidance:
-            "Sayfayı scroll et. Element görünür hale getirmek veya tam sayfa screenshot almak için kullan.",
+          agentGuidance: cdpToolT("scrollPage.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "scroll", "navigation", "page"],

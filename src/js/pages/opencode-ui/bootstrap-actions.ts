@@ -1,4 +1,5 @@
 import type { OpencodeUiSessionSummary, RuntimeState } from "./types.js";
+import { formatTime, t } from "./i18n.js";
 
 type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
@@ -56,7 +57,7 @@ export async function initializeSessionSelection(
   const visibleSessions = context.getSessionsForTab(sessions, "active");
 
   if (visibleSessions.length === 0) {
-    const createdId = await context.createServerSession("Yeni Sohbet");
+    const createdId = await context.createServerSession(t("session.createDefaultTitle"));
     context.setActiveSession(createdId);
     await context.loadSessionListAndRender({ preserveActive: true });
     await context.loadActiveSessionHistory();
@@ -79,7 +80,7 @@ export async function initializeSessionSelection(
 export function startPeriodicRefresh(context: BootstrapContext): void {
   const lastCheckEl = context.byId<HTMLElement>("last-check");
   if (lastCheckEl != null) {
-    lastCheckEl.textContent = `Son kontrol: ${new Date().toLocaleTimeString("tr-TR")}`;
+    lastCheckEl.textContent = t("bootstrap.lastCheck", { time: formatTime(new Date()) });
   }
 
   setInterval(() => {
@@ -89,7 +90,7 @@ export function startPeriodicRefresh(context: BootstrapContext): void {
       } catch (_error) {}
 
       if (lastCheckEl != null) {
-        lastCheckEl.textContent = `Son kontrol: ${new Date().toLocaleTimeString("tr-TR")}`;
+        lastCheckEl.textContent = t("bootstrap.lastCheck", { time: formatTime(new Date()) });
       }
     })();
   }, 120000);
@@ -131,16 +132,16 @@ export async function runOpencodeUiBootstrapPipeline(options: {
 }): Promise<void> {
   const { deps, emitStage, emitToolsReady } = options;
 
-  emitStage("Sunucu saglik kontrolu", "OpenCode server health endpoint kontrol ediliyor");
+  emitStage(t("bootstrap.healthCheckTitle"), t("bootstrap.healthCheckSubtitle"));
   await deps.checkHealth();
 
-  emitStage("Durum ve baglam okunuyor", "Calisma dizini bilgisi yukleniyor");
+  emitStage(t("bootstrap.statusContextTitle"), t("bootstrap.statusContextSubtitle"));
   await deps.loadStatusContext();
 
-  emitStage("MCP durumu bekleniyor", "MCP sunuculari terminal duruma gelene kadar izleniyor");
+  emitStage(t("bootstrap.mcpWaitTitle"), t("bootstrap.mcpWaitSubtitle"));
   const mcpResult = await deps.waitForMcpServersSettled();
 
-  emitStage("Tool snapshot aliniyor", "Final tool listesi endpointlerden okunuyor");
+  emitStage(t("bootstrap.toolSnapshotTitle"), t("bootstrap.toolSnapshotSubtitle"));
   const toolsResult = await deps.loadToolsFinalSnapshot();
 
   emitToolsReady({
@@ -151,8 +152,8 @@ export async function runOpencodeUiBootstrapPipeline(options: {
   });
 
   if (mcpResult.ready) {
-    emitStage("Baglanti tamamlandi", "OpenCode UI kullanima hazir");
+    emitStage(t("bootstrap.connectionReadyTitle"), t("bootstrap.connectionReadySubtitle"));
   } else {
-    emitStage("Baglanti kismi", "MCP tamamen hazir degil, UI acildi");
+    emitStage(t("bootstrap.connectionPartialTitle"), t("bootstrap.connectionPartialSubtitle"));
   }
 }

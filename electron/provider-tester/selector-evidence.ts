@@ -1,10 +1,11 @@
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { AppSettings } from "../../src/types/settings.ts";
+import { resolveSelectorLanguage } from "../../shared/i18n/locale.js";
 
 export function resolvePromotionLocaleFromSettings(
   settings: AppSettings | null | undefined
 ): "tr" | "en" {
-  return settings?.general?.language === "en" ? "en" : "tr";
+  return resolveSelectorLanguage(settings?.general?.language);
 }
 
 export function collectPromotableSelectors({

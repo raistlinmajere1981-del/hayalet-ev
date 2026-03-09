@@ -5,7 +5,19 @@
  * Core implementation lives in structure-visualizer-core.ts
  */
 
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
+
 export { visualizeStructure, countBracketsContextAware } from "./structure-visualizer-core.js";
+
+function structureVizDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(
+    `mcpServer.devTools.structureVisualizer.definition.${key}`,
+    params
+  );
+}
 
 // ============================================
 // MCP Tool Definition
@@ -13,37 +25,37 @@ export { visualizeStructure, countBracketsContextAware } from "./structure-visua
 
 export const STRUCTURE_VISUALIZER_TOOL = {
   name: "hev_dev_visualize_structure",
-  description: "Dosya yapısını görselleştir (AST scope tree, bracket analysis, unclosed detection)",
+  description: structureVizDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Analiz edilecek dosya yolu",
+        description: structureVizDefT("filePath"),
       },
       show_scopes: {
         type: "boolean",
-        description: "Scope hierarchy göster",
+        description: structureVizDefT("showScopes"),
         default: true,
       },
       show_brackets: {
         type: "boolean",
-        description: "Bracket analysis göster",
+        description: structureVizDefT("showBrackets"),
         default: true,
       },
       show_comments: {
         type: "boolean",
-        description: "Comment blocks göster",
+        description: structureVizDefT("showComments"),
         default: false,
       },
       show_strings: {
         type: "boolean",
-        description: "String literals göster",
+        description: structureVizDefT("showStrings"),
         default: false,
       },
       max_depth: {
         type: "number",
-        description: "Maksimum scope derinliği",
+        description: structureVizDefT("maxDepth"),
         default: 10,
       },
     },
@@ -55,13 +67,12 @@ export const STRUCTURE_VISUALIZER_TOOL = {
     priority: "medium",
     complexity: "complex",
     useCases: [
-      "Visualize code structure and scopes",
-      "Detect unclosed brackets",
-      "Analyze comment blocks and AST hierarchy",
+      structureVizDefT("useCases.visualizeScopes"),
+      structureVizDefT("useCases.detectUnclosed"),
+      structureVizDefT("useCases.commentAst"),
     ],
     relatedTools: ["hev_dev_check_syntax", "hev_fs_show"],
-    agentGuidance:
-      "Advanced AST-based structure visualization. Shows scope hierarchy, bracket analysis, and unclosed detection. Use for debugging complex nesting issues.",
+    agentGuidance: structureVizDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["ast", "structure", "visualization", "scopes", "brackets", "advanced"],

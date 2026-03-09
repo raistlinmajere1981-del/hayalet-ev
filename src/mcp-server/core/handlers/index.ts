@@ -12,6 +12,7 @@
 
 import { registerTools, getToolCount, getRegistryStats } from "../registry.js";
 import type { ToolContext } from "../registry.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 import { createElectronTools } from "./electron-handlers.js";
 import { createMcpAnalysisTools } from "./mcp-analysis-handlers.js";
@@ -24,12 +25,18 @@ import { createMemoryTools } from "./memory-handlers.js";
 import { createUiTools } from "./ui-handlers.js";
 import { createWebTools } from "./web-handlers.js";
 
+const startupTranslator = createMcpTranslatorSync();
+
+function startupT(key: string, params?: Record<string, string | number | boolean>): string {
+  return startupTranslator(`mcpServer.startup.${key}`, params);
+}
+
 /**
  * Register all tool modules into the unified registry.
  * Called once during server bootstrap.
  */
 export function registerAllTools(context: ToolContext): void {
-  // Each module self-registers with the central registry
+  // Each module self-registers with the central registry.
   registerTools(createElectronTools(context), "electron");
   registerTools(createMcpAnalysisTools(), "mcp-analysis");
   registerTools(createCdpTools(), "cdp");
@@ -41,14 +48,19 @@ export function registerAllTools(context: ToolContext): void {
   registerTools(createUiTools(), "ui");
   registerTools(createWebTools(), "web");
 
-  // Log registration summary to stderr (MCP protocol)
+  // Log the registration summary to stderr (MCP protocol).
   const stats = getRegistryStats();
   const categories = Object.entries(stats)
     .filter(([k]) => k !== "total")
     .map(([k, v]) => `${k}:${v}`)
     .join(", ");
 
-  process.stderr.write(`[Registry] ${getToolCount()} tools registered (${categories})\n`);
+  process.stderr.write(
+    `${startupT("registrySummary", {
+      toolCount: getToolCount(),
+      categories,
+    })}\n`
+  );
 }
 
 /**

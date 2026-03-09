@@ -1,4 +1,5 @@
 import { escapeHtml } from "./chat-utils.js";
+import { t } from "./i18n.js";
 import type { ComposerAttachment } from "./types.js";
 
 function sanitizeAttachmentName(name: string, fallback: string): string {
@@ -151,7 +152,9 @@ export function renderAttachmentTrayHtml(attachments: ComposerAttachment[]): str
         .filter((item) => item !== "")
         .join(" • ");
       const sourceLabel =
-        attachment.source === "clipboard" ? "Panodan eklendi" : "Dosyadan eklendi";
+        attachment.source === "clipboard"
+          ? t("chat.attachmentSourceClipboard")
+          : t("chat.attachmentSourceFile");
       return (
         '<div class="ds-attachment-chip" title="' +
         escapeHtml(`${attachment.name}\n${sourceLabel}`) +
@@ -165,7 +168,7 @@ export function renderAttachmentTrayHtml(attachments: ComposerAttachment[]): str
         '<button type="button" class="ds-attachment-chip__remove" data-attachment-remove="' +
         escapeHtml(attachment.id) +
         '" aria-label="' +
-        escapeHtml(`${attachment.name} kaldir`) +
+        escapeHtml(t("chat.removeAttachmentAria", { name: attachment.name })) +
         '">×</button>' +
         "</div>"
       );

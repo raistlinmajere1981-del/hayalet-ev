@@ -23,15 +23,15 @@ test("AI-AI relay auto-stop sends stop protocol to remaining connected AI", asyn
   try {
     coreEngineApi.relay = {
       isAIAIActive: () => true,
-      isAIAsistanActive: () => false,
+      isAIAssistantActive: () => false,
       stopProtocolSession: async () => {
         stopProtocolCalled = true;
       },
       stopSession: async () => {
         stopSessionCalled = true;
       },
-      stopAIAsistanSession: async () => {},
-      getAIAsistanSourceSlot: () => null,
+      stopAIAssistantSession: async () => {},
+      getAIAssistantSourceSlot: () => null,
     };
 
     SlotController.isConnected = (slot: string) => slot === "ai2";
@@ -71,15 +71,15 @@ test("AI-AI relay auto-stop hard-stops when no connected target remains", async 
   try {
     coreEngineApi.relay = {
       isAIAIActive: () => true,
-      isAIAsistanActive: () => false,
+      isAIAssistantActive: () => false,
       stopProtocolSession: async () => {
         stopProtocolCalled = true;
       },
       stopSession: async () => {
         stopSessionCalled = true;
       },
-      stopAIAsistanSession: async () => {},
-      getAIAsistanSourceSlot: () => null,
+      stopAIAssistantSession: async () => {},
+      getAIAssistantSourceSlot: () => null,
     };
 
     SlotController.isConnected = () => false;
@@ -102,25 +102,25 @@ test("AI-AI relay auto-stop hard-stops when no connected target remains", async 
   }
 });
 
-test("AI-Asistan relay auto-stop sends standardized stop protocol when ai0 disconnects", async () => {
+test("AI-Assistant relay auto-stop sends the standardized stop protocol when ai0 disconnects", async () => {
   const coreEngineApi = CoreEngine as unknown as CoreEnginePatch;
   const originalRelay = coreEngineApi.relay;
   const originalSendProtocol = coreEngineApi.sendProtocol;
   const originalIsConnected = SlotController.isConnected;
 
   let sentPayload: Record<string, unknown> | null = null;
-  let stopAsistanCalled = false;
+  let stopAssistantCalled = false;
 
   try {
     coreEngineApi.relay = {
       isAIAIActive: () => false,
-      isAIAsistanActive: () => true,
+      isAIAssistantActive: () => true,
       stopProtocolSession: async () => {},
       stopSession: async () => {},
-      stopAIAsistanSession: async () => {
-        stopAsistanCalled = true;
+      stopAIAssistantSession: async () => {
+        stopAssistantCalled = true;
       },
-      getAIAsistanSourceSlot: () => "ai2",
+      getAIAssistantSourceSlot: () => "ai2",
     };
 
     SlotController.isConnected = (slot: string) => slot === "ai2";
@@ -135,10 +135,10 @@ test("AI-Asistan relay auto-stop sends standardized stop protocol when ai0 disco
 
     assert.deepEqual(sentPayload, {
       room: "analyze",
-      scenario: "ai-asistan-stop",
+      scenario: "ai-assistant-stop",
       targets: ["ai2"],
     });
-    assert.equal(stopAsistanCalled, false);
+    assert.equal(stopAssistantCalled, false);
   } finally {
     coreEngineApi.relay = originalRelay;
     coreEngineApi.sendProtocol = originalSendProtocol;
@@ -146,25 +146,25 @@ test("AI-Asistan relay auto-stop sends standardized stop protocol when ai0 disco
   }
 });
 
-test("AI-Asistan relay auto-stop hard-stops when source AI disconnects", async () => {
+test("AI-Assistant relay auto-stop hard-stops when the source AI disconnects", async () => {
   const coreEngineApi = CoreEngine as unknown as CoreEnginePatch;
   const originalRelay = coreEngineApi.relay;
   const originalSendProtocol = coreEngineApi.sendProtocol;
   const originalIsConnected = SlotController.isConnected;
 
   let sendCalled = false;
-  let stopAsistanCalled = false;
+  let stopAssistantCalled = false;
 
   try {
     coreEngineApi.relay = {
       isAIAIActive: () => false,
-      isAIAsistanActive: () => true,
+      isAIAssistantActive: () => true,
       stopProtocolSession: async () => {},
       stopSession: async () => {},
-      stopAIAsistanSession: async () => {
-        stopAsistanCalled = true;
+      stopAIAssistantSession: async () => {
+        stopAssistantCalled = true;
       },
-      getAIAsistanSourceSlot: () => "ai1",
+      getAIAssistantSourceSlot: () => "ai1",
     };
 
     SlotController.isConnected = () => false;
@@ -178,7 +178,7 @@ test("AI-Asistan relay auto-stop hard-stops when source AI disconnects", async (
     await coreEngineApi._handleRelayDisconnectAutoStop?.("ai1");
 
     assert.equal(sendCalled, false);
-    assert.equal(stopAsistanCalled, true);
+    assert.equal(stopAssistantCalled, true);
   } finally {
     coreEngineApi.relay = originalRelay;
     coreEngineApi.sendProtocol = originalSendProtocol;

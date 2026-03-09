@@ -14,11 +14,38 @@ import { join, dirname } from "path";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "../paths.ts";
+import { loadSettings } from "../settings-manager.ts";
+import type { TranslationParams } from "../../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
+import { loadAvailableLanguage } from "../i18n/language-service.ts";
+import { translateCatalog } from "../../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 
 const logger = getLoggerCore();
 const OPENCODE_INSTALL_URL = "https://opencode.ai/install";
 const OPENCODE_RELEASES_API_URL = "https://api.github.com/repos/anomalyco/opencode/releases/latest";
 const OPENCODE_RELEASES_PAGE_URL = "https://github.com/anomalyco/opencode/releases/latest";
+
+async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function ipcWindowT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.ipcWindow.${key}`, params);
+}
 
 function normalizeVersion(version: string): string {
   return version.trim().replace(/^v/i, "");
@@ -319,11 +346,13 @@ export function setupWindowHandlers(): void {
 
   registerHandler("show-open-dialog", async (_event, options?: Electron.OpenDialogOptions) => {
     const focusedWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    const defaultTitle = await ipcWindowT("openDialogTitle");
+    const defaultButtonLabel = await ipcWindowT("openDialogButtonLabel");
 
     const dialogOptions: Electron.OpenDialogOptions = {
       properties: options?.properties ?? ["openDirectory"],
-      title: options?.title ?? "Klasör Seçin",
-      buttonLabel: options?.buttonLabel ?? "Seç",
+      title: options?.title ?? defaultTitle,
+      buttonLabel: options?.buttonLabel ?? defaultButtonLabel,
       ...(Array.isArray(options?.filters) ? { filters: options.filters } : {}),
       ...(options?.defaultPath !== undefined && options.defaultPath.length > 0
         ? { defaultPath: options.defaultPath }
@@ -383,7 +412,7 @@ export function setupWindowHandlers(): void {
       return {
         success: false,
         installedVersion: "",
-        error: "Kurulu OpenCode sürümü boş geldi.",
+        error: await ipcWindowT("installedOpencodeVersionMissing"),
       };
     }
 

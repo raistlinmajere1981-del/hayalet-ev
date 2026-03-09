@@ -16,11 +16,11 @@ import { WebviewManager } from "../webview-manager.js";
 
 interface RelayRef {
   isAIAIActive(): boolean;
-  isAIAsistanActive(): boolean;
+  isAIAssistantActive(): boolean;
   stopProtocolSession(): Promise<void>;
   stopSession(): Promise<void>;
-  stopAIAsistanSession(): Promise<void>;
-  getAIAsistanSourceSlot(): string | null;
+  stopAIAssistantSession(): Promise<void>;
+  getAIAssistantSourceSlot(): string | null;
 }
 
 export type RelayManagerRef = typeof RelayManager;
@@ -217,18 +217,18 @@ export async function handleRelayDisconnectAutoStop(
       return;
     }
 
-    if (context.relay.isAIAsistanActive() !== true) {
+    if (context.relay.isAIAssistantActive() !== true) {
       return;
     }
 
-    const sourceSlot = context.relay.getAIAsistanSourceSlot();
+    const sourceSlot = context.relay.getAIAssistantSourceSlot();
     if (sourceSlot !== "ai1" && sourceSlot !== "ai2") {
-      await context.relay.stopAIAsistanSession();
+      await context.relay.stopAIAssistantSession();
       return;
     }
 
     if (slot === sourceSlot) {
-      await context.relay.stopAIAsistanSession();
+      await context.relay.stopAIAssistantSession();
       return;
     }
 
@@ -236,7 +236,7 @@ export async function handleRelayDisconnectAutoStop(
       if (SlotController.isConnected(sourceSlot) === true) {
         const stopResult = await context.sendProtocol({
           room: "analyze",
-          scenario: "ai-asistan-stop",
+          scenario: "ai-assistant-stop",
           targets: [sourceSlot],
         });
 
@@ -245,7 +245,7 @@ export async function handleRelayDisconnectAutoStop(
         }
       }
 
-      await context.relay.stopAIAsistanSession();
+      await context.relay.stopAIAssistantSession();
     }
   } catch (error) {
     Logger.warn(

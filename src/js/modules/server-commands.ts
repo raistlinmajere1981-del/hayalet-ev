@@ -1,18 +1,19 @@
 import { LogCategory } from "@shared/logging-core";
 /**
- * ServerCommands - Komut Dispatcher (Orchestrator)
+ * ServerCommands - command dispatcher (orchestrator)
  *
- * Alt moduller:
- * - commands/utils.js: Ortak yardimci fonksiyonlar
+ * Submodules:
+ * - commands/utils.js: shared helper functions
  * - commands/device-commands.js: DeviceManager handler
- * - commands/screenshot-commands.js: Screenshot handler'lari
- * - commands/window-commands.js: Window handler'lari
+ * - commands/screenshot-commands.js: screenshot handlers
+ * - commands/window-commands.js: window handlers
  * - commands/whisper-commands.js: Whisper handler
- * - commands/file-commands.js: File handler'lari
- * - commands/ai-chat-commands.js: AI-AI chat handler'lari
+ * - commands/file-commands.js: file handlers
+ * - commands/ai-chat-commands.js: AI chat handlers
  */
 
 import { Logger } from "./logger/index.js";
+import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 
 import { createDefaultHandler } from "./commands/utils.js";
@@ -68,10 +69,10 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
   { name: "Restart", category: "ai1-ai2" },
   { name: "AIAIChatStart", category: "ai1-ai2" },
   { name: "AIAIChatStop", category: "ai1-ai2" },
-  { name: "AIAsistanChatStart", category: "ai1-ai2" },
-  { name: "AIAsistanChatStop", category: "ai1-ai2" },
-  { name: "AIAsistanSend", category: "ai1-ai2", supportsTestMode: true },
-  { name: "AsistanAISend", category: "ai0", supportsTestMode: true },
+  { name: "AIAssistantChatStart", category: "ai1-ai2" },
+  { name: "AIAssistantChatStop", category: "ai1-ai2" },
+  { name: "AIAssistantSend", category: "ai1-ai2", supportsTestMode: true },
+  { name: "AssistantAISend", category: "ai0", supportsTestMode: true },
   { name: "GetFile", category: "ai1-ai2" },
   { name: "GetItDone", category: "ai1-ai2" },
   { name: "ListFiles", category: "ai1-ai2", supportsTestMode: true },
@@ -84,6 +85,17 @@ const COMMAND_LIST = BUILTIN_COMMANDS.map((command) => command.name);
 const BUILTIN_BY_KEY = new Map(
   BUILTIN_COMMANDS.map((command) => [command.name.toLowerCase(), command])
 );
+const COMMAND_ALIASES = new Map<string, string>([
+  ["aiasistanchatstart", "AIAssistantChatStart"],
+  ["aiasistanchatstop", "AIAssistantChatStop"],
+  ["aiasistansend", "AIAssistantSend"],
+  ["asistanaisend", "AssistantAISend"],
+]);
+
+function resolveCanonicalCommandName(commandName: string): string {
+  const key = commandName.trim().toLowerCase();
+  return COMMAND_ALIASES.get(key) ?? commandName;
+}
 
 function normalizeProvider(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase() : "";
@@ -110,7 +122,7 @@ function getDisabledCommandsForProvider(provider: string): string[] {
   }
 
   if (provider === "ai0") {
-    const disabled = snapshot.asistanSlot?.disabledCommands;
+    const disabled = snapshot.assistantSlot?.disabledCommands;
     return Array.isArray(disabled)
       ? disabled.filter((command): command is string => typeof command === "string")
       : [];
@@ -120,21 +132,22 @@ function getDisabledCommandsForProvider(provider: string): string[] {
 }
 
 function getCommandDefinition(commandName: string): CommandDefinition | null {
-  const key = commandName !== "" ? commandName.toLowerCase() : "";
+  const canonicalName = resolveCanonicalCommandName(commandName);
+  const key = canonicalName !== "" ? canonicalName.toLowerCase() : "";
   const builtIn = BUILTIN_BY_KEY.get(key);
   if (builtIn !== undefined) {
     return builtIn;
   }
 
-  if (MetaCommandManager.hasCommand(commandName)) {
+  if (MetaCommandManager.hasCommand(canonicalName)) {
     return {
-      name: commandName,
+      name: canonicalName,
       category: "ai1-ai2",
       supportsTestMode: false,
     };
   }
 
-  const roomMetadata = RoomCommandRegistry.getMetadata(commandName);
+  const roomMetadata = RoomCommandRegistry.getMetadata(canonicalName);
   if (roomMetadata !== null) {
     return {
       name: roomMetadata.name,
@@ -159,21 +172,32 @@ function checkCommandAccess(
 
   if (providerCategory !== null && commandDefinition !== null) {
     if (providerCategory === "ai0" && commandDefinition.category !== "ai0") {
-      return { allowed: false, message: "Asistan bu komutu kullanamaz" };
+      return {
+        allowed: false,
+        message: AppI18n.t("app.commands.access.assistantCannotUse"),
+      };
     }
 
     if (providerCategory === "ai1-ai2" && commandDefinition.category === "ai0") {
-      return { allowed: false, message: "Bu komut sadece asistan slotunda kullanilabilir" };
+      return {
+        allowed: false,
+        message: AppI18n.t("app.commands.access.assistantSlotOnly"),
+      };
     }
   }
 
   if (provider !== "") {
     const disabledCommands = getDisabledCommandsForProvider(provider);
-    const commandKey = commandName.toLowerCase();
-    const isDisabled = disabledCommands.some((command) => command.toLowerCase() === commandKey);
+    const commandKey = resolveCanonicalCommandName(commandName).toLowerCase();
+    const isDisabled = disabledCommands.some(
+      (command) => resolveCanonicalCommandName(command).toLowerCase() === commandKey
+    );
 
     if (isDisabled) {
-      return { allowed: false, message: "Bu komut bu slot icin pasif" };
+      return {
+        allowed: false,
+        message: AppI18n.t("app.commands.access.disabledForSlot"),
+      };
     }
   }
 
@@ -198,10 +222,10 @@ COMMAND_LIST.forEach((name) => {
       "listfiles",
       "aiaichatstart",
       "aiaichatstop",
-      "aiasistanchatstart",
-      "aiasistanchatstop",
-      "aiasistansend",
-      "asistanaisend",
+      "aiassistantchatstart",
+      "aiassistantchatstop",
+      "aiassistantsend",
+      "assistantaisend",
     ].includes(key)
   ) {
     handlers[key] = createDefaultHandler(name);
@@ -226,22 +250,26 @@ handlers["aiaichatstop"] = async (payload): Promise<unknown> => {
   const { aiaiChatStopHandler } = await getAiChatHandlers();
   return await aiaiChatStopHandler(payload);
 };
-handlers["aiasistanchatstart"] = async (payload): Promise<unknown> => {
-  const { aiAsistanChatStartHandler } = await getAiChatHandlers();
-  return await aiAsistanChatStartHandler(payload);
+handlers["aiassistantchatstart"] = async (payload): Promise<unknown> => {
+  const { aiAssistantChatStartHandler } = await getAiChatHandlers();
+  return await aiAssistantChatStartHandler(payload);
 };
-handlers["aiasistanchatstop"] = async (payload): Promise<unknown> => {
-  const { aiAsistanChatStopHandler } = await getAiChatHandlers();
-  return await aiAsistanChatStopHandler(payload);
+handlers["aiasistanchatstart"] = handlers["aiassistantchatstart"];
+handlers["aiassistantchatstop"] = async (payload): Promise<unknown> => {
+  const { aiAssistantChatStopHandler } = await getAiChatHandlers();
+  return await aiAssistantChatStopHandler(payload);
 };
-handlers["aiasistansend"] = async (payload): Promise<unknown> => {
-  const { aiAsistanSendHandler } = await getAiChatHandlers();
-  return await aiAsistanSendHandler(payload);
+handlers["aiasistanchatstop"] = handlers["aiassistantchatstop"];
+handlers["aiassistantsend"] = async (payload): Promise<unknown> => {
+  const { aiAssistantSendHandler } = await getAiChatHandlers();
+  return await aiAssistantSendHandler(payload);
 };
-handlers["asistanaisend"] = async (payload): Promise<unknown> => {
-  const { asistanAISendHandler } = await getAiChatHandlers();
-  return await asistanAISendHandler(payload);
+handlers["aiasistansend"] = handlers["aiassistantsend"];
+handlers["assistantaisend"] = async (payload): Promise<unknown> => {
+  const { assistantAISendHandler } = await getAiChatHandlers();
+  return await assistantAISendHandler(payload);
 };
+handlers["asistanaisend"] = handlers["assistantaisend"];
 
 handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> => {
   const args = typeof payload?.args === "string" ? payload.args : "";
@@ -250,7 +278,7 @@ handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> =
   if (match === null) {
     return {
       success: false,
-      error: 'Gecersiz format. Kullanim: DefineCommand(Name, "aciklama", `kod`)',
+      error: AppI18n.t("app.commands.runtime.invalidDefineFormat"),
     };
   }
 
@@ -265,7 +293,7 @@ handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> =
     code === undefined ||
     code === ""
   ) {
-    return { success: false, error: "Gecersiz komut bilgileri" };
+    return { success: false, error: AppI18n.t("app.commands.runtime.invalidCommandData") };
   }
   const sender = payload?.sender !== undefined ? String(payload.sender) : "unknown";
   const result = await MetaCommandManager.defineCommand(name, description, code, sender);
@@ -275,7 +303,7 @@ handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> =
 handlers["deletecommand"] = async (payload?: CommandPayload): Promise<unknown> => {
   const name = (typeof payload?.args === "string" ? payload.args : "").trim();
   if (name === "") {
-    return { success: false, error: "Komut adi gerekli" };
+    return { success: false, error: AppI18n.t("app.commands.runtime.commandNameRequired") };
   }
   const result = await MetaCommandManager.deleteCommand(name);
   return result;
@@ -290,7 +318,7 @@ handlers["listcustomcommands"] = (): {
   const names = Object.keys(commands);
   return {
     success: true,
-    message: `${names.length} custom command found`,
+    message: AppI18n.t("app.commands.runtime.customCommandCount", { count: names.length }),
     commands,
   };
 };
@@ -303,16 +331,21 @@ const serverCommands = {
    * @returns {Promise<Object>}
    */
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
-    const key = commandName !== "" ? commandName.toLowerCase() : "";
+    const canonicalCommandName = resolveCanonicalCommandName(commandName);
+    const key = canonicalCommandName !== "" ? canonicalCommandName.toLowerCase() : "";
     const handler = handlers[key];
-    const scopeCheck = checkCommandAccess(commandName, payload);
+    const scopeCheck = checkCommandAccess(canonicalCommandName, payload);
 
     if (scopeCheck.allowed !== true) {
-      Logger.warn(LogCategory.SERVER_COMMANDS, `Komut kapsam disi: ${commandName}`, {
-        category: "server-command",
-        command: commandName,
-        provider: payload["provider"],
-      });
+      Logger.warn(
+        LogCategory.SERVER_COMMANDS,
+        AppI18n.t("app.commands.runtime.outOfScopeLog", { command: canonicalCommandName }),
+        {
+          category: "server-command",
+          command: canonicalCommandName,
+          provider: payload["provider"],
+        }
+      );
       return { success: false, message: scopeCheck.message };
     }
 
@@ -320,23 +353,27 @@ const serverCommands = {
       return handler(payload);
     }
 
-    if (MetaCommandManager.hasCommand(commandName)) {
+    if (MetaCommandManager.hasCommand(canonicalCommandName)) {
       const argsStr = (payload as { args?: string }).args ?? "";
       const args =
         argsStr !== ""
           ? argsStr.split(",").map((s: string) => s.trim().replace(/^["']|["']$/g, ""))
           : [];
-      return await MetaCommandManager.runCommand(commandName, args);
+      return await MetaCommandManager.runCommand(canonicalCommandName, args);
     }
 
-    if (RoomCommandRegistry.has(commandName)) {
-      return await RoomCommandRegistry.run(commandName, payload);
+    if (RoomCommandRegistry.has(canonicalCommandName)) {
+      return await RoomCommandRegistry.run(canonicalCommandName, payload);
     }
 
-    Logger.warn(LogCategory.SERVER_COMMANDS, `Tanimsiz komut: ${commandName}`, {
-      category: "server-command",
-    });
-    return { success: false, message: "Tanimsiz komut" };
+    Logger.warn(
+      LogCategory.SERVER_COMMANDS,
+      AppI18n.t("app.commands.runtime.undefinedCommandLog", { command: canonicalCommandName }),
+      {
+        category: "server-command",
+      }
+    );
+    return { success: false, message: AppI18n.t("app.commands.runtime.undefinedCommand") };
   },
 
   /**
@@ -402,7 +439,7 @@ const serverCommands = {
    */
   getCommandMeta(commandName: string): CommandCatalogItem | undefined {
     const catalog = this.getCatalog();
-    const key = commandName.toLowerCase();
+    const key = resolveCanonicalCommandName(commandName).toLowerCase();
     return catalog.find((item) => item.name.toLowerCase() === key);
   },
 
@@ -412,11 +449,12 @@ const serverCommands = {
    * @returns {boolean}
    */
   has(commandName: string): boolean {
-    const key = commandName !== "" ? commandName.toLowerCase() : "";
+    const canonicalCommandName = resolveCanonicalCommandName(commandName);
+    const key = canonicalCommandName !== "" ? canonicalCommandName.toLowerCase() : "";
     return (
       handlers[key] !== undefined ||
-      MetaCommandManager.hasCommand(commandName) ||
-      RoomCommandRegistry.has(commandName)
+      MetaCommandManager.hasCommand(canonicalCommandName) ||
+      RoomCommandRegistry.has(canonicalCommandName)
     );
   },
 

@@ -1,12 +1,13 @@
 /**
  * Development Tools - Test Runner
  *
- * Test çalıştırma (vitest/jest otomatik algılanır)
+ * Test runner with automatic Vitest/Jest detection
  */
 
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
@@ -16,11 +17,19 @@ interface PackageJsonLike {
   dependencies?: Record<string, unknown>;
 }
 
+function testRunnerT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.testRunner.${key}`, params);
+}
+
+function testRunnerDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.testRunner.definition.${key}`, params);
+}
+
 export function testRun(
   projectRoot: string,
   options: { file?: string; grep?: string; timeout?: number } = {}
 ): { success: boolean; output: string; passed: number; failed: number } {
-  const progress = createProgress({ operation: "Test çalıştırma", interval: 3000 });
+  const progress = createProgress({ operation: testRunnerT("progress.operation"), interval: 3000 });
 
   try {
     let cmd = "npm test";
@@ -43,7 +52,7 @@ export function testRun(
     }
 
     const timeout = options.timeout ?? DEV_TIMEOUTS.TEST;
-    progress.update(0, `${cmd} çalıştırılıyor...`);
+    progress.update(0, testRunnerT("progress.running", { command: cmd }));
 
     try {
       const output = execSync(cmd, {
@@ -59,7 +68,7 @@ export function testRun(
       const passed = passMatch ? parseInt(passMatch[1] ?? "0") : 0;
       const failed = failMatch ? parseInt(failMatch[1] ?? "0") : 0;
 
-      progress.done(`${passed} passed, ${failed} failed`);
+      progress.done(testRunnerT("progress.completed", { passed, failed }));
       return {
         success: true,
         output,
@@ -75,7 +84,7 @@ export function testRun(
       const passed = passMatch ? parseInt(passMatch[1] ?? "0") : 0;
       const failed = failMatch ? parseInt(failMatch[1] ?? "0") : 0;
 
-      progress.fail(`${passed} passed, ${failed} failed`);
+      progress.fail(testRunnerT("progress.failed", { passed, failed }));
       return {
         success: false,
         output,
@@ -96,21 +105,21 @@ export function testRun(
 
 export const TEST_RUNNER_TOOL = {
   name: "hev_dev_test_run",
-  description: "Test çalıştır (vitest/jest otomatik algılanır)",
+  description: testRunnerDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file: {
         type: "string" as const,
-        description: "Sadece belirli test dosyası",
+        description: testRunnerDefT("file"),
       },
       grep: {
         type: "string" as const,
-        description: "Test ismi filtresi",
+        description: testRunnerDefT("grep"),
       },
       timeout: {
         type: "integer" as const,
-        description: "Timeout (ms)",
+        description: testRunnerDefT("timeout"),
         default: 30000,
       },
     },
@@ -120,10 +129,13 @@ export const TEST_RUNNER_TOOL = {
     subcategory: "testing",
     priority: "high",
     complexity: "medium",
-    useCases: ["Run tests before commit", "Test specific files or patterns", "Verify code changes"],
+    useCases: [
+      testRunnerDefT("useCases.beforeCommit"),
+      testRunnerDefT("useCases.specificFiles"),
+      testRunnerDefT("useCases.verifyChanges"),
+    ],
     relatedTools: ["hev_fs_bash", "hev_dev_check_syntax"],
-    agentGuidance:
-      "Auto-detects vitest/jest. Use grep to filter tests. Returns pass/fail counts. Good for verification after edits.",
+    agentGuidance: testRunnerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["testing", "vitest", "jest", "auto-detect", "verification"],

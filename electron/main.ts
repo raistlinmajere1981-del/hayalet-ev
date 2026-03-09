@@ -67,6 +67,7 @@ import { setupFsHandlers } from "./handlers/ipc-fs.ts";
 import { setupWindowHandlers } from "./handlers/ipc-window.ts";
 import { setupProviderHandlers } from "./handlers/ipc-provider.ts";
 import { setupSettingsHandlers } from "./handlers/ipc-settings.ts";
+import { setupI18nHandlers } from "./handlers/ipc-i18n.ts";
 import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
@@ -84,7 +85,7 @@ const moduleDirname = dirname(moduleFilename);
 // Initialize centralized path system
 initPaths(moduleDirname);
 
-// CDP (Chrome DevTools Protocol) remote debugging için port ayarla
+// Set the port used for CDP (Chrome DevTools Protocol) remote debugging
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
@@ -263,6 +264,7 @@ void app.whenReady().then(async () => {
     setupDatabaseHandlers();
     setupProviderHandlers();
     setupSettingsHandlers();
+    setupI18nHandlers();
     setupMemoryHandlers();
     setupOpencodeUiToolsHandlers();
     setupRoomHandlers(mainWindow);

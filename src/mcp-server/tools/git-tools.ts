@@ -11,6 +11,21 @@
 import { spawn } from "child_process";
 import { access, readFile } from "fs/promises";
 import { join } from "path";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
+
+type GitTranslator = (key: string, params?: Record<string, string | number | boolean>) => string;
+
+const gitDefinitionTranslator = createMcpTranslatorSync();
+
+function gitDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return gitDefinitionTranslator(`mcpServer.gitTools.definition.${key}`, params);
+}
+
+function createGitTranslator(): GitTranslator {
+  const t = createMcpTranslatorSync();
+  return (key: string, params?: Record<string, string | number | boolean>) =>
+    t(`mcpServer.gitTools.${key}`, params);
+}
 
 function chunkToString(data: unknown): string {
   if (typeof data === "string") return data;
@@ -23,6 +38,7 @@ async function runCommand(
   cmd: string,
   cwd?: string
 ): Promise<{ success: boolean; output: string; error?: string }> {
+  const t = createGitTranslator();
   return await new Promise((resolve) => {
     const child = spawn("bash", ["-c", cmd], { cwd });
     let stdout = "";
@@ -45,24 +61,25 @@ async function runCommand(
 
     setTimeout(() => {
       child.kill("SIGTERM");
-      resolve({ success: false, output: "", error: "Timeout" });
+      resolve({ success: false, output: "", error: t("common.timeout") });
     }, 60000);
   });
 }
 
 // Helper: gh CLI kontrolü
 async function checkGhCli(): Promise<{ available: boolean; user?: string; error?: string }> {
+  const t = createGitTranslator();
   const ghCheck = await runCommand("command -v gh");
   if (!ghCheck.success) {
     return {
       available: false,
-      error: "GitHub CLI (gh) kurulu değil. Kur: brew install gh veya apt install gh",
+      error: t("common.ghMissing"),
     };
   }
 
   const authCheck = await runCommand("gh auth status");
   if (!authCheck.success) {
-    return { available: false, error: "GitHub CLI giriş yapılmamış. Çalıştır: gh auth login" };
+    return { available: false, error: t("common.ghAuthMissing") };
   }
 
   const userResult = await runCommand("gh api user --jq '.login'");
@@ -79,10 +96,11 @@ export async function gitForkSetup(
   featureBranch?: string,
   shallow: boolean = true
 ): Promise<{ success: boolean; message: string; repoPath?: string }> {
+  const t = createGitTranslator();
   // gh CLI kontrolü
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
-    return { success: false, message: ghStatus.error ?? "gh CLI kullanılamıyor" };
+    return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
   }
 
   const ghUser = ghStatus.user ?? "unknown";
@@ -91,86 +109,94 @@ export async function gitForkSetup(
   const repoPath = join(workDir, safeRepoName);
   const depthArg = shallow ? "--depth 1" : "";
 
-  let output = `🔧 Git Fork Setup\n`;
+  let output = `${t("forkSetup.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📦 Repo: ${repo}\n`;
-  output += `👤 User: ${ghUser}\n`;
-  output += `📁 Path: ${repoPath}\n`;
-  output += `🌿 Base: ${baseBranch}\n`;
+  output += `${t("forkSetup.repo", { repo })}\n`;
+  output += `${t("forkSetup.user", { user: ghUser })}\n`;
+  output += `${t("forkSetup.path", { repoPath })}\n`;
+  output += `${t("forkSetup.base", { baseBranch })}\n`;
   if (featureBranch !== undefined && featureBranch.length > 0) {
-    output += `🔀 Feature: ${featureBranch}\n`;
+    output += `${t("forkSetup.feature", { featureBranch })}\n`;
   }
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   // 1. Fork kontrolü ve oluşturma
-  output += `[1/4] Fork kontrol ediliyor...\n`;
+  output += `${t("forkSetup.steps.checkFork")}\n`;
   const forkCheck = await runCommand(
     `gh repo view ${ghUser}/${safeRepoName} --json name 2>/dev/null`
   );
 
   if (!forkCheck.success) {
-    output += `  → Fork bulunamadı, oluşturuluyor...\n`;
+    output += `${t("forkSetup.forkMissing")}\n`;
     const forkResult = await runCommand(`gh repo fork ${repo} --clone=false`);
     if (!forkResult.success) {
       return {
         success: false,
-        message: output + `\n❌ Fork oluşturulamadı: ${forkResult.error ?? "unknown"}`,
+        message:
+          output +
+          `\n${t("forkSetup.forkCreateFailed", {
+            message: forkResult.error ?? t("common.unknown"),
+          })}`,
       };
     }
-    output += `  ✅ Fork oluşturuldu\n`;
+    output += `${t("forkSetup.forkCreated")}\n`;
   } else {
-    output += `  ✅ Fork mevcut\n`;
+    output += `${t("forkSetup.forkExists")}\n`;
   }
 
   // 2. Clone veya mevcut repo kontrolü
-  output += `\n[2/4] Repository hazırlanıyor...\n`;
+  output += `\n${t("forkSetup.steps.prepareRepository")}\n`;
   try {
     await access(join(repoPath, ".git"));
-    output += `  → Mevcut repo bulundu, güncelleniyor...\n`;
+    output += `${t("forkSetup.repositoryExists")}\n`;
     await runCommand(
       `git fetch upstream || git remote add upstream https://github.com/${repo}.git && git fetch upstream`,
       repoPath
     );
   } catch {
-    output += `  → Clone ediliyor...\n`;
+    output += `${t("forkSetup.cloning")}\n`;
     const cloneResult = await runCommand(
       `gh repo clone ${ghUser}/${safeRepoName} ${repoPath} -- ${depthArg}`
     );
     if (!cloneResult.success) {
       return {
         success: false,
-        message: output + `\n❌ Clone başarısız: ${cloneResult.error ?? "unknown"}`,
+        message:
+          output +
+          `\n${t("forkSetup.cloneFailed", {
+            message: cloneResult.error ?? t("common.unknown"),
+          })}`,
       };
     }
     // Upstream ekle
     await runCommand(`git remote add upstream https://github.com/${repo}.git`, repoPath);
   }
-  output += `  ✅ Repository hazır\n`;
+  output += `${t("forkSetup.repositoryReady")}\n`;
 
   // 3. Upstream'den güncelle
-  output += `\n[3/4] Upstream'den güncelleniyor...\n`;
+  output += `\n${t("forkSetup.steps.fetchUpstream")}\n`;
   await runCommand(`git fetch upstream`, repoPath);
-  output += `  ✅ Fetch tamamlandı\n`;
+  output += `${t("forkSetup.fetchCompleted")}\n`;
 
   // 4. Feature branch oluştur (opsiyonel)
   if (featureBranch !== undefined && featureBranch.length > 0) {
-    output += `\n[4/4] Feature branch oluşturuluyor...\n`;
+    output += `\n${t("forkSetup.steps.createFeatureBranch")}\n`;
     const branchCheck = await runCommand(
       `git rev-parse --verify ${featureBranch} 2>/dev/null`,
       repoPath
     );
     if (branchCheck.success) {
-      output += `  → Branch mevcut, checkout yapılıyor...\n`;
+      output += `${t("forkSetup.featureBranchExists")}\n`;
       await runCommand(`git checkout ${featureBranch}`, repoPath);
     } else {
       await runCommand(`git checkout -b ${featureBranch} upstream/${baseBranch}`, repoPath);
     }
-    output += `  ✅ Branch: ${featureBranch}\n`;
+    output += `${t("forkSetup.featureBranchReady", { featureBranch })}\n`;
   }
 
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `✅ Setup tamamlandı!\n`;
-  output += `📁 cd ${repoPath}\n`;
+  output += `${t("forkSetup.completed")}\n`;
+  output += `${t("forkSetup.cdHint", { repoPath })}\n`;
 
   return { success: true, message: output, repoPath };
 }
@@ -184,47 +210,48 @@ export async function gitCreatePr(
   body?: string,
   cwd?: string
 ): Promise<{ success: boolean; message: string; prUrl?: string }> {
+  const t = createGitTranslator();
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
   const repoPath = cwd ?? process.cwd();
 
   // gh CLI kontrolü
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
-    return { success: false, message: ghStatus.error ?? "gh CLI kullanılamıyor" };
+    return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
   }
 
-  let output = `🚀 PR Oluşturma\n`;
+  let output = `${t("createPr.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
   // 1. Git repo kontrolü
   const gitCheck = await runCommand("git rev-parse --git-dir", repoPath);
   if (!gitCheck.success) {
-    return { success: false, message: "Bu dizin bir git repository değil" };
+    return { success: false, message: t("createPr.notGitRepository") };
   }
 
   // 2. Mevcut branch
   const branchResult = await runCommand("git branch --show-current", repoPath);
   const currentBranch = branchResult.output;
-  output += `🌿 Branch: ${currentBranch}\n`;
+  output += `${t("createPr.branch", { currentBranch })}\n`;
 
   if (currentBranch === baseBranch) {
     return {
       success: false,
-      message: `Base branch (${baseBranch}) üzerindesiniz. Önce feature branch oluşturun.`,
+      message: t("createPr.onBaseBranch", { baseBranch }),
     };
   }
 
   // 3. Uncommitted değişiklik kontrolü
   const statusResult = await runCommand("git status --porcelain", repoPath);
   if (statusResult.output !== "") {
-    output += `\n[1/4] Uncommitted değişiklikler commit ediliyor...\n`;
+    output += `\n${t("createPr.steps.commitChanges")}\n`;
     await runCommand("git add -u", repoPath);
     const commitResult = await runCommand(`git commit -s -m "${title}"`, repoPath);
     if (commitResult.success) {
-      output += `  ✅ Değişiklikler commit edildi (DCO signed)\n`;
+      output += `${t("createPr.commitCreated")}\n`;
     }
   } else {
-    output += `\n[1/4] Tüm değişiklikler commit edilmiş ✅\n`;
+    output += `\n${t("createPr.allChangesCommitted")}\n`;
   }
 
   // 4. Upstream bilgisi
@@ -232,42 +259,44 @@ export async function gitCreatePr(
   if (!upstreamResult.success) {
     return {
       success: false,
-      message: "Upstream remote bulunamadı. Önce git_fork_setup çalıştırın.",
+      message: t("createPr.upstreamMissing"),
     };
   }
   const upstreamUrl = upstreamResult.output;
   const upstreamRepo = upstreamUrl.replace(/.*github\.com[:/](.*)\.git?/, "$1").replace(".git", "");
-  output += `📦 Upstream: ${upstreamRepo}\n`;
+  output += `${t("createPr.upstream", { upstreamRepo })}\n`;
 
   // 5. Origin user
   const originResult = await runCommand("git remote get-url origin", repoPath);
   const originUser = originResult.output.replace(/.*github\.com[:/](.*)\/.*/, "$1");
 
   // 6. Push
-  output += `\n[2/4] Branch push ediliyor...\n`;
+  output += `\n${t("createPr.steps.pushBranch")}\n`;
   const pushResult = await runCommand(`git push -u origin ${currentBranch}`, repoPath);
   if (!pushResult.success && pushResult.error?.includes("up-to-date") !== true) {
     return {
       success: false,
-      message: output + `\n❌ Push başarısız: ${pushResult.error ?? "unknown"}`,
+      message:
+        output +
+        `\n${t("createPr.pushFailed", { message: pushResult.error ?? t("common.unknown") })}`,
     };
   }
-  output += `  ✅ Push tamamlandı\n`;
+  output += `${t("createPr.pushCompleted")}\n`;
 
   // 7. Mevcut PR kontrolü
-  output += `\n[3/4] Mevcut PR kontrol ediliyor...\n`;
+  output += `\n${t("createPr.steps.checkExistingPr")}\n`;
   const prCheckResult = await runCommand(
     `gh pr list --repo ${upstreamRepo} --head ${originUser}:${currentBranch} --json number,url --jq '.[0].url'`,
     repoPath
   );
 
   if (prCheckResult.output !== "" && prCheckResult.output !== "null") {
-    output += `  ⚠️ PR zaten mevcut: ${prCheckResult.output}\n`;
+    output += `${t("createPr.existingPr", { prUrl: prCheckResult.output })}\n`;
     return { success: true, message: output, prUrl: prCheckResult.output };
   }
 
   // 8. PR oluştur
-  output += `\n[4/4] PR oluşturuluyor...\n`;
+  output += `\n${t("createPr.steps.createPr")}\n`;
   const bodyArg =
     body !== undefined && body.length > 0 ? `--body "${body.replace(/"/g, '\\"')}"` : "";
   const prResult = await runCommand(
@@ -278,14 +307,18 @@ export async function gitCreatePr(
   if (!prResult.success) {
     return {
       success: false,
-      message: output + `\n❌ PR oluşturulamadı: ${prResult.error ?? "unknown"}`,
+      message:
+        output +
+        `\n${t("createPr.creationFailed", {
+          message: prResult.error ?? t("common.unknown"),
+        })}`,
     };
   }
 
   const prUrl = prResult.output;
-  output += `  ✅ PR oluşturuldu!\n`;
+  output += `${t("createPr.created")}\n`;
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `🔗 ${prUrl}\n`;
+  output += `${t("createPr.prUrl", { prUrl })}\n`;
 
   return { success: true, message: output, prUrl };
 }
@@ -296,34 +329,35 @@ export async function gitCreatePr(
 export async function gitCheckGuidelines(
   cwd?: string
 ): Promise<{ success: boolean; message: string; checks: Record<string, boolean> }> {
+  const t = createGitTranslator();
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
   const repoPath = cwd ?? process.cwd();
   const checks: Record<string, boolean> = {};
 
-  let output = `📋 Contribution Guidelines Kontrolü\n`;
+  let output = `${t("guidelines.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   // CONTRIBUTING.md
   try {
     await access(join(repoPath, "CONTRIBUTING.md"));
     checks["contributing"] = true;
-    output += `✅ CONTRIBUTING.md bulundu\n`;
+    output += `${t("guidelines.contributingFound")}\n`;
     const content = await readFile(join(repoPath, "CONTRIBUTING.md"), "utf-8");
     const firstLines = content.split("\n").slice(0, 10).join("\n");
-    output += `   İlk 10 satır:\n   ${firstLines.replace(/\n/g, "\n   ")}\n\n`;
+    output += `${t("guidelines.firstLinesLabel")}\n   ${firstLines.replace(/\n/g, "\n   ")}\n\n`;
   } catch {
     checks["contributing"] = false;
-    output += `⚠️ CONTRIBUTING.md bulunamadı\n\n`;
+    output += `${t("guidelines.contributingMissing")}\n\n`;
   }
 
   // CODE_OF_CONDUCT.md
   try {
     await access(join(repoPath, "CODE_OF_CONDUCT.md"));
     checks["codeOfConduct"] = true;
-    output += `✅ CODE_OF_CONDUCT.md bulundu\n`;
+    output += `${t("guidelines.codeOfConductFound")}\n`;
   } catch {
     checks["codeOfConduct"] = false;
-    output += `⚠️ CODE_OF_CONDUCT.md bulunamadı\n`;
+    output += `${t("guidelines.codeOfConductMissing")}\n`;
   }
 
   // PR Template
@@ -339,17 +373,17 @@ export async function gitCheckGuidelines(
       // eslint-disable-next-line no-await-in-loop
       await access(join(repoPath, template));
       checks["prTemplate"] = true;
-      output += `\n✅ PR Template bulundu: ${template}\n`;
+      output += `\n${t("guidelines.prTemplateFound", { template })}\n`;
       // eslint-disable-next-line no-await-in-loop
       const content = await readFile(join(repoPath, template), "utf-8");
-      output += `   İçerik:\n   ${content.replace(/\n/g, "\n   ")}\n`;
+      output += `${t("guidelines.contentLabel")}\n   ${content.replace(/\n/g, "\n   ")}\n`;
       break;
     } catch {
       /* devam */
     }
   }
   if (!checks["prTemplate"]) {
-    output += `\n⚠️ PR Template bulunamadı\n`;
+    output += `\n${t("guidelines.prTemplateMissing")}\n`;
   }
 
   // DCO/Sign-off kontrolü
@@ -362,8 +396,8 @@ export async function gitCheckGuidelines(
       const content = await readFile(join(repoPath, file), "utf-8");
       if (/DCO|sign-off|signed-off-by/i.test(content)) {
         checks["dcoRequired"] = true;
-        output += `\n✅ DCO (Developer Certificate of Origin) gerekli\n`;
-        output += `   Commit'lerde -s flag kullanın: git commit -s -m "mesaj"\n`;
+        output += `\n${t("guidelines.dcoRequired")}\n`;
+        output += `   ${t("guidelines.dcoHint")}\n`;
         break;
       }
     } catch {
@@ -371,7 +405,7 @@ export async function gitCheckGuidelines(
     }
   }
   if (!checks["dcoRequired"]) {
-    output += `\n⚠️ DCO zorunluluğu tespit edilemedi (yine de -s kullanmanız önerilir)\n`;
+    output += `\n${t("guidelines.dcoNotDetected")}\n`;
   }
 
   // CI/CD kontrolü
@@ -383,10 +417,10 @@ export async function gitCheckGuidelines(
       "ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null | head -5",
       repoPath
     );
-    output += `\n✅ GitHub Actions workflow'ları bulundu:\n`;
+    output += `\n${t("guidelines.workflowsFound")}\n`;
     output += `   ${workflows.output.replace(/\n/g, "\n   ")}\n`;
   } catch {
-    output += `\n⚠️ CI/CD yapılandırması bulunamadı\n`;
+    output += `\n${t("guidelines.ciMissing")}\n`;
   }
 
   // Makefile kontrolü
@@ -398,18 +432,18 @@ export async function gitCheckGuidelines(
     if (/^lint:/m.test(makefile)) targets.push("make lint");
     if (/^fmt:/m.test(makefile)) targets.push("make fmt");
     if (targets.length > 0) {
-      output += `\n✅ Makefile hedefleri: ${targets.join(", ")}\n`;
+      output += `\n${t("guidelines.makeTargets", { targets: targets.join(", ") })}\n`;
     }
   } catch {
     /* Makefile yok */
   }
 
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📝 PR öncesi checklist:\n`;
-  output += `   • CONTRIBUTING.md'yi oku\n`;
-  output += `   • Commit'leri -s ile imzala (DCO)\n`;
-  output += `   • Testleri çalıştır\n`;
-  output += `   • PR template'ini takip et\n`;
+  output += `${t("guidelines.checklistTitle")}\n`;
+  output += `   • ${t("guidelines.checklist.readContributing")}\n`;
+  output += `   • ${t("guidelines.checklist.signCommits")}\n`;
+  output += `   • ${t("guidelines.checklist.runTests")}\n`;
+  output += `   • ${t("guidelines.checklist.followTemplate")}\n`;
 
   return { success: true, message: output, checks };
 }
@@ -418,38 +452,39 @@ export async function gitCheckGuidelines(
 // Tool: git_pr_status
 // ============================================
 export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; message: string }> {
+  const t = createGitTranslator();
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
   const repoPath = cwd ?? process.cwd();
 
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
-    return { success: false, message: ghStatus.error ?? "gh CLI kullanılamıyor" };
+    return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
   }
 
-  let output = `📊 Git & PR Durumu\n`;
+  let output = `${t("status.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   // Branch bilgisi
   const branchResult = await runCommand("git branch --show-current", repoPath);
-  output += `🌿 Branch: ${branchResult.output}\n`;
+  output += `${t("status.branch", { branch: branchResult.output })}\n`;
 
   // Remote bilgisi
   const remotesResult = await runCommand("git remote -v | head -4", repoPath);
-  output += `\n📡 Remotes:\n${remotesResult.output}\n`;
+  output += `\n${t("status.remotes")}\n${remotesResult.output}\n`;
 
   // Commit farkı
   const diffResult = await runCommand(
     "git rev-list --count upstream/main..HEAD 2>/dev/null || echo 0",
     repoPath
   );
-  output += `\n📈 Upstream'den ${diffResult.output} commit ileride\n`;
+  output += `\n${t("status.ahead", { count: diffResult.output })}\n`;
 
   // Değişiklik durumu
   const statusResult = await runCommand("git status --short", repoPath);
   if (statusResult.output !== "") {
-    output += `\n📝 Değişiklikler:\n${statusResult.output}\n`;
+    output += `\n${t("status.changes")}\n${statusResult.output}\n`;
   } else {
-    output += `\n✅ Çalışma dizini temiz\n`;
+    output += `\n${t("status.clean")}\n`;
   }
 
   // Açık PR'lar
@@ -463,9 +498,9 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
       repoPath
     );
     if (prsResult.output !== "") {
-      output += `\n🔗 Açık PR'larınız:\n${prsResult.output}\n`;
+      output += `\n${t("status.openPrs")}\n${prsResult.output}\n`;
     } else {
-      output += `\n📭 Bu repo'da açık PR'ınız yok\n`;
+      output += `\n${t("status.noOpenPrs")}\n`;
     }
   }
 
@@ -480,15 +515,15 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
 export const GIT_TOOL_DEFINITIONS = [
   {
     name: "hev_git_fork_setup",
-    description: "GitHub repo fork et, clone et ve feature branch oluştur. gh CLI gerektirir.",
+    description: gitDefT("forkSetup.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
-        repo: { type: "string", description: "Fork edilecek repo (owner/repo)" },
-        work_dir: { type: "string", description: "Çalışma dizini" },
-        base_branch: { type: "string", description: "Base branch (default: main)" },
-        feature_branch: { type: "string", description: "Oluşturulacak feature branch" },
-        shallow: { type: "boolean", description: "Shallow clone (hızlı, default: true)" },
+        repo: { type: "string", description: gitDefT("forkSetup.repo") },
+        work_dir: { type: "string", description: gitDefT("forkSetup.workDir") },
+        base_branch: { type: "string", description: gitDefT("forkSetup.baseBranch") },
+        feature_branch: { type: "string", description: gitDefT("forkSetup.featureBranch") },
+        shallow: { type: "boolean", description: gitDefT("forkSetup.shallow") },
       },
       required: ["repo", "work_dir"],
     },
@@ -497,10 +532,13 @@ export const GIT_TOOL_DEFINITIONS = [
       subcategory: "contribution",
       priority: "high",
       complexity: "medium",
-      useCases: ["Open source contribution", "Fork and setup workflow", "Feature branch creation"],
+      useCases: [
+        gitDefT("forkSetup.useCases.openSourceContribution"),
+        gitDefT("forkSetup.useCases.setupWorkflow"),
+        gitDefT("forkSetup.useCases.featureBranchCreation"),
+      ],
       relatedTools: ["hev_git_create_pr", "hev_git_check_guidelines"],
-      agentGuidance:
-        "Open source contribution için repo fork et, clone et ve branch oluştur. gh CLI gerektirir.",
+      agentGuidance: gitDefT("forkSetup.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["git", "fork", "setup", "contribution"],
@@ -508,14 +546,14 @@ export const GIT_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_git_create_pr",
-    description: "Değişiklikleri commit et, push et ve PR oluştur. Mevcut PR varsa URL döner.",
+    description: gitDefT("createPr.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
-        base_branch: { type: "string", description: "PR'ın hedef branch'i (default: main)" },
-        title: { type: "string", description: "PR başlığı" },
-        body: { type: "string", description: "PR açıklaması" },
-        cwd: { type: "string", description: "Repository dizini (default: mevcut dizin)" },
+        base_branch: { type: "string", description: gitDefT("createPr.baseBranch") },
+        title: { type: "string", description: gitDefT("createPr.title") },
+        body: { type: "string", description: gitDefT("createPr.body") },
+        cwd: { type: "string", description: gitDefT("createPr.cwd") },
       },
       required: ["base_branch", "title"],
     },
@@ -524,9 +562,13 @@ export const GIT_TOOL_DEFINITIONS = [
       subcategory: "contribution",
       priority: "high",
       complexity: "medium",
-      useCases: ["Create pull request", "Commit and push changes", "Open source contribution"],
+      useCases: [
+        gitDefT("createPr.useCases.createPullRequest"),
+        gitDefT("createPr.useCases.commitAndPush"),
+        gitDefT("createPr.useCases.openSourceContribution"),
+      ],
       relatedTools: ["hev_git_fork_setup", "hev_git_pr_status", "hev_git_check_guidelines"],
-      agentGuidance: "Değişiklikleri commit/push et ve PR oluştur. Mevcut PR varsa update eder.",
+      agentGuidance: gitDefT("createPr.agentGuidance"),
       requiresConfirmation: true,
       riskLevel: "medium",
       tags: ["git", "pr", "commit", "contribution"],
@@ -534,11 +576,11 @@ export const GIT_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_git_check_guidelines",
-    description: "Repository'nin contribution guidelines, DCO, PR template vb. kontrollerini yap.",
+    description: gitDefT("guidelines.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
-        cwd: { type: "string", description: "Repository dizini (default: mevcut dizin)" },
+        cwd: { type: "string", description: gitDefT("guidelines.cwd") },
       },
       required: [] as string[],
     },
@@ -547,10 +589,13 @@ export const GIT_TOOL_DEFINITIONS = [
       subcategory: "validation",
       priority: "medium",
       complexity: "simple",
-      useCases: ["Check contribution guidelines", "DCO verification", "PR template check"],
+      useCases: [
+        gitDefT("guidelines.useCases.checkContributionGuidelines"),
+        gitDefT("guidelines.useCases.dcoVerification"),
+        gitDefT("guidelines.useCases.prTemplateCheck"),
+      ],
       relatedTools: ["hev_git_create_pr", "hev_git_fork_setup"],
-      agentGuidance:
-        "PR oluşturmadan önce contribution guidelines ve DCO gereksinimlerini kontrol et.",
+      agentGuidance: gitDefT("guidelines.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["git", "guidelines", "validation", "dco"],
@@ -558,11 +603,11 @@ export const GIT_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_git_pr_status",
-    description: "Mevcut git durumu, açık PR'lar ve branch bilgilerini göster.",
+    description: gitDefT("status.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
-        cwd: { type: "string", description: "Repository dizini (default: mevcut dizin)" },
+        cwd: { type: "string", description: gitDefT("status.cwd") },
       },
       required: [],
     },
@@ -571,9 +616,13 @@ export const GIT_TOOL_DEFINITIONS = [
       subcategory: "status",
       priority: "medium",
       complexity: "simple",
-      useCases: ["Check git status", "View open PRs", "Branch information"],
+      useCases: [
+        gitDefT("status.useCases.checkGitStatus"),
+        gitDefT("status.useCases.viewOpenPrs"),
+        gitDefT("status.useCases.branchInformation"),
+      ],
       relatedTools: ["hev_git_create_pr", "hev_dev_git_diff"],
-      agentGuidance: "Git durumunu ve açık PR'ları kontrol et. PR oluşturmadan önce kullan.",
+      agentGuidance: gitDefT("status.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["git", "status", "pr", "branch"],

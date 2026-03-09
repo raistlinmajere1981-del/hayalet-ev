@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
 interface ToolRegistrationOptions {
@@ -24,6 +25,17 @@ interface ToolRegistrationResult {
   success: boolean;
   output: string;
   modified_files: string[];
+}
+
+function registerToolT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.toolRegistration.${key}`, params);
+}
+
+function registerToolDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.toolRegistration.definition.${key}`, params);
 }
 
 export function registerNewTool(
@@ -88,7 +100,7 @@ export function registerNewTool(
     logToolError("tool-registration-helper", error as Error, {});
     return {
       success: false,
-      output: `❌ Error: ${String(error)}`,
+      output: registerToolT("runtime.error", { message: String(error) }),
       modified_files: [],
     };
   }
@@ -233,29 +245,29 @@ function formatOutput(
   testImmediately: boolean,
   autoBuildRestart: boolean
 ): string {
-  let output = `🔧 Tool Registration Helper\\n`;
+  let output = `${registerToolT("runtime.title")}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  output += `🔧 Tool: ${toolName}\\n`;
+  output += `${registerToolT("runtime.tool", { toolName })}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;
 
-  output += `Modified files:\\n`;
+  output += `${registerToolT("runtime.modifiedFiles")}\\n`;
   modifiedFiles.forEach((file) => {
     output += `  ✅ ${file}\\n`;
   });
 
   if (dryRun) {
-    output += `\\n⚠️  DRY RUN MODE - No changes applied\\n`;
+    output += `\\n${registerToolT("runtime.dryRun")}\\n`;
   } else {
-    output += `\\n✅ Tool registered successfully\\n`;
+    output += `\\n${registerToolT("runtime.success")}\\n`;
     if (autoBuildRestart) {
-      output += `\\n⚙️  mcp:build tamamlandı, MCP server restart planlandı\\n`;
+      output += `\\n${registerToolT("runtime.autoBuildRestart")}\\n`;
     } else {
-      output += `\\n📝 Next steps:\\n`;
-      output += `   1. npm run mcp:build\\n`;
-      output += `   2. Restart MCP server\\n`;
+      output += `\\n${registerToolT("runtime.nextStepsTitle")}\\n`;
+      output += `   1. ${registerToolT("runtime.nextSteps.build")}\\n`;
+      output += `   2. ${registerToolT("runtime.nextSteps.restart")}\\n`;
     }
     if (testImmediately) {
-      output += `   ${autoBuildRestart ? "1" : "3"}. Test with: ${toolName}\\n`;
+      output += `   ${autoBuildRestart ? "1" : "3"}. ${registerToolT("runtime.testWith", { toolName })}\\n`;
     }
   }
 
@@ -268,46 +280,45 @@ function formatOutput(
 
 export const TOOL_REGISTRATION_HELPER_TOOL = {
   name: "hev_dev_register_tool",
-  description:
-    "Yeni tool otomatik olarak handlers, registry ve index'e ekler (boilerplate automation)",
+  description: registerToolDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       tool_name: {
         type: "string",
-        description: "Tool adı (örn: hev_dev_my_tool)",
+        description: registerToolDefT("toolName"),
       },
       description: {
         type: "string",
-        description: "Tool açıklaması",
+        description: registerToolDefT("toolDescription"),
       },
       function_name: {
         type: "string",
-        description: "Function adı (örn: myNewTool)",
+        description: registerToolDefT("functionName"),
       },
       tool_constant: {
         type: "string",
-        description: "Tool constant (örn: MY_NEW_TOOL)",
+        description: registerToolDefT("toolConstant"),
       },
       auto_add_to: {
         type: "array",
         items: { type: "string", enum: ["handlers", "registry", "index"] },
-        description: "Hangi dosyalara eklensin",
+        description: registerToolDefT("autoAddTo"),
         default: ["handlers", "registry", "index"],
       },
       test_immediately: {
         type: "boolean",
-        description: "Test talimatları göster",
+        description: registerToolDefT("testImmediately"),
         default: false,
       },
       auto_build_restart: {
         type: "boolean",
-        description: "Kayıttan sonra npm run mcp:build çalıştır ve MCP restart tetikle",
+        description: registerToolDefT("autoBuildRestart"),
         default: true,
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme",
+        description: registerToolDefT("dryRun"),
         default: true,
       },
     },
@@ -319,13 +330,12 @@ export const TOOL_REGISTRATION_HELPER_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Register new tool with boilerplate automation",
-      "Auto-add to handlers, registry, and index",
-      "Streamline tool development workflow",
+      registerToolDefT("useCases.registerTool"),
+      registerToolDefT("useCases.autoAdd"),
+      registerToolDefT("useCases.streamlineWorkflow"),
     ],
     relatedTools: ["hev_dev_analyze_project", "hev_fs_show"],
-    agentGuidance:
-      "Use this for adding new MCP tools. Combines with npm run tool:register for full workflow. Automates handler/registry registration.",
+    agentGuidance: registerToolDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["tool", "registration", "automation", "boilerplate"],

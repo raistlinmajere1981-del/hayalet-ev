@@ -1,14 +1,15 @@
 /**
- * Provider Types - AI provider konfigürasyonları
+ * Provider Types - AI provider configurations
  *
  * @module src/js/types/provider
  */
 
 import type { AllProviderId } from "./common.js";
+import type { SelectorLanguage } from "./i18n.js";
 
 // Selector Types
 
-/** Temel selector'lar */
+/** Base selectors */
 export interface BaseSelectors {
   sendButton: string;
   sendButtonDisabled?: string;
@@ -20,7 +21,7 @@ export interface BaseSelectors {
   attachButton?: string;
 }
 
-/** Scrape selector'ları */
+/** Scrape selectors */
 export interface ScrapeSelectors {
   preferred: string;
   fallback: string;
@@ -32,14 +33,14 @@ export interface ScrapeSelectors {
   assistantMessage?: string;
 }
 
-/** Rol selector'ları (Gemini için) */
+/** Role selectors (for Gemini) */
 export interface RoleSelectors {
   user: string;
   assistant: string;
   text?: string;
 }
 
-/** Filter ayarları */
+/** Filter settings */
 export interface FilterConfig {
   selectors: string[];
   hosts: string[];
@@ -48,7 +49,7 @@ export interface FilterConfig {
   dragTextMatchers?: string[];
 }
 
-/** Telemetry ayarları */
+/** Telemetry settings */
 export interface TelemetryConfig {
   endpoints: string[];
   tokenPaths: string[];
@@ -128,15 +129,34 @@ export interface ProviderWebviewSyncConfig {
   history: ProviderWebviewSyncHistorySelectors;
 }
 
+export type ProviderUiLanguageSupport = "supported" | "partial" | "unsupported";
+export type ProviderUiLanguageSyncMode = "automatic" | "manual" | "not-applicable";
+export type ProviderUiLanguagePersistence = "cookie" | "localStorage" | "url" | "account" | "session";
+
+export interface ProviderUiLanguageSignals {
+  localStorageKeys?: string[];
+  cookieNames?: string[];
+  urlParams?: string[];
+}
+
+export interface ProviderUiLanguageStrategy {
+  support: ProviderUiLanguageSupport;
+  syncMode: ProviderUiLanguageSyncMode;
+  supportedLocales: SelectorLanguage[];
+  persistence: ProviderUiLanguagePersistence[];
+  signals?: ProviderUiLanguageSignals;
+  notes?: string;
+}
+
 // Provider Config Types
 
-/** Mesaj ID stratejisi */
+/** Message ID strategy */
 export type MessageIdStrategy = "content-hash" | "dom-id";
 
-/** Input tipi */
+/** Input type */
 export type InputType = "direct" | "character-by-character" | "contenteditable";
 
-/** Temel provider konfigürasyonu */
+/** Base provider configuration */
 export interface BaseProviderConfig {
   id: AllProviderId;
   name: string;
@@ -163,54 +183,55 @@ export interface BaseProviderConfig {
   defaultPaths?: string[];
   scenarios?: Record<string, ProviderScenarioDefinition>;
   webviewSync?: ProviderWebviewSyncConfig;
+  uiLanguage?: ProviderUiLanguageStrategy;
 }
 
-/** ChatGPT config */
+/** ChatGPT configuration */
 export interface ChatGPTConfig extends BaseProviderConfig {
   id: "chatgpt";
 }
 
-/** Gemini config */
+/** Gemini configuration */
 export interface GeminiConfig extends BaseProviderConfig {
   id: "gemini";
   defaultPaths: string[];
   roleSelectors: RoleSelectors;
 }
 
-/** Grok config */
+/** Grok configuration */
 export interface GrokConfig extends BaseProviderConfig {
   id: "grok";
 }
 
-/** OpenCode config (Asistan) */
+/** OpenCode configuration (Assistant) */
 export interface OpenCodeConfig extends BaseProviderConfig {
   id: "opencode";
   port: number;
   cors: string;
   command: string;
-  isAsistan: true;
+  isAssistant: true;
   loginUrl: null;
   getProjectUrl: (projectPath?: string | null, port?: number) => string;
   getServerCommand: (port?: number, cors?: string) => { command: string; args: string[] };
 }
 
-/** OpenCode UI config (Asistan) */
+/** OpenCode UI configuration (Assistant) */
 export interface OpenCodeUiConfig extends BaseProviderConfig {
   id: "opencode-ui";
   port: number;
   cors: string;
   command: string;
-  isAsistan: true;
+  isAssistant: true;
   loginUrl: null;
   getProjectUrl: (projectPath?: string | null, port?: number) => string;
   getServerCommand: (port?: number, cors?: string) => { command: string; args: string[] };
 }
 
-/** Asistan provider config'leri */
-export type AsistanProviderConfig = OpenCodeConfig | OpenCodeUiConfig;
+/** Assistant provider configs. */
+export type AssistantProviderConfig = OpenCodeConfig | OpenCodeUiConfig;
 
-/** Tüm provider config'leri */
-export type ProviderConfig = ChatGPTConfig | GeminiConfig | GrokConfig | AsistanProviderConfig;
+/** All provider configs. */
+export type ProviderConfig = ChatGPTConfig | GeminiConfig | GrokConfig | AssistantProviderConfig;
 
 // Provider Instance Types
 

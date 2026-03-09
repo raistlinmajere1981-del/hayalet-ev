@@ -1,7 +1,7 @@
 /**
  * Development Tools - Shared Utilities
  *
- * Ortak kullanılan helper fonksiyonlar
+ * Shared helper utilities
  */
 
 import { readFileSync, existsSync } from "fs";

@@ -3,8 +3,9 @@
  */
 
 export const ROOM_SCHEMA_VERSION = 1 as const;
+const LEGACY_ASSISTANT_SCOPE = "asistan";
 
-export type RoomCommandScope = "room-ui" | "ai-slots" | "asistan" | "system";
+export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";
 
 export interface RoomMenuConfig {
   label: string;
@@ -259,12 +260,13 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
           if (
             scopeRaw !== "room-ui" &&
             scopeRaw !== "ai-slots" &&
-            scopeRaw !== "asistan" &&
+            scopeRaw !== "assistant" &&
+            scopeRaw !== LEGACY_ASSISTANT_SCOPE &&
             scopeRaw !== "system"
           ) {
             errors.push(`commandSpecs[${String(index)}].scope is invalid`);
           } else {
-            scope = scopeRaw;
+            scope = scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : scopeRaw;
           }
         }
         if (commandName !== undefined) {

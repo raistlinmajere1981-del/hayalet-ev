@@ -8,6 +8,7 @@
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { createHash } from "crypto";
 import { dirname } from "path";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 import { createProgress } from "../utils/progress.js";
 import { logToolError } from "../utils/mcp-logger.js";
 
@@ -35,6 +36,14 @@ interface ChunkSession {
 // Active sessions
 const activeSessions = new Map<string, ChunkSession>();
 
+function safeChunkT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.safeChunkTools.${key}`, params);
+}
+
+function safeChunkDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.safeChunkTools.definition.${key}`, params);
+}
+
 // ============================================
 // Helper Functions
 // ============================================
@@ -58,7 +67,7 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
   if (!content.endsWith("\n")) {
     return {
       valid: true,
-      warning: "Chunk does not end with newline. Multi-byte characters may be at risk.",
+      warning: safeChunkT("warnings.noTrailingNewline"),
     };
   }
 
@@ -70,7 +79,7 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
   if (lastCharCode >= 0xd800 && lastCharCode <= 0xdbff) {
     return {
       valid: false,
-      warning: "Chunk ends with incomplete surrogate pair (emoji/special char)",
+      warning: safeChunkT("warnings.incompleteSurrogate"),
     };
   }
 
@@ -94,7 +103,7 @@ export function startChunkedSession(
   totalChunks: number,
   _projectRoot: string
 ): { success: boolean; sessionId: string; message: string } {
-  const progress = createProgress({ operation: "Session Start", quiet: true });
+  const progress = createProgress({ operation: safeChunkT("progress.startOperation"), quiet: true });
 
   try {
     // Generate unique session ID
@@ -105,7 +114,7 @@ export function startChunkedSession(
       return {
         success: false,
         sessionId: "",
-        message: "Total chunks must be between 1 and 1000",
+        message: safeChunkT("start.invalidTotalChunks"),
       };
     }
 
@@ -121,23 +130,22 @@ export function startChunkedSession(
 
     activeSessions.set(sessionId, session);
 
-    progress.done(`Session ${sessionId} created`);
+    progress.done(safeChunkT("start.progressCreated", { sessionId }));
 
     return {
       success: true,
       sessionId,
-      message:
-        `✅ Session başlatıldı\n` +
-        `Session ID: ${sessionId}\n` +
-        `Hedef dosya: ${filePath}\n` +
-        `Beklenen chunk: ${totalChunks}\n\n` +
-        `📌 Sonraki adım: hev_fs_write_chunk ile chunk'ları gönder`,
+      message: safeChunkT("start.success", { sessionId, filePath, totalChunks }),
     };
   } catch (error) {
     const err = error as Error;
     progress.fail(err.message);
     logToolError("hev_fs_start_chunked_session", err, { filePath, totalChunks });
-    return { success: false, sessionId: "", message: `Hata: ${err.message}` };
+    return {
+      success: false,
+      sessionId: "",
+      message: safeChunkT("common.error", { message: err.message }),
+    };
   }
 }
 
@@ -154,7 +162,10 @@ export async function writeChunk(
   content: string,
   projectRoot: string
 ): Promise<{ success: boolean; message: string; warnings?: string[] }> {
-  const progress = createProgress({ operation: `Chunk ${chunkIndex}`, quiet: true });
+  const progress = createProgress({
+    operation: safeChunkT("progress.chunkOperation", { chunkIndex }),
+    quiet: true,
+  });
 
   try {
     // Get session
@@ -162,7 +173,7 @@ export async function writeChunk(
     if (!session) {
       return {
         success: false,
-        message: `❌ Session bulunamadı: ${sessionId}\n💡 Önce hev_fs_start_chunked_session çağırın`,
+        message: safeChunkT("write.sessionNotFound", { sessionId }),
       };
     }
 
@@ -170,7 +181,10 @@ export async function writeChunk(
     if (chunkIndex < 0 || chunkIndex >= session.totalChunks) {
       return {
         success: false,
-        message: `❌ Geçersiz chunk index: ${chunkIndex} (0-${session.totalChunks - 1} arası olmalı)`,
+        message: safeChunkT("write.invalidChunkIndex", {
+          chunkIndex,
+          maxIndex: session.totalChunks - 1,
+        }),
       };
     }
 
@@ -178,30 +192,31 @@ export async function writeChunk(
     if (session.receivedChunks.includes(chunkIndex)) {
       return {
         success: false,
-        message: `❌ Chunk ${chunkIndex} zaten alındı. Duplicate chunk!`,
+        message: safeChunkT("write.duplicateChunk", { chunkIndex }),
       };
     }
 
     const warnings: string[] = [];
 
     // Validate UTF-8
-    progress.update(1, "UTF-8 validation...");
+    progress.update(1, safeChunkT("progress.validatingUtf8"));
     if (!validateUTF8(content)) {
       return {
         success: false,
-        message:
-          `❌ Chunk ${chunkIndex} geçersiz UTF-8 encoding!\n` +
-          `💡 Chunk'ı satir sonu (\\n) ile bitirin`,
+        message: safeChunkT("write.invalidUtf8", { chunkIndex }),
       };
     }
 
     // Validate boundary
-    progress.update(2, "Boundary check...");
+    progress.update(2, safeChunkT("progress.checkingBoundary"));
     const boundaryCheck = validateChunkBoundary(content);
     if (!boundaryCheck.valid) {
       return {
         success: false,
-        message: `❌ Chunk ${chunkIndex} boundary hatası: ${boundaryCheck.warning ?? "unknown"}`,
+        message: safeChunkT("write.boundaryError", {
+          chunkIndex,
+          warning: boundaryCheck.warning ?? safeChunkT("common.unknown"),
+        }),
       };
     }
     if (boundaryCheck.warning != null && boundaryCheck.warning !== "") {
@@ -209,7 +224,7 @@ export async function writeChunk(
     }
 
     // Calculate metadata
-    progress.update(3, "Metadata...");
+    progress.update(3, safeChunkT("progress.collectingMetadata"));
     const checksum = calculateChecksum(content);
     const size = Buffer.byteLength(content, "utf-8");
     const lineCount = content.split("\n").length - 1;
@@ -223,7 +238,7 @@ export async function writeChunk(
     };
 
     // Write chunk to temp file
-    progress.update(4, "Writing to disk...");
+    progress.update(4, safeChunkT("progress.writingToDisk"));
     const tempDir = `${projectRoot}/.tmp_safe_chunks/${sessionId}`;
     await mkdir(tempDir, { recursive: true });
 
@@ -237,10 +252,11 @@ export async function writeChunk(
     if (readChecksum !== checksum) {
       return {
         success: false,
-        message:
-          `❌ Chunk ${chunkIndex} write verification failed!\n` +
-          `Expected: ${checksum}\n` +
-          `Got: ${readChecksum}`,
+        message: safeChunkT("write.verificationFailed", {
+          chunkIndex,
+          expected: checksum,
+          actual: readChecksum,
+        }),
       };
     }
 
@@ -248,26 +264,33 @@ export async function writeChunk(
     session.receivedChunks.push(chunkIndex);
     session.metadata.push(metadata);
 
-    progress.done(`${size} bytes, ${lineCount} lines`);
+    progress.done(safeChunkT("write.progressDone", { size, lineCount }));
 
     const receivedCount = session.receivedChunks.length;
     const missingChunks = Array.from({ length: session.totalChunks }, (_, i) => i).filter(
       (i) => !session.receivedChunks.includes(i)
     );
 
-    let message =
-      `✅ Chunk ${chunkIndex} kaydedildi\n` +
-      `📋 Boyut: ${(size / 1024).toFixed(1)}KB, Satır: ${lineCount}\n` +
-      `📈 İlerleme: ${receivedCount}/${session.totalChunks}\n` +
-      `🔍 Checksum: ${checksum.slice(0, 8)}...`;
+    let message = safeChunkT("write.saved", {
+      chunkIndex,
+      sizeKB: (size / 1024).toFixed(1),
+      lineCount,
+      receivedCount,
+      totalChunks: session.totalChunks,
+      checksumShort: checksum.slice(0, 8),
+    });
 
     if (missingChunks.length > 0) {
-      message += `\n\n⏳ Eksik chunk'lar: ${missingChunks.slice(0, 10).join(", ")}`;
+      message += `\n\n${safeChunkT("write.missingChunks", {
+        chunks: missingChunks.slice(0, 10).join(", "),
+      })}`;
       if (missingChunks.length > 10) {
-        message += ` ... (+${missingChunks.length - 10} daha)`;
+        message += ` ${safeChunkT("write.moreMissingChunks", {
+          count: missingChunks.length - 10,
+        })}`;
       }
     } else {
-      message += `\n\n✅ Tüm chunk'lar alındı!\n📌 Sonraki adım: hev_fs_finalize_chunked çağırın`;
+      message += `\n\n${safeChunkT("write.allChunksReceived")}`;
     }
 
     return {
@@ -279,7 +302,7 @@ export async function writeChunk(
     const err = error as Error;
     progress.fail(err.message);
     logToolError("hev_fs_write_chunk", err, { sessionId, chunkIndex });
-    return { success: false, message: `Hata: ${err.message}` };
+    return { success: false, message: safeChunkT("common.error", { message: err.message }) };
   }
 }
 
@@ -295,7 +318,7 @@ export async function finalizeChunked(
   projectRoot: string,
   verifyChecksum?: string
 ): Promise<{ success: boolean; message: string; filePath?: string; totalSize?: number }> {
-  const progress = createProgress({ operation: "Finalize", total: 100 });
+  const progress = createProgress({ operation: safeChunkT("progress.finalizeOperation"), total: 100 });
 
   try {
     // Get session
@@ -303,7 +326,7 @@ export async function finalizeChunked(
     if (!session) {
       return {
         success: false,
-        message: `❌ Session bulunamadı: ${sessionId}`,
+        message: safeChunkT("finalize.sessionNotFound", { sessionId }),
       };
     }
 
@@ -315,14 +338,15 @@ export async function finalizeChunked(
 
       return {
         success: false,
-        message:
-          `❌ Eksik chunk'lar var!\n` +
-          `Alınan: ${session.receivedChunks.length}/${session.totalChunks}\n` +
-          `Eksikler: ${missingChunks.join(", ")}`,
+        message: safeChunkT("finalize.missingChunks", {
+          receivedCount: session.receivedChunks.length,
+          totalChunks: session.totalChunks,
+          missingChunks: missingChunks.join(", "),
+        }),
       };
     }
 
-    progress.log("All chunks received, merging...");
+    progress.log(safeChunkT("progress.allChunksReceivedMerging"));
 
     // Read and merge chunks in order
     const tempDir = `${projectRoot}/.tmp_safe_chunks/${sessionId}`;
@@ -338,12 +362,12 @@ export async function finalizeChunked(
 
       progress.update(
         Math.round(((i + 1) / session.totalChunks) * 80),
-        `Chunk ${i + 1}/${session.totalChunks} okundu`
+        safeChunkT("progress.chunkRead", { index: i + 1, totalChunks: session.totalChunks })
       );
     }
 
     // Concatenate buffers
-    progress.update(85, "Birleştiriliyor...");
+    progress.update(85, safeChunkT("progress.merging"));
     const fullBuffer = Buffer.concat(buffers, totalSize);
     const fullContent = fullBuffer.toString("utf-8");
 
@@ -353,22 +377,22 @@ export async function finalizeChunked(
       if (actualChecksum !== verifyChecksum) {
         return {
           success: false,
-          message:
-            `❌ Checksum verification failed!\n` +
-            `Expected: ${verifyChecksum}\n` +
-            `Got: ${actualChecksum}`,
+          message: safeChunkT("finalize.checksumFailed", {
+            expected: verifyChecksum,
+            actual: actualChecksum,
+          }),
         };
       }
-      progress.log("✅ Checksum verified");
+      progress.log(safeChunkT("progress.checksumVerified"));
     }
 
     // Create target directory
-    progress.update(90, "Hedef dizin oluşturuluyor...");
+    progress.update(90, safeChunkT("progress.creatingTargetDir"));
     const targetDir = dirname(session.filePath);
     await mkdir(targetDir, { recursive: true });
 
     // Write final file
-    progress.update(95, "Dosya yazılıyor...");
+    progress.update(95, safeChunkT("progress.writingFinalFile"));
     await writeFile(session.filePath, fullContent, "utf-8");
 
     // Verify final file
@@ -376,12 +400,12 @@ export async function finalizeChunked(
     if (finalCheck !== fullContent) {
       return {
         success: false,
-        message: `❌ Final file verification failed!`,
+        message: safeChunkT("finalize.finalVerificationFailed"),
       };
     }
 
     // Cleanup temp files
-    progress.update(98, "Temp dosyalar siliniyor...");
+    progress.update(98, safeChunkT("progress.cleaningTempFiles"));
 
     for (let i = 0; i < session.totalChunks; i++) {
       const chunkPath = `${tempDir}/chunk_${String(i).padStart(4, "0")}.tmp`;
@@ -399,26 +423,32 @@ export async function finalizeChunked(
     const duration = ((Date.now() - session.startTime) / 1000).toFixed(1);
     const lineCount = fullContent.split("\n").length - 1;
 
-    progress.done(`${(totalSize / 1024).toFixed(1)}KB, ${lineCount} lines in ${duration}s`);
+    progress.done(
+      safeChunkT("finalize.progressDone", {
+        sizeKB: (totalSize / 1024).toFixed(1),
+        lineCount,
+        duration,
+      })
+    );
 
     return {
       success: true,
       filePath: session.filePath,
       totalSize,
-      message:
-        `✅ Dosya başarıyla oluşturuldu!\n\n` +
-        `📁 Dosya: ${session.filePath}\n` +
-        `📋 Boyut: ${(totalSize / 1024).toFixed(1)}KB\n` +
-        `📝 Satır: ${lineCount}\n` +
-        `📊 Chunk: ${session.totalChunks}\n` +
-        `⏱️ Süre: ${duration}s\n\n` +
-        `🔍 Checksum: ${calculateChecksum(fullContent)}`,
+      message: safeChunkT("finalize.success", {
+        filePath: session.filePath,
+        sizeKB: (totalSize / 1024).toFixed(1),
+        lineCount,
+        totalChunks: session.totalChunks,
+        duration,
+        checksum: calculateChecksum(fullContent),
+      }),
     };
   } catch (error) {
     const err = error as Error;
     progress.fail(err.message);
     logToolError("hev_fs_finalize_chunked", err, { sessionId });
-    return { success: false, message: `Hata: ${err.message}` };
+    return { success: false, message: safeChunkT("common.error", { message: err.message }) };
   }
 }
 
@@ -447,10 +477,12 @@ export function getSessionStatus(sessionId: string): {
   if (!session) {
     return {
       success: false,
-      message:
-        `❌ Session bulunamadı: ${sessionId}\n\n` +
-        `Aktif session'lar: ${activeSessions.size}\n` +
-        (activeSessions.size > 0 ? `IDs: ${Array.from(activeSessions.keys()).join(", ")}` : ""),
+      message: safeChunkT("status.sessionNotFound", {
+        sessionId,
+        activeSessions: activeSessions.size,
+        ids:
+          activeSessions.size > 0 ? Array.from(activeSessions.keys()).join(", ") : safeChunkT("common.none"),
+      }),
     };
   }
 
@@ -461,20 +493,26 @@ export function getSessionStatus(sessionId: string): {
   const duration = ((Date.now() - session.startTime) / 1000).toFixed(1);
   const progress = ((session.receivedChunks.length / session.totalChunks) * 100).toFixed(1);
 
-  let message =
-    `📋 Session Status\n\n` +
-    `Session ID: ${sessionId}\n` +
-    `Hedef: ${session.filePath}\n` +
-    `İlerleme: ${session.receivedChunks.length}/${session.totalChunks} (${progress}%)\n` +
-    `Süre: ${duration}s\n\n`;
+  let message = safeChunkT("status.summary", {
+    sessionId,
+    filePath: session.filePath,
+    receivedCount: session.receivedChunks.length,
+    totalChunks: session.totalChunks,
+    progress,
+    duration,
+  });
 
   if (missingChunks.length > 0) {
-    message += `⏳ Eksik chunk'lar:\n${missingChunks.slice(0, 20).join(", ")}`;
+    message += safeChunkT("status.missingChunks", {
+      chunks: missingChunks.slice(0, 20).join(", "),
+    });
     if (missingChunks.length > 20) {
-      message += ` ... (+${missingChunks.length - 20} daha)`;
+      message += ` ${safeChunkT("status.moreMissingChunks", {
+        count: missingChunks.length - 20,
+      })}`;
     }
   } else {
-    message += `✅ Tüm chunk'lar alındı!\n📌 hev_fs_finalize_chunked ile tamamlayabilirsiniz`;
+    message += safeChunkT("status.allChunksReceived");
   }
 
   return {
@@ -508,7 +546,7 @@ export async function cancelSession(
   if (!session) {
     return {
       success: false,
-      message: `❌ Session bulunamadı: ${sessionId}`,
+      message: safeChunkT("cancel.sessionNotFound", { sessionId }),
     };
   }
 
@@ -531,12 +569,12 @@ export async function cancelSession(
 
     return {
       success: true,
-      message: `✅ Session iptal edildi: ${sessionId}\n` + `Temp dosyalar temizlendi.`,
+      message: safeChunkT("cancel.success", { sessionId }),
     };
   } catch (error) {
     const err = error as Error;
     logToolError("hev_fs_cancel_chunk_session", err, { sessionId });
-    return { success: false, message: `Hata: ${err.message}` };
+    return { success: false, message: safeChunkT("common.error", { message: err.message }) };
   }
 }
 
@@ -547,38 +585,17 @@ export async function cancelSession(
 export const SAFE_CHUNK_TOOL_DEFINITIONS = [
   {
     name: "hev_fs_start_chunked_session",
-    description: `GÜVENLİ CHUNK YAZMA SESSION BAŞLA
-
-Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
-
-✅ ÖZELLİKLER:
-- UTF-8 encoding validation
-- Checksum verification
-- Eksik chunk detection
-- Rollback support
-- Progress tracking
-
-🔄 İŞ AKIŞI:
-1. hev_fs_start_chunked_session (toplam chunk sayısını belirt)
-2. hev_fs_write_chunk (her chunk için tekrarla)
-3. hev_fs_chunk_session_status (İhtiyaç halinde kontrol et)
-4. hev_fs_finalize_chunked (birleştir ve dosya oluştur)
-
-📌 CHUNK STRATEJİSİ:
-- Her chunk 500-800 satır (~40KB)
-- Her chunk \\n ile bitmeli
-- Function/class ortasında kesme!
-- Emoji/Türkçe karakter güvenli`,
+    description: safeChunkDefT("start.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
         file_path: {
           type: "string",
-          description: "Oluşturulacak dosyanın hedef yolu",
+          description: safeChunkDefT("start.filePath"),
         },
         total_chunks: {
           type: "integer",
-          description: "Toplam chunk sayısı (dosyayı kaç parçaya böldün?)",
+          description: safeChunkDefT("start.totalChunks"),
           minimum: 1,
           maximum: 1000,
         },
@@ -591,17 +608,16 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
       priority: "high",
       complexity: "medium",
       useCases: [
-        "Start safe chunk writing session for large files (50KB+)",
-        "Create files that exceed LLM token limits",
-        "Streaming file creation with validation",
+        safeChunkDefT("start.useCases.largeFiles"),
+        safeChunkDefT("start.useCases.tokenLimit"),
+        safeChunkDefT("start.useCases.streaming"),
       ],
       relatedTools: [
         "hev_fs_write_chunk",
         "hev_fs_finalize_chunked",
         "hev_fs_chunk_session_status",
       ],
-      agentGuidance:
-        "Use for files >50KB that exceed token limits. Creates session for chunk-by-chunk writing with validation. Always follow: 1) start_session 2) write_chunks 3) finalize.",
+      agentGuidance: safeChunkDefT("start.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["chunked", "large-files", "session", "streaming", "safe-write"],
@@ -609,26 +625,22 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
   },
   {
     name: "hev_fs_write_chunk",
-    description:
-      "Chunk yaz ve validate et. Her chunk için sırayla çağırılmalı.\n\n" +
-      "⚠️ ÖNEMLİ: tool_input mutlaka JSON object olmalı (string değil!).\n" +
-      "Content alanında özel karakterler (backslash, quotes) varsa düzgün escape edilmeli.\n" +
-      "Her chunk'ı \\n (newline) ile bitirin.",
+    description: safeChunkDefT("write.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
         session_id: {
           type: "string",
-          description: "Session ID (start_chunked_session'dan dönen)",
+          description: safeChunkDefT("common.sessionId"),
         },
         chunk_index: {
           type: "integer",
-          description: "Chunk index (0'dan başlar)",
+          description: safeChunkDefT("write.chunkIndex"),
           minimum: 0,
         },
         content: {
           type: "string",
-          description: "Chunk içeriği (satır sonu ile bitmeli)",
+          description: safeChunkDefT("write.content"),
         },
       },
       required: ["session_id", "chunk_index", "content"],
@@ -639,13 +651,12 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
       priority: "high",
       complexity: "simple",
       useCases: [
-        "Write individual chunks with validation",
-        "UTF-8 encoding validation",
-        "Checksum verification per chunk",
+        safeChunkDefT("write.useCases.writeChunks"),
+        safeChunkDefT("write.useCases.utf8Validation"),
+        safeChunkDefT("write.useCases.chunkChecksum"),
       ],
       relatedTools: ["hev_fs_start_chunked_session", "hev_fs_finalize_chunked"],
-      agentGuidance:
-        "Write each chunk sequentially (index 0, 1, 2...). Each chunk validated for UTF-8 and boundaries. End chunks with newline. Avoid splitting functions/classes.",
+      agentGuidance: safeChunkDefT("write.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["chunked", "validation", "write", "checksum", "utf8"],
@@ -653,17 +664,17 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
   },
   {
     name: "hev_fs_finalize_chunked",
-    description: "Tüm chunk'ları birleştir ve final dosyayı oluştur. Session otomatik kapanır.",
+    description: safeChunkDefT("finalize.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
         session_id: {
           type: "string",
-          description: "Session ID",
+          description: safeChunkDefT("common.sessionId"),
         },
         verify_checksum: {
           type: "string",
-          description: "Opsiyonel: Final dosya checksum doğrulaması (MD5)",
+          description: safeChunkDefT("finalize.verifyChecksum"),
         },
       },
       required: ["session_id"],
@@ -674,13 +685,12 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
       priority: "high",
       complexity: "simple",
       useCases: [
-        "Merge all chunks into final file",
-        "Complete chunk writing session",
-        "Verify final file integrity",
+        safeChunkDefT("finalize.useCases.mergeChunks"),
+        safeChunkDefT("finalize.useCases.completeSession"),
+        safeChunkDefT("finalize.useCases.verifyIntegrity"),
       ],
       relatedTools: ["hev_fs_start_chunked_session", "hev_fs_write_chunk"],
-      agentGuidance:
-        "Final step after all chunks written. Merges chunks, verifies integrity, creates final file. Session auto-closes. Checks for missing chunks before proceeding.",
+      agentGuidance: safeChunkDefT("finalize.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["chunked", "finalize", "merge", "completion", "verification"],
@@ -688,13 +698,13 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
   },
   {
     name: "hev_fs_chunk_session_status",
-    description: "Session durumunu kontrol et. Hangi chunk'lar alındı, hangiler eksik?",
+    description: safeChunkDefT("status.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
         session_id: {
           type: "string",
-          description: "Session ID",
+          description: safeChunkDefT("common.sessionId"),
         },
       },
       required: ["session_id"],
@@ -705,13 +715,12 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
       priority: "medium",
       complexity: "simple",
       useCases: [
-        "Check chunk writing progress",
-        "Identify missing chunks",
-        "Monitor session status",
+        safeChunkDefT("status.useCases.checkProgress"),
+        safeChunkDefT("status.useCases.identifyMissing"),
+        safeChunkDefT("status.useCases.monitor"),
       ],
       relatedTools: ["hev_fs_write_chunk", "hev_fs_finalize_chunked"],
-      agentGuidance:
-        "Use to check progress during chunk writing. Shows received/missing chunks, progress percentage, and duration. Helps debug if chunks are lost.",
+      agentGuidance: safeChunkDefT("status.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["chunked", "status", "monitoring", "progress", "debugging"],
@@ -719,13 +728,13 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
   },
   {
     name: "hev_fs_cancel_chunk_session",
-    description: "Session iptal et ve temp dosyaları temizle.",
+    description: safeChunkDefT("cancel.description"),
     inputSchema: {
       type: "object" as const,
       properties: {
         session_id: {
           type: "string",
-          description: "Session ID",
+          description: safeChunkDefT("common.sessionId"),
         },
       },
       required: ["session_id"],
@@ -736,13 +745,12 @@ Büyük dosyalar (50-100KB+) için güvenli parçalama sistemi.
       priority: "low",
       complexity: "simple",
       useCases: [
-        "Cancel incomplete chunk sessions",
-        "Clean up temp files",
-        "Abort failed chunk writing",
+        safeChunkDefT("cancel.useCases.cancelSession"),
+        safeChunkDefT("cancel.useCases.cleanTemp"),
+        safeChunkDefT("cancel.useCases.abort"),
       ],
       relatedTools: ["hev_fs_start_chunked_session", "hev_fs_chunk_session_status"],
-      agentGuidance:
-        "Use when chunk writing fails or needs to restart. Cleans up temp files and removes session. Safe to call anytime.",
+      agentGuidance: safeChunkDefT("cancel.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["chunked", "cancel", "cleanup", "abort", "rollback"],

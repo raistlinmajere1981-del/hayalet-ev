@@ -96,7 +96,7 @@ export class LoadingTracker {
       "article",
     ];
 
-    const _scrollDebounceMs = 10; // shared/timeouts.ts: ASISTAN_TIMEOUTS.LOADING_TRACKER_DEBOUNCE
+    const _scrollDebounceMs = 10; // shared/timeouts.ts: ASSISTANT_TIMEOUTS.LOADING_TRACKER_DEBOUNCE
     const script = `(async () => {
       const scrollerSelectors = ${JSON.stringify(scrollerSelectors)};
       const contentContainers = ${JSON.stringify(contentContainers)};

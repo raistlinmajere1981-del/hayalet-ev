@@ -1,6 +1,8 @@
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import { Logger } from "../../modules/logger/index.js";
+import { AppI18n } from "../../modules/i18n/index.js";
+import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 import {
   isOpenPathResult,
   type AttachmentData,
@@ -14,10 +16,14 @@ interface BubbleCallbacks {
   ) => void;
 }
 
+function analyzeBubbleT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.analyze.bubble.${key}`, params);
+}
+
 function formatTimestamp(timestamp: number | undefined): string {
   if (timestamp === undefined || Number.isNaN(timestamp)) return "";
   const d = new Date(timestamp);
-  return d.toLocaleString("tr-TR", {
+  return d.toLocaleString(resolveIntlLocale(AppI18n.getLocale()), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -58,9 +64,9 @@ export function createMessageBubble(
       icon: string;
       title: string;
     }> = [
-      { action: "read", icon: "👁", title: "Okuma modu" },
-      { action: "prepend", icon: "↥", title: "Mesajin basina ekle" },
-      { action: "append", icon: "↧", title: "Mesajin sonuna ekle" },
+      { action: "read", icon: "👁", title: analyzeBubbleT("actions.read") },
+      { action: "prepend", icon: "↥", title: analyzeBubbleT("actions.prepend") },
+      { action: "append", icon: "↧", title: analyzeBubbleT("actions.append") },
     ];
 
     actionConfigs.forEach(({ action, icon, title }) => {
@@ -106,7 +112,7 @@ export function createMessageBubble(
     msgAttachments.forEach((att: AttachmentData) => {
       const link = document.createElement("button");
       link.className = "attachment-link";
-      link.textContent = `📎 ${att.originalName ?? att.storedName ?? "dosya"}`;
+      link.textContent = `📎 ${att.originalName ?? att.storedName ?? analyzeBubbleT("attachmentFallback")}`;
       link.addEventListener("click", () => {
         const filePath =
           att.storedPath ??
@@ -128,18 +134,21 @@ async function openAttachmentByPath(filePath: string): Promise<void> {
   try {
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      throw new Error("electronAPI bulunamadı");
+      throw new Error(analyzeBubbleT("errors.electronApiUnavailable"));
     }
     const openPath = electronApi.openPath;
     const rawRes: unknown =
       typeof openPath === "function"
         ? await openPath(filePath)
-        : { success: false, message: "açılamadı" };
+        : { success: false, message: analyzeBubbleT("errors.openFailed") };
     const res = isOpenPathResult(rawRes) ? rawRes : null;
     if (res?.success !== true) {
-      throw new Error(res?.message ?? "açılamadı");
+      throw new Error(res?.message ?? analyzeBubbleT("errors.openFailed"));
     }
   } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, `Dosya açılamadı: ${getErrorMessage(err)}`);
+    Logger.warn(
+      LogCategory.ANALYZE,
+      analyzeBubbleT("logs.openFailed", { message: getErrorMessage(err) })
+    );
   }
 }

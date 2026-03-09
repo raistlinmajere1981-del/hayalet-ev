@@ -3,6 +3,7 @@ import type { PageController } from "./types.js";
 import { showPage } from "./navigation.js";
 import { syncInstalledRoomChrome } from "./room-ui.js";
 import { Toast } from "../ui/toast-manager.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { getRoomPageName } from "../modules/rooms/room-markup.js";
 import {
@@ -10,6 +11,7 @@ import {
   buildRoomOverlaySummary,
   buildWorkspaceRoomListMarkup,
 } from "../modules/rooms/room-overlay-markup.js";
+import { shellT } from "./shell-i18n.js";
 
 interface RoomOverlayRefs {
   openButton: HTMLButtonElement | null;
@@ -26,6 +28,10 @@ interface RoomOverlayState {
   workspaceRooms: RoomWorkspaceEntry[];
   installedRooms: InstalledRoomRecord[];
   isOpen: boolean;
+}
+
+function roomText(key: string): string {
+  return shellT(`rooms.${key}`);
 }
 
 function getRefs(): RoomOverlayRefs {
@@ -111,6 +117,12 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
   });
 
+  AppI18n.subscribe(() => {
+    if (state.isOpen === true) {
+      render(refs, state);
+    }
+  });
+
   refs.openButton.addEventListener("click", () => {
     void open();
   });
@@ -120,14 +132,14 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     void (async (): Promise<void> => {
       const api = window.electronAPI;
       if (api === undefined || typeof api.showOpenDialog !== "function") {
-        Toast.error("Dosya secici hazir degil");
+        Toast.error(roomText("toasts.filePickerUnavailable"));
         return;
       }
 
       const selection = await api.showOpenDialog({
-        title: "Oda paketi sec",
-        buttonLabel: "Import et",
-        filters: [{ name: "Room Paketleri", extensions: ["json"] }],
+        title: roomText("dialog.bundleTitle"),
+        buttonLabel: roomText("dialog.bundleButton"),
+        filters: [{ name: roomText("dialog.bundleFilterName"), extensions: ["json"] }],
         properties: ["openFile"],
       });
 
@@ -141,7 +153,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       }
 
       if (selectedPath.toLowerCase().endsWith(".hevroom.json") === false) {
-        Toast.error("Secilen dosya .hevroom.json olmali");
+        Toast.error(roomText("toasts.invalidBundleExtension"));
         return;
       }
 
@@ -149,9 +161,9 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
       render(refs, state);
       if (result.success === true) {
-        Toast.success("Room import tamam", result.room?.id ?? result.path ?? selectedPath);
+        Toast.success(roomText("toasts.importSuccess"), result.room?.id ?? result.path ?? selectedPath);
       } else {
-        Toast.error("Room import basarisiz", result.error ?? selectedPath);
+        Toast.error(roomText("toasts.importError"), result.error ?? selectedPath);
       }
     })();
   });
@@ -190,9 +202,9 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
         if (ok) {
-          Toast.success("Oda yuklendi", roomId);
+          Toast.success(roomText("toasts.installSuccess"), roomId);
         } else {
-          Toast.error("Oda yuklenemedi", roomId);
+          Toast.error(roomText("toasts.installError"), roomId);
         }
       })();
       return;
@@ -202,15 +214,15 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsPackageFromWorkspace !== "function") {
-          Toast.error("Paketleme hazir degil");
+          Toast.error(roomText("toasts.packageUnavailable"));
           return;
         }
 
         const result = await api.roomsPackageFromWorkspace({ roomId });
         if (result.success === true) {
-          Toast.success("Room paketlendi", result.path ?? roomId);
+          Toast.success(roomText("toasts.packageSuccess"), result.path ?? roomId);
         } else {
-          Toast.error("Paketleme basarisiz", result.error ?? roomId);
+          Toast.error(roomText("toasts.packageError"), result.error ?? roomId);
         }
       })();
     }
@@ -239,7 +251,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsExportToWorkspace !== "function") {
-          Toast.error("Export hazir degil");
+          Toast.error(roomText("toasts.exportUnavailable"));
           return;
         }
 
@@ -250,9 +262,9 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
         render(refs, state);
         if (result.success === true) {
-          Toast.success("Workspace export tamam", result.path ?? roomId);
+          Toast.success(roomText("toasts.exportSuccess"), result.path ?? roomId);
         } else {
-          Toast.error("Workspace export basarisiz", result.error ?? roomId);
+          Toast.error(roomText("toasts.exportError"), result.error ?? roomId);
         }
       })();
       return;
@@ -262,7 +274,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       void (async (): Promise<void> => {
         const api = window.electronAPI;
         if (api === undefined || typeof api.roomsRemoveInstalled !== "function") {
-          Toast.error("Room remove hazir degil");
+          Toast.error(roomText("toasts.removeUnavailable"));
           return;
         }
 
@@ -270,9 +282,9 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         await RoomRegistry.refreshInstalledRooms();
         render(refs, state);
         if (result.success === true) {
-          Toast.success("Oda kaldirildi", roomId);
+          Toast.success(roomText("toasts.removeSuccess"), roomId);
         } else {
-          Toast.error("Oda kaldirilamadi", result.error ?? roomId);
+          Toast.error(roomText("toasts.removeError"), result.error ?? roomId);
         }
       })();
     }

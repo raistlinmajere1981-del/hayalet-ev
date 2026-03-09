@@ -1,19 +1,26 @@
-import type { AppSettings, SlotSettings, MessageMethod, UploadMethod } from "@shared/settings.js";
-import { isAsistanProviderId } from "@shared/common.js";
+import type {
+  Account,
+  AppSettings,
+  SlotSettings,
+  MessageMethod,
+  UploadMethod,
+} from "@shared/settings.js";
 import {
-  DEFAULT_ASISTAN_ACCOUNT_ID,
+  LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY,
+  LEGACY_ASSISTANT_SLOT_SETTINGS_KEY,
+} from "@shared/settings.js";
+import { isAssistantProviderId } from "@shared/common.js";
+import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
+import {
+  DEFAULT_ASSISTANT_ACCOUNT_ID,
   DEFAULT_OPENCODE_UI_ACCOUNT_ID,
-  createDefaultAsistanAccount,
+  createDefaultAssistantAccount,
   createDefaultOpencodeUiAccount,
   createDefaultSettings,
 } from "@shared/settings-defaults.js";
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return v !== null && v !== undefined && typeof v === "object" && !Array.isArray(v);
-}
-
-function normalizeAppLanguage(value: unknown): "tr" | "en" {
-  return value === "en" ? "en" : "tr";
 }
 
 export function defaultSettings(): AppSettings {
@@ -33,12 +40,37 @@ function mergeDefaults(obj: unknown, defaults: Record<string, unknown>): Record<
   return out;
 }
 
-function normalizeLegacy(raw: unknown): Record<string, unknown> {
+type SettingsInput = Partial<AppSettings> & {
+  [LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY]?: Account[];
+  [LEGACY_ASSISTANT_SLOT_SETTINGS_KEY]?: SlotSettings;
+};
+
+function resolveAssistantAccounts(raw: SettingsInput): Account[] | undefined {
+  if (Array.isArray(raw.assistantAccounts)) {
+    return raw.assistantAccounts;
+  }
+  if (Array.isArray(raw[LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY])) {
+    return raw[LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY];
+  }
+  return undefined;
+}
+
+function resolveAssistantSlot(raw: SettingsInput): SlotSettings | undefined {
+  if (isPlainObject(raw.assistantSlot)) {
+    return raw.assistantSlot;
+  }
+  if (isPlainObject(raw[LEGACY_ASSISTANT_SLOT_SETTINGS_KEY])) {
+    return raw[LEGACY_ASSISTANT_SLOT_SETTINGS_KEY];
+  }
+  return undefined;
+}
+
+function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
   if (raw === null || raw === undefined || typeof raw !== "object") {
     return {};
   }
 
-  const r = raw as Partial<AppSettings>;
+  const r = raw as SettingsInput;
   const out: Partial<AppSettings> = {};
 
   if (isPlainObject(r.user)) {
@@ -58,8 +90,9 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
     out.accounts = r.accounts;
   }
 
-  if (Array.isArray(r.asistanAccounts)) {
-    out.asistanAccounts = r.asistanAccounts;
+  const assistantAccounts = resolveAssistantAccounts(r);
+  if (Array.isArray(assistantAccounts)) {
+    out.assistantAccounts = assistantAccounts;
   }
 
   const slots: { ai1?: SlotSettings; ai2?: SlotSettings; [key: string]: SlotSettings | undefined } =
@@ -93,16 +126,17 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
   });
   out.slots = slots as { ai1: SlotSettings; ai2: SlotSettings; [key: string]: SlotSettings };
 
-  if (isPlainObject(r.asistanSlot)) {
-    out.asistanSlot = {
-      accountId: r.asistanSlot.accountId ?? null,
+  const assistantSlot = resolveAssistantSlot(r);
+  if (isPlainObject(assistantSlot)) {
+    out.assistantSlot = {
+      accountId: assistantSlot.accountId ?? null,
       catchCommands:
-        typeof r.asistanSlot.catchCommands === "boolean" ? r.asistanSlot.catchCommands : false,
-      disabledCommands: Array.isArray(r.asistanSlot.disabledCommands)
-        ? r.asistanSlot.disabledCommands.filter((item): item is string => typeof item === "string")
+        typeof assistantSlot.catchCommands === "boolean" ? assistantSlot.catchCommands : false,
+      disabledCommands: Array.isArray(assistantSlot.disabledCommands)
+        ? assistantSlot.disabledCommands.filter((item): item is string => typeof item === "string")
         : [],
-      messageMethod: r.asistanSlot.messageMethod ?? "injection",
-      fileMethod: r.asistanSlot.fileMethod ?? "injection",
+      messageMethod: assistantSlot.messageMethod ?? "injection",
+      fileMethod: assistantSlot.fileMethod ?? "injection",
     };
   }
 
@@ -119,9 +153,9 @@ function normalizeLegacy(raw: unknown): Record<string, unknown> {
 
 export function normalizeSettings(raw: unknown): AppSettings {
   const defaults = defaultSettings();
-  const legacyNormalized = normalizeLegacy(raw);
+  const normalizedInput = normalizeKnownSettings(raw);
 
-  const merged = mergeDefaults(legacyNormalized, defaults) as AppSettings;
+  const merged = mergeDefaults(normalizedInput, defaults) as AppSettings;
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
@@ -132,23 +166,25 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   merged.general.language = normalizeAppLanguage(merged.general.language);
 
-  if (!Array.isArray(merged.asistanAccounts)) {
-    merged.asistanAccounts = [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];
-  } else if (merged.asistanAccounts.length === 0) {
-    merged.asistanAccounts = [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];
+  if (!Array.isArray(merged.assistantAccounts)) {
+    merged.assistantAccounts = [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
+  } else if (merged.assistantAccounts.length === 0) {
+    merged.assistantAccounts = [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
   } else {
-    // Ensure default asistan accounts exist
+    // Ensure default assistant accounts exist.
     if (
-      !merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_OPENCODE_UI_ACCOUNT_ID)
+      !merged.assistantAccounts.find((a: { id: string }) => a.id === DEFAULT_OPENCODE_UI_ACCOUNT_ID)
     ) {
-      merged.asistanAccounts.splice(1, 0, createDefaultOpencodeUiAccount());
+      merged.assistantAccounts.splice(1, 0, createDefaultOpencodeUiAccount());
     }
-    if (!merged.asistanAccounts.find((a: { id: string }) => a.id === DEFAULT_ASISTAN_ACCOUNT_ID)) {
-      merged.asistanAccounts.unshift(createDefaultAsistanAccount());
+    if (
+      !merged.assistantAccounts.find((a: { id: string }) => a.id === DEFAULT_ASSISTANT_ACCOUNT_ID)
+    ) {
+      merged.assistantAccounts.unshift(createDefaultAssistantAccount());
     }
   }
 
-  merged.asistanAccounts.forEach((account) => {
+  merged.assistantAccounts.forEach((account) => {
     const dbPath = (account as { dbPath?: unknown }).dbPath;
     if (typeof dbPath !== "string" && dbPath !== null && dbPath !== undefined) {
       (account as { dbPath?: string | null }).dbPath = null;
@@ -182,26 +218,29 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.slots[slot].fileMethod ??= "dragdrop";
   }
 
-  if (!isPlainObject(merged.asistanSlot)) {
-    merged.asistanSlot = defaults.asistanSlot ?? {
-      accountId: DEFAULT_ASISTAN_ACCOUNT_ID,
+  if (!isPlainObject(merged.assistantSlot)) {
+    merged.assistantSlot = defaults.assistantSlot ?? {
+      accountId: DEFAULT_ASSISTANT_ACCOUNT_ID,
       catchCommands: false,
       disabledCommands: [],
       messageMethod: "injection",
       fileMethod: "injection",
     };
   }
-  if (merged.asistanSlot.accountId === "" || typeof merged.asistanSlot.accountId === "undefined") {
-    merged.asistanSlot.accountId = DEFAULT_ASISTAN_ACCOUNT_ID;
+  if (
+    merged.assistantSlot.accountId === "" ||
+    typeof merged.assistantSlot.accountId === "undefined"
+  ) {
+    merged.assistantSlot.accountId = DEFAULT_ASSISTANT_ACCOUNT_ID;
   }
-  if (typeof merged.asistanSlot.catchCommands !== "boolean") {
-    merged.asistanSlot.catchCommands = false;
+  if (typeof merged.assistantSlot.catchCommands !== "boolean") {
+    merged.assistantSlot.catchCommands = false;
   }
-  if (!Array.isArray(merged.asistanSlot.disabledCommands)) {
-    merged.asistanSlot.disabledCommands = [];
+  if (!Array.isArray(merged.assistantSlot.disabledCommands)) {
+    merged.assistantSlot.disabledCommands = [];
   }
-  merged.asistanSlot.messageMethod ??= "injection";
-  merged.asistanSlot.fileMethod ??= "injection";
+  merged.assistantSlot.messageMethod ??= "injection";
+  merged.assistantSlot.fileMethod ??= "injection";
 
   if (!isPlainObject(merged.integrations)) {
     merged.integrations = defaults.integrations ?? {};
@@ -217,7 +256,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   if (!isPlainObject(merged.assistants)) {
     merged.assistants = defaults.assistants ?? {};
   }
-  if (!isAsistanProviderId(merged.assistants.preferred)) {
+  if (!isAssistantProviderId(merged.assistants.preferred)) {
     merged.assistants.preferred = "opencode";
   }
   if (typeof merged.assistants.resumeLastSession !== "boolean") {
@@ -239,7 +278,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.assistants.lastOpencodeUiSessionId = null;
   }
   if (
-    !isAsistanProviderId(merged.assistants.lastConnected) &&
+    !isAssistantProviderId(merged.assistants.lastConnected) &&
     merged.assistants.lastConnected !== null
   ) {
     merged.assistants.lastConnected = null;

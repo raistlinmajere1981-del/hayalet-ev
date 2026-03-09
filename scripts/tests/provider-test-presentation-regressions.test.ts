@@ -51,7 +51,7 @@ test("progress summary counts finished commands and exposes the active command i
   });
 
   assert.deepEqual(summary, {
-    title: "Grok webview-sync calisiyor",
+    title: "Grok webview-sync çalışıyor",
     completedSteps: 2,
     totalSteps: 3,
     activeStepId: "navigate-session-1",
@@ -179,11 +179,11 @@ test("completion message falls back to command counts when suite totals are miss
     ],
   });
 
-  assert.equal(message, "2/3 kontrol gecti");
+  assert.equal(message, "2/3 kontrol geçti");
 });
 
 test("completion message avoids undefined totals when there are no commands", () => {
   const message = buildScenarioCompletionMessage({});
 
-  assert.equal(message, "Senaryo tamamlandi");
+  assert.equal(message, "Senaryo tamamlandı");
 });

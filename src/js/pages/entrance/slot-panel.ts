@@ -1,4 +1,5 @@
 import type { AppSettings, Account } from "@shared/settings.js";
+import { t as entranceT } from "./i18n.js";
 
 interface SettingsManager {
   getSnapshot(): AppSettings;
@@ -34,7 +35,7 @@ export class SlotPanel {
     window.addEventListener("slot-account-changed", ((e: Event) => {
       const detail = (e as CustomEvent<unknown>).detail;
       if (hasSlotAccountChangedDetail(detail) && detail.slot !== this.slotId) {
-        this.render(); // Diğer slot değiştiyse bu slot'u güncelle
+        this.render(); // Refresh this slot when another slot changes
       }
     }) as EventListener);
 
@@ -105,7 +106,7 @@ export class SlotPanel {
     if (accSelect) {
       const currentVal = slotSettings.accountId ?? "";
       accSelect.innerHTML =
-        '<option value="">-- Hesap Seç --</option>' +
+        `<option value="">${entranceT("slot.selectAccountPlaceholder")}</option>` +
         availableAccounts
           .map(
             (a: Account) =>

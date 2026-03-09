@@ -1,5 +1,7 @@
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import type { LogEntry } from "../modules/logger/index.js";
+import { AppI18n } from "../modules/i18n/index.js";
+import { resolveIntlLocale } from "../../../shared/i18n/locale.js";
 
 export type TimelineEventType = "command-catch" | "command-result" | "coreengine-ai-send";
 
@@ -213,7 +215,7 @@ export function normalizeTimelineEvent(
   const displayTimestamp =
     getEntryText(entry, "timestamp") !== ""
       ? getEntryText(entry, "timestamp")
-      : new Date(isoTimestamp).toLocaleString("tr-TR");
+      : new Date(isoTimestamp).toLocaleString(resolveIntlLocale(AppI18n.getLocale()));
   const detail =
     getEntryText(entry, "detail") !== ""
       ? getEntryText(entry, "detail")
@@ -314,7 +316,7 @@ function createThreadFromCatchEvent(
       ? event.command
       : event.triggerCommand !== ""
         ? event.triggerCommand
-        : "Komut";
+        : AppI18n.t("app.server.timeline.commandFallback");
   const sender = event.sender !== "" ? event.sender : getProviderLabel(event.provider);
 
   return {

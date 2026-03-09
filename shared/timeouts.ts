@@ -198,23 +198,23 @@ export const PROVIDER_SCENARIO_DELAYS = {
 } as const;
 
 // ============================================================
-// ASISTAN — Connect Flow / Overlay Timeout'ları
+// ASSISTANT - Connect Flow / Overlay Timeouts
 // ============================================================
 
-export const ASISTAN_TIMEOUTS = {
-  /** Overlay aşaması geçiş gecikmesi (kısa) */
+export const ASSISTANT_TIMEOUTS = {
+  /** Short overlay stage transition delay */
   STAGE_TRANSITION_SHORT: 800,
-  /** Overlay aşaması geçiş gecikmesi (orta) */
+  /** Medium overlay stage transition delay */
   STAGE_TRANSITION_MID: 1_000,
-  /** Overlay aşaması geçiş gecikmesi (uzun) */
+  /** Long overlay stage transition delay */
   STAGE_TRANSITION_LONG: 1_500,
-  /** Conversation-syncer bekle */
+  /** Conversation syncer wait */
   CONVERSATION_SYNC: 2_000,
-  /** Lifecycle-manager navigate bekleme */
+  /** Lifecycle manager navigation settle */
   NAVIGATE_SETTLE: 100,
   /** Loading tracker debounce */
   LOADING_TRACKER_DEBOUNCE: 10,
-  /** Conversation list mikro-gecikme */
+  /** Conversation list micro-delay */
   CONVERSATION_LIST_MICRO: 0,
 } as const;
 

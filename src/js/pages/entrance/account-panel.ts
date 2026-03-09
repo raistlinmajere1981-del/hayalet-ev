@@ -3,6 +3,7 @@ import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import type { AppSettings, Account } from "@shared/settings.js";
+import { t as entranceT } from "./i18n.js";
 
 interface SettingsManager {
   getSnapshot(): AppSettings;
@@ -60,7 +61,7 @@ export class AccountPanel {
     accountListEl.innerHTML = "";
 
     if (accounts.length === 0) {
-      accountListEl.innerHTML = '<div class="empty-message">Henüz hesap yok</div>';
+      accountListEl.innerHTML = `<div class="empty-message">${entranceT("accounts.empty")}</div>`;
       return;
     }
 
@@ -80,8 +81,8 @@ export class AccountPanel {
             <span class="account-nick">${this.escapeHtml(acc.nickname ?? acc.email)}</span>
             <span class="account-provider">${acc.provider}</span>
             <div class="account-actions">
-              <button class="btn btn-ghost btn-xs edit-btn" title="Düzenle" data-id="${this.escapeHtml(acc.id)}">✎</button>
-              <button class="btn btn-ghost btn-xs delete-btn" title="Sil" data-id="${this.escapeHtml(acc.id)}">×</button>
+              <button class="btn btn-ghost btn-xs edit-btn" title="${this.escapeHtml(entranceT("accounts.editTitle"))}" data-id="${this.escapeHtml(acc.id)}">✎</button>
+              <button class="btn btn-ghost btn-xs delete-btn" title="${this.escapeHtml(entranceT("accounts.deleteTitle"))}" data-id="${this.escapeHtml(acc.id)}">×</button>
             </div>
           </div>
           <div class="account-email">${this.escapeHtml(acc.email)}</div>
@@ -116,7 +117,7 @@ export class AccountPanel {
         if (!electronApi) throw new Error("electron API unavailable");
         const data = await electronApi.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="Avatar" class="img-cover">`;
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarAlt"))}" class="img-cover">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">👤</div>';
       }
@@ -137,7 +138,7 @@ export class AccountPanel {
         if (!electronApi) throw new Error("electron API unavailable");
         const data = await electronApi.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="Preview" class="img-cover">`;
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarPreviewAlt"))}" class="img-cover">`;
       } catch {
         previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
       }
@@ -154,7 +155,7 @@ export class AccountPanel {
     avatarPath?: string;
   }): void {
     this._editingAccountId = account.id;
-    this._newAccountAvatarPath = account.avatarPath ?? null; // Start with existing avatar
+    this._newAccountAvatarPath = account.avatarPath ?? null; // Start with the existing avatar
 
     const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
     const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
@@ -166,15 +167,15 @@ export class AccountPanel {
     if (emailEl) emailEl.value = account.email;
     if (providerEl) {
       providerEl.value = account.provider;
-      providerEl.disabled = true; // Cannot change provider (id depends on it)
+      providerEl.disabled = true; // Keep the provider stable because the ID depends on it
     }
     if (nicknameEl) nicknameEl.value = account.nickname ?? "";
 
-    if (btn) btn.textContent = "Güncelle";
+    if (btn) btn.textContent = entranceT("accounts.form.updateAction");
     if (cancelBtn) cancelBtn.classList.remove("hidden");
-    if (title) title.textContent = "Hesabı Düzenle";
+    if (title) title.textContent = entranceT("accounts.form.editTitle");
 
-    this.render(); // Re-render list to show highlight
+    this.render(); // Re-render the list to show the current selection
   }
 
   cancelEdit(): void {
@@ -195,9 +196,9 @@ export class AccountPanel {
     }
     if (nicknameEl) nicknameEl.value = "";
 
-    if (btn) btn.textContent = "Hesap Ekle";
+    if (btn) btn.textContent = entranceT("accounts.form.createAction");
     if (cancelBtn) cancelBtn.classList.add("hidden");
-    if (title) title.textContent = "Yeni Hesap Ekle";
+    if (title) title.textContent = entranceT("accounts.form.createTitle");
     this.render();
     void this.renderNewAccountAvatarPreview();
   }
@@ -207,9 +208,14 @@ export class AccountPanel {
       const electronApi = window.electronAPI;
       if (!electronApi) return;
       const result = await electronApi.showOpenDialog({
-        title: "Avatar seç",
-        buttonLabel: "Seç",
-        filters: [{ name: "Resimler", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+        title: entranceT("accounts.dialog.avatarTitle"),
+        buttonLabel: entranceT("accounts.dialog.selectButton"),
+        filters: [
+          {
+            name: entranceT("accounts.dialog.imageFilterName"),
+            extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+          },
+        ],
         properties: ["openFile"],
       });
 
@@ -218,7 +224,10 @@ export class AccountPanel {
       this._newAccountAvatarPath = result.filePaths[0] ?? null;
       await this.renderNewAccountAvatarPreview();
     } catch (err) {
-      Logger.error(LogCategory.ENTRANCE, `Avatar browse hatası: ${getErrorMessage(err)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.accountAvatarBrowseError", { message: getErrorMessage(err) })
+      );
     }
   }
 
@@ -240,7 +249,7 @@ export class AccountPanel {
     const nickname = nicknameEl?.value.trim() ?? provider;
 
     if (email === "" || provider === "") {
-      this.showFeedback("Email ve provider gerekli", "error");
+      this.showFeedback(entranceT("accounts.feedback.emailProviderRequired"), "error");
       return;
     }
 
@@ -253,7 +262,7 @@ export class AccountPanel {
           a.email.toLowerCase() === email.toLowerCase() && a.provider === provider
       );
       if (existingAccount) {
-        this.showFeedback("Bu hesap zaten kayıtlı", "error");
+        this.showFeedback(entranceT("accounts.feedback.duplicate"), "error");
         return;
       }
 
@@ -263,7 +272,7 @@ export class AccountPanel {
       if (this._newAccountAvatarPath !== null && this._newAccountAvatarPath !== "") {
         const electronApi = window.electronAPI;
         if (!electronApi) {
-          this.showFeedback("Electron API bulunamadı", "error");
+          this.showFeedback(entranceT("accounts.feedback.electronApiMissing"), "error");
           return;
         }
         const copied = await electronApi.copyToAssets(this._newAccountAvatarPath, "account", {
@@ -287,7 +296,7 @@ export class AccountPanel {
       const electronApi = window.electronAPI;
       const dbInitAccount = electronApi?.["dbInitAccount"];
       if (!dbInitAccount) {
-        this.showFeedback("dbInitAccount API bulunamadı", "error");
+        this.showFeedback(entranceT("accounts.feedback.dbInitMissing"), "error");
         return;
       }
       const dbResult = (await dbInitAccount({ accountId })) as {
@@ -295,22 +304,33 @@ export class AccountPanel {
         error?: string;
       };
       if (dbResult.success !== true) {
-        this.showFeedback(`Database hatası: ${dbResult.error ?? "bilinmiyor"}`, "error");
+        this.showFeedback(
+          entranceT("accounts.feedback.dbError", {
+            message: dbResult.error ?? entranceT("logs.unknownMessage"),
+          }),
+          "error"
+        );
         return;
       }
 
       const updated = { ...settings, accounts: [...accounts, newAccount] };
       await this.settingsManager.save(updated);
 
-      this.cancelEdit(); // Reset form
-      this.renderAccountList(); // Refresh account list
+      this.cancelEdit(); // Reset the form state
+      this.renderAccountList(); // Refresh the account list
 
       window.dispatchEvent(new CustomEvent("account-list-updated"));
 
-      Logger.success(LogCategory.ENTRANCE, "Hesap oluşturuldu");
+      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountCreateSuccess"));
     } catch (err) {
-      Logger.error(LogCategory.ENTRANCE, `Hesap oluşturma hatası: ${getErrorMessage(err)}`);
-      this.showFeedback(`Hata: ${getErrorMessage(err)}`, "error");
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.accountCreateError", { message: getErrorMessage(err) })
+      );
+      this.showFeedback(
+        entranceT("accounts.feedback.createError", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 
@@ -322,7 +342,7 @@ export class AccountPanel {
     const nickname = nicknameEl?.value.trim() ?? "";
 
     if (email === "") {
-      this.showFeedback("Email gerekli", "error");
+      this.showFeedback(entranceT("accounts.feedback.emailRequired"), "error");
       return;
     }
 
@@ -334,14 +354,14 @@ export class AccountPanel {
       );
 
       if (accountIndex === -1) {
-        this.showFeedback("Düzenlenen hesap bulunamadı", "error");
+        this.showFeedback(entranceT("accounts.feedback.editingMissing"), "error");
         this.cancelEdit();
         return;
       }
 
       const oldAccount = accounts[accountIndex];
       if (!oldAccount) {
-        this.showFeedback("Hesap bulunamadı", "error");
+        this.showFeedback(entranceT("accounts.feedback.accountMissing"), "error");
         return;
       }
       let finalAvatarPath = oldAccount.avatarPath;
@@ -353,7 +373,7 @@ export class AccountPanel {
       ) {
         const electronApi = window.electronAPI;
         if (!electronApi) {
-          this.showFeedback("Electron API bulunamadı", "error");
+          this.showFeedback(entranceT("accounts.feedback.electronApiMissing"), "error");
           return;
         }
         const copied = await electronApi.copyToAssets(this._newAccountAvatarPath, "account", {
@@ -366,7 +386,7 @@ export class AccountPanel {
 
       const updatedAccount: Account = {
         ...oldAccount,
-        email: email, // Email update might affect ID technically, but we keep ID stable for now or block email edit?
+        email, // Keep the account ID stable even if the email changes.
         nickname: nickname === "" ? oldAccount.provider : nickname,
         ...(finalAvatarPath !== "" ? { avatarPath: finalAvatarPath } : {}),
       };
@@ -381,10 +401,16 @@ export class AccountPanel {
 
       window.dispatchEvent(new CustomEvent("account-list-updated"));
 
-      Logger.success(LogCategory.ENTRANCE, "Hesap güncellendi");
+      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountUpdateSuccess"));
     } catch (err) {
-      Logger.error(LogCategory.ENTRANCE, `Hesap güncelleme hatası: ${getErrorMessage(err)}`);
-      this.showFeedback(`Güncelleme hatası: ${getErrorMessage(err)}`, "error");
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.accountUpdateError", { message: getErrorMessage(err) })
+      );
+      this.showFeedback(
+        entranceT("accounts.feedback.updateError", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 
@@ -393,11 +419,14 @@ export class AccountPanel {
     if (!electronApi) return;
     const result = await electronApi.showMessageBox({
       type: "question",
-      buttons: ["İptal", "Sil"],
+      buttons: [
+        entranceT("accounts.dialog.deleteCancel"),
+        entranceT("accounts.dialog.deleteConfirm"),
+      ],
       defaultId: 0,
       cancelId: 0,
-      title: "Hesap Silme",
-      message: "Bu hesabı silmek istediğinizden emin misiniz?",
+      title: entranceT("accounts.dialog.deleteTitle"),
+      message: entranceT("accounts.dialog.deleteMessage"),
     });
 
     if (result.response === 0) return;
@@ -408,14 +437,17 @@ export class AccountPanel {
 
       const updatedAccounts = accounts.filter((a: { id: string }) => a.id !== accountId);
 
-      // Delete account data folder and database
+      // Delete the account data folder and database.
       try {
         const dbDeleteAccount = electronApi["dbDeleteAccount"];
         if (dbDeleteAccount) {
           await dbDeleteAccount({ accountId });
         }
       } catch (dbErr) {
-        Logger.error(LogCategory.ENTRANCE, `Hesap verileri silinemedi: ${getErrorMessage(dbErr)}`);
+        Logger.error(
+          LogCategory.ENTRANCE,
+          entranceT("logs.accountDeleteDataError", { message: getErrorMessage(dbErr) })
+        );
       }
 
       const slots = { ...settings.slots };
@@ -433,9 +465,12 @@ export class AccountPanel {
 
       window.dispatchEvent(new CustomEvent("account-list-updated"));
 
-      Logger.success(LogCategory.ENTRANCE, "Hesap silindi");
+      Logger.success(LogCategory.ENTRANCE, entranceT("logs.accountDeleteSuccess"));
     } catch (err) {
-      this.showFeedback(`Hata: ${getErrorMessage(err)}`, "error");
+      this.showFeedback(
+        entranceT("accounts.feedback.createError", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 

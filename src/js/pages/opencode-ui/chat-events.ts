@@ -1,5 +1,6 @@
 import type { ComposerAttachment } from "./types.js";
 import type { ByIdFn } from "./host-helpers.js";
+import { t } from "./i18n.js";
 
 interface InitOpencodeUiChatEventsOptions {
   byId: ByIdFn;
@@ -76,14 +77,15 @@ export function initOpencodeUiChatEvents(options: InitOpencodeUiChatEventsOption
       try {
         const attachments = await options.readClipboardAttachmentsFromSystem();
         if (attachments.length === 0) {
-          options.showToast("Clipboard'da eklenebilir icerik bulunamadi.");
+          options.showToast(t("chat.clipboardEmpty"));
           return;
         }
         options.stageComposerAttachments(attachments);
       } catch (error) {
         options.showToast(
-          "Clipboard okunamadi: " +
-            (error instanceof Error && error.message !== "" ? error.message : String(error))
+          t("chat.clipboardReadError", {
+            message: error instanceof Error && error.message !== "" ? error.message : String(error),
+          })
         );
       }
     })();

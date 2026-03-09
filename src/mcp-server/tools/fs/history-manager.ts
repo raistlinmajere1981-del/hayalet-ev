@@ -2,14 +2,20 @@
  * Filesystem Tools - History Manager
  */
 
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { undoLastOperation, getOperationHistory } from "../../utils/recycle-utils.js";
+
+const historyToolDefinitionTranslator = createMcpTranslatorSync();
+
+function historyToolDefinitionT(key: string): string {
+  return historyToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`);
+}
 
 export function backupFile(
   _projectRoot: string,
   _filePath: string
 ): { success: boolean; message: string; backupPath?: string } {
-  // Stub implementation - createBackup not implemented yet
-  return { success: false, message: "Not implemented" };
+  return { success: false, message: historyToolDefinitionT("history.backupNotImplemented") };
 }
 
 export function undoOperation(projectRoot: string): { success: boolean; message: string } {
@@ -35,11 +41,11 @@ export function operationHistory(
 // Tool Definitions
 export const BACKUP_FILE_TOOL = {
   name: "hev_fs_backup",
-  description: "Dosyanın yedeğini al",
+  description: historyToolDefinitionT("historyBackup.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Yedeklenecek dosya" },
+      file_path: { type: "string", description: historyToolDefinitionT("historyBackup.filePath") },
     },
     required: ["file_path"],
   },
@@ -51,7 +57,7 @@ export const BACKUP_FILE_TOOL = {
 
 export const UNDO_OPERATION_TOOL = {
   name: "hev_fs_undo",
-  description: "Son işlemi geri al",
+  description: historyToolDefinitionT("historyUndo.description"),
   inputSchema: {
     type: "object" as const,
     properties: {},
@@ -64,11 +70,11 @@ export const UNDO_OPERATION_TOOL = {
 
 export const OPERATION_HISTORY_TOOL = {
   name: "hev_fs_history",
-  description: "İşlem geçmişini göster",
+  description: historyToolDefinitionT("historyList.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      limit: { type: "integer", description: "Gösterilecek kayıt", default: 20 },
+      limit: { type: "integer", description: historyToolDefinitionT("historyList.limit"), default: 20 },
     },
   },
   metadata: {

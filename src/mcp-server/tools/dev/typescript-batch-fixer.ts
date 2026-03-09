@@ -1,12 +1,13 @@
 /**
  * Development Tools - TypeScript Batch Fixer
  *
- * Toplu TypeScript hatalarını otomatik düzeltir
+ * Automatically fixes TypeScript errors in batch
  */
 
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
 
@@ -31,6 +32,23 @@ interface FixResult {
   }>;
 }
 
+function tsBatchFixerT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.typescriptBatchFixer.${key}`, params);
+}
+
+function tsBatchFixerDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(
+    `mcpServer.devTools.typescriptBatchFixer.definition.${key}`,
+    params
+  );
+}
+
 export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: string): FixResult {
   const {
     file_path: filePath,
@@ -51,7 +69,7 @@ export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: strin
   if (targetErrors.length === 0) {
     return {
       success: true,
-      output: `✅ No errors found matching codes: ${errorCodes.join(", ")}`,
+      output: tsBatchFixerT("runtime.noMatchingErrors", { codes: errorCodes.join(", ") }),
       fixed_count: 0,
     };
   }
@@ -269,21 +287,27 @@ function generatePreview(
   }>,
   filePath: string
 ): string {
-  if (changes.length === 0) return "No changes";
+  if (changes.length === 0) return tsBatchFixerT("runtime.noChanges");
 
-  let preview = `🔧 TypeScript Batch Fixer - Preview\n`;
+  let preview = `${tsBatchFixerT("runtime.previewTitle")}\n`;
   preview += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  preview += `📁 File: ${filePath}\n`;
-  preview += `📊 Changes: ${changes.length}\n\n`;
+  preview += `${tsBatchFixerT("runtime.fileLine", { filePath })}\n`;
+  preview += `${tsBatchFixerT("runtime.changeCountLine", { count: changes.length })}\n\n`;
 
   changes.slice(0, 5).forEach((change, idx) => {
-    preview += `Change ${idx + 1}/${changes.length} (Line ${change.line}, ${change.error_code}):\n`;
-    preview += `  - ${change.before.trim()}\n`;
-    preview += `  + ${change.after.trim()}\n\n`;
+    preview +=
+      tsBatchFixerT("runtime.previewChangeHeader", {
+        index: idx + 1,
+        total: changes.length,
+        line: change.line,
+        errorCode: change.error_code,
+      }) + "\n";
+    preview += `${tsBatchFixerT("runtime.beforeLine", { before: change.before.trim() })}\n`;
+    preview += `${tsBatchFixerT("runtime.afterLine", { after: change.after.trim() })}\n\n`;
   });
 
   if (changes.length > 5) {
-    preview += `... and ${changes.length - 5} more changes\n`;
+    preview += `${tsBatchFixerT("runtime.moreChanges", { count: changes.length - 5 })}\n`;
   }
 
   return preview;
@@ -299,17 +323,17 @@ function formatOutput(
   dryRun: boolean,
   filePath: string
 ): string {
-  let output = `🔧 TypeScript Batch Fixer\n`;
+  let output = `${tsBatchFixerT("runtime.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📁 File: ${filePath}\n`;
-  output += `📊 Found: ${changes.length} fixable errors\n`;
+  output += `${tsBatchFixerT("runtime.fileLine", { filePath })}\n`;
+  output += `${tsBatchFixerT("runtime.foundFixableErrors", { count: changes.length })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   if (dryRun) {
-    output += `⚠️  DRY RUN MODE - No changes applied\n`;
-    output += `\nTo apply changes, set dry_run: false\n`;
+    output += `${tsBatchFixerT("runtime.dryRun")}\n`;
+    output += `\n${tsBatchFixerT("runtime.applyHint")}\n`;
   } else {
-    output += `✅ ${changes.length} changes applied successfully\n`;
+    output += `${tsBatchFixerT("runtime.applied", { count: changes.length })}\n`;
   }
 
   return output;
@@ -321,35 +345,34 @@ function formatOutput(
 
 export const TYPESCRIPT_BATCH_FIXER_TOOL = {
   name: "hev_dev_fix_typescript_batch",
-  description:
-    "Toplu TypeScript hatalarını otomatik düzeltir (undefined checks, optional chaining)",
+  description: tsBatchFixerDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Düzeltilecek dosya yolu",
+        description: tsBatchFixerDefT("filePath"),
       },
       error_codes: {
         type: "array",
         items: { type: "string" },
-        description: "Düzeltilecek hata kodları (örn: ['TS2532', 'TS18048'])",
+        description: tsBatchFixerDefT("errorCodes"),
         default: ["TS2532", "TS18048", "TS2722"],
       },
       fix_strategy: {
         type: "string",
         enum: ["add_guards", "add_assertions", "strict_null_check"],
-        description: "Düzeltme stratejisi",
+        description: tsBatchFixerDefT("fixStrategy"),
         default: "add_guards",
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme göster, değişiklik yapma",
+        description: tsBatchFixerDefT("dryRun"),
         default: true,
       },
       auto_apply: {
         type: "boolean",
-        description: "Otomatik olarak değişiklikleri uygula",
+        description: tsBatchFixerDefT("autoApply"),
         default: false,
       },
     },
@@ -361,17 +384,16 @@ export const TYPESCRIPT_BATCH_FIXER_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Auto-fix TypeScript null/undefined errors",
-      "Batch fix TS2532, TS18048 errors",
-      "Add type guards and optional chaining",
+      tsBatchFixerDefT("useCases.nullUndefined"),
+      tsBatchFixerDefT("useCases.batchCodes"),
+      tsBatchFixerDefT("useCases.addGuards"),
     ],
     relatedTools: [
       "hev_dev_typescript_dashboard",
       "hev_dev_typescript_type_helper",
       "hev_fs_backup",
     ],
-    agentGuidance:
-      "ALWAYS use dry_run=true first. Use hev_dev_typescript_dashboard to identify error codes. Supports multiple fix strategies.",
+    agentGuidance: tsBatchFixerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["typescript", "auto-fix", "batch", "type-safety"],

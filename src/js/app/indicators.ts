@@ -1,8 +1,8 @@
 /**
  * Indicator Avatars
  *
- * Top bar'daki AI slot avatar göstergelerini yönetir.
- * Her slot için bağlantı durumu ve avatar görselini günceller.
+ * Manages top bar AI slot avatar indicators.
+ * Updates the connection state and avatar image for each slot.
  */
 
 import { AppState } from "../modules/app-state.js";
@@ -12,11 +12,12 @@ import { Logger, LogCategory } from "../modules/logger/index.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { SlotController } from "../modules/slot-controller.js";
 import { WebviewManager } from "../modules/webview-manager.js";
+import { shellT } from "./shell-i18n.js";
 
 export function updateIndicatorAvatars(): void {
   const getAvatar = (provider: string): string | undefined => AppState.getAvatar(provider);
 
-  // AI0: bağlı değilse boş avatar, bağlıysa seçili provider logosu
+  // AI0 uses the selected provider logo only while connected.
   const ai0Connected = SlotController.isConnected("ai0");
   const ai0AvatarPath = ai0Connected === true ? getAvatar("ai0") : undefined;
 
@@ -26,21 +27,21 @@ export function updateIndicatorAvatars(): void {
       path: ai0AvatarPath,
       connected: ai0Connected,
       nickname: AppState.getNickname("ai0"),
-      isAsistan: true,
+      isAssistant: true,
     },
     ai1: {
       el: document.getElementById("indicator-avatar-ai1"),
       path: getAvatar("ai1"),
       connected: SlotController.isConnected("ai1"),
       nickname: AppState.getNickname("ai1"),
-      isAsistan: false,
+      isAssistant: false,
     },
     ai2: {
       el: document.getElementById("indicator-avatar-ai2"),
       path: getAvatar("ai2"),
       connected: SlotController.isConnected("ai2"),
       nickname: AppState.getNickname("ai2"),
-      isAsistan: false,
+      isAssistant: false,
     },
   };
 
@@ -103,7 +104,7 @@ export function updateIndicatorAvatars(): void {
     }
   };
 
-  Object.entries(map).forEach(([provider, { el, path, isAsistan }]) => {
+  Object.entries(map).forEach(([provider, { el, path, isAssistant }]) => {
     if (!el) return;
     const providerKey = provider as "ai0" | "ai1" | "ai2";
 
@@ -111,9 +112,9 @@ export function updateIndicatorAvatars(): void {
 
     const settings = SettingsManager.getSnapshot();
 
-    const asistanAccountId = settings.asistanSlot?.accountId ?? "";
+    const assistantAccountId = settings.assistantSlot?.accountId ?? "";
     const slotAccountId = settings.slots[providerKey]?.accountId ?? "";
-    const hasAccount = isAsistan ? asistanAccountId !== "" : slotAccountId !== "";
+    const hasAccount = isAssistant ? assistantAccountId !== "" : slotAccountId !== "";
     const connected = SlotController.isConnected(provider);
 
     if (!hasAccount) {
@@ -131,7 +132,7 @@ export function updateIndicatorAvatars(): void {
       });
     }
 
-    if (isAsistan) return;
+    if (isAssistant) return;
 
     try {
       const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
@@ -149,9 +150,13 @@ export function updateIndicatorAvatars(): void {
             const handler: EventListener = (ev: Event) => {
               ev.preventDefault();
               void WebviewManager.syncProvider(provider, { from: "manual" }).catch((err) => {
-                Logger.debug(LogCategory.DATABASE, `Manual sync failed: ${getErrorMessage(err)}`, {
-                  error: err instanceof Error ? err : new Error(String(err)),
-                });
+                Logger.debug(
+                  LogCategory.DATABASE,
+                  shellT("logs.manualSyncFailed", { message: getErrorMessage(err) }),
+                  {
+                    error: err instanceof Error ? err : new Error(String(err)),
+                  }
+                );
               });
             };
             btn.__convRefreshHandler = handler;
@@ -162,9 +167,13 @@ export function updateIndicatorAvatars(): void {
         }
       }
     } catch (e) {
-      Logger.debug(LogCategory.SYSTEM, "Conversation refresh handler setup failed", {
-        error: getErrorMessage(e),
-      });
+      Logger.debug(
+        LogCategory.SYSTEM,
+        shellT("logs.conversationRefreshSetupFailed", { message: getErrorMessage(e) }),
+        {
+          error: getErrorMessage(e),
+        }
+      );
     }
   });
 }

@@ -1,11 +1,11 @@
 /**
- * SessionManager - Log session yönetimi
+ * SessionManager - log session management
  *
- * Bu modül log session'larını yönetir:
- * - Session ID oluşturma
- * - Session dizini oluşturma
- * - Session meta ve summary yazma
- * - Session listeleme
+ * This module manages log sessions:
+ * - Generating session IDs
+ * - Creating session directories
+ * - Writing session metadata and summaries
+ * - Listing sessions
  */
 
 import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";

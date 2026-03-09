@@ -2,7 +2,14 @@
  * Filesystem Tools - Diff Tools
  */
 
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { diffFiles, diffContent } from "../../utils/diff-utils.js";
+
+const diffToolDefinitionTranslator = createMcpTranslatorSync();
+
+function diffToolDefinitionT(key: string): string {
+  return diffToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`);
+}
 
 export function fileDiff(file1: string, file2: string): { identical: boolean; summary: string } {
   const result = diffFiles(file1, file2);
@@ -27,12 +34,12 @@ export function contentDiff(
 // Tool Definitions
 export const FILE_DIFF_TOOL = {
   name: "hev_fs_diff",
-  description: "İki dosyayı karşılaştır",
+  description: diffToolDefinitionT("diffFile.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file1: { type: "string", description: "Birinci dosya" },
-      file2: { type: "string", description: "İkinci dosya" },
+      file1: { type: "string", description: diffToolDefinitionT("diffFile.file1") },
+      file2: { type: "string", description: diffToolDefinitionT("diffFile.file2") },
     },
     required: ["file1", "file2"],
   },
@@ -44,14 +51,14 @@ export const FILE_DIFF_TOOL = {
 
 export const CONTENT_DIFF_TOOL = {
   name: "hev_fs_diff_content",
-  description: "İki metin bloğunu karşılaştır",
+  description: diffToolDefinitionT("diffContent.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      content1: { type: "string", description: "Birinci içerik" },
-      content2: { type: "string", description: "İkinci içerik" },
-      label1: { type: "string", description: "Birinci etiket", default: "a" },
-      label2: { type: "string", description: "İkinci etiket", default: "b" },
+      content1: { type: "string", description: diffToolDefinitionT("diffContent.content1") },
+      content2: { type: "string", description: diffToolDefinitionT("diffContent.content2") },
+      label1: { type: "string", description: diffToolDefinitionT("diffContent.label1"), default: "a" },
+      label2: { type: "string", description: diffToolDefinitionT("diffContent.label2"), default: "b" },
     },
     required: ["content1", "content2"],
   },

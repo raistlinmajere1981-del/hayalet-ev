@@ -78,28 +78,58 @@ test("normalize settings preserves supported app language values", () => {
   assert.equal(normalized.general?.language, "en");
 });
 
-test("normalize settings coerces invalid app language to Turkish", () => {
+test("normalize settings preserves custom app language values", () => {
   const normalized = normalizeSettings({
     general: {
       language: "de",
     },
   });
 
+  assert.equal(normalized.general?.language, "de");
+});
+
+test("normalize settings preserves canonical custom app language tags", () => {
+  const normalized = normalizeSettings({
+    general: {
+      language: "pt_br",
+    },
+  });
+
+  assert.equal(normalized.general?.language, "pt-BR");
+});
+
+test("normalize settings coerces empty app language to Turkish", () => {
+  const normalized = normalizeSettings({
+    general: {
+      language: "   ",
+    },
+  });
+
   assert.equal(normalized.general?.language, "tr");
 });
 
-test("normalize settings backfills opencode-ui assistant account", () => {
+test("normalize settings coerces non-string app language to Turkish", () => {
+  const normalized = normalizeSettings({
+    general: {
+      language: 42,
+    },
+  });
+
+  assert.equal(normalized.general?.language, "tr");
+});
+
+test("normalize settings backfills opencode-ui assistant account from legacy key", () => {
   const normalized = normalizeSettings({
     asistanAccounts: [],
   });
 
-  const providers = (normalized.asistanAccounts ?? []).map((account) => account.provider);
+  const providers = (normalized.assistantAccounts ?? []).map((account) => account.provider);
   assert.ok(providers.includes("opencode-ui"));
 });
 
 test("default settings include opencode-ui db path binding", () => {
   const settings = defaultSettings();
-  const opencodeUiAccount = (settings.asistanAccounts ?? []).find(
+  const opencodeUiAccount = (settings.assistantAccounts ?? []).find(
     (account) => account.provider === "opencode-ui"
   );
 

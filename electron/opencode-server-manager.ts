@@ -17,10 +17,9 @@ function chunkToString(data: unknown): string {
 }
 
 /**
- * OpenCode serve server yönetim servisi
- * - Port충돌 kontrolü
- * - Otomatik port bulma (4096-4110)
-
+ * OpenCode serve server management service
+ * - Port collision checks
+ * - Automatic port discovery (4096-4110)
  * - Process lifecycle management
  */
 export class OpenCodeServerManager {
@@ -197,8 +196,8 @@ export class OpenCodeServerManager {
   }
 
   /**
-   * Port aralığında çalışan bir OpenCode sunucusu arar.
-   * Her meşgul portta health check yaparak gerçek bir OpenCode sunucusu olup olmadığını doğrular.
+   * Searches for a running OpenCode server within the port range.
+   * Verifies whether each occupied port is a real OpenCode server by running a health check.
    */
   async findRunningServer(start = 4096, end = 4110): Promise<ServerInfo> {
     const find = async (port: number): Promise<ServerInfo> => {
@@ -234,12 +233,12 @@ export class OpenCodeServerManager {
   }
 
   async start(options: ServerOptions = {}): Promise<ServerInfo> {
-    // Zaten bu manager'dan başlatılmış bir process varsa hata ver
+    // Fail when a process started by this manager is already running.
     if (this.process !== null) {
       throw new Error("OpenCode server already running");
     }
 
-    // Önce port aralığında çalışan bir sunucu ara
+    // First, look for a running server in the port range.
     const existing = await this.findRunningServer(options.port ?? 4096, options.port ?? 4110);
     if (existing.running === true && existing.port != null) {
       await logger.logInternal(
@@ -350,7 +349,7 @@ export class OpenCodeServerManager {
   }
 
   async stop(): Promise<void> {
-    // Kendi başlattığımız process varsa → direkt durdur
+    // If the process was started by this manager, stop it directly.
     if (this.process !== null) {
       await logger.logInternal(
         LogCategory.MAIN,

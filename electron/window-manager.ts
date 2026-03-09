@@ -3,6 +3,13 @@ import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { Paths } from "./paths.ts";
 import { buildPreloadAdditionalArguments, type StartupFlags } from "./startup-flags.ts";
+import { loadSettings } from "./settings-manager.ts";
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import { loadAvailableLanguage } from "./i18n/language-service.ts";
+import { translateCatalog } from "../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 
 // Extend Electron types for runtime-supported features
 interface ExtendedWebPreferences extends Electron.WebPreferences {
@@ -15,6 +22,26 @@ let _tray: Tray | null = null;
 let _trayIconPath: string | null = null;
 let _isMinimizedToTray: boolean = false;
 let _mainWindow: BrowserWindow | null = null;
+
+async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function windowT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.window.${key}`, params);
+}
 
 function resolveCorsAllowOrigin(isDev: boolean, referrer?: string): string {
   const fallbackOrigin = isDev ? "http://localhost:5173" : "null";
@@ -94,7 +121,7 @@ function createTrayInternal(): void {
 
     _tray = new Tray(icon.resize({ width: 22, height: 22 }));
 
-    updateTrayMenu();
+    void updateTrayMenu();
 
     _tray.on("click", () => {
       void logger.logInternal(LogCategory.MAIN, LogLevel.DEBUG, "Tray clicked", {});
@@ -126,18 +153,27 @@ function createTrayInternal(): void {
   }
 }
 
-function updateTrayMenu(): void {
+async function updateTrayMenu(): Promise<void> {
+  if (_tray === null) return;
+
+  const [showLabel, fullscreenLabel, quitLabel, tooltip] = await Promise.all([
+    windowT("trayShow"),
+    windowT("trayFullscreen"),
+    windowT("trayQuit"),
+    translateElectronMessage("app.documentTitle"),
+  ]);
+
   if (_tray === null) return;
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: "Göster",
+      label: showLabel,
       click: (): void => {
         restoreFromTray();
       },
     },
     {
-      label: "Tam Ekran",
+      label: fullscreenLabel,
       click: (): void => {
         restoreFromTray();
         if (_mainWindow !== null) {
@@ -147,7 +183,7 @@ function updateTrayMenu(): void {
     },
     { type: "separator" },
     {
-      label: "Çıkış",
+      label: quitLabel,
       click: (): void => {
         _mainWindow?.destroy();
         app.quit();
@@ -155,7 +191,7 @@ function updateTrayMenu(): void {
     },
   ]);
 
-  _tray.setToolTip("Hayalet-ev");
+  _tray.setToolTip(tooltip);
   _tray.setContextMenu(contextMenu);
 }
 
@@ -232,7 +268,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       "Content-Security-Policy": [isDev ? cspDev : cspProd],
     };
 
-    // Local server yanıtlarına CORS header ekle
+    // Add CORS headers to local server responses.
     const url = details.url;
     if (url.includes("127.0.0.1:") && /:\d{4,5}\//.test(url)) {
       const referrer = (details as { referrer?: string }).referrer;
@@ -259,7 +295,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       headers[cspKey] = [updatedCsp];
     }
 
-    // Local server yanıtlarına CORS header ekle
+    // Add CORS headers to local server responses.
     const reqUrl = details.url;
     if (reqUrl.includes("127.0.0.1:") && /:\d{4,5}\//.test(reqUrl)) {
       const referrer = (details as { referrer?: string }).referrer;
@@ -279,7 +315,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   }
 
   // ── Webview Navigation Guard ──────────────────────────────
-  // Provider baseUrl domain'i dışındaki linkleri sistem tarayıcısında aç
+  // Open links outside the provider base URL domain in the system browser.
   setupWebviewNavigationGuard();
 
   win.once("ready-to-show", () => {
@@ -370,17 +406,17 @@ interface AppRestartOptions {
   forceFullRestart?: boolean;
 }
 
-export function appRestart(options: AppRestartOptions = {}): {
+export async function appRestart(options: AppRestartOptions = {}): Promise<{
   success: boolean;
   message?: string;
-} {
+}> {
   try {
     if (!app.isPackaged && options.forceFullRestart !== true) {
       if (_mainWindow !== null) {
         _mainWindow.reload();
         return {
           success: true,
-          message: "Geliştirme modu: Sayfa yenilendi",
+          message: await windowT("devPageReloaded"),
         };
       }
     }
@@ -394,10 +430,10 @@ export function appRestart(options: AppRestartOptions = {}): {
 }
 
 // ── Webview Navigation Guard ──────────────────────────────────────
-// Provider'ın izin verilen domain'leri dışındaki URL'leri
-// sistem tarayıcısında açar, webview içinde kalmasını engeller.
+// Opens URLs outside the provider's allowed domains in the system browser
+// and keeps them out of the webview.
 
-/** Provider baseUrl'lerinden izin verilen domain'leri çıkar */
+/** Extract the allowed domains from provider base URLs. */
 const PROVIDER_ALLOWED_DOMAINS: Record<string, string[]> = {
   // ChatGPT
   "chatgpt.com": ["chatgpt.com", "auth.openai.com", "auth0.openai.com", "openai.com"],
@@ -411,8 +447,8 @@ const PROVIDER_ALLOWED_DOMAINS: Record<string, string[]> = {
 };
 
 /**
- * Verilen URL'nin provider domain'ine ait olup olmadığını kontrol eder.
- * webview partition'ından veya mevcut URL'den provider domain'ini belirler.
+ * Checks whether the target URL belongs to the provider domain.
+ * Determines the provider domain from the webview partition or current URL.
  */
 function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
   let target: URL;
@@ -435,7 +471,7 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
     return true; // Mevcut URL yoksa engelleme
   }
 
-  // Provider'ın izin listesini bul
+  // Find the provider allowlist.
   const allowedDomains = findAllowedDomains(providerHostname);
   if (allowedDomains === null) {
     return true; // Bilinmeyen provider → engelleme
@@ -443,7 +479,7 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
 
   const targetHostname = target.hostname;
 
-  // İzin verilen domain'lerden birine ait mi?
+  // Check whether the hostname matches one of the allowed domains.
   return allowedDomains.some((domain) => {
     return targetHostname === domain || targetHostname.endsWith(`.${domain}`);
   });
@@ -451,14 +487,14 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
 
 /** Hostname'den izin verilen domain listesini bul */
 function findAllowedDomains(hostname: string): string[] | null {
-  // Direkt eşleşme
+  // Direct match.
   for (const [key, domains] of Object.entries(PROVIDER_ALLOWED_DOMAINS)) {
     if (hostname === key || hostname.endsWith(`.${key}`)) {
       return domains;
     }
   }
 
-  // Localhost/IP eşleşme
+  // Localhost/IP match.
   if (hostname === "127.0.0.1" || hostname === "localhost") {
     return PROVIDER_ALLOWED_DOMAINS["127.0.0.1"] ?? null;
   }
@@ -467,16 +503,16 @@ function findAllowedDomains(hostname: string): string[] | null {
 }
 
 /**
- * Tüm webview'lara navigation guard ekler.
- * - will-navigate: Aynı pencerede açılan linkler
- * - setWindowOpenHandler: target="_blank" veya window.open() çağrıları
+ * Adds the navigation guard to every webview.
+ * - will-navigate: links opened in the same window
+ * - setWindowOpenHandler: target="_blank" or window.open() calls
  */
 function setupWebviewNavigationGuard(): void {
   app.on("web-contents-created", (_event, contents) => {
     // Sadece webview tipindeki webContents'lere uygula
     if (contents.getType() !== "webview") return;
 
-    // will-navigate: Kullanıcı webview içinde bir linke tıkladığında
+    // will-navigate: when the user clicks a link inside the webview
     contents.on("will-navigate", (event, url) => {
       const currentUrl = contents.getURL();
       if (!isUrlAllowedInWebview(url, currentUrl)) {
@@ -504,7 +540,7 @@ function setupWebviewNavigationGuard(): void {
         );
         return { action: "deny" };
       }
-      // İzin verilen domain → popup olarak açılmasına izin ver
+      // Allowed domain: permit popup creation.
       return { action: "allow" };
     });
   });

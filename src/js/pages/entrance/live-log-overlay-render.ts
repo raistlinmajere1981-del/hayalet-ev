@@ -1,4 +1,5 @@
 import type { OverlayLogEntry, OverlayState } from "./live-log-overlay-model.js";
+import { formatDateTime, formatTime, t as entranceT } from "./i18n.js";
 
 interface OverlayRenderParams {
   state: OverlayState;
@@ -21,8 +22,29 @@ export function setActiveTabUI(state: OverlayState, appButtons: HTMLButtonElemen
 }
 
 export function setPauseButtonUI(state: OverlayState, pauseBtn: HTMLButtonElement): void {
-  pauseBtn.textContent = state.paused ? "Resume" : "Pause";
+  pauseBtn.textContent = state.paused ? entranceT("liveLog.resume") : entranceT("liveLog.pause");
+  pauseBtn.title = state.paused
+    ? entranceT("liveLog.resumeTitle")
+    : entranceT("liveLog.pauseTitle");
   pauseBtn.classList.toggle("is-active", state.paused);
+}
+
+function formatLevelLabel(level: string): string {
+  switch (level.toLowerCase()) {
+    case "error":
+      return entranceT("liveLog.levels.error");
+    case "warn":
+    case "warning":
+      return entranceT("liveLog.levels.warning");
+    case "info":
+      return entranceT("liveLog.levels.info");
+    case "success":
+      return entranceT("liveLog.levels.success");
+    case "debug":
+      return entranceT("liveLog.levels.debug");
+    default:
+      return level.toUpperCase();
+  }
 }
 
 export function renderDetail(
@@ -31,18 +53,26 @@ export function renderDetail(
   entry: OverlayLogEntry | null
 ): void {
   if (entry === null) {
-    detailMeta.textContent = "No entry selected";
+    detailMeta.textContent = entranceT("liveLog.noEntrySelected");
     detailContext.textContent = "";
     return;
   }
 
-  const when = new Date(entry.timestamp).toLocaleString("tr-TR");
+  const when = formatDateTime(new Date(entry.timestamp));
   const correlation = entry.correlationId ?? "-";
-  detailMeta.textContent =
-    `app=${entry.app} | session=${entry.sessionId} | level=${entry.level} | ` +
-    `source=${entry.source} | category=${entry.category} | ts=${when} | corr=${correlation}`;
+  detailMeta.textContent = entranceT("liveLog.detailMeta", {
+    app: entry.app,
+    sessionId: entry.sessionId,
+    level: formatLevelLabel(entry.level),
+    source: entry.source,
+    category: entry.category,
+    timestamp: when,
+    correlationId: correlation,
+  });
   detailContext.textContent =
-    entry.context !== undefined ? JSON.stringify(entry.context, null, 2) : "No context";
+    entry.context !== undefined
+      ? JSON.stringify(entry.context, null, 2)
+      : entranceT("liveLog.noContext");
 }
 
 export function syncSessionSelect(state: OverlayState, sessionSelect: HTMLSelectElement): void {
@@ -52,7 +82,7 @@ export function syncSessionSelect(state: OverlayState, sessionSelect: HTMLSelect
   if (sessions.length === 0) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "Session yok";
+    option.textContent = entranceT("liveLog.noSessions");
     sessionSelect.appendChild(option);
     sessionSelect.value = "";
     return;
@@ -107,13 +137,16 @@ export function renderEntries(params: OverlayRenderParams): void {
     return haystack.includes(searchFilter);
   });
 
-  metrics.textContent = `${filtered.length} / ${allEntries.length} entries`;
+  metrics.textContent = entranceT("liveLog.metrics", {
+    visible: filtered.length,
+    total: allEntries.length,
+  });
   overlayContent.innerHTML = "";
 
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "log-empty-state";
-    empty.textContent = "Log bulunamadi";
+    empty.textContent = entranceT("liveLog.empty");
     overlayContent.appendChild(empty);
     renderDetail(detailMeta, detailContext, null);
     return;
@@ -127,9 +160,9 @@ export function renderEntries(params: OverlayRenderParams): void {
       (entry.id === state.selectedEntryId ? " is-selected" : "");
     row.dataset["entryId"] = entry.id;
 
-    const time = new Date(entry.timestamp).toLocaleTimeString("tr-TR");
+    const time = formatTime(new Date(entry.timestamp));
     const category = formatLogCategory(entry.category);
-    const safeLevel = escapeHtml(entry.level.toUpperCase());
+    const safeLevel = escapeHtml(formatLevelLabel(entry.level));
 
     row.innerHTML = `
       <div class="log-entry-header">

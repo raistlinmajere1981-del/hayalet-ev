@@ -1,17 +1,28 @@
 import type { CoreEngine } from "./core-engine.js";
 import type { CommandJob } from "./command-manager.js";
+import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
 import { FileManager } from "./file-manager.js";
 import { Logger } from "./logger/index.js";
 
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
+import { AppI18n } from "./i18n/index.js";
 import { getErrorMessage } from "@shared/index.js";
+import { resolveIntlLocale } from "../../../shared/i18n/locale.js";
 
 interface WebviewSendResult {
   success: boolean;
   message?: string;
   code?: string;
+}
+
+function commandExecutorT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.commands.executor.${key}`, params);
+}
+
+function formatCommandExecutorTimestamp(value: Date = new Date()): string {
+  return value.toLocaleString(resolveIntlLocale(AppI18n.getLocale()));
 }
 
 class CommandExecutorClass {
@@ -31,9 +42,9 @@ class CommandExecutorClass {
     const pageMeta = job.meta["page"];
     const page = typeof pageMeta === "string" ? pageMeta : "";
 
-    Logger.info(LogCategory.COMMAND, `Job başlatılıyor: ${job.provider}`, {
+    Logger.info(LogCategory.COMMAND, commandExecutorT("jobStarting", { provider: job.provider }), {
       eventType: "coreengine-ai-send",
-      detail: "Gönderim kuyruğa alındı",
+      detail: commandExecutorT("queuedDetail"),
       provider: job.provider,
       category: "command",
       hasAttachments,
@@ -41,7 +52,7 @@ class CommandExecutorClass {
       messageLength: job.message.length,
       jobId: job.id,
       page,
-      timestamp: new Date().toLocaleString("tr-TR"),
+      timestamp: formatCommandExecutorTimestamp(),
     });
 
     const result = (await WebviewManager.send({
@@ -55,7 +66,10 @@ class CommandExecutorClass {
     if (result === undefined || result.success === false) {
       Logger.error(
         LogCategory.COMMAND,
-        `Job başarısız: ${job.provider} - ${result?.message ?? "E_WEBVIEW_SEND"}`,
+        commandExecutorT("jobFailed", {
+          provider: job.provider,
+          message: result?.message ?? "E_WEBVIEW_SEND",
+        }),
         {
           category: "command",
           provider: job.provider,
@@ -69,15 +83,15 @@ class CommandExecutorClass {
       throw err;
     }
 
-    Logger.info(LogCategory.COMMAND, `Job tamamlandı: ${job.provider} (${duration}ms)`, {
+    Logger.info(LogCategory.COMMAND, commandExecutorT("jobCompleted", { provider: job.provider, duration }), {
       eventType: "coreengine-ai-send",
-      detail: `Gönderim tamamlandı (${duration}ms)`,
+      detail: commandExecutorT("completedDetail", { duration }),
       provider: job.provider,
       category: "command",
       duration,
       jobId: job.id,
       page,
-      timestamp: new Date().toLocaleString("tr-TR"),
+      timestamp: formatCommandExecutorTimestamp(),
     });
 
     return result;
@@ -86,19 +100,17 @@ class CommandExecutorClass {
   handleJobSuccess(job: CommandJob): void {
     TrafficManager.signal(job.provider, "sent", job.message);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       const folder = job.meta?.archiveFolders?.[job.provider];
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       const stagedFiles = job.attachmentsMeta?.staged ?? job.meta?.attachments ?? [];
 
       if (stagedFiles.length > 0) {
         WebviewManager.addPendingArchive(job.provider, {
           jobId: job.id,
-          folder: folder ?? "", // folder can be empty, will be determined from conversationId
+          folder: folder ?? "",
           temp: job.attachmentsMeta?.temp ?? [],
-          stagedFiles: stagedFiles, // Pass stagedFiles to PendingArchiveHandler
+          stagedFiles: stagedFiles,
         } as { jobId: string; folder: string; temp?: string[]; stagedFiles?: unknown[] });
-        Logger.info(LogCategory.COMMAND, "Archive copy deferred until sync", {
+        Logger.info(LogCategory.COMMAND, commandExecutorT("archiveCopyDeferred"), {
           category: "archive",
           jobId: job.id,
           provider: job.provider,
@@ -112,7 +124,7 @@ class CommandExecutorClass {
         );
       }
     } catch (err) {
-      Logger.warn(LogCategory.COMMAND, `Sync/temizlik hatası: ${getErrorMessage(err)}`, {
+      Logger.warn(LogCategory.COMMAND, commandExecutorT("syncCleanupError", { message: getErrorMessage(err) }), {
         category: "core",
         jobId: job.id,
       });
@@ -126,9 +138,9 @@ class CommandExecutorClass {
       job.id,
       (job.attachmentsMeta?.temp ?? []).map((t: string) => ({ tempPath: t }))
     ).catch((err) => {
-      Logger.error(LogCategory.COMMAND, "commandFail error", { error: err });
+      Logger.error(LogCategory.COMMAND, commandExecutorT("commandFailError"), { error: err });
     });
-    Logger.error(LogCategory.COMMAND, `Komut hata: ${job.provider} - ${errorMessage}`, {
+    Logger.error(LogCategory.COMMAND, commandExecutorT("commandError", { provider: job.provider, message: errorMessage }), {
       category: "command",
       jobId: job.id,
     });

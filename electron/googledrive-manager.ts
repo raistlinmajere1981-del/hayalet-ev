@@ -5,6 +5,12 @@ import { loadSettings, saveSettings } from "./settings-manager.ts";
 import { shouldConvertToGoogleDoc } from "./googledrive-utils.ts";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import { loadAvailableLanguage } from "./i18n/language-service.ts";
+import { translateCatalog } from "../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 
 const logger = getLoggerCore();
 
@@ -17,6 +23,9 @@ interface GoogleDriveConfig {
 }
 
 interface Settings {
+  general?: {
+    language?: unknown;
+  };
   integrations?: {
     googledrive?: GoogleDriveConfig;
   };
@@ -48,6 +57,36 @@ function safeGet(obj: unknown, path: string, def: unknown = ""): unknown {
   }
 }
 
+async function translateElectronMessage(
+  key: string,
+  params?: TranslationParams,
+  settings?: Settings
+): Promise<string> {
+  let resolvedSettings = settings;
+  if (resolvedSettings === undefined) {
+    try {
+      resolvedSettings = ((await loadSettings()) ?? {}) as Settings;
+    } catch {
+      resolvedSettings = {};
+    }
+  }
+
+  const locale = normalizeAppLanguage(resolvedSettings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function googleDriveT(
+  key: string,
+  params?: TranslationParams,
+  settings?: Settings
+): Promise<string> {
+  return await translateElectronMessage(`electron.googleDrive.${key}`, params, settings);
+}
+
 export async function googledriveStartAuth(
   _event: IpcMainInvokeEvent
 ): Promise<{ success: boolean; authUrl?: string; message?: string }> {
@@ -65,7 +104,7 @@ export async function googledriveStartAuth(
     if (clientId.length === 0 || clientSecret.length === 0) {
       return {
         success: false,
-        message: "Google Client ID/Secret ayarlı değil",
+        message: await googleDriveT("clientConfigMissing", undefined, settings),
       };
     }
 
@@ -84,7 +123,7 @@ export async function googledriveStartAuth(
   } catch (err: unknown) {
     return {
       success: false,
-      message: err instanceof Error ? err.message : "auth start failed",
+      message: err instanceof Error ? err.message : await googleDriveT("authStartFailed"),
     };
   }
 }
@@ -94,7 +133,9 @@ export async function googledriveExchangeCode(
   code: string
 ): Promise<{ success: boolean; account?: string; message?: string }> {
   try {
-    if (code.length === 0) return { success: false, message: "Yetkilendirme kodu eksik" };
+    if (code.length === 0) {
+      return { success: false, message: await googleDriveT("authorizationCodeMissing") };
+    }
     let settings: Settings = {};
     try {
       settings = (await loadSettings()) ?? {};
@@ -107,7 +148,7 @@ export async function googledriveExchangeCode(
     if (clientId.length === 0 || clientSecret.length === 0) {
       return {
         success: false,
-        message: "Google Client ID/Secret ayarlı değil",
+        message: await googleDriveT("clientConfigMissing", undefined, settings),
       };
     }
     const redirect = "urn:ietf:wg:oauth:2.0:oob";
@@ -150,7 +191,7 @@ export async function googledriveExchangeCode(
   } catch (err: unknown) {
     return {
       success: false,
-      message: err instanceof Error ? err.message : "exchange failed",
+      message: err instanceof Error ? err.message : await googleDriveT("exchangeFailed"),
     };
   }
 }
@@ -184,7 +225,7 @@ export async function googledriveDisconnect(
   } catch (err: unknown) {
     return {
       success: false,
-      message: err instanceof Error ? err.message : "disconnect failed",
+      message: err instanceof Error ? err.message : await googleDriveT("disconnectFailed"),
     };
   }
 }
@@ -195,7 +236,9 @@ export async function googledriveUpload(
 ): Promise<{ success: boolean; uploadedLinks?: unknown[]; errors?: unknown[]; message?: string }> {
   try {
     const files = Array.isArray(payload.files) ? payload.files : [];
-    if (files.length === 0) return { success: false, message: "Dosya yok" };
+    if (files.length === 0) {
+      return { success: false, message: await googleDriveT("noFilesProvided") };
+    }
     let settings: Settings = {};
     try {
       settings = (await loadSettings()) ?? {};
@@ -207,7 +250,10 @@ export async function googledriveUpload(
     const clientSecret = gconf.clientSecret ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
     const tokens = gconf.tokens ?? null;
     if (clientId.length === 0 || clientSecret.length === 0 || tokens === null) {
-      return { success: false, message: "Google Drive yetkilendirmesi eksik" };
+      return {
+        success: false,
+        message: await googleDriveT("authorizationMissing", undefined, settings),
+      };
     }
     const redirect = "urn:ietf:wg:oauth:2.0:oob";
     const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirect);
@@ -275,7 +321,13 @@ export async function googledriveUpload(
           !result.success
       )
       .map((result) => result.error);
-    if (uploadedLinks.length === 0) return { success: false, message: "Yükleme başarısız", errors };
+    if (uploadedLinks.length === 0) {
+      return {
+        success: false,
+        message: await googleDriveT("uploadFailed", undefined, settings),
+        errors,
+      };
+    }
     return {
       success: true,
       uploadedLinks,
@@ -284,7 +336,7 @@ export async function googledriveUpload(
   } catch (err: unknown) {
     return {
       success: false,
-      message: err instanceof Error ? err.message : "upload failed",
+      message: err instanceof Error ? err.message : await googleDriveT("uploadFailed"),
     };
   }
 }

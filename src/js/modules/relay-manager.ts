@@ -4,9 +4,9 @@ import type { CoreEngine } from "./core-engine.js";
 /**
  * RelayManager - Relay Orchestrator
  *
- * Bu modül tüm relay tiplerini yönetir ve koordine eder:
- * - AIAIRelay: İki AI arasındaki iletişim
- * - AIAsistanRelay: AI ve Asistan (AI0) arasındaki iletişim
+ * This module manages and coordinates all relay types:
+ * - AIAIRelay: communication between two AIs
+ * - AIAssistantRelay: communication between the AI and Assistant (AI0)
  */
 
 import { TrafficManager } from "./traffic-manager.js";
@@ -16,12 +16,12 @@ import { CatchManager } from "./catch-manager.js";
 import { Logger } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AIAIRelay } from "./relay/ai-ai-relay.js";
-import { AIAsistanRelay } from "./relay/ai-asistan-relay.js";
+import { AIAssistantRelay } from "./relay/ai-assistant-relay.js";
 
 class RelayManagerClass {
   coreEngine: typeof CoreEngine | null;
   _aiaiRelay: AIAIRelay | null;
-  _aiAsistanRelay: AIAsistanRelay | null;
+  _aiAssistantRelay: AIAssistantRelay | null;
   _boundUpdate: typeof this._onTrafficUpdate;
   _boundSyncComplete: (event: Event) => void;
   _trafficUnsubscribe: (() => void) | null;
@@ -30,7 +30,7 @@ class RelayManagerClass {
   constructor() {
     this.coreEngine = null;
     this._aiaiRelay = null;
-    this._aiAsistanRelay = null;
+    this._aiAssistantRelay = null;
     this._boundUpdate = this._onTrafficUpdate.bind(this);
     this._boundSyncComplete = this._onSyncComplete.bind(this);
     this._trafficUnsubscribe = null;
@@ -41,7 +41,7 @@ class RelayManagerClass {
     this.coreEngine = coreEngine;
 
     this._aiaiRelay = new AIAIRelay(coreEngine);
-    this._aiAsistanRelay = new AIAsistanRelay(coreEngine);
+    this._aiAssistantRelay = new AIAssistantRelay(coreEngine);
 
     if (this._trafficUnsubscribe !== null) {
       this._trafficUnsubscribe();
@@ -52,21 +52,22 @@ class RelayManagerClass {
 
     window.addEventListener("sync-complete", this._boundSyncComplete);
 
-    Logger.info(LogCategory.RELAY, "RelayManager initialized with AI-AI and AI-Asistan relays");
+    Logger.info(LogCategory.RELAY, "RelayManager initialized with AI-AI and AI-Assistant relays");
   }
 
   /**
-   * Herhangi bir relay aktif mi?
+   * Checks whether any relay is active.
    * @returns {boolean}
    */
   isActive(): boolean {
     const ai1Active = this._aiaiRelay !== null && this._aiaiRelay.isActive === true;
-    const asistanActive = this._aiAsistanRelay !== null && this._aiAsistanRelay.isActive === true;
-    return ai1Active || asistanActive;
+    const assistantRelayActive =
+      this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true;
+    return ai1Active || assistantRelayActive;
   }
 
   /**
-   * AI-AI relay aktif mi?
+   * Checks whether the AI-AI relay is active.
    * @returns {boolean}
    */
   isAIAIActive(): boolean {
@@ -74,19 +75,19 @@ class RelayManagerClass {
   }
 
   /**
-   * AI-Asistan relay aktif mi?
+   * Checks whether the AI-Assistant relay is active.
    * @returns {boolean}
    */
-  isAIAsistanActive(): boolean {
-    return this._aiAsistanRelay !== null && this._aiAsistanRelay.isActive === true;
+  isAIAssistantActive(): boolean {
+    return this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true;
   }
 
   /**
-   * AI-Asistan relay kaynak slotunu döndür
+   * Returns the source slot of the AI-Assistant relay.
    * @returns {string|null}
    */
-  getAIAsistanSourceSlot(): string | null {
-    return this._aiAsistanRelay !== null ? this._aiAsistanRelay.sourceSlot : null;
+  getAIAssistantSourceSlot(): string | null {
+    return this._aiAssistantRelay !== null ? this._aiAssistantRelay.sourceSlot : null;
   }
 
   async startSession(opts = {}): Promise<void> {
@@ -113,28 +114,28 @@ class RelayManagerClass {
     }
   }
 
-  async startAIAsistanSession(sourceSlot: string): Promise<void> {
+  async startAIAssistantSession(sourceSlot: string): Promise<void> {
     if (this._aiaiRelay !== null && this._aiaiRelay.isActive === true) {
       await this._aiaiRelay.stop();
     }
 
-    if (this._aiAsistanRelay !== null) {
-      await this._aiAsistanRelay.start({ sourceSlot });
+    if (this._aiAssistantRelay !== null) {
+      await this._aiAssistantRelay.start({ sourceSlot });
     }
   }
 
-  async stopAIAsistanSession(): Promise<void> {
-    if (this._aiAsistanRelay !== null) {
-      await this._aiAsistanRelay.stop();
+  async stopAIAssistantSession(): Promise<void> {
+    if (this._aiAssistantRelay !== null) {
+      await this._aiAssistantRelay.stop();
     }
   }
 
-  async processAsistanCommandCatch(syncResult: Record<string, unknown> | null): Promise<boolean> {
+  async processAssistantCommandCatch(syncResult: Record<string, unknown> | null): Promise<boolean> {
     try {
       const settings = SettingsManager.getSnapshot() as {
-        asistanSlot?: { catchCommands?: boolean };
+        assistantSlot?: { catchCommands?: boolean };
       };
-      const catchEnabled = settings.asistanSlot?.catchCommands === true;
+      const catchEnabled = settings.assistantSlot?.catchCommands === true;
       if (!catchEnabled) {
         return false;
       }
@@ -188,13 +189,13 @@ class RelayManagerClass {
 
       return true;
     } catch (err) {
-      Logger.warn(LogCategory.RELAY, `Asistan command catch error: ${getErrorMessage(err)}`);
+      Logger.warn(LogCategory.RELAY, `Assistant command catch error: ${getErrorMessage(err)}`);
       return false;
     }
   }
 
   /**
-   * TrafficManager update'lerini işle
+   * Handles TrafficManager updates.
    * @private
    */
   async _onTrafficUpdate(snapshot: {
@@ -217,7 +218,7 @@ class RelayManagerClass {
             string,
             unknown
           >;
-          const handled = await this.processAsistanCommandCatch(ai0SyncResult);
+          const handled = await this.processAssistantCommandCatch(ai0SyncResult);
           if (handled) {
             return;
           }
@@ -228,10 +229,10 @@ class RelayManagerClass {
       let thinkingComplete = false;
 
       if (
-        this._aiAsistanRelay !== null &&
-        this._aiAsistanRelay.handlesProvider(provider) === true
+        this._aiAssistantRelay !== null &&
+        this._aiAssistantRelay.handlesProvider(provider) === true
       ) {
-        activeRelay = this._aiAsistanRelay;
+        activeRelay = this._aiAssistantRelay;
         thinkingComplete = activeRelay.checkThinkingTransition(provider, currentThinking);
       } else if (this._aiaiRelay !== null && this._aiaiRelay.handlesProvider(provider) === true) {
         activeRelay = this._aiaiRelay;
@@ -239,7 +240,7 @@ class RelayManagerClass {
       }
 
       if (activeRelay !== null && thinkingComplete === true) {
-        const shouldUseLatestOnlySync = activeRelay === this._aiAsistanRelay && provider === "ai0";
+        const shouldUseLatestOnlySync = activeRelay === this._aiAssistantRelay && provider === "ai0";
         const syncResult = (await (shouldUseLatestOnlySync
           ? WebviewManager.syncLatestMessage(provider)
           : WebviewManager.syncConversation(provider, null, {}))) as Record<string, unknown>;
@@ -254,7 +255,7 @@ class RelayManagerClass {
   }
 
   /**
-   * AI-AI Relay instance'ına erişim
+   * Returns the AI-AI relay instance.
    * @returns {AIAIRelay}
    */
   get aiaiRelay(): AIAIRelay | null {
@@ -262,11 +263,11 @@ class RelayManagerClass {
   }
 
   /**
-   * AI-Asistan Relay instance'ına erişim
-   * @returns {AIAsistanRelay}
+   * Returns the AI-Assistant relay instance.
+   * @returns {AIAssistantRelay}
    */
-  get aiAsistanRelay(): AIAsistanRelay | null {
-    return this._aiAsistanRelay;
+  get aiAssistantRelay(): AIAssistantRelay | null {
+    return this._aiAssistantRelay;
   }
 
   _onSyncComplete(event: Event): void {
@@ -300,14 +301,14 @@ class RelayManagerClass {
         }
 
         if (
-          this._aiAsistanRelay === null ||
-          this._aiAsistanRelay.isActive === false ||
-          this._aiAsistanRelay.handlesProvider(provider) === false
+          this._aiAssistantRelay === null ||
+          this._aiAssistantRelay.isActive === false ||
+          this._aiAssistantRelay.handlesProvider(provider) === false
         ) {
           return;
         }
 
-        await this._aiAsistanRelay.handleThinkingComplete(
+        await this._aiAssistantRelay.handleThinkingComplete(
           provider,
           result as unknown as Record<string, unknown>
         );

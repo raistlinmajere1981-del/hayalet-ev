@@ -6,16 +6,15 @@ import { RelayManager } from "../../src/js/modules/relay-manager.ts";
 import { SettingsManager } from "../../src/js/modules/settings-manager.ts";
 import { serverCommands } from "../../src/js/modules/server-commands.ts";
 import { SlotController } from "../../src/js/modules/slot-controller.ts";
-import { RelayManager } from "../../src/js/modules/relay-manager.ts";
 import {
-  asistanAISendHandler,
-  aiAsistanSendHandler,
+  assistantAISendHandler,
+  aiAssistantSendHandler,
 } from "../../src/js/modules/commands/ai-chat-commands.ts";
 
-test("AsistanAISend sends cleaned text to explicit target and stops relay", async () => {
+test("AssistantAISend sends cleaned text to explicit target and stops relay", async () => {
   const originalSendMessage = CoreEngine.sendMessage;
-  const originalIsAIAsistanActive = RelayManager.isAIAsistanActive;
-  const originalStopAIAsistanSession = RelayManager.stopAIAsistanSession;
+  const originalIsAIAssistantActive = RelayManager.isAIAssistantActive;
+  const originalStopAIAssistantSession = RelayManager.stopAIAssistantSession;
   const originalIsConnected = SlotController.isConnected;
 
   let sentProvider = "";
@@ -28,16 +27,16 @@ test("AsistanAISend sends cleaned text to explicit target and stops relay", asyn
       sentText = text;
       return { success: true };
     };
-    RelayManager.isAIAsistanActive = () => true;
-    RelayManager.stopAIAsistanSession = async () => {
+    RelayManager.isAIAssistantActive = () => true;
+    RelayManager.stopAIAssistantSession = async () => {
       stopped = true;
     };
     SlotController.isConnected = () => true;
 
-    const result = await asistanAISendHandler({
+    const result = await assistantAISendHandler({
       provider: "ai0",
       args: "ai2",
-      text: "++cmd:AsistanAISend(ai2) Merhaba AI2",
+      text: "++cmd:AssistantAISend(ai2) Merhaba AI2",
       source: "ai0",
     });
 
@@ -47,13 +46,13 @@ test("AsistanAISend sends cleaned text to explicit target and stops relay", asyn
     assert.equal(stopped, true);
   } finally {
     CoreEngine.sendMessage = originalSendMessage;
-    RelayManager.isAIAsistanActive = originalIsAIAsistanActive;
-    RelayManager.stopAIAsistanSession = originalStopAIAsistanSession;
+    RelayManager.isAIAssistantActive = originalIsAIAssistantActive;
+    RelayManager.stopAIAssistantSession = originalStopAIAssistantSession;
     SlotController.isConnected = originalIsConnected;
   }
 });
 
-test("AsistanAISend fails when target cannot be resolved", async () => {
+test("AssistantAISend fails when target cannot be resolved", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
   const originalSendMessage = CoreEngine.sendMessage;
   let sendCalled = false;
@@ -68,10 +67,10 @@ test("AsistanAISend fails when target cannot be resolved", async () => {
       return { success: true };
     };
 
-    const result = await asistanAISendHandler({
+    const result = await assistantAISendHandler({
       provider: "ai0",
       args: "",
-      text: "++cmd:AsistanAISend() Merhaba",
+      text: "++cmd:AssistantAISend() Merhaba",
       source: "ai0",
     });
 
@@ -84,7 +83,7 @@ test("AsistanAISend fails when target cannot be resolved", async () => {
   }
 });
 
-test("AIAsistanSend connects ai0 if needed and forwards cleaned message", async () => {
+test("AIAssistantSend connects ai0 if needed and forwards cleaned message", async () => {
   const originalSendMessage = CoreEngine.sendMessage;
   const originalIsConnected = SlotController.isConnected;
   const originalConnect = SlotController.connect;
@@ -108,10 +107,10 @@ test("AIAsistanSend connects ai0 if needed and forwards cleaned message", async 
       return { success: true };
     };
 
-    const result = await aiAsistanSendHandler({
+    const result = await aiAssistantSendHandler({
       provider: "ai1",
       args: "ai1",
-      text: "++cmd:AIAsistanSend(ai1) Asistana iletilecek mesaj",
+      text: "++cmd:AIAssistantSend(ai1) Asistana iletilecek mesaj",
       source: "ai1",
     });
 
@@ -126,7 +125,7 @@ test("AIAsistanSend connects ai0 if needed and forwards cleaned message", async 
   }
 });
 
-test("RelayManager catches ai0 last-message commands only when asistan checkbox enabled", async () => {
+test("RelayManager catches ai0 last-message commands only when assistant checkbox is enabled", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
   const originalCoreEngine = RelayManager.coreEngine;
 
@@ -145,27 +144,27 @@ test("RelayManager catches ai0 last-message commands only when asistan checkbox 
     } as never;
 
     SettingsManager.getSnapshot = () => ({
-      asistanSlot: { catchCommands: false },
+      assistantSlot: { catchCommands: false },
     }) as never;
 
-    const disabledResult = await RelayManager.processAsistanCommandCatch({
-      messages: [{ role: "assistant", text: "++cmd:AsistanAISend(ai1) Merhaba" }],
+    const disabledResult = await RelayManager.processAssistantCommandCatch({
+      messages: [{ role: "assistant", text: "++cmd:AssistantAISend(ai1) Merhaba" }],
     });
 
     assert.equal(disabledResult, false);
     assert.equal(caught.length, 0);
 
     SettingsManager.getSnapshot = () => ({
-      asistanSlot: { catchCommands: true },
+      assistantSlot: { catchCommands: true },
     }) as never;
 
-    const enabledResult = await RelayManager.processAsistanCommandCatch({
-      messages: [{ role: "assistant", text: "++cmd:AsistanAISend(ai1) Merhaba" }],
+    const enabledResult = await RelayManager.processAssistantCommandCatch({
+      messages: [{ role: "assistant", text: "++cmd:AssistantAISend(ai1) Merhaba" }],
     });
 
     assert.equal(enabledResult, true);
     assert.equal(caught.length, 1);
-    assert.equal(caught[0]?.command, "AsistanAISend");
+    assert.equal(caught[0]?.command, "AssistantAISend");
     assert.equal(caught[0]?.args, "ai1");
     assert.equal(caught[0]?.provider, "ai0");
   } finally {
@@ -175,14 +174,17 @@ test("RelayManager catches ai0 last-message commands only when asistan checkbox 
 });
 
 test("server commands block assistant-only command on ai1 and general command on ai0", async () => {
-  const assistantOnlyFromAi1 = (await serverCommands.run("AsistanAISend", {
+  const assistantOnlyFromAi1 = (await serverCommands.run("AssistantAISend", {
     provider: "ai1",
     args: "ai2",
     text: "test",
   })) as { success?: boolean; message?: string };
 
   assert.equal(assistantOnlyFromAi1.success, false);
-  assert.match(String(assistantOnlyFromAi1.message), /yetki|izin|allowed|kullanamaz|kullanilabilir/i);
+  assert.match(
+    String(assistantOnlyFromAi1.message),
+    /yetki|izin|allowed|kullanamaz|kullan[ıi]labilir/i
+  );
 
   const nonAssistantFromAi0 = (await serverCommands.run("AIAIChatStart", {
     provider: "ai0",
@@ -196,16 +198,19 @@ test("server commands block assistant-only command on ai1 and general command on
 test("server commands expose AI1-AI2 and AI0 categories", () => {
   const categoryApi = serverCommands as unknown as {
     listByCategory?: (category: string) => string[];
+    has?: (commandName: string) => boolean;
   };
 
   assert.equal(typeof categoryApi.listByCategory, "function");
+  assert.equal(typeof categoryApi.has, "function");
 
   const aiCategory = categoryApi.listByCategory?.("ai1-ai2") ?? [];
-  const asistanCategory = categoryApi.listByCategory?.("ai0") ?? [];
+  const assistantCategory = categoryApi.listByCategory?.("ai0") ?? [];
 
   assert.equal(aiCategory.includes("AIAIChatStart"), true);
-  assert.equal(asistanCategory.includes("AsistanAISend"), true);
-  assert.equal(asistanCategory.includes("AIAIChatStart"), false);
+  assert.equal(assistantCategory.includes("AssistantAISend"), true);
+  assert.equal(assistantCategory.includes("AIAIChatStart"), false);
+  assert.equal(categoryApi.has?.("AsistanAISend"), true);
 });
 
 test("server commands block disabled commands per slot", async () => {
@@ -217,7 +222,7 @@ test("server commands block disabled commands per slot", async () => {
         ai1: { disabledCommands: ["PlayMusic"] },
         ai2: { disabledCommands: [] },
       },
-      asistanSlot: { disabledCommands: [] },
+      assistantSlot: { disabledCommands: [] },
     }) as never;
 
     const disabled = (await serverCommands.run("PlayMusic", {
@@ -232,7 +237,7 @@ test("server commands block disabled commands per slot", async () => {
   }
 });
 
-test("AIAsistanSend test mode does not connect or send to ai0", async () => {
+test("AIAssistantSend test mode does not connect or send to ai0", async () => {
   const originalSendMessage = CoreEngine.sendMessage;
   const originalConnect = SlotController.connect;
   const originalIsConnected = SlotController.isConnected;
@@ -251,10 +256,10 @@ test("AIAsistanSend test mode does not connect or send to ai0", async () => {
       return { success: true };
     };
 
-    const result = await aiAsistanSendHandler({
+    const result = await aiAssistantSendHandler({
       provider: "ai1",
       args: "ai1",
-      text: "++cmd:AIAsistanSend(ai1) test mesajı",
+      text: "++cmd:AIAssistantSend(ai1) test mesajı",
       testMode: true,
       source: "manual",
     });
@@ -269,7 +274,7 @@ test("AIAsistanSend test mode does not connect or send to ai0", async () => {
   }
 });
 
-test("AsistanAISend test mode does not send to target slot", async () => {
+test("AssistantAISend test mode does not send to target slot", async () => {
   const originalGetSnapshot = SettingsManager.getSnapshot;
   const originalSendMessage = CoreEngine.sendMessage;
   const originalIsConnected = SlotController.isConnected;
@@ -278,7 +283,7 @@ test("AsistanAISend test mode does not send to target slot", async () => {
 
   try {
     SettingsManager.getSnapshot = () => ({
-      assistants: { lastActiveRelay: "ai1 - asistan" },
+      assistants: { lastActiveRelay: "ai1 - assistant" },
     }) as never;
     SlotController.isConnected = () => true;
     CoreEngine.sendMessage = async () => {
@@ -286,10 +291,10 @@ test("AsistanAISend test mode does not send to target slot", async () => {
       return { success: true };
     };
 
-    const result = await asistanAISendHandler({
+    const result = await assistantAISendHandler({
       provider: "ai0",
       args: "ai1",
-      text: "++cmd:AsistanAISend(ai1) test mesajı",
+      text: "++cmd:AssistantAISend(ai1) test mesajı",
       testMode: true,
       source: "manual",
     });

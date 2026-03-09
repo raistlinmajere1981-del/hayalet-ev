@@ -1,6 +1,7 @@
 import type { OpencodeUiBootstrapDeps, OpencodeUiToolsReadyPayload } from "./bootstrap-actions.js";
 import { initUIHelpers } from "./ui-helpers.js";
 import type { ByIdFn } from "./host-helpers.js";
+import { t } from "./i18n.js";
 import type { RuntimeState } from "./types.js";
 
 interface BootstrapOpencodeUiAppOptions {
@@ -56,7 +57,7 @@ export async function bootstrapOpencodeUiApp(
   options.initSessionEvents();
   options.initChatEvents();
 
-  options.sendStageToHost("OpenCode UI basladi", "Sayfa modulleri hazirlaniyor");
+  options.sendStageToHost(t("bootstrap.startedTitle"), t("bootstrap.startedSubtitle"));
 
   try {
     await options.runOpencodeUiBootstrapPipeline({
@@ -66,7 +67,10 @@ export async function bootstrapOpencodeUiApp(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    options.sendStageToHost("Baglanti kismi", `Bootstrap hatasi: ${message}`);
+    options.sendStageToHost(
+      t("bootstrap.connectionPhaseTitle"),
+      t("bootstrap.bootstrapError", { message })
+    );
     options.sendToolsReadyToHost({
       ready: true,
       unresolvedServers: [],
@@ -82,9 +86,12 @@ export async function bootstrapOpencodeUiApp(
     const message = error instanceof Error ? error.message : String(error);
     const errorArea = options.byId<HTMLElement>("error-area");
     if (errorArea != null) {
-      errorArea.textContent = `Hata: ${message}`;
+      errorArea.textContent = t("bootstrap.errorPrefix", { message });
     }
-    options.sendStageToHost("Baglanti kismi", `Session yukleme hatasi: ${message}`);
+    options.sendStageToHost(
+      t("bootstrap.connectionPhaseTitle"),
+      t("bootstrap.sessionLoadError", { message })
+    );
   }
 
   options.startPeriodicRefresh();

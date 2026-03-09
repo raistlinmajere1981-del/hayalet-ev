@@ -16,16 +16,16 @@
   backdrop-filter: var(--glass-blur);
 }
 
-/* Shared 3D effect for wide/asistan clusters */
+/* Shared 3D effect for wide/assistant clusters */
 .indicator-cluster-wide,
-.indicator-cluster-asistan {
+.indicator-cluster-assistant {
   flex-direction: row;
   box-shadow: var(--shadow-3d-inset);
   transition: var(--transition-normal);
 }
 
 .indicator-cluster-wide.is-connected,
-.indicator-cluster-asistan.is-connected {
+.indicator-cluster-assistant.is-connected {
   background: var(--bg-glass-hover);
   border-color: var(--color-success);
   box-shadow: var(--shadow-3d-inset-connected);
@@ -40,19 +40,19 @@
   gap: var(--space-4);
 }
 
-/* Asistan cluster - kompakt (shared base + specific overrides merged) */
-.indicator-cluster-asistan {
+/* Assistant cluster - compact (shared base + specific overrides merged) */
+.indicator-cluster-assistant {
   flex: 0 0 auto;
   padding: var(--space-1-5) var(--space-3);
   align-items: flex-start;
   gap: var(--space-3);
 }
 
-.indicator-cluster-asistan .indicator-content {
+.indicator-cluster-assistant .indicator-content {
   gap: var(--space-1);
 }
 
-.indicator-cluster-asistan .indicator-dots-row {
+.indicator-cluster-assistant .indicator-dots-row {
   gap: var(--space-2);
 }
 
@@ -92,7 +92,7 @@
 
 /* Bağlı durumunda accent border */
 .indicator-cluster-wide.is-connected .indicator-avatar-lg,
-.indicator-cluster-asistan.is-connected .indicator-avatar-md {
+.indicator-cluster-assistant.is-connected .indicator-avatar-md {
   border-color: var(--color-accent);
 }
 
@@ -292,7 +292,7 @@
 
 /* === THINKING-ACTIVE CLUSTER GLOW === */
 .indicator-cluster-wide.thinking-active,
-.indicator-cluster-asistan.thinking-active {
+.indicator-cluster-assistant.thinking-active {
   box-shadow:
     var(--shadow-3d-inset),
     0 0 12px var(--amber-alpha-25);

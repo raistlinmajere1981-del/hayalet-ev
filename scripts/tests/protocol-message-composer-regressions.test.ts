@@ -13,9 +13,9 @@ test("composeProtocolMessage prepends a standardized protocol header", () => {
 });
 
 test("composeProtocolMessage falls back to header-only when body is empty", () => {
-  const message = composeProtocolMessage("[STOP][ANALYZE][AI-ASISTAN]", "   ");
+  const message = composeProtocolMessage("[STOP][ANALYZE][AI-ASSISTANT]", "   ");
 
-  assert.equal(message, `${PROTOCOL_HEADER_TAG}[STOP][ANALYZE][AI-ASISTAN]`);
+  assert.equal(message, `${PROTOCOL_HEADER_TAG}[STOP][ANALYZE][AI-ASSISTANT]`);
 });
 
 test("composeProtocolMessage keeps spacing for non-bracket legacy headers", () => {

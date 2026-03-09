@@ -1,19 +1,15 @@
 /**
- * Advanced File Edit Operations
+ * Advanced file edit operations.
  *
- * Pattern-based dosya edit with safety features:
- * - Atomic mode (all_or_nothing): Tek edit fail olursa hiçbiri yazılmaz
- * - Overlap/conflict detection: Edit çakışmaları apply öncesi yakalanır
- * - Format-preserving whitespace matching: Esnek eşleşme, orijinal format korunur
- * - Line-ending normalization: LF/CRLF/auto/preserve
- * - Match scope control: first/last/all/indexes
- * - Rich output: Her edit için satır, match count, süre bilgisi
+ * Supports atomic mode, overlap detection, whitespace-tolerant matching,
+ * line-ending normalization, match scope control, and rich result output.
  *
  * @module fs/basic/edit
  */
 
 import { readFile, writeFile } from "fs/promises";
 import { logToolError } from "../../../utils/mcp-logger.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import { diffContent } from "../../../utils/diff-utils.js";
 import { applyEdit } from "./edit/apply.js";
 import { detectConflicts } from "./edit/conflict.js";
@@ -22,8 +18,21 @@ import { formatOutput } from "./edit/format-output.js";
 import type { EditFileOptions, EditResult, ConflictInfo, EOLMode } from "./edit/types.js";
 import { checkBracketBalance } from "./edit/validator.js";
 import type { ToolResult } from "@shared/index-mcp.js";
+import type { TranslationParams } from "../../../../types/i18n.js";
 
 export type { EOLMode, EditFileOptions, EditResult, FileEdit, MatchScope } from "./edit/types.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function editT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.edit.${key}`, params);
+}
+
+const editToolDefinitionTranslator = createMcpTranslatorSync();
+
+function editToolDefinitionT(key: string, params?: TranslationParams): string {
+  return editToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.edit.${key}`, params);
+}
 
 /**
  * Apply multiple edits to a file with pattern matching.
@@ -42,6 +51,7 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
   } = options;
 
   const startTime = performance.now();
+  const t = await createMcpTranslator();
 
   try {
     if (edits.length === 0) {
@@ -49,7 +59,7 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
         content: [
           {
             type: "text",
-            text: `⚠️ edits dizisi boş: ${filePath}\nHiçbir değişiklik yapılmadı. En az bir {old_text, new_text} edit gereklidir.`,
+            text: `${editT(t, "errors.emptyEdits", { filePath })}\n${editT(t, "errors.emptyEditsHint")}`,
           },
         ],
         isError: true,
@@ -61,7 +71,7 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
       content = await readFile(filePath, "utf-8");
     } catch {
       return {
-        content: [{ type: "text", text: `❌ Dosya bulunamadı: ${filePath}` }],
+        content: [{ type: "text", text: editT(t, "errors.fileNotFound", { filePath }) }],
         isError: true,
       };
     }
@@ -79,13 +89,21 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
     const conflicts = detectConflicts(content, edits);
     if (conflicts.length > 0 && allOrNothing) {
       const conflictLines = conflicts.map(
-        (c: ConflictInfo) => `  ⚠️ Edit ${c.editA + 1} ↔ Edit ${c.editB + 1}: ${c.reason}`
+        (c: ConflictInfo) =>
+          `  ${editT(t, "output.editPairReason", {
+            editA: c.editA + 1,
+            editB: c.editB + 1,
+            reason:
+              c.reasonKey != null
+                ? editT(t, c.reasonKey, c.reasonParams)
+                : (c.reason ?? editT(t, "output.unknownError")),
+          })}`
       );
       return {
         content: [
           {
             type: "text",
-            text: `❌ Conflict detected (atomic mode):\n${conflictLines.join("\n")}\n\nHiçbir değişiklik uygulanmadı. Çakışmaları çözüp tekrar deneyin.`,
+            text: `${editT(t, "errors.atomicConflictTitle")}\n${conflictLines.join("\n")}\n\n${editT(t, "errors.atomicConflictHint")}`,
           },
         ],
         isError: true,
@@ -112,14 +130,23 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
       const elapsed = Math.round(performance.now() - startTime);
       const failDetails = results
         .filter((r) => !r.success)
-        .map((r) => `  ❌ Edit ${r.index + 1}: ${r.error ?? "unknown"}`)
+        .map((r) => {
+          const detail =
+            r.errorKey != null
+              ? editT(t, r.errorKey, r.errorParams)
+              : (r.error ?? editT(t, "output.unknownError"));
+          return `  ❌ Edit ${r.index + 1}: ${detail}`;
+        })
         .join("\n");
 
       return {
         content: [
           {
             type: "text",
-            text: `❌ Atomic rollback: ${filePath}\n⏱️ ${elapsed}ms\n\n${failCount}/${edits.length} edit başarısız — hiçbir değişiklik uygulanmadı (all_or_nothing=true)\n\n${failDetails}`,
+            text: `${editT(t, "errors.atomicRollbackTitle", { filePath })}\n⏱️ ${elapsed}ms\n\n${editT(t, "errors.atomicRollbackSummary", {
+              failCount,
+              totalEdits: edits.length,
+            })}\n\n${failDetails}`,
           },
         ],
         isError: true,
@@ -130,15 +157,28 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
     const finalContent = hasChanges ? workingContent : originalContent;
 
     const diffResult = diffContent(originalContent, finalContent, filePath, filePath);
-    const diff = diffResult.identical ? "(Değişiklik yok)" : diffResult.unified;
+    const diff = diffResult.identical ? editT(t, "output.noDiff") : diffResult.unified;
 
     const isCodeFile = /\.(ts|tsx|js|jsx|json|css|html|vue|svelte)$/.test(filePath);
     let bracketStatus = "";
     if (isCodeFile && hasChanges) {
       const bracketCheck = checkBracketBalance(finalContent);
-      bracketStatus = bracketCheck.ok
-        ? "🔒 Parantez dengesi: OK"
-        : `⚠️ Parantez dengesi: ${bracketCheck.detail ?? "unknown"}`;
+      if (bracketCheck.ok) {
+        bracketStatus = editT(t, "bracket.statusOk");
+      } else {
+        const details = (bracketCheck.differences ?? [])
+          .map((difference) =>
+            editT(t, `bracket.details.${difference.pair}`, {
+              count: difference.difference,
+              token: difference.missingToken,
+              state: editT(t, `bracket.state.${difference.state}`),
+            })
+          )
+          .join(", ");
+        bracketStatus = editT(t, "bracket.statusProblem", {
+          details: details.length > 0 ? details : editT(t, "output.unknownError"),
+        });
+      }
     }
 
     const elapsed = Math.round(performance.now() - startTime);
@@ -157,6 +197,7 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
         bracketStatus,
         matchScope: matchScope,
         atomic: allOrNothing,
+        translate: (key, params) => editT(t, key, params),
       });
       return { content: [{ type: "text", text: output }] };
     }
@@ -184,13 +225,14 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
       bracketStatus,
       matchScope: matchScope,
       atomic: allOrNothing,
+      translate: (key, params) => editT(t, key, params),
     });
     return { content: [{ type: "text", text: output }] };
   } catch (error) {
     const err = error as Error;
     logToolError("hev_fs_edit", err, { file_path: filePath, editCount: edits.length });
     return {
-      content: [{ type: "text", text: `❌ Edit hatası: ${err.message}` }],
+      content: [{ type: "text", text: editT(t, "errors.generic", { message: err.message }) }],
       isError: true,
     };
   }
@@ -198,47 +240,27 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
 
 export const EDIT_FILE_TOOL = {
   name: "hev_fs_edit",
-  description: [
-    "Dosyada pattern-based edit yap.",
-    "",
-    "KULLANIM: edits: [{old_text: 'mevcut metin', new_text: 'yeni metin'}]",
-    "old_text dosyada exact match ile bulunur ve new_text ile değiştirilir.",
-    "",
-    "PARAMETRELER:",
-    "• edits (zorunlu): [{old_text, new_text}] dizisi. En az 1 edit gerekli.",
-    "• dry_run: true ile önizle, false ile uygula (varsayılan: false)",
-    "• all_or_nothing: true ise tek edit fail olursa hiçbiri yazılmaz (varsayılan: false)",
-    "• match_scope: 'first'|'last'|'all'|[0,2] — hangi occurrence değişir (varsayılan: 'all')",
-    "• ignore_whitespace: true ise boşluk farklarını yoksayar, orijinal format korunur (varsayılan: false)",
-    "• normalize_eol: 'lf'|'crlf'|'auto'|'preserve' — satır sonu normalizasyonu (varsayılan: 'auto')",
-    "",
-    "ÖNEMLİ:",
-    "• old_text dosyadaki metinle birebir eşleşmeli (indent ve newline dahil)",
-    "• Birden fazla occurrence varsa match_scope ile kontrol et",
-    "• Kritik edit'lerde all_or_nothing=true kullan",
-    "• Önce dry_run=true ile test et, sonra uygula",
-  ].join("\n"),
+  description: editToolDefinitionT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string",
-        description: "Düzenlenecek dosya yolu",
+        description: editToolDefinitionT("filePath"),
       },
       edits: {
         type: "array",
-        description:
-          "Edit listesi. Her eleman {old_text: string, new_text: string}. old_text: değiştirilecek metin (exact match), new_text: yeni metin. İkisi de zorunlu.",
+        description: editToolDefinitionT("edits"),
         items: {
           type: "object",
           properties: {
             old_text: {
               type: "string",
-              description: "Değiştirilecek mevcut metin (exact match)",
+              description: editToolDefinitionT("oldText"),
             },
             new_text: {
               type: "string",
-              description: "Yerine yazılacak metin",
+              description: editToolDefinitionT("newText"),
             },
           },
           required: ["old_text", "new_text"],
@@ -246,13 +268,12 @@ export const EDIT_FILE_TOOL = {
       },
       dry_run: {
         type: "boolean",
-        description: "true: önizle (dosyayı değiştirme), false: uygula",
+        description: editToolDefinitionT("dryRun"),
         default: false,
       },
       all_or_nothing: {
         type: "boolean",
-        description:
-          "true: herhangi bir edit fail olursa hiçbiri uygulanmaz (atomic). false: başarılı olanlar uygulanır",
+        description: editToolDefinitionT("allOrNothing"),
         default: false,
       },
       match_scope: {
@@ -260,28 +281,26 @@ export const EDIT_FILE_TOOL = {
           {
             type: "string",
             enum: ["first", "last", "all"],
-            description: "first: ilk eşleşme, last: son eşleşme, all: tüm eşleşmeler",
+            description: editToolDefinitionT("matchScopeEnum"),
           },
           {
             type: "array",
             items: { type: "integer", minimum: 0 },
-            description: "Belirli occurrence index'leri (0-based)",
+            description: editToolDefinitionT("matchScopeIndexes"),
           },
         ],
-        description: "Hangi occurrence'lar değiştirilsin (varsayılan: 'all')",
+        description: editToolDefinitionT("matchScope"),
         default: "all",
       },
       ignore_whitespace: {
         type: "boolean",
-        description:
-          "true: boşluk/indent farklarını yoksay, orijinal format korunsun. false: exact match",
+        description: editToolDefinitionT("ignoreWhitespace"),
         default: false,
       },
       normalize_eol: {
         type: "string",
         enum: ["lf", "crlf", "auto", "preserve"],
-        description:
-          "Satır sonu: lf (Unix), crlf (Windows), auto (dosyanın stilini koru), preserve (hiç değiştirme)",
+        description: editToolDefinitionT("normalizeEol"),
         default: "auto",
       },
     },
@@ -293,22 +312,15 @@ export const EDIT_FILE_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Kısmi dosya değişikliği",
-      "Multi-line edit",
-      "Batch replace",
-      "Refactoring",
-      "Atomic edit (all_or_nothing)",
-      "Scoped replace (first/last/all)",
+      editToolDefinitionT("useCases.partialFileEdits"),
+      editToolDefinitionT("useCases.multilineEdits"),
+      editToolDefinitionT("useCases.batchReplace"),
+      editToolDefinitionT("useCases.refactoring"),
+      editToolDefinitionT("useCases.atomicEdits"),
+      editToolDefinitionT("useCases.scopedReplace"),
     ],
     relatedTools: ["hev_fs_write", "hev_dev_edit_lines", "hev_dev_check_syntax"],
-    agentGuidance: [
-      "Kısmi dosya değişiklikleri için kullan. Tam dosya üzerine yazmak yerine pattern-based edit yapar.",
-      "Önce dry_run=true ile test et, başarılıysa dry_run=false ile uygula.",
-      "old_text dosyadaki metinle birebir eşleşmeli (boşluk, indent, newline dahil).",
-      "Birden fazla occurrence varsa match_scope='first' ile sadece ilkini değiştir.",
-      "Kritik değişikliklerde all_or_nothing=true kullan — bir edit fail olursa hiçbiri yazılmaz.",
-      ".ts/.tsx dosyalarında edit sonrası hev_dev_check_syntax çalıştır.",
-    ].join(" "),
+    agentGuidance: editToolDefinitionT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["file", "edit", "modify", "replace", "patch", "atomic", "scope"],

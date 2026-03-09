@@ -22,7 +22,7 @@ test("provider test refresh path exposes refreshed config metadata to renderer c
   const providerTypes = readFileSync("src/types/provider.ts", "utf8");
   const ipcHandler = readFileSync("electron/handlers/ipc-provider.ts", "utf8");
   const entrancePanel = readFileSync("src/js/pages/entrance/webview-panel.ts", "utf8");
-  const asistanIndex = readFileSync("src/js/pages/asistan/index.ts", "utf8");
+  const assistantIndex = readFileSync("src/js/pages/assistant/assistant.ts", "utf8");
 
   assert.ok(
     providerTypes.includes("refreshedConfig?: ProviderConfig"),
@@ -37,7 +37,7 @@ test("provider test refresh path exposes refreshed config metadata to renderer c
     "entrance webview panel should update ProviderRegistry after test promotion"
   );
   assert.ok(
-    asistanIndex.includes("ProviderRegistry.update("),
-    "asistan page should update ProviderRegistry after test promotion"
+    assistantIndex.includes("ProviderRegistry.update("),
+    "assistant page should update ProviderRegistry after test promotion"
   );
 });

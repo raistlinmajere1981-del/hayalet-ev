@@ -4,6 +4,7 @@
  */
 
 import type { CustomSelectAPI, CustomSelectCallback, CustomSelectItem } from "./types.js";
+import { t } from "./i18n.js";
 
 /**
  * Custom select dropdown oluştur
@@ -47,7 +48,7 @@ export function setupCustomSelect(
     setItems: function (items: CustomSelectItem[], activeValue?: string): void {
       menu.innerHTML = "";
       if (items.length === 0) {
-        label.textContent = "Yok \u25be";
+        label.textContent = `${t("common.none")} \u25be`;
         return;
       }
       let activeLabel = "";
@@ -103,7 +104,7 @@ export function setupCustomSelect(
     },
     setError: function (msg?: string): void {
       menu.innerHTML = "";
-      label.textContent = (msg ?? "Hata") + " \u25be";
+      label.textContent = (msg ?? t("common.error")) + " \u25be";
     },
   };
 }
@@ -163,11 +164,11 @@ export function initUIHelpers(): void {
       rightTabsVisibilityBtn.textContent = visible ? "▾" : "▸";
       rightTabsVisibilityBtn.setAttribute(
         "title",
-        visible ? "Sekmeleri gizle" : "Sekmeleri göster"
+        visible ? t("panel.tabsHideTitle") : t("panel.tabsShowTitle")
       );
       rightTabsVisibilityBtn.setAttribute(
         "aria-label",
-        visible ? "Sağ panel sekmelerini gizle" : "Sağ panel sekmelerini göster"
+        visible ? t("panel.tabsHideAria") : t("panel.tabsShowAria")
       );
       rightTabsVisibilityBtn.setAttribute("aria-pressed", visible ? "false" : "true");
     }

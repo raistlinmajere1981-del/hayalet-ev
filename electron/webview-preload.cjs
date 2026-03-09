@@ -4,6 +4,188 @@ let __global_hayalet_slot = null;
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const opencodeUiSessionUpdatedHandlers = new Map();
 
+function normalizeAppLanguage(value) {
+  if (typeof value !== "string") {
+    return "tr";
+  }
+
+  const normalized = value.trim().replace(/_/g, "-");
+  return normalized !== "" ? normalized : "tr";
+}
+
+function resolveSelectorLanguage(value) {
+  const normalized = normalizeAppLanguage(value).toLowerCase();
+  return normalized === "en" || normalized.startsWith("en-") ? "en" : "tr";
+}
+
+function getProviderUiLanguageStrategy(cfg) {
+  const strategy = cfg && cfg.uiLanguage;
+  return strategy && typeof strategy === "object" ? strategy : null;
+}
+
+function getSignalEntries(signals, key) {
+  const raw = signals && typeof signals === "object" ? signals[key] : undefined;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+}
+
+function resolveProviderLanguage(requestedLocale, supportedLocales) {
+  const fallbackLocale = resolveSelectorLanguage(requestedLocale);
+  if (!Array.isArray(supportedLocales) || supportedLocales.length === 0) {
+    return fallbackLocale;
+  }
+
+  const normalizedLocales = supportedLocales
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (normalizedLocales.includes(fallbackLocale)) {
+    return fallbackLocale;
+  }
+
+  if (fallbackLocale === "en" && normalizedLocales.includes("en")) {
+    return "en";
+  }
+
+  if (normalizedLocales.includes("tr")) {
+    return "tr";
+  }
+
+  return normalizedLocales[0] || fallbackLocale;
+}
+
+async function loadAppLanguageState() {
+  let appLocale = "tr";
+
+  try {
+    const settings = await ipcRenderer.invoke("load-settings");
+    const locale = settings && settings.general && settings.general.language;
+    appLocale = normalizeAppLanguage(locale);
+  } catch (_) {}
+
+  try {
+    const pack = await ipcRenderer.invoke("i18n-load-language", appLocale);
+    const resolvedLocale =
+      pack && typeof pack.locale === "string" ? normalizeAppLanguage(pack.locale) : appLocale;
+    const selectorLanguage =
+      pack && typeof pack.selectorLanguage === "string"
+        ? pack.selectorLanguage
+        : resolveSelectorLanguage(resolvedLocale);
+    const direction = pack && typeof pack.direction === "string" ? pack.direction : "ltr";
+    return {
+      appLocale: resolvedLocale,
+      providerLocale: selectorLanguage,
+      direction,
+    };
+  } catch (_) {
+    return {
+      appLocale,
+      providerLocale: resolveSelectorLanguage(appLocale),
+      direction: "ltr",
+    };
+  }
+}
+
+async function applyProviderUiLanguageSync(cfg, providerId) {
+  const strategy = getProviderUiLanguageStrategy(cfg);
+  const languageState = await loadAppLanguageState();
+  const appLocale = languageState.appLocale;
+  const providerLocale = resolveProviderLanguage(
+    languageState.providerLocale,
+    strategy && Array.isArray(strategy.supportedLocales) ? strategy.supportedLocales : []
+  );
+
+  try {
+    window.__hayalet_app_language = appLocale;
+    window.__hayalet_provider_language = providerLocale;
+  } catch (_) {}
+
+  try {
+    document.documentElement.lang = appLocale;
+    document.documentElement.dir = languageState.direction || "ltr";
+    if (document.body) {
+      document.body.setAttribute("data-app-language", appLocale);
+      document.body.setAttribute("data-provider-language", providerLocale);
+    }
+  } catch (_) {}
+
+  const applied = {
+    localStorageKeys: [],
+    cookieNames: [],
+    urlParams: [],
+  };
+
+  if (strategy && strategy.syncMode === "automatic" && strategy.support !== "unsupported") {
+    const signals = strategy.signals && typeof strategy.signals === "object" ? strategy.signals : {};
+
+    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("localStorage")) {
+      try {
+        window.localStorage.setItem("hayalet:app-language", appLocale);
+        window.localStorage.setItem("hayalet:provider-ui-language", providerLocale);
+        applied.localStorageKeys.push("hayalet:app-language", "hayalet:provider-ui-language");
+      } catch (_) {}
+
+      const localStorageKeys = getSignalEntries(signals, "localStorageKeys");
+      localStorageKeys.forEach((key) => {
+        try {
+          window.localStorage.setItem(key, providerLocale);
+          applied.localStorageKeys.push(key);
+        } catch (_) {}
+      });
+    }
+
+    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("cookie")) {
+      const cookieNames = getSignalEntries(signals, "cookieNames");
+      cookieNames.forEach((cookieName) => {
+        try {
+          document.cookie = `${encodeURIComponent(cookieName)}=${encodeURIComponent(providerLocale)}; path=/`;
+          applied.cookieNames.push(cookieName);
+        } catch (_) {}
+      });
+    }
+
+    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("url")) {
+      const urlParams = getSignalEntries(signals, "urlParams");
+      if (urlParams.length > 0) {
+        try {
+          const currentUrl = new URL(window.location.href);
+          let changed = false;
+          urlParams.forEach((paramName) => {
+            if (currentUrl.searchParams.get(paramName) !== providerLocale) {
+              currentUrl.searchParams.set(paramName, providerLocale);
+              changed = true;
+            }
+            applied.urlParams.push(paramName);
+          });
+          if (changed && window.history && typeof window.history.replaceState === "function") {
+            window.history.replaceState(window.history.state, "", currentUrl.toString());
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  try {
+    const payload = {
+      providerId,
+      appLanguage: appLocale,
+      providerLanguage: providerLocale,
+      applied,
+    };
+    window.dispatchEvent(new CustomEvent("hayalet-provider-language-sync", { detail: payload }));
+    ipcRenderer.sendToHost("provider-language-sync", payload);
+  } catch (_) {}
+
+  return { appLocale, providerLocale, applied };
+}
+
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
   loadSettings: () => ipcRenderer.invoke("load-settings"),
@@ -252,6 +434,12 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
       }
     } catch (e) {
       console.error("[Hayalet-Preload] Outer error setting provider config:", e);
+    }
+
+    try {
+      await applyProviderUiLanguageSync(cfg, providerId);
+    } catch (err) {
+      console.warn("[Hayalet-Preload] Provider language sync failed:", err);
     }
 
     if (slot) {

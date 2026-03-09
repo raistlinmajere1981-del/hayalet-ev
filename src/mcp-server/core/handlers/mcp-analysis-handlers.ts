@@ -1,8 +1,8 @@
 /**
  * MCP Analysis & Streaming Handlers
- * MCP tool usage analytics, error correlation, streaming logs
+ * MCP tool usage analytics, error correlation, and streaming logs.
  *
- * Co-located: definition + handler in ToolEntry format
+ * Co-located: definitions and handlers in ToolEntry format.
  */
 
 import {
@@ -13,7 +13,21 @@ import {
 } from "../../tools/log/mcp-analysis.js";
 import { streamLogsRealtime, STREAM_LOGS_REALTIME_TOOL } from "../../tools/log/streaming.js";
 import type { StreamLogsRealtimeArgs } from "../../tools/log/streaming.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
+import type { TranslationParams } from "../../../types/i18n.js";
 import type { ToolEntry } from "../registry.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+const analysisToolDefinitionTranslator = createMcpTranslatorSync();
+
+function analysisToolT(key: string, params?: TranslationParams): string {
+  return analysisToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.analysis.${key}`, params);
+}
+
+function analysisT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.analysis.${key}`, params);
+}
 
 export function createMcpAnalysisTools(): ToolEntry[] {
   return [
@@ -27,22 +41,21 @@ export function createMcpAnalysisTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_analyze_mcp_tool_usage",
-        description:
-          "MCP tool kullanım istatistiklerini analiz et: toplam çağrı sayısı, tool bazında çağrı sayısı, ortalama süre, hata oranı, en yavaş çağrılar",
+        description: analysisToolT("usage.description"),
         inputSchema: {
           type: "object",
           properties: {
             sessionId: {
               type: "string",
-              description: "Session ID (varsayılan: en son session)",
+              description: analysisToolT("usage.sessionId"),
             },
             timeRange: {
               type: "object",
               properties: {
-                from: { type: "string", description: "ISO 8601 timestamp" },
-                to: { type: "string", description: "ISO 8601 timestamp" },
+                from: { type: "string", description: analysisToolT("usage.timeRangeFrom") },
+                to: { type: "string", description: analysisToolT("usage.timeRangeTo") },
               },
-              description: "Zaman aralığı filtresi (opsiyonel)",
+              description: analysisToolT("usage.timeRange"),
             },
           },
         },
@@ -52,62 +65,76 @@ export function createMcpAnalysisTools(): ToolEntry[] {
           priority: "medium",
           complexity: "medium",
           useCases: [
-            "MCP tool performance analizi",
-            "Hangi toollar çok kullanılıyor?",
-            "Yavaş toolları bulma",
-            "Hata oranı tespiti",
+            analysisToolT("usage.useCases.performanceAnalysis"),
+            analysisToolT("usage.useCases.popularTools"),
+            analysisToolT("usage.useCases.slowTools"),
+            analysisToolT("usage.useCases.errorRate"),
           ],
           relatedTools: ["hev_get_mcp_tool_performance", "hev_correlate_mcp_errors"],
-          agentGuidance:
-            "MCP toollarının genel kullanım istatistiklerini görmek için kullan. Performance sorunları ve sık kullanılan toolları tespit eder.",
+          agentGuidance: analysisToolT("usage.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["mcp", "analysis", "performance", "statistics"],
         },
       },
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await analyzeMcpToolUsage(
           args as { sessionId?: string; timeRange?: { from: string; to: string } }
         );
 
-        let output = `📊 MCP Tool Usage Analysis\n`;
-        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        output += `Total Calls: ${result.totalCalls}\n`;
-        output += `Total Errors: ${result.totalErrors}\n\n`;
+        const lines = [
+          analysisT(t, "usage.title"),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+          analysisT(t, "usage.totalCalls", { value: result.totalCalls }),
+          analysisT(t, "usage.totalErrors", { value: result.totalErrors }),
+          "",
+        ];
 
         if (result.byTool.length > 0) {
-          output += `📈 Top Tools by Call Count:\n`;
+          lines.push(analysisT(t, "usage.topToolsTitle"));
           for (const tool of result.byTool.slice(0, 10)) {
-            const errorPct = (tool.errorRate * 100).toFixed(1);
-            output += `  ${tool.tool}: ${tool.calls} calls, avg ${tool.avgDuration}ms, ${errorPct}% errors\n`;
+            lines.push(
+              analysisT(t, "usage.topToolLine", {
+                tool: tool.tool,
+                calls: tool.calls,
+                avgDuration: tool.avgDuration,
+                errorPct: (tool.errorRate * 100).toFixed(1),
+              })
+            );
           }
         }
 
         if (result.slowestCalls.length > 0) {
-          output += `\n🐌 Slowest Calls:\n`;
+          lines.push("", analysisT(t, "usage.slowestCallsTitle"));
           for (const call of result.slowestCalls.slice(0, 5)) {
-            output += `  ${call.tool}: ${call.duration}ms (${call.timestamp})\n`;
+            lines.push(
+              analysisT(t, "usage.slowestCallLine", {
+                tool: call.tool,
+                duration: call.duration,
+                timestamp: call.timestamp,
+              })
+            );
           }
         }
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
     {
       definition: {
         name: "hev_get_mcp_tool_performance",
-        description:
-          "Belirli bir MCP tool'un detaylı performans metriklerini al: toplam/başarılı/başarısız çağrılar, ortalama/min/max süre, son hatalar",
+        description: analysisToolT("performance.description"),
         inputSchema: {
           type: "object",
           properties: {
             toolName: {
               type: "string",
-              description: "Tool adı (örn: hev_dev_lint_file)",
+              description: analysisToolT("performance.toolName"),
             },
             sessionId: {
               type: "string",
-              description: "Session ID (varsayılan: en son session)",
+              description: analysisToolT("performance.sessionId"),
             },
           },
           required: ["toolName"],
@@ -118,56 +145,65 @@ export function createMcpAnalysisTools(): ToolEntry[] {
           priority: "medium",
           complexity: "simple",
           useCases: [
-            "Tek bir tool'un performansını analiz et",
-            "Son hataları gör",
-            "Performance regression tespiti",
+            analysisToolT("performance.useCases.singleToolAnalysis"),
+            analysisToolT("performance.useCases.recentErrors"),
+            analysisToolT("performance.useCases.performanceRegression"),
           ],
           relatedTools: ["hev_analyze_mcp_tool_usage", "hev_correlate_mcp_errors"],
-          agentGuidance:
-            "Belirli bir tool yavaş mı veya hata mı veriyor? Bu tool ile detaylı metrikleri gör.",
+          agentGuidance: analysisToolT("performance.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["mcp", "performance", "tool-specific", "metrics"],
         },
       },
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await getMcpToolPerformance(
           args as { toolName: string; sessionId?: string }
         );
 
-        let output = `📊 MCP Tool Performance: ${result.toolName}\n`;
-        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        output += `Total Calls: ${result.totalCalls}\n`;
-        output += `Successful: ${result.successfulCalls}\n`;
-        output += `Failed: ${result.failedCalls}\n`;
-        output += `Avg Duration: ${result.avgDuration}ms\n`;
-        output += `Min/Max: ${result.minDuration}ms / ${result.maxDuration}ms\n`;
+        const lines = [
+          analysisT(t, "performance.title", { toolName: result.toolName }),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+          analysisT(t, "performance.totalCalls", { value: result.totalCalls }),
+          analysisT(t, "performance.successfulCalls", { value: result.successfulCalls }),
+          analysisT(t, "performance.failedCalls", { value: result.failedCalls }),
+          analysisT(t, "performance.avgDuration", { value: result.avgDuration }),
+          analysisT(t, "performance.minMaxDuration", {
+            min: result.minDuration,
+            max: result.maxDuration,
+          }),
+        ];
 
         if (result.recentErrors.length > 0) {
-          output += `\n❌ Recent Errors:\n`;
+          lines.push("", analysisT(t, "performance.recentErrorsTitle"));
           for (const err of result.recentErrors) {
-            output += `  [${err.timestamp}] ${err.error}\n`;
+            lines.push(
+              analysisT(t, "performance.recentErrorLine", {
+                timestamp: err.timestamp,
+                error: err.error,
+              })
+            );
           }
         }
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
     {
       definition: {
         name: "hev_correlate_mcp_errors",
-        description:
-          "MCP hatalarını diğer sistem logları ile ilişkilendir: MCP error zamanlarına yakın renderer/main/webview eventleri bul",
+        description: analysisToolT("correlation.description"),
         inputSchema: {
           type: "object",
           properties: {
             sessionId: {
               type: "string",
-              description: "Session ID (varsayılan: en son session)",
+              description: analysisToolT("correlation.sessionId"),
             },
             timeWindow: {
               type: "number",
-              description: "Zaman penceresi (ms), varsayılan 5000",
+              description: analysisToolT("correlation.timeWindow"),
               default: 5000,
             },
           },
@@ -177,61 +213,77 @@ export function createMcpAnalysisTools(): ToolEntry[] {
           subcategory: "mcp-analysis",
           priority: "high",
           complexity: "complex",
-          useCases: ["MCP hatası ne sebep oldu?", "Error correlation", "Root cause analysis"],
+          useCases: [
+            analysisToolT("correlation.useCases.rootCauseQuestion"),
+            analysisToolT("correlation.useCases.errorCorrelation"),
+            analysisToolT("correlation.useCases.rootCauseAnalysis"),
+          ],
           relatedTools: ["hev_analyze_mcp_tool_usage", "hev_read_electron_logs"],
-          agentGuidance:
-            "MCP hatası aldığında root cause bulmak için kullan. Hatadan önce/sonra olan system eventleri gösterir.",
+          agentGuidance: analysisToolT("correlation.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["mcp", "error", "correlation", "debugging"],
         },
       },
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await correlateMcpErrors(
           args as { sessionId?: string; timeWindow?: number }
         );
 
-        let output = `🔗 MCP Error Correlation Analysis\n`;
-        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        const lines = [
+          analysisT(t, "correlation.title"),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        ];
 
         if (result.mcpErrors.length === 0) {
-          output += `No MCP errors found in this session.\n`;
+          lines.push(analysisT(t, "correlation.noErrors"));
         } else {
           for (const error of result.mcpErrors) {
-            output += `\n❌ ${error.toolName} at ${error.timestamp}\n`;
-            output += `   Error: ${error.error}\n`;
+            lines.push(
+              "",
+              analysisT(t, "correlation.errorLine", {
+                toolName: error.toolName,
+                timestamp: error.timestamp,
+              }),
+              analysisT(t, "correlation.errorDetail", { error: error.error })
+            );
 
             if (error.nearbyEvents.length > 0) {
-              output += `   Nearby Events:\n`;
+              lines.push(analysisT(t, "correlation.nearbyEventsTitle"));
               for (const event of error.nearbyEvents) {
-                const timeDiffStr =
-                  event.timeDiff > 0 ? `+${event.timeDiff}ms` : `${event.timeDiff}ms`;
-                output += `     [${timeDiffStr}] ${event.source}: ${event.message}\n`;
+                const timeDiff = event.timeDiff > 0 ? `+${event.timeDiff}ms` : `${event.timeDiff}ms`;
+                lines.push(
+                  analysisT(t, "correlation.nearbyEventLine", {
+                    timeDiff,
+                    source: event.source,
+                    message: event.message,
+                  })
+                );
               }
             } else {
-              output += `   No correlated events found\n`;
+              lines.push(analysisT(t, "correlation.noCorrelatedEvents"));
             }
           }
         }
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
     {
       definition: {
         name: "hev_get_agent_tool_trace",
-        description:
-          "AI agent'ın kullandığı toolların sıralı izini (trace) al: hangi tool hangi sırada kullanıldı, başarılı mı?",
+        description: analysisToolT("trace.description"),
         inputSchema: {
           type: "object",
           properties: {
             sessionId: {
               type: "string",
-              description: "Session ID (varsayılan: en son session)",
+              description: analysisToolT("trace.sessionId"),
             },
             limit: {
               type: "number",
-              description: "Son N tool çağrısını göster (varsayılan: 50)",
+              description: analysisToolT("trace.limit"),
               default: 50,
             },
           },
@@ -242,33 +294,53 @@ export function createMcpAnalysisTools(): ToolEntry[] {
           priority: "medium",
           complexity: "simple",
           useCases: [
-            "AI agent behavior analizi",
-            "Tool kullanım pattern tespiti",
-            "Debugging agent logic",
+            analysisToolT("trace.useCases.behaviorAnalysis"),
+            analysisToolT("trace.useCases.patternDetection"),
+            analysisToolT("trace.useCases.debugAgentLogic"),
           ],
           relatedTools: ["hev_analyze_mcp_tool_usage"],
-          agentGuidance:
-            "Agent hangi toolları kullandı? Trace ile tool kullanım sırasını ve başarı durumunu gör.",
+          agentGuidance: analysisToolT("trace.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["mcp", "agent", "trace", "behavior"],
         },
       },
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await getAgentToolTrace(args as { sessionId?: string; limit?: number });
 
-        let output = `🔍 Agent Tool Trace\n`;
-        output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        output += `Total Unique Tools: ${result.totalTools}\n`;
-        output += `Showing: Last ${result.toolSequence.length} calls\n\n`;
+        const lines = [
+          analysisT(t, "trace.title"),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+          analysisT(t, "trace.totalTools", { value: result.totalTools }),
+          analysisT(t, "trace.showingLastCalls", { value: result.toolSequence.length }),
+          "",
+        ];
 
         for (const call of result.toolSequence) {
           const icon = call.success ? "✅" : "❌";
-          const durationStr = typeof call.duration === "number" ? ` (${call.duration}ms)` : "";
-          output += `${icon} [${call.timestamp}] ${call.toolName}${durationStr}\n`;
+          if (typeof call.duration === "number") {
+            lines.push(
+              analysisT(t, "trace.callLineWithDuration", {
+                icon,
+                timestamp: call.timestamp,
+                toolName: call.toolName,
+                duration: call.duration,
+              })
+            );
+            continue;
+          }
+
+          lines.push(
+            analysisT(t, "trace.callLine", {
+              icon,
+              timestamp: call.timestamp,
+              toolName: call.toolName,
+            })
+          );
         }
 
-        return { content: [{ type: "text", text: output }] };
+        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
   ];

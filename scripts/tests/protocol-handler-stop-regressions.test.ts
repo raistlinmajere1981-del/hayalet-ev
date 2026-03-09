@@ -30,7 +30,7 @@ test("user-ai-ai-stop payload stays header-only by omitting protocolKey", () => 
   }
 });
 
-test("ai-asistan-stop payload is produced without protocol body key", () => {
+test("ai-assistant-stop payload is produced without protocol body key", () => {
   const originalGetState = SlotController.getState;
 
   try {
@@ -43,12 +43,12 @@ test("ai-asistan-stop payload is produced without protocol body key", () => {
 
     const payload = ProtocolHandler.buildPayload({
       room: "analyze",
-      scenario: "ai-asistan-stop",
+      scenario: "ai-assistant-stop",
       targets: ["ai1"],
     });
 
     assert.ok(payload !== null);
-    assert.equal(payload.message, "[STOP][ANALYZE][AI-ASISTAN]");
+    assert.equal(payload.message, "[STOP][ANALYZE][AI-ASSISTANT]");
     assert.equal(payload.protocolKey, undefined);
     assert.deepEqual(payload.targets, ["ai1"]);
   } finally {

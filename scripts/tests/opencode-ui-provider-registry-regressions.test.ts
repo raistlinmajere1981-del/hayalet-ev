@@ -4,17 +4,17 @@ import test from "node:test";
 import { getProvider } from "../../src/js/modules/webview/provider-factory.ts";
 import { ProviderRegistry } from "../../src/js/modules/webview/provider-registry.ts";
 
-test("provider-registry includes opencode-ui in asistan provider ids", () => {
-  const asistanIds = ProviderRegistry.getAsistanIds();
+test("provider-registry includes opencode-ui in assistant provider ids", () => {
+  const assistantIds = ProviderRegistry.getAssistantIds();
 
-  assert.ok(asistanIds.includes("opencode-ui"));
+  assert.ok(assistantIds.includes("opencode-ui"));
   assert.ok(ProviderRegistry.getAllAnyIds().includes("opencode-ui"));
 
-  const providerConfig = ProviderRegistry.getAsistan("opencode-ui");
+  const providerConfig = ProviderRegistry.getAssistant("opencode-ui");
 
   assert.ok(providerConfig, "Expected opencode-ui provider config to be registered");
   assert.equal(providerConfig.id, "opencode-ui");
-  assert.equal(providerConfig.isAsistan, true);
+  assert.equal(providerConfig.isAssistant, true);
 });
 
 test("provider-factory exposes opencode-ui module with send methods", () => {

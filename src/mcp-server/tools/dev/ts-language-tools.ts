@@ -1,13 +1,14 @@
 /**
  * Development Tools - TypeScript Language Service Tools
  *
- * TS Language Service API üzerinden tip bilgisi, definition, references,
- * rename, diagnostics ve document symbols sağlayan MCP tool'ları.
+ * MCP tools powered by the TS Language Service API for type info, definitions,
+ * references, rename, diagnostics, and document symbols.
  *
- * Altyapı: src/mcp-server/utils/ts-language-service.ts
+ * Backend: src/mcp-server/utils/ts-language-service.ts
  */
 
 import { getTsLanguageService } from "../../utils/ts-language-service.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type {
   TypeInfoResult,
   DefinitionResult,
@@ -28,23 +29,31 @@ const TS_TOOL_METADATA_BASE = {
   riskLevel: "low" as const,
 };
 
+function tsLangT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.tsLanguage.${key}`, params);
+}
+
+function tsLangDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.tsLanguage.definition.${key}`, params);
+}
+
 // ─── Helper: format output ──────────────────────────────
 
 function formatTypeInfo(result: TypeInfoResult): string {
-  let output = `🔍 Type Info\n`;
+  let output = `${tsLangT("runtime.typeInfoTitle")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `Kind: ${result.kind}`;
+  output += tsLangT("runtime.kind", { kind: result.kind });
   if (result.kindModifiers !== "") output += ` (${result.kindModifiers})`;
   output += `\n\n${result.displayString}`;
   if (result.documentation !== "") {
-    output += `\n\n📖 Documentation:\n${result.documentation}`;
+    output += `\n\n${tsLangT("runtime.documentationTitle")}\n${result.documentation}`;
   }
   return output;
 }
 
 function formatDefinitions(results: DefinitionResult[]): string {
-  if (results.length === 0) return "❌ No definition found.";
-  let output = `🎯 Definition${results.length > 1 ? "s" : ""} (${results.length})\n`;
+  if (results.length === 0) return tsLangT("runtime.noDefinition");
+  let output = `${tsLangT("runtime.definitionTitle", { count: results.length })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   for (const def of results) {
     output += `📁 ${def.file}:${def.line}:${def.column}`;
@@ -58,16 +67,21 @@ function formatDefinitions(results: DefinitionResult[]): string {
 }
 
 function formatReferences(results: ReferenceResult[]): string {
-  if (results.length === 0) return "❌ No references found.";
+  if (results.length === 0) return tsLangT("runtime.noReferences");
   const defs = results.filter((r) => r.isDefinition);
   const usages = results.filter((r) => !r.isDefinition);
   const writes = results.filter((r) => r.isWriteAccess);
   const files = [...new Set(results.map((r) => r.file))];
 
-  let output = `🔗 References (${results.length})\n`;
+  let output = `${tsLangT("runtime.referencesTitle", { count: results.length })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📊 ${defs.length} definitions, ${usages.length} usages, ${writes.length} writes\n`;
-  output += `📁 ${files.length} files\n\n`;
+  output +=
+    tsLangT("runtime.referencesSummary", {
+      definitions: defs.length,
+      usages: usages.length,
+      writes: writes.length,
+    }) + "\n";
+  output += `${tsLangT("runtime.filesCount", { count: files.length })}\n\n`;
 
   // Group by file
   for (const file of files) {
@@ -83,8 +97,8 @@ function formatReferences(results: ReferenceResult[]): string {
 }
 
 function formatCompletions(results: CompletionResult[]): string {
-  if (results.length === 0) return "❌ No completions available.";
-  let output = `💡 Completions (${results.length})\n`;
+  if (results.length === 0) return tsLangT("runtime.noCompletions");
+  let output = `${tsLangT("runtime.completionsTitle", { count: results.length })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   for (const item of results) {
     output += `  ${item.kind.padEnd(12)} ${item.name}`;
@@ -101,12 +115,17 @@ function formatDiagnostics(results: DiagnosticResult[], filePath: string): strin
   const warnings = results.filter((d) => d.category === "warning");
   const suggestions = results.filter((d) => d.category === "suggestion");
 
-  let output = `🏥 Diagnostics: ${filePath}\n`;
+  let output = `${tsLangT("runtime.diagnosticsTitle", { filePath })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📊 ${errors.length} errors, ${warnings.length} warnings, ${suggestions.length} suggestions\n\n`;
+  output +=
+    tsLangT("runtime.diagnosticsSummary", {
+      errors: errors.length,
+      warnings: warnings.length,
+      suggestions: suggestions.length,
+    }) + "\n\n";
 
   if (results.length === 0) {
-    output += `✨ No issues found!\n`;
+    output += `${tsLangT("runtime.noIssues")}\n`;
     return output;
   }
 
@@ -130,16 +149,22 @@ function formatRenameEdits(result: {
   edits: RenameEdit[];
 }): string {
   if (!result.canRename) {
-    return `❌ Cannot rename: ${result.reason ?? "unknown reason"}`;
+    return tsLangT("runtime.cannotRename", {
+      reason: result.reason ?? tsLangT("runtime.unknownReason"),
+    });
   }
   if (result.edits.length === 0) {
-    return `⚠️ Rename possible but no edits generated.`;
+    return tsLangT("runtime.renameNoEdits");
   }
 
   const totalChanges = result.edits.reduce((sum, e) => sum + e.changes.length, 0);
-  let output = `✏️ Rename Preview\n`;
+  let output = `${tsLangT("runtime.renamePreviewTitle")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📊 ${totalChanges} changes across ${result.edits.length} files\n\n`;
+  output +=
+    tsLangT("runtime.renameSummary", {
+      changes: totalChanges,
+      files: result.edits.length,
+    }) + "\n\n";
 
   for (const edit of result.edits) {
     output += `📄 ${edit.file} (${edit.changes.length} changes)\n`;
@@ -152,11 +177,11 @@ function formatRenameEdits(result: {
 }
 
 function formatDocumentSymbols(results: DocumentSymbolResult[], filePath: string): string {
-  if (results.length === 0) return `❌ No symbols found in ${filePath}`;
+  if (results.length === 0) return tsLangT("runtime.noSymbols", { filePath });
 
-  let output = `📋 Document Symbols: ${filePath}\n`;
+  let output = `${tsLangT("runtime.documentSymbolsTitle", { filePath })}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `📊 ${results.length} top-level symbols\n\n`;
+  output += `${tsLangT("runtime.topLevelSymbols", { count: results.length })}\n\n`;
 
   const renderSymbol = (sym: DocumentSymbolResult, indent: number): void => {
     const prefix = "  ".repeat(indent);
@@ -175,16 +200,17 @@ function formatDocumentSymbols(results: DocumentSymbolResult[], filePath: string
 }
 
 function formatSignatureHelp(results: SignatureHelpResult[]): string {
-  if (results.length === 0) return "❌ No signature help available.";
+  if (results.length === 0) return tsLangT("runtime.noSignatureHelp");
 
-  let output = `📝 Signature Help\n`;
+  let output = `${tsLangT("runtime.signatureHelpTitle")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
   for (const sig of results) {
     output += `${sig.label}\n`;
-    if (sig.documentation !== "") output += `  📖 ${sig.documentation}\n`;
+    if (sig.documentation !== "")
+      output += `  ${tsLangT("runtime.documentationInline", { text: sig.documentation })}\n`;
     if (sig.parameters.length > 0) {
-      output += `  Parameters:\n`;
+      output += `  ${tsLangT("runtime.parametersTitle")}\n`;
       for (let i = 0; i < sig.parameters.length; i++) {
         const p = sig.parameters[i];
         if (!p) continue;
@@ -208,7 +234,7 @@ export function tsGetTypeInfo(
 ): string {
   const mgr = getTsLanguageService(projectRoot);
   const result = mgr.getTypeInfo(filePath, line, column);
-  if (!result) return "❌ No type information at this position.";
+  if (!result) return tsLangT("runtime.noTypeInfo");
   return formatTypeInfo(result);
 }
 
@@ -289,14 +315,18 @@ export function tsGetSignatureHelp(
 export function tsGetStats(projectRoot: string): string {
   const mgr = getTsLanguageService(projectRoot);
   const stats = mgr.getStats();
-  let output = `📊 TS Language Service Stats\n`;
+  let output = `${tsLangT("runtime.statsTitle")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `Available configs: ${stats.availableConfigs.join(", ")}\n`;
-  output += `Loaded projects: ${stats.loadedProjects.length}\n`;
+  output += `${tsLangT("runtime.availableConfigs", { configs: stats.availableConfigs.join(", ") })}\n`;
+  output += `${tsLangT("runtime.loadedProjects", { count: stats.loadedProjects.length })}\n`;
   for (const p of stats.loadedProjects) {
-    output += `  → ${p.name}: ${p.fileCount} files, last used ${p.lastUsedAgo}\n`;
+    output += `  → ${tsLangT("runtime.projectLine", {
+      name: p.name,
+      fileCount: p.fileCount,
+      lastUsedAgo: p.lastUsedAgo,
+    })}\n`;
   }
-  output += `Total files tracked: ${stats.totalFiles}\n`;
+  output += `${tsLangT("runtime.totalFiles", { count: stats.totalFiles })}\n`;
   return output;
 }
 
@@ -304,22 +334,21 @@ export function tsGetStats(projectRoot: string): string {
 
 export const TS_TYPE_INFO_TOOL = {
   name: "hev_dev_type_info",
-  description:
-    "Bir sembolün tip bilgisini al (hover). Tam type inference sonucu, kind, documentation döner.",
+  description: tsLangDefT("typeInfo.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based)",
+        description: tsLangDefT("common.column"),
       },
     },
     required: ["file_path", "line", "column"],
@@ -329,34 +358,33 @@ export const TS_TYPE_INFO_TOOL = {
     priority: "high",
     complexity: "low",
     useCases: [
-      "View inferred types",
-      "Check function signatures",
-      "Understand type at cursor position",
+      tsLangDefT("typeInfo.useCases.viewTypes"),
+      tsLangDefT("typeInfo.useCases.functionSignatures"),
+      tsLangDefT("typeInfo.useCases.cursorType"),
     ],
     relatedTools: ["hev_dev_go_to_definition", "hev_dev_find_references"],
-    agentGuidance:
-      "Use to inspect the type of any symbol. Provide file path and 1-based line:column. Returns full TypeScript type info including inferred types.",
+    agentGuidance: tsLangDefT("typeInfo.agentGuidance"),
     tags: ["typescript", "type-info", "hover", "inspection"],
   },
 };
 
 export const TS_GO_TO_DEFINITION_TOOL = {
   name: "hev_dev_go_to_definition",
-  description: "Bir sembolün tanımlandığı yere git (go-to-definition). Dosya, satır, sütun döner.",
+  description: tsLangDefT("goToDefinition.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based)",
+        description: tsLangDefT("common.column"),
       },
     },
     required: ["file_path", "line", "column"],
@@ -366,35 +394,33 @@ export const TS_GO_TO_DEFINITION_TOOL = {
     priority: "high",
     complexity: "low",
     useCases: [
-      "Navigate to function/class definition",
-      "Find where a symbol is declared",
-      "Jump to import source",
+      tsLangDefT("goToDefinition.useCases.navigate"),
+      tsLangDefT("goToDefinition.useCases.findDeclaration"),
+      tsLangDefT("goToDefinition.useCases.importSource"),
     ],
     relatedTools: ["hev_dev_type_info", "hev_dev_find_references"],
-    agentGuidance:
-      "Use to find where a symbol is defined. Returns exact file:line:column. Works cross-file within the same tsconfig project.",
+    agentGuidance: tsLangDefT("goToDefinition.agentGuidance"),
     tags: ["typescript", "navigation", "definition", "go-to"],
   },
 };
 
 export const TS_FIND_REFERENCES_TOOL = {
   name: "hev_dev_find_references",
-  description:
-    "Bir sembolün projede kullanıldığı tüm yerleri bul (find-all-references). Cross-file, definition/usage/write ayrımı yapar.",
+  description: tsLangDefT("findReferences.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based)",
+        description: tsLangDefT("common.column"),
       },
     },
     required: ["file_path", "line", "column"],
@@ -404,39 +430,37 @@ export const TS_FIND_REFERENCES_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Find all usages of a function/variable",
-      "Impact analysis before refactoring",
-      "Understand symbol dependencies",
+      tsLangDefT("findReferences.useCases.allUsages"),
+      tsLangDefT("findReferences.useCases.impactAnalysis"),
+      tsLangDefT("findReferences.useCases.dependencies"),
     ],
     relatedTools: ["hev_dev_safe_rename", "hev_dev_go_to_definition"],
-    agentGuidance:
-      "Use to find all references to a symbol across the project. Groups by file, shows definition vs usage vs write access. Works within tsconfig project scope.",
+    agentGuidance: tsLangDefT("findReferences.agentGuidance"),
     tags: ["typescript", "references", "cross-file", "impact-analysis"],
   },
 };
 
 export const TS_SAFE_RENAME_TOOL = {
   name: "hev_dev_safe_rename",
-  description:
-    "Bir sembolü projede güvenli şekilde yeniden adlandır (preview). Tüm dosyalardaki değişiklikleri gösterir, uygulamaz.",
+  description: tsLangDefT("safeRename.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based)",
+        description: tsLangDefT("common.column"),
       },
       new_name: {
         type: "string" as const,
-        description: "Yeni sembol adı",
+        description: tsLangDefT("common.newName"),
       },
     },
     required: ["file_path", "line", "column", "new_name"],
@@ -447,27 +471,25 @@ export const TS_SAFE_RENAME_TOOL = {
     complexity: "medium",
     riskLevel: "low",
     useCases: [
-      "Safely rename variables/functions/classes",
-      "Preview rename impact before applying",
-      "Cross-file symbol renaming",
+      tsLangDefT("safeRename.useCases.safeRename"),
+      tsLangDefT("safeRename.useCases.previewImpact"),
+      tsLangDefT("safeRename.useCases.crossFile"),
     ],
     relatedTools: ["hev_dev_find_references", "hev_dev_type_info"],
-    agentGuidance:
-      "Use to preview a rename operation. Shows all files and positions that would change. Does NOT apply changes — use hev_fs_edit to apply after reviewing. Works cross-file within tsconfig project.",
+    agentGuidance: tsLangDefT("safeRename.agentGuidance"),
     tags: ["typescript", "rename", "refactoring", "preview"],
   },
 };
 
 export const TS_DIAGNOSTICS_TOOL = {
   name: "hev_dev_ts_diagnostics",
-  description:
-    "Dosyadaki TypeScript hatalarını, uyarılarını ve önerilerini al (semantic + syntactic + suggestion).",
+  description: tsLangDefT("diagnostics.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
     },
     required: ["file_path"],
@@ -477,27 +499,25 @@ export const TS_DIAGNOSTICS_TOOL = {
     priority: "medium",
     complexity: "low",
     useCases: [
-      "Check file for TypeScript errors",
-      "Get semantic diagnostics",
-      "Validate types after code changes",
+      tsLangDefT("diagnostics.useCases.checkFile"),
+      tsLangDefT("diagnostics.useCases.semanticDiagnostics"),
+      tsLangDefT("diagnostics.useCases.validateChanges"),
     ],
     relatedTools: ["hev_dev_type_info", "hev_dev_typescript_type_helper"],
-    agentGuidance:
-      "Use to get all TypeScript diagnostics for a single file. Faster than tsc --noEmit (only checks one file). Returns errors, warnings, and suggestions with line numbers.",
+    agentGuidance: tsLangDefT("diagnostics.agentGuidance"),
     tags: ["typescript", "diagnostics", "errors", "validation"],
   },
 };
 
 export const TS_DOCUMENT_SYMBOLS_TOOL = {
   name: "hev_dev_document_symbols",
-  description:
-    "Dosyadaki tüm sembolleri ağaç yapısında listele (outline). Fonksiyon, class, interface, const, type, enum.",
+  description: tsLangDefT("documentSymbols.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
     },
     required: ["file_path"],
@@ -507,39 +527,37 @@ export const TS_DOCUMENT_SYMBOLS_TOOL = {
     priority: "medium",
     complexity: "low",
     useCases: [
-      "Get file outline/structure",
-      "List all functions and classes",
-      "Navigate large files",
+      tsLangDefT("documentSymbols.useCases.outline"),
+      tsLangDefT("documentSymbols.useCases.listSymbols"),
+      tsLangDefT("documentSymbols.useCases.navigateLargeFiles"),
     ],
     relatedTools: ["hev_dev_search_symbol", "hev_dev_type_info"],
-    agentGuidance:
-      "Use to get a hierarchical symbol tree for a file. Shows functions, classes, interfaces with line ranges. Good for understanding file structure.",
+    agentGuidance: tsLangDefT("documentSymbols.agentGuidance"),
     tags: ["typescript", "symbols", "outline", "navigation"],
   },
 };
 
 export const TS_COMPLETIONS_TOOL = {
   name: "hev_dev_completions",
-  description:
-    "Bir pozisyonda kod tamamlama önerileri al (auto-complete). Modül export'ları dahil.",
+  description: tsLangDefT("completions.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based)",
+        description: tsLangDefT("common.column"),
       },
       max_items: {
         type: "number" as const,
-        description: "Maksimum öneri sayısı (varsayılan: 30)",
+        description: tsLangDefT("common.maxItems"),
         default: 30,
       },
     },
@@ -550,35 +568,33 @@ export const TS_COMPLETIONS_TOOL = {
     priority: "medium",
     complexity: "low",
     useCases: [
-      "Get code completion suggestions",
-      "Explore available APIs",
-      "Check object properties",
+      tsLangDefT("completions.useCases.codeCompletion"),
+      tsLangDefT("completions.useCases.exploreApis"),
+      tsLangDefT("completions.useCases.objectProperties"),
     ],
     relatedTools: ["hev_dev_type_info", "hev_dev_signature_help"],
-    agentGuidance:
-      "Use to get auto-complete suggestions at a position. Good for exploring available properties after a dot. Returns name, kind, and insert text.",
+    agentGuidance: tsLangDefT("completions.agentGuidance"),
     tags: ["typescript", "completion", "autocomplete", "code-assist"],
   },
 };
 
 export const TS_SIGNATURE_HELP_TOOL = {
   name: "hev_dev_signature_help",
-  description:
-    "Fonksiyon çağrısında parametre bilgisi al (signature help). Aktif parametre işaretlenir.",
+  description: tsLangDefT("signatureHelp.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu (proje köküne göre)",
+        description: tsLangDefT("common.filePath"),
       },
       line: {
         type: "number" as const,
-        description: "Satır numarası (1-based)",
+        description: tsLangDefT("common.line"),
       },
       column: {
         type: "number" as const,
-        description: "Sütun numarası (1-based), fonksiyon parantezinin içinde olmalı",
+        description: tsLangDefT("signatureHelp.column"),
       },
     },
     required: ["file_path", "line", "column"],
@@ -588,21 +604,19 @@ export const TS_SIGNATURE_HELP_TOOL = {
     priority: "low",
     complexity: "low",
     useCases: [
-      "Get function parameter hints",
-      "Check expected argument types",
-      "Understand function signatures",
+      tsLangDefT("signatureHelp.useCases.parameterHints"),
+      tsLangDefT("signatureHelp.useCases.argumentTypes"),
+      tsLangDefT("signatureHelp.useCases.understandSignatures"),
     ],
     relatedTools: ["hev_dev_type_info", "hev_dev_completions"],
-    agentGuidance:
-      "Use inside a function call to get parameter information. Cursor must be inside the parentheses. Shows parameter names, types, and documentation.",
+    agentGuidance: tsLangDefT("signatureHelp.agentGuidance"),
     tags: ["typescript", "signature", "parameters", "function-help"],
   },
 };
 
 export const TS_SERVICE_STATS_TOOL = {
   name: "hev_dev_ts_service_stats",
-  description:
-    "TS Language Service'in durumunu göster (yüklü projeler, dosya sayıları, son kullanım zamanları).",
+  description: tsLangDefT("serviceStats.description"),
   inputSchema: {
     type: "object" as const,
     properties: {},
@@ -611,10 +625,13 @@ export const TS_SERVICE_STATS_TOOL = {
     ...TS_TOOL_METADATA_BASE,
     priority: "low",
     complexity: "low",
-    useCases: ["Check TS service status", "Monitor memory usage", "Debug service issues"],
+    useCases: [
+      tsLangDefT("serviceStats.useCases.checkStatus"),
+      tsLangDefT("serviceStats.useCases.monitorMemory"),
+      tsLangDefT("serviceStats.useCases.debugIssues"),
+    ],
     relatedTools: ["hev_dev_type_info"],
-    agentGuidance:
-      "Use to check which TS projects are loaded, file counts, and last usage times. Useful for debugging or understanding service state.",
+    agentGuidance: tsLangDefT("serviceStats.agentGuidance"),
     tags: ["typescript", "service", "stats", "diagnostics"],
   },
 };

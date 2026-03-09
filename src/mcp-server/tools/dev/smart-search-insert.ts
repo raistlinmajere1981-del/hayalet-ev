@@ -6,6 +6,7 @@
 
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
 interface SmartInsertOptions {
@@ -21,6 +22,17 @@ interface SmartInsertResult {
   output: string;
   preview?: string;
   inserted_at?: number;
+}
+
+function smartInsertT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.smartInsert.${key}`, params);
+}
+
+function smartInsertDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.smartInsert.definition.${key}`, params);
 }
 
 export function smartInsertCode(
@@ -41,7 +53,7 @@ export function smartInsertCode(
     if (!insertionLine) {
       return {
         success: false,
-        output: `❌ Could not find anchor: ${anchor}`,
+        output: smartInsertT("runtime.anchorNotFound", { anchor }),
       };
     }
 
@@ -69,7 +81,7 @@ export function smartInsertCode(
     logToolError("smart-search-insert", error as Error, {});
     return {
       success: false,
-      output: `❌ Error: ${String(error)}`,
+      output: smartInsertT("runtime.error", { message: String(error) }),
     };
   }
 }
@@ -151,9 +163,9 @@ function formatCodeWithIndent(code: string, indent: string): string {
 }
 
 function generatePreview(lines: string[], insertAt: number, code: string): string {
-  let preview = `🔍 Smart Insert - Preview\\n`;
+  let preview = `${smartInsertT("runtime.previewTitle")}\\n`;
   preview += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  preview += `Insertion Point: Line ${insertAt + 1}\\n\\n`;
+  preview += `${smartInsertT("runtime.insertionPointLine", { line: insertAt + 1 })}\\n\\n`;
 
   const start = Math.max(0, insertAt - 3);
   const end = Math.min(lines.length, insertAt + 3);
@@ -170,16 +182,16 @@ function generatePreview(lines: string[], insertAt: number, code: string): strin
 }
 
 function formatOutput(filePath: string, line: number, dryRun: boolean): string {
-  let output = `🔍 Smart Search-and-Insert\\n`;
+  let output = `${smartInsertT("runtime.title")}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  output += `📁 File: ${filePath}\\n`;
-  output += `📍 Line: ${line + 1}\\n`;
+  output += `${smartInsertT("runtime.fileLine", { filePath })}\\n`;
+  output += `${smartInsertT("runtime.lineLine", { line: line + 1 })}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;
 
   if (dryRun) {
-    output += `⚠️  DRY RUN MODE - No changes applied\\n`;
+    output += `${smartInsertT("runtime.dryRun")}\\n`;
   } else {
-    output += `✅ Code inserted successfully\\n`;
+    output += `${smartInsertT("runtime.success")}\\n`;
   }
 
   return output;
@@ -191,33 +203,31 @@ function formatOutput(filePath: string, line: number, dryRun: boolean): string {
 
 export const SMART_SEARCH_INSERT_TOOL = {
   name: "hev_dev_smart_insert",
-  description:
-    "Natural language ile pozisyon bulma ve kod ekleme ('last if block', 'after function X', 'end of file')",
+  description: smartInsertDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Kod eklenecek dosya yolu",
+        description: smartInsertDefT("filePath"),
       },
       anchor: {
         type: "string",
-        description:
-          "Natural language pozisyon ('last if block', 'after function X', 'line 123', 'end of file')",
+        description: smartInsertDefT("anchor"),
       },
       position: {
         type: "string",
         enum: ["before", "after", "inside_start", "inside_end"],
-        description: "Anchor'a göre pozisyon",
+        description: smartInsertDefT("position"),
         default: "after",
       },
       code: {
         type: "string",
-        description: "Eklenecek kod",
+        description: smartInsertDefT("code"),
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme",
+        description: smartInsertDefT("dryRun"),
         default: true,
       },
     },
@@ -229,13 +239,12 @@ export const SMART_SEARCH_INSERT_TOOL = {
     priority: "medium",
     complexity: "medium",
     useCases: [
-      "Insert code using natural language positioning",
-      "Smart anchor-based insertion",
-      "Human-readable position descriptions",
+      smartInsertDefT("useCases.naturalLanguage"),
+      smartInsertDefT("useCases.anchorBased"),
+      smartInsertDefT("useCases.humanReadable"),
     ],
     relatedTools: ["hev_dev_ast_insert", "hev_fs_find_and_replace"],
-    agentGuidance:
-      'Use when exact position is unclear. Anchor can be natural language like "after the last import" or "inside MyClass". ALWAYS use dry_run=true first.',
+    agentGuidance: smartInsertDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["insert", "natural-language", "smart-positioning", "anchor-based"],

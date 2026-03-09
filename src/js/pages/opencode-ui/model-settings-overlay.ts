@@ -1,5 +1,6 @@
 import { escapeHtml } from "./chat-utils.js";
 import type { ByIdFn } from "./host-helpers.js";
+import { getIntlLocale, t } from "./i18n.js";
 import type { OpencodeUiModelPreferences, RuntimeState, SelectItem } from "./types.js";
 
 interface ModelSettingsOverlayOptions {
@@ -27,25 +28,25 @@ function renderSummary(runtime: RuntimeState): string {
     runtime.modelPreferences.defaultModelKey != null
       ? runtime.modelMetaByKey[runtime.modelPreferences.defaultModelKey]
       : undefined;
-  const defaultLabel = defaultMeta?.label ?? "Endpoint fallback";
+  const defaultLabel = defaultMeta?.label ?? t("modelSettings.endpointFallback");
 
   return (
-    `<span class="model-settings__chip">Default: ${escapeHtml(defaultLabel)}</span>` +
-    `<span class="model-settings__chip">Favori: ${String(favoriteCount)}</span>` +
-    `<span class="model-settings__chip">Gizli Provider: ${String(hiddenProviderCount)}</span>` +
-    `<span class="model-settings__chip">Gizli Model: ${String(hiddenModelCount)}</span>`
+    `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipDefault", { value: defaultLabel }))}</span>` +
+    `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipFavorite", { count: favoriteCount }))}</span>` +
+    `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipHiddenProvider", { count: hiddenProviderCount }))}</span>` +
+    `<span class="model-settings__chip">${escapeHtml(t("modelSettings.chipHiddenModel", { count: hiddenModelCount }))}</span>`
   );
 }
 
 function renderProviderRows(runtime: RuntimeState): string {
   if (runtime.providerItems.length === 0) {
-    return '<div class="empty-state">Provider bulunamadi</div>';
+    return `<div class="empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
   }
 
   return runtime.providerItems
     .map((provider) => {
       const hidden = provider.isHidden === true;
-      const statusLabel = provider.isConnected === true ? "Connected" : "Available";
+      const statusLabel = provider.isConnected === true ? t("provider.connected") : t("provider.available");
       const countLabel =
         typeof provider.visibleModels === "number" && typeof provider.totalModels === "number"
           ? `${String(provider.visibleModels)}/${String(provider.totalModels)}`
@@ -61,7 +62,7 @@ function renderProviderRows(runtime: RuntimeState): string {
         `</div>` +
         `<button type="button" class="model-settings__toggle-btn" data-provider-toggle="${escapeHtml(
           provider.id
-        )}" aria-pressed="${hidden ? "true" : "false"}">${hidden ? "Gizli" : "Gorunur"}</button>` +
+        )}" aria-pressed="${hidden ? "true" : "false"}">${escapeHtml(hidden ? t("modelSettings.providerHidden") : t("modelSettings.providerVisible"))}</button>` +
         `</div>`
       );
     })
@@ -69,13 +70,14 @@ function renderProviderRows(runtime: RuntimeState): string {
 }
 
 function filterModelItems(runtime: RuntimeState, ui: OverlayUiState): SelectItem[] {
-  const query = ui.searchQuery.trim().toLocaleLowerCase("tr");
+  const intlLocale = getIntlLocale();
+  const query = ui.searchQuery.trim().toLocaleLowerCase(intlLocale);
 
   return runtime.modelItems.filter((item) => {
     const label =
       `${item.label} ${item.subtitle ?? ""} ${item.providerName ?? item.providerId ?? ""}`
         .trim()
-        .toLocaleLowerCase("tr");
+        .toLocaleLowerCase(intlLocale);
     if (query !== "" && !label.includes(query)) {
       return false;
     }
@@ -92,12 +94,12 @@ function filterModelItems(runtime: RuntimeState, ui: OverlayUiState): SelectItem
 function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
   const items = filterModelItems(runtime, ui);
   if (items.length === 0) {
-    return '<div class="empty-state">Filtreye uygun model yok</div>';
+    return `<div class="empty-state">${escapeHtml(t("modelSettings.filteredEmpty"))}</div>`;
   }
 
   const grouped = new Map<string, SelectItem[]>();
   items.forEach((item) => {
-    const providerName = item.providerName ?? item.providerId ?? "Bilinmeyen";
+    const providerName = item.providerName ?? item.providerId ?? t("modelSettings.unknownProvider");
     const existing = grouped.get(providerName) ?? [];
     existing.push(item);
     grouped.set(providerName, existing);
@@ -114,14 +116,14 @@ function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
           const isActive = runtime.activeModelKey === modelKey;
           const badges = [
             isActive
-              ? '<span class="model-settings__badge model-settings__badge--active">Secili</span>'
+              ? `<span class="model-settings__badge model-settings__badge--active">${escapeHtml(t("modelSettings.badgeSelected"))}</span>`
               : "",
             isDefault
-              ? '<span class="model-settings__badge model-settings__badge--default">Default</span>'
+              ? `<span class="model-settings__badge model-settings__badge--default">${escapeHtml(t("modelSettings.badgeDefault"))}</span>`
               : "",
             item.isConnected === true
-              ? '<span class="model-settings__badge">Connected</span>'
-              : '<span class="model-settings__badge">Available</span>',
+              ? `<span class="model-settings__badge">${escapeHtml(t("modelSettings.badgeConnected"))}</span>`
+              : `<span class="model-settings__badge">${escapeHtml(t("modelSettings.badgeAvailable"))}</span>`,
           ]
             .filter((item) => item !== "")
             .join("");
@@ -136,15 +138,15 @@ function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
             `<div class="model-settings__model-actions">` +
             `<button type="button" class="model-settings__icon-btn${
               isFavorite ? " is-active" : ""
-            }" data-model-favorite="${escapeHtml(modelKey)}" title="Favori">${
+            }" data-model-favorite="${escapeHtml(modelKey)}" title="${escapeHtml(t("modelSettings.favoriteTitle"))}">${
               isFavorite ? "★" : "☆"
             }</button>` +
             `<button type="button" class="model-settings__action-btn" data-model-default="${escapeHtml(
               modelKey
-            )}">${isDefault ? "Varsayilan" : "Default yap"}</button>` +
+            )}">${escapeHtml(isDefault ? t("modelSettings.defaultActive") : t("modelSettings.setDefault"))}</button>` +
             `<button type="button" class="model-settings__action-btn" data-model-toggle="${escapeHtml(
               modelKey
-            )}">${isHidden ? "Goster" : "Gizle"}</button>` +
+            )}">${escapeHtml(isHidden ? t("modelSettings.show") : t("modelSettings.hide"))}</button>` +
             `</div>` +
             `</div>`
           );
@@ -271,7 +273,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
   const setDefaultModel = async (modelKey: string): Promise<void> => {
     const meta = options.runtime.modelMetaByKey[modelKey];
     if (meta == null) {
-      options.showToast("Model bilgisi bulunamadi");
+      options.showToast(t("modelSettings.modelMissingToast"));
       return;
     }
 
@@ -281,7 +283,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
       hiddenModels: current.hiddenModels.filter((item) => item !== modelKey),
       defaultModelKey: modelKey,
     }));
-    options.showToast("Varsayilan model guncellendi");
+    options.showToast(t("modelSettings.defaultUpdatedToast"));
     refresh();
   };
 

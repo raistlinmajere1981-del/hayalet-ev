@@ -9,6 +9,7 @@ import {
   fileToComposerAttachment,
   renderAttachmentTrayHtml,
 } from "./attachments.js";
+import { t } from "./i18n.js";
 import { extractAssistantText } from "./message-content.js";
 import type { ComposerAttachment, RuntimeState } from "./types.js";
 
@@ -168,9 +169,9 @@ export function stageComposerAttachments(
   setComposerAttachments(runtime, next, context.byId);
 
   if (addedCount > 0) {
-    context.showToast(`${String(addedCount)} ek hazir`);
+    context.showToast(t("chat.attachmentReadyCount", { count: addedCount }));
   } else {
-    context.showToast("Ayni ek zaten hazir");
+    context.showToast(t("chat.attachmentDuplicate"));
   }
 }
 
@@ -317,7 +318,8 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
     setComposerAttachments(context.runtime, stagedAttachments, context.byId);
     addMessage(
       "assistant",
-      "Mesaj gonderilemedi: " +
+      t("chat.sendFailedPrefix") +
+        " " +
         (error instanceof Error && error.message !== "" ? error.message : String(error))
     );
     context.scrollChatToBottom(true);

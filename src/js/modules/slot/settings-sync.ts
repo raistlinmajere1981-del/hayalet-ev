@@ -1,16 +1,20 @@
 /**
- * SettingsSync - Slot ayar senkronizasyonu
+ * SettingsSync - Slot settings synchronization
  *
- * Bu modül slot'ların settings değişiklikleriyle senkronizasyonunu yönetir:
- * - Account assignment takibi
- * - Provider config güncelleme
- * - Settings değişiklik handling
+ * This module handles synchronization between slots and settings changes:
+ * - account assignment tracking
+ * - provider config updates
+ * - settings change handling
  */
 
 import { ProviderRegistry } from "../webview/provider-registry.js";
 import type { SlotId } from "@shared/index.js";
 import { LogLevel } from "@shared/index.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
 
 interface SlotState {
   accountId: string | null;
@@ -31,8 +35,8 @@ interface Account {
 export interface Settings {
   slots?: Record<string, SlotSettings>;
   accounts?: Account[];
-  asistanSlot?: SlotSettings;
-  asistanAccounts?: Account[];
+  assistantSlot?: SlotSettings;
+  assistantAccounts?: Account[];
 }
 
 interface SlotStates {
@@ -73,10 +77,12 @@ export function handleSettingsChange(
     }
   });
 
-  const asistanChanged =
+  const assistantChanged =
     changedPaths.includes("*") ||
-    changedPaths.some((p) => p.startsWith("asistanSlot") || p.startsWith("asistanAccounts"));
-  if (asistanChanged) {
+    changedPaths.some(
+      (path) => isAssistantSlotSettingsPath(path) || isAssistantAccountsSettingsPath(path)
+    );
+  if (assistantChanged) {
     syncSlotFn("ai0", settings);
   }
 }
@@ -106,8 +112,8 @@ export function syncSlotWithSettings(
 ): void {
   if (!settings) return;
 
-  const isAsistan = slot === "ai0";
-  const slotSettings = isAsistan ? settings.asistanSlot : settings.slots?.[slot];
+  const isAssistantSlot = slot === "ai0";
+  const slotSettings = isAssistantSlot ? settings.assistantSlot : settings.slots?.[slot];
   const newAccountId = slotSettings?.accountId ?? null;
   const oldAccountId = slotState.accountId;
 
@@ -139,7 +145,7 @@ export function syncSlotWithSettings(
     return;
   }
 
-  const accountList = isAsistan ? settings.asistanAccounts : settings.accounts;
+  const accountList = isAssistantSlot ? settings.assistantAccounts : settings.accounts;
   const account = accountList?.find((a) => a.id === newAccountId);
   const providerId = account?.provider ?? null;
   const providerConfig =

@@ -1,13 +1,19 @@
 import { toggleMcpPanelServers } from "../../../tools/cdp-tools.js";
+import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
+
+const cdpToolDefinitionTranslator = createMcpTranslatorSync();
+
+function cdpToolT(key: string): string {
+  return cdpToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.cdp.${key}`);
+}
 
 export function createCdpWorkflowTools(): ToolEntry[] {
   return [
     {
       definition: {
         name: "hev_toggle_mcp_panel_servers",
-        description:
-          "AI0 webview içindeki OpenCode/RovoDev MCP panelinde belirtilen sunucuları OFF→ON cycle ile toggle eder.",
+        description: cdpToolT("toggleMcpPanelServers.description"),
         inputSchema: {
           type: "object",
           properties: {
@@ -15,22 +21,21 @@ export function createCdpWorkflowTools(): ToolEntry[] {
               type: "string",
               enum: ["auto", "opencode"],
               default: "auto",
-              description: "Panel tipi (auto ile otomatik algılanır)",
+              description: cdpToolT("toggleMcpPanelServers.provider"),
             },
             servers: {
               type: "array",
               items: { type: "string" },
-              description:
-                "Toggle edilecek MCP sunucu isimleri (örn: context7, websearch, hayalet-ev)",
+              description: cdpToolT("toggleMcpPanelServers.servers"),
             },
             settleMs: {
               type: "number",
-              description: "Her toggle sonrası bekleme süresi (ms)",
+              description: cdpToolT("toggleMcpPanelServers.settleMs"),
               default: 4000,
             },
             cycles: {
               type: "number",
-              description: "OFF→ON cycle sayısı (1-5)",
+              description: cdpToolT("toggleMcpPanelServers.cycles"),
               default: 1,
             },
           },
@@ -41,16 +46,15 @@ export function createCdpWorkflowTools(): ToolEntry[] {
           priority: "high",
           complexity: "medium",
           useCases: [
-            "OpenCode MCP panel toggle automation",
-            "Post-restart MCP switch verification",
+            cdpToolT("toggleMcpPanelServers.useCases.panelToggleAutomation"),
+            cdpToolT("toggleMcpPanelServers.useCases.postRestartVerification"),
           ],
           relatedTools: [
             "hev_send_command_to_electron",
             "hev_check_electron_connection",
             "hev_get_electron_window_info",
           ],
-          agentGuidance:
-            "Asistan (AI0) bağlıyken MCP panelini açar, switch'leri OFF→ON yapar ve final state döndürür.",
+          agentGuidance: cdpToolT("toggleMcpPanelServers.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "medium",
           tags: ["cdp", "mcp", "opencode", "automation"],

@@ -6,6 +6,7 @@
  * @description Provides formatted, visually appealing message boxes for better UX
  */
 
+import { createMcpTranslatorSync, loadMcpLanguageSync } from "../utils/i18n/index.js";
 import { logToolCall, logToolSuccess, logToolError } from "../utils/mcp-logger.js";
 
 /**
@@ -64,6 +65,20 @@ const PROGRESS_STYLES = {
   arrows: { filled: ">", empty: "-" },
   dots: { filled: "●", empty: "○" },
 };
+
+const uiToolDefinitionTranslator = createMcpTranslatorSync();
+
+function messageBoxDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return uiToolDefinitionTranslator(`mcpServer.uiTools.messageBox.definition.${key}`, params);
+}
+
+function messageBoxT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.uiTools.messageBox.runtime.${key}`, params);
+}
+
+function getUiLocale(): string {
+  return loadMcpLanguageSync().locale;
+}
 
 export interface MessageBoxOptions {
   type?: keyof typeof MESSAGE_TYPES;
@@ -183,7 +198,7 @@ function renderMenu(menu: NonNullable<MessageBoxOptions["menu"]>, _width: number
   options.forEach((option, index) => {
     const isSelected = defaultSelected !== undefined && index === defaultSelected;
     const icon = option.icon != null && option.icon !== "" ? `${option.icon} ` : "";
-    const marker = isSelected ? " ← SEÇİLİ" : "";
+    const marker = isSelected ? ` ${messageBoxT("selectedMarker")}` : "";
     const line = `  [${option.key}] ${icon}${option.label}${marker}`;
     lines.push(line);
   });
@@ -255,7 +270,7 @@ export function renderMessageBox(options: MessageBoxOptions): string {
   // Title line with icon
   let titleText = `${displayIcon}  ${title.toUpperCase()}`;
   if (timestamp) {
-    const time = new Date().toLocaleTimeString("tr-TR");
+    const time = new Date().toLocaleTimeString(getUiLocale());
     const spacing = " ".repeat(Math.max(0, contentWidth - titleText.length - time.length - 4));
     titleText = `  ${titleText}${spacing}[${time}]  `;
   } else {
@@ -311,7 +326,11 @@ export function renderMessageBox(options: MessageBoxOptions): string {
 
   // Details
   if (details && details.length > 0) {
-    lines.push(chars.vertical + "  Detaylar:".padEnd(width - 2) + chars.vertical);
+    lines.push(
+      chars.vertical +
+        ("  " + messageBoxT("detailsTitle")).padEnd(width - 2) +
+        chars.vertical
+    );
     details.forEach((detail) => {
       const wrappedDetails = wrapText(detail, contentWidth - 4);
       wrappedDetails.forEach((line) => {
@@ -341,8 +360,7 @@ export function renderMessageBox(options: MessageBoxOptions): string {
  */
 const hevMessageBox = {
   name: "hev_message_box",
-  description:
-    "Display a formatted, visually appealing message box with various types (success, error, warning, info, question, progress, table, menu, tree). Provides consistent UX and token efficiency compared to manual echo formatting.",
+  description: messageBoxDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
@@ -359,77 +377,81 @@ const hevMessageBox = {
           "menu",
           "tree",
         ],
-        description: "Message box type (determines icon and styling)",
+        description: messageBoxDefT("type"),
         default: "info",
       },
       title: {
         type: "string",
-        description: "Message box title (will be uppercased)",
+        description: messageBoxDefT("title"),
       },
       message: {
         type: "string",
-        description: "Main message content (supports text wrapping)",
+        description: messageBoxDefT("message"),
       },
       icon: {
         type: "string",
-        description: "Custom icon (overrides default type icon)",
+        description: messageBoxDefT("icon"),
       },
       details: {
         type: "array",
         items: { type: "string" },
-        description: "Additional details as bullet points",
+        description: messageBoxDefT("details"),
       },
       actions: {
         type: "array",
         items: { type: "string" },
-        description: "Action buttons to display at bottom",
+        description: messageBoxDefT("actions"),
       },
       width: {
         type: "number",
-        description: "Box width in characters (default: auto-detect terminal width, max 80)",
+        description: messageBoxDefT("width"),
       },
       boxStyle: {
         type: "string",
         enum: ["double", "single"],
-        description: "Box drawing style",
+        description: messageBoxDefT("boxStyle"),
         default: "double",
       },
       timestamp: {
         type: "boolean",
-        description: "Show timestamp in title bar",
+        description: messageBoxDefT("timestamp"),
         default: false,
       },
       progress: {
         type: "object",
         properties: {
-          current: { type: "number", description: "Current progress value" },
-          total: { type: "number", description: "Total progress value" },
+          current: { type: "number", description: messageBoxDefT("progress.current") },
+          total: { type: "number", description: messageBoxDefT("progress.total") },
           percentage: {
             type: "number",
-            description: "Manual percentage (auto-calculated if not provided)",
+            description: messageBoxDefT("progress.percentage"),
           },
           style: {
             type: "string",
             enum: ["bar", "blocks", "arrows", "dots"],
-            description: "Progress bar style",
+            description: messageBoxDefT("progress.style"),
             default: "bar",
           },
         },
         required: ["current", "total"],
-        description: "Progress bar configuration (for type=progress)",
+        description: messageBoxDefT("progress.description"),
       },
       table: {
         type: "object",
         properties: {
-          columns: { type: "array", items: { type: "string" }, description: "Column headers" },
+          columns: {
+            type: "array",
+            items: { type: "string" },
+            description: messageBoxDefT("table.columns"),
+          },
           rows: {
             type: "array",
             items: { type: "array", items: { type: "string" } },
-            description: "Table rows",
+            description: messageBoxDefT("table.rows"),
           },
         },
         required: ["columns", "rows"],
-        description: "Table data (for type=table)",
+        description: messageBoxDefT("table.description"),
       },
       menu: {
         type: "object",
@@ -439,23 +461,25 @@ const hevMessageBox = {
             items: {
               type: "object",
               properties: {
-                key: { type: "string", description: "Option key/shortcut" },
-                label: { type: "string", description: "Option label" },
-                icon: { type: "string", description: "Option icon (optional)" },
+                key: { type: "string", description: messageBoxDefT("menu.optionKey") },
+                label: { type: "string", description: messageBoxDefT("menu.optionLabel") },
+                icon: { type: "string", description: messageBoxDefT("menu.optionIcon") },
               },
               required: ["key", "label"],
             },
-            description: "Menu options",
+            description: messageBoxDefT("menu.options"),
           },
-          defaultSelected: { type: "number", description: "Default selected option index" },
+          defaultSelected: {
+            type: "number",
+            description: messageBoxDefT("menu.defaultSelected"),
+          },
         },
         required: ["options"],
-        description: "Interactive menu configuration (for type=menu)",
+        description: messageBoxDefT("menu.description"),
       },
       tree: {
         type: "object",
-        description:
-          'Tree structure as nested object (for type=tree). Example: {"src/": {"file.ts": "✏️ modified"}}',
+        description: messageBoxDefT("tree"),
       },
     },
     required: ["title"],

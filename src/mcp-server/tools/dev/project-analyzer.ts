@@ -1,7 +1,7 @@
 /**
  * Development Tools - Project Analyzer
  *
- * Proje istatistikleri, bağımlılıklar, git durumu analizi
+ * Project statistics, dependency, and git state analysis
  */
 
 import { readFileSync } from "fs";
@@ -9,6 +9,7 @@ import { join } from "path";
 import { execSync } from "child_process";
 import { DEV_CONFIG } from "./shared/config.js";
 import { getAllFiles, countLines } from "./shared/utils.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 
 interface AnalyzeResult {
@@ -34,13 +35,27 @@ function getObjectKeys(value: unknown): string[] {
   return Object.keys(value as Record<string, unknown>);
 }
 
+function projectAnalyzerT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.projectAnalyzer.${key}`, params);
+}
+
+function projectAnalyzerDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.projectAnalyzer.definition.${key}`, params);
+}
+
 export async function analyzeProject(
   projectRoot: string,
   options: { mode?: "summary" | "deps" | "modules" | "full" } = {}
 ): Promise<AnalyzeResult> {
   const mode = options.mode ?? "summary";
   const progress = createProgress({
-    operation: "Proje analizi",
+    operation: projectAnalyzerT("progress.operation"),
     total: DEV_CONFIG.srcDirs.length + 3,
   });
 
@@ -51,7 +66,7 @@ export async function analyzeProject(
   // Dosya istatistikleri
   let step = 0;
   for (const srcDir of DEV_CONFIG.srcDirs) {
-    progress.update(++step, `${srcDir} taranıyor...`);
+    progress.update(++step, projectAnalyzerT("progress.scanningDir", { srcDir }));
     // eslint-disable-next-line no-await-in-loop
     const files = await getAllFiles(srcDir, projectRoot);
     let dirLines = 0;
@@ -103,7 +118,7 @@ export async function analyzeProject(
   // Module analysis
   if (mode === "modules" || mode === "full") {
     step += 1;
-    progress.update(step, "Modüller analiz ediliyor...");
+    progress.update(step, projectAnalyzerT("progress.analyzingModules"));
     result.modules = [];
     const allFiles: string[] = [];
     for (const srcDir of DEV_CONFIG.srcDirs) {
@@ -133,22 +148,20 @@ export async function analyzeProject(
     }
   }
 
-  progress.done(`${result.summary.totalFiles} dosya analiz edildi`);
+  progress.done(projectAnalyzerT("progress.completed", { totalFiles: result.summary.totalFiles }));
   return result;
 }
 
 export const PROJECT_ANALYZER_TOOL = {
   name: "hev_dev_analyze_project",
-  description:
-    "Proje analizi: dosya sayıları, satır sayıları, bağımlılıklar, git durumu. ⚠️ mode parametresi SADECE 'summary' | 'deps' | 'modules' | 'full' değerlerini alır (default: 'summary'). Örnek: { mode: 'summary' } ✅ | { mode: 'quick' } ❌",
+  description: projectAnalyzerDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       mode: {
         type: "string" as const,
         enum: ["summary", "deps", "modules", "full"],
-        description:
-          "⚠️ Analiz modu (SADECE bu değerler): 'summary' (dosya/satır sayıları, git durumu - hızlı 1-2s) | 'deps' (bağımlılıklar) | 'modules' (import/export haritası - ilk 50 dosya) | 'full' (hepsi - yavaş 5-10s). Default: 'summary'",
+        description: projectAnalyzerDefT("mode"),
         default: "summary",
       },
     },
@@ -159,14 +172,13 @@ export const PROJECT_ANALYZER_TOOL = {
     priority: "medium",
     complexity: "medium",
     useCases: [
-      'Session başında proje durumunu anlama (mode: "summary")',
-      'Bağımlılık envanteri çıkarma (mode: "deps")',
-      'Modül mimarisi analizi (mode: "modules")',
-      'Kapsamlı proje raporu (mode: "full")',
+      projectAnalyzerDefT("useCases.summary"),
+      projectAnalyzerDefT("useCases.dependencies"),
+      projectAnalyzerDefT("useCases.modules"),
+      projectAnalyzerDefT("useCases.full"),
     ],
     relatedTools: ["hev_dev_generate_diagram", "hev_dev_update_cache", "hev_git_pr_status"],
-    agentGuidance:
-      '⚠️ CRITICAL: mode parameter ONLY accepts "summary"|"deps"|"modules"|"full" (NOT "quick"!). Use mode="summary" for quick overview (recommended), mode="full" for detailed report. Returns: { summary: { totalFiles, totalLines, byDirectory }, dependencies?, modules?, git? }. Performance: summary=1-2s, deps=fast, modules=medium, full=5-10s.',
+    agentGuidance: projectAnalyzerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["analysis", "statistics", "overview", "dependencies", "git", "enum-validation"],

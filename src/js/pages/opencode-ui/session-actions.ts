@@ -1,5 +1,6 @@
 import { apiCall } from "./api.js";
 import { escapeHtml } from "./chat-utils.js";
+import { t } from "./i18n.js";
 import { normalizeSessionId } from "./message-content.js";
 import type { OpencodeUiSessionSummary, RuntimeState, SessionTab } from "./types.js";
 
@@ -45,13 +46,26 @@ function renderSessionTabs(
   const archivedCount = getSessionsForTab(sessions, "archived").length;
 
   if (activeBtn != null) {
-    activeBtn.textContent = `Aktif (${String(activeCount)})`;
+    activeBtn.textContent = t("session.tabActive") + ` (${String(activeCount)})`;
     activeBtn.classList.toggle("is-active", context.runtime.sessionTab === "active");
   }
 
   if (archivedBtn != null) {
-    archivedBtn.textContent = `Arsiv (${String(archivedCount)})`;
+    archivedBtn.textContent = t("session.tabArchived") + ` (${String(archivedCount)})`;
     archivedBtn.classList.toggle("is-active", context.runtime.sessionTab === "archived");
+  }
+}
+
+function getSessionStateLabel(state: "idle" | "active" | "working" | "archived"): string {
+  switch (state) {
+    case "active":
+      return t("session.stateActive");
+    case "working":
+      return t("session.stateWorking");
+    case "archived":
+      return t("session.stateArchived");
+    default:
+      return t("session.stateIdle");
   }
 }
 
@@ -83,8 +97,8 @@ function renderSessionList(
   if (countEl != null) {
     countEl.textContent =
       context.runtime.sessionTab === "archived"
-        ? `${String(visibleSessions.length)} arsiv`
-        : `${String(visibleSessions.length)} oturum`;
+        ? t("session.countArchived", { count: visibleSessions.length })
+        : t("session.countActive", { count: visibleSessions.length });
   }
 
   if (listEl == null) {
@@ -94,8 +108,8 @@ function renderSessionList(
   if (visibleSessions.length === 0) {
     listEl.innerHTML =
       context.runtime.sessionTab === "archived"
-        ? '<div class="empty-state">Arsivlenmis oturum yok</div>'
-        : '<div class="empty-state">Oturum bulunamadi</div>';
+        ? `<div class="empty-state">${escapeHtml(t("session.emptyArchived"))}</div>`
+        : `<div class="empty-state">${escapeHtml(t("session.emptyActive"))}</div>`;
     return;
   }
 
@@ -104,18 +118,25 @@ function renderSessionList(
       const isActive = session.id === context.runtime.activeSessionId;
       const archived = isSessionArchived(session);
       const visualState = getSessionVisualState(session, context.runtime);
-      const title = session.title !== "" ? session.title : "Untitled";
+      const title = session.title !== "" ? session.title : t("session.untitled");
       const shortId = session.id.slice(0, 8);
       const updatedAt = context.formatTimestamp(Number(session.updated_at));
       const archiveAction = archived
         ? ""
-        : '<button class="ds-session__action ds-session__action--archive" data-action="archive" title="Arsivle">Arc</button>';
+        : '<button class="ds-session__action ds-session__action--archive" data-action="archive" title="' +
+          escapeHtml(t("session.actionArchive")) +
+          '">Arc</button>';
       const forkAction = archived
         ? ""
-        : '<button class="ds-session__action" data-action="fork" title="Fork">Fork</button>';
+        : '<button class="ds-session__action" data-action="fork" title="' +
+          escapeHtml(t("session.actionFork")) +
+          '">Fork</button>';
       const renameAction = archived
         ? ""
-        : '<button class="ds-session__action" data-action="rename" title="Duzenle">Edit</button>';
+        : '<button class="ds-session__action" data-action="rename" title="' +
+          escapeHtml(t("session.actionRename")) +
+          '">Edit</button>';
+      const stateLabel = getSessionStateLabel(visualState);
 
       return (
         '<div class="ds-session' +
@@ -136,7 +157,7 @@ function renderSessionList(
         '<span class="ds-session__badge ds-session__badge--' +
         visualState +
         '">* ' +
-        visualState +
+        escapeHtml(stateLabel) +
         "</span>" +
         "</div>" +
         '<span class="ds-session__meta">' +
@@ -148,7 +169,9 @@ function renderSessionList(
         forkAction +
         renameAction +
         archiveAction +
-        '<button class="ds-session__action ds-session__action--delete" data-action="delete" title="Sil">Del</button>' +
+        '<button class="ds-session__action ds-session__action--delete" data-action="delete" title="' +
+        escapeHtml(t("session.actionDelete")) +
+        '">Del</button>' +
         "</div>" +
         "</div>"
       );
@@ -209,8 +232,12 @@ export async function loadSessionListAndRender(
     const listEl = context.byId<HTMLElement>("session-list");
     if (listEl != null) {
       listEl.innerHTML =
-        '<div class="empty-state">Session listesi okunamadi: ' +
-        escapeHtml(error instanceof Error ? error.message : String(error)) +
+        '<div class="empty-state">' +
+        escapeHtml(
+          t("session.listReadError", {
+            message: error instanceof Error ? error.message : String(error),
+          })
+        ) +
         "</div>";
     }
   }
@@ -235,7 +262,7 @@ export async function handleSessionAction(
   action: string
 ): Promise<void> {
   if (action === "archive") {
-    const confirmed = window.confirm("Bu session arsivlensin mi?");
+    const confirmed = window.confirm(t("session.confirmArchive"));
     if (!confirmed) {
       return;
     }
@@ -248,7 +275,7 @@ export async function handleSessionAction(
   }
 
   if (action === "delete") {
-    const confirmed = window.confirm("Bu session silinsin mi?");
+    const confirmed = window.confirm(t("session.confirmDelete"));
     if (!confirmed) {
       return;
     }
@@ -351,7 +378,7 @@ export function initSessionEvents(context: SessionListContext): void {
       void (async (): Promise<void> => {
         try {
           context.runtime.sessionTab = "active";
-          const sessionId = await context.createServerSession("Yeni Sohbet");
+          const sessionId = await context.createServerSession(t("session.createDefaultTitle"));
           context.setActiveSession(sessionId);
           await context.loadSessionListAndRender({ preserveActive: true });
           await context.loadActiveSessionHistory();

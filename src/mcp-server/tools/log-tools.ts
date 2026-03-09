@@ -1,5 +1,5 @@
 /**
- * LogTools - Log okuma ve sorgulama araçları
+ * LogTools - log reading and query utilities.
  */
 
 import { readFile, readdir } from "fs/promises";
@@ -11,8 +11,10 @@ import {
   filterLogs,
   readSessionInfo,
 } from "../utils/log-utils.js";
+import { createMcpTranslator } from "../utils/i18n/index.js";
 import { logToolError } from "../utils/mcp-logger.js";
 import type { ToolResult } from "@shared/index-mcp.js";
+import type { TranslationParams } from "../../types/i18n.js";
 
 interface StructuredLine {
   source?: string;
@@ -21,6 +23,55 @@ interface StructuredLine {
   visibility?: string | number;
   timestamp?: string;
   message?: string;
+}
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function logToolsT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.logTools.${key}`, params);
+}
+
+function buildFilterInfo(
+  t: McpTranslator,
+  args: {
+    source?: string | undefined;
+    level?: string | undefined;
+    contains?: string | undefined;
+    correlationId?: string | undefined;
+  }
+): string {
+  return [
+    args.source != null ? logToolsT(t, "filters.source", { value: args.source }) : null,
+    args.level != null ? logToolsT(t, "filters.level", { value: args.level }) : null,
+    args.contains != null ? logToolsT(t, "filters.contains", { value: args.contains }) : null,
+    args.correlationId != null
+      ? logToolsT(t, "filters.correlationId", { value: args.correlationId })
+      : null,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(", ");
+}
+
+function formatSummaryStatus(
+  t: McpTranslator,
+  isActive: boolean,
+  endReason?: string
+): string {
+  if (isActive) {
+    return logToolsT(t, "summaryStatusActive");
+  }
+
+  switch (endReason) {
+    case undefined:
+    case "":
+      return logToolsT(t, "summaryStatusCompleted");
+    case "incomplete":
+      return logToolsT(t, "summaryStatusIncomplete");
+    case "from-structured":
+      return logToolsT(t, "summaryStatusRecovered");
+    default:
+      return endReason;
+  }
 }
 
 function parseStructuredLine(line: string): StructuredLine | null {
@@ -55,13 +106,14 @@ function resolveAppLogDir(
 /**
  * read_electron_logs handler
  *
- * NOT: Default olarak "console" logları okur - artık tüm loglar (main + renderer) birleşik.
- * Structured loglar JSON analizi için hâlâ mevcut.
+ * Note: this defaults to "console" logs. Console logs are now combined
+ * main + renderer output, while structured logs remain available for JSON analysis.
  */
 export async function readElectronLogs(logDir: string, args?: LogReadArgs): Promise<ToolResult> {
+  const t = await createMcpTranslator();
   const {
     app = "hayalet-ev",
-    type = "console", // Default: console (birleşik log - main + renderer)
+    type = "console", // Default: console (combined main + renderer logs).
     tail = 50,
     source,
     level,
@@ -76,9 +128,7 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
 
   if (sessionId == null) {
     return {
-      content: [
-        { type: "text", text: "Log session bulunamadı. Uygulama hiç çalıştırılmamış olabilir." },
-      ],
+      content: [{ type: "text", text: logToolsT(t, "sessionMissing") }],
       isError: true,
     };
   }
@@ -87,22 +137,23 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
   if (type === "error") {
     const content = await readSessionLogs(targetLogDir, sessionId, "error");
     const filtered = filterLogs(content, { tail });
+    const errorOutput = filtered.length > 0 ? filtered.join("\n") : logToolsT(t, "noErrors");
     return {
       content: [
         {
           type: "text",
-          text: `📕 Error Logs (Session: ${sessionId})\n\n${filtered.length > 0 ? filtered.join("\n") : "Hata yok ✅"}`,
+          text: `${logToolsT(t, "errorLogsTitle", { sessionId })}\n\n${errorOutput}`,
         },
       ],
     };
   }
 
-  // Structured logs (default - en detaylı log kaynağı)
+  // Structured logs (default - most detailed log source).
   if (type === "structured") {
     const content = await readSessionLogs(targetLogDir, sessionId, "structured");
     let lines = content.split("\n").filter((l) => l.trim() !== "");
 
-    // Filtreleme
+    // Filtering
     if (source != null) {
       lines = lines.filter((l) => {
         const json = parseStructuredLine(l);
@@ -131,10 +182,10 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
       lines = lines.filter((l) => l.includes(correlationId));
     }
 
-    // Son N satır
+    // Keep the last N lines.
     lines = lines.slice(-tail);
 
-    // Okunabilir format
+    // Convert to a readable text format.
     const formatted = lines.map((l) => {
       const json = parseStructuredLine(l);
       if (!json) return l;
@@ -142,30 +193,27 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
       return `[${json.timestamp ?? ""}] ${vis} [${json.source ?? ""}] ${json.message ?? ""}`;
     });
 
-    const filterInfo = [
-      source != null && `source=${source}`,
-      level != null && `level=${level}`,
-      contains != null && `contains="${contains}"`,
-      correlationId != null && `correlationId=${correlationId}`,
-    ]
-      .filter(Boolean)
-      .join(", ");
+    const filterInfo = buildFilterInfo(t, { source, level, contains, correlationId });
+    const filterText =
+      filterInfo.length > 0 ? `\n${logToolsT(t, "filterLine", { filters: filterInfo })}` : "";
+    const structuredOutput =
+      formatted.length > 0 ? formatted.join("\n") : logToolsT(t, "noLogsFound");
 
     return {
       content: [
         {
           type: "text",
-          text: `📗 Structured Logs (Session: ${sessionId})${filterInfo.length > 0 ? `\nFiltre: ${filterInfo}` : ""}\n\n${formatted.length > 0 ? formatted.join("\n") : "Log bulunamadı"}`,
+          text: `${logToolsT(t, "structuredLogsTitle", { sessionId })}${filterText}\n\n${structuredOutput}`,
         },
       ],
     };
   }
 
-  // Console logs (default - birleşik main + renderer)
+  // Console logs (default - combined main + renderer).
   const content = await readSessionLogs(targetLogDir, sessionId, "console");
   let lines = content.split("\n").filter((l) => l.trim() !== "");
 
-  // Filtreleme
+  // Filtering
   if (source != null) {
     lines = lines.filter((l) => l.toLowerCase().includes(`[${source.toLowerCase()}]`));
   }
@@ -179,23 +227,19 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     lines = lines.filter((l) => l.includes(correlationId));
   }
 
-  // Son N satır
+  // Keep the last N lines.
   lines = lines.slice(-tail);
 
-  const filterInfo = [
-    source != null && `source=${source}`,
-    level != null && `level=${level}`,
-    contains != null && `contains="${contains}"`,
-    correlationId != null && `correlationId=${correlationId}`,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  const filterInfo = buildFilterInfo(t, { source, level, contains, correlationId });
+  const filterText =
+    filterInfo.length > 0 ? `\n${logToolsT(t, "filterLine", { filters: filterInfo })}` : "";
+  const consoleOutput = lines.length > 0 ? lines.join("\n") : logToolsT(t, "noLogsFound");
 
   return {
     content: [
       {
         type: "text",
-        text: `📘 Birleşik Loglar (Session: ${sessionId})${filterInfo.length > 0 ? `\nFiltre: ${filterInfo}` : ""}\n\n${lines.length > 0 ? lines.join("\n") : "Log bulunamadı"}`,
+        text: `${logToolsT(t, "consoleLogsTitle", { sessionId })}${filterText}\n\n${consoleOutput}`,
       },
     ],
   };
@@ -215,13 +259,14 @@ export async function listLogSessions(
   logDir: string,
   args?: { app?: "hayalet-ev" | "mcp-server" | "ghost-agent"; limit?: number }
 ): Promise<ToolResult> {
+  const t = await createMcpTranslator();
   const app = args?.app ?? "hayalet-ev";
   const targetLogDir = resolveAppLogDir(logDir, app);
   const limit = args?.limit ?? 10;
 
   if (!existsSync(targetLogDir)) {
     return {
-      content: [{ type: "text", text: "Log dizini bulunamadı" }],
+      content: [{ type: "text", text: logToolsT(t, "logDirMissing") }],
       isError: true,
     };
   }
@@ -241,7 +286,9 @@ export async function listLogSessions(
     const output = sessions
       .map((s) => {
         const status = s.hasErrors ? "⚠️" : "✅";
-        const state = s.hasSummary ? "tamamlandı" : "aktif/tamamlanmamış";
+        const state = s.hasSummary
+          ? logToolsT(t, "sessionStateCompleted")
+          : logToolsT(t, "sessionStateActiveIncomplete");
         return `${status} ${s.id} (${state})`;
       })
       .join("\n");
@@ -250,7 +297,7 @@ export async function listLogSessions(
       content: [
         {
           type: "text",
-          text: `📂 Log Session'ları (${app}, son ${limit}):\n\n${output}`,
+          text: `${logToolsT(t, "sessionListTitle", { app, limit })}\n\n${output}`,
         },
       ],
     };
@@ -258,7 +305,7 @@ export async function listLogSessions(
     const error = err as Error;
     logToolError("hev_list_log_sessions", error, { limit });
     return {
-      content: [{ type: "text", text: `❌ Session listesi okunamadı: ${error.message}` }],
+      content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionListReadError", { message: error.message })}` }],
       isError: true,
     };
   }
@@ -271,13 +318,14 @@ export async function getSessionSummary(
   logDir: string,
   args?: { app?: "hayalet-ev" | "mcp-server" | "ghost-agent"; sessionId?: string }
 ): Promise<ToolResult> {
+  const t = await createMcpTranslator();
   const app = args?.app ?? "hayalet-ev";
   const targetLogDir = resolveAppLogDir(logDir, app);
   const sessionId = args?.sessionId ?? (await findLatestSession(targetLogDir));
 
   if (sessionId == null) {
     return {
-      content: [{ type: "text", text: "Session bulunamadı" }],
+      content: [{ type: "text", text: logToolsT(t, "sessionNotFound") }],
       isError: true,
     };
   }
@@ -293,7 +341,7 @@ export async function getSessionSummary(
     if (!existsSync(structuredPath)) {
       if (!existsSync(sessionDir)) {
         return {
-          content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
+          content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` }],
           isError: true,
         };
       }
@@ -361,7 +409,7 @@ export async function getSessionSummary(
         };
       } catch {
         return {
-          content: [{ type: "text", text: `❌ Session dosyaları okunamadı: ${sessionId}` }],
+          content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` }],
           isError: true,
         };
       }
@@ -383,7 +431,7 @@ export async function getSessionSummary(
   const startTime =
     (meta?.["startTime"] as string | undefined) ??
     (resolvedSummary["startTime"] as string | undefined) ??
-    "unknown";
+    logToolsT(t, "unknown");
   const endTime = resolvedSummary["endTime"] as string | undefined;
   const endReason = resolvedSummary["endReason"] as string | undefined;
   const duration =
@@ -392,22 +440,41 @@ export async function getSessionSummary(
       : undefined;
   const isActive = endTime == null;
 
-  const output = `📊 Session Özeti: ${sessionId}
-
-📅 Başlangıç: ${startTime}
-📅 Bitiş: ${isActive ? "🟢 active (devam ediyor)" : endTime}
-🏁 Durum: ${isActive ? "active" : (endReason ?? "completed")}
-⏱️  Süre: ${duration != null ? `${duration}s` : isActive ? "devam ediyor" : "N/A"}
-
-💻 Platform: ${(meta?.["platform"] as string | undefined) ?? "unknown"}
-📦 Electron: ${(meta?.["electronVersion"] as string | undefined) ?? "unknown"}
-🟢 Node: ${(meta?.["nodeVersion"] as string | undefined) ?? "unknown"}
-🔢 PID: ${(meta?.["pid"] as number | undefined) ?? "unknown"}
-
-📈 İstatistikler:
-- Toplam Log: ${stats.totalLogs ?? "N/A"}
-- Hatalar: ${stats.errorCount ?? stats.errors ?? 0}
-- Uyarılar: ${stats.warningCount ?? stats.warnings ?? 0}`;
+  const output = [
+    logToolsT(t, "sessionSummaryTitle", { sessionId }),
+    "",
+    logToolsT(t, "summaryStart", { value: startTime }),
+    logToolsT(t, "summaryEnd", {
+      value: isActive ? logToolsT(t, "summaryEndActive") : (endTime ?? logToolsT(t, "notAvailable")),
+    }),
+    logToolsT(t, "summaryStatus", { value: formatSummaryStatus(t, isActive, endReason) }),
+    logToolsT(t, "summaryDuration", {
+      value:
+        duration != null
+          ? `${duration}s`
+          : isActive
+            ? logToolsT(t, "summaryDurationOngoing")
+            : logToolsT(t, "notAvailable"),
+    }),
+    "",
+    logToolsT(t, "summaryPlatform", {
+      value: (meta?.["platform"] as string | undefined) ?? logToolsT(t, "unknown"),
+    }),
+    logToolsT(t, "summaryElectron", {
+      value: (meta?.["electronVersion"] as string | undefined) ?? logToolsT(t, "unknown"),
+    }),
+    logToolsT(t, "summaryNode", {
+      value: (meta?.["nodeVersion"] as string | undefined) ?? logToolsT(t, "unknown"),
+    }),
+    logToolsT(t, "summaryPid", {
+      value: (meta?.["pid"] as number | undefined) ?? logToolsT(t, "unknown"),
+    }),
+    "",
+    logToolsT(t, "summaryStatsTitle"),
+    logToolsT(t, "summaryTotalLogs", { value: stats.totalLogs ?? logToolsT(t, "notAvailable") }),
+    logToolsT(t, "summaryErrors", { value: stats.errorCount ?? stats.errors ?? 0 }),
+    logToolsT(t, "summaryWarnings", { value: stats.warningCount ?? stats.warnings ?? 0 }),
+  ].join("\n");
 
   return {
     content: [{ type: "text", text: output }],

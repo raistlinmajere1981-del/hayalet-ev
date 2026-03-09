@@ -1,12 +1,13 @@
 /**
  * Development Tools - Context Generator
  *
- * Session context dosyası üretimi (.rovo/context.md)
+ * Session context document generation (.rovo/context.md)
  */
 
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { DEV_CONFIG } from "./shared/config.js";
 import { getAllFiles, countLines } from "./shared/utils.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
@@ -22,16 +23,31 @@ interface PackageJsonLike {
   version?: string;
 }
 
+function contextGeneratorT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.contextGenerator.${key}`, params);
+}
+
+function contextGeneratorDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.contextGenerator.definition.${key}`, params);
+}
+
 export async function bootstrapContext(
   projectRoot: string,
   options: { print?: boolean; full?: boolean } = {}
 ): Promise<BootstrapResult> {
+  const t = contextGeneratorT;
   const lines: string[] = [];
   const now = new Date().toISOString().split("T")[0] ?? "unknown-date";
 
   // Header
-  lines.push("# Hayalet-ev Project Context");
-  lines.push(`> Auto-generated: ${now} | Regenerate: \`npm run bootstrap\``);
+  lines.push(t("document.title"));
+  lines.push(t("document.generatedAt", { date: now }));
   lines.push("");
 
   // Package info
@@ -39,8 +55,8 @@ export async function bootstrapContext(
     const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
     const pkg: PackageJsonLike =
       typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw as PackageJsonLike) : {};
-    lines.push("╪╪ 📦 Proje Bilgisi");
-    lines.push(`- **Ad:** ${pkg.name ?? "unknown"} v${pkg.version ?? "0.0.0"}`);
+    lines.push(t("document.projectInfoTitle"));
+    lines.push(t("document.projectName", { name: pkg.name ?? "unknown", version: pkg.version ?? "0.0.0" }));
 
     // Git info
     try {
@@ -49,9 +65,14 @@ export async function bootstrapContext(
         encoding: "utf-8",
       }).trim();
       const status = execSync("git status --short", { cwd: projectRoot, encoding: "utf-8" }).trim();
-      lines.push(`- **Branch:** ${branch !== "" ? branch : "unknown"}`);
+      lines.push(t("document.branch", { branch: branch !== "" ? branch : t("common.unknown") }));
       lines.push(
-        `- **Uncommitted:** ${status !== "" ? `${status.split("\n").length} dosya` : "Yok ✓"}`
+        t("document.uncommitted", {
+          value:
+            status !== ""
+              ? t("document.uncommittedFiles", { count: status.split("\n").length })
+              : t("document.none"),
+        })
       );
     } catch {
       /* ignore */
@@ -62,7 +83,7 @@ export async function bootstrapContext(
   }
 
   // Directory stats
-  lines.push("╪╪ 📊 Yapı Özeti");
+  lines.push(t("document.structureTitle"));
   for (const srcDir of DEV_CONFIG.srcDirs) {
     // eslint-disable-next-line no-await-in-loop
     const files = await getAllFiles(srcDir, projectRoot);
@@ -70,32 +91,32 @@ export async function bootstrapContext(
     for (const file of files) {
       totalLines += countLines(join(projectRoot, file));
     }
-    lines.push(`- \`${srcDir}/\`: ${files.length} dosya, ${totalLines} satır`);
+    lines.push(t("document.structureLine", { srcDir, fileCount: files.length, lineCount: totalLines }));
   }
   lines.push("");
 
   // Module map
-  lines.push("╪╪ 🗺️ Modül Haritası");
+  lines.push(t("document.moduleMapTitle"));
   lines.push("");
-  lines.push("### Orchestrator'lar");
-  lines.push("- core-engine.ts - Ana koordinatör");
-  lines.push("- webview-manager.ts - Webview lifecycle");
-  lines.push("- traffic-manager.ts - State tracking");
-  lines.push("- slot-controller.ts - Slot yaşam döngüsü");
+  lines.push(t("document.orchestratorsTitle"));
+  lines.push(t("document.orchestrators.coreEngine"));
+  lines.push(t("document.orchestrators.webviewManager"));
+  lines.push(t("document.orchestrators.trafficManager"));
+  lines.push(t("document.orchestrators.slotController"));
   lines.push("");
 
   // Critical rules
-  lines.push("╪╪ ⚡ Kritik Kurallar");
-  lines.push("❯ console.log kullanma → Logger.* (Renderer) veya LoggerCore (Main) kullan");
-  lines.push("✓ Her error log'a context ekle");
-  lines.push("✓ Test sonrası logs/ klasörünü kontrol et");
+  lines.push(t("document.rulesTitle"));
+  lines.push(t("document.rules.noConsoleLog"));
+  lines.push(t("document.rules.addContext"));
+  lines.push(t("document.rules.checkLogs"));
   lines.push("");
 
   // Commands
-  lines.push("╪╪ 🛠️ Sık Kullanılan Komutlar");
-  lines.push("- `npm start` - Uygulamaı başlat");
-  lines.push("- `npm run lint` - Kod kontrolü");
-  lines.push("- `npm run pre-commit` - Commit öncesi");
+  lines.push(t("document.commandsTitle"));
+  lines.push(t("document.commands.start"));
+  lines.push(t("document.commands.lint"));
+  lines.push(t("document.commands.preCommit"));
   lines.push("");
 
   // Recent commits
@@ -103,7 +124,7 @@ export async function bootstrapContext(
     const commits = execSync("git log --oneline -5", { cwd: projectRoot, encoding: "utf-8" })
       .trim()
       .split("\n");
-    lines.push("╪╪ 🔄 Son Commit'ler");
+    lines.push(t("document.recentCommitsTitle"));
     for (const commit of commits) {
       lines.push(`- ${commit}`);
     }
@@ -113,7 +134,7 @@ export async function bootstrapContext(
   }
 
   lines.push("---");
-  lines.push("*Bu dosya otomatik üretilir. Manuel düzenleme yapmayın.*");
+  lines.push(t("document.footer"));
 
   const content = lines.join("\n");
 
@@ -126,7 +147,9 @@ export async function bootstrapContext(
 
   return {
     content:
-      options.print === true ? content : `Context dosyası oluşturuldu: ${outputPath ?? "unknown"}`,
+      options.print === true
+        ? content
+        : t("output.created", { outputPath: outputPath ?? t("common.unknown") }),
     ...(outputPath !== undefined ? { outputPath } : {}),
     stats: { sections: 6, lines: lines.length },
   };
@@ -134,19 +157,18 @@ export async function bootstrapContext(
 
 export const CONTEXT_GENERATOR_TOOL = {
   name: "hev_dev_bootstrap_context",
-  description:
-    "Session context dosyası üret (.rovo/context.md). Yeni AI session başlatırken kullanışlı.",
+  description: contextGeneratorDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       print: {
         type: "boolean" as const,
-        description: "Dosyaya yazmak yerine içeriği döndür",
+        description: contextGeneratorDefT("print"),
         default: false,
       },
       full: {
         type: "boolean" as const,
-        description: "Detaylı versiyon",
+        description: contextGeneratorDefT("full"),
         default: false,
       },
     },
@@ -157,13 +179,12 @@ export const CONTEXT_GENERATOR_TOOL = {
     priority: "low",
     complexity: "simple",
     useCases: [
-      "Generate session context for new AI sessions",
-      "Create project summary document",
-      "Bootstrap documentation",
+      contextGeneratorDefT("useCases.sessionContext"),
+      contextGeneratorDefT("useCases.projectSummary"),
+      contextGeneratorDefT("useCases.bootstrapDocumentation"),
     ],
     relatedTools: ["hev_dev_analyze_project", "hev_context_generate"],
-    agentGuidance:
-      "Generates .rovo/context.md with project info, git status, and quick references. Use print=true to view without writing file.",
+    agentGuidance: contextGeneratorDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["context", "documentation", "bootstrap", "session"],

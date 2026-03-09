@@ -1,8 +1,8 @@
 /**
- * Session Manager - Electron session/cache yönetimi
+ * Session Manager - Electron session/cache management
  *
- * Uygulama açılışında cache temizliği yapar.
- * Login bilgilerini (cookies, localStorage) korur.
+ * Clears cache during application startup.
+ * Preserves login data (cookies, localStorage).
  *
  * @module electron/session-manager
  */
@@ -67,21 +67,21 @@ async function clearPartitionCache(partitionName: string): Promise<ClearResult> 
   }
 }
 
-export async function clearStartupCache(): Promise<{ main: ClearResult; asistan: ClearResult }> {
+export async function clearStartupCache(): Promise<{ main: ClearResult; assistant: ClearResult }> {
   await logger.logInternal(LogCategory.MAIN, LogLevel.INFO, "Startup cache clearing started", {});
 
   const results = {
     main: await clearPartitionCache(PARTITIONS.MAIN),
-    asistan: await clearPartitionCache(PARTITIONS.ASISTAN),
+    assistant: await clearPartitionCache(PARTITIONS.ASSISTANT),
   };
 
-  const totalSuccess = results.main.success && results.asistan.success;
+  const totalSuccess = results.main.success && results.assistant.success;
 
   await logger.logInternal(
     LogCategory.MAIN,
     LogLevel.INFO,
     `Startup cache clearing ${totalSuccess ? "completed" : "partially failed"}`,
-    { mainSuccess: results.main.success, asistanSuccess: results.asistan.success }
+    { mainSuccess: results.main.success, assistantSuccess: results.assistant.success }
   );
 
   return results;

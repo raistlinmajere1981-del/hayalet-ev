@@ -1,12 +1,13 @@
 /**
  * Development Tools - Cache Manager
  *
- * Proje cache yönetimi (export/import haritası, dosya hash'leri)
+ * Project cache management (export/import map, file hashes)
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { DEV_CONFIG } from "./shared/config.js";
 import { getAllFiles } from "./shared/utils.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
@@ -23,6 +24,10 @@ interface CacheResult {
   path: string;
   stats: { totalFiles: number; totalLines: number; totalExports: number };
   changedFiles: string[];
+}
+
+function cacheManagerDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.cacheManager.definition.${key}`, params);
 }
 
 function parseCacheData(value: unknown): CacheData | null {
@@ -131,18 +136,18 @@ export async function updateCache(
 
 export const CACHE_MANAGER_TOOL = {
   name: "hev_dev_update_cache",
-  description: "Proje cache'ini güncelle (export/import haritası, dosya hash'leri)",
+  description: cacheManagerDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       force: {
         type: "boolean" as const,
-        description: "Mevcut cache'i yoksay ve yeniden oluştur",
+        description: cacheManagerDefT("force"),
         default: false,
       },
       show: {
         type: "boolean" as const,
-        description: "Mevcut cache'i göster (güncelleme yapma)",
+        description: cacheManagerDefT("show"),
         default: false,
       },
     },
@@ -152,10 +157,13 @@ export const CACHE_MANAGER_TOOL = {
     subcategory: "optimization",
     priority: "low",
     complexity: "medium",
-    useCases: ["Track file changes", "Build export/import map", "Optimize incremental processing"],
+    useCases: [
+      cacheManagerDefT("useCases.trackChanges"),
+      cacheManagerDefT("useCases.buildMap"),
+      cacheManagerDefT("useCases.optimize"),
+    ],
     relatedTools: ["hev_dev_analyze_project"],
-    agentGuidance:
-      "Caches file hashes and exports. Use force=true to rebuild. Use show=true to inspect without updating.",
+    agentGuidance: cacheManagerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["cache", "optimization", "tracking", "exports"],

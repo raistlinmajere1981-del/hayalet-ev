@@ -1,7 +1,8 @@
 import { resolveSelectorCandidates } from "../../../../../../shared/provider-selector-resolution";
+import { resolveSelectorLanguage } from "../../../../../../shared/i18n/locale.js";
 import { SettingsManager } from "../../../settings-manager.js";
 
-import type { AppLanguage } from "../../../../../types/settings.js";
+import type { SelectorLanguage } from "../../../../../types/i18n.js";
 
 type RuntimeProviderConfig = {
   selectors?: Record<string, unknown>;
@@ -16,13 +17,9 @@ type RuntimeWebviewLike = {
   executeJavaScript?: (script: string) => Promise<unknown>;
 };
 
-function resolveAppLanguage(value: unknown): AppLanguage {
-  return value === "en" ? "en" : "tr";
-}
-
-function getCurrentAppLanguage(): AppLanguage {
+function getCurrentSelectorLanguage(): SelectorLanguage {
   const settings = SettingsManager.getSnapshot() as { general?: { language?: unknown } } | null;
-  return resolveAppLanguage(settings?.general?.language);
+  return resolveSelectorLanguage(settings?.general?.language);
 }
 
 export async function getRuntimeProviderConfig(
@@ -44,13 +41,13 @@ export function getRuntimeSelectorCandidates(
   const entry = config?.selectorMatrix?.selectors?.[key] ?? config?.selectors?.[key];
   return resolveSelectorCandidates(
     entry as string | string[] | Record<string, unknown>,
-    getCurrentAppLanguage()
+    getCurrentSelectorLanguage()
   );
 }
 
 export function getRuntimeConfigCandidates(entry: unknown): string[] {
   return resolveSelectorCandidates(
     entry as string | string[] | Record<string, unknown>,
-    getCurrentAppLanguage()
+    getCurrentSelectorLanguage()
   );
 }

@@ -1,5 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
-import { ASISTAN_TIMEOUTS } from "@timeouts";
+import { ASSISTANT_TIMEOUTS } from "@timeouts";
 /**
  * LifecycleManager - Webview yaşam döngüsü yönetimi
  *
@@ -191,7 +191,7 @@ class LifecycleManagerClass {
             { timeout: 2000 }
           );
         } else {
-          setTimeout(loadWebview, ASISTAN_TIMEOUTS.NAVIGATE_SETTLE);
+          setTimeout(loadWebview, ASSISTANT_TIMEOUTS.NAVIGATE_SETTLE);
         }
       }
 

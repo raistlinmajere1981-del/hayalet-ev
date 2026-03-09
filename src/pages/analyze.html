@@ -7,13 +7,13 @@
             <div class="avatar-circle" id="avatar-ai1">N</div>
             <div>
               <div class="name" id="name-ai1">AI1</div>
-              <div class="status" id="status-ai1">Bağlı</div>
+              <div class="status" id="status-ai1" data-shell-i18n-text="analyze.page.connectedStatus">Connected</div>
             </div>
           </div>
         </div>
 
         <div class="conv-body" id="messages-ai1">
-          <div class="message-placeholder">Henüz mesaj yok.</div>
+          <div class="message-placeholder" data-shell-i18n-text="analyze.page.noMessages">No messages yet.</div>
         </div>
       </div>
 
@@ -23,12 +23,12 @@
             <div class="avatar-circle" id="avatar-ai2">G</div>
             <div>
               <div class="name" id="name-ai2">AI2</div>
-              <div class="status" id="status-ai2">Bağlı</div>
+              <div class="status" id="status-ai2" data-shell-i18n-text="analyze.page.connectedStatus">Connected</div>
             </div>
           </div>
         </div>
         <div class="conv-body" id="messages-ai2">
-          <div class="message-placeholder">Henüz mesaj yok.</div>
+          <div class="message-placeholder" data-shell-i18n-text="analyze.page.noMessages">No messages yet.</div>
         </div>
       </div>
     </div>
@@ -39,24 +39,33 @@
           <div class="identity compose-user-identity">
             <div class="avatar-circle" id="avatar-user-compose">U</div>
             <div class="compose-user-meta">
-              <div class="name" id="name-user-compose">Kullanıcı</div>
+              <div class="name" id="name-user-compose" data-shell-i18n-text="analyze.page.userLabel">User</div>
             </div>
           </div>
 
           <textarea
             class="form-input large"
             id="compose-input"
-            placeholder="Mesaj yaz..."
+            placeholder="Write a message..."
+            data-shell-i18n-placeholder="analyze.page.composePlaceholder"
             spellcheck="false"
           ></textarea>
         </div>
 
         <div class="compose-actions">
-          <button class="btn btn-secondary btn-sm compose-start-action" id="compose-start-btn">
-            📝 Analiz Sohbeti
+          <button
+            class="btn btn-secondary btn-sm compose-start-action"
+            id="compose-start-btn"
+            data-shell-i18n-text="analyze.page.startChatButton"
+          >
+            📝 Analysis Chat
           </button>
-          <button class="btn btn-secondary btn-sm compose-start-action" id="compose-stop-btn">
-            ⏹ Analiz Sonlandır
+          <button
+            class="btn btn-secondary btn-sm compose-start-action"
+            id="compose-stop-btn"
+            data-shell-i18n-text="analyze.page.stopChatButton"
+          >
+            ⏹ Stop Analysis
           </button>
           <div class="send-controls">
             <label class="checkbox-label"
@@ -67,18 +76,23 @@
               <input type="checkbox" id="send-ai2" checked />
               <span id="send-ai2-label">AI2</span></label
             >
-            <label class="checkbox-label"><input type="checkbox" id="send-cross" /> Çaprazla</label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="send-cross" />
+              <span data-shell-i18n-text="analyze.page.crossLabel">Cross-send</span>
+            </label>
           </div>
           <button class="btn btn-primary btn-sm" id="compose-send-btn">
-            <span class="btn-text">Gönder</span>
+            <span class="btn-text" data-shell-i18n-text="analyze.page.sendButton">Send</span>
           </button>
-          <button class="btn btn-secondary btn-sm" id="upload-add-btn">Dosya ekle</button>
+          <button class="btn btn-secondary btn-sm" id="upload-add-btn" data-shell-i18n-text="analyze.page.addFileButton">
+            Add File
+          </button>
         </div>
       </div>
 
       <!-- Sağ: Dosya paneli -->
       <div class="compose-files glass-panel">
-        <div class="file-box" id="upload-list">Henüz dosya yok.</div>
+        <div class="file-box" id="upload-list" data-shell-i18n-text="analyze.page.noFiles">No files yet.</div>
       </div>
     </div>
   </div>
@@ -86,7 +100,7 @@
   <div class="modal modal-document modal-read hidden" id="read-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <button class="btn btn-ghost" id="read-modal-close">Kapat</button>
+        <button class="btn btn-ghost" id="read-modal-close" data-shell-i18n-text="common.close">Close</button>
       </div>
       <div class="modal-body" id="read-modal-body"></div>
     </div>

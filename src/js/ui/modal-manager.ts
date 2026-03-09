@@ -9,29 +9,30 @@
  *
  * // Basic modal
  * const modal = Modal.open({
- *   title: 'Onay',
- *   content: 'Bu işlemi yapmak istediğinize emin misiniz?',
+ *   title: 'Confirm',
+ *   content: 'Are you sure you want to perform this action?',
  *   buttons: [
- *     { label: 'İptal', variant: 'secondary', onClick: () => modal.close() },
- *     { label: 'Onayla', variant: 'primary', onClick: () => handleConfirm() }
+ *     { label: 'Cancel', variant: 'secondary', onClick: () => modal.close() },
+ *     { label: 'Confirm', variant: 'primary', onClick: () => handleConfirm() }
  *   ]
  * });
  *
  * // Confirm dialog (shorthand)
  * const confirmed = await Modal.confirm({
- *   title: 'Silme Onayı',
- *   message: 'Bu öğeyi silmek istediğinize emin misiniz?',
- *   confirmText: 'Sil',
+ *   title: 'Delete Confirmation',
+ *   message: 'Are you sure you want to delete this item?',
+ *   confirmText: 'Delete',
  *   confirmVariant: 'danger'
  * });
  *
  * // Alert (shorthand)
- * await Modal.alert('Hata', 'Bir şeyler ters gitti.');
+ * await Modal.alert('Error', 'Something went wrong.');
  * ```
  */
 
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
+import { AppI18n } from "../modules/i18n/index.js";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 
@@ -110,7 +111,7 @@ function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
     if (options.closable !== false) {
       const closeBtn = document.createElement("button");
       closeBtn.className = "modal-close";
-      closeBtn.setAttribute("aria-label", "Kapat");
+      closeBtn.setAttribute("aria-label", AppI18n.t("shell.common.closeAriaLabel"));
       closeBtn.innerHTML = "×";
       closeBtn.addEventListener("click", () => {
         modalApi.close(id);
@@ -287,14 +288,14 @@ const modalApi = {
         closeOnOverlay: false,
         buttons: [
           {
-            label: options.cancelText ?? "İptal",
+            label: options.cancelText ?? AppI18n.t("shell.common.cancel"),
             variant: "secondary",
             onClick: (): void => {
               resolve(false);
             },
           },
           {
-            label: options.confirmText ?? "Onayla",
+            label: options.confirmText ?? AppI18n.t("shell.common.confirm"),
             variant: options.confirmVariant ?? "primary",
             onClick: (): void => {
               resolve(true);
@@ -313,7 +314,7 @@ const modalApi = {
         size: "sm",
         buttons: [
           {
-            label: "Tamam",
+            label: AppI18n.t("shell.common.ok"),
             variant: "primary",
             onClick: (): void => {
               resolve(undefined);
@@ -345,14 +346,14 @@ const modalApi = {
         size: "sm",
         buttons: [
           {
-            label: "İptal",
+            label: AppI18n.t("shell.common.cancel"),
             variant: "secondary",
             onClick: (): void => {
               resolve(null);
             },
           },
           {
-            label: "Tamam",
+            label: AppI18n.t("shell.common.ok"),
             variant: "primary",
             onClick: (): void => {
               resolve(input.value);

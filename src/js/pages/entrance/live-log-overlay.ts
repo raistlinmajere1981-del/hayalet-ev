@@ -1,6 +1,7 @@
 import { LogCategory } from "@shared/logging-core";
 import { MAX_LOGS_SERVER } from "@limits";
 import { Logger } from "../../modules/logger/index.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import {
   appendEntries,
   asText,
@@ -11,6 +12,7 @@ import {
   joinPath,
   normalizeLogEntry,
 } from "./live-log-overlay-model.js";
+import { t as entranceT } from "./i18n.js";
 import {
   renderDetail,
   renderEntries,
@@ -30,7 +32,7 @@ export function setupEntranceLiveLogOverlay({
 }: SetupEntranceLiveLogOverlayOptions): void {
   const electronApi = window.electronAPI;
   if (electronApi == null) {
-    Logger.warn(LogCategory.ENTRANCE, "IPC/filesystem bridge not available for live overlay");
+    Logger.warn(LogCategory.ENTRANCE, entranceT("logs.liveOverlayBridgeUnavailable"));
     return;
   }
 
@@ -67,7 +69,7 @@ export function setupEntranceLiveLogOverlay({
     !detailMeta ||
     !detailContext
   ) {
-    Logger.debug(LogCategory.ENTRANCE, "Advanced live overlay elements not found");
+    Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayElementsMissing"));
     return;
   }
 
@@ -119,7 +121,9 @@ export function setupEntranceLiveLogOverlay({
     } catch (error) {
       Logger.warn(
         LogCategory.ENTRANCE,
-        `Base log path alinmadi: ${error instanceof Error ? error.message : String(error)}`
+        entranceT("logs.liveOverlayBasePathMissing", {
+          message: error instanceof Error ? error.message : String(error),
+        })
       );
       return false;
     }
@@ -344,7 +348,13 @@ export function setupEntranceLiveLogOverlay({
     handleIncomingPayload(payload);
   });
 
+  AppI18n.subscribe(() => {
+    syncSessionSelect(state, sessionSelect);
+    setPauseButtonUI(state, pauseBtn);
+    render();
+  });
+
   setPauseButtonUI(state, pauseBtn);
   render();
-  Logger.debug(LogCategory.ENTRANCE, "Advanced live log overlay setup complete");
+  Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayReady"));
 }

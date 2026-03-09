@@ -12,10 +12,15 @@ export function detectConflicts(content: string, edits: FileEdit[]): ConflictInf
       if (!editB) continue;
 
       if (editA.old_text === editB.old_text) {
+        const preview = `${editA.old_text.slice(0, 40)}${editA.old_text.length > 40 ? "..." : ""}`;
         conflicts.push({
           editA: i,
           editB: j,
-          reason: `Aynı old_text hedeflenmiş: "${editA.old_text.slice(0, 40)}${editA.old_text.length > 40 ? "..." : ""}"`,
+          reasonKey: "conflicts.sameTarget",
+          reasonParams: {
+            preview,
+          },
+          reason: `The same old_text target was selected: "${preview}"`,
         });
         continue;
       }
@@ -24,7 +29,12 @@ export function detectConflicts(content: string, edits: FileEdit[]): ConflictInf
         conflicts.push({
           editA: i,
           editB: j,
-          reason: `Edit ${j + 1}'in old_text'i Edit ${i + 1}'in old_text'inin alt kümesi`,
+          reasonKey: "conflicts.subsetOfA",
+          reasonParams: {
+            childEdit: j + 1,
+            parentEdit: i + 1,
+          },
+          reason: `Edit ${j + 1} old_text is a subset of Edit ${i + 1} old_text`,
         });
         continue;
       }
@@ -33,7 +43,12 @@ export function detectConflicts(content: string, edits: FileEdit[]): ConflictInf
         conflicts.push({
           editA: i,
           editB: j,
-          reason: `Edit ${i + 1}'in old_text'i Edit ${j + 1}'in old_text'inin alt kümesi`,
+          reasonKey: "conflicts.subsetOfB",
+          reasonParams: {
+            childEdit: i + 1,
+            parentEdit: j + 1,
+          },
+          reason: `Edit ${i + 1} old_text is a subset of Edit ${j + 1} old_text`,
         });
         continue;
       }
@@ -49,7 +64,16 @@ export function detectConflicts(content: string, edits: FileEdit[]): ConflictInf
             conflicts.push({
               editA: i,
               editB: j,
-              reason: `Çakışan aralıklar: Edit ${i + 1} [${posA}:${endA}] vs Edit ${j + 1} [${posB}:${endB}]`,
+              reasonKey: "conflicts.overlappingRanges",
+              reasonParams: {
+                editA: i + 1,
+                startA: posA,
+                endA,
+                editB: j + 1,
+                startB: posB,
+                endB,
+              },
+              reason: `Overlapping ranges: Edit ${i + 1} [${posA}:${endA}] vs Edit ${j + 1} [${posB}:${endB}]`,
             });
           }
         }

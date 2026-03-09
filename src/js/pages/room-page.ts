@@ -1,5 +1,6 @@
 import type { InstalledRoomRecord } from "@shared/index.js";
 import type { PageController } from "../app/types.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { RoomHostRuntime } from "../modules/rooms/room-host-runtime.js";
 import { toRoomRuntimeFileUrl } from "../modules/rooms/room-runtime-url.js";
 
@@ -25,8 +26,9 @@ export class RoomPageController implements PageController {
   private room: InstalledRoomRecord;
   private readonly pageName: string;
   private runtimeState: RoomRuntimeState = "idle";
-  private lastRuntimeEvent = "Room runtime handshake bekleniyor.";
+  private lastRuntimeEvent = roomPageT("status.handshakeWaiting");
   private preloadUrlPromise: Promise<string> | null = null;
+  private unsubscribeI18n: (() => void) | null = null;
 
   constructor(room: InstalledRoomRecord, pageName: string) {
     this.room = { ...room };
@@ -39,6 +41,9 @@ export class RoomPageController implements PageController {
   }
 
   async init(): Promise<void> {
+    this.unsubscribeI18n ??= AppI18n.subscribe(() => {
+      this.render();
+    });
     this.render();
     await this.ensureRuntimeHost();
   }
@@ -60,6 +65,8 @@ export class RoomPageController implements PageController {
   }
 
   dispose(): void {
+    this.unsubscribeI18n?.();
+    this.unsubscribeI18n = null;
     void RoomHostRuntime.disposeRoom(this.room.id);
     const mount = this.getPage()?.querySelector<HTMLElement>("[data-room-role='runtime-mount']");
     mount?.replaceChildren();
@@ -77,46 +84,46 @@ export class RoomPageController implements PageController {
     page.innerHTML = `
       <div class="room-shell">
         <div class="room-shell-hero">
-          <div class="room-shell-badge">Oda</div>
+          <div class="room-shell-badge">${roomPageT("page.badge")}</div>
           <h1 class="room-shell-title" data-room-role="title"></h1>
           <p class="room-shell-subtitle" data-room-role="subtitle"></p>
         </div>
         <div class="room-shell-grid">
           <section class="glass-panel room-shell-panel room-shell-panel--runtime">
-            <div class="panel-title">Runtime</div>
+            <div class="panel-title">${roomPageT("page.runtimeTitle")}</div>
             <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
-              Runtime hazırlanıyor...
+              ${roomPageT("status.preparing")}
             </div>
             <div class="room-runtime-event" data-room-role="runtime-event">
-              Room runtime handshake bekleniyor.
+              ${roomPageT("status.handshakeWaiting")}
             </div>
             <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
           </section>
           <section class="glass-panel room-shell-panel">
-            <div class="panel-title">Entry Points</div>
+            <div class="panel-title">${roomPageT("page.entryPointsTitle")}</div>
             <div class="room-meta-list">
               <div class="room-meta-row">
-                <span class="room-meta-label">ID</span>
+                <span class="room-meta-label">${roomPageT("page.labels.id")}</span>
                 <span class="room-meta-value" data-room-role="id"></span>
               </div>
               <div class="room-meta-row">
-                <span class="room-meta-label">Version</span>
+                <span class="room-meta-label">${roomPageT("page.labels.version")}</span>
                 <span class="room-meta-value" data-room-role="version"></span>
               </div>
               <div class="room-meta-row">
-                <span class="room-meta-label">Installed</span>
+                <span class="room-meta-label">${roomPageT("page.labels.installed")}</span>
                 <span class="room-meta-value" data-room-role="installed"></span>
               </div>
               <div class="room-meta-row">
-                <span class="room-meta-label">Runtime</span>
+                <span class="room-meta-label">${roomPageT("page.labels.runtime")}</span>
                 <span class="room-meta-value" data-room-role="runtime-path"></span>
               </div>
               <div class="room-meta-row">
-                <span class="room-meta-label">Host</span>
+                <span class="room-meta-label">${roomPageT("page.labels.host")}</span>
                 <span class="room-meta-value" data-room-role="host-path"></span>
               </div>
               <div class="room-meta-row">
-                <span class="room-meta-label">Source</span>
+                <span class="room-meta-label">${roomPageT("page.labels.source")}</span>
                 <span class="room-meta-value" data-room-role="source-path"></span>
               </div>
             </div>
@@ -131,8 +138,8 @@ export class RoomPageController implements PageController {
   private syncShell(page: HTMLElement): void {
     const description =
       this.room.name !== this.room.id
-        ? `${this.room.name} izole room runtime olarak yüklendi.`
-        : "Installed room runtime hazır.";
+        ? roomPageT("page.subtitleNamed", { name: this.room.name })
+        : roomPageT("page.subtitleDefault");
 
     this.updateText(page, "title", this.room.name);
     this.updateText(page, "subtitle", description);
@@ -159,12 +166,12 @@ export class RoomPageController implements PageController {
       statusEl.dataset["state"] = this.runtimeState;
       statusEl.textContent =
         this.runtimeState === "error"
-          ? "Runtime yüklenemedi."
+          ? roomPageT("status.loadFailed")
           : this.runtimeState === "ready"
-            ? "Runtime hazır."
+            ? roomPageT("status.ready")
             : this.runtimeState === "loading"
-              ? "Runtime yükleniyor..."
-              : "Runtime hazırlanıyor...";
+              ? roomPageT("status.loading")
+              : roomPageT("status.preparing");
     }
     if (eventEl !== null) {
       eventEl.textContent = this.lastRuntimeEvent;
@@ -265,7 +272,7 @@ export class RoomPageController implements PageController {
       if (ipcEvent.channel === "room-ready") {
         const payload = ipcEvent.args?.[0];
         this.runtimeState = "ready";
-        this.lastRuntimeEvent = this.describePayload(payload, "Room runtime hazır.");
+        this.lastRuntimeEvent = this.describePayload(payload, roomPageT("status.runtimeReady"));
         const page = this.getPage();
         if (page !== null) {
           this.updateRuntimeStatus(page);
@@ -286,7 +293,7 @@ export class RoomPageController implements PageController {
 
       if (ipcEvent.channel === "room-event") {
         const payload = ipcEvent.args?.[0];
-        this.lastRuntimeEvent = this.describePayload(payload, "Room event");
+        this.lastRuntimeEvent = this.describePayload(payload, roomPageT("status.roomEvent"));
         const page = this.getPage();
         if (page !== null) {
           this.updateRuntimeStatus(page);
@@ -317,7 +324,7 @@ export class RoomPageController implements PageController {
         return `++cmd:${command.trim()}`;
       }
     }
-    return "Room runtime bir komut gonderdi.";
+    return roomPageT("status.commandSent");
   }
 
   private describePayload(payload: unknown, fallback: string): string {
@@ -360,4 +367,8 @@ export class RoomPageController implements PageController {
 
     return await this.preloadUrlPromise;
   }
+}
+
+function roomPageT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.roomPage.${key}`, params);
 }

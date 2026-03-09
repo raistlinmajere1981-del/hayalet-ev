@@ -1,5 +1,6 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
 import type { Account } from "@shared/settings.js";
+import { formatTime, t as entranceT } from "./i18n.js";
 
 interface WhisperRecord {
   id?: string;
@@ -87,7 +88,7 @@ export class WhisperPanel {
     this.listEl.innerHTML = "";
 
     if (this.overdueWhispers.length === 0) {
-      this.listEl.innerHTML = '<div class="empty-message">Kayıt yok</div>';
+      this.listEl.innerHTML = `<div class="empty-message">${entranceT("whisper.empty")}</div>`;
       return;
     }
 
@@ -99,10 +100,7 @@ export class WhisperPanel {
 
       const when =
         record.when !== undefined && record.when !== 0
-          ? new Date(record.when).toLocaleTimeString("tr-TR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+          ? formatTime(record.when)
           : "-";
 
       const accountLabel = this.getAccountLabel(record.accountId, accountMap);
@@ -115,7 +113,7 @@ export class WhisperPanel {
                     </div>
                     <div class="whisper-text" title="${this.escapeHtml(record.text)}">${this.escapeHtml(record.text)}</div>
                 </div>
-                <button class="icon-btn delete-btn" title="Sil">×</button>
+                <button class="icon-btn delete-btn" title="${this.escapeHtml(entranceT("whisper.deleteTitle"))}">×</button>
             `;
 
       row.querySelector(".delete-btn")?.addEventListener("click", (e) => {

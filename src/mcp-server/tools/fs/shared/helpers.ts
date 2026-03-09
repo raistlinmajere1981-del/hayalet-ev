@@ -12,36 +12,36 @@ import path from "path";
 // ============================================
 
 /**
- * LLM'lerin MCP tool call'larında gönderdiği content string'lerini normalize eder.
+ * Normalizes content strings sent by LLMs in MCP tool calls.
  *
- * PROBLEM: LLM'ler content gönderirken bazen:
- * - Tek tırnak escape'leri: \' → ' (JSON'da gereksiz)
- * - Literal escape sequence: \\n (2 char) olması gereken yerde \\\\n (3+ char) gönderir
+ * PROBLEM: When sending content, LLMs sometimes:
+ * - Escape single quotes: \' → ' (unnecessary in JSON)
+ * - Send triple-escaped literal sequences such as \\\\n where \\n is expected
  * - Template literal backtick escape: \` → `
- * - Çift-escape backslash: \\\\ → \\ olması gereken durumlar
+ * - Double-escape backslashes where \\\\ should really be \\
  *
- * Bu fonksiyon bu tür yanlış escape'leri düzeltir.
- * Sadece LLM artifact'lerini temizler, geçerli escape sequence'lara dokunmaz.
+ * This function fixes those malformed escape patterns.
+ * It only cleans LLM artifacts and leaves valid escape sequences untouched.
  */
 export function sanitizeContent(content: string): string {
   if (content === "") return content;
 
   let result = content;
 
-  // 1. Gereksiz tek tırnak escape'lerini düzelt: \' → '
-  //    JSON standardında tek tırnak escape edilmez,
-  //    LLM bazen JavaScript alışkanlığıyla \' gönderiyor
+  // 1. Remove unnecessary single-quote escapes: \' → '
+  //    JSON does not escape single quotes,
+  //    but LLMs sometimes emit \' out of JavaScript habit.
   result = result.replace(/\\'/g, "'");
 
-  // 2. Gereksiz backtick escape'lerini düzelt: \` → `
-  //    JSON'da backtick escape edilmez
+  // 2. Remove unnecessary backtick escapes: \` → `
+  //    Backticks are not escaped in JSON.
   result = result.replace(/\\`/g, "`");
 
-  // 3. Çift-escape edilmiş newline/tab/return'leri düzelt
-  //    LLM bazen \\n (literal 2 char) yerine \\\\n gönderiyor
-  //    Ama dikkat: gerçek \n (newline) zaten JSON parse'da çözülmüş olur,
-  //    burada kalan \\n literal backslash+n demek - bunlara dokunmuyoruz
-  //    Sadece \\\\n → \\n düzeltiyoruz (triple+ escape)
+  // 3. Fix double-escaped newline/tab/return sequences
+  //    LLMs sometimes emit \\\\n where literal \\n is intended.
+  //    Real \n newlines are already resolved during JSON parsing,
+  //    so the remaining \\n values are literal backslash+n and stay untouched.
+  //    Only \\\\n → \\n style over-escapes are normalized.
   result = result.replace(/\\\\\\n/g, "\\n");
   result = result.replace(/\\\\\\t/g, "\\t");
   result = result.replace(/\\\\\\r/g, "\\r");

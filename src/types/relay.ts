@@ -1,5 +1,5 @@
 /**
- * Relay Types - AI-AI ve AI-Asistan iletişim tipleri
+ * Relay Types - communication types for AI-AI and AI-Assistant flows
  *
  * @module src/js/types/relay
  */
@@ -8,10 +8,10 @@ import type { SlotId, Attachment } from "./common.js";
 
 // Relay Message Types
 
-/** Relay mesaj tipi */
+/** Relay message type */
 export type RelayMessageType = "text" | "command" | "file" | "system";
 
-/** Relay mesajı */
+/** Relay message */
 export interface RelayMessage {
   id: string;
   type: RelayMessageType;
@@ -23,7 +23,7 @@ export interface RelayMessage {
   metadata?: RelayMessageMetadata;
 }
 
-/** Relay mesaj metadata'sı */
+/** Relay message metadata */
 export interface RelayMessageMetadata {
   originalMessageId?: string;
   replyTo?: string;
@@ -33,7 +33,7 @@ export interface RelayMessageMetadata {
 
 // Relay State Types
 
-/** Relay durumu */
+/** Relay status */
 export type RelayStatus = "idle" | "active" | "paused" | "error";
 
 /** Relay state */
@@ -48,7 +48,7 @@ export interface RelayState {
 
 // Relay Config Types
 
-/** Relay yapılandırması */
+/** Relay configuration */
 export interface RelayConfig {
   autoStart?: boolean;
   maxQueueSize?: number;
@@ -58,7 +58,7 @@ export interface RelayConfig {
   filters?: RelayFilters;
 }
 
-/** Relay filtreleri */
+/** Relay filters */
 export interface RelayFilters {
   allowedTypes?: RelayMessageType[];
   blockedPatterns?: string[];
@@ -67,10 +67,10 @@ export interface RelayFilters {
 
 // AI-AI Relay Types
 
-/** AI-AI relay modu */
+/** AI-AI relay mode */
 export type AIRelayMode = "ping-pong" | "broadcast" | "chain";
 
-/** AI-AI relay yapılandırması */
+/** AI-AI relay configuration */
 export interface AIRelayConfig extends RelayConfig {
   mode: AIRelayMode;
   participants: SlotId[];
@@ -86,25 +86,25 @@ export interface AIRelayState extends RelayState {
   participants: SlotId[];
 }
 
-// AI-Asistan Relay Types
+// AI-Assistant relay types
 
-/** Asistan relay yapılandırması */
-export interface AsistanRelayConfig extends RelayConfig {
-  asistanSlot: SlotId;
+/** Assistant relay configuration. */
+export interface AssistantRelayConfig extends RelayConfig {
+  assistantSlot: SlotId;
   userSlot: SlotId;
   commandPrefix?: string;
 }
 
-/** Asistan relay state */
-export interface AsistanRelayState extends RelayState {
-  asistanSlot: SlotId;
+/** Assistant relay state. */
+export interface AssistantRelayState extends RelayState {
+  assistantSlot: SlotId;
   userSlot: SlotId;
   pendingCommands: string[];
 }
 
 // Relay Events
 
-/** Relay event tipi */
+/** Relay event type. */
 export type RelayEventType =
   | "message:received"
   | "message:sent"

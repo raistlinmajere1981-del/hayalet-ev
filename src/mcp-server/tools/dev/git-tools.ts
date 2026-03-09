@@ -1,11 +1,20 @@
 /**
  * Development Tools - Git Tools
  *
- * Git diff ve stat çıktıları
+ * Git diff and stat output.
  */
 
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
+
+function gitDiffT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.gitDiff.${key}`, params);
+}
+
+function gitDiffDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.gitDiff.definition.${key}`, params);
+}
 
 export function gitDiff(
   projectRoot: string,
@@ -32,7 +41,7 @@ export function gitDiff(
 
     return {
       success: true,
-      diff: diff.length > 0 ? diff : "Değişiklik yok",
+      diff: diff.length > 0 ? diff : gitDiffT("runtime.noChanges"),
       ...(statMatch
         ? {
             stats: {
@@ -53,18 +62,18 @@ export function gitDiff(
 
 export const GIT_DIFF_TOOL = {
   name: "hev_dev_git_diff",
-  description: "Git değişikliklerini göster (staged veya unstaged)",
+  description: gitDiffDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       staged: {
         type: "boolean" as const,
-        description: "Staged değişiklikler (git add sonrası)",
+        description: gitDiffDefT("staged"),
         default: false,
       },
       file: {
         type: "string" as const,
-        description: "Sadece belirli dosya",
+        description: gitDiffDefT("file"),
       },
     },
   },
@@ -74,13 +83,12 @@ export const GIT_DIFF_TOOL = {
     priority: "medium",
     complexity: "simple",
     useCases: [
-      "View git changes before commit",
-      "Check staged vs unstaged differences",
-      "Inspect specific file changes",
+      gitDiffDefT("useCases.beforeCommit"),
+      gitDiffDefT("useCases.stagedVsUnstaged"),
+      gitDiffDefT("useCases.specificFile"),
     ],
     relatedTools: ["hev_git_pr_status", "hev_git_create_pr", "hev_fs_diff"],
-    agentGuidance:
-      "Use to inspect code changes. Shows diff with stats (additions/deletions). Use staged=true for pre-commit review.",
+    agentGuidance: gitDiffDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["git", "diff", "changes", "version-control"],

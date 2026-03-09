@@ -5,26 +5,25 @@ import type {
   ProviderTestProgressEvent,
   ProviderTestSuite,
 } from "@shared/provider.js";
-import type {
-  MessageRecord,
-  MessagePart,
-  MessageUpsertInput,
-  PartUpdateInput,
-  StoreEvent,
-  PermissionEntry,
-  QuestionEntry,
-  OptimisticMessageResult,
-} from "./modules/asistan/stores/message/types.js";
-import type {
-  ToolRendererConfig,
-  ToolCallData,
-  HookType,
-  HookCallback,
-  RegistryListener,
-} from "./modules/asistan/tool-renderers/registry/types.js";
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../types/rooms.js";
+import type { LanguageDescriptor, LoadedLanguagePack } from "../types/i18n.js";
 
 export {};
+
+type LooseObject = Record<string, unknown>;
+type MessageRecord = LooseObject;
+type MessagePart = LooseObject;
+type MessageUpsertInput = LooseObject;
+type PartUpdateInput = LooseObject;
+type StoreEvent = LooseObject;
+type PermissionEntry = LooseObject;
+type QuestionEntry = LooseObject;
+type OptimisticMessageResult = LooseObject;
+type ToolRendererConfig = LooseObject;
+type ToolCallData = LooseObject;
+type HookType = string;
+type HookCallback = (data: unknown) => unknown;
+type RegistryListener = (...args: unknown[]) => unknown;
 
 type AttachmentType = "file" | "image" | "text" | "agent";
 
@@ -138,7 +137,7 @@ type ToolRegistry = {
 declare global {
   interface Window {
     /**
-     * Electron preload tarafından expose edilen API
+     * API exposed by the Electron preload layer.
      * @see electron/preload.cjs
      */
     electronAPI?: ElectronAPI;
@@ -489,6 +488,8 @@ declare global {
     getStartupFlags: () => { startPage: string | null; autoConnect: boolean };
     loadSettings: () => Promise<Record<string, unknown>>;
     saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
+    i18nListLanguages: () => Promise<LanguageDescriptor[]>;
+    i18nLoadLanguage: (locale: string) => Promise<LoadedLanguagePack | null>;
 
     readFile: (path: string) => Promise<string | null>;
     loadProtocols: () => Promise<{

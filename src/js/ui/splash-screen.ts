@@ -13,15 +13,15 @@ import { LogCategory } from "@shared/logging-core";
  * SplashScreen.show();
  *
  * // Update progress
- * SplashScreen.setStatus('Ayarlar yükleniyor...');
+ * SplashScreen.setStatus('Loading settings...');
  * SplashScreen.setProgress(25);
  *
  * // Continue with loading...
- * SplashScreen.setStatus('Modüller başlatılıyor...');
+ * SplashScreen.setStatus('Starting modules...');
  * SplashScreen.setProgress(50);
  *
  * // Complete and hide (waits minimum time)
- * SplashScreen.setStatus('Hazır!');
+ * SplashScreen.setStatus('Ready!');
  * SplashScreen.setProgress(100);
  * await SplashScreen.hide(); // Waits min 2s, then fades out
  * ```
@@ -29,6 +29,7 @@ import { LogCategory } from "@shared/logging-core";
 
 import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
+import { AppI18n } from "../modules/i18n/index.js";
 
 interface SplashElements {
   container: HTMLElement | null;
@@ -69,6 +70,10 @@ function getElements(): SplashElements {
   return elements;
 }
 
+function splashLog(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`shell.logs.${key}`, params);
+}
+
 function createSplashElement(): HTMLElement {
   const splash = document.createElement("div");
   splash.id = ELEMENT_IDS.container;
@@ -85,7 +90,7 @@ function createSplashElement(): HTMLElement {
       <div class="splash-loader">
         <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
       </div>
-      <p class="splash-status" id="${ELEMENT_IDS.status}">Başlatılıyor...</p>
+      <p class="splash-status" id="${ELEMENT_IDS.status}">${AppI18n.t("app.startup.starting")}</p>
     </div>
   `;
 
@@ -108,7 +113,7 @@ const splashScreen = {
     isVisible = true;
     currentProgress = 0;
 
-    Logger.debug(LogCategory.UI_SPLASH, "Shown", { timestamp: showTime });
+    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashShown"), { timestamp: showTime });
   },
 
   /**
@@ -136,7 +141,9 @@ const splashScreen = {
     isInitialized = false;
     elements = { container: null, progress: null, status: null, logo: null };
 
-    Logger.debug(LogCategory.UI_SPLASH, "Removed from DOM", { totalTime: Date.now() - showTime });
+    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashRemoved"), {
+      totalTime: Date.now() - showTime,
+    });
   },
 
   /**
@@ -154,7 +161,7 @@ const splashScreen = {
 
     progress.style.width = `${value}%`;
 
-    Logger.debug(LogCategory.UI_SPLASH, "Progress updated", { percent: value });
+    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashProgressUpdated"), { percent: value });
   },
 
   setIndeterminate(): void {
@@ -175,7 +182,7 @@ const splashScreen = {
 
     status.textContent = message;
 
-    Logger.debug(LogCategory.UI_SPLASH, "Status updated", { message });
+    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashStatusUpdated"), { message });
   },
 
   update(percent: number, message: string): void {
@@ -200,12 +207,12 @@ const splashScreen = {
 
   complete(): void {
     splashScreen.setProgress(100);
-    splashScreen.setStatus("Hazır!");
+    splashScreen.setStatus(AppI18n.t("app.startup.ready"));
   },
 
   reset(): void {
     splashScreen.setProgress(0);
-    splashScreen.setStatus("Başlatılıyor...");
+    splashScreen.setStatus(AppI18n.t("app.startup.starting"));
     currentProgress = 0;
   },
 };

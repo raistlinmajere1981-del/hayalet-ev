@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
   loadSettings: () => ipcRenderer.invoke("load-settings"),
   saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
+  i18nListLanguages: () => ipcRenderer.invoke("i18n-list-languages"),
+  i18nLoadLanguage: (locale) => ipcRenderer.invoke("i18n-load-language", locale),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   showMessageBox: (options) => ipcRenderer.invoke("show-message-box", options),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),

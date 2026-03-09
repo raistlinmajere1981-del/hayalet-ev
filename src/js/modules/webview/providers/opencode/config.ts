@@ -3,8 +3,8 @@ import { WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
 /**
  * OpenCode Provider Configuration
  *
- * OpenCode - AI asistan arayüzü (lokal server)
- * OpenCode serve komutu ile başlatılır:
+ * OpenCode - AI assistant interface (local server)
+ * Start it with the OpenCode serve command:
  * opencode serve --port 4096 --hostname 127.0.0.1 --cors http://localhost:5173 /workspace/path
  */
 
@@ -31,33 +31,33 @@ export const config = {
   loginUrl: null,
   lastVerified: "2026-02-07",
 
-  isAsistan: true,
+  isAssistant: true,
 
   /**
-   * Dinamik server URL oluştur
-   * @param {number} port - Server portu
-   * @returns {string} Server URL'i
+   * Build the server URL dynamically.
+   * @param {number} port - Server port
+   * @returns {string} Server URL
    */
   getServerUrl(port = OPENCODE_DEFAULTS.port): string {
     return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
   },
 
   /**
-   * Workspace ile URL oluştur
-   * @param {string} workspace - Workspace klasörü yolu
-   * @param {number} port - Server portu (opsiyonel)
-   * @returns {string} Tam URL
+   * Build the URL with a workspace parameter.
+   * @param {string} workspace - Workspace directory path
+   * @param {number} port - Optional server port
+   * @returns {string} Full URL
    */
   getWorkspaceUrl(_workspace: string, port = OPENCODE_DEFAULTS.port): string {
     return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
   },
 
   /**
-   * Server komutunu oluştur
-   * @param {number} port - Server portu
+   * Build the server command.
+   * @param {number} port - Server port
    * @param {string} cors - CORS origin
    * @param {string} workspace - Workspace path
-   * @returns {object} Komut ve argümanları
+   * @returns {object} Command and arguments
    */
   getServerCommand(
     port = OPENCODE_DEFAULTS.port,
@@ -168,6 +168,16 @@ export const config = {
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
+  },
+  uiLanguage: {
+    support: "supported",
+    syncMode: "automatic",
+    supportedLocales: ["tr", "en"],
+    persistence: ["localStorage"],
+    signals: {
+      localStorageKeys: ["hayalet:opencode-language", "opencode:language"],
+    },
+    notes: "OpenCode surfaces are Hayalet-ev controlled and can be synchronized directly in-app.",
   },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,

@@ -112,6 +112,13 @@ export const config = {
     endpoints: [],
     tokenPaths: [],
   },
+  uiLanguage: {
+    support: "partial",
+    syncMode: "manual",
+    supportedLocales: ["tr", "en"],
+    persistence: ["account", "cookie", "session"],
+    notes: "Provider language is account-scoped and requires dedicated UI automation research.",
+  },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
     webviewSync: WEBVIEW_SYNC_SCENARIO,

@@ -31,7 +31,7 @@ function normalizeCommandName(commandName: string): string {
 }
 
 function scopeToCategory(scope: RoomCommandScope): RoomCommandCategory {
-  return scope === "asistan" ? "ai0" : "ai1-ai2";
+  return scope === "assistant" ? "ai0" : "ai1-ai2";
 }
 
 function normalizeScope(scope: RoomCommandScope | undefined): RoomCommandScope {
@@ -73,7 +73,7 @@ function isScopeAllowed(scope: RoomCommandScope, provider: string): boolean {
   }
 
   if (provider === "ai0") {
-    return scope === "asistan" || scope === "system";
+    return scope === "assistant" || scope === "system";
   }
 
   if (provider === "ai1" || provider === "ai2") {

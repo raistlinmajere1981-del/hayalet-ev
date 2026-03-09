@@ -32,7 +32,12 @@ import {
   TYPESCRIPT_DASHBOARD_TOOL,
   TYPESCRIPT_TYPE_HELPER_TOOL,
 } from "../../../tools/dev/index.js";
+import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
+
+function coreDevT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.coreHandlers.${key}`, params);
+}
 
 export function createCoreDevTools(projectRoot: string): ToolEntry[] {
   return [
@@ -48,7 +53,12 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
       handler: async (args): Promise<unknown> => {
         const result = await bootstrapContext(projectRoot, args as Record<string, unknown>);
         return {
-          content: [{ type: "text", text: `✅ Bootstrap completed: ${result.stats.lines} lines` }],
+          content: [
+            {
+              type: "text",
+              text: coreDevT("bootstrapCompleted", { lines: result.stats.lines }),
+            },
+          ],
         };
       },
     },
@@ -63,7 +73,7 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
       definition: CACHE_MANAGER_TOOL,
       handler: async (args): Promise<unknown> => {
         await updateCache(projectRoot, args as Record<string, unknown>);
-        return { content: [{ type: "text", text: "✅ Cache updated" }] };
+        return { content: [{ type: "text", text: coreDevT("cacheUpdated") }] };
       },
     },
     {
@@ -107,10 +117,10 @@ export function createCoreDevTools(projectRoot: string): ToolEntry[] {
         const result = await editLines(a["file_path"] as string, options, projectRoot);
         let output = result.message;
         if (result.scopeWarnings && result.scopeWarnings.length > 0) {
-          output += "\n\nScope Warnings:\n" + result.scopeWarnings.join("\n");
+          output += `\n\n${coreDevT("scopeWarningsTitle")}\n${result.scopeWarnings.join("\n")}`;
         }
         if (result.bracketIssues && result.bracketIssues.length > 0) {
-          output += "\n\nBracket Issues:\n" + result.bracketIssues.join("\n");
+          output += `\n\n${coreDevT("bracketIssuesTitle")}\n${result.bracketIssues.join("\n")}`;
         }
         if (typeof result.contextPreview === "string" && result.contextPreview.length > 0) {
           output += "\n\n" + result.contextPreview;

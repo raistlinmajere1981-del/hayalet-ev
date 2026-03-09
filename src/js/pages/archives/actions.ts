@@ -1,10 +1,16 @@
+import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
 import { AppState } from "../../modules/app-state.js";
 import { ConversationListManager } from "../../modules/conversation-list-manager.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { ButtonStates } from "../../ui/button-states.js";
 import { mapFileResult, mapMessageResult, toRecord, toRecordArray, unwrapIpcData } from "./ipc-mappers.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./types.js";
+
+function archivesT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.archives.${key}`, params);
+}
 
 export interface ArchivesActionsContext {
   selectedId: string | null;
@@ -29,7 +35,13 @@ export async function deleteArchiveEntry(
   entry: ArchiveEntry | null
 ): Promise<void> {
   if (!entry) return;
-  if (!confirm(`'${entry.title ?? entry.id}' kaydını kalıcı olarak silmek istediğinize emin misiniz?`)) {
+  if (
+    !confirm(
+      archivesT("actions.deleteConfirm", {
+        title: entry.title ?? entry.id,
+      })
+    )
+  ) {
     return;
   }
 
@@ -37,24 +49,24 @@ export async function deleteArchiveEntry(
 
   try {
     if (deleteBtn) {
-      ButtonStates.setLoading(deleteBtn, "Siliniyor...");
+      ButtonStates.setLoading(deleteBtn, archivesT("actions.buttons.deleteLoading"));
     }
 
     const accountInfo = AppState.getAccountForSlot(entry.provider ?? "");
     if (accountInfo?.id === undefined || accountInfo.id === "") {
       if (deleteBtn) {
-        ButtonStates.setError(deleteBtn, "Hata!", 1500);
+        ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus("Hesap bilgisi bulunamadı", "error");
+      ctx.setStatus(archivesT("actions.status.accountInfoMissing"), "error");
       return;
     }
 
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
       if (deleteBtn) {
-        ButtonStates.setError(deleteBtn, "Hata!", 1500);
+        ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus("Uygulama API bulunamadı", "error");
+      ctx.setStatus(archivesT("actions.status.electronApiUnavailable"), "error");
       return;
     }
 
@@ -66,17 +78,17 @@ export async function deleteArchiveEntry(
 
     if (result?.success !== true) {
       if (deleteBtn) {
-        ButtonStates.setError(deleteBtn, "Hata!", 1500);
+        ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus(result?.error ?? "Sohbet silinemedi", "error");
+      ctx.setStatus(result?.error ?? archivesT("actions.status.deleteFailed"), "error");
       return;
     }
 
     if (deleteBtn) {
-      ButtonStates.setSuccess(deleteBtn, "Silindi!", 1500);
+      ButtonStates.setSuccess(deleteBtn, archivesT("actions.buttons.deleteSuccess"), 1500);
     }
 
-    Logger.info(LogCategory.ARCHIVES, `Sohbet silindi: ${entry.id}`);
+    Logger.info(LogCategory.ARCHIVES, archivesT("actions.logs.deleted", { id: entry.id }));
 
     const isActive = ctx.selectedId === entry.id;
     if (isActive) {
@@ -89,14 +101,14 @@ export async function deleteArchiveEntry(
     if (isActive) {
       ctx.fillForm(null);
     }
-    ctx.setStatus("Sohbet silindi", "success");
+    ctx.setStatus(archivesT("actions.status.deleted"), "success");
   } catch (error) {
     const err = error as Error;
     if (deleteBtn) {
-      ButtonStates.setError(deleteBtn, "Hata!", 1500);
+      ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
     }
-    Logger.error(LogCategory.ARCHIVES, `Silme hatası: ${err.message}`);
-    ctx.setStatus("Sohbet silinirken hata oluştu", "error");
+    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.deleteError", { message: err.message }));
+    ctx.setStatus(archivesT("actions.status.deleteError"), "error");
   }
 }
 
@@ -172,7 +184,7 @@ export async function performArchiveSearch(ctx: ArchivesActionsContext): Promise
     ctx.renderSearchResults();
   } catch (error) {
     const err = error as Error;
-    Logger.error(LogCategory.ARCHIVES, `Arama hatası: ${err.message}`);
+    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.searchError", { message: err.message }));
     ctx.searchResults = { messages: [], attachments: [] };
     ctx.renderSearchResults();
   }
@@ -189,12 +201,12 @@ export async function navigateArchiveResult(
       try {
         const electronApi = window.electronAPI;
         if (electronApi === undefined) {
-          ctx.setStatus("Uygulama API bulunamadı", "error");
+          ctx.setStatus(archivesT("actions.status.electronApiUnavailable"), "error");
           return;
         }
         await electronApi.openPath(fileResult.storedPath);
       } catch {
-        ctx.setStatus("Dosya açılamadı", "error");
+        ctx.setStatus(archivesT("actions.status.fileOpenFailed"), "error");
       }
     }
     return;
@@ -221,7 +233,7 @@ export async function navigateArchiveResult(
   }
 
   if (targetProvider === null) {
-    ctx.setStatus("Hesap bulunamadı", "error");
+    ctx.setStatus(archivesT("actions.status.accountMissing"), "error");
     return;
   }
 
@@ -250,29 +262,29 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
   const saveBtn = document.getElementById("archive-save") as HTMLButtonElement | null;
 
   if (ctx.selectedId === null || ctx.selectedId === "") {
-    ctx.setStatus("Sohbet seçilmedi", "warning");
+    ctx.setStatus(archivesT("actions.status.conversationNotSelected"), "warning");
     return;
   }
   const entry = ctx.entries.find((item) => item.id === ctx.selectedId);
   if (entry === undefined) {
-    ctx.setStatus("Kayıt bulunamadı", "error");
+    ctx.setStatus(archivesT("actions.status.entryNotFound"), "error");
     return;
   }
 
   const accountInfo = AppState.getAccountForSlot(entry.provider ?? "");
   if (accountInfo?.id === undefined || accountInfo.id === "") {
-    ctx.setStatus("Hesap bilgisi bulunamadı", "error");
+    ctx.setStatus(archivesT("actions.status.accountInfoMissing"), "error");
     return;
   }
 
   const electronApi = window.electronAPI;
   if (electronApi === undefined) {
-    ctx.setStatus("Uygulama API bulunamadı", "error");
+    ctx.setStatus(archivesT("actions.status.electronApiUnavailable"), "error");
     return;
   }
 
   if (saveBtn) {
-    ButtonStates.setLoading(saveBtn, "Kaydediliyor...");
+    ButtonStates.setLoading(saveBtn, archivesT("actions.buttons.saveLoading"));
   }
 
   const newTitle = ctx.titleEl?.value ?? entry.title;
@@ -289,24 +301,27 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
 
     if (result?.success === true) {
       if (saveBtn) {
-        ButtonStates.setSuccess(saveBtn, "Kaydedildi!", 1500);
+        ButtonStates.setSuccess(saveBtn, archivesT("actions.buttons.saveSuccess"), 1500);
       }
-      ctx.setStatus("Kaydedildi", "success");
-      Logger.info(LogCategory.ARCHIVES, "Arşiv güncellendi");
+      ctx.setStatus(archivesT("actions.status.saved"), "success");
+      Logger.info(LogCategory.ARCHIVES, archivesT("actions.logs.archiveUpdated"));
       await ConversationListManager.refresh({ silent: true });
       await ctx.loadIndex();
     } else {
       if (saveBtn) {
-        ButtonStates.setError(saveBtn, "Hata!", 1500);
+        ButtonStates.setError(saveBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus((result as { error?: string }).error ?? "Kaydedilemedi", "error");
+      ctx.setStatus(
+        (result as { error?: string }).error ?? archivesT("actions.status.saveFailed"),
+        "error"
+      );
     }
   } catch (error) {
     const err = error as Error;
     if (saveBtn) {
-      ButtonStates.setError(saveBtn, "Hata!", 1500);
+      ButtonStates.setError(saveBtn, archivesT("actions.buttons.error"), 1500);
     }
-    Logger.error(LogCategory.ARCHIVES, `Kaydetme hatası: ${err.message}`);
-    ctx.setStatus("Kaydedilemedi", "error");
+    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.saveError", { message: err.message }));
+    ctx.setStatus(archivesT("actions.status.saveFailed"), "error");
   }
 }

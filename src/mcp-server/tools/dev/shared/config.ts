@@ -1,7 +1,7 @@
 /**
  * Development Tools - Shared Configuration
  *
- * Proje genelinde kullanılan config sabitler
+ * Shared config constants used across the project
  */
 
 export const DEV_CONFIG = {

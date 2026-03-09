@@ -1,3 +1,5 @@
+import { AppI18n } from "../modules/i18n/index.js";
+
 const COMMAND_REGEX = /\+\+cmd:([A-Za-z0-9_]+)\(([^)]*)\)/g;
 
 export interface ParsedCommandInput {
@@ -61,5 +63,5 @@ export function parseCommandExecutionInput(
 }
 
 export function buildCommandTestMessage(commandName: string, args: string): string {
-  return `${buildInlineCommandSnippet(commandName, args)} Komut paneli test mesaji`;
+  return `${buildInlineCommandSnippet(commandName, args)} ${AppI18n.t("app.commands.panel.testMessageSuffix")}`;
 }

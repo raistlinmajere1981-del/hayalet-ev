@@ -9,7 +9,7 @@ interface AppStateSnapshot {
     activeTargets: string[];
     titleByProvider: Record<string, string>;
   };
-  asistanRelay: {
+  assistantRelay: {
     active: boolean;
     sourceSlot: string | null;
   };
@@ -23,7 +23,7 @@ class AppStateClass {
     activeTargets: string[];
     titleByProvider: Record<string, string>;
   };
-  asistanRelay: {
+  assistantRelay: {
     active: boolean;
     sourceSlot: string | null;
   };
@@ -36,9 +36,9 @@ class AppStateClass {
       activeTargets: ["ai1"],
       titleByProvider: { ai0: "", ai1: "", ai2: "" },
     };
-    this.asistanRelay = {
+    this.assistantRelay = {
       active: false,
-      sourceSlot: null, // "ai1" veya "ai2"
+      sourceSlot: null, // "ai1" or "ai2"
     };
   }
 
@@ -49,7 +49,7 @@ class AppStateClass {
       activeTargets: ["ai1"],
       titleByProvider: { ai0: "", ai1: "", ai2: "" },
     };
-    this.asistanRelay = {
+    this.assistantRelay = {
       active: false,
       sourceSlot: null,
     };
@@ -76,9 +76,9 @@ class AppStateClass {
     if (settings === null) return null;
 
     if (slot === "ai0") {
-      const accountId = settings.asistanSlot?.accountId;
+      const accountId = settings.assistantSlot?.accountId;
       if (accountId === undefined || accountId === "") return null;
-      return settings.asistanAccounts?.find((acc) => acc.id === accountId) ?? null;
+      return settings.assistantAccounts?.find((acc) => acc.id === accountId) ?? null;
     }
 
     const accountId = settings.slots[slot]?.accountId;
@@ -127,16 +127,16 @@ class AppStateClass {
     this.notify();
   }
 
-  setAsistanRelay(active: boolean, sourceSlot: string | null = null): void {
-    this.asistanRelay = {
+  setAssistantRelay(active: boolean, sourceSlot: string | null = null): void {
+    this.assistantRelay = {
       active: !!active,
       sourceSlot: active ? sourceSlot : null,
     };
     this.notify();
   }
 
-  getAsistanRelay(): { active: boolean; sourceSlot: string | null } {
-    return { ...this.asistanRelay };
+  getAssistantRelay(): { active: boolean; sourceSlot: string | null } {
+    return { ...this.assistantRelay };
   }
 
   getState(): AppStateSnapshot {
@@ -144,7 +144,7 @@ class AppStateClass {
       activeProvider: this.activeProvider,
       activeConversations: { ...this.activeConversations },
       chat: { ...this.chat, titleByProvider: { ...this.chat.titleByProvider } },
-      asistanRelay: { ...this.asistanRelay },
+      assistantRelay: { ...this.assistantRelay },
     };
   }
 

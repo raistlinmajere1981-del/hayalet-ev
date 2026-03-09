@@ -1,7 +1,9 @@
 import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import type { Account } from "@shared/settings.js";
+import { resolveIntlLocale } from "../../../shared/i18n/locale.js";
 
 interface WhisperRecord {
   id: string;
@@ -18,6 +20,10 @@ interface WhisperAccountBucket {
   done: WhisperRecord[];
 }
 
+function whisperT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.whisper.${key}`, params);
+}
+
 export class WhisperController {
   accountsContainer: HTMLElement | null = null;
   addAccountSelect: HTMLSelectElement | null = null;
@@ -27,6 +33,7 @@ export class WhisperController {
   refreshButton: HTMLButtonElement | null = null;
   feedbackEl: HTMLElement | null = null;
   _unsubSettings: (() => void) | null = null;
+  _unsubI18n: (() => void) | null = null;
   updateHandler: (() => void) | null = null;
   feedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -59,6 +66,11 @@ export class WhisperController {
         void this.render();
       }
     );
+
+    this._unsubI18n = AppI18n.subscribe(() => {
+      this.syncAccountOptions();
+      void this.render();
+    });
 
     this.updateHandler = (): void => {
       void this.render();
@@ -128,12 +140,12 @@ export class WhisperController {
     const when = (this.addWhenInput !== null ? this.addWhenInput.value : "").trim();
 
     if (accountId === "") {
-      this.showFeedback("Önce bir hesap seçin", "error");
+      this.showFeedback(whisperT("feedback.accountRequired"), "error");
       return;
     }
 
     if (text === "") {
-      this.showFeedback("Mesaj boş olamaz", "error");
+      this.showFeedback(whisperT("feedback.messageRequired"), "error");
       return;
     }
 
@@ -148,10 +160,13 @@ export class WhisperController {
         this.addTextInput.value = "";
       }
 
-      this.showFeedback("Whisper kaydı eklendi", "success");
+      this.showFeedback(whisperT("feedback.addSuccess"), "success");
       await this.render();
     } catch (err) {
-      this.showFeedback(`Kayıt eklenemedi: ${getErrorMessage(err)}`, "error");
+      this.showFeedback(
+        whisperT("feedback.addFailed", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 
@@ -189,7 +204,7 @@ export class WhisperController {
     if (accounts.length === 0) {
       const empty = document.createElement("div");
       empty.className = "whisper-global-empty";
-      empty.textContent = "Kayıtlı hesap yok";
+      empty.textContent = whisperT("state.noAccounts");
       this.accountsContainer.appendChild(empty);
       return;
     }
@@ -225,19 +240,19 @@ export class WhisperController {
     header.appendChild(subtitle);
 
     const pendingSection = this.renderSection(
-      "Bekleyen",
+      whisperT("sections.pendingTitle"),
       bucket.pending,
       account.id,
       true,
-      "Henüz bekleyen whisper yok"
+      whisperT("sections.emptyPending")
     );
 
     const doneSection = this.renderSection(
-      "Tamamlanan",
+      whisperT("sections.doneTitle"),
       bucket.done,
       account.id,
       false,
-      "Henüz tamamlanan whisper yok"
+      whisperT("sections.emptyDone")
     );
 
     card.appendChild(header);
@@ -300,14 +315,14 @@ export class WhisperController {
 
     const editBtn = document.createElement("button");
     editBtn.className = "whisper-action-btn";
-    editBtn.textContent = "Düzenle";
+    editBtn.textContent = whisperT("actions.edit");
     editBtn.addEventListener("click", () => {
       void this.handleUpdate(accountId, record, isPending);
     });
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "whisper-action-btn danger";
-    deleteBtn.textContent = "Sil";
+    deleteBtn.textContent = whisperT("actions.delete");
     deleteBtn.addEventListener("click", () => {
       void this.handleDelete(accountId, record.id);
     });
@@ -325,30 +340,30 @@ export class WhisperController {
   async handleDelete(accountId: string, whisperId: string): Promise<void> {
     try {
       await CoreEngine.whisper("remove", { accountId, id: whisperId });
-      this.showFeedback("Whisper kaydı silindi", "success");
+      this.showFeedback(whisperT("feedback.deleteSuccess"), "success");
       await this.render();
     } catch (err) {
-      this.showFeedback(`Silme başarısız: ${getErrorMessage(err)}`, "error");
+      this.showFeedback(
+        whisperT("feedback.deleteFailed", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 
   async handleUpdate(accountId: string, record: WhisperRecord, isPending: boolean): Promise<void> {
-    const nextTextRaw = window.prompt("Yeni mesaj", record.text);
+    const nextTextRaw = window.prompt(whisperT("prompts.updateMessage"), record.text);
     if (nextTextRaw === null) {
       return;
     }
 
     const nextText = nextTextRaw.trim();
     if (nextText === "") {
-      this.showFeedback("Mesaj boş olamaz", "error");
+      this.showFeedback(whisperT("feedback.messageRequired"), "error");
       return;
     }
 
     const currentWhen = isPending ? this.toDateTimeInputValue(record.when) : "";
-    const nextWhenRaw = window.prompt(
-      "Yeni zaman (YYYY-MM-DDTHH:mm, boş bırakılırsa değişmez)",
-      currentWhen
-    );
+    const nextWhenRaw = window.prompt(whisperT("prompts.updateTime"), currentWhen);
     if (nextWhenRaw === null) {
       return;
     }
@@ -373,10 +388,13 @@ export class WhisperController {
         id: record.id,
         patch,
       });
-      this.showFeedback("Whisper kaydı güncellendi", "success");
+      this.showFeedback(whisperT("feedback.updateSuccess"), "success");
       await this.render();
     } catch (err) {
-      this.showFeedback(`Güncelleme başarısız: ${getErrorMessage(err)}`, "error");
+      this.showFeedback(
+        whisperT("feedback.updateFailed", { message: getErrorMessage(err) }),
+        "error"
+      );
     }
   }
 
@@ -396,7 +414,7 @@ export class WhisperController {
       return "-";
     }
 
-    return date.toLocaleString("tr-TR");
+    return date.toLocaleString(resolveIntlLocale(AppI18n.getLocale()));
   }
 
   toDateTimeInputValue(ts: number | undefined): string {

@@ -1,4 +1,5 @@
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 
 function escapeHtml(value: string): string {
   return value
@@ -9,15 +10,23 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function roomOverlayText(key: string): string {
+  return AppI18n.t(`shell.rooms.${key}`);
+}
+
 function buildWorkspaceStateLabel(room: RoomWorkspaceEntry, installedIds: Set<string>): string {
   if (room.valid !== true) {
-    return "Gecersiz";
+    return roomOverlayText("states.invalid");
   }
-  return installedIds.has(room.manifest?.id ?? "") ? "Yuklu" : "Hazir";
+  return installedIds.has(room.manifest?.id ?? "")
+    ? roomOverlayText("states.installed")
+    : roomOverlayText("states.ready");
 }
 
 function buildInstalledStateLabel(roomId: string, workspaceIds: Set<string>): string {
-  return workspaceIds.has(roomId) ? "Workspace bagli" : "Yalnizca install";
+  return workspaceIds.has(roomId)
+    ? roomOverlayText("states.workspaceLinked")
+    : roomOverlayText("states.standalone");
 }
 
 export function buildRoomOverlaySummary(
@@ -27,9 +36,15 @@ export function buildRoomOverlaySummary(
   const validWorkspaceCount = workspaceRooms.filter((room) => room.valid === true).length;
 
   return [
-    `<div class="room-manager-chip">Workspace: <strong>${String(workspaceRooms.length)}</strong></div>`,
-    `<div class="room-manager-chip">Hazir: <strong>${String(validWorkspaceCount)}</strong></div>`,
-    `<div class="room-manager-chip">Yuklu: <strong>${String(installedRooms.length)}</strong></div>`,
+    `<div class="room-manager-chip">${escapeHtml(roomOverlayText("summary.workspace"))}: <strong>${String(
+      workspaceRooms.length
+    )}</strong></div>`,
+    `<div class="room-manager-chip">${escapeHtml(roomOverlayText("summary.ready"))}: <strong>${String(
+      validWorkspaceCount
+    )}</strong></div>`,
+    `<div class="room-manager-chip">${escapeHtml(roomOverlayText("summary.installed"))}: <strong>${String(
+      installedRooms.length
+    )}</strong></div>`,
   ].join("");
 }
 
@@ -38,7 +53,7 @@ export function buildWorkspaceRoomListMarkup(
   installedRooms: InstalledRoomRecord[]
 ): string {
   if (workspaceRooms.length === 0) {
-    return '<div class="room-manager-empty">Workspace oda bulunamadi.</div>';
+    return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyWorkspace"))}</div>`;
   }
 
   const installedIds = new Set(installedRooms.map((room) => room.id));
@@ -49,7 +64,9 @@ export function buildWorkspaceRoomListMarkup(
       const roomName = room.manifest?.name ?? room.dirName;
       const roomVersion = room.manifest?.version ?? "-";
       const stateLabel = buildWorkspaceStateLabel(room, installedIds);
-      const actionLabel = installedIds.has(roomId) ? "Guncelle" : "Yukle";
+      const actionLabel = installedIds.has(roomId)
+        ? roomOverlayText("actions.update")
+        : roomOverlayText("actions.install");
       const errorsMarkup =
         room.valid === true || room.errors.length === 0
           ? ""
@@ -77,7 +94,9 @@ export function buildWorkspaceRoomListMarkup(
         )}" ${room.valid === true ? "" : "disabled"}>${escapeHtml(actionLabel)}</button>`,
         `    <button class="btn btn-ghost btn-sm" data-room-action="package" data-room-id="${escapeHtml(
           roomId
-        )}" ${room.valid === true ? "" : "disabled"}>Paketle</button>`,
+        )}" ${room.valid === true ? "" : "disabled"}>${escapeHtml(
+          roomOverlayText("actions.package")
+        )}</button>`,
         "  </div>",
         "</article>",
       ].join("");
@@ -90,7 +109,7 @@ export function buildInstalledRoomListMarkup(
   workspaceRooms: RoomWorkspaceEntry[]
 ): string {
   if (installedRooms.length === 0) {
-    return '<div class="room-manager-empty">Yuklu oda bulunamadi.</div>';
+    return `<div class="room-manager-empty">${escapeHtml(roomOverlayText("emptyInstalled"))}</div>`;
   }
 
   const workspaceIds = new Set(
@@ -120,13 +139,13 @@ export function buildInstalledRoomListMarkup(
         '  <div class="room-manager-actions">',
         `    <button class="btn btn-primary btn-sm" data-room-action="open" data-room-id="${escapeHtml(
           room.id
-        )}">Ac</button>`,
+        )}">${escapeHtml(roomOverlayText("actions.open"))}</button>`,
         `    <button class="btn btn-ghost btn-sm" data-room-action="export" data-room-id="${escapeHtml(
           room.id
-        )}">Workspace'e Aktar</button>`,
+        )}">${escapeHtml(roomOverlayText("actions.export"))}</button>`,
         `    <button class="btn btn-danger btn-sm" data-room-action="remove" data-room-id="${escapeHtml(
           room.id
-        )}">Kaldir</button>`,
+        )}">${escapeHtml(roomOverlayText("actions.remove"))}</button>`,
         "  </div>",
         "</article>",
       ].join("");

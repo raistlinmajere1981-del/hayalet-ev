@@ -8,6 +8,12 @@ import type { Conversation, Message, IpcResult } from "@electron/types";
 import type Database from "better-sqlite3";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import { loadSettings } from "../settings-manager.ts";
+import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
+import { loadAvailableLanguage } from "../i18n/language-service.ts";
+import { translateCatalog } from "../../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 import { hashString } from "./hash-utils.js";
 import { createMessageDedupeKey } from "./message-dedupe.js";
 import { getDatabaseForAccount, getAttachmentPath, ensureAttachmentDir } from "./sqlite-manager.js";
@@ -15,6 +21,27 @@ import { copyFileSync, statSync, existsSync } from "fs";
 import type { SyncMessagesParams, SyncMessagesResult } from "@electron/types";
 
 const logger = getLoggerCore();
+
+async function archiveT(key: string): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(
+    activePack.catalog,
+    `electron.archive.${key}`,
+    undefined,
+    fallbackCatalog
+  );
+}
 
 interface SearchMessageResult extends Message {
   conversation_title?: string;
@@ -225,6 +252,10 @@ export class SQLiteArchiveManager {
         INSERT INTO messages (id, conversation_id, account_id, role, author, content, dom_index, dom_id, content_hash, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
+      const [fallbackUserAuthor, fallbackAssistantAuthor] = await Promise.all([
+        archiveT("fallbackUserAuthor"),
+        archiveT("fallbackAssistantAuthor"),
+      ]);
 
       let addedCount = 0;
       db.exec("BEGIN");
@@ -248,7 +279,7 @@ export class SQLiteArchiveManager {
             conversationId,
             this.accountId,
             msg.role,
-            msg.author ?? (msg.role === "user" ? "Kullanıcı" : "Asistan"),
+            msg.author ?? (msg.role === "user" ? fallbackUserAuthor : fallbackAssistantAuthor),
             msg.text,
             domIndex,
             msg.domId ?? null,

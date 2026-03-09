@@ -1,4 +1,5 @@
 import { escapeHtml } from "./chat-utils.js";
+import { t } from "./i18n.js";
 import { normalizeString, toCompactLabel, toWorkspaceRelativePath } from "./message-content.js";
 import type { OpencodeUiTodoItem, OpencodeUiToolCall } from "./types.js";
 
@@ -59,15 +60,21 @@ export function updateUsageFromSession(
   const usageStatsEl = context.byId<HTMLElement>("usage-stats");
   if (usageStatsEl != null) {
     let statsHtml =
-      '<span class="ds-progress__stat">Prompt: <span class="ds-progress__stat-value">' +
+      '<span class="ds-progress__stat">' +
+      escapeHtml(t("usage.prompt")) +
+      ': <span class="ds-progress__stat-value">' +
       String(promptTokens) +
-      '</span></span><span class="ds-progress__stat">Completion: <span class="ds-progress__stat-value">' +
+      '</span></span><span class="ds-progress__stat">' +
+      escapeHtml(t("usage.completion")) +
+      ': <span class="ds-progress__stat-value">' +
       String(completionTokens) +
       "</span></span>";
 
     if (Number.isFinite(reasoningTokens) && reasoningTokens > 0) {
       statsHtml +=
-        '<span class="ds-progress__stat">Reasoning: <span class="ds-progress__stat-value">' +
+        '<span class="ds-progress__stat">' +
+        escapeHtml(t("usage.reasoning")) +
+        ': <span class="ds-progress__stat-value">' +
         String(reasoningTokens) +
         "</span></span>";
     }
@@ -113,9 +120,9 @@ export function renderTodoPanel(context: RenderContext, todos: OpencodeUiTodoIte
 
   if (!Array.isArray(todos) || todos.length === 0) {
     panel.innerHTML = buildRightTabPanelCard(
-      "Todo",
-      "Session Ozeti",
-      '<div class="empty-state">Henuz todo yok</div>',
+      t("panel.todoTitle"),
+      t("panel.todoEyebrow"),
+      `<div class="empty-state">${escapeHtml(t("panel.todoEmpty"))}</div>`,
       "0"
     );
     return;
@@ -153,8 +160,8 @@ export function renderTodoPanel(context: RenderContext, todos: OpencodeUiTodoIte
     .filter((item) => item !== "");
 
   panel.innerHTML = buildRightTabPanelCard(
-    "Todo",
-    "Session Ozeti",
+    t("panel.todoTitle"),
+    t("panel.todoEyebrow"),
     '<div class="ds-todo-list">' + items.join("") + "</div>",
     String(items.length)
   );
@@ -172,9 +179,9 @@ export function renderFilesPanel(
 
   if (!Array.isArray(files) || files.length === 0) {
     panel.innerHTML = buildRightTabPanelCard(
-      "Files",
-      "Workspace",
-      '<div class="empty-state">Degisen dosya yok</div>',
+      t("panel.filesTitle"),
+      t("panel.filesEyebrow"),
+      `<div class="empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
       "0"
     );
     return;
@@ -207,17 +214,17 @@ export function renderFilesPanel(
 
   if (items.length === 0) {
     panel.innerHTML = buildRightTabPanelCard(
-      "Files",
-      "Workspace",
-      '<div class="empty-state">Degisen dosya yok</div>',
+      t("panel.filesTitle"),
+      t("panel.filesEyebrow"),
+      `<div class="empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
       "0"
     );
     return;
   }
 
   panel.innerHTML = buildRightTabPanelCard(
-    "Files",
-    "Workspace",
+    t("panel.filesTitle"),
+    t("panel.filesEyebrow"),
     '<div class="ds-file-list">' + items.join("") + "</div>",
     String(items.length)
   );

@@ -6,6 +6,10 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { MAX_LOGS_TERMINAL } from "@limits";
 
 import type { AppSettings } from "@shared/settings.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
 import { AppState } from "../modules/app-state.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
@@ -19,6 +23,12 @@ import { AccountPanel } from "./entrance/account-panel.js";
 import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
+import { AppI18n } from "../modules/i18n/index.js";
+import {
+  applyEntranceStaticTranslations,
+  formatTime,
+  t as entranceT,
+} from "./entrance/i18n.js";
 
 export class EntranceHallController {
   defaultsApplied: boolean;
@@ -30,6 +40,7 @@ export class EntranceHallController {
   webviewPanel: WebviewPanel;
   _unsubSettings: (() => void) | null = null;
   _unsubSlotController: (() => void) | null = null;
+  _unsubI18n: (() => void) | null = null;
 
   constructor() {
     this.defaultsApplied = false;
@@ -43,6 +54,8 @@ export class EntranceHallController {
   }
 
   async init(): Promise<void> {
+    applyEntranceStaticTranslations();
+
     this.userPanel.init();
     this.slotPanelAi1.init();
     this.slotPanelAi2.init();
@@ -51,10 +64,10 @@ export class EntranceHallController {
     this.webviewPanel.init();
 
     this.setupEventListeners();
-    this.setupLogArea(); // Aşama 2: Log area for Level 1-2
-    this.setupLiveLogOverlay(); // Aşama 3: Live overlay for Level 1-2-3
+    this.setupLogArea(); // Stage 2: log area for Level 1-2
+    this.setupLiveLogOverlay(); // Stage 3: live overlay for Level 1-2-3
     await this.loadUserSettings();
-    this.updateUI();
+    this.setupI18nBindings();
 
     await this.webviewPanel.setupWebviews();
     this.webviewPanel.applyGating(SettingsManager.getSnapshot(), ["*"]);
@@ -71,9 +84,9 @@ export class EntranceHallController {
             (path) =>
               path.startsWith("user") ||
               path.startsWith("accounts") ||
-              path.startsWith("asistanAccounts") ||
+              isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
-              path.startsWith("asistanSlot")
+              isAssistantSlotSettingsPath(path)
           );
 
         if (shouldApplyIdentityUi) {
@@ -82,7 +95,12 @@ export class EntranceHallController {
 
         const shouldApplyWebviewGating =
           changedPaths.includes("*") ||
-          changedPaths.some((path) => path.startsWith("slots") || path.startsWith("accounts"));
+          changedPaths.some(
+            (path) =>
+              path.startsWith("slots") ||
+              path.startsWith("accounts") ||
+              path.startsWith("general")
+          );
 
         if (shouldApplyWebviewGating) {
           this.webviewPanel.applyGating(typedSettings, changedPaths);
@@ -93,7 +111,10 @@ export class EntranceHallController {
           this.slotPanelAi1.render();
           this.slotPanelAi2.render();
         }
-        if (changedPaths.includes("*") || changedPaths.some((p) => p.startsWith("user"))) {
+        if (
+          changedPaths.includes("*") ||
+          changedPaths.some((p) => p.startsWith("user") || p.startsWith("general"))
+        ) {
           this.userPanel.render();
         }
       }
@@ -128,8 +149,30 @@ export class EntranceHallController {
         });
       }
     } catch (error) {
-      Logger.error(LogCategory.ENTRANCE, `Event listener setup hatası: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.eventListenerSetupError", { message: getErrorMessage(error) })
+      );
     }
+  }
+
+  setupI18nBindings(): void {
+    if (this._unsubI18n === null) {
+      this._unsubI18n = AppI18n.subscribe(() => {
+        this.applyTranslatedUi();
+      });
+    }
+
+    this.applyTranslatedUi();
+  }
+
+  applyTranslatedUi(): void {
+    applyEntranceStaticTranslations();
+    this.userPanel.render();
+    this.accountPanel.render();
+    this.slotPanelAi1.render();
+    this.slotPanelAi2.render();
+    this.updateUI();
   }
 
   setupReportPanel(): void {
@@ -206,7 +249,10 @@ export class EntranceHallController {
       const settings = await SettingsManager.load();
       this.applySettingsToUI(settings, ["*"] as string[]);
     } catch (error) {
-      Logger.error(LogCategory.ENTRANCE, `Settings yükleme hatası: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.settingsLoadError", { message: getErrorMessage(error) })
+      );
     }
   }
 
@@ -270,7 +316,9 @@ export class EntranceHallController {
         avatarElement.style.backgroundImage = "";
       }
     } catch (error) {
-      Logger.error(LogCategory.ENTRANCE, `Avatar yükleme hatası: ${getErrorMessage(error)}`, {
+      Logger.error(LogCategory.ENTRANCE, entranceT("logs.avatarLoadError", {
+        message: getErrorMessage(error),
+      }), {
         context: { userType },
       });
 
@@ -290,19 +338,22 @@ export class EntranceHallController {
     const nickname = AppState.getNickname(userType);
 
     if (toggleBtn) {
-      ButtonStates.setLoading(toggleBtn, "Bağlanıyor...");
+      ButtonStates.setLoading(toggleBtn, entranceT("slot.connecting"));
     }
 
-    Logger.info(LogCategory.ENTRANCE, `${nickname} bağlanıyor...`);
+    Logger.info(LogCategory.ENTRANCE, entranceT("logs.slotConnecting", { name: nickname }));
 
     const accountId = settings.slots[userType]?.accountId;
     const hasAccount = accountId !== undefined && accountId !== null && accountId !== "";
     if (!hasAccount) {
       if (toggleBtn) {
-        ButtonStates.setError(toggleBtn, "Hesap Yok!", 1500);
+        ButtonStates.setError(toggleBtn, entranceT("slot.missingAccount"), 1500);
       }
       this.updateUserStatus(userType);
-      Logger.warn(LogCategory.ENTRANCE, `${userType} connect blocked: no account assigned`);
+      Logger.warn(
+        LogCategory.ENTRANCE,
+        entranceT("logs.slotConnectBlocked", { slot: userType })
+      );
       return;
     }
 
@@ -313,18 +364,21 @@ export class EntranceHallController {
 
     if (result.success) {
       if (toggleBtn) {
-        ButtonStates.setSuccess(toggleBtn, "Bağlandı!", 1500);
+        ButtonStates.setSuccess(toggleBtn, entranceT("slot.connected"), 1500);
       }
-      Logger.success(LogCategory.ENTRANCE, `${nickname} bağlandı`);
+      Logger.success(LogCategory.ENTRANCE, entranceT("logs.slotConnected", { name: nickname }));
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "connected");
     } else {
       if (toggleBtn) {
-        ButtonStates.setError(toggleBtn, "Hata!", 1500);
+        ButtonStates.setError(toggleBtn, entranceT("slot.connectError"), 1500);
       }
       Logger.panel(
         LogCategory.ENTRANCE,
         LogLevel.ERROR,
-        `${nickname} bağlantı hatası: ${result.message ?? "bilinmeyen"}`
+        entranceT("logs.slotConnectError", {
+          name: nickname,
+          message: result.message ?? entranceT("logs.unknownMessage"),
+        })
       );
     }
 
@@ -366,27 +420,34 @@ export class EntranceHallController {
     const nickname = AppState.getNickname(userType);
 
     if (toggleBtn) {
-      ButtonStates.setLoading(toggleBtn, "Kesiliyor...");
+      ButtonStates.setLoading(toggleBtn, entranceT("slot.disconnecting"));
     }
 
-    Logger.debug(LogCategory.ENTRANCE, `${nickname} bağlantısı kesiliyor...`);
+    Logger.debug(LogCategory.ENTRANCE, entranceT("logs.slotDisconnecting", { name: nickname }));
 
     const result = await CoreEngine.setConnection(userType, false, {});
 
     if (result.success) {
       if (toggleBtn) {
-        ButtonStates.setSuccess(toggleBtn, "Kesildi!", 1500);
+        ButtonStates.setSuccess(toggleBtn, entranceT("slot.disconnected"), 1500);
       }
-      Logger.panel(LogCategory.ENTRANCE, LogLevel.INFO, `${nickname} bağlantısı kesildi`);
+      Logger.panel(
+        LogCategory.ENTRANCE,
+        LogLevel.INFO,
+        entranceT("logs.slotDisconnected", { name: nickname })
+      );
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "disconnected");
     } else {
       if (toggleBtn) {
-        ButtonStates.setError(toggleBtn, "Hata!", 1500);
+        ButtonStates.setError(toggleBtn, entranceT("slot.connectError"), 1500);
       }
       Logger.panel(
         LogCategory.ENTRANCE,
         LogLevel.ERROR,
-        `${nickname} bağlantı kesme hatası: ${result.message ?? "bilinmeyen"}`
+        entranceT("logs.slotDisconnectError", {
+          name: nickname,
+          message: result.message ?? entranceT("logs.unknownMessage"),
+        })
       );
     }
 
@@ -427,21 +488,25 @@ export class EntranceHallController {
     }
 
     if (statusText) {
-      statusText.textContent = !hasAccount ? "Hesap yok" : connected ? "Bağlı" : "Bağlı değil";
+      statusText.textContent = !hasAccount
+        ? entranceT("slot.status.noAccount")
+        : connected
+          ? entranceT("slot.status.connected")
+          : entranceT("slot.status.disconnected");
     }
 
     if (toggleBtn) {
       const btn = toggleBtn as HTMLButtonElement;
       if (!hasAccount) {
-        btn.textContent = "Hesap Seçin";
+        btn.textContent = entranceT("slot.selectAccount");
         btn.disabled = true;
       } else if (connected) {
-        btn.textContent = "Bağlantıyı Kes";
+        btn.textContent = entranceT("slot.disconnect");
         btn.disabled = false;
         btn.classList.remove("btn-primary");
         btn.classList.add("btn-secondary");
       } else {
-        btn.textContent = "Bağlan";
+        btn.textContent = entranceT("slot.connect");
         btn.disabled = false;
         btn.classList.remove("btn-secondary");
         btn.classList.add("btn-primary");
@@ -532,13 +597,13 @@ export class EntranceHallController {
 
   setupLogArea(): void {
     if (!window.electronAPI?.ipcRenderer) {
-      Logger.warn(LogCategory.ENTRANCE, "IPC not available for log area");
+      Logger.warn(LogCategory.ENTRANCE, entranceT("logs.logAreaIpcUnavailable"));
       return;
     }
 
     const logContainer = document.getElementById("entrance-report-content");
     if (!logContainer) {
-      Logger.debug(LogCategory.ENTRANCE, "Log container not found");
+      Logger.debug(LogCategory.ENTRANCE, entranceT("logs.logAreaMissing"));
       return;
     }
 
@@ -564,7 +629,7 @@ export class EntranceHallController {
       const logEntry = document.createElement("div");
       logEntry.className = `log-entry log-level-${logData.level}`;
 
-      const time = new Date(logData.timestamp).toLocaleTimeString("tr-TR");
+      const time = formatTime(new Date(logData.timestamp));
       const category = this.formatLogCategory(logData.category);
 
       logEntry.innerHTML = `
@@ -590,11 +655,11 @@ export class EntranceHallController {
 
     window.electronAPI.ipcRenderer.on("log:ui-notify", logHandler as (...args: unknown[]) => void);
 
-    Logger.info(LogCategory.ENTRANCE, "Log area setup complete");
+    Logger.info(LogCategory.ENTRANCE, entranceT("logs.logAreaReady"));
   }
 
   formatLogCategory(category: string): string {
-    if (category === "") return "System";
+    if (category === "") return entranceT("logs.systemCategory");
 
     const cleaned = category
       .replace(/^(WEBVIEW|SLOT|TRAFFIC|ASISTAN|OPENCODE|DATABASE)_/, "$1: ")

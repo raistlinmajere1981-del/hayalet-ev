@@ -13,23 +13,21 @@ test("opencode-ui page scaffold contains providers tab and list anchor", () => {
 test("opencode-ui periodic refresh does not reload provider or model lists", () => {
   const appContent = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
   const content = readFileSync("src/js/pages/opencode-ui/bootstrap-actions.ts", "utf8");
-  const refreshBlockMatch = content.match(
-    /export function startPeriodicRefresh\(context: BootstrapContext\): void {[\s\S]*?}\n\nexport function startLiveMessageRefresh/
-  );
-
-  assert.ok(refreshBlockMatch, "Expected startPeriodicRefresh block to exist");
-  const refreshBlock = refreshBlockMatch[0];
 
   assert.match(appContent, /startPeriodicRefreshFromModule\(bootstrapContext\(\)\);/);
-  assert.match(refreshBlock, /setInterval\(/);
-  assert.doesNotMatch(refreshBlock, /loadProviderContextAndModels\(/);
-  assert.doesNotMatch(refreshBlock, /loadModels\(/);
+  assert.match(content, /export function startPeriodicRefresh\(context: BootstrapContext\): void {/);
+  assert.match(content, /setInterval\(/);
+  assert.doesNotMatch(content, /startPeriodicRefresh[\s\S]*loadProviderContextAndModels\(/);
+  assert.doesNotMatch(content, /startPeriodicRefresh[\s\S]*loadModels\(/);
 });
 
 test("opencode-ui bootstrap loads provider catalog during initial page setup", () => {
-  const content = readFileSync("src/js/pages/opencode-ui/app.ts", "utf8");
+  const content = readFileSync("src/js/pages/opencode-ui/app-bootstrap.ts", "utf8");
 
-  assert.match(content, /await Promise\.all\(\[loadAgents\(\), loadProviderContextAndModels\(\)\]\)/);
+  assert.match(
+    content,
+    /await Promise\.all\(\[options\.loadAgents\(\), options\.loadProviderContextAndModels\(\)\]\)/
+  );
 });
 
 test("opencode-ui provider panel merges runtime connection state with provider catalog", () => {
@@ -41,7 +39,10 @@ test("opencode-ui provider panel merges runtime connection state with provider c
   assert.match(providerContent, /const listEl = context\.byId<HTMLElement>\("providers-list"\);/);
   assert.match(providerContent, /const connectedIds = normalizeConnectedProviderIds\(providerPayload\);/);
   assert.match(providerContent, /const catalog = normalizeProviderItemsFromConfig\(configPayload\);/);
-  assert.match(providerContent, /badge: connectedSet\.has\(item\.id\) \? "Connected" : "Available"/);
+  assert.match(
+    providerContent,
+    /badge: connectedSet\.has\(item\.id\) \? t\("provider\.connected"\) : t\("provider\.available"\)/
+  );
   assert.match(providerContent, /renderProvidersPanel\(context, renderProviderRows\(items\)\);/);
 });
 

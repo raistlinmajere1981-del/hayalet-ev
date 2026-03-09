@@ -7,6 +7,7 @@ import {
   PROVIDER_TEST_INTERVALS,
   PROVIDER_TEST_TIMEOUTS,
 } from "../../shared/timeouts.ts";
+import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
 
 import type {
   ProviderConfig,
@@ -315,7 +316,7 @@ export class ProviderTester {
       slot,
       webview,
       config,
-      appLanguage: options.appLanguage ?? "tr",
+      appLanguage: options.appLanguage ?? DEFAULT_APP_LANGUAGE,
       ...(this.abortSignal !== undefined ? { abortSignal: this.abortSignal } : {}),
       ...(this.shell !== null ? { shell: this.shell } : {}),
       executeScript,

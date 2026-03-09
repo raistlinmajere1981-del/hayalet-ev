@@ -1,13 +1,13 @@
 /**
  * IPC Channel Type Definitions
  *
- * Bu dosya tüm IPC kanalları için type-safe tanımlamalar içerir.
- * Main process ve Renderer process arasındaki iletişimde tip güvenliği sağlar.
+ * This file contains type-safe definitions for all IPC channels.
+ * It provides type safety for communication between the Main and Renderer processes.
  *
  * @example
- * // Type-safe IPC çağrısı
+ * // Type-safe IPC call
  * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
- * // result tipi otomatik olarak DbGetConversationsResult olur
+ * // result is automatically typed as DbGetConversationsResult
  */
 
 import type { ProviderScenarioResult, ProviderTestSuite } from "./provider.js";
@@ -381,13 +381,13 @@ export interface MemoryDeleteAllResult {
   error?: string;
 }
 
-// IPC Channel Map - Tüm kanalların tip eşleştirmesi
+// IPC Channel Map - type mapping for all channels
 
 /**
  * IPC Channel Map
  *
- * Her IPC kanalı için params ve result tiplerini tanımlar.
- * Bu map, type-safe IPC çağrıları için kullanılır.
+ * Defines the params and result types for each IPC channel.
+ * This map is used for type-safe IPC calls.
  */
 export interface IPCChannelMap {
   // Database

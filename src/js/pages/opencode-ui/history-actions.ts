@@ -6,6 +6,7 @@ import type {
   OpencodeUiToolCall,
   RuntimeState,
 } from "./types.js";
+import { t } from "./i18n.js";
 
 type ByIdFn = <T extends HTMLElement>(id: string, guard?: (element: T) => boolean) => T | null;
 
@@ -97,7 +98,7 @@ function renderSessionMessages(
     const loadMoreButton = document.createElement("button");
     loadMoreButton.type = "button";
     loadMoreButton.className = "ds-history-load-more";
-    loadMoreButton.textContent = `Daha fazla göster (${visibleStart} mesaj)`;
+    loadMoreButton.textContent = t("session.loadMoreMessages", { count: visibleStart });
     loadMoreButton.addEventListener("click", () => {
       void loadMoreHistoryMessages(context, detail.id);
     });

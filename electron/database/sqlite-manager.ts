@@ -1,7 +1,7 @@
 /**
  * SQLite Database Manager - Per-Account Database Factory
  *
- * Her hesap için ayrı SQLite veritabanı dosyası oluşturur ve yönetir.
+ * Creates and manages a separate SQLite database file for each account.
  * Format: data/{email}_{provider}/archive.db
  *
  * @module electron/database/sqlite-manager

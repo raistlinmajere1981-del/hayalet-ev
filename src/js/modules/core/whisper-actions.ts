@@ -1,10 +1,12 @@
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 import { AppState } from "../app-state.js";
 import { CommandManager } from "../command-manager.js";
 import type { CommandResult } from "../command-manager.js";
 import { Logger, LogCategory, LogLevel } from "../logger/index.js";
 import { SettingsManager } from "../settings-manager.js";
 import { WhisperManager } from "../whisper-manager.js";
+import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 
 export interface WhisperRecord {
   text?: string;
@@ -34,6 +36,14 @@ interface WhisperCommandContext {
     page?: string;
   }) => Promise<{ success: boolean; message?: string }>;
   getServerCommands: () => ServerCommandsRef;
+}
+
+function whisperRuntimeT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.whisper.runtime.${key}`, params);
+}
+
+function formatWhisperRuntimeTimestamp(value: Date = new Date()): string {
+  return value.toLocaleString(resolveIntlLocale(AppI18n.getLocale()));
 }
 
 export async function runWhisperOperation(
@@ -111,7 +121,7 @@ export async function enqueueWhisperJobWithContext(
   if (slot === null) {
     return await Promise.resolve({
       success: false,
-      message: "Whisper hesabı aktif bir slota bağlı değil",
+      message: whisperRuntimeT("accountSlotMissing"),
     });
   }
 
@@ -125,9 +135,13 @@ export async function enqueueWhisperJobWithContext(
     when: record.when,
   };
 
-  Logger.info(LogCategory.WHISPER, `Whisper kuyruğa alındı (${accountId}/${slot})`, {
-    context: { accountId, slot, whisperId },
-  });
+  Logger.info(
+    LogCategory.WHISPER,
+    whisperRuntimeT("queuedForAccount", { accountId, slot }),
+    {
+      context: { accountId, slot, whisperId },
+    }
+  );
 
   const exec = async (): Promise<CommandResult> => {
     const result = await context.sendMessage({ provider: slot, text });
@@ -135,7 +149,7 @@ export async function enqueueWhisperJobWithContext(
       if (whisperId !== "") {
         WhisperManager.markReady(accountId, whisperId);
       }
-      throw new Error(result.message ?? "Whisper gönderilemedi");
+      throw new Error(result.message ?? whisperRuntimeT("sendFailed"));
     }
     if (whisperId !== "") {
       WhisperManager.WhisperManagerDone(accountId, whisperId);
@@ -164,7 +178,7 @@ export async function handleCaughtCommandWithContext(
   context: WhisperCommandContext
 ): Promise<{ success: boolean; message?: string; jobId?: string; priority?: string }> {
   if (commandName === "") {
-    return { success: false, message: "Komut adı yok" };
+    return { success: false, message: AppI18n.t("app.commands.runtime.commandNameRequired") };
   }
 
   const serverCommands = context.getServerCommands();
@@ -172,16 +186,20 @@ export async function handleCaughtCommandWithContext(
     return command.toLowerCase() === String(commandName).toLowerCase();
   });
   if (!known) {
-    Logger.error(LogCategory.COMMAND, `Bilinmeyen komut: ${commandName}`, {
-      context: { commandName },
-    });
-    return { success: false, message: "Bilinmeyen komut" };
+    Logger.error(
+      LogCategory.COMMAND,
+      AppI18n.t("app.commands.runtime.undefinedCommandLog", { command: commandName }),
+      {
+        context: { commandName },
+      }
+    );
+    return { success: false, message: AppI18n.t("app.commands.runtime.undefinedCommand") };
   }
 
   await context.ensureReady();
 
   const priority = "normal";
-  const stamp = new Date().toLocaleString("tr-TR");
+  const stamp = formatWhisperRuntimeTimestamp();
   const provider = payload.provider ?? "AI";
   const nickAi1 = AppState.getNickname("ai1");
   const nickAi2 = AppState.getNickname("ai2");
@@ -231,14 +249,18 @@ export async function handleCaughtCommandWithContext(
     priority
   );
 
-  Logger.debug(LogCategory.SYSTEM, `[${stamp}] ${who} - Komut kuyruğa alındı: ${cmdText}`, {
-    context: {
-      provider,
-      command: commandName,
-      args: argLabel,
-      jobId: job?.id,
-    },
-  });
+  Logger.debug(
+    LogCategory.SYSTEM,
+    whisperRuntimeT("queuedCommandLog", { timestamp: stamp, sender: who, commandText: cmdText }),
+    {
+      context: {
+        provider,
+        command: commandName,
+        args: argLabel,
+        jobId: job?.id,
+      },
+    }
+  );
 
   if (job?.id !== undefined && job.id !== "") {
     return { success: true, jobId: job.id, priority };
@@ -250,8 +272,12 @@ export function destroyWhisperActions(): void {
   try {
     WhisperManager.destroy();
   } catch (error) {
-    Logger.warn(LogCategory.WHISPER, `Whisper destroy warning: ${getErrorMessage(error)}`, {
-      error: error instanceof Error ? error : new Error(String(error)),
-    });
+    Logger.warn(
+      LogCategory.WHISPER,
+      whisperRuntimeT("destroyWarning", { message: getErrorMessage(error) }),
+      {
+        error: error instanceof Error ? error : new Error(String(error)),
+      }
+    );
   }
 }

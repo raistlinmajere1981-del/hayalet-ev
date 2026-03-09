@@ -89,7 +89,7 @@ function run(command, args, label) {
   });
 }
 
-async function runMainApp(useAsistanStartupFlags = false) {
+async function runMainApp(useAssistantStartupFlags = false) {
   const currentControl = await readControl();
   const runningMainControl = toMainRunningControl(currentControl, nowIso());
   await writeControl(runningMainControl);
@@ -97,11 +97,11 @@ async function runMainApp(useAsistanStartupFlags = false) {
     desiredMode: runningMainControl.desiredMode,
     phase: runningMainControl.phase,
     workflowSessionId: runningMainControl.workflowSessionId,
-    asistanStartup: useAsistanStartupFlags,
+    assistantStartup: useAssistantStartupFlags,
   });
 
-  if (useAsistanStartupFlags) {
-    return await run("npm", ["run", "electron:dev:asistan"], "hayalet-ev");
+  if (useAssistantStartupFlags) {
+    return await run("npm", ["run", "electron:dev:assistant"], "hayalet-ev");
   }
   return await run("npm", ["run", "electron:dev"], "hayalet-ev");
 }
@@ -143,7 +143,7 @@ async function runGhostOnly() {
 
   // "Hayalet-ev'e Geç" butonuna basıldıysa (desiredMode=soft) hayalet-ev'i aç
   if (shouldReopenMainAfterGhost(idleControl)) {
-    await logWrapperEvent("cycle.main.start", { nextTarget: "hayalet", asistanStartup: true });
+    await logWrapperEvent("cycle.main.start", { nextTarget: "hayalet", assistantStartup: true });
     await runMainApp(true);
   } else {
     await logWrapperEvent("cycle.stop", {
@@ -165,16 +165,16 @@ async function main() {
   await logWrapperEvent("wrapper.start", { runtimeControlPath });
 
   let nextTarget = "hayalet";
-  let launchAsistanOnNextMain = false;
+  let launchAssistantOnNextMain = false;
 
   while (true) {
     if (nextTarget === "hayalet") {
       await logWrapperEvent("cycle.main.start", {
         nextTarget,
-        asistanStartup: launchAsistanOnNextMain,
+        assistantStartup: launchAssistantOnNextMain,
       });
-      const code = await runMainApp(launchAsistanOnNextMain);
-      launchAsistanOnNextMain = false;
+      const code = await runMainApp(launchAssistantOnNextMain);
+      launchAssistantOnNextMain = false;
       if (code !== 0) {
         await logWrapperEvent("cycle.main.crash", { code });
         process.exitCode = code;
@@ -232,7 +232,7 @@ async function main() {
       return;
     }
 
-    launchAsistanOnNextMain = true;
+    launchAssistantOnNextMain = true;
     nextTarget = "hayalet";
   }
 }

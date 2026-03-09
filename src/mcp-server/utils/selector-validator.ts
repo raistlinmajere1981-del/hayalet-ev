@@ -6,6 +6,7 @@
 
 import WebSocket from "ws";
 import { discoverTargets, sendCDPCommand } from "./cdp-connection.js";
+import { createMcpTranslatorSync } from "./i18n/index.js";
 import type { FlatSelector, ProviderConfig } from "./provider-config.js";
 
 // ============================================
@@ -68,6 +69,13 @@ export interface WebviewTarget {
   url: string;
   webSocketDebuggerUrl: string;
   provider?: string;
+}
+
+function selectorValidatorT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
 }
 
 // ============================================
@@ -139,7 +147,7 @@ async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSock
 
     const timeoutId = setTimeout(() => {
       ws.close();
-      reject(new Error("WebSocket bağlantı zaman aşımı"));
+      reject(new Error(selectorValidatorT("websocketTimeout")));
     }, timeout);
 
     ws.on("open", () => {
@@ -149,7 +157,7 @@ async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSock
 
     ws.on("error", (err) => {
       clearTimeout(timeoutId);
-      reject(new Error(`WebSocket hatası: ${err.message}`));
+      reject(new Error(selectorValidatorT("websocketError", { message: err.message })));
     });
   });
 }
@@ -215,7 +223,12 @@ export async function testSelector(ws: WebSocket, selector: string): Promise<Sel
     const value = (result as { result?: { value?: SelectorTestResult } }).result?.value;
 
     if (!value) {
-      return { selector, found: false, count: 0, error: "Sonuç alınamadı" };
+      return {
+        selector,
+        found: false,
+        count: 0,
+        error: createMcpTranslatorSync()("mcpServer.devTools.selectorValidator.noResult"),
+      };
     }
 
     const testResult: {

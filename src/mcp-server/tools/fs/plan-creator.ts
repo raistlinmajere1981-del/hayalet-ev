@@ -2,6 +2,8 @@
  * Filesystem Tools - Plan Creator
  */
 
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
+
 interface TechnicalPlan {
   logicalChanges?: Array<{
     summary: string;
@@ -13,24 +15,35 @@ interface TechnicalPlan {
   }>;
 }
 
+const planTranslator = createMcpTranslatorSync();
+
+function planT(key: string, params?: Record<string, string | number | boolean>): string {
+  return planTranslator(`mcpServer.fs.plan.${key}`, params);
+}
+
+function planToolDefinitionT(key: string): string {
+  return planTranslator(`mcpServer.fs.toolDefinitions.${key}`);
+}
+
 export function createTechnicalPlan(plan: TechnicalPlan): { success: boolean; summary: string } {
-  // Plan validasyonu
   if (!plan.logicalChanges || plan.logicalChanges.length === 0) {
-    return { success: false, summary: "Plan boş olamaz" };
+    return { success: false, summary: planT("empty") };
   }
 
-  // Özet oluştur
-  const summaryLines: string[] = ["# Teknik Plan\n"];
+  const summaryLines: string[] = [planT("title"), ""];
 
   for (let i = 0; i < plan.logicalChanges.length; i++) {
     const change = plan.logicalChanges[i];
     if (!change) continue;
-    summaryLines.push(`## ${i + 1}. ${change.summary}\n`);
+    summaryLines.push(planT("sectionTitle", { index: i + 1, summary: change.summary }));
+    summaryLines.push("");
 
     for (const file of change.filesToChange) {
-      summaryLines.push(`- **${file.filePath}**: ${file.descriptionOfChange}`);
+      summaryLines.push(planT("fileLine", { filePath: file.filePath, description: file.descriptionOfChange }));
       if (file.clarifyingQuestionIfAny !== undefined && file.clarifyingQuestionIfAny.length > 0) {
-        summaryLines.push(`  - ❓ ${file.clarifyingQuestionIfAny}`);
+        summaryLines.push(
+          planT("questionLine", { question: file.clarifyingQuestionIfAny })
+        );
       }
     }
     summaryLines.push("");
@@ -42,10 +55,10 @@ export function createTechnicalPlan(plan: TechnicalPlan): { success: boolean; su
 // Tool Definition
 export const CREATE_PLAN_TOOL = {
   name: "hev_fs_create_plan",
-  description: "Teknik plan oluştur ve doğrula",
+  description: planToolDefinitionT("createPlan.description"),
   inputSchema: {
     type: "object" as const,
-    properties: { plan: { type: "string" } },
+    properties: { plan: { type: "string", description: planToolDefinitionT("createPlan.plan") } },
     required: ["plan"],
   },
   metadata: {

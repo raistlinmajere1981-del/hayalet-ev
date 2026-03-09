@@ -2,7 +2,14 @@
  * Filesystem Tools - Search Operations
  */
 
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { showFileContent, getFileSummary } from "./shared/helpers.js";
+
+const searchToolDefinitionTranslator = createMcpTranslatorSync();
+
+function searchToolDefinitionT(key: string): string {
+  return searchToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`);
+}
 
 export function grep(
   workspacePath: string,
@@ -67,12 +74,12 @@ function grepDirectory(
 // Tool Definitions
 export const GREP_TOOL = {
   name: "hev_fs_grep",
-  description: "Dosyalarda pattern ara",
+  description: searchToolDefinitionT("grep.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      content_pattern: { type: "string", description: "Aranacak regex pattern" },
-      path_glob: { type: "string", description: "Dosya yolu glob pattern" },
+      content_pattern: { type: "string", description: searchToolDefinitionT("grep.contentPattern") },
+      path_glob: { type: "string", description: searchToolDefinitionT("grep.pathGlob") },
     },
   },
   metadata: {
@@ -83,13 +90,13 @@ export const GREP_TOOL = {
 
 export const SHOW_FILE_TOOL = {
   name: "hev_fs_show",
-  description: "Dosya içeriğini satır numaralarıyla göster",
+  description: searchToolDefinitionT("show.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Dosya yolu" },
-      start_line: { type: "integer", description: "Başlangıç satırı" },
-      end_line: { type: "integer", description: "Bitiş satırı" },
+      file_path: { type: "string", description: searchToolDefinitionT("show.filePath") },
+      start_line: { type: "integer", description: searchToolDefinitionT("show.startLine") },
+      end_line: { type: "integer", description: searchToolDefinitionT("show.endLine") },
     },
     required: ["file_path"],
   },

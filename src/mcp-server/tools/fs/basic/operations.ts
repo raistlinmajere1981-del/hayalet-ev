@@ -1,12 +1,7 @@
 /**
- * Basic File Operations
+ * Basic file operations.
  *
- * Temel dosya CRUD operasyonları:
- * - read_file: Dosya okuma (start_line/end_line + head/tail desteği)
- * - write_file: Dosya yazma
- * - list_directory: Dizin listeleme
- * - delete_file: Dosya silme
- * - move_file: Dosya taşıma/yeniden adlandırma
+ * Provides read, write, list, delete, and move primitives for filesystem tools.
  *
  * @module fs/basic/operations
  */
@@ -14,11 +9,21 @@
 import { readFile, writeFile, unlink, readdir, stat, mkdir, rename, access } from "fs/promises";
 import { dirname, join } from "path";
 import { logToolError } from "../../../utils/mcp-logger.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolResult } from "@shared/index-mcp.js";
+import type { TranslationParams } from "../../../../types/i18n.js";
 
-// ============================================
-// Types & Interfaces
-// ============================================
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function fsT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.${key}`, params);
+}
+
+const fsToolDefinitionTranslator = createMcpTranslatorSync();
+
+function fsToolDefinitionT(key: string, params?: TranslationParams): string {
+  return fsToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`, params);
+}
 
 export interface ReadFileOptions {
   file_path: string;
@@ -60,37 +65,26 @@ export interface DirectoryEntry {
   modified: string;
 }
 
-// ============================================
-// Path Validation & Security
-// ============================================
-
 /**
  * Validate file path for security
  * Blocks path traversal attempts
  */
-function validatePath(filePath: string): { valid: boolean; error?: string } {
-  // Check for path traversal
+function validatePath(filePath: string): { valid: boolean; errorKey?: string } {
   const normalized = filePath.replace(/\\/g, "/");
 
   if (normalized.includes("../") || normalized.includes("..\\")) {
     return {
       valid: false,
-      error: "Path traversal tespit edildi. '..' kullanımına izin verilmez.",
+      errorKey: "errors.pathTraversalDetected",
     };
   }
 
-  // Check for absolute paths that might be dangerous
   if (normalized.startsWith("/") && normalized.length > 1) {
-    // Allow absolute paths but could add more checks here
     return { valid: true };
   }
 
   return { valid: true };
 }
-
-// ============================================
-// Read File Implementation
-// ============================================
 
 /**
  * Read file content with optional start_line/end_line range or head/tail
@@ -104,20 +98,21 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
     end_line: endLine,
     encoding = "utf8",
   } = options;
+  const t = await createMcpTranslator();
 
-  // Validate path
   const validation = validatePath(filePath);
   if (!validation.valid) {
     return {
-      content: [{ type: "text", text: `❌ ${validation.error ?? "Path validation failed"}` }],
+      content: [
+        {
+          type: "text",
+          text: `❌ ${fsT(t, validation.errorKey ?? "errors.pathValidationFailed")}`,
+        },
+      ],
       isError: true,
     };
   }
 
-  // Priority: start_line/end_line > head/tail
-  // start_line + end_line = explicit range mode (1-based, inclusive)
-  // head alone = first N lines, tail alone = last N lines
-  // Legacy: head + tail together = range (head=start, tail=end) — kept for backward compat
   const effectiveStart =
     startLine ??
     (head !== undefined && head > 0 && tail !== undefined && tail > 0 ? head : undefined);
@@ -133,17 +128,15 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
     effectiveEnd > 0;
 
   try {
-    // Check if file exists
     try {
       await access(filePath);
     } catch {
       return {
-        content: [{ type: "text", text: `❌ Dosya bulunamadı: ${filePath}` }],
+        content: [{ type: "text", text: fsT(t, "read.fileNotFound", { filePath }) }],
         isError: true,
       };
     }
 
-    // Read file
     const content = await readFile(filePath, encoding);
     const lines = content.split("\n");
     const totalLines = lines.length;
@@ -152,7 +145,6 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
     let rangeInfo = "";
 
     if (isRangeMode) {
-      // Range mode: start_line to end_line (1-based, inclusive)
       const startLine = Math.max(1, effectiveStart);
       const endLine = Math.min(effectiveEnd, totalLines);
       if (startLine > endLine) {
@@ -160,31 +152,34 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
           content: [
             {
               type: "text",
-              text: `❌ Geçersiz aralık: start_line(${startLine}) > end_line(${endLine}). start_line başlangıç, end_line bitiş satırı olmalı.`,
+              text: fsT(t, "read.invalidRange", { startLine, endLine }),
             },
           ],
           isError: true,
         };
       }
       displayContent = lines.slice(startLine - 1, endLine).join("\n");
-      rangeInfo = ` (satır ${startLine}-${endLine} / ${totalLines} toplam)`;
+      rangeInfo = fsT(t, "read.rangeInfoRange", {
+        startLine,
+        endLine,
+        totalLines,
+      });
     } else if (hasHead) {
-      // Get first N lines
       const endLine = Math.min(head, totalLines);
       displayContent = lines.slice(0, endLine).join("\n");
-      rangeInfo = ` (ilk ${endLine} satır / ${totalLines} toplam)`;
+      rangeInfo = fsT(t, "read.rangeInfoHead", { count: endLine, totalLines });
     } else if (hasTail) {
-      // Get last N lines
       const startLine = Math.max(0, totalLines - tail);
       displayContent = lines.slice(startLine).join("\n");
-      rangeInfo = ` (son ${totalLines - startLine} satır / ${totalLines} toplam)`;
+      rangeInfo = fsT(t, "read.rangeInfoTail", {
+        count: totalLines - startLine,
+        totalLines,
+      });
     } else {
-      // Get all content
       displayContent = content;
-      rangeInfo = ` (${totalLines} satır)`;
+      rangeInfo = fsT(t, "read.rangeInfoAll", { totalLines });
     }
 
-    // Format with line numbers
     const numberedContent = addLineNumbers(
       displayContent,
       isRangeMode
@@ -197,7 +192,7 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
     );
 
     const output = [
-      `📄 ${filePath}${rangeInfo}`,
+      fsT(t, "read.header", { filePath, rangeInfo }),
       "",
       "─".repeat(60),
       numberedContent,
@@ -217,7 +212,7 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
       tail,
     });
     return {
-      content: [{ type: "text", text: `❌ Okuma hatası: ${err.message}` }],
+      content: [{ type: "text", text: fsT(t, "read.readError", { message: err.message }) }],
       isError: true,
     };
   }
@@ -236,27 +231,27 @@ function addLineNumbers(content: string, startLine = 1): string {
     .join("\n");
 }
 
-// ============================================
-// Write File Implementation
-// ============================================
-
 /**
  * Write content to file
  */
 export async function writeFileContent(options: WriteFileOptions): Promise<ToolResult> {
   const { file_path: filePath, content, overwrite = false, encoding = "utf8" } = options;
+  const t = await createMcpTranslator();
 
-  // Validate path
   const validation = validatePath(filePath);
   if (!validation.valid) {
     return {
-      content: [{ type: "text", text: `❌ ${validation.error ?? "Path validation failed"}` }],
+      content: [
+        {
+          type: "text",
+          text: `❌ ${fsT(t, validation.errorKey ?? "errors.pathValidationFailed")}`,
+        },
+      ],
       isError: true,
     };
   }
 
   try {
-    // Check if file exists and overwrite not allowed
     if (!overwrite) {
       try {
         await access(filePath);
@@ -264,21 +259,19 @@ export async function writeFileContent(options: WriteFileOptions): Promise<ToolR
           content: [
             {
               type: "text",
-              text: `❌ Dosya zaten var: ${filePath}\n\n💡 Üzerine yazmak için overwrite=true kullanın.`,
+              text: `${fsT(t, "write.fileExists", { filePath })}\n\n${fsT(t, "common.overwriteHint")}`,
             },
           ],
           isError: true,
         };
       } catch {
-        // File doesn't exist, continue
+        // The file does not exist yet.
       }
     }
 
-    // Create directory if needed
     const dir = dirname(filePath);
     await mkdir(dir, { recursive: true });
 
-    // Write file
     await writeFile(filePath, content, encoding);
 
     const byteLength = Buffer.byteLength(content, encoding);
@@ -288,7 +281,10 @@ export async function writeFileContent(options: WriteFileOptions): Promise<ToolR
       content: [
         {
           type: "text",
-          text: `✅ Dosya yazıldı: ${filePath}\n📊 ${lineCount} satır, ${byteLength} byte`,
+          text: `${fsT(t, "write.success", { filePath })}\n${fsT(t, "write.stats", {
+            lineCount,
+            byteLength,
+          })}`,
         },
       ],
     };
@@ -296,44 +292,44 @@ export async function writeFileContent(options: WriteFileOptions): Promise<ToolR
     const err = error as Error;
     logToolError("hev_fs_write", err, { file_path: filePath, encoding });
     return {
-      content: [{ type: "text", text: `❌ Yazma hatası: ${err.message}` }],
+      content: [{ type: "text", text: fsT(t, "write.writeError", { message: err.message }) }],
       isError: true,
     };
   }
 }
-
-// ============================================
-// List Directory Implementation
-// ============================================
 
 /**
  * List directory contents
  */
 export async function listDirectory(options: ListDirectoryOptions): Promise<ToolResult> {
   const { path: dirPath, max_depth: maxDepth = 1, include_hidden: includeHidden = false } = options;
+  const t = await createMcpTranslator();
 
-  // Validate path
   const validation = validatePath(dirPath);
   if (!validation.valid) {
     return {
-      content: [{ type: "text", text: `❌ ${validation.error ?? "Path validation failed"}` }],
+      content: [
+        {
+          type: "text",
+          text: `❌ ${fsT(t, validation.errorKey ?? "errors.pathValidationFailed")}`,
+        },
+      ],
       isError: true,
     };
   }
 
   try {
-    // Check if directory exists
     const stats = await stat(dirPath);
     if (!stats.isDirectory()) {
       return {
-        content: [{ type: "text", text: `❌ Bu bir dizin değil: ${dirPath}` }],
+        content: [{ type: "text", text: fsT(t, "list.notDirectory", { path: dirPath }) }],
         isError: true,
       };
     }
 
     const entries = await readDirectoryRecursive(dirPath, maxDepth, includeHidden);
 
-    const output = formatDirectoryListing(dirPath, entries, maxDepth);
+    const output = formatDirectoryListing(dirPath, entries, maxDepth, t);
 
     return {
       content: [{ type: "text", text: output }],
@@ -342,7 +338,7 @@ export async function listDirectory(options: ListDirectoryOptions): Promise<Tool
     const err = error as Error;
     logToolError("hev_fs_list", err, { dirPath, max_depth: maxDepth });
     return {
-      content: [{ type: "text", text: `❌ Listeleme hatası: ${err.message}` }],
+      content: [{ type: "text", text: fsT(t, "list.listError", { message: err.message }) }],
       isError: true,
     };
   }
@@ -362,7 +358,6 @@ async function readDirectoryRecursive(
   const items = await readdir(dirPath, { withFileTypes: true });
 
   for (const item of items) {
-    // Skip hidden files unless requested
     if (!includeHidden && item.name.startsWith(".")) {
       continue;
     }
@@ -380,9 +375,7 @@ async function readDirectoryRecursive(
 
     results.push({ entry, depth: currentDepth });
 
-    // Recurse into subdirectories
     if (item.isDirectory() && currentDepth < maxDepth - 1) {
-      // eslint-disable-next-line no-await-in-loop
       const subResults = await readDirectoryRecursive(
         fullPath,
         maxDepth,
@@ -402,9 +395,14 @@ async function readDirectoryRecursive(
 function formatDirectoryListing(
   rootPath: string,
   entries: Array<{ entry: DirectoryEntry; depth: number }>,
-  maxDepth: number
+  maxDepth: number,
+  t: McpTranslator
 ): string {
-  const lines: string[] = [`📁 ${rootPath}${maxDepth > 1 ? ` (derinlik: ${maxDepth})` : ""}`, ""];
+  const header =
+    maxDepth > 1
+      ? fsT(t, "list.headerWithDepth", { path: rootPath, depth: maxDepth })
+      : fsT(t, "list.header", { path: rootPath });
+  const lines: string[] = [header, ""];
 
   let fileCount = 0;
   let dirCount = 0;
@@ -422,7 +420,7 @@ function formatDirectoryListing(
 
   lines.push("");
   lines.push(`─`.repeat(60));
-  lines.push(`📊 ${fileCount} dosya, ${dirCount} dizin`);
+  lines.push(fsT(t, "list.summary", { fileCount, dirCount }));
 
   return lines.join("\n");
 }
@@ -436,27 +434,27 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-// ============================================
-// Delete File Implementation
-// ============================================
-
 /**
  * Delete file or directory
  */
 export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult> {
   const { file_path: filePath, recursive = false } = options;
+  const t = await createMcpTranslator();
 
-  // Validate path
   const validation = validatePath(filePath);
   if (!validation.valid) {
     return {
-      content: [{ type: "text", text: `❌ ${validation.error ?? "Path validation failed"}` }],
+      content: [
+        {
+          type: "text",
+          text: `❌ ${fsT(t, validation.errorKey ?? "errors.pathValidationFailed")}`,
+        },
+      ],
       isError: true,
     };
   }
 
   try {
-    // Check if exists
     const stats = await stat(filePath);
     const isDir = stats.isDirectory();
 
@@ -465,17 +463,14 @@ export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult
         content: [
           {
             type: "text",
-            text: `❌ Bu bir dizin: ${filePath}\n\n💡 Dizin silmek için recursive=true kullanın.`,
+            text: `${fsT(t, "delete.directoryRequiresRecursive", { filePath })}\n\n${fsT(t, "delete.recursiveHint")}`,
           },
         ],
         isError: true,
       };
     }
 
-    // Delete (Node 20+ has rm with recursive, otherwise use rmdir)
     if (isDir && recursive) {
-      await unlink(filePath); // This won't work for directories, need fs.rm
-      // For now, use the newer fs.rm if available
       const { rm } = await import("fs/promises");
       await rm(filePath, { recursive: true });
     } else {
@@ -486,7 +481,10 @@ export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult
       content: [
         {
           type: "text",
-          text: `🗑️ Silindi: ${filePath}${isDir ? " (dizin)" : ""}`,
+          text: fsT(t, "delete.success", {
+            filePath,
+            suffix: isDir ? fsT(t, "delete.directorySuffix") : "",
+          }),
         },
       ],
     };
@@ -494,28 +492,29 @@ export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult
     const err = error as Error;
     logToolError("hev_fs_delete", err, { file_path: filePath, recursive });
     return {
-      content: [{ type: "text", text: `❌ Silme hatası: ${err.message}` }],
+      content: [{ type: "text", text: fsT(t, "delete.deleteError", { message: err.message }) }],
       isError: true,
     };
   }
 }
-
-// ============================================
-// Move File Implementation
-// ============================================
 
 /**
  * Move or rename file/directory
  */
 export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
   const { source, destination, overwrite = false } = options;
+  const t = await createMcpTranslator();
 
-  // Validate paths
   const sourceValidation = validatePath(source);
   if (!sourceValidation.valid) {
     return {
       content: [
-        { type: "text", text: `❌ Kaynak: ${sourceValidation.error ?? "Path validation failed"}` },
+        {
+          type: "text",
+          text: fsT(t, "move.sourcePathInvalid", {
+            message: fsT(t, sourceValidation.errorKey ?? "errors.pathValidationFailed"),
+          }),
+        },
       ],
       isError: true,
     };
@@ -525,24 +524,27 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
   if (!destValidation.valid) {
     return {
       content: [
-        { type: "text", text: `❌ Hedef: ${destValidation.error ?? "Path validation failed"}` },
+        {
+          type: "text",
+          text: fsT(t, "move.destinationPathInvalid", {
+            message: fsT(t, destValidation.errorKey ?? "errors.pathValidationFailed"),
+          }),
+        },
       ],
       isError: true,
     };
   }
 
   try {
-    // Check if source exists
     try {
       await access(source);
     } catch {
       return {
-        content: [{ type: "text", text: `❌ Kaynak bulunamadı: ${source}` }],
+        content: [{ type: "text", text: fsT(t, "move.sourceNotFound", { source }) }],
         isError: true,
       };
     }
 
-    // Check if destination exists
     if (!overwrite) {
       try {
         await access(destination);
@@ -550,28 +552,26 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
           content: [
             {
               type: "text",
-              text: `❌ Hedef zaten var: ${destination}\n\n💡 Üzerine yazmak için overwrite=true kullanın.`,
+              text: `${fsT(t, "move.destinationExists", { destination })}\n\n${fsT(t, "common.overwriteHint")}`,
             },
           ],
           isError: true,
         };
       } catch {
-        // Destination doesn't exist, continue
+        // The destination does not exist yet.
       }
     }
 
-    // Create destination directory if needed
     const destDir = dirname(destination);
     await mkdir(destDir, { recursive: true });
 
-    // Move file
     await rename(source, destination);
 
     return {
       content: [
         {
           type: "text",
-          text: `✅ Taşındı:\n   ${source}\n   → ${destination}`,
+          text: fsT(t, "move.success", { source, destination }),
         },
       ],
     };
@@ -579,7 +579,7 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
     const err = error as Error;
     logToolError("hev_fs_move", err, { source, destination });
     return {
-      content: [{ type: "text", text: `❌ Taşıma hatası: ${err.message}` }],
+      content: [{ type: "text", text: fsT(t, "move.moveError", { message: err.message }) }],
       isError: true,
     };
   }
@@ -591,49 +591,38 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
 
 export const READ_FILE_TOOL = {
   name: "hev_fs_read",
-  description:
-    "Dosya içeriğini oku. Satır numaraları ile gösterir.\n\n" +
-    "📌 KULLANIM MODLARI:\n" +
-    "• Parametresiz → Tüm dosyayı oku\n" +
-    "• head=N → İlk N satırı oku (adet)\n" +
-    "• tail=N → Son N satırı oku (adet)\n" +
-    "• start_line=X, end_line=Y → X. satırdan Y. satıra kadar oku (1-based, inclusive)\n\n" +
-    "⚠️ Satır aralığı okumak için MUTLAKA start_line + end_line kullan. head/tail TEK BAŞINA kullanılır.\n\n" +
-    "Örnekler:\n" +
-    "• head=60 → ilk 60 satır\n" +
-    "• tail=20 → son 20 satır\n" +
-    "• start_line=100, end_line=200 → 100-200 arası satırlar",
+  description: fsToolDefinitionT("read.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string",
-        description: "Okunacak dosya yolu",
+        description: fsToolDefinitionT("read.filePath"),
       },
       start_line: {
         type: "integer",
-        description: "Başlangıç satır numarası (1-based, inclusive). end_line ile birlikte kullan.",
+        description: fsToolDefinitionT("read.startLine"),
         minimum: 1,
       },
       end_line: {
         type: "integer",
-        description: "Bitiş satır numarası (1-based, inclusive). start_line ile birlikte kullan.",
+        description: fsToolDefinitionT("read.endLine"),
         minimum: 1,
       },
       head: {
         type: "integer",
-        description: "İlk N satırı oku (adet). Satır aralığı için start_line/end_line kullan.",
+        description: fsToolDefinitionT("read.head"),
         minimum: 0,
       },
       tail: {
         type: "integer",
-        description: "Son N satırı oku (adet). Satır aralığı için start_line/end_line kullan.",
+        description: fsToolDefinitionT("read.tail"),
         minimum: 0,
       },
       encoding: {
         type: "string",
         enum: ["utf8", "base64", "latin1"],
-        description: "Karakter encoding (varsayılan: utf8)",
+        description: fsToolDefinitionT("read.encoding"),
         default: "utf8",
       },
     },
@@ -645,13 +634,12 @@ export const READ_FILE_TOOL = {
     priority: "high",
     complexity: "simple",
     useCases: [
-      "Dosya içeriği görüntüleme",
-      "Log dosyası okuma",
-      "Büyük dosyalarda belirli satırları okuma",
+      fsToolDefinitionT("read.useCases.viewFileContent"),
+      fsToolDefinitionT("read.useCases.readLogFiles"),
+      fsToolDefinitionT("read.useCases.readLargeFileSections"),
     ],
     relatedTools: ["hev_fs_write", "hev_fs_expand_code_chunks"],
-    agentGuidance:
-      "Dosya okumak için kullan. Belirli satır aralığı okumak için start_line + end_line kullan (1-based, inclusive). İlk N satır için head=N, son N satır için tail=N kullan. head ve tail TEK BAŞINA kullanılır, birlikte kullanılmamalı. Satır numaraları otomatik eklenir.",
+    agentGuidance: fsToolDefinitionT("read.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["file", "read", "content", "start_line", "end_line", "head", "tail"],
@@ -660,32 +648,27 @@ export const READ_FILE_TOOL = {
 
 export const WRITE_FILE_TOOL = {
   name: "hev_fs_write",
-  description:
-    "Dosyaya içerik yaz. Yeni dosya oluşturur veya mevcut dosyayı üzerine yazar (overwrite=true).\n\n" +
-    "⚠️ BOYUT LİMİTİ: Content 500 satır veya ~50KB'ı aşıyorsa bu tool KULLANILMAMALI!\n" +
-    "LLM output token limiti (8192) nedeniyle büyük dosyalar incomplete/malformed oluşur.\n\n" +
-    "🔄 BÜYÜK DOSYALAR İÇİN: hev_fs_start_chunked_session → hev_fs_write_chunk → hev_fs_finalize_chunked akışını kullan.\n" +
-    "Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.",
+  description: fsToolDefinitionT("write.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string",
-        description: "Yazılacak dosya yolu",
+        description: fsToolDefinitionT("write.filePath"),
       },
       content: {
         type: "string",
-        description: "Dosyaya yazılacak içerik",
+        description: fsToolDefinitionT("write.content"),
       },
       overwrite: {
         type: "boolean",
-        description: "Mevcut dosyanın üzerine yaz (varsayılan: false)",
+        description: fsToolDefinitionT("write.overwrite"),
         default: false,
       },
       encoding: {
         type: "string",
         enum: ["utf8", "base64", "latin1"],
-        description: "Karakter encoding (varsayılan: utf8)",
+        description: fsToolDefinitionT("write.encoding"),
         default: "utf8",
       },
     },
@@ -696,10 +679,13 @@ export const WRITE_FILE_TOOL = {
     subcategory: "basic",
     priority: "high",
     complexity: "simple",
-    useCases: ["Yeni dosya oluşturma", "Dosya üzerine yazma", "Konfigürasyon dosyası yazma"],
+    useCases: [
+      fsToolDefinitionT("write.useCases.createFiles"),
+      fsToolDefinitionT("write.useCases.overwriteFiles"),
+      fsToolDefinitionT("write.useCases.writeConfigFiles"),
+    ],
     relatedTools: ["hev_fs_read", "hev_fs_edit"],
-    agentGuidance:
-      "Yeni dosya oluşturmak veya tamamen üzerine yazmak için kullan. ⚠️ 500 satır / 50KB üzeri dosyalar için hev_fs_start_chunked_session kullan (LLM token limiti aşımı riski). Kısmi değişiklikler için hev_fs_edit kullan. overwrite=true dikkatli kullan.",
+    agentGuidance: fsToolDefinitionT("write.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["file", "write", "create", "overwrite"],
@@ -708,25 +694,24 @@ export const WRITE_FILE_TOOL = {
 
 export const LIST_DIRECTORY_TOOL = {
   name: "hev_fs_list",
-  description:
-    "Dizin içeriğini listele. Dosya ve alt dizinleri gösterir. max_depth ile recursive listeleme yapabilir.",
+  description: fsToolDefinitionT("list.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       path: {
         type: "string",
-        description: "Listelenecek dizin yolu",
+        description: fsToolDefinitionT("list.path"),
       },
       max_depth: {
         type: "integer",
-        description: "Maksimum derinlik (varsayılan: 1)",
+        description: fsToolDefinitionT("list.maxDepth"),
         default: 1,
         minimum: 1,
         maximum: 5,
       },
       include_hidden: {
         type: "boolean",
-        description: "Gizli dosyaları dahil et (varsayılan: false)",
+        description: fsToolDefinitionT("list.includeHidden"),
         default: false,
       },
     },
@@ -737,10 +722,13 @@ export const LIST_DIRECTORY_TOOL = {
     subcategory: "basic",
     priority: "high",
     complexity: "simple",
-    useCases: ["Dizin yapısını keşfetme", "Dosya listesi alma", "Proje yapısını görüntüleme"],
+    useCases: [
+      fsToolDefinitionT("list.useCases.exploreDirectoryStructure"),
+      fsToolDefinitionT("list.useCases.getFileLists"),
+      fsToolDefinitionT("list.useCases.inspectProjectStructure"),
+    ],
     relatedTools: ["hev_fs_expand_folder"],
-    agentGuidance:
-      "Dizin içeriğini listelemek için kullan. max_depth>1 ile recursive listeleyebilirsin. Gizli dosyalar için include_hidden=true kullan.",
+    agentGuidance: fsToolDefinitionT("list.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["directory", "list", "ls", "folder"],
@@ -749,17 +737,17 @@ export const LIST_DIRECTORY_TOOL = {
 
 export const DELETE_FILE_TOOL = {
   name: "hev_fs_delete",
-  description: "Dosya veya dizin sil. Dizin silmek için recursive=true gerekir.",
+  description: fsToolDefinitionT("delete.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string",
-        description: "Silinecek dosya/dizin yolu",
+        description: fsToolDefinitionT("delete.filePath"),
       },
       recursive: {
         type: "boolean",
-        description: "Dizinleri recursive sil (varsayılan: false)",
+        description: fsToolDefinitionT("delete.recursive"),
         default: false,
       },
     },
@@ -770,10 +758,13 @@ export const DELETE_FILE_TOOL = {
     subcategory: "basic",
     priority: "medium",
     complexity: "simple",
-    useCases: ["Dosya silme", "Boş dizin silme", "Recursive dizin silme"],
+    useCases: [
+      fsToolDefinitionT("delete.useCases.deleteFiles"),
+      fsToolDefinitionT("delete.useCases.deleteEmptyDirectories"),
+      fsToolDefinitionT("delete.useCases.deleteDirectoriesRecursively"),
+    ],
     relatedTools: ["hev_fs_trash_list", "hev_fs_restore"],
-    agentGuidance:
-      "Dosya/dizin silmek için kullan. Dizin silmek için recursive=true gerekir. Güvenli silme için önce hev_fs_trash_list kullanılabilir.",
+    agentGuidance: fsToolDefinitionT("delete.agentGuidance"),
     requiresConfirmation: true,
     riskLevel: "high",
     tags: ["file", "delete", "remove", "rm"],
@@ -782,21 +773,21 @@ export const DELETE_FILE_TOOL = {
 
 export const MOVE_FILE_TOOL = {
   name: "hev_fs_move",
-  description: "Dosya veya dizin taşı / yeniden adlandır. Kaynak hedefe taşınır.",
+  description: fsToolDefinitionT("move.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       source: {
         type: "string",
-        description: "Kaynak dosya/dizin yolu",
+        description: fsToolDefinitionT("move.source"),
       },
       destination: {
         type: "string",
-        description: "Hedef yol",
+        description: fsToolDefinitionT("move.destination"),
       },
       overwrite: {
         type: "boolean",
-        description: "Hedef varsa üzerine yaz (varsayılan: false)",
+        description: fsToolDefinitionT("move.overwrite"),
         default: false,
       },
     },
@@ -807,10 +798,13 @@ export const MOVE_FILE_TOOL = {
     subcategory: "basic",
     priority: "medium",
     complexity: "simple",
-    useCases: ["Dosya taşıma", "Dosya yeniden adlandırma", "Dizin taşıma"],
+    useCases: [
+      fsToolDefinitionT("move.useCases.moveFiles"),
+      fsToolDefinitionT("move.useCases.renameFiles"),
+      fsToolDefinitionT("move.useCases.moveDirectories"),
+    ],
     relatedTools: ["hev_fs_write", "hev_fs_delete"],
-    agentGuidance:
-      "Dosya/dizin taşımak veya yeniden adlandırmak için kullan. Aynı dizinde farklı isim hedefi = rename. overwrite=true ile çakışmayı önle.",
+    agentGuidance: fsToolDefinitionT("move.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["file", "move", "rename", "mv"],

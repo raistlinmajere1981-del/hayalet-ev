@@ -1,6 +1,8 @@
+import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../../modules/logger/index.js";
 import { AppState } from "../../modules/app-state.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import { VISIBLE_MESSAGE_COUNT, MESSAGE_HEIGHT_ESTIMATE } from "@limits";
 import {
   buildAttachmentsByMessage,
@@ -49,6 +51,14 @@ const renderStates = new Map<string, RenderState>();
 const renderSnapshots = new Map<string, RenderSnapshot>();
 const renderPayloads = new Map<string, RenderPayload>();
 
+function analyzeRendererT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.analyze.renderer.${key}`, params);
+}
+
+function buildMessagePlaceholder(message: string): string {
+  return `<div class="message-placeholder">${message}</div>`;
+}
+
 export function resetMessageRenderState(provider: string): void {
   renderStates.delete(provider);
   renderSnapshots.delete(provider);
@@ -82,12 +92,12 @@ export async function renderMessages(
   provider: string,
   callbacks: RenderCallbacks = {}
 ): Promise<{ lastMessage: string }> {
-  Logger.debug(LogCategory.ANALYZE, `renderMessages started for ${provider}`);
+  Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.renderStarted", { provider }));
 
   const container = document.getElementById(`messages-${provider}`);
   const select = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;
 
-  Logger.debug(LogCategory.ANALYZE, `Elements found:`, {
+  Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.elementsFound"), {
     hasContainer: !!container,
     hasSelect: !!select,
     selectValue: select?.value,
@@ -95,28 +105,31 @@ export async function renderMessages(
   });
 
   if (!container) {
-    Logger.warn(LogCategory.ANALYZE, `Container not found: messages-${provider}`);
+    Logger.warn(LogCategory.ANALYZE, analyzeRendererT("logs.containerNotFound", { provider }));
     return { lastMessage: "" };
   }
 
   if (!select) {
-    Logger.warn(LogCategory.ANALYZE, `Select not found: conversation-${provider}`);
+    Logger.warn(LogCategory.ANALYZE, analyzeRendererT("logs.selectNotFound", { provider }));
     resetMessageRenderState(provider);
-    container.innerHTML = '<div class="message-placeholder">Sohbet listesi yükleniyor...</div>';
+    container.innerHTML = buildMessagePlaceholder(
+      analyzeRendererT("placeholders.loadingConversationList")
+    );
     return { lastMessage: "" };
   }
 
   const selected = select.selectedOptions[0];
 
-  Logger.debug(LogCategory.ANALYZE, `Conversation selection:`, {
+  Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.conversationSelection"), {
     selectedValue: selected?.value,
     hasSelected: selected !== undefined,
   });
 
   if (!selected || selected.value === "new") {
     resetMessageRenderState(provider);
-    container.innerHTML =
-      '<div class="message-placeholder">Yeni sohbet ba\u015flat\u0131l\u0131yor...</div>';
+    container.innerHTML = buildMessagePlaceholder(
+      analyzeRendererT("placeholders.startingNewConversation")
+    );
     return { lastMessage: "" };
   }
 
@@ -124,7 +137,7 @@ export async function renderMessages(
     const conversationId = selected.value;
     const accountInfo = AppState.getAccountForSlot(provider);
 
-    Logger.debug(LogCategory.ANALYZE, `Fetching messages from DB:`, {
+    Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.fetchingMessagesFromDb"), {
       accountId: accountInfo?.id,
       conversationId,
     });
@@ -132,14 +145,18 @@ export async function renderMessages(
     const accountId = accountInfo?.id ?? "";
     if (accountId === "") {
       resetMessageRenderState(provider);
-      container.innerHTML = '<div class="message-placeholder">Hesap bilgisi bulunamadı.</div>';
+      container.innerHTML = buildMessagePlaceholder(
+        analyzeRendererT("placeholders.accountInfoMissing")
+      );
       return { lastMessage: "" };
     }
 
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
       resetMessageRenderState(provider);
-      container.innerHTML = '<div class="message-placeholder">Uygulama API bulunamadı.</div>';
+      container.innerHTML = buildMessagePlaceholder(
+        analyzeRendererT("placeholders.electronApiUnavailable")
+      );
       return { lastMessage: "" };
     }
 
@@ -154,14 +171,14 @@ export async function renderMessages(
       isMessageItem(message)
     );
 
-    Logger.debug(LogCategory.ANALYZE, `DB query result:`, {
+    Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.dbQueryResult"), {
       messagesCount: messages.length,
       hasResult: rawMessagesResult !== undefined && rawMessagesResult !== null,
       hasData: Array.isArray(messagesResult.data),
     });
     let attachments: AttachmentData[] = [];
     try {
-      Logger.debug(LogCategory.ANALYZE, `Fetching attachments for conversation:`, {
+      Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.fetchingAttachments"), {
         accountId,
         conversationId,
       });
@@ -180,12 +197,14 @@ export async function renderMessages(
       attachments = rawAttachments.filter((attachment): attachment is AttachmentData =>
         isAttachmentData(attachment)
       );
-      Logger.debug(LogCategory.ANALYZE, `Attachments fetched:`, {
+      Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.attachmentsFetched"), {
         count: attachments.length,
         success: attachmentsResult.success === true,
       });
     } catch (err) {
-      Logger.warn(LogCategory.ANALYZE, `Failed to fetch attachments:`, { error: err });
+      Logger.warn(LogCategory.ANALYZE, analyzeRendererT("logs.attachmentsFetchFailed"), {
+        error: err,
+      });
     }
 
     const attachmentsByMessage = buildAttachmentsByMessage(attachments);
@@ -216,7 +235,7 @@ export async function renderMessages(
       });
 
     if (hasRenderedContent && shouldSkipRender(previousSnapshot, nextSnapshot)) {
-      Logger.debug(LogCategory.ANALYZE, "Skip rerender: snapshot unchanged", {
+      Logger.debug(LogCategory.ANALYZE, analyzeRendererT("logs.skipRerender"), {
         provider,
         conversationId,
       });
@@ -327,7 +346,7 @@ export async function renderMessages(
       if (visibleStart > 0) {
         const loadMoreBtn = document.createElement("button");
         loadMoreBtn.className = "load-more-btn";
-        loadMoreBtn.textContent = `Daha fazla göster (${visibleStart} mesaj)`;
+        loadMoreBtn.textContent = analyzeRendererT("actions.loadMore", { count: visibleStart });
         loadMoreBtn.onclick = (): void => {
           loadMoreMessages(provider, container, callbacks);
         };
@@ -363,7 +382,9 @@ export async function renderMessages(
     return { lastMessage: lastAssistant?.text ?? lastAssistant?.content ?? "" };
   } catch (_err) {
     resetMessageRenderState(provider);
-    container.innerHTML = '<div class="message-placeholder">Mesajlar okunamadı.</div>';
+    container.innerHTML = buildMessagePlaceholder(
+      analyzeRendererT("placeholders.messagesReadFailed")
+    );
     return { lastMessage: "" };
   }
 }
@@ -427,7 +448,9 @@ function loadMoreMessages(
     if (newVisibleStart === 0) {
       loadMoreBtn.remove();
     } else {
-      loadMoreBtn.textContent = `Daha fazla göster (${newVisibleStart} mesaj)`;
+      loadMoreBtn.textContent = analyzeRendererT("actions.loadMore", {
+        count: newVisibleStart,
+      });
     }
   }
 }

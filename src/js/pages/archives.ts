@@ -1,7 +1,9 @@
+import type { TranslationParams } from "@shared/i18n.js";
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./archives/types.js";
 import {
@@ -23,6 +25,14 @@ import {
   renderSearchResultsView,
   switchSearchTab,
 } from "./archives/search-view.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
+
+function archivesT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.archives.${key}`, params);
+}
 
 export class ArchivesController {
   entries: ArchiveEntry[];
@@ -119,9 +129,9 @@ export class ArchivesController {
           changedPaths.some(
             (path) =>
               path.startsWith("accounts") ||
-              path.startsWith("asistanAccounts") ||
+              isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
-              path.startsWith("asistanSlot")
+              isAssistantSlotSettingsPath(path)
           );
 
         if (!shouldApplyNames) {
@@ -246,7 +256,10 @@ export class ArchivesController {
       await SettingsManager.load();
     } catch (err) {
       const error = err as Error;
-      Logger.error(LogCategory.ARCHIVES, `Settings yükleme hatası: ${error.message}`);
+      Logger.error(
+        LogCategory.ARCHIVES,
+        archivesT("logs.settingsLoadError", { message: error.message })
+      );
     }
   }
 
@@ -286,7 +299,10 @@ export class ArchivesController {
       this.renderList();
     } catch (e) {
       const err = e as Error;
-      Logger.error(LogCategory.ARCHIVES, `Arşiv okunamadı: ${err.message}`);
+      Logger.error(
+        LogCategory.ARCHIVES,
+        archivesT("logs.archiveReadError", { message: err.message })
+      );
       this.entries = [];
     }
   }
@@ -298,7 +314,7 @@ export class ArchivesController {
     if (items.length === 0) {
       const div = document.createElement("div");
       div.className = "empty";
-      div.textContent = "Kayıt yok";
+      div.textContent = archivesT("page.empty");
       this.listEl.appendChild(div);
       return;
     }
@@ -320,7 +336,7 @@ export class ArchivesController {
 
       const removeBtn = document.createElement("button");
       removeBtn.className = "archive-remove";
-      removeBtn.title = "Sohbeti Sil";
+      removeBtn.title = archivesT("page.deleteTitle");
       removeBtn.innerHTML = "×";
       removeBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
@@ -364,13 +380,13 @@ export class ArchivesController {
     navigator.clipboard
       .writeText(url)
       .then(() => {
-        this.setStatus("URL kopyalandı", "success");
+        this.setStatus(archivesT("page.urlCopied"), "success");
         setTimeout(() => {
           this.clearStatus();
         }, 2000);
       })
       .catch(() => {
-        this.setStatus("Kopyalama başarısız", "error");
+        this.setStatus(archivesT("page.copyFailed"), "error");
       });
   }
 
@@ -461,7 +477,7 @@ export class ArchivesController {
   }
   onHide(): void {
     this.clearStatus();
-    // Faz 3: Cleanup search timeout to prevent memory leak
+    // Phase 3: Clean up the search timeout to prevent memory leaks.
     if (this._searchTimeout) {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
@@ -478,20 +494,23 @@ export class ArchivesController {
   // Protocol Editor Methods
   // ==========================================
 
-  /** Protokolleri JSON dosyasından yükle */
+  /** Load protocols from the JSON file. */
   async loadProtocols(): Promise<void> {
     try {
       this._protocols = await loadProtocolsFromApi(window.electronAPI);
       this.renderProtocolList();
     } catch (e) {
       const err = e as Error;
-      Logger.error(LogCategory.ARCHIVES, `Protokoller yüklenemedi: ${err.message}`);
+      Logger.error(
+        LogCategory.ARCHIVES,
+        archivesT("protocol.logs.loadFailed", { message: err.message })
+      );
       this._protocols = {};
       this.renderProtocolList();
     }
   }
 
-  /** Protokol listesini sidebar'da render et */
+  /** Render the protocol list in the sidebar. */
   renderProtocolList(): void {
     renderProtocolListView({
       protocolListEl: this.protocolListEl,
@@ -503,7 +522,7 @@ export class ArchivesController {
     });
   }
 
-  /** Bir protokolü seç ve editöre yükle */
+  /** Select a protocol and load it into the editor. */
   selectProtocol(key: string): void {
     this._selectedProtocolKey = key;
     this.renderProtocolList();
@@ -521,10 +540,10 @@ export class ArchivesController {
     });
   }
 
-  /** Seçili protokolü kaydet */
+  /** Save the selected protocol. */
   async saveSelectedProtocol(): Promise<void> {
     if (this._selectedProtocolKey === null || this._selectedProtocolKey === "") {
-      this.setProtocolStatus("Protokol seçilmedi", "warning");
+      this.setProtocolStatus(archivesT("protocol.status.selectionRequired"), "warning");
       return;
     }
 
@@ -533,7 +552,7 @@ export class ArchivesController {
 
     try {
       if (saveBtn) {
-        ButtonStates.setLoading(saveBtn, "Kaydediliyor...");
+        ButtonStates.setLoading(saveBtn, archivesT("protocol.buttons.saving"));
       }
 
       const result = await saveProtocolContent({
@@ -545,32 +564,41 @@ export class ArchivesController {
       if (result.success) {
         this._protocols[this._selectedProtocolKey] = content;
         if (saveBtn) {
-          ButtonStates.setSuccess(saveBtn, "Kaydedildi!", 1500);
+          ButtonStates.setSuccess(saveBtn, archivesT("protocol.buttons.saved"), 1500);
         }
-        this.setProtocolStatus("Protokol kaydedildi", "success");
-        Logger.info(LogCategory.ARCHIVES, `Protokol kaydedildi: ${this._selectedProtocolKey}`);
+        this.setProtocolStatus(archivesT("protocol.status.saved"), "success");
+        Logger.info(
+          LogCategory.ARCHIVES,
+          archivesT("protocol.logs.saved", { key: this._selectedProtocolKey })
+        );
       } else {
         if (saveBtn) {
-          ButtonStates.setError(saveBtn, "Hata!", 1500);
+          ButtonStates.setError(saveBtn, archivesT("protocol.buttons.error"), 1500);
         }
-        this.setProtocolStatus(result.message ?? "Kaydedilemedi", "error");
+        this.setProtocolStatus(
+          result.message ?? archivesT("protocol.status.saveFailed"),
+          "error"
+        );
       }
     } catch (e) {
       const err = e as Error;
       if (saveBtn) {
-        ButtonStates.setError(saveBtn, "Hata!", 1500);
+        ButtonStates.setError(saveBtn, archivesT("protocol.buttons.error"), 1500);
       }
-      Logger.error(LogCategory.ARCHIVES, `Protokol kaydetme hatası: ${err.message}`);
-      this.setProtocolStatus("Protokol kaydedilemedi", "error");
+      Logger.error(
+        LogCategory.ARCHIVES,
+        archivesT("protocol.logs.saveError", { message: err.message })
+      );
+      this.setProtocolStatus(archivesT("protocol.status.saveFailed"), "error");
     }
   }
 
-  /** Textarea'da imlecin olduğu yere tag ekle */
+  /** Insert a tag at the textarea cursor position. */
   insertTagAtCursor(textarea: HTMLTextAreaElement, tag: string): void {
     insertTagAtCursorInEditor(textarea, tag);
   }
 
-  /** Protokol durum mesajı göster */
+  /** Show the protocol status message. */
   setProtocolStatus(text: string, type = "info"): void {
     setProtocolStatusView(this.protocolStatusEl, text, type);
   }

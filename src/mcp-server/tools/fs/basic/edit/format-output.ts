@@ -20,27 +20,44 @@ export function formatOutput(opts: FormatOptions): string {
     bracketStatus,
     matchScope,
     atomic,
+    translate,
   } = opts;
 
   const successCount = results.filter((r) => r.success).length;
   const totalReplacements = results.reduce((sum, r) => sum + r.replacements, 0);
 
   const icon = mode === "dry-run" ? "🔍" : "✅";
-  const modeLabel = mode === "dry-run" ? "DRY-RUN" : "Edit Tamamlandı";
+  const modeLabel =
+    mode === "dry-run" ? translate("output.modeDryRun") : translate("output.modeApply");
 
   const lines: string[] = [
-    `${icon} ${modeLabel}: ${filePath} (${formatFileSize(fileSize)}, ${lineCount} satır)`,
+    `${icon} ${modeLabel}: ${filePath} (${formatFileSize(fileSize)}, ${translate("output.lineCount", { count: lineCount })})`,
     `⏱️ ${elapsed}ms`,
     "",
     "═".repeat(60),
-    `📊 ${successCount}/${results.length} edit başarılı • ${totalReplacements} replacement${atomic ? " • atomic: on" : ""}`,
+    translate("output.summary", {
+      successCount,
+      totalEdits: results.length,
+      totalReplacements,
+      atomicSuffix: atomic ? ` • ${translate("output.atomicEnabled")}` : "",
+    }),
     "",
   ];
 
   if (conflicts.length > 0) {
-    lines.push(`⚠️ ${conflicts.length} conflict tespit edildi:`);
+    lines.push(`⚠️ ${translate("output.conflictsDetected", { count: conflicts.length })}`);
     for (const c of conflicts) {
-      lines.push(`  Edit ${c.editA + 1} ↔ Edit ${c.editB + 1}: ${c.reason}`);
+      const reason =
+        c.reasonKey != null
+          ? translate(c.reasonKey, c.reasonParams)
+          : (c.reason ?? translate("output.unknownError"));
+      lines.push(
+        `  ${translate("output.editPairReason", {
+          editA: c.editA + 1,
+          editB: c.editB + 1,
+          reason,
+        })}`
+      );
     }
     lines.push("");
   }
@@ -52,9 +69,9 @@ export function formatOutput(opts: FormatOptions): string {
         ? result.matches.map((m: EditMatchInfo) => `L${m.line}`).join(", ")
         : "";
     const scopeLabel = Array.isArray(matchScope)
-      ? `indexes: [${matchScope.join(",")}]`
+      ? translate("output.scopeIndexes", { indexes: matchScope.join(",") })
       : matchScope !== "all"
-        ? `scope: ${matchScope}`
+        ? translate("output.scopeValue", { value: matchScope })
         : "";
 
     const oldText = result.edit.old_text;
@@ -63,11 +80,14 @@ export function formatOutput(opts: FormatOptions): string {
 
     let detail = `${status} Edit ${result.index + 1}: `;
     if (result.success) {
-      detail += `${result.replacements} replacement`;
+      detail += translate("output.replacements", { count: result.replacements });
       if (matchInfo !== "") detail += ` [${matchInfo}]`;
       if (scopeLabel !== "") detail += ` (${scopeLabel})`;
     } else {
-      detail += result.error ?? "Bilinmeyen hata";
+      detail +=
+        result.errorKey != null
+          ? translate(result.errorKey, result.errorParams)
+          : (result.error ?? translate("output.unknownError"));
     }
     lines.push(detail);
     const newText = result.edit.new_text;
@@ -79,9 +99,9 @@ export function formatOutput(opts: FormatOptions): string {
 
   lines.push("─".repeat(60));
   if (mode === "dry-run") {
-    lines.push("Önizleme:");
+    lines.push(translate("output.previewTitle"));
   } else {
-    lines.push("Uygulanan Değişiklikler:");
+    lines.push(translate("output.appliedTitle"));
   }
   lines.push(diff);
   lines.push("");
@@ -91,12 +111,12 @@ export function formatOutput(opts: FormatOptions): string {
   }
 
   if (mode === "dry-run") {
-    lines.push(hasChanges ? "💡 Değişiklikler uygulanmadı (dry-run)" : "💡 Değişiklik yok");
-    lines.push("💡 Uygulamak için dry_run=false kullanın");
+    lines.push(hasChanges ? translate("output.noChangesDryRun") : translate("output.noChanges"));
+    lines.push(translate("output.dryRunHint"));
   }
 
   if (/\.(ts|tsx)$/.test(filePath) && mode === "apply" && hasChanges) {
-    lines.push("💡 TS kontrolü: hev_dev_check_syntax");
+    lines.push(translate("output.tsCheckHint"));
   }
 
   return lines.join("\n");

@@ -7,6 +7,7 @@
 import { readFile } from "fs/promises";
 import { expandSymbols, expandLineRanges, addLineNumbers } from "../../utils/file-utils.js";
 import { getContextPreview, findAndReplace } from "../../utils/file-utils.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { createProgress } from "../../utils/progress.js";
 import { isCodeFile, compareBeforeAfter } from "../../utils/prettier-validator.js";
@@ -18,6 +19,14 @@ interface ReplaceResult {
   error?: string;
   preview?: string;
   contextPreview?: string;
+}
+
+function codeOpsT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.fsCodeTools.${key}`, params);
+}
+
+function codeOpsDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.fsCodeTools.definition.${key}`, params);
 }
 
 export async function expandCodeChunks(
@@ -55,8 +64,8 @@ export async function findAndReplaceCode(
   dryRun?: boolean,
   validateSyntax?: boolean // NEW: Prettier-based syntax validation (default: true)
 ): Promise<ReplaceResult> {
-  const progress = createProgress({ operation: "Find & Replace", quiet: true });
-  progress.update(0, `${filePath} işleniyor...`);
+  const progress = createProgress({ operation: codeOpsT("progress.operation"), quiet: true });
+  progress.update(0, codeOpsT("progress.processing", { filePath }));
 
   // First, do a dry-run to get the new content for validation
   const result = await findAndReplace(filePath, find, replace, {
@@ -92,12 +101,14 @@ export async function findAndReplaceCode(
       const syntaxCheck = await compareBeforeAfter(originalContent, newContent, filePath);
 
       if (!syntaxCheck.valid) {
-        progress.fail("Syntax hatası tespit edildi");
+        progress.fail(codeOpsT("progress.syntaxDetected"));
         return {
           file: filePath,
           replacements: 0,
           success: false,
-          error: `⚠️ Prettier syntax validation failed!\n${syntaxCheck.newErrors?.join("\n") ?? "Unknown syntax error"}\n\n💡 Tip: Use dry_run=true to preview changes, or set validate_syntax=false to skip validation.`,
+          error: codeOpsT("errors.syntaxValidationFailed", {
+            details: syntaxCheck.newErrors?.join("\n") ?? codeOpsT("common.unknownSyntaxError"),
+          }),
         };
       }
     } catch (err) {
@@ -147,12 +158,12 @@ export async function findAndReplaceCode(
 
   if (result.success) {
     if (dryRun === true) {
-      progress.done(`Preview: ${result.replacements} değişiklik`);
+      progress.done(codeOpsT("progress.preview", { count: result.replacements }));
     } else {
-      progress.done(`${result.replacements} değişiklik yapıldı`);
+      progress.done(codeOpsT("progress.applied", { count: result.replacements }));
     }
   } else {
-    progress.fail(result.error ?? "Bilinmeyen hata");
+    progress.fail(result.error ?? codeOpsT("common.unknownError"));
   }
 
   return {
@@ -170,21 +181,21 @@ export async function findAndReplaceCode(
 // Tool Definitions
 export const EXPAND_CODE_CHUNKS_TOOL = {
   name: "hev_fs_expand_code_chunks",
-  description: "Dosyada kod parçalarını genişlet",
+  description: codeOpsDefT("expand.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Dosya yolu" },
+      file_path: { type: "string", description: codeOpsDefT("common.filePath") },
       line_ranges: {
         type: "array",
         items: { type: "array", items: { type: "integer" } },
-        description: "Satır aralıkları",
+        description: codeOpsDefT("expand.lineRanges"),
         default: [],
       },
       patterns: {
         type: "array",
         items: { type: "string" },
-        description: "Aranacak semboller",
+        description: codeOpsDefT("expand.patterns"),
         default: [],
       },
     },
@@ -193,34 +204,43 @@ export const EXPAND_CODE_CHUNKS_TOOL = {
   metadata: {
     category: "filesystem",
     subcategory: "code-operations",
+    priority: "medium",
+    complexity: "simple",
+    useCases: [
+      codeOpsDefT("expand.useCases.inspectCode"),
+      codeOpsDefT("expand.useCases.expandRanges"),
+      codeOpsDefT("expand.useCases.expandSymbols"),
+    ],
+    relatedTools: ["hev_fs_read", "hev_fs_find_and_replace"],
+    agentGuidance: codeOpsDefT("expand.agentGuidance"),
+    requiresConfirmation: false,
+    riskLevel: "low",
+    tags: ["filesystem", "code", "expand", "symbols", "ranges"],
   },
 };
 
 export const FIND_AND_REPLACE_TOOL = {
   name: "hev_fs_find_and_replace",
-  description:
-    "Dosyada bul ve değiştir. Pattern bulunamazsa yakın eşleşmeler önerir. ignore_whitespace ile whitespace-insensitive arama yapabilir.",
+  description: codeOpsDefT("replace.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Dosya yolu" },
-      find: { type: "string", description: "Bulunacak metin (exact match)" },
-      replace: { type: "string", description: "Yerine konacak metin" },
+      file_path: { type: "string", description: codeOpsDefT("common.filePath") },
+      find: { type: "string", description: codeOpsDefT("replace.find") },
+      replace: { type: "string", description: codeOpsDefT("replace.replace") },
       ignore_whitespace: {
         type: "boolean",
-        description:
-          "Whitespace farklılıklarını görmezden gel (boşluk/tab/newline). Multi-line pattern'lerde kullanışlı.",
+        description: codeOpsDefT("replace.ignoreWhitespace"),
         default: false,
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme göster, değişiklik yapma",
+        description: codeOpsDefT("replace.dryRun"),
         default: false,
       },
       validate_syntax: {
         type: "boolean",
-        description:
-          "Prettier ile syntax validation yap (bracket dengesi, syntax hatası). JS/TS dosyaları için önerilir.",
+        description: codeOpsDefT("replace.validateSyntax"),
         default: true,
       },
     },
@@ -229,5 +249,17 @@ export const FIND_AND_REPLACE_TOOL = {
   metadata: {
     category: "filesystem",
     subcategory: "code-operations",
+    priority: "high",
+    complexity: "medium",
+    useCases: [
+      codeOpsDefT("replace.useCases.simpleReplacement"),
+      codeOpsDefT("replace.useCases.multilineReplacement"),
+      codeOpsDefT("replace.useCases.safePreview"),
+    ],
+    relatedTools: ["hev_dev_edit_lines", "hev_dev_check_syntax"],
+    agentGuidance: codeOpsDefT("replace.agentGuidance"),
+    requiresConfirmation: false,
+    riskLevel: "medium",
+    tags: ["filesystem", "replace", "refactor", "preview", "syntax"],
   },
 };

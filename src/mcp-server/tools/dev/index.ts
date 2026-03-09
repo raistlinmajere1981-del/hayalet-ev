@@ -1,7 +1,7 @@
 /**
  * Development Tools - Export Hub
  *
- * Tüm dev tool'ları için merkezi export noktası
+ * Central export hub for all development tools
  */
 
 // Function exports

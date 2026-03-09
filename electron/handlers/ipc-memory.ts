@@ -1,8 +1,8 @@
 /**
  * IPC Memory Handlers
  *
- * Memory store işlemleri için IPC handler'ları.
- * MCP server ile aynı shared memory DB'yi kullanır: data/shared/assistant-memory.db
+ * IPC handlers for memory store operations.
+ * Uses the same shared memory DB as the MCP server: data/shared/assistant-memory.db
  */
 
 import { join } from "path";
@@ -172,11 +172,11 @@ export function setupMemoryHandlers(): void {
     }
   );
 
-  // Delete all (namespace bazlı)
+  // Delete all (namespace-based)
   registerHandler("memory-delete-all", async (_event, params: { namespace?: string }) => {
     try {
       const store = getStore();
-      // Tümünü getir, sil
+      // Fetch everything, then delete
       const searchAllArg: MemorySearchInput = { limit: 200 };
       if (params.namespace !== undefined) searchAllArg["namespace"] = params.namespace;
       const result = await store.searchMemory(searchAllArg);

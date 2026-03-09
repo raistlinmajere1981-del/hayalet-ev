@@ -78,9 +78,9 @@ function buildProtocolPayload({
       };
     }
 
-    if (scenario === "ai-asistan-stop") {
+    if (scenario === "ai-assistant-stop") {
       return {
-        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASISTAN_STOP,
+        message: START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_STOP,
         targets: /** @type {any[]} */ connected,
       };
     }

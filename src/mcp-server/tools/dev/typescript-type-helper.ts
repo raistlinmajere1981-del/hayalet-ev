@@ -1,12 +1,13 @@
 /**
  * Development Tools - TypeScript Type Inference Helper
  *
- * Type uyumsuzluklarını analiz edip çözüm önerir.
- * TS Language Service API-backed: Gerçek semantic analiz, anında sonuç.
+ * Analyzes type mismatches and suggests likely fixes.
+ * TS Language Service backed: real semantic analysis with immediate results.
  */
 
 import { readFileSync } from "fs";
 import { join } from "path";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { getTsLanguageService } from "../../utils/ts-language-service.js";
 import type { DiagnosticResult } from "../../utils/ts-language-service.js";
@@ -37,6 +38,23 @@ interface TypeHelperResult {
   interface_definitions?: Record<string, string>;
 }
 
+function tsTypeHelperT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.typescriptTypeHelper.${key}`, params);
+}
+
+function tsTypeHelperDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(
+    `mcpServer.devTools.typescriptTypeHelper.definition.${key}`,
+    params
+  );
+}
+
 export function analyzeTypeConflicts(
   options: TypeHelperOptions,
   projectRoot: string
@@ -50,11 +68,11 @@ export function analyzeTypeConflicts(
   const fullPath = projectRoot !== "" ? join(projectRoot, filePath) : filePath;
 
   try {
-    // TS Language Service ile diagnostics al (anında, tsc çalıştırmadan)
+    // Get diagnostics through the TS Language Service without invoking `tsc`.
     const mgr = getTsLanguageService(projectRoot);
     const allDiagnostics = mgr.getDiagnostics(filePath);
 
-    // Type mismatch hatalarını filtrele
+    // Keep only mismatch-oriented diagnostics for this focused report.
     const typeMismatchCodes = [2345, 2322, 2339, 2741, 2304, 2305];
     const typeMismatchErrors = allDiagnostics.filter(
       (d) => d.category === "error" && typeMismatchCodes.includes(d.code)
@@ -65,21 +83,31 @@ export function analyzeTypeConflicts(
         (d) => d.category === "error" && !typeMismatchCodes.includes(d.code)
       );
 
-      let message = "✅ No type mismatch conflicts found.\n";
+      let message = tsTypeHelperT("runtime.noConflicts") + "\n";
 
       if (otherErrors.length > 0) {
-        message += `\n⚠️  However, ${otherErrors.length} other TypeScript errors found:\n`;
+        message +=
+          "\n" + tsTypeHelperT("runtime.otherErrorsFound", { count: otherErrors.length }) + "\n";
         otherErrors.slice(0, 10).forEach((err) => {
           const truncatedMsg =
-            err.message.length > 80 ? err.message.slice(0, 80) + "..." : err.message;
-          message += `  Line ${err.line}: ${err.code} - ${truncatedMsg}\n`;
+            err.message.length > 80
+              ? tsTypeHelperT("runtime.truncatedMessage", {
+                  message: err.message.slice(0, 80),
+                })
+              : err.message;
+          message +=
+            tsTypeHelperT("runtime.otherErrorLine", {
+              line: err.line,
+              code: err.code,
+              message: truncatedMsg,
+            }) + "\n";
         });
         if (otherErrors.length > 10) {
-          message += `  ... and ${otherErrors.length - 10} more errors\n`;
+          message += tsTypeHelperT("runtime.moreErrors", { count: otherErrors.length - 10 }) + "\n";
         }
-        message += "\n📊 Use hev_dev_typescript_dashboard for full overview.";
+        message += "\n" + tsTypeHelperT("runtime.useDashboard");
       } else if (allDiagnostics.filter((d) => d.category === "error").length === 0) {
-        message += "\n✨ No TypeScript errors found in this file!";
+        message += "\n" + tsTypeHelperT("runtime.noErrorsInFile");
       }
 
       return {
@@ -89,7 +117,7 @@ export function analyzeTypeConflicts(
       };
     }
 
-    // Her conflict'i analiz et
+    // Analyze each conflict individually.
     const conflicts: TypeConflict[] = [];
     for (const error of typeMismatchErrors) {
       const conflict = analyzeDiagnostic(error);
@@ -98,13 +126,13 @@ export function analyzeTypeConflicts(
       }
     }
 
-    // Interface tanımlarını TS API ile al (daha kesin)
+    // Extract interface definitions through the TS API for better accuracy.
     let interfaceDefinitions: Record<string, string> = {};
     if (showInterfaces) {
       interfaceDefinitions = extractInterfacesWithApi(mgr, filePath, fullPath);
     }
 
-    // Çıktı oluştur
+    // Format the final output block.
     const output = formatTypeHelperOutput(conflicts, interfaceDefinitions, filePath, suggestFixes);
 
     return {
@@ -117,7 +145,7 @@ export function analyzeTypeConflicts(
     logToolError("typescript-type-helper", error as Error, {});
     return {
       success: false,
-      output: `❌ Error: ${String(error)}`,
+      output: tsTypeHelperT("runtime.error", { message: String(error) }),
       conflicts: [],
     };
   }
@@ -178,7 +206,10 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
       conflict.expected_type = typeName;
       conflict.actual_type = typeName;
       conflict.missing_fields = [missingProp];
-      conflict.suggestion = `Add field '${missingProp}' to interface ${typeName}`;
+      conflict.suggestion = tsTypeHelperT("suggestions.addFieldToInterface", {
+        field: missingProp,
+        typeName,
+      });
     }
   }
 
@@ -194,7 +225,10 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
       conflict.actual_type = actualType;
       conflict.expected_type = expectedType;
       conflict.missing_fields = [missingProp];
-      conflict.suggestion = `Add field '${missingProp}' to type ${conflict.actual_type}`;
+      conflict.suggestion = tsTypeHelperT("suggestions.addFieldToType", {
+        field: missingProp,
+        typeName: conflict.actual_type,
+      });
     }
   }
 
@@ -204,7 +238,9 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     const missingName = match?.[1];
     if (missingName !== undefined) {
       conflict.actual_type = missingName;
-      conflict.suggestion = `Import or declare '${missingName}'`;
+      conflict.suggestion = tsTypeHelperT("suggestions.importOrDeclare", {
+        missingName,
+      });
     }
   }
 
@@ -216,7 +252,10 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     if (moduleName !== undefined && memberName !== undefined) {
       conflict.actual_type = memberName;
       conflict.expected_type = moduleName;
-      conflict.suggestion = `Check if '${memberName}' is exported from '${moduleName}'`;
+      conflict.suggestion = tsTypeHelperT("suggestions.checkExportedMember", {
+        memberName,
+        moduleName,
+      });
     }
   }
 
@@ -225,22 +264,22 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
 
 function generateTypeMismatchSuggestion(actualType: string, expectedType: string): string {
   if (actualType.includes("undefined") && !expectedType.includes("undefined")) {
-    return `Add undefined check or use non-null assertion (!)`;
+    return tsTypeHelperT("suggestions.addUndefinedGuard");
   }
 
   if (actualType.includes("null") && !expectedType.includes("null")) {
-    return `Add null check before usage`;
+    return tsTypeHelperT("suggestions.addNullGuard");
   }
 
   if (actualType === "unknown") {
-    return `Add type assertion: 'as ${expectedType}'`;
+    return tsTypeHelperT("suggestions.typeAssertion", { expectedType });
   }
 
   if (expectedType.includes("|")) {
-    return `Use type narrowing or type guard`;
+    return tsTypeHelperT("suggestions.typeNarrowing");
   }
 
-  return `Consider using type assertion or updating the type definition`;
+  return tsTypeHelperT("suggestions.updateTypeDefinition");
 }
 
 function extractInterfacesWithApi(
@@ -295,40 +334,51 @@ function formatTypeHelperOutput(
 ): string {
   let output = "";
 
-  output += "🔍 TypeScript Type Conflict Analyzer\n";
+  output += `${tsTypeHelperT("runtime.title")}\n`;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-  output += `📁 File: ${filePath}\n`;
-  output += `❌ Conflicts: ${conflicts.length}\n`;
-  output += `⚡ Powered by TS Language Service (instant analysis)\n`;
+  output += `${tsTypeHelperT("runtime.fileLine", { filePath })}\n`;
+  output += `${tsTypeHelperT("runtime.conflictsLine", { count: conflicts.length })}\n`;
+  output += `${tsTypeHelperT("runtime.poweredBy")}\n`;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
   conflicts.forEach((conflict, idx) => {
-    output += `Conflict ${idx + 1} (Line ${conflict.line}:${conflict.column}, ${conflict.error_code}):\n`;
-    if (conflict.expected_type !== "") output += `  Expected: ${conflict.expected_type}\n`;
-    if (conflict.actual_type !== "") output += `  Actual:   ${conflict.actual_type}\n`;
+    output +=
+      tsTypeHelperT("runtime.conflictHeader", {
+        index: idx + 1,
+        line: conflict.line,
+        column: conflict.column,
+        errorCode: conflict.error_code,
+      }) + "\n";
+    if (conflict.expected_type !== "")
+      output += `${tsTypeHelperT("runtime.expectedLine", { expectedType: conflict.expected_type })}\n`;
+    if (conflict.actual_type !== "")
+      output += `${tsTypeHelperT("runtime.actualLine", { actualType: conflict.actual_type })}\n`;
 
     if (conflict.missing_fields && conflict.missing_fields.length > 0) {
-      output += `  Missing:  ${conflict.missing_fields.join(", ")}\n`;
+      output += `${tsTypeHelperT("runtime.missingLine", { fields: conflict.missing_fields.join(", ") })}\n`;
     }
 
     if (conflict.extra_fields && conflict.extra_fields.length > 0) {
-      output += `  Extra:    ${conflict.extra_fields.join(", ")}\n`;
+      output += `${tsTypeHelperT("runtime.extraLine", { fields: conflict.extra_fields.join(", ") })}\n`;
     }
 
     if (suggestFixes === true && conflict.suggestion !== undefined) {
-      output += `  💡 ${conflict.suggestion}\n`;
+      output += `${tsTypeHelperT("runtime.suggestionLine", { suggestion: conflict.suggestion })}\n`;
     }
 
-    output += `  📝 ${conflict.raw_message.slice(0, 120)}\n`;
+    output +=
+      tsTypeHelperT("runtime.rawMessageLine", {
+        message: conflict.raw_message.slice(0, 120),
+      }) + "\n";
     output += "\n";
   });
 
   if (Object.keys(interfaces).length > 0) {
-    output += "📋 Interface & Type Definitions:\n";
+    output += `${tsTypeHelperT("runtime.interfaceDefinitionsTitle")}\n`;
     output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 
     Object.entries(interfaces).forEach(([name, body]) => {
-      output += `\n// ${name}\n${body}\n`;
+      output += `\n${tsTypeHelperT("runtime.interfaceBlockTitle", { name })}\n${body}\n`;
     });
   }
 
@@ -341,28 +391,27 @@ function formatTypeHelperOutput(
 
 export const TYPESCRIPT_TYPE_HELPER_TOOL = {
   name: "hev_dev_typescript_type_helper",
-  description:
-    "Type uyumsuzluklarını analiz edip çözüm önerir (interface comparison, missing fields, fix suggestions). TS Language Service powered — anında sonuç.",
+  description: tsTypeHelperDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Analiz edilecek dosya yolu",
+        description: tsTypeHelperDefT("filePath"),
       },
       show_interfaces: {
         type: "boolean" as const,
-        description: "Interface tanımlarını göster",
+        description: tsTypeHelperDefT("showInterfaces"),
         default: true,
       },
       suggest_fixes: {
         type: "boolean" as const,
-        description: "Çözüm önerileri göster",
+        description: tsTypeHelperDefT("suggestFixes"),
         default: true,
       },
       analyze_conflicts: {
         type: "boolean" as const,
-        description: "Type conflict'leri detaylı analiz et",
+        description: tsTypeHelperDefT("analyzeConflicts"),
         default: true,
       },
     },
@@ -374,17 +423,16 @@ export const TYPESCRIPT_TYPE_HELPER_TOOL = {
     priority: "medium" as const,
     complexity: "medium" as const,
     useCases: [
-      "Analyze type mismatches",
-      "Suggest interface improvements",
-      "Identify type conflict sources",
+      tsTypeHelperDefT("useCases.analyzeMismatches"),
+      tsTypeHelperDefT("useCases.interfaceImprovements"),
+      tsTypeHelperDefT("useCases.identifySources"),
     ],
     relatedTools: [
       "hev_dev_typescript_dashboard",
       "hev_dev_fix_typescript_batch",
       "hev_dev_ts_diagnostics",
     ],
-    agentGuidance:
-      "Use for deep type analysis. Uses TS Language Service for instant results (no tsc subprocess). Shows interfaces and suggests fixes. Good for understanding complex type errors.",
+    agentGuidance: tsTypeHelperDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low" as const,
     tags: ["typescript", "type-analysis", "interface", "conflict-resolution"],

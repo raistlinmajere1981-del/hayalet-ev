@@ -1,7 +1,11 @@
 import { Logger } from "../../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
+import { DEFAULT_APP_LANGUAGE, type AppLanguage, type LanguageDescriptor } from "@shared/i18n.js";
 import { getErrorMessage } from "@shared/index.js";
+import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
+import { AppI18n, formatLanguageLabel } from "../../modules/i18n/index.js";
 import type { AppSettings, GoogleDriveSettings } from "@shared/settings.js";
+import { t as entranceT } from "./i18n.js";
 
 interface SettingsManager {
   getSnapshot(): AppSettings;
@@ -25,13 +29,16 @@ function isGDriveExchangeCodeResult(value: unknown): value is GDriveExchangeCode
 
 export class UserPanel {
   settingsManager: SettingsManager;
+  languageRenderVersion: number;
 
   constructor(settingsManager: SettingsManager) {
     this.settingsManager = settingsManager;
+    this.languageRenderVersion = 0;
   }
 
   init(): void {
     this.setupListeners();
+    void this.renderLanguageSection(DEFAULT_APP_LANGUAGE);
     this.render();
   }
 
@@ -79,7 +86,7 @@ export class UserPanel {
 
     const nickInput = document.getElementById("user-nickname-input") as HTMLInputElement | null;
     if (nickInput && document.activeElement !== nickInput) {
-      nickInput.value = user.nickname ?? "Kullanıcı";
+      nickInput.value = user.nickname ?? entranceT("user.defaultNickname");
     }
 
     const gdStatus = document.getElementById("gdrive-status-dot");
@@ -91,10 +98,14 @@ export class UserPanel {
       gdStatus.style.backgroundColor = isConnected ? "#4CAF50" : "#ccc";
     }
     if (gdText) {
-      gdText.textContent = isConnected ? "Drive Bağlı" : "Drive Bağlı Değil";
+      gdText.textContent = isConnected
+        ? AppI18n.t("entrance.user.googleDrive.connected")
+        : AppI18n.t("entrance.user.googleDrive.disconnected");
     }
     if (gdBtn) {
-      gdBtn.textContent = isConnected ? "Bağlantıyı Kes" : "Bağlan";
+      gdBtn.textContent = isConnected
+        ? AppI18n.t("entrance.user.googleDrive.disconnect")
+        : AppI18n.t("entrance.user.googleDrive.connect");
       gdBtn.classList.toggle("btn-danger", isConnected);
       gdBtn.classList.toggle("btn-primary", !isConnected);
     }
@@ -111,11 +122,64 @@ export class UserPanel {
     if (clientIdEl) clientIdEl.value = gd.clientId ?? "";
     if (clientSecretEl) clientSecretEl.value = gd.clientSecret ?? "";
     if (authCodeEl) authCodeEl.value = gd.authorizationCode ?? "";
-    if (appLanguageEl) appLanguageEl.value = settings.general?.language ?? "tr";
+    if (appLanguageEl) {
+      appLanguageEl.value = settings.general?.language ?? DEFAULT_APP_LANGUAGE;
+    }
+
+    void this.renderLanguageSection(settings.general?.language ?? DEFAULT_APP_LANGUAGE);
+  }
+
+  private async renderLanguageSection(language: AppLanguage): Promise<void> {
+    const renderVersion = ++this.languageRenderVersion;
+    const nextLanguage = normalizeAppLanguage(language);
+
+    await AppI18n.setLocale(nextLanguage);
+    let languages = await AppI18n.listLanguages();
+    if (renderVersion !== this.languageRenderVersion) {
+      return;
+    }
+
+    if (languages.some((item) => item.locale === nextLanguage) === false) {
+      languages = [
+        ...languages,
+        {
+          locale: nextLanguage,
+          nativeName: nextLanguage,
+          selectorLanguage: nextLanguage === "en" ? "en" : "tr",
+          source: "external",
+        } satisfies LanguageDescriptor,
+      ];
+    }
+
+    const labelEl = document.getElementById("app-language-label");
+    const hintEl = document.getElementById("app-language-restart-hint");
+    const selectEl = document.getElementById(
+      "app-language-select"
+    ) as HTMLSelectElement | null;
+
+    if (labelEl) {
+      labelEl.textContent = AppI18n.t("entrance.user.language.label");
+    }
+
+    if (hintEl) {
+      hintEl.textContent = AppI18n.t("entrance.user.language.restartHint");
+    }
+
+    if (!selectEl) {
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const descriptor of languages) {
+      fragment.append(new Option(formatLanguageLabel(descriptor), descriptor.locale));
+    }
+
+    selectEl.replaceChildren(fragment);
+    selectEl.value = nextLanguage;
   }
 
   async saveAppLanguage(language: string): Promise<void> {
-    const nextLanguage = language === "en" ? "en" : "tr";
+    const nextLanguage = normalizeAppLanguage(language);
     const current = this.settingsManager.getSnapshot();
 
     if (current.general?.language === nextLanguage) {
@@ -152,9 +216,14 @@ export class UserPanel {
       const electronApi = window.electronAPI;
       if (!electronApi) return;
       const result = await electronApi.showOpenDialog({
-        title: "Avatar seç",
-        buttonLabel: "Seç",
-        filters: [{ name: "Resimler", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+        title: AppI18n.t("entrance.user.dialog.avatarTitle"),
+        buttonLabel: AppI18n.t("entrance.user.dialog.selectButton"),
+        filters: [
+          {
+            name: AppI18n.t("entrance.user.dialog.imageFilterName"),
+            extensions: ["png", "jpg", "jpeg", "gif", "webp"],
+          },
+        ],
         properties: ["openFile"],
       });
 
@@ -172,7 +241,10 @@ export class UserPanel {
       };
       await this.settingsManager.save(updated);
     } catch (err) {
-      Logger.error(LogCategory.ENTRANCE, `User avatar hatası: ${getErrorMessage(err)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.userAvatarError", { message: getErrorMessage(err) })
+      );
     }
   }
 
@@ -182,7 +254,10 @@ export class UserPanel {
       if (!electronApi) return;
       await electronApi.googledriveStartAuth();
     } catch (err) {
-      Logger.error(LogCategory.ENTRANCE, `GDrive auth hatası: ${getErrorMessage(err)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.googleDriveAuthError", { message: getErrorMessage(err) })
+      );
     }
   }
 
@@ -224,7 +299,10 @@ export class UserPanel {
         await this.settingsManager.save(updated);
         this.render();
       } catch (e) {
-        Logger.error(LogCategory.ENTRANCE, `GDrive disconnect hatası: ${getErrorMessage(e)}`);
+        Logger.error(
+          LogCategory.ENTRANCE,
+          entranceT("logs.googleDriveDisconnectError", { message: getErrorMessage(e) })
+        );
       }
     } else {
       const clientId = (
@@ -265,7 +343,10 @@ export class UserPanel {
           this.render();
         }
       } catch (e) {
-        Logger.error(LogCategory.ENTRANCE, `GDrive code exchange hatası: ${getErrorMessage(e)}`);
+        Logger.error(
+          LogCategory.ENTRANCE,
+          entranceT("logs.googleDriveCodeExchangeError", { message: getErrorMessage(e) })
+        );
       }
     }
   }

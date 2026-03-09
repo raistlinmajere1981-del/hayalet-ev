@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import ts from "typescript";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
 interface ASTInsertOptions {
@@ -22,6 +23,17 @@ interface ASTInsertResult {
   output: string;
   preview?: string;
   inserted_at?: number;
+}
+
+function astInsertT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.astInsert.${key}`, params);
+}
+
+function astInsertDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.astInsert.definition.${key}`, params);
 }
 
 export function insertCodeWithAST(
@@ -48,7 +60,7 @@ export function insertCodeWithAST(
     if (!insertionPoint) {
       return {
         success: false,
-        output: `❌ Could not find insertion point for pattern: ${afterPattern}`,
+        output: astInsertT("runtime.insertionPointNotFound", { afterPattern }),
       };
     }
 
@@ -77,7 +89,7 @@ export function insertCodeWithAST(
     logToolError("ast-code-inserter", error as Error, {});
     return {
       success: false,
-      output: `❌ Error: ${String(error)}`,
+      output: astInsertT("runtime.error", { message: String(error) }),
     };
   }
 }
@@ -133,9 +145,9 @@ function formatCode(code: string, _insertType: string, previousLine: string): st
 }
 
 function generatePreview(lines: string[], insertLine: number, newCode: string): string {
-  let preview = `🔧 AST Code Insertion - Preview\\n`;
+  let preview = `${astInsertT("runtime.previewTitle")}\\n`;
   preview += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  preview += `Insertion Point: Line ${insertLine}\\n\\n`;
+  preview += `${astInsertT("runtime.insertionPointLine", { insertLine })}\\n\\n`;
 
   const start = Math.max(0, insertLine - 3);
   const end = Math.min(lines.length, insertLine + 3);
@@ -152,17 +164,17 @@ function generatePreview(lines: string[], insertLine: number, newCode: string): 
 }
 
 function formatOutput(filePath: string, line: number, dryRun: boolean): string {
-  let output = `🔧 AST Code Insertion\\n`;
+  let output = `${astInsertT("runtime.title")}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  output += `📁 File: ${filePath}\\n`;
-  output += `📍 Line: ${line}\\n`;
+  output += `${astInsertT("runtime.fileLine", { filePath })}\\n`;
+  output += `${astInsertT("runtime.lineLine", { line })}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;
 
   if (dryRun) {
-    output += `⚠️  DRY RUN MODE - No changes applied\\n`;
-    output += `\\nTo apply changes, set dry_run: false\\n`;
+    output += `${astInsertT("runtime.dryRun")}\\n`;
+    output += `\\n${astInsertT("runtime.applyHint")}\\n`;
   } else {
-    output += `✅ Code inserted successfully\\n`;
+    output += `${astInsertT("runtime.success")}\\n`;
   }
 
   return output;
@@ -174,30 +186,30 @@ function formatOutput(filePath: string, line: number, dryRun: boolean): string {
 
 export const AST_CODE_INSERTER_TOOL = {
   name: "hev_dev_ast_insert",
-  description: "TypeScript AST kullanarak kod ekler (duplicate prevention, smart positioning)",
+  description: astInsertDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Kod eklenecek dosya yolu",
+        description: astInsertDefT("filePath"),
       },
       after_pattern: {
         type: "string",
-        description: "Hangi pattern'den sonra eklenecek (function/class name veya regex)",
+        description: astInsertDefT("afterPattern"),
       },
       insert_type: {
         type: "string",
         enum: ["if_block", "function", "method", "import", "export"],
-        description: "Eklenecek kod tipi",
+        description: astInsertDefT("insertType"),
       },
       code: {
         type: "string",
-        description: "Eklenecek kod",
+        description: astInsertDefT("code"),
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme göster",
+        description: astInsertDefT("dryRun"),
         default: true,
       },
     },
@@ -209,13 +221,12 @@ export const AST_CODE_INSERTER_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Insert code with AST awareness",
-      "Prevent duplicate imports/functions",
-      "Smart positioning (after specific patterns)",
+      astInsertDefT("useCases.astAware"),
+      astInsertDefT("useCases.preventDuplicates"),
+      astInsertDefT("useCases.smartPositioning"),
     ],
     relatedTools: ["hev_dev_smart_insert", "hev_fs_find_and_replace", "hev_dev_edit_lines"],
-    agentGuidance:
-      "Use for AST-aware code insertion. Prevents duplicates and positions code intelligently. ALWAYS use dry_run=true first.",
+    agentGuidance: astInsertDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["ast", "insert", "duplicate-prevention", "smart-positioning"],

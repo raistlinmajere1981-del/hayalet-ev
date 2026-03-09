@@ -11,6 +11,7 @@
 export * from "./common.js";
 export * from "./provider.js";
 export * from "./settings.js";
+export * from "./i18n.js";
 export * from "./commands.js";
 export * from "./database.js";
 export * from "./traffic.js";
@@ -21,8 +22,8 @@ export * from "./rooms.js";
 // Logging types
 export * from "./logging-core.js";
 
-// Asistan types
-export * from "./asistan.js";
+// Assistant types
+export * from "./assistant.js";
 
 // Re-export commonly used types for convenience (explicit for better IDE support)
 export type {

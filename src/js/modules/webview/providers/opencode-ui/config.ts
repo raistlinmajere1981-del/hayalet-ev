@@ -29,7 +29,7 @@ export const config = {
   loginUrl: null,
   lastVerified: "2026-03-05",
 
-  isAsistan: true,
+  isAssistant: true,
 
   getServerUrl(port = OPENCODE_UI_DEFAULTS.port): string {
     return `http://${OPENCODE_UI_DEFAULTS.hostname}:${port}`;
@@ -119,6 +119,16 @@ export const config = {
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
+  },
+  uiLanguage: {
+    support: "supported",
+    syncMode: "automatic",
+    supportedLocales: ["tr", "en"],
+    persistence: ["localStorage"],
+    signals: {
+      localStorageKeys: ["hayalet:opencode-ui-language", "opencode-ui:language"],
+    },
+    notes: "OpenCode UI is a Hayalet-ev managed surface and can be synchronized directly in-app.",
   },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,

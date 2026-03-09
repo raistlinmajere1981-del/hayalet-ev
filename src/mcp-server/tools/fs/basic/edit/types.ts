@@ -1,3 +1,5 @@
+import type { TranslationParams } from "../../../../../types/i18n.js";
+
 export type MatchScope = "first" | "last" | "all";
 export type EOLMode = "lf" | "crlf" | "auto" | "preserve";
 
@@ -28,6 +30,8 @@ export interface EditResult {
   replacements: number;
   success: boolean;
   error?: string;
+  errorKey?: string;
+  errorParams?: TranslationParams;
   matches?: EditMatchInfo[];
 }
 
@@ -38,7 +42,16 @@ export interface ApplyEditResult extends EditResult {
 export interface ConflictInfo {
   editA: number;
   editB: number;
-  reason: string;
+  reason?: string;
+  reasonKey?: string;
+  reasonParams?: TranslationParams;
+}
+
+export interface BracketDifference {
+  pair: "parentheses" | "curlyBraces" | "squareBrackets";
+  difference: number;
+  missingToken: string;
+  state: "missing" | "extra";
 }
 
 export interface FormatOptions {
@@ -54,4 +67,5 @@ export interface FormatOptions {
   bracketStatus: string;
   matchScope: MatchScope | number[];
   atomic: boolean;
+  translate: (key: string, params?: TranslationParams) => string;
 }

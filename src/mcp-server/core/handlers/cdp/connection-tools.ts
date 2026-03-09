@@ -4,24 +4,34 @@ import {
   takeCdpScreenshot,
   getElectronWindowInfo,
 } from "../../../tools/cdp-tools.js";
+import { createMcpTranslatorSync } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
+
+const cdpToolDefinitionTranslator = createMcpTranslatorSync();
+
+function cdpToolT(key: string): string {
+  return cdpToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.cdp.${key}`);
+}
 
 export function createCdpConnectionTools(): ToolEntry[] {
   return [
     {
       definition: {
         name: "hev_check_electron_connection",
-        description:
-          "Electron uygulamasına CDP bağlantısını kontrol et. Uygulama çalışıyor mu ve debug portu açık mı?",
+        description: cdpToolT("checkElectronConnection.description"),
         inputSchema: { type: "object", properties: {} },
         metadata: {
           category: "electron",
           subcategory: "cdp",
           priority: "high",
           complexity: "simple",
-          useCases: ["CDP connectivity check", "Electron app health", "Debugging başlangıcı"],
+          useCases: [
+            cdpToolT("checkElectronConnection.useCases.connectivityCheck"),
+            cdpToolT("checkElectronConnection.useCases.appHealth"),
+            cdpToolT("checkElectronConnection.useCases.debugStart"),
+          ],
           relatedTools: ["hev_test_electron", "hev_send_command_to_electron"],
-          agentGuidance: "CDP operasyonlarından önce bağlantıyı kontrol et. Debug port açık mı?",
+          agentGuidance: cdpToolT("checkElectronConnection.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "connectivity", "electron", "health"],
@@ -32,15 +42,14 @@ export function createCdpConnectionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_send_command_to_electron",
-        description:
-          "Electron uygulamasında JavaScript kodu çalıştır. Herhangi bir JS expression çalıştırabilir.",
+        description: cdpToolT("sendCommandToElectron.description"),
         inputSchema: {
           type: "object",
           properties: {
-            command: { type: "string", description: "Çalıştırılacak JavaScript kodu" },
+            command: { type: "string", description: cdpToolT("sendCommandToElectron.command") },
             description: {
               type: "string",
-              description: "Komutun ne yaptığına dair açıklama (opsiyonel)",
+              description: cdpToolT("sendCommandToElectron.commandDescription"),
             },
           },
           required: ["command"],
@@ -50,10 +59,13 @@ export function createCdpConnectionTools(): ToolEntry[] {
           subcategory: "cdp",
           priority: "high",
           complexity: "medium",
-          useCases: ["DOM manipulation", "State inspection", "Custom JS execution"],
+          useCases: [
+            cdpToolT("sendCommandToElectron.useCases.domManipulation"),
+            cdpToolT("sendCommandToElectron.useCases.stateInspection"),
+            cdpToolT("sendCommandToElectron.useCases.customJsExecution"),
+          ],
           relatedTools: ["hev_inspect_element", "hev_get_page_dom_structure"],
-          agentGuidance:
-            "Powerful tool: herhangi bir JS çalıştır. State değişikliği, data inspection için kullan.",
+          agentGuidance: cdpToolT("sendCommandToElectron.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "medium",
           tags: ["cdp", "javascript", "execution", "advanced"],
@@ -64,18 +76,25 @@ export function createCdpConnectionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_take_cdp_screenshot",
-        description: "Electron penceresinin ekran görüntüsünü al (CDP üzerinden, tam sayfa).",
+        description: cdpToolT("takeScreenshot.description"),
         inputSchema: {
           type: "object",
           properties: {
             format: {
               type: "string",
               enum: ["png", "jpeg"],
-              description: "Görüntü formatı",
+              description: cdpToolT("takeScreenshot.format"),
               default: "png",
             },
-            quality: { type: "number", description: "JPEG kalitesi (1-100)", default: 80 },
-            savePath: { type: "string", description: "Dosya kaydetme yolu (opsiyonel)" },
+            quality: {
+              type: "number",
+              description: cdpToolT("takeScreenshot.quality"),
+              default: 80,
+            },
+            savePath: {
+              type: "string",
+              description: cdpToolT("takeScreenshot.savePath"),
+            },
           },
         },
         metadata: {
@@ -83,9 +102,13 @@ export function createCdpConnectionTools(): ToolEntry[] {
           subcategory: "cdp",
           priority: "medium",
           complexity: "simple",
-          useCases: ["Visual debugging", "UI verification", "Documentation"],
+          useCases: [
+            cdpToolT("takeScreenshot.useCases.visualDebugging"),
+            cdpToolT("takeScreenshot.useCases.uiVerification"),
+            cdpToolT("takeScreenshot.useCases.documentation"),
+          ],
           relatedTools: ["hev_get_electron_window_info", "hev_inspect_element"],
-          agentGuidance: "UI state'i görsel olarak kaydet. Full page screenshot destekler.",
+          agentGuidance: cdpToolT("takeScreenshot.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "screenshot", "visual", "debugging"],
@@ -96,17 +119,20 @@ export function createCdpConnectionTools(): ToolEntry[] {
     {
       definition: {
         name: "hev_get_electron_window_info",
-        description: "Electron penceresinin boyut, pozisyon ve URL bilgilerini al.",
+        description: cdpToolT("getWindowInfo.description"),
         inputSchema: { type: "object", properties: {} },
         metadata: {
           category: "electron",
           subcategory: "cdp",
           priority: "medium",
           complexity: "simple",
-          useCases: ["Window state inspection", "Layout debugging", "URL verification"],
+          useCases: [
+            cdpToolT("getWindowInfo.useCases.windowStateInspection"),
+            cdpToolT("getWindowInfo.useCases.layoutDebugging"),
+            cdpToolT("getWindowInfo.useCases.urlVerification"),
+          ],
           relatedTools: ["hev_take_cdp_screenshot", "hev_check_electron_connection"],
-          agentGuidance:
-            "Pencere durumunu öğren: boyut, pozisyon, URL. Layout sorunları için kullan.",
+          agentGuidance: cdpToolT("getWindowInfo.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["cdp", "window", "info", "layout"],

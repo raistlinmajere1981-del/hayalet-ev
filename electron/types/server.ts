@@ -1,7 +1,7 @@
 /**
  * Server Manager Type Definitions
  *
- * OpenCode server manager için ortak tip tanımları.
+ * Shared type definitions for the OpenCode server manager.
  *
  * @module electron/types/server
  */
@@ -18,9 +18,9 @@ export interface ServerInfo {
   url?: string;
   pid?: number;
   startTime?: number;
-  /** Mevcut çalışan sunucuya bağlanıldıysa true */
+  /** True when connected to an already running server */
   alreadyRunning?: boolean;
-  /** Sunucunun kaynağı: harici mevcut süreç veya bu oturumda başlatılan süreç */
+  /** Source of the server: an existing external process or one started in this session */
   source?: "existing" | "started";
 }
 

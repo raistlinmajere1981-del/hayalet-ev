@@ -5,6 +5,7 @@ import { backupFile, undoOperation, operationHistory } from "../../../tools/fs/h
 import { fileDiff, contentDiff } from "../../../tools/fs/diff-tools.js";
 import { createTechnicalPlan } from "../../../tools/fs/plan-creator.js";
 import { executeBash } from "../../../tools/fs/bash-executor.js";
+import { createMcpTranslator } from "../../../utils/i18n/index.js";
 import {
   startChunkedSession,
   writeChunk,
@@ -31,6 +32,13 @@ import {
 } from "../../../tools/fs/index.js";
 import type { TechnicalPlan } from "@shared/index-mcp.js";
 import type { ToolEntry } from "../../registry.js";
+import type { TranslationParams } from "../../../../types/i18n.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function fsT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.${key}`, params);
+}
 
 export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
   return [
@@ -57,12 +65,13 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     },
     {
       definition: TRASH_LIST_TOOL,
-      handler: (): unknown => {
+      handler: async (): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = trashList(projectRoot);
         if (result.total === 0) {
-          return { content: [{ type: "text", text: "🗑️ Çöp kutusu boş" }] };
+          return { content: [{ type: "text", text: fsT(t, "trash.listEmpty") }] };
         }
-        let output = `🗑️ Çöp Kutusu (${result.total} dosya)\n\n`;
+        let output = `${fsT(t, "trash.listTitle", { total: result.total })}\n\n`;
         result.items.forEach((item, i) => {
           output += `${i}. ${item.path} (${item.size}) - ${item.deletedAt}\n`;
         });
@@ -71,15 +80,15 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     },
     {
       definition: RESTORE_FILE_TOOL,
-      handler: (args): unknown => {
-        const result = restoreFile(projectRoot, (args as { index?: number }).index);
+      handler: async (args): Promise<unknown> => {
+        const result = await restoreFile(projectRoot, (args as { index?: number }).index);
         return { content: [{ type: "text", text: result.message }] };
       },
     },
     {
       definition: TRASH_EMPTY_TOOL,
-      handler: (args): unknown => {
-        const result = trashEmpty(
+      handler: async (args): Promise<unknown> => {
+        const result = await trashEmpty(
           projectRoot,
           (args as { older_than_days?: number }).older_than_days
         );
@@ -102,12 +111,15 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     },
     {
       definition: OPERATION_HISTORY_TOOL,
-      handler: (args): unknown => {
+      handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = operationHistory(projectRoot, (args as { limit?: number }).limit ?? 20);
         if (result.operations.length === 0) {
-          return { content: [{ type: "text", text: "📋 İşlem geçmişi boş" }] };
+          return { content: [{ type: "text", text: fsT(t, "misc.operationHistoryEmpty") }] };
         }
-        let output = `📋 Son ${result.operations.length} İşlem\n\n`;
+        let output = `${fsT(t, "misc.operationHistoryTitle", {
+          count: result.operations.length,
+        })}\n\n`;
         result.operations.forEach((op, i) => {
           const undoIcon = op.canUndo ? "↩️" : "✓";
           output += `${i + 1}. ${undoIcon} ${op.type} - ${op.timestamp}\n`;
@@ -127,7 +139,8 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     },
     {
       definition: CONTENT_DIFF_TOOL,
-      handler: (args): unknown => {
+      handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = contentDiff(
           (args as { content1: string }).content1,
           (args as { content2: string }).content2,
@@ -135,13 +148,16 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
           (args as { label2?: string }).label2
         );
         if (result.identical) {
-          return { content: [{ type: "text", text: "✅ İçerikler aynı" }] };
+          return { content: [{ type: "text", text: fsT(t, "misc.contentIdentical") }] };
         }
         return {
           content: [
             {
               type: "text",
-              text: `📊 ${result.additions} ekleme, ${result.deletions} silme\n\n${result.unified}`,
+              text: `${fsT(t, "misc.contentDiffSummary", {
+                additions: result.additions,
+                deletions: result.deletions,
+              })}\n\n${result.unified}`,
             },
           ],
         };
@@ -186,6 +202,7 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     {
       definition: SAFE_CHUNK_TOOL_DEFINITIONS[1],
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await writeChunk(
           (args as { session_id: string }).session_id,
           (args as { chunk_index: number }).chunk_index,
@@ -194,7 +211,7 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
         );
         let msg = result.message;
         if (result.warnings && result.warnings.length > 0) {
-          msg += "\n\n⚠️ Uyarılar:\n" + result.warnings.join("\n");
+          msg += `\n\n${fsT(t, "misc.warningsTitle")}\n${result.warnings.join("\n")}`;
         }
         return { content: [{ type: "text", text: msg }] };
       },
@@ -230,6 +247,7 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
     {
       definition: BASH_EXECUTOR_TOOL,
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const result = await executeBash(
           (args as { command: string }).command,
           projectRoot,
@@ -238,11 +256,14 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
         let output = "";
         if (typeof result.stdout === "string" && result.stdout.length > 0) output += result.stdout;
         if (typeof result.stderr === "string" && result.stderr.length > 0) {
-          output += (output.length > 0 ? "\n" : "") + "⚠️ stderr:\n" + result.stderr;
+          output +=
+            (output.length > 0 ? "\n" : "") + `${fsT(t, "misc.stderrTitle")}\n${result.stderr}`;
         }
-        if (output.length === 0) output = `✅ Komut tamamlandı (exit code: ${result.exitCode})`;
-        if (result.timedOut === true) output = `⏰ Komut zaman aşımına uğradı\n` + output;
-        if (typeof result.pid === "number") output += `\n(PID: ${result.pid})`;
+        if (output.length === 0) {
+          output = fsT(t, "misc.commandCompleted", { exitCode: result.exitCode });
+        }
+        if (result.timedOut === true) output = `${fsT(t, "misc.commandTimedOut")}\n${output}`;
+        if (typeof result.pid === "number") output += `\n${fsT(t, "misc.pidLine", { pid: result.pid })}`;
         return {
           content: [{ type: "text", text: output }],
           isError: result.exitCode !== 0,

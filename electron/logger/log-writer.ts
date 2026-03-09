@@ -1,11 +1,11 @@
 /**
- * LogWriter - Log yazma işlemleri
+ * LogWriter - log writing operations
  *
- * Bu modül log dosyalarına yazma işlemlerini yönetir:
- * - Log mesajı formatlama
- * - Dosyaya yazma (chunk rotation ile)
- * - Structured log (JSONL)
- * - State snapshot yazma
+ * This module manages writes to log files:
+ * - Log message formatting
+ * - File writes (with chunk rotation)
+ * - Structured logs (JSONL)
+ * - State snapshot writes
  */
 
 import { appendFile } from "fs/promises";

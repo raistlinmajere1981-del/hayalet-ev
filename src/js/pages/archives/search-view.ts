@@ -1,3 +1,5 @@
+import type { TranslationParams } from "@shared/i18n.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import type { FileResult, MessageResult } from "./types.js";
 import {
   escapeHtml,
@@ -6,6 +8,10 @@ import {
   getFileIcon,
   highlightSnippet,
 } from "./text-utils.js";
+
+function archivesT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.archives.${key}`, params);
+}
 
 export function renderMessageResult(
   message: MessageResult,
@@ -18,7 +24,7 @@ export function renderMessageResult(
   return `
       <div class="result-item glass-panel" data-conversation-id="${message.conversationId}">
         <div class="result-item-header">
-          <span class="result-item-title">${escapeHtml(message.conversationTitle ?? "İsimsiz Sohbet")}</span>
+          <span class="result-item-title">${escapeHtml(message.conversationTitle ?? archivesT("search.untitledConversation"))}</span>
           ${searchScope === "all" ? `<span class="result-item-account">${accountLabel}</span>` : ""}
         </div>
         <div class="result-item-snippet">${snippet}</div>
@@ -38,7 +44,7 @@ export function renderFileResult(file: FileResult, searchScope: string): string 
           <div class="file-info">
             <div class="file-name">${escapeHtml(file.originalName ?? "")}</div>
             <div class="file-meta">
-              ${escapeHtml(file.conversationTitle ?? "İsimsiz Sohbet")} · ${size}
+              ${escapeHtml(file.conversationTitle ?? archivesT("search.untitledConversation"))} · ${size}
               ${searchScope === "all" ? ` · ${accountLabel}` : ""}
             </div>
           </div>
@@ -108,7 +114,10 @@ export function renderSearchResultsView(args: {
 
   if (resultsMessagesEl) {
     if (messages.length === 0) {
-      resultsMessagesEl.innerHTML = searchQuery !== "" ? '<div class="no-results">Mesaj bulunamadı</div>' : "";
+      resultsMessagesEl.innerHTML =
+        searchQuery !== ""
+          ? `<div class="no-results">${archivesT("search.noMessages")}</div>`
+          : "";
     } else {
       resultsMessagesEl.innerHTML = messages
         .map((message) => renderMessageResult(message, searchQuery, searchScope))
@@ -127,7 +136,10 @@ export function renderSearchResultsView(args: {
 
   if (resultsFilesEl) {
     if (attachments.length === 0) {
-      resultsFilesEl.innerHTML = searchQuery !== "" ? '<div class="no-results">Dosya bulunamadı</div>' : "";
+      resultsFilesEl.innerHTML =
+        searchQuery !== ""
+          ? `<div class="no-results">${archivesT("search.noFiles")}</div>`
+          : "";
       return;
     }
 

@@ -10,7 +10,7 @@ async function waitTick(): Promise<void> {
 
 test("sync-complete auto source triggers AI-AI relay handler", async () => {
   const originalAIAI = RelayManager._aiaiRelay;
-  const originalAIAsistan = RelayManager._aiAsistanRelay;
+  const originalAIAssistant = RelayManager._aiAssistantRelay;
 
   let handled = false;
 
@@ -22,11 +22,11 @@ test("sync-complete auto source triggers AI-AI relay handler", async () => {
     },
   } as unknown as typeof RelayManager._aiaiRelay;
 
-  RelayManager._aiAsistanRelay = {
+  RelayManager._aiAssistantRelay = {
     isActive: false,
     handlesProvider: () => false,
     handleThinkingComplete: async () => {},
-  } as unknown as typeof RelayManager._aiAsistanRelay;
+  } as unknown as typeof RelayManager._aiAssistantRelay;
 
   try {
     RelayManager._onSyncComplete({
@@ -41,13 +41,13 @@ test("sync-complete auto source triggers AI-AI relay handler", async () => {
     assert.equal(handled, true);
   } finally {
     RelayManager._aiaiRelay = originalAIAI;
-    RelayManager._aiAsistanRelay = originalAIAsistan;
+    RelayManager._aiAssistantRelay = originalAIAssistant;
   }
 });
 
 test("sync-complete manual source does not trigger relay forwarding", async () => {
   const originalAIAI = RelayManager._aiaiRelay;
-  const originalAIAsistan = RelayManager._aiAsistanRelay;
+  const originalAIAssistant = RelayManager._aiAssistantRelay;
 
   let handled = false;
 
@@ -59,11 +59,11 @@ test("sync-complete manual source does not trigger relay forwarding", async () =
     },
   } as unknown as typeof RelayManager._aiaiRelay;
 
-  RelayManager._aiAsistanRelay = {
+  RelayManager._aiAssistantRelay = {
     isActive: false,
     handlesProvider: () => false,
     handleThinkingComplete: async () => {},
-  } as unknown as typeof RelayManager._aiAsistanRelay;
+  } as unknown as typeof RelayManager._aiAssistantRelay;
 
   try {
     RelayManager._onSyncComplete({
@@ -78,13 +78,13 @@ test("sync-complete manual source does not trigger relay forwarding", async () =
     assert.equal(handled, false);
   } finally {
     RelayManager._aiaiRelay = originalAIAI;
-    RelayManager._aiAsistanRelay = originalAIAsistan;
+    RelayManager._aiAssistantRelay = originalAIAssistant;
   }
 });
 
-test("AI-Asistan relay uses latest-message sync for ai0 thinking completion", async () => {
+test("AI-Assistant relay uses latest-message sync for ai0 thinking completion", async () => {
   const originalAIAI = RelayManager._aiaiRelay;
-  const originalAIAsistan = RelayManager._aiAsistanRelay;
+  const originalAIAssistant = RelayManager._aiAssistantRelay;
   const originalSyncConversation = WebviewManager.syncConversation;
   const originalSyncLatestMessage = (WebviewManager as unknown as { syncLatestMessage?: unknown })
     .syncLatestMessage;
@@ -94,14 +94,14 @@ test("AI-Asistan relay uses latest-message sync for ai0 thinking completion", as
   let handled = false;
 
   RelayManager._aiaiRelay = null;
-  RelayManager._aiAsistanRelay = {
+  RelayManager._aiAssistantRelay = {
     isActive: true,
     handlesProvider: (provider: string) => provider === "ai0",
     checkThinkingTransition: () => true,
     handleThinkingComplete: async () => {
       handled = true;
     },
-  } as unknown as typeof RelayManager._aiAsistanRelay;
+  } as unknown as typeof RelayManager._aiAssistantRelay;
 
   WebviewManager.syncConversation = (async () => {
     calledConversationSync += 1;
@@ -126,7 +126,7 @@ test("AI-Asistan relay uses latest-message sync for ai0 thinking completion", as
     assert.equal(handled, true);
   } finally {
     RelayManager._aiaiRelay = originalAIAI;
-    RelayManager._aiAsistanRelay = originalAIAsistan;
+    RelayManager._aiAssistantRelay = originalAIAssistant;
     WebviewManager.syncConversation = originalSyncConversation;
     (WebviewManager as unknown as { syncLatestMessage?: unknown }).syncLatestMessage =
       originalSyncLatestMessage;

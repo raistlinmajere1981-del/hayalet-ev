@@ -1,11 +1,11 @@
 /**
- * LogReader - Log okuma ve sorgulama işlemleri
+ * LogReader - log reading and query operations
  *
- * Bu modül log dosyalarını okuma ve sorgulama işlemlerini yönetir:
- * - Console logları okuma
- * - Error logları okuma
- * - Tüm logları okuma (session bazlı)
- * - Log sorgulama (filtre)
+ * This module manages reading and querying log files:
+ * - Reading console logs
+ * - Reading error logs
+ * - Reading all logs (session-based)
+ * - Querying logs (filters)
  */
 
 import { readFile, readdir } from "fs/promises";

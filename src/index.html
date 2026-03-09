@@ -10,10 +10,10 @@
     <link rel="stylesheet" href="/styles/analyze.css" />
     <link rel="stylesheet" href="/styles/server.css" />
     <link rel="stylesheet" href="/styles/whisper.css" />
-    <link rel="stylesheet" href="/styles/asistan.css" />
+    <link rel="stylesheet" href="/styles/assistant.css" />
   </head>
   <body>
-    <!-- Splash Screen (Centered Card) -->
+    <!-- Splash screen -->
     <div id="splash-screen" class="splash">
       <div class="splash-content">
         <div class="splash-logo-container">
@@ -25,11 +25,13 @@
         <div class="splash-loader">
           <div class="splash-progress" id="splash-progress"></div>
         </div>
-        <p class="splash-status" id="splash-status">Başlatılıyor...</p>
+        <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting">
+          Starting...
+        </p>
       </div>
     </div>
 
-    <!-- Global Webview Container (always in DOM, hidden offscreen) -->
+    <!-- Global webview container (always in DOM, hidden offscreen) -->
     <div
       id="global-webview-container"
       style="
@@ -67,39 +69,71 @@
       ></webview>
     </div>
 
-    <!-- Side Navigation Overlay -->
+    <!-- Side navigation overlay -->
     <div class="side-nav-overlay" id="side-nav-overlay">
       <div class="side-nav-trigger"></div>
       <nav class="side-nav-menu">
-        <button class="side-nav-btn active" data-page="entrance" title="Giriş Salonu">
+        <button
+          class="side-nav-btn active"
+          data-page="entrance"
+          title="Entrance Hall"
+          data-shell-i18n-title="sideNav.entranceTitle"
+        >
           <span class="side-nav-icon">🏠</span>
-          <span class="side-nav-label">Giriş</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.entranceLabel">Entrance</span>
         </button>
-        <button class="side-nav-btn" data-page="analyze" title="Analiz Odası">
+        <button
+          class="side-nav-btn"
+          data-page="analyze"
+          title="Analyze Room"
+          data-shell-i18n-title="sideNav.analyzeTitle"
+        >
           <span class="side-nav-icon">🔍</span>
-          <span class="side-nav-label">Analiz</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.analyzeLabel">Analyze</span>
         </button>
-        <button class="side-nav-btn" data-page="asistan" title="Asistan Odası">
+        <button
+          class="side-nav-btn"
+          data-page="assistant"
+          title="Assistant Room"
+          data-shell-i18n-title="sideNav.assistantTitle"
+        >
           <span class="side-nav-icon">🤖</span>
-          <span class="side-nav-label">Asistan</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.assistantLabel"
+            >Assistant</span
+          >
         </button>
-        <button class="side-nav-btn" data-page="server" title="Sunucu Odası">
+        <button
+          class="side-nav-btn"
+          data-page="server"
+          title="Server Room"
+          data-shell-i18n-title="sideNav.serverTitle"
+        >
           <span class="side-nav-icon">🖥️</span>
-          <span class="side-nav-label">Sunucu</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.serverLabel">Server</span>
         </button>
-        <button class="side-nav-btn" data-page="archives" title="Arşiv Odası">
+        <button
+          class="side-nav-btn"
+          data-page="archives"
+          title="Archives Room"
+          data-shell-i18n-title="sideNav.archivesTitle"
+        >
           <span class="side-nav-icon">📁</span>
-          <span class="side-nav-label">Arşiv</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.archivesLabel">Archives</span>
         </button>
-        <button class="side-nav-btn" data-page="whisper" title="Fısıltı Odası">
+        <button
+          class="side-nav-btn"
+          data-page="whisper"
+          title="Whisper Room"
+          data-shell-i18n-title="sideNav.whisperTitle"
+        >
           <span class="side-nav-icon">👂</span>
-          <span class="side-nav-label">Fısıltı</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.whisperLabel">Whisper</span>
         </button>
       </nav>
     </div>
 
     <div id="app">
-      <!-- Top Bar -->
+      <!-- Top bar -->
       <div class="top-bar">
         <div class="top-bar-left">
           <div class="logo">
@@ -110,94 +144,142 @@
 
         <div class="top-bar-center">
           <div class="indicators">
-            <!-- Cluster grubu - dikey ortalama için wrapper -->
+            <!-- Indicator cluster group -->
             <div class="indicators-group">
-              <!-- Üst satır: AI1 - FlowLine - Asistan - FlowLine - AI2 -->
+              <!-- Top row: AI1 - flow line - assistant - flow line - AI2 -->
               <div class="indicators-row">
-                <!-- AI1 Cluster (Genişletilmiş) -->
+                <!-- AI1 cluster -->
                 <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
                   <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai1"></div>
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
+                          Loading
+                        </span>
                         <div
                           class="indicator-dot loading"
                           id="ai1-loading-indicator"
-                          title="Yükleniyor"
+                          title="Loading"
+                          data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Gönderim</span>
-                        <div class="indicator-dot" id="ai1-send-indicator" title="Gönderim"></div>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
+                          Sending
+                        </span>
+                        <div
+                          class="indicator-dot"
+                          id="ai1-send-indicator"
+                          title="Sending"
+                          data-shell-i18n-title="indicators.sending"
+                        ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <span
+                          class="indicator-dot-label"
+                          data-shell-i18n-text="indicators.thinking"
+                        >
+                          Thinking
+                        </span>
                         <div
                           class="indicator-dot"
                           id="ai1-thinking-indicator"
-                          title="Düşünüyor"
+                          title="Thinking"
+                          data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
                     </div>
                     <div class="indicator-select-row">
                       <select id="conversation-ai1" class="select-compact indicator"></select>
-                      <button id="conversation-refresh-ai1" class="conv-refresh" title="Yenile">
+                      <button
+                        id="conversation-refresh-ai1"
+                        class="conv-refresh"
+                        title="Refresh"
+                        data-shell-i18n-title="indicators.refreshTitle"
+                      >
                         ⟳
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- AI1 ↔ AI0 Relay Flow Line -->
+                <!-- AI1 ↔ AI0 relay flow line -->
                 <div class="relay-flow-wrapper">
                   <button
                     class="relay-toggle-btn"
                     id="relay-btn-ai1-ai0"
-                    title="AI1 ↔ Asistan Relay Başlat/Durdur"
+                    title="AI1 ↔ Assistant Relay Start/Stop"
+                    data-shell-i18n-title="relay.toggle.ai1Assistant"
                   >
                     <span class="relay-btn-icon icon-play">▶</span>
                     <span class="relay-btn-icon icon-stop">⏹</span>
                   </button>
-                  <div class="relay-flow-line" id="relay-flow-ai1-ai0" title="AI1 ↔ Asistan Relay">
+                  <div
+                    class="relay-flow-line"
+                    id="relay-flow-ai1-ai0"
+                    title="AI1 ↔ Assistant Relay"
+                    data-shell-i18n-title="relay.flow.ai1Assistant"
+                  >
                     <div class="flow-track">
                       <div class="flow-particle"></div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Asistan (AI0) Cluster - Merkez (AI1/AI2 formatında, kompakt) -->
-                <div class="indicator-cluster indicator-cluster-asistan" id="cluster-ai0">
+                <!-- Assistant (AI0) cluster -->
+                <div class="indicator-cluster indicator-cluster-assistant" id="cluster-ai0">
                   <div class="indicator-avatar indicator-avatar-md" id="indicator-avatar-ai0"></div>
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
+                          Loading
+                        </span>
                         <div
                           class="indicator-dot"
                           id="ai0-loading-indicator"
-                          title="Yükleniyor"
+                          title="Loading"
+                          data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Gönderim</span>
-                        <div class="indicator-dot" id="ai0-send-indicator" title="Gönderim"></div>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
+                          Sending
+                        </span>
+                        <div
+                          class="indicator-dot"
+                          id="ai0-send-indicator"
+                          title="Sending"
+                          data-shell-i18n-title="indicators.sending"
+                        ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <span
+                          class="indicator-dot-label"
+                          data-shell-i18n-text="indicators.thinking"
+                        >
+                          Thinking
+                        </span>
                         <div
                           class="indicator-dot"
                           id="ai0-thinking-indicator"
-                          title="Düşünüyor"
+                          title="Thinking"
+                          data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- AI0 ↔ AI2 Relay Flow Line -->
+                <!-- AI0 ↔ AI2 relay flow line -->
                 <div class="relay-flow-wrapper relay-flow-wrapper-rtl">
-                  <div class="relay-flow-line" id="relay-flow-ai0-ai2" title="Asistan ↔ AI2 Relay">
+                  <div
+                    class="relay-flow-line"
+                    id="relay-flow-ai0-ai2"
+                    title="Assistant ↔ AI2 Relay"
+                    data-shell-i18n-title="relay.flow.assistantAi2"
+                  >
                     <div class="flow-track">
                       <div class="flow-particle"></div>
                     </div>
@@ -205,42 +287,64 @@
                   <button
                     class="relay-toggle-btn"
                     id="relay-btn-ai0-ai2"
-                    title="Asistan ↔ AI2 Relay Başlat/Durdur"
+                    title="Assistant ↔ AI2 Relay Start/Stop"
+                    data-shell-i18n-title="relay.toggle.assistantAi2"
                   >
                     <span class="relay-btn-icon icon-play">◀</span>
                     <span class="relay-btn-icon icon-stop">⏹</span>
                   </button>
                 </div>
 
-                <!-- AI2 Cluster (Genişletilmiş) -->
+                <!-- AI2 cluster -->
                 <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
                   <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai2"></div>
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Yükleniyor</span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
+                          Loading
+                        </span>
                         <div
                           class="indicator-dot loading"
                           id="ai2-loading-indicator"
-                          title="Yükleniyor"
+                          title="Loading"
+                          data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Gönderim</span>
-                        <div class="indicator-dot" id="ai2-send-indicator" title="Gönderim"></div>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
+                          Sending
+                        </span>
+                        <div
+                          class="indicator-dot"
+                          id="ai2-send-indicator"
+                          title="Sending"
+                          data-shell-i18n-title="indicators.sending"
+                        ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label">Düşünüyor</span>
+                        <span
+                          class="indicator-dot-label"
+                          data-shell-i18n-text="indicators.thinking"
+                        >
+                          Thinking
+                        </span>
                         <div
                           class="indicator-dot"
                           id="ai2-thinking-indicator"
-                          title="Düşünüyor"
+                          title="Thinking"
+                          data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
                     </div>
                     <div class="indicator-select-row">
                       <select id="conversation-ai2" class="select-compact indicator"></select>
-                      <button id="conversation-refresh-ai2" class="conv-refresh" title="Yenile">
+                      <button
+                        id="conversation-refresh-ai2"
+                        class="conv-refresh"
+                        title="Refresh"
+                        data-shell-i18n-title="indicators.refreshTitle"
+                      >
                         ⟳
                       </button>
                     </div>
@@ -249,17 +353,23 @@
               </div>
               <!-- /.indicators-row -->
 
-              <!-- AI1 ↔ AI2 Relay (Asistan altında, ortalı, alta yaslı) -->
+              <!-- AI1 ↔ AI2 relay -->
               <div class="relay-flow-bottom-row">
                 <button
                   class="relay-toggle-btn relay-btn-bottom-left"
                   id="relay-btn-ai1-ai2-left"
                   title="AI1 → AI2 Relay"
+                  data-shell-i18n-title="relay.toggle.ai1Ai2"
                 >
                   <span class="relay-btn-icon icon-play">▶</span>
                   <span class="relay-btn-icon icon-stop">⏹</span>
                 </button>
-                <div class="relay-flow-line-bottom" id="relay-flow-ai1-ai2" title="AI1 ↔ AI2 Relay">
+                <div
+                  class="relay-flow-line-bottom"
+                  id="relay-flow-ai1-ai2"
+                  title="AI1 ↔ AI2 Relay"
+                  data-shell-i18n-title="relay.flow.ai1Ai2"
+                >
                   <div class="flow-track-horizontal">
                     <div class="flow-particle"></div>
                   </div>
@@ -268,6 +378,7 @@
                   class="relay-toggle-btn relay-btn-bottom-right"
                   id="relay-btn-ai1-ai2-right"
                   title="AI2 → AI1 Relay"
+                  data-shell-i18n-title="relay.toggle.ai2Ai1"
                 >
                   <span class="relay-btn-icon icon-play">◀</span>
                   <span class="relay-btn-icon icon-stop">⏹</span>
@@ -279,24 +390,44 @@
         </div>
 
         <div class="top-bar-right">
-          <!-- Pencere butonları - Üst satır -->
+          <!-- Window controls -->
           <div class="window-controls">
-            <button class="icon-btn" id="window-minimize-to-tray" title="System Tray'e Küçült">
+            <button
+              class="icon-btn"
+              id="window-minimize-to-tray"
+              title="Minimize to System Tray"
+              data-shell-i18n-title="window.minimizeToTray"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 11L3 6h10l-5 5z" />
               </svg>
             </button>
-            <button class="icon-btn" id="window-minimize" title="Görev Çubuğuna Küçült">
+            <button
+              class="icon-btn"
+              id="window-minimize"
+              title="Minimize to Taskbar"
+              data-shell-i18n-title="window.minimize"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <rect x="3" y="7" width="10" height="2" rx="0.5" />
               </svg>
             </button>
-            <button class="icon-btn" id="window-fullscreen" title="Tam Ekran">
+            <button
+              class="icon-btn"
+              id="window-fullscreen"
+              title="Tam Ekran"
+              data-shell-i18n-title="window.fullscreen"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M3 3h4v2H5v2H3V3zm6 0h4v4h-2V5H9V3zM3 9h2v2h2v2H3V9zm8 2h2v2h-4v-2h2z" />
               </svg>
             </button>
-            <button class="icon-btn" id="window-close" title="Kapat">
+            <button
+              class="icon-btn"
+              id="window-close"
+              title="Kapat"
+              data-shell-i18n-title="common.close"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path
                   d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"
@@ -305,9 +436,14 @@
             </button>
           </div>
 
-          <!-- Canlı Log + Theme Dropdown - Yan yana -->
+          <!-- Live log and theme selector -->
           <div class="top-bar-actions">
-            <button class="icon-btn" id="rooms-overlay-open" title="Oda Yonetimi">
+            <button
+              class="icon-btn"
+              id="rooms-overlay-open"
+              title="Room Management"
+              data-shell-i18n-title="rooms.openTitle"
+            >
               <svg
                 width="16"
                 height="16"
@@ -320,11 +456,22 @@
                 />
               </svg>
             </button>
-            <button class="btn btn-ghost btn-xs" id="report-modal-open" title="Canlı Log Overlay">
-              📊 Canlı Log
+            <button
+              class="btn btn-ghost btn-xs"
+              id="report-modal-open"
+              title="Live Log Overlay"
+              data-shell-i18n-title="liveLog.openTitle"
+              data-shell-i18n-text="liveLog.openButton"
+            >
+              📊 Live Log
             </button>
             <div class="theme-dropdown" id="theme-dropdown">
-              <button class="theme-dropdown-btn" id="theme-dropdown-btn" title="Tema Seç">
+              <button
+                class="theme-dropdown-btn"
+                id="theme-dropdown-btn"
+                title="Select Theme"
+                data-shell-i18n-title="theme.selectTitle"
+              >
                 <span class="theme-dropdown-icon" id="theme-current-icon">🌑</span>
                 <span id="theme-current-name">Obsidian</span>
                 <span>▼</span>
@@ -344,12 +491,20 @@
         <div id="pages-container"></div>
       </div>
 
-      <!-- Rapor Okuma Modu -->
+      <!-- Report reader modal -->
       <div class="modal modal-document modal-wide hidden" id="report-modal">
         <div class="modal-content">
           <div class="modal-header">
-            <span class="modal-title">Canlı Log Görünümü</span>
-            <button class="btn btn-ghost" id="report-modal-close">Kapat</button>
+            <span class="modal-title" data-shell-i18n-text="reportModal.title">
+              Live Log View
+            </span>
+            <button
+              class="btn btn-ghost"
+              id="report-modal-close"
+              data-shell-i18n-text="common.close"
+            >
+              Kapat
+            </button>
           </div>
           <div class="modal-body" id="report-modal-body"></div>
         </div>
@@ -358,11 +513,29 @@
       <div class="modal modal-document modal-wide hidden" id="rooms-overlay">
         <div class="modal-content room-manager-modal">
           <div class="modal-header">
-            <span class="modal-title">Oda Yonetimi</span>
+            <span class="modal-title" data-shell-i18n-text="rooms.title">Room Management</span>
             <div class="room-manager-toolbar">
-              <button class="btn btn-primary btn-sm" id="rooms-overlay-import">Paket Sec</button>
-              <button class="btn btn-ghost btn-sm" id="rooms-overlay-refresh">Yenile</button>
-              <button class="btn btn-ghost btn-sm" id="rooms-overlay-close">Kapat</button>
+              <button
+                class="btn btn-primary btn-sm"
+                id="rooms-overlay-import"
+                data-shell-i18n-text="rooms.importButton"
+              >
+                Select Package
+              </button>
+              <button
+                class="btn btn-ghost btn-sm"
+                id="rooms-overlay-refresh"
+                data-shell-i18n-text="common.refresh"
+              >
+                Refresh
+              </button>
+              <button
+                class="btn btn-ghost btn-sm"
+                id="rooms-overlay-close"
+                data-shell-i18n-text="common.close"
+              >
+                Close
+              </button>
             </div>
           </div>
           <div class="modal-body room-manager-body">
@@ -370,15 +543,35 @@
             <div class="room-manager-grid">
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
-                  <div class="room-manager-section-title">Workspace Odalari</div>
-                  <div class="room-manager-section-note">rooms/ altindaki odalar</div>
+                  <div
+                    class="room-manager-section-title"
+                    data-shell-i18n-text="rooms.workspaceSectionTitle"
+                  >
+                    Workspace Rooms
+                  </div>
+                  <div
+                    class="room-manager-section-note"
+                    data-shell-i18n-text="rooms.workspaceSectionNote"
+                  >
+                    Rooms under rooms/
+                  </div>
                 </div>
                 <div class="room-manager-list" id="rooms-workspace-list"></div>
               </section>
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
-                  <div class="room-manager-section-title">Yuklu Odalar</div>
-                  <div class="room-manager-section-note">Menuye eklenen odalar</div>
+                  <div
+                    class="room-manager-section-title"
+                    data-shell-i18n-text="rooms.installedSectionTitle"
+                  >
+                    Installed Rooms
+                  </div>
+                  <div
+                    class="room-manager-section-note"
+                    data-shell-i18n-text="rooms.installedSectionNote"
+                  >
+                    Rooms added to the menu
+                  </div>
                 </div>
                 <div class="room-manager-list" id="rooms-installed-list"></div>
               </section>
@@ -388,19 +581,27 @@
       </div>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Livefix Restart Countdown Overlay -->
+    <!-- Livefix restart countdown overlay -->
     <div class="livefix-countdown-overlay hidden" id="livefix-countdown-overlay">
       <div class="livefix-countdown-card">
         <div class="livefix-countdown-icon">⚡</div>
-        <div class="livefix-countdown-title">Uygulama Yeniden Başlıyor</div>
-        <div class="livefix-countdown-subtitle" id="livefix-countdown-subtitle">
-          Canlı düzeltme uygulandı
+        <div class="livefix-countdown-title" data-shell-i18n-text="livefix.restartTitle">
+          Application Restarting
+        </div>
+        <div
+          class="livefix-countdown-subtitle"
+          id="livefix-countdown-subtitle"
+          data-shell-i18n-text="livefix.appliedSubtitle"
+        >
+          Live fix applied
         </div>
         <div class="livefix-countdown-number" id="livefix-countdown-number">5</div>
-        <div class="livefix-countdown-label">saniye</div>
+        <div class="livefix-countdown-label" data-shell-i18n-text="livefix.secondsLabel">
+          seconds
+        </div>
       </div>
     </div>
   </body>

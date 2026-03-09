@@ -1,14 +1,15 @@
 /**
  * Development Tools - Syntax Checker
  *
- * Dosyada syntax hataları, parantez dengesi ve ESLint kontrolleri
+ * Checks file syntax issues, bracket balance, and optional ESLint validation.
  */
 
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
-// Detaylı bracket counting helper (structure-visualizer.ts'den import edilecek)
+// Detailed bracket-counting helper shared with the structure visualizer.
 import { countBracketsContextAware } from "./structure-visualizer.js";
 
 interface SyntaxCheckResult {
@@ -17,6 +18,17 @@ interface SyntaxCheckResult {
   errors: Array<{ message: string; line?: number; column?: number; type: string }>;
   bracketsBalanced: boolean;
   bracketDetails?: Array<{ open: number; close: number; type: string }>;
+}
+
+function syntaxCheckerT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.syntaxChecker.${key}`, params);
+}
+
+function syntaxCheckerDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.syntaxChecker.definition.${key}`, params);
 }
 
 export async function checkSyntax(
@@ -40,8 +52,8 @@ export async function checkSyntax(
   if (!existsSync(fullPath)) {
     return {
       success: false,
-      output: `❌ Dosya bulunamadı: ${filePath}`,
-      errors: [{ message: "File not found", type: "system" }],
+      output: syntaxCheckerT("runtime.fileNotFound", { filePath }),
+      errors: [{ message: syntaxCheckerT("runtime.fileNotFoundShort"), type: "system" }],
       bracketsBalanced: false,
     };
   }
@@ -49,7 +61,7 @@ export async function checkSyntax(
   const content = readFileSync(fullPath, "utf-8");
   const ext = extname(filePath);
 
-  output.push(`🔍 Syntax Kontrolü: ${filePath}`);
+  output.push(syntaxCheckerT("runtime.title", { filePath }));
   output.push("─".repeat(50));
 
   let bracketsBalanced = true;
@@ -81,15 +93,15 @@ export async function checkSyntax(
     }
 
     if (astParseSuccess) {
-      output.push("✅ Parantez Dengesi: OK (Babel AST parse başarılı)");
+      output.push(syntaxCheckerT("runtime.bracketsOkAst"));
     } else {
       // Fallback to manual bracket counting
       const bracketCounts = countBracketsContextAware(content);
 
       const brackets = [
-        { open: "(", close: ")", name: "Parantez" },
-        { open: "{", close: "}", name: "Süslü Parantez" },
-        { open: "[", close: "]", name: "Köşeli Parantez" },
+        { open: "(", close: ")", name: syntaxCheckerT("runtime.bracketTypes.parentheses") },
+        { open: "{", close: "}", name: syntaxCheckerT("runtime.bracketTypes.curly") },
+        { open: "[", close: "]", name: syntaxCheckerT("runtime.bracketTypes.square") },
       ];
 
       for (const bracket of brackets) {
@@ -107,19 +119,33 @@ export async function checkSyntax(
           const diff = Math.abs(openCount - closeCount);
           const missing = openCount > closeCount ? bracket.close : bracket.open;
           errors.push({
-            message: `${bracket.name} dengesi bozuk: ${diff} adet '${missing}' ${openCount > closeCount ? "eksik" : "fazla"}`,
+            message: syntaxCheckerT("runtime.bracketMismatch", {
+              type: bracket.name,
+              diff,
+              missing,
+              direction:
+                openCount > closeCount
+                  ? syntaxCheckerT("runtime.bracketDirection.missing")
+                  : syntaxCheckerT("runtime.bracketDirection.extra"),
+            }),
             type: "bracket",
           });
         }
       }
 
       if (bracketsBalanced) {
-        output.push("✅ Parantez Dengesi: OK");
+        output.push(syntaxCheckerT("runtime.bracketsOk"));
       } else {
-        output.push("❌ Parantez Dengesi: BOZUK");
+        output.push(syntaxCheckerT("runtime.bracketsBroken"));
         for (const detail of bracketDetails) {
           if (detail.open !== detail.close) {
-            output.push(`   ${detail.type}: ${detail.open} açık / ${detail.close} kapalı`);
+            output.push(
+              syntaxCheckerT("runtime.bracketDetail", {
+                type: detail.type,
+                open: detail.open,
+                close: detail.close,
+              })
+            );
           }
         }
       }
@@ -137,7 +163,7 @@ export async function checkSyntax(
           timeout: 15000,
         }
       );
-      output.push("✅ ESLint: Hata yok");
+      output.push(syntaxCheckerT("runtime.eslintOk"));
     } catch (err: unknown) {
       const error = err as { stdout?: string; stderr?: string };
       const eslintOutput = error.stdout ?? error.stderr ?? "";
@@ -149,7 +175,7 @@ export async function checkSyntax(
         (warningMatch?.[1] ?? "").length > 0 ? parseInt(warningMatch?.[1] ?? "0") : 0;
 
       if (errorCount > 0 || warningCount > 0) {
-        output.push(`❌ ESLint: ${errorCount} hata, ${warningCount} uyarı`);
+        output.push(syntaxCheckerT("runtime.eslintSummary", { errorCount, warningCount }));
         errors.push({
           message: `ESLint: ${errorCount} error(s), ${warningCount} warning(s)`,
           type: "eslint",
@@ -166,14 +192,14 @@ export async function checkSyntax(
         encoding: "utf-8",
         timeout: 15000,
       });
-      output.push("✅ TypeScript: Hata yok");
+      output.push(syntaxCheckerT("runtime.typescriptOk"));
     } catch (err: unknown) {
       const error = err as { stdout?: string; stderr?: string };
       const tsOutput = error.stdout ?? error.stderr ?? "";
       const tsErrors = tsOutput.match(/error TS\d+:/g);
 
       if (tsErrors) {
-        output.push(`❌ TypeScript: ${tsErrors.length} hata`);
+        output.push(syntaxCheckerT("runtime.typescriptSummary", { errorCount: tsErrors.length }));
         errors.push({
           message: `TypeScript: ${tsErrors.length} error(s)`,
           type: "typescript",
@@ -185,9 +211,9 @@ export async function checkSyntax(
 
   const totalErrors = errors.length;
   if (totalErrors === 0) {
-    output.push("✅ Toplam: Hata bulunamadı");
+    output.push(syntaxCheckerT("runtime.totalNoErrors"));
   } else {
-    output.push(`❌ Toplam: ${totalErrors} hata bulundu`);
+    output.push(syntaxCheckerT("runtime.totalErrors", { totalErrors }));
   }
 
   return {
@@ -201,27 +227,27 @@ export async function checkSyntax(
 
 export const SYNTAX_CHECKER_TOOL = {
   name: "hev_dev_check_syntax",
-  description: "Dosyada syntax hataları, parantez dengesi ve ESLint kontrolleri yap",
+  description: syntaxCheckerDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string" as const,
-        description: "Dosya yolu",
+        description: syntaxCheckerDefT("filePath"),
       },
       check_brackets: {
         type: "boolean" as const,
-        description: "Parantez dengesi kontrolü",
+        description: syntaxCheckerDefT("checkBrackets"),
         default: true,
       },
       check_eslint: {
         type: "boolean" as const,
-        description: "ESLint syntax check",
+        description: syntaxCheckerDefT("checkEslint"),
         default: true,
       },
       check_ts: {
         type: "boolean" as const,
-        description: "TypeScript type check",
+        description: syntaxCheckerDefT("checkTs"),
         default: false,
       },
     },
@@ -233,13 +259,12 @@ export const SYNTAX_CHECKER_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Pre-commit syntax validation",
-      "Check bracket balance",
-      "Combined ESLint + TypeScript check",
+      syntaxCheckerDefT("useCases.preCommit"),
+      syntaxCheckerDefT("useCases.bracketBalance"),
+      syntaxCheckerDefT("useCases.combinedCheck"),
     ],
     relatedTools: ["hev_dev_lint_file", "hev_dev_check_syntax", "hev_fs_show"],
-    agentGuidance:
-      "Multi-layer validation: brackets, ESLint, TypeScript. Use before edits to catch issues. Provides detailed error breakdown.",
+    agentGuidance: syntaxCheckerDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["validation", "syntax", "brackets", "eslint", "typescript", "pre-commit"],

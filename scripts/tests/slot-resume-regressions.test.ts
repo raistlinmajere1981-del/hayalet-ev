@@ -30,7 +30,7 @@ test("normalize settings backfills missing slot resume flag", () => {
       },
     },
     accounts: [],
-    asistanAccounts: [],
+    assistantAccounts: [],
   });
 
   assert.equal(normalized.slots.ai1.resumeLastSession, true);
@@ -47,7 +47,7 @@ test("normalize settings preserves account lastSessionUrl", () => {
         lastSessionUrl: "https://chatgpt.com/c/abc123",
       },
     ],
-    asistanAccounts: [],
+    assistantAccounts: [],
     slots: {
       ai1: {
         accountId: "chatgpt_demo",

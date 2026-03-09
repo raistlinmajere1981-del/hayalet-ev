@@ -6,14 +6,22 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
-import { deliverToAsistan } from "../../modules/asistan-delivery.js";
+import { AppI18n } from "../../modules/i18n/index.js";
+import { deliverToAssistant } from "../../modules/assistant-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
   buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
+  buildScenarioStepsCompletedLabel,
+  buildProviderTestResultsModalTitle,
   filterScenarioDisplayRows,
+  formatScenarioStatusLabel,
+  generateProviderTestResultsHTML,
+  getScenarioEmptyMessage,
+  getScenarioReadyLabel,
+  getScenarioResultsFilterAriaLabel,
   resolveScenarioSurface,
   type ScenarioStatusFilter,
 } from "../shared/provider-test-presentation.js";
@@ -23,12 +31,22 @@ import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
   ProviderTestProgressEvent,
-  ProviderTestResult,
   ProviderTestSuite,
   ProviderWebviewSyncMode,
 } from "@shared/provider.js";
 
 type SlotType = "ai1" | "ai2";
+
+function providerTestT(key: string, params?: Record<string, string | number | boolean>): string {
+  return AppI18n.t(`providerTest.${key}`, params);
+}
+
+function entranceWebviewT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return AppI18n.t(`entrance.webview.${key}`, params);
+}
 
 type TrafficManagerState = (typeof TrafficManager.state)[SlotType];
 
@@ -136,7 +154,12 @@ export class WebviewPanel {
       }
     } catch (err) {
       const error = /** @type {Error} */ err;
-      Logger.error(LogCategory.ENTRANCE, `Event listener setup hatası: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        AppI18n.t("entrance.logs.eventListenerSetupError", {
+          message: getErrorMessage(error),
+        })
+      );
     }
   }
 
@@ -167,7 +190,7 @@ export class WebviewPanel {
 
     const hasAccount = !!AppState.getAccountForSlot(provider);
     if (!hasAccount) {
-      urlDisplay.textContent = "Slot boş - Hesap atanmadı";
+      urlDisplay.textContent = AppI18n.t("entrance.webview.noAccount.title");
       return;
     }
 
@@ -226,15 +249,22 @@ export class WebviewPanel {
             const preloadPath = await window.electronAPI.getPreloadPath("ai1");
             if (preloadPath !== "") {
               ai1WebviewEl.setAttribute("preload", preloadPath);
-              this.addLog("ai1", "info", `Preload script ayarlandı: ${preloadPath}`);
+              this.addLog(
+                "ai1",
+                "info",
+                entranceWebviewT("logs.preloadScriptSet", { path: preloadPath })
+              );
             }
           } catch (err) {
             const error = err as Error;
             Logger.warn(
               LogCategory.ENTRANCE,
-              `AI1 preload path ayarlanamadı: ${getErrorMessage(error)}`
+              entranceWebviewT("logs.preloadPathResolveFailed", {
+                slot: "AI1",
+                message: getErrorMessage(error),
+              })
             );
-            this.addLog("ai1", "warning", "Preload script ayarlanamadı...");
+            this.addLog("ai1", "warning", entranceWebviewT("logs.preloadScriptUnavailable"));
           }
         }
       }
@@ -261,23 +291,36 @@ export class WebviewPanel {
             const preloadPath = await window.electronAPI.getPreloadPath("ai2");
             if (preloadPath !== "") {
               ai2WebviewEl.setAttribute("preload", preloadPath);
-              this.addLog("ai2", "info", `Preload script ayarlandı: ${preloadPath}`, {
-                visibility: 2,
-              });
+              this.addLog(
+                "ai2",
+                "info",
+                entranceWebviewT("logs.preloadScriptSet", { path: preloadPath }),
+                {
+                  visibility: 2,
+                }
+              );
             }
           } catch (err) {
             const error = err as Error;
             Logger.warn(
               LogCategory.ENTRANCE,
-              `AI2 preload path ayarlanamadı: ${getErrorMessage(error)}`
+              entranceWebviewT("logs.preloadPathResolveFailed", {
+                slot: "AI2",
+                message: getErrorMessage(error),
+              })
             );
-            this.addLog("ai2", "warning", "Preload script ayarlanamadı...");
+            this.addLog("ai2", "warning", entranceWebviewT("logs.preloadScriptUnavailable"));
           }
         }
       }
     } catch (err) {
       const error = err as Error;
-      Logger.error(LogCategory.ENTRANCE, `Webview setup hatası: ${getErrorMessage(error)}`);
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceWebviewT("logs.setupError", {
+          message: getErrorMessage(error),
+        })
+      );
     }
   }
 
@@ -309,9 +352,11 @@ export class WebviewPanel {
     btn.classList.toggle("disabled", !enabled);
 
     if (!enabled) {
-      btn.title = "Slot'a hesap atanmadı";
+      btn.title = providerTestT("buttonTitles.testDisabled");
     } else {
-      btn.title = `${provider.toUpperCase()} provider test`;
+      btn.title = providerTestT("buttonTitles.testReady", {
+        provider: provider.toUpperCase(),
+      });
     }
   }
 
@@ -322,9 +367,11 @@ export class WebviewPanel {
     btn.classList.toggle("disabled", !enabled);
 
     if (!enabled) {
-      btn.title = "Provider sync icin hazir degil";
+      btn.title = providerTestT("buttonTitles.syncDisabled");
     } else {
-      btn.title = `${provider.toUpperCase()} provider sync`;
+      btn.title = providerTestT("buttonTitles.syncReady", {
+        provider: provider.toUpperCase(),
+      });
     }
   }
 
@@ -366,7 +413,7 @@ export class WebviewPanel {
       filter: "all",
       runId: null,
       commands: [],
-      message: "Senaryoyu baslatinca ilerleme adimlari burada gorunur.",
+      message: providerTestT("scenario.hint"),
       suite: null,
     };
 
@@ -407,7 +454,9 @@ export class WebviewPanel {
     void electronApi.cancelProviderScenario({ runId }).catch((error) => {
       Logger.warn(
         LogCategory.ENTRANCE,
-        `Scenario cancel request failed: ${getErrorMessage(error as Error)}`
+        providerTestT("scenario.cancelFailed", {
+          message: getErrorMessage(error as Error),
+        })
       );
     });
   }
@@ -438,7 +487,10 @@ export class WebviewPanel {
 
     if (event.type === "started") {
       state.phase = "running";
-      state.message = `${state.providerName} ${state.scenarioTitle} hazirlaniyor`;
+      state.message = providerTestT("scenario.preparingMessage", {
+        providerName: state.providerName,
+        scenarioTitle: state.scenarioTitle,
+      });
     }
 
     if (
@@ -489,28 +541,28 @@ export class WebviewPanel {
       commands: displayCommands,
     });
     const isRunning = state.phase === "running";
-    const canDeliverToAsistan =
+    const canDeliverToAssistant =
       state.scenarioId === "webview-test" && state.phase === "completed" && state.suite !== null;
     const summaryMarkup = `
-      <div class="scenario-overlay__summary" role="tablist" aria-label="Sonuc filtreleri">
+      <div class="scenario-overlay__summary" role="tablist" aria-label="${getScenarioResultsFilterAriaLabel()}">
         <button class="scenario-summary-chip scenario-summary-chip--pass${state.filter === "pass" ? " is-active" : ""}" type="button" data-filter-status="pass">
-          ${counts.pass} pass
+          ${counts.pass} ${formatScenarioStatusLabel("pass")}
         </button>
         <button class="scenario-summary-chip scenario-summary-chip--fail${state.filter === "fail" ? " is-active" : ""}" type="button" data-filter-status="fail">
-          ${counts.fail} fail
+          ${counts.fail} ${formatScenarioStatusLabel("fail")}
         </button>
         <button class="scenario-summary-chip scenario-summary-chip--warning${state.filter === "warning" ? " is-active" : ""}" type="button" data-filter-status="warning">
-          ${counts.warning} warning
+          ${counts.warning} ${formatScenarioStatusLabel("warning")}
         </button>
         <button class="scenario-summary-chip scenario-summary-chip--skip${state.filter === "skip" ? " is-active" : ""}" type="button" data-filter-status="skip">
-          ${counts.skip} skip
+          ${counts.skip} ${formatScenarioStatusLabel("skip")}
         </button>
       </div>
     `;
     const syncModeMarkup =
       state.scenarioId === "webview-sync"
         ? `
-            <div class="scenario-sync-mode" role="group" aria-label="Sync modu secimi">
+            <div class="scenario-sync-mode" role="group" aria-label="${providerTestT("scenario.syncModeAria")}">
               <button class="scenario-sync-mode__option${state.syncMode === "soft" ? " is-active" : ""}" type="button" data-sync-mode="soft" ${isRunning ? "disabled" : ""}>Soft</button>
               <button class="scenario-sync-mode__option${state.syncMode === "full" ? " is-active" : ""}" type="button" data-sync-mode="full" ${isRunning ? "disabled" : ""}>Full</button>
               <button class="scenario-sync-mode__option${state.syncMode === "clean" ? " is-active" : ""}" type="button" data-sync-mode="clean" ${isRunning ? "disabled" : ""}>Clean</button>
@@ -520,7 +572,7 @@ export class WebviewPanel {
 
     const stepMarkup =
       rows.length === 0
-        ? `<div class="scenario-empty">${state.filter === "all" ? "Henüz adim baslamadi." : "Bu filtre icin sonuc yok."}</div>`
+        ? `<div class="scenario-empty">${getScenarioEmptyMessage(state.filter)}</div>`
         : rows
             .map((row) => {
               const messageClass =
@@ -536,8 +588,8 @@ export class WebviewPanel {
               const previewMarkup =
                 sessionPreview !== undefined && previewSessionCount > 0
                   ? `
-                        <div class="scenario-step__preview-list" aria-label="Toplanan sessionlar">
-                          <div class="scenario-step__preview-header">${sessionPreview.total} session bulundu</div>
+                        <div class="scenario-step__preview-list" aria-label="${providerTestT("scenario.sessionPreviewAria")}">
+                          <div class="scenario-step__preview-header">${providerTestT("scenario.sessionPreviewHeader", { total: sessionPreview.total })}</div>
                           ${sessionPreview.sessions
                             .map(
                               (session) => `
@@ -559,7 +611,7 @@ export class WebviewPanel {
                         ${row.message !== "" ? `<span class="${messageClass}">${row.message}</span>` : ""}
                         ${previewMarkup}
                       </div>
-                      <span class="scenario-step__status">${row.status}</span>
+                      <span class="scenario-step__status">${formatScenarioStatusLabel(row.status)}</span>
                     </div>
                   `;
             })
@@ -572,29 +624,31 @@ export class WebviewPanel {
               <div class="overlay-title">${summary.title}</div>
               <div class="overlay-subtitle">${state.message}</div>
             </div>
-        <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button" ${isRunning ? "disabled" : ""}>Kapat</button>
+        <button class="btn btn-ghost btn-sm scenario-overlay__close" type="button" ${isRunning ? "disabled" : ""}>${providerTestT("scenario.closeButton")}</button>
       </div>
           <div class="scenario-overlay__meta">
-            <span>${summary.completedSteps}/${summary.totalSteps} adim tamamlandi</span>
-            <span>${summary.activeStepId ?? "hazir"}</span>
+            <span>${buildScenarioStepsCompletedLabel(summary.completedSteps, summary.totalSteps)}</span>
+            <span>${summary.activeStepId ?? getScenarioReadyLabel()}</span>
           </div>
           ${syncModeMarkup}
           ${summaryMarkup}
           <div class="scenario-overlay__steps">${stepMarkup}</div>
               <div class="scenario-overlay__actions">
                 <button class="btn btn-primary btn-sm scenario-overlay__start" type="button" ${isRunning ? "disabled" : ""}>
-                  ${state.phase === "launcher" ? "Senaryoyu Baslat" : "Tekrar Calistir"}
+                  ${state.phase === "launcher" ? providerTestT("scenario.startButton") : providerTestT("scenario.rerunButton")}
                 </button>
                 ${
                   isRunning
-                    ? '<button class="btn btn-secondary btn-sm scenario-overlay__stop" type="button">Durdur</button>'
+                    ? `<button class="btn btn-secondary btn-sm scenario-overlay__stop" type="button">${providerTestT("scenario.stopButton")}</button>`
                     : ""
                 }
-                ${state.suite ? '<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">JSON Kopyala</button>' : ""}
+                ${state.suite ? `<button class="btn btn-secondary btn-sm scenario-overlay__copy" type="button">${providerTestT("scenario.copyJsonButton")}</button>` : ""}
                 ${
-                  canDeliverToAsistan
-                    ? `<button class="btn btn-secondary btn-sm scenario-overlay__send-asistan" type="button" ${state.deliveryInFlight ? "disabled" : ""}>${
-                        state.deliveryInFlight ? "Asistana Iletiliyor" : "Sonuclari Asistana Ilet"
+                  canDeliverToAssistant
+                    ? `<button class="btn btn-secondary btn-sm scenario-overlay__send-assistant" type="button" ${state.deliveryInFlight ? "disabled" : ""}>${
+                        state.deliveryInFlight
+                          ? providerTestT("scenario.deliverButtonBusy")
+                          : providerTestT("scenario.deliverButton")
                       }</button>`
                     : ""
                 }
@@ -628,8 +682,8 @@ export class WebviewPanel {
         });
       }
     });
-    overlayEl.querySelector(".scenario-overlay__send-asistan")?.addEventListener("click", () => {
-      void this.deliverScenarioResultsToAsistan();
+    overlayEl.querySelector(".scenario-overlay__send-assistant")?.addEventListener("click", () => {
+      void this.deliverScenarioResultsToAssistant();
     });
     overlayEl.querySelectorAll<HTMLElement>("[data-filter-status]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -680,13 +734,13 @@ export class WebviewPanel {
   private async copyScenarioSuiteJson(results: ProviderTestSuite): Promise<void> {
     const copied = await this.copyTextToClipboard(JSON.stringify(results, null, 2));
     if (!copied) {
-      throw new Error("Clipboard kopyalama basarisiz");
+      throw new Error(providerTestT("scenario.clipboardCopyFailed"));
     }
 
-    Logger.info(LogCategory.ENTRANCE, "Test results copied to clipboard");
+    Logger.info(LogCategory.ENTRANCE, providerTestT("modal.copiedLog"));
   }
 
-  private buildAsistanDeliveryMessage(results: ProviderTestSuite): string {
+  private buildAssistantDeliveryMessage(results: ProviderTestSuite): string {
     const completionMessage = buildScenarioCompletionMessage({
       passed: results.passed,
       totalTests: results.totalTests,
@@ -698,12 +752,17 @@ export class WebviewPanel {
       .filter((result) => result.status === "fail" || result.status === "warning")
       .slice(0, 8);
     const lines = [
-      `Entrance ${results.scenarioId} sonucu`,
-      `Slot: ${results.slot.toUpperCase()}`,
-      `Provider: ${results.providerName}`,
-      `Ozet: ${completionMessage}`,
-      `Sure: ${(results.totalDuration / 1000).toFixed(1)}s`,
-      `Pass: ${results.passed} | Fail: ${results.failed} | Warning: ${results.warnings} | Skip: ${results.skipped}`,
+      providerTestT("delivery.title", { scenarioId: results.scenarioId }),
+      providerTestT("delivery.slot", { slot: results.slot.toUpperCase() }),
+      providerTestT("delivery.provider", { provider: results.providerName }),
+      providerTestT("delivery.summary", { summary: completionMessage }),
+      providerTestT("delivery.duration", { seconds: (results.totalDuration / 1000).toFixed(1) }),
+      providerTestT("delivery.counts", {
+        passed: results.passed,
+        failed: results.failed,
+        warnings: results.warnings,
+        skipped: results.skipped,
+      }),
     ];
 
     if (
@@ -711,26 +770,26 @@ export class WebviewPanel {
       results.abortReason !== undefined &&
       results.abortReason !== ""
     ) {
-      lines.push(`Abort: ${results.abortReason}`);
+      lines.push(providerTestT("delivery.abort", { reason: results.abortReason }));
     }
 
     if (notableResults.length > 0) {
-      lines.push("", "Dikkat ceken sonuclar:");
+      lines.push("", providerTestT("delivery.notableResults"));
       notableResults.forEach((result) => {
         lines.push(`- [${result.status}] ${result.name}: ${result.message}`);
       });
     } else {
-      lines.push("", "Tum kontroller gecti veya yalnizca bilgi amacli sonuc dondu.");
+      lines.push("", providerTestT("delivery.allClear"));
     }
 
     if (results.runId !== undefined && results.runId !== "") {
-      lines.push("", `Run ID: ${results.runId}`);
+      lines.push("", providerTestT("delivery.runId", { runId: results.runId }));
     }
 
     return lines.join("\n");
   }
 
-  async deliverScenarioResultsToAsistan(): Promise<void> {
+  async deliverScenarioResultsToAssistant(): Promise<void> {
     const state = this.scenarioOverlayState;
     if (
       !state ||
@@ -742,12 +801,12 @@ export class WebviewPanel {
     }
 
     state.deliveryInFlight = true;
-    state.message = "Sonuclar Asistan'a iletiliyor";
+    state.message = providerTestT("scenario.deliverySending");
     this.renderScenarioOverlay();
 
     try {
-      const deliveryMessage = this.buildAsistanDeliveryMessage(state.suite);
-      const result = await deliverToAsistan({
+      const deliveryMessage = this.buildAssistantDeliveryMessage(state.suite);
+      const result = await deliverToAssistant({
         message: deliveryMessage,
         page: "entrance-webview-test",
         metadata: {
@@ -758,11 +817,11 @@ export class WebviewPanel {
       });
 
       if (result.success !== true) {
-        throw new Error(result.message ?? "Asistan teslimi basarisiz");
+        throw new Error(result.message ?? providerTestT("delivery.failed"));
       }
 
-      state.message = "Sonuclar Asistan'a iletildi";
-      Logger.info(LogCategory.ENTRANCE, "Scenario results delivered to Asistan", {
+      state.message = providerTestT("scenario.deliverySent");
+      Logger.info(LogCategory.ENTRANCE, providerTestT("logs.deliveredToAssistant"), {
         slot: state.testedSlot,
         scenarioId: state.scenarioId,
       });
@@ -770,7 +829,9 @@ export class WebviewPanel {
       state.message = getErrorMessage(error as Error);
       Logger.error(
         LogCategory.ENTRANCE,
-        `Scenario results could not be delivered to Asistan: ${getErrorMessage(error as Error)}`
+        providerTestT("logs.deliveryToAssistantFailed", {
+          message: getErrorMessage(error as Error),
+        })
       );
     } finally {
       state.deliveryInFlight = false;
@@ -788,7 +849,7 @@ export class WebviewPanel {
     const state = this.scenarioOverlayState;
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      throw new Error("Electron API unavailable");
+      throw new Error(providerTestT("errors.electronApiUnavailable"));
     }
 
     const handler = (event: ProviderScenarioProgressEvent): void => {
@@ -804,7 +865,10 @@ export class WebviewPanel {
       state.commands = [];
       state.runId = null;
       state.suite = null;
-      state.message = `${state.providerName} ${state.scenarioTitle} baslatildi`;
+      state.message = providerTestT("scenario.startedMessage", {
+        providerName: state.providerName,
+        scenarioTitle: state.scenarioTitle,
+      });
       this.renderScenarioOverlay();
 
       const scenarioRequest =
@@ -847,7 +911,10 @@ export class WebviewPanel {
 
       Logger.info(
         LogCategory.ENTRANCE,
-        `Scenario completed: ${state.scenarioId} ${completionMessage}`
+        providerTestT("logs.scenarioCompleted", {
+          scenarioId: state.scenarioId,
+          message: completionMessage,
+        })
       );
     } catch (error) {
       state.phase = "completed";
@@ -856,7 +923,10 @@ export class WebviewPanel {
 
       Logger.error(
         LogCategory.ENTRANCE,
-        `Scenario failed: ${state.scenarioId} ${getErrorMessage(error as Error)}`
+        providerTestT("logs.scenarioFailed", {
+          scenarioId: state.scenarioId,
+          message: getErrorMessage(error as Error),
+        })
       );
     } finally {
       const progressHandler = this.providerTestProgressHandler;
@@ -873,12 +943,12 @@ export class WebviewPanel {
     }
 
     if (state.runId === null) {
-      state.message = "Durdurma istegi icin senaryo baslatiliyor";
+      state.message = providerTestT("scenario.stopPreparing");
       this.renderScenarioOverlay();
       return;
     }
 
-    state.message = "Durdurma istegi gonderildi";
+    state.message = providerTestT("scenario.stopRequested");
     this.renderScenarioOverlay();
 
     try {
@@ -925,24 +995,26 @@ export class WebviewPanel {
       const content = this.generateTestResultsHTML(results);
 
       modalManager.open({
-        title: `🧪 Test Results - ${results.providerName} (${results.slot.toUpperCase()})`,
+        title: buildProviderTestResultsModalTitle(results),
         content,
         size: "large",
         buttons: [
           {
-            text: "📋 Copy JSON",
+            text: providerTestT("modal.copyJsonButton"),
             class: "btn-ghost",
             onClick: (): void => {
               void this.copyScenarioSuiteJson(results).catch((error) => {
                 Logger.error(
                   LogCategory.ENTRANCE,
-                  `Test results copy failed: ${getErrorMessage(error as Error)}`
+                  providerTestT("modal.copyFailed", {
+                    message: getErrorMessage(error as Error),
+                  })
                 );
               });
             },
           },
           {
-            text: "✖ Close",
+            text: providerTestT("modal.closeButton"),
             class: "btn-primary",
             onClick: (): void => {
               modalManager.close();
@@ -954,104 +1026,7 @@ export class WebviewPanel {
   }
 
   generateTestResultsHTML(results: ProviderTestSuite): string {
-    const { passed, failed, skipped, warnings, totalTests, totalDuration, aborted, abortReason } =
-      results;
-
-    let html = `
-      <div class="test-results-summary">
-        <div class="test-stats">
-          <span class="stat-item stat-pass">✅ ${passed} Passed</span>
-          <span class="stat-item stat-fail">❌ ${failed} Failed</span>
-          ${warnings > 0 ? `<span class="stat-item stat-warning">⚠️ ${warnings} Warnings</span>` : ""}
-          ${skipped > 0 ? `<span class="stat-item stat-skip">⏭️ ${skipped} Skipped</span>` : ""}
-        </div>
-        <div class="test-meta">
-          <span>⏱️ Duration: ${(totalDuration / 1000).toFixed(2)}s</span>
-          <span>📊 Total: ${totalTests} tests</span>
-        </div>
-        ${aborted === true ? `<div class="test-aborted">⚠️ Aborted: ${abortReason ?? "unknown"}</div>` : ""}
-      </div>
-    `;
-
-    const categories: Record<string, ProviderTestResult[]> = {};
-    results.results.forEach((result) => {
-      categories[result.category] ??= [];
-      categories[result.category]?.push(result);
-    });
-
-    const categoryEmoji: Record<string, string> = {
-      preflight: "🚀",
-      dom: "📋",
-      interactive: "🎮",
-      scraping: "📝",
-      advanced: "🔬",
-    };
-
-    const categoryNames: Record<string, string> = {
-      preflight: "Pre-flight Checks",
-      dom: "DOM Tests",
-      interactive: "Interactive Tests",
-      scraping: "Scraping Tests",
-      advanced: "Advanced Tests",
-    };
-
-    for (const [category, tests] of Object.entries(categories)) {
-      html += `
-        <div class="test-category">
-          <h3 class="category-title">${categoryEmoji[category] ?? "📦"} ${categoryNames[category] ?? category}</h3>
-          <div class="test-results-list">
-      `;
-
-      tests.forEach((test) => {
-        const statusEmoji: Record<string, string> = {
-          pass: "✅",
-          fail: "❌",
-          skip: "⏭️",
-          warning: "⚠️",
-        };
-
-        html += `
-          <div class="test-result-item test-${test.status}">
-            <div class="test-header">
-              <span class="test-status">${statusEmoji[test.status] ?? "•"}</span>
-              <span class="test-name">${test.name}</span>
-              <span class="test-duration">${test.duration}ms</span>
-            </div>
-            <div class="test-message">${test.message}</div>
-        `;
-
-        if (test.details) {
-          html += '<div class="test-details">';
-
-          if (test.details.selector !== undefined && test.details.selector !== "") {
-            html += `<div class="detail-item"><strong>Selector:</strong> <code>${test.details.selector}</code></div>`;
-          }
-
-          if (test.details.error !== undefined && test.details.error !== "") {
-            html += `<div class="detail-item detail-error"><strong>Error:</strong> ${test.details.error}</div>`;
-          }
-
-          if (test.details.element !== undefined) {
-            const el = test.details.element;
-            html += `<div class="detail-item"><strong>Element:</strong> ${el.tagName} (visible: ${String(el.visible)}, enabled: ${String(el.enabled)})</div>`;
-            if (el.textContent !== undefined && el.textContent !== "") {
-              html += `<div class="detail-item"><strong>Text:</strong> ${el.textContent.slice(0, 50)}...</div>`;
-            }
-          }
-
-          html += "</div>";
-        }
-
-        html += "</div>";
-      });
-
-      html += `
-          </div>
-        </div>
-      `;
-    }
-
-    return html;
+    return generateProviderTestResultsHTML(results);
   }
 
   applyGating(settings: AppSettings | null, _changedPaths: string[] = []): void {
@@ -1106,8 +1081,8 @@ export class WebviewPanel {
           overlayEl.className = "webview-overlay empty"; // State class
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = "Hesap Atanmadı";
-          if (subtitle) subtitle.textContent = "Settings'ten hesap atayın";
+          if (title) title.textContent = AppI18n.t("entrance.webview.noAccount.title");
+          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.noAccount.subtitle");
         }
         continue;
       }
@@ -1119,8 +1094,9 @@ export class WebviewPanel {
           overlayEl.className = "webview-overlay disconnected"; // State class
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = "Bağlı Değil";
-          if (subtitle) subtitle.textContent = "Bağlan butonuna tıklayın";
+          if (title) title.textContent = AppI18n.t("entrance.webview.disconnected.title");
+          if (subtitle)
+            subtitle.textContent = AppI18n.t("entrance.webview.disconnected.subtitle");
         }
         if (webviewEl) webviewEl.style.display = "none";
         continue;
@@ -1132,8 +1108,8 @@ export class WebviewPanel {
           overlayEl.className = "webview-overlay connecting"; // State class + spinner animation
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = "Bağlanıyor...";
-          if (subtitle) subtitle.textContent = "Lütfen bekleyin";
+          if (title) title.textContent = AppI18n.t("entrance.webview.connecting.title");
+          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.connecting.subtitle");
         }
         const mountId = `${provider}-webview-mount`;
         const mountEl = document.getElementById(mountId);
@@ -1210,7 +1186,7 @@ export class WebviewPanel {
       try {
         currentUrl = webviewEl.getURL?.() ?? "";
       } catch (_) {
-        // URL okunamadıysa boş kalsın
+        // Leave the value empty when the URL cannot be read.
       }
       const isExcluded = WebviewManager.isUrlExcluded(type, currentUrl);
 
@@ -1218,7 +1194,7 @@ export class WebviewPanel {
       const now = Date.now();
 
       if (isExcluded !== true && now - state.lastStart > 1200) {
-        this.addLog(type, "info", "Sayfa yükleniyor...", { visibility: 3 });
+        this.addLog(type, "info", entranceWebviewT("logs.pageLoading"), { visibility: 3 });
         state.lastStart = now;
       }
       this.loadLogState[type] = state;
@@ -1237,7 +1213,7 @@ export class WebviewPanel {
         const now = Date.now();
 
         if (now - state.lastStop > 1200) {
-          this.addLog(type, "info", "Sayfa yükleme tamamlandı", { visibility: 3 });
+          this.addLog(type, "info", entranceWebviewT("logs.pageLoaded"), { visibility: 3 });
           state.lastStop = now;
         }
         this.loadLogState[type] = state;
@@ -1262,19 +1238,26 @@ export class WebviewPanel {
             : null;
         if (cfg !== null) {
           try {
-            const configScript = `
-              (function() {
-                try {
-                  window.__hayalet_slot = ${JSON.stringify(type)};
-                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
-                  return true;
-                } catch (e) {
-                  console.error('[Hayalet-Config-Inject] Failed:', e);
-                  return false;
-                }
-              })();
-            `;
-            await webviewEl.executeJavaScript?.(configScript);
+            if (typeof webviewEl.send === "function" && currentProviderId) {
+              webviewEl.send("hayalet-set-provider", {
+                providerId: currentProviderId,
+                slot: type,
+              });
+            } else {
+              const configScript = `
+                (function() {
+                  try {
+                    window.__hayalet_slot = ${JSON.stringify(type)};
+                    window.__hayalet_provider_config = ${JSON.stringify(cfg)};
+                    return true;
+                  } catch (e) {
+                    console.error('[Hayalet-Config-Inject] Failed:', e);
+                    return false;
+                  }
+                })();
+              `;
+              await webviewEl.executeJavaScript?.(configScript);
+            }
           } catch (_err) {
             void _err;
           }
@@ -1296,21 +1279,25 @@ export class WebviewPanel {
     webviewEl.addEventListener("console-message", (event: Event) => {
       const consoleEvent = event as Event & { message: string; level: number };
       const { message, level } = consoleEvent;
+      const consoleMessage = entranceWebviewT("logs.consoleMessage", {
+        slot: type.toUpperCase(),
+        message,
+      });
 
       // Level: 0=log, 1=warn, 2=error, 3=debug
       const logLevel = level === 2 ? "error" : level === 1 ? "warn" : "debug";
       if (logLevel === "error") {
-        Logger.error(LogCategory.WEBVIEW, new Error(`[Webview ${type.toUpperCase()}] ${message}`), {
+        Logger.error(LogCategory.WEBVIEW, new Error(consoleMessage), {
           source: `${type}-webview`,
           slotId: type,
         });
       } else if (logLevel === "warn") {
-        Logger.warn(LogCategory.WEBVIEW, `[Webview ${type.toUpperCase()}] ${message}`, {
+        Logger.warn(LogCategory.WEBVIEW, consoleMessage, {
           source: `${type}-webview`,
           slotId: type,
         });
       } else {
-        Logger.debug(LogCategory.WEBVIEW, `[Webview ${type.toUpperCase()}] ${message}`, {
+        Logger.debug(LogCategory.WEBVIEW, consoleMessage, {
           source: `${type}-webview`,
           slotId: type,
         });
@@ -1331,7 +1318,10 @@ export class WebviewPanel {
                 const tokens = Array.isArray(payload.tokens)
                   ? payload.tokens.join(",")
                   : String(payload.tokens ?? "");
-                titleEl.textContent = tokens !== "" ? `${base} — tokens: ${tokens}` : base;
+                titleEl.textContent =
+                  tokens !== ""
+                    ? entranceWebviewT("usageTitleWithTokens", { base, tokens })
+                    : base;
               }
             }
           }
@@ -1339,7 +1329,9 @@ export class WebviewPanel {
           const error = err as Error;
           Logger.warn(
             LogCategory.ENTRANCE,
-            `IPC message handler hatası: ${getErrorMessage(error)}`
+            entranceWebviewT("logs.ipcHandlerError", {
+              message: getErrorMessage(error),
+            })
           );
         }
       }
@@ -1352,10 +1344,14 @@ export class WebviewPanel {
           this.addLog(
             type,
             "error",
-            `Yükleme hatası (${event.errorCode ?? 0}): ${event.errorDescription ?? "Bilinmeyen hata"}`
+            entranceWebviewT("logs.loadFailed", {
+              code: event.errorCode ?? 0,
+              description:
+                event.errorDescription ?? entranceWebviewT("logs.unknownLoadError"),
+            })
           );
         } else if (event.errorCode === -3) {
-          this.addLog(type, "info", "Yükleme iptal edildi (normal)");
+          this.addLog(type, "info", entranceWebviewT("logs.loadCancelled"));
         }
       }
     );
@@ -1400,18 +1396,21 @@ export class WebviewPanel {
     try {
       const webview = type === "ai1" ? this.ai1Webview : this.ai2Webview;
       if (!webview) {
-        this.addLog(type, "error", "Webview bulunamadı");
+        this.addLog(type, "error", entranceWebviewT("logs.webviewMissing"));
         return;
       }
 
       (webview as WebviewElement).openDevTools?.();
-      this.addLog(type, "info", "DevTools açıldı");
+      this.addLog(type, "info", entranceWebviewT("logs.devtoolsOpened"));
     } catch (err) {
       const error = err as Error;
-      Logger.error(LogCategory.ENTRANCE, `DevTools açma hatası: ${getErrorMessage(error)}`, {
+      const message = entranceWebviewT("logs.devtoolsOpenError", {
+        message: getErrorMessage(error),
+      });
+      Logger.error(LogCategory.ENTRANCE, message, {
         context: { type },
       });
-      this.addLog(type, "error", `DevTools açma hatası: ${getErrorMessage(error)}`);
+      this.addLog(type, "error", message);
     }
   }
 

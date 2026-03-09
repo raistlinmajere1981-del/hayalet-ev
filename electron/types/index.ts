@@ -1,8 +1,8 @@
 /**
  * Electron Main Process Type Definitions
  *
- * Bu dosya electron/ klasöründeki tüm modüller için ortak tip tanımlarını içerir.
- * Tip tanımları incremental TypeScript dönüşümü için kullanılır.
+ * This file contains shared type definitions for all modules under electron/.
+ * The types are used for the incremental TypeScript migration.
  *
  * @module electron/types
  */
@@ -63,7 +63,7 @@ export interface SyncMessagesParams {
   messages: Array<{
     role: "user" | "assistant";
     text: string;
-    /** Mesajı gönderen kişinin nickname'i (relay/++cmd senaryolarında gerçek göndereni tutar) */
+    /** Sender nickname (preserves the real sender in relay/++cmd scenarios) */
     author?: string;
     index?: number;
     domIndex?: number;

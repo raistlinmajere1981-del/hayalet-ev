@@ -1,15 +1,20 @@
 /**
  * Development Tools - Structure Visualizer
  *
- * Dosya yapısını görselleştir: AST tree, scope hierarchy, bracket analysis
+ * Visualizes file structure with AST, scope hierarchy, and bracket analysis.
  */
 
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
 import type { NodePath } from "@babel/traverse";
 import type * as t from "@babel/types";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 type TraverseFn = (...args: unknown[]) => unknown;
+
+function structureVizT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.structureVisualizer.${key}`, params);
+}
 
 // Copy full implementation from dev-tools.ts lines 1293-1785
 export async function visualizeStructure(
@@ -43,8 +48,8 @@ export async function visualizeStructure(
   if (!existsSync(fullPath)) {
     return {
       success: false,
-      output: `❌ Dosya bulunamadı: ${filePath}`,
-      errors: ["File not found"],
+      output: structureVizT("runtime.fileNotFound", { filePath }),
+      errors: [structureVizT("runtime.fileNotFoundShort")],
     };
   }
 
@@ -52,7 +57,7 @@ export async function visualizeStructure(
   const ext = extname(filePath);
   const lines = content.split("\n");
 
-  output.push(`🔍 Dosya Yapısı: ${filePath}`);
+  output.push(structureVizT("runtime.title", { filePath }));
   output.push("═".repeat(50));
   output.push("");
 
@@ -94,7 +99,7 @@ export async function visualizeStructure(
       astParseSuccess = true;
 
       if (showScopes) {
-        output.push("📦 SCOPE HIERARCHY:");
+        output.push(structureVizT("runtime.scopeHierarchyTitle"));
         output.push("━".repeat(50));
 
         const scopes: Array<{
@@ -260,7 +265,10 @@ export async function visualizeStructure(
                         ? "🎛️"
                         : "📦";
 
-          const status = scope.endLine !== 0 ? "✅" : "❌ UNCLOSED";
+          const status =
+            scope.endLine !== 0
+              ? structureVizT("runtime.scopeStatus.closed")
+              : structureVizT("runtime.scopeStatus.unclosed");
 
           output.push(
             `${indent}${lineRange.padEnd(8)} │ ${prefix}${icon} ${scope.name.padEnd(25)} ${status}`
@@ -298,11 +306,11 @@ export async function visualizeStructure(
         scopeCount = scopes.length; // Save count before leaving scope
       }
 
-      output.push(`✅ AST parse başarılı (${scopeCount} scope bulundu)`);
+      output.push(structureVizT("runtime.astParseSuccess", { scopeCount }));
     } catch (err) {
       const error = err as Error;
-      errors.push(`AST parse error: ${error.message}`);
-      output.push(`⚠️  AST parse başarısız, fallback mod kullanılıyor...`);
+      errors.push(structureVizT("runtime.astParseError", { message: error.message }));
+      output.push(structureVizT("runtime.astParseFallback"));
       output.push("");
     }
   }
@@ -310,12 +318,12 @@ export async function visualizeStructure(
   // Bracket analysis (always run, context-aware)
   if (showBrackets) {
     output.push("");
-    output.push("🔗 BRACKET ANALYSIS:");
+    output.push(structureVizT("runtime.bracketAnalysisTitle"));
     output.push("━".repeat(50));
 
     // If AST parse was successful, brackets are guaranteed to be balanced
     if (astParseSuccess) {
-      output.push("✅ Tüm parantezler dengeli (Babel AST parse başarılı)");
+      output.push(structureVizT("runtime.bracketsBalancedAst"));
       output.push("━".repeat(50));
       // Skip manual counting, AST parse guarantees correctness
     } else {
@@ -345,25 +353,43 @@ export async function visualizeStructure(
       }
 
       if (unclosedBrackets.length === 0 && extraBrackets.length === 0) {
-        output.push("✅ Tüm parantezler dengeli");
+        output.push(structureVizT("runtime.bracketsBalanced"));
       } else {
         if (unclosedBrackets.length > 0) {
-          output.push(`❌ Kapanmamış parantezler (${unclosedBrackets.length}):`);
+          output.push(
+            structureVizT("runtime.unclosedBracketsTitle", { count: unclosedBrackets.length })
+          );
           unclosedBrackets.slice(0, 5).forEach((b) => {
-            output.push(`   Line ${b.line}, Col ${b.col}: '${b.char}' kapanmamış`);
+            output.push(
+              structureVizT("runtime.unclosedBracketLine", {
+                line: b.line,
+                col: b.col,
+                char: b.char,
+              })
+            );
           });
           if (unclosedBrackets.length > 5) {
-            output.push(`   ... ve ${unclosedBrackets.length - 5} tane daha`);
+            output.push(
+              structureVizT("runtime.moreBracketIssues", { count: unclosedBrackets.length - 5 })
+            );
           }
         }
 
         if (extraBrackets.length > 0) {
-          output.push(`❌ Fazla kapanış parantezleri (${extraBrackets.length}):`);
+          output.push(structureVizT("runtime.extraBracketsTitle", { count: extraBrackets.length }));
           extraBrackets.slice(0, 5).forEach((b) => {
-            output.push(`   Line ${b.line}, Col ${b.col}: '${b.char}' açılış yok`);
+            output.push(
+              structureVizT("runtime.extraBracketLine", {
+                line: b.line,
+                col: b.col,
+                char: b.char,
+              })
+            );
           });
           if (extraBrackets.length > 5) {
-            output.push(`   ... ve ${extraBrackets.length - 5} tane daha`);
+            output.push(
+              structureVizT("runtime.moreBracketIssues", { count: extraBrackets.length - 5 })
+            );
           }
         }
       }
@@ -375,7 +401,7 @@ export async function visualizeStructure(
   // Comment analysis
   if (showComments) {
     output.push("");
-    output.push("💬 COMMENT BLOCKS:");
+    output.push(structureVizT("runtime.commentBlocksTitle"));
     output.push("━".repeat(50));
 
     const commentBlocks: Array<{ type: string; start: number; end?: number }> = [];
@@ -405,23 +431,27 @@ export async function visualizeStructure(
 
     if (inMultilineComment) {
       commentBlocks.push({ type: "multi", start: multilineStart });
-      errors.push(`Unclosed multi-line comment starting at line ${multilineStart}`);
+      errors.push(
+        structureVizT("runtime.unclosedCommentError", { startLine: multilineStart })
+      );
     }
 
     if (commentBlocks.length === 0) {
-      output.push("   (Yorum bloğu yok)");
+      output.push(structureVizT("runtime.noCommentBlocks"));
     } else {
       const singleComments = commentBlocks.filter((c) => c.type === "single");
       const multiComments = commentBlocks.filter((c) => c.type === "multi");
 
-      output.push(`   Single-line: ${singleComments.length}`);
-      output.push(`   Multi-line: ${multiComments.length}`);
+      output.push(structureVizT("runtime.singleLineComments", { count: singleComments.length }));
+      output.push(structureVizT("runtime.multiLineComments", { count: multiComments.length }));
 
       multiComments.slice(0, 5).forEach((c) => {
         if (c.end != null && c.end > 0) {
-          output.push(`   Line ${c.start}-${c.end}: /* ... */ ✅`);
+          output.push(
+            structureVizT("runtime.commentBlockClosed", { start: c.start, end: c.end })
+          );
         } else {
-          output.push(`   Line ${c.start}: /* ... ❌ UNCLOSED`);
+          output.push(structureVizT("runtime.commentBlockUnclosed", { start: c.start }));
         }
       });
     }
@@ -430,11 +460,11 @@ export async function visualizeStructure(
   }
 
   output.push("");
-  output.push(`📊 Total Lines: ${lines.length}`);
+  output.push(structureVizT("runtime.totalLines", { count: lines.length }));
 
   if (errors.length > 0) {
     output.push("");
-    output.push("⚠️  ISSUES DETECTED:");
+    output.push(structureVizT("runtime.issuesDetected"));
     errors.forEach((err) => output.push(`   • ${err}`));
   }
 
@@ -471,10 +501,10 @@ export function countBracketsContextAware(content: string): {
   let inSingleLineComment: boolean;
   let inMultiLineComment = false;
 
-  // Stack for template literal interpolation: ${...} içindeki kodu doğru parse etmek için
-  // Her eleman bir template literal context'i temsil eder (nested template literal desteği)
-  // Stack'e push: ${ görüldüğünde (template literal içindeyken)
-  // Stack'ten pop: } görüldüğünde ve stack boş değilken
+  // Track nested `${...}` interpolation blocks inside template literals.
+  // Each item stores the brace depth captured at a template-literal nesting level.
+  // Push when `${` is entered inside a template literal.
+  // Pop when `}` closes the current interpolation block.
   const templateLiteralStack: number[] = []; // stores brace depth at each template level
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {

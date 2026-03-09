@@ -10,14 +10,14 @@ const providers = {
   gemini,
 };
 
-const asistanProviders = {
+const assistantProviders = {
   opencode,
   "opencode-ui": opencodeUi,
 };
 
 const allProviders = {
   ...providers,
-  ...asistanProviders,
+  ...assistantProviders,
 };
 
 type ProviderRecord = Record<string, unknown>;
@@ -29,8 +29,8 @@ function updateProviderMaps(id: string, config: unknown): void {
     (providers as Record<string, Record<string, unknown>>)[id] = record;
   }
 
-  if (id in asistanProviders) {
-    (asistanProviders as Record<string, Record<string, unknown>>)[id] = record;
+  if (id in assistantProviders) {
+    (assistantProviders as Record<string, Record<string, unknown>>)[id] = record;
   }
 
   (allProviders as Record<string, Record<string, unknown>>)[id] = record;
@@ -38,7 +38,7 @@ function updateProviderMaps(id: string, config: unknown): void {
 
 const providerRegistry = {
   /**
-   * Provider config'i getir (AI + Asistan)
+   * Returns the provider config (AI + Assistant).
    * @param {string} id - Provider ID (chatgpt, grok, gemini, opencode, opencode-ui)
    * @returns {Object|null}
    */
@@ -47,7 +47,7 @@ const providerRegistry = {
   },
 
   /**
-   * Sadece ana AI provider'ları getir
+   * Returns only the primary AI providers.
    * @returns {Object[]}
    */
   getAll(): Record<string, unknown>[] {
@@ -55,21 +55,21 @@ const providerRegistry = {
   },
 
   /**
-   * Sadece ana AI provider ID'leri getir
+   * Returns only the primary AI provider IDs.
    * @returns {string[]}
    */
   getIds(): string[] {
     return Object.keys(providers);
   },
 
-  getAsistan(id: string): Record<string, unknown> | null {
-    return (asistanProviders as ProviderMap)[id] ?? null;
+  getAssistant(id: string): Record<string, unknown> | null {
+    return (assistantProviders as ProviderMap)[id] ?? null;
   },
-  getAllAsistan(): Record<string, unknown>[] {
-    return Object.values(asistanProviders);
+  getAllAssistants(): Record<string, unknown>[] {
+    return Object.values(assistantProviders);
   },
-  getAsistanIds(): string[] {
-    return Object.keys(asistanProviders);
+  getAssistantIds(): string[] {
+    return Object.keys(assistantProviders);
   },
 
   getAny(id: string): Record<string, unknown> | null {
@@ -86,8 +86,8 @@ const providerRegistry = {
     updateProviderMaps(id, config);
   },
 
-  isAsistan(id: string): boolean {
-    return id in asistanProviders;
+  isAssistant(id: string): boolean {
+    return id in assistantProviders;
   },
 };
 

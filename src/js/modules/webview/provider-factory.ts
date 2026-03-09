@@ -1,7 +1,7 @@
 /**
  * Provider Factory
  *
- * Provider modüllerini yönetir.
+ * Manages provider modules.
  */
 
 export type ProviderModule = Record<string, unknown>;
@@ -18,14 +18,14 @@ const providers: Record<string, ProviderModule> = {
   gemini: geminiProvider,
 };
 
-const asistanProviders: Record<string, ProviderModule> = {
+const assistantProviders: Record<string, ProviderModule> = {
   opencode: opencodeProvider,
   "opencode-ui": opencodeUiProvider,
 };
 
 const allProviders: Record<string, ProviderModule> = {
   ...providers,
-  ...asistanProviders,
+  ...assistantProviders,
 };
 
 export function getProvider(providerId: string): ProviderModule | undefined {

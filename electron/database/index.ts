@@ -35,7 +35,7 @@ function getManager(accountId: string): SQLiteArchiveManager {
 
   const manager = activeManagers.get(accountId);
   if (manager === undefined) {
-    // Çok nadir: Map set başarısız/yarış durumu. Güvenli fallback.
+    // Extremely rare: Map set failed or raced. Use a safe fallback.
     const created = new SQLiteArchiveManager(accountId);
     activeManagers.set(accountId, created);
     return created;

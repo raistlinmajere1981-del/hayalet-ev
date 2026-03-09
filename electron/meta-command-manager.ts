@@ -1,10 +1,10 @@
 /**
  * Meta Command Manager - Electron Main Process
  *
- * AI'ların dinamik olarak yeni komutlar tanımlamasını sağlar.
- * Komutlar config/custom-commands.json dosyasında kalıcı olarak saklanır.
+ * Allows AIs to define new commands dynamically.
+ * Commands are stored persistently in config/custom-commands.json.
  *
- * Güvenlik: Yok - Tam sistem erişimi ile JavaScript kodu çalıştırılabilir.
+ * Security: none - JavaScript code can run with full system access.
  */
 
 import fs from "fs";
@@ -12,7 +12,14 @@ import path from "path";
 import type { IpcMainInvokeEvent } from "electron";
 import { getLoggerCore } from "./logger/index.js";
 import { Paths } from "./paths.ts";
+import { loadSettings } from "./settings-manager.ts";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import { loadAvailableLanguage } from "./i18n/language-service.ts";
+import { translateCatalog } from "../shared/i18n/catalog.js";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../shared/i18n/locale.js";
 
 const logger = getLoggerCore();
 
@@ -26,6 +33,26 @@ interface CustomCommand {
 }
 
 type CommandsMap = Record<string, CustomCommand>;
+
+async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
+  let settings: { general?: { language?: unknown } } = {};
+  try {
+    settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
+  } catch {
+    settings = {};
+  }
+
+  const locale = normalizeAppLanguage(settings.general?.language);
+  const activePack =
+    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+}
+
+async function metaCommandT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.metaCommand.${key}`, params);
+}
 
 function parseCommandsMap(content: string): CommandsMap {
   const parsed: unknown = JSON.parse(content);
@@ -96,7 +123,7 @@ interface DefineCommandResult {
   command?: CustomCommand;
 }
 
-export function defineCommand(
+export async function defineCommand(
   _event: IpcMainInvokeEvent,
   {
     name,
@@ -104,14 +131,14 @@ export function defineCommand(
     code,
     createdBy,
   }: { name: string; description?: string; code: string; createdBy?: string }
-): DefineCommandResult {
+): Promise<DefineCommandResult> {
   try {
     if (typeof name !== "string" || name === "") {
-      return { success: false, error: "Komut adı gerekli" };
+      return { success: false, error: await metaCommandT("commandNameRequired") };
     }
 
     if (typeof code !== "string" || code === "") {
-      return { success: false, error: "Komut kodu gerekli" };
+      return { success: false, error: await metaCommandT("commandCodeRequired") };
     }
 
     const normalizedName = name.charAt(0).toUpperCase() + name.slice(1);
@@ -131,16 +158,20 @@ export function defineCommand(
 
     saveCustomCommands(commands);
 
+    const logMessage = await metaCommandT(isUpdate ? "commandUpdated" : "commandCreated", {
+      name: normalizedName,
+    });
+
     void logger.logInternal(
       LogCategory.MAIN,
       LogLevel.INFO,
-      `Command ${isUpdate ? "updated" : "created"}: ${normalizedName}`,
+      logMessage,
       { commandName: normalizedName, isUpdate, createdBy: createdBy ?? "unknown" }
     );
 
     return {
       success: true,
-      message: `Komut ${isUpdate ? "güncellendi" : "oluşturuldu"}: ${normalizedName}`,
+      message: logMessage,
       command: commands[normalizedName],
     };
   } catch (err) {
@@ -161,13 +192,13 @@ export function defineCommand(
   }
 }
 
-export function deleteCommand(
+export async function deleteCommand(
   _event: IpcMainInvokeEvent,
   { name }: { name: string }
-): { success: boolean; message?: string; error?: string } {
+): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
     if (typeof name !== "string" || name === "") {
-      return { success: false, error: "Komut adı gerekli" };
+      return { success: false, error: await metaCommandT("commandNameRequired") };
     }
 
     const commands = loadCustomCommands();
@@ -175,17 +206,18 @@ export function deleteCommand(
     const key = Object.keys(commands).find((k) => k.toLowerCase() === name.toLowerCase());
 
     if (key === undefined) {
-      return { success: false, error: `Komut bulunamadı: ${name}` };
+      return { success: false, error: await metaCommandT("commandNotFound", { name }) };
     }
 
     delete commands[key];
     saveCustomCommands(commands);
 
-    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, `Komut silindi: ${key}`, {});
+    const successMessage = await metaCommandT("commandDeleted", { name: key });
+    void logger.logInternal(LogCategory.MAIN, LogLevel.INFO, successMessage, {});
 
-    return { success: true, message: `Komut silindi: ${key}` };
+    return { success: true, message: successMessage };
   } catch (err) {
-    void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, "deleteCommand hatası", {
+    void logger.logInternal(LogCategory.MAIN, LogLevel.ERROR, await metaCommandT("deleteError"), {
       error: err,
     });
     return { success: false, error: (err as Error).message };
@@ -217,13 +249,13 @@ export function listCommands(_event: IpcMainInvokeEvent): {
   }
 }
 
-export function getCommand(
+export async function getCommand(
   _event: IpcMainInvokeEvent,
   { name }: { name: string }
-): { success: boolean; command?: CustomCommand; error?: string } {
+): Promise<{ success: boolean; command?: CustomCommand; error?: string }> {
   try {
     if (name === "") {
-      return { success: false, error: "Komut adı gerekli" };
+      return { success: false, error: await metaCommandT("commandNameRequired") };
     }
 
     const commands = loadCustomCommands();
@@ -231,13 +263,13 @@ export function getCommand(
     const key = Object.keys(commands).find((k) => k.toLowerCase() === name.toLowerCase());
 
     if (key === undefined) {
-      return { success: false, error: `Komut bulunamadı: ${name}` };
+      return { success: false, error: await metaCommandT("commandNotFound", { name }) };
     }
 
     const command = commands[key];
     return command !== undefined
       ? { success: true, command }
-      : { success: false, error: `Komut bulunamadı: ${name}` };
+      : { success: false, error: await metaCommandT("commandNotFound", { name }) };
   } catch (err) {
     void logger.logInternal(
       LogCategory.MAIN,

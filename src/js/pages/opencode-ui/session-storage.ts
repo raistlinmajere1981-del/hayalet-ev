@@ -7,6 +7,7 @@ import type {
   OpencodeUiSessionSummary,
   RuntimeState,
 } from "./types.js";
+import { t } from "./i18n.js";
 
 export interface OpencodeUiSessionStorage {
   listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]>;
@@ -25,14 +26,14 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
     async listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]> {
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
-        throw new Error("electronAPI mevcut degil");
+        throw new Error(t("storage.electronUnavailable"));
       }
 
       const result = (await electronApi.opencodeUiFsListSessions(
         dbPathArg()
       )) as OpencodeUiFsListResult;
       if (result.success !== true) {
-        throw new Error(result.error ?? "Session listesi alinamadi");
+        throw new Error(result.error ?? t("storage.listFailed"));
       }
 
       const sessions = Array.isArray(result.sessions) ? result.sessions : [];
@@ -48,7 +49,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
     async ensureSessionInDisk(sessionId: string, title?: string): Promise<void> {
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
-        throw new Error("electronAPI mevcut degil");
+        throw new Error(t("storage.electronUnavailable"));
       }
 
       const result = (await electronApi.opencodeUiFsEnsureSession(
@@ -58,14 +59,14 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsEnsureResult;
 
       if (result.success !== true) {
-        throw new Error(result.error ?? "Session disk kaydi olusturulamadi");
+        throw new Error(result.error ?? t("storage.ensureFailed"));
       }
     },
 
     async readSessionFromDisk(sessionId: string): Promise<OpencodeUiSessionDetail | null> {
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
-        throw new Error("electronAPI mevcut degil");
+        throw new Error(t("storage.electronUnavailable"));
       }
 
       const result = (await electronApi.opencodeUiFsReadSession(
@@ -82,7 +83,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
     async archiveSessionInDisk(sessionId: string, archived = true): Promise<void> {
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
-        throw new Error("electronAPI mevcut degil");
+        throw new Error(t("storage.electronUnavailable"));
       }
 
       const result = (await electronApi.opencodeUiFsArchiveSession(
@@ -92,7 +93,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsArchiveResult;
 
       if (result.success !== true) {
-        throw new Error(result.error ?? "Session arsivlenemedi");
+        throw new Error(result.error ?? t("storage.archiveFailed"));
       }
     },
   };

@@ -6,6 +6,12 @@
  */
 
 import { getFilename } from "../constants/index.js";
+import { DEFAULT_APP_LANGUAGE } from "../../types/i18n.js";
+import {
+  getBuiltInLanguageDescriptors,
+  getBuiltInLanguagePack,
+} from "../../../shared/i18n/bundled-languages.js";
+import { normalizeAppLanguage } from "../../../shared/i18n/locale.js";
 
 export function ensureElectronApiFallback(): void {
   if (window.electronAPI) return;
@@ -48,6 +54,15 @@ export function ensureElectronApiFallback(): void {
       } catch {
         return await Promise.resolve(false);
       }
+    },
+    i18nListLanguages: async () => {
+      return await Promise.resolve(getBuiltInLanguageDescriptors());
+    },
+    i18nLoadLanguage: async (locale: string) => {
+      const normalized = normalizeAppLanguage(locale);
+      return await Promise.resolve(
+        getBuiltInLanguagePack(normalized) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)
+      );
     },
 
     readFile: async (path: string): Promise<string | null> => {

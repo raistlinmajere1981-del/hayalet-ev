@@ -1,26 +1,33 @@
 /**
- * DebugTools - Hata analizi ve debugging araçları
+ * Debug tools for error analysis and context summarization.
  */
 
 import type { ToolResult } from "@shared/index-mcp.js";
+import type { TranslationParams } from "../../types/i18n.js";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 
-/** Error pattern interface */
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
 interface ErrorPattern {
   pattern: RegExp;
   category: string;
-  suggestion: string;
+  suggestionKey: string;
   checkFiles: (provider?: string) => string[];
   severity: "high" | "medium" | "low";
 }
 
-/**
- * Error pattern'leri
- */
+interface MatchResult {
+  category: string;
+  suggestion: string;
+  checkFiles: string[];
+  severity: "high" | "medium" | "low";
+}
+
 const ERROR_PATTERNS: ErrorPattern[] = [
   {
     pattern: /Cannot read propert(?:y|ies).*of (?:null|undefined)/i,
-    category: "dom-selector",
-    suggestion: "Selector muhtemelen değişti. Provider'ın DOM yapısını kontrol et.",
+    category: "domSelector",
+    suggestionKey: "suggestions.domSelectorChanged",
     checkFiles: (provider) =>
       provider !== undefined && provider.length > 0
         ? [`src/js/modules/webview/providers/${provider}/config.js`]
@@ -30,73 +37,79 @@ const ERROR_PATTERNS: ErrorPattern[] = [
   {
     pattern: /net::ERR_INTERNET_DISCONNECTED/i,
     category: "network",
-    suggestion: "İnternet bağlantısı yok.",
+    suggestionKey: "suggestions.internetDisconnected",
     checkFiles: () => [],
     severity: "high",
   },
   {
     pattern: /net::ERR_NAME_NOT_RESOLVED/i,
     category: "network",
-    suggestion: "DNS çözümlenemedi. Site erişilebilir mi kontrol et.",
+    suggestionKey: "suggestions.dnsResolutionFailed",
     checkFiles: () => [],
     severity: "high",
   },
   {
     pattern: /Timeout|ETIMEDOUT/i,
     category: "timeout",
-    suggestion: "İşlem zaman aşımına uğradı. Ağ yavaş veya site yanıt vermiyor olabilir.",
+    suggestionKey: "suggestions.timeout",
     checkFiles: () => ["src/js/constants/timeouts.js"],
     severity: "medium",
   },
   {
     pattern: /ENOENT/i,
     category: "filesystem",
-    suggestion: "Dosya bulunamadı. Yol doğru mu kontrol et.",
+    suggestionKey: "suggestions.fileNotFound",
     checkFiles: () => [],
     severity: "medium",
   },
   {
     pattern: /WebSocket.*close|ECONNRESET/i,
     category: "connection",
-    suggestion: "Bağlantı koptu. Electron veya site yeniden başlatılabilir.",
+    suggestionKey: "suggestions.connectionLost",
     checkFiles: () => [],
     severity: "medium",
   },
   {
     pattern: /Invalid state|already|disposed/i,
     category: "state",
-    suggestion: "Geçersiz durum. Webview lifecycle kontrolü yap.",
+    suggestionKey: "suggestions.invalidState",
     checkFiles: () => ["src/js/modules/webview/lifecycle-manager.js"],
     severity: "low",
   },
 ];
 
-/** Match result interface */
-interface MatchResult {
-  category: string;
-  suggestion: string;
-  checkFiles: string[];
-  severity: "high" | "medium" | "low";
+function getDebugTranslator(): McpTranslator {
+  return createMcpTranslatorSync();
+}
+
+function debugT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.debugTools.${key}`, params);
 }
 
 function isNonEmptyString(value: string | undefined): value is string {
   return value !== undefined && value.length > 0;
 }
 
-/**
- * Error pattern'i eşleştir (internal helper)
- */
+function translateSeverity(t: McpTranslator, severity: "high" | "medium" | "low"): string {
+  return debugT(t, `severity.${severity}`);
+}
+
+function translateCategory(t: McpTranslator, category: string): string {
+  return debugT(t, `categories.${category}`);
+}
+
 function matchErrorPattern(
   errorMessage: string,
-  provider: string | null = null
+  provider: string | null = null,
+  t: McpTranslator
 ): MatchResult | null {
-  for (const p of ERROR_PATTERNS) {
-    if (p.pattern.test(errorMessage)) {
+  for (const pattern of ERROR_PATTERNS) {
+    if (pattern.pattern.test(errorMessage)) {
       return {
-        category: p.category,
-        suggestion: p.suggestion,
-        checkFiles: p.checkFiles(provider ?? undefined),
-        severity: p.severity,
+        category: translateCategory(t, pattern.category),
+        suggestion: debugT(t, pattern.suggestionKey),
+        checkFiles: pattern.checkFiles(provider ?? undefined),
+        severity: pattern.severity,
       };
     }
   }
@@ -104,60 +117,75 @@ function matchErrorPattern(
   return null;
 }
 
-/**
- * Hata mesajını analiz et ve ipucu ver
- */
 export function getErrorHints(args: Record<string, unknown>): ToolResult {
+  const t = getDebugTranslator();
   const { errorMessage, provider } = args as { errorMessage?: string; provider?: string };
 
   if (!isNonEmptyString(errorMessage)) {
     return {
-      content: [{ type: "text", text: "❌ 'errorMessage' parametresi gerekli" }],
+      content: [{ type: "text", text: debugT(t, "errors.errorMessageRequired") }],
       isError: true,
     };
   }
 
-  // Pattern'leri kontrol et
-  for (const ep of ERROR_PATTERNS) {
-    if (ep.pattern.test(errorMessage)) {
+  for (const pattern of ERROR_PATTERNS) {
+    if (pattern.pattern.test(errorMessage)) {
       const hint = {
-        ...ep,
-        checkFiles: ep.checkFiles(provider),
+        category: translateCategory(t, pattern.category),
+        suggestion: debugT(t, pattern.suggestionKey),
+        checkFiles: pattern.checkFiles(provider),
+        severity: pattern.severity,
       };
 
-      const output = `🔍 Hata Analizi:
+      const lines = [
+        debugT(t, "analysis.title"),
+        "",
+        debugT(t, "analysis.message", { errorMessage }),
+        "",
+        debugT(t, "analysis.category", { category: hint.category }),
+        debugT(t, "analysis.severity", { severity: translateSeverity(t, hint.severity) }),
+        "",
+        debugT(t, "analysis.suggestionTitle"),
+        hint.suggestion,
+      ];
 
-📝 Mesaj: "${errorMessage}"
-
-📂 Kategori: ${hint.category}
-⚠️ Önem: ${hint.severity}
-
-💡 Öneri:
-${hint.suggestion}
-
-${hint.checkFiles.length > 0 ? `📁 Kontrol Edilecek Dosyalar:\n${hint.checkFiles.map((f) => `- ${f}`).join("\n")}` : ""}`;
+      if (hint.checkFiles.length > 0) {
+        lines.push(
+          "",
+          debugT(t, "analysis.filesTitle"),
+          ...hint.checkFiles.map((filePath) => `- ${filePath}`)
+        );
+      }
 
       return {
-        content: [{ type: "text", text: output }],
+        content: [{ type: "text", text: lines.join("\n") }],
       };
     }
   }
 
-  // Eşleşme bulunamadı
   return {
     content: [
       {
         type: "text",
-        text: `🔍 Hata analizi:\n\n"${errorMessage}"\n\n❓ Bu hata için bilinen bir pattern bulunamadı.\n\nÖneriler:\n- Log dosyalarını incele\n- Stack trace'i kontrol et\n- İlgili kodu debug et`,
+        text: [
+          debugT(t, "analysis.title"),
+          "",
+          debugT(t, "analysis.message", { errorMessage }),
+          "",
+          debugT(t, "analysis.noKnownPattern"),
+          "",
+          debugT(t, "analysis.genericSuggestionsTitle"),
+          `- ${debugT(t, "analysis.genericSuggestions.inspectLogs")}`,
+          `- ${debugT(t, "analysis.genericSuggestions.checkStackTrace")}`,
+          `- ${debugT(t, "analysis.genericSuggestions.debugRelatedCode")}`,
+        ].join("\n"),
       },
     ],
   };
 }
 
-/**
- * Hata bağlamını toplayıp özetler
- */
 export function collectErrorContext(args: Record<string, unknown>): ToolResult {
+  const t = getDebugTranslator();
   const { command, errorMessage, logSnippet, provider, fileContext, hint } = args as {
     command?: string;
     errorMessage?: string;
@@ -169,13 +197,13 @@ export function collectErrorContext(args: Record<string, unknown>): ToolResult {
 
   if (!isNonEmptyString(errorMessage) && !isNonEmptyString(logSnippet)) {
     return {
-      content: [{ type: "text", text: "❌ 'errorMessage' veya 'logSnippet' parametresi gerekli" }],
+      content: [{ type: "text", text: debugT(t, "errors.errorMessageOrLogSnippetRequired") }],
       isError: true,
     };
   }
 
   const matched = isNonEmptyString(errorMessage)
-    ? matchErrorPattern(errorMessage, provider ?? null)
+    ? matchErrorPattern(errorMessage, provider ?? null, t)
     : null;
   const nextChecks: string[] = [];
 
@@ -188,22 +216,32 @@ export function collectErrorContext(args: Record<string, unknown>): ToolResult {
   }
 
   const output = [
-    "🧭 Hata Bağlam Özeti",
+    debugT(t, "contextSummary.title"),
     "",
-    isNonEmptyString(errorMessage) ? `📝 Hata: ${errorMessage}` : undefined,
-    isNonEmptyString(command) ? `🧪 Komut: ${command}` : undefined,
-    isNonEmptyString(provider) ? `🤖 Provider: ${provider}` : undefined,
-    isNonEmptyString(logSnippet) ? `📄 Log Parçası:\n${logSnippet}` : undefined,
-    isNonEmptyString(hint) ? `💡 Ek Not: ${hint}` : undefined,
-    matched
-      ? `📂 Kategori: ${matched.category} | Önem: ${matched.severity}`
-      : "📂 Kategori: bilinmiyor",
+    isNonEmptyString(errorMessage)
+      ? debugT(t, "contextSummary.error", { errorMessage })
+      : undefined,
+    isNonEmptyString(command) ? debugT(t, "contextSummary.command", { command }) : undefined,
+    isNonEmptyString(provider) ? debugT(t, "contextSummary.provider", { provider }) : undefined,
+    isNonEmptyString(logSnippet)
+      ? debugT(t, "contextSummary.logSnippet", { logSnippet })
+      : undefined,
+    isNonEmptyString(hint) ? debugT(t, "contextSummary.extraNote", { hint }) : undefined,
+    matched !== null
+      ? debugT(t, "contextSummary.category", {
+          category: matched.category,
+          severity: translateSeverity(t, matched.severity),
+        })
+      : debugT(t, "contextSummary.unknownCategory"),
     matched !== null && matched.suggestion.length > 0
-      ? `✅ Öneri: ${matched.suggestion}`
-      : "✅ Öneri: Log/stack trace kontrol et",
+      ? debugT(t, "contextSummary.suggestion", { suggestion: matched.suggestion })
+      : debugT(t, "contextSummary.defaultSuggestion"),
     nextChecks.length > 0
-      ? `🔍 Kontrol Noktaları:\n${nextChecks.map((item) => `- ${item}`).join("\n")}`
-      : "🔍 Kontrol Noktaları: yok",
+      ? [
+          debugT(t, "contextSummary.checkpointsTitle"),
+          ...nextChecks.map((item) => `- ${item}`),
+        ].join("\n")
+      : debugT(t, "contextSummary.noCheckpoints"),
   ]
     .filter((line): line is string => line !== undefined)
     .join("\n");

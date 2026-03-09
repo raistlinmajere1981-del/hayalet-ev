@@ -1,11 +1,12 @@
 import type { Account, AppSettings } from "./settings.js";
+import { DEFAULT_APP_LANGUAGE } from "./i18n.js";
 
-export const DEFAULT_ASISTAN_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
+export const DEFAULT_ASSISTANT_ACCOUNT_ID = "opencode_opencode_at_opencode_com";
 export const DEFAULT_OPENCODE_UI_ACCOUNT_ID = "opencode_ui_opencode_at_opencode_com";
 
-export function createDefaultAsistanAccount(): Account {
+export function createDefaultAssistantAccount(): Account {
   return {
-    id: DEFAULT_ASISTAN_ACCOUNT_ID,
+    id: DEFAULT_ASSISTANT_ACCOUNT_ID,
     email: "opencode@opencode.com",
     provider: "opencode",
     nickname: "Rovo",
@@ -24,8 +25,8 @@ export function createDefaultOpencodeUiAccount(): Account {
   };
 }
 
-export function createDefaultAsistanAccounts(): Account[] {
-  return [createDefaultAsistanAccount(), createDefaultOpencodeUiAccount()];
+export function createDefaultAssistantAccounts(): Account[] {
+  return [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
 }
 
 export function createDefaultSettings(): AppSettings {
@@ -43,14 +44,14 @@ export function createDefaultSettings(): AppSettings {
 
   return {
     general: {
-      language: "tr",
+      language: DEFAULT_APP_LANGUAGE,
     },
     user: { nickname: "Kullanıcı", avatarPath: "src/assets/default.png" },
     integrations: {
       googledrive: defaultGoogleDrive,
     },
     accounts: [],
-    asistanAccounts: createDefaultAsistanAccounts(),
+    assistantAccounts: createDefaultAssistantAccounts(),
     slots: {
       ai1: {
         accountId: null,
@@ -73,8 +74,8 @@ export function createDefaultSettings(): AppSettings {
         fileMethod: "dragdrop",
       },
     },
-    asistanSlot: {
-      accountId: DEFAULT_ASISTAN_ACCOUNT_ID,
+    assistantSlot: {
+      accountId: DEFAULT_ASSISTANT_ACCOUNT_ID,
       catchCommands: false,
       disabledCommands: [],
       messageMethod: "injection",

@@ -7,6 +7,7 @@
 import { readFile, readdir, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { createMcpTranslator } from "../../utils/i18n/index.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 
 interface SessionInfo {
@@ -40,6 +41,14 @@ function parseStructuredLine(line: string): StructuredLogEntry | null {
   }
 }
 
+function logIntegrationT(
+  t: (key: string, params?: Record<string, string | number | boolean>) => string,
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return t(`mcpServer.logIntegration.${key}`, params);
+}
+
 /**
  * Read electron logs (enhanced version of existing tool)
  */
@@ -52,6 +61,7 @@ export async function readElectronLogs(args: {
   contains?: string;
   correlationId?: string;
 }): Promise<unknown> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
 
   // Get session ID
@@ -65,7 +75,7 @@ export async function readElectronLogs(args: {
   if (sessionId == null || sessionId === "") {
     return {
       success: false,
-      message: "No log sessions found",
+      message: logIntegrationT(t, "read.noLogSessionsFound"),
       logs: [],
     };
   }
@@ -85,7 +95,7 @@ export async function readElectronLogs(args: {
   if (!existsSync(filePath)) {
     return {
       success: false,
-      message: `Log file not found: ${fileName}`,
+      message: logIntegrationT(t, "read.logFileNotFound", { fileName }),
       logs: [],
     };
   }
@@ -141,12 +151,13 @@ export async function listLogSessions(args?: {
   limit?: number;
   includeStats?: boolean;
 }): Promise<unknown> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
 
   if (!existsSync(logDir)) {
     return {
       success: false,
-      message: "Logs directory not found",
+      message: logIntegrationT(t, "list.logsDirectoryNotFound"),
       sessions: [],
     };
   }
@@ -215,6 +226,7 @@ export async function listLogSessions(args?: {
  * Get session summary (enhanced)
  */
 export async function getSessionSummary(args: { sessionId?: string }): Promise<unknown> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
 
   // Get session ID
@@ -228,7 +240,7 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
   if (sessionId == null || sessionId === "") {
     return {
       success: false,
-      message: "No sessions found",
+      message: logIntegrationT(t, "summary.noSessionsFound"),
     };
   }
 
@@ -252,7 +264,7 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
   if (!existsSync(structuredPath)) {
     return {
       success: false,
-      message: "No logs found in session",
+      message: logIntegrationT(t, "summary.noLogsFoundInSession"),
     };
   }
 
@@ -271,10 +283,12 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
     const entry = parseStructuredLine(line);
     if (!entry) continue;
 
-    const level = typeof entry.level === "string" ? entry.level : "unknown";
+    const level =
+      typeof entry.level === "string" ? entry.level : logIntegrationT(t, "common.unknown");
     stats.byLevel[level] = (stats.byLevel[level] ?? 0) + 1;
 
-    const cat = typeof entry.category === "string" ? entry.category : "unknown";
+    const cat =
+      typeof entry.category === "string" ? entry.category : logIntegrationT(t, "common.unknown");
     stats.byCategory[cat] = (stats.byCategory[cat] ?? 0) + 1;
 
     if (level === "error") stats.errorCount++;

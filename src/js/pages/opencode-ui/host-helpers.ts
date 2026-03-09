@@ -1,4 +1,5 @@
 import type { OpencodeUiToolsReadyPayload } from "./bootstrap-actions.js";
+import { formatDateTime, t } from "./i18n.js";
 import type { RuntimeState } from "./types.js";
 
 export type ByIdFn = <T extends HTMLElement>(
@@ -68,15 +69,15 @@ export async function copyWorkspaceUrl(getById: ByIdFn = byId): Promise<void> {
   const workspaceUrlEl = getById<HTMLElement>("workspace-url-display");
   const url = workspaceUrlEl?.textContent.trim() ?? "";
   if (url === "" || url === "-") {
-    showToast("Kopyalanacak URL yok");
+    showToast(t("chat.copyUrlMissing"));
     return;
   }
 
   try {
     await navigator.clipboard.writeText(url);
-    showToast("URL kopyalandi");
+    showToast(t("chat.copyUrlSuccess"));
   } catch {
-    showToast("URL kopyalanamadi");
+    showToast(t("chat.copyUrlError"));
   }
 }
 
@@ -92,15 +93,7 @@ export function getLogoFallback(getById: ByIdFn = byId): void {
 }
 
 export function formatTimestamp(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "--";
-
-  return new Date(value).toLocaleString("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(value);
 }
 
 export function clearChatArea(runtime: RuntimeState, getById: ByIdFn = byId): void {

@@ -13,11 +13,13 @@ import { AppState } from "../app-state.js";
 import { Logger } from "../logger/index.js";
 import { LogCategory } from "@shared/index.js";
 import { SettingsManager } from "../settings-manager.js";
+import { resolveSelectorLanguage } from "../../../../shared/i18n/locale.js";
 import { resolveSelectorCandidates } from "../../../../shared/provider-selector-resolution";
+import type { SelectorLanguage } from "@shared/i18n.js";
 
-function getAppLanguage(): "tr" | "en" {
+function getSelectorLanguage(): SelectorLanguage {
   const settings = SettingsManager.getSnapshot() as { general?: { language?: unknown } } | null;
-  return settings?.general?.language === "en" ? "en" : "tr";
+  return resolveSelectorLanguage(settings?.general?.language);
 }
 
 export function buildProbeScript(provider: string): string {
@@ -52,7 +54,7 @@ export function buildProbeScript(provider: string): string {
     stopButton?: string;
     voiceButton?: string;
   };
-  const locale = getAppLanguage();
+  const locale = getSelectorLanguage();
   const matrixSelectors = cfg.selectorMatrix?.selectors ?? {};
   const sendSel = resolveSelectorCandidates(
     (matrixSelectors["sendButton"] ?? selectors.sendButtonBase ?? selectors.sendButton ?? "") as

@@ -1,13 +1,15 @@
 /**
- * ElectronTools - Electron test ve plugin araçları
+ * Electron tools for runtime checks and discovery output.
  */
 
 import { exec } from "child_process";
 import { promisify } from "util";
-import { logToolError } from "../utils/mcp-logger.js";
 import { ELECTRON_TIMEOUTS } from "@timeouts";
 import type { ToolResult } from "@shared/index-mcp.js";
+import type { TranslationParams } from "../../types/i18n.js";
 import { getToolCount, getRegistryStats } from "../core/registry.js";
+import { logToolError } from "../utils/mcp-logger.js";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 const execAsync = promisify(exec);
 
@@ -16,9 +18,19 @@ type CommandRunner = (
   options: { cwd: string; timeout: number }
 ) => Promise<{ stdout: string; stderr: string }>;
 
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
 interface TestElectronArgs {
   timeout?: number;
   _runCommand?: CommandRunner;
+}
+
+function getElectronToolsTranslator(): McpTranslator {
+  return createMcpTranslatorSync();
+}
+
+function electronToolsT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.electronTools.${key}`, params);
 }
 
 function parseModeStatusOutput(stdout: string): string | null {
@@ -36,13 +48,11 @@ function parseModeStatusOutput(stdout: string): string | null {
   }
 }
 
-/**
- * test_electron handler
- */
 export async function testElectron(
   projectRoot: string,
   args?: TestElectronArgs
 ): Promise<ToolResult> {
+  const t = getElectronToolsTranslator();
   const timeout = args?.timeout ?? ELECTRON_TIMEOUTS.TEST_DEFAULT / 1000;
   const runCommand: CommandRunner = args?._runCommand ?? (execAsync as CommandRunner);
 
@@ -58,12 +68,14 @@ export async function testElectron(
         content: [
           {
             type: "text",
-            text: `✅ Electron zaten aktif (mod: ${mode}). Mevcut oturum kullanıldı; yeniden başlatma atlandı.`,
+            text: electronToolsT(t, "testElectron.alreadyActive", { mode }),
           },
         ],
       };
     }
-  } catch {}
+  } catch {
+    // Ignore the probe error and continue with the explicit start attempt.
+  }
 
   try {
     const { stdout, stderr } = await runCommand("npm run start", {
@@ -75,39 +87,49 @@ export async function testElectron(
       content: [
         {
           type: "text",
-          text: `Electron test sonucu:\n\nStdout:\n${stdout}\n\nStderr:\n${stderr}`,
+          text: [
+            electronToolsT(t, "testElectron.resultTitle"),
+            "",
+            electronToolsT(t, "testElectron.stdoutTitle"),
+            stdout,
+            "",
+            electronToolsT(t, "testElectron.stderrTitle"),
+            stderr,
+          ].join("\n"),
         },
       ],
     };
   } catch (err) {
-    const error = err as Error & { code?: string; killed?: boolean };
+    const error = err as Error & { killed?: boolean };
     if (error.killed === true) {
       return {
         content: [
           {
             type: "text",
-            text: `✅ Electron ${timeout} saniye boyunca çalıştı (timeout ile durduruldu)`,
+            text: electronToolsT(t, "testElectron.timeoutStopped", { timeout }),
           },
         ],
       };
     }
+
     logToolError("hev_test_electron", error, { timeout });
     return {
-      content: [{ type: "text", text: `❌ Electron test hatası: ${error.message}` }],
+      content: [
+        {
+          type: "text",
+          text: electronToolsT(t, "testElectron.error", { message: error.message }),
+        },
+      ],
       isError: true,
     };
   }
 }
 
-/**
- * list_tools handler - Hayalet-ev MCP tool'larını kategorize ederek listele
- * Uses runtime registry stats instead of hardcoded categories
- */
 export function listTools(): ToolResult {
+  const t = getElectronToolsTranslator();
   const stats = getRegistryStats();
   const totalTools = getToolCount();
 
-  // Category emoji mapping
   const emojiMap: Record<string, string> = {
     core: "🏠",
     electron: "⚡",
@@ -122,26 +144,40 @@ export function listTools(): ToolResult {
     uncategorized: "📦",
   };
 
-  let output = `📦 Hayalet-ev MCP Tools (${totalTools} tools)\n`;
-  output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  const categoryLabelKeys: Record<string, string> = {
+    core: "listTools.categories.core",
+    electron: "listTools.categories.electron",
+    debug: "listTools.categories.debug",
+    filesystem: "listTools.categories.filesystem",
+    development: "listTools.categories.development",
+    context: "listTools.categories.context",
+    git: "listTools.categories.git",
+    workflow: "listTools.categories.workflow",
+    web: "listTools.categories.web",
+    ui: "listTools.categories.ui",
+    uncategorized: "listTools.categories.uncategorized",
+  };
+
+  let output = `${electronToolsT(t, "listTools.title", { totalTools })}\n`;
+  output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
   for (const [category, count] of Object.entries(stats)) {
     if (category === "total") continue;
     const emoji = emojiMap[category] ?? "📦";
-    output += `${emoji} ${category} (${count})\n`;
+    const categoryLabelKey = categoryLabelKeys[category];
+    const categoryLabel =
+      categoryLabelKey !== undefined ? electronToolsT(t, categoryLabelKey) : category;
+    output += `${emoji} ${categoryLabel} (${count})\n`;
   }
 
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  output += `💡 Use hev_suggest_tool for intent-based tool discovery\n`;
+  output += `${electronToolsT(t, "listTools.hint")}\n`;
 
   return {
     content: [{ type: "text", text: output }],
   };
 }
 
-/**
- * MCP Health Check - Hayalet-ev MCP'nin çalıştığını doğrula
- */
 export function mcpHealthCheck(): {
   healthy: boolean;
   version: string;
@@ -149,6 +185,7 @@ export function mcpHealthCheck(): {
   toolCount: number;
   message: string;
 } {
+  const t = getElectronToolsTranslator();
   const startTime = process.uptime();
   const toolCount = getToolCount();
 
@@ -157,6 +194,6 @@ export function mcpHealthCheck(): {
     version: "3.0.0",
     uptime: startTime,
     toolCount,
-    message: "✅ Hayalet-ev MCP aktif ve çalışıyor.",
+    message: electronToolsT(t, "health.activeMessage"),
   };
 }

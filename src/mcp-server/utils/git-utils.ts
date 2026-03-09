@@ -7,6 +7,7 @@
 import { existsSync, statSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import { join } from "path";
+import { createMcpTranslatorSync } from "./i18n/index.js";
 
 interface GitLockCheckResult {
   hasLock: boolean;
@@ -16,6 +17,10 @@ interface GitLockCheckResult {
 }
 
 const STALE_LOCK_THRESHOLD_MINUTES = 5;
+
+function gitUtilsT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.gitTools.utils.${key}`, params);
+}
 
 /**
  * Check if git index.lock exists and is stale
@@ -55,8 +60,7 @@ export function removeStaleLock(workspacePath: string): boolean {
 
   if (!lockCheck.isStale) {
     throw new Error(
-      `Git lock file is active (${lockCheck.ageMinutes ?? 0} minutes old). ` +
-        `Another git operation may be in progress. Please wait or manually check.`
+      gitUtilsT("activeLock", { ageMinutes: lockCheck.ageMinutes ?? 0 })
     );
   }
 
@@ -64,11 +68,13 @@ export function removeStaleLock(workspacePath: string): boolean {
     unlinkSync(lockCheck.path ?? "");
     // Write to stderr (informational message for git lock recovery)
     process.stderr.write(
-      `[GIT] Removed stale lock file (${lockCheck.ageMinutes ?? 0} minutes old)\n`
+      `${gitUtilsT("removedStaleLock", { ageMinutes: lockCheck.ageMinutes ?? 0 })}\n`
     );
     return true;
   } catch (error) {
-    throw new Error(`Failed to remove stale lock: ${String(error)}`, { cause: error });
+    throw new Error(gitUtilsT("removeStaleLockFailed", { message: String(error) }), {
+      cause: error,
+    });
   }
 }
 
@@ -92,11 +98,13 @@ export function safeGitCommand(
 
       if (lockCheck.hasLock && lockCheck.isStale) {
         // Write to stderr (informational message for git lock detection)
-        process.stderr.write(`[GIT] Stale lock detected on attempt ${attempt + 1}, removing...\n`);
+        process.stderr.write(
+          `${gitUtilsT("staleLockDetected", { attempt: attempt + 1 })}\n`
+        );
         removeStaleLock(workspacePath);
       } else if (lockCheck.hasLock && !lockCheck.isStale) {
         throw new Error(
-          `Git operation in progress (lock age: ${lockCheck.ageMinutes ?? 0} min). Please wait.`
+          gitUtilsT("operationInProgress", { ageMinutes: lockCheck.ageMinutes ?? 0 })
         );
       }
 
@@ -117,7 +125,7 @@ export function safeGitCommand(
       if (isLockError && attempt < maxRetries) {
         // Write to stderr (git lock recovery attempt)
         process.stderr.write(
-          `[GIT] Lock error detected, attempting recovery (attempt ${attempt + 1}/${maxRetries})...\n`
+          `${gitUtilsT("recoveryAttempt", { attempt: attempt + 1, maxRetries })}\n`
         );
         try {
           removeStaleLock(workspacePath);
@@ -134,7 +142,7 @@ export function safeGitCommand(
     }
   }
 
-  throw lastError ?? new Error("Git command failed");
+  throw lastError ?? new Error(gitUtilsT("commandFailed"));
 }
 
 /**

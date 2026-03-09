@@ -1,12 +1,13 @@
 import { getFilename } from "../../constants/index.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 
 /**
- * UploadHandler - Analyze sayfası dosya yükleme işlemleri
+ * UploadHandler - Analyze page file upload flow
  *
- * Bu modül dosya seçme ve listeleme işlemlerini yönetir:
- * - Dosya seçim dialog'u
- * - Staged files yönetimi
- * - Upload list render
+ * This module handles file selection and list rendering:
+ * - File picker dialog
+ * - Staged file management
+ * - Upload list rendering
  */
 
 export interface StagedFile {
@@ -14,6 +15,10 @@ export interface StagedFile {
   path: string;
   commandPath?: string;
   originalName?: string;
+}
+
+function analyzeUploadT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.analyze.upload.${key}`, params);
 }
 
 export function renderUploadList(
@@ -28,12 +33,12 @@ export function renderUploadList(
   box.innerHTML = "";
 
   if (stagedFiles.length === 0) {
-    box.textContent = "Henüz dosya yok.";
-    if (info) info.textContent = "Henüz dosya yok.";
+    box.textContent = analyzeUploadT("empty");
+    if (info) info.textContent = analyzeUploadT("empty");
     return;
   }
 
-  if (info) info.textContent = `${stagedFiles.length} dosya eklendi.`;
+  if (info) info.textContent = analyzeUploadT("count", { count: stagedFiles.length });
 
   stagedFiles.forEach((file: StagedFile) => {
     const row = document.createElement("div");
@@ -45,7 +50,7 @@ export function renderUploadList(
     const btn = document.createElement("button");
     btn.className = "upload-remove";
     btn.textContent = "×";
-    btn.title = "Kaldır";
+    btn.title = analyzeUploadT("removeTitle");
     btn.addEventListener("click", () => {
       onRemove(file.name);
     });

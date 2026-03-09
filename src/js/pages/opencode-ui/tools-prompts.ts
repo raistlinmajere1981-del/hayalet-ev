@@ -1,4 +1,5 @@
 import { apiCall } from "./api.js";
+import { t } from "./i18n.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";
 
@@ -116,7 +117,7 @@ async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
         return legacyPrompts;
       }
 
-      throw new Error(result.error ?? "Promptlar okunamadi.");
+      throw new Error(result.error ?? t("prompt.loadError"));
     }
 
     if (prompts.length > 0) {
@@ -156,7 +157,7 @@ async function writeQuickPromptsToStore(
     normalizedPrompts
   )) as QuickPromptStoreResponse;
   if (result.success !== true) {
-    throw new Error(result.error ?? "Promptlar kaydedilemedi.");
+    throw new Error(result.error ?? t("prompt.saveError"));
   }
 
   clearLegacyQuickPrompts();
@@ -191,7 +192,7 @@ function openPromptModal(): void {
     return;
   }
 
-  modalTitle.textContent = "Yeni Prompt";
+  modalTitle.textContent = t("prompt.modalTitle");
   modalName.value = "";
   modalContent.value = "";
   modal.classList.add("is-active");
@@ -204,7 +205,7 @@ function openPromptModal(): void {
 function applyQuickPrompt(prompt: QuickPromptRecord, options: QuickPromptPanelOptions): void {
   const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
   if (chatInput == null) {
-    options.showToast("Mesaj alani bulunamadi.");
+    options.showToast(t("prompt.missingInputArea"));
     return;
   }
 
@@ -218,7 +219,7 @@ function applyQuickPrompt(prompt: QuickPromptRecord, options: QuickPromptPanelOp
   chatInput.dispatchEvent(new Event("input", { bubbles: true }));
   chatInput.focus();
   chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
-  options.showToast(`Prompt eklendi: ${prompt.name}`);
+  options.showToast(t("prompt.addedToast", { name: prompt.name }));
 }
 
 function buildPromptCard(prompt: QuickPromptRecord): HTMLElement {
@@ -228,7 +229,7 @@ function buildPromptCard(prompt: QuickPromptRecord): HTMLElement {
   card.setAttribute("tabindex", "0");
   card.setAttribute("data-prompt-action", "apply");
   card.setAttribute("data-prompt-id", prompt.id);
-  card.setAttribute("title", "Promptu compose alanina ekle");
+  card.setAttribute("title", t("prompt.applyTitle"));
 
   const header = document.createElement("div");
   header.className = "ds-prompt-card__header";
@@ -243,16 +244,16 @@ function buildPromptCard(prompt: QuickPromptRecord): HTMLElement {
   const applyButton = document.createElement("button");
   applyButton.type = "button";
   applyButton.className = "ds-prompt-card__btn";
-  applyButton.textContent = "Kullan";
-  applyButton.setAttribute("title", "Promptu compose alanina ekle");
+  applyButton.textContent = t("prompt.applyButton");
+  applyButton.setAttribute("title", t("prompt.applyTitle"));
   applyButton.setAttribute("data-prompt-action", "apply");
   applyButton.setAttribute("data-prompt-id", prompt.id);
 
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
   deleteButton.className = "ds-prompt-card__btn ds-prompt-card__btn--danger";
-  deleteButton.textContent = "Sil";
-  deleteButton.setAttribute("title", "Promptu sil");
+  deleteButton.textContent = t("prompt.deleteButton");
+  deleteButton.setAttribute("title", t("prompt.deleteTitle"));
   deleteButton.setAttribute("data-prompt-action", "delete");
   deleteButton.setAttribute("data-prompt-id", prompt.id);
 
@@ -294,7 +295,7 @@ function renderQuickPromptList(prompts: QuickPromptRecord[]): void {
   if (quickPromptCache.length === 0) {
     const emptyState = document.createElement("div");
     emptyState.className = "empty-state";
-    emptyState.textContent = "Henuz hizli prompt yok";
+    emptyState.textContent = t("prompt.empty");
     promptsListEl.appendChild(emptyState);
     return;
   }
@@ -314,7 +315,7 @@ async function refreshQuickPromptList(
   } catch (error) {
     renderQuickPromptList([]);
     options?.showToast(
-      error instanceof Error && error.message !== "" ? error.message : "Promptlar okunamadi."
+      error instanceof Error && error.message !== "" ? error.message : t("prompt.loadError")
     );
     return [];
   }
@@ -342,7 +343,7 @@ async function handleQuickPromptAction(
   const nextPrompts = quickPromptCache.filter((item) => item.id !== promptId);
   await writeQuickPromptsToStore(nextPrompts);
   await refreshQuickPromptList();
-  options.showToast(`Prompt silindi: ${prompt.name}`);
+  options.showToast(t("prompt.deletedToast", { name: prompt.name }));
 }
 
 export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
@@ -400,7 +401,7 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
       const content = modalContent?.value.trim() ?? "";
 
       if (name === "" || content === "") {
-        options.showToast("Prompt ismi ve icerigi zorunlu.");
+        options.showToast(t("prompt.inputMissing"));
         if (name === "") {
           modalName?.focus();
         } else {
@@ -423,10 +424,10 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
         await writeQuickPromptsToStore(nextPrompts);
         await refreshQuickPromptList();
         closePromptModal();
-        options.showToast(`Prompt kaydedildi: ${name}`);
+        options.showToast(t("prompt.savedToast", { name }));
       } catch (error) {
         options.showToast(
-          error instanceof Error && error.message !== "" ? error.message : "Prompt kaydedilemedi."
+          error instanceof Error && error.message !== "" ? error.message : t("prompt.saveError")
         );
       }
     })();
@@ -537,7 +538,7 @@ function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): vo
   }
 
   if (allToolIds.length === 0) {
-    toolsListEl.innerHTML = '<div class="empty-state">Tool bulunamadi</div>';
+    toolsListEl.innerHTML = `<div class="empty-state">${t("panel.toolsEmpty")}</div>`;
     return;
   }
 
@@ -545,9 +546,9 @@ function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): vo
 
   if (opencodeToolIds.length > 0) {
     sections.push(
-      '<div class="ds-tools-group__header">OpenCode Built-in (' +
-        String(opencodeToolIds.length) +
-        ")</div>" +
+      '<div class="ds-tools-group__header">' +
+        t("panel.toolsBuiltInGroup", { count: opencodeToolIds.length }) +
+        "</div>" +
         opencodeToolIds
           .map((toolId) => `<div class="ds-panel__item"><strong>${toolId}</strong></div>`)
           .join("")
@@ -556,9 +557,9 @@ function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): vo
 
   if (hevToolIds.length > 0) {
     sections.push(
-      '<div class="ds-tools-group__header">Hayalet-ev MCP (' +
-        String(hevToolIds.length) +
-        ")</div>" +
+      '<div class="ds-tools-group__header">' +
+        t("panel.toolsHevGroup", { count: hevToolIds.length }) +
+        "</div>" +
         hevToolIds
           .map((toolId) => `<div class="ds-panel__item"><strong>${toolId}</strong></div>`)
           .join("")
@@ -594,6 +595,10 @@ async function loadOpenCodeToolIds(get: ToolFetcher): Promise<OpenCodeToolResult
 }
 
 async function loadHevToolIds(): Promise<string[]> {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
   if (
     window.electronAPI == null ||
     typeof window.electronAPI["opencodeUiHevTools"] !== "function"

@@ -12,10 +12,14 @@ import {
   readContext,
   CONTEXT_TOOL_DEFINITIONS,
 } from "../../tools/context-tools.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type { ToolEntry, ToolContext } from "../registry.js";
 
 export function createContextTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT } = context;
+
+  const contextHandlerT = (key: string, params?: Record<string, string | number | boolean>) =>
+    createMcpTranslatorSync()(`mcpServer.contextTools.handler.${key}`, params);
 
   return [
     {
@@ -29,7 +33,39 @@ export function createContextTools(context: ToolContext): ToolEntry[] {
       definition: CONTEXT_TOOL_DEFINITIONS[1], // hev_context_status
       handler: (): unknown => {
         const result = contextStatus(PROJECT_ROOT);
-        const output = `📊 Context Status\n\nAvailable: ${result.available.join(", ")}\nRepomix: ${result.repomixVersion}`;
+        const lines = [
+          contextHandlerT("statusTitle"),
+          "",
+          contextHandlerT("available", {
+            value:
+              result.available.length > 0
+                ? result.available.join(", ")
+                : contextHandlerT("none"),
+          }),
+          contextHandlerT("repomix", { value: result.repomixVersion }),
+        ];
+
+        if (result.lastGenerated !== undefined) {
+          lines.push(contextHandlerT("lastGenerated", { value: result.lastGenerated }));
+        }
+
+        const currentLevels = Object.entries(result.current).filter(([, value]) => value !== null);
+        if (currentLevels.length > 0) {
+          lines.push("", contextHandlerT("levelsTitle"));
+          for (const [level, value] of currentLevels) {
+            if (!value) continue;
+            lines.push(
+              contextHandlerT("levelLine", {
+                level,
+                sizeKB: value.sizeKB,
+                age: value.age,
+                tokens: value.tokens,
+              })
+            );
+          }
+        }
+
+        const output = lines.join("\n");
         return { content: [{ type: "text", text: output }] };
       },
     },
@@ -37,11 +73,15 @@ export function createContextTools(context: ToolContext): ToolEntry[] {
       definition: CONTEXT_TOOL_DEFINITIONS[2], // hev_context_module
       handler: async (args): Promise<unknown> => {
         const a = args as Record<string, unknown>;
+        const includeTests =
+          typeof a["include_tests"] === "boolean"
+            ? a["include_tests"]
+            : typeof a["includeTests"] === "boolean"
+              ? a["includeTests"]
+              : undefined;
         const result = await moduleContext(PROJECT_ROOT, {
           module: a["module"] as string,
-          ...((a["includeTests"] as boolean | undefined) !== undefined
-            ? { includeTests: a["includeTests"] as boolean }
-            : {}),
+          ...(includeTests !== undefined ? { includeTests } : {}),
         });
         return { content: [{ type: "text", text: result.message }] };
       },

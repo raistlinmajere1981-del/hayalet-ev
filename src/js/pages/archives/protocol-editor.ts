@@ -1,4 +1,9 @@
+import { AppI18n } from "../../modules/i18n/index.js";
 import { RoomProtocolRegistry } from "../../modules/rooms/room-protocol-registry.js";
+
+function archivesProtocolT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.archives.protocol.${key}`, params);
+}
 
 export async function loadProtocolsFromApi(
   electronApi: (typeof window.electronAPI) | undefined
@@ -25,7 +30,7 @@ export function renderProtocolListView(args: {
 
   const keys = Object.keys(protocols);
   if (keys.length === 0) {
-    protocolListEl.innerHTML = '<div class="empty">Protokol bulunamadı</div>';
+    protocolListEl.innerHTML = `<div class="empty">${archivesProtocolT("empty")}</div>`;
     return;
   }
 
@@ -100,7 +105,7 @@ export async function saveProtocolContent(args: {
   const { electronApi, selectedProtocolKey, content } = args;
 
   if (electronApi === undefined) {
-    return { success: false, message: "Uygulama API bulunamadı" };
+    return { success: false, message: archivesProtocolT("electronApiUnavailable") };
   }
 
   const result = await electronApi.saveProtocol(selectedProtocolKey, content);

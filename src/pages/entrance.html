@@ -1,11 +1,11 @@
 <div class="page hidden" id="page-entrance">
   <div class="entrance-page">
-    <!-- SLOT CARDS GRID -->
+    <!-- Slot cards grid -->
     <div class="slot-grid">
-      <!-- AI1 SLOT CARD -->
+      <!-- AI1 slot card -->
       <div class="slot-card glass-panel" data-slot="ai1">
         <div class="slot-header">
-          <!-- Üst Satır: Avatar, Info, Metodlar, Actions -->
+          <!-- Top row: avatar, info, methods, actions -->
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
@@ -15,18 +15,28 @@
               <span class="slot-nickname" id="ai1-nickname">AI1</span>
               <select id="ai1-account-select" class="select-compact"></select>
             </div>
-            <!-- Metodlar (üstte mesaj, altta dosya) -->
+            <!-- Methods (message on top, file below) -->
             <div class="slot-methods-column">
               <div class="setting-group">
-                <label class="setting-label">Mesaj:</label>
-                <select id="ai1-msg-method" class="select-compact" title="Mesaj Gönderme Metodu">
+                <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
+                <select
+                  id="ai1-msg-method"
+                  class="select-compact"
+                  title="Message Sending Method"
+                  data-i18n-title="slot.messageMethodTitle"
+                >
                   <option value="injection">Injection</option>
                   <option value="xdotools">XdoTools</option>
                 </select>
               </div>
               <div class="setting-group">
-                <label class="setting-label">Dosya:</label>
-                <select id="ai1-file-method" class="select-compact" title="Dosya Gönderme Metodu">
+                <label class="setting-label" data-i18n-text="slot.fileLabel">File:</label>
+                <select
+                  id="ai1-file-method"
+                  class="select-compact"
+                  title="File Sending Method"
+                  data-i18n-title="slot.fileMethodTitle"
+                >
                   <option value="dragdrop">Drag & Drop</option>
                   <option value="injection">Injection</option>
                   <option value="xdotools">XdoTools</option>
@@ -38,32 +48,51 @@
             </div>
             <div class="slot-actions">
               <div class="slot-checkboxes-column">
-                <label class="catch-label" title="AI komutlarını yakala ve işle">
+                <label
+                  class="catch-label"
+                  title="Capture and process AI commands"
+                  data-i18n-title="slot.catchTitle"
+                >
                   <input type="checkbox" id="ai1-catch-check" />
-                  <span>Komutları Yakala</span>
-                </label>
-                <label class="catch-label" title="Bağlanınca son oturuma dön">
-                  <input type="checkbox" id="ai1-resume-last-session-check" />
-                  <span>Son sessiona devam</span>
+                  <span data-i18n-text="slot.catchLabel">Capture Commands</span>
                 </label>
                 <label
                   class="catch-label"
-                  title="Bağlantı durumunu hatırla ve açılışta otomatik bağlan"
+                  title="Resume the last session on connect"
+                  data-i18n-title="slot.resumeTitle"
+                >
+                  <input type="checkbox" id="ai1-resume-last-session-check" />
+                  <span data-i18n-text="slot.resumeLabel">Resume last session</span>
+                </label>
+                <label
+                  class="catch-label"
+                  title="Remember connection state and auto-connect on startup"
+                  data-i18n-title="slot.rememberTitle"
                 >
                   <input type="checkbox" id="ai1-remember-connection-check" />
-                  <span>Bağlantı durumunu hatırla</span>
+                  <span data-i18n-text="slot.rememberLabel">Remember connection state</span>
                 </label>
               </div>
-              <button class="btn btn-primary btn-sm slot-connect-btn" id="ai1-toggle-btn">
-                Hesap Seçin
+              <button
+                class="btn btn-primary btn-sm slot-connect-btn"
+                id="ai1-toggle-btn"
+                data-i18n-text="slot.selectAccount"
+              >
+                Select Account
               </button>
-              <button class="btn btn-ghost btn-icon btn-sm" id="ai1-devtools-btn" title="DevTools">
+              <button
+                class="btn btn-ghost btn-icon btn-sm"
+                id="ai1-devtools-btn"
+                title="DevTools"
+                data-i18n-title="slot.devtoolsTitle"
+              >
                 🔧
               </button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-test-btn"
                 title="Provider Test"
+                data-i18n-title="slot.providerTestTitle"
                 disabled
               >
                 🧪
@@ -72,6 +101,7 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-sync-btn"
                 title="Provider Sync"
+                data-i18n-title="slot.providerSyncTitle"
                 disabled
               >
                 🔄
@@ -86,18 +116,22 @@
           <!-- Overlay -->
           <div class="webview-overlay empty" id="ai1-webview-overlay">
             <div class="overlay-icon"></div>
-            <div class="overlay-title">Hesap Seçilmedi</div>
-            <div class="overlay-subtitle">Yukarıdan hesap seçin ve bağlanın</div>
+            <div class="overlay-title" data-i18n-text="webview.noAccount.title">
+              No Account Assigned
+            </div>
+            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle">
+              Assign an account from Settings
+            </div>
           </div>
           <!-- Webview will be mounted here dynamically -->
         </div>
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
       </div>
 
-      <!-- AI2 SLOT CARD -->
+      <!-- AI2 slot card -->
       <div class="slot-card glass-panel" data-slot="ai2">
         <div class="slot-header">
-          <!-- Üst Satır: Avatar, Info, Metodlar, Actions -->
+          <!-- Top row: avatar, info, methods, actions -->
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
@@ -107,18 +141,28 @@
               <span class="slot-nickname" id="ai2-nickname">AI2</span>
               <select id="ai2-account-select" class="select-compact"></select>
             </div>
-            <!-- Metodlar (üstte mesaj, altta dosya) -->
+            <!-- Methods (message on top, file below) -->
             <div class="slot-methods-column">
               <div class="setting-group">
-                <label class="setting-label">Mesaj:</label>
-                <select id="ai2-msg-method" class="select-compact" title="Mesaj Gönderme Metodu">
+                <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
+                <select
+                  id="ai2-msg-method"
+                  class="select-compact"
+                  title="Message Sending Method"
+                  data-i18n-title="slot.messageMethodTitle"
+                >
                   <option value="injection">Injection</option>
                   <option value="xdotools">XdoTools</option>
                 </select>
               </div>
               <div class="setting-group">
-                <label class="setting-label">Dosya:</label>
-                <select id="ai2-file-method" class="select-compact" title="Dosya Gönderme Metodu">
+                <label class="setting-label" data-i18n-text="slot.fileLabel">File:</label>
+                <select
+                  id="ai2-file-method"
+                  class="select-compact"
+                  title="File Sending Method"
+                  data-i18n-title="slot.fileMethodTitle"
+                >
                   <option value="dragdrop">Drag & Drop</option>
                   <option value="injection">Injection</option>
                   <option value="xdotools">XdoTools</option>
@@ -130,32 +174,51 @@
             </div>
             <div class="slot-actions">
               <div class="slot-checkboxes-column">
-                <label class="catch-label" title="AI komutlarını yakala ve işle">
+                <label
+                  class="catch-label"
+                  title="Capture and process AI commands"
+                  data-i18n-title="slot.catchTitle"
+                >
                   <input type="checkbox" id="ai2-catch-check" />
-                  <span>Komutları Yakala</span>
-                </label>
-                <label class="catch-label" title="Bağlanınca son oturuma dön">
-                  <input type="checkbox" id="ai2-resume-last-session-check" />
-                  <span>Son sessiona devam</span>
+                  <span data-i18n-text="slot.catchLabel">Capture Commands</span>
                 </label>
                 <label
                   class="catch-label"
-                  title="Bağlantı durumunu hatırla ve açılışta otomatik bağlan"
+                  title="Resume the last session on connect"
+                  data-i18n-title="slot.resumeTitle"
+                >
+                  <input type="checkbox" id="ai2-resume-last-session-check" />
+                  <span data-i18n-text="slot.resumeLabel">Resume last session</span>
+                </label>
+                <label
+                  class="catch-label"
+                  title="Remember connection state and auto-connect on startup"
+                  data-i18n-title="slot.rememberTitle"
                 >
                   <input type="checkbox" id="ai2-remember-connection-check" />
-                  <span>Bağlantı durumunu hatırla</span>
+                  <span data-i18n-text="slot.rememberLabel">Remember connection state</span>
                 </label>
               </div>
-              <button class="btn btn-primary btn-sm slot-connect-btn" id="ai2-toggle-btn">
-                Hesap Seçin
+              <button
+                class="btn btn-primary btn-sm slot-connect-btn"
+                id="ai2-toggle-btn"
+                data-i18n-text="slot.selectAccount"
+              >
+                Select Account
               </button>
-              <button class="btn btn-ghost btn-icon btn-sm" id="ai2-devtools-btn" title="DevTools">
+              <button
+                class="btn btn-ghost btn-icon btn-sm"
+                id="ai2-devtools-btn"
+                title="DevTools"
+                data-i18n-title="slot.devtoolsTitle"
+              >
                 🔧
               </button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-test-btn"
                 title="Provider Test"
+                data-i18n-title="slot.providerTestTitle"
                 disabled
               >
                 🧪
@@ -164,6 +227,7 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-sync-btn"
                 title="Provider Sync"
+                data-i18n-title="slot.providerSyncTitle"
                 disabled
               >
                 🔄
@@ -178,8 +242,12 @@
           <!-- Overlay -->
           <div class="webview-overlay empty" id="ai2-webview-overlay">
             <div class="overlay-icon"></div>
-            <div class="overlay-title">Hesap Seçilmedi</div>
-            <div class="overlay-subtitle">Yukarıdan hesap seçin ve bağlanın</div>
+            <div class="overlay-title" data-i18n-text="webview.noAccount.title">
+              No Account Assigned
+            </div>
+            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle">
+              Assign an account from Settings
+            </div>
           </div>
           <!-- Webview will be mounted here dynamically -->
         </div>
@@ -187,29 +255,30 @@
       </div>
     </div>
 
-    <!-- CONTROL PANEL (Accordion) -->
+    <!-- Control panel (accordion) -->
     <div class="control-panel-accordion">
       <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="false">
         <span class="accordion-icon">⚙️</span>
-        <span class="accordion-title">Ayarlar</span>
+        <span class="accordion-title" data-i18n-text="panels.settings">Settings</span>
         <span class="accordion-chevron">▼</span>
       </button>
 
       <div class="accordion-content" id="settings-accordion-content">
         <div class="accordion-panels">
-          <!-- USER SETTINGS -->
+          <!-- User settings -->
           <div class="panel-item glass-panel" data-panel="user">
             <div class="panel-header">
-              <span class="panel-title">KULLANICI & DRiVE</span>
+              <span class="panel-title" data-i18n-text="panels.user">USER & DRIVE</span>
             </div>
             <div class="panel-content">
               <div class="user-settings-column">
-                <!-- Avatar - Nickname -->
+                <!-- Avatar and nickname -->
                 <div class="user-avatar-row">
                   <div
                     class="user-avatar-wrapper"
                     id="user-avatar-edit-btn"
-                    title="Avatarı Değiştir"
+                    title="Change Avatar"
+                    data-i18n-title="user.changeAvatarTitle"
                   >
                     <div class="avatar-placeholder img-cover" id="user-avatar"></div>
                     <div class="user-edit-overlay">📷</div>
@@ -218,65 +287,95 @@
                     type="text"
                     id="user-nickname-input"
                     class="input input-sm"
-                    value="Kullanıcı"
-                    placeholder="Takma Ad"
+                    placeholder="Nickname"
+                    data-i18n-placeholder="user.nicknamePlaceholder"
                   />
                 </div>
                 <div class="setting-group">
-                  <label class="form-label" for="app-language-select">Uygulama Dili</label>
+                  <label class="form-label" id="app-language-label" for="app-language-select">
+                    Application Language
+                  </label>
                   <select id="app-language-select" class="select select-sm">
-                    <option value="tr">Türkçe</option>
-                    <option value="en">İngilizce</option>
+                    <option value="tr">Turkish</option>
+                    <option value="en">English</option>
                   </select>
+                  <div class="form-hint" id="app-language-restart-hint"></div>
                 </div>
-                <!-- Google Drive - Status (sadece dot) -->
+                <!-- Google Drive status -->
                 <div class="gdrive-status-row">
-                  <label class="form-label">Google Drive</label>
-                  <span class="status-dot" id="gdrive-status-dot" title="Bağlantı Durumu"></span>
+                  <label class="form-label" data-i18n-text="user.googleDrive.label"
+                    >Google Drive</label
+                  >
+                  <span
+                    class="status-dot"
+                    id="gdrive-status-dot"
+                    title="Connection Status"
+                    data-i18n-title="user.googleDrive.statusTitle"
+                  ></span>
+                  <span
+                    class="status-text"
+                    id="gdrive-status-text"
+                    data-i18n-text="user.googleDrive.disconnected"
+                  >
+                    Drive Not Connected
+                  </span>
                 </div>
-                <!-- Client ID -->
                 <input
                   type="text"
                   id="gdrive-client-id"
                   class="input input-sm"
                   placeholder="Client ID"
+                  data-i18n-placeholder="user.googleDrive.clientIdPlaceholder"
                 />
-                <!-- Client Secret -->
                 <input
                   type="text"
                   id="gdrive-client-secret"
                   class="input input-sm"
                   placeholder="Client Secret"
+                  data-i18n-placeholder="user.googleDrive.clientSecretPlaceholder"
                 />
-                <!-- Auth Code -->
                 <input
                   type="text"
                   id="gdrive-auth-code"
                   class="input input-sm"
                   placeholder="Auth Code"
+                  data-i18n-placeholder="user.googleDrive.authCodePlaceholder"
                 />
-                <!-- Auth URL - Bağlan butonları -->
                 <div class="btn-group-inline">
-                  <button class="btn btn-secondary btn-sm" id="gdrive-start-auth">Auth URL</button>
-                  <button class="btn btn-primary btn-sm" id="gdrive-connect-btn">Bağlan</button>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    id="gdrive-start-auth"
+                    data-i18n-text="user.googleDrive.startAuth"
+                  >
+                    Auth URL
+                  </button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    id="gdrive-connect-btn"
+                    data-i18n-text="user.googleDrive.connect"
+                  >
+                    Connect
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- ACCOUNTS -->
+          <!-- Accounts -->
           <div class="panel-item glass-panel" data-panel="accounts">
             <div class="panel-header">
-              <span class="panel-title">HESAP YÖNETİMİ</span>
+              <span class="panel-title" data-i18n-text="panels.accounts">ACCOUNT MANAGEMENT</span>
             </div>
             <div class="panel-content">
               <div class="accounts-container">
                 <div class="account-list" id="account-list">
-                  <!-- Dynamic Content -->
+                  <!-- Dynamic content -->
                 </div>
                 <div class="account-form">
                   <div class="account-form-header">
-                    <span>Yeni Hesap</span>
+                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"
+                      >New Account</span
+                    >
                     <span id="account-status-msg" class="form-hint"></span>
                   </div>
                   <div class="account-form-body">
@@ -285,12 +384,14 @@
                       id="new-account-email"
                       class="input input-sm"
                       placeholder="Email"
+                      data-i18n-placeholder="accounts.form.emailPlaceholder"
                     />
                     <input
                       type="text"
                       id="new-account-nickname"
                       class="input input-sm"
-                      placeholder="Takma Ad"
+                      placeholder="Nickname"
+                      data-i18n-placeholder="accounts.form.nicknamePlaceholder"
                     />
                     <select id="new-account-provider" class="select">
                       <option value="chatgpt">ChatGPT</option>
@@ -299,14 +400,26 @@
                     </select>
                     <div class="account-form-avatar-row">
                       <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
-                      <button class="btn btn-ghost btn-sm" id="new-account-avatar-browse">
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="new-account-avatar-browse"
+                        data-i18n-text="accounts.form.avatarButton"
+                      >
                         📷 Avatar
                       </button>
-                      <button class="btn btn-primary btn-sm" id="settings-create-account">
-                        Ekle
+                      <button
+                        class="btn btn-primary btn-sm"
+                        id="settings-create-account"
+                        data-i18n-text="accounts.form.createAction"
+                      >
+                        Add
                       </button>
-                      <button class="btn btn-danger btn-sm hidden" id="settings-cancel-edit">
-                        İptal
+                      <button
+                        class="btn btn-danger btn-sm hidden"
+                        id="settings-cancel-edit"
+                        data-i18n-text="accounts.form.cancelAction"
+                      >
+                        Cancel
                       </button>
                     </div>
                   </div>
@@ -315,32 +428,40 @@
             </div>
           </div>
 
-          <!-- WHISPER QUEUE -->
+          <!-- Whisper queue -->
           <div class="panel-item glass-panel" data-panel="whisper">
             <div class="panel-header">
-              <span class="panel-title">BEKLEYEN KOMUTLAR</span>
+              <span class="panel-title" data-i18n-text="panels.whisper">PENDING COMMANDS</span>
             </div>
             <div class="panel-content">
               <div class="entrance-whisper-container">
                 <div class="entrance-whisper-header">
-                  <button class="btn btn-ghost btn-sm" id="whisper-clear-btn">🗑️ Temizle</button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    id="whisper-clear-btn"
+                    data-i18n-text="whisper.clear"
+                  >
+                    🗑️ Clear
+                  </button>
                 </div>
                 <div class="entrance-whisper-list" id="whisper-pending-list">
-                  <!-- Dynamic Content -->
+                  <!-- Dynamic content -->
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- REPORT PANEL -->
+          <!-- Report panel -->
           <div class="panel-item glass-panel" data-panel="report">
             <div class="panel-header">
-              <span class="panel-title">CANLI RAPOR</span>
+              <span class="panel-title" data-i18n-text="panels.report">LIVE REPORT</span>
             </div>
             <div class="panel-content">
               <div class="report-container">
                 <div class="report-content" id="entrance-report-content">
-                  <div class="log-entry">Sistem başlatıldı...</div>
+                  <div class="log-entry" data-i18n-text="report.initialEntry">
+                    System started...
+                  </div>
                 </div>
               </div>
             </div>
@@ -351,18 +472,46 @@
   </div>
 </div>
 
-<!-- ADVANCED LIVE LOG OVERLAY -->
+<!-- Advanced live log overlay -->
 <div id="live-log-overlay" class="live-log-overlay hidden" aria-hidden="true">
   <div class="live-log-backdrop" id="live-log-backdrop"></div>
-  <div class="live-log-shell" role="dialog" aria-modal="true" aria-label="Canli Log Merkezi">
+  <div
+    class="live-log-shell"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Live Log Center"
+    data-i18n-aria-label="liveLog.dialogAriaLabel"
+  >
     <div class="live-log-header">
-      <h3>Canli Log Merkezi</h3>
+      <h3 data-i18n-text="liveLog.title">Live Log Center</h3>
       <div class="live-log-header-actions">
-        <button class="btn btn-ghost btn-sm" id="live-log-pause" title="Akisi durdur">Pause</button>
-        <button class="btn btn-ghost btn-sm" id="live-log-clear" title="Listeyi temizle">
+        <button
+          class="btn btn-ghost btn-sm"
+          id="live-log-pause"
+          title="Pause stream"
+          data-i18n-title="liveLog.pauseTitle"
+          data-i18n-text="liveLog.pause"
+        >
+          Pause
+        </button>
+        <button
+          class="btn btn-ghost btn-sm"
+          id="live-log-clear"
+          title="Clear list"
+          data-i18n-title="liveLog.clearTitle"
+          data-i18n-text="liveLog.clear"
+        >
           Clear
         </button>
-        <button class="btn btn-ghost btn-sm" id="live-log-close" title="Kapat">Close</button>
+        <button
+          class="btn btn-ghost btn-sm"
+          id="live-log-close"
+          title="Close"
+          data-i18n-title="liveLog.closeTitle"
+          data-i18n-text="liveLog.close"
+        >
+          Close
+        </button>
       </div>
     </div>
 
@@ -379,27 +528,28 @@
         </button>
       </div>
       <label class="live-log-control">
-        <span>Session</span>
+        <span data-i18n-text="liveLog.sessionLabel">Session</span>
         <select id="live-log-session-select" class="select"></select>
       </label>
       <label class="live-log-control">
-        <span>Level</span>
+        <span data-i18n-text="liveLog.levelLabel">Level</span>
         <select id="live-log-level-select" class="select">
-          <option value="all">all</option>
-          <option value="error">error</option>
-          <option value="warning">warning</option>
-          <option value="info">info</option>
-          <option value="success">success</option>
-          <option value="debug">debug</option>
+          <option value="all" data-i18n-text="liveLog.levels.all">all</option>
+          <option value="error" data-i18n-text="liveLog.levels.error">error</option>
+          <option value="warning" data-i18n-text="liveLog.levels.warning">warning</option>
+          <option value="info" data-i18n-text="liveLog.levels.info">info</option>
+          <option value="success" data-i18n-text="liveLog.levels.success">success</option>
+          <option value="debug" data-i18n-text="liveLog.levels.debug">debug</option>
         </select>
       </label>
       <label class="live-log-control live-log-control-search">
-        <span>Search</span>
+        <span data-i18n-text="liveLog.searchLabel">Search</span>
         <input
           id="live-log-search"
           class="input"
           type="text"
           placeholder="message/category/source"
+          data-i18n-placeholder="liveLog.searchPlaceholder"
         />
       </label>
       <div class="live-log-metrics" id="live-log-metrics">0 entries</div>
@@ -408,8 +558,14 @@
     <div class="live-log-body">
       <div class="live-log-content" id="live-log-content"></div>
       <aside class="live-log-detail">
-        <div class="live-log-detail-title">Entry Detail</div>
-        <div class="live-log-detail-meta" id="live-log-meta">No entry selected</div>
+        <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle">Entry Detail</div>
+        <div
+          class="live-log-detail-meta"
+          id="live-log-meta"
+          data-i18n-text="liveLog.noEntrySelected"
+        >
+          No entry selected
+        </div>
         <pre class="live-log-detail-context" id="live-log-context"></pre>
       </aside>
     </div>

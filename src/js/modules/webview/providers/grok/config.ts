@@ -96,6 +96,13 @@ export const config = {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
   },
+  uiLanguage: {
+    support: "partial",
+    syncMode: "manual",
+    supportedLocales: ["tr", "en"],
+    persistence: ["account", "session"],
+    notes: "Grok language needs provider-specific settings automation before sync can be enforced.",
+  },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
     webviewSync: WEBVIEW_SYNC_SCENARIO,

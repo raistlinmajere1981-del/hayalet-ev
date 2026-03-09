@@ -15,6 +15,7 @@ import { readFile, readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
+import { createMcpTranslator } from "../../utils/i18n/index.js";
 import type { LogEntry, LogQueryFilter } from "@shared/index.js";
 
 // ============================================================
@@ -35,14 +36,23 @@ export interface AdvancedLogFilter {
   correlationId?: string;
 }
 
+function enhancedLogT(
+  t: (key: string, params?: Record<string, string | number | boolean>) => string,
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return t(`mcpServer.enhancedLogTools.${key}`, params);
+}
+
 export async function streamLogs(args: StreamLogsArgs): Promise<LogEntry[]> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new Error(enhancedLogT(t, "errors.sessionNotFound", { sessionId }));
   }
 
   const content = await readFile(structuredPath, "utf-8");
@@ -100,13 +110,14 @@ export interface AnalyzeErrorsResult {
 }
 
 export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErrorsResult> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new Error(enhancedLogT(t, "errors.sessionNotFound", { sessionId }));
   }
 
   const content = await readFile(structuredPath, "utf-8");
@@ -171,7 +182,7 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
       clusters.push({
         pattern,
         count: entries.length,
-        category: String(entries[0]?.category ?? "unknown"),
+        category: String(entries[0]?.category ?? enhancedLogT(t, "common.unknown")),
         examples: entries.slice(0, 3), // First 3 examples
         firstSeen: sorted[0]?.timestamp ?? "",
         lastSeen: sorted[sorted.length - 1]?.timestamp ?? "",
@@ -216,13 +227,14 @@ export interface CorrelationTrace {
 }
 
 export async function traceCorrelation(args: TraceCorrelationArgs): Promise<CorrelationTrace> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new Error(enhancedLogT(t, "errors.sessionNotFound", { sessionId }));
   }
 
   const content = await readFile(structuredPath, "utf-8");
@@ -242,7 +254,9 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
   }
 
   if (timeline.length === 0) {
-    throw new Error(`No logs found for correlation ID: ${args.correlationId}`);
+    throw new Error(
+      enhancedLogT(t, "errors.noLogsForCorrelationId", { correlationId: args.correlationId })
+    );
   }
 
   // Sort by timestamp
@@ -251,8 +265,11 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
   // Extract operation info
   const first = timeline[0];
 
-  const operationName = first?.context?.operationName ?? "Unknown";
-  const category = String(first?.category ?? "unknown");
+  const operationName =
+    typeof first?.context?.operationName === "string"
+      ? first.context.operationName
+      : enhancedLogT(t, "common.unknownOperation");
+  const category = String(first?.category ?? enhancedLogT(t, "common.unknown"));
 
   // Detect status
   let status: "success" | "failed" | "incomplete" = "incomplete";
@@ -317,13 +334,14 @@ export interface PerformanceReport {
 export async function getPerformanceReport(
   args: PerformanceReportArgs
 ): Promise<PerformanceReport> {
+  const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${sessionId}`);
+    throw new Error(enhancedLogT(t, "errors.sessionNotFound", { sessionId }));
   }
 
   const content = await readFile(structuredPath, "utf-8");
@@ -340,7 +358,7 @@ export async function getPerformanceReport(
   }
 
   if (entries.length === 0) {
-    throw new Error("No logs found in session");
+    throw new Error(enhancedLogT(t, "errors.noLogsInSession"));
   }
 
   // Time range
@@ -417,13 +435,14 @@ export interface ExportLogsResult {
 
 export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult> {
   const startTime = Date.now();
+  const t = await createMcpTranslator();
 
   const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
   const sessionDir = join(logDir, args.sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {
-    throw new Error(`Session not found: ${args.sessionId}`);
+    throw new Error(enhancedLogT(t, "errors.sessionNotFound", { sessionId: args.sessionId }));
   }
 
   const content = await readFile(structuredPath, "utf-8");

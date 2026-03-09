@@ -5,6 +5,7 @@
  */
 
 import { execSync } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError, logToolCall } from "../../utils/mcp-logger.js";
 import { createProgress } from "../../utils/progress.js";
 
@@ -58,52 +59,63 @@ function toEslintResults(value: unknown): EslintFileResult[] {
   return Array.isArray(value) ? (value as EslintFileResult[]) : [];
 }
 
+function eslintDashT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.eslintDashboard.${key}`, params);
+}
+
+function eslintDashDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.eslintDashboard.definition.${key}`, params);
+}
+
 // ESLint rule categories
 const RULE_CATEGORIES: Record<string, string> = {
   // Code Quality
-  "no-unused-vars": "Code Quality",
-  "no-console": "Code Quality",
-  "no-debugger": "Code Quality",
-  "no-unreachable": "Code Quality",
-  "no-constant-condition": "Code Quality",
+  "no-unused-vars": "codeQuality",
+  "no-console": "codeQuality",
+  "no-debugger": "codeQuality",
+  "no-unreachable": "codeQuality",
+  "no-constant-condition": "codeQuality",
 
   // Best Practices
-  eqeqeq: "Best Practices",
-  "no-eval": "Best Practices",
-  "no-implied-eval": "Best Practices",
-  "no-with": "Best Practices",
-  curly: "Best Practices",
+  eqeqeq: "bestPractices",
+  "no-eval": "bestPractices",
+  "no-implied-eval": "bestPractices",
+  "no-with": "bestPractices",
+  curly: "bestPractices",
 
   // TypeScript
-  "@typescript-eslint/no-explicit-any": "TypeScript",
-  "@typescript-eslint/no-unused-vars": "TypeScript",
-  "@typescript-eslint/explicit-module-boundary-types": "TypeScript",
-  "@typescript-eslint/no-non-null-assertion": "TypeScript",
-  "@typescript-eslint/ban-ts-comment": "TypeScript",
+  "@typescript-eslint/no-explicit-any": "typescript",
+  "@typescript-eslint/no-unused-vars": "typescript",
+  "@typescript-eslint/explicit-module-boundary-types": "typescript",
+  "@typescript-eslint/no-non-null-assertion": "typescript",
+  "@typescript-eslint/ban-ts-comment": "typescript",
 
   // Formatting
-  indent: "Formatting",
-  quotes: "Formatting",
-  semi: "Formatting",
-  "comma-dangle": "Formatting",
-  "no-trailing-spaces": "Formatting",
+  indent: "formatting",
+  quotes: "formatting",
+  semi: "formatting",
+  "comma-dangle": "formatting",
+  "no-trailing-spaces": "formatting",
 
   // Imports
-  "import/no-unresolved": "Imports",
-  "import/named": "Imports",
-  "import/default": "Imports",
-  "import/no-duplicates": "Imports",
+  "import/no-unresolved": "imports",
+  "import/named": "imports",
+  "import/default": "imports",
+  "import/no-duplicates": "imports",
 };
 
 const RULE_DESCRIPTIONS: Record<string, string> = {
-  "no-unused-vars": "Unused variables",
-  "no-console": "Console statements",
-  "@typescript-eslint/no-explicit-any": "Explicit any type",
-  "@typescript-eslint/no-unused-vars": "Unused variables (TS)",
-  eqeqeq: "Use === instead of ==",
-  "no-debugger": "Debugger statements",
-  quotes: "Quote style",
-  semi: "Semicolon usage",
+  "no-unused-vars": "noUnusedVars",
+  "no-console": "noConsole",
+  "@typescript-eslint/no-explicit-any": "noExplicitAny",
+  "@typescript-eslint/no-unused-vars": "noUnusedVarsTs",
+  eqeqeq: "eqeqeq",
+  "no-debugger": "noDebugger",
+  quotes: "quotes",
+  semi: "semi",
 };
 
 export function generateEslintDashboard(
@@ -118,12 +130,15 @@ export function generateEslintDashboard(
     show_fixable: showFixable = true,
   } = options;
 
-  const progress = createProgress({ operation: "ESLint Dashboard", interval: 3000 });
+  const progress = createProgress({
+    operation: eslintDashT("progress.operation"),
+    interval: 3000,
+  });
 
   try {
     const cwd = projectRoot;
     const startTime = Date.now();
-    progress.update(0, "ESLint çalıştırılıyor...");
+    progress.update(0, eslintDashT("progress.running"));
 
     // Run ESLint with JSON output
     // Split pattern by spaces to handle multiple patterns
@@ -154,7 +169,7 @@ export function generateEslintDashboard(
         progress.stop();
         return {
           success: false,
-          output: `\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nTimeout or no output from ESLint.\n\nTry:\n1. Run with smaller pattern: hev_dev_eslint_dashboard({pattern: "src/mcp-server/**/*.ts"})\n2. Use hev_dev_lint_project for batch processing\n3. Check .eslintcache and clear if needed`,
+          output: eslintDashT("runtime.timeoutOrNoOutput"),
           total_problems: 0,
           total_errors: 0,
           total_warnings: 0,
@@ -175,7 +190,7 @@ export function generateEslintDashboard(
       rawOutput = error.stdout.length > 0 ? error.stdout : "[]";
     }
 
-    progress.update(50, "Sonuçlar analiz ediliyor...");
+    progress.update(50, eslintDashT("progress.analyzing"));
 
     // Parse JSON output with error handling
     let results: EslintFileResult[] = [];
@@ -190,7 +205,9 @@ export function generateEslintDashboard(
       progress.stop();
       return {
         success: false,
-        output: `\n⚠️ ESLint Dashboard\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFailed to parse ESLint output.\n\nOutput preview:\n${rawOutput.substring(0, 300)}...`,
+        output: eslintDashT("runtime.parseFailed", {
+          preview: `${rawOutput.substring(0, 300)}...`,
+        }),
         total_problems: 0,
         total_errors: 0,
         total_warnings: 0,
@@ -259,12 +276,12 @@ export function generateEslintDashboard(
         if (hasFixable !== 0) fixableCount++;
 
         // Track by category
-        const category = RULE_CATEGORIES[ruleId] ?? "Other";
+        const category = RULE_CATEGORIES[ruleId] ?? "other";
         byCategory[category] = (byCategory[category] ?? 0) + 1;
       });
     });
 
-    progress.update(75, "Dashboard oluşturuluyor...");
+    progress.update(75, eslintDashT("progress.building"));
 
     // Calculate execution time
     const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -288,7 +305,10 @@ export function generateEslintDashboard(
         count: stats.count,
         severity: stats.severity,
         fixable: stats.fixable,
-        description: RULE_DESCRIPTIONS[rule] ?? rule,
+        description: eslintDashT(
+          `ruleDescriptions.${RULE_DESCRIPTIONS[rule] ?? "fallback"}`,
+          RULE_DESCRIPTIONS[rule] !== undefined ? undefined : { rule }
+        ),
         locations: stats.locations,
       }))
       .sort((a, b) => {
@@ -326,7 +346,7 @@ export function generateEslintDashboard(
       foldersWithErrors,
     });
 
-    progress.done(`${totalProblems} sorun analiz edildi`);
+    progress.done(eslintDashT("progress.completed", { totalProblems }));
 
     return {
       success: true,
@@ -347,7 +367,7 @@ export function generateEslintDashboard(
 
     return {
       success: false,
-      output: `Hata: ${(error as Error).message}`,
+      output: eslintDashT("runtime.error", { message: (error as Error).message }),
       total_problems: 0,
       total_errors: 0,
       total_warnings: 0,
@@ -397,25 +417,31 @@ function formatDashboard(data: {
   // Always show stats if provided (use !== undefined to allow 0 values)
   const statsLine =
     data.executionTime !== undefined && data.allFiles !== undefined && data.allFolders !== undefined
-      ? `⏱️  ${data.executionTime}s | 📁 ${data.allFolders} folders (${data.foldersWithErrors ?? 0} with errors) | 📄 ${data.allFiles} files (${data.filesWithErrors ?? 0} with errors)\n`
+      ? eslintDashT("runtime.statsLine", {
+          executionTime: data.executionTime,
+          allFolders: data.allFolders,
+          foldersWithErrors: data.foldersWithErrors ?? 0,
+          allFiles: data.allFiles,
+          filesWithErrors: data.filesWithErrors ?? 0,
+        }) + "\n"
       : "";
 
   // Debug line for testing
   // const debugLine = `[DEBUG] executionTime=${data.executionTime}, allFiles=${data.allFiles}, allFolders=${data.allFolders}\n`;
 
-  let output = "\n📊 ESLint Dashboard\n";
+  let output = `\n${eslintDashT("runtime.title")}\n`;
   output += "━".repeat(60) + "\n";
-  output += `Total: ${totalProblems} problems (${totalErrors} errors, ${totalWarnings} warnings)\n`;
+  output += eslintDashT("runtime.summary", { totalProblems, totalErrors, totalWarnings }) + "\n";
   if (statsLine !== "") output += statsLine;
 
   if (showFixable && fixableCount > 0) {
-    output += `⚡ ${fixableCount} problems can be auto-fixed\n`;
+    output += eslintDashT("runtime.fixableSummary", { fixableCount }) + "\n";
   }
 
   output += "━".repeat(60) + "\n\n";
 
   // Top rules
-  output += "🔴 Top ESLint Rules:\n";
+  output += `${eslintDashT("runtime.topRulesTitle")}\n`;
   topRules.forEach((rule, i) => {
     const icon = rule.severity === "error" ? "🔴" : "🟡";
     const fixableIcon = rule.fixable > 0 ? " ⚡" : "";
@@ -425,52 +451,74 @@ function formatDashboard(data: {
     const bar = "█".repeat(barLen);
     const barPad = "░".repeat(10 - barLen);
 
-    output += `  ${i + 1}. ${icon} ${rule.rule}${fixableIcon}: ${rule.count} ${bar}${barPad} ${percentage}%\n`;
-    output += `     ${rule.description}\n`;
+    output += eslintDashT("runtime.ruleLine", {
+      index: i + 1,
+      icon,
+      rule: rule.rule,
+      fixableIcon,
+      count: rule.count,
+      bar: `${bar}${barPad}`,
+      percentage,
+    }) + "\n";
+    output += eslintDashT("runtime.ruleDescriptionLine", { description: rule.description }) + "\n";
 
     // Show top 3 files with this rule
     const topLocations = rule.locations.sort((a, b) => b.lines.length - a.lines.length).slice(0, 3);
 
     if (topLocations.length > 0) {
-      output += `     Top files:\n`;
+      output += `${eslintDashT("runtime.topFilesInlineTitle")}\n`;
       topLocations.forEach((loc) => {
         const shortPath = loc.file.length > 50 ? "..." + loc.file.slice(-47) : loc.file;
         const linePreview =
           loc.lines.length > 5
-            ? `lines ${loc.lines.slice(0, 5).join(",")}... (${loc.lines.length} total)`
-            : `lines ${loc.lines.join(",")}`;
-        output += `       - ${shortPath}: ${linePreview}\n`;
+            ? eslintDashT("runtime.linePreviewMore", {
+                lines: loc.lines.slice(0, 5).join(","),
+                total: loc.lines.length,
+              })
+            : eslintDashT("runtime.linePreview", {
+                lines: loc.lines.join(","),
+              });
+        output += eslintDashT("runtime.topLocationLine", { shortPath, linePreview }) + "\n";
       });
     }
   });
 
   // Top files
-  output += "\n📁 Top Files:\n";
+  output += `\n${eslintDashT("runtime.topFilesTitle")}\n`;
   topFiles.forEach((file, i) => {
     const shortPath = file.file.length > 60 ? "..." + file.file.slice(-57) : file.file;
-    output += `  ${i + 1}. ${shortPath}\n`;
-    output += `     🔴 ${file.errors} errors, 🟡 ${file.warnings} warnings\n`;
+    output += eslintDashT("runtime.topFileLine", { index: i + 1, shortPath }) + "\n";
+    output +=
+      eslintDashT("runtime.topFileSummary", {
+        errors: file.errors,
+        warnings: file.warnings,
+      }) + "\n";
   });
 
   // By category
-  output += "\n📋 By Category:\n";
+  output += `\n${eslintDashT("runtime.byCategoryTitle")}\n`;
   Object.entries(byCategory)
     .sort((a, b) => b[1] - a[1])
     .forEach(([category, count]) => {
       const percentage = totalProblems > 0 ? ((count / totalProblems) * 100).toFixed(1) : "0.0";
-      output += `  ${category}: ${count} (${percentage}%)\n`;
+      output +=
+        eslintDashT("runtime.categoryLine", {
+          category: eslintDashT(`categories.${category}`),
+          count,
+          percentage,
+        }) + "\n";
     });
 
   // Recommendations
-  output += "\n💡 Recommended Actions:\n";
+  output += `\n${eslintDashT("runtime.recommendedActionsTitle")}\n`;
   if (topRules.length > 0) {
     const topRule = topRules[0];
     if (topRule) {
-      output += `  → Focus on '${topRule.rule}'\n`;
-      output += `    ${topRule.count} occurrences in codebase\n`;
+      output += eslintDashT("runtime.focusRule", { rule: topRule.rule }) + "\n";
+      output += eslintDashT("runtime.occurrences", { count: topRule.count }) + "\n";
 
       if (topRule.fixable > 0) {
-        output += `    ⚡ ${topRule.fixable} can be auto-fixed with --fix\n`;
+        output += eslintDashT("runtime.fixableHint", { fixable: topRule.fixable }) + "\n";
       }
     }
   }
@@ -480,36 +528,35 @@ function formatDashboard(data: {
 
 export const ESLINT_DASHBOARD_TOOL = {
   name: "hev_dev_eslint_dashboard",
-  description:
-    "ESLint hatalarını analiz edip dashboard formatında gösterir (rule analytics, clustering)",
+  description: eslintDashDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       pattern: {
         type: "string" as const,
-        description: "Glob pattern (örn: 'src/**/*.ts')",
+        description: eslintDashDefT("pattern"),
         default: "src/**/*.{js,ts} electron/**/*.{ts,cjs}",
       },
       sort_by: {
         type: "string" as const,
         enum: ["count", "severity", "file"],
-        description: "Sıralama kriteri",
+        description: eslintDashDefT("sortBy"),
         default: "count",
       },
       group_by: {
         type: "string" as const,
         enum: ["rule", "file", "category"],
-        description: "Gruplama kriteri",
+        description: eslintDashDefT("groupBy"),
         default: "rule",
       },
       limit: {
         type: "number" as const,
-        description: "Gösterilecek maksimum item sayısı",
+        description: eslintDashDefT("limit"),
         default: 10,
       },
       show_fixable: {
         type: "boolean" as const,
-        description: "Otomatik düzeltilecekleri göster",
+        description: eslintDashDefT("showFixable"),
         default: true,
       },
     },
@@ -520,13 +567,12 @@ export const ESLINT_DASHBOARD_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Analyze ESLint errors by rule",
-      "Identify most common violations",
-      "Prioritize which rules to fix",
+      eslintDashDefT("useCases.byRule"),
+      eslintDashDefT("useCases.commonViolations"),
+      eslintDashDefT("useCases.prioritize"),
     ],
     relatedTools: ["hev_dev_lint_project"],
-    agentGuidance:
-      "Use FIRST to understand ESLint error distribution. Shows analytics with clustering. Helps plan fixes.",
+    agentGuidance: eslintDashDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["eslint", "analytics", "dashboard", "rule-analysis"],

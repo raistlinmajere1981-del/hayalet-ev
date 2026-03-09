@@ -78,6 +78,7 @@ import type {
   SessionTab,
 } from "./types.js";
 import { config as opencodeUiConfig } from "../../modules/webview/providers/opencode-ui/config.js";
+import { bootstrapOpencodeUiI18n, t } from "./i18n.js";
 type SessionListContext = Parameters<typeof loadSessionListAndRenderFromModule>[0];
 type HistoryContext = Parameters<typeof loadActiveSessionHistoryFromModule>[0];
 type BootstrapContext = Parameters<typeof initializeSessionSelectionFromModule>[0];
@@ -102,13 +103,16 @@ const runtime: RuntimeState = {
   stagedAttachments: [],
 };
 
-const INITIAL_USAGE_TEXT = "Disk DB";
 const sessionStorage = createSessionStorage(runtime);
 let modeDropdown: CustomSelectAPI | null = null;
 let modelDropdown: CustomSelectAPI | null = null;
 let effortDropdown: CustomSelectAPI | null = null;
 let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlayController> | null =
   null;
+
+function getInitialUsageText(): string {
+  return t("usage.diskDb");
+}
 
 function setActiveSession(sessionId: string | null): void {
   runtime.activeSessionId = sessionId;
@@ -202,7 +206,7 @@ function historyContext(): HistoryContext {
   return {
     runtime,
     byId,
-    initialUsageText: INITIAL_USAGE_TEXT,
+    initialUsageText: getInitialUsageText(),
     clearChatArea: (): void => {
       clearChatArea(runtime, byId);
     },
@@ -252,7 +256,7 @@ function bootstrapContext(): BootstrapContext {
 function renderContext(): RenderContext {
   return {
     byId,
-    initialUsageText: INITIAL_USAGE_TEXT,
+    initialUsageText: getInitialUsageText(),
   };
 }
 
@@ -334,12 +338,12 @@ async function withHistorySyncFallback(fallbackText: string): Promise<void> {
   await withHistorySyncFallbackFromModule(historyContext(), fallbackText);
 }
 
-async function createServerSession(title = "Yeni Sohbet"): Promise<string> {
+async function createServerSession(title = t("session.createDefaultTitle")): Promise<string> {
   const response = await apiCall<unknown>("POST", "/session", { title });
   const sessionId = normalizeSessionId(response);
 
   if (sessionId === "") {
-    throw new Error("Session ID alinamadi");
+    throw new Error(t("session.sessionIdUnavailable"));
   }
 
   await ensureSessionInDisk(sessionId, title);
@@ -402,19 +406,20 @@ function pruneLastMessages(): void {
 }
 
 async function clearChat(): Promise<void> {
-  const confirmed = window.confirm("Tum sohbet temizlenecek ve yeni session acilacak. Devam?");
+  const confirmed = window.confirm(t("session.clearConfirm"));
   if (!confirmed) return;
 
   try {
-    const sessionId = await createServerSession("Yeni Sohbet");
+    const sessionId = await createServerSession();
     setActiveSession(sessionId);
     await loadSessionListAndRender({ preserveActive: true });
     await loadActiveSessionHistory();
   } catch (error) {
     addMessage(
       "assistant",
-      "Yeni session olusturulamadi: " +
-        (error instanceof Error && error.message !== "" ? error.message : String(error))
+      t("session.createFailed", {
+        message: error instanceof Error && error.message !== "" ? error.message : String(error),
+      })
     );
   }
 }
@@ -449,7 +454,7 @@ async function loadAgents(): Promise<void> {
     const payload = await apiCall<unknown>("GET", "/agent");
     const items = normalizeAgentItems(payload);
     if (items.length === 0) {
-      modeDropdown.setError("Yok");
+      modeDropdown.setError(t("provider.none"));
       runtime.activeAgentId = null;
       return;
     }
@@ -458,7 +463,7 @@ async function loadAgents(): Promise<void> {
     runtime.activeAgentId = initial !== "" ? initial : null;
     modeDropdown.setItems(items, runtime.activeAgentId ?? undefined);
   } catch {
-    modeDropdown.setError("Hata");
+    modeDropdown.setError(t("provider.error"));
   }
 }
 
@@ -543,7 +548,7 @@ export async function runOpencodeUiBootstrapPipeline(options: {
 async function bootstrapOpencodeUiApp(): Promise<void> {
   await bootstrapOpencodeUiAppFromModule({
     runtime,
-    initialUsageText: INITIAL_USAGE_TEXT,
+    initialUsageText: getInitialUsageText(),
     providerConfig: opencodeUiConfig,
     byId,
     setApiBaseUrl,
@@ -587,5 +592,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     })();
   });
 
-  void bootstrapOpencodeUiApp();
+  void (async (): Promise<void> => {
+    await bootstrapOpencodeUiI18n();
+    await bootstrapOpencodeUiApp();
+  })();
 }

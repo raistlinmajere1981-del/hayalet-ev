@@ -1,11 +1,13 @@
 import { Logger } from "../modules/logger/index.js";
 import type { LogEntry } from "../modules/logger/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { AppState } from "../modules/app-state.js";
 import { SlotController } from "../modules/slot-controller.js";
 import { ServerCommands } from "../modules/server-commands.js";
+import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 import {
   buildCommandTestMessage,
@@ -41,6 +43,10 @@ import type { TimelineEvent } from "./server-timeline.js";
 
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
+
+function serverCommandPanelT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.commands.panel.${key}`, params);
+}
 
 export class ServerController {
   isDelegated: boolean;
@@ -175,7 +181,7 @@ export class ServerController {
 
   private getCommandDetailText(commandName: string): string {
     const detail = this.getServerCommandsApi().getDescriptionText(commandName);
-    return detail !== "" ? detail : `${commandName}\n\nDetay bulunamadi.`;
+    return detail !== "" ? detail : `${commandName}\n\n${serverCommandPanelT("detailMissing")}`;
   }
 
   private setCommandDetail(commandName: string): void {
@@ -209,16 +215,17 @@ export class ServerController {
 
     const commandName = this.selectedCommand.trim();
     if (commandName === "") {
-      ButtonStates.setError(runButton, "Komut Seç", 1200);
+      ButtonStates.setError(runButton, serverCommandPanelT("buttons.selectCommand"), 1200);
       return;
     }
 
     const slot = this.getSelectedCommandSlot();
-    ButtonStates.setLoading(runButton, "Çalıştır...");
+    ButtonStates.setLoading(runButton, serverCommandPanelT("buttons.runLoading"));
 
     const rawInput = (this.commandTestArgs?.value ?? "").trim();
+    const commandKey = commandName.toLowerCase();
     const inputWithDefault =
-      rawInput === "" && commandName.toLowerCase() === "asistanaisend" ? "ai1" : rawInput;
+      rawInput === "" && ["assistantaisend", "asistanaisend"].includes(commandKey) ? "ai1" : rawInput;
     const parsed = parseCommandExecutionInput(inputWithDefault, commandName);
     const resolvedCommandName = parsed.commandName;
     const resolvedArgs = parsed.args;
@@ -240,9 +247,9 @@ export class ServerController {
       const success = result.success === true;
 
       if (success) {
-        ButtonStates.setSuccess(runButton, "OK", 1200);
+        ButtonStates.setSuccess(runButton, serverCommandPanelT("buttons.success"), 1200);
       } else {
-        ButtonStates.setError(runButton, "Hata", 1200);
+        ButtonStates.setError(runButton, serverCommandPanelT("buttons.error"), 1200);
       }
 
       const detailFromResult =
@@ -251,8 +258,8 @@ export class ServerController {
           : typeof result.detail === "string" && result.detail !== ""
             ? result.detail
             : success
-              ? "Calistirma tamamlandi"
-              : "Calistirma basarisiz";
+              ? serverCommandPanelT("results.completed")
+              : serverCommandPanelT("results.failed");
 
       this.selectedCommand = resolvedCommandName;
 
@@ -260,19 +267,26 @@ export class ServerController {
         this.commandDetail.value = `${resolvedCommandName}\n\n${detailFromResult}`;
       }
 
-      Logger.info(LogCategory.SERVER_COMMANDS, `Komut calistirma sonucu: ${resolvedCommandName}`, {
-        command: resolvedCommandName,
-        slot,
-        success,
-        detail: detailFromResult,
-      });
+      Logger.info(
+        LogCategory.SERVER_COMMANDS,
+        serverCommandPanelT("logs.runResult", { command: resolvedCommandName }),
+        {
+          command: resolvedCommandName,
+          slot,
+          success,
+          detail: detailFromResult,
+        }
+      );
     } catch (error) {
-      ButtonStates.setError(runButton, "Hata", 1200);
+      ButtonStates.setError(runButton, serverCommandPanelT("buttons.error"), 1200);
       const message = error instanceof Error ? error.message : String(error);
       if (this.commandDetail !== null) {
         this.commandDetail.value = `${resolvedCommandName}\n\n${message}`;
       }
-      Logger.error(LogCategory.SERVER_COMMANDS, `Komut calistirma hatasi: ${message}`);
+      Logger.error(
+        LogCategory.SERVER_COMMANDS,
+        serverCommandPanelT("logs.runError", { message })
+      );
     }
   }
 
@@ -287,14 +301,14 @@ export class ServerController {
 
     const list = this.getCommandCatalog(this.activeCategory)
       .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      .sort((a, b) => a.name.localeCompare(b.name, AppI18n.getLocale()));
 
     this.commandList.innerHTML = "";
 
     if (list.length === 0) {
       const empty = document.createElement("div");
       empty.className = "log-empty-state";
-      empty.textContent = "Bu kategori için komut bulunamadı";
+      empty.textContent = serverCommandPanelT("status.emptyCategory");
       this.commandList.appendChild(empty);
       if (this.commandDetail !== null) {
         this.commandDetail.value = "";
@@ -320,7 +334,9 @@ export class ServerController {
       toggle.type = "checkbox";
       toggle.className = "command-toggle";
       toggle.checked = enabled;
-      toggle.title = enabled ? "Komut aktif" : "Komut pasif";
+      toggle.title = enabled
+        ? serverCommandPanelT("status.enabledTitle")
+        : serverCommandPanelT("status.disabledTitle");
 
       const name = document.createElement("span");
       name.className = "command-item-name";
@@ -328,7 +344,9 @@ export class ServerController {
 
       const status = document.createElement("span");
       status.className = "command-item-status";
-      status.textContent = enabled ? "Aktif" : "Pasif";
+      status.textContent = enabled
+        ? serverCommandPanelT("status.enabled")
+        : serverCommandPanelT("status.disabled");
 
       left.appendChild(toggle);
       left.appendChild(name);
@@ -340,12 +358,12 @@ export class ServerController {
       const detailButton = document.createElement("button");
       detailButton.className = "btn btn-secondary btn-sm";
       detailButton.type = "button";
-      detailButton.textContent = "Detay";
+      detailButton.textContent = serverCommandPanelT("buttons.detail");
 
       const exampleButton = document.createElement("button");
       exampleButton.className = "btn btn-primary btn-sm";
       exampleButton.type = "button";
-      exampleButton.textContent = "Örnek";
+      exampleButton.textContent = serverCommandPanelT("buttons.example");
 
       actions.appendChild(detailButton);
       actions.appendChild(exampleButton);
@@ -359,19 +377,29 @@ export class ServerController {
 
         void this.toggleCommandForSlot(slot, item.name, requestedState)
           .then(() => {
-            status.textContent = requestedState ? "Aktif" : "Pasif";
-            toggle.title = requestedState ? "Komut aktif" : "Komut pasif";
-            Logger.info(LogCategory.SERVER_COMMANDS, `Komut durumu güncellendi: ${item.name}`, {
-              command: item.name,
-              slot,
-              enabled: requestedState,
-            });
+            status.textContent = requestedState
+              ? serverCommandPanelT("status.enabled")
+              : serverCommandPanelT("status.disabled");
+            toggle.title = requestedState
+              ? serverCommandPanelT("status.enabledTitle")
+              : serverCommandPanelT("status.disabledTitle");
+            Logger.info(
+              LogCategory.SERVER_COMMANDS,
+              serverCommandPanelT("logs.statusUpdated", { command: item.name }),
+              {
+                command: item.name,
+                slot,
+                enabled: requestedState,
+              }
+            );
           })
           .catch((error) => {
             toggle.checked = !requestedState;
             Logger.error(
               LogCategory.SERVER_COMMANDS,
-              `Komut durumu güncellenemedi: ${error instanceof Error ? error.message : String(error)}`
+              serverCommandPanelT("logs.statusUpdateError", {
+                message: error instanceof Error ? error.message : String(error),
+              })
             );
           })
           .finally(() => {
@@ -422,7 +450,7 @@ export class ServerController {
     if (available.length === 0) {
       const opt = document.createElement("option");
       opt.value = "";
-      opt.textContent = "Bağlı AI yok";
+      opt.textContent = serverCommandPanelT("status.noConnectedAi");
       this.controllerSelect.appendChild(opt);
     } else {
       available.forEach((p) => {
@@ -452,7 +480,7 @@ export class ServerController {
     if (controller === "") return;
 
     if (this.delegateBtn) {
-      ButtonStates.setLoading(this.delegateBtn, "Devrediliyor...");
+      ButtonStates.setLoading(this.delegateBtn, serverCommandPanelT("buttons.delegateLoading"));
     }
 
     try {
@@ -464,18 +492,20 @@ export class ServerController {
       this.isDelegated = true;
 
       if (this.delegateBtn) {
-        ButtonStates.setSuccess(this.delegateBtn, "Devredildi!", 1500);
+        ButtonStates.setSuccess(this.delegateBtn, serverCommandPanelT("buttons.delegateSuccess"), 1500);
       }
       Logger.panel(
         LogCategory.SYSTEM,
         LogLevel.SUCCESS,
-        `Kontrol ${AppState.getNickname(controller)}'e devredildi`
+        serverCommandPanelT("logs.delegateSuccess", {
+          controller: AppState.getNickname(controller),
+        })
       );
     } catch (_error) {
       if (this.delegateBtn) {
-        ButtonStates.setError(this.delegateBtn, "Hata!", 1500);
+        ButtonStates.setError(this.delegateBtn, serverCommandPanelT("buttons.error"), 1500);
       }
-      Logger.error(LogCategory.SERVER_COMMANDS, "Kontrol devretme hatası");
+      Logger.error(LogCategory.SERVER_COMMANDS, serverCommandPanelT("logs.delegateError"));
     }
 
     setTimeout(() => {
@@ -487,27 +517,27 @@ export class ServerController {
     const controller = this.controllerSelect?.value ?? "ai1";
 
     if (this.reclaimBtn) {
-      ButtonStates.setLoading(this.reclaimBtn, "Devralınıyor...");
+      ButtonStates.setLoading(this.reclaimBtn, serverCommandPanelT("buttons.reclaimLoading"));
     }
 
     try {
       await CoreEngine.sendBatch({
         targets: [controller],
-        text: "Kontrol Devralındı",
+        text: serverCommandPanelT("controlBatchText"),
         page: "server",
       });
 
       this.isDelegated = false;
 
       if (this.reclaimBtn) {
-        ButtonStates.setSuccess(this.reclaimBtn, "Devralındı!", 1500);
+        ButtonStates.setSuccess(this.reclaimBtn, serverCommandPanelT("buttons.reclaimSuccess"), 1500);
       }
-      Logger.success(LogCategory.SYSTEM, "Kontrol insana devralındı");
+      Logger.success(LogCategory.SYSTEM, serverCommandPanelT("logs.reclaimSuccess"));
     } catch (_error) {
       if (this.reclaimBtn) {
-        ButtonStates.setError(this.reclaimBtn, "Hata!", 1500);
+        ButtonStates.setError(this.reclaimBtn, serverCommandPanelT("buttons.error"), 1500);
       }
-      Logger.error(LogCategory.SERVER_COMMANDS, "Kontrol devralma hatası");
+      Logger.error(LogCategory.SERVER_COMMANDS, serverCommandPanelT("logs.reclaimError"));
     }
 
     setTimeout(() => {

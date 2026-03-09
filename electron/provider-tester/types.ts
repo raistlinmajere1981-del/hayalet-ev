@@ -15,7 +15,7 @@ import type {
   ProviderWebviewSyncMode,
   TestCategory,
 } from "../../src/types/provider.ts";
-import type { AppLanguage } from "../../src/types/settings.ts";
+import type { SelectorLanguage } from "../../src/types/i18n.ts";
 import type { SyncMessagesParams } from "../types/index.ts";
 
 type UpsertConversationMetadataParams = {
@@ -119,7 +119,7 @@ export interface ProviderTesterDatabaseManager {
 
 export interface ProviderTestRunOptions {
   emitProgress: ((event: ProviderTestProgressEvent) => void) | undefined;
-  appLanguage?: AppLanguage;
+  appLanguage?: SelectorLanguage;
   runId?: string;
   syncMode?: ProviderWebviewSyncMode;
   defaultUrlOverride?: string;
@@ -139,7 +139,7 @@ export interface TestContext {
   slot: ProviderTestSlot;
   webview: WebviewTag;
   config: ProviderConfig;
-  appLanguage: AppLanguage;
+  appLanguage: SelectorLanguage;
   abortSignal?: AbortSignal;
   shell?: RendererShell;
   executeScript: (script: string) => Promise<unknown>;

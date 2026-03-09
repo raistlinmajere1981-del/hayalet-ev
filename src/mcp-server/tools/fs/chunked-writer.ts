@@ -1,7 +1,7 @@
 /**
  * Filesystem Tools - Chunked Writer
  *
- * Large file handling with chunks
+ * Large file handling with chunks.
  */
 
 import { writeFile, access, readFile, unlink } from "fs/promises";
@@ -9,6 +9,20 @@ import { dirname } from "path";
 import { mkdir } from "fs/promises";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { createProgress } from "../../utils/progress.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
+import type { TranslationParams } from "../../../types/i18n.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function fsChunkT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.chunked.${key}`, params);
+}
+
+const chunkedToolDefinitionTranslator = createMcpTranslatorSync();
+
+function chunkedToolDefinitionT(key: string, params?: TranslationParams): string {
+  return chunkedToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`, params);
+}
 
 export async function createChunkedFile(
   filePath: string,
@@ -19,24 +33,25 @@ export async function createChunkedFile(
   const progress = createProgress({ operation: "hev_fs_create_chunked", total: 100 });
   const tempDir = `${projectRoot}/.tmp_chunks`;
   const tempFiles: string[] = [];
+  const t = await createMcpTranslator();
 
   try {
-    progress.log(`${chunks.length} parça birleştiriliyor...`);
+    progress.log(fsChunkT(t, "create.joiningChunks", { chunkCount: chunks.length }));
 
-    // Hedef dosya kontrolü
     if (!overwrite) {
       try {
         await access(filePath);
-        return { success: false, message: `Dosya zaten var: ${filePath}`, chunkCount: 0 };
+        return {
+          success: false,
+          message: fsChunkT(t, "create.fileExists", { filePath }),
+          chunkCount: 0,
+        };
       } catch {
-        /* dosya yok, devam */
+        /* the file does not exist yet */
       }
     }
 
-    // Temp dizini oluştur
     await mkdir(tempDir, { recursive: true });
-
-    // Her chunk'ı temp dosyaya yaz
 
     for (let i = 0; i < chunks.length; i++) {
       const tempPath = `${tempDir}/chunk_${String(i).padStart(4, "0")}.tmp`;
@@ -45,15 +60,16 @@ export async function createChunkedFile(
       tempFiles.push(tempPath);
       progress.update(
         Math.round(((i + 1) / chunks.length) * 50),
-        `Parça ${i + 1}/${chunks.length} yazıldı`
+        fsChunkT(t, "create.chunkWritten", {
+          chunkIndex: i + 1,
+          chunkCount: chunks.length,
+        })
       );
     }
 
-    // Hedef dizini oluştur
     await mkdir(dirname(filePath), { recursive: true });
 
-    // Tüm chunk'ları birleştir
-    progress.update(60, "Parçalar birleştiriliyor...");
+    progress.update(60, fsChunkT(t, "create.mergingChunks"));
     let fullContent = "";
 
     for (const tempPath of tempFiles) {
@@ -62,12 +78,10 @@ export async function createChunkedFile(
       fullContent += chunk;
     }
 
-    // Hedef dosyaya yaz
-    progress.update(80, "Dosya yazılıyor...");
+    progress.update(80, fsChunkT(t, "create.writingFile"));
     await writeFile(filePath, fullContent, "utf-8");
 
-    // Temp dosyaları temizle
-    progress.update(90, "Temp dosyalar temizleniyor...");
+    progress.update(90, fsChunkT(t, "create.cleaningTempFiles"));
 
     for (const tempPath of tempFiles) {
       try {
@@ -79,16 +93,24 @@ export async function createChunkedFile(
     }
 
     const finalSize = Buffer.byteLength(fullContent, "utf-8");
-    progress.done(`${filePath} oluşturuldu (${chunks.length} parça, ${finalSize} byte)`);
+    progress.done(
+      fsChunkT(t, "create.successProgress", {
+        filePath,
+        chunkCount: chunks.length,
+        finalSize,
+      })
+    );
 
     return {
       success: true,
-      message: `Dosya oluşturuldu: ${filePath}\nParça sayısı: ${chunks.length}\nToplam boyut: ${finalSize} byte`,
+      message: fsChunkT(t, "create.successMessage", {
+        filePath,
+        chunkCount: chunks.length,
+        finalSize,
+      }),
       chunkCount: chunks.length,
     };
   } catch (error) {
-    // Hata durumunda temp dosyaları temizle
-
     for (const tempPath of tempFiles) {
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -102,7 +124,7 @@ export async function createChunkedFile(
     logToolError("hev_fs_create_chunked", err, { filePath, chunkCount: chunks.length });
     return {
       success: false,
-      message: `Chunk dosya oluşturma hatası: ${err.message}`,
+      message: fsChunkT(t, "create.error", { message: err.message }),
       chunkCount: 0,
     };
   }
@@ -113,42 +135,51 @@ export async function appendChunk(
   content: string,
   createIfMissing: boolean = true
 ): Promise<{ success: boolean; message: string }> {
+  const t = await createMcpTranslator();
   try {
-    // Dosya var mı kontrol et
     let existingContent = "";
     try {
       existingContent = await readFile(filePath, "utf-8");
     } catch {
       if (!createIfMissing) {
-        return { success: false, message: `Dosya bulunamadı: ${filePath}` };
+        return { success: false, message: fsChunkT(t, "append.fileNotFound", { filePath }) };
       }
-      // Dizini oluştur
       await mkdir(dirname(filePath), { recursive: true });
     }
 
-    // İçeriği ekle
     await writeFile(filePath, existingContent + content, "utf-8");
     return {
       success: true,
-      message: `Chunk eklendi: ${filePath} (+${Buffer.byteLength(content, "utf-8")} byte)`,
+      message: fsChunkT(t, "append.success", {
+        filePath,
+        addedBytes: Buffer.byteLength(content, "utf-8"),
+      }),
     };
   } catch (error) {
     const err = error as Error;
     logToolError("hev_fs_append_chunk", err, { filePath });
-    return { success: false, message: `Append hatası: ${err.message}` };
+    return { success: false, message: fsChunkT(t, "append.error", { message: err.message }) };
   }
 }
 
 // Tool Definitions
 export const CREATE_CHUNKED_FILE_TOOL = {
   name: "hev_fs_create_chunked",
-  description: "Büyük dosyaları parçalar halinde oluştur",
+  description: chunkedToolDefinitionT("chunkedCreate.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Hedef dosya yolu" },
-      chunks: { type: "array", items: { type: "string" }, description: "İçerik parçaları" },
-      overwrite: { type: "boolean", description: "Üzerine yaz", default: false },
+      file_path: { type: "string", description: chunkedToolDefinitionT("chunkedCreate.filePath") },
+      chunks: {
+        type: "array",
+        items: { type: "string" },
+        description: chunkedToolDefinitionT("chunkedCreate.chunks"),
+      },
+      overwrite: {
+        type: "boolean",
+        description: chunkedToolDefinitionT("chunkedCreate.overwrite"),
+        default: false,
+      },
     },
     required: ["file_path", "chunks"],
   },
@@ -158,13 +189,12 @@ export const CREATE_CHUNKED_FILE_TOOL = {
     priority: "medium",
     complexity: "medium",
     useCases: [
-      "Create large files avoiding token limits",
-      "Chunk-based file creation",
-      "Stream large content to disk",
+      chunkedToolDefinitionT("chunkedCreate.useCases.createLargeFiles"),
+      chunkedToolDefinitionT("chunkedCreate.useCases.chunkBasedCreation"),
+      chunkedToolDefinitionT("chunkedCreate.useCases.streamLargeContent"),
     ],
     relatedTools: ["hev_fs_create_chunked", "hev_fs_append_chunk"],
-    agentGuidance:
-      "Use for files >500KB. Splits content into chunks and merges. Safer than single large write.",
+    agentGuidance: chunkedToolDefinitionT("chunkedCreate.agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["chunked", "large-files", "streaming", "token-limit-safe"],
@@ -173,13 +203,17 @@ export const CREATE_CHUNKED_FILE_TOOL = {
 
 export const APPEND_CHUNK_TOOL = {
   name: "hev_fs_append_chunk",
-  description: "Dosyaya içerik ekle (streaming)",
+  description: chunkedToolDefinitionT("chunkedAppend.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      file_path: { type: "string", description: "Hedef dosya yolu" },
-      content: { type: "string", description: "Eklenecek içerik" },
-      create_if_missing: { type: "boolean", description: "Yoksa oluştur", default: true },
+      file_path: { type: "string", description: chunkedToolDefinitionT("chunkedAppend.filePath") },
+      content: { type: "string", description: chunkedToolDefinitionT("chunkedAppend.content") },
+      create_if_missing: {
+        type: "boolean",
+        description: chunkedToolDefinitionT("chunkedAppend.createIfMissing"),
+        default: true,
+      },
     },
     required: ["file_path", "content"],
   },

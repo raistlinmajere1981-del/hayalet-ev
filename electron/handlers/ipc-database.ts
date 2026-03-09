@@ -1,8 +1,8 @@
 /**
  * IPC Database Handlers
  *
- * Database işlemleri için IPC handler'ları.
- * Main.ts'den ayrıştırılarak modüler hale getirildi.
+ * IPC handlers for database operations.
+ * Extracted from main.ts to make the implementation modular.
  */
 
 import { registerHandler } from "./ipc-helpers.ts";

@@ -1,8 +1,9 @@
 import { Logger } from "./logger/index.js";
-import { ASISTAN_TIMEOUTS } from "@timeouts";
+import { ASSISTANT_TIMEOUTS } from "@timeouts";
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import type { SlotId } from "@shared/index.js";
+import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
@@ -30,12 +31,17 @@ interface ConversationEntry {
   lastMessageTime?: number;
 }
 
+function conversationListT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.analyze.conversationList.${key}`, params);
+}
+
 class ConversationListManagerClass {
   selects: Record<string, HTMLSelectElement | null>;
   entries: ConversationEntry[];
   currentSelections: Record<string, string>;
   _settingsSub: (() => void) | null;
   _slotControllerSub: (() => void) | null;
+  _i18nSub: (() => void) | null;
 
   constructor() {
     this.selects = { ai1: null, ai2: null };
@@ -43,6 +49,7 @@ class ConversationListManagerClass {
     this.currentSelections = { ai1: "new", ai2: "new" };
     this._settingsSub = null;
     this._slotControllerSub = null;
+    this._i18nSub = null;
   }
 
   async init(): Promise<void> {
@@ -74,7 +81,11 @@ class ConversationListManagerClass {
       this.renderAll({ silent: true });
     });
 
-    // When URL changes to default page, reset conversation list to "Yeni Sohbet"
+    this._i18nSub ??= AppI18n.subscribe(() => {
+      this.renderAll({ silent: true });
+    });
+
+    // When URL changes to the default page, reset the conversation list to "new".
     SlotController.on(
       SlotEvent.URL_CHANGED,
       (payload: { event?: string; slot?: string; data?: { isDefaultPage?: boolean } }) => {
@@ -88,7 +99,7 @@ class ConversationListManagerClass {
             this.currentSelections[slot] = "new";
             Logger.info(
               LogCategory.WEBVIEW,
-              `${slot} navigated to default page - reset to Yeni Sohbet`
+              conversationListT("logs.resetToNewConversation", { slot })
             );
           }
         }
@@ -129,7 +140,7 @@ class ConversationListManagerClass {
   _clearMessagesArea(provider: string): void {
     const container = document.getElementById(`messages-${provider}`);
     if (container) {
-      container.innerHTML = '<div class="message-placeholder">Mesajlar yükleniyor...</div>';
+      container.innerHTML = `<div class="message-placeholder">${conversationListT("loadingMessages")}</div>`;
     }
   }
 
@@ -206,7 +217,7 @@ class ConversationListManagerClass {
 
       if (forceSelectId !== null && forceSelectId !== "") {
         await new Promise((resolve) =>
-          setTimeout(resolve, ASISTAN_TIMEOUTS.CONVERSATION_LIST_MICRO)
+          setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_LIST_MICRO)
         );
         this.updateSelection(forceSelectId, { silent: true, provider });
       }
@@ -221,7 +232,7 @@ class ConversationListManagerClass {
           targetProvider !== null && targetProvider !== "" ? [targetProvider] : ["ai1", "ai2"];
 
         await new Promise((resolve) =>
-          setTimeout(resolve, ASISTAN_TIMEOUTS.CONVERSATION_LIST_MICRO)
+          setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_LIST_MICRO)
         );
 
         for (const p of providers) {
@@ -237,7 +248,10 @@ class ConversationListManagerClass {
       }
     } catch (error) {
       const err = /** @type {Error} */ error;
-      Logger.error(LogCategory.WEBVIEW, `Listeyi yenileme hatası: ${getErrorMessage(err)}`);
+      Logger.error(
+        LogCategory.WEBVIEW,
+        conversationListT("logs.refreshError", { message: getErrorMessage(err) })
+      );
     }
   }
 
@@ -264,7 +278,7 @@ class ConversationListManagerClass {
     select.innerHTML = "";
 
     if (hasAccount === false) {
-      const emptyOpt = new Option("— Slot boş —", "empty");
+      const emptyOpt = new Option(conversationListT("emptySlot"), "empty");
       emptyOpt.disabled = true;
       emptyOpt.selected = true;
       select.appendChild(emptyOpt);
@@ -272,7 +286,7 @@ class ConversationListManagerClass {
       return;
     }
 
-    const newOption = new Option("Yeni Sohbet", "new");
+    const newOption = new Option(conversationListT("newConversation"), "new");
     newOption.dataset["url"] = "";
     newOption.dataset["folder"] = "";
     select.appendChild(newOption);
@@ -320,8 +334,10 @@ class ConversationListManagerClass {
   destroy(): void {
     this._settingsSub?.();
     this._slotControllerSub?.();
+    this._i18nSub?.();
     this._settingsSub = null;
     this._slotControllerSub = null;
+    this._i18nSub = null;
   }
 }
 

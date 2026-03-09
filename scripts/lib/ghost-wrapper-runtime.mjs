@@ -73,10 +73,10 @@ export function toMainRunningControl(control, now = new Date().toISOString()) {
   });
 }
 
-export function buildMainAppLaunchArgs(mainEntry, useAsistanStartupFlags = false) {
+export function buildMainAppLaunchArgs(mainEntry, useAssistantStartupFlags = false) {
   const args = [mainEntry, "--no-sandbox"];
-  if (useAsistanStartupFlags) {
-    args.push("--start-page=asistan", "--auto-connect");
+  if (useAssistantStartupFlags) {
+    args.push("--start-page=assistant", "--auto-connect");
   }
   return args;
 }

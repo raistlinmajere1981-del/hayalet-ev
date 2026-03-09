@@ -8,25 +8,26 @@
  * import { Toast } from './ui';
  *
  * // Quick methods
- * Toast.success('Başarılı!', 'Bağlantı kuruldu');
- * Toast.error('Hata!', 'Bağlantı kesildi');
- * Toast.warning('Dikkat!', 'Oturum süreniz dolmak üzere');
- * Toast.info('Bilgi', 'Yeni güncelleme mevcut');
+ * Toast.success('Success!', 'Connection established');
+ * Toast.error('Error!', 'Connection lost');
+ * Toast.warning('Warning!', 'Your session is about to expire');
+ * Toast.info('Info', 'A new update is available');
  *
  * // Loading with update
- * const id = Toast.loading('Yükleniyor...');
+ * const id = Toast.loading('Loading...');
  * // ... async operation
- * Toast.update(id, { type: 'success', title: 'Tamamlandı!' });
+ * Toast.update(id, { type: 'success', title: 'Completed!' });
  *
  * // With action button
  * Toast.show({
  *   type: 'info',
- *   title: 'Güncelleme',
- *   message: 'Yeni sürüm mevcut',
- *   action: { label: 'Güncelle', onClick: () => update() }
+ *   title: 'Update',
+ *   message: 'A new version is available',
+ *   action: { label: 'Install', onClick: () => update() }
  * });
  * ```
  */
+import { AppI18n } from "../modules/i18n/index.js";
 
 export type ToastType = "success" | "error" | "warning" | "info" | "loading";
 
@@ -137,7 +138,7 @@ function createToastElement(id: string, options: ToastOptions): HTMLDivElement {
   if (options.closable !== false) {
     const closeBtn = document.createElement("button");
     closeBtn.className = "toast-close";
-    closeBtn.setAttribute("aria-label", "Kapat");
+    closeBtn.setAttribute("aria-label", AppI18n.t("shell.common.closeAriaLabel"));
     closeBtn.innerHTML = "×";
     closeBtn.addEventListener("click", (): void => {
       toast.dismiss(id);

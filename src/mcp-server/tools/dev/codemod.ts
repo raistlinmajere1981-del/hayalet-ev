@@ -14,6 +14,7 @@ import {
   removeUnusedImports,
   batchTransform,
 } from "../../utils/ast-transformer.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { validateWithPrettier } from "../../utils/prettier-validator.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 
@@ -48,6 +49,14 @@ interface CodemodResult {
   file_path: string;
 }
 
+function codemodT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.codemod.${key}`, params);
+}
+
+function codemodDefT(key: string, params?: Record<string, string | number | boolean>): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.codemod.definition.${key}`, params);
+}
+
 /**
  * Run a codemod transformation
  *
@@ -70,7 +79,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
   if (!existsSync(filePath)) {
     return {
       success: false,
-      error: `File not found: ${filePath}`,
+      error: codemodT("runtime.fileNotFound", { filePath }),
       modified: false,
       file_path: filePath,
     };
@@ -90,7 +99,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
         ) {
           return {
             success: false,
-            error: "old_name and new_name are required for function_call",
+            error: codemodT("runtime.functionCallNamesRequired"),
             modified: false,
             file_path: filePath,
           };
@@ -112,7 +121,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
         ) {
           return {
             success: false,
-            error: "old_name and new_name are required for variable",
+            error: codemodT("runtime.variableNamesRequired"),
             modified: false,
             file_path: filePath,
           };
@@ -134,7 +143,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
         ) {
           return {
             success: false,
-            error: "old_source and new_source are required for import",
+            error: codemodT("runtime.importSourcesRequired"),
             modified: false,
             file_path: filePath,
           };
@@ -155,7 +164,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
         ) {
           return {
             success: false,
-            error: "imports and source are required for add_import",
+            error: codemodT("runtime.addImportFieldsRequired"),
             modified: false,
             file_path: filePath,
           };
@@ -171,7 +180,7 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
         if (!transformation.operations || transformation.operations.length === 0) {
           return {
             success: false,
-            error: "operations array is required for batch",
+            error: codemodT("runtime.batchOperationsRequired"),
             modified: false,
             file_path: filePath,
           };
@@ -182,7 +191,9 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
       default:
         return {
           success: false,
-          error: `Unknown transformation type: ${(transformation as { type: string }).type}`,
+          error: codemodT("runtime.unknownTransformationType", {
+            type: (transformation as { type: string }).type,
+          }),
           modified: false,
           file_path: filePath,
         };
@@ -204,7 +215,9 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
       if (!syntaxCheck.valid) {
         return {
           success: false,
-          error: `Syntax validation failed: ${syntaxCheck.error ?? "unknown"}`,
+          error: codemodT("runtime.syntaxValidationFailed", {
+            error: syntaxCheck.error ?? codemodT("common.unknown"),
+          }),
           modified: false,
           syntax_valid: false,
           file_path: filePath,
@@ -241,49 +254,47 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
 
 export const CODEMOD_TOOL = {
   name: "hev_dev_codemod",
-  description:
-    "AST-based safe code transformations using jscodeshift. transformation: {type, old_name?, new_name?, old_source?, new_source?, imports?, source?, operations?} formatında — type zorunlu. Tipler: function_call (old_name→new_name), variable (old_name→new_name), import (old_source→new_source), add_import (imports+source), remove_unused, batch (operations[]). dry_run=true ile önce test et.",
+  description: codemodDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       file_path: {
         type: "string",
-        description: "Dosya yolu",
+        description: codemodDefT("filePath"),
       },
       transformation: {
         type: "object",
+        description: codemodDefT("transformation"),
         properties: {
           type: {
             type: "string",
             enum: ["function_call", "variable", "import", "add_import", "remove_unused", "batch"],
-            description:
-              "Transformation type: 'function_call' (rename function), 'variable' (rename var), 'import' (change import source), 'add_import' (add new import), 'remove_unused' (clean unused imports), 'batch' (multiple operations)",
+            description: codemodDefT("transformationType"),
           },
           old_name: {
             type: "string",
-            description: "Eski isim (function_call, variable için gerekli)",
+            description: codemodDefT("oldName"),
           },
           new_name: {
             type: "string",
-            description: "Yeni isim (function_call, variable için gerekli)",
+            description: codemodDefT("newName"),
           },
           old_source: {
             type: "string",
-            description: "Eski import path (import için gerekli, örn: './old-path')",
+            description: codemodDefT("oldSource"),
           },
           new_source: {
             type: "string",
-            description: "Yeni import path (import için gerekli, örn: './new-path')",
+            description: codemodDefT("newSource"),
           },
           imports: {
             type: "array",
             items: { type: "string" },
-            description:
-              "Import edilecek isimler (add_import için gerekli, örn: ['useState', 'useEffect'])",
+            description: codemodDefT("imports"),
           },
           source: {
             type: "string",
-            description: "Import kaynağı (add_import için gerekli, örn: 'react')",
+            description: codemodDefT("source"),
           },
           operations: {
             type: "array",
@@ -300,19 +311,19 @@ export const CODEMOD_TOOL = {
                 new_source: { type: "string" },
               },
             },
-            description: "Batch operations (batch için gerekli)",
+            description: codemodDefT("operations"),
           },
         },
         required: ["type"],
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme, dosya değişmez",
+        description: codemodDefT("dryRun"),
         default: true,
       },
       validate_syntax: {
         type: "boolean",
-        description: "Prettier ile syntax validation",
+        description: codemodDefT("validateSyntax"),
         default: true,
       },
     },
@@ -324,14 +335,13 @@ export const CODEMOD_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Safe function/variable renaming",
-      "Import path updates",
-      "Add/remove imports",
-      "Batch refactoring operations",
+      codemodDefT("useCases.safeRename"),
+      codemodDefT("useCases.importUpdates"),
+      codemodDefT("useCases.importCleanup"),
+      codemodDefT("useCases.batchRefactor"),
     ],
     relatedTools: ["hev_dev_safe_batch_refactor", "hev_fs_find_and_replace"],
-    agentGuidance:
-      'Use for AST-based refactoring. Safer than regex-based tools. Formatting preserved. Always use dry_run=true first. transformation parametresi {type: "function_call"|"variable"|"import"|"add_import"|"remove_unused"|"batch"} objesi alır — type zorunlu, diğer alanlar type\'a göre değişir. Batch için operations: [{type, old_name, new_name}] kullan.',
+    agentGuidance: codemodDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["refactoring", "ast", "jscodeshift", "safe", "codemod"],

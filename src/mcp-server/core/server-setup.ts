@@ -13,6 +13,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { join } from "path";
 import { logError } from "../utils/mcp-logger.js";
+import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 import { setMcpServer, setProgressToken } from "../utils/progress.js";
 import { PROJECT_ROOT } from "../utils/project-root.js";
 import { getAllDefinitions, getToolCount } from "./registry.js";
@@ -21,8 +22,13 @@ import { handleToolCall } from "./handlers.js";
 
 const LOG_DIR = join(PROJECT_ROOT, "logs", "hayalet-ev");
 
-// MCP Server version — single source of truth
+// MCP Server version — single source of truth.
 const MCP_VERSION = "3.0.0";
+const startupTranslator = createMcpTranslatorSync();
+
+function startupT(key: string, params?: Record<string, string | number | boolean>): string {
+  return startupTranslator(`mcpServer.startup.${key}`, params);
+}
 
 interface McpServerInitialization {
   server: Server;
@@ -43,22 +49,22 @@ export function initializeMcpServer(): McpServerInitialization {
     }
   );
 
-  // Register all tools into the unified registry
+  // Register all tools into the unified registry.
   registerAllTools({ PROJECT_ROOT, LOG_DIR });
 
-  // Progress utility'ye server referansı ver
+  // Provide the server reference to the progress utility.
   setMcpServer(server);
 
-  // List tools handler — reads from registry
+  // List tools handler — reads from the registry.
   server.setRequestHandler(ListToolsRequestSchema, () => {
     return { tools: getAllDefinitions() };
   });
 
-  // Call tool handler — routes through registry
+  // Call tool handler — routes through the registry.
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    // Progress token'ı ayarla (varsa)
+    // Set the progress token if the request provided one.
     const progressToken = (request.params as { _meta?: { progressToken?: string | number } })._meta
       ?.progressToken;
     setProgressToken(progressToken ?? null);
@@ -77,14 +83,18 @@ export async function main(): Promise<void> {
     await server.connect(transport);
     // Keep the process alive for stdio-based MCP clients.
     process.stdin.resume();
-    // Write to stderr (MCP protocol requires stderr for logging)
     process.stderr.write(
-      `Hayalet-ev MCP Server v${MCP_VERSION} başlatıldı (${getToolCount()} tools | Unified Registry)\n`
+      `${startupT("serverStarted", {
+        version: MCP_VERSION,
+        toolCount: getToolCount(),
+      })}\n`
     );
   } catch (err) {
     const error = err as Error;
-    logError("Server başlatma hatası", error);
-    process.stderr.write(`Server hatası: ${error.message}\n${error.stack ?? ""}\n`);
+    logError(startupT("serverStartError"), error);
+    process.stderr.write(
+      `${startupT("serverErrorLine", { message: error.message })}\n${error.stack ?? ""}\n`
+    );
     process.exit(1);
   }
 }

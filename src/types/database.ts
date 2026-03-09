@@ -1,12 +1,12 @@
 /**
- * Database Types - Veritabanı tipleri
+ * Database Types - database type definitions
  *
  * @module src/js/types/database
  */
 
 // Conversation Types
 
-/** Konuşma kaydı */
+/** Conversation record */
 export interface Conversation {
   id: string;
   accountId: string;
@@ -21,7 +21,7 @@ export interface Conversation {
   tags?: string[];
 }
 
-/** Konuşma güncelleme payload'ı */
+/** Conversation update payload */
 export interface ConversationUpdate {
   accountId: string;
   conversationId: string;
@@ -34,10 +34,10 @@ export interface ConversationUpdate {
 
 // Message Types
 
-/** Mesaj rolü */
+/** Message role */
 export type MessageRole = "user" | "assistant" | "system";
 
-/** Mesaj kaydı */
+/** Message record */
 export interface Message {
   id: string;
   conversationId: string;
@@ -51,7 +51,7 @@ export interface Message {
   metadata?: MessageMetadata;
 }
 
-/** Mesaj metadata'sı */
+/** Message metadata */
 export interface MessageMetadata {
   model?: string;
   tokens?: number;
@@ -60,7 +60,7 @@ export interface MessageMetadata {
   [key: string]: unknown;
 }
 
-/** Mesaja eklenmiş dosya */
+/** Attachment added to a message */
 export interface MessageAttachment {
   id: string;
   name: string;
@@ -71,7 +71,7 @@ export interface MessageAttachment {
 
 // Sync Types
 
-/** Mesaj senkronizasyon payload'ı */
+/** Message synchronization payload */
 export interface MessageSyncPayload {
   accountId: string;
   webUrl: string;
@@ -79,7 +79,7 @@ export interface MessageSyncPayload {
   authors?: SyncAuthors;
 }
 
-/** Senkronize edilecek mesaj */
+/** Message to synchronize */
 export interface SyncMessage {
   role: MessageRole;
   text: string;
@@ -87,13 +87,13 @@ export interface SyncMessage {
   contentHash?: string;
 }
 
-/** Yazar bilgileri */
+/** Author information */
 export interface SyncAuthors {
   user?: string;
   assistant?: string;
 }
 
-/** Senkronizasyon sonucu */
+/** Synchronization result */
 export interface SyncResult {
   success: boolean;
   conversationId?: string;
@@ -105,7 +105,7 @@ export interface SyncResult {
 
 // Search Types
 
-/** Arama parametreleri */
+/** Search parameters */
 export interface SearchParams {
   accountId?: string;
   query: string;
@@ -114,7 +114,7 @@ export interface SearchParams {
   filters?: SearchFilters;
 }
 
-/** Arama filtreleri */
+/** Search filters */
 export interface SearchFilters {
   role?: MessageRole;
   dateFrom?: number;
@@ -122,7 +122,7 @@ export interface SearchFilters {
   conversationId?: string;
 }
 
-/** Arama sonucu */
+/** Search result */
 export interface SearchResult {
   messages: Message[];
   total: number;
@@ -131,7 +131,7 @@ export interface SearchResult {
 
 // Attachment Store Types
 
-/** Kayıtlı attachment */
+/** Stored attachment */
 export interface StoredAttachment {
   id: string;
   conversationId: string;

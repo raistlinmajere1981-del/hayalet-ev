@@ -1,4 +1,5 @@
 import { apiCall } from "./api.js";
+import { t } from "./i18n.js";
 
 export type McpStatusMap = Record<string, unknown>;
 
@@ -70,20 +71,20 @@ function getMcpStatusBadge(status: string): {
   switch (status) {
     case "connected":
     case "ready":
-      return { label: "Aktif", badgeType: "success" };
+      return { label: t("health.statusActive"), badgeType: "success" };
     case "starting":
     case "initializing":
     case "connecting":
     case "restarting":
     case "pending":
-      return { label: "Baslaniyor...", badgeType: "warning" };
+      return { label: t("health.statusStarting"), badgeType: "warning" };
     case "disconnected":
-      return { label: "Bagli Degil", badgeType: "error" };
+      return { label: t("health.statusDisconnected"), badgeType: "error" };
     case "error":
     case "failed":
-      return { label: "Hata", badgeType: "error" };
+      return { label: t("health.statusError"), badgeType: "error" };
     default:
-      return { label: "Bilinmiyor", badgeType: "warning" };
+      return { label: t("health.statusUnknown"), badgeType: "warning" };
   }
 }
 
@@ -129,21 +130,21 @@ function normalizeStateLabel(value: string): string {
     case "connected":
     case "active":
     case "ok":
-      return "Aktif";
+      return t("health.statusActive");
     case "starting":
     case "initializing":
     case "connecting":
     case "restarting":
     case "pending":
-      return "Baslatiliyor";
+      return t("health.statusStarting");
     case "error":
     case "failed":
     case "unhealthy":
-      return "Hata";
+      return t("health.statusError");
     case "disabled":
     case "inactive":
     case "off":
-      return "Kapali";
+      return t("health.statusClosed");
     default:
       return value;
   }
@@ -159,7 +160,7 @@ function summarizeStatusValue(raw: unknown, unit: string): string | null {
   }
 
   if (typeof raw === "boolean") {
-    return raw ? "Aktif" : "Kapali";
+    return raw ? t("health.statusActive") : t("health.statusClosed");
   }
 
   if (typeof raw === "number" && Number.isFinite(raw)) {
@@ -191,7 +192,7 @@ function summarizeStatusValue(raw: unknown, unit: string): string | null {
 
   const enabledValue = raw["enabled"] ?? raw["healthy"] ?? raw["ok"];
   if (typeof enabledValue === "boolean") {
-    return enabledValue ? "Aktif" : "Kapali";
+    return enabledValue ? t("health.statusActive") : t("health.statusClosed");
   }
 
   return null;
@@ -231,10 +232,10 @@ async function loadPluginSummaryFromApiClient(): Promise<string | null> {
 
     const plugins = result["plugins"];
     if (Array.isArray(plugins)) {
-      return formatSummaryCount(plugins.length, "eklenti");
+      return formatSummaryCount(plugins.length, t("health.pluginLabel").toLocaleLowerCase());
     }
 
-    return summarizeStatusValue(plugins, "eklenti");
+    return summarizeStatusValue(plugins, t("health.pluginLabel").toLocaleLowerCase());
   } catch (_error) {
     return null;
   }
@@ -249,10 +250,10 @@ async function loadPluginSummaryFromConfig(): Promise<string | null> {
 
     const plugins = result["plugin"] ?? result["plugins"];
     if (Array.isArray(plugins)) {
-      return formatSummaryCount(plugins.length, "eklenti");
+      return formatSummaryCount(plugins.length, t("health.pluginLabel").toLocaleLowerCase());
     }
 
-    return summarizeStatusValue(plugins, "eklenti");
+    return summarizeStatusValue(plugins, t("health.pluginLabel").toLocaleLowerCase());
   } catch (_error) {
     return null;
   }
@@ -278,10 +279,10 @@ function buildLspSummary(health: GlobalHealthResponse): string {
       "languageServer",
       "languageServers",
     ],
-    "sunucu"
+    t("panel.serverTab").toLocaleLowerCase()
   );
 
-  return summary ?? "Sunucu endpointi veri sunmuyor";
+  return summary ?? t("health.serverNoData");
 }
 
 function buildPluginSummary(health: GlobalHealthResponse, apiSummary: string | null): string {
@@ -289,15 +290,15 @@ function buildPluginSummary(health: GlobalHealthResponse, apiSummary: string | n
     resolveHealthSummary(
       health,
       ["plugins", "plugin", "pluginStatus", "plugin_status", "pluginCount", "pluginsCount"],
-      "eklenti"
+      t("health.pluginLabel").toLocaleLowerCase()
     ) ??
     apiSummary ??
-    "Sunucu endpointi veri sunmuyor"
+    t("health.serverNoData")
   );
 }
 
 function buildHealthBadgeLabel(healthy: boolean): string {
-  return healthy ? "Sağlıklı" : "Sorunlu";
+  return healthy ? t("health.badgeHealthy") : t("health.badgeUnhealthy");
 }
 
 function buildHealthBadgeClass(healthy: boolean): string {
@@ -416,7 +417,7 @@ function renderMcpServerRows(
       const isConnected = status === "connected" || status === "ready";
       const isTransitional = TRANSITIONAL_MCP_STATUSES.has(status) || isBusy;
       const statusBadge = isBusy
-        ? { label: "Isleniyor...", badgeType: "warning" as const }
+        ? { label: t("health.statusProcessing"), badgeType: "warning" as const }
         : getMcpStatusBadge(status);
       const disabled = isTransitional || !allowToggle;
       const switchClass = "ds-mcp-switch" + (disabled ? " ds-mcp-switch--disabled" : "");
@@ -499,7 +500,7 @@ function renderMcpServers(mcpServers: McpStatusMap, hevToolCount: number | null)
   }
 
   if (entries.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">MCP server bulunamadi</div>';
+    listEl.innerHTML = `<div class="empty-state">${t("health.emptyMcp")}</div>`;
     return;
   }
 
@@ -507,8 +508,8 @@ function renderMcpServers(mcpServers: McpStatusMap, hevToolCount: number | null)
   const builtInEntries = entries.filter(([name]) => !MANUAL_MCP_SERVER_NAMES.has(name));
 
   const sections = [
-    renderMcpGroup("Built-in Sunucular", builtInEntries, null, false),
-    renderMcpGroup("Manuel Sunucular", manualEntries, hevToolCount, true),
+    renderMcpGroup(t("health.builtInServersTitle"), builtInEntries, null, false),
+    renderMcpGroup(t("health.manualServersTitle"), manualEntries, hevToolCount, true),
   ].filter((section) => section !== "");
 
   listEl.innerHTML = sections.join("");

@@ -3,6 +3,13 @@
  */
 
 import { logToolError } from "../../utils/mcp-logger.js";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
+
+const folderToolDefinitionTranslator = createMcpTranslatorSync();
+
+function folderToolDefinitionT(key: string): string {
+  return folderToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`);
+}
 
 export function expandFolder(
   folderPath: string,
@@ -32,12 +39,12 @@ function formatFolderStructure(_entries: unknown[]): string {
 // Tool Definition
 export const EXPAND_FOLDER_TOOL = {
   name: "hev_fs_expand_folder",
-  description: "Klasör yapısını göster (tree view)",
+  description: folderToolDefinitionT("expandFolder.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      folder_path: { type: "string", description: "Klasör yolu" },
-      max_depth: { type: "integer", description: "Maksimum derinlik", default: 3 },
+      folder_path: { type: "string", description: folderToolDefinitionT("expandFolder.folderPath") },
+      max_depth: { type: "integer", description: folderToolDefinitionT("expandFolder.maxDepth"), default: 3 },
     },
     required: ["folder_path"],
   },

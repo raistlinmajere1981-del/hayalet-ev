@@ -21,7 +21,8 @@ export function applyEdit(
       edit,
       replacements: 0,
       success: false,
-      error: "old_text boş olamaz",
+      errorKey: "apply.emptyOldText",
+      error: "old_text cannot be empty",
     };
   }
 
@@ -48,7 +49,8 @@ function applyEditExact(
       edit,
       replacements: 0,
       success: false,
-      error: "Pattern bulunamadı (exact match)",
+      errorKey: "apply.patternNotFoundExact",
+      error: "Pattern not found (exact match)",
     };
   }
 
@@ -59,7 +61,12 @@ function applyEditExact(
       edit,
       replacements: 0,
       success: false,
-      error: `Scope ile eşleşen occurrence yok (toplam ${totalMatches} match, scope: ${JSON.stringify(scope)})`,
+      errorKey: "apply.scopeNoMatch",
+      errorParams: {
+        totalMatches,
+        scope: JSON.stringify(scope),
+      },
+      error: `No occurrences matched the scope (total ${totalMatches} matches, scope: ${JSON.stringify(scope)})`,
     };
   }
 
@@ -113,7 +120,8 @@ function applyEditWhitespaceInsensitive(
       edit,
       replacements: 0,
       success: false,
-      error: "Pattern bulunamadı (whitespace-insensitive)",
+      errorKey: "apply.patternNotFoundWhitespace",
+      error: "Pattern not found (whitespace-insensitive)",
     };
   }
 
@@ -124,7 +132,12 @@ function applyEditWhitespaceInsensitive(
       edit,
       replacements: 0,
       success: false,
-      error: `Scope ile eşleşen occurrence yok (toplam ${totalMatches} match, scope: ${JSON.stringify(scope)})`,
+      errorKey: "apply.scopeNoMatch",
+      errorParams: {
+        totalMatches,
+        scope: JSON.stringify(scope),
+      },
+      error: `No occurrences matched the scope (total ${totalMatches} matches, scope: ${JSON.stringify(scope)})`,
     };
   }
 

@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import type { TranslationParams } from "../../types/i18n.js";
 import type { MemoryItem, MemorySearchResult, MemoryStats } from "./memory/store.js";
 import { MemoryStore } from "./memory/store.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 interface MemoryStoreWriteArgs {
   namespace?: string;
@@ -92,6 +94,8 @@ interface MemoryBootstrapPolicyReport {
   missing_files: string[];
 }
 
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
 const DEFAULT_POLICY_FILES = [
   "AGENTS.md",
   ".rovo/00-ONBOARDING.md",
@@ -99,6 +103,15 @@ const DEFAULT_POLICY_FILES = [
   ".rovo/02-MCP-ESSENTIALS.md",
   ".rovo/03-ARCHITECTURE.md",
 ];
+const memoryDefinitionTranslator = createMcpTranslatorSync();
+
+function memoryDefT(key: string, params?: TranslationParams): string {
+  return memoryDefinitionTranslator(`mcpServer.memoryTools.definition.${key}`, params);
+}
+
+function memoryT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.memoryTools.${key}`, params);
+}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -258,8 +271,9 @@ export async function memoryWrite(
   projectRoot: string,
   args: MemoryStoreWriteArgs
 ): Promise<{ message: string; memory: MemoryItem }> {
+  const t = await createMcpTranslator();
   const content = args.content?.trim();
-  if (content == null || content === "") throw new Error("content is required");
+  if (content == null || content === "") throw new Error(memoryT(t, "errors.contentRequired"));
 
   const store = getStore(projectRoot);
   const memory = await store.writeMemory({
@@ -275,7 +289,7 @@ export async function memoryWrite(
   });
 
   return {
-    message: `✅ Memory kaydedildi: ${memory.id}`,
+    message: memoryT(t, "write.saved", { id: memory.id }),
     memory,
   };
 }
@@ -324,7 +338,10 @@ export async function memoryUpdate(
   projectRoot: string,
   args: MemoryStoreUpdateArgs
 ): Promise<{ updated: boolean; id: string }> {
-  if (args.id == null || args.id.trim() === "") throw new Error("id is required");
+  if (args.id == null || args.id.trim() === "") {
+    const t = await createMcpTranslator();
+    throw new Error(memoryT(t, "errors.idRequired"));
+  }
 
   const store = getStore(projectRoot);
   const updated = await store.updateMemory({
@@ -346,7 +363,10 @@ export async function memoryDelete(
   projectRoot: string,
   args: MemoryStoreDeleteArgs
 ): Promise<{ deleted: boolean; id: string }> {
-  if (args.id == null || args.id.trim() === "") throw new Error("id is required");
+  if (args.id == null || args.id.trim() === "") {
+    const t = await createMcpTranslator();
+    throw new Error(memoryT(t, "errors.idRequired"));
+  }
   const store = getStore(projectRoot);
   const deleted = await store.deleteMemory(args.id);
   return { deleted, id: args.id };
@@ -530,53 +550,53 @@ export async function memoryBootstrapPolicy(
 export const MEMORY_TOOL_DEFINITIONS = [
   {
     name: "hev_memory_write",
-    description: "libSQL tabanli ortak hafizaya yeni kayit ekle (provider-bagimsiz).",
+    description: memoryDefT("write.description"),
     inputSchema: {
       type: "object",
       properties: {
         namespace: {
           type: "string",
-          description: "Memory namespace (varsayilan: global)",
+          description: memoryDefT("write.namespace"),
           default: "global",
         },
         content: {
           type: "string",
-          description: "Kaydedilecek hafiza metni",
+          description: memoryDefT("write.content"),
         },
         summary: {
           type: "string",
-          description: "Kisa ozet (opsiyonel)",
+          description: memoryDefT("write.summary"),
         },
         source_provider: {
           type: "string",
-          description: "Kaydi olusturan provider (opencode vb.)",
+          description: memoryDefT("write.sourceProvider"),
         },
         memory_type: {
           type: "string",
           enum: ["note", "fact", "policy", "task"],
-          description: "Hafiza tipi",
+          description: memoryDefT("write.memoryType"),
           default: "note",
         },
         importance: {
           type: "number",
-          description: "Onem seviyesi (1-5)",
+          description: memoryDefT("write.importance"),
           default: 3,
           minimum: 1,
           maximum: 5,
         },
         pinned: {
           type: "boolean",
-          description: "Silinmeye karsi koruma",
+          description: memoryDefT("write.pinned"),
           default: false,
         },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: "Etiket listesi",
+          description: memoryDefT("write.tags"),
         },
         metadata: {
           type: "object",
-          description: "Ek metadata objesi",
+          description: memoryDefT("write.metadata"),
         },
       },
       required: ["content"],
@@ -586,9 +606,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
       subcategory: "write",
       priority: "high",
       complexity: "simple",
-      useCases: ["Kalici hafiza kaydi", "Providerlar arasi ortak context"],
+      useCases: [
+        memoryDefT("write.useCases.storeMemory"),
+        memoryDefT("write.useCases.sharedContext"),
+      ],
       relatedTools: ["hev_memory_search", "hev_memory_update", "hev_memory_stats"],
-      agentGuidance: "Yeni bilgi/fact kaydederken kullan. Kisa ve atomik kayitlar yaz.",
+      agentGuidance: memoryDefT("write.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["memory", "libsql", "shared-context", "write"],
@@ -596,32 +619,32 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_search",
-    description: "Ortak hafizayi ara ve prompt-uyumlu kisa context formatiyla dondur.",
+    description: memoryDefT("search.description"),
     inputSchema: {
       type: "object",
       properties: {
         namespace: {
           type: "string",
-          description: "Arama namespace'i",
+          description: memoryDefT("search.namespace"),
           default: "global",
         },
         query: {
           type: "string",
-          description: "Arama ifadesi (tum kayitlar icin '*')",
+          description: memoryDefT("search.query"),
           default: "*",
         },
         source_provider: {
           type: "string",
-          description: "Provider filtresi",
+          description: memoryDefT("search.sourceProvider"),
         },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: "Tum etiketlerle eslesme (AND)",
+          description: memoryDefT("search.tags"),
         },
         limit: {
           type: "number",
-          description: "Donulecek maksimum kayit",
+          description: memoryDefT("search.limit"),
           default: 20,
           minimum: 1,
           maximum: 200,
@@ -629,12 +652,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
         response_format: {
           type: "string",
           enum: ["json", "prompt_compact"],
-          description: "Cikti formati",
+          description: memoryDefT("search.responseFormat"),
           default: "prompt_compact",
         },
         budget_chars: {
           type: "number",
-          description: "Prompt context icin karakter butcesi",
+          description: memoryDefT("search.budgetChars"),
           default: 2200,
           minimum: 200,
           maximum: 12000,
@@ -647,12 +670,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
       priority: "high",
       complexity: "simple",
       useCases: [
-        "Prompt oncesi hafiza cekme",
-        "Providerlar arasi context aktarimi",
-        "Kisa ve standart memory context uretimi",
+        memoryDefT("search.useCases.prefetchMemory"),
+        memoryDefT("search.useCases.crossProviderContext"),
+        memoryDefT("search.useCases.compactContext"),
       ],
       relatedTools: ["hev_memory_write", "hev_memory_stats"],
-      agentGuidance: "Yeni kayit yazmadan once arama yaparak tekrar eden bilgi olusumunu azalt.",
+      agentGuidance: memoryDefT("search.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["memory", "libsql", "search"],
@@ -660,49 +683,49 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_update",
-    description: "Mevcut memory kaydini guncelle (icerik, etiket, onem, pinned).",
+    description: memoryDefT("update.description"),
     inputSchema: {
       type: "object",
       properties: {
         id: {
           type: "string",
-          description: "Guncellenecek memory id",
+          description: memoryDefT("update.id"),
         },
         content: {
           type: "string",
-          description: "Yeni icerik",
+          description: memoryDefT("update.content"),
         },
         summary: {
           type: "string",
-          description: "Yeni ozet",
+          description: memoryDefT("update.summary"),
         },
         source_provider: {
           type: "string",
-          description: "Yeni provider bilgisi",
+          description: memoryDefT("update.sourceProvider"),
         },
         memory_type: {
           type: "string",
           enum: ["note", "fact", "policy", "task"],
-          description: "Yeni memory tipi",
+          description: memoryDefT("update.memoryType"),
         },
         importance: {
           type: "number",
-          description: "Yeni onem seviyesi (1-5)",
+          description: memoryDefT("update.importance"),
           minimum: 1,
           maximum: 5,
         },
         pinned: {
           type: "boolean",
-          description: "Pinned durumu",
+          description: memoryDefT("update.pinned"),
         },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: "Yeni etiket listesi",
+          description: memoryDefT("update.tags"),
         },
         metadata: {
           type: "object",
-          description: "Metadata override",
+          description: memoryDefT("update.metadata"),
         },
       },
       required: ["id"],
@@ -712,9 +735,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
       subcategory: "update",
       priority: "medium",
       complexity: "simple",
-      useCases: ["Bilgi duzeltme", "Etiket duzenleme"],
+      useCases: [
+        memoryDefT("update.useCases.fixInformation"),
+        memoryDefT("update.useCases.editTags"),
+      ],
       relatedTools: ["hev_memory_search", "hev_memory_write"],
-      agentGuidance: "Yalnizca ilgili alanlari guncelle. Once hev_memory_search ile kaydi dogrula.",
+      agentGuidance: memoryDefT("update.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["memory", "update", "libsql"],
@@ -722,13 +748,13 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_delete",
-    description: "Belirli bir memory kaydini sil.",
+    description: memoryDefT("delete.description"),
     inputSchema: {
       type: "object",
       properties: {
         id: {
           type: "string",
-          description: "Silinecek memory id",
+          description: memoryDefT("delete.id"),
         },
       },
       required: ["id"],
@@ -738,9 +764,9 @@ export const MEMORY_TOOL_DEFINITIONS = [
       subcategory: "delete",
       priority: "medium",
       complexity: "simple",
-      useCases: ["Hatali kayit temizligi"],
+      useCases: [memoryDefT("delete.useCases.cleanup")],
       relatedTools: ["hev_memory_search"],
-      agentGuidance: "Silmeden once kaydi arayip dogrula.",
+      agentGuidance: memoryDefT("delete.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "medium",
       tags: ["memory", "delete", "libsql"],
@@ -748,24 +774,24 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_prune",
-    description: "Non-pinned memory kayitlarini limit ve yas kuralina gore temizle.",
+    description: memoryDefT("prune.description"),
     inputSchema: {
       type: "object",
       properties: {
         namespace: {
           type: "string",
-          description: "Temizlenecek namespace",
+          description: memoryDefT("prune.namespace"),
           default: "global",
         },
         max_items: {
           type: "number",
-          description: "Tutulacak maksimum non-pinned kayit sayisi",
+          description: memoryDefT("prune.maxItems"),
           default: 500,
           minimum: 0,
         },
         older_than_days: {
           type: "number",
-          description: "Bu gunden daha eski kayitlar aday olur",
+          description: memoryDefT("prune.olderThanDays"),
           minimum: 0,
         },
       },
@@ -775,9 +801,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
       subcategory: "maintenance",
       priority: "medium",
       complexity: "simple",
-      useCases: ["Context bloat kontrolu", "Periyodik memory temizlik"],
+      useCases: [
+        memoryDefT("prune.useCases.controlBloat"),
+        memoryDefT("prune.useCases.periodicCleanup"),
+      ],
       relatedTools: ["hev_memory_stats", "hev_memory_search"],
-      agentGuidance: "Pinned kayitlar korunur. Prune once stats ile izlenmeli.",
+      agentGuidance: memoryDefT("prune.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "medium",
       tags: ["memory", "prune", "maintenance"],
@@ -785,13 +814,13 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_stats",
-    description: "Memory veritabaninin ozet istatistiklerini getir.",
+    description: memoryDefT("stats.description"),
     inputSchema: {
       type: "object",
       properties: {
         namespace: {
           type: "string",
-          description: "Istatistik namespace filtresi",
+          description: memoryDefT("stats.namespace"),
           default: "global",
         },
       },
@@ -801,9 +830,12 @@ export const MEMORY_TOOL_DEFINITIONS = [
       subcategory: "stats",
       priority: "low",
       complexity: "simple",
-      useCases: ["Memory buyukluk kontrolu", "Bakim oncesi durum"],
+      useCases: [
+        memoryDefT("stats.useCases.checkSize"),
+        memoryDefT("stats.useCases.preMaintenance"),
+      ],
       relatedTools: ["hev_memory_prune", "hev_memory_search"],
-      agentGuidance: "Prune ve tuning oncesi/sonrasi karsilastirma icin kullan.",
+      agentGuidance: memoryDefT("stats.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["memory", "stats", "libsql"],
@@ -811,30 +843,30 @@ export const MEMORY_TOOL_DEFINITIONS = [
   },
   {
     name: "hev_memory_bootstrap_policy",
-    description: "AGENTS.md ve .rovo policy dokumanlarini pinned memory kayitlarina upsert eder.",
+    description: memoryDefT("bootstrap.description"),
     inputSchema: {
       type: "object",
       properties: {
         namespace: {
           type: "string",
-          description: "Policy memory namespace",
+          description: memoryDefT("bootstrap.namespace"),
           default: "policy",
         },
         files: {
           type: "array",
           items: { type: "string" },
-          description: "Yuklenecek policy dosyalari",
+          description: memoryDefT("bootstrap.files"),
         },
         max_chunk_chars: {
           type: "number",
-          description: "Parca basina maksimum karakter",
+          description: memoryDefT("bootstrap.maxChunkChars"),
           default: 1400,
           minimum: 200,
           maximum: 6000,
         },
         force: {
           type: "boolean",
-          description: "Hash ayni olsa bile guncellemeyi zorla",
+          description: memoryDefT("bootstrap.force"),
           default: false,
         },
       },
@@ -845,11 +877,11 @@ export const MEMORY_TOOL_DEFINITIONS = [
       priority: "high",
       complexity: "simple",
       useCases: [
-        "AGENTS.md kurallarini memory'ye pinleme",
-        "Policy context'i providerlar arasi standardize etme",
+        memoryDefT("bootstrap.useCases.pinRules"),
+        memoryDefT("bootstrap.useCases.standardizePolicyContext"),
       ],
       relatedTools: ["hev_memory_search", "hev_memory_stats", "hev_memory_update"],
-      agentGuidance: "Session basinda policy memory guncellemesi icin calistir.",
+      agentGuidance: memoryDefT("bootstrap.agentGuidance"),
       requiresConfirmation: false,
       riskLevel: "low",
       tags: ["memory", "policy", "bootstrap", "pinned"],

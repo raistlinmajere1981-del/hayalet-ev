@@ -1,11 +1,11 @@
 /**
  * Unified Tool Registry - Single Source of Truth
  *
- * Tüm tool definition + handler çiftlerini tek bir Map'te tutar.
- * - Definition ve handler her zaman senkron
- * - Duplicate ekleme imkansız (build-time + runtime koruma)
- * - Sayılar runtime'da hesaplanır (hardcode yok)
- * - TypeScript ile eksik def/handler → compile hatası
+ * Holds all tool definition + handler pairs in a single Map.
+ * - Definitions and handlers always stay in sync
+ * - Duplicate registration is impossible (build-time + runtime protection)
+ * - Counts are calculated at runtime (no hardcoding)
+ * - Missing definitions/handlers become TypeScript compile errors
  *
  * @version 3.0.0
  */

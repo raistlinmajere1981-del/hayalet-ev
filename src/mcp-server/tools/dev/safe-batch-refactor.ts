@@ -1,12 +1,13 @@
 /**
  * Development Tools - Safe Batch Refactor
  *
- * Toplu refactoring ile her adımda doğrulama ve otomatik rollback
+ * Batch refactoring with per-step validation and automatic rollback support.
  */
 
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { spawn } from "child_process";
+import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { DEV_TIMEOUTS } from "@timeouts";
 import {
@@ -27,7 +28,7 @@ type RefactorMode = "string" | "ast";
 interface RefactorOperation {
   pattern: string; // Regex pattern (string mode) or identifier name (ast mode)
   replace_with: string;
-  target_lines?: number[]; // Sadece bu satırlarda uygula (string mode only)
+  target_lines?: number[]; // Apply only on these lines (string mode only)
   mode?: RefactorMode; // NEW: 'string' (default) or 'ast'
   ast_type?: "function_call" | "variable" | "import"; // NEW: AST transformation type
 }
@@ -46,6 +47,23 @@ interface RefactorResult {
   applied_operations: number;
   failed_operations: number;
   rollback_occurred: boolean;
+}
+
+function safeBatchRefactorT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(`mcpServer.devTools.safeBatchRefactor.${key}`, params);
+}
+
+function safeBatchRefactorDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return createMcpTranslatorSync()(
+    `mcpServer.devTools.safeBatchRefactor.definition.${key}`,
+    params
+  );
 }
 
 export async function safelyRefactorCode(
@@ -86,7 +104,11 @@ export async function safelyRefactorCode(
 
       // Apply operation
       if (!op) {
-        results.push({ operation: i + 1, success: false, error: "Operation is undefined" });
+        results.push({
+          operation: i + 1,
+          success: false,
+          error: safeBatchRefactorT("runtime.operationUndefined"),
+        });
         failedCount++;
         continue;
       }
@@ -102,7 +124,9 @@ export async function safelyRefactorCode(
           results.push({
             operation: i + 1,
             success: false,
-            error: `AST transform failed: ${astResult.error ?? "unknown"}`,
+            error: safeBatchRefactorT("runtime.astTransformFailed", {
+              error: astResult.error ?? safeBatchRefactorT("common.unknown"),
+            }),
           });
           failedCount++;
           if (autoRollbackOnError) {
@@ -117,7 +141,11 @@ export async function safelyRefactorCode(
       }
 
       if (newContent === currentContent) {
-        results.push({ operation: i + 1, success: false, error: "No matches found" });
+        results.push({
+          operation: i + 1,
+          success: false,
+          error: safeBatchRefactorT("runtime.noMatchesFound"),
+        });
         failedCount++;
         continue;
       }
@@ -141,7 +169,10 @@ export async function safelyRefactorCode(
           results.push({
             operation: i + 1,
             success: false,
-            error: `Error count increased: ${baselineErrors} → ${newErrors}`,
+            error: safeBatchRefactorT("runtime.errorCountIncreased", {
+              baselineErrors,
+              newErrors,
+            }),
           });
           failedCount++;
           rollbackOccurred = true;
@@ -182,7 +213,7 @@ export async function safelyRefactorCode(
     logToolError("safe-batch-refactor", error as Error, options, 0);
     return {
       success: false,
-      output: `❌ Error: ${String(error)}\\n\\n🔄 Emergency rollback performed.`,
+      output: safeBatchRefactorT("runtime.emergencyRollback", { message: String(error) }),
       applied_operations: appliedCount,
       failed_operations: operations.length - appliedCount,
       rollback_occurred: true,
@@ -305,7 +336,7 @@ function applyOperation(content: string, op: RefactorOperation): string {
   if (result.length > content.length * 2) {
     // Write to stderr (critical safety warning)
     process.stderr.write(
-      "[safe-batch-refactor] ⚠️  File size doubled! Possible infinite loop. Aborting.\n"
+      `${safeBatchRefactorT("runtime.fileSizeDoubledLog")}\n`
     );
     return content; // Return original to prevent data loss
   }
@@ -354,7 +385,7 @@ function applyASTOperation(
   if (op.ast_type === undefined) {
     return {
       success: false,
-      error: "ast_type is required for AST mode",
+      error: safeBatchRefactorT("runtime.astTypeRequired"),
     };
   }
 
@@ -377,7 +408,7 @@ function applyASTOperation(
       default:
         return {
           success: false,
-          error: "Unknown ast_type",
+          error: safeBatchRefactorT("runtime.unknownAstType"),
         };
     }
 
@@ -395,7 +426,9 @@ function applyASTOperation(
           if (!validation.valid) {
             // Log warning but don't block (AST should be valid)
             process.stderr.write(
-              `[safe-batch-refactor] Warning: Prettier validation failed after AST transform: ${validation.error ?? "unknown"}\n`
+              `${safeBatchRefactorT("runtime.prettierValidationWarning", {
+                error: validation.error ?? safeBatchRefactorT("common.unknown"),
+              })}\n`
             );
           }
         })
@@ -422,16 +455,22 @@ function formatOutput(
   dryRun: boolean,
   rollbackOccurred: boolean
 ): string {
-  let output = `🔄 Safe Batch Refactor\\n`;
+  let output = `${safeBatchRefactorT("runtime.title")}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;
-  output += `📁 File: ${filePath}\\n`;
+  output += `${safeBatchRefactorT("runtime.fileLine", { filePath })}\\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;
 
   results.forEach((result) => {
     const icon = result.success ? "✅" : "❌";
-    output += `${icon} Operation ${result.operation}: ${
-      result.success ? "Applied" : `Failed - ${result.error ?? "unknown"}`
-    }\\n`;
+    output += `${safeBatchRefactorT("runtime.operationLine", {
+      icon,
+      operation: result.operation,
+      status: result.success
+        ? safeBatchRefactorT("runtime.applied")
+        : safeBatchRefactorT("runtime.failedWithReason", {
+            reason: result.error ?? safeBatchRefactorT("common.unknown"),
+          }),
+    })}\\n`;
   });
 
   output += `\\n`;
@@ -439,16 +478,16 @@ function formatOutput(
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
 
-  output += `📊 Summary:\\n`;
-  output += `   ✅ Success: ${successCount}\\n`;
-  output += `   ❌ Failed: ${failCount}\\n`;
+  output += `${safeBatchRefactorT("runtime.summaryTitle")}\\n`;
+  output += `   ${safeBatchRefactorT("runtime.summarySuccess", { successCount })}\\n`;
+  output += `   ${safeBatchRefactorT("runtime.summaryFailed", { failCount })}\\n`;
 
   if (rollbackOccurred) {
-    output += `\\n⚠️  Auto-rollback occurred for failed operations\\n`;
+    output += `\\n${safeBatchRefactorT("runtime.rollbackOccurred")}\\n`;
   }
 
   if (dryRun) {
-    output += `\\n⚠️  DRY RUN MODE - No changes applied\\n`;
+    output += `\\n${safeBatchRefactorT("runtime.dryRun")}\\n`;
   }
 
   return output;
@@ -460,46 +499,44 @@ function formatOutput(
 
 export const SAFE_BATCH_REFACTOR_TOOL = {
   name: "hev_dev_safe_batch_refactor",
-  description:
-    "⚠️ CAREFUL: Batch refactoring with validation after each step. operations: [{pattern, replace_with, target_lines?}] formatında — her operasyon regex pattern bulur ve replace_with ile değiştirir. Her adım sonrası TypeScript check yapılır, hata artarsa auto-rollback. dry_run=true ile önce test et.",
+  description: safeBatchRefactorDefT("description"),
   inputSchema: {
     type: "object",
     properties: {
       file_path: {
         type: "string",
-        description: "Refactor edilecek dosya yolu",
+        description: safeBatchRefactorDefT("filePath"),
       },
       operations: {
         type: "array",
         items: {
           type: "object",
           properties: {
-            pattern: { type: "string", description: "Regex pattern" },
-            replace_with: { type: "string", description: "Yeni kod" },
+            pattern: { type: "string", description: safeBatchRefactorDefT("pattern") },
+            replace_with: { type: "string", description: safeBatchRefactorDefT("replaceWith") },
             target_lines: {
               type: "array",
               items: { type: "number" },
-              description: "Sadece bu satırlarda uygula (opsiyonel)",
+              description: safeBatchRefactorDefT("targetLines"),
             },
           },
           required: ["pattern", "replace_with"],
         },
-        description:
-          "Uygulanacak refactor operasyonları. Her eleman {pattern: string (regex), replace_with: string, target_lines?: number[]} objesi olmalıdır. pattern ve replace_with zorunludur.",
+        description: safeBatchRefactorDefT("operations"),
       },
       verify_after_each: {
         type: "boolean",
-        description: "Her operasyondan sonra TypeScript check yap",
+        description: safeBatchRefactorDefT("verifyAfterEach"),
         default: true,
       },
       auto_rollback_on_error: {
         type: "boolean",
-        description: "Hata artışında otomatik rollback",
+        description: safeBatchRefactorDefT("autoRollbackOnError"),
         default: true,
       },
       dry_run: {
         type: "boolean",
-        description: "Sadece önizleme",
+        description: safeBatchRefactorDefT("dryRun"),
         default: false,
       },
     },
@@ -511,13 +548,12 @@ export const SAFE_BATCH_REFACTOR_TOOL = {
     priority: "high",
     complexity: "complex",
     useCases: [
-      "Multi-step refactoring with safety",
-      "Batch operations with rollback",
-      "Verified transformations",
+      safeBatchRefactorDefT("useCases.multiStep"),
+      safeBatchRefactorDefT("useCases.rollback"),
+      safeBatchRefactorDefT("useCases.verified"),
     ],
     relatedTools: ["hev_fs_find_and_replace", "hev_fs_backup", "hev_dev_check_syntax"],
-    agentGuidance:
-      'Use for complex refactoring. Each step is verified. Auto-rollback on error. Safer than manual multi-step edits. Kullanım: operations: [{pattern: "regex", replace_with: "yeni kod", target_lines: [10,20]}]. pattern ve replace_with zorunlu, target_lines opsiyonel.',
+    agentGuidance: safeBatchRefactorDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "medium",
     tags: ["refactoring", "batch", "verification", "rollback", "safety"],

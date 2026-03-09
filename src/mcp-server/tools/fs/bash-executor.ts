@@ -6,6 +6,8 @@ import { spawn } from "child_process";
 import { logToolError as _logToolError } from "../../utils/mcp-logger.js";
 import { FS_TIMEOUTS } from "@timeouts";
 import { checkGitLock, removeStaleLock } from "../../utils/git-utils.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
+import type { TranslationParams } from "../../../types/i18n.js";
 
 interface BashResult {
   stdout: string;
@@ -14,6 +16,18 @@ interface BashResult {
   pid?: number;
   timedOut?: boolean;
   success?: boolean;
+}
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+const bashToolDefinitionTranslator = createMcpTranslatorSync();
+
+function bashT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.bash.${key}`, params);
+}
+
+function bashToolDefinitionT(key: string): string {
+  return bashToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.${key}`);
 }
 
 function chunkToString(data: unknown): string {
@@ -27,12 +41,12 @@ export async function executeBash(
   workspacePath: string,
   timeout: number = FS_TIMEOUTS.BASH_DEFAULT
 ): Promise<BashResult> {
+  const t = await createMcpTranslator();
   return await new Promise((resolve) => {
-    // PID ile log alma (şimdilik desteklenmiyor)
     if (typeof command === "number") {
       resolve({
         stdout: "",
-        stderr: "PID ile log alma henüz desteklenmiyor",
+        stderr: bashT(t, "pidLogsUnsupported"),
         exitCode: 1,
       });
       return;
@@ -41,25 +55,24 @@ export async function executeBash(
     const isBackground = command.trim().endsWith("&");
     const actualCommand = isBackground ? command.slice(0, -1).trim() : command;
 
-    // Git command detection and auto-recovery
     const isGitCommand = actualCommand.trim().startsWith("git ");
     if (isGitCommand) {
       try {
         const lockCheck = checkGitLock(workspacePath);
         if (lockCheck.hasLock && lockCheck.isStale) {
-          // Write to stderr (git lock auto-recovery)
           process.stderr.write(
-            `[BASH] Stale git lock detected (${lockCheck.ageMinutes ?? 0} min), auto-removing...\n`
+            `[BASH] ${bashT(t, "staleGitLockDetected", { ageMinutes: lockCheck.ageMinutes ?? 0 })}\n`
           );
           removeStaleLock(workspacePath);
         }
       } catch (lockError: unknown) {
-        // If lock check fails, continue with normal execution
         interface ErrorWithMessage {
           message?: string;
         }
         process.stderr.write(
-          `[BASH] Git lock check failed: ${(lockError as ErrorWithMessage).message ?? "unknown"}\n`
+          `[BASH] ${bashT(t, "gitLockCheckFailed", {
+            message: (lockError as ErrorWithMessage).message ?? bashT(t, "unknown"),
+          })}\n`
         );
       }
     }
@@ -90,15 +103,16 @@ export async function executeBash(
     child.on("close", (code) => {
       clearTimeout(timeoutId);
 
-      // Output limitlenmesi (çok büyük çıktılar için)
       const maxOutput = 50000;
       if (stdout.length > maxOutput) {
-        stdout =
-          stdout.slice(0, maxOutput) + `\n... (${stdout.length - maxOutput} karakter kesildi)`;
+        stdout = stdout.slice(0, maxOutput) + `\n... ${bashT(t, "truncated", {
+          count: stdout.length - maxOutput,
+        })}`;
       }
       if (stderr.length > maxOutput) {
-        stderr =
-          stderr.slice(0, maxOutput) + `\n... (${stderr.length - maxOutput} karakter kesildi)`;
+        stderr = stderr.slice(0, maxOutput) + `\n... ${bashT(t, "truncated", {
+          count: stderr.length - maxOutput,
+        })}`;
       }
 
       resolve({
@@ -119,12 +133,11 @@ export async function executeBash(
       });
     });
 
-    // Background process için hemen dön
     if (isBackground) {
       clearTimeout(timeoutId);
       setTimeout(() => {
         resolve({
-          stdout: `Background process başlatıldı`,
+          stdout: bashT(t, "backgroundStarted"),
           stderr: "",
           exitCode: 0,
           ...(typeof child.pid === "number" ? { pid: child.pid } : {}),
@@ -137,12 +150,12 @@ export async function executeBash(
 // Tool Definition
 export const BASH_EXECUTOR_TOOL = {
   name: "hev_fs_bash",
-  description: "Shell komutu çalıştır",
+  description: bashToolDefinitionT("bash.description"),
   inputSchema: {
     type: "object" as const,
     properties: {
-      command: { type: "string" },
-      timeout: { type: "integer" },
+      command: { type: "string", description: bashToolDefinitionT("bash.command") },
+      timeout: { type: "integer", description: bashToolDefinitionT("bash.timeout") },
     },
     required: ["command"],
   },

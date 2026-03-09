@@ -8,6 +8,7 @@
 
 import { search, SafeSearchType } from "duck-duck-scrape";
 import { logToolError } from "../../utils/mcp-logger.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type { ToolResult } from "@shared/index-mcp.js";
 
 // ============================================
@@ -41,6 +42,21 @@ interface SearxngResult {
 
 interface SearxngResponse {
   results?: SearxngResult[];
+}
+
+type WebTranslator = (key: string, params?: Record<string, string | number | boolean>) => string;
+
+const webSearchDefinitionTranslator = createMcpTranslatorSync();
+
+function webSearchDefT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
+  return webSearchDefinitionTranslator(`mcpServer.webTools.definition.search.${key}`, params);
+}
+
+function webSearchT(t: WebTranslator, key: string, params?: Record<string, string | number | boolean>): string {
+  return t(`mcpServer.webTools.search.${key}`, params);
 }
 
 // ============================================
@@ -140,6 +156,7 @@ function recordRequest(): void {
 
 async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResult> {
   const { query, numResults = 10, safeSearch = true, region = "tr-tr" } = options;
+  const t = await createMcpTranslator();
 
   const rateLimitCheck = checkRateLimit();
   if (!rateLimitCheck.allowed) {
@@ -148,7 +165,7 @@ async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResu
       content: [
         {
           type: "text",
-          text: `⏳ Rate limit aşıldı. Lütfen ${waitSeconds} saniye sonra tekrar deneyin.`,
+          text: webSearchT(t, "errors.rateLimit", { waitSeconds }),
         },
       ],
       isError: true,
@@ -165,7 +182,7 @@ async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResu
   const formattedResults: WebSearchResult[] = searchResult.results
     .slice(0, numResults)
     .map((result) => ({
-      title: result.title.length > 0 ? result.title : "Başlık yok",
+      title: result.title.length > 0 ? result.title : webSearchT(t, "results.untitled"),
       url: result.url.length > 0 ? result.url : "",
       description: result.description.length > 0 ? result.description : "",
       source: new URL(result.url.length > 0 ? result.url : "http://localhost").hostname,
@@ -176,7 +193,7 @@ async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResu
       content: [
         {
           type: "text",
-          text: `🔍 "${query}" için sonuç bulunamadı.`,
+          text: webSearchT(t, "errors.noResults", { query }),
         },
       ],
     };
@@ -186,7 +203,7 @@ async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResu
     content: [
       {
         type: "text",
-        text: formatSearchResults("duckduckgo", query, formattedResults, numResults),
+        text: formatSearchResults(t, "duckduckgo", query, formattedResults, numResults),
       },
     ],
   };
@@ -194,10 +211,11 @@ async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResu
 
 async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult> {
   const { query, numResults = 10, safeSearch = true, region = "tr-tr" } = options;
+  const t = await createMcpTranslator();
   const language = mapRegionToSearxngLanguage(region);
   const candidates = buildSearxngCandidates(options.searxngBaseUrl);
 
-  let lastError = "SearXNG endpoint hatası";
+  let lastError = webSearchT(t, "errors.searxngEndpoint");
 
   for (const baseUrl of candidates) {
     try {
@@ -224,7 +242,10 @@ async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult>
       const formattedResults: WebSearchResult[] = (payload.results ?? [])
         .slice(0, numResults)
         .map((result) => ({
-          title: (result.title ?? "").length > 0 ? (result.title ?? "") : "Başlık yok",
+          title:
+            (result.title ?? "").length > 0
+              ? (result.title ?? "")
+              : webSearchT(t, "results.untitled"),
           url: result.url ?? "",
           description: result.content ?? "",
           source: new URL((result.url ?? "").length > 0 ? (result.url ?? "") : "http://localhost")
@@ -236,7 +257,7 @@ async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult>
           content: [
             {
               type: "text",
-              text: `🔍 "${query}" için sonuç bulunamadı.`,
+              text: webSearchT(t, "errors.noResults", { query }),
             },
           ],
         };
@@ -246,7 +267,7 @@ async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult>
         content: [
           {
             type: "text",
-            text: formatSearchResults("searxng", query, formattedResults, numResults),
+            text: formatSearchResults(t, "searxng", query, formattedResults, numResults),
           },
         ],
       };
@@ -264,6 +285,7 @@ async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult>
 
 export async function webSearch(options: WebSearchOptions): Promise<ToolResult> {
   const provider = resolveProvider(options.provider);
+  const t = await createMcpTranslator();
 
   try {
     if (provider === "duckduckgo") {
@@ -284,7 +306,7 @@ export async function webSearch(options: WebSearchOptions): Promise<ToolResult> 
         content: [
           {
             type: "text",
-            text: `❌ SearXNG arama hatası: ${err.message}\n\n💡 İpuçları:\n- Farklı bir public SearXNG instance deneyin\n- SEARXNG_BASE_URL env değişkenini ayarlayın\n- Geçici olarak provider: "duckduckgo" ile fallback kullanın`,
+            text: webSearchT(t, "errors.searxngSearchFailed", { message: err.message }),
           },
         ],
         isError: true,
@@ -295,7 +317,7 @@ export async function webSearch(options: WebSearchOptions): Promise<ToolResult> 
       content: [
         {
           type: "text",
-          text: `❌ Arama hatası: ${err.message}\n\n💡 İpuçları:\n- Farklı bir arama terimi deneyin\n- Rate limit için birkaç saniye bekleyin\n- İnternet bağlantınızı kontrol edin`,
+          text: webSearchT(t, "errors.searchFailed", { message: err.message }),
         },
       ],
       isError: true,
@@ -304,15 +326,20 @@ export async function webSearch(options: WebSearchOptions): Promise<ToolResult> 
 }
 
 function formatSearchResults(
+  t: WebTranslator,
   provider: SearchProvider,
   query: string,
   results: WebSearchResult[],
   requestedCount: number
 ): string {
   const lines: string[] = [
-    `🔍 Web Arama Sonuçları: "${query}"`,
-    `🧭 Sağlayıcı: ${provider}`,
-    `📊 ${results.length} sonuç bulundu${results.length < requestedCount ? " (tümü)" : ""}`,
+    webSearchT(t, "results.title", { query }),
+    webSearchT(t, "results.provider", { provider }),
+    webSearchT(t, "results.count", {
+      count: results.length,
+      suffix:
+        results.length < requestedCount ? webSearchT(t, "results.allShownSuffix") : "",
+    }),
     "",
     "═".repeat(60),
     "",
@@ -327,8 +354,10 @@ function formatSearchResults(
 
   lines.push("═".repeat(60));
   lines.push("");
-  lines.push("💡 Sonuçlardan birinin içeriğini çekmek için:");
-  lines.push(`   hev_web_fetch_url(url: "${results[0]?.url ?? "URL"}")`);
+  lines.push(webSearchT(t, "results.fetchHintTitle"));
+  lines.push(
+    webSearchT(t, "results.fetchHintCommand", { url: results[0]?.url ?? "URL" })
+  );
 
   return lines.join("\n");
 }
@@ -344,40 +373,38 @@ function truncateText(text: string, maxLength: number): string {
 
 export const WEB_SEARCH_TOOL = {
   name: "hev_web_search",
-  description:
-    "Web araması yap. Varsayılan sağlayıcı SearXNG'dir (Docker zorunlu değil). İstenirse DuckDuckGo fallback kullanılabilir.",
+  description: webSearchDefT("description"),
   inputSchema: {
     type: "object" as const,
     properties: {
       query: {
         type: "string",
-        description: "Arama sorgusu",
+        description: webSearchDefT("query"),
       },
       num_results: {
         type: "integer",
-        description: "Maksimum sonuç sayısı (1-20, varsayılan: 10)",
+        description: webSearchDefT("numResults"),
         default: 10,
         minimum: 1,
         maximum: 20,
       },
       safe_search: {
         type: "boolean",
-        description: "Güvenli arama modu (varsayılan: true)",
+        description: webSearchDefT("safeSearch"),
         default: true,
       },
       region: {
         type: "string",
-        description: "Bölge kodu (varsayılan: tr-tr)",
+        description: webSearchDefT("region"),
         default: "tr-tr",
       },
       provider: {
         type: "string",
-        description: "Arama sağlayıcısı: searxng | duckduckgo (varsayılan: searxng)",
+        description: webSearchDefT("provider"),
       },
       searxng_base_url: {
         type: "string",
-        description:
-          "SearXNG base URL (örn: https://searx.be). Boşsa SEARXNG_BASE_URL veya varsayılan kullanılır.",
+        description: webSearchDefT("searxngBaseUrl"),
       },
     },
     required: ["query"],
@@ -388,14 +415,13 @@ export const WEB_SEARCH_TOOL = {
     priority: "high",
     complexity: "medium",
     useCases: [
-      "Güncel bilgi arama",
-      "API dokümantasyonu bulma",
-      "Hata çözümleri araştırma",
-      "Paket/library bilgisi",
+      webSearchDefT("useCases.currentInformation"),
+      webSearchDefT("useCases.apiDocumentation"),
+      webSearchDefT("useCases.errorResearch"),
+      webSearchDefT("useCases.packageInfo"),
     ],
     relatedTools: ["hev_web_fetch_url", "hev_web_search_and_fetch"],
-    agentGuidance:
-      "Docker olmadan SearXNG public instance ile kullanılabilir. Kararlılık için SEARXNG_BASE_URL ile kendi instance adresini ver. Gerekirse provider='duckduckgo' fallback kullan.",
+    agentGuidance: webSearchDefT("agentGuidance"),
     requiresConfirmation: false,
     riskLevel: "low",
     tags: ["web", "search", "searxng", "free", "no-docker"],

@@ -12,7 +12,15 @@ import {
 } from "../../../tools/fs/basic/operations.js";
 import { editFileContent, EDIT_FILE_TOOL } from "../../../tools/fs/basic/edit.js";
 import { sanitizeContent } from "../../../tools/fs/shared/helpers.js";
+import { createMcpTranslator } from "../../../utils/i18n/index.js";
 import type { ToolEntry } from "../../registry.js";
+import type { TranslationParams } from "../../../../types/i18n.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+function fsT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.fs.${key}`, params);
+}
 
 export function createFilesystemBasicTools(): ToolEntry[] {
   return [
@@ -40,19 +48,30 @@ export function createFilesystemBasicTools(): ToolEntry[] {
     {
       definition: WRITE_FILE_TOOL,
       handler: async (args): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const filePath = (args as { file_path?: unknown }).file_path;
         const contentRaw = (args as { content?: unknown }).content;
 
         if (typeof filePath !== "string" || filePath.trim() === "") {
           return {
-            content: [{ type: "text", text: "❌ file_path parametresi zorunlu ve string olmalı" }],
+            content: [
+              {
+                type: "text",
+                text: fsT(t, "validation.filePathRequiredString"),
+              },
+            ],
             isError: true,
           };
         }
 
         if (typeof contentRaw !== "string") {
           return {
-            content: [{ type: "text", text: "❌ content parametresi zorunlu ve string olmalı" }],
+            content: [
+              {
+                type: "text",
+                text: fsT(t, "validation.contentRequiredString"),
+              },
+            ],
             isError: true,
           };
         }

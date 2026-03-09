@@ -10,19 +10,31 @@ import { handleSuggestTool } from "../../tools/tool-discovery.js";
 import { TOOL_DISCOVERY_DEFINITIONS } from "../../tools/tool-discovery.js";
 import { readElectronLogs, listLogSessions, getSessionSummary } from "../../tools/log-tools.js";
 import { getErrorHints } from "../../tools/debug-tools.js";
+import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
+import type { TranslationParams } from "../../../types/i18n.js";
 import type { ToolEntry, ToolContext } from "../registry.js";
 import { getToolCount } from "../registry.js";
+
+type McpTranslator = (key: string, params?: TranslationParams) => string;
+
+const electronToolDefinitionTranslator = createMcpTranslatorSync();
+
+function electronToolT(key: string, params?: TranslationParams): string {
+  return electronToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.electron.${key}`, params);
+}
+
+function electronHealthT(t: McpTranslator, key: string, params?: TranslationParams): string {
+  return t(`mcpServer.health.${key}`, params);
+}
 
 export function createElectronTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT, LOG_DIR } = context;
 
   return [
-    // ─── Core ────────────────────────────────────────────
     {
       definition: {
         name: "hev_mcp_health",
-        description:
-          "Hayalet-ev MCP'nin sağlık durumunu kontrol et. MCP server'ın çalışma durumunu, versiyon ve tool sayısını gösterir.",
+        description: electronToolT("mcpHealth.description"),
         inputSchema: { type: "object", properties: {} },
         metadata: {
           category: "core",
@@ -30,53 +42,55 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
           priority: "critical",
           complexity: "simple",
           useCases: [
-            "Session başlangıcında MCP sağlığını kontrol et",
-            "Tool çalışmıyorsa troubleshoot",
+            electronToolT("mcpHealth.useCases.sessionStart"),
+            electronToolT("mcpHealth.useCases.troubleshoot"),
           ],
           relatedTools: ["hev_list_tools"],
-          agentGuidance:
-            "Her session başında veya tool hatası aldığında kullan. MCP çalışmazsa built-in toollar aktif olur (RISKLI!).",
+          agentGuidance: electronToolT("mcpHealth.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["health", "status", "troubleshoot"],
         },
       },
-      handler: (): unknown => {
+      handler: async (): Promise<unknown> => {
+        const t = await createMcpTranslator();
         const health = mcpHealthCheck();
-        // Use runtime tool count instead of hardcoded value
         const toolCount = getToolCount();
-        const output = `
-${health.message}
+        const output = [
+          electronHealthT(t, "activeMessage"),
+          "",
+          electronHealthT(t, "reportTitle"),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+          electronHealthT(t, "statusLine", {
+            status: electronHealthT(t, health.healthy ? "healthy" : "unhealthy"),
+          }),
+          electronHealthT(t, "versionLine", { version: health.version }),
+          electronHealthT(t, "uptimeLine", { uptime: Math.floor(health.uptime) }),
+          electronHealthT(t, "toolCountLine", { toolCount }),
+          "",
+          electronHealthT(t, "visibleMessageTitle"),
+          electronHealthT(t, "visibleMessageLine1"),
+          electronHealthT(t, "visibleMessageLine2"),
+          "",
+          electronHealthT(t, "failureTitle"),
+          electronHealthT(t, "failureLine1"),
+          electronHealthT(t, "failureLine2"),
+          "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        ].join("\n");
 
-📊 MCP Durum:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Sağlık: ${health.healthy ? "Healthy" : "Unhealthy"}
-📦 Versiyon: ${health.version}
-⏱️  Uptime: ${Math.floor(health.uptime)}s
-🔧 Tool Sayısı: ${toolCount}
-
-💡 Bu mesajı görüyorsan:
-   → Hayalet-ev MCP çalışıyor
-   → Tüm hev_* toolları kullanılabilir
-
-⚠️  Eğer bu tool çalışmazsa:
-   → Hayalet-ev MCP çökmüş demektir
-   → Acil: MCP server'ı yeniden başlat
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
         return { content: [{ type: "text", text: output }] };
       },
     },
     {
       definition: {
         name: "hev_test_electron",
-        description: "Hayalet-ev Electron uygulamasını test et",
+        description: electronToolT("testElectron.description"),
         inputSchema: {
           type: "object",
           properties: {
             timeout: {
               type: "number",
-              description: "Test süresi (saniye), varsayılan 5",
+              description: electronToolT("testElectron.timeout"),
               default: 5,
             },
           },
@@ -86,9 +100,12 @@ ${health.message}
           subcategory: "testing",
           priority: "medium",
           complexity: "simple",
-          useCases: ["Electron app connectivity test", "CDP health check"],
+          useCases: [
+            electronToolT("testElectron.useCases.connectivityTest"),
+            electronToolT("testElectron.useCases.cdpHealthCheck"),
+          ],
           relatedTools: ["hev_check_electron_connection", "hev_mcp_health"],
-          agentGuidance: "Use to verify Electron app is running and CDP is accessible.",
+          agentGuidance: electronToolT("testElectron.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["electron", "testing", "connectivity"],
@@ -102,17 +119,20 @@ ${health.message}
     {
       definition: {
         name: "hev_list_tools",
-        description: "Hayalet-ev MCP tool'larını kategorize ederek listele",
+        description: electronToolT("listTools.description"),
         inputSchema: { type: "object", properties: {} },
         metadata: {
           category: "core",
           subcategory: "discovery",
           priority: "high",
           complexity: "simple",
-          useCases: ["Tool keşfetme", "Kategori bazlı araştırma", "Tool count doğrulama"],
+          useCases: [
+            electronToolT("listTools.useCases.discoverTools"),
+            electronToolT("listTools.useCases.categoryResearch"),
+            electronToolT("listTools.useCases.countVerification"),
+          ],
           relatedTools: ["hev_suggest_tool"],
-          agentGuidance:
-            "Tüm toolları görmek yerine hev_suggest_tool veya kategori bazlı arama kullan.",
+          agentGuidance: electronToolT("listTools.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["discovery", "list", "reference"],
@@ -122,58 +142,56 @@ ${health.message}
         return listTools();
       },
     },
-
-    // ─── Tool Discovery ──────────────────────────────────
     {
       definition: TOOL_DISCOVERY_DEFINITIONS[0],
       handler: (args): unknown => {
         return handleSuggestTool(args ?? {});
       },
     },
-    // ─── Log Tools ───────────────────────────────────────
     {
       definition: {
         name: "hev_read_electron_logs",
-        description:
-          "Electron console ve error loglarını oku. Gelişmiş filtreleme: source (MAIN, RENDERER, WEBVIEW-AI1, etc.), level (LOG, WARN, ERROR), içerik arama, correlation ID ile işlem takibi.",
+        description: electronToolT("readLogs.description"),
         inputSchema: {
           type: "object",
           properties: {
             type: {
               type: "string",
               enum: ["console", "error", "all", "structured"],
-              description: "Log tipi",
+              description: electronToolT("readLogs.type"),
               default: "all",
             },
             app: {
               type: "string",
               enum: ["hayalet-ev", "mcp-server", "ghost-agent"],
-              description: "Hangi uygulamanın session logları okunacak (varsayılan: hayalet-ev)",
+              description: electronToolT("readLogs.app"),
               default: "hayalet-ev",
             },
             tail: {
               type: "number",
-              description: "Son N satırı göster (varsayılan: 50)",
+              description: electronToolT("readLogs.tail"),
               default: 50,
             },
             source: {
               type: "string",
-              description:
-                "Kaynak filtresi: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob destekli)",
+              description: electronToolT("readLogs.source"),
             },
             level: {
               type: "string",
               enum: ["LOG", "WARN", "ERROR", "DEBUG", "INFO"],
-              description: "Log seviyesi filtresi",
+              description: electronToolT("readLogs.level"),
             },
-            contains: { type: "string", description: "İçerik arama (case-insensitive)" },
+            contains: {
+              type: "string",
+              description: electronToolT("readLogs.contains"),
+            },
             correlationId: {
               type: "string",
-              description: "İşlem takibi için correlation ID",
+              description: electronToolT("readLogs.correlationId"),
             },
             sessionId: {
               type: "string",
-              description: "Belirli bir session'ın loglarını oku (varsayılan: en son session)",
+              description: electronToolT("readLogs.sessionId"),
             },
           },
         },
@@ -183,13 +201,12 @@ ${health.message}
           priority: "high",
           complexity: "medium",
           useCases: [
-            "Hata ayıklama için log inceleme",
-            "Belirli source/level/pattern ile filtreleme",
-            "Correlation ID ile işlem takibi",
+            electronToolT("readLogs.useCases.debugLogs"),
+            electronToolT("readLogs.useCases.filterLogs"),
+            electronToolT("readLogs.useCases.trackCorrelation"),
           ],
           relatedTools: ["hev_list_log_sessions", "hev_get_session_summary", "hev_get_error_hints"],
-          agentGuidance:
-            "Hata araştırması için kullan. source ile WEBVIEW-AI1, WEBVIEW-AI2 vb. ayır. correlationId ile işlem zincirini takip et.",
+          agentGuidance: electronToolT("readLogs.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["debug", "logs", "troubleshooting", "electron"],
@@ -202,20 +219,19 @@ ${health.message}
     {
       definition: {
         name: "hev_list_log_sessions",
-        description:
-          "Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder.",
+        description: electronToolT("listLogSessions.description"),
         inputSchema: {
           type: "object",
           properties: {
             limit: {
               type: "number",
-              description: "Gösterilecek maksimum session sayısı (varsayılan: 10)",
+              description: electronToolT("listLogSessions.limit"),
               default: 10,
             },
             app: {
               type: "string",
               enum: ["hayalet-ev", "mcp-server", "ghost-agent"],
-              description: "Session listesi hangi uygulama için alınsın (varsayılan: hayalet-ev)",
+              description: electronToolT("listLogSessions.app"),
               default: "hayalet-ev",
             },
           },
@@ -225,10 +241,12 @@ ${health.message}
           subcategory: "logs",
           priority: "medium",
           complexity: "simple",
-          useCases: ["Geçmiş session'ları görüntüleme", "Belirli bir session ID bulma"],
+          useCases: [
+            electronToolT("listLogSessions.useCases.viewSessions"),
+            electronToolT("listLogSessions.useCases.findSessionId"),
+          ],
           relatedTools: ["hev_read_electron_logs", "hev_get_session_summary"],
-          agentGuidance:
-            "Log okumadan önce session listesini kontrol et. En son session varsayılan olarak kullanılır.",
+          agentGuidance: electronToolT("listLogSessions.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["debug", "logs", "session"],
@@ -241,16 +259,17 @@ ${health.message}
     {
       definition: {
         name: "hev_get_error_hints",
-        description:
-          "Belirli bir hata mesajı için AI debugging ipuçları al. Bilinen hata pattern'lerini eşleştirir ve çözüm önerileri sunar.",
+        description: electronToolT("getErrorHints.description"),
         inputSchema: {
           type: "object",
           properties: {
-            errorMessage: { type: "string", description: "Analiz edilecek hata mesajı" },
+            errorMessage: {
+              type: "string",
+              description: electronToolT("getErrorHints.errorMessage"),
+            },
             provider: {
               type: "string",
-              description:
-                "İlgili provider (chatgpt, gemini, grok) - dosya yolları için kullanılır",
+              description: electronToolT("getErrorHints.provider"),
             },
           },
           required: ["errorMessage"],
@@ -261,13 +280,12 @@ ${health.message}
           priority: "high",
           complexity: "medium",
           useCases: [
-            "Hata pattern matching",
-            "Çözüm önerisi alma",
-            "Provider-specific troubleshooting",
+            electronToolT("getErrorHints.useCases.patternMatching"),
+            electronToolT("getErrorHints.useCases.getSuggestions"),
+            electronToolT("getErrorHints.useCases.providerTroubleshooting"),
           ],
           relatedTools: ["hev_collect_error_context", "hev_read_electron_logs"],
-          agentGuidance:
-            "Hata mesajı aldığında bu tool ile bilinen pattern'leri kontrol et. Provider bilgisi verirsen dosya yolları için kullanır.",
+          agentGuidance: electronToolT("getErrorHints.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["debug", "error", "hints", "ai-assisted"],
@@ -280,18 +298,18 @@ ${health.message}
     {
       definition: {
         name: "hev_get_session_summary",
-        description: "Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum)",
+        description: electronToolT("getSessionSummary.description"),
         inputSchema: {
           type: "object",
           properties: {
             sessionId: {
               type: "string",
-              description: "Session ID (varsayılan: en son session)",
+              description: electronToolT("getSessionSummary.sessionId"),
             },
             app: {
               type: "string",
               enum: ["hayalet-ev", "mcp-server", "ghost-agent"],
-              description: "Özet hangi uygulamanın session'ı için alınsın (varsayılan: hayalet-ev)",
+              description: electronToolT("getSessionSummary.app"),
               default: "hayalet-ev",
             },
           },
@@ -302,13 +320,12 @@ ${health.message}
           priority: "medium",
           complexity: "simple",
           useCases: [
-            "Session health check",
-            "Hata istatistikleri görme",
-            "Session karşılaştırması",
+            electronToolT("getSessionSummary.useCases.healthCheck"),
+            electronToolT("getSessionSummary.useCases.errorStats"),
+            electronToolT("getSessionSummary.useCases.compareSessions"),
           ],
           relatedTools: ["hev_list_log_sessions", "hev_read_electron_logs"],
-          agentGuidance:
-            "Session'ın genel durumunu öğrenmek için kullan. Hata sayısı, süre ve durum bilgisi verir.",
+          agentGuidance: electronToolT("getSessionSummary.agentGuidance"),
           requiresConfirmation: false,
           riskLevel: "low",
           tags: ["debug", "logs", "session", "summary"],

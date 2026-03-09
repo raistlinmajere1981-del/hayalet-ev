@@ -3,6 +3,10 @@ import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { SlotController, SlotEvent } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
+import {
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
 
 export interface ServerInitContext {
   _unsubSettings: (() => void) | null;
@@ -39,12 +43,12 @@ export async function initServerControllerPage(controller: ServerInitContext): P
     ({ changedPaths }: { changedPaths: string[] }) => {
       const shouldRenderCommandPanel =
         changedPaths.includes("*") ||
-        changedPaths.some(
-          (path) =>
-            path.startsWith("slots") ||
-            path.startsWith("asistanSlot") ||
-            path.startsWith("accounts") ||
-            path.startsWith("asistanAccounts")
+          changedPaths.some(
+            (path) =>
+              path.startsWith("slots") ||
+              isAssistantSlotSettingsPath(path) ||
+              path.startsWith("accounts") ||
+              isAssistantAccountsSettingsPath(path)
         );
 
       if (!shouldRenderCommandPanel) {

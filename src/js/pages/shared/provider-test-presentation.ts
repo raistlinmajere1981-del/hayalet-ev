@@ -3,8 +3,11 @@ import type {
   ProviderScenarioCommandStatus,
   ProviderSessionPreview,
   ProviderTestSlot,
+  ProviderTestResult,
+  ProviderTestSuite,
   TestStatus,
 } from "../../../types/provider.ts";
+import { AppI18n } from "../../modules/i18n/index.js";
 
 export interface ProviderTestOverlaySurface {
   kind: "overlay" | "side-panel";
@@ -58,6 +61,10 @@ export interface ScenarioDisplayRow {
   sessionPreview?: ProviderSessionPreview;
 }
 
+function providerTestT(key: string, params?: Record<string, string | number | boolean>): string {
+  return AppI18n.t(`providerTest.${key}`, params);
+}
+
 export const resolveScenarioSurface = resolveProviderTestSurface;
 
 export function resolveProviderTestSurface(slot: ProviderTestSlot): ProviderTestSurface {
@@ -99,7 +106,13 @@ export function buildScenarioProgressSummary(input: {
   const activeStep = input.commands.find((command) => command.status === "running") ?? null;
 
   return {
-    title: `${input.providerName} ${input.scenarioTitle ?? "testi"} calisiyor`,
+    title: providerTestT("scenario.runningTitle", {
+      providerName: input.providerName,
+      scenarioTitle:
+        input.scenarioTitle?.trim() !== ""
+          ? (input.scenarioTitle ?? "")
+          : providerTestT("scenario.defaultTitle"),
+    }),
     completedSteps,
     totalSteps: input.commands.length,
     activeStepId: activeStep?.id ?? null,
@@ -129,7 +142,7 @@ export function buildScenarioCompletionMessage(input: {
   if (input.aborted === true) {
     return input.abortReason?.trim() !== "" && input.abortReason !== undefined
       ? input.abortReason
-      : "Senaryo durduruldu";
+      : providerTestT("scenario.abortedDefault");
   }
 
   const fallbackCommands = input.commands ?? [];
@@ -141,10 +154,13 @@ export function buildScenarioCompletionMessage(input: {
     typeof input.totalTests === "number" ? input.totalTests : fallbackCommands.length;
 
   if (totalTests <= 0) {
-    return "Senaryo tamamlandi";
+    return providerTestT("scenario.completedGeneric");
   }
 
-  return `${passed}/${totalTests} kontrol gecti`;
+  return providerTestT("scenario.completedWithCounts", {
+    passed,
+    total: totalTests,
+  });
 }
 
 export function filterScenarioDisplayRows(input: {
@@ -158,4 +174,158 @@ export function filterScenarioDisplayRows(input: {
   }
 
   return rows.filter((row) => row.status === input.filter);
+}
+
+export function formatScenarioStatusLabel(status: ProviderScenarioCommandStatus): string {
+  switch (status) {
+    case "pass":
+    case "fail":
+    case "warning":
+    case "skip":
+    case "running":
+      return providerTestT(`status.${status}`);
+    default:
+      return status;
+  }
+}
+
+export function getScenarioResultsFilterAriaLabel(): string {
+  return providerTestT("scenario.resultsFilterAria");
+}
+
+export function getScenarioEmptyMessage(filter: ScenarioStatusFilter): string {
+  return providerTestT(
+    filter === "all" ? "scenario.emptyNotStarted" : "scenario.emptyNoResults"
+  );
+}
+
+export function buildScenarioStepsCompletedLabel(completed: number, total: number): string {
+  return providerTestT("scenario.stepsCompleted", { completed, total });
+}
+
+export function getScenarioReadyLabel(): string {
+  return providerTestT("scenario.readyState");
+}
+
+export function buildProviderTestResultsModalTitle(results: ProviderTestSuite): string {
+  return providerTestT("modal.title", {
+    providerName: results.providerName,
+    slot: results.slot.toUpperCase(),
+  });
+}
+
+function getProviderTestCategoryName(category: string): string {
+  switch (category) {
+    case "preflight":
+      return providerTestT("modal.categories.preflight");
+    case "dom":
+      return providerTestT("modal.categories.dom");
+    case "interactive":
+      return providerTestT("modal.categories.interactive");
+    case "scraping":
+      return providerTestT("modal.categories.scraping");
+    case "advanced":
+      return providerTestT("modal.categories.advanced");
+    default:
+      return category;
+  }
+}
+
+function buildProviderTestResultDetails(test: ProviderTestResult): string {
+  if (!test.details) {
+    return "";
+  }
+
+  let html = '<div class="test-details">';
+
+  if (test.details.selector !== undefined && test.details.selector !== "") {
+    html += `<div class="detail-item"><strong>${providerTestT("modal.selectorLabel")}:</strong> <code>${test.details.selector}</code></div>`;
+  }
+
+  if (test.details.error !== undefined && test.details.error !== "") {
+    html += `<div class="detail-item detail-error"><strong>${providerTestT("modal.errorLabel")}:</strong> ${test.details.error}</div>`;
+  }
+
+  if (test.details.element) {
+    const el = test.details.element;
+    html += `<div class="detail-item"><strong>${providerTestT("modal.elementLabel")}:</strong> ${el.tagName} (${providerTestT("modal.visibleLabel")}: ${String(el.visible)}, ${providerTestT("modal.enabledLabel")}: ${String(el.enabled)})</div>`;
+    if (el.textContent !== undefined && el.textContent !== "") {
+      html += `<div class="detail-item"><strong>${providerTestT("modal.textLabel")}:</strong> ${el.textContent.slice(0, 50)}...</div>`;
+    }
+  }
+
+  html += "</div>";
+  return html;
+}
+
+export function generateProviderTestResultsHTML(results: ProviderTestSuite): string {
+  const { passed, failed, skipped, warnings, totalTests, totalDuration, aborted, abortReason } =
+    results;
+
+  let html = `
+      <div class="test-results-summary">
+        <div class="test-stats">
+          <span class="stat-item stat-pass">${providerTestT("modal.statsPassed", { count: passed })}</span>
+          <span class="stat-item stat-fail">${providerTestT("modal.statsFailed", { count: failed })}</span>
+          ${warnings > 0 ? `<span class="stat-item stat-warning">${providerTestT("modal.statsWarnings", { count: warnings })}</span>` : ""}
+          ${skipped > 0 ? `<span class="stat-item stat-skip">${providerTestT("modal.statsSkipped", { count: skipped })}</span>` : ""}
+        </div>
+        <div class="test-meta">
+          <span>${providerTestT("modal.duration", { seconds: (totalDuration / 1000).toFixed(2) })}</span>
+          <span>${providerTestT("modal.total", { count: totalTests })}</span>
+        </div>
+        ${aborted === true ? `<div class="test-aborted">${providerTestT("modal.aborted", { reason: abortReason ?? providerTestT("modal.unknownReason") })}</div>` : ""}
+      </div>
+    `;
+
+  const categories: Record<string, ProviderTestResult[]> = {};
+  results.results.forEach((result) => {
+    categories[result.category] ??= [];
+    categories[result.category]?.push(result);
+  });
+
+  const categoryEmoji: Record<string, string> = {
+    preflight: "🚀",
+    dom: "📋",
+    interactive: "🎮",
+    scraping: "📝",
+    advanced: "🔬",
+  };
+
+  for (const [category, tests] of Object.entries(categories)) {
+    html += `
+        <div class="test-category">
+          <h3 class="category-title">${categoryEmoji[category] ?? "📦"} ${getProviderTestCategoryName(category)}</h3>
+          <div class="test-results-list">
+      `;
+
+    tests.forEach((test) => {
+      const statusEmoji: Record<string, string> = {
+        pass: "✅",
+        fail: "❌",
+        skip: "⏭️",
+        warning: "⚠️",
+      };
+
+      html += `
+          <div class="test-result-item test-${test.status}">
+            <div class="test-header">
+              <span class="test-status">${statusEmoji[test.status] ?? "•"}</span>
+              <span class="test-name">${test.name}</span>
+              <span class="test-duration">${test.duration}ms</span>
+            </div>
+            <div class="test-message">${test.message}</div>
+            ${buildProviderTestResultDetails(test)}
+        `;
+
+      html += "</div>";
+    });
+
+    html += `
+          </div>
+        </div>
+      `;
+  }
+
+  return html;
 }
