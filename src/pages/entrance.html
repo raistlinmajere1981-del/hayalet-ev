@@ -25,8 +25,10 @@
                   title="Message Sending Method"
                   data-i18n-title="slot.messageMethodTitle"
                 >
-                  <option value="injection">Injection</option>
-                  <option value="xdotools">XdoTools</option>
+                  <option value="injection" data-i18n-text="slot.methods.injection">
+                    Injection
+                  </option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
                 </select>
               </div>
               <div class="setting-group">
@@ -37,12 +39,18 @@
                   title="File Sending Method"
                   data-i18n-title="slot.fileMethodTitle"
                 >
-                  <option value="dragdrop">Drag & Drop</option>
-                  <option value="injection">Injection</option>
-                  <option value="xdotools">XdoTools</option>
-                  <option value="uguu">Uguu</option>
-                  <option value="catbox">Catbox</option>
-                  <option value="googledrive">Google Drive</option>
+                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop">
+                    Drag & Drop
+                  </option>
+                  <option value="injection" data-i18n-text="slot.methods.injection">
+                    Injection
+                  </option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
+                  <option value="uguu" data-i18n-text="slot.methods.uguu">Uguu</option>
+                  <option value="catbox" data-i18n-text="slot.methods.catbox">Catbox</option>
+                  <option value="googledrive" data-i18n-text="slot.methods.googledrive">
+                    Google Drive
+                  </option>
                 </select>
               </div>
             </div>
@@ -151,8 +159,10 @@
                   title="Message Sending Method"
                   data-i18n-title="slot.messageMethodTitle"
                 >
-                  <option value="injection">Injection</option>
-                  <option value="xdotools">XdoTools</option>
+                  <option value="injection" data-i18n-text="slot.methods.injection">
+                    Injection
+                  </option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
                 </select>
               </div>
               <div class="setting-group">
@@ -163,12 +173,18 @@
                   title="File Sending Method"
                   data-i18n-title="slot.fileMethodTitle"
                 >
-                  <option value="dragdrop">Drag & Drop</option>
-                  <option value="injection">Injection</option>
-                  <option value="xdotools">XdoTools</option>
-                  <option value="uguu">Uguu</option>
-                  <option value="catbox">Catbox</option>
-                  <option value="googledrive">Google Drive</option>
+                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop">
+                    Drag & Drop
+                  </option>
+                  <option value="injection" data-i18n-text="slot.methods.injection">
+                    Injection
+                  </option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
+                  <option value="uguu" data-i18n-text="slot.methods.uguu">Uguu</option>
+                  <option value="catbox" data-i18n-text="slot.methods.catbox">Catbox</option>
+                  <option value="googledrive" data-i18n-text="slot.methods.googledrive">
+                    Google Drive
+                  </option>
                 </select>
               </div>
             </div>
@@ -292,13 +308,13 @@
                   />
                 </div>
                 <div class="setting-group">
-                  <label class="form-label" id="app-language-label" for="app-language-select">
-                    Application Language
-                  </label>
-                  <select id="app-language-select" class="select select-sm">
-                    <option value="tr">Turkish</option>
-                    <option value="en">English</option>
-                  </select>
+                  <label
+                    class="form-label"
+                    id="app-language-label"
+                    for="app-language-select"
+                    data-i18n-text="user.language.label"
+                  ></label>
+                  <select id="app-language-select" class="select select-sm"></select>
                   <div class="form-hint" id="app-language-restart-hint"></div>
                 </div>
                 <!-- Google Drive status -->
@@ -552,7 +568,7 @@
           data-i18n-placeholder="liveLog.searchPlaceholder"
         />
       </label>
-      <div class="live-log-metrics" id="live-log-metrics">0 entries</div>
+      <div class="live-log-metrics" id="live-log-metrics"></div>
     </div>
 
     <div class="live-log-body">

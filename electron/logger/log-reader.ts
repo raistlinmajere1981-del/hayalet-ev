@@ -98,11 +98,15 @@ function parseStructuredLine(line: string): StructuredLogEntry | null {
     const contextRaw = parsed["context"];
     const metaRaw = parsed["meta"];
     const aiHintRaw = parsed["aiHint"];
+    const localeRaw = parsed["locale"];
+    const messageKeyRaw = parsed["messageKey"];
 
     return {
       timestamp,
       source: sourceRaw as StructuredLogEntry["source"],
       message,
+      ...(typeof localeRaw === "string" ? { locale: localeRaw } : {}),
+      ...(typeof messageKeyRaw === "string" ? { messageKey: messageKeyRaw } : {}),
       ...(isLogLevelValue(levelRaw) ? { level: levelRaw } : {}),
       ...(isRecord(contextRaw) ? { context: contextRaw as LogContext } : {}),
       ...(typeof parsed["isoTimestamp"] === "string"

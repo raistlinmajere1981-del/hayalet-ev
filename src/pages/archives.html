@@ -5,7 +5,9 @@
       <!-- Left: conversation list -->
       <div class="archives-sidebar">
         <div class="sidebar-header">
-          <h3 id="archives-sidebar-title">Conversations</h3>
+          <h3 id="archives-sidebar-title" data-shell-i18n-text="app.archives.page.sidebarTitle">
+            Conversations
+          </h3>
           <div class="provider-toggle">
             <label class="toggle-label">
               <input
@@ -24,55 +26,95 @@
           </div>
         </div>
         <div class="archives-list" id="archives-list">
-          <div class="empty">No entries</div>
+          <div class="empty" data-shell-i18n-text="app.archives.page.empty">No entries</div>
         </div>
       </div>
 
       <!-- Center: detail panel -->
       <div class="archives-detail">
         <div class="detail-header">
-          <h3 id="archives-detail-title">Conversation Details</h3>
+          <h3 id="archives-detail-title" data-shell-i18n-text="app.archives.page.detailTitle">
+            Conversation Details
+          </h3>
         </div>
 
         <div class="detail-content" id="detail-content">
           <div class="empty-state" id="detail-empty">
-            <p id="archives-detail-empty-text">Select a conversation to view details</p>
+            <p id="archives-detail-empty-text" data-shell-i18n-text="app.archives.page.detailEmpty">
+              Select a conversation to view details
+            </p>
           </div>
 
           <form class="conversation-form hidden" id="conversation-form">
             <div class="form-group">
-              <label for="archive-title" id="archives-title-label">Title</label>
+              <label
+                for="archive-title"
+                id="archives-title-label"
+                data-shell-i18n-text="app.archives.page.titleLabel"
+              >
+                Title
+              </label>
               <input
                 type="text"
                 id="archive-title"
                 class="form-input"
                 placeholder="Conversation title"
+                data-shell-i18n-placeholder="app.archives.page.titlePlaceholder"
               />
             </div>
 
             <div class="form-group">
-              <label for="archive-summary" id="archives-summary-label">Summary</label>
+              <label
+                for="archive-summary"
+                id="archives-summary-label"
+                data-shell-i18n-text="app.archives.page.summaryLabel"
+              >
+                Summary
+              </label>
               <textarea
                 id="archive-summary"
                 class="form-input"
                 rows="3"
                 placeholder="Conversation summary..."
+                data-shell-i18n-placeholder="app.archives.page.summaryPlaceholder"
               ></textarea>
             </div>
 
             <div class="form-group">
-              <label id="archives-weburl-label">Web URL</label>
+              <label id="archives-weburl-label" data-shell-i18n-text="app.archives.page.webUrlLabel">
+                Web URL
+              </label>
               <div class="url-display-group">
                 <span class="url-display" id="archive-weburl-display">-</span>
-                <button type="button" class="icon-btn" id="btn-copy-url" title="Copy URL">
+                <button
+                  type="button"
+                  class="icon-btn"
+                  id="btn-copy-url"
+                  title="Copy URL"
+                  data-shell-i18n-title="app.archives.page.copyUrlTitle"
+                >
                   📋
                 </button>
               </div>
             </div>
 
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary" id="archive-save">Save</button>
-              <button type="button" class="btn btn-danger" id="btn-delete">🗑️ Delete</button>
+              <button
+                type="submit"
+                class="btn btn-primary"
+                id="archive-save"
+                data-shell-i18n-text="app.archives.page.saveButton"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="btn btn-danger"
+                id="btn-delete"
+                data-shell-i18n-text="app.archives.page.deleteButton"
+              >
+                Delete
+              </button>
             </div>
             <div class="form-hint" id="archive-status"></div>
           </form>
@@ -82,15 +124,21 @@
       <!-- Right: search panel -->
       <div class="archives-search">
         <div class="search-header">
-          <h3 id="archives-search-title">Search</h3>
+          <h3 id="archives-search-title" data-shell-i18n-text="app.archives.page.searchTitle">
+            Search
+          </h3>
           <div class="search-scope">
             <label class="scope-label">
               <input type="radio" name="search-scope" value="current" checked />
-              <span id="archives-scope-current">Current Account</span>
+              <span id="archives-scope-current" data-shell-i18n-text="app.archives.page.scopeCurrent">
+                Current Account
+              </span>
             </label>
             <label class="scope-label">
               <input type="radio" name="search-scope" value="all" />
-              <span id="archives-scope-all">All Accounts</span>
+              <span id="archives-scope-all" data-shell-i18n-text="app.archives.page.scopeAll">
+                All Accounts
+              </span>
             </label>
           </div>
         </div>
@@ -101,6 +149,7 @@
             id="search-input"
             class="form-input"
             placeholder="Search messages or files..."
+            data-shell-i18n-placeholder="app.archives.page.searchPlaceholder"
             autocomplete="off"
           />
           <button type="button" class="btn-clear hidden" id="btn-clear-search">×</button>
@@ -119,7 +168,9 @@
 
         <div class="search-results" id="search-results">
           <div class="search-empty" id="search-empty">
-            <p id="archives-search-empty-text">Type above to start searching</p>
+            <p id="archives-search-empty-text" data-shell-i18n-text="app.archives.page.searchEmpty">
+              Type above to start searching
+            </p>
           </div>
 
           <div class="results-panel active" id="results-messages"></div>
@@ -133,17 +184,30 @@
       <!-- Left: protocol list -->
       <div class="protocol-sidebar">
         <div class="protocol-header">
-          <h3 id="archives-protocol-list-title">📜 Protocols</h3>
+          <h3 id="archives-protocol-list-title" data-shell-i18n-text="app.archives.page.protocolListTitle">
+            Protocols
+          </h3>
         </div>
         <div class="protocol-list" id="protocol-list">
-          <div class="empty" id="archives-protocol-list-loading">Loading...</div>
+          <div
+            class="empty"
+            id="archives-protocol-list-loading"
+            data-shell-i18n-text="app.archives.page.protocolLoading"
+          >
+            Loading...
+          </div>
         </div>
       </div>
 
       <!-- Right: protocol editor -->
       <div class="protocol-editor">
         <div class="protocol-editor-header">
-          <h3 id="protocol-editor-title">Select a protocol</h3>
+          <h3
+            id="protocol-editor-title"
+            data-shell-i18n-text="app.archives.page.protocolEditorPlaceholderTitle"
+          >
+            Select a protocol
+          </h3>
           <div class="protocol-tag-buttons hidden" id="protocol-tag-buttons">
             <button type="button" class="btn btn-ghost btn-xs protocol-tag-btn" data-tag="<AI0>">
               &lt;AI0&gt;
@@ -155,16 +219,25 @@
               &lt;AI2&gt;
             </button>
           </div>
-          <button class="btn btn-primary btn-sm hidden" id="btn-protocol-save">💾 Save</button>
+          <button
+            class="btn btn-primary btn-sm hidden"
+            id="btn-protocol-save"
+            data-shell-i18n-text="app.archives.page.protocolSaveButton"
+          >
+            Save
+          </button>
         </div>
         <div class="protocol-editor-content">
           <div class="empty-state" id="protocol-empty">
-            <p id="archives-protocol-empty-text">Select a protocol from the left to edit</p>
+            <p id="archives-protocol-empty-text" data-shell-i18n-text="app.archives.page.protocolEmpty">
+              Select a protocol from the left to edit
+            </p>
           </div>
           <textarea
             class="protocol-textarea hidden"
             id="protocol-textarea"
             placeholder="Protocol content..."
+            data-shell-i18n-placeholder="app.archives.page.protocolPlaceholder"
           ></textarea>
         </div>
         <div class="form-hint" id="protocol-status"></div>

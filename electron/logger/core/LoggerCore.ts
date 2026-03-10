@@ -28,7 +28,10 @@ import { ErrorWriter } from "../writers/ErrorWriter.js";
 import { PerformanceWriter } from "../writers/PerformanceWriter.js";
 import { matchErrorPattern } from "../../error-patterns.js";
 import { buildSessionStats } from "./session-stats.js";
-import { createElectronTranslator } from "../../i18n/language-service.ts";
+import {
+  createElectronTranslator,
+  readElectronAppLanguageSync,
+} from "../../i18n/language-service.ts";
 
 export class LoggerCore {
   private static instance: LoggerCore | null = null;
@@ -219,6 +222,8 @@ export class LoggerCore {
         level: entry.level,
         category: entry.category,
         message: entry.message,
+        locale: entry.locale,
+        messageKey: entry.messageKey,
         timestamp: entry.timestamp,
         visibility,
         source: entry.source ?? "main",
@@ -248,6 +253,7 @@ export class LoggerCore {
   private enrichEntry(entry: LogEntry): LogEntry {
     return {
       ...entry,
+      locale: entry.locale ?? readElectronAppLanguageSync(),
       sessionId: entry.sessionId ?? this.sessionManager.getSessionId(),
       isoTimestamp: entry.timestamp, // Alias for backward compat
     };
@@ -257,13 +263,16 @@ export class LoggerCore {
     category: LogCategory | string,
     level: LogLevel,
     message: string,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
+    metadata?: { locale?: string; messageKey?: string }
   ): Promise<void> {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       category,
       message,
+      ...(metadata?.locale !== undefined ? { locale: metadata.locale } : {}),
+      ...(metadata?.messageKey !== undefined ? { messageKey: metadata.messageKey } : {}),
       sessionId: this.sessionManager.getSessionId(),
       source: "main",
       ...(context !== undefined ? { context } : {}),
@@ -280,7 +289,10 @@ export class LoggerCore {
     context?: Record<string, unknown>
   ): Promise<void> {
     const translator = await createElectronTranslator();
-    await this.logInternal(category, level, translator.t(key, params), context);
+    await this.logInternal(category, level, translator.t(key, params), context, {
+      locale: translator.locale,
+      messageKey: key,
+    });
   }
 
   public getSessionId(): string {

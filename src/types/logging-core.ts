@@ -103,6 +103,8 @@ export interface LogEntry {
   level: LogLevel;
   category: LogCategory | string; // Allow custom categories
   message: string;
+  locale?: string; // App language used when the entry was written
+  messageKey?: string; // Translation key when the message came from i18n
 
   visibility?: LogVisibility; // UI display level (1-3)
   correlationId?: string; // Track operation flow

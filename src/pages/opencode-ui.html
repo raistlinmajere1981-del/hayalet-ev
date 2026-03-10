@@ -54,8 +54,8 @@
         <div class="ds-sidebar" id="sidebar-left">
           <div class="ds-sidebar__header">
             <span class="ds-sidebar__icon">💬</span>
-            <span class="ds-sidebar__title">Sessions</span>
-            <span class="ds-sidebar__subtitle" id="session-count-label"> 0 sessions </span>
+            <span class="ds-sidebar__title" data-i18n-text="session.sidebarTitle">Sessions</span>
+            <span class="ds-sidebar__subtitle" id="session-count-label"></span>
             <button
               class="ds-sidebar__refresh-btn"
               id="session-refresh-btn"
@@ -152,7 +152,9 @@
                 <!-- Custom Mode Dropdown -->
                 <div class="ds-custom-select" id="mode-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
-                    <span class="ds-custom-select__label">Mode ▾</span>
+                    <span class="ds-custom-select__label" data-i18n-text="workspace.modeLabel">
+                      Mode ▾
+                    </span>
                   </button>
                   <div class="ds-custom-select__menu">
                     <!-- Populated by JavaScript -->
@@ -161,7 +163,9 @@
                 <!-- Custom Model Dropdown -->
                 <div class="ds-custom-select" id="model-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
-                    <span class="ds-custom-select__label">Model ▾</span>
+                    <span class="ds-custom-select__label" data-i18n-text="workspace.modelLabel">
+                      Model ▾
+                    </span>
                   </button>
                   <div class="ds-custom-select__menu">
                     <!-- Populated by JavaScript -->
@@ -179,7 +183,9 @@
                 </button>
                 <div class="ds-custom-select" id="effort-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
-                    <span class="ds-custom-select__label">Effort ▾</span>
+                    <span class="ds-custom-select__label" data-i18n-text="workspace.effortLabel">
+                      Effort ▾
+                    </span>
                   </button>
                   <div class="ds-custom-select__menu">
                     <!-- Populated by JavaScript -->
@@ -273,7 +279,7 @@
                   aria-controls="rtab-todo"
                   tabindex="-1"
                 >
-                  Todo
+                  <span data-i18n-text="panel.todoTitle">Todo</span>
                 </button>
                 <button
                   type="button"
@@ -285,7 +291,7 @@
                   aria-controls="rtab-files"
                   tabindex="-1"
                 >
-                  Files
+                  <span data-i18n-text="panel.filesTitle">Files</span>
                 </button>
                 <button
                   type="button"
@@ -310,7 +316,7 @@
                   aria-controls="rtab-providers"
                   tabindex="-1"
                 >
-                  Providers
+                  <span data-i18n-text="panel.providersTitle">Providers</span>
                 </button>
                 <button
                   type="button"
@@ -641,7 +647,7 @@
 
               <div class="ds-panel ds-panel--collapsed is-hidden" id="mcp-panel">
                 <div class="ds-panel__header" data-toggle="mcp-panel-body">
-                  <span class="ds-panel__title">MCP SERVERS</span>
+                  <span class="ds-panel__title" data-i18n-text="panel.mcpTitle">MCP SERVERS</span>
                   <span class="ds-panel__count" id="mcp-count">0</span>
                   <span class="ds-panel__chevron">▾</span>
                 </div>

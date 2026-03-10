@@ -152,6 +152,8 @@ export interface StructuredLogEntry {
   type?: string;
   source: LogSource;
   message: string;
+  locale?: string;
+  messageKey?: string;
   context?: LogContext;
   sessionId?: string;
   correlationId?: string | null;

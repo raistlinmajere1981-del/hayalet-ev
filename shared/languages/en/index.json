@@ -933,6 +933,16 @@
         "deleteAllGlobalLabel": "ALL records",
         "deleteAllConfirm": "⚠️ You are about to delete {{label}}!\n\nThis action cannot be undone. Are you sure?",
         "deleteAllFinalConfirm": "Final confirmation: {{label}} will be deleted permanently.",
+        "namespaces": {
+          "global": "global",
+          "policy": "policy"
+        },
+        "types": {
+          "note": "note",
+          "fact": "fact",
+          "decision": "decision",
+          "preference": "preference"
+        },
         "errors": {
           "loadFailed": "Memory records could not be loaded: {{message}}",
           "pinFailed": "Memory pin update failed: {{message}}",
@@ -4811,6 +4821,14 @@
       "providerTestTitle": "Provider test",
       "providerSyncTitle": "Provider sync",
       "devtoolsTitle": "DevTools",
+      "methods": {
+        "injection": "Injection",
+        "xdotools": "XdoTools",
+        "dragdrop": "Drag & Drop",
+        "uguu": "Uguu",
+        "catbox": "Catbox",
+        "googledrive": "Google Drive"
+      },
       "status": {
         "noAccount": "No account",
         "connected": "Connected",
@@ -4977,9 +4995,13 @@
     "workspace": {
       "toggleLeftTitle": "Toggle left panel",
       "addTitle": "New Workspace",
-      "toggleRightTitle": "Toggle right panel"
+      "toggleRightTitle": "Toggle right panel",
+      "modeLabel": "Mode ▾",
+      "modelLabel": "Model ▾",
+      "effortLabel": "Effort ▾"
     },
     "session": {
+      "sidebarTitle": "Sessions",
       "refreshTitle": "Refresh sessions",
       "newConversation": "+ New Chat",
       "loadMoreMessages": "Show more ({{count}} messages)",
@@ -5057,6 +5079,7 @@
       "providersEyebrow": "Runtime",
       "promptsTitle": "QUICK PROMPTS",
       "addPrompt": "+ Add New Prompt",
+      "mcpTitle": "MCP SERVERS",
       "toolsTitle": "TOOLS",
       "toolsSearchPlaceholder": "🔍 Search tools...",
       "toolsEmpty": "No tools found",

@@ -933,6 +933,16 @@
         "deleteAllGlobalLabel": "TÜM kayıtlar",
         "deleteAllConfirm": "⚠️ {{label}} silmek üzeresiniz!\n\nBu işlem geri alınamaz. Emin misiniz?",
         "deleteAllFinalConfirm": "Son onay: {{label}} kalıcı olarak silinecek.",
+        "namespaces": {
+          "global": "global",
+          "policy": "policy"
+        },
+        "types": {
+          "note": "not",
+          "fact": "olgu",
+          "decision": "karar",
+          "preference": "tercih"
+        },
         "errors": {
           "loadFailed": "Memory verisi yüklenemedi: {{message}}",
           "pinFailed": "Memory sabitleme güncellemesi başarısız: {{message}}",
@@ -4811,6 +4821,14 @@
       "providerTestTitle": "Provider testi",
       "providerSyncTitle": "Provider eşitleme",
       "devtoolsTitle": "DevTools",
+      "methods": {
+        "injection": "Enjeksiyon",
+        "xdotools": "XdoTools",
+        "dragdrop": "Sürükle ve Bırak",
+        "uguu": "Uguu",
+        "catbox": "Catbox",
+        "googledrive": "Google Drive"
+      },
       "status": {
         "noAccount": "Hesap yok",
         "connected": "Bağlı",
@@ -4977,9 +4995,13 @@
     "workspace": {
       "toggleLeftTitle": "Sol paneli aç/kapat",
       "addTitle": "Yeni Workspace",
-      "toggleRightTitle": "Sağ paneli aç/kapat"
+      "toggleRightTitle": "Sağ paneli aç/kapat",
+      "modeLabel": "Mod ▾",
+      "modelLabel": "Model ▾",
+      "effortLabel": "Efor ▾"
     },
     "session": {
+      "sidebarTitle": "Oturumlar",
       "refreshTitle": "Oturumları yenile",
       "newConversation": "+ Yeni Sohbet",
       "loadMoreMessages": "Daha fazla göster ({{count}} mesaj)",
@@ -5057,6 +5079,7 @@
       "providersEyebrow": "Runtime",
       "promptsTitle": "HIZLI PROMPTLAR",
       "addPrompt": "+ Yeni Prompt Ekle",
+      "mcpTitle": "MCP SUNUCULARI",
       "toolsTitle": "TOOLS",
       "toolsSearchPlaceholder": "🔍 Tool ara...",
       "toolsEmpty": "Tool bulunamadı",

@@ -8,6 +8,8 @@ export interface OverlayLogEntry {
   level: string;
   category: string;
   message: string;
+  locale?: string;
+  messageKey?: string;
   source: string;
   visibility?: number;
   correlationId?: string;
@@ -119,6 +121,8 @@ export function normalizeLogEntry(
   const rawSessionId = asText(raw["sessionId"]);
   const sessionId = rawSessionId !== "" ? rawSessionId : fallbackSessionId;
   const correlationId = asText(raw["correlationId"]);
+  const locale = asText(raw["locale"]);
+  const messageKey = asText(raw["messageKey"]);
 
   const visibilityValue = raw["visibility"];
   const visibility = typeof visibilityValue === "number" ? visibilityValue : undefined;
@@ -134,6 +138,8 @@ export function normalizeLogEntry(
     level,
     category,
     message,
+    ...(locale !== "" ? { locale } : {}),
+    ...(messageKey !== "" ? { messageKey } : {}),
     source,
     ...(visibility !== undefined ? { visibility } : {}),
     ...(correlationId !== "" ? { correlationId } : {}),
