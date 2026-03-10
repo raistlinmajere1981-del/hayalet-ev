@@ -5,7 +5,6 @@
  */
 
 import type { AllProviderId } from "./common.js";
-import type { SelectorLanguage } from "./i18n.js";
 
 // Selector Types
 
@@ -129,30 +128,6 @@ export interface ProviderWebviewSyncConfig {
   history: ProviderWebviewSyncHistorySelectors;
 }
 
-export type ProviderUiLanguageSupport = "supported" | "partial" | "unsupported";
-export type ProviderUiLanguageSyncMode = "automatic" | "manual" | "not-applicable";
-export type ProviderUiLanguagePersistence =
-  | "cookie"
-  | "localStorage"
-  | "url"
-  | "account"
-  | "session";
-
-export interface ProviderUiLanguageSignals {
-  localStorageKeys?: string[];
-  cookieNames?: string[];
-  urlParams?: string[];
-}
-
-export interface ProviderUiLanguageStrategy {
-  support: ProviderUiLanguageSupport;
-  syncMode: ProviderUiLanguageSyncMode;
-  supportedLocales: SelectorLanguage[];
-  persistence: ProviderUiLanguagePersistence[];
-  signals?: ProviderUiLanguageSignals;
-  notes?: string;
-}
-
 // Provider Config Types
 
 /** Message ID strategy */
@@ -188,7 +163,6 @@ export interface BaseProviderConfig {
   defaultPaths?: string[];
   scenarios?: Record<string, ProviderScenarioDefinition>;
   webviewSync?: ProviderWebviewSyncConfig;
-  uiLanguage?: ProviderUiLanguageStrategy;
 }
 
 /** ChatGPT configuration */

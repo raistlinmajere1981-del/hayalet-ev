@@ -64,18 +64,11 @@ export const config = {
     selectors: [] as string[],
     hosts: [] as string[],
     blockResourceTypes: [] as string[],
-    dragTextMatchers: ["sürükleyin", "drop", "dosya", "file"],
+    dragTextMatchers: ["drop", "file"],
   },
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
-  },
-  uiLanguage: {
-    support: "partial",
-    syncMode: "manual",
-    supportedLocales: ["tr", "en"],
-    persistence: ["account", "session"],
-    notes: "Gemini language appears provider-managed and needs targeted settings-flow automation.",
   },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,

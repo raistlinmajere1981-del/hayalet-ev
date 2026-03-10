@@ -108,6 +108,7 @@ export class EntranceHallController {
         ) {
           this.userPanel.render();
         }
+
       }
     );
 

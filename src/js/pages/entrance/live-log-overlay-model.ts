@@ -1,6 +1,3 @@
-import type { TranslationParams, TranslationPrimitive } from "@shared/i18n.js";
-import { AppI18n } from "../../modules/i18n/index.js";
-
 export type OverlayApp = "hayalet-ev" | "mcp-server" | "ghost-agent";
 
 export interface OverlayLogEntry {
@@ -11,9 +8,6 @@ export interface OverlayLogEntry {
   level: string;
   category: string;
   message: string;
-  messageKey?: string;
-  messageParams?: TranslationParams;
-  locale?: string;
   source: string;
   visibility?: number;
   correlationId?: string;
@@ -78,34 +72,6 @@ export function asRecord(value: unknown): Record<string, unknown> | undefined {
   return isRecord(value) ? value : undefined;
 }
 
-function isTranslationPrimitive(value: unknown): value is TranslationPrimitive {
-  return (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value === null ||
-    value === undefined
-  );
-}
-
-function asTranslationParams(value: unknown): TranslationParams | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-
-  const params: TranslationParams = {};
-  let hasParams = false;
-  for (const [key, paramValue] of Object.entries(value)) {
-    if (!isTranslationPrimitive(paramValue)) {
-      continue;
-    }
-    params[key] = paramValue;
-    hasParams = true;
-  }
-
-  return hasParams ? params : undefined;
-}
-
 export function joinPath(...parts: string[]): string {
   return parts
     .filter((part) => part !== "")
@@ -128,19 +94,6 @@ export function decodeBase64ToUtf8(base64: string): string {
   }
 }
 
-export function getOverlayEntryMessage(entry: OverlayLogEntry): string {
-  if (entry.messageKey === undefined || entry.messageKey === "") {
-    return entry.message;
-  }
-
-  const translated = AppI18n.t(entry.messageKey, entry.messageParams);
-  if (translated !== entry.messageKey) {
-    return translated;
-  }
-
-  return entry.message;
-}
-
 export function normalizeLogEntry(
   app: OverlayApp,
   fallbackSessionId: string,
@@ -150,10 +103,8 @@ export function normalizeLogEntry(
   const fallbackTimestamp = asText(raw["isoTimestamp"]);
   const timestamp = rawTimestamp !== "" ? rawTimestamp : fallbackTimestamp;
   const message = asText(raw["message"]);
-  const messageKey = asText(raw["messageKey"]);
-  const messageParams = asTranslationParams(raw["messageParams"]);
 
-  if (timestamp === "" || (message === "" && messageKey === "")) {
+  if (timestamp === "" || message === "") {
     return null;
   }
 
@@ -168,15 +119,12 @@ export function normalizeLogEntry(
   const rawSessionId = asText(raw["sessionId"]);
   const sessionId = rawSessionId !== "" ? rawSessionId : fallbackSessionId;
   const correlationId = asText(raw["correlationId"]);
-  const locale = asText(raw["locale"]);
 
   const visibilityValue = raw["visibility"];
   const visibility = typeof visibilityValue === "number" ? visibilityValue : undefined;
 
   const context = asRecord(raw["context"]) ?? asRecord(raw["meta"]);
-  const messageIdentity =
-    messageKey !== "" ? `${messageKey}|${JSON.stringify(messageParams ?? {})}` : message;
-  const id = `${app}|${sessionId}|${timestamp}|${source}|${category}|${messageIdentity}`;
+  const id = `${app}|${sessionId}|${timestamp}|${source}|${category}|${message}`;
 
   return {
     id,
@@ -186,9 +134,6 @@ export function normalizeLogEntry(
     level,
     category,
     message,
-    ...(messageKey !== "" ? { messageKey } : {}),
-    ...(messageParams !== undefined ? { messageParams } : {}),
-    ...(locale !== "" ? { locale } : {}),
     source,
     ...(visibility !== undefined ? { visibility } : {}),
     ...(correlationId !== "" ? { correlationId } : {}),

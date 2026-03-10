@@ -97,7 +97,7 @@ export const config = {
       ".file-drop-target",
       ".dnd-active-overlay",
     ],
-    dragTextMatchers: ["sürükleyin", "drop", "dosya", "file"],
+    dragTextMatchers: ["drop", "file"],
   },
   excludedUrls: [
     "https://auth.openai.com/email-verification",
@@ -111,13 +111,6 @@ export const config = {
   telemetry: {
     endpoints: [],
     tokenPaths: [],
-  },
-  uiLanguage: {
-    support: "partial",
-    syncMode: "manual",
-    supportedLocales: ["tr", "en"],
-    persistence: ["account", "cookie", "session"],
-    notes: "Provider language is account-scoped and requires dedicated UI automation research.",
   },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,

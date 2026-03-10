@@ -120,16 +120,6 @@ export const config = {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
   },
-  uiLanguage: {
-    support: "supported",
-    syncMode: "automatic",
-    supportedLocales: ["tr", "en"],
-    persistence: ["localStorage"],
-    signals: {
-      localStorageKeys: ["hayalet:opencode-ui-language", "opencode-ui:language"],
-    },
-    notes: "OpenCode UI is a Hayalet-ev managed surface and can be synchronized directly in-app.",
-  },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
   },

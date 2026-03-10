@@ -6,22 +6,14 @@ const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
 let __hayalet_preload_locale = "tr";
+let __hayalet_preload_catalog = null;
 
-const PRELOAD_MESSAGES = {
-  en: {
-    appScriptLoaded: "/js/app.js loaded via src.",
-    disableSpellcheckFailed: "Failed to disable spellcheck: {{message}}",
-    appScriptLoadFailed: "Failed to load /js/app.js via src: {{message}}",
-    injectInitAppFailed: "injectInitApp failed: {{message}}",
-    initFailed: "Preload initialization failed: {{message}}",
-  },
-  tr: {
-    appScriptLoaded: "/js/app.js kaynak üzerinden yüklendi.",
-    disableSpellcheckFailed: "Spellcheck devre dışı bırakılamadı: {{message}}",
-    appScriptLoadFailed: "/js/app.js kaynak üzerinden yüklenemedi: {{message}}",
-    injectInitAppFailed: "injectInitApp başarısız: {{message}}",
-    initFailed: "Preload başlatılamadı: {{message}}",
-  },
+const PRELOAD_MESSAGE_FALLBACKS = {
+  appScriptLoaded: "/js/app.js loaded via src.",
+  disableSpellcheckFailed: "Failed to disable spellcheck: {{message}}",
+  appScriptLoadFailed: "Failed to load /js/app.js via src: {{message}}",
+  injectInitAppFailed: "injectInitApp failed: {{message}}",
+  initFailed: "Preload initialization failed: {{message}}",
 };
 
 function normalizePreloadLocale(value) {
@@ -30,16 +22,43 @@ function normalizePreloadLocale(value) {
   }
 
   const normalized = value.trim().toLowerCase().replace(/_/g, "-");
-  return normalized === "en" || normalized.startsWith("en-") ? "en" : "tr";
+  return normalized !== "" ? normalized : "tr";
+}
+
+function resolvePreloadMessageLocale(value) {
+  const normalized = normalizePreloadLocale(value);
+  return normalized === "tr" || normalized.startsWith("tr-") ? "tr" : "en";
+}
+
+function readCatalogValue(catalog, path) {
+  if (!catalog || typeof catalog !== "object") {
+    return null;
+  }
+
+  const parts = path.split(".");
+  let current = catalog;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return null;
+    }
+    current = current[part];
+  }
+
+  return typeof current === "string" ? current : null;
 }
 
 async function syncPreloadLocale() {
   try {
     const settings = await ipcRenderer.invoke("load-settings");
-    __hayalet_preload_locale = normalizePreloadLocale(
-      settings && settings.general && settings.general.language
-    );
-  } catch (_) {}
+    const nextLocale = normalizePreloadLocale(settings && settings.general && settings.general.language);
+    __hayalet_preload_locale = nextLocale;
+
+    const pack = await ipcRenderer.invoke("i18n-load-language", nextLocale);
+    __hayalet_preload_catalog =
+      pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
+  } catch (_) {
+    __hayalet_preload_catalog = null;
+  }
 
   return __hayalet_preload_locale;
 }
@@ -61,10 +80,11 @@ function getPreloadErrorMessage(error) {
 }
 
 function preloadT(key, params) {
-  const locale = __hayalet_preload_locale === "en" ? "en" : "tr";
+  const messageLocale = resolvePreloadMessageLocale(__hayalet_preload_locale);
   const template =
-    (PRELOAD_MESSAGES[locale] && PRELOAD_MESSAGES[locale][key]) ||
-    (PRELOAD_MESSAGES.en && PRELOAD_MESSAGES.en[key]) ||
+    readCatalogValue(__hayalet_preload_catalog, `electron.preload.${key}.${messageLocale}`) ||
+    readCatalogValue(__hayalet_preload_catalog, "electron.preload." + key) ||
+    PRELOAD_MESSAGE_FALLBACKS[key] ||
     key;
 
   return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {

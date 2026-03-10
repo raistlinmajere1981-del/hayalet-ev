@@ -30,11 +30,6 @@ import { matchErrorPattern } from "../../error-patterns.js";
 import { buildSessionStats } from "./session-stats.js";
 import { createElectronTranslator } from "../../i18n/language-service.ts";
 
-interface LocalizedMessageMeta {
-  key: string;
-  params?: TranslationParams;
-}
-
 export class LoggerCore {
   private static instance: LoggerCore | null = null;
 
@@ -224,9 +219,6 @@ export class LoggerCore {
         level: entry.level,
         category: entry.category,
         message: entry.message,
-        messageKey: entry.messageKey,
-        messageParams: entry.messageParams,
-        locale: entry.locale,
         timestamp: entry.timestamp,
         visibility,
         source: entry.source ?? "main",
@@ -265,18 +257,13 @@ export class LoggerCore {
     category: LogCategory | string,
     level: LogLevel,
     message: string,
-    context?: Record<string, unknown>,
-    locale?: string,
-    localized?: LocalizedMessageMeta
+    context?: Record<string, unknown>
   ): Promise<void> {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       category,
       message,
-      ...(localized !== undefined ? { messageKey: localized.key } : {}),
-      ...(localized?.params !== undefined ? { messageParams: localized.params } : {}),
-      ...(locale !== undefined ? { locale } : {}),
       sessionId: this.sessionManager.getSessionId(),
       source: "main",
       ...(context !== undefined ? { context } : {}),
@@ -293,14 +280,7 @@ export class LoggerCore {
     context?: Record<string, unknown>
   ): Promise<void> {
     const translator = await createElectronTranslator();
-    await this.logInternal(
-      category,
-      level,
-      translator.t(key, params),
-      context,
-      translator.locale,
-      params === undefined ? { key } : { key, params }
-    );
+    await this.logInternal(category, level, translator.t(key, params), context);
   }
 
   public getSessionId(): string {

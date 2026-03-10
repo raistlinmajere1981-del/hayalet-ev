@@ -47,11 +47,6 @@ interface LoggerConfig {
   enableToastIntegration: boolean;
 }
 
-interface LocalizedMessageMeta {
-  key: string;
-  params?: TranslationParams;
-}
-
 function loggerT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.logger.${key}`, params);
 }
@@ -362,9 +357,7 @@ class Logger {
     level: LogLevel,
     message: string,
     visibility: LogVisibility,
-    context?: Record<string, unknown>,
-    locale?: string,
-    localized?: LocalizedMessageMeta
+    context?: Record<string, unknown>
   ): void {
     if (!this.isInitialized) {
       console.warn(loggerT("notInitialized"));
@@ -376,9 +369,6 @@ class Logger {
       level,
       category,
       message,
-      ...(localized !== undefined ? { messageKey: localized.key } : {}),
-      ...(localized?.params !== undefined ? { messageParams: localized.params } : {}),
-      ...(locale !== undefined ? { locale } : {}),
       visibility,
       sessionId: this.config.sessionId,
       source: "renderer",
@@ -407,17 +397,8 @@ class Logger {
     params?: TranslationParams,
     context?: Record<string, unknown>
   ): void {
-    const locale = AppI18n.getLocale();
     const message = AppI18n.t(key, params);
-    this.log(
-      category,
-      level,
-      message,
-      visibility,
-      context,
-      locale,
-      params === undefined ? { key } : { key, params }
-    );
+    this.log(category, level, message, visibility, context);
   }
 
   private queueForIPC(entry: LogEntry): void {

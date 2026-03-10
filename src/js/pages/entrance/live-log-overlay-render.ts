@@ -1,5 +1,4 @@
 import {
-  getOverlayEntryMessage,
   type OverlayLogEntry,
   type OverlayState,
 } from "./live-log-overlay-model.js";
@@ -137,7 +136,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     }
 
     const haystack =
-      `${getOverlayEntryMessage(entry)} ${entry.category} ${entry.source} ${entry.sessionId}`.toLowerCase();
+      `${entry.message} ${entry.category} ${entry.source} ${entry.sessionId}`.toLowerCase();
     return haystack.includes(searchFilter);
   });
 
@@ -167,7 +166,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     const time = formatTime(new Date(entry.timestamp));
     const category = formatLogCategory(entry.category);
     const safeLevel = escapeHtml(formatLevelLabel(entry.level));
-    const displayMessage = escapeHtml(getOverlayEntryMessage(entry));
+    const displayMessage = escapeHtml(entry.message);
 
     row.innerHTML = `
       <div class="log-entry-header">

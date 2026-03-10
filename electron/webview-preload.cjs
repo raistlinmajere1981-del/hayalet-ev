@@ -4,33 +4,18 @@ let __global_hayalet_slot = null;
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const opencodeUiSessionUpdatedHandlers = new Map();
 let __hayalet_preload_locale = "tr";
+let __hayalet_preload_catalog = null;
 
-const WEBVIEW_PRELOAD_MESSAGES = {
-  en: {
-    settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
-    providerConfigSet: "Provider config set: {{providerId}} {{providerName}}",
-    slotSetViaIpc: "Slot set via IPC: {{slot}}",
-    providerConfigLoadFailed: "Provider config could not be loaded for {{providerId}}",
-    providerConfigSetFailed: "Provider config could not be assigned: {{message}}",
-    providerConfigSetOuterFailed:
-      "Provider config assignment failed before completion: {{message}}",
-    providerLanguageSyncFailed: "Provider language sync failed: {{message}}",
-    slotSetFailed: "Slot assignment failed: {{message}}",
-    providerUsageSendFailed: "Provider usage telemetry could not be sent: {{message}}",
-    providerHandlerFailed: "The hayalet-set-provider handler failed: {{message}}",
-  },
-  tr: {
-    settingUpProvider: "{{slot}} slotu için provider kuruluyor (kaynak: {{source}})",
-    providerConfigSet: "Provider config ayarlandı: {{providerId}} {{providerName}}",
-    slotSetViaIpc: "Slot IPC üzerinden ayarlandı: {{slot}}",
-    providerConfigLoadFailed: "{{providerId}} için provider config yüklenemedi",
-    providerConfigSetFailed: "Provider config atanamadı: {{message}}",
-    providerConfigSetOuterFailed: "Provider config ataması tamamlanmadan hata oluştu: {{message}}",
-    providerLanguageSyncFailed: "Provider dil senkronizasyonu başarısız: {{message}}",
-    slotSetFailed: "Slot atanamadı: {{message}}",
-    providerUsageSendFailed: "Provider kullanım telemetrisi gönderilemedi: {{message}}",
-    providerHandlerFailed: "hayalet-set-provider handler başarısız: {{message}}",
-  },
+const WEBVIEW_PRELOAD_MESSAGE_FALLBACKS = {
+  settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
+  providerConfigSet: "Provider config set: {{providerId}} {{providerName}}",
+  slotSetViaIpc: "Slot set via IPC: {{slot}}",
+  providerConfigLoadFailed: "Provider config could not be loaded for {{providerId}}",
+  providerConfigSetFailed: "Provider config could not be assigned: {{message}}",
+  providerConfigSetOuterFailed: "Provider config assignment failed before completion: {{message}}",
+  slotSetFailed: "Slot assignment failed: {{message}}",
+  providerUsageSendFailed: "Provider usage telemetry could not be sent: {{message}}",
+  providerHandlerFailed: "The hayalet-set-provider handler failed: {{message}}",
 };
 
 function normalizeAppLanguage(value) {
@@ -42,55 +27,29 @@ function normalizeAppLanguage(value) {
   return normalized !== "" ? normalized : "tr";
 }
 
-function resolveSelectorLanguage(value) {
+function resolvePreloadMessageLocale(value) {
   const normalized = normalizeAppLanguage(value).toLowerCase();
-  return normalized === "en" || normalized.startsWith("en-") ? "en" : "tr";
+  return normalized === "tr" || normalized.startsWith("tr-") ? "tr" : "en";
 }
 
-function getProviderUiLanguageStrategy(cfg) {
-  const strategy = cfg && cfg.uiLanguage;
-  return strategy && typeof strategy === "object" ? strategy : null;
+function readCatalogValue(catalog, path) {
+  if (!catalog || typeof catalog !== "object") {
+    return null;
+  }
+
+  const parts = path.split(".");
+  let current = catalog;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return null;
+    }
+    current = current[part];
+  }
+
+  return typeof current === "string" ? current : null;
 }
 
-function getSignalEntries(signals, key) {
-  const raw = signals && typeof signals === "object" ? signals[key] : undefined;
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw
-    .filter((item) => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item !== "");
-}
-
-function resolveProviderLanguage(requestedLocale, supportedLocales) {
-  const fallbackLocale = resolveSelectorLanguage(requestedLocale);
-  if (!Array.isArray(supportedLocales) || supportedLocales.length === 0) {
-    return fallbackLocale;
-  }
-
-  const normalizedLocales = supportedLocales
-    .filter((item) => typeof item === "string")
-    .map((item) => item.trim())
-    .filter((item) => item !== "");
-
-  if (normalizedLocales.includes(fallbackLocale)) {
-    return fallbackLocale;
-  }
-
-  if (fallbackLocale === "en" && normalizedLocales.includes("en")) {
-    return "en";
-  }
-
-  if (normalizedLocales.includes("tr")) {
-    return "tr";
-  }
-
-  return normalizedLocales[0] || fallbackLocale;
-}
-
-async function loadAppLanguageState() {
+async function syncWebviewPreloadLocale() {
   let appLocale = "tr";
 
   try {
@@ -104,23 +63,11 @@ async function loadAppLanguageState() {
     const resolvedLocale =
       pack && typeof pack.locale === "string" ? normalizeAppLanguage(pack.locale) : appLocale;
     __hayalet_preload_locale = resolvedLocale;
-    const selectorLanguage =
-      pack && typeof pack.selectorLanguage === "string"
-        ? pack.selectorLanguage
-        : resolveSelectorLanguage(resolvedLocale);
-    const direction = pack && typeof pack.direction === "string" ? pack.direction : "ltr";
-    return {
-      appLocale: resolvedLocale,
-      providerLocale: selectorLanguage,
-      direction,
-    };
+    __hayalet_preload_catalog =
+      pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
   } catch (_) {
+    __hayalet_preload_catalog = null;
     __hayalet_preload_locale = appLocale;
-    return {
-      appLocale,
-      providerLocale: resolveSelectorLanguage(appLocale),
-      direction: "ltr",
-    };
   }
 }
 
@@ -141,10 +88,14 @@ function getWebviewPreloadErrorMessage(error) {
 }
 
 function webviewPreloadT(key, params) {
-  const locale = resolveSelectorLanguage(__hayalet_preload_locale) === "en" ? "en" : "tr";
+  const messageLocale = resolvePreloadMessageLocale(__hayalet_preload_locale);
   const template =
-    (WEBVIEW_PRELOAD_MESSAGES[locale] && WEBVIEW_PRELOAD_MESSAGES[locale][key]) ||
-    (WEBVIEW_PRELOAD_MESSAGES.en && WEBVIEW_PRELOAD_MESSAGES.en[key]) ||
+    readCatalogValue(
+      __hayalet_preload_catalog,
+      `electron.webviewPreload.${key}.${messageLocale}`
+    ) ||
+    readCatalogValue(__hayalet_preload_catalog, "electron.webviewPreload." + key) ||
+    WEBVIEW_PRELOAD_MESSAGE_FALLBACKS[key] ||
     key;
 
   return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
@@ -154,99 +105,7 @@ function webviewPreloadT(key, params) {
   });
 }
 
-async function applyProviderUiLanguageSync(cfg, providerId) {
-  const strategy = getProviderUiLanguageStrategy(cfg);
-  const languageState = await loadAppLanguageState();
-  const appLocale = languageState.appLocale;
-  const providerLocale = resolveProviderLanguage(
-    languageState.providerLocale,
-    strategy && Array.isArray(strategy.supportedLocales) ? strategy.supportedLocales : []
-  );
-
-  try {
-    window.__hayalet_app_language = appLocale;
-    window.__hayalet_provider_language = providerLocale;
-  } catch (_) {}
-
-  try {
-    document.documentElement.lang = appLocale;
-    document.documentElement.dir = languageState.direction || "ltr";
-    if (document.body) {
-      document.body.setAttribute("data-app-language", appLocale);
-      document.body.setAttribute("data-provider-language", providerLocale);
-    }
-  } catch (_) {}
-
-  const applied = {
-    localStorageKeys: [],
-    cookieNames: [],
-    urlParams: [],
-  };
-
-  if (strategy && strategy.syncMode === "automatic" && strategy.support !== "unsupported") {
-    const signals =
-      strategy.signals && typeof strategy.signals === "object" ? strategy.signals : {};
-
-    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("localStorage")) {
-      try {
-        window.localStorage.setItem("hayalet:app-language", appLocale);
-        window.localStorage.setItem("hayalet:provider-ui-language", providerLocale);
-        applied.localStorageKeys.push("hayalet:app-language", "hayalet:provider-ui-language");
-      } catch (_) {}
-
-      const localStorageKeys = getSignalEntries(signals, "localStorageKeys");
-      localStorageKeys.forEach((key) => {
-        try {
-          window.localStorage.setItem(key, providerLocale);
-          applied.localStorageKeys.push(key);
-        } catch (_) {}
-      });
-    }
-
-    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("cookie")) {
-      const cookieNames = getSignalEntries(signals, "cookieNames");
-      cookieNames.forEach((cookieName) => {
-        try {
-          document.cookie = `${encodeURIComponent(cookieName)}=${encodeURIComponent(providerLocale)}; path=/`;
-          applied.cookieNames.push(cookieName);
-        } catch (_) {}
-      });
-    }
-
-    if (Array.isArray(strategy.persistence) && strategy.persistence.includes("url")) {
-      const urlParams = getSignalEntries(signals, "urlParams");
-      if (urlParams.length > 0) {
-        try {
-          const currentUrl = new URL(window.location.href);
-          let changed = false;
-          urlParams.forEach((paramName) => {
-            if (currentUrl.searchParams.get(paramName) !== providerLocale) {
-              currentUrl.searchParams.set(paramName, providerLocale);
-              changed = true;
-            }
-            applied.urlParams.push(paramName);
-          });
-          if (changed && window.history && typeof window.history.replaceState === "function") {
-            window.history.replaceState(window.history.state, "", currentUrl.toString());
-          }
-        } catch (_) {}
-      }
-    }
-  }
-
-  try {
-    const payload = {
-      providerId,
-      appLanguage: appLocale,
-      providerLanguage: providerLocale,
-      applied,
-    };
-    window.dispatchEvent(new CustomEvent("hayalet-provider-language-sync", { detail: payload }));
-    ipcRenderer.sendToHost("provider-language-sync", payload);
-  } catch (_) {}
-
-  return { appLocale, providerLocale, applied };
-}
+void syncWebviewPreloadLocale();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
@@ -507,17 +366,6 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
           message: getWebviewPreloadErrorMessage(e),
         }),
         e
-      );
-    }
-
-    try {
-      await applyProviderUiLanguageSync(cfg, providerId);
-    } catch (err) {
-      console.warn(
-        webviewPreloadT("providerLanguageSyncFailed", {
-          message: getWebviewPreloadErrorMessage(err),
-        }),
-        err
       );
     }
 

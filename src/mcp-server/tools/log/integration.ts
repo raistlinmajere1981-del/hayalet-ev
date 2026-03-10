@@ -23,9 +23,6 @@ interface StructuredLogEntry {
   source?: string;
   level?: string;
   message?: string;
-  messageKey?: string;
-  messageParams?: Record<string, unknown>;
-  locale?: string;
   correlationId?: string;
   category?: string;
   stats?: Record<string, unknown>;

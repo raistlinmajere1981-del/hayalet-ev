@@ -161,6 +161,7 @@ export class AssistantController {
   _unsubSlot: (() => void) | null;
   _unsubTraffic: (() => void) | null;
   _unsubAppState: (() => void) | null;
+  _unsubI18n: (() => void) | null;
   _isServerRunning: boolean;
   _systemServerPort: number | null;
   _activeAdapter: AssistantProviderAdapter | null;
@@ -209,6 +210,7 @@ export class AssistantController {
     this._unsubSlot = null;
     this._unsubTraffic = null;
     this._unsubAppState = null;
+    this._unsubI18n = null;
     this._isServerRunning = false;
     this._systemServerPort = null;
     this._activeAdapter = null;
@@ -321,6 +323,15 @@ export class AssistantController {
 
     this._unsubAppState = AppState.subscribe(() => {
       void this._syncIdentityCard();
+    });
+
+    this._unsubI18n ??= AppI18n.subscribe(() => {
+      this._updateConnectionUI(true);
+      this._refreshOpencodeDoctorStatus();
+      this.memoryOverlay.onLocaleChanged();
+      if (this.scenarioPanelState !== null) {
+        this._renderTestPanel();
+      }
     });
 
     this._unsubTraffic = TrafficManager.onUpdate(
@@ -1792,6 +1803,7 @@ export class AssistantController {
     if (shouldRefreshOpencodeIndicator) {
       this._refreshOpencodeDoctorStatus();
     }
+
   }
 
   _setupWebviewEvents(webviewEl: WebviewElement): void {
@@ -1899,5 +1911,7 @@ export class AssistantController {
     this._unsubSlot?.();
     this._unsubTraffic?.();
     this._unsubAppState?.();
+    this._unsubI18n?.();
+    this.memoryOverlay.destroy();
   }
 }

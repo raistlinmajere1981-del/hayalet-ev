@@ -106,6 +106,19 @@ export class MemoryOverlay {
   private _activeTagFilter: Set<string> = new Set();
   private _newImportanceValue = 3;
 
+  onLocaleChanged(): void {
+    if (this.overlay?.classList.contains("hidden") !== false) {
+      return;
+    }
+    void this._loadAndRender();
+  }
+
+  destroy(): void {
+    this.overlay = null;
+    this.closeBtn = null;
+    this.searchInput = null;
+  }
+
   init(): void {
     this.overlay = document.getElementById("memory-overlay");
     this.closeBtn = document.getElementById("memory-overlay-close");

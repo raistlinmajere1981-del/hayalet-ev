@@ -2089,6 +2089,66 @@
       "alreadyInitialized": "Path sistemi zaten başlatılmış",
       "notInitialized": "Path sistemi başlatılmamış. `app.whenReady()` sonrasında `main.ts` içinde `initPaths(electronDirname)` çağrılmalı."
     },
+    "preload": {
+      "appScriptLoaded": {
+        "en": "/js/app.js loaded via src.",
+        "tr": "/js/app.js kaynak üzerinden yüklendi."
+      },
+      "disableSpellcheckFailed": {
+        "en": "Failed to disable spellcheck: {{message}}",
+        "tr": "Spellcheck devre dışı bırakılamadı: {{message}}"
+      },
+      "appScriptLoadFailed": {
+        "en": "Failed to load /js/app.js via src: {{message}}",
+        "tr": "/js/app.js kaynak üzerinden yüklenemedi: {{message}}"
+      },
+      "injectInitAppFailed": {
+        "en": "injectInitApp failed: {{message}}",
+        "tr": "injectInitApp başarısız: {{message}}"
+      },
+      "initFailed": {
+        "en": "Preload initialization failed: {{message}}",
+        "tr": "Preload başlatılamadı: {{message}}"
+      }
+    },
+    "webviewPreload": {
+      "settingUpProvider": {
+        "en": "Setting up provider for slot {{slot}} (source: {{source}})",
+        "tr": "{{slot}} slotu için provider kuruluyor (kaynak: {{source}})"
+      },
+      "providerConfigSet": {
+        "en": "Provider config set: {{providerId}} {{providerName}}",
+        "tr": "Provider config ayarlandı: {{providerId}} {{providerName}}"
+      },
+      "slotSetViaIpc": {
+        "en": "Slot set via IPC: {{slot}}",
+        "tr": "Slot IPC üzerinden ayarlandı: {{slot}}"
+      },
+      "providerConfigLoadFailed": {
+        "en": "Provider config could not be loaded for {{providerId}}",
+        "tr": "{{providerId}} için provider config yüklenemedi"
+      },
+      "providerConfigSetFailed": {
+        "en": "Provider config could not be assigned: {{message}}",
+        "tr": "Provider config atanamadı: {{message}}"
+      },
+      "providerConfigSetOuterFailed": {
+        "en": "Provider config assignment failed before completion: {{message}}",
+        "tr": "Provider config ataması tamamlanmadan hata oluştu: {{message}}"
+      },
+      "slotSetFailed": {
+        "en": "Slot assignment failed: {{message}}",
+        "tr": "Slot atanamadı: {{message}}"
+      },
+      "providerUsageSendFailed": {
+        "en": "Provider usage telemetry could not be sent: {{message}}",
+        "tr": "Provider kullanım telemetrisi gönderilemedi: {{message}}"
+      },
+      "providerHandlerFailed": {
+        "en": "The hayalet-set-provider handler failed: {{message}}",
+        "tr": "hayalet-set-provider handler başarısız: {{message}}"
+      }
+    },
     "opencodeUiSessionStore": {
       "dbNotFound": "OpenCode session veritabanı bulunamadı: {{dbPath}}",
       "sessionIdRequired": "Session kimliği gerekli",

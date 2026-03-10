@@ -45,7 +45,13 @@
 
         <div class="assistant-command-rail">
           <div class="assistant-connect-actions">
-            <button class="btn btn-sm btn-primary" id="assistant-connect-btn">Start</button>
+            <button
+              class="btn btn-sm btn-primary"
+              id="assistant-connect-btn"
+              data-shell-i18n-text="assistant.buttonStates.idle"
+            >
+              Start
+            </button>
             <button
               class="btn btn-sm btn-secondary"
               id="assistant-ghost-agent-btn"
@@ -122,7 +128,9 @@
           <div class="assistant-status-extended assistant-topbar-chip">
             <span class="status-dot" id="assistant-status-dot"></span>
             <div class="status-info">
-              <span id="assistant-status-text">Stopped</span>
+              <span id="assistant-status-text" data-shell-i18n-text="assistant.connectionUi.disconnectedTitle">
+                Stopped
+              </span>
               <small id="assistant-status-details"></small>
             </div>
           </div>
@@ -133,13 +141,20 @@
             title=""
           >
             <span class="status-dot status-checking" id="assistant-opencode-indicator-dot"></span>
-            <span id="assistant-opencode-indicator-text">Checking OpenCode...</span>
+            <span
+              id="assistant-opencode-indicator-text"
+              data-shell-i18n-text="assistant.opencodeDoctor.loading.checkingUpdates"
+            >
+              Checking OpenCode...
+            </span>
             <button
               class="btn btn-ghost btn-icon btn-sm assistant-opencode-action-btn"
               id="assistant-opencode-action-btn"
               title="Checking OpenCode status"
               type="button"
               aria-label="OpenCode action"
+              data-shell-i18n-title="assistant.opencodeDoctor.actionInProgress"
+              data-shell-i18n-aria-label="assistant.opencodeDoctor.checkUpdatesAriaLabel"
             >
               ↻
             </button>
@@ -161,6 +176,7 @@
             id="ai0-test-btn"
             title="AI0 provider test"
             disabled
+            data-shell-i18n-title="assistant.connectionUi.testButtonReady"
           >
             🧪
           </button>

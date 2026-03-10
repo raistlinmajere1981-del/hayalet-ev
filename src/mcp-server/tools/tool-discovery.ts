@@ -41,9 +41,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /typescript.*error/i,
       /ts.*fix/i,
       /type.*issue/i,
-      /typescript.*hata/i,
-      /ts.*düzelt/i,
-      /type.*sorun/i,
     ],
     category: "typescript",
     tools: [
@@ -68,9 +65,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /change.*code/i,
       /modify/i,
       /update.*file/i,
-      /dosya.*düzenle/i,
-      /kod.*değiştir/i,
-      /güncelle/i,
     ],
     category: "fileEditing",
     tools: [
@@ -86,8 +80,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /refactor/i,
       /batch.*change/i,
       /multiple.*file/i,
-      /toplu.*değişiklik/i,
-      /yeniden.*yapılandır/i,
     ],
     category: "refactoring",
     tools: [
@@ -107,9 +99,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /error.*electron/i,
       /app.*crash/i,
       /not.*work/i,
-      /hata.*ayıkla/i,
-      /çalışmıyor/i,
-      /sorun/i,
     ],
     category: "debugging",
     tools: [
@@ -121,7 +110,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["debug-electron"],
   },
   {
-    patterns: [/eslint/i, /lint.*error/i, /code.*quality/i, /lint.*hata/i, /kod.*kalite/i],
+    patterns: [/eslint/i, /lint.*error/i, /code.*quality/i],
     category: "eslint",
     tools: [
       { name: "hev_dev_eslint_dashboard", priority: 1, reasonKey: "analyzeLintDistribution" },
@@ -142,8 +131,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
   {
     patterns: [
       /memory/i,
-      /hafiza/i,
-      /hatırla/i,
       /remember/i,
       /context.*store/i,
       /knowledge.*base/i,
@@ -169,9 +156,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /show.*file/i,
       /inspect/i,
       /view/i,
-      /dosya.*oku/i,
-      /dosya.*göster/i,
-      /incele/i,
     ],
     category: "fileReading",
     tools: [
@@ -197,9 +181,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
       /big.*file/i,
       /chunk/i,
       /50kb/i,
-      /büyük.*dosya/i,
-      /büyük.*içerik/i,
-      /chunk.*yaz/i,
     ],
     category: "largeFile",
     tools: [
@@ -217,7 +198,6 @@ const INTENT_PATTERNS: IntentPattern[] = [
   {
     patterns: [
       /safe.*edit/i,
-      /güvenli.*düzenle/i,
       /validated.*edit/i,
       /bracket.*check/i,
       /scope.*safe/i,
@@ -232,7 +212,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["file-edit-safe"],
   },
   {
-    patterns: [/new.*tool/i, /add.*tool/i, /register.*tool/i, /yeni.*tool/i, /tool.*ekle/i],
+    patterns: [/new.*tool/i, /add.*tool/i, /register.*tool/i],
     category: "toolManagement",
     tools: [
       {

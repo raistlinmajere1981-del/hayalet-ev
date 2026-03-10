@@ -58,9 +58,6 @@ export interface LogEntry {
   level: string;
   source?: string;
   message: string;
-  messageKey?: string;
-  messageParams?: Record<string, unknown>;
-  locale?: string;
   context?: Record<string, unknown>;
 }
 

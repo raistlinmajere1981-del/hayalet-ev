@@ -22,7 +22,6 @@ interface MCPLogEntry {
   level: LogLevel;
   category: "mcp-tool" | "mcp-server";
   message: string;
-  locale?: string;
   toolName?: string;
   operation: "start" | "success" | "error";
   duration?: number;
@@ -47,7 +46,6 @@ interface UnifiedLogEntry {
   category: "mcp";
   source: "mcp-server";
   message: string;
-  locale?: string;
   context?: {
     toolName?: string;
     operation?: string;
@@ -102,12 +100,10 @@ class MCPLogger {
   }
 
   private getTranslator(): {
-    locale: string;
     t: ReturnType<typeof createMcpTranslatorSync>;
   } {
     const locale = readMcpAppLanguageSync();
     return {
-      locale,
       t: createMcpTranslatorSync(locale),
     };
   }
@@ -117,20 +113,18 @@ class MCPLogger {
     toolName?: string,
     duration?: number,
     errorMessage?: string
-  ): { locale: string; message: string } {
-    const { locale, t } = this.getTranslator();
+  ): { message: string } {
+    const { t } = this.getTranslator();
     const resolvedToolName = toolName?.trim() !== "" ? toolName : t("mcpServer.logs.unknownTool");
 
     if (operation === "start") {
       return {
-        locale,
         message: t("mcpServer.logs.toolStart", { toolName: resolvedToolName }),
       };
     }
 
     if (operation === "success") {
       return {
-        locale,
         message: t("mcpServer.logs.toolSuccess", {
           toolName: resolvedToolName,
           ...(duration !== undefined ? { duration } : {}),
@@ -140,7 +134,6 @@ class MCPLogger {
 
     if (resolvedToolName === "general") {
       return {
-        locale,
         message: t("mcpServer.logs.generalError", {
           message: errorMessage ?? "",
         }),
@@ -148,7 +141,6 @@ class MCPLogger {
     }
 
     return {
-      locale,
       message: t("mcpServer.logs.toolError", {
         toolName: resolvedToolName,
         message: errorMessage ?? "",
@@ -166,7 +158,6 @@ class MCPLogger {
       level: "info",
       category: "mcp-tool",
       message: lifecycle.message,
-      locale: lifecycle.locale,
       toolName,
       operation: "start",
       args: this.sanitizeArgs(args),
@@ -194,7 +185,6 @@ class MCPLogger {
       level: "info",
       category: "mcp-tool",
       message: lifecycle.message,
-      locale: lifecycle.locale,
       toolName,
       operation: "success",
       duration,
@@ -223,7 +213,6 @@ class MCPLogger {
       level: "error",
       category: "mcp-tool",
       message: lifecycle.message,
-      locale: lifecycle.locale,
       toolName,
       operation: "error",
       ...(duration !== undefined ? { duration } : {}),
@@ -281,10 +270,6 @@ class MCPLogger {
           ...(entry.agentContext !== undefined ? { agentContext: entry.agentContext } : {}),
         },
       };
-
-      if (entry.locale !== undefined) {
-        unifiedEntry.locale = entry.locale;
-      }
 
       if (entry.error !== undefined) {
         unifiedEntry.error = entry.error;

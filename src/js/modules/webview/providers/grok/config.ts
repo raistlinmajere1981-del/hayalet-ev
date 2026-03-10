@@ -11,16 +11,16 @@ export const config = {
       'button[type="submit"][aria-label="Gönder"], button[type="submit"][aria-label="Submit"], button[type="submit"]',
 
     stopButton:
-      'button[aria-label="Model yanıtını durdur"], button[aria-label="Stop model response"]',
+      'button[aria-label="Model yanıtını durdur"], button[aria-label="Stop model response"], button[aria-label*="Stop" i]',
 
     voiceButton:
-      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"], button[aria-label="Ses moduna gir"], button[aria-label="Enter voice mode"]',
+      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"], button[aria-label="Ses moduna gir"], button[aria-label="Enter voice mode"], button[aria-label*="dictation" i], button[aria-label*="voice mode" i]',
 
     dictateButton:
-      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"]',
+      'button[aria-label="Dikteyi başlat (Ctrl+D)"], button[aria-label="Start dictation (Ctrl+D)"], button[aria-label*="dictation" i]',
 
     attachButton:
-      'button.group/attach-button[aria-label="Ekle"], button.group/attach-button[aria-label="Attach"], button[aria-label="Ekle"][aria-haspopup="menu"], button[aria-label="Attach"][aria-haspopup="menu"]',
+      'button.group/attach-button[aria-label="Ekle"], button.group/attach-button[aria-label="Attach"], button[aria-label="Ekle"][aria-haspopup="menu"], button[aria-label="Attach"][aria-haspopup="menu"], button.group/attach-button[aria-haspopup="menu"]',
 
     attachMenuItem: 'div[role="menuitem"][data-radix-collection-item][data-orientation="vertical"]',
 
@@ -90,18 +90,11 @@ export const config = {
     hosts: [] as string[],
     blockResourceTypes: [] as string[],
     dragOverlaySelectors: ["[data-overlay]", ".drag-overlay", ".drop-overlay"],
-    dragTextMatchers: ["sürükleyin", "drop", "dosya", "file"],
+    dragTextMatchers: ["drop", "file"],
   },
   telemetry: {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
-  },
-  uiLanguage: {
-    support: "partial",
-    syncMode: "manual",
-    supportedLocales: ["tr", "en"],
-    persistence: ["account", "session"],
-    notes: "Grok language needs provider-specific settings automation before sync can be enforced.",
   },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
