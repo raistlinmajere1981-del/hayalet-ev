@@ -541,6 +541,75 @@ declare global {
     showOpenDialog: (
       options: Record<string, unknown>
     ) => Promise<{ canceled: boolean; filePaths: string[] }>;
+    backupCreate: (payload: {
+      scopeIds?: string[];
+      presetId?: string;
+      outputPath?: string;
+      label?: string;
+      note?: string;
+      createdBy?: string;
+    }) => Promise<{
+      success: boolean;
+      bundlePath: string;
+      bundle: Record<string, unknown>;
+      selectedScopes: string[];
+      totalBytes: number;
+    }>;
+    backupList: (payload?: { limit?: number }) => Promise<
+      Array<{
+        filePath: string;
+        createdAt: string | null;
+        label: string | null;
+        selectedScopes: string[];
+        totalBytes: number | null;
+        restoreMode: string | null;
+        invalid?: boolean;
+      }>
+    >;
+    backupScopes: () => Promise<
+      Array<{
+        id: string;
+        label: string;
+        category: string;
+        enabledByDefault: boolean;
+        riskLevel: string;
+        requiresColdRestore: boolean;
+        restartTargets: string[];
+        include: string[];
+        exclude: string[];
+      }>
+    >;
+    backupPresets: () => Promise<Array<{ id: string; label: string; scopeIds: string[] }>>;
+    backupInspect: (payload: { filePath: string }) => Promise<{
+      filePath: string;
+      manifest: Record<string, unknown>;
+      files: Array<Record<string, unknown>>;
+      checksums: Record<string, unknown>;
+    }>;
+    backupPreview: (payload: { filePath: string; scopeIds?: string[] }) => Promise<{
+      success: boolean;
+      filePath: string;
+      selectedScopes: string[];
+      availableScopes: string[];
+      requiresColdRestore: boolean;
+      restartTargets: string[];
+      riskLevel: string;
+      warningCount: number;
+      warnings: string[];
+      fileCount: number;
+      overwrittenFilesCount: number;
+    }>;
+    backupRestore: (payload: {
+      filePath: string;
+      scopeIds?: string[];
+      createdBy?: string;
+      safetyBackup?: boolean;
+    }) => Promise<{
+      success: boolean;
+      restoredScopes: string[];
+      restoredFiles: number;
+      bundlePath: string;
+    }>;
     openTerminal: (path: string) => Promise<{ success: boolean; error?: string }>;
     assistantRuntimeRead: () => Promise<{
       success: boolean;

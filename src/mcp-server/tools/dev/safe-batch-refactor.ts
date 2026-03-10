@@ -26,11 +26,11 @@ function chunkToString(data: unknown): string {
 type RefactorMode = "string" | "ast";
 
 interface RefactorOperation {
-  pattern: string; // Regex pattern (string mode) or identifier name (ast mode)
+  pattern: string;
   replace_with: string;
-  target_lines?: number[]; // Apply only on these lines (string mode only)
-  mode?: RefactorMode; // NEW: 'string' (default) or 'ast'
-  ast_type?: "function_call" | "variable" | "import"; // NEW: AST transformation type
+  target_lines?: number[];
+  mode?: RefactorMode;
+  ast_type?: "function_call" | "variable" | "import";
 }
 
 interface SafeRefactorOptions {
@@ -77,7 +77,7 @@ export async function safelyRefactorCode(
     auto_rollback_on_error: autoRollbackOnError = true,
     dry_run: dryRun = false,
   } = options;
-  // Fix absolute path handling (Unix and Windows)
+  // Accept both repo-relative and absolute file paths.
   const { isAbsolute } = await import("path");
   const fullPath = isAbsolute(filePath)
     ? filePath
@@ -94,7 +94,6 @@ export async function safelyRefactorCode(
   const results: Array<{ operation: number; success: boolean; error?: string }> = [];
 
   try {
-    // Get baseline error count
     const baselineErrors = verifyAfterEach
       ? await getTypeScriptErrorCount(fullPath, projectRoot)
       : 0;
@@ -102,7 +101,6 @@ export async function safelyRefactorCode(
     for (let i = 0; i < operations.length; i++) {
       const op = operations[i];
 
-      // Apply operation
       if (!op) {
         results.push({
           operation: i + 1,
@@ -113,12 +111,10 @@ export async function safelyRefactorCode(
         continue;
       }
 
-      // NEW: AST mode or string mode
-      const mode = op.mode ?? "string"; // Default: backward compatible
+      const mode = op.mode ?? "string";
       let newContent: string;
 
       if (mode === "ast") {
-        // AST-based transformation (SAFE)
         const astResult = applyASTOperation(currentContent, fullPath, op);
         if (!astResult.success) {
           results.push({
@@ -136,7 +132,6 @@ export async function safelyRefactorCode(
         }
         newContent = astResult.code ?? currentContent;
       } else {
-        // String-based (backward compatible)
         newContent = applyOperation(currentContent, op);
       }
 
@@ -150,21 +145,18 @@ export async function safelyRefactorCode(
         continue;
       }
 
-      // Write temporarily (even in dry_run for validation)
       if (!dryRun) {
         writeFileSync(fullPath, newContent, "utf-8");
       } else if (verifyAfterEach) {
-        // dry_run mode: write to temp file for validation
+        // Dry runs still write temporarily so validation sees real parser output.
         writeFileSync(fullPath, newContent, "utf-8");
       }
 
-      // Verify after each operation (works in both dry_run and normal mode)
       if (verifyAfterEach) {
         // eslint-disable-next-line no-await-in-loop
         const newErrors = await getTypeScriptErrorCount(fullPath, projectRoot);
 
         if (newErrors > baselineErrors && autoRollbackOnError) {
-          // Rollback to previous content!
           writeFileSync(fullPath, currentContent, "utf-8");
           results.push({
             operation: i + 1,
@@ -178,23 +170,18 @@ export async function safelyRefactorCode(
           rollbackOccurred = true;
           continue;
         } else if (newErrors <= baselineErrors && dryRun) {
-          // dry_run mode: restore original after validation
           writeFileSync(fullPath, currentContent, "utf-8");
         }
       }
 
-      // Success - commit this change
       currentContent = newContent;
       appliedCount++;
       results.push({ operation: i + 1, success: true });
     }
 
-    // Final restore
     if (dryRun) {
-      // dry_run mode: always restore original
       writeFileSync(fullPath, originalContent, "utf-8");
     } else if (appliedCount === 0 && !rollbackOccurred) {
-      // No successful operations, restore original
       writeFileSync(fullPath, originalContent, "utf-8");
     }
 
@@ -206,7 +193,6 @@ export async function safelyRefactorCode(
       rollback_occurred: rollbackOccurred,
     };
   } catch (error) {
-    // Emergency rollback
     if (!dryRun) {
       writeFileSync(fullPath, originalContent, "utf-8");
     }
@@ -220,10 +206,6 @@ export async function safelyRefactorCode(
     };
   }
 }
-
-// ============================================
-// Helper Functions
-// ============================================
 
 /**
  * Normalize whitespace for pattern matching
@@ -241,7 +223,6 @@ function matchesPattern(line: string, pattern: string, useRegex: boolean): boole
     return regex.test(line);
   }
 
-  // Whitespace-agnostic exact match
   return normalizeWhitespace(line).includes(normalizeWhitespace(pattern));
 }
 
@@ -254,7 +235,6 @@ function replaceInLine(
   replacement: string,
   useRegex: boolean
 ): string {
-  // Preserve original indentation
   const indent = line.match(/^\s*/)?.[0] ?? "";
 
   if (useRegex) {

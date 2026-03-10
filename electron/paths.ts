@@ -27,14 +27,6 @@ import {
   resolveProjectRoot,
 } from "./path-roots.ts";
 
-// ========================================
-// CORE PATH DETECTION (Run Once)
-// ========================================
-
-// ========================================
-// PATH CONFIGURATION (Initialized Once)
-// ========================================
-
 let config: (PathConfig & { electronDir: string }) | null = null;
 
 function pathsT(key: string): string {
@@ -87,13 +79,7 @@ function getConfig(): PathConfig & { electronDir: string } {
   return config;
 }
 
-// ========================================
-// PATH RESOLVER API
-// ========================================
-
 const paths: PathResolver = {
-  // --- Base Directories ---
-
   getProjectRoot(): string {
     return getConfig().projectRoot;
   },
@@ -134,16 +120,12 @@ const paths: PathResolver = {
     return join(this.getInstalledRoomsDir(), roomId);
   },
 
-  // --- Account-Specific Paths ---
-
   sanitizeAccountId(accountId: string): string {
-    // Parse accountId format: email_provider
     const parts = accountId.split("_");
     const provider = parts[parts.length - 1] ?? "unknown";
     const emailCandidate = parts.slice(0, -1).join("_");
     const email = emailCandidate === "" ? "unknown" : emailCandidate;
 
-    // Sanitize email: replace @ and . with _
     const safeEmail = email.replace(/[@.]/g, "_");
 
     return `${safeEmail}_${provider}`;
@@ -162,8 +144,6 @@ const paths: PathResolver = {
     return join(getConfig().dataDir, "whispers.json");
   },
 
-  // --- Electron-Specific Paths ---
-
   getPreloadPath(filename: string): string {
     const cfg = getConfig();
     return join(cfg.electronDir, filename);
@@ -177,10 +157,8 @@ const paths: PathResolver = {
   getIconPath(): string {
     const cfg = getConfig();
     if (cfg.isPackaged) {
-      // Portable: icon next to executable (resources/app.asar/src/assets/icon.png)
       return join(process.resourcesPath, "app.asar", "src/assets/icon.png");
     } else {
-      // Dev: icon in src/assets
       return join(cfg.assetsDir, "icon.png");
     }
   },
@@ -188,20 +166,15 @@ const paths: PathResolver = {
   getHtmlEntryPath(): string {
     const cfg = getConfig();
     if (cfg.isPackaged) {
-      // Portable: HTML in resources (bundled with app)
       return join(process.resourcesPath, "app.asar", "dist/index.html");
     } else {
-      // Dev: HTML in dist (built by Vite)
       return join(cfg.projectRoot, "dist", "renderer", "index.html");
     }
   },
 
-  // --- Provider Paths ---
-
   getProviderConfigPath(providerId: string): string {
     const cfg = getConfig();
     if (cfg.isPackaged) {
-      // Portable: provider configs in app.asar (read-only, bundled)
       return join(
         process.resourcesPath,
         "app.asar",
@@ -210,19 +183,13 @@ const paths: PathResolver = {
         "config.js"
       );
     } else {
-      // Dev: provider configs in project src (TypeScript source files)
       return join(cfg.projectRoot, "src/js/modules/webview/providers", providerId, "config.ts");
     }
   },
 
-  // --- External Tool Paths ---
-  // --- Protocol Paths ---
-
   getProtocolsPath(): string {
     return join(getConfig().dataDir, "protocols.json");
   },
-
-  // --- Utility Methods ---
 
   isPackaged(): boolean {
     return getConfig().isPackaged;

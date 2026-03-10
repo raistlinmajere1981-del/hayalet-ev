@@ -262,7 +262,6 @@ export function generateEslintDashboard(
         ruleData.count++;
         ruleData.fixable += hasFixable;
 
-        // Track location (file + line)
         const existingLocation = ruleData.locations.find((loc) => loc.file === filePath);
         if (existingLocation) {
           existingLocation.lines.push(msg.line);
@@ -272,7 +271,6 @@ export function generateEslintDashboard(
 
         if (hasFixable !== 0) fixableCount++;
 
-        // Track by category
         const category = RULE_CATEGORIES[ruleId] ?? "other";
         byCategory[category] = (byCategory[category] ?? 0) + 1;
       });
@@ -280,10 +278,8 @@ export function generateEslintDashboard(
 
     progress.update(75, eslintDashT("progress.building"));
 
-    // Calculate execution time
     const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
 
-    // Calculate folder and file statistics
     const allFiles = results.length;
     const filesWithErrors = results.filter((r) => r.messages.length > 0).length;
 
@@ -295,7 +291,6 @@ export function generateEslintDashboard(
         .map((r) => r.filePath.split("/").slice(0, -1).join("/"))
     ).size;
 
-    // Sort and limit top rules
     const topRules = Object.entries(byRule)
       .map(([rule, stats]) => ({
         rule,
@@ -315,7 +310,6 @@ export function generateEslintDashboard(
       })
       .slice(0, limit);
 
-    // Sort and limit top files
     const topFiles = Object.entries(byFile)
       .map(([file, stats]) => ({
         file,
@@ -326,7 +320,6 @@ export function generateEslintDashboard(
       .sort((a, b) => b.total - a.total)
       .slice(0, limit);
 
-    // Generate formatted output
     const output = formatDashboard({
       totalProblems,
       totalErrors,

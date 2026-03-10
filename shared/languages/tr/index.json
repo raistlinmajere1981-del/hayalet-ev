@@ -791,6 +791,119 @@
         "removeError": "Oda kaldırılamadı"
       }
     },
+    "backup": {
+      "openTitle": "Backup merkezini aç",
+      "title": "Backup Merkezi",
+      "createButton": "Backup Oluştur",
+      "selectButton": "Bundle Seç",
+      "openFolderButton": "Klasörü Aç",
+      "restoreButton": "Geri Yükle",
+      "scopeSectionTitle": "Scope Seçimi",
+      "scopeSectionNote": "Kategori, checkbox ve preset seçimi",
+      "historySectionTitle": "Bundle'lar",
+      "historySectionNote": "Yerel backup listesi ve restore önizlemesi",
+      "summary": {
+        "selectedScopes": "Seçili scope",
+        "requiresColdRestore": "Cold restore",
+        "restartTargets": "Restart hedefleri",
+        "previewFiles": "Önizleme dosyaları",
+        "yes": "Evet",
+        "no": "Hayır",
+        "none": "Yok"
+      },
+      "categories": {
+        "application-code": "Uygulama Kodu",
+        "configuration": "Konfigürasyon",
+        "user-data": "Kullanıcı Verisi",
+        "diagnostics": "Tanılama"
+      },
+      "scopes": {
+        "app": {
+          "label": "Hayalet-ev App",
+          "note": "Renderer ve main uygulama kaynakları"
+        },
+        "mcp-server": {
+          "label": "MCP Server",
+          "note": "Server runtime ve MCP entegrasyon dosyaları"
+        },
+        "ghost-agent": {
+          "label": "Ghost Agent",
+          "note": "Ghost agent runtime ve wrapper dosyaları"
+        },
+        "agents-config": {
+          "label": "Agents Config",
+          "note": "AGENTS.md ve .rovo çalışma alanı metadata'sı"
+        },
+        "data": {
+          "label": "Kullanıcı Verisi",
+          "note": "data/ altındaki tüm proje verisi"
+        },
+        "logs": {
+          "label": "Loglar",
+          "note": "logs/ altındaki tanılama kayıtları"
+        }
+      },
+      "risk": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek",
+        "very-high": "Çok yüksek"
+      },
+      "presets": {
+        "safe-config-backup": "Güvenli Config Backup",
+        "user-state-backup": "Kullanıcı Durumu Backup",
+        "runtime-stack-backup": "Runtime Stack Backup",
+        "debug-snapshot": "Debug Snapshot",
+        "full-snapshot": "Tam Snapshot"
+      },
+      "list": {
+        "empty": "Backup bundle bulunamadı.",
+        "untitled": "İsimsiz bundle",
+        "invalid": "Geçersiz",
+        "ready": "Hazır",
+        "scopeUnknown": "Scope bilgisi yok",
+        "externalBundle": "Seçilen harici bundle"
+      },
+      "preview": {
+        "empty": "Restore etkisini görmek için bir bundle seçin.",
+        "loading": "Restore önizlemesi yükleniyor...",
+        "fileCount": "Dosyalar",
+        "overwrites": "Üzerine yazma",
+        "risk": "Risk",
+        "restartTargets": "Restart hedefleri",
+        "coldRestoreWarning": "Seçilen scope'lar için cold restore önerilir.",
+        "dataWarning": "Kullanıcı verisini geri yüklemek mevcut runtime state'i ezer."
+      },
+      "confirm": {
+        "title": "Restore Onayı",
+        "message": "Seçilen bundle geri yüklensin mi?",
+        "scopeLine": "Scope'lar: {{scopes}}",
+        "fileLine": "Dosyalar: {{count}}",
+        "restartLine": "Restart hedefi: {{target}}"
+      },
+      "dialog": {
+        "bundleTitle": "Backup bundle seç",
+        "bundleButton": "Bundle Kullan",
+        "bundleFilterName": "Backup Bundle'ları"
+      },
+      "toasts": {
+        "scopeRequired": "Önce en az bir scope seçin",
+        "bundleRequired": "Önce bir backup bundle seçin",
+        "filePickerUnavailable": "Dosya seçici hazır değil",
+        "createSuccess": "Backup oluşturuldu",
+        "createError": "Backup oluşturulamadı",
+        "restoreSuccess": "Restore tamamlandı",
+        "restoreError": "Restore başarısız"
+      },
+      "cli": {
+        "createSuccess": "Backup oluşturuldu: {{path}}",
+        "selectedScopes": "Scope'lar: {{scopes}}",
+        "listEmpty": "{{dir}} içinde backup bulunamadı",
+        "previewSummary": "Önizleme: {{count}} dosya, risk={{risk}}",
+        "restoreSuccess": "{{path}} üzerinden restore tamamlandı",
+        "commandFailed": "Backup komutu başarısız: {{message}}"
+      }
+    },
     "livefix": {
       "restartTitle": "Uygulama Yeniden Başlıyor",
       "appliedSubtitle": "Canlı düzeltme uygulandı",
@@ -1189,6 +1302,15 @@
       "settingsSubscriptionFailed": "Ayar aboneliği kurulamadı: {{message}}",
       "appStarted": "Uygulama başlatıldı",
       "autoConnectClicked": "Auto-connect: asistan bağlan butonuna tıklandı",
+      "backup": {
+        "overlayOpened": "Backup overlay açıldı",
+        "listRefreshed": "Backup listesi yenilendi",
+        "previewFailed": "Backup önizlemesi başarısız: {{message}}",
+        "createSucceeded": "Backup oluşturuldu: {{path}}",
+        "createFailed": "Backup oluşturma başarısız: {{message}}",
+        "restoreSucceeded": "Backup geri yüklendi: {{path}}",
+        "restoreFailed": "Backup geri yükleme başarısız: {{message}}"
+      },
       "navigationSetupError": "Gezinme kurulumu hatası: {{message}}",
       "topBarSetupError": "Üst bar kurulumu hatası: {{message}}",
       "themeChanged": "Tema değiştirildi: {{theme}}",
@@ -1850,6 +1972,13 @@
       "workspaceRoomExists": "Workspace oda zaten mevcut: {{path}}",
       "bundleReadFailed": "Bundle okunamadı",
       "bundleInvalid": "Bundle geçersiz"
+    },
+    "backup": {
+      "fileRequired": "Backup bundle dosyası gerekli",
+      "logs": {
+        "createCompleted": "Backup bundle oluşturuldu: {{path}}",
+        "restoreCompleted": "Backup bundle geri yüklendi: {{path}}"
+      }
     },
     "database": {
       "accountIdRequired": "Hesap kimliği gerekli",

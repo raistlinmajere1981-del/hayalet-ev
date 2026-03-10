@@ -31,7 +31,6 @@ export function contentDiff(
   };
 }
 
-// Tool Definitions
 export const FILE_DIFF_TOOL = {
   name: "hev_fs_diff",
   description: diffToolDefinitionT("diffFile.description"),

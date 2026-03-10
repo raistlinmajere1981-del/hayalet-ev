@@ -90,10 +90,7 @@ function getWebviewPreloadErrorMessage(error) {
 function webviewPreloadT(key, params) {
   const messageLocale = resolvePreloadMessageLocale(__app_preload_locale);
   const template =
-    readCatalogValue(
-      __app_preload_catalog,
-      `electron.webviewPreload.${key}.${messageLocale}`
-    ) ||
+    readCatalogValue(__app_preload_catalog, `electron.webviewPreload.${key}.${messageLocale}`) ||
     readCatalogValue(__app_preload_catalog, "electron.webviewPreload." + key) ||
     WEBVIEW_PRELOAD_MESSAGE_FALLBACKS[key] ||
     key;
@@ -278,8 +275,7 @@ function setupProvider() {
   }
 
   function checkReady() {
-    const pcfg =
-      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
+    const pcfg = (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const prompt = pcfg.inputField ? document.querySelector(pcfg.inputField) : null;
     const sendButton = pcfg.sendButton ? document.querySelector(pcfg.sendButton) : null;
 
@@ -297,16 +293,14 @@ function setupProvider() {
   }
 
   function updateSend() {
-    const pcfg =
-      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
+    const pcfg = (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const sendButton = pcfg.sendButton ? document.querySelector(pcfg.sendButton) : null;
     sendState = sendButton ? (sendButton.disabled ? "disabled" : "enabled") : "not-found";
     updateState();
   }
 
   function updateThinking() {
-    const pcfg =
-      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
+    const pcfg = (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const stopButton = pcfg.stopButton ? document.querySelector(pcfg.stopButton) : null;
     thinkingState = stopButton ? "thinking" : "idle";
     updateState();

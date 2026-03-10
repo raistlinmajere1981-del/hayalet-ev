@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-10T11:26:51.882Z",
+  "generatedAt": "2026-03-10T15:59:43.581Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 440,
-    "ids": 406,
+    "filesScanned": 443,
+    "ids": 418,
     "testIds": 15,
     "querySelectors": 124,
-    "totalSelectors": 545
+    "totalSelectors": 557
   },
   "lookup": {
     "id": {
@@ -137,6 +137,18 @@
       "avatar-ai1": "#avatar-ai1",
       "avatar-ai2": "#avatar-ai2",
       "avatar-user-compose": "#avatar-user-compose",
+      "backup-overlay": "#backup-overlay",
+      "backup-overlay-close": "#backup-overlay-close",
+      "backup-overlay-create": "#backup-overlay-create",
+      "backup-overlay-list": "#backup-overlay-list",
+      "backup-overlay-open": "#backup-overlay-open",
+      "backup-overlay-open-folder": "#backup-overlay-open-folder",
+      "backup-overlay-preview": "#backup-overlay-preview",
+      "backup-overlay-refresh": "#backup-overlay-refresh",
+      "backup-overlay-restore": "#backup-overlay-restore",
+      "backup-overlay-scopes": "#backup-overlay-scopes",
+      "backup-overlay-select": "#backup-overlay-select",
+      "backup-overlay-summary": "#backup-overlay-summary",
       "btn-clear-search": "#btn-clear-search",
       "btn-copy-url": "#btn-copy-url",
       "btn-delete": "#btn-delete",

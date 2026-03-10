@@ -23,7 +23,7 @@ export function trashList(_projectRoot: string): {
   items: Array<{ path: string; deletedAt: string; size: string }>;
   total: number;
 } {
-  // Stub implementation. listTrash is not implemented yet.
+  // TODO: Wire this to the shared recycle metadata once trash listing is implemented.
   const items: Array<{ path: string; mtime: number; metadata?: Record<string, unknown> }> = [];
   return {
     items: items.map((item) => ({
@@ -105,7 +105,6 @@ export async function trashEmpty(
   };
 }
 
-// Tool Definitions
 export const TRASH_LIST_TOOL = {
   name: "hev_fs_trash_list",
   description: trashToolDefinitionT("trashList.description"),

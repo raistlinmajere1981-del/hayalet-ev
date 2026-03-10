@@ -34,22 +34,22 @@ export function createInitialOverlayState(): OverlayState {
     paused: false,
     baseLogsDir: "",
     entriesByApp: {
-      "app": [],
+      app: [],
       "mcp-server": [],
       "ghost-agent": [],
     },
     sessionsByApp: {
-      "app": [],
+      app: [],
       "mcp-server": [],
       "ghost-agent": [],
     },
     selectedSessionByApp: {
-      "app": "",
+      app: "",
       "mcp-server": "",
       "ghost-agent": "",
     },
     lastFingerprintByApp: {
-      "app": "",
+      app: "",
       "mcp-server": "",
       "ghost-agent": "",
     },

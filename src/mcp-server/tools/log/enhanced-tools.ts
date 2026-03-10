@@ -18,10 +18,6 @@ import { PROJECT_ROOT } from "../../utils/project-root.js";
 import { createMcpTranslator } from "../../utils/i18n/index.js";
 import type { LogEntry, LogQueryFilter } from "@shared/index.js";
 
-// ============================================================
-// STREAM LOGS - Real-time log streaming (tail -f like)
-// ============================================================
-
 export interface StreamLogsArgs {
   sessionId?: string; // Specific session or current
   tail?: number; // Start from last N lines
@@ -63,27 +59,19 @@ export async function streamLogs(args: StreamLogsArgs): Promise<LogEntry[]> {
   for (const line of lines) {
     try {
       entries.push(JSON.parse(line) as LogEntry);
-    } catch {
-      // Skip invalid lines
-    }
+    } catch {}
   }
 
-  // Apply filters
   if (args.filter) {
     entries = applyAdvancedFilters(entries, args.filter);
   }
 
-  // Apply tail
   if (args.tail != null && args.tail > 0) {
     entries = entries.slice(-args.tail);
   }
 
   return entries;
 }
-
-// ============================================================
-// ANALYZE ERRORS - Error clustering and analysis
-// ============================================================
 
 export interface AnalyzeErrorsArgs {
   sessionId?: string;
@@ -131,12 +119,9 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
       if (entry.level === "error") {
         errors.push(entry);
       }
-    } catch {
-      // Skip
-    }
+    } catch {}
   }
 
-  // Apply time range filter
   if (args.timeRange) {
     const from = new Date(args.timeRange.from).getTime();
     const to = new Date(args.timeRange.to).getTime();
@@ -146,7 +131,6 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
     });
   }
 
-  // Group errors by pattern
   const groupBy = args.groupBy ?? "message";
   const minClusterSize = args.minClusterSize ?? 2;
 
@@ -170,7 +154,6 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
     if (group) group.push(error);
   }
 
-  // Create clusters
   const clusters: ErrorCluster[] = [];
 
   for (const [pattern, entries] of grouped) {
@@ -183,7 +166,7 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
         pattern,
         count: entries.length,
         category: String(entries[0]?.category ?? enhancedLogT(t, "common.unknown")),
-        examples: entries.slice(0, 3), // First 3 examples
+        examples: entries.slice(0, 3),
         firstSeen: sorted[0]?.timestamp ?? "",
         lastSeen: sorted[sorted.length - 1]?.timestamp ?? "",
         ...(entries[0]?.aiHint?.suggestion != null && entries[0].aiHint.suggestion !== ""
@@ -193,10 +176,8 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
     }
   }
 
-  // Sort by count descending
   clusters.sort((a, b) => b.count - a.count);
 
-  // Create timeline (errors per minute)
   const timeline = createErrorTimeline(errors);
 
   return {
@@ -206,10 +187,6 @@ export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErr
     timeline,
   };
 }
-
-// ============================================================
-// TRACE CORRELATION - Track operation flow
-// ============================================================
 
 export interface TraceCorrelationArgs {
   correlationId: string;
@@ -248,9 +225,7 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
       if (entry.correlationId === args.correlationId) {
         timeline.push(entry);
       }
-    } catch {
-      // Skip
-    }
+    } catch {}
   }
 
   if (timeline.length === 0) {
@@ -259,10 +234,8 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
     );
   }
 
-  // Sort by timestamp
   timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // Extract operation info
   const first = timeline[0];
 
   const operationName =
@@ -271,7 +244,6 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
       : enhancedLogT(t, "common.unknownOperation");
   const category = String(first?.category ?? enhancedLogT(t, "common.unknown"));
 
-  // Detect status
   let status: "success" | "failed" | "incomplete" = "incomplete";
   let result: string | undefined;
   let duration: number | undefined;
@@ -299,10 +271,6 @@ export async function traceCorrelation(args: TraceCorrelationArgs): Promise<Corr
   };
 }
 
-// ============================================================
-// PERFORMANCE REPORT - Log volume and performance metrics
-// ============================================================
-
 export interface PerformanceReportArgs {
   sessionId?: string;
   interval?: "1m" | "5m" | "15m" | "1h";
@@ -312,22 +280,17 @@ export interface PerformanceReport {
   sessionId: string;
   timeRange: { from: string; to: string };
 
-  // Volume metrics
   totalLogs: number;
   logsPerSecond: number;
 
-  // Level distribution
   byLevel: Record<string, number>;
-  errorRate: number; // Errors per total logs
+  errorRate: number;
 
-  // Top categories
   topCategories: Array<{ category: string; count: number; percentage: number }>;
 
-  // Performance data (from performance.jsonl if available)
   averageOperationDuration?: number;
   slowestOperations?: Array<{ operation: string; duration: number; timestamp: string }>;
 
-  // Timeline
   logVolumeTimeline: Array<{ timestamp: string; count: number }>;
 }
 
@@ -352,16 +315,13 @@ export async function getPerformanceReport(
   for (const line of lines) {
     try {
       entries.push(JSON.parse(line) as LogEntry);
-    } catch {
-      // Skip
-    }
+    } catch {}
   }
 
   if (entries.length === 0) {
     throw new Error(enhancedLogT(t, "errors.noLogsInSession"));
   }
 
-  // Time range
   const sorted = entries.sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
@@ -370,7 +330,6 @@ export async function getPerformanceReport(
   const lastTime = new Date(sorted[sorted.length - 1]?.timestamp ?? Date.now());
   const durationSec = (lastTime.getTime() - firstTime.getTime()) / 1000;
 
-  // Count by level
   const byLevel: Record<string, number> = {};
   for (const entry of entries) {
     byLevel[entry.level] = (byLevel[entry.level] ?? 0) + 1;
@@ -379,14 +338,12 @@ export async function getPerformanceReport(
   const errorCount = byLevel["error"] ?? 0;
   const errorRate = entries.length > 0 ? errorCount / entries.length : 0;
 
-  // Count by category
   const byCategory = new Map<string, number>();
   for (const entry of entries) {
     const cat = String(entry.category);
     byCategory.set(cat, (byCategory.get(cat) ?? 0) + 1);
   }
 
-  // Top 10 categories
   const topCategories = Array.from(byCategory.entries())
     .map(([category, count]) => ({
       category,
@@ -396,7 +353,6 @@ export async function getPerformanceReport(
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  // Timeline (by interval)
   const logVolumeTimeline = createLogVolumeTimeline(entries, args.interval ?? "5m");
 
   return {
@@ -413,10 +369,6 @@ export async function getPerformanceReport(
     logVolumeTimeline,
   };
 }
-
-// ============================================================
-// EXPORT LOGS - Batch export in various formats
-// ============================================================
 
 export interface ExportLogsArgs {
   sessionId: string;
@@ -453,17 +405,13 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
   for (const line of lines) {
     try {
       entries.push(JSON.parse(line) as LogEntry);
-    } catch {
-      // Skip
-    }
+    } catch {}
   }
 
-  // Apply filters if provided
   if (args.filter) {
     entries = applyAdvancedFilters(entries, args.filter);
   }
 
-  // Export in specified format
   const { writeFile } = await import("fs/promises");
   let exportContent: string;
 
@@ -472,7 +420,6 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
   } else if (args.format === "jsonl") {
     exportContent = entries.map((e) => JSON.stringify(e)).join("\n");
   } else {
-    // type === "csv"
     exportContent = convertToCSV(entries);
   }
 
@@ -489,10 +436,6 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
     duration,
   };
 }
-
-// ============================================================
-// HELPER FUNCTIONS
-// ============================================================
 
 async function getCurrentSessionId(logDir: string): Promise<string> {
   const sessions = await readdir(logDir);
@@ -529,11 +472,10 @@ function applyAdvancedFilters(entries: LogEntry[], filter: AdvancedLogFilter): L
 }
 
 function createErrorTimeline(errors: LogEntry[]): Array<{ timestamp: string; count: number }> {
-  // Group errors by minute
   const byMinute = new Map<string, number>();
 
   for (const error of errors) {
-    const minute = error.timestamp.substring(0, 16); // YYYY-MM-DDTHH:MM
+    const minute = error.timestamp.substring(0, 16);
     byMinute.set(minute, (byMinute.get(minute) ?? 0) + 1);
   }
 

@@ -46,9 +46,7 @@ export async function createChunkedFile(
           message: fsChunkT(t, "create.fileExists", { filePath }),
           chunkCount: 0,
         };
-      } catch {
-        /* the file does not exist yet */
-      }
+      } catch {}
     }
 
     await mkdir(tempDir, { recursive: true });
@@ -87,9 +85,7 @@ export async function createChunkedFile(
       try {
         // eslint-disable-next-line no-await-in-loop
         await unlink(tempPath);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
 
     const finalSize = Buffer.byteLength(fullContent, "utf-8");
@@ -115,9 +111,7 @@ export async function createChunkedFile(
       try {
         // eslint-disable-next-line no-await-in-loop
         await unlink(tempPath);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
     const err = error as Error;
     progress.fail(err.message);
@@ -162,7 +156,6 @@ export async function appendChunk(
   }
 }
 
-// Tool Definitions
 export const CREATE_CHUNKED_FILE_TOOL = {
   name: "hev_fs_create_chunked",
   description: chunkedToolDefinitionT("chunkedCreate.description"),

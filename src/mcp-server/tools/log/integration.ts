@@ -64,7 +64,6 @@ export async function readElectronLogs(args: {
   const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "app");
 
-  // Get session ID
   let sessionId = args.sessionId;
   if (sessionId == null || sessionId === "") {
     const sessions = await readdir(logDir);
@@ -82,7 +81,6 @@ export async function readElectronLogs(args: {
 
   const sessionDir = join(logDir, sessionId);
 
-  // Determine file to read
   const typeMap = {
     console: "console.log",
     error: "error.log",
@@ -103,12 +101,10 @@ export async function readElectronLogs(args: {
   const content = await readFile(filePath, "utf-8");
   let lines = content.split("\n").filter((line) => line.trim() !== "");
 
-  // Apply tail
   if (args.tail != null && args.tail > 0) {
     lines = lines.slice(-args.tail);
   }
 
-  // Parse structured logs for filtering
   if (args.type === "structured" || args.type === undefined) {
     const entries: StructuredLogEntry[] = [];
 
@@ -116,7 +112,6 @@ export async function readElectronLogs(args: {
       const entry = parseStructuredLine(line);
       if (entry == null) continue;
 
-      // Apply filters
       if (args.source != null && entry.source !== args.source) continue;
       if (args.level != null && entry.level !== args.level) continue;
       if (args.contains != null && !(entry.message ?? "").includes(args.contains)) continue;
@@ -134,7 +129,6 @@ export async function readElectronLogs(args: {
     };
   }
 
-  // Return raw lines for console/error logs
   return {
     success: true,
     sessionId,
@@ -179,7 +173,6 @@ export async function listLogSessions(args?: {
       path: sessionPath,
     };
 
-    // Include stats if requested
     if (args?.includeStats === true) {
       const summaryPath = join(sessionPath, "summary.json");
       if (existsSync(summaryPath)) {
@@ -190,11 +183,10 @@ export async function listLogSessions(args?: {
             session.stats = summaryRaw["stats"];
           }
         } catch {
-          // Ignore
+          // Ignore malformed summary files and continue with basic session info.
         }
       }
 
-      // Count logs
       const structuredPath = join(sessionPath, "structured.jsonl");
       if (existsSync(structuredPath)) {
         // eslint-disable-next-line no-await-in-loop
@@ -207,10 +199,8 @@ export async function listLogSessions(args?: {
     sessions.push(session);
   }
 
-  // Sort by modified time (newest first)
   sessions.sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime());
 
-  // Apply limit
   const limit = args?.limit ?? 10;
   const limited = sessions.slice(0, limit);
 
@@ -229,7 +219,6 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
   const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "app");
 
-  // Get session ID
   let sessionId = args.sessionId;
   if (sessionId == null || sessionId === "") {
     const sessions = await readdir(logDir);
@@ -247,7 +236,6 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
   const sessionDir = join(logDir, sessionId);
   const summaryPath = join(sessionDir, "summary.json");
 
-  // Try to read existing summary
   if (existsSync(summaryPath)) {
     const summaryRaw: unknown = JSON.parse(await readFile(summaryPath, "utf-8"));
     const summary = isRecord(summaryRaw) ? summaryRaw : {};
@@ -258,7 +246,6 @@ export async function getSessionSummary(args: { sessionId?: string }): Promise<u
     };
   }
 
-  // Generate summary on-the-fly
   const structuredPath = join(sessionDir, "structured.jsonl");
 
   if (!existsSync(structuredPath)) {

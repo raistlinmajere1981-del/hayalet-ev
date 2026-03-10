@@ -21,7 +21,6 @@ export async function generateDiagram(
   options: { format?: "mermaid" | "dot"; module?: string; depth?: number } = {}
 ): Promise<DiagramResult> {
   const format = options.format ?? "mermaid";
-  // const _maxDepth = options.depth ?? 10; // TODO: Implement depth limiting
 
   const allFiles: string[] = [];
   for (const srcDir of DEV_CONFIG.srcDirs) {
@@ -30,13 +29,11 @@ export async function generateDiagram(
     allFiles.push(...files);
   }
 
-  // Build dependency graph
   const graph: Map<string, string[]> = new Map();
 
   for (const file of allFiles) {
     const fileName = basename(file).replace(/\.(ts|js|mjs|cjs)$/, "");
 
-    // Filter by module if specified
     if (options.module !== undefined && !file.includes(options.module)) continue;
 
     try {
@@ -53,7 +50,6 @@ export async function generateDiagram(
     }
   }
 
-  // Generate output
   let diagram: string;
   let edgeCount = 0;
 

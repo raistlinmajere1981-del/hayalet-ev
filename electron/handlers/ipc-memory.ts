@@ -27,7 +27,6 @@ function getStore(): MemoryStore {
 }
 
 export function setupMemoryHandlers(): void {
-  // Search / list
   registerHandler(
     "memory-search",
     async (
@@ -56,7 +55,6 @@ export function setupMemoryHandlers(): void {
     }
   );
 
-  // Stats
   registerHandler("memory-stats", async (_event, params: { namespace?: string }) => {
     try {
       const store = getStore();
@@ -69,7 +67,6 @@ export function setupMemoryHandlers(): void {
     }
   });
 
-  // Delete single
   registerHandler("memory-delete", async (_event, params: { id: string }) => {
     try {
       const store = getStore();
@@ -80,7 +77,6 @@ export function setupMemoryHandlers(): void {
     }
   });
 
-  // Update (pin, importance, content, tags)
   registerHandler(
     "memory-update",
     async (
@@ -112,7 +108,6 @@ export function setupMemoryHandlers(): void {
     }
   );
 
-  // Write new
   registerHandler(
     "memory-write",
     async (
@@ -146,7 +141,6 @@ export function setupMemoryHandlers(): void {
     }
   );
 
-  // Prune
   registerHandler(
     "memory-prune",
     async (
@@ -172,11 +166,10 @@ export function setupMemoryHandlers(): void {
     }
   );
 
-  // Delete all (namespace-based)
   registerHandler("memory-delete-all", async (_event, params: { namespace?: string }) => {
     try {
       const store = getStore();
-      // Fetch everything, then delete
+      // NOTE: Delete-all is implemented as search-then-delete because the store has no bulk erase API.
       const searchAllArg: MemorySearchInput = { limit: 200 };
       if (params.namespace !== undefined) searchAllArg["namespace"] = params.namespace;
       const result = await store.searchMemory(searchAllArg);

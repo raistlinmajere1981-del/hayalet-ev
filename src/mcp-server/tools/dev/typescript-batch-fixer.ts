@@ -180,11 +180,11 @@ function generateFix(
   if (line === undefined) return null;
 
   switch (error.code) {
-    case "TS2532": // Object is possibly 'undefined'
-    case "TS18048": // possibly 'undefined'
+    case "TS2532":
+    case "TS18048":
       return fixUndefinedError(line, error, strategy);
 
-    case "TS2722": // Cannot invoke an object which is possibly 'undefined'
+    case "TS2722":
       return fixOptionalChainingError(line, error, strategy);
 
     default:
@@ -197,8 +197,6 @@ function fixUndefinedError(
   error: { line: number; column: number; code: string; message: string },
   strategy: string
 ): { newLine: string; insertBefore?: string } | null {
-  // Extract variable name from error message
-  // "Object is possibly 'undefined'" or "'slotState' is possibly 'undefined'"
   const varMatch = error.message.match(/'([^']+)' is possibly/);
   if (!varMatch) return null;
 
@@ -206,7 +204,6 @@ function fixUndefinedError(
   const indent = line.match(/^\s*/)?.[0] ?? "";
 
   if (strategy === "add_guards") {
-    // Add guard before the line
     return {
       newLine: line,
       insertBefore: `${indent}if (!${varName}) return;\n`,
@@ -214,7 +211,6 @@ function fixUndefinedError(
   }
 
   if (strategy === "add_assertions") {
-    // Add non-null assertion
     return {
       newLine: line.replace(new RegExp(`\\b${varName}\\b`), `${varName}!`),
     };
@@ -228,7 +224,6 @@ function fixOptionalChainingError(
   _error: { line: number; column: number; code: string; message: string },
   strategy: string
 ): { newLine: string; insertBefore?: string } | null {
-  // MessageStore?.method?.() → if (MessageStore && MessageStore.method) { MessageStore.method() }
   const optionalChainMatch = line.match(/(\w+)\?\.([\w]+)\?\.(\(.*?\))/);
   if (!optionalChainMatch) return null;
 
@@ -262,7 +257,7 @@ function applyChanges(
 ): void {
   const newLines = [...lines];
 
-  // Sort by line number (descending) to avoid index shifting
+  // Apply edits bottom-up so earlier replacements do not shift later targets.
   changes.sort((a, b) => b.line - a.line);
 
   for (const change of changes) {

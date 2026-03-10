@@ -6,7 +6,6 @@
  * @module fs/basic
  */
 
-// Function exports
 export {
   readFileContent,
   writeFileContent,
@@ -17,7 +16,6 @@ export {
 
 export { editFileContent } from "./edit.js";
 
-// Tool definition imports
 import {
   READ_FILE_TOOL,
   WRITE_FILE_TOOL,
@@ -28,7 +26,6 @@ import {
 
 import { EDIT_FILE_TOOL } from "./edit.js";
 
-// Combined tool definitions array (for MCP registration)
 export const BASIC_FILE_TOOL_DEFINITIONS = [
   READ_FILE_TOOL,
   WRITE_FILE_TOOL,
@@ -38,7 +35,6 @@ export const BASIC_FILE_TOOL_DEFINITIONS = [
   EDIT_FILE_TOOL,
 ];
 
-// Metadata for tool listing
 export const BASIC_FILE_TOOL_METADATA = {
   category: "Filesystem",
   emoji: "📁",

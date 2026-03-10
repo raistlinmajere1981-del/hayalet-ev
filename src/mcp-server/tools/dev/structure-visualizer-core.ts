@@ -16,7 +16,6 @@ function structureVizT(key: string, params?: Record<string, string | number | bo
   return createMcpTranslatorSync()(`mcpServer.devTools.structureVisualizer.${key}`, params);
 }
 
-// Copy full implementation from dev-tools.ts lines 1293-1785
 export async function visualizeStructure(
   projectRoot: string,
   filePath: string,
@@ -61,15 +60,14 @@ export async function visualizeStructure(
   output.push("═".repeat(50));
   output.push("");
 
-  let scopeCount = 0; // Track scope count outside try block
-  let astParseSuccess = false; // Track AST parse success for bracket validation
+  let scopeCount = 0;
+  let astParseSuccess = false;
 
-  // Try AST parsing for JS/TS files
   if ([".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"].includes(ext)) {
     try {
       const { parse } = await import("@babel/parser");
       const traverseImport = await import("@babel/traverse");
-      // Handle both CommonJS and ESM imports
+      // Support both CommonJS and ESM Babel traverse exports.
       interface TraverseModule {
         default?: TraverseFn | { default?: TraverseFn };
       }
@@ -95,7 +93,6 @@ export async function visualizeStructure(
         ],
       });
 
-      // AST parse successful means brackets are balanced
       astParseSuccess = true;
 
       if (showScopes) {
@@ -232,10 +229,8 @@ export async function visualizeStructure(
           },
         });
 
-        // Sort by start line
         scopes.sort((a, b) => a.startLine - b.startLine);
 
-        // Build hierarchy
         const rootScopes = scopes.filter(
           (s) =>
             !scopes.some((parent) => parent.start < s.start && parent.end > s.end && parent !== s)

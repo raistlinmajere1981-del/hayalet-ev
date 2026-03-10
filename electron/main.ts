@@ -73,6 +73,7 @@ import { setupDatabaseHandlers } from "./handlers/ipc-database.ts";
 import { setupMemoryHandlers } from "./handlers/ipc-memory.ts";
 import { setupOpencodeUiToolsHandlers } from "./handlers/ipc-opencode-ui-tools.ts";
 import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
+import { setupBackupHandlers } from "./handlers/ipc-backup.ts";
 
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
@@ -287,6 +288,7 @@ void app.whenReady().then(async () => {
     setupMemoryHandlers();
     setupOpencodeUiToolsHandlers();
     setupRoomHandlers(mainWindow);
+    setupBackupHandlers();
 
     try {
       initWindowManager({ mainWindow });

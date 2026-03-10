@@ -1803,7 +1803,6 @@ export class AssistantController {
     if (shouldRefreshOpencodeIndicator) {
       this._refreshOpencodeDoctorStatus();
     }
-
   }
 
   _setupWebviewEvents(webviewEl: WebviewElement): void {

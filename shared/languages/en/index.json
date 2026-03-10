@@ -791,6 +791,119 @@
         "removeError": "Room removal failed"
       }
     },
+    "backup": {
+      "openTitle": "Open the backup center",
+      "title": "Backup Center",
+      "createButton": "Create Backup",
+      "selectButton": "Select Bundle",
+      "openFolderButton": "Open Folder",
+      "restoreButton": "Restore",
+      "scopeSectionTitle": "Scope Selection",
+      "scopeSectionNote": "Categories, checkboxes and presets",
+      "historySectionTitle": "Bundles",
+      "historySectionNote": "Local backups and restore preview",
+      "summary": {
+        "selectedScopes": "Selected scopes",
+        "requiresColdRestore": "Cold restore",
+        "restartTargets": "Restart targets",
+        "previewFiles": "Preview files",
+        "yes": "Yes",
+        "no": "No",
+        "none": "None"
+      },
+      "categories": {
+        "application-code": "Application Code",
+        "configuration": "Configuration",
+        "user-data": "User Data",
+        "diagnostics": "Diagnostics"
+      },
+      "scopes": {
+        "app": {
+          "label": "Hayalet-ev App",
+          "note": "Renderer and main application sources"
+        },
+        "mcp-server": {
+          "label": "MCP Server",
+          "note": "Server runtime and MCP integration files"
+        },
+        "ghost-agent": {
+          "label": "Ghost Agent",
+          "note": "Ghost agent runtime and wrapper files"
+        },
+        "agents-config": {
+          "label": "Agents Config",
+          "note": "AGENTS.md and the .rovo workspace metadata"
+        },
+        "data": {
+          "label": "User Data",
+          "note": "All project data under data/"
+        },
+        "logs": {
+          "label": "Logs",
+          "note": "Diagnostic logs under logs/"
+        }
+      },
+      "risk": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "very-high": "Very high"
+      },
+      "presets": {
+        "safe-config-backup": "Safe Config Backup",
+        "user-state-backup": "User State Backup",
+        "runtime-stack-backup": "Runtime Stack Backup",
+        "debug-snapshot": "Debug Snapshot",
+        "full-snapshot": "Full Snapshot"
+      },
+      "list": {
+        "empty": "No backup bundles were found.",
+        "untitled": "Untitled bundle",
+        "invalid": "Invalid",
+        "ready": "Ready",
+        "scopeUnknown": "Scope info unavailable",
+        "externalBundle": "Selected external bundle"
+      },
+      "preview": {
+        "empty": "Select a bundle to inspect its restore impact.",
+        "loading": "Loading restore preview...",
+        "fileCount": "Files",
+        "overwrites": "Overwrites",
+        "risk": "Risk",
+        "restartTargets": "Restart targets",
+        "coldRestoreWarning": "A cold restore is recommended for the selected scopes.",
+        "dataWarning": "Restoring user data will overwrite the current runtime state."
+      },
+      "confirm": {
+        "title": "Confirm Restore",
+        "message": "Restore the selected bundle?",
+        "scopeLine": "Scopes: {{scopes}}",
+        "fileLine": "Files: {{count}}",
+        "restartLine": "Restart target: {{target}}"
+      },
+      "dialog": {
+        "bundleTitle": "Select a backup bundle",
+        "bundleButton": "Use Bundle",
+        "bundleFilterName": "Backup Bundles"
+      },
+      "toasts": {
+        "scopeRequired": "Select at least one scope first",
+        "bundleRequired": "Select a backup bundle first",
+        "filePickerUnavailable": "The file picker is unavailable",
+        "createSuccess": "Backup created",
+        "createError": "Backup creation failed",
+        "restoreSuccess": "Restore completed",
+        "restoreError": "Restore failed"
+      },
+      "cli": {
+        "createSuccess": "Backup created: {{path}}",
+        "selectedScopes": "Scopes: {{scopes}}",
+        "listEmpty": "No backups were found in {{dir}}",
+        "previewSummary": "Preview: {{count}} file(s), risk={{risk}}",
+        "restoreSuccess": "Restore completed from {{path}}",
+        "commandFailed": "Backup command failed: {{message}}"
+      }
+    },
     "livefix": {
       "restartTitle": "Application Restarting",
       "appliedSubtitle": "Live fix applied",
@@ -1189,6 +1302,15 @@
       "settingsSubscriptionFailed": "Failed to subscribe to settings updates: {{message}}",
       "appStarted": "Application started",
       "autoConnectClicked": "Auto-connect: clicked the assistant connect button",
+      "backup": {
+        "overlayOpened": "Backup overlay opened",
+        "listRefreshed": "Backup list refreshed",
+        "previewFailed": "Backup preview failed: {{message}}",
+        "createSucceeded": "Backup created: {{path}}",
+        "createFailed": "Backup creation failed: {{message}}",
+        "restoreSucceeded": "Backup restored: {{path}}",
+        "restoreFailed": "Backup restore failed: {{message}}"
+      },
       "navigationSetupError": "Navigation setup error: {{message}}",
       "topBarSetupError": "Top bar setup error: {{message}}",
       "themeChanged": "Theme changed: {{theme}}",
@@ -1850,6 +1972,13 @@
       "workspaceRoomExists": "Workspace room already exists: {{path}}",
       "bundleReadFailed": "Bundle could not be read",
       "bundleInvalid": "Bundle is invalid"
+    },
+    "backup": {
+      "fileRequired": "Backup bundle file is required",
+      "logs": {
+        "createCompleted": "Backup bundle created: {{path}}",
+        "restoreCompleted": "Backup bundle restored: {{path}}"
+      }
     },
     "database": {
       "accountIdRequired": "Account ID is required",

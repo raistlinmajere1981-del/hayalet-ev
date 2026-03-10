@@ -4,7 +4,6 @@
  * Central export entry point for filesystem tools.
  */
 
-// Function exports (internal use only - tool handlers removed as duplicates)
 export { expandCodeChunks, findAndReplaceCode } from "./code-operations.js";
 export { createChunkedFile, appendChunk } from "./chunked-writer.js";
 export { grep, showFile } from "./search.js";
@@ -15,7 +14,6 @@ export { backupFile, undoOperation, operationHistory } from "./history-manager.j
 export { fileDiff, contentDiff } from "./diff-tools.js";
 export { createTechnicalPlan } from "./plan-creator.js";
 
-// Tool definition imports + re-exports for handler co-location
 import { EXPAND_CODE_CHUNKS_TOOL, FIND_AND_REPLACE_TOOL } from "./code-operations.js";
 import { CREATE_CHUNKED_FILE_TOOL, APPEND_CHUNK_TOOL } from "./chunked-writer.js";
 import { GREP_TOOL, SHOW_FILE_TOOL } from "./search.js";
@@ -30,7 +28,6 @@ import {
 import { FILE_DIFF_TOOL, CONTENT_DIFF_TOOL } from "./diff-tools.js";
 import { CREATE_PLAN_TOOL } from "./plan-creator.js";
 
-// Re-export tool constants for handler co-location
 export {
   EXPAND_CODE_CHUNKS_TOOL,
   FIND_AND_REPLACE_TOOL,
@@ -51,7 +48,6 @@ export {
   CREATE_PLAN_TOOL,
 };
 
-// Combined tool definitions array (for MCP registration)
 export const FILESYSTEM_TOOL_DEFINITIONS = [
   EXPAND_CODE_CHUNKS_TOOL,
   FIND_AND_REPLACE_TOOL,

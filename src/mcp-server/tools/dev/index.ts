@@ -4,7 +4,6 @@
  * Central export hub for all development tools
  */
 
-// Function exports
 export { analyzeProject, PROJECT_ANALYZER_TOOL } from "./project-analyzer.js";
 export { bootstrapContext, CONTEXT_GENERATOR_TOOL } from "./context-generator.js";
 export { generateDiagram, DIAGRAM_GENERATOR_TOOL } from "./diagram-generator.js";
@@ -49,7 +48,6 @@ export {
   TS_LANGUAGE_TOOL_DEFINITIONS,
 } from "./ts-language-tools.js";
 
-// Import tool definitions
 import { PROJECT_ANALYZER_TOOL } from "./project-analyzer.js";
 import { CONTEXT_GENERATOR_TOOL } from "./context-generator.js";
 import { DIAGRAM_GENERATOR_TOOL } from "./diagram-generator.js";
@@ -73,7 +71,6 @@ import { TOOL_REGISTRATION_HELPER_TOOL } from "./tool-registration-helper.js";
 import { CODEMOD_TOOL } from "./codemod.js";
 import { TS_LANGUAGE_TOOL_DEFINITIONS } from "./ts-language-tools.js";
 
-// Combined tool definitions array (for MCP registration)
 export const DEV_TOOL_DEFINITIONS = [
   PROJECT_ANALYZER_TOOL,
   CONTEXT_GENERATOR_TOOL,

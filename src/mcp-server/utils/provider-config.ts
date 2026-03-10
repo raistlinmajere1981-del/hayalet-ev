@@ -10,10 +10,6 @@ import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const mcpT = createMcpTranslatorSync();
 
-// ============================================
-// Types
-// ============================================
-
 export interface ProviderSelectors {
   sendButton?: string;
   stopButton?: string;
@@ -76,17 +72,9 @@ export interface ProviderInfo {
   exists: boolean;
 }
 
-// ============================================
-// Constants
-// ============================================
-
 const PROVIDERS = ["chatgpt", "gemini", "grok", "opencode"] as const;
 
 export type ProviderId = (typeof PROVIDERS)[number];
-
-// ============================================
-// Config Parser
-// ============================================
 
 /** Resolve the provider config file path. */
 export function getConfigPath(projectRoot: string, provider: string): string {
@@ -140,40 +128,32 @@ function extractConfigFromSource(source: string, providerId: string): ProviderCo
     selectors: {},
   };
 
-  // baseUrl
   const baseUrlMatch = source.match(/baseUrl:\s*["']([^"']+)["']/);
   if (baseUrlMatch?.[1] !== undefined) config.baseUrl = baseUrlMatch[1];
 
-  // loginUrl
   const loginUrlMatch = source.match(/loginUrl:\s*["']([^"']+)["']/);
   if (loginUrlMatch?.[1] !== undefined) config.loginUrl = loginUrlMatch[1];
 
-  // lastVerified
   const lastVerifiedMatch = source.match(/lastVerified:\s*["']([^"']+)["']/);
   if (lastVerifiedMatch?.[1] !== undefined) config.lastVerified = lastVerifiedMatch[1];
 
-  // inputType
   const inputTypeMatch = source.match(/inputType:\s*["']([^"']+)["']/);
   if (inputTypeMatch?.[1] !== undefined) config.inputType = inputTypeMatch[1];
 
-  // messageIdStrategy
   const strategyMatch = source.match(/messageIdStrategy:\s*["']([^"']+)["']/);
   if (strategyMatch?.[1] !== undefined) config.messageIdStrategy = strategyMatch[1];
 
-  // selectors object
   config.selectors = extractSelectorsObject(source, "selectors:");
   const selectorMatrix = extractSelectorMatrix(source);
   if (selectorMatrix !== undefined) {
     config.selectorMatrix = selectorMatrix;
   }
 
-  // scrapeSelectors object
   const scrapeSelectors = extractSelectorsObject(source, "scrapeSelectors:");
   if (Object.keys(scrapeSelectors).length > 0) {
     config.scrapeSelectors = scrapeSelectors as ScrapeSelectors;
   }
 
-  // Array selectors
   config.criticalSelectors = extractStringArray(source, "criticalSelectors:");
   config.fileInputSelectors = extractStringArray(source, "fileInputSelectors:");
   config.uploadTargetSelectors = extractStringArray(source, "uploadTargetSelectors:");

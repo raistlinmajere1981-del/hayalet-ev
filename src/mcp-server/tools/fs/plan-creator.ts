@@ -52,7 +52,6 @@ export function createTechnicalPlan(plan: TechnicalPlan): { success: boolean; su
   return { success: true, summary: summaryLines.join("\n") };
 }
 
-// Tool Definition
 export const CREATE_PLAN_TOOL = {
   name: "hev_fs_create_plan",
   description: planToolDefinitionT("createPlan.description"),

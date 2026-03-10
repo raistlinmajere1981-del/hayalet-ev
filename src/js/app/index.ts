@@ -45,6 +45,7 @@ import {
   registerWebviews,
 } from "./page-init.js";
 import { setupRoomOverlay } from "./room-overlay.js";
+import { setupBackupOverlay } from "./backup-overlay.js";
 
 // Extend the Window interface for shared module access.
 declare global {
@@ -188,6 +189,7 @@ async function initApp(): Promise<void> {
     setupWindowControls();
     setupTopBarButtons();
     setupRoomOverlay(controllers);
+    setupBackupOverlay();
     setupTopBarRelayButtons();
     setupReportPanel();
 

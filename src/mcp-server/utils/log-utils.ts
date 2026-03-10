@@ -75,13 +75,11 @@ export async function readSessionLogs(
       return logUtilsT("mcpServer.logUtils.structuredLogMissing");
     }
 
-    // Check the single console.log file first.
     const singleConsolePath = join(sessionDir, "console.log");
     if (existsSync(singleConsolePath)) {
       return await readFile(singleConsolePath, "utf-8");
     }
 
-    // Fallback: console-*.log pattern (chunked logs).
     const files = await readdir(sessionDir);
     const consoleFiles = files.filter((f) => f.startsWith("console-") && f.endsWith(".log")).sort();
 

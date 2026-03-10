@@ -25,18 +25,14 @@ export function expandFolder(
   }
 }
 
-// Helper functions (stubs - need implementation)
 function readFolderStructure(_folderPath: string, _maxDepth: number): unknown[] {
-  // Implementation needed
   return [];
 }
 
 function formatFolderStructure(_entries: unknown[]): string {
-  // Implementation needed
   return "";
 }
 
-// Tool Definition
 export const EXPAND_FOLDER_TOOL = {
   name: "hev_fs_expand_folder",
   description: folderToolDefinitionT("expandFolder.description"),

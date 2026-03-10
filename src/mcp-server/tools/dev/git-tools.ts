@@ -31,7 +31,6 @@ export function gitDiff(
       maxBuffer: 10 * 1024 * 1024,
     });
 
-    // Stats
     let statsCmd = "git diff --stat";
     if (options.staged === true) statsCmd += " --staged";
     if (options.file !== undefined && options.file.length > 0) statsCmd += ` -- "${options.file}"`;

@@ -129,7 +129,6 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     };
   }
 
-  // Error logs
   if (type === "error") {
     const content = await readSessionLogs(targetLogDir, sessionId, "error");
     const filtered = filterLogs(content, { tail });
@@ -144,12 +143,10 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     };
   }
 
-  // Structured logs (default - most detailed log source).
   if (type === "structured") {
     const content = await readSessionLogs(targetLogDir, sessionId, "structured");
     let lines = content.split("\n").filter((l) => l.trim() !== "");
 
-    // Filtering
     if (source != null) {
       lines = lines.filter((l) => {
         const json = parseStructuredLine(l);
@@ -178,10 +175,8 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
       lines = lines.filter((l) => l.includes(correlationId));
     }
 
-    // Keep the last N lines.
     lines = lines.slice(-tail);
 
-    // Convert to a readable text format.
     const formatted = lines.map((l) => {
       const json = parseStructuredLine(l);
       if (!json) return l;
@@ -205,11 +200,9 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     };
   }
 
-  // Console logs (default - combined main + renderer).
   const content = await readSessionLogs(targetLogDir, sessionId, "console");
   let lines = content.split("\n").filter((l) => l.trim() !== "");
 
-  // Filtering
   if (source != null) {
     lines = lines.filter((l) => l.toLowerCase().includes(`[${source.toLowerCase()}]`));
   }
@@ -223,7 +216,6 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     lines = lines.filter((l) => l.includes(correlationId));
   }
 
-  // Keep the last N lines.
   lines = lines.slice(-tail);
 
   const filterInfo = buildFilterInfo(t, { source, level, contains, correlationId });

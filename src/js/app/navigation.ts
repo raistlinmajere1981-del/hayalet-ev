@@ -14,7 +14,6 @@ import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
 const SPECIAL_PAGES = ["settings", "archives", "webview"];
-const ASSISTANT_PAGE = "assistant";
 
 let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};

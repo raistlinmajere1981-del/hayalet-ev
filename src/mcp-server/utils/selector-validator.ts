@@ -9,10 +9,6 @@ import { discoverTargets, sendCDPCommand } from "./cdp-connection.js";
 import { createMcpTranslatorSync } from "./i18n/index.js";
 import type { FlatSelector, ProviderConfig } from "./provider-config.js";
 
-// ============================================
-// Types
-// ============================================
-
 export interface ElementInfo {
   tagName: string;
   id?: string;
@@ -78,10 +74,6 @@ function selectorValidatorT(
   return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
 }
 
-// ============================================
-// Webview Discovery
-// ============================================
-
 /**
  * Find all webview targets and label them by provider
  */
@@ -93,7 +85,6 @@ export async function discoverWebviews(
   return targets
     .filter((t) => t.type === "page" || t.type === "webview")
     .map((t) => {
-      // Resolve the provider from the URL.
       let provider: string | undefined;
       for (const config of providerConfigs) {
         if (t.url.includes(config.baseUrl.replace("https://", "").replace("http://", ""))) {
@@ -134,10 +125,6 @@ export async function findProviderWebview(
   return webviews.find((w) => w.provider === provider) ?? null;
 }
 
-// ============================================
-// CDP Connection for Webview
-// ============================================
-
 /**
  * Connect to a webview
  */
@@ -162,16 +149,11 @@ async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSock
   });
 }
 
-// ============================================
-// Selector Testing
-// ============================================
-
 /**
  * Test a single selector inside a webview
  */
 export async function testSelector(ws: WebSocket, selector: string): Promise<SelectorTestResult> {
   try {
-    // Test the selector in JavaScript.
     const jsCode = `
       (() => {
         try {
@@ -404,10 +386,6 @@ export async function inspectElement(
   }
 }
 
-// ============================================
-// Provider Validation
-// ============================================
-
 /**
  * Validate all selectors for a provider.
  */
@@ -418,12 +396,10 @@ export async function validateProviderSelectors(
 ): Promise<ProviderValidationResult> {
   const timestamp = new Date().toISOString();
 
-  // Category filter.
   const filteredSelectors = categories
     ? selectors.filter((s) => categories.includes(s.category))
     : selectors;
 
-  // Result object.
   const result: ProviderValidationResult = {
     provider: webview.provider ?? "unknown",
     url: webview.url,
@@ -438,13 +414,11 @@ export async function validateProviderSelectors(
     },
   };
 
-  // Connect to the webview.
   let ws: WebSocket;
   try {
     ws = await connectToWebview(webview.webSocketDebuggerUrl);
     result.connected = true;
 
-    // Enable the runtime.
     await sendCDPCommand(ws, "Runtime.enable");
   } catch (error) {
     result.error = (error as Error).message;
@@ -452,7 +426,6 @@ export async function validateProviderSelectors(
   }
 
   try {
-    // Test each selector.
     for (const sel of filteredSelectors) {
       // eslint-disable-next-line no-await-in-loop
       const testResult = await testSelector(ws, sel.selector);
@@ -487,7 +460,6 @@ export async function validateProviderSelectors(
       }
     }
 
-    // Success rate hesapla
     const rate =
       result.summary.total > 0
         ? Math.round((result.summary.valid / result.summary.total) * 100)

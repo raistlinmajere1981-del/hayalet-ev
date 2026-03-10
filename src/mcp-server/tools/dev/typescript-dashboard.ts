@@ -78,17 +78,14 @@ export function generateTypescriptDashboard(
     const cwd = projectRoot;
     const startTime = Date.now();
 
-    // Run TypeScript compiler
     const result = execSync("npm run check-types 2>&1 || true", {
       cwd,
       encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      maxBuffer: 10 * 1024 * 1024,
     });
 
-    // Parse errors
     const errors = parseTypescriptErrors(result);
 
-    // Group by error code
     const byErrorCode: Record<string, number> = {};
     const byFile: Record<string, number> = {};
 
@@ -97,7 +94,6 @@ export function generateTypescriptDashboard(
       byFile[err.file] = (byFile[err.file] ?? 0) + 1;
     });
 
-    // Sort and limit
     const topErrors = Object.entries(byErrorCode)
       .map(([code, count]) => ({
         code,
@@ -115,18 +111,14 @@ export function generateTypescriptDashboard(
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
 
-    // Calculate execution time
     const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
 
-    // Calculate folder and file statistics
-    // Note: TypeScript only reports files with errors, so we can't count total checked files
     const allFiles = Object.keys(byFile).length;
-    const filesWithErrors = allFiles; // All reported files have errors
+    const filesWithErrors = allFiles;
 
     const allFolders = new Set(errors.map((e) => e.file.split("/").slice(0, -1).join("/"))).size;
-    const foldersWithErrors = allFolders; // All reported folders have errors
+    const foldersWithErrors = allFolders;
 
-    // Generate output
     const output = formatDashboard({
       total: errors.length,
       topErrors,
@@ -164,10 +156,6 @@ export function generateTypescriptDashboard(
     };
   }
 }
-
-// ============================================
-// Helper Functions
-// ============================================
 
 function parseTypescriptErrors(
   output: string

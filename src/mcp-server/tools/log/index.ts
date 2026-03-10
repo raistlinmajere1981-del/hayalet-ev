@@ -4,7 +4,6 @@
  * Combines existing and enhanced log tools
  */
 
-// Enhanced tools (NEW)
 export {
   streamLogs,
   analyzeErrors,
@@ -23,7 +22,6 @@ export {
   type ExportLogsResult,
 } from "./enhanced-tools.js";
 
-// Real-time Streaming (NEW)
 export {
   streamLogsRealtime,
   STREAM_LOGS_REALTIME_TOOL,
@@ -31,12 +29,9 @@ export {
   type StreamLogsRealtimeResult,
 } from "./streaming.js";
 
-// MCP Analysis Tools (SESSION 5.5)
 export {
   analyzeMcpToolUsage,
   getMcpToolPerformance,
   correlateMcpErrors,
   getAgentToolTrace,
 } from "./mcp-analysis.js";
-
-// Re-export existing tools from log-tools.ts will be integrated later

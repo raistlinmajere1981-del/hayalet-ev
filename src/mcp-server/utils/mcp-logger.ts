@@ -1,11 +1,10 @@
 /**
- * MCP Server Logger - Integrated with Main App Logging System
+ * MCP logger that mirrors tool lifecycle events into the mcp-server session logs.
  *
- * SESSION 5.5: MCP Logging Integration
- * - Writes to main app logs (logs/YYYYMMDD-HHMMSS-xxxx/)
+ * It writes both tool-specific records and a unified structured stream so
+ * diagnostics can correlate MCP activity with the rest of the application.
  * - Creates mcp-tools.jsonl for detailed MCP logs
  * - Writes to structured.jsonl for unified log analysis
- * - Performance tracking and error correlation
  */
 
 import { appendFile, existsSync, mkdirSync, readdirSync, statSync } from "fs";
@@ -61,9 +60,6 @@ interface UnifiedLogEntry {
     | undefined;
 }
 
-/**
- * MCPLogger Class - Integrated logging for MCP tools
- */
 class MCPLogger {
   private logDir: string;
   private currentSessionId: string | null = null;
@@ -167,7 +163,6 @@ class MCPLogger {
     };
 
     await this.writeToLog(entry);
-    // Removed console.log - stdout must be clean for JSON-RPC
   }
 
   /**
@@ -195,7 +190,6 @@ class MCPLogger {
     };
 
     await this.writeToLog(entry);
-    // Removed console.log - stdout must be clean for JSON-RPC
   }
 
   /**
@@ -227,13 +221,11 @@ class MCPLogger {
     };
 
     await this.writeToLog(entry);
-    // Write to stderr (avoid circular dependency with Logger)
+    // stderr is safe here; stdout must remain valid JSON-RPC output.
     process.stderr.write(`${entry.message}\n`);
   }
 
-  /**
-   * Write log entry to both mcp-tools.jsonl and structured.jsonl
-   */
+  /** Mirror each entry into the tool-specific and unified session logs. */
   // eslint-disable-next-line @typescript-eslint/require-await
   private async writeToLog(entry: MCPLogEntry): Promise<void> {
     try {
@@ -244,7 +236,6 @@ class MCPLogger {
         mkdirSync(sessionDir, { recursive: true });
       }
 
-      // 1. Write to mcp-tools.jsonl (detailed MCP logs)
       const mcpLogPath = join(sessionDir, "mcp-tools.jsonl");
       appendFile(mcpLogPath, JSON.stringify(entry) + "\n", "utf-8", (err) => {
         if (err) {
@@ -255,7 +246,6 @@ class MCPLogger {
         }
       });
 
-      // 2. Write to structured.jsonl (unified logs)
       const structuredPath = join(sessionDir, "structured.jsonl");
       const unifiedEntry: UnifiedLogEntry = {
         timestamp: entry.timestamp,
@@ -327,10 +317,6 @@ function writeLoggerInternalError(key: string, params?: Record<string, string | 
   process.stderr.write(`${t(`mcpServer.logs.${key}`, params)}\n`);
 }
 
-// ============================================================================
-// Export Functions (backward compatible + new API)
-// ============================================================================
-
 /**
  * Log tool call start (backward compatible)
  * Returns startTime for duration calculation
@@ -343,9 +329,7 @@ export function logToolCall(toolName: string, args: unknown): { startTime: numbe
   return { startTime };
 }
 
-/**
- * Log tool call success (NEW - Session 5.5)
- */
+/** Log tool call success. */
 export function logToolSuccess(
   toolName: string,
   result: unknown,
@@ -357,9 +341,7 @@ export function logToolSuccess(
   });
 }
 
-/**
- * Log tool call error (backward compatible + enhanced)
- */
+/** Log tool call error. */
 export function logToolError(
   toolName: string,
   error: Error,
@@ -371,14 +353,14 @@ export function logToolError(
     writeLoggerInternalError("errorLogFailed", { message: String(err) });
   });
 
-  // Keep stderr output for MCP client (required by MCP protocol)
+  // WARNING: stderr is the only safe console channel here because stdout must remain valid JSON-RPC.
   console.error(
     createMcpTranslatorSync()("mcpServer.logs.toolError", { toolName, message: error.message })
   );
 }
 
 /**
- * General error logging
+ * General error logging.
  */
 export function logError(message: string, error?: Error): void {
   const err = error ?? new Error(message);
@@ -387,8 +369,4 @@ export function logError(message: string, error?: Error): void {
   });
 }
 
-// ============================================================================
-// Startup Log
-// ============================================================================
-// Note: console.log removed - stdout must be clean for JSON-RPC
-// Initialization logged to mcp-tools.jsonl instead
+// NOTE: Startup logging is written to mcp-tools.jsonl because stdout must stay clean for JSON-RPC.

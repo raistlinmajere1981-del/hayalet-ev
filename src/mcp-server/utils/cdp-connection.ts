@@ -258,7 +258,6 @@ export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): 
   const ws = await connectToTarget(target.webSocketDebuggerUrl);
 
   try {
-    // Enable the runtime.
     await sendCDPCommand(ws, "Runtime.enable");
     return await action(ws);
   } finally {

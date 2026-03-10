@@ -263,7 +263,6 @@ export async function detectContextAwareDuplicates(
       ext.endsWith(".cjs");
 
     if (!isCodeFile) {
-      // Fallback to simple detection for non-code files
       return detectSimpleDuplicates(lines, changedLineStart, changedLineEnd, searchRadius);
     }
 
@@ -279,40 +278,34 @@ export async function detectContextAwareDuplicates(
         },
       });
     } catch (_parseError) {
-      // Syntax error - fallback to simple detection
       return detectSimpleDuplicates(lines, changedLineStart, changedLineEnd, searchRadius);
     }
 
-    // Build scope map
     const scopeMap = buildScopeMap(ast);
 
-    // Find duplicates
     const duplicates: DuplicateInfo[] = [];
     const changedLines = lines.slice(changedLineStart, changedLineEnd);
 
     for (let i = 0; i < changedLines.length; i++) {
       const changedLine = (changedLines[i] ?? "").trim();
-      if (changedLine.length < 10) continue; // Skip short lines
-      if (changedLine.startsWith("//") || changedLine.startsWith("/*")) continue; // Skip comments
-      if (isTemplatePattern(changedLine)) continue; // Skip template patterns
+      if (changedLine.length < 10) continue;
+      if (changedLine.startsWith("//") || changedLine.startsWith("/*")) continue;
+      if (isTemplatePattern(changedLine)) continue;
 
-      const changedLineNum = changedLineStart + i + 1; // 1-based
+      const changedLineNum = changedLineStart + i + 1;
       const changedScope = scopeMap.get(changedLineNum);
 
-      // Check lines before and after the changed region
       const searchStart = Math.max(0, changedLineStart - searchRadius);
       const searchEnd = Math.min(lines.length, changedLineEnd + searchRadius);
 
       for (let j = searchStart; j < searchEnd; j++) {
-        // Skip the changed region itself
         if (j >= changedLineStart && j < changedLineEnd) continue;
 
         const compareLine = (lines[j] ?? "").trim();
         if (changedLine === compareLine && compareLine.length > 0) {
-          const compareLineNum = j + 1; // 1-based
+          const compareLineNum = j + 1;
           const compareScope = scopeMap.get(compareLineNum);
 
-          // Only flag if in the same scope
           if (changedScope && compareScope && areSameScope(changedScope, compareScope)) {
             duplicates.push({
               line1: changedLineNum,
@@ -320,7 +313,7 @@ export async function detectContextAwareDuplicates(
               content: changedLine,
               scope: changedScope.name !== "" ? changedScope.name : changedScope.type,
             });
-            break; // Only report first duplicate
+            break;
           }
         }
       }
@@ -328,15 +321,14 @@ export async function detectContextAwareDuplicates(
 
     return duplicates;
   } catch (error) {
-    // On any error, return empty array (don't block the operation)
-    // Write to stderr (duplicate detection error)
+    // Duplicate detection is advisory and must not block the caller.
     process.stderr.write(`Duplicate detection error: ${String(error)}\n`);
     return [];
   }
 }
 
 /**
- * Fallback: Simple duplicate detection (original logic)
+ * Fallback duplicate detection for files that cannot be parsed safely.
  */
 function detectSimpleDuplicates(
   lines: string[],
@@ -350,7 +342,7 @@ function detectSimpleDuplicates(
   for (let i = 0; i < changedLines.length; i++) {
     const changedLine = (changedLines[i] ?? "").trim();
     if (changedLine.length < 10) continue;
-    if (isTemplatePattern(changedLine)) continue; // Skip template patterns
+    if (isTemplatePattern(changedLine)) continue;
 
     const changedLineNum = changedLineStart + i + 1;
     const searchStart = Math.max(0, changedLineStart - searchRadius);

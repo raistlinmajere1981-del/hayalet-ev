@@ -37,11 +37,7 @@ function toolDiscoveryDefinitionT(key: string, params?: TranslationParams): stri
 
 const INTENT_PATTERNS: IntentPattern[] = [
   {
-    patterns: [
-      /typescript.*error/i,
-      /ts.*fix/i,
-      /type.*issue/i,
-    ],
+    patterns: [/typescript.*error/i, /ts.*fix/i, /type.*issue/i],
     category: "typescript",
     tools: [
       {
@@ -60,12 +56,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["typescript-fix-large", "typescript-fix-small"],
   },
   {
-    patterns: [
-      /edit.*file/i,
-      /change.*code/i,
-      /modify/i,
-      /update.*file/i,
-    ],
+    patterns: [/edit.*file/i, /change.*code/i, /modify/i, /update.*file/i],
     category: "fileEditing",
     tools: [
       { name: "hev_fs_show", priority: 1, reasonKey: "alwaysReadFileFirst" },
@@ -76,11 +67,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["file-edit-safe"],
   },
   {
-    patterns: [
-      /refactor/i,
-      /batch.*change/i,
-      /multiple.*file/i,
-    ],
+    patterns: [/refactor/i, /batch.*change/i, /multiple.*file/i],
     category: "refactoring",
     tools: [
       {
@@ -94,12 +81,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["batch-refactor"],
   },
   {
-    patterns: [
-      /debug/i,
-      /error.*electron/i,
-      /app.*crash/i,
-      /not.*work/i,
-    ],
+    patterns: [/debug/i, /error.*electron/i, /app.*crash/i, /not.*work/i],
     category: "debugging",
     tools: [
       { name: "hev_read_electron_logs", priority: 1, reasonKey: "checkLogsFirst" },
@@ -129,12 +111,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["create-pr"],
   },
   {
-    patterns: [
-      /memory/i,
-      /remember/i,
-      /context.*store/i,
-      /knowledge.*base/i,
-    ],
+    patterns: [/memory/i, /remember/i, /context.*store/i, /knowledge.*base/i],
     category: "memory",
     tools: [
       { name: "hev_memory_search", priority: 1, reasonKey: "searchSharedMemoryFirst" },
@@ -151,12 +128,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: [],
   },
   {
-    patterns: [
-      /read.*file/i,
-      /show.*file/i,
-      /inspect/i,
-      /view/i,
-    ],
+    patterns: [/read.*file/i, /show.*file/i, /inspect/i, /view/i],
     category: "fileReading",
     tools: [
       { name: "hev_fs_show", priority: 1, reasonKey: "readWithLineNumbers" },
@@ -176,12 +148,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: [],
   },
   {
-    patterns: [
-      /large.*file/i,
-      /big.*file/i,
-      /chunk/i,
-      /50kb/i,
-    ],
+    patterns: [/large.*file/i, /big.*file/i, /chunk/i, /50kb/i],
     category: "largeFile",
     tools: [
       {
@@ -196,12 +163,7 @@ const INTENT_PATTERNS: IntentPattern[] = [
     workflows: ["chunk-write"],
   },
   {
-    patterns: [
-      /safe.*edit/i,
-      /validated.*edit/i,
-      /bracket.*check/i,
-      /scope.*safe/i,
-    ],
+    patterns: [/safe.*edit/i, /validated.*edit/i, /bracket.*check/i, /scope.*safe/i],
     category: "safeEditing",
     tools: [
       { name: "hev_fs_show", priority: 1, reasonKey: "alwaysReadFileFirst" },

@@ -23,8 +23,6 @@ import * as ts from "typescript";
 import { readFileSync, existsSync } from "fs";
 import { join, relative, dirname } from "path";
 
-// ─── Types ───────────────────────────────────────────────
-
 export interface TsConfigMapping {
   name: string;
   configPath: string;
@@ -106,8 +104,6 @@ export interface SignatureHelpResult {
   activeParameter: number;
 }
 
-// ─── Project Instance ────────────────────────────────────
-
 interface ProjectInstance {
   service: ts.LanguageService;
   program: ts.Program | undefined;
@@ -118,8 +114,6 @@ interface ProjectInstance {
   lastUsed: number;
   compilerOptions: ts.CompilerOptions;
 }
-
-// ─── Constants ───────────────────────────────────────────
 
 /** Auto-dispose after 90 seconds of inactivity */
 const DISPOSE_TIMEOUT_MS = 90_000;
@@ -138,8 +132,6 @@ const DIAGNOSTIC_CATEGORIES: Record<number, DiagnosticResult["category"]> = {
   [ts.DiagnosticCategory.Message]: "message",
 };
 
-// ─── Manager Class ───────────────────────────────────────
-
 export class TsLanguageServiceManager {
   private projects = new Map<string, ProjectInstance>();
   private projectRoot: string;
@@ -152,15 +144,13 @@ export class TsLanguageServiceManager {
     this.startDisposeWatcher();
   }
 
-  // ─── Config Detection ──────────────────────────────────
-
   /**
    * Auto-detect tsconfig files and map path prefixes.
    */
   private detectConfigs(): TsConfigMapping[] {
     const mappings: TsConfigMapping[] = [];
 
-    // Order matters: more specific first
+    // NOTE: Check the narrowest tsconfig mappings first so shared files resolve predictably.
     const candidates: Array<{ file: string; prefixes: string[] }> = [
       { file: "tsconfig.mcp.json", prefixes: ["src/mcp-server/"] },
       { file: "tsconfig.electron.json", prefixes: ["electron/"] },
@@ -185,7 +175,6 @@ export class TsLanguageServiceManager {
    * Determine which tsconfig a file belongs to.
    */
   private resolveConfig(filePath: string): TsConfigMapping | null {
-    // Normalize to relative path
     const rel = filePath.startsWith("/") ? relative(this.projectRoot, filePath) : filePath;
 
     for (const config of this.configs) {
@@ -194,12 +183,10 @@ export class TsLanguageServiceManager {
       }
     }
 
-    // Fallback: tsconfig.json (main project)
+    // NOTE: Default to the main project config when no prefix-specific mapping matches.
     const fallback = this.configs.find((c) => c.name === "tsconfig");
     return fallback ?? this.configs[0] ?? null;
   }
-
-  // ─── Project Lifecycle ─────────────────────────────────
 
   /**
    * Get or create a LanguageService for the given config.
@@ -211,7 +198,7 @@ export class TsLanguageServiceManager {
       return existing;
     }
 
-    // LRU eviction: dispose oldest projects if at capacity
+    // NOTE: Keep at most one warm project to cap memory use in large repos.
     while (this.projects.size >= MAX_LOADED_PROJECTS) {
       let oldestName: string | null = null;
       let oldestTime = Infinity;
@@ -230,7 +217,6 @@ export class TsLanguageServiceManager {
       }
     }
 
-    // Parse tsconfig
     const configFile = ts.readConfigFile(config.configPath, (path) => readFileSync(path, "utf-8"));
 
     const parsed = ts.parseJsonConfigFileContent(
@@ -245,7 +231,6 @@ export class TsLanguageServiceManager {
       fileVersions.set(f, 1);
     }
 
-    // Create LanguageServiceHost
     const serviceHost: ts.LanguageServiceHost = {
       getScriptFileNames: () => fileNames,
       getScriptVersion: (fileName) => String(fileVersions.get(fileName) ?? 1),
@@ -295,7 +280,7 @@ export class TsLanguageServiceManager {
     const project = this.getProject(config);
     const absolutePath = filePath.startsWith("/") ? filePath : join(this.projectRoot, filePath);
 
-    // Ensure the file is in the project — if not, add it dynamically
+    // Add ad-hoc files on demand so tool calls can inspect newly created files.
     if (!project.fileNames.includes(absolutePath)) {
       if (existsSync(absolutePath)) {
         project.fileNames.push(absolutePath);
@@ -320,7 +305,7 @@ export class TsLanguageServiceManager {
     const program = service.getProgram();
     const sourceFile = program?.getSourceFile(filePath);
     if (!sourceFile) {
-      // Fallback: manual calculation
+      // Fall back to text scanning when the file is not in the current TS program.
       const content = readFileSync(filePath, "utf-8");
       const lines = content.split("\n");
       let pos = 0;
@@ -330,7 +315,7 @@ export class TsLanguageServiceManager {
       return pos + (column - 1);
     }
 
-    // Boundary check: clamp line/column to valid range
+    // Clamp coordinates so callers can safely probe near line endings.
     const lineCount = sourceFile.getLineStarts().length;
     const safeLine = Math.max(0, Math.min(line - 1, lineCount - 1));
     const lineStart = sourceFile.getLineStarts()[safeLine] ?? 0;
@@ -355,8 +340,6 @@ export class TsLanguageServiceManager {
     return { line: lc.line + 1, column: lc.character + 1 };
   }
 
-  // ─── Auto-dispose ──────────────────────────────────────
-
   private startDisposeWatcher(): void {
     this.disposeTimer = setInterval(() => {
       const now = Date.now();
@@ -368,14 +351,11 @@ export class TsLanguageServiceManager {
       }
     }, DISPOSE_CHECK_INTERVAL_MS);
 
-    // Don't prevent process exit
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (this.disposeTimer !== null) {
       this.disposeTimer.unref();
     }
   }
-
-  // ─── Public API ────────────────────────────────────────
 
   /**
    * Get type information at a position (hover-like).
@@ -463,7 +443,6 @@ export class TsLanguageServiceManager {
           ? this.getLineCol(sourceFile, ref.textSpan.start)
           : { line: 0, column: 0 };
 
-        // Get the line text for context
         let lineText = "";
         if (sourceFile) {
           const lineStart = sourceFile.getPositionOfLineAndCharacter(loc.line - 1, 0);
@@ -522,7 +501,6 @@ export class TsLanguageServiceManager {
     const maxItems = options?.maxItems ?? 50;
 
     return completions.entries.slice(0, maxItems).map((entry) => {
-      // Get details lazily only for top items
       const documentation = "";
 
       const result: {
@@ -623,7 +601,6 @@ export class TsLanguageServiceManager {
 
     const pos = this.getPosition(ctx.service, ctx.absolutePath, line, column);
 
-    // Check if rename is possible
     const renameInfo = ctx.service.getRenameInfo(ctx.absolutePath, pos);
     if (!renameInfo.canRename) {
       return {
@@ -633,7 +610,6 @@ export class TsLanguageServiceManager {
       };
     }
 
-    // Get rename locations
     const renameLocations = ctx.service.findRenameLocations(
       ctx.absolutePath,
       pos,
@@ -643,7 +619,6 @@ export class TsLanguageServiceManager {
 
     if (!renameLocations) return { canRename: true, edits: [] };
 
-    // Group by file
     const fileMap = new Map<string, RenameEdit>();
 
     for (const loc of renameLocations) {

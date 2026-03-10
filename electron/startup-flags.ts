@@ -3,8 +3,6 @@ export interface StartupFlags {
   autoConnect: boolean;
 }
 
-const ASSISTANT_START_PAGE = "assistant";
-
 function readFlagValue(argv: readonly string[], flagName: string): string | null {
   const prefix = `${flagName}=`;
   const raw = argv.find((arg) => arg.startsWith(prefix));

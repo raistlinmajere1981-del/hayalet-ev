@@ -108,7 +108,6 @@ export async function analyzeMcpToolUsage(args: {
   const sessionId = args.sessionId ?? getCurrentSessionId(MCP_LOG_DIR);
   const mcpLogPath = join(MCP_LOG_DIR, sessionId, "mcp-tools.jsonl");
 
-  // Check whether the session log file exists.
   if (!existsSync(mcpLogPath)) {
     return {
       totalCalls: 0,
@@ -118,14 +117,12 @@ export async function analyzeMcpToolUsage(args: {
     };
   }
 
-  // Read and parse the MCP tool log stream.
   const content = await readFile(mcpLogPath, "utf-8");
   const entries = content
     .split("\n")
     .filter((line) => line.trim() !== "")
     .map((line) => JSON.parse(line) as MCPLogEntry);
 
-  // Apply the optional time-range filter.
   let filtered = entries;
   if (args.timeRange) {
     const from = new Date(args.timeRange.from).getTime();
@@ -136,7 +133,6 @@ export async function analyzeMcpToolUsage(args: {
     });
   }
 
-  // Aggregate usage by tool.
   const byTool = new Map<string, { calls: number; durations: number[]; errors: number }>();
 
   for (const entry of filtered) {
@@ -158,7 +154,6 @@ export async function analyzeMcpToolUsage(args: {
     }
   }
 
-  // Calculate derived statistics.
   const toolStats = Array.from(byTool.entries()).map(([tool, stats]) => ({
     tool,
     calls: stats.calls,
@@ -169,10 +164,8 @@ export async function analyzeMcpToolUsage(args: {
     errorRate: stats.calls > 0 ? stats.errors / stats.calls : 0,
   }));
 
-  // Sort by call count.
   toolStats.sort((a, b) => b.calls - a.calls);
 
-  // Find the slowest successful calls.
   const slowestCalls = filtered
     .filter((e) => e.operation === "success" && e.duration != null)
     .sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0))
@@ -291,7 +284,6 @@ export async function correlateMcpErrors(args: {
     return { mcpErrors: [] };
   }
 
-  // Read MCP errors.
   const mcpContent = await readFile(mcpLogPath, "utf-8");
   const mcpErrors = mcpContent
     .split("\n")
@@ -299,7 +291,6 @@ export async function correlateMcpErrors(args: {
     .map((line) => JSON.parse(line) as MCPLogEntry)
     .filter((e) => e.operation === "error");
 
-  // Read structured app logs when available.
   let structuredEvents: StructuredEvent[] = [];
   if (existsSync(structuredLogPath)) {
     const structuredContent = await readFile(structuredLogPath, "utf-8");
@@ -310,7 +301,6 @@ export async function correlateMcpErrors(args: {
       .filter((event): event is StructuredEvent => event !== null);
   }
 
-  // Correlate errors with nearby structured events.
   const correlatedErrors = mcpErrors.map((error) => {
     const errorTime = new Date(error.timestamp).getTime();
 

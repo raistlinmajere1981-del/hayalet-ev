@@ -261,16 +261,13 @@ export function analyzeScopeImpact(
       },
     });
 
-    // Detect wrapper patterns such as short arrow callbacks.
     const isWrapperPattern = (scope: ScopeInfo): boolean => {
-      // Short arrow functions are often wrappers or callbacks and are usually safe.
       if (scope.type === "arrow" && scope.endLine - scope.startLine < 10) {
         return true;
       }
       return false;
     };
 
-    // Check whether a scope is nested inside another scope.
     const isNestedInside = (child: ScopeInfo, parent: ScopeInfo): boolean => {
       return (
         child.startLine >= parent.startLine &&
@@ -279,15 +276,12 @@ export function analyzeScopeImpact(
       );
     };
 
-    // Track safe parent scopes such as imports, exports, and wrapper callbacks.
     const safeParentScopes: ScopeInfo[] = [];
 
-    // Check which scopes are affected.
     for (const scope of scopes) {
       const scopeStart = scope.startLine;
       const scopeEnd = scope.endLine;
 
-      // Check whether the edit range intersects the scope.
       const intersects =
         (startLine >= scopeStart && startLine <= scopeEnd) ||
         (endLine >= scopeStart && endLine <= scopeEnd) ||
@@ -296,28 +290,22 @@ export function analyzeScopeImpact(
       if (intersects) {
         affectedScopes.push(scope);
 
-        // Import/export statements are single-line and safe to edit.
         const isSafeType = ["import", "export"].includes(scope.type);
 
-        // Small arrow functions often behave like safe wrappers.
         const isWrapper = isWrapperPattern(scope);
 
         if (isSafeType || isWrapper) {
-          // Safe patterns can skip scope-breaking checks.
           safeParentScopes.push(scope);
           continue;
         }
 
-        // If the scope is inside a safe parent, skip it as well.
         const isNestedInSafeParent = safeParentScopes.some((parent) =>
           isNestedInside(scope, parent)
         );
         if (isNestedInSafeParent) {
-          // This scope is inside a safe wrapper pattern.
           continue;
         }
 
-        // If the closing line falls inside the edit range, the scope will break.
         if (scopeEnd >= startLine && scopeEnd <= endLine) {
           brokenScopes.push(scope);
           warnings.push(
@@ -330,7 +318,6 @@ export function analyzeScopeImpact(
           );
         }
 
-        // If the opening line is inside the range but the closing line is not, it will also break.
         if (scopeStart >= startLine && scopeStart <= endLine && scopeEnd > endLine) {
           brokenScopes.push(scope);
           warnings.push(
@@ -345,7 +332,7 @@ export function analyzeScopeImpact(
       }
     }
   } catch (err) {
-    // If AST parsing fails, the caller can still rely on bracket-level checks.
+    // Fall back to bracket-level validation when AST parsing fails.
     const error = err as Error;
     warnings.push(scopeValidatorT("runtime.astParsingFailed", { message: error.message }));
   }
@@ -364,11 +351,10 @@ export function analyzeScopeImpact(
  * Check whether the content change is only a variable rename.
  */
 function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
-  // Normalize by replacing all identifiers with a placeholder.
   const normalize = (s: string): unknown => {
     return s
-      .replace(/\b[a-z_$][a-zA-Z0-9_$]*\b/g, "VAR") // identifiers
-      .replace(/\s+/g, " ") // whitespace
+      .replace(/\b[a-z_$][a-zA-Z0-9_$]*\b/g, "VAR")
+      .replace(/\s+/g, " ")
       .trim();
   };
 
@@ -379,11 +365,10 @@ function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
  * Check whether the content change is only a type annotation update.
  */
 function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
-  // Remove type annotations and compare the remaining structure.
   const removeTypes = (s: string): unknown => {
     return s
-      .replace(/:\s*[A-Z][a-zA-Z0-9<>[\]|&,\s]*(?=[,;)])/g, ": TYPE") // type annotations
-      .replace(/<[^>]+>/g, "<T>") // generics
+      .replace(/:\s*[A-Z][a-zA-Z0-9<>[\]|&,\s]*(?=[,;)])/g, ": TYPE")
+      .replace(/<[^>]+>/g, "<T>")
       .replace(/\s+/g, " ")
       .trim();
   };
@@ -395,7 +380,6 @@ function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
  * Check whether the edit only adds optional chaining.
  */
 function isOnlyOptionalChainingAddition(oldContent: string, newContent: string): boolean {
-  // Remove optional chaining operators and compare.
   const removeOptional = (s: string): string => s.replace(/\?\./g, ".").replace(/\??\[/g, "[");
 
   return removeOptional(oldContent) === removeOptional(newContent);
@@ -424,19 +408,16 @@ export function validateBracketBalance(
     const newOpenCount = newBrackets.open[openChar]?.length ?? 0;
     const newCloseCount = newBrackets.close[closeChar]?.length ?? 0;
 
-    // Check whether the edit broke the balance.
     const wasBalanced = oldOpenCount === oldCloseCount;
     const isBalanced = newOpenCount === newCloseCount;
 
     if (wasBalanced && !isBalanced) {
-      // Skip harmless structural rewrites that alter bracket counts indirectly.
       const isBenignChange =
         isOnlyVariableRename(oldContent, newContent) ||
         isOnlyTypeChange(oldContent, newContent) ||
         isOnlyOptionalChainingAddition(oldContent, newContent);
 
       if (isBenignChange) {
-        // False positive: syntax changed, but bracket integrity did not.
         continue;
       }
 

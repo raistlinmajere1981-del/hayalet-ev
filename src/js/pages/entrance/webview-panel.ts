@@ -205,7 +205,7 @@ export class WebviewPanel {
       const ai1WebviewEl = document.getElementById("ai1-webview") as WebviewTag | null;
       const ai2WebviewEl = document.getElementById("ai2-webview") as WebviewTag | null;
 
-      // NOTE: Webview registration is done in app.ts to avoid duplicate registration
+      // NOTE: app.ts owns webview registration to avoid duplicate lifecycle hooks.
       if (ai1WebviewEl && !this.ai1Webview) {
         this.ai1Webview = ai1WebviewEl;
       }

@@ -299,8 +299,26 @@ Memory akışı tamamen MCP üzerinden yürür.
 | `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi (referans) |
 | `.rovo/_metadata/SYSTEM-INFO.md`  | Donanım, OS, runtime ve ortam profili |
 | `.rovo/_metadata/DOM-MANIFEST.json` | Statik DOM selector lookup indeksi |
+| `.rovo/_metadata/COMMENT-INDEX.md` | Yüksek sinyalli comment özeti ve hızlı gezinme |
+| `.rovo/_metadata/COMMENT-INDEX.json` | Comment index'in makine tüketimine uygun sürümü |
 
-> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `SYSTEM-INFO.md` ve `DOM-MANIFEST.json` build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
+> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `SYSTEM-INFO.md`, `DOM-MANIFEST.json` ve `COMMENT-INDEX` çıktıları build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
+
+### Comment Convention (Kısa)
+
+- Tüm yeni comment'ler English-only yazılır.
+- Comment, kodun ne yaptığını değil neden bu şekilde kaldığını anlatır.
+- Sadece şu tip comment'ler tutulur: intent, invariant, safety constraint, fallback rationale, ordering dependency, integration boundary.
+- Banner/separator comment, numbered step narration, stale TODO ve obvious inline açıklama eklenmez.
+- Prefix gerekiyorsa yalnızca `AI:`, `NOTE:`, `WARNING:` ve takip edilecekse `TODO:` kullanılır.
+
+### COMMENT-INDEX Kullanımı
+
+- Hızlı yön bulma için önce `.rovo/_metadata/COMMENT-INDEX.md` okunur.
+- Structured lookup veya otomasyon gerekiyorsa `.rovo/_metadata/COMMENT-INDEX.json` kullanılır.
+- Bu index source of truth değildir; gerçek düzenleme öncesi ilgili dosya mutlaka açılıp doğrulanır.
+- File-level intent, symbol-level rationale, fallback ve constraint notlarını bulmak için index tercih edilir.
+- Index'te görünmeyen bir comment'in yok olduğu varsayılmaz; yalnızca high-signal filtreye girmemiş olabilir.
 
 ---
 

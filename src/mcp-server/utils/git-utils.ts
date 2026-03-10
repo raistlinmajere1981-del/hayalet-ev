@@ -64,7 +64,6 @@ export function removeStaleLock(workspacePath: string): boolean {
 
   try {
     unlinkSync(lockCheck.path ?? "");
-    // Write to stderr (informational message for git lock recovery)
     process.stderr.write(
       `${gitUtilsT("removedStaleLock", { ageMinutes: lockCheck.ageMinutes ?? 0 })}\n`
     );
@@ -91,11 +90,9 @@ export function safeGitCommand(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Check for stale lock before executing
       const lockCheck = checkGitLock(workspacePath);
 
       if (lockCheck.hasLock && lockCheck.isStale) {
-        // Write to stderr (informational message for git lock detection)
         process.stderr.write(`${gitUtilsT("staleLockDetected", { attempt: attempt + 1 })}\n`);
         removeStaleLock(workspacePath);
       } else if (lockCheck.hasLock && !lockCheck.isStale) {
@@ -104,7 +101,6 @@ export function safeGitCommand(
         );
       }
 
-      // Execute command
       return execSync(command, {
         cwd: workspacePath,
         encoding,
@@ -113,27 +109,22 @@ export function safeGitCommand(
     } catch (error: unknown) {
       lastError = error as Error;
 
-      // Check if error is lock-related
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isLockError =
         errorMessage.includes("index.lock") || errorMessage.includes("Unable to create");
 
       if (isLockError && attempt < maxRetries) {
-        // Write to stderr (git lock recovery attempt)
         process.stderr.write(
           `${gitUtilsT("recoveryAttempt", { attempt: attempt + 1, maxRetries })}\n`
         );
         try {
           removeStaleLock(workspacePath);
         } catch (_removeError) {
-          // If we can't remove lock, throw original error
           throw error;
         }
-        // Retry
         continue;
       }
 
-      // Not a lock error or no retries left
       throw error;
     }
   }

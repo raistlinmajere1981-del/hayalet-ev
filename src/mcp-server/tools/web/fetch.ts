@@ -13,10 +13,6 @@ import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/i
 import { logToolError } from "../../utils/mcp-logger.js";
 import type { ToolResult } from "@shared/index-mcp.js";
 
-// ============================================
-// Types & Interfaces
-// ============================================
-
 export interface WebFetchOptions {
   url: string;
   maxLength?: number;
@@ -57,21 +53,16 @@ function webFetchT(
   return t(`mcpServer.webTools.fetch.${key}`, params);
 }
 
-// ============================================
-// URL Validation
-// ============================================
-
 const ALLOWED_PROTOCOLS = ["http:", "https:"];
 const BLOCKED_DOMAINS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"];
 
 /**
- * Validate URL for security
+ * Reject unsupported protocols and local addresses before fetching remote content.
  */
 function validateUrl(url: string): UrlValidationResult {
   try {
     const parsed = new URL(url);
 
-    // Check protocol
     if (!ALLOWED_PROTOCOLS.includes(parsed.protocol)) {
       return {
         valid: false,
@@ -80,7 +71,6 @@ function validateUrl(url: string): UrlValidationResult {
       };
     }
 
-    // Check for blocked domains (basic SSRF protection)
     const hostname = parsed.hostname.toLowerCase();
     if (
       BLOCKED_DOMAINS.some((blocked) => hostname === blocked || hostname.endsWith(`.${blocked}`))
@@ -97,18 +87,13 @@ function validateUrl(url: string): UrlValidationResult {
   }
 }
 
-// ============================================
-// Content Fetch Implementation
-// ============================================
-
 /**
- * Fetch and parse content from a URL
+ * Fetch and parse content from a URL.
  */
 export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult> {
   const { url, maxLength = 10000, includeLinks = true } = options;
   const t = await createMcpTranslator();
 
-  // Validate URL
   const validation = validateUrl(url);
   if (!validation.valid) {
     return {
@@ -128,7 +113,7 @@ export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult>
     const scraped = await fetchAndParse(url, {
       maxLength,
       includeLinks,
-      timeout: 15000, // 15 second timeout
+      timeout: 15000,
     });
 
     return {
@@ -156,7 +141,7 @@ export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult>
 }
 
 /**
- * Format scraped content for display
+ * Format scraped content for display.
  */
 function formatFetchedContent(
   scraped: ScrapedContent,
@@ -184,10 +169,8 @@ function formatFetchedContent(
   lines.push("─".repeat(60));
   lines.push("");
 
-  // Use markdown content if available, otherwise plain content
   const displayContent = scraped.markdown !== "" ? scraped.markdown : scraped.content;
 
-  // Truncate if necessary
   const wasTruncated = displayContent.length >= maxLength;
   const finalContent = wasTruncated
     ? displayContent.slice(0, maxLength).trim() + "\n\n" + webFetchT(t, "content.truncated")
@@ -212,10 +195,6 @@ function formatFetchedContent(
   return lines.join("\n");
 }
 
-// ============================================
-// Combined Search + Fetch
-// ============================================
-
 /**
  * Search and fetch content from top results
  */
@@ -233,10 +212,9 @@ export async function webSearchAndFetch(args: {
     max_content_length: maxContentLength = 10000,
   } = args;
 
-  // Import search function dynamically to avoid circular dependency
+  // NOTE: Lazy import avoids a fetch/search circular dependency during module initialization.
   const { webSearch } = await import("./search.js");
 
-  // Perform search
   const searchResult = await webSearch({
     query,
     numResults,
@@ -246,7 +224,6 @@ export async function webSearchAndFetch(args: {
     return searchResult;
   }
 
-  // Parse search results to get URLs
   const searchText = searchResult.content[0]?.text ?? "";
   const urls = extractUrlsFromSearchResults(searchText).slice(0, fetchCount);
 
@@ -261,7 +238,6 @@ export async function webSearchAndFetch(args: {
     };
   }
 
-  // Fetch content from each URL
   const fetchResults: string[] = [
     searchText,
     "",
@@ -282,7 +258,7 @@ export async function webSearchAndFetch(args: {
     const fetchResult = await webFetchUrl({
       url,
       maxLength: maxContentLength,
-      includeLinks: false, // Cleaner output for combined results
+      includeLinks: false,
     });
 
     if (fetchResult.isError === true) {
@@ -295,7 +271,6 @@ export async function webSearchAndFetch(args: {
       fetchResults.push(fetchResult.content[0]?.text ?? "");
     }
 
-    // Add delay between fetches to be polite
     if (i < urls.length - 1) {
       // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -313,14 +288,14 @@ export async function webSearchAndFetch(args: {
 }
 
 /**
- * Extract URLs from search result text
+ * Extract URLs from search result text.
  */
 function extractUrlsFromSearchResults(text: string): string[] {
   const urls: string[] = [];
   const lines = text.split("\n");
 
   for (const line of lines) {
-    // Look for lines starting with "   🌐 " which is our URL format
+    // NOTE: Search output prefixes URLs with the globe marker; keep this parser aligned with that formatter.
     const match = line.match(/^\s+🌐\s+(https?:\/\/\S+)$/);
     if (match?.[1] != null && match[1] !== "") {
       urls.push(match[1]);
@@ -329,10 +304,6 @@ function extractUrlsFromSearchResults(text: string): string[] {
 
   return urls;
 }
-
-// ============================================
-// Tool Definitions
-// ============================================
 
 export const WEB_FETCH_URL_TOOL = {
   name: "hev_web_fetch_url",

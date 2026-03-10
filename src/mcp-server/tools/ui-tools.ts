@@ -9,9 +9,6 @@
 import { createMcpTranslatorSync, loadMcpLanguageSync } from "../utils/i18n/index.js";
 import { logToolCall, logToolSuccess, logToolError } from "../utils/mcp-logger.js";
 
-/**
- * Box drawing characters for different styles
- */
 const BOX_CHARS = {
   double: {
     topLeft: "╔",
@@ -41,9 +38,6 @@ const BOX_CHARS = {
   },
 };
 
-/**
- * Message type configurations
- */
 const MESSAGE_TYPES = {
   success: { icon: "✅", label: "SUCCESS" },
   error: { icon: "❌", label: "ERROR" },
@@ -56,9 +50,6 @@ const MESSAGE_TYPES = {
   tree: { icon: "📁", label: "TREE" },
 };
 
-/**
- * Progress bar styles
- */
 const PROGRESS_STYLES = {
   bar: { filled: "█", empty: "░" },
   blocks: { filled: "▓", empty: "░" },
@@ -107,17 +98,11 @@ export interface MessageBoxOptions {
   tree?: Record<string, unknown>;
 }
 
-/**
- * Get terminal width (fallback to 80 if not available)
- */
 function getTerminalWidth(): number {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   return process.stdout.columns ?? 80;
 }
 
-/**
- * Wrap text to fit within specified width
- */
 function wrapText(text: string, width: number): string[] {
   const words = text.split(" ");
   const lines: string[] = [];
@@ -136,9 +121,6 @@ function wrapText(text: string, width: number): string[] {
   return lines;
 }
 
-/**
- * Render progress bar
- */
 function renderProgressBar(
   progress: NonNullable<MessageBoxOptions["progress"]>,
   width: number
@@ -155,9 +137,6 @@ function renderProgressBar(
   return `[${bar}] ${label}`;
 }
 
-/**
- * Render table
- */
 function renderTable(
   table: NonNullable<MessageBoxOptions["table"]>,
   width: number,
@@ -167,19 +146,15 @@ function renderTable(
   const chars = BOX_CHARS[boxStyle];
   const { columns, rows } = table;
 
-  // Calculate column widths
   const colCount = columns.length;
   const colWidth = Math.floor((width - colCount - 1) / colCount);
 
-  // Render header
   const headerRow = columns.map((col) => col.padEnd(colWidth).substring(0, colWidth)).join(" │ ");
   lines.push("  " + headerRow);
 
-  // Render separator
   const separator = columns.map(() => chars.horizontal.repeat(colWidth)).join("─┼─");
   lines.push("  " + separator);
 
-  // Render rows
   for (const row of rows) {
     const rowText = row.map((cell) => cell.padEnd(colWidth).substring(0, colWidth)).join(" │ ");
     lines.push("  " + rowText);
@@ -188,9 +163,6 @@ function renderTable(
   return lines;
 }
 
-/**
- * Render menu
- */
 function renderMenu(menu: NonNullable<MessageBoxOptions["menu"]>, _width: number): string[] {
   const lines: string[] = [];
   const { options, defaultSelected } = menu;
@@ -206,9 +178,6 @@ function renderMenu(menu: NonNullable<MessageBoxOptions["menu"]>, _width: number
   return lines;
 }
 
-/**
- * Render tree structure
- */
 function renderTree(
   tree: Record<string, unknown>,
   prefix = "",
@@ -236,9 +205,6 @@ function renderTree(
   return lines;
 }
 
-/**
- * Render message box
- */
 export function renderMessageBox(options: MessageBoxOptions): string {
   const {
     type = "info",

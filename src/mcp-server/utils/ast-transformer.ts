@@ -225,23 +225,20 @@ export function addImport(
     const j = api.jscodeshift;
     const root = j(fileInfo.source);
 
-    // Check if import already exists
     const existingImport = root.find(j.ImportDeclaration, {
       source: { value: source },
     });
 
     if (existingImport.length > 0) {
-      // Import already exists, don't duplicate
       return null;
     }
 
-    // Create new import declaration
     const importDeclaration = j.importDeclaration(
       imports.map((name) => j.importSpecifier(j.identifier(name))),
       j.literal(source)
     );
 
-    // Add at the top (after other imports if any)
+    // Keep new imports grouped with the existing import block.
     const programPath = root.find(j.Program).paths()[0];
     if (!programPath) return null;
     const bodyNodes = getProgramBody(programPath.node.body);
@@ -287,8 +284,7 @@ export function removeUnusedImports(code: string, filePath: string): TransformRe
         if (specifier.type === "ImportSpecifier" && specifier.local) {
           const localName = specifier.local.name;
 
-          // Check if identifier is used anywhere
-          // Check if identifier is used anywhere
+          // Exclude the import specifier itself when checking for live references.
           const usages = root.find(j.Identifier).filter((p) => {
             const identifierName = getIdentifierName(p.value);
             const parentValue = isRecord(p.parent) ? p.parent["value"] : undefined;
@@ -301,14 +297,12 @@ export function removeUnusedImports(code: string, filePath: string): TransformRe
         }
       });
 
-      // Remove unused specifiers
       if (unusedSpecifiers.length > 0) {
         unusedSpecifiers.reverse().forEach((index) => {
           specifiers.splice(index, 1);
         });
         modified = true;
 
-        // If all specifiers removed, remove entire import
         if (specifiers.length === 0) {
           j(path).remove();
         }

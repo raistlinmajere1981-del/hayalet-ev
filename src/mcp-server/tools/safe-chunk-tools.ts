@@ -12,10 +12,6 @@ import { createMcpTranslatorSync } from "../utils/i18n/index.js";
 import { createProgress } from "../utils/progress.js";
 import { logToolError } from "../utils/mcp-logger.js";
 
-// ============================================
-// Types
-// ============================================
-
 interface ChunkMetadata {
   index: number;
   totalChunks: number;
@@ -33,7 +29,7 @@ interface ChunkSession {
   metadata: ChunkMetadata[];
 }
 
-// Active sessions
+// Keep live sessions in memory until finalize or cancel completes.
 const activeSessions = new Map<string, ChunkSession>();
 
 function safeChunkT(key: string, params?: Record<string, string | number | boolean>): string {
@@ -43,10 +39,6 @@ function safeChunkT(key: string, params?: Record<string, string | number | boole
 function safeChunkDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.safeChunkTools.definition.${key}`, params);
 }
-
-// ============================================
-// Helper Functions
-// ============================================
 
 function calculateChecksum(content: string): string {
   return createHash("md5").update(content, "utf-8").digest("hex");
@@ -63,7 +55,7 @@ function validateUTF8(content: string): boolean {
 }
 
 function validateChunkBoundary(content: string): { valid: boolean; warning?: string } {
-  // Check if ends with newline (recommended)
+  // Prefer newline-terminated chunks so split boundaries stay predictable.
   if (!content.endsWith("\n")) {
     return {
       valid: true,
@@ -71,11 +63,10 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
     };
   }
 
-  // Check for incomplete multi-byte at end
   const lastChar = content.slice(-2, -1); // Before newline
   const lastCharCode = lastChar.charCodeAt(0);
 
-  // Check for surrogate pair start (high surrogate)
+  // Reject chunks that end halfway through a surrogate pair.
   if (lastCharCode >= 0xd800 && lastCharCode <= 0xdbff) {
     return {
       valid: false,
@@ -85,10 +76,6 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
 
   return { valid: true };
 }
-
-// ============================================
-// Tool 1: Start Chunked File Session
-// ============================================
 
 /**
  * hev_fs_start_chunked_session - start a safe chunked write session
@@ -109,10 +96,8 @@ export function startChunkedSession(
   });
 
   try {
-    // Generate unique session ID
     const sessionId = `chunk_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-    // Validate inputs
     if (totalChunks < 1 || totalChunks > 1000) {
       return {
         success: false,
@@ -121,7 +106,6 @@ export function startChunkedSession(
       };
     }
 
-    // Create session
     const session: ChunkSession = {
       sessionId,
       filePath,
@@ -152,12 +136,8 @@ export function startChunkedSession(
   }
 }
 
-// ============================================
-// Tool 2: Write Chunk
-// ============================================
-
 /**
- * hev_fs_write_chunk - Chunk yaz ve validate et
+ * hev_fs_write_chunk - validate and persist a single chunk
  */
 export async function writeChunk(
   sessionId: string,
@@ -171,7 +151,6 @@ export async function writeChunk(
   });
 
   try {
-    // Get session
     const session = activeSessions.get(sessionId);
     if (!session) {
       return {
@@ -180,7 +159,6 @@ export async function writeChunk(
       };
     }
 
-    // Validate chunk index
     if (chunkIndex < 0 || chunkIndex >= session.totalChunks) {
       return {
         success: false,
@@ -191,7 +169,6 @@ export async function writeChunk(
       };
     }
 
-    // Check duplicate
     if (session.receivedChunks.includes(chunkIndex)) {
       return {
         success: false,
@@ -201,7 +178,6 @@ export async function writeChunk(
 
     const warnings: string[] = [];
 
-    // Validate UTF-8
     progress.update(1, safeChunkT("progress.validatingUtf8"));
     if (!validateUTF8(content)) {
       return {
@@ -210,7 +186,6 @@ export async function writeChunk(
       };
     }
 
-    // Validate boundary
     progress.update(2, safeChunkT("progress.checkingBoundary"));
     const boundaryCheck = validateChunkBoundary(content);
     if (!boundaryCheck.valid) {
@@ -226,7 +201,6 @@ export async function writeChunk(
       warnings.push(boundaryCheck.warning);
     }
 
-    // Calculate metadata
     progress.update(3, safeChunkT("progress.collectingMetadata"));
     const checksum = calculateChecksum(content);
     const size = Buffer.byteLength(content, "utf-8");
@@ -240,7 +214,6 @@ export async function writeChunk(
       lineCount,
     };
 
-    // Write chunk to temp file
     progress.update(4, safeChunkT("progress.writingToDisk"));
     const tempDir = `${projectRoot}/.tmp_safe_chunks/${sessionId}`;
     await mkdir(tempDir, { recursive: true });
@@ -248,7 +221,6 @@ export async function writeChunk(
     const chunkPath = `${tempDir}/chunk_${String(chunkIndex).padStart(4, "0")}.tmp`;
     await writeFile(chunkPath, content, "utf-8");
 
-    // Verify write
     const readBack = await readFile(chunkPath, "utf-8");
     const readChecksum = calculateChecksum(readBack);
 
@@ -263,7 +235,6 @@ export async function writeChunk(
       };
     }
 
-    // Update session
     session.receivedChunks.push(chunkIndex);
     session.metadata.push(metadata);
 
@@ -309,10 +280,6 @@ export async function writeChunk(
   }
 }
 
-// ============================================
-// Tool 3: Finalize Chunked File
-// ============================================
-
 /**
  * hev_fs_finalize_chunked - merge chunks and write the file
  */
@@ -327,7 +294,6 @@ export async function finalizeChunked(
   });
 
   try {
-    // Get session
     const session = activeSessions.get(sessionId);
     if (!session) {
       return {
@@ -336,7 +302,6 @@ export async function finalizeChunked(
       };
     }
 
-    // Check if all chunks received
     if (session.receivedChunks.length !== session.totalChunks) {
       const missingChunks = Array.from({ length: session.totalChunks }, (_, i) => i).filter(
         (i) => !session.receivedChunks.includes(i)
@@ -354,7 +319,6 @@ export async function finalizeChunked(
 
     progress.log(safeChunkT("progress.allChunksReceivedMerging"));
 
-    // Read and merge chunks in order
     const tempDir = `${projectRoot}/.tmp_safe_chunks/${sessionId}`;
     const buffers: Buffer[] = [];
     let totalSize = 0;
@@ -372,12 +336,10 @@ export async function finalizeChunked(
       );
     }
 
-    // Concatenate buffers
     progress.update(85, safeChunkT("progress.merging"));
     const fullBuffer = Buffer.concat(buffers, totalSize);
     const fullContent = fullBuffer.toString("utf-8");
 
-    // Verify checksum if provided
     if (verifyChecksum != null && verifyChecksum !== "") {
       const actualChecksum = calculateChecksum(fullContent);
       if (actualChecksum !== verifyChecksum) {
@@ -392,16 +354,13 @@ export async function finalizeChunked(
       progress.log(safeChunkT("progress.checksumVerified"));
     }
 
-    // Create target directory
     progress.update(90, safeChunkT("progress.creatingTargetDir"));
     const targetDir = dirname(session.filePath);
     await mkdir(targetDir, { recursive: true });
 
-    // Write final file
     progress.update(95, safeChunkT("progress.writingFinalFile"));
     await writeFile(session.filePath, fullContent, "utf-8");
 
-    // Verify final file
     const finalCheck = await readFile(session.filePath, "utf-8");
     if (finalCheck !== fullContent) {
       return {
@@ -410,7 +369,6 @@ export async function finalizeChunked(
       };
     }
 
-    // Cleanup temp files
     progress.update(98, safeChunkT("progress.cleaningTempFiles"));
 
     for (let i = 0; i < session.totalChunks; i++) {
@@ -419,11 +377,10 @@ export async function finalizeChunked(
         // eslint-disable-next-line no-await-in-loop
         await unlink(chunkPath);
       } catch {
-        // Ignore cleanup errors
+        // Ignore temp cleanup failures after the final file is already durable.
       }
     }
 
-    // Remove session
     activeSessions.delete(sessionId);
 
     const duration = ((Date.now() - session.startTime) / 1000).toFixed(1);
@@ -457,10 +414,6 @@ export async function finalizeChunked(
     return { success: false, message: safeChunkT("common.error", { message: err.message }) };
   }
 }
-
-// ============================================
-// Tool 4: Get Session Status
-// ============================================
 
 /**
  * hev_fs_chunk_session_status - show the session status
@@ -538,12 +491,8 @@ export function getSessionStatus(sessionId: string): {
   };
 }
 
-// ============================================
-// Tool 5: Cancel Session
-// ============================================
-
 /**
- * hev_fs_cancel_chunk_session - Session iptal et ve temizle
+ * hev_fs_cancel_chunk_session - cancel the session and clean up temp chunks
  */
 export async function cancelSession(
   sessionId: string,
@@ -559,7 +508,6 @@ export async function cancelSession(
   }
 
   try {
-    // Cleanup temp files
     const tempDir = `${projectRoot}/.tmp_safe_chunks/${sessionId}`;
 
     for (let i = 0; i < session.totalChunks; i++) {
@@ -568,11 +516,10 @@ export async function cancelSession(
         // eslint-disable-next-line no-await-in-loop
         await unlink(chunkPath);
       } catch {
-        // Ignore
+        // Ignore missing temp files during best-effort cleanup.
       }
     }
 
-    // Remove session
     activeSessions.delete(sessionId);
 
     return {
@@ -585,10 +532,6 @@ export async function cancelSession(
     return { success: false, message: safeChunkT("common.error", { message: err.message }) };
   }
 }
-
-// ============================================
-// Tool Definitions
-// ============================================
 
 export const SAFE_CHUNK_TOOL_DEFINITIONS = [
   {

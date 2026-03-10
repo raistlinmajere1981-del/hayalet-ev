@@ -81,8 +81,14 @@ hev_suggest_tool(intent) → Amaca göre en uygun tool önerisi
 | ----------------- | -------------------------------------------- |
 | `VERSION-INFO.md` | Proje versiyonu, dependency'ler              |
 | `TOOL-LIST.md`    | Tool listesi (referans, güncelliği değişken) |
+| `COMMENT-INDEX.md` | High-signal comment özeti ve hızlı navigation |
+| `COMMENT-INDEX.json` | Structured comment lookup çıktısı |
 
 **⚠️ ÖNEMLİ:** Tool bilgisi için önce runtime discovery kullan. Metadata dosyaları yalnızca MCP erişilemediğinde kullanılmalıdır.
+
+**Comment Rule (Kısa):** Yeni comment'ler English-only yazılır. Comment, kodun ne yaptığını değil neden bu şekilde kaldığını anlatır. Banner, numbered step ve obvious inline comment eklenmez.
+
+**COMMENT-INDEX Kullanımı:** Önce `COMMENT-INDEX.md` ile yön bul. Structured lookup gerekiyorsa `COMMENT-INDEX.json` kullan. Düzenleme öncesi gerçek dosyayı açıp index bilgisini doğrula.
 
 ---
 

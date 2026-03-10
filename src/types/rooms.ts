@@ -6,6 +6,8 @@ export const ROOM_SCHEMA_VERSION = 1 as const;
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";
 
+const LEGACY_ASSISTANT_SCOPE = "ai0";
+
 export interface RoomMenuConfig {
   label: string;
   icon?: string;
@@ -256,16 +258,19 @@ export function validateRoomManifest(candidate: unknown): RoomManifestValidation
         const scopeRaw = item["scope"];
         let scope: RoomCommandScope | undefined;
         if (scopeRaw !== undefined) {
-          if (
+          if (typeof scopeRaw !== "string") {
+            errors.push(`commandSpecs[${String(index)}].scope is invalid`);
+          } else if (
             scopeRaw !== "room-ui" &&
             scopeRaw !== "ai-slots" &&
             scopeRaw !== "assistant" &&
-            scopeRaw !== LEGACY_ASSISTANT_SCOPE &&
-            scopeRaw !== "system"
+            scopeRaw !== "system" &&
+            scopeRaw !== LEGACY_ASSISTANT_SCOPE
           ) {
             errors.push(`commandSpecs[${String(index)}].scope is invalid`);
           } else {
-            scope = scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : scopeRaw;
+            scope =
+              scopeRaw === LEGACY_ASSISTANT_SCOPE ? "assistant" : (scopeRaw as RoomCommandScope);
           }
         }
         if (commandName !== undefined) {

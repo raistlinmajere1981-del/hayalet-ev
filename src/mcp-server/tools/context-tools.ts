@@ -91,7 +91,6 @@ async function runRepomix(
     child.on("close", (code) => {
       const output = stdout + stderr;
 
-      // Parse stats from output
       const filesMatch = output.match(/Total Files:\s*(\d+)/);
       const tokensMatch = output.match(/Total Tokens:\s*([\d,]+)/);
       const charsMatch = output.match(/Total Chars:\s*([\d,]+)/);
@@ -129,10 +128,6 @@ function formatAge(mtime: Date, t: McpTranslator): string {
   if (diffMins > 0) return contextT(t, "age.minutesAgo", { count: diffMins });
   return contextT(t, "age.justNow");
 }
-
-// ============================================
-// Tool 1: Generate Context
-// ============================================
 
 export async function generateContext(
   projectRoot: string,
@@ -255,10 +250,6 @@ export async function generateContext(
 function getLevelName(level: ContextLevel): string {
   return LEVEL_INFO[level].name.toLowerCase();
 }
-
-// ============================================
-// Tool 2: Context Status
-// ============================================
 
 export function contextStatus(projectRoot: string): ContextStatus {
   const t = createMcpTranslatorSync();

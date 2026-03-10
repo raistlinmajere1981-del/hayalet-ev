@@ -46,7 +46,6 @@ export function showFile(
   return { content, summary: { lines: summary.lines, language: summary.language } };
 }
 
-// Types
 interface GrepMatch {
   file: string;
   line: number;
@@ -60,18 +59,15 @@ interface GrepResult {
   filesSearched: number;
 }
 
-// Helper function to search directory
 function grepDirectory(
   _workspacePath: string,
   _regex: RegExp | null,
   _pathGlob: string | null
 ): GrepMatch[] {
   const matches: GrepMatch[] = [];
-  // Simple implementation - can be improved with glob matching
   return matches;
 }
 
-// Tool Definitions
 export const GREP_TOOL = {
   name: "hev_fs_grep",
   description: searchToolDefinitionT("grep.description"),

@@ -50,7 +50,9 @@ function readCatalogValue(catalog, path) {
 async function syncPreloadLocale() {
   try {
     const settings = await ipcRenderer.invoke("load-settings");
-    const nextLocale = normalizePreloadLocale(settings && settings.general && settings.general.language);
+    const nextLocale = normalizePreloadLocale(
+      settings && settings.general && settings.general.language
+    );
     __app_preload_locale = nextLocale;
 
     const pack = await ipcRenderer.invoke("i18n-load-language", nextLocale);
@@ -104,6 +106,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   i18nLoadLanguage: (locale) => ipcRenderer.invoke("i18n-load-language", locale),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
   showMessageBox: (options) => ipcRenderer.invoke("show-message-box", options),
+  backupCreate: (payload) => ipcRenderer.invoke("backup-create", payload),
+  backupList: (payload) => ipcRenderer.invoke("backup-list", payload),
+  backupScopes: () => ipcRenderer.invoke("backup-scopes"),
+  backupPresets: () => ipcRenderer.invoke("backup-presets"),
+  backupInspect: (payload) => ipcRenderer.invoke("backup-inspect", payload),
+  backupPreview: (payload) => ipcRenderer.invoke("backup-preview", payload),
+  backupRestore: (payload) => ipcRenderer.invoke("backup-restore", payload),
   readFile: (filePath) => ipcRenderer.invoke("read-file", filePath),
   loadProtocols: () => ipcRenderer.invoke("load-protocols"),
   saveProtocol: (key, content) => ipcRenderer.invoke("save-protocol", key, content),
@@ -168,7 +177,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   sendToHost: (channel, data) => ipcRenderer.sendToHost(channel, data),
 
-  // Database API
   dbDeleteAccount: (params) => ipcRenderer.invoke("db-delete-account", params),
   dbInitAccount: (params) => ipcRenderer.invoke("db-init-account", params),
   dbGetConversations: (params) => ipcRenderer.invoke("db-get-conversations", params),
@@ -182,13 +190,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dbSearchAllAccounts: (params) => ipcRenderer.invoke("db-search-all-accounts", params),
   dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
 
-  // Meta Command API
   metaDefineCommand: (params) => ipcRenderer.invoke("meta-define-command", params),
   metaDeleteCommand: (params) => ipcRenderer.invoke("meta-delete-command", params),
   metaListCommands: () => ipcRenderer.invoke("meta-list-commands"),
   metaGetCommand: (params) => ipcRenderer.invoke("meta-get-command", params),
 
-  // Unified logger API
   logger: {
     appendBatch: (entries) => ipcRenderer.invoke("logger:appendBatch", entries),
     getSessionId: () => ipcRenderer.invoke("get-session-id"),
@@ -227,7 +233,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deviceAction: (action, payload) => ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) => ipcRenderer.invoke("generate-tree", basePath, options),
 
-  // Memory API
   memorySearch: (params) => ipcRenderer.invoke("memory-search", params),
   memoryStats: (params) => ipcRenderer.invoke("memory-stats", params),
   memoryDelete: (params) => ipcRenderer.invoke("memory-delete", params),
@@ -236,8 +241,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   memoryPrune: (params) => ipcRenderer.invoke("memory-prune", params),
   memoryDeleteAll: (params) => ipcRenderer.invoke("memory-delete-all", params),
 
-  // OpenCode Web API (Simple spawn)
-  // OpenCode Serve API
   opencodeServeStart: (options) => ipcRenderer.invoke("opencode-serve-start", options),
   opencodeServeStop: () => ipcRenderer.invoke("opencode-serve-stop"),
   opencodeServeStatus: () => ipcRenderer.invoke("opencode-serve-status"),
@@ -280,7 +283,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     opencodeUiSessionUpdatedHandlers.delete(callback);
   },
 
-  // Startup flags (read from process.argv)
+  // NOTE: Startup flags are read from the preload process argv so the renderer stays passive.
   getStartupFlags: () => {
     const argv = process.argv || [];
 
@@ -304,7 +307,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return { startPage, autoConnect };
   },
 
-  // IPC Renderer for custom event listeners (e.g., log:ui-notify)
+  // WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.
   ipcRenderer: {
     on: (channel, callback) => {
       if (!ALLOWED_IPC_RENDERER_CHANNELS.has(channel) || typeof callback !== "function") {

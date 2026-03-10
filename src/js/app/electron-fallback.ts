@@ -147,6 +147,73 @@ export function ensureElectronApiFallback(): void {
     getPreloadPath: async (): Promise<string> => await Promise.resolve(""),
     showOpenDialog: async (): Promise<{ canceled: boolean; filePaths: string[] }> =>
       await Promise.resolve({ canceled: true, filePaths: [] }),
+    backupCreate: async (): Promise<{
+      success: boolean;
+      bundlePath: string;
+      bundle: Record<string, unknown>;
+      selectedScopes: string[];
+      totalBytes: number;
+    }> =>
+      await Promise.resolve({
+        success: false,
+        bundlePath: "",
+        bundle: {},
+        selectedScopes: [],
+        totalBytes: 0,
+      }),
+    backupList: async (): Promise<Array<Record<string, unknown>>> => await Promise.resolve([]),
+    backupScopes: async (): Promise<Array<Record<string, unknown>>> => await Promise.resolve([]),
+    backupPresets: async (): Promise<Array<Record<string, unknown>>> => await Promise.resolve([]),
+    backupInspect: async (): Promise<{
+      filePath: string;
+      manifest: Record<string, unknown>;
+      files: Array<Record<string, unknown>>;
+      checksums: Record<string, unknown>;
+    }> =>
+      await Promise.resolve({
+        filePath: "",
+        manifest: {},
+        files: [],
+        checksums: {},
+      }),
+    backupPreview: async (): Promise<{
+      success: boolean;
+      filePath: string;
+      selectedScopes: string[];
+      availableScopes: string[];
+      requiresColdRestore: boolean;
+      restartTargets: string[];
+      riskLevel: string;
+      warningCount: number;
+      warnings: string[];
+      fileCount: number;
+      overwrittenFilesCount: number;
+    }> =>
+      await Promise.resolve({
+        success: false,
+        filePath: "",
+        selectedScopes: [],
+        availableScopes: [],
+        requiresColdRestore: false,
+        restartTargets: [],
+        riskLevel: "low",
+        warningCount: 0,
+        warnings: [],
+        fileCount: 0,
+        overwrittenFilesCount: 0,
+      }),
+    backupRestore: async (): Promise<{
+      success: boolean;
+      restoredScopes: string[];
+      restoredFiles: number;
+      bundlePath: string;
+    }> =>
+      await Promise.resolve({
+        success: false,
+        restoredScopes: [],
+        restoredFiles: 0,
+        bundlePath: "",
+      }),
     roomsImportBundle: async (): Promise<{ success: boolean; error?: string }> =>
       await Promise.resolve({ success: false, error: "fallback" }),
     copyToAssets: async (p: string): Promise<{ success: boolean; path: string }> =>

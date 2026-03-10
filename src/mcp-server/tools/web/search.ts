@@ -11,10 +11,6 @@ import { logToolError } from "../../utils/mcp-logger.js";
 import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type { ToolResult } from "@shared/index-mcp.js";
 
-// ============================================
-// Types & Interfaces
-// ============================================
-
 export interface WebSearchResult {
   title: string;
   url: string;
@@ -60,10 +56,6 @@ function webSearchT(
   return t(`mcpServer.webTools.search.${key}`, params);
 }
 
-// ============================================
-// Provider Defaults
-// ============================================
-
 const DEFAULT_PROVIDER: SearchProvider = "searxng";
 const DEFAULT_SEARXNG_BASE_URL = "https://search.wdpserver.com";
 const FALLBACK_SEARXNG_BASE_URLS = [
@@ -106,10 +98,6 @@ function mapRegionToSearxngLanguage(region: string): string {
 
   return "en";
 }
-
-// ============================================
-// DuckDuckGo Rate Limiting
-// ============================================
 
 const RATE_LIMIT = {
   maxRequests: 30,

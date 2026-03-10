@@ -33,7 +33,6 @@ function chunkToString(data: unknown): string {
   return String(data);
 }
 
-// Helper: run a shell command.
 async function runCommand(
   cmd: string,
   cwd?: string
@@ -66,7 +65,6 @@ async function runCommand(
   });
 }
 
-// Helper: check `gh` CLI availability.
 async function checkGhCli(): Promise<{ available: boolean; user?: string; error?: string }> {
   const t = createGitTranslator();
   const ghCheck = await runCommand("command -v gh");
@@ -86,9 +84,6 @@ async function checkGhCli(): Promise<{ available: boolean; user?: string; error?
   return { available: true, user: userResult.output };
 }
 
-// ============================================
-// Tool: git_fork_setup
-// ============================================
 export async function gitForkSetup(
   repo: string,
   workDir: string,
@@ -97,7 +92,6 @@ export async function gitForkSetup(
   shallow: boolean = true
 ): Promise<{ success: boolean; message: string; repoPath?: string }> {
   const t = createGitTranslator();
-  // Check `gh` CLI availability.
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
     return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
@@ -120,7 +114,6 @@ export async function gitForkSetup(
   }
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  // 1. Check the fork and create it if needed.
   output += `${t("forkSetup.steps.checkFork")}\n`;
   const forkCheck = await runCommand(
     `gh repo view ${ghUser}/${safeRepoName} --json name 2>/dev/null`
@@ -144,7 +137,6 @@ export async function gitForkSetup(
     output += `${t("forkSetup.forkExists")}\n`;
   }
 
-  // 2. Clone the repository or reuse the existing checkout.
   output += `\n${t("forkSetup.steps.prepareRepository")}\n`;
   try {
     await access(join(repoPath, ".git"));
@@ -168,17 +160,14 @@ export async function gitForkSetup(
           })}`,
       };
     }
-    // Add the upstream remote.
     await runCommand(`git remote add upstream https://github.com/${repo}.git`, repoPath);
   }
   output += `${t("forkSetup.repositoryReady")}\n`;
 
-  // 3. Fetch updates from upstream.
   output += `\n${t("forkSetup.steps.fetchUpstream")}\n`;
   await runCommand(`git fetch upstream`, repoPath);
   output += `${t("forkSetup.fetchCompleted")}\n`;
 
-  // 4. Create the feature branch (optional).
   if (featureBranch !== undefined && featureBranch.length > 0) {
     output += `\n${t("forkSetup.steps.createFeatureBranch")}\n`;
     const branchCheck = await runCommand(
@@ -201,9 +190,6 @@ export async function gitForkSetup(
   return { success: true, message: output, repoPath };
 }
 
-// ============================================
-// Tool: git_create_pr
-// ============================================
 export async function gitCreatePr(
   baseBranch: string,
   title: string,
@@ -214,7 +200,6 @@ export async function gitCreatePr(
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
   const repoPath = cwd ?? process.cwd();
 
-  // Check `gh` CLI availability.
   const ghStatus = await checkGhCli();
   if (!ghStatus.available) {
     return { success: false, message: ghStatus.error ?? t("common.ghUnavailable") };
@@ -223,13 +208,11 @@ export async function gitCreatePr(
   let output = `${t("createPr.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 
-  // 1. Check the git repository.
   const gitCheck = await runCommand("git rev-parse --git-dir", repoPath);
   if (!gitCheck.success) {
     return { success: false, message: t("createPr.notGitRepository") };
   }
 
-  // 2. Mevcut branch
   const branchResult = await runCommand("git branch --show-current", repoPath);
   const currentBranch = branchResult.output;
   output += `${t("createPr.branch", { currentBranch })}\n`;
@@ -241,7 +224,6 @@ export async function gitCreatePr(
     };
   }
 
-  // 3. Check for uncommitted changes.
   const statusResult = await runCommand("git status --porcelain", repoPath);
   if (statusResult.output !== "") {
     output += `\n${t("createPr.steps.commitChanges")}\n`;
@@ -254,7 +236,6 @@ export async function gitCreatePr(
     output += `\n${t("createPr.allChangesCommitted")}\n`;
   }
 
-  // 4. Upstream bilgisi
   const upstreamResult = await runCommand("git remote get-url upstream", repoPath);
   if (!upstreamResult.success) {
     return {
@@ -266,11 +247,9 @@ export async function gitCreatePr(
   const upstreamRepo = upstreamUrl.replace(/.*github\.com[:/](.*)\.git?/, "$1").replace(".git", "");
   output += `${t("createPr.upstream", { upstreamRepo })}\n`;
 
-  // 5. Origin user
   const originResult = await runCommand("git remote get-url origin", repoPath);
   const originUser = originResult.output.replace(/.*github\.com[:/](.*)\/.*/, "$1");
 
-  // 6. Push
   output += `\n${t("createPr.steps.pushBranch")}\n`;
   const pushResult = await runCommand(`git push -u origin ${currentBranch}`, repoPath);
   if (!pushResult.success && pushResult.error?.includes("up-to-date") !== true) {
@@ -283,7 +262,6 @@ export async function gitCreatePr(
   }
   output += `${t("createPr.pushCompleted")}\n`;
 
-  // 7. Check for an existing PR.
   output += `\n${t("createPr.steps.checkExistingPr")}\n`;
   const prCheckResult = await runCommand(
     `gh pr list --repo ${upstreamRepo} --head ${originUser}:${currentBranch} --json number,url --jq '.[0].url'`,
@@ -295,7 +273,6 @@ export async function gitCreatePr(
     return { success: true, message: output, prUrl: prCheckResult.output };
   }
 
-  // 8. Create the PR.
   output += `\n${t("createPr.steps.createPr")}\n`;
   const bodyArg =
     body !== undefined && body.length > 0 ? `--body "${body.replace(/"/g, '\\"')}"` : "";
@@ -323,9 +300,6 @@ export async function gitCreatePr(
   return { success: true, message: output, prUrl };
 }
 
-// ============================================
-// Tool: git_check_guidelines
-// ============================================
 export async function gitCheckGuidelines(
   cwd?: string
 ): Promise<{ success: boolean; message: string; checks: Record<string, boolean> }> {
@@ -337,7 +311,6 @@ export async function gitCheckGuidelines(
   let output = `${t("guidelines.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  // CONTRIBUTING.md
   try {
     await access(join(repoPath, "CONTRIBUTING.md"));
     checks["contributing"] = true;
@@ -350,7 +323,6 @@ export async function gitCheckGuidelines(
     output += `${t("guidelines.contributingMissing")}\n\n`;
   }
 
-  // CODE_OF_CONDUCT.md
   try {
     await access(join(repoPath, "CODE_OF_CONDUCT.md"));
     checks["codeOfConduct"] = true;
@@ -360,7 +332,6 @@ export async function gitCheckGuidelines(
     output += `${t("guidelines.codeOfConductMissing")}\n`;
   }
 
-  // PR Template
   const prTemplates = [
     ".github/PULL_REQUEST_TEMPLATE.md",
     "PULL_REQUEST_TEMPLATE.md",
@@ -379,14 +350,13 @@ export async function gitCheckGuidelines(
       output += `${t("guidelines.contentLabel")}\n   ${content.replace(/\n/g, "\n   ")}\n`;
       break;
     } catch {
-      /* devam */
+      // Continue scanning optional template locations.
     }
   }
   if (!checks["prTemplate"]) {
     output += `\n${t("guidelines.prTemplateMissing")}\n`;
   }
 
-  // DCO / sign-off check.
   checks["dcoRequired"] = false;
   const filesToCheck = ["CONTRIBUTING.md", "README.md", ".github/CONTRIBUTING.md"];
 
@@ -401,14 +371,13 @@ export async function gitCheckGuidelines(
         break;
       }
     } catch {
-      /* devam */
+      // Continue scanning optional files for DCO references.
     }
   }
   if (!checks["dcoRequired"]) {
     output += `\n${t("guidelines.dcoNotDetected")}\n`;
   }
 
-  // CI/CD check.
   checks["hasCI"] = false;
   try {
     await access(join(repoPath, ".github/workflows"));
@@ -423,7 +392,6 @@ export async function gitCheckGuidelines(
     output += `\n${t("guidelines.ciMissing")}\n`;
   }
 
-  // Makefile check.
   try {
     await access(join(repoPath, "Makefile"));
     const makefile = await readFile(join(repoPath, "Makefile"), "utf-8");
@@ -435,7 +403,7 @@ export async function gitCheckGuidelines(
       output += `\n${t("guidelines.makeTargets", { targets: targets.join(", ") })}\n`;
     }
   } catch {
-    /* Makefile yok */
+    // Makefile support is optional.
   }
 
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -448,9 +416,6 @@ export async function gitCheckGuidelines(
   return { success: true, message: output, checks };
 }
 
-// ============================================
-// Tool: git_pr_status
-// ============================================
 export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; message: string }> {
   const t = createGitTranslator();
   // eslint-disable-next-line no-restricted-syntax -- git tools work on arbitrary repos, cwd fallback is intentional
@@ -464,22 +429,18 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
   let output = `${t("status.title")}\n`;
   output += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  // Branch bilgisi
   const branchResult = await runCommand("git branch --show-current", repoPath);
   output += `${t("status.branch", { branch: branchResult.output })}\n`;
 
-  // Remote bilgisi
   const remotesResult = await runCommand("git remote -v | head -4", repoPath);
   output += `\n${t("status.remotes")}\n${remotesResult.output}\n`;
 
-  // Commit diff.
   const diffResult = await runCommand(
     "git rev-list --count upstream/main..HEAD 2>/dev/null || echo 0",
     repoPath
   );
   output += `\n${t("status.ahead", { count: diffResult.output })}\n`;
 
-  // Change status.
   const statusResult = await runCommand("git status --short", repoPath);
   if (statusResult.output !== "") {
     output += `\n${t("status.changes")}\n${statusResult.output}\n`;
@@ -487,7 +448,6 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
     output += `\n${t("status.clean")}\n`;
   }
 
-  // Open PRs.
   const upstreamResult = await runCommand("git remote get-url upstream 2>/dev/null", repoPath);
   if (upstreamResult.success) {
     const upstreamRepo = upstreamResult.output
@@ -509,9 +469,6 @@ export async function gitPrStatus(cwd?: string): Promise<{ success: boolean; mes
   return { success: true, message: output };
 }
 
-// ============================================
-// Tool Definitions
-// ============================================
 export const GIT_TOOL_DEFINITIONS = [
   {
     name: "hev_git_fork_setup",

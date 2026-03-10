@@ -6,7 +6,6 @@ import { buildPreloadAdditionalArguments, type StartupFlags } from "./startup-fl
 import type { TranslationParams } from "../src/types/i18n.ts";
 import { translateElectronMessage } from "./i18n/language-service.ts";
 
-// Extend Electron types for runtime-supported features
 interface ExtendedWebPreferences extends Electron.WebPreferences {
   navigationTheme?: string;
 }
@@ -105,7 +104,7 @@ function createTrayInternal(): void {
   try {
     const icon = nativeImage.createFromPath(_trayIconPath);
 
-    // Log tray icon path for debugging
+    // NOTE: Log the resolved tray icon path because packaging issues often surface here first.
     void logger.logInternalT(
       LogCategory.MAIN,
       LogLevel.DEBUG,
@@ -235,7 +234,6 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
   }
 
-  // Icon path for debugging
   const iconPath = Paths.getIconPath();
 
   const win = new BrowserWindow({
@@ -281,7 +279,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       "Content-Security-Policy": [isDev ? cspDev : cspProd],
     };
 
-    // Add CORS headers to local server responses.
+    // NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.
     const url = details.url;
     if (url.includes("127.0.0.1:") && /:\d{4,5}\//.test(url)) {
       const referrer = (details as { referrer?: string }).referrer;
@@ -293,7 +291,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     callback({ responseHeaders });
   });
 
-  // Relax CSP in Asistan webview to allow OpenCode changelog fetch + local server
+  // NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.
   const assistantSession = session.fromPartition("persist:ai0");
   assistantSession.webRequest.onHeadersReceived((details, callback) => {
     const headers: Record<string, string[]> = { ...details.responseHeaders };
@@ -308,7 +306,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
       headers[cspKey] = [updatedCsp];
     }
 
-    // Add CORS headers to local server responses.
+    // NOTE: Mirror the local-service CORS override for the assistant partition.
     const reqUrl = details.url;
     if (reqUrl.includes("127.0.0.1:") && /:\d{4,5}\//.test(reqUrl)) {
       const referrer = (details as { referrer?: string }).referrer;
@@ -327,8 +325,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     void win.loadFile(Paths.getHtmlEntryPath());
   }
 
-  // ── Webview Navigation Guard ──────────────────────────────
-  // Open links outside the provider base URL domain in the system browser.
+  // WARNING: Install the webview navigation guard before any provider content starts navigating.
   setupWebviewNavigationGuard();
 
   win.once("ready-to-show", () => {
@@ -472,19 +469,11 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
   }
 }
 
-// ── Webview Navigation Guard ──────────────────────────────────────
-// Opens URLs outside the provider's allowed domains in the system browser
-// and keeps them out of the webview.
-
-/** Extract the allowed domains from provider base URLs. */
+/** Provider hostname allowlists used by the webview navigation guard. */
 const PROVIDER_ALLOWED_DOMAINS: Record<string, string[]> = {
-  // ChatGPT
   "chatgpt.com": ["chatgpt.com", "auth.openai.com", "auth0.openai.com", "openai.com"],
-  // Gemini
   "gemini.google.com": ["gemini.google.com", "accounts.google.com", "myaccount.google.com"],
-  // Grok
   "grok.com": ["grok.com", "x.ai", "accounts.x.ai"],
-  // Localhost (opencode vb.)
   "127.0.0.1": ["127.0.0.1", "localhost"],
   localhost: ["127.0.0.1", "localhost"],
 };
@@ -498,46 +487,41 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
   try {
     target = new URL(targetUrl);
   } catch {
-    return true; // Parse edilemeyen URL'leri engelleme
+    return true; // Ignore malformed targets instead of blocking navigation entirely.
   }
 
-  // about:blank, data:, devtools: vb. izin ver
+  // NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.
   if (target.protocol !== "http:" && target.protocol !== "https:") {
     return true;
   }
 
-  // Mevcut URL'den provider domain'ini bul
   let providerHostname: string;
   try {
     providerHostname = new URL(currentUrl).hostname;
   } catch {
-    return true; // Mevcut URL yoksa engelleme
+    return true; // Skip enforcement when the current provider URL is unavailable.
   }
 
-  // Find the provider allowlist.
   const allowedDomains = findAllowedDomains(providerHostname);
   if (allowedDomains === null) {
-    return true; // Bilinmeyen provider → engelleme
+    return true; // Unknown providers fall back to permissive navigation.
   }
 
   const targetHostname = target.hostname;
 
-  // Check whether the hostname matches one of the allowed domains.
   return allowedDomains.some((domain) => {
     return targetHostname === domain || targetHostname.endsWith(`.${domain}`);
   });
 }
 
-/** Hostname'den izin verilen domain listesini bul */
+/** Resolve the allowlist for a provider hostname. */
 function findAllowedDomains(hostname: string): string[] | null {
-  // Direct match.
   for (const [key, domains] of Object.entries(PROVIDER_ALLOWED_DOMAINS)) {
     if (hostname === key || hostname.endsWith(`.${key}`)) {
       return domains;
     }
   }
 
-  // Localhost/IP match.
   if (hostname === "127.0.0.1" || hostname === "localhost") {
     return PROVIDER_ALLOWED_DOMAINS["127.0.0.1"] ?? null;
   }
@@ -552,10 +536,8 @@ function findAllowedDomains(hostname: string): string[] | null {
  */
 function setupWebviewNavigationGuard(): void {
   app.on("web-contents-created", (_event, contents) => {
-    // Sadece webview tipindeki webContents'lere uygula
     if (contents.getType() !== "webview") return;
 
-    // will-navigate: when the user clicks a link inside the webview
     contents.on("will-navigate", (event, url) => {
       const currentUrl = contents.getURL();
       if (!isUrlAllowedInWebview(url, currentUrl)) {
@@ -571,7 +553,6 @@ function setupWebviewNavigationGuard(): void {
       }
     });
 
-    // setWindowOpenHandler: target="_blank" veya window.open()
     contents.setWindowOpenHandler(({ url }) => {
       const currentUrl = contents.getURL();
       if (!isUrlAllowedInWebview(url, currentUrl)) {
@@ -585,7 +566,6 @@ function setupWebviewNavigationGuard(): void {
         );
         return { action: "deny" };
       }
-      // Allowed domain: permit popup creation.
       return { action: "allow" };
     });
   });

@@ -31,7 +31,7 @@ export async function attachFiles(
     return await Promise.resolve({ success: false, message: uploadT("noFiles") });
   }
 
-  // TODO: Implement actual XDotools integration
+  // TODO: Replace this placeholder with the real XDotools bridge.
 
   return await Promise.resolve({
     success: false,

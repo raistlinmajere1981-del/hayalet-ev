@@ -12,10 +12,6 @@ import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const diffUtilsT = createMcpTranslatorSync();
 
-// ============================================
-// Types
-// ============================================
-
 export interface DiffLine {
   type: "added" | "removed" | "unchanged" | "header";
   lineNumber?: { old?: number; new?: number };
@@ -40,19 +36,13 @@ export interface ContentDiffResult {
   unified: string;
 }
 
-// ============================================
-// Core Diff Algorithm (Myers-like simplified)
-// ============================================
-
 /**
  * Compare two string arrays
  */
 function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
-  // Simple LCS (Longest Common Subsequence)-based diff.
   const oldLen = oldLines.length;
   const newLen = newLines.length;
 
-  // DP matrix.
   const dp: number[][] = Array.from({ length: oldLen + 1 }, () =>
     Array.from({ length: newLen + 1 }, () => 0)
   );
@@ -72,7 +62,6 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
     }
   }
 
-  // Backtrack to find the diff.
   let i = oldLen;
   let j = newLen;
   const tempResult: DiffLine[] = [];
@@ -126,10 +115,8 @@ function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
     if (line == null) continue;
 
     if (line.type !== "unchanged") {
-      // Add the change with surrounding context.
       const contextStart = Math.max(lastChangeIndex + 1, i - contextLines);
 
-      // Include the preceding context lines.
       for (let c = contextStart; c < i; c++) {
         const contextLine = diff[c];
         if (contextLine?.type === "unchanged" && !currentHunk.includes(contextLine)) {
@@ -140,17 +127,14 @@ function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
       currentHunk.push(line);
       lastChangeIndex = i;
     } else if (i - lastChangeIndex <= contextLines) {
-      // Include context after the change.
       currentHunk.push(line);
     } else if (currentHunk.length > 0) {
-      // Finish the current hunk.
       lines.push(...formatHunk(currentHunk));
       lines.push("");
       currentHunk = [];
     }
   }
 
-  // Flush the final hunk.
   if (currentHunk.length > 0) {
     lines.push(...formatHunk(currentHunk));
   }
@@ -165,7 +149,6 @@ function formatHunk(hunk: DiffLine[]): string[] {
     return lines;
   }
 
-  // Hunk header.
   const oldLineEntry = hunk.find((l) => l.lineNumber?.old != null && l.lineNumber.old > 0);
   const newLineEntry = hunk.find((l) => l.lineNumber?.new != null && l.lineNumber.new > 0);
   const oldStart = oldLineEntry?.lineNumber?.old ?? 1;
@@ -196,10 +179,6 @@ function formatHunk(hunk: DiffLine[]): string[] {
 
   return lines;
 }
-
-// ============================================
-// Public API
-// ============================================
 
 /**
  * Compare two files

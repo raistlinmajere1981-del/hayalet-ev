@@ -38,7 +38,6 @@ export function operationHistory(
   };
 }
 
-// Tool Definitions
 export const BACKUP_FILE_TOOL = {
   name: "hev_fs_backup",
   description: historyToolDefinitionT("historyBackup.description"),

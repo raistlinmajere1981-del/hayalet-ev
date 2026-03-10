@@ -5,10 +5,7 @@ import type {
   MessageMethod,
   UploadMethod,
 } from "@shared/settings.js";
-import {
-  LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY,
-  LEGACY_ASSISTANT_SLOT_SETTINGS_KEY,
-} from "@shared/settings.js";
+import { ASSISTANT_ACCOUNTS_SETTINGS_KEY, ASSISTANT_SLOT_SETTINGS_KEY } from "@shared/settings.js";
 import { isAssistantProviderId } from "@shared/common.js";
 import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
 import {
@@ -41,16 +38,16 @@ function mergeDefaults(obj: unknown, defaults: Record<string, unknown>): Record<
 }
 
 type SettingsInput = Partial<AppSettings> & {
-  [LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY]?: Account[];
-  [LEGACY_ASSISTANT_SLOT_SETTINGS_KEY]?: SlotSettings;
+  [ASSISTANT_ACCOUNTS_SETTINGS_KEY]?: Account[];
+  [ASSISTANT_SLOT_SETTINGS_KEY]?: SlotSettings;
 };
 
 function resolveAssistantAccounts(raw: SettingsInput): Account[] | undefined {
   if (Array.isArray(raw.assistantAccounts)) {
     return raw.assistantAccounts;
   }
-  if (Array.isArray(raw[LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY])) {
-    return raw[LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY];
+  if (Array.isArray(raw[ASSISTANT_ACCOUNTS_SETTINGS_KEY])) {
+    return raw[ASSISTANT_ACCOUNTS_SETTINGS_KEY];
   }
   return undefined;
 }
@@ -59,8 +56,8 @@ function resolveAssistantSlot(raw: SettingsInput): SlotSettings | undefined {
   if (isPlainObject(raw.assistantSlot)) {
     return raw.assistantSlot;
   }
-  if (isPlainObject(raw[LEGACY_ASSISTANT_SLOT_SETTINGS_KEY])) {
-    return raw[LEGACY_ASSISTANT_SLOT_SETTINGS_KEY];
+  if (isPlainObject(raw[ASSISTANT_SLOT_SETTINGS_KEY])) {
+    return raw[ASSISTANT_SLOT_SETTINGS_KEY];
   }
   return undefined;
 }

@@ -258,9 +258,8 @@ export class CharacterOverlay {
   private emptyState: HTMLElement | null = null;
   private saveBtn: HTMLButtonElement | null = null;
 
-  // Selected feature id set
+  // Keep a snapshot of the persisted selection so close() can discard local edits.
   private selected: Set<string> = new Set();
-  // Saved disk state used for change detection
   private savedSelected: Set<string> = new Set();
   private unsubscribeI18n: (() => void) | null = null;
 
@@ -274,7 +273,6 @@ export class CharacterOverlay {
     this.emptyState = document.getElementById("character-empty-state");
     this.saveBtn = document.getElementById("character-save-btn") as HTMLButtonElement | null;
 
-    // Open/close
     document.getElementById("assistant-character-btn")?.addEventListener("click", () => {
       this.open();
     });
@@ -285,17 +283,14 @@ export class CharacterOverlay {
       this.close();
     });
 
-    // Click outside the modal
     this.overlay?.addEventListener("click", (e) => {
       if (e.target === this.overlay) this.close();
     });
 
-    // Save
     this.saveBtn?.addEventListener("click", () => {
       void this.save();
     });
 
-    // Copy the message
     document.getElementById("character-copy-msg-btn")?.addEventListener("click", () => {
       void navigator.clipboard.writeText(characterT("copyPrompt")).then(() => {
         const btn = document.getElementById("character-copy-msg-btn");
@@ -320,7 +315,6 @@ export class CharacterOverlay {
       this._checkConflicts();
     });
 
-    // Render the pool
     this._renderPool();
   }
 

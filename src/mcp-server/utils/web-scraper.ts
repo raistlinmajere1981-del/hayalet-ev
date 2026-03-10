@@ -159,12 +159,10 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
   // $ is also referenced from explanatory comments below.
   void $; // Prevent unused warning
 
-  // Remove noisy elements.
   REMOVE_SELECTORS.forEach((selector) => {
     $(selector).remove();
   });
 
-  // Extract metadata.
   const title =
     ($("title").text().trim().length > 0 ? $("title").text().trim() : null) ??
     $('meta[property="og:title"]').attr("content") ??
@@ -179,7 +177,6 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
   const language =
     $("html").attr("lang") ?? $('meta[http-equiv="content-language"]').attr("content");
 
-  // Find the main content container.
   let contentElement = null;
   for (const selector of CONTENT_SELECTORS) {
     const el = $(selector).first();
@@ -189,14 +186,11 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
     }
   }
 
-  // Fallback to the body element.
   contentElement ??= $("body");
 
-  // Extract cleaned text and markdown.
   const content = extractText(contentElement, $, opts.includeLinks ?? false);
   const markdown = extractMarkdown(contentElement, $, opts.includeLinks ?? false);
 
-  // Apply the length limit.
   const truncatedContent = content.slice(0, opts.maxLength ?? 50000);
   const truncatedMarkdown = markdown.slice(0, opts.maxLength ?? 50000);
 
@@ -232,37 +226,31 @@ function extractText(
 ): string {
   const lines: string[] = [];
 
-  // Process each block.
   element.find("p, h1, h2, h3, h4, h5, h6, li, td, th, pre, blockquote, div").each((_, el) => {
     const $el = $(el);
     const tagName = el.type === "tag" ? el.tagName.toLowerCase() : "";
 
-    // Nested elementleri atla
+    // Skip container nodes that would duplicate nested paragraph or div text.
     if ($el.find("p, div").length > 0 && !["pre", "blockquote"].includes(tagName)) {
       return;
     }
 
     let text = $el.text().trim();
 
-    // Skip empty or very short content.
     if (text.length < 3) return;
 
-    // Format headings.
     if (tagName.startsWith("h")) {
       text = `\n## ${text}\n`;
     }
 
-    // List items.
     if (tagName === "li") {
       text = `• ${text}`;
     }
 
-    // Code blocks.
     if (tagName === "pre") {
       text = `\n\`\`\`\n${text}\n\`\`\`\n`;
     }
 
-    // Quotes.
     if (tagName === "blockquote") {
       text = `> ${text}`;
     }
@@ -270,7 +258,6 @@ function extractText(
     lines.push(text);
   });
 
-  // Remove repeated blank lines.
   return lines
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")

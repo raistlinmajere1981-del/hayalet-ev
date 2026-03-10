@@ -326,7 +326,6 @@ export function undoLastOperation(projectRoot: string): {
   try {
     switch (operation.type) {
       case "delete": {
-        // Restore from trash.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.backupPath)) {
             const targetDir = dirname(file.path);
@@ -339,7 +338,6 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "create": {
-        // Remove the file that was created.
         for (const file of operation.files) {
           if (existsSync(file.path)) {
             moveToTrash(projectRoot, file.path);
@@ -348,7 +346,6 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "replace": {
-        // Restore the original content.
         for (const file of operation.files) {
           if (file.originalContent !== undefined) {
             writeFileSync(file.path, file.originalContent, "utf-8");
@@ -363,7 +360,6 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "move": {
-        // Undo the move.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.path)) {
             renameSync(file.path, file.backupPath);
@@ -372,7 +368,6 @@ export function undoLastOperation(projectRoot: string): {
         break;
       }
       case "backup": {
-        // Delete the backup file.
         for (const file of operation.files) {
           if (file.backupPath != null && file.backupPath !== "" && existsSync(file.backupPath)) {
             unlinkSync(file.backupPath);
