@@ -104,7 +104,7 @@ test("tools snapshot loader uses ids endpoint and falls back to tool listing end
     if (path === "/experimental/tool") {
       return {
         tools: [
-          { id: "hayalet-ev_hev_mcp_health" },
+          { id: "app_hev_mcp_health" },
           { id: "context7_query-docs" },
         ],
       };
@@ -114,5 +114,5 @@ test("tools snapshot loader uses ids endpoint and falls back to tool listing end
 
   assert.deepEqual(calls, ["/experimental/tool/ids", "/experimental/tool"]);
   assert.equal(result.status, "loaded");
-  assert.deepEqual(result.toolIds, ["hayalet-ev_hev_mcp_health", "context7_query-docs"]);
+  assert.deepEqual(result.toolIds, ["app_hev_mcp_health", "context7_query-docs"]);
 });

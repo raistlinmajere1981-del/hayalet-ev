@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveWhereAmI } from "../lib/whereami-runtime.mjs";
 
-test("returns hayalet-ev when main process is alive in soft idle", () => {
+test("returns app when main process is alive in soft idle", () => {
   const result = resolveWhereAmI({
     control: {
       workflowSessionId: "wf-1",
@@ -20,7 +20,7 @@ test("returns hayalet-ev when main process is alive in soft idle", () => {
     nowIso: "2026-03-02T10:00:10.000Z",
   });
 
-  assert.equal(result.mode, "hayalet-ev");
+  assert.equal(result.mode, "app");
   assert.equal(result.shouldStop, false);
   assert.equal(result.observedSignals.opencodeServerRunning, false);
 });

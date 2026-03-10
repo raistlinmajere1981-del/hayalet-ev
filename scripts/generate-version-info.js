@@ -112,7 +112,7 @@ async function generateMarkdown() {
   md += "## Project\n\n";
   md += "| Key | Value |\n";
   md += "|-----|-------|\n";
-  md += "| **Name** | Hayalet-ev (Ghost House) |\n";
+  md += "| **Name** | app (Ghost House) |\n";
   md += "| **Version** | " + getPackageVersion() + " |\n";
   md += "| **Last Updated** | " + now.split("T")[0] + " |\n";
 

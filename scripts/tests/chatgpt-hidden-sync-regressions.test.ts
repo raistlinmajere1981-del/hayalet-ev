@@ -21,7 +21,7 @@ function withMockDom(node: MockMessageNode, fn: () => void): void {
     configurable: true,
     value: {
       innerWidth: 1280,
-      __hayalet_provider_config: {
+      __app_provider_config: {
         scrapeSelectors: {
           preferred: "[data-message-author-role]",
           fallback: ".message-bubble, .markdown.prose",

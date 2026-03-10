@@ -7,10 +7,10 @@ import test from "node:test";
 import { getSessionSummary, readElectronLogs } from "../../src/mcp-server/tools/log-tools.ts";
 
 test("readElectronLogs structured level filter matches level field", async () => {
-  const root = await mkdtemp(join(tmpdir(), "hayalet-ev-log-tools-"));
+  const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {
-    const sessionDir = join(root, "logs", "hayalet-ev", "s1");
+    const sessionDir = join(root, "logs", "app", "s1");
     await mkdir(sessionDir, { recursive: true });
 
     await writeFile(
@@ -19,8 +19,8 @@ test("readElectronLogs structured level filter matches level field", async () =>
       "utf-8"
     );
 
-    const result = await readElectronLogs(join(root, "logs", "hayalet-ev"), {
-      app: "hayalet-ev",
+    const result = await readElectronLogs(join(root, "logs", "app"), {
+      app: "app",
       type: "structured",
       level: "error",
       sessionId: "s1",
@@ -35,7 +35,7 @@ test("readElectronLogs structured level filter matches level field", async () =>
 });
 
 test("getSessionSummary returns fallback summary for mcp default session", async () => {
-  const root = await mkdtemp(join(tmpdir(), "hayalet-ev-log-tools-"));
+  const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {
     const sessionDir = join(root, "logs", "mcp-server", "default");
@@ -72,7 +72,7 @@ test("getSessionSummary returns fallback summary for mcp default session", async
 });
 
 test("getSessionSummary returns incomplete summary when mcp default has no summary sources", async () => {
-  const root = await mkdtemp(join(tmpdir(), "hayalet-ev-log-tools-"));
+  const root = await mkdtemp(join(tmpdir(), "app-log-tools-"));
 
   try {
     const sessionDir = join(root, "logs", "mcp-server", "default");
@@ -86,7 +86,7 @@ test("getSessionSummary returns incomplete summary when mcp default has no summa
     const text = String(result.content[0]?.text ?? "");
     assert.equal(result.isError, undefined);
     assert.match(text, /Session Özeti: default/);
-    assert.match(text, /Durum: incomplete/);
+    assert.match(text, /Durum: (incomplete|tamamlanmadı)/);
     assert.match(text, /Toplam Log: 0/);
   } finally {
     await rm(root, { recursive: true, force: true });

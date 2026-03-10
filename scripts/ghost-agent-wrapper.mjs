@@ -101,9 +101,9 @@ async function runMainApp(useAssistantStartupFlags = false) {
   });
 
   if (useAssistantStartupFlags) {
-    return await run("npm", ["run", "electron:dev:assistant"], "hayalet-ev");
+    return await run("npm", ["run", "electron:dev:assistant"], "app");
   }
-  return await run("npm", ["run", "electron:dev"], "hayalet-ev");
+  return await run("npm", ["run", "electron:dev"], "app");
 }
 
 async function runGhostApp() {
@@ -141,9 +141,9 @@ async function runGhostOnly() {
     phase: idleControl.phase,
   });
 
-  // "Hayalet-ev'e Geç" butonuna basıldıysa (desiredMode=soft) hayalet-ev'i aç
+  // "Hayalet-ev'e Geç" butonuna basıldıysa (desiredMode=soft) app'i aç
   if (shouldReopenMainAfterGhost(idleControl)) {
-    await logWrapperEvent("cycle.main.start", { nextTarget: "hayalet", assistantStartup: true });
+    await logWrapperEvent("cycle.main.start", { nextTarget: "app", assistantStartup: true });
     await runMainApp(true);
   } else {
     await logWrapperEvent("cycle.stop", {
@@ -164,11 +164,11 @@ async function main() {
   await ensureControlFile();
   await logWrapperEvent("wrapper.start", { runtimeControlPath });
 
-  let nextTarget = "hayalet";
+  let nextTarget = "app";
   let launchAssistantOnNextMain = false;
 
   while (true) {
-    if (nextTarget === "hayalet") {
+    if (nextTarget === "app") {
       await logWrapperEvent("cycle.main.start", {
         nextTarget,
         assistantStartup: launchAssistantOnNextMain,
@@ -210,7 +210,7 @@ async function main() {
     await logWrapperEvent("cycle.ghost.start", { nextTarget });
     const ghostCode = await runGhostApp();
     if (ghostCode !== 0) {
-      console.error("[ghost-agent-wrapper] ghost-agent ended with non-zero exit; returning to hayalet-ev");
+      console.error("[ghost-agent-wrapper] ghost-agent ended with non-zero exit; returning to app");
     }
 
     const control = await readControl();
@@ -233,7 +233,7 @@ async function main() {
     }
 
     launchAssistantOnNextMain = true;
-    nextTarget = "hayalet";
+    nextTarget = "app";
   }
 }
 

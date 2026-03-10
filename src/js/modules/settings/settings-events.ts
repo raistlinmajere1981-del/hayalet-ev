@@ -41,7 +41,7 @@ export class Emitter {
   }
 }
 
-export function createSettingsBroadcast(channelName = "hayalet-settings"): {
+export function createSettingsBroadcast(channelName = "app-settings"): {
   post: (msg: unknown) => void;
   on: (handler: (data: unknown) => unknown) => () => void;
 } {

@@ -62,7 +62,7 @@ export async function readElectronLogs(args: {
   correlationId?: string;
 }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
 
   // Get session ID
   let sessionId = args.sessionId;
@@ -152,7 +152,7 @@ export async function listLogSessions(args?: {
   includeStats?: boolean;
 }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
 
   if (!existsSync(logDir)) {
     return {
@@ -227,7 +227,7 @@ export async function listLogSessions(args?: {
  */
 export async function getSessionSummary(args: { sessionId?: string }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
 
   // Get session ID
   let sessionId = args.sessionId;

@@ -8,7 +8,7 @@ import { resolveWhereAmI } from "./whereami-runtime.mjs";
 
 const execFileAsync = promisify(execFile);
 
-const MODE_SET = new Set(["terminal", "hayalet-ev", "ghost-agent", "transitioning", "conflict"]);
+const MODE_SET = new Set(["terminal", "app", "ghost-agent", "transitioning", "conflict"]);
 
 const ACTION_CONFIG = Object.freeze({
   "main-close": {
@@ -39,15 +39,15 @@ const ACTION_CONFIG = Object.freeze({
     desiredMode: "soft",
     phase: "idle",
     closeTarget: "ghost",
-    expectedMode: "hayalet-ev",
+    expectedMode: "app",
     requiresWrapper: false,
     stampWorkflow: false,
   },
 });
 
 const ACTION_ALLOWED_SOURCE_MODES = Object.freeze({
-  "main-close": ["hayalet-ev"],
-  "main-to-ghost": ["hayalet-ev"],
+  "main-close": ["app"],
+  "main-to-ghost": ["app"],
   "ghost-close": ["ghost-agent"],
   "ghost-return-main": ["ghost-agent"],
 });
@@ -350,7 +350,7 @@ export function resolveActionForTargetMode(currentMode, targetMode) {
   }
 
   if (targetMode === "transitioning" || targetMode === "conflict") {
-    return { action: null, noop: false, error: "Target mode must be terminal, hayalet-ev, or ghost-agent." };
+    return { action: null, noop: false, error: "Target mode must be terminal, app, or ghost-agent." };
   }
 
   if (currentMode === "transitioning" || currentMode === "conflict") {
@@ -370,29 +370,29 @@ export function resolveActionForTargetMode(currentMode, targetMode) {
   }
 
   if (targetMode === "ghost-agent") {
-    if (currentMode === "hayalet-ev") {
+    if (currentMode === "app") {
       return { action: "main-to-ghost", noop: false, error: null };
     }
     return {
       action: null,
       noop: false,
-      error: "ghost-agent mode can only be entered from hayalet-ev mode.",
+      error: "ghost-agent mode can only be entered from app mode.",
     };
   }
 
-  if (targetMode === "hayalet-ev") {
+  if (targetMode === "app") {
     if (currentMode === "ghost-agent") {
       return { action: "ghost-return-main", noop: false, error: null };
     }
     return {
       action: null,
       noop: false,
-      error: "hayalet-ev mode can only be restored from ghost-agent mode.",
+      error: "app mode can only be restored from ghost-agent mode.",
     };
   }
 
   if (targetMode === "terminal") {
-    if (currentMode === "hayalet-ev") {
+    if (currentMode === "app") {
       return { action: "main-close", noop: false, error: null };
     }
     if (currentMode === "ghost-agent") {

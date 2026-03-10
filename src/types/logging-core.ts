@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Unified Logging System - Core Types
+ * app Unified Logging System - Core Types
  *
  * Single source of truth for all logging types across:
  * - Renderer process (src/)

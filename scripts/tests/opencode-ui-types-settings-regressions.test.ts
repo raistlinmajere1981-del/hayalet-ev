@@ -120,7 +120,7 @@ test("normalize settings coerces non-string app language to Turkish", () => {
 
 test("normalize settings backfills opencode-ui assistant account from legacy key", () => {
   const normalized = normalizeSettings({
-    asistanAccounts: [],
+    assistantAccounts: [],
   });
 
   const providers = (normalized.assistantAccounts ?? []).map((account) => account.provider);

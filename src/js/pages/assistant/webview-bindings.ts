@@ -127,7 +127,7 @@ export function bindAssistantPrimaryWebviewEvents(
       if (cfg !== null) {
         try {
           if (typeof options.webviewEl.send === "function" && currentProviderId !== "") {
-            options.webviewEl.send("hayalet-set-provider", {
+            options.webviewEl.send("app-set-provider", {
               providerId: currentProviderId,
               slot: "ai0",
             });
@@ -135,8 +135,8 @@ export function bindAssistantPrimaryWebviewEvents(
             const configScript = `
               (function() {
                 try {
-                  window.__hayalet_slot = "ai0";
-                  window.__hayalet_provider_config = ${JSON.stringify(cfg)};
+                  window.__app_slot = "ai0";
+                  window.__app_provider_config = ${JSON.stringify(cfg)};
                   return true;
                 } catch (e) {
                   console.error(

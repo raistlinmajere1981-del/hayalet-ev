@@ -55,7 +55,7 @@ export function initLogSystem(sessionId: string | null = null): {
   logDir: string;
   sessionDir: string;
 } {
-  LOG_DIR = join(Paths.getLogsDir(), "hayalet-ev");
+  LOG_DIR = join(Paths.getLogsDir(), "app");
   SESSION_ID = sessionId ?? generateSessionId();
   SESSION_DIR = join(LOG_DIR, SESSION_ID);
 

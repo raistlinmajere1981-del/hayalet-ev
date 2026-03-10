@@ -15,17 +15,16 @@ import { shellT } from "./shell-i18n.js";
 
 const SPECIAL_PAGES = ["settings", "archives", "webview"];
 const ASSISTANT_PAGE = "assistant";
-const LEGACY_ASSISTANT_PAGE = "asistan";
 
 let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};
 
 function normalizePageName(pageName: string): string {
-  return pageName === LEGACY_ASSISTANT_PAGE ? ASSISTANT_PAGE : pageName;
+  return pageName;
 }
 
 function resolvePageDomNames(pageName: string): string[] {
-  return pageName === ASSISTANT_PAGE ? [ASSISTANT_PAGE, LEGACY_ASSISTANT_PAGE] : [pageName];
+  return [pageName];
 }
 
 function findPageElement(pageName: string): HTMLElement | null {

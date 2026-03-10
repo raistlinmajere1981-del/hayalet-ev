@@ -46,7 +46,7 @@ function enhancedLogT(
 
 export async function streamLogs(args: StreamLogsArgs): Promise<LogEntry[]> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -111,7 +111,7 @@ export interface AnalyzeErrorsResult {
 
 export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErrorsResult> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -228,7 +228,7 @@ export interface CorrelationTrace {
 
 export async function traceCorrelation(args: TraceCorrelationArgs): Promise<CorrelationTrace> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -335,7 +335,7 @@ export async function getPerformanceReport(
   args: PerformanceReportArgs
 ): Promise<PerformanceReport> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -437,7 +437,7 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
   const startTime = Date.now();
   const t = await createMcpTranslator();
 
-  const logDir = join(PROJECT_ROOT, "logs", "hayalet-ev");
+  const logDir = join(PROJECT_ROOT, "logs", "app");
   const sessionDir = join(logDir, args.sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 

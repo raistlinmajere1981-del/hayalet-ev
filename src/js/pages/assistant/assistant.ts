@@ -1640,7 +1640,7 @@ export class AssistantController {
         const activeWebview = SlotController.getWebview("ai0") as
           | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
           | null;
-        activeWebview?.send?.("hayalet-set-provider", {
+        activeWebview?.send?.("app-set-provider", {
           providerId: results.refreshedConfig.id,
           slot: "ai0",
         });

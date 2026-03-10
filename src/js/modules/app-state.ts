@@ -28,7 +28,7 @@ function isLegacyDefaultNickname(value: string): boolean {
     .replace(/\p{Diacritic}/gu, "")
     .replace(/\u0131/g, "i");
 
-  return normalized === "user" || normalized === "kullanici";
+  return normalized === "user" || normalized === "user";
 }
 
 class AppStateClass {

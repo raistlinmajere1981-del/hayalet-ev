@@ -127,7 +127,7 @@ export function resolveWhereamiProviderContext({
   const opencodeServerRunning = probes?.opencodeServerRunning === true;
   const opencodeCliActive = cliMatch?.id === "opencode";
   const baseMode = typeof resolvedMode === "string" ? resolvedMode : "terminal";
-  const canOverrideMode = baseMode === "terminal" || baseMode === "hayalet-ev";
+  const canOverrideMode = baseMode === "terminal" || baseMode === "app";
 
   let effectiveMode = baseMode;
   let terminalOwner = "none";

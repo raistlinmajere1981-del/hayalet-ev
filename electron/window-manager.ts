@@ -294,8 +294,8 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   });
 
   // Relax CSP in Asistan webview to allow OpenCode changelog fetch + local server
-  const asistanSession = session.fromPartition("persist:ai0");
-  asistanSession.webRequest.onHeadersReceived((details, callback) => {
+  const assistantSession = session.fromPartition("persist:ai0");
+  assistantSession.webRequest.onHeadersReceived((details, callback) => {
     const headers: Record<string, string[]> = { ...details.responseHeaders };
     const cspKey = Object.keys(headers).find(
       (key) => key.toLowerCase() === "content-security-policy"

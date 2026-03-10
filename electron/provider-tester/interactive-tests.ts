@@ -241,7 +241,7 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
     const injectScript = `(function() {
       const message = ${safeMessage};
 
-      const config = window.__hayalet_provider_config;
+      const config = window.__app_provider_config;
       if (!config || !config.selectors) {
         throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.providerConfigMissing"))});
       }

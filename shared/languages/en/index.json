@@ -591,7 +591,7 @@
         },
         "Restart": {
           "description": "Restarts the application.",
-          "detail": "Completely closes and restarts the Hayalet-ev Electron application. All active connections and sessions are terminated, and the application is loaded again from scratch. Use it carefully.",
+          "detail": "Completely closes and restarts the Electron application. All active connections and sessions are terminated, and the application is loaded again from scratch. Use it carefully.",
           "usage": "++cmd:Restart()",
           "example": "++cmd:Restart()"
         },
@@ -2155,8 +2155,8 @@
         "tr": "Provider kullanım telemetrisi gönderilemedi: {{message}}"
       },
       "providerHandlerFailed": {
-        "en": "The hayalet-set-provider handler failed: {{message}}",
-        "tr": "hayalet-set-provider handler başarısız: {{message}}"
+        "en": "The app-set-provider handler failed: {{message}}",
+        "tr": "app-set-provider handler başarısız: {{message}}"
       }
     },
     "opencodeUiSessionStore": {
@@ -2260,12 +2260,12 @@
     },
     "startup": {
       "registrySummary": "[Registry] {{toolCount}} tools registered ({{categories}})",
-      "serverStarted": "Hayalet-ev MCP Server v{{version}} started ({{toolCount}} tools | Unified Registry)",
+      "serverStarted": "App MCP Server v{{version}} started ({{toolCount}} tools | Unified Registry)",
       "serverStartError": "Server start error",
       "serverErrorLine": "Server error: {{message}}"
     },
     "health": {
-      "activeMessage": "✅ Hayalet-ev MCP is active and running.",
+      "activeMessage": "✅ App MCP is active and running.",
       "reportTitle": "📊 MCP Status:",
       "healthy": "Healthy",
       "unhealthy": "Unhealthy",
@@ -2274,10 +2274,10 @@
       "uptimeLine": "⏱️  Uptime: {{uptime}}s",
       "toolCountLine": "🔧 Tool Count: {{toolCount}}",
       "visibleMessageTitle": "💡 If you can see this message:",
-      "visibleMessageLine1": "   → Hayalet-ev MCP is running",
+      "visibleMessageLine1": "   → App MCP is running",
       "visibleMessageLine2": "   → All hev_* tools are available",
       "failureTitle": "⚠️  If this tool does not work:",
-      "failureLine1": "   → Hayalet-ev MCP has likely crashed",
+      "failureLine1": "   → App MCP has likely crashed",
       "failureLine2": "   → Urgent: restart the MCP server"
     },
     "analysis": {
@@ -2350,7 +2350,7 @@
         "error": "❌ Electron test error: {{message}}"
       },
       "listTools": {
-        "title": "📦 Hayalet-ev MCP Tools ({{totalTools}} tools)",
+        "title": "📦 app MCP Tools ({{totalTools}} tools)",
         "hint": "💡 Use hev_suggest_tool for intent-based tool discovery",
         "categories": {
           "core": "Core",
@@ -2367,7 +2367,7 @@
         }
       },
       "health": {
-        "activeMessage": "✅ Hayalet-ev MCP is active and running."
+        "activeMessage": "✅ app MCP is active and running."
       }
     },
     "debugTools": {
@@ -2552,7 +2552,7 @@
       },
       "module": {
         "operation": "Module: {{moduleName}}",
-        "headerText": "# Hayalet-ev Context - Module: {{moduleName}}\n",
+        "headerText": "# app Context - Module: {{moduleName}}\n",
         "runningRepomix": "Running Repomix...",
         "failedProgress": "Module context could not be created",
         "failedMessage": "Module context error: {{output}}",
@@ -3829,7 +3829,7 @@
       },
       "checkConnection": {
         "connected": "✅ Electron connection is active\n\n📡 **Connection Details:**\n- Port: {{port}}\n- Targets: {{targetsCount}}\n\n🪟 **Main Window:**\n- Title: {{title}}\n- URL: {{url}}\n- Type: {{windowType}}",
-        "disconnected": "❌ Electron connection is unavailable\n\n**Error:** {{error}}\n\n**Fix:**\n1. Start Hayalet-ev: `npm start`\n2. The app starts in debug mode on port {{port}}\n3. Try again"
+        "disconnected": "❌ Electron connection is unavailable\n\n**Error:** {{error}}\n\n**Fix:**\n1. Start the app: `npm start`\n2. The app starts in debug mode on port {{port}}\n3. Try again"
       },
       "sendCommand": {
         "missingCommand": "❌ 'command' is required",
@@ -4479,7 +4479,7 @@
         },
         "electron": {
           "mcpHealth": {
-            "description": "Check the health of Hayalet-ev MCP. Shows runtime status, version, and tool count.",
+            "description": "Check the health of app MCP. Shows runtime status, version, and tool count.",
             "useCases": {
               "sessionStart": "Checking MCP health at session start",
               "troubleshoot": "Troubleshooting tool failures"
@@ -4487,7 +4487,7 @@
             "agentGuidance": "Use this at the start of a session or when a tool fails. If MCP is down, fallback tool paths may take over."
           },
           "testElectron": {
-            "description": "Test the Hayalet-ev Electron application",
+            "description": "Test the application Electron application",
             "timeout": "Test duration in seconds (default: 5)",
             "useCases": {
               "connectivityTest": "Electron app connectivity testing",
@@ -4496,7 +4496,7 @@
             "agentGuidance": "Use this to verify that the Electron app is running and CDP is reachable."
           },
           "listTools": {
-            "description": "List Hayalet-ev MCP tools grouped by category",
+            "description": "List app MCP tools grouped by category",
             "useCases": {
               "discoverTools": "Discovering tools",
               "categoryResearch": "Category-based exploration",
@@ -4507,7 +4507,7 @@
           "readLogs": {
             "description": "Read Electron console and error logs. Supports filtering by source, level, content, and correlation ID.",
             "type": "Log type",
-            "app": "Application whose session logs should be read (default: hayalet-ev)",
+            "app": "Application whose session logs should be read (default: app)",
             "tail": "Number of last lines to show (default: 50)",
             "source": "Source filter: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob supported)",
             "level": "Log level filter",
@@ -4524,7 +4524,7 @@
           "listLogSessions": {
             "description": "List available log sessions. Each session represents one application run.",
             "limit": "Maximum number of sessions to show (default: 10)",
-            "app": "Application whose sessions should be listed (default: hayalet-ev)",
+            "app": "Application whose sessions should be listed (default: app)",
             "useCases": {
               "viewSessions": "Viewing historical sessions",
               "findSessionId": "Finding a specific session ID"
@@ -4545,7 +4545,7 @@
           "getSessionSummary": {
             "description": "Get summary information for a specific session (error count, duration, final state).",
             "sessionId": "Session ID (default: latest session)",
-            "app": "Application whose summary should be read (default: hayalet-ev)",
+            "app": "Application whose summary should be read (default: app)",
             "useCases": {
               "healthCheck": "Session health checks",
               "errorStats": "Viewing error statistics",
@@ -4757,7 +4757,7 @@
           "toggleMcpPanelServers": {
             "description": "Toggle the specified servers in the AI0 OpenCode MCP panel with an OFF→ON cycle.",
             "provider": "Panel type (auto detects automatically)",
-            "servers": "Server names to toggle (for example: context7, websearch, hayalet-ev)",
+            "servers": "Server names to toggle (for example: context7, websearch, app)",
             "settleMs": "Wait time after each toggle (ms)",
             "cycles": "Number of OFF→ON cycles (1-5)",
             "useCases": {
@@ -5084,7 +5084,7 @@
       "toolsSearchPlaceholder": "🔍 Search tools...",
       "toolsEmpty": "No tools found",
       "toolsBuiltInGroup": "OpenCode Built-in ({{count}})",
-      "toolsHevGroup": "Hayalet-ev MCP ({{count}})",
+      "toolsHevGroup": "app MCP ({{count}})",
       "providersLoading": "Loading..."
     },
     "prompt": {

@@ -33,7 +33,7 @@ test("webview preload resolves app language and emits provider language sync eve
 
   assert.match(source, /async function applyProviderUiLanguageSync/);
   assert.match(source, /ipcRenderer\.invoke\("i18n-load-language", appLocale\)/);
-  assert.match(source, /window\.dispatchEvent\(new CustomEvent\("hayalet-provider-language-sync"/);
+  assert.match(source, /window\.dispatchEvent\(new CustomEvent\("app-provider-language-sync"/);
   assert.match(source, /ipcRenderer\.sendToHost\("provider-language-sync"/);
 });
 
@@ -49,10 +49,10 @@ test("opencode providers declare explicit localStorage language signals", async 
   }
 });
 
-test("renderer webview hosts prefer hayalet-set-provider IPC for language sync capable injects", () => {
+test("renderer webview hosts prefer app-set-provider IPC for language sync capable injects", () => {
   const assistantBindings = readFileSync("src/js/pages/assistant/webview-bindings.ts", "utf8");
   const entrancePanel = readFileSync("src/js/pages/entrance/webview-panel.ts", "utf8");
 
-  assert.match(assistantBindings, /send\("hayalet-set-provider"/);
-  assert.match(entrancePanel, /send\("hayalet-set-provider"/);
+  assert.match(assistantBindings, /send\("app-set-provider"/);
+  assert.match(entrancePanel, /send\("app-set-provider"/);
 });

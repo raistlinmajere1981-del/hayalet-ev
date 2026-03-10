@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Main Process Logger Core
+ * app Main Process Logger Core
  *
  * Central orchestrator for main process logging:
  * - Receives batched logs from renderer via IPC
@@ -218,7 +218,7 @@ export class LoggerCore {
     const payload = batch.map((entry) => {
       const visibility = entry.visibility ?? 3;
       return {
-        app: "hayalet-ev",
+        app: "app",
         level: entry.level,
         category: entry.category,
         message: entry.message,

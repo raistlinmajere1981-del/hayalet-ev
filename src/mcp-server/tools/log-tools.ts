@@ -81,7 +81,7 @@ function parseStructuredLine(line: string): StructuredLine | null {
 
 /** Log read arguments */
 interface LogReadArgs {
-  app?: "hayalet-ev" | "mcp-server" | "ghost-agent";
+  app?: "app" | "mcp-server" | "ghost-agent";
   type?: "all" | "console" | "error" | "structured";
   tail?: number;
   source?: string;
@@ -93,7 +93,7 @@ interface LogReadArgs {
 
 function resolveAppLogDir(
   logDir: string,
-  app: "hayalet-ev" | "mcp-server" | "ghost-agent" = "hayalet-ev"
+  app: "app" | "mcp-server" | "ghost-agent" = "app"
 ): string {
   const baseLogsDir = basename(logDir) === "logs" ? logDir : dirname(logDir);
   return join(baseLogsDir, app);
@@ -108,7 +108,7 @@ function resolveAppLogDir(
 export async function readElectronLogs(logDir: string, args?: LogReadArgs): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const {
-    app = "hayalet-ev",
+    app = "app",
     type = "console", // Default: console (combined main + renderer logs).
     tail = 50,
     source,
@@ -253,10 +253,10 @@ interface SessionListItem {
  */
 export async function listLogSessions(
   logDir: string,
-  args?: { app?: "hayalet-ev" | "mcp-server" | "ghost-agent"; limit?: number }
+  args?: { app?: "app" | "mcp-server" | "ghost-agent"; limit?: number }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "hayalet-ev";
+  const app = args?.app ?? "app";
   const targetLogDir = resolveAppLogDir(logDir, app);
   const limit = args?.limit ?? 10;
 
@@ -317,10 +317,10 @@ export async function listLogSessions(
  */
 export async function getSessionSummary(
   logDir: string,
-  args?: { app?: "hayalet-ev" | "mcp-server" | "ghost-agent"; sessionId?: string }
+  args?: { app?: "app" | "mcp-server" | "ghost-agent"; sessionId?: string }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "hayalet-ev";
+  const app = args?.app ?? "app";
   const targetLogDir = resolveAppLogDir(logDir, app);
   const sessionId = args?.sessionId ?? (await findLatestSession(targetLogDir));
 

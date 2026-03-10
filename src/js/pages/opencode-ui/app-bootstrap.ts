@@ -49,7 +49,7 @@ export async function bootstrapOpencodeUiApp(
   options.getLogoFallback();
   options.updateUsagePlaceholders(options.initialUsageText);
 
-  window.__hayalet_provider_config = options.providerConfig as ProviderConfig;
+  window.__app_provider_config = options.providerConfig as ProviderConfig;
 
   initUIHelpers();
   options.initSelects();

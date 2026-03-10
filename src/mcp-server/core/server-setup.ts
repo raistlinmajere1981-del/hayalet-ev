@@ -20,7 +20,7 @@ import { getAllDefinitions, getToolCount } from "./registry.js";
 import { registerAllTools } from "./handlers/index.js";
 import { handleToolCall } from "./handlers.js";
 
-const LOG_DIR = join(PROJECT_ROOT, "logs", "hayalet-ev");
+const LOG_DIR = join(PROJECT_ROOT, "logs", "app");
 
 // MCP Server version — single source of truth.
 const MCP_VERSION = "3.0.0";
@@ -39,7 +39,7 @@ interface McpServerInitialization {
 export function initializeMcpServer(): McpServerInitialization {
   const server = new Server(
     {
-      name: "hayalet-ev-mcp",
+      name: "app-mcp",
       version: MCP_VERSION,
     },
     {

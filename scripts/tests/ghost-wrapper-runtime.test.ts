@@ -166,7 +166,7 @@ test("toPostGhostControl after ghost-only: close button sets terminal idle (wrap
   assert.equal(shouldReopenMainAfterGhost(result), false);
 });
 
-test("toPostGhostControl after ghost-only: return-main button sets soft idle (hayalet-ev reopens)", () => {
+test("toPostGhostControl after ghost-only: return-main button sets soft idle (app reopens)", () => {
   // Ghost-only: ghost exit action 'return-main' → soft+idle yazıldı
   const result = toPostGhostControl(
     {
@@ -183,7 +183,7 @@ test("toPostGhostControl after ghost-only: return-main button sets soft idle (ha
   assert.equal(shouldReopenMainAfterGhost(result), true);
 });
 
-test("toPostGhostControl after ghost-only crash: ghost-agent mode resets to soft (hayalet-ev reopens)", () => {
+test("toPostGhostControl after ghost-only crash: ghost-agent mode resets to soft (app reopens)", () => {
   // Ghost beklenmedik kapanırsa in-ghost+ghost-agent durumu soft'a döner
   const result = toPostGhostControl(
     {

@@ -1,5 +1,5 @@
 /**
- * IPC Handler — Hayalet-ev MCP Tool List
+ * IPC Handler — app MCP Tool List
  *
  * Parses `.rovo/_metadata/TOOL-LIST.md` (auto-generated on each MCP build)
  * and returns structured tool data for the OpenCode UI.

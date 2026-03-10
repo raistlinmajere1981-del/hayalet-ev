@@ -78,7 +78,7 @@ export async function attachFiles(
       dataTransfer.items.add(f);
     });
 
-    const config = window.__hayalet_provider_config;
+    const config = window.__app_provider_config;
     for (const selector of attachButtonCandidates) {
       try {
         const btn = document.querySelector(selector);

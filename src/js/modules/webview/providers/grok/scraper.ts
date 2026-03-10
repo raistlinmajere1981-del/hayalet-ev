@@ -40,7 +40,7 @@ export function scrapeMessages(): ScrapedMessage[] {
   }
 
   const config =
-    window.__hayalet_provider_config ??
+    window.__app_provider_config ??
     ({
       scrapeSelectors: {
         preferred: "[data-message-author-role]",

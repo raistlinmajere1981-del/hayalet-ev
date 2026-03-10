@@ -159,8 +159,8 @@ declare global {
       refresh: (options?: Record<string, unknown>) => Promise<void>;
     };
 
-    __hayalet_settings_unsub?: () => void;
-    __hayalet_provider_config?: ProviderConfig;
+    __app_settings_unsub?: () => void;
+    __app_provider_config?: ProviderConfig;
 
     OpenCodeConfig?: {
       serverUrl: string;

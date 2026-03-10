@@ -570,7 +570,7 @@ export class MemoryOverlay {
         memoryType: optionalNonEmpty(this.newType?.value) ?? "note",
         importance: this._newImportanceValue,
         pinned: this.newPinned?.checked ?? false,
-        sourceProvider: "hayalet-ev-ui",
+        sourceProvider: "app-ui",
       });
 
       // Reset the form

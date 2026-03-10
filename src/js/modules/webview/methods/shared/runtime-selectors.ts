@@ -26,7 +26,7 @@ export async function getRuntimeProviderConfig(
   webview: RuntimeWebviewLike
 ): Promise<RuntimeProviderConfig | null> {
   const config = await webview.executeJavaScript?.(
-    "(function() { return window.__hayalet_provider_config ?? null; })();"
+    "(function() { return window.__app_provider_config ?? null; })();"
   );
 
   return config !== null && config !== undefined && typeof config === "object"

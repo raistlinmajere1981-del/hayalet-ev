@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * MCP Server Entry Point
- * Hayalet-ev MCP Server - 87 development tools
+ * app MCP Server - 87 development tools
  */
 
 // Load environment variables first (silent to avoid JSONRPC pollution)

@@ -6,7 +6,7 @@ import { resolveWhereamiProviderContext } from "../lib/whereami-provider-context
 test("classifies OpenCode CLI without serve as opencode terminal mode", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
-    resolvedMode: "hayalet-ev",
+    resolvedMode: "app",
     probes: {
       opencodeServerRunning: false,
     },
@@ -26,7 +26,7 @@ test("classifies OpenCode CLI without serve as opencode terminal mode", () => {
 test("classifies non-OpenCode CLI without serve as other provider", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
-    resolvedMode: "hayalet-ev",
+    resolvedMode: "app",
     probes: {
       opencodeServerRunning: false,
     },
@@ -46,7 +46,7 @@ test("classifies non-OpenCode CLI without serve as other provider", () => {
 test("keeps base mode when OpenCode serve is running", () => {
   const result = resolveWhereamiProviderContext({
     currentPid: 300,
-    resolvedMode: "hayalet-ev",
+    resolvedMode: "app",
     probes: {
       opencodeServerRunning: true,
     },
@@ -57,7 +57,7 @@ test("keeps base mode when OpenCode serve is running", () => {
     ],
   });
 
-  assert.equal(result.effectiveMode, "hayalet-ev");
+  assert.equal(result.effectiveMode, "app");
   assert.equal(result.terminalOwner, "opencode-server");
   assert.equal(result.cliProvider, "codex");
   assert.equal(result.opencodeServerRunning, true);

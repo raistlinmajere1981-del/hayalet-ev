@@ -1,4 +1,4 @@
-export type OverlayApp = "hayalet-ev" | "mcp-server" | "ghost-agent";
+export type OverlayApp = "app" | "mcp-server" | "ghost-agent";
 
 export interface OverlayLogEntry {
   id: string;
@@ -30,26 +30,26 @@ export interface OverlayState {
 
 export function createInitialOverlayState(): OverlayState {
   return {
-    activeApp: "hayalet-ev",
+    activeApp: "app",
     paused: false,
     baseLogsDir: "",
     entriesByApp: {
-      "hayalet-ev": [],
+      "app": [],
       "mcp-server": [],
       "ghost-agent": [],
     },
     sessionsByApp: {
-      "hayalet-ev": [],
+      "app": [],
       "mcp-server": [],
       "ghost-agent": [],
     },
     selectedSessionByApp: {
-      "hayalet-ev": "",
+      "app": "",
       "mcp-server": "",
       "ghost-agent": "",
     },
     lastFingerprintByApp: {
-      "hayalet-ev": "",
+      "app": "",
       "mcp-server": "",
       "ghost-agent": "",
     },
@@ -59,7 +59,7 @@ export function createInitialOverlayState(): OverlayState {
 }
 
 export function isOverlayApp(value: unknown): value is OverlayApp {
-  return value === "hayalet-ev" || value === "mcp-server" || value === "ghost-agent";
+  return value === "app" || value === "mcp-server" || value === "ghost-agent";
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

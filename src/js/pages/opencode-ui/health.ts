@@ -36,7 +36,7 @@ const TRANSITIONAL_MCP_STATUSES = new Set([
   "pending",
 ]);
 
-const MANUAL_MCP_SERVER_NAMES = new Set(["hayalet-ev"]);
+const MANUAL_MCP_SERVER_NAMES = new Set(["app"]);
 const MCP_TOGGLE_PENDING = new Set<string>();
 let workspacePathForManualMcp = "";
 
@@ -315,7 +315,7 @@ function buildManualMcpConfig(name: string, enabled: boolean): Record<string, un
     return null;
   }
 
-  if (name === "hayalet-ev") {
+  if (name === "app") {
     const normalizedWorkspacePath = workspacePath.replace(/[\\/]$/, "");
     const launcherPath = `${normalizedWorkspacePath}/src/mcp-server/start.js`;
     return {
@@ -423,7 +423,7 @@ function renderMcpServerRows(
       const switchClass = "ds-mcp-switch" + (disabled ? " ds-mcp-switch--disabled" : "");
       const safeName = escapeHtml(name);
       const countBadge =
-        name === "hayalet-ev" && typeof hevToolCount === "number"
+        name === "app" && typeof hevToolCount === "number"
           ? '<span class="ds-mcp-tool-count">' + String(hevToolCount) + " tool</span>"
           : "";
 

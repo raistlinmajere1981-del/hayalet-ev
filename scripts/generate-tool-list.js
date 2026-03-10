@@ -126,7 +126,7 @@ async function generateMarkdown() {
   md += "## Usage Examples\n\n";
   md += "### List all tools\n```bash\nhev_list_tools()\n```\n\n";
   md +=
-    '### Get tool schema\n```bash\nmcp__hayalet_ev__get_tool_schema({ tool_name: "hev_dev_typescript_dashboard" })\n```\n\n';
+    '### Get tool schema\n```bash\nmcp__app__get_tool_schema({ tool_name: "hev_dev_typescript_dashboard" })\n```\n\n';
 
   return md;
 }

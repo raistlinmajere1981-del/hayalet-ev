@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Unified Logger - Renderer Process
+ * app Unified Logger - Renderer Process
  *
  * Primary logging API for renderer process. Replaces all console.* calls.
  *

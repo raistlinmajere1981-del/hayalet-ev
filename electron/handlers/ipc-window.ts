@@ -188,7 +188,7 @@ async function fetchLatestOpencodeVersion(): Promise<{
   const response = await fetch(OPENCODE_RELEASES_API_URL, {
     headers: {
       Accept: "application/vnd.github+json",
-      "User-Agent": "hayalet-ev-opencode-update-check",
+      "User-Agent": "app-opencode-update-check",
     },
   });
 

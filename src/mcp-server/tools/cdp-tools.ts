@@ -163,7 +163,7 @@ export async function toggleMcpPanelServers(
       ? Math.max(1, Math.min(5, Math.round(cycleRaw)))
       : 1;
 
-  const targetServers = servers.length > 0 ? servers : ["context7", "grep_app", "hayalet-ev"];
+  const targetServers = servers.length > 0 ? servers : ["context7", "grep_app", "app"];
 
   const payload = JSON.stringify({
     provider,

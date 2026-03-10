@@ -3,7 +3,6 @@
  */
 
 export const ROOM_SCHEMA_VERSION = 1 as const;
-const LEGACY_ASSISTANT_SCOPE = "asistan";
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";
 

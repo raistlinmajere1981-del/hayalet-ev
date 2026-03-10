@@ -145,7 +145,7 @@ async function rollbackTransitionIntent(statusBefore, action, transitionId, reas
     transitionId,
     action,
     reason,
-    restoredMode: restored.desiredMode === "soft" ? "hayalet-ev" : restored.desiredMode,
+    restoredMode: restored.desiredMode === "soft" ? "app" : restored.desiredMode,
     restoredPhase: restored.phase,
     ...details,
   });
@@ -168,7 +168,7 @@ async function runStatus(options) {
 
 async function runWait(mode, options) {
   if (typeof mode !== "string" || mode === "") {
-    fail({ error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent>" });
+    fail({ error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|app|ghost-agent>" });
     return;
   }
 
@@ -389,7 +389,7 @@ async function executeAction(action, options) {
 async function runSwitch(targetMode, options) {
   if (typeof targetMode !== "string" || targetMode === "") {
     fail({
-      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent>",
+      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|app|ghost-agent>",
     });
     return;
   }
@@ -433,9 +433,9 @@ function printHelp() {
     success: true,
     usage: [
       "node scripts/transition.mjs status",
-      "node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent> [--timeout <ms>]",
+      "node scripts/transition.mjs wait <terminal|app|ghost-agent> [--timeout <ms>]",
       "node scripts/transition.mjs trigger <main-close|main-to-ghost|ghost-close|ghost-return-main> [--wait]",
-      "node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent> [--wait]",
+      "node scripts/transition.mjs switch <terminal|app|ghost-agent> [--wait]",
     ],
     options: {
       wait: "Wait until expected mode is observed",

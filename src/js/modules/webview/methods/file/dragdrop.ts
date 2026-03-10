@@ -86,7 +86,7 @@ export async function attachFiles(
     });
 
     const cleanupDragOverlay = (): unknown => {
-      const config = window.__hayalet_provider_config;
+      const config = window.__app_provider_config;
       
       let overlaySelectors = [
         '[data-dnd-overlay]',
@@ -168,7 +168,7 @@ export async function attachFiles(
 
     cleanupDragOverlay();
 
-    const config = window.__hayalet_provider_config;
+    const config = window.__app_provider_config;
 
     function querySelectorDeep(selector) {
       try {
@@ -285,7 +285,7 @@ export async function attachFiles(
           }
 
           setTimeout(() => {
-            const config = window.__hayalet_provider_config;
+            const config = window.__app_provider_config;
             let previewSelectors = [
               'uploader-file-preview',
               '.file-preview-wrapper',

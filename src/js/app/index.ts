@@ -134,7 +134,7 @@ async function initApp(): Promise<void> {
     SplashScreen.update(50, AppI18n.t("app.startup.startingModules"));
 
     try {
-      window.__hayalet_settings_unsub ??= SettingsManager.subscribe(
+      window.__app_settings_unsub ??= SettingsManager.subscribe(
         ({ changedPaths }: { changedPaths: string[] }) => {
           const shouldUpdateIndicators =
             changedPaths.includes("*") ||

@@ -5,8 +5,8 @@ const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
-let __hayalet_preload_locale = "tr";
-let __hayalet_preload_catalog = null;
+let __app_preload_locale = "tr";
+let __app_preload_catalog = null;
 
 const PRELOAD_MESSAGE_FALLBACKS = {
   appScriptLoaded: "/js/app.js loaded via src.",
@@ -51,16 +51,16 @@ async function syncPreloadLocale() {
   try {
     const settings = await ipcRenderer.invoke("load-settings");
     const nextLocale = normalizePreloadLocale(settings && settings.general && settings.general.language);
-    __hayalet_preload_locale = nextLocale;
+    __app_preload_locale = nextLocale;
 
     const pack = await ipcRenderer.invoke("i18n-load-language", nextLocale);
-    __hayalet_preload_catalog =
+    __app_preload_catalog =
       pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
   } catch (_) {
-    __hayalet_preload_catalog = null;
+    __app_preload_catalog = null;
   }
 
-  return __hayalet_preload_locale;
+  return __app_preload_locale;
 }
 
 function getPreloadErrorMessage(error) {
@@ -80,10 +80,10 @@ function getPreloadErrorMessage(error) {
 }
 
 function preloadT(key, params) {
-  const messageLocale = resolvePreloadMessageLocale(__hayalet_preload_locale);
+  const messageLocale = resolvePreloadMessageLocale(__app_preload_locale);
   const template =
-    readCatalogValue(__hayalet_preload_catalog, `electron.preload.${key}.${messageLocale}`) ||
-    readCatalogValue(__hayalet_preload_catalog, "electron.preload." + key) ||
+    readCatalogValue(__app_preload_catalog, `electron.preload.${key}.${messageLocale}`) ||
+    readCatalogValue(__app_preload_catalog, "electron.preload." + key) ||
     PRELOAD_MESSAGE_FALLBACKS[key] ||
     key;
 
@@ -294,11 +294,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return value === "" ? null : value;
     };
 
-    const startPage = readFlagValue("--hayalet-start-page") ?? readFlagValue("--start-page");
+    const startPage = readFlagValue("--app-start-page") ?? readFlagValue("--start-page");
     const autoConnect =
-      argv.includes("--hayalet-auto-connect=1") ||
-      argv.includes("--hayalet-auto-connect=true") ||
-      argv.includes("--hayalet-auto-connect") ||
+      argv.includes("--app-auto-connect=1") ||
+      argv.includes("--app-auto-connect=true") ||
+      argv.includes("--app-auto-connect") ||
       argv.includes("--auto-connect");
 
     return { startPage, autoConnect };
@@ -343,8 +343,8 @@ try {
 
     function injectInitApp() {
       try {
-        if (window.__hayalet_init_injected) return;
-        window.__hayalet_init_injected = true;
+        if (window.__app_init_injected) return;
+        window.__app_init_injected = true;
         disableSpellcheck();
 
         const s = document.createElement("script");

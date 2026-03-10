@@ -120,6 +120,11 @@ export const config = {
     endpoints: [] as string[],
     tokenPaths: [] as string[],
   },
+  uiLanguage: {
+    signals: {
+      localStorageKeys: ["app-language", "opencode-ui-language"],
+    },
+  },
   scenarios: {
     webviewTest: WEBVIEW_TEST_SCENARIO,
   },

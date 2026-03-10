@@ -224,10 +224,7 @@ export class ServerController {
 
     const rawInput = (this.commandTestArgs?.value ?? "").trim();
     const commandKey = commandName.toLowerCase();
-    const inputWithDefault =
-      rawInput === "" && ["assistantaisend", "asistanaisend"].includes(commandKey)
-        ? "ai1"
-        : rawInput;
+    const inputWithDefault = rawInput === "" && commandKey === "assistantaisend" ? "ai1" : rawInput;
     const parsed = parseCommandExecutionInput(inputWithDefault, commandName);
     const resolvedCommandName = parsed.commandName;
     const resolvedArgs = parsed.args;

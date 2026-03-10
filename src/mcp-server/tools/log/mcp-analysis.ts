@@ -10,7 +10,7 @@ import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 
 const MCP_LOG_DIR = join(PROJECT_ROOT, "logs", "mcp-server");
-const HAYALET_LOG_DIR = join(PROJECT_ROOT, "logs", "hayalet-ev");
+const APP_LOG_DIR = join(PROJECT_ROOT, "logs", "app");
 
 interface MCPLogEntry {
   timestamp: string;
@@ -280,11 +280,11 @@ export async function correlateMcpErrors(args: {
   const unknownError = analysisRuntimeT("unknownError");
   const sessionId = args.sessionId ?? getCurrentSessionId(MCP_LOG_DIR);
   const mcpLogPath = join(MCP_LOG_DIR, sessionId, "mcp-tools.jsonl");
-  const preferredHayaletSessionPath = join(HAYALET_LOG_DIR, sessionId, "structured.jsonl");
-  const hayaletSessionId = existsSync(preferredHayaletSessionPath)
+  const preferredAppSessionPath = join(APP_LOG_DIR, sessionId, "structured.jsonl");
+  const appSessionId = existsSync(preferredAppSessionPath)
     ? sessionId
-    : getCurrentSessionId(HAYALET_LOG_DIR);
-  const structuredLogPath = join(HAYALET_LOG_DIR, hayaletSessionId, "structured.jsonl");
+    : getCurrentSessionId(APP_LOG_DIR);
+  const structuredLogPath = join(APP_LOG_DIR, appSessionId, "structured.jsonl");
   const timeWindow = args.timeWindow ?? 5000;
 
   if (!existsSync(mcpLogPath)) {
@@ -299,7 +299,7 @@ export async function correlateMcpErrors(args: {
     .map((line) => JSON.parse(line) as MCPLogEntry)
     .filter((e) => e.operation === "error");
 
-  // Read structured Hayalet-ev logs when available.
+  // Read structured app logs when available.
   let structuredEvents: StructuredEvent[] = [];
   if (existsSync(structuredLogPath)) {
     const structuredContent = await readFile(structuredLogPath, "utf-8");

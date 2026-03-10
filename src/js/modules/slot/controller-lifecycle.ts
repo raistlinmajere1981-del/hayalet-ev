@@ -186,7 +186,7 @@ export async function connectSlotLifecycle(
           send?: (channel: string, ...args: unknown[]) => void;
         };
         if (typeof webviewEl.send === "function") {
-          webviewEl.send("hayalet-set-provider", {
+          webviewEl.send("app-set-provider", {
             providerId: slotState.providerConfig.id,
             slot,
           });

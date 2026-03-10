@@ -30,12 +30,9 @@ test("navigation allows assistant page to activate side-nav item", () => {
   assert.match(indexHtml, /data-page="assistant"/);
   assert.match(assistantPage, /id="page-assistant"/);
   assert.match(navigation, /const SPECIAL_PAGES = \["settings", "archives", "webview"\];/);
-  assert.match(navigation, /const LEGACY_ASSISTANT_PAGE = "asistan";/);
-  assert.match(navigation, /return pageName === LEGACY_ASSISTANT_PAGE \? ASSISTANT_PAGE : pageName;/);
-  assert.match(
-    navigation,
-    /return pageName === ASSISTANT_PAGE \? \[ASSISTANT_PAGE, LEGACY_ASSISTANT_PAGE\] : \[pageName\];/
-  );
+  assert.doesNotMatch(navigation, /LEGACY_ASSISTANT_PAGE/);
+  assert.match(navigation, /return pageName;/);
+  assert.match(navigation, /return \[pageName\];/);
   assert.match(navigation, /return normalizePageName\(candidate\) === pageName;/);
-  assert.doesNotMatch(navigation, /asistan-btn/);
+  assert.doesNotMatch(navigation, /assistant-btn/);
 });

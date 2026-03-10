@@ -19,14 +19,14 @@ test("isTransitionAction validates supported actions", () => {
 });
 
 test("isActionAllowedFromMode enforces button source modes", () => {
-  assert.deepEqual(isActionAllowedFromMode("main-to-ghost", "hayalet-ev"), {
+  assert.deepEqual(isActionAllowedFromMode("main-to-ghost", "app"), {
     allowed: true,
     reason: "",
   });
 
   const invalid = isActionAllowedFromMode("main-to-ghost", "ghost-agent");
   assert.equal(invalid.allowed, false);
-  assert.match(invalid.reason, /only allowed from hayalet-ev mode/i);
+  assert.match(invalid.reason, /only allowed from app mode/i);
 });
 
 test("didTerminationFail catches exit and error failures", () => {
@@ -102,25 +102,25 @@ test("buildControlForAction keeps workflow for ghost-return-main", () => {
 
 test("getActionExpectedMode returns mode mapping", () => {
   assert.equal(getActionExpectedMode("main-to-ghost"), "ghost-agent");
-  assert.equal(getActionExpectedMode("ghost-return-main"), "hayalet-ev");
+  assert.equal(getActionExpectedMode("ghost-return-main"), "app");
   assert.equal(getActionExpectedMode("main-close"), "terminal");
   assert.equal(getActionExpectedMode("ghost-close"), "terminal");
 });
 
 test("resolveActionForTargetMode maps valid cross-mode transitions", () => {
-  assert.deepEqual(resolveActionForTargetMode("hayalet-ev", "ghost-agent"), {
+  assert.deepEqual(resolveActionForTargetMode("app", "ghost-agent"), {
     action: "main-to-ghost",
     noop: false,
     error: null,
   });
 
-  assert.deepEqual(resolveActionForTargetMode("ghost-agent", "hayalet-ev"), {
+  assert.deepEqual(resolveActionForTargetMode("ghost-agent", "app"), {
     action: "ghost-return-main",
     noop: false,
     error: null,
   });
 
-  assert.deepEqual(resolveActionForTargetMode("hayalet-ev", "terminal"), {
+  assert.deepEqual(resolveActionForTargetMode("app", "terminal"), {
     action: "main-close",
     noop: false,
     error: null,
@@ -137,7 +137,7 @@ test("resolveActionForTargetMode rejects invalid state combinations", () => {
   const fromTerminalToGhost = resolveActionForTargetMode("terminal", "ghost-agent");
   assert.equal(fromTerminalToGhost.action, null);
   assert.equal(fromTerminalToGhost.noop, false);
-  assert.match(fromTerminalToGhost.error ?? "", /only be entered from hayalet-ev mode/i);
+  assert.match(fromTerminalToGhost.error ?? "", /only be entered from app mode/i);
 
   const fromTransitioning = resolveActionForTargetMode("transitioning", "terminal");
   assert.equal(fromTransitioning.action, null);

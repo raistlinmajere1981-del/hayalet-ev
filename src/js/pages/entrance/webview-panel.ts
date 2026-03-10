@@ -887,7 +887,7 @@ export class WebviewPanel {
         const activeWebview = SlotController.getWebview(slot) as
           | (HTMLElement & { send?: (channel: string, ...args: unknown[]) => void })
           | null;
-        activeWebview?.send?.("hayalet-set-provider", {
+        activeWebview?.send?.("app-set-provider", {
           providerId: results.refreshedConfig.id,
           slot,
         });
@@ -1236,7 +1236,7 @@ export class WebviewPanel {
         if (cfg !== null) {
           try {
             if (typeof webviewEl.send === "function" && currentProviderId !== "") {
-              webviewEl.send("hayalet-set-provider", {
+              webviewEl.send("app-set-provider", {
                 providerId: currentProviderId,
                 slot: type,
               });
@@ -1244,8 +1244,8 @@ export class WebviewPanel {
               const configScript = `
                 (function() {
                   try {
-                    window.__hayalet_slot = ${JSON.stringify(type)};
-                    window.__hayalet_provider_config = ${JSON.stringify(cfg)};
+                    window.__app_slot = ${JSON.stringify(type)};
+                    window.__app_provider_config = ${JSON.stringify(cfg)};
                     return true;
                   } catch (e) {
                     console.error(

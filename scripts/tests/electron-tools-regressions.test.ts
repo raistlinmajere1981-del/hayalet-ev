@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { testElectron } from "../../src/mcp-server/tools/electron-tools.ts";
 
-test("testElectron should not start wrapper when runtime mode is already hayalet-ev", async () => {
+test("testElectron should not start wrapper when runtime mode is already app", async () => {
   const calls: string[] = [];
 
   const runner = async (
@@ -15,7 +15,7 @@ test("testElectron should not start wrapper when runtime mode is already hayalet
     if (command === "npm run mode:status") {
       return {
         stdout:
-          "\n> hayalet-ev@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"hayalet-ev\"\n}\n",
+          "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"app\"\n}\n",
         stderr: "",
       };
     }

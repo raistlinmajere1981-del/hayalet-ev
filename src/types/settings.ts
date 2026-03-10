@@ -10,25 +10,17 @@ export type { AppLanguage } from "./i18n.js";
 
 export const ASSISTANT_SLOT_SETTINGS_KEY = "assistantSlot";
 export const ASSISTANT_ACCOUNTS_SETTINGS_KEY = "assistantAccounts";
-export const LEGACY_ASSISTANT_SLOT_SETTINGS_KEY = "asistanSlot";
-export const LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY = "asistanAccounts";
 
 function matchesSettingsPath(path: string, key: string): boolean {
   return path === key || path.startsWith(`${key}.`);
 }
 
 export function isAssistantSlotSettingsPath(path: string): boolean {
-  return (
-    matchesSettingsPath(path, ASSISTANT_SLOT_SETTINGS_KEY) ||
-    matchesSettingsPath(path, LEGACY_ASSISTANT_SLOT_SETTINGS_KEY)
-  );
+  return matchesSettingsPath(path, ASSISTANT_SLOT_SETTINGS_KEY);
 }
 
 export function isAssistantAccountsSettingsPath(path: string): boolean {
-  return (
-    matchesSettingsPath(path, ASSISTANT_ACCOUNTS_SETTINGS_KEY) ||
-    matchesSettingsPath(path, LEGACY_ASSISTANT_ACCOUNTS_SETTINGS_KEY)
-  );
+  return matchesSettingsPath(path, ASSISTANT_ACCOUNTS_SETTINGS_KEY);
 }
 
 // Account Types

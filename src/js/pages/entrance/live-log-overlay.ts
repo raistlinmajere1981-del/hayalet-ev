@@ -100,23 +100,23 @@ export function setupEntranceLiveLogOverlay({
 
     try {
       const pathsRaw = await electronApi.logger.getLogPaths();
-      const hayaletLogDir =
+      const appLogDir =
         isRecord(pathsRaw) && typeof (pathsRaw as { logDir?: unknown }).logDir === "string"
           ? ((pathsRaw as { logDir?: unknown }).logDir as string)
           : "";
 
-      if (hayaletLogDir === "") {
+      if (appLogDir === "") {
         return false;
       }
 
-      const trimmed = hayaletLogDir.replace(/[\\/]hayalet-ev[\\/]?$/i, "");
-      if (trimmed !== hayaletLogDir) {
+      const trimmed = appLogDir.replace(/[\\/]app[\\/]?$/i, "");
+      if (trimmed !== appLogDir) {
         state.baseLogsDir = trimmed;
         return true;
       }
 
-      const slashIndex = Math.max(hayaletLogDir.lastIndexOf("/"), hayaletLogDir.lastIndexOf("\\"));
-      state.baseLogsDir = slashIndex > 0 ? hayaletLogDir.slice(0, slashIndex) : hayaletLogDir;
+      const slashIndex = Math.max(appLogDir.lastIndexOf("/"), appLogDir.lastIndexOf("\\"));
+      state.baseLogsDir = slashIndex > 0 ? appLogDir.slice(0, slashIndex) : appLogDir;
       return state.baseLogsDir !== "";
     } catch (error) {
       Logger.warn(
@@ -257,7 +257,7 @@ export function setupEntranceLiveLogOverlay({
     }
 
     const packets = Array.isArray(payload) ? payload : [payload];
-    const selectedSession = state.selectedSessionByApp["hayalet-ev"];
+    const selectedSession = state.selectedSessionByApp["app"];
     const fallbackSession = selectedSession !== "" ? selectedSession : "live";
 
     const incoming = packets
@@ -265,13 +265,13 @@ export function setupEntranceLiveLogOverlay({
         if (!isRecord(packet)) {
           return null;
         }
-        return normalizeLogEntry("hayalet-ev", fallbackSession, packet);
+        return normalizeLogEntry("app", fallbackSession, packet);
       })
       .filter((entry) => entry !== null);
 
-    appendEntries(state, "hayalet-ev", incoming, maxLogs);
+    appendEntries(state, "app", incoming, maxLogs);
 
-    if (!overlay.classList.contains("hidden") && state.activeApp === "hayalet-ev") {
+    if (!overlay.classList.contains("hidden") && state.activeApp === "app") {
       render();
     }
   };

@@ -15,7 +15,7 @@ import { normalizeAppLanguage } from "../../../shared/i18n/locale.js";
 
 export function ensureElectronApiFallback(): void {
   if (window.electronAPI) return;
-  const storageKey = "hayalet-settings-v1";
+  const storageKey = "app-settings-v1";
   /**
    * @param {Response} resp
    * @returns {Promise<string|null>}

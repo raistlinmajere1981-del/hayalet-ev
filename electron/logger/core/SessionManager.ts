@@ -29,7 +29,7 @@ export class SessionManager {
   private sessionStartTime: number = 0;
 
   public async init(customLogDir?: string): Promise<void> {
-    this.logDir = customLogDir ?? join(Paths.getLogsDir(), "hayalet-ev");
+    this.logDir = customLogDir ?? join(Paths.getLogsDir(), "app");
     this.sessionId = this.generateSessionId();
     this.sessionDir = join(this.logDir, this.sessionId);
     this.sessionStartTime = Date.now();

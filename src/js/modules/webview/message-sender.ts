@@ -162,14 +162,14 @@ class MessageSenderClass {
     // Provider config fallback - sadece config yoksa inject et
     const providerConfig = ProviderRegistry.get(providerId);
     try {
-      const checkScript = `(function() { return !!window.__hayalet_provider_config; })();`;
+      const checkScript = `(function() { return !!window.__app_provider_config; })();`;
       const hasConfig = await webview.executeJavaScript(checkScript);
 
       if (hasConfig !== true) {
         const configScript = `
           (function() {
-            window.__hayalet_slot = ${JSON.stringify(provider)};
-            window.__hayalet_provider_config = ${JSON.stringify(providerConfig)};
+            window.__app_slot = ${JSON.stringify(provider)};
+            window.__app_provider_config = ${JSON.stringify(providerConfig)};
             return true;
           })();
         `;

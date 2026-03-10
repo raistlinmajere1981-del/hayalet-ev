@@ -63,7 +63,7 @@ export async function testElectron(
     });
     const mode = parseModeStatusOutput(probe.stdout);
 
-    if (mode === "hayalet-ev" || mode === "ghost-agent") {
+    if (mode === "app" || mode === "ghost-agent") {
       return {
         content: [
           {

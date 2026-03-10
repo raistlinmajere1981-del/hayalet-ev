@@ -84,7 +84,7 @@ const DEFAULT_OPTIONS: FetchOptions = {
   timeout: WEB_TIMEOUTS.PAGE_FETCH,
   maxLength: 50000, // ~50KB text
   includeLinks: true,
-  userAgent: "Mozilla/5.0 (compatible; Hayalet-ev/1.0; +https://github.com/)",
+  userAgent: "Mozilla/5.0 (compatible; app/1.0; +https://github.com/)",
 };
 
 /**

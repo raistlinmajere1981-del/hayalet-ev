@@ -42,7 +42,7 @@ export async function sendMessage(
     const inputSelectorCandidates = ${inputCandidatesLiteral};
     const localizedMessages = ${localizedMessages};
 
-    const config = window.__hayalet_provider_config;
+    const config = window.__app_provider_config;
     if (!config || !config.selectors) {
       return { success: false, message: localizedMessages.providerConfigMissing };
     }

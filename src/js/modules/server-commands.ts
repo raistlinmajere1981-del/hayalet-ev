@@ -85,16 +85,9 @@ const COMMAND_LIST = BUILTIN_COMMANDS.map((command) => command.name);
 const BUILTIN_BY_KEY = new Map(
   BUILTIN_COMMANDS.map((command) => [command.name.toLowerCase(), command])
 );
-const COMMAND_ALIASES = new Map<string, string>([
-  ["aiasistanchatstart", "AIAssistantChatStart"],
-  ["aiasistanchatstop", "AIAssistantChatStop"],
-  ["aiasistansend", "AIAssistantSend"],
-  ["asistanaisend", "AssistantAISend"],
-]);
 
 function resolveCanonicalCommandName(commandName: string): string {
-  const key = commandName.trim().toLowerCase();
-  return COMMAND_ALIASES.get(key) ?? commandName;
+  return commandName.trim();
 }
 
 function normalizeProvider(value: unknown): string {
@@ -254,22 +247,18 @@ handlers["aiassistantchatstart"] = async (payload): Promise<unknown> => {
   const { aiAssistantChatStartHandler } = await getAiChatHandlers();
   return await aiAssistantChatStartHandler(payload);
 };
-handlers["aiasistanchatstart"] = handlers["aiassistantchatstart"];
 handlers["aiassistantchatstop"] = async (payload): Promise<unknown> => {
   const { aiAssistantChatStopHandler } = await getAiChatHandlers();
   return await aiAssistantChatStopHandler(payload);
 };
-handlers["aiasistanchatstop"] = handlers["aiassistantchatstop"];
 handlers["aiassistantsend"] = async (payload): Promise<unknown> => {
   const { aiAssistantSendHandler } = await getAiChatHandlers();
   return await aiAssistantSendHandler(payload);
 };
-handlers["aiasistansend"] = handlers["aiassistantsend"];
 handlers["assistantaisend"] = async (payload): Promise<unknown> => {
   const { assistantAISendHandler } = await getAiChatHandlers();
   return await assistantAISendHandler(payload);
 };
-handlers["asistanaisend"] = handlers["assistantaisend"];
 
 handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> => {
   const args = typeof payload?.args === "string" ? payload.args : "";

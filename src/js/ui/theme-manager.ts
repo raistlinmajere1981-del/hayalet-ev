@@ -54,7 +54,7 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
 const THEME_ORDER: ThemeId[] = ["obsidian"];
 
 const CONFIG: ThemeConfig = {
-  storageKey: "hayalet-ev-theme",
+  storageKey: "app-theme",
   defaultTheme: "obsidian",
   attribute: "data-theme",
   transitionDuration: 200,

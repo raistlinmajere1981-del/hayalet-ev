@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Unified Logger - Public API
+ * app Unified Logger - Public API
  *
  * @module logger
  */

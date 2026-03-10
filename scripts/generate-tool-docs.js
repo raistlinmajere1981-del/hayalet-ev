@@ -98,7 +98,7 @@ function analyzeTools(tools) {
 function generateQuickReference(analysis) {
   const timestamp = new Date().toISOString().split('T')[0];
   
-  let content = `# 🚀 Hayalet-ev Quick Reference for AI Agents\n\n`;
+  let content = `# 🚀 app Quick Reference for AI Agents\n\n`;
   content += `> **📚 Full Documentation:** [.rovo/01-AGENTS.md](.rovo/01-AGENTS.md)\n`;
   content += `> **🔧 MCP Server Details:** [src/mcp-server/AGENTS.md](src/mcp-server/AGENTS.md)\n`;
   content += `> **⚡ Quick Start (5 min):** [.rovo/00-QUICK-START.md](.rovo/00-QUICK-START.md)\n\n`;
@@ -158,7 +158,7 @@ function generateQuickReference(analysis) {
 function generateAgentGuide(analysis) {
   const timestamp = new Date().toISOString().split('T')[0];
   
-  let content = `# 🤖 Hayalet-ev Agent Development Guide\n\n`;
+  let content = `# 🤖 app Agent Development Guide\n\n`;
   content += `**Version:** 6.0.0 (Enhanced Tool Management System)\n`;
   content += `**Last Updated:** ${timestamp}\n`;
   content += `**Tool Count:** ${analysis.total}\n\n`;

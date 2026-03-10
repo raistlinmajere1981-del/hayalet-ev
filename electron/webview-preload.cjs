@@ -1,10 +1,10 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-let __global_hayalet_slot = null;
+let __global_app_slot = null;
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const opencodeUiSessionUpdatedHandlers = new Map();
-let __hayalet_preload_locale = "tr";
-let __hayalet_preload_catalog = null;
+let __app_preload_locale = "tr";
+let __app_preload_catalog = null;
 
 const WEBVIEW_PRELOAD_MESSAGE_FALLBACKS = {
   settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
@@ -15,7 +15,7 @@ const WEBVIEW_PRELOAD_MESSAGE_FALLBACKS = {
   providerConfigSetOuterFailed: "Provider config assignment failed before completion: {{message}}",
   slotSetFailed: "Slot assignment failed: {{message}}",
   providerUsageSendFailed: "Provider usage telemetry could not be sent: {{message}}",
-  providerHandlerFailed: "The hayalet-set-provider handler failed: {{message}}",
+  providerHandlerFailed: "The app-set-provider handler failed: {{message}}",
 };
 
 function normalizeAppLanguage(value) {
@@ -62,12 +62,12 @@ async function syncWebviewPreloadLocale() {
     const pack = await ipcRenderer.invoke("i18n-load-language", appLocale);
     const resolvedLocale =
       pack && typeof pack.locale === "string" ? normalizeAppLanguage(pack.locale) : appLocale;
-    __hayalet_preload_locale = resolvedLocale;
-    __hayalet_preload_catalog =
+    __app_preload_locale = resolvedLocale;
+    __app_preload_catalog =
       pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
   } catch (_) {
-    __hayalet_preload_catalog = null;
-    __hayalet_preload_locale = appLocale;
+    __app_preload_catalog = null;
+    __app_preload_locale = appLocale;
   }
 }
 
@@ -88,13 +88,13 @@ function getWebviewPreloadErrorMessage(error) {
 }
 
 function webviewPreloadT(key, params) {
-  const messageLocale = resolvePreloadMessageLocale(__hayalet_preload_locale);
+  const messageLocale = resolvePreloadMessageLocale(__app_preload_locale);
   const template =
     readCatalogValue(
-      __hayalet_preload_catalog,
+      __app_preload_catalog,
       `electron.webviewPreload.${key}.${messageLocale}`
     ) ||
-    readCatalogValue(__hayalet_preload_catalog, "electron.webviewPreload." + key) ||
+    readCatalogValue(__app_preload_catalog, "electron.webviewPreload." + key) ||
     WEBVIEW_PRELOAD_MESSAGE_FALLBACKS[key] ||
     key;
 
@@ -103,6 +103,31 @@ function webviewPreloadT(key, params) {
       params && Object.prototype.hasOwnProperty.call(params, token) ? params[token] : "";
     return value == null ? "" : String(value);
   });
+}
+
+async function applyProviderUiLanguageSync(providerConfig, appLocale) {
+  try {
+    const normalizedLocale = normalizeAppLanguage(appLocale);
+    const payload = {
+      providerId:
+        providerConfig && typeof providerConfig.id === "string" ? providerConfig.id : "unknown",
+      locale: normalizedLocale,
+      strategy:
+        providerConfig && typeof providerConfig.uiLanguage === "object"
+          ? providerConfig.uiLanguage
+          : null,
+    };
+
+    window.dispatchEvent(new CustomEvent("app-provider-language-sync", { detail: payload }));
+    ipcRenderer.sendToHost("provider-language-sync", payload);
+  } catch (error) {
+    console.warn(
+      webviewPreloadT("providerHandlerFailed", {
+        message: getWebviewPreloadErrorMessage(error),
+      }),
+      error
+    );
+  }
 }
 
 void syncWebviewPreloadLocale();
@@ -208,11 +233,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 function setupProvider() {
-  let slot = __global_hayalet_slot;
+  let slot = __global_app_slot;
 
   if (!slot) {
     try {
-      slot = window.__hayalet_slot || null;
+      slot = window.__app_slot || null;
     } catch (_) {}
   }
 
@@ -232,7 +257,7 @@ function setupProvider() {
   console.info(
     webviewPreloadT("settingUpProvider", {
       slot,
-      source: __global_hayalet_slot ? "IPC" : "hash",
+      source: __global_app_slot ? "IPC" : "hash",
     })
   );
 
@@ -254,7 +279,7 @@ function setupProvider() {
 
   function checkReady() {
     const pcfg =
-      (window.__hayalet_provider_config && window.__hayalet_provider_config.selectors) || {};
+      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const prompt = pcfg.inputField ? document.querySelector(pcfg.inputField) : null;
     const sendButton = pcfg.sendButton ? document.querySelector(pcfg.sendButton) : null;
 
@@ -273,7 +298,7 @@ function setupProvider() {
 
   function updateSend() {
     const pcfg =
-      (window.__hayalet_provider_config && window.__hayalet_provider_config.selectors) || {};
+      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const sendButton = pcfg.sendButton ? document.querySelector(pcfg.sendButton) : null;
     sendState = sendButton ? (sendButton.disabled ? "disabled" : "enabled") : "not-found";
     updateState();
@@ -281,7 +306,7 @@ function setupProvider() {
 
   function updateThinking() {
     const pcfg =
-      (window.__hayalet_provider_config && window.__hayalet_provider_config.selectors) || {};
+      (window.__app_provider_config && window.__app_provider_config.selectors) || {};
     const stopButton = pcfg.stopButton ? document.querySelector(pcfg.stopButton) : null;
     thinkingState = stopButton ? "thinking" : "idle";
     updateState();
@@ -332,7 +357,7 @@ function setupProvider() {
 // Don't call setupProvider() immediately - wait for IPC message
 // setupProvider(); // Removed: causes race condition, slot info comes via IPC
 
-ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
+ipcRenderer.on("app-set-provider", async (event, payload) => {
   try {
     const providerId = typeof payload === "string" ? payload : payload?.providerId;
     const slot = typeof payload === "object" ? payload?.slot : null;
@@ -347,13 +372,14 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
 
     try {
       try {
-        window.__hayalet_provider_config = cfg;
+        window.__app_provider_config = cfg;
         console.info(
           webviewPreloadT("providerConfigSet", {
             providerId: cfg.id,
             providerName: cfg.name,
           })
         );
+        await applyProviderUiLanguageSync(cfg, __app_preload_locale);
       } catch (e) {
         console.error(
           webviewPreloadT("providerConfigSetFailed", { message: getWebviewPreloadErrorMessage(e) }),
@@ -371,8 +397,8 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
 
     if (slot) {
       try {
-        __global_hayalet_slot = slot;
-        window.__hayalet_slot = slot;
+        __global_app_slot = slot;
+        window.__app_slot = slot;
         console.info(webviewPreloadT("slotSetViaIpc", { slot }));
         setupProvider();
       } catch (err) {

@@ -591,7 +591,7 @@
         },
         "Restart": {
           "description": "Uygulamayı yeniden başlatır.",
-          "detail": "Hayalet-ev Electron uygulamasını tamamen kapatıp yeniden başlatır. Tüm aktif bağlantılar ve oturumlar sonlandırılır, uygulama sıfırdan yüklenir. Dikkatli kullanılmalıdır.",
+          "detail": "Electron uygulamasını tamamen kapatıp yeniden başlatır. Tüm aktif bağlantılar ve oturumlar sonlandırılır, uygulama sıfırdan yüklenir. Dikkatli kullanılmalıdır.",
           "usage": "++cmd:Restart()",
           "example": "++cmd:Restart()"
         },
@@ -2155,8 +2155,8 @@
         "tr": "Provider kullanım telemetrisi gönderilemedi: {{message}}"
       },
       "providerHandlerFailed": {
-        "en": "The hayalet-set-provider handler failed: {{message}}",
-        "tr": "hayalet-set-provider handler başarısız: {{message}}"
+        "en": "The app-set-provider handler failed: {{message}}",
+        "tr": "app-set-provider handler başarısız: {{message}}"
       }
     },
     "opencodeUiSessionStore": {
@@ -2260,12 +2260,12 @@
     },
     "startup": {
       "registrySummary": "[Registry] {{toolCount}} tool kaydedildi ({{categories}})",
-      "serverStarted": "Hayalet-ev MCP Server v{{version}} başlatıldı ({{toolCount}} tool | Unified Registry)",
+      "serverStarted": "App MCP Server v{{version}} başlatıldı ({{toolCount}} tool | Unified Registry)",
       "serverStartError": "Server başlatma hatası",
       "serverErrorLine": "Server hatası: {{message}}"
     },
     "health": {
-      "activeMessage": "✅ Hayalet-ev MCP aktif ve çalışıyor.",
+      "activeMessage": "✅ App MCP aktif ve çalışıyor.",
       "reportTitle": "📊 MCP Durumu:",
       "healthy": "Sağlıklı",
       "unhealthy": "Sağlıksız",
@@ -2274,10 +2274,10 @@
       "uptimeLine": "⏱️  Çalışma Süresi: {{uptime}}s",
       "toolCountLine": "🔧 Tool Sayısı: {{toolCount}}",
       "visibleMessageTitle": "💡 Bu mesajı görüyorsan:",
-      "visibleMessageLine1": "   → Hayalet-ev MCP çalışıyor",
+      "visibleMessageLine1": "   → App MCP çalışıyor",
       "visibleMessageLine2": "   → Tüm hev_* tool'ları kullanılabilir",
       "failureTitle": "⚠️  Eğer bu tool çalışmazsa:",
-      "failureLine1": "   → Hayalet-ev MCP çökmüş demektir",
+      "failureLine1": "   → App MCP çökmüş demektir",
       "failureLine2": "   → Acil: MCP server'ı yeniden başlat"
     },
     "analysis": {
@@ -2350,7 +2350,7 @@
         "error": "❌ Electron test hatası: {{message}}"
       },
       "listTools": {
-        "title": "📦 Hayalet-ev MCP Tool'ları ({{totalTools}} tool)",
+        "title": "📦 app MCP Tool'ları ({{totalTools}} tool)",
         "hint": "💡 Intent bazlı tool keşfi için hev_suggest_tool kullan",
         "categories": {
           "core": "Çekirdek",
@@ -2367,7 +2367,7 @@
         }
       },
       "health": {
-        "activeMessage": "✅ Hayalet-ev MCP aktif ve çalışıyor."
+        "activeMessage": "✅ app MCP aktif ve çalışıyor."
       }
     },
     "debugTools": {
@@ -2552,7 +2552,7 @@
       },
       "module": {
         "operation": "Modül: {{moduleName}}",
-        "headerText": "# Hayalet-ev Bağlamı - Modül: {{moduleName}}\n",
+        "headerText": "# app Bağlamı - Modül: {{moduleName}}\n",
         "runningRepomix": "Repomix çalıştırılıyor...",
         "failedProgress": "Module context oluşturulamadı",
         "failedMessage": "Module context hatası: {{output}}",
@@ -3829,7 +3829,7 @@
       },
       "checkConnection": {
         "connected": "✅ Electron bağlantısı aktif\n\n📡 **Bağlantı Bilgileri:**\n- Port: {{port}}\n- Hedef sayısı: {{targetsCount}}\n\n🪟 **Ana Pencere:**\n- Başlık: {{title}}\n- URL: {{url}}\n- Tip: {{windowType}}",
-        "disconnected": "❌ Electron bağlantısı yok\n\n**Hata:** {{error}}\n\n**Çözüm:**\n1. Hayalet-ev'i başlatın: `npm start`\n2. Uygulama debug modunda {{port}} portunda açılır\n3. Tekrar deneyin"
+        "disconnected": "❌ Electron bağlantısı yok\n\n**Hata:** {{error}}\n\n**Çözüm:**\n1. Uygulamayı başlatın: `npm start`\n2. Uygulama debug modunda {{port}} portunda açılır\n3. Tekrar deneyin"
       },
       "sendCommand": {
         "missingCommand": "❌ 'command' parametresi gerekli",
@@ -4479,7 +4479,7 @@
         },
         "electron": {
           "mcpHealth": {
-            "description": "Hayalet-ev MCP sağlık durumunu kontrol et. Çalışma durumu, versiyon ve tool sayısını gösterir.",
+            "description": "app MCP sağlık durumunu kontrol et. Çalışma durumu, versiyon ve tool sayısını gösterir.",
             "useCases": {
               "sessionStart": "Session başında MCP sağlığını kontrol etme",
               "troubleshoot": "Tool sorunlarını teşhis etme"
@@ -4487,7 +4487,7 @@
             "agentGuidance": "Her session başında veya tool hatası aldığında kullan. MCP çalışmıyorsa fallback tool akışları devreye girebilir."
           },
           "testElectron": {
-            "description": "Hayalet-ev Electron uygulamasını test et",
+            "description": "application Electron uygulamasını test et",
             "timeout": "Test süresi (saniye, varsayılan: 5)",
             "useCases": {
               "connectivityTest": "Electron uygulama bağlantı testi",
@@ -4496,7 +4496,7 @@
             "agentGuidance": "Electron uygulamasının çalıştığını ve CDP erişiminin açık olduğunu doğrulamak için kullan."
           },
           "listTools": {
-            "description": "Hayalet-ev MCP tool'larını kategorize ederek listele",
+            "description": "app MCP tool'larını kategorize ederek listele",
             "useCases": {
               "discoverTools": "Tool keşfetme",
               "categoryResearch": "Kategori bazlı araştırma",
@@ -4507,7 +4507,7 @@
           "readLogs": {
             "description": "Electron console ve error loglarını oku. Source, level, içerik ve correlation ID ile filtreleme destekler.",
             "type": "Log tipi",
-            "app": "Session logları okunacak uygulama (varsayılan: hayalet-ev)",
+            "app": "Session logları okunacak uygulama (varsayılan: app)",
             "tail": "Gösterilecek son satır sayısı (varsayılan: 50)",
             "source": "Kaynak filtresi: MAIN, RENDERER, WEBVIEW-AI1, WEBVIEW-AI2, WEBVIEW-* (glob destekli)",
             "level": "Log seviyesi filtresi",
@@ -4524,7 +4524,7 @@
           "listLogSessions": {
             "description": "Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder.",
             "limit": "Gösterilecek maksimum session sayısı (varsayılan: 10)",
-            "app": "Session listesi alınacak uygulama (varsayılan: hayalet-ev)",
+            "app": "Session listesi alınacak uygulama (varsayılan: app)",
             "useCases": {
               "viewSessions": "Geçmiş session'ları görüntüleme",
               "findSessionId": "Belirli bir session ID bulma"
@@ -4545,7 +4545,7 @@
           "getSessionSummary": {
             "description": "Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum).",
             "sessionId": "Session ID (varsayılan: en son session)",
-            "app": "Özet alınacak uygulama (varsayılan: hayalet-ev)",
+            "app": "Özet alınacak uygulama (varsayılan: app)",
             "useCases": {
               "healthCheck": "Session sağlık kontrolü",
               "errorStats": "Hata istatistiklerini görme",
@@ -4757,7 +4757,7 @@
           "toggleMcpPanelServers": {
             "description": "AI0 webview içindeki OpenCode MCP panelinde belirtilen sunucuları OFF→ON cycle ile toggle eder.",
             "provider": "Panel tipi (auto ile otomatik algılanır)",
-            "servers": "Toggle edilecek MCP sunucu isimleri (örn: context7, websearch, hayalet-ev)",
+            "servers": "Toggle edilecek MCP sunucu isimleri (örn: context7, websearch, app)",
             "settleMs": "Her toggle sonrası bekleme süresi (ms)",
             "cycles": "OFF→ON cycle sayısı (1-5)",
             "useCases": {
@@ -5084,7 +5084,7 @@
       "toolsSearchPlaceholder": "🔍 Tool ara...",
       "toolsEmpty": "Tool bulunamadı",
       "toolsBuiltInGroup": "OpenCode Built-in ({{count}})",
-      "toolsHevGroup": "Hayalet-ev MCP ({{count}})",
+      "toolsHevGroup": "app MCP ({{count}})",
       "providersLoading": "Yükleniyor..."
     },
     "prompt": {

@@ -10,7 +10,7 @@ test("reads startup flags from legacy CLI arguments", () => {
   const flags = parseStartupFlagsFromArgv([
     "electron",
     "./dist/electron/main.js",
-    "--start-page=asistan",
+    "--start-page=assistant",
     "--auto-connect",
   ]);
 
@@ -18,12 +18,12 @@ test("reads startup flags from legacy CLI arguments", () => {
   assert.equal(flags.autoConnect, true);
 });
 
-test("reads startup flags from hayalet-prefixed preload arguments", () => {
+test("reads startup flags from app-prefixed preload arguments", () => {
   const flags = parseStartupFlagsFromArgv([
     "electron",
     "./dist/electron/main.js",
-    "--hayalet-start-page=asistan",
-    "--hayalet-auto-connect=1",
+    "--app-start-page=assistant",
+    "--app-auto-connect=1",
   ]);
 
   assert.equal(flags.startPage, "assistant");
@@ -36,7 +36,7 @@ test("serializes startup flags into preload additional arguments", () => {
     autoConnect: true,
   });
 
-  assert.deepEqual(args, ["--hayalet-start-page=assistant", "--hayalet-auto-connect=1"]);
+  assert.deepEqual(args, ["--app-start-page=assistant", "--app-auto-connect=1"]);
 });
 
 test("omits empty startup flags while serializing preload arguments", () => {

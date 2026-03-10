@@ -26,7 +26,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "src/index.html"),
         entrance: resolve(__dirname, "src/pages/entrance.html"),
-        asistan: resolve(__dirname, "src/pages/assistant.html"),
+        assistant: resolve(__dirname, "src/pages/assistant.html"),
         analyze: resolve(__dirname, "src/pages/analyze.html"),
         archives: resolve(__dirname, "src/pages/archives.html"),
         server: resolve(__dirname, "src/pages/server.html"),

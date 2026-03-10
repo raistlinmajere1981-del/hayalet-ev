@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Main Process Logger - Public API
+ * app Main Process Logger - Public API
  *
  * Usage in main.ts:
  * ```typescript

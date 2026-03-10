@@ -2,7 +2,7 @@ import { normalizeControl } from "./ghost-wrapper-runtime.mjs";
 
 export const WHEREAMI_MODES = Object.freeze([
   "terminal",
-  "hayalet-ev",
+  "app",
   "ghost-agent",
   "transitioning",
   "conflict",
@@ -44,7 +44,7 @@ function processInferredMode(probes) {
     return "ghost-agent";
   }
   if (probes.mainProcess) {
-    return "hayalet-ev";
+    return "app";
   }
   return "terminal";
 }
@@ -59,7 +59,7 @@ function runtimeExpectedMode(control) {
   if (control.desiredMode === "terminal") {
     return "terminal";
   }
-  return "hayalet-ev";
+  return "app";
 }
 
 export function resolveWhereAmI({
@@ -83,7 +83,7 @@ export function resolveWhereAmI({
     return result(
       "conflict",
       true,
-      "Process probes disagree: both hayalet-ev and ghost-agent look alive.",
+      "Process probes disagree: both app and ghost-agent look alive.",
       0.99,
       observedSignals
     );
@@ -119,12 +119,12 @@ export function resolveWhereAmI({
     );
   }
 
-  if (expected === "hayalet-ev" && inferred === "terminal") {
+  if (expected === "app" && inferred === "terminal") {
     if (probes.wrapperProcess && !staleRuntime) {
       return result(
         "transitioning",
         false,
-        "Wrapper is alive and runtime expects hayalet-ev; likely relaunch window.",
+        "Wrapper is alive and runtime expects app; likely relaunch window.",
         0.73,
         observedSignals
       );
@@ -139,11 +139,11 @@ export function resolveWhereAmI({
     );
   }
 
-  if (expected === "terminal" && inferred === "hayalet-ev") {
+  if (expected === "terminal" && inferred === "app") {
     return result(
       "conflict",
       true,
-      "Runtime expects terminal but hayalet-ev process is still alive.",
+      "Runtime expects terminal but app process is still alive.",
       0.95,
       observedSignals
     );

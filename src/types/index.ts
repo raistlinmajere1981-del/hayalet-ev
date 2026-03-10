@@ -1,5 +1,5 @@
 /**
- * Hayalet-ev Unified Type Definitions
+ * app Unified Type Definitions
  *
  * Centralized type definitions imported by all modules
  *

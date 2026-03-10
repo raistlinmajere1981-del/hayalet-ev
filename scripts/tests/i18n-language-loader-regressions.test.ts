@@ -27,7 +27,7 @@ function getCatalogString(
 }
 
 test("language loader includes built-ins and external manifests", async () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "hayalet-i18n-"));
+  const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-"));
   const germanDir = join(rootDir, "de");
 
   mkdirSync(germanDir, { recursive: true });
@@ -72,7 +72,7 @@ test("built-in language packs resolve through folder-backed manifests and catalo
 });
 
 test("language loader merges split external catalogs and preserves selector fallback", async () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "hayalet-i18n-split-"));
+  const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-split-"));
   const azeriDir = join(rootDir, "az");
 
   mkdirSync(azeriDir, { recursive: true });
@@ -147,7 +147,7 @@ test("normalizeSettings accepts custom locales without narrowing back to built-i
 });
 
 test("invalid external language packs are skipped or fall back safely", async () => {
-  const rootDir = mkdtempSync(join(tmpdir(), "hayalet-i18n-invalid-"));
+  const rootDir = mkdtempSync(join(tmpdir(), "app-i18n-invalid-"));
   const brokenExternalDir = join(rootDir, "fr");
   const brokenOverrideDir = join(rootDir, "en");
 

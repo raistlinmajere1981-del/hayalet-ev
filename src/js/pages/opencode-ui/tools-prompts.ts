@@ -32,7 +32,7 @@ interface QuickPromptPanelOptions {
   showToast: (message: string) => void;
 }
 
-const QUICK_PROMPTS_STORAGE_KEY = "hayalet-ev:opencode-ui:quick-prompts";
+const QUICK_PROMPTS_STORAGE_KEY = "app:opencode-ui:quick-prompts";
 let quickPromptCache: QuickPromptRecord[] = [];
 
 interface QuickPromptStoreResponse {

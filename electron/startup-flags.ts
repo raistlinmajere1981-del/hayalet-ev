@@ -4,7 +4,6 @@ export interface StartupFlags {
 }
 
 const ASSISTANT_START_PAGE = "assistant";
-const LEGACY_ASSISTANT_START_PAGE = "asistan";
 
 function readFlagValue(argv: readonly string[], flagName: string): string | null {
   const prefix = `${flagName}=`;
@@ -22,18 +21,18 @@ function normalizeStartPage(startPage: string | null): string | null {
     return null;
   }
 
-  return startPage === LEGACY_ASSISTANT_START_PAGE ? ASSISTANT_START_PAGE : startPage;
+  return startPage;
 }
 
 export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags {
   const startPage = normalizeStartPage(
-    readFlagValue(argv, "--hayalet-start-page") ?? readFlagValue(argv, "--start-page")
+    readFlagValue(argv, "--app-start-page") ?? readFlagValue(argv, "--start-page")
   );
 
   const autoConnect =
-    argv.includes("--hayalet-auto-connect=1") ||
-    argv.includes("--hayalet-auto-connect=true") ||
-    argv.includes("--hayalet-auto-connect") ||
+    argv.includes("--app-auto-connect=1") ||
+    argv.includes("--app-auto-connect=true") ||
+    argv.includes("--app-auto-connect") ||
     argv.includes("--auto-connect");
 
   return {
@@ -47,11 +46,11 @@ export function buildPreloadAdditionalArguments(flags: StartupFlags): string[] {
 
   const startPage = normalizeStartPage(flags.startPage);
   if (startPage !== null && startPage !== "") {
-    args.push(`--hayalet-start-page=${startPage}`);
+    args.push(`--app-start-page=${startPage}`);
   }
 
   if (flags.autoConnect) {
-    args.push("--hayalet-auto-connect=1");
+    args.push("--app-auto-connect=1");
   }
 
   return args;

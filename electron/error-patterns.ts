@@ -1,5 +1,5 @@
 /**
- * Error Pattern Database for Hayalet-ev
+ * Error Pattern Database for app
  *
  * Known error patterns and resolution hints.
  * Automatic hinting for AI debugging flows.

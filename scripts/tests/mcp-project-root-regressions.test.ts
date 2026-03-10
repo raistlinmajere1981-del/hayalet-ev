@@ -10,7 +10,7 @@ async function createProjectRootFixture(): Promise<{
   cleanup: () => Promise<void>;
   root: string;
 }> {
-  const root = await mkdtemp(join(tmpdir(), "hayalet-ev-project-root-"));
+  const root = await mkdtemp(join(tmpdir(), "app-project-root-"));
   await writeFile(join(root, "package.json"), '{"name":"fixture"}\n', "utf-8");
   await writeFile(join(root, "AGENTS.md"), "# fixture\n", "utf-8");
 
