@@ -3,6 +3,7 @@ import { AppState } from "./app-state.js";
 import { CommandManager } from "./command-manager.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
+import { AppI18n } from "./i18n/index.js";
 import {
   replaceProtocolTags,
   sendBatchWithContext,
@@ -36,12 +37,16 @@ function registerServerCommands(sc: ServerCommandsRef): void {
 }
 function getServerCommands(): ServerCommandsRef {
   if (_serverCommands === null)
-    throw new Error("ServerCommands not registered — call registerServerCommands() at bootstrap");
+    throw new Error(AppI18n.t("app.logs.coreEngine.serverCommandsNotRegistered"));
   return _serverCommands;
 }
 import { SlotController } from "./slot-controller.js";
 import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import type { AppSettings } from "@shared/settings.js";
+
+function coreEngineT(key: string): string {
+  return AppI18n.t(`app.logs.coreEngine.${key}`);
+}
 
 interface ConnectionResult {
   success: boolean;
@@ -113,10 +118,10 @@ class CoreEngineClass {
     connected: boolean,
     opts: { force?: boolean; url?: string } = {}
   ): Promise<ConnectionResult> {
-    if (provider === "") return { success: false, message: "no-provider" };
+    if (provider === "") return { success: false, message: coreEngineT("noProvider") };
 
     if (provider !== "ai0" && provider !== "ai1" && provider !== "ai2") {
-      return { success: false, message: "invalid-provider" };
+      return { success: false, message: coreEngineT("invalidProvider") };
     }
 
     const prev = SlotController.isConnected(provider);
@@ -139,7 +144,7 @@ class CoreEngineClass {
     );
 
     if (!force && prev === now) {
-      return { success: true, message: "no-change" };
+      return { success: true, message: coreEngineT("noChange") };
     }
 
     let result;

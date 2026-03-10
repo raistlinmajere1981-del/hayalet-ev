@@ -252,7 +252,8 @@ export function createMcpAnalysisTools(): ToolEntry[] {
             if (error.nearbyEvents.length > 0) {
               lines.push(analysisT(t, "correlation.nearbyEventsTitle"));
               for (const event of error.nearbyEvents) {
-                const timeDiff = event.timeDiff > 0 ? `+${event.timeDiff}ms` : `${event.timeDiff}ms`;
+                const timeDiff =
+                  event.timeDiff > 0 ? `+${event.timeDiff}ms` : `${event.timeDiff}ms`;
                 lines.push(
                   analysisT(t, "correlation.nearbyEventLine", {
                     timeDiff,

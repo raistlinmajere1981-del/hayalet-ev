@@ -88,7 +88,12 @@ const audioManager = {
 
     const audio = audioCache.get(id);
     if (!audio) {
-      Logger.debugT(LogCategory.UI_AUDIO, "app.logs.uiAudio.soundNotFoundPlaceholder", { id }, { id });
+      Logger.debugT(
+        LogCategory.UI_AUDIO,
+        "app.logs.uiAudio.soundNotFoundPlaceholder",
+        { id },
+        { id }
+      );
       return;
     }
 

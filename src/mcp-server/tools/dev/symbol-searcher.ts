@@ -22,10 +22,7 @@ interface SymbolMatch {
   typeInfo?: string;
 }
 
-function symbolSearchDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function symbolSearchDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.symbolSearcher.definition.${key}`, params);
 }
 

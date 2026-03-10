@@ -72,11 +72,12 @@ async function translateElectronMessage(
   }
 
   const locale = normalizeAppLanguage(resolvedSettings.general?.language);
-  const activePack =
-    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
-  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+  const activePack = (await loadAvailableLanguage(locale)) ?? fallbackPack;
+  const activeCatalog = activePack?.catalog ?? {};
+  const fallbackCatalog = fallbackPack?.catalog;
 
-  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+  return translateCatalog(activeCatalog, key, params, fallbackCatalog);
 }
 
 export async function googleDriveT(
@@ -165,11 +166,12 @@ export async function googledriveExchangeCode(
       const me = (await oauth2.userinfo.get()).data;
       accountEmail = me.email ?? "";
     } catch (err: unknown) {
-      void logger.logInternal(
+      void logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.WARNING,
-        "Failed to fetch Google account email",
-        { error: (err as Error).message }
+        "electron.googleDrive.logs.accountEmailFetchFailed",
+        { message: err instanceof Error ? err.message : String(err) },
+        { error: err instanceof Error ? err.message : String(err) }
       );
     }
 
@@ -179,11 +181,12 @@ export async function googledriveExchangeCode(
     try {
       await saveSettings(settings);
     } catch (err: unknown) {
-      void logger.logInternal(
+      void logger.logInternalT(
         LogCategory.MAIN,
         LogLevel.WARNING,
-        "Failed to save Google Drive settings after connect",
-        { error: (err as Error).message }
+        "electron.googleDrive.logs.settingsSaveAfterConnectFailed",
+        { message: err instanceof Error ? err.message : String(err) },
+        { error: err instanceof Error ? err.message : String(err) }
       );
     }
 
@@ -213,10 +216,11 @@ export async function googledriveDisconnect(
       try {
         await saveSettings(null, settings);
       } catch (err: unknown) {
-        void logger.logInternal(
+        void logger.logInternalT(
           LogCategory.MAIN,
           LogLevel.WARNING,
-          "Failed to save Google Drive settings after disconnect",
+          "electron.googleDrive.logs.settingsSaveAfterDisconnectFailed",
+          { message: err instanceof Error ? err.message : String(err) },
           { error: err instanceof Error ? err.message : String(err) }
         );
       }
@@ -280,18 +284,22 @@ export async function googledriveUpload(
           });
           const fileId = res.data.id;
           if (typeof fileId !== "string" || fileId.length === 0)
-            throw new Error("Upload id missing");
+            throw new Error(await googleDriveT("uploadIdMissing", undefined, settings));
           try {
             await drive.permissions.create({
               fileId,
               requestBody: { role: "reader", type: "anyone" },
             });
           } catch (err: unknown) {
-            void logger.logInternal(
+            void logger.logInternalT(
               LogCategory.MAIN,
               LogLevel.WARNING,
-              "Failed to set Google Drive file permissions",
-              { error: (err as Error).message, fileId }
+              "electron.googleDrive.logs.permissionsSetFailed",
+              {
+                fileId,
+                message: err instanceof Error ? err.message : String(err),
+              },
+              { error: err instanceof Error ? err.message : String(err), fileId }
             );
           }
           const url = isText

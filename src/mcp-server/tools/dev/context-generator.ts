@@ -56,7 +56,9 @@ export async function bootstrapContext(
     const pkg: PackageJsonLike =
       typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw as PackageJsonLike) : {};
     lines.push(t("document.projectInfoTitle"));
-    lines.push(t("document.projectName", { name: pkg.name ?? "unknown", version: pkg.version ?? "0.0.0" }));
+    lines.push(
+      t("document.projectName", { name: pkg.name ?? "unknown", version: pkg.version ?? "0.0.0" })
+    );
 
     // Git info
     try {
@@ -91,7 +93,9 @@ export async function bootstrapContext(
     for (const file of files) {
       totalLines += countLines(join(projectRoot, file));
     }
-    lines.push(t("document.structureLine", { srcDir, fileCount: files.length, lineCount: totalLines }));
+    lines.push(
+      t("document.structureLine", { srcDir, fileCount: files.length, lineCount: totalLines })
+    );
   }
   lines.push("");
 

@@ -8,9 +8,9 @@
  * Capabilities:
  *   - getTypeInfo(file, line, col)       → hover-style type information
  *   - getDefinition(file, line, col)     → go-to-definition
-  *   - getReferences(file, line, col)     → find-all-references
-  *   - getCompletions(file, line, col)    → code completion
-  *   - getQuickFixes(file, line, col)     → code actions / quick fixes
+ *   - getReferences(file, line, col)     → find-all-references
+ *   - getCompletions(file, line, col)    → code completion
+ *   - getQuickFixes(file, line, col)     → code actions / quick fixes
  *   - getDiagnostics(file)               → file diagnostics
  *   - getRenameEdits(file, line, col, newName) → safe rename
  *   - getDocumentSymbols(file)           → document symbol tree

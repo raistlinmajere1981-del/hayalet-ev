@@ -308,11 +308,11 @@ class SlotControllerClass {
   recoverFromError(slot: string): SlotOperationResult {
     const slotState = this._getSlot(slot);
     if (!slotState) {
-      return { success: false, message: "invalid-slot" };
+      return { success: false, message: AppI18n.t("app.logs.slotController.invalidSlot") };
     }
 
     if (slotState.state !== SlotState.ERROR) {
-      return { success: false, message: "not-in-error-state" };
+      return { success: false, message: AppI18n.t("app.logs.slotController.notInErrorState") };
     }
 
     this._log(slot, "info", AppI18n.t("app.logs.slotController.manualRecovery"));
@@ -324,7 +324,7 @@ class SlotControllerClass {
       this._transition(slot, SlotState.EMPTY);
     }
 
-    return { success: true, message: "recovered" };
+    return { success: true, message: AppI18n.t("app.logs.slotController.recovered") };
   }
 
   async connect(
@@ -432,7 +432,7 @@ class SlotControllerClass {
     if (!slotState) {
       return {
         success: false,
-        error: "invalid-slot",
+        error: AppI18n.t("app.logs.slotController.invalidSlot"),
         fromState: "unknown" as SlotStateType,
         toState: newState as SlotStateType,
       };

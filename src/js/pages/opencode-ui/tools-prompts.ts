@@ -1,5 +1,5 @@
 import { apiCall } from "./api.js";
-import { t } from "./i18n.js";
+import { formatDetailedErrorMessage, t } from "./i18n.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";
 
@@ -117,7 +117,7 @@ async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
         return legacyPrompts;
       }
 
-      throw new Error(result.error ?? t("prompt.loadError"));
+      throw new Error(formatDetailedErrorMessage("prompt.loadError", result.error));
     }
 
     if (prompts.length > 0) {
@@ -157,7 +157,7 @@ async function writeQuickPromptsToStore(
     normalizedPrompts
   )) as QuickPromptStoreResponse;
   if (result.success !== true) {
-    throw new Error(result.error ?? t("prompt.saveError"));
+    throw new Error(formatDetailedErrorMessage("prompt.saveError", result.error));
   }
 
   clearLegacyQuickPrompts();

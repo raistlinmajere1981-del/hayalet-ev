@@ -11,6 +11,7 @@ import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";
 import type { LogWriterConfig } from "@electron/types/logging.js";
 import { LogLevel } from "@shared/index.js";
+import { loggerWriterT } from "./i18n.ts";
 
 export class ErrorWriter {
   private config: LogWriterConfig;
@@ -44,7 +45,12 @@ export class ErrorWriter {
       const line = this.formatError(entry);
       await appendFile(this.filePath, line + "\n\n", "utf-8");
     } catch (error) {
-      console.error("[ErrorWriter] Write failed:", error);
+      console.error(
+        await loggerWriterT("writerWriteFailed", {
+          writer: "ErrorWriter",
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
       throw error;
     }
   }

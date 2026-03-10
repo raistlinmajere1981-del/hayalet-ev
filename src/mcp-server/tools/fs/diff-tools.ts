@@ -57,8 +57,16 @@ export const CONTENT_DIFF_TOOL = {
     properties: {
       content1: { type: "string", description: diffToolDefinitionT("diffContent.content1") },
       content2: { type: "string", description: diffToolDefinitionT("diffContent.content2") },
-      label1: { type: "string", description: diffToolDefinitionT("diffContent.label1"), default: "a" },
-      label2: { type: "string", description: diffToolDefinitionT("diffContent.label2"), default: "b" },
+      label1: {
+        type: "string",
+        description: diffToolDefinitionT("diffContent.label1"),
+        default: "a",
+      },
+      label2: {
+        type: "string",
+        description: diffToolDefinitionT("diffContent.label2"),
+        default: "b",
+      },
     },
     required: ["content1", "content2"],
   },

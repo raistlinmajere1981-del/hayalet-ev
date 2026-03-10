@@ -35,10 +35,7 @@ function getObjectKeys(value: unknown): string[] {
   return Object.keys(value as Record<string, unknown>);
 }
 
-function projectAnalyzerT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function projectAnalyzerT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.projectAnalyzer.${key}`, params);
 }
 

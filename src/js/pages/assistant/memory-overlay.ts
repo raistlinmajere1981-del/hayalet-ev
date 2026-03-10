@@ -236,7 +236,12 @@ export class MemoryOverlay {
         this._renderStats(statsRes.data);
       }
     } catch (err) {
-      console.error("[MemoryOverlay] load error:", err);
+      console.error(
+        memoryT("errors.loadFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -324,7 +329,8 @@ export class MemoryOverlay {
     });
 
     if (this.resultCount) {
-      this.resultCount.textContent = items.length > 0 ? memoryT("resultsCount", { count: items.length }) : "";
+      this.resultCount.textContent =
+        items.length > 0 ? memoryT("resultsCount", { count: items.length }) : "";
     }
 
     if (items.length === 0) {
@@ -479,7 +485,12 @@ export class MemoryOverlay {
       await api.memoryUpdate({ id: item.id, pinned: !item.pinned });
       await this._loadAndRender();
     } catch (err) {
-      console.error("[MemoryOverlay] pin error:", err);
+      console.error(
+        memoryT("errors.pinFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -492,7 +503,12 @@ export class MemoryOverlay {
       await api.memoryDelete({ id });
       await this._loadAndRender();
     } catch (err) {
-      console.error("[MemoryOverlay] delete error:", err);
+      console.error(
+        memoryT("errors.deleteFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -512,7 +528,12 @@ export class MemoryOverlay {
       await api.memoryUpdate(payload);
       await this._loadAndRender();
     } catch (err) {
-      console.error("[MemoryOverlay] update error:", err);
+      console.error(
+        memoryT("errors.updateFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -554,7 +575,12 @@ export class MemoryOverlay {
 
       await this._loadAndRender();
     } catch (err) {
-      console.error("[MemoryOverlay] write error:", err);
+      console.error(
+        memoryT("errors.writeFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -585,7 +611,12 @@ export class MemoryOverlay {
         await this._loadAndRender();
       }
     } catch (err) {
-      console.error("[MemoryOverlay] prune error:", err);
+      console.error(
+        memoryT("errors.pruneFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 
@@ -595,10 +626,7 @@ export class MemoryOverlay {
       namespace !== undefined
         ? memoryT("deleteAllNamespaceLabel", { namespace })
         : memoryT("deleteAllGlobalLabel");
-    if (
-      !confirm(memoryT("deleteAllConfirm", { label }))
-    )
-      return;
+    if (!confirm(memoryT("deleteAllConfirm", { label }))) return;
     if (!confirm(memoryT("deleteAllFinalConfirm", { label }))) return;
 
     const api = window.electronAPI as unknown as {
@@ -613,7 +641,12 @@ export class MemoryOverlay {
         await this._loadAndRender();
       }
     } catch (err) {
-      console.error("[MemoryOverlay] delete-all error:", err);
+      console.error(
+        memoryT("errors.deleteAllFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 }

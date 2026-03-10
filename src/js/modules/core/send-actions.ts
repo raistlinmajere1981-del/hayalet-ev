@@ -125,10 +125,10 @@ export async function sendBatchWithContext(
           LogCategory.COMMAND,
           commandT("executor.attachmentsStagedLog", { jobId, count: staged.staged.length }),
           {
-          context: {
-            jobId,
-            count: staged.staged.length,
-          },
+            context: {
+              jobId,
+              count: staged.staged.length,
+            },
           }
         );
       }
@@ -255,8 +255,8 @@ export async function sendProtocolWithContext(
       LogCategory.SYSTEM,
       commandT("executor.protocolLoadError", { message: resolvedMessage.error.message }),
       {
-      error: resolvedMessage.error,
-      context: { protocolKey },
+        error: resolvedMessage.error,
+        context: { protocolKey },
       }
     );
   }

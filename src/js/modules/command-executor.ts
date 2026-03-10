@@ -83,16 +83,20 @@ class CommandExecutorClass {
       throw err;
     }
 
-    Logger.info(LogCategory.COMMAND, commandExecutorT("jobCompleted", { provider: job.provider, duration }), {
-      eventType: "coreengine-ai-send",
-      detail: commandExecutorT("completedDetail", { duration }),
-      provider: job.provider,
-      category: "command",
-      duration,
-      jobId: job.id,
-      page,
-      timestamp: formatCommandExecutorTimestamp(),
-    });
+    Logger.info(
+      LogCategory.COMMAND,
+      commandExecutorT("jobCompleted", { provider: job.provider, duration }),
+      {
+        eventType: "coreengine-ai-send",
+        detail: commandExecutorT("completedDetail", { duration }),
+        provider: job.provider,
+        category: "command",
+        duration,
+        jobId: job.id,
+        page,
+        timestamp: formatCommandExecutorTimestamp(),
+      }
+    );
 
     return result;
   }
@@ -100,9 +104,8 @@ class CommandExecutorClass {
   handleJobSuccess(job: CommandJob): void {
     TrafficManager.signal(job.provider, "sent", job.message);
     try {
-      const folder = job.meta?.archiveFolders?.[job.provider];
-      const stagedFiles = job.attachmentsMeta?.staged ?? job.meta?.attachments ?? [];
-
+      const folder = job.meta.archiveFolders?.[job.provider];
+      const stagedFiles = job.attachmentsMeta?.staged ?? job.meta.attachments ?? [];
       if (stagedFiles.length > 0) {
         WebviewManager.addPendingArchive(job.provider, {
           jobId: job.id,
@@ -124,10 +127,14 @@ class CommandExecutorClass {
         );
       }
     } catch (err) {
-      Logger.warn(LogCategory.COMMAND, commandExecutorT("syncCleanupError", { message: getErrorMessage(err) }), {
-        category: "core",
-        jobId: job.id,
-      });
+      Logger.warn(
+        LogCategory.COMMAND,
+        commandExecutorT("syncCleanupError", { message: getErrorMessage(err) }),
+        {
+          category: "core",
+          jobId: job.id,
+        }
+      );
     }
   }
 
@@ -140,10 +147,14 @@ class CommandExecutorClass {
     ).catch((err) => {
       Logger.error(LogCategory.COMMAND, commandExecutorT("commandFailError"), { error: err });
     });
-    Logger.error(LogCategory.COMMAND, commandExecutorT("commandError", { provider: job.provider, message: errorMessage }), {
-      category: "command",
-      jobId: job.id,
-    });
+    Logger.error(
+      LogCategory.COMMAND,
+      commandExecutorT("commandError", { provider: job.provider, message: errorMessage }),
+      {
+        category: "command",
+        jobId: job.id,
+      }
+    );
   }
 }
 

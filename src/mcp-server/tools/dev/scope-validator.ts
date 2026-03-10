@@ -26,10 +26,7 @@ const traverse: TraverseFn =
       ? traverseModule.default
       : (traverseModule.default?.default ?? fallbackTraverse);
 
-function scopeValidatorT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function scopeValidatorT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.scopeValidator.${key}`, params);
 }
 

@@ -39,11 +39,11 @@ export function createTechnicalPlan(plan: TechnicalPlan): { success: boolean; su
     summaryLines.push("");
 
     for (const file of change.filesToChange) {
-      summaryLines.push(planT("fileLine", { filePath: file.filePath, description: file.descriptionOfChange }));
+      summaryLines.push(
+        planT("fileLine", { filePath: file.filePath, description: file.descriptionOfChange })
+      );
       if (file.clarifyingQuestionIfAny !== undefined && file.clarifyingQuestionIfAny.length > 0) {
-        summaryLines.push(
-          planT("questionLine", { question: file.clarifyingQuestionIfAny })
-        );
+        summaryLines.push(planT("questionLine", { question: file.clarifyingQuestionIfAny }));
       }
     }
     summaryLines.push("");

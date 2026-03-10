@@ -59,9 +59,7 @@ export function removeStaleLock(workspacePath: string): boolean {
   }
 
   if (!lockCheck.isStale) {
-    throw new Error(
-      gitUtilsT("activeLock", { ageMinutes: lockCheck.ageMinutes ?? 0 })
-    );
+    throw new Error(gitUtilsT("activeLock", { ageMinutes: lockCheck.ageMinutes ?? 0 }));
   }
 
   try {
@@ -98,9 +96,7 @@ export function safeGitCommand(
 
       if (lockCheck.hasLock && lockCheck.isStale) {
         // Write to stderr (informational message for git lock detection)
-        process.stderr.write(
-          `${gitUtilsT("staleLockDetected", { attempt: attempt + 1 })}\n`
-        );
+        process.stderr.write(`${gitUtilsT("staleLockDetected", { attempt: attempt + 1 })}\n`);
         removeStaleLock(workspacePath);
       } else if (lockCheck.hasLock && !lockCheck.isStale) {
         throw new Error(

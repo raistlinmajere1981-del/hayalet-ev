@@ -7,6 +7,7 @@ import type {
 } from "../../src/types/i18n.js";
 import { BUILT_IN_APP_LANGUAGES } from "../../src/types/i18n.js";
 import { isBuiltInAppLanguage, normalizeAppLanguage, resolveSelectorLanguage } from "./locale.js";
+import { normalizeLogNamespaceCatalog } from "./catalog.js";
 
 import trCatalogJson from "../languages/tr/index.json";
 import trManifestJson from "../languages/tr/manifest.json";
@@ -18,8 +19,8 @@ interface BuiltInManifestJson extends Omit<ExternalLanguageManifest, "descriptio
 }
 
 const BUILT_IN_CATALOGS: Record<BuiltInAppLanguage, TranslationCatalog> = {
-  tr: trCatalogJson as TranslationCatalog,
-  en: enCatalogJson as TranslationCatalog,
+  tr: normalizeLogNamespaceCatalog(trCatalogJson as TranslationCatalog),
+  en: normalizeLogNamespaceCatalog(enCatalogJson as TranslationCatalog),
 };
 
 const BUILT_IN_MANIFESTS: Record<BuiltInAppLanguage, BuiltInManifestJson> = {

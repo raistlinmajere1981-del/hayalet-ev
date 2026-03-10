@@ -22,6 +22,8 @@
  * ```
  */
 
+import { AppI18n } from "../modules/i18n/index.js";
+
 export type ThemeId = "obsidian";
 
 type ThemeChangeCallback = (theme: ThemeId) => void;
@@ -61,6 +63,10 @@ const CONFIG: ThemeConfig = {
 let currentTheme: ThemeId = CONFIG.defaultTheme;
 const listeners: Set<ThemeChangeCallback> = new Set();
 let isInitialized = false;
+
+function themeT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.logs.themeManager.${key}`, params);
+}
 
 function isValidTheme(theme: string): theme is ThemeId {
   return theme in THEMES;
@@ -118,7 +124,10 @@ function notifyListeners(theme: ThemeId): void {
     try {
       callback(theme);
     } catch (err) {
-      console.error("[ThemeManager] Listener error:", err);
+      console.error(
+        themeT("listenerError", { message: err instanceof Error ? err.message : String(err) }),
+        err
+      );
     }
   });
 }
@@ -196,7 +205,7 @@ const themeManager = {
    */
   set(theme: ThemeId, persist: boolean = true): void {
     if (!isValidTheme(theme)) {
-      console.warn("[ThemeManager] Invalid theme:", theme);
+      console.warn(themeT("invalidTheme", { theme }));
       return;
     }
 

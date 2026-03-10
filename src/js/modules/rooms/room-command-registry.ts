@@ -48,8 +48,8 @@ function normalizeDescription(
   return trimmed !== "" ? trimmed : `${roomId} room command: ${name}`;
 }
 
-function roomCommandT(key: string): string {
-  return AppI18n.t(`app.roomPage.commandErrors.${key}`);
+function roomCommandT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.roomPage.commandErrors.${key}`, params);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -153,12 +153,12 @@ class RoomCommandRegistryClass {
   ): void {
     const key = normalizeCommandName(commandName);
     if (key === "") {
-      throw new Error("Room command name is required");
+      throw new Error(roomCommandT("commandNameRequired"));
     }
 
     const existing = this.entries.get(key);
     if (existing !== undefined && existing.metadata.roomId !== roomId) {
-      throw new Error(`Room command collision: ${commandName}`);
+      throw new Error(roomCommandT("commandCollision", { commandName }));
     }
 
     const scope = normalizeScope(options.scope ?? existing?.metadata.scope);

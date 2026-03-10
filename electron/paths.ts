@@ -12,48 +12,24 @@
  * @module electron/paths
  */
 
-import electron from "electron";
-import { join, dirname } from "path";
+import { join } from "path";
 import { pathToFileURL } from "url";
 import type { PathConfig, PathResolver } from "./types/paths.ts";
-
-const { app } = electron;
+import { readElectronAppLanguageSync } from "./i18n/language-service.ts";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.ts";
+import { translateCatalog } from "../shared/i18n/catalog.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import {
+  detectPackagedMode,
+  resolveAssetsDir,
+  resolveConfigDir,
+  resolveDataDir,
+  resolveProjectRoot,
+} from "./path-roots.ts";
 
 // ========================================
 // CORE PATH DETECTION (Run Once)
 // ========================================
-
-/**
- * Detect if running in packaged (production) mode.
- * Single source of truth for dev/prod detection.
- */
-function detectPackagedMode(): boolean {
-  return app.isPackaged;
-}
-
-/**
- * Resolve project root directory.
- *
- * DEV MODE: /path/to/hayalet-ev (project directory)
- * PACKAGED (PORTABLE): /path/to/hayalet-ev (executable directory)
- *
- * PORTABLE APP STRATEGY:
- * - Data files written next to executable (writable)
- * - Allows USB/portable installation
- * - No user directory dependency
- */
-function resolveProjectRoot(): string {
-  if (detectPackagedMode()) {
-    // Production: use executable directory (portable mode)
-    // app.getPath("exe") returns /path/to/hayalet-ev/hayalet-ev
-    // dirname gives us /path/to/hayalet-ev (writable directory)
-    return dirname(app.getPath("exe"));
-  } else {
-    // Development: use CWD (assumes npm run dev from project root)
-    // eslint-disable-next-line no-restricted-syntax
-    return process.cwd();
-  }
-}
 
 // ========================================
 // PATH CONFIGURATION (Initialized Once)
@@ -61,13 +37,28 @@ function resolveProjectRoot(): string {
 
 let config: (PathConfig & { electronDir: string }) | null = null;
 
+function pathsT(key: string): string {
+  const locale = readElectronAppLanguageSync();
+  const activeCatalog =
+    getBuiltInLanguagePack(locale)?.catalog ??
+    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(
+    activeCatalog ?? fallbackCatalog ?? {},
+    `electron.paths.${key}`,
+    undefined,
+    fallbackCatalog
+  );
+}
+
 /**
  * Initialize path configuration.
  * Must be called after app.whenReady() in main.ts.
  */
 export function initPaths(electronDirname: string): void {
   if (config !== null) {
-    console.warn("[PATHS] Already initialized");
+    console.warn(pathsT("alreadyInitialized"));
     return;
   }
 
@@ -76,14 +67,11 @@ export function initPaths(electronDirname: string): void {
 
   config = {
     projectRoot,
-    dataDir: join(projectRoot, "data"),
-    configDir: join(projectRoot, "config"),
+    dataDir: resolveDataDir(),
+    configDir: resolveConfigDir(),
     logsDir: join(projectRoot, "logs"),
     commandsDir: join(projectRoot, "commands"),
-    // Assets only used in dev, in packaged mode they're in app.asar
-    assetsDir: isPackaged
-      ? join(process.resourcesPath, "app.asar", "src/assets")
-      : join(projectRoot, "src", "assets"),
+    assetsDir: resolveAssetsDir(),
     isPackaged,
     electronDir: electronDirname,
   };
@@ -94,9 +82,7 @@ export function initPaths(electronDirname: string): void {
  */
 function getConfig(): PathConfig & { electronDir: string } {
   if (config === null) {
-    throw new Error(
-      "[PATHS] Not initialized. Call initPaths(electronDirname) in main.ts after app.whenReady()"
-    );
+    throw new Error(pathsT("notInitialized"));
   }
   return config;
 }

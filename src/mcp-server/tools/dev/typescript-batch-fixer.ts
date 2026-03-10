@@ -32,17 +32,11 @@ interface FixResult {
   }>;
 }
 
-function tsBatchFixerT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function tsBatchFixerT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.typescriptBatchFixer.${key}`, params);
 }
 
-function tsBatchFixerDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function tsBatchFixerDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(
     `mcpServer.devTools.typescriptBatchFixer.definition.${key}`,
     params

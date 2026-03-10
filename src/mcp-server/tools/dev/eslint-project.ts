@@ -34,10 +34,7 @@ function lintProjectT(key: string, params?: Record<string, string | number | boo
   return createMcpTranslatorSync()(`mcpServer.devTools.lintProject.${key}`, params);
 }
 
-function lintProjectDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function lintProjectDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.lintProject.definition.${key}`, params);
 }
 

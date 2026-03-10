@@ -327,9 +327,7 @@ export function renderMessageBox(options: MessageBoxOptions): string {
   // Details
   if (details && details.length > 0) {
     lines.push(
-      chars.vertical +
-        ("  " + messageBoxT("detailsTitle")).padEnd(width - 2) +
-        chars.vertical
+      chars.vertical + ("  " + messageBoxT("detailsTitle")).padEnd(width - 2) + chars.vertical
     );
     details.forEach((detail) => {
       const wrappedDetails = wrapText(detail, contentWidth - 4);

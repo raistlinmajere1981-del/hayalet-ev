@@ -74,7 +74,11 @@ export const OPERATION_HISTORY_TOOL = {
   inputSchema: {
     type: "object" as const,
     properties: {
-      limit: { type: "integer", description: historyToolDefinitionT("historyList.limit"), default: 20 },
+      limit: {
+        type: "integer",
+        description: historyToolDefinitionT("historyList.limit"),
+        default: 20,
+      },
     },
   },
   metadata: {

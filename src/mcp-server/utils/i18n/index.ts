@@ -18,7 +18,10 @@ import {
 } from "../../../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage, resolveSelectorLanguage } from "../../../../shared/i18n/locale.js";
-import { listInstalledLanguages, loadInstalledLanguage } from "../../../../shared/i18n/node-loader.js";
+import {
+  listInstalledLanguages,
+  loadInstalledLanguage,
+} from "../../../../shared/i18n/node-loader.js";
 import { PROJECT_ROOT } from "../project-root.js";
 
 const SETTINGS_PATH = join(PROJECT_ROOT, "config", "settings.json");
@@ -61,11 +64,7 @@ function loadExternalDescriptorSync(
 ): LanguageDescriptor | null {
   try {
     const rawManifest = readJsonFileSync(join(baseDir, localeFolder, "manifest.json"));
-    if (
-      rawManifest === null ||
-      typeof rawManifest !== "object" ||
-      Array.isArray(rawManifest)
-    ) {
+    if (rawManifest === null || typeof rawManifest !== "object" || Array.isArray(rawManifest)) {
       return null;
     }
 
@@ -141,18 +140,29 @@ export async function listMcpLanguages(): Promise<LanguageDescriptor[]> {
 
 export async function loadMcpLanguage(locale?: unknown): Promise<LoadedLanguagePack> {
   const requestedLocale = locale ?? (await readMcpAppLanguage());
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+  const resolvedPack =
+    (await loadInstalledLanguage(LANGUAGE_ROOT, requestedLocale)) ?? fallbackPack;
   return (
-    (await loadInstalledLanguage(LANGUAGE_ROOT, requestedLocale)) ??
-    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!
+    resolvedPack ?? {
+      locale: DEFAULT_APP_LANGUAGE,
+      nativeName: DEFAULT_APP_LANGUAGE,
+      source: "builtin",
+      catalog: {},
+    }
   );
 }
-
 export function loadMcpLanguageSync(locale?: unknown): LoadedLanguagePack {
   const requestedLocale = locale ?? readMcpAppLanguageSync();
   const normalized = normalizeAppLanguage(requestedLocale);
   const builtIn = getBuiltInLanguagePack(normalized);
 
-  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE) ?? {
+    locale: DEFAULT_APP_LANGUAGE,
+    nativeName: DEFAULT_APP_LANGUAGE,
+    source: "builtin",
+    catalog: {},
+  };
   const externalDescriptor = loadExternalDescriptorSync(LANGUAGE_ROOT, normalized);
   const externalCatalog = loadExternalCatalogSync(LANGUAGE_ROOT, normalized);
 

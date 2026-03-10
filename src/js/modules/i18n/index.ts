@@ -31,7 +31,7 @@ interface I18nSettingsManager {
 
 function formatLanguageLabel(language: LanguageDescriptor): string {
   const englishName = language.englishName?.trim();
-  if (!englishName || englishName === language.nativeName) {
+  if (englishName === undefined || englishName === "" || englishName === language.nativeName) {
     return language.nativeName;
   }
 
@@ -40,13 +40,12 @@ function formatLanguageLabel(language: LanguageDescriptor): string {
 
 class AppI18nManager {
   private currentLocale: AppLanguage = DEFAULT_APP_LANGUAGE;
-  private activePack: LoadedLanguagePack =
-    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE) ?? {
-      locale: DEFAULT_APP_LANGUAGE,
-      nativeName: "Türkçe",
-      source: "builtin",
-      catalog: {},
-    };
+  private activePack: LoadedLanguagePack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE) ?? {
+    locale: DEFAULT_APP_LANGUAGE,
+    nativeName: "Türkçe",
+    source: "builtin",
+    catalog: {},
+  };
   private activeCatalog: TranslationCatalog = this.activePack.catalog;
   private fallbackCatalog: TranslationCatalog = this.activePack.catalog;
   private availableLanguages: LanguageDescriptor[] = getBuiltInLanguageDescriptors();
@@ -60,7 +59,7 @@ class AppI18nManager {
 
     document.documentElement.lang = pack.locale;
     document.documentElement.dir = pack.direction ?? "ltr";
-    document.body?.setAttribute("data-app-language", pack.locale);
+    document.body.setAttribute("data-app-language", pack.locale);
   }
 
   private emitChange(pack: LoadedLanguagePack): void {
@@ -111,7 +110,7 @@ class AppI18nManager {
     const normalized = normalizeAppLanguage(locale);
     const api = window.electronAPI;
     const previousLocale = this.currentLocale;
-    let nextPack: LoadedLanguagePack | null = null;
+    let nextPack: LoadedLanguagePack | null;
 
     try {
       nextPack = api?.i18nLoadLanguage ? await api.i18nLoadLanguage(normalized) : null;
@@ -146,4 +145,5 @@ class AppI18nManager {
 }
 
 export { formatLanguageLabel };
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export const AppI18n = new AppI18nManager();

@@ -58,6 +58,8 @@ function renderSessionTabs(
 
 function getSessionStateLabel(state: "idle" | "active" | "working" | "archived"): string {
   switch (state) {
+    case "idle":
+      return t("session.stateIdle");
     case "active":
       return t("session.stateActive");
     case "working":

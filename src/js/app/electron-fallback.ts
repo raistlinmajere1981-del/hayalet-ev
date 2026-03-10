@@ -55,10 +55,12 @@ export function ensureElectronApiFallback(): void {
         return await Promise.resolve(false);
       }
     },
-    i18nListLanguages: async () => {
+    i18nListLanguages: async (): Promise<ReturnType<typeof getBuiltInLanguageDescriptors>> => {
       return await Promise.resolve(getBuiltInLanguageDescriptors());
     },
-    i18nLoadLanguage: async (locale: string) => {
+    i18nLoadLanguage: async (
+      locale: string
+    ): Promise<ReturnType<typeof getBuiltInLanguagePack>> => {
       const normalized = normalizeAppLanguage(locale);
       return await Promise.resolve(
         getBuiltInLanguagePack(normalized) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)

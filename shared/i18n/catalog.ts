@@ -40,6 +40,32 @@ export function mergeTranslationCatalogs(catalogs: TranslationCatalog[]): Transl
   }, {});
 }
 
+export function normalizeLogNamespaceCatalog(catalog: TranslationCatalog): TranslationCatalog {
+  const appCatalog = isTranslationCatalog(catalog["app"]) ? catalog["app"] : undefined;
+  const shellCatalog = isTranslationCatalog(catalog["shell"]) ? catalog["shell"] : undefined;
+  const appLogs = appCatalog && isTranslationCatalog(appCatalog["logs"]) ? appCatalog["logs"] : undefined;
+  const shellLogs =
+    shellCatalog && isTranslationCatalog(shellCatalog["logs"]) ? shellCatalog["logs"] : undefined;
+
+  if (appLogs === undefined && shellLogs === undefined) {
+    return catalog;
+  }
+
+  const canonicalLogs = mergeTranslationCatalogs([shellLogs ?? {}, appLogs ?? {}]);
+
+  return {
+    ...catalog,
+    app: {
+      ...(appCatalog ?? {}),
+      logs: canonicalLogs,
+    },
+    shell: {
+      ...(shellCatalog ?? {}),
+      logs: canonicalLogs,
+    },
+  };
+}
+
 export function getTranslationValue(
   catalog: TranslationCatalog | null | undefined,
   key: string

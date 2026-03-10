@@ -7,7 +7,7 @@ import type {
   OpencodeUiSessionSummary,
   RuntimeState,
 } from "./types.js";
-import { t } from "./i18n.js";
+import { formatDetailedErrorMessage, t } from "./i18n.js";
 
 export interface OpencodeUiSessionStorage {
   listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]>;
@@ -33,7 +33,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
         dbPathArg()
       )) as OpencodeUiFsListResult;
       if (result.success !== true) {
-        throw new Error(result.error ?? t("storage.listFailed"));
+        throw new Error(formatDetailedErrorMessage("storage.listFailed", result.error));
       }
 
       const sessions = Array.isArray(result.sessions) ? result.sessions : [];
@@ -59,7 +59,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsEnsureResult;
 
       if (result.success !== true) {
-        throw new Error(result.error ?? t("storage.ensureFailed"));
+        throw new Error(formatDetailedErrorMessage("storage.ensureFailed", result.error));
       }
     },
 
@@ -93,7 +93,7 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsArchiveResult;
 
       if (result.success !== true) {
-        throw new Error(result.error ?? t("storage.archiveFailed"));
+        throw new Error(formatDetailedErrorMessage("storage.archiveFailed", result.error));
       }
     },
   };

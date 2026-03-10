@@ -225,7 +225,9 @@ export class ServerController {
     const rawInput = (this.commandTestArgs?.value ?? "").trim();
     const commandKey = commandName.toLowerCase();
     const inputWithDefault =
-      rawInput === "" && ["assistantaisend", "asistanaisend"].includes(commandKey) ? "ai1" : rawInput;
+      rawInput === "" && ["assistantaisend", "asistanaisend"].includes(commandKey)
+        ? "ai1"
+        : rawInput;
     const parsed = parseCommandExecutionInput(inputWithDefault, commandName);
     const resolvedCommandName = parsed.commandName;
     const resolvedArgs = parsed.args;
@@ -283,10 +285,7 @@ export class ServerController {
       if (this.commandDetail !== null) {
         this.commandDetail.value = `${resolvedCommandName}\n\n${message}`;
       }
-      Logger.error(
-        LogCategory.SERVER_COMMANDS,
-        serverCommandPanelT("logs.runError", { message })
-      );
+      Logger.error(LogCategory.SERVER_COMMANDS, serverCommandPanelT("logs.runError", { message }));
     }
   }
 
@@ -492,7 +491,11 @@ export class ServerController {
       this.isDelegated = true;
 
       if (this.delegateBtn) {
-        ButtonStates.setSuccess(this.delegateBtn, serverCommandPanelT("buttons.delegateSuccess"), 1500);
+        ButtonStates.setSuccess(
+          this.delegateBtn,
+          serverCommandPanelT("buttons.delegateSuccess"),
+          1500
+        );
       }
       Logger.panel(
         LogCategory.SYSTEM,
@@ -530,7 +533,11 @@ export class ServerController {
       this.isDelegated = false;
 
       if (this.reclaimBtn) {
-        ButtonStates.setSuccess(this.reclaimBtn, serverCommandPanelT("buttons.reclaimSuccess"), 1500);
+        ButtonStates.setSuccess(
+          this.reclaimBtn,
+          serverCommandPanelT("buttons.reclaimSuccess"),
+          1500
+        );
       }
       Logger.success(LogCategory.SYSTEM, serverCommandPanelT("logs.reclaimSuccess"));
     } catch (_error) {

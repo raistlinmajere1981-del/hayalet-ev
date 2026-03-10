@@ -15,6 +15,7 @@ import {
 } from "../provider-tester/selector-evidence.ts";
 import { promoteProviderConfigFile } from "../provider-tester/selector-promotion.ts";
 import type { ProviderScenarioId, ProviderWebviewSyncMode } from "../../src/types/provider.ts";
+import { translateElectronMessage } from "../i18n/language-service.ts";
 
 const logger = getLoggerCore();
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
@@ -120,13 +121,21 @@ async function ensureProviderTesterCtor(): Promise<typeof ProviderTesterType> {
   const testerPath = existsSync(testerPathTs) ? testerPathTs : testerPathJs;
 
   if (!existsSync(testerPath)) {
-    throw new Error(`ProviderTester not found at ${testerPath}`);
+    throw new Error(
+      await translateElectronMessage("electron.ipcProvider.providerTesterNotFound", {
+        path: testerPath,
+      })
+    );
   }
 
   const testerModule: unknown = await importModuleByPath(testerPath);
   providerTesterCtor = resolveProviderTesterExport(testerModule);
   if (providerTesterCtor === null) {
-    throw new Error(`ProviderTester export not found at ${testerPath}`);
+    throw new Error(
+      await translateElectronMessage("electron.ipcProvider.providerTesterExportNotFound", {
+        path: testerPath,
+      })
+    );
   }
 
   return providerTesterCtor;
@@ -167,13 +176,15 @@ async function runProviderScenario(
 
     if (webviewId === null) {
       throw new Error(
-        `Webview not accessible for ${slot}. Make sure the slot is connected and webview is registered.`
+        await translateElectronMessage("electron.ipcProvider.webviewNotAccessible", { slot })
       );
     }
 
     const webviewContents = webContents.fromId(webviewId);
     if (webviewContents === undefined) {
-      throw new Error(`WebContents not found for webview ${slot}`);
+      throw new Error(
+        await translateElectronMessage("electron.ipcProvider.webContentsNotFound", { slot })
+      );
     }
 
     const providerIdRaw: unknown = await event.sender.executeJavaScript(`
@@ -181,17 +192,27 @@ async function runProviderScenario(
     `);
     const providerId = typeof providerIdRaw === "string" ? providerIdRaw : null;
     if (providerId === null || providerId.length === 0) {
-      throw new Error(`No provider assigned to ${slot}`);
+      throw new Error(
+        await translateElectronMessage("electron.ipcProvider.providerNotAssigned", { slot })
+      );
     }
 
     const cfgPath = Paths.getProviderConfigPath(providerId);
     if (cfgPath.length === 0) {
-      throw new Error(`Provider config not found for ${providerId}`);
+      throw new Error(
+        await translateElectronMessage("electron.ipcProvider.providerConfigNotFound", {
+          providerId,
+        })
+      );
     }
 
     const config = await loadProviderConfigExport(cfgPath);
     if (config === null) {
-      throw new Error(`Invalid provider config for ${providerId}`);
+      throw new Error(
+        await translateElectronMessage("electron.ipcProvider.invalidProviderConfig", {
+          providerId,
+        })
+      );
     }
 
     const webviewWrapper = {

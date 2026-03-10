@@ -1,5 +1,8 @@
 import type { IpcMainInvokeEvent } from "electron";
 
+import type { TranslationParams } from "../src/types/i18n.ts";
+import { translateElectronMessage } from "./i18n/language-service.ts";
+
 interface UploadPayload {
   name?: string;
   mimeType?: string;
@@ -14,6 +17,22 @@ interface UploadResult {
   message?: string;
 }
 
+async function webviewManagerT(key: string, params?: TranslationParams): Promise<string> {
+  return await translateElectronMessage(`electron.webviewManager.${key}`, params);
+}
+
+async function resolveUploadFailureMessage(error: unknown): Promise<string> {
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+
+  return await webviewManagerT("uploadRequestFailed");
+}
+
 export async function catboxUpload(
   _event: IpcMainInvokeEvent,
   payload: UploadPayload = {}
@@ -21,7 +40,7 @@ export async function catboxUpload(
   try {
     const { name, mimeType = "application/octet-stream", base64 } = payload;
     if (base64 === undefined || base64.length === 0 || name === undefined || name.length === 0) {
-      return { success: false, message: "Eksik parametre" };
+      return { success: false, message: await webviewManagerT("missingUploadParameters") };
     }
 
     const url = "https://catbox.moe/user/api.php";
@@ -50,9 +69,7 @@ export async function catboxUpload(
         body: bodyBuffer,
       });
     } else {
-      throw new Error(
-        "Global fetch is not available in this Node runtime. Please run on Node 18+ or provide a fetch polyfill."
-      );
+      throw new Error(await webviewManagerT("fetchUnavailable"));
     }
 
     const text = await res.text();
@@ -63,7 +80,7 @@ export async function catboxUpload(
       data: text,
     };
   } catch (err) {
-    return { success: false, message: (err as Error).message };
+    return { success: false, message: await resolveUploadFailureMessage(err) };
   }
 }
 
@@ -74,7 +91,7 @@ export async function uguuUpload(
   try {
     const { name, mimeType = "application/octet-stream", base64 } = payload;
     if (base64 === undefined || base64.length === 0 || name === undefined || name.length === 0) {
-      return { success: false, message: "Eksik parametre" };
+      return { success: false, message: await webviewManagerT("missingUploadParameters") };
     }
 
     const url = "https://uguu.se/upload.php";
@@ -103,9 +120,7 @@ export async function uguuUpload(
         body: bodyBuffer,
       });
     } else {
-      throw new Error(
-        "Global fetch is not available in this Node runtime. Please run on Node 18+ or provide a fetch polyfill."
-      );
+      throw new Error(await webviewManagerT("fetchUnavailable"));
     }
 
     const text = await res.text();
@@ -116,6 +131,6 @@ export async function uguuUpload(
       data: text,
     };
   } catch (err) {
-    return { success: false, message: (err as Error).message };
+    return { success: false, message: await resolveUploadFailureMessage(err) };
   }
 }

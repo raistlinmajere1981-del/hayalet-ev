@@ -78,7 +78,10 @@ export const GREP_TOOL = {
   inputSchema: {
     type: "object" as const,
     properties: {
-      content_pattern: { type: "string", description: searchToolDefinitionT("grep.contentPattern") },
+      content_pattern: {
+        type: "string",
+        description: searchToolDefinitionT("grep.contentPattern"),
+      },
       path_glob: { type: "string", description: searchToolDefinitionT("grep.pathGlob") },
     },
   },

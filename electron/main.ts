@@ -77,6 +77,7 @@ import { setupRoomHandlers } from "./handlers/ipc-rooms.ts";
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import { translateElectronMessage } from "./i18n/language-service.ts";
 
 const logger = getLoggerCore();
 
@@ -237,7 +238,11 @@ void app.whenReady().then(async () => {
   try {
     try {
       await initLogger();
-      await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.main.logs.unifiedLoggerInitialized");
+      await logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.INFO,
+        "electron.main.logs.unifiedLoggerInitialized"
+      );
     } catch (e: unknown) {
       await logger.logInternalT(
         LogCategory.MAIN,
@@ -325,7 +330,11 @@ void app.whenReady().then(async () => {
         error: errorDetails,
       }
     );
-    console.error("CRITICAL ERROR:", err);
+    console.error(
+      await translateElectronMessage("electron.main.logs.criticalErrorConsole", {
+        message: err instanceof Error ? err.message : String(err),
+      })
+    );
     process.exit(1);
   }
 
@@ -365,25 +374,36 @@ async function performCleanup(): Promise<void> {
 
   try {
     if (keepServersOnAppClose) {
-      console.info("[MAIN] OpenCode serve cleanup skipped by settings");
+      console.info(await translateElectronMessage("electron.main.logs.cleanupSkippedBySettings"));
     } else {
       const ocStatus = await opencodeServerManager.findRunningServer(4096, 4110);
       if (ocStatus.running) {
         const ocPort = ocStatus.port != null ? String(ocStatus.port) : "unknown";
-        console.info(`[MAIN] Stopping OpenCode serve (port: ${ocPort})`);
+        console.info(
+          await translateElectronMessage("electron.main.logs.stoppingOpencodeServeConsole", {
+            port: ocPort,
+          })
+        );
         await opencodeServerManager.stop();
 
         const ocAfter = await opencodeServerManager.findRunningServer(4096, 4110);
         if (ocAfter.running) {
           const afterPort = ocAfter.port != null ? String(ocAfter.port) : "unknown";
           console.info(
-            `[MAIN] OpenCode serve still running after stop attempt (port: ${afterPort})`
+            await translateElectronMessage(
+              "electron.main.logs.opencodeServeStillRunningAfterStop",
+              {
+                port: afterPort,
+              }
+            )
           );
         } else {
-          console.info("[MAIN] OpenCode serve process closed");
+          console.info(
+            await translateElectronMessage("electron.main.logs.opencodeServeProcessClosed")
+          );
         }
       } else {
-        console.info("[MAIN] OpenCode serve not running, skipping");
+        console.info(await translateElectronMessage("electron.main.logs.opencodeServeNotRunning"));
       }
     }
     await logger.logInternalT(
@@ -397,7 +417,9 @@ async function performCleanup(): Promise<void> {
     );
   } catch (err: unknown) {
     console.info(
-      `[MAIN] OpenCode serve cleanup failed: ${err instanceof Error ? err.message : String(err)}`
+      await translateElectronMessage("electron.main.logs.opencodeServeCleanupFailedConsole", {
+        message: err instanceof Error ? err.message : String(err),
+      })
     );
     await logger.logInternalT(
       LogCategory.MAIN,
@@ -421,9 +443,13 @@ async function performCleanup(): Promise<void> {
       }
     );
     await shutdownLogger();
-    console.info("[MAIN] Logger shutdown complete");
+    console.info(await translateElectronMessage("electron.main.logs.loggerShutdownComplete"));
   } catch (err: unknown) {
-    console.error("[MAIN] Logger shutdown failed:", err);
+    console.error(
+      await translateElectronMessage("electron.main.logs.loggerShutdownFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      })
+    );
   }
 }
 
@@ -522,15 +548,17 @@ registerHandler("screenshot-capture", screenshotCaptureHandler);
 
 registerHandler(
   "meta-define-command",
-  (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
-    MetaCommandManager.defineCommand(event, params)
+  async (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
+    await MetaCommandManager.defineCommand(event, params)
 );
-registerHandler("meta-delete-command", (event, params: { name: string }) =>
-  MetaCommandManager.deleteCommand(event, params)
+registerHandler(
+  "meta-delete-command",
+  async (event, params: { name: string }) => await MetaCommandManager.deleteCommand(event, params)
 );
 registerHandler("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
-registerHandler("meta-get-command", (event, params: { name: string }) =>
-  MetaCommandManager.getCommand(event, params)
+registerHandler(
+  "meta-get-command",
+  async (event, params: { name: string }) => await MetaCommandManager.getCommand(event, params)
 );
 
 registerHandler("logger:appendBatch", handleLoggerAppendBatch);

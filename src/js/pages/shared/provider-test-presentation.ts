@@ -194,9 +194,7 @@ export function getScenarioResultsFilterAriaLabel(): string {
 }
 
 export function getScenarioEmptyMessage(filter: ScenarioStatusFilter): string {
-  return providerTestT(
-    filter === "all" ? "scenario.emptyNotStarted" : "scenario.emptyNoResults"
-  );
+  return providerTestT(filter === "all" ? "scenario.emptyNotStarted" : "scenario.emptyNoResults");
 }
 
 export function buildScenarioStepsCompletedLabel(completed: number, total: number): string {

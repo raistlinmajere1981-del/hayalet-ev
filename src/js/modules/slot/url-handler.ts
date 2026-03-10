@@ -13,7 +13,9 @@ import {
 } from "../webview/methods/shared/url-utils.js";
 import type { SlotId } from "@shared/index.js";
 import { LogLevel } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
+import { AppI18n } from "../i18n/index.js";
 
 type WebviewElement = HTMLElement & {
   getURL?: () => string;
@@ -58,6 +60,10 @@ type TrafficFn = (slot: SlotId, correlationId: string) => void;
 type UrlChangeCallback = (slot: SlotId, url: string) => void;
 
 const urlChangeHandlers: Record<string, UrlChangeHandlerInfo> = {};
+
+function slotUrlT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.slotUrl.${key}`, params);
+}
 
 export function checkUrlExclusion(slotState: UrlHandlerSlotState, url: string): boolean {
   const config = slotState.providerConfig;
@@ -124,7 +130,7 @@ export function handleUrlChange(
 
   if (normalizedNew === normalizedOld) return;
 
-  logFn(slot, LogLevel.INFO, `URL changed: ${normalizedOld} → ${normalizedNew}`);
+  logFn(slot, LogLevel.INFO, slotUrlT("changed", { oldUrl: normalizedOld, newUrl: normalizedNew }));
   emitFn(slot, events.URL_CHANGED, { oldUrl: slotState.currentUrl, newUrl });
 
   slotState.currentUrl = newUrl;
@@ -135,11 +141,11 @@ export function handleUrlChange(
     slotState.urlExcluded = isExcluded;
 
     if (isExcluded && slotState.trafficStarted) {
-      logFn(slot, LogLevel.INFO, `URL now excluded: ${newUrl} - stopping traffic`);
+      logFn(slot, LogLevel.INFO, slotUrlT("excludedStoppingTraffic", { url: newUrl }));
       emitFn(slot, events.URL_EXCLUDED, { url: newUrl });
       stopTrafficFn(slot, slotState.correlationId);
     } else if (!isExcluded && !slotState.trafficStarted) {
-      logFn(slot, LogLevel.INFO, `URL no longer excluded: ${newUrl} - starting traffic`);
+      logFn(slot, LogLevel.INFO, slotUrlT("includedStartingTraffic", { url: newUrl }));
       emitFn(slot, events.URL_INCLUDED, { url: newUrl });
       startTrafficFn(slot, slotState.correlationId);
     }
@@ -156,7 +162,7 @@ export function navigate(
   navigatedEvent: string
 ): void {
   if (slotState.state !== connectedState) {
-    logFn(slot, LogLevel.WARNING, "Cannot navigate: not connected");
+    logFn(slot, LogLevel.WARNING, slotUrlT("navigateBlockedNotConnected"));
     return;
   }
 
@@ -166,7 +172,7 @@ export function navigate(
   const targetUrl = url ?? slotState.providerConfig?.baseUrl ?? "";
 
   if (targetUrl === "") {
-    logFn(slot, LogLevel.WARNING, "No URL for navigation");
+    logFn(slot, LogLevel.WARNING, slotUrlT("navigateMissingUrl"));
     return;
   }
 
@@ -179,12 +185,12 @@ export function navigate(
     return;
   }
 
-  logFn(slot, LogLevel.INFO, `Navigating to ${targetUrl}`);
+  logFn(slot, LogLevel.INFO, slotUrlT("navigating", { url: targetUrl }));
 
   try {
     if (typeof webview.loadURL === "function") {
       webview.loadURL(targetUrl).catch((err: Error) => {
-        logFn(slot, LogLevel.WARNING, `Navigation warning: ${err.message}`);
+        logFn(slot, LogLevel.WARNING, slotUrlT("navigationWarning", { message: err.message }));
       });
     } else {
       webview.src = targetUrl;
@@ -192,6 +198,6 @@ export function navigate(
     emitFn(slot, navigatedEvent, { url: targetUrl });
   } catch (err) {
     const error = err as Error;
-    logFn(slot, LogLevel.ERROR, `Navigation error: ${error.message}`);
+    logFn(slot, LogLevel.ERROR, slotUrlT("navigationError", { message: error.message }));
   }
 }

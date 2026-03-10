@@ -32,7 +32,7 @@
           <button
             class="ds-workspace-add"
             id="workspace-add"
-          title="New Workspace"
+            title="New Workspace"
             data-i18n-title="workspace.addTitle"
           >
             +
@@ -55,9 +55,7 @@
           <div class="ds-sidebar__header">
             <span class="ds-sidebar__icon">💬</span>
             <span class="ds-sidebar__title">Sessions</span>
-            <span class="ds-sidebar__subtitle" id="session-count-label">
-              0 sessions
-            </span>
+            <span class="ds-sidebar__subtitle" id="session-count-label"> 0 sessions </span>
             <button
               class="ds-sidebar__refresh-btn"
               id="session-refresh-btn"
@@ -70,7 +68,11 @@
 
           <!-- New chat button -->
           <div class="px-2 py-2">
-            <button class="btn btn-primary w-full" id="new-session-btn" data-i18n-text="session.newConversation">
+            <button
+              class="btn btn-primary w-full"
+              id="new-session-btn"
+              data-i18n-text="session.newConversation"
+            >
               + New Chat
             </button>
           </div>
@@ -203,7 +205,11 @@
                 >
                   🗑 Clear
                 </button>
-                <button class="ds-chat__attach-btn" id="attach-file-btn" data-i18n-text="chat.attachFileLabel">
+                <button
+                  class="ds-chat__attach-btn"
+                  id="attach-file-btn"
+                  data-i18n-text="chat.attachFileLabel"
+                >
                   📎 File
                 </button>
                 <button
@@ -235,7 +241,12 @@
                 data-i18n-placeholder="chat.inputPlaceholder"
                 rows="3"
               ></textarea>
-              <button class="ds-chat__send" id="send-btn" title="Send" data-i18n-title="chat.sendTitle">
+              <button
+                class="ds-chat__send"
+                id="send-btn"
+                title="Send"
+                data-i18n-title="chat.sendTitle"
+              >
                 ↑
               </button>
             </div>
@@ -325,7 +336,10 @@
                   <div class="ds-right-panel-card">
                     <div class="ds-right-panel-card__meta">
                       <div>
-                        <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.todoEyebrow">
+                        <div
+                          class="ds-right-panel-card__eyebrow"
+                          data-i18n-text="panel.todoEyebrow"
+                        >
                           Session Summary
                         </div>
                         <div class="ds-right-panel-card__title" data-i18n-text="panel.todoTitle">
@@ -333,7 +347,9 @@
                         </div>
                       </div>
                     </div>
-                    <div class="empty-state" data-i18n-text="panel.todoEmpty">No todo items yet</div>
+                    <div class="empty-state" data-i18n-text="panel.todoEmpty">
+                      No todo items yet
+                    </div>
                   </div>
                 </section>
 
@@ -346,7 +362,10 @@
                   <div class="ds-right-panel-card">
                     <div class="ds-right-panel-card__meta">
                       <div>
-                        <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.filesEyebrow">
+                        <div
+                          class="ds-right-panel-card__eyebrow"
+                          data-i18n-text="panel.filesEyebrow"
+                        >
                           Workspace
                         </div>
                         <div class="ds-right-panel-card__title" data-i18n-text="panel.filesTitle">
@@ -354,7 +373,9 @@
                         </div>
                       </div>
                     </div>
-                    <div class="empty-state" data-i18n-text="panel.filesEmpty">No changed files</div>
+                    <div class="empty-state" data-i18n-text="panel.filesEmpty">
+                      No changed files
+                    </div>
                   </div>
                 </section>
 
@@ -367,7 +388,10 @@
                   <div class="ds-right-panel-card ds-right-panel-card--health" id="health-panel">
                     <div class="ds-right-panel-card__meta">
                       <div>
-                        <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.serverEyebrow">
+                        <div
+                          class="ds-right-panel-card__eyebrow"
+                          data-i18n-text="panel.serverEyebrow"
+                        >
                           Server Status
                         </div>
                         <div class="ds-right-panel-card__title" data-i18n-text="panel.serverTitle">
@@ -390,7 +414,9 @@
                         </button>
                       </div>
                       <div class="ds-kv-row">
-                        <span class="ds-kv-row__label" data-i18n-text="health.versionLabel">Version</span>
+                        <span class="ds-kv-row__label" data-i18n-text="health.versionLabel"
+                          >Version</span
+                        >
                         <span class="ds-kv-row__value" id="version">-</span>
                       </div>
                       <div class="ds-kv-row ds-kv-row--url">
@@ -410,7 +436,9 @@
                         </div>
                       </div>
                       <div class="ds-kv-row">
-                        <span class="ds-kv-row__label" data-i18n-text="health.directoryLabel">Directory</span>
+                        <span class="ds-kv-row__label" data-i18n-text="health.directoryLabel"
+                          >Directory</span
+                        >
                         <span class="ds-kv-row__value" id="working-dir">-</span>
                       </div>
                       <div class="ds-kv-row">
@@ -418,7 +446,9 @@
                         <span class="ds-kv-row__value" id="lsp-status">-</span>
                       </div>
                       <div class="ds-kv-row">
-                        <span class="ds-kv-row__label" data-i18n-text="health.pluginLabel">Plugin</span>
+                        <span class="ds-kv-row__label" data-i18n-text="health.pluginLabel"
+                          >Plugin</span
+                        >
                         <span class="ds-kv-row__value" id="plugin-status">-</span>
                       </div>
                     </div>
@@ -434,17 +464,25 @@
                   <div class="ds-right-panel-card" id="providers-panel">
                     <div class="ds-right-panel-card__meta">
                       <div>
-                        <div class="ds-right-panel-card__eyebrow" data-i18n-text="panel.providersEyebrow">
+                        <div
+                          class="ds-right-panel-card__eyebrow"
+                          data-i18n-text="panel.providersEyebrow"
+                        >
                           Runtime
                         </div>
-                        <div class="ds-right-panel-card__title" data-i18n-text="panel.providersTitle">
+                        <div
+                          class="ds-right-panel-card__title"
+                          data-i18n-text="panel.providersTitle"
+                        >
                           Providers
                         </div>
                       </div>
                     </div>
                     <div class="ds-panel__body ds-panel__body--compact" id="providers-panel-body">
                       <div id="providers-list">
-                        <div class="empty-state" data-i18n-text="panel.providersLoading">Loading...</div>
+                        <div class="empty-state" data-i18n-text="panel.providersLoading">
+                          Loading...
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -455,12 +493,18 @@
             <div class="ds-right-secondary">
               <div class="ds-panel ds-panel--collapsed">
                 <div class="ds-panel__header" data-toggle="prompts-panel-body">
-                  <span class="ds-panel__title" data-i18n-text="panel.promptsTitle">QUICK PROMPTS</span>
+                  <span class="ds-panel__title" data-i18n-text="panel.promptsTitle"
+                    >QUICK PROMPTS</span
+                  >
                   <span class="ds-panel__count" id="prompt-count">0</span>
                   <span class="ds-panel__chevron">▾</span>
                 </div>
                 <div class="ds-panel__body" id="prompts-panel-body">
-                  <button class="ds-panel__add" id="add-prompt-btn" data-i18n-text="panel.addPrompt">
+                  <button
+                    class="ds-panel__add"
+                    id="add-prompt-btn"
+                    data-i18n-text="panel.addPrompt"
+                  >
                     + Add New Prompt
                   </button>
                   <div id="prompts-list">
@@ -472,7 +516,11 @@
               <div class="ds-modal" id="prompt-modal">
                 <div class="ds-modal__overlay" id="prompt-modal-overlay"></div>
                 <div class="ds-modal__content">
-                  <h3 class="ds-modal__title" id="prompt-modal-title" data-i18n-text="prompt.modalTitle">
+                  <h3
+                    class="ds-modal__title"
+                    id="prompt-modal-title"
+                    data-i18n-text="prompt.modalTitle"
+                  >
                     New Prompt
                   </h3>
                   <div class="ds-modal__field">
@@ -486,7 +534,9 @@
                     />
                   </div>
                   <div class="ds-modal__field">
-                    <label class="ds-modal__label" data-i18n-text="prompt.contentLabel">Content</label>
+                    <label class="ds-modal__label" data-i18n-text="prompt.contentLabel"
+                      >Content</label
+                    >
                     <textarea
                       class="ds-modal__textarea"
                       id="prompt-modal-content"
@@ -519,7 +569,9 @@
                 <div class="ds-modal__content ds-modal__content--wide model-settings-modal">
                   <div class="model-settings__header">
                     <div>
-                      <h3 class="ds-modal__title" data-i18n-text="modelSettings.title">Model Settings</h3>
+                      <h3 class="ds-modal__title" data-i18n-text="modelSettings.title">
+                        Model Settings
+                      </h3>
                       <p class="model-settings__subtitle" data-i18n-text="modelSettings.subtitle">
                         Provider and model visibility, favorites, and default model selection
                       </p>
@@ -557,20 +609,30 @@
 
                   <div class="model-settings__layout">
                     <section class="model-settings__panel model-settings__panel--providers">
-                      <div class="model-settings__panel-title" data-i18n-text="modelSettings.providerSectionTitle">
+                      <div
+                        class="model-settings__panel-title"
+                        data-i18n-text="modelSettings.providerSectionTitle"
+                      >
                         Providers
                       </div>
                       <div class="model-settings__provider-list" id="model-settings-provider-list">
-                        <div class="empty-state" data-i18n-text="modelSettings.providersLoading">Loading...</div>
+                        <div class="empty-state" data-i18n-text="modelSettings.providersLoading">
+                          Loading...
+                        </div>
                       </div>
                     </section>
 
                     <section class="model-settings__panel model-settings__panel--models">
-                      <div class="model-settings__panel-title" data-i18n-text="modelSettings.modelSectionTitle">
+                      <div
+                        class="model-settings__panel-title"
+                        data-i18n-text="modelSettings.modelSectionTitle"
+                      >
                         Models
                       </div>
                       <div class="model-settings__model-list" id="model-settings-model-list">
-                        <div class="empty-state" data-i18n-text="modelSettings.modelsLoading">Loading...</div>
+                        <div class="empty-state" data-i18n-text="modelSettings.modelsLoading">
+                          Loading...
+                        </div>
                       </div>
                     </section>
                   </div>

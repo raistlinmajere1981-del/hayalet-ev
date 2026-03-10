@@ -8,6 +8,25 @@
 
 import { LoggerCore } from "./LoggerCore.js";
 import { LogLevel as LL, LogCategory as LC } from "@shared/index.js";
+import { readElectronAppLanguageSync } from "../../i18n/language-service.ts";
+import { getBuiltInLanguagePack } from "../../../shared/i18n/bundled-languages.ts";
+import { translateCatalog } from "../../../shared/i18n/catalog.ts";
+import { DEFAULT_APP_LANGUAGE } from "../../../src/types/i18n.ts";
+
+function consoleInterceptorT(key: string): string {
+  const locale = readElectronAppLanguageSync();
+  const activeCatalog =
+    getBuiltInLanguagePack(locale)?.catalog ??
+    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(
+    activeCatalog ?? fallbackCatalog ?? {},
+    `electron.logger.logs.${key}`,
+    undefined,
+    fallbackCatalog
+  );
+}
 
 export class ConsoleInterceptor {
   private static isInstalled = false;
@@ -21,7 +40,7 @@ export class ConsoleInterceptor {
 
   public static install(): void {
     if (ConsoleInterceptor.isInstalled) {
-      globalThis.console.warn("[ConsoleInterceptor] Already installed");
+      globalThis.console.warn(consoleInterceptorT("consoleInterceptorAlreadyInstalled"));
       return;
     }
 

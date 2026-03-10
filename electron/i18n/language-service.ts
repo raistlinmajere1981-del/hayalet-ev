@@ -13,14 +13,14 @@ import { translateCatalog } from "../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.js";
 import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 import { listInstalledLanguages, loadInstalledLanguage } from "../../shared/i18n/node-loader.js";
-import { Paths } from "../paths.ts";
+import { resolveConfigDir, resolveDataDir } from "../path-roots.ts";
 
 function getLanguageRootDir(): string {
-  return join(Paths.getDataDir(), "shared", "languages");
+  return join(resolveDataDir(), "shared", "languages");
 }
 
 function getSettingsPath(): string {
-  return join(Paths.getConfigDir(), "settings.json");
+  return join(resolveConfigDir(), "settings.json");
 }
 
 type SettingsSnapshot = {
@@ -59,16 +59,22 @@ export function readElectronAppLanguageSync(): AppLanguage {
 
 export async function loadResolvedLanguage(locale?: unknown): Promise<LoadedLanguagePack> {
   const resolvedLocale = normalizeAppLanguage(locale ?? (await readElectronAppLanguage()));
-  return (
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+  const resolvedPack =
     (await loadAvailableLanguage(resolvedLocale)) ??
     getBuiltInLanguagePack(resolvedLocale) ??
-    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!
+    fallbackPack;
+  return (
+    resolvedPack ?? {
+      locale: DEFAULT_APP_LANGUAGE,
+      nativeName: DEFAULT_APP_LANGUAGE,
+      source: "builtin",
+      catalog: {},
+    }
   );
 }
 
-export async function createElectronTranslator(
-  locale?: unknown
-): Promise<{
+export async function createElectronTranslator(locale?: unknown): Promise<{
   locale: AppLanguage;
   t: (key: string, params?: TranslationParams) => string;
 }> {

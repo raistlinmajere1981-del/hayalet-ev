@@ -103,7 +103,10 @@ export function startChunkedSession(
   totalChunks: number,
   _projectRoot: string
 ): { success: boolean; sessionId: string; message: string } {
-  const progress = createProgress({ operation: safeChunkT("progress.startOperation"), quiet: true });
+  const progress = createProgress({
+    operation: safeChunkT("progress.startOperation"),
+    quiet: true,
+  });
 
   try {
     // Generate unique session ID
@@ -318,7 +321,10 @@ export async function finalizeChunked(
   projectRoot: string,
   verifyChecksum?: string
 ): Promise<{ success: boolean; message: string; filePath?: string; totalSize?: number }> {
-  const progress = createProgress({ operation: safeChunkT("progress.finalizeOperation"), total: 100 });
+  const progress = createProgress({
+    operation: safeChunkT("progress.finalizeOperation"),
+    total: 100,
+  });
 
   try {
     // Get session
@@ -481,7 +487,9 @@ export function getSessionStatus(sessionId: string): {
         sessionId,
         activeSessions: activeSessions.size,
         ids:
-          activeSessions.size > 0 ? Array.from(activeSessions.keys()).join(", ") : safeChunkT("common.none"),
+          activeSessions.size > 0
+            ? Array.from(activeSessions.keys()).join(", ")
+            : safeChunkT("common.none"),
       }),
     };
   }

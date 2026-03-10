@@ -13,11 +13,13 @@ import { ASSISTANT_TIMEOUTS } from "@timeouts";
 import { Logger } from "../logger/index.js";
 import { waitForDomReady } from "./methods/shared/file-utils.js";
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { CatchManager } from "../catch-manager.js";
 import { AppState } from "../app-state.js";
 import { SlotController } from "../slot-controller.js";
 import { ConversationListManager } from "../conversation-list-manager.js";
+import { AppI18n } from "../i18n/index.js";
 import { getProvider } from "./provider-factory.js";
 import { normalizeUrl, isSlotUrlExcluded, isDefaultPage } from "./methods/shared/url-utils.js";
 import { PendingArchiveHandler } from "./pending-archive-handler.js";
@@ -25,6 +27,18 @@ import type { AppSettings } from "@shared/settings.js";
 
 function syncLogKey(key: string): string {
   return `app.logs.webviewSync.${key}`;
+}
+
+function syncT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.logs.webviewSync.${key}`, params);
+}
+
+function syncError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number>
+): string {
+  return formatErrorWithDetail(syncT(key, params), detail);
 }
 
 interface WebviewElement {
@@ -151,7 +165,9 @@ class ConversationSyncerClass {
             state.loadingEndedAt > this._lastLoadingEnded[provider]
           ) {
             this._lastLoadingEnded[provider] = state.loadingEndedAt;
-            await new Promise((resolve) => setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_SYNC));
+            await new Promise((resolve) =>
+              setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_SYNC)
+            );
             await this.syncProvider(provider, { from: "auto" });
           }
         } catch (_err: unknown) {
@@ -197,13 +213,8 @@ class ConversationSyncerClass {
     }
 
     if (webview === null || webview === undefined) {
-      Logger.errorT(
-        LogCategory.WEBVIEW,
-        syncLogKey("webviewNotFound"),
-        { provider },
-        { provider }
-      );
-      return { success: false, message: "Webview not found" };
+      Logger.errorT(LogCategory.WEBVIEW, syncLogKey("webviewNotFound"), { provider }, { provider });
+      return { success: false, message: syncT("webviewNotFound", { provider }) };
     }
 
     const currentUrl = webview.getURL?.() ?? "";
@@ -217,12 +228,12 @@ class ConversationSyncerClass {
           currentUrl,
         }
       );
-      return { success: false, message: "URL excluded from operations" };
+      return { success: false, message: syncT("urlExcluded", { provider, currentUrl }) };
     }
 
     const providerId = AppState.getProviderIdForSlot(provider);
     if (providerId !== null && isDefaultPage(currentUrl, providerId)) {
-      return { success: false, message: "default-page" };
+      return { success: false, message: syncT("defaultPage", { provider }) };
     }
 
     if (this._syncInProgress[provider] === true) {
@@ -232,7 +243,7 @@ class ConversationSyncerClass {
         { provider },
         { provider }
       );
-      return { success: false, message: "sync-in-progress" };
+      return { success: false, message: syncT("syncAlreadyInProgress", { provider }) };
     }
     this._syncInProgress[provider] = true;
 
@@ -247,7 +258,7 @@ class ConversationSyncerClass {
         providerModule === undefined ||
         typeof providerModule["scrapeMessages"] !== "function"
       ) {
-        throw new Error(`Provider module or scrapeMessages function for "${provider}" not found.`);
+        throw new Error(syncT("scrapeMessagesMissing", { provider }));
       }
 
       const messages = (await webview.executeJavaScript(
@@ -338,7 +349,7 @@ class ConversationSyncerClass {
           { provider }
         );
         this._syncInProgress[provider] = false;
-        return { success: false, message: "No account assigned to slot" };
+        return { success: false, message: syncT("noAccountAssigned", { provider }) };
       }
 
       const syncResult = (await window.electronAPI?.dbSyncMessages({
@@ -349,7 +360,7 @@ class ConversationSyncerClass {
       })) as DbSyncResult | undefined;
 
       if (syncResult?.success !== true) {
-        throw new Error(syncResult?.error ?? "Database sync failed");
+        throw new Error(syncError("databaseSyncFailed", syncResult?.error, { provider }));
       }
 
       const dbMessagesResult = (await window.electronAPI?.dbGetMessages({
@@ -408,14 +419,14 @@ class ConversationSyncerClass {
       };
       return result;
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
+      const errorMessage = syncError("syncFailed", error, { provider });
       Logger.errorT(
         LogCategory.WEBVIEW,
         syncLogKey("syncFailed"),
         { provider, message: errorMessage },
         { provider, error: errorMessage }
       );
-      return { success: false, message: getErrorMessage(error) };
+      return { success: false, message: errorMessage };
     } finally {
       this._syncInProgress[provider] = false;
     }
@@ -426,13 +437,8 @@ class ConversationSyncerClass {
     webview: Electron.WebviewTag | WebviewElement | null | undefined
   ): Promise<SyncResult> {
     if (webview === null || webview === undefined) {
-      Logger.errorT(
-        LogCategory.WEBVIEW,
-        syncLogKey("webviewNotFound"),
-        { provider },
-        { provider }
-      );
-      return { success: false, message: "Webview not found" };
+      Logger.errorT(LogCategory.WEBVIEW, syncLogKey("webviewNotFound"), { provider }, { provider });
+      return { success: false, message: syncT("webviewNotFound", { provider }) };
     }
 
     const currentUrl = webview.getURL?.() ?? "";
@@ -446,12 +452,12 @@ class ConversationSyncerClass {
           currentUrl,
         }
       );
-      return { success: false, message: "URL excluded from operations" };
+      return { success: false, message: syncT("urlExcluded", { provider, currentUrl }) };
     }
 
     const providerId = AppState.getProviderIdForSlot(provider);
     if (providerId !== null && isDefaultPage(currentUrl, providerId)) {
-      return { success: false, message: "default-page" };
+      return { success: false, message: syncT("defaultPage", { provider }) };
     }
 
     try {
@@ -463,7 +469,7 @@ class ConversationSyncerClass {
         providerModule === undefined ||
         typeof providerModule["scrapeMessages"] !== "function"
       ) {
-        throw new Error(`Provider module or scrapeMessages function for "${provider}" not found.`);
+        throw new Error(syncT("scrapeMessagesMissing", { provider }));
       }
 
       const messages = (await webview.executeJavaScript(
@@ -500,7 +506,7 @@ class ConversationSyncerClass {
         newEntry: false,
       };
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
+      const errorMessage = syncError("latestMessageSyncFailed", error, { provider });
       Logger.errorT(
         LogCategory.WEBVIEW,
         syncLogKey("latestMessageSyncFailed"),
@@ -510,7 +516,7 @@ class ConversationSyncerClass {
           error: errorMessage,
         }
       );
-      return { success: false, message: getErrorMessage(error) };
+      return { success: false, message: errorMessage };
     }
   }
 
@@ -521,7 +527,7 @@ class ConversationSyncerClass {
    * @returns {Promise<Object>}
    */
   async syncProvider(provider: string, opts: { from?: string } = {}): Promise<SyncResult> {
-    if (provider === "") return { success: false, message: "no-provider" };
+    if (provider === "") return { success: false, message: syncT("providerMissing") };
 
     if (opts.from === "manual") {
       if (this._syncRetryTimers[provider] !== undefined) {

@@ -31,10 +31,7 @@ function registerToolT(key: string, params?: Record<string, string | number | bo
   return createMcpTranslatorSync()(`mcpServer.devTools.toolRegistration.${key}`, params);
 }
 
-function registerToolDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function registerToolDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.toolRegistration.definition.${key}`, params);
 }
 

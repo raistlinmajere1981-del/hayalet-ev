@@ -28,10 +28,7 @@ function smartInsertT(key: string, params?: Record<string, string | number | boo
   return createMcpTranslatorSync()(`mcpServer.devTools.smartInsert.${key}`, params);
 }
 
-function smartInsertDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function smartInsertDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.smartInsert.definition.${key}`, params);
 }
 

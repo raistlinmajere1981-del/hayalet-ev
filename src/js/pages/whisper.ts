@@ -163,10 +163,7 @@ export class WhisperController {
       this.showFeedback(whisperT("feedback.addSuccess"), "success");
       await this.render();
     } catch (err) {
-      this.showFeedback(
-        whisperT("feedback.addFailed", { message: getErrorMessage(err) }),
-        "error"
-      );
+      this.showFeedback(whisperT("feedback.addFailed", { message: getErrorMessage(err) }), "error");
     }
   }
 

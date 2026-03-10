@@ -23,6 +23,7 @@ import { LogCategory } from "@shared/logging-core";
  */
 
 import { Logger } from "./logger/index.js";
+import { formatErrorWithDetail } from "../../../shared/i18n/error-detail.js";
 import { AppState } from "./app-state.js";
 import { TrafficManager } from "./traffic-manager.js";
 import { SlotController } from "./slot-controller.js";
@@ -51,6 +52,18 @@ type CompiledHandler = (args: unknown[], context: Record<string, unknown>) => Pr
 
 let _customCommands: Record<string, CustomCommand> = {};
 let _compiledHandlers: Record<string, CompiledHandler> = {};
+
+function metaCommandT(key: string, params?: Record<string, string | number | boolean>): string {
+  return AppI18n.t(`app.logs.metaCommandManager.${key}`, params);
+}
+
+function metaCommandError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number | boolean>
+): string {
+  return formatErrorWithDetail(metaCommandT(key, params), detail);
+}
 
 /**
  * Context object passed to custom commands
@@ -95,10 +108,10 @@ function compileCommand(name: string, code: string): CompiledHandler | null {
 
     return fn as CompiledHandler;
   } catch (err) {
-    Logger.error(
-      LogCategory.META_COMMAND,
-      `Command compilation error (${name}): ${(err as Error).message}`
-    );
+    Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.compilationError", {
+      name,
+      message: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
@@ -143,7 +156,7 @@ async function defineCommand(
   try {
     const testHandler = compileCommand(name, code);
     if (testHandler === null) {
-      return { success: false, error: "Code compilation error" };
+      return { success: false, error: metaCommandT("compilationReturnError") };
     }
 
     const result = (await window.electronAPI?.["metaDefineCommand"]?.({
@@ -165,17 +178,19 @@ async function defineCommand(
           name,
         });
       } catch {
-        return { success: false, error: "Command parse error" };
+        return { success: false, error: metaCommandT("commandParseError") };
       }
     }
 
     if (result === undefined) {
-      return { success: false, error: "API error" };
+      return { success: false, error: metaCommandT("apiUnavailable") };
     }
 
     return {
       success: Boolean(result.success),
-      ...(result.error !== undefined ? { error: result.error } : {}),
+      ...(result.error !== undefined
+        ? { error: metaCommandError("defineCommandFailed", result.error) }
+        : {}),
       ...(parsedCommand !== undefined ? { command: parsedCommand } : {}),
     };
   } catch (err) {
@@ -183,7 +198,7 @@ async function defineCommand(
     Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.defineCommandError", {
       message: error.message,
     });
-    return { success: false, error: error.message };
+    return { success: false, error: metaCommandError("defineCommandFailed", error) };
   }
 }
 
@@ -193,7 +208,11 @@ async function deleteCommand(name: string): Promise<CommandResult> {
       | { success?: boolean; error?: string }
       | undefined;
 
-    if (result?.success === true) {
+    if (result === undefined) {
+      return { success: false, error: metaCommandT("apiUnavailable") };
+    }
+
+    if (result.success === true) {
       const key = Object.keys(_customCommands).find((k) => k.toLowerCase() === name.toLowerCase());
       if (key !== undefined) {
         delete _customCommands[key];
@@ -201,13 +220,18 @@ async function deleteCommand(name: string): Promise<CommandResult> {
       }
     }
 
-    return result as CommandResult;
+    return {
+      ...result,
+      ...(result.success === true
+        ? {}
+        : { error: metaCommandError("deleteCommandFailed", result.error) }),
+    } as CommandResult;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));
     Logger.errorT(LogCategory.META_COMMAND, "app.logs.metaCommandManager.deleteCommandError", {
       message: error.message,
     });
-    return { success: false, error: error.message };
+    return { success: false, error: metaCommandError("deleteCommandFailed", error) };
   }
 }
 
@@ -223,7 +247,7 @@ async function runCommand(name: string, args: unknown[] = []): Promise<CommandRe
   const handler = _compiledHandlers[name.toLowerCase()];
 
   if (handler === undefined) {
-    return { success: false, error: `Custom command not found: ${name}` };
+    return { success: false, error: metaCommandT("commandNotFound", { name }) };
   }
 
   try {
@@ -237,7 +261,7 @@ async function runCommand(name: string, args: unknown[] = []): Promise<CommandRe
       name,
       message: error.message,
     });
-    return { success: false, error: error.message };
+    return { success: false, error: metaCommandError("runCommandFailed", error, { name }) };
   }
 }
 

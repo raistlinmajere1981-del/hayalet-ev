@@ -19,14 +19,11 @@ import { MetaCommandManager } from "../modules/meta-command-manager.js";
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
-import {
-  isAssistantAccountsSettingsPath,
-  isAssistantSlotSettingsPath,
-} from "@shared/settings.js";
+import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 import type { PageController } from "./types.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
-import { bootstrapShellI18n, shellT } from "./shell-i18n.js";
+import { applyShellStaticTranslations, bootstrapShellI18n } from "./shell-i18n.js";
 import {
   setupNavigation,
   setupWindowControls,
@@ -70,7 +67,7 @@ let isInitialized = false;
 async function initApp(): Promise<void> {
   // Prevent duplicate initialization.
   if (isInitializing || isInitialized) {
-    console.warn("[App] Already initialized or initializing, skipping");
+    console.warn(AppI18n.t("app.logs.initSkippedDuplicate"));
     return;
   }
 
@@ -82,22 +79,26 @@ async function initApp(): Promise<void> {
 
   try {
     try {
-        const electronApi = window.electronAPI;
-        if (electronApi === undefined) {
-          const sessionId = "renderer-fallback";
-          Logger.init(sessionId);
-          Logger.debug(LogCategory.SYSTEM, shellT("logs.loggerInitialized"), { sessionId });
-        } else {
-          const sessionId = await electronApi.logger.getSessionId();
-          Logger.init(sessionId);
-          Logger.debug(LogCategory.SYSTEM, shellT("logs.loggerInitialized"), { sessionId });
-        }
-      } catch (err) {
-        console.error("[App] Logger init error:", err instanceof Error ? err.message : String(err));
+      const electronApi = window.electronAPI;
+      if (electronApi === undefined) {
+        const sessionId = "renderer-fallback";
+        Logger.init(sessionId);
+        Logger.debugT(LogCategory.SYSTEM, "app.logs.loggerInitialized", undefined, { sessionId });
+      } else {
+        const sessionId = await electronApi.logger.getSessionId();
+        Logger.init(sessionId);
+        Logger.debugT(LogCategory.SYSTEM, "app.logs.loggerInitialized", undefined, { sessionId });
       }
+    } catch (err) {
+      console.error(
+        AppI18n.t("app.logs.loggerInitError", {
+          message: err instanceof Error ? err.message : String(err),
+        })
+      );
+    }
 
     setupUILogListener();
-    Logger.debug(LogCategory.SYSTEM, shellT("logs.uiLogListenerReady"));
+    Logger.debugT(LogCategory.SYSTEM, "app.logs.uiLogListenerReady");
 
     await SettingsManager.load();
     await AppI18n.bootstrap(SettingsManager);
@@ -119,15 +120,17 @@ async function initApp(): Promise<void> {
       document.documentElement.setAttribute("spellcheck", "false");
       document.body.setAttribute("spellcheck", "false");
     } catch (e) {
-      Logger.debug(
+      Logger.debugT(
         LogCategory.SYSTEM,
-        shellT("logs.spellcheckDisableFailed", { message: getErrorMessage(e) }),
+        "app.logs.spellcheckDisableFailed",
+        { message: getErrorMessage(e) },
         {
           error: getErrorMessage(e),
         }
       );
     }
     injectPageTemplates();
+    applyShellStaticTranslations();
     SplashScreen.update(50, AppI18n.t("app.startup.startingModules"));
 
     try {
@@ -156,9 +159,10 @@ async function initApp(): Promise<void> {
         }
       );
     } catch (_) {
-      Logger.debug(
+      Logger.debugT(
         LogCategory.SYSTEM,
-        shellT("logs.settingsSubscriptionFailed", { message: getErrorMessage(_) }),
+        "app.logs.settingsSubscriptionFailed",
+        { message: getErrorMessage(_) },
         {
           error: getErrorMessage(_),
         }
@@ -210,7 +214,7 @@ async function initApp(): Promise<void> {
       updateRelayButtonStates(); // Update relay button states on slot connection changes
     });
 
-    Logger.panel(LogCategory.SYSTEM, LogLevel.INFO, shellT("logs.appStarted"), {
+    Logger.panelT(LogCategory.SYSTEM, LogLevel.INFO, "app.logs.appStarted", undefined, {
       visibility: LogVisibility.PANEL,
     });
 
@@ -225,10 +229,11 @@ async function initApp(): Promise<void> {
         ) as HTMLButtonElement | null;
         if (connectBtn !== null && !connectBtn.disabled) {
           connectBtn.click();
-          Logger.panel(
+          Logger.panelT(
             LogCategory.SYSTEM,
             LogLevel.INFO,
-            shellT("logs.autoConnectClicked"),
+            "app.logs.autoConnectClicked",
+            undefined,
             {
               visibility: LogVisibility.PANEL,
             }
@@ -241,11 +246,16 @@ async function initApp(): Promise<void> {
     isInitialized = true;
   } catch (error) {
     const message = getErrorMessage(error);
-    console.error("[App] initApp failed:", message);
+    console.error(AppI18n.t("app.logs.appInitFailed", { message }));
     try {
-      Logger.errorT(LogCategory.SYSTEM, "app.logs.appInitFailed", { message }, {
-        error: error instanceof Error ? error : new Error(String(error)),
-      });
+      Logger.errorT(
+        LogCategory.SYSTEM,
+        "app.logs.appInitFailed",
+        { message },
+        {
+          error: error instanceof Error ? error : new Error(String(error)),
+        }
+      );
     } catch {
       void 0;
     }

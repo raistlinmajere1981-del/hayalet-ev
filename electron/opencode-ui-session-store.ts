@@ -25,6 +25,10 @@ import type {
   PartRow,
   SessionRow,
 } from "./opencode-ui-session/types.ts";
+import { readElectronAppLanguageSync } from "./i18n/language-service.ts";
+import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.ts";
+import { translateCatalog } from "../shared/i18n/catalog.ts";
+import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
 export type {
   OpencodeUiArchiveSessionResult,
   OpencodeUiEnsureSessionResult,
@@ -39,6 +43,21 @@ export type {
 } from "./opencode-ui-session/types.ts";
 
 const DEFAULT_OPENCODE_DB_PATH = join(homedir(), ".local", "share", "opencode", "opencode.db");
+
+function opencodeUiSessionStoreT(key: string, params?: Record<string, string | number>): string {
+  const locale = readElectronAppLanguageSync();
+  const activeCatalog =
+    getBuiltInLanguagePack(locale)?.catalog ??
+    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(
+    activeCatalog ?? fallbackCatalog ?? {},
+    `electron.opencodeUiSessionStore.${key}`,
+    params,
+    fallbackCatalog
+  );
+}
 
 export function resolveOpencodeUiDbPath(options?: OpencodeUiStoreOptions): string {
   const candidate = options?.dbPath;
@@ -69,7 +88,7 @@ export function listOpencodeUiSessions(
 ): OpencodeUiListSessionsResult {
   const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
-    return { success: false, error: `OpenCode session database not found: ${dbPath}` };
+    return { success: false, error: opencodeUiSessionStoreT("dbNotFound", { dbPath }) };
   }
 
   const db = new Database(dbPath);
@@ -114,12 +133,12 @@ export function archiveOpencodeUiSession(
 ): OpencodeUiArchiveSessionResult {
   const normalizedSessionId = sessionId.trim();
   if (normalizedSessionId === "") {
-    return { success: false, error: "Session ID is required" };
+    return { success: false, error: opencodeUiSessionStoreT("sessionIdRequired") };
   }
 
   const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
-    return { success: false, error: `OpenCode session database not found: ${dbPath}` };
+    return { success: false, error: opencodeUiSessionStoreT("dbNotFound", { dbPath }) };
   }
 
   const db = new Database(dbPath);
@@ -135,7 +154,10 @@ export function archiveOpencodeUiSession(
       .run(archived ? now : null, now, normalizedSessionId);
 
     if (Number(result.changes) < 1) {
-      return { success: false, error: `Session not found: ${normalizedSessionId}` };
+      return {
+        success: false,
+        error: opencodeUiSessionStoreT("sessionNotFound", { sessionId: normalizedSessionId }),
+      };
     }
 
     return { success: true, archived };
@@ -153,12 +175,12 @@ export function ensureOpencodeUiSession(
 ): OpencodeUiEnsureSessionResult {
   const normalizedSessionId = sessionId.trim();
   if (normalizedSessionId === "") {
-    return { success: false, error: "Session ID is required" };
+    return { success: false, error: opencodeUiSessionStoreT("sessionIdRequired") };
   }
 
   const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
-    return { success: false, error: `OpenCode session database not found: ${dbPath}` };
+    return { success: false, error: opencodeUiSessionStoreT("dbNotFound", { dbPath }) };
   }
 
   const db = new Database(dbPath);
@@ -203,7 +225,7 @@ export function ensureOpencodeUiSession(
 
     const projectId = asString(seedSession?.project_id, asString(fallbackProject?.id));
     if (projectId === "") {
-      return { success: false, error: "OpenCode project information not found in session DB" };
+      return { success: false, error: opencodeUiSessionStoreT("projectInfoMissing") };
     }
 
     const directory = asString(
@@ -271,12 +293,12 @@ export function readOpencodeUiSession(
 ): OpencodeUiReadSessionResult {
   const normalizedSessionId = sessionId.trim();
   if (normalizedSessionId === "") {
-    return { success: false, error: "Session ID is required" };
+    return { success: false, error: opencodeUiSessionStoreT("sessionIdRequired") };
   }
 
   const dbPath = resolveOpencodeUiDbPath(options);
   if (!existsSync(dbPath)) {
-    return { success: false, error: `OpenCode session database not found: ${dbPath}` };
+    return { success: false, error: opencodeUiSessionStoreT("dbNotFound", { dbPath }) };
   }
 
   const db = new Database(dbPath);
@@ -292,7 +314,10 @@ export function readOpencodeUiSession(
       .get(normalizedSessionId) as SessionRow | undefined;
 
     if (sessionRow === undefined) {
-      return { success: false, error: `Session not found: ${normalizedSessionId}` };
+      return {
+        success: false,
+        error: opencodeUiSessionStoreT("sessionNotFound", { sessionId: normalizedSessionId }),
+      };
     }
 
     const messageRows = db

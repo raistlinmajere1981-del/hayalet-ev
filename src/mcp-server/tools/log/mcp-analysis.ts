@@ -55,10 +55,7 @@ interface StructuredEvent {
   message: string;
 }
 
-function analysisRuntimeT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function analysisRuntimeT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.analysis.common.${key}`, params);
 }
 

@@ -16,6 +16,11 @@ import { existsSync } from "fs";
 import { Paths } from "../../paths.ts";
 import type { SessionSummary } from "@electron/types/logging.js";
 import type { SessionStats } from "./session-stats.js";
+import { translateElectronMessage } from "../../i18n/language-service.ts";
+
+async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
+  return await translateElectronMessage(`electron.logger.${key}`, params);
+}
 
 export class SessionManager {
   private sessionId: string = "";
@@ -36,7 +41,11 @@ export class SessionManager {
     await this.writeSessionMetadata();
 
     this.cleanupOldSessions().catch((err) => {
-      console.error("[SessionManager] Cleanup failed:", err);
+      void loggerT("logs.cleanupFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      }).then((message) => {
+        console.error(message);
+      });
     });
   }
 
@@ -68,7 +77,11 @@ export class SessionManager {
       const summaryPath = join(this.sessionDir, "summary.json");
       await writeFile(summaryPath, JSON.stringify(summary, null, 2), "utf-8");
     } catch (error) {
-      console.error("[SessionManager] Failed to generate summary:", error);
+      console.error(
+        await loggerT("logs.summaryGenerateFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
     }
   }
 
@@ -117,12 +130,16 @@ export class SessionManager {
         staleSessions
           .filter((item): item is { entry: string; sessionPath: string } => item !== null)
           .map(async ({ entry, sessionPath }) => {
-            console.info(`[SessionManager] Cleaning up old session: ${entry}`);
+            console.info(await loggerT("logs.cleanupOldSession", { sessionId: entry }));
             await rm(sessionPath, { recursive: true, force: true });
           })
       );
     } catch (error) {
-      console.error("[SessionManager] Cleanup error:", error);
+      console.error(
+        await loggerT("logs.cleanupError", {
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
     }
   }
 

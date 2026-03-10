@@ -63,10 +63,7 @@ function eslintDashT(key: string, params?: Record<string, string | number | bool
   return createMcpTranslatorSync()(`mcpServer.devTools.eslintDashboard.${key}`, params);
 }
 
-function eslintDashDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function eslintDashDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.eslintDashboard.definition.${key}`, params);
 }
 
@@ -451,15 +448,16 @@ function formatDashboard(data: {
     const bar = "█".repeat(barLen);
     const barPad = "░".repeat(10 - barLen);
 
-    output += eslintDashT("runtime.ruleLine", {
-      index: i + 1,
-      icon,
-      rule: rule.rule,
-      fixableIcon,
-      count: rule.count,
-      bar: `${bar}${barPad}`,
-      percentage,
-    }) + "\n";
+    output +=
+      eslintDashT("runtime.ruleLine", {
+        index: i + 1,
+        icon,
+        rule: rule.rule,
+        fixableIcon,
+        count: rule.count,
+        bar: `${bar}${barPad}`,
+        percentage,
+      }) + "\n";
     output += eslintDashT("runtime.ruleDescriptionLine", { description: rule.description }) + "\n";
 
     // Show top 3 files with this rule

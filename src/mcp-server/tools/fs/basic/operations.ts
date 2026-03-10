@@ -376,6 +376,7 @@ async function readDirectoryRecursive(
     results.push({ entry, depth: currentDepth });
 
     if (item.isDirectory() && currentDepth < maxDepth - 1) {
+      // eslint-disable-next-line no-await-in-loop
       const subResults = await readDirectoryRecursive(
         fullPath,
         maxDepth,

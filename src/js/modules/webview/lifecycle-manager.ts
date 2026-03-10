@@ -125,16 +125,16 @@ class LifecycleManagerClass {
 
     const { providerId, onReady } = opts;
 
-      try {
-        if (providerId === undefined || providerId === "") {
-          Logger.warnT(
-            LogCategory.WEBVIEW,
-            lifecycleLogKey("noProviderConfigured"),
-            { provider },
-            { provider }
-          );
-          return;
-        }
+    try {
+      if (providerId === undefined || providerId === "") {
+        Logger.warnT(
+          LogCategory.WEBVIEW,
+          lifecycleLogKey("noProviderConfigured"),
+          { provider },
+          { provider }
+        );
+        return;
+      }
 
       const cfg = ProviderRegistry.get(providerId);
       const defaultPage =
@@ -214,50 +214,45 @@ class LifecycleManagerClass {
         }
       }
 
-        if (onReady && typeof onReady === "function") {
-          const handleReady = (): void => {
-            try {
-              onReady();
-              Logger.infoT(
-                LogCategory.WEBVIEW,
-                lifecycleLogKey("onReadyCompleted"),
-                { provider },
-                { provider }
-              );
-            } catch (err) {
-              const errorMessage = getErrorMessage(err);
-              Logger.errorT(
-                LogCategory.WEBVIEW,
-                lifecycleLogKey("onReadyFailed"),
-                { provider, message: errorMessage },
-                {
-                  provider,
-                  error: errorMessage,
-                }
-              );
-            }
-          };
-          webview.addEventListener("dom-ready", handleReady, true);
-        }
-
-        Logger.infoT(
-          LogCategory.WEBVIEW,
-          lifecycleLogKey("attached"),
-          { provider },
-          { provider }
-        );
-      } catch (err) {
-        const errorMessage = getErrorMessage(err);
-        Logger.errorT(
-          LogCategory.WEBVIEW,
-          lifecycleLogKey("attachFailed"),
-          { provider, message: errorMessage },
-          {
-            provider,
-            error: errorMessage,
+      if (onReady && typeof onReady === "function") {
+        const handleReady = (): void => {
+          try {
+            onReady();
+            Logger.infoT(
+              LogCategory.WEBVIEW,
+              lifecycleLogKey("onReadyCompleted"),
+              { provider },
+              { provider }
+            );
+          } catch (err) {
+            const errorMessage = getErrorMessage(err);
+            Logger.errorT(
+              LogCategory.WEBVIEW,
+              lifecycleLogKey("onReadyFailed"),
+              { provider, message: errorMessage },
+              {
+                provider,
+                error: errorMessage,
+              }
+            );
           }
-        );
+        };
+        webview.addEventListener("dom-ready", handleReady, true);
       }
+
+      Logger.infoT(LogCategory.WEBVIEW, lifecycleLogKey("attached"), { provider }, { provider });
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
+      Logger.errorT(
+        LogCategory.WEBVIEW,
+        lifecycleLogKey("attachFailed"),
+        { provider, message: errorMessage },
+        {
+          provider,
+          error: errorMessage,
+        }
+      );
+    }
   }
 
   detach(
@@ -326,12 +321,7 @@ class LifecycleManagerClass {
       delete this.webviews[provider];
       delete this._lastActivity[provider];
 
-      Logger.infoT(
-        LogCategory.WEBVIEW,
-        lifecycleLogKey("destroyed"),
-        { provider },
-        { provider }
-      );
+      Logger.infoT(LogCategory.WEBVIEW, lifecycleLogKey("destroyed"), { provider }, { provider });
     } catch (err) {
       const errorMessage = getErrorMessage(err);
       Logger.errorT(

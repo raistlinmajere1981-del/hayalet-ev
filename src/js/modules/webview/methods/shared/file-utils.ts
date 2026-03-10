@@ -55,9 +55,7 @@ export function createErrorResponse(
   return {
     success: false,
     message:
-      serviceName !== ""
-        ? uploadT("serviceError", { service: serviceName, message })
-        : message,
+      serviceName !== "" ? uploadT("serviceError", { service: serviceName, message }) : message,
     errors,
     injected: false,
   };
@@ -83,6 +81,11 @@ export async function waitForDomReady(webview: {
       addEventListener("dom-ready", resolve, { once: true });
     });
   } catch (e) {
-    console.warn("[Hayalet-FileUtils] waitForDomReady failed", e);
+    console.warn(
+      uploadT("waitForDomReadyFailed", {
+        message: e instanceof Error ? e.message : String(e),
+      }),
+      e
+    );
   }
 }

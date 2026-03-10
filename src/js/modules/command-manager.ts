@@ -98,13 +98,9 @@ class CommandManagerClass {
     try {
       const commandInit = window.electronAPI?.commandInit;
       if (typeof commandInit !== "function") {
-        Logger.warn(
-          LogCategory.COMMAND,
-          commandQueueT("initSkipped"),
-          {
-            category: "command",
-          }
-        );
+        Logger.warn(LogCategory.COMMAND, commandQueueT("initSkipped"), {
+          category: "command",
+        });
         return;
       }
       await commandInit();
@@ -136,11 +132,15 @@ class CommandManagerClass {
       try {
         l(payload);
       } catch (err) {
-        Logger.warn(LogCategory.COMMAND, commandQueueT("listenerError", {
-          message: getErrorMessage(err),
-        }), {
-          category: "command",
-        });
+        Logger.warn(
+          LogCategory.COMMAND,
+          commandQueueT("listenerError", {
+            message: getErrorMessage(err),
+          }),
+          {
+            category: "command",
+          }
+        );
       }
     });
   }

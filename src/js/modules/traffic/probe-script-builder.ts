@@ -10,6 +10,7 @@
 
 import { ProviderRegistry } from "../webview/provider-registry.js";
 import { AppState } from "../app-state.js";
+import { AppI18n } from "../i18n/index.js";
 import { Logger } from "../logger/index.js";
 import { LogCategory } from "@shared/index.js";
 import { SettingsManager } from "../settings-manager.js";
@@ -27,10 +28,15 @@ export function buildProbeScript(provider: string): string {
   const cfgRaw = providerId !== "" ? ProviderRegistry.get(providerId) : null;
 
   if (cfgRaw === null || typeof cfgRaw !== "object") {
-    Logger.error(LogCategory.TRAFFIC, new Error("Provider config not found"), {
-      provider,
-      providerId,
-    });
+    Logger.errorT(
+      LogCategory.TRAFFIC,
+      "app.logs.traffic.providerConfigMissing",
+      { provider },
+      {
+        provider,
+        providerId,
+      }
+    );
     return `// No config for provider: ${JSON.stringify(providerId)}`;
   }
 
@@ -55,6 +61,9 @@ export function buildProbeScript(provider: string): string {
     voiceButton?: string;
   };
   const locale = getSelectorLanguage();
+  const probeScrollerQueryFailedMessage = JSON.stringify(
+    AppI18n.t("app.logs.traffic.probeScrollerQueryFailed")
+  );
   const matrixSelectors = cfg.selectorMatrix?.selectors ?? {};
   const sendSel = resolveSelectorCandidates(
     (matrixSelectors["sendButton"] ?? selectors.sendButtonBase ?? selectors.sendButton ?? "") as
@@ -143,7 +152,7 @@ export function buildProbeScript(provider: string): string {
             const el = document.querySelector(sel);
             if (el) return el;
           } catch (err) {
-            console.warn("[Hayalet-Probe] querySelector failed", err);
+            console.warn(${probeScrollerQueryFailedMessage}, err);
           }
         }
         return null;

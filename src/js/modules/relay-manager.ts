@@ -242,7 +242,8 @@ class RelayManagerClass {
       }
 
       if (activeRelay !== null && thinkingComplete === true) {
-        const shouldUseLatestOnlySync = activeRelay === this._aiAssistantRelay && provider === "ai0";
+        const shouldUseLatestOnlySync =
+          activeRelay === this._aiAssistantRelay && provider === "ai0";
         const syncResult = (await (shouldUseLatestOnlySync
           ? WebviewManager.syncLatestMessage(provider)
           : WebviewManager.syncConversation(provider, null, {}))) as Record<string, unknown>;

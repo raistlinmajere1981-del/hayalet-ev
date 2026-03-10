@@ -25,10 +25,7 @@ import {
   renderSearchResultsView,
   switchSearchTab,
 } from "./archives/search-view.js";
-import {
-  isAssistantAccountsSettingsPath,
-  isAssistantSlotSettingsPath,
-} from "@shared/settings.js";
+import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
@@ -377,7 +374,8 @@ export class ArchivesController {
 
     if (this.titleEl) this.titleEl.value = entry?.title ?? "";
     if (this.summaryEl) this.summaryEl.value = entry?.summary ?? "";
-    if (this.webUrlDisplayEl) this.webUrlDisplayEl.textContent = entry?.webUrl ?? archivesT("page.webUrlEmpty");
+    if (this.webUrlDisplayEl)
+      this.webUrlDisplayEl.textContent = entry?.webUrl ?? archivesT("page.webUrlEmpty");
     if (this.messageCountEl) this.messageCountEl.textContent = String(entry?.messageCount ?? 0);
 
     this._selectedEntry = entry;
@@ -581,10 +579,7 @@ export class ArchivesController {
         if (saveBtn) {
           ButtonStates.setError(saveBtn, archivesT("protocol.buttons.error"), 1500);
         }
-        this.setProtocolStatus(
-          result.message ?? archivesT("protocol.status.saveFailed"),
-          "error"
-        );
+        this.setProtocolStatus(result.message ?? archivesT("protocol.status.saveFailed"), "error");
       }
     } catch (e) {
       const err = e as Error;

@@ -6,10 +6,18 @@
           <option value="ai1">AI1</option>
           <option value="ai2">AI2</option>
         </select>
-        <button class="btn btn-secondary" id="server-delegate-btn" data-shell-i18n-text="server.page.delegateButton">
+        <button
+          class="btn btn-secondary"
+          id="server-delegate-btn"
+          data-shell-i18n-text="app.server.page.delegateButton"
+        >
           Delegate Control
         </button>
-        <button class="btn btn-secondary" id="server-reclaim-btn" data-shell-i18n-text="server.page.reclaimButton">
+        <button
+          class="btn btn-secondary"
+          id="server-reclaim-btn"
+          data-shell-i18n-text="app.server.page.reclaimButton"
+        >
           Reclaim Control
         </button>
       </div>
@@ -19,12 +27,20 @@
       <div class="server-workspace-left">
         <div class="server-panels">
           <div class="server-panel glass-panel server-timeline-panel">
-            <div class="panel-title" data-shell-i18n-text="server.page.timelineTitle">Command Flow (Command → Result)</div>
-            <div class="server-timeline-meta" id="server-timeline-meta" data-shell-i18n-text="server.page.timelineHint">
+            <div class="panel-title" data-shell-i18n-text="app.server.page.timelineTitle">
+              Command Flow (Command → Result)
+            </div>
+            <div
+              class="server-timeline-meta"
+              id="server-timeline-meta"
+              data-shell-i18n-text="app.server.page.timelineHint"
+            >
               Scroll up to load 3 more sessions
             </div>
             <div class="log-list server-timeline-list" id="server-command-timeline">
-              <div class="log-empty-state" data-shell-i18n-text="server.page.timelineEmpty">No command history yet</div>
+              <div class="log-empty-state" data-shell-i18n-text="app.server.page.timelineEmpty">
+                No command history yet
+              </div>
             </div>
           </div>
         </div>
@@ -32,11 +48,17 @@
 
       <div class="server-workspace-right">
         <div class="server-panel glass-panel server-command-panel">
-          <div class="panel-title" data-shell-i18n-text="server.page.commandPanelTitle">Command Control Panel</div>
+          <div class="panel-title" data-shell-i18n-text="app.server.page.commandPanelTitle">
+            Command Control Panel
+          </div>
           <div class="command-manager">
             <div class="command-toolbar-row">
               <div class="command-toolbar-group">
-                <label for="server-command-slot-select" data-shell-i18n-text="server.page.slotLabel">Slot</label>
+                <label
+                  for="server-command-slot-select"
+                  data-shell-i18n-text="app.server.page.slotLabel"
+                  >Slot</label
+                >
                 <select id="server-command-slot-select" class="select">
                   <option value="ai1">AI1</option>
                   <option value="ai2">AI2</option>
@@ -70,33 +92,37 @@
                 class="input"
                 type="text"
                 placeholder="Optional test argument"
-                data-shell-i18n-placeholder="server.page.testArgsPlaceholder"
+                data-shell-i18n-placeholder="app.server.page.testArgsPlaceholder"
               />
               <button
                 id="server-command-run"
                 class="btn btn-primary btn-sm"
                 type="button"
-                data-shell-i18n-text="server.page.runCommandButton"
+                data-shell-i18n-text="app.server.page.runCommandButton"
               >
                 Run Command
               </button>
             </div>
 
             <div class="command-list" id="server-command-list">
-              <div class="log-empty-state" data-shell-i18n-text="server.page.emptyCategory">
+              <div class="log-empty-state" data-shell-i18n-text="app.server.page.emptyCategory">
                 No commands were found for this category
               </div>
             </div>
 
             <div class="command-detail">
-              <label for="server-command-detail" data-shell-i18n-text="server.page.commandDetailLabel">Command Details</label>
+              <label
+                for="server-command-detail"
+                data-shell-i18n-text="app.server.page.commandDetailLabel"
+                >Command Details</label
+              >
               <textarea
                 id="server-command-detail"
                 class="form-input guide-text"
                 rows="8"
                 readonly
                 placeholder="Select a command to view details"
-                data-shell-i18n-placeholder="server.page.commandDetailPlaceholder"
+                data-shell-i18n-placeholder="app.server.page.commandDetailPlaceholder"
               ></textarea>
             </div>
           </div>

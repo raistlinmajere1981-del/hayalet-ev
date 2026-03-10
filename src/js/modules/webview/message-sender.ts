@@ -142,17 +142,17 @@ class MessageSenderClass {
           currentUrl,
         }
       );
-      throw new Error(`URL excluded from operations: ${currentUrl}`);
+      throw new Error(messageSenderT("urlExcluded", { currentUrl }));
     }
 
     const providerId = AppState.getProviderIdForSlot(provider);
     if (providerId === null || providerId === "") {
-      throw new Error(`Provider for slot "${provider}" not configured (no account/provider).`);
+      throw new Error(messageSenderT("providerNotConfigured", { provider }));
     }
 
     const providerModule = this.getProviderModule(provider);
     if (providerModule === null) {
-      throw new Error(`Provider module for "${provider}" (${providerId}) not found.`);
+      throw new Error(messageSenderT("providerModuleMissing", { provider, providerId }));
     }
 
     // Provider selection debug removed
@@ -199,12 +199,12 @@ class MessageSenderClass {
 
     const messageMethodName = slotConfig?.messageMethod;
     if (messageMethodName === undefined || messageMethodName === "") {
-      throw new Error(`messageMethod is not configured for slot "${provider}"`);
+      throw new Error(messageSenderT("messageMethodMissing", { provider }));
     }
 
     const fileMethodName = slotConfig?.fileMethod;
     if (fileMethodName === undefined || fileMethodName === "") {
-      throw new Error(`fileMethod is not configured for slot "${provider}"`);
+      throw new Error(messageSenderT("fileMethodMissing", { provider }));
     }
 
     const messageFn =
@@ -216,13 +216,19 @@ class MessageSenderClass {
 
     if (typeof messageFn !== "function") {
       throw new Error(
-        `Message function "${messageMethodName}" not found in provider module for "${provider}"`
+        messageSenderT("messageFunctionMissing", {
+          messageMethod: messageMethodName,
+          provider,
+        })
       );
     }
 
     if (attachments.length > 0 && typeof fileFn !== "function") {
       throw new Error(
-        `File function "attachFiles_${fileMethodName}" not found in provider module for "${provider}"`
+        messageSenderT("fileFunctionMissing", {
+          fileMethod: fileMethodName,
+          provider,
+        })
       );
     }
 
@@ -370,7 +376,9 @@ class MessageSenderClass {
           error: fileResult.message ?? messageSenderT("unknownUploadError"),
         }
       );
-      throw new Error(fileResult.message ?? `${fileMethodName} upload failed`);
+      throw new Error(
+        fileResult.message ?? messageSenderT("uploadFailed", { fileMethod: fileMethodName })
+      );
     }
 
     if ((fileResult.uploadedLinks?.length ?? 0) === 0) {
@@ -384,9 +392,7 @@ class MessageSenderClass {
           rawResult: fileResult,
         }
       );
-      throw new Error(
-        `${fileMethodName} upload returned no links. Check Google Drive auth and IPC response.`
-      );
+      throw new Error(messageSenderT("uploadReturnedNoLinks", { fileMethod: fileMethodName }));
     }
 
     return fileResult;
@@ -458,7 +464,12 @@ class MessageSenderClass {
       const hasSelectors =
         this._isRecord(providerConfig) && this._isRecord(providerConfig["selectors"]);
       throw new Error(
-        `Provider config not found: providerId="${providerId}", provider="${provider}", hasConfig=${String(hasConfig)}, hasSelectors=${String(hasSelectors)}`
+        messageSenderT("providerConfigMissing", {
+          providerId,
+          provider,
+          hasConfig: String(hasConfig),
+          hasSelectors: String(hasSelectors),
+        })
       );
     }
 

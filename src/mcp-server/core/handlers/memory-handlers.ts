@@ -20,8 +20,10 @@ function getDefinition(name: string): (typeof MEMORY_TOOL_DEFINITIONS)[number] {
 export function createMemoryTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT } = context;
 
-  const memoryHandlerT = (key: string, params?: Record<string, string | number | boolean>) =>
-    createMcpTranslatorSync()(`mcpServer.memoryTools.handler.${key}`, params);
+  const memoryHandlerT = (
+    key: string,
+    params?: Record<string, string | number | boolean>
+  ): string => createMcpTranslatorSync()(`mcpServer.memoryTools.handler.${key}`, params);
 
   return [
     {

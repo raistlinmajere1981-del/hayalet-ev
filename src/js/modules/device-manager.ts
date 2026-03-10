@@ -19,12 +19,7 @@ const callDevice = async (
     });
     return { success: false, message: getErrorMessage(error) };
   }
-  Logger.infoT(
-    "device",
-    "app.logs.deviceManager.fallbackCalled",
-    { action },
-    { action, payload }
-  );
+  Logger.infoT("device", "app.logs.deviceManager.fallbackCalled", { action }, { action, payload });
   return { success: true, message: "stub" };
 };
 

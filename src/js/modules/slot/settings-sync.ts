@@ -11,10 +11,7 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 import type { SlotId } from "@shared/index.js";
 import { LogLevel } from "@shared/index.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
-import {
-  isAssistantAccountsSettingsPath,
-  isAssistantSlotSettingsPath,
-} from "@shared/settings.js";
+import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 interface SlotState {
   accountId: string | null;

@@ -20,10 +20,7 @@ import { AppI18n } from "../modules/i18n/index.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
-import {
-  isAssistantAccountsSettingsPath,
-  isAssistantSlotSettingsPath,
-} from "@shared/settings.js";
+import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";

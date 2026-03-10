@@ -29,10 +29,7 @@ function astInsertT(key: string, params?: Record<string, string | number | boole
   return createMcpTranslatorSync()(`mcpServer.devTools.astInsert.${key}`, params);
 }
 
-function astInsertDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function astInsertDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.astInsert.definition.${key}`, params);
 }
 

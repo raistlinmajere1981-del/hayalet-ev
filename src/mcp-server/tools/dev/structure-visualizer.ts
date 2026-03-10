@@ -9,10 +9,7 @@ import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 export { visualizeStructure, countBracketsContextAware } from "./structure-visualizer-core.js";
 
-function structureVizDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function structureVizDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(
     `mcpServer.devTools.structureVisualizer.definition.${key}`,
     params

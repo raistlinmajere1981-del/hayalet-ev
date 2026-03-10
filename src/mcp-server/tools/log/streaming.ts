@@ -73,9 +73,7 @@ export async function streamLogsRealtime(
     `${streamingT(t, "filterLine", { filters: JSON.stringify(args.filter ?? {}) })}\n`
   );
   process.stderr.write(`${divider}\n`);
-  process.stderr.write(
-    `${streamingT(t, "showingLastEntries", { count: initialLogs.length })}\n\n`
-  );
+  process.stderr.write(`${streamingT(t, "showingLastEntries", { count: initialLogs.length })}\n\n`);
 
   initialLogs.forEach((entry) => {
     printLogEntry(entry, t);

@@ -46,7 +46,8 @@ function renderProviderRows(runtime: RuntimeState): string {
   return runtime.providerItems
     .map((provider) => {
       const hidden = provider.isHidden === true;
-      const statusLabel = provider.isConnected === true ? t("provider.connected") : t("provider.available");
+      const statusLabel =
+        provider.isConnected === true ? t("provider.connected") : t("provider.available");
       const countLabel =
         typeof provider.visibleModels === "number" && typeof provider.totalModels === "number"
           ? `${String(provider.visibleModels)}/${String(provider.totalModels)}`

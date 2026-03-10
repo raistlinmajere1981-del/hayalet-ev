@@ -13,6 +13,7 @@ import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";
 import type { LogWriterConfig } from "@electron/types/logging.js";
+import { loggerWriterT } from "./i18n.ts";
 
 export class StructuredWriter {
   private config: LogWriterConfig;
@@ -45,7 +46,12 @@ export class StructuredWriter {
       const line = JSON.stringify(entry) + "\n";
       await appendFile(this.filePath, line, "utf-8");
     } catch (error) {
-      console.error("[StructuredWriter] Write failed:", error);
+      console.error(
+        await loggerWriterT("writerWriteFailed", {
+          writer: "StructuredWriter",
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
       throw error;
     }
   }

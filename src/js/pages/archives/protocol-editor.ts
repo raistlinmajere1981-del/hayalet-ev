@@ -1,4 +1,5 @@
 import { AppI18n } from "../../modules/i18n/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { RoomProtocolRegistry } from "../../modules/rooms/room-protocol-registry.js";
 
 function archivesProtocolT(key: string, params?: Record<string, string | number>): string {
@@ -112,7 +113,10 @@ export async function saveProtocolContent(args: {
   if (typeof result.message === "string" && result.message !== "") {
     return {
       success: result.success === true,
-      message: result.message,
+      message:
+        result.success === true
+          ? result.message
+          : formatErrorWithDetail(archivesProtocolT("status.saveFailed"), result.message),
     };
   }
   return {

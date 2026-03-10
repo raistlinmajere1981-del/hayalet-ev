@@ -17,6 +17,7 @@ import { LifecycleManager } from "./webview/lifecycle-manager.js";
 import { MessageSender } from "./webview/message-sender.js";
 import type { MessageSenderWebview } from "./webview/message-sender.js";
 import { AppState } from "./app-state.js";
+import { AppI18n } from "./i18n/index.js";
 import { SlotController } from "./slot-controller.js";
 import { ConversationSyncer } from "./webview/conversation-syncer.js";
 import { PendingArchiveHandler } from "./webview/pending-archive-handler.js";
@@ -184,7 +185,7 @@ class WebviewManagerClass {
   }): Promise<unknown> {
     const webview = this.resolveWebview(provider);
     if (!isMessageSenderWebview(webview)) {
-      throw new Error(`Webview for slot "${provider}" is not ready`);
+      throw new Error(AppI18n.t("app.messageSender.webviewNotReady", { provider }));
     }
     return await MessageSender.send({ provider, text, attachments, webview });
   }
@@ -210,13 +211,17 @@ class WebviewManagerClass {
     options: Record<string, unknown> = {}
   ): Promise<unknown> {
     const targetWebview = webview ?? this.resolveWebview(provider);
-    if (targetWebview === null) throw new Error("Webview not found");
+    if (targetWebview === null) {
+      throw new Error(AppI18n.t("app.logs.webviewSync.webviewNotFound", { provider }));
+    }
     return await ConversationSyncer.syncConversation(provider, targetWebview, options);
   }
 
   async syncLatestMessage(provider: string, webview: WebviewTag | null = null): Promise<unknown> {
     const targetWebview = webview ?? this.resolveWebview(provider);
-    if (targetWebview === null) throw new Error("Webview not found");
+    if (targetWebview === null) {
+      throw new Error(AppI18n.t("app.logs.webviewSync.webviewNotFound", { provider }));
+    }
     return await ConversationSyncer.syncLatestMessage(provider, targetWebview);
   }
 

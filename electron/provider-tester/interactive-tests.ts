@@ -8,11 +8,20 @@
  */
 
 import { PROVIDER_TEST_DELAYS } from "../../shared/timeouts.ts";
+import { formatErrorWithDetail } from "../../shared/i18n/error-detail.ts";
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext, ElementCheckResult, InteractiveTestsResult } from "./types.ts";
 import { PROVIDER_TEST } from "./types.ts";
 import { resolveSelectorCandidates } from "../../shared/provider-selector-resolution.ts";
 export type { InteractiveTestsResult } from "./types.ts";
+
+async function interactiveT(
+  ctx: TestContext,
+  key: string,
+  params?: Record<string, string | number | boolean>
+): Promise<string> {
+  return await ctx.t(`interactive.${key}`, params);
+}
 
 /**
  * Run all interactive tests
@@ -84,19 +93,24 @@ export async function testInputFieldAccessibility(ctx: TestContext): Promise<Pro
     const result = (await ctx.executeScript(script)) as ElementCheckResult;
 
     if (!result.exists) {
-      throw new Error(result.error ?? "Input field not found");
+      throw new Error(
+        formatErrorWithDetail(
+          await interactiveT(ctx, "inputFieldAccessibility.notFound"),
+          result.error
+        )
+      );
     }
 
     if (!result.visible) {
-      throw new Error("Input field not visible");
+      throw new Error(await interactiveT(ctx, "inputFieldAccessibility.notVisible"));
     }
 
     return {
       id: "input-field-accessibility",
-      name: "Input Field Accessibility",
+      name: await interactiveT(ctx, "inputFieldAccessibility.name"),
       category: "interactive",
       status: "pass",
-      message: "Input field is accessible",
+      message: await interactiveT(ctx, "inputFieldAccessibility.accessible"),
       details: {
         selector: ctx.config.selectors.inputField,
         element: result,
@@ -107,10 +121,10 @@ export async function testInputFieldAccessibility(ctx: TestContext): Promise<Pro
   } catch (error) {
     return {
       id: "input-field-accessibility",
-      name: "Input Field Accessibility",
+      name: await interactiveT(ctx, "inputFieldAccessibility.name"),
       category: "interactive",
       status: "fail",
-      message: "Input field not accessible",
+      message: await interactiveT(ctx, "inputFieldAccessibility.failed"),
       details: {
         selector: ctx.config.selectors.inputField,
         error: (error as Error).message,
@@ -148,10 +162,10 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
     if (!result.exists) {
       return {
         id: "send-button-disabled",
-        name: "Send Button (Disabled State)",
+        name: await interactiveT(ctx, "sendButtonDisabled.name"),
         category: "interactive",
         status: "fail",
-        message: "Send button not found",
+        message: await interactiveT(ctx, "sendButtonDisabled.notFound"),
         details: { selector: ctx.config.selectors.sendButton },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -161,10 +175,10 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
     if (result.disabled === true) {
       return {
         id: "send-button-disabled",
-        name: "Send Button (Disabled State)",
+        name: await interactiveT(ctx, "sendButtonDisabled.name"),
         category: "interactive",
         status: "pass",
-        message: "Send button correctly disabled when input is empty",
+        message: await interactiveT(ctx, "sendButtonDisabled.disabledAsExpected"),
         details: { selector: ctx.config.selectors.sendButton, element: result },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -172,10 +186,10 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
     } else {
       return {
         id: "send-button-disabled",
-        name: "Send Button (Disabled State)",
+        name: await interactiveT(ctx, "sendButtonDisabled.name"),
         category: "interactive",
         status: "warning",
-        message: "Send button is enabled even when input is empty (unexpected)",
+        message: await interactiveT(ctx, "sendButtonDisabled.enabledUnexpectedly"),
         details: { selector: ctx.config.selectors.sendButton, element: result },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -184,10 +198,10 @@ export async function testSendButtonDisabled(ctx: TestContext): Promise<Provider
   } catch (error) {
     return {
       id: "send-button-disabled",
-      name: "Send Button (Disabled State)",
+      name: await interactiveT(ctx, "sendButtonDisabled.name"),
       category: "interactive",
       status: "fail",
-      message: "Script failed to execute",
+      message: await interactiveT(ctx, "sendButtonDisabled.scriptFailed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -200,10 +214,10 @@ export async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTe
   if (selectorsWithMic.microphoneButton === undefined || selectorsWithMic.microphoneButton === "") {
     return {
       id: "microphone-button",
-      name: "Microphone Button",
+      name: await interactiveT(ctx, "microphoneButton.name"),
       category: "interactive",
       status: "skip",
-      message: "No microphone button selector in config",
+      message: await interactiveT(ctx, "microphoneButton.selectorMissing"),
       duration: 0,
       timestamp: Date.now(),
     };
@@ -211,7 +225,7 @@ export async function testMicrophoneButton(ctx: TestContext): Promise<ProviderTe
 
   return await ctx.testSelector({
     id: "microphone-button",
-    name: "Microphone Button",
+    name: await interactiveT(ctx, "microphoneButton.name"),
     selector: selectorsWithMic.microphoneButton,
     category: "interactive",
     checks: ["exists", "visible"],
@@ -229,17 +243,17 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
 
       const config = window.__hayalet_provider_config;
       if (!config || !config.selectors) {
-        throw new Error('Provider config not found');
+        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.providerConfigMissing"))});
       }
 
       const inputSelector = config.selectors.inputField;
       if (!inputSelector) {
-        throw new Error('Input selector not found in config');
+        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.inputSelectorMissing"))});
       }
 
       const textarea = document.querySelector(inputSelector);
       if (!textarea) {
-        throw new Error('Input element not found: ' + inputSelector);
+        throw new Error(${JSON.stringify(await interactiveT(ctx, "textInjection.inputElementMissingPrefix"))} + inputSelector);
       }
 
       const inputType = config.inputType || 'direct';
@@ -307,10 +321,10 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
     if (result === PROVIDER_TEST.TEST_MESSAGE) {
       return {
         id: "text-injection",
-        name: "Text Injection Test",
+        name: await interactiveT(ctx, "textInjection.name"),
         category: "interactive",
         status: "pass",
-        message: "Test message successfully injected",
+        message: await interactiveT(ctx, "textInjection.injected"),
         details: { selector: ctx.config.selectors.inputField },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -318,15 +332,18 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
     }
 
     throw new Error(
-      `Injected text mismatch: expected "${PROVIDER_TEST.TEST_MESSAGE}", got "${result}"`
+      await interactiveT(ctx, "textInjection.mismatch", {
+        expected: PROVIDER_TEST.TEST_MESSAGE,
+        actual: result,
+      })
     );
   } catch (error) {
     return {
       id: "text-injection",
-      name: "Text Injection Test",
+      name: await interactiveT(ctx, "textInjection.name"),
       category: "interactive",
       status: "fail",
-      message: "Failed to inject test message",
+      message: await interactiveT(ctx, "textInjection.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -345,7 +362,7 @@ export async function testSendButtonEnabled(ctx: TestContext): Promise<ProviderT
 
   return await ctx.testSelector({
     id: "send-button-enabled",
-    name: "Send Button (Enabled State)",
+    name: await interactiveT(ctx, "sendButtonEnabled.name"),
     selector: ctx.config.selectors.sendButton,
     selectorCandidates,
     category: "interactive",
@@ -365,10 +382,10 @@ export async function testFileUpload(ctx: TestContext): Promise<ProviderTestResu
   if (ctx.config.fileInputSelectors.length === 0) {
     return {
       id: "file-upload",
-      name: "File Upload (Drag & Drop)",
+      name: await interactiveT(ctx, "fileUpload.name"),
       category: "interactive",
       status: "skip",
-      message: "No file input selectors in config",
+      message: await interactiveT(ctx, "fileUpload.selectorMissing"),
       duration: Date.now() - start,
       timestamp: Date.now(),
     };
@@ -387,10 +404,10 @@ export async function testFileUpload(ctx: TestContext): Promise<ProviderTestResu
     if (found !== undefined) {
       return {
         id: "file-upload",
-        name: "File Upload (Drag & Drop)",
+        name: await interactiveT(ctx, "fileUpload.name"),
         category: "interactive",
         status: "pass",
-        message: "File upload element found",
+        message: await interactiveT(ctx, "fileUpload.found"),
         details: { selector: found.selector },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -399,20 +416,20 @@ export async function testFileUpload(ctx: TestContext): Promise<ProviderTestResu
 
     return {
       id: "file-upload",
-      name: "File Upload (Drag & Drop)",
+      name: await interactiveT(ctx, "fileUpload.name"),
       category: "interactive",
       status: "fail",
-      message: "No file upload element found",
+      message: await interactiveT(ctx, "fileUpload.notFound"),
       duration: Date.now() - start,
       timestamp: Date.now(),
     };
   } catch (error) {
     return {
       id: "file-upload",
-      name: "File Upload (Drag & Drop)",
+      name: await interactiveT(ctx, "fileUpload.name"),
       category: "interactive",
       status: "fail",
-      message: "File upload test failed",
+      message: await interactiveT(ctx, "fileUpload.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -424,7 +441,7 @@ export async function testSendMessage(ctx: TestContext): Promise<ProviderTestRes
   const start = Date.now();
   try {
     const clicked = await ctx.clickElement(ctx.config.selectors.sendButton);
-    if (!clicked) throw new Error("Send button click failed");
+    if (!clicked) throw new Error(await interactiveT(ctx, "sendMessage.clickFailed"));
 
     const selector = ctx.config.selectors.inputField;
     const cleared = await ctx.waitForCondition(async (): Promise<boolean> => {
@@ -441,24 +458,24 @@ export async function testSendMessage(ctx: TestContext): Promise<ProviderTestRes
       return Boolean(isEmpty);
     }, PROVIDER_TEST.TIMEOUT_INPUT_CLEAR);
 
-    if (!cleared) throw new Error("Input field not cleared after send");
+    if (!cleared) throw new Error(await interactiveT(ctx, "sendMessage.inputNotCleared"));
 
     return {
       id: "send-message",
-      name: "Send Message Test",
+      name: await interactiveT(ctx, "sendMessage.name"),
       category: "interactive",
       status: "pass",
-      message: "Message sent successfully",
+      message: await interactiveT(ctx, "sendMessage.sent"),
       duration: Date.now() - start,
       timestamp: Date.now(),
     };
   } catch (error) {
     return {
       id: "send-message",
-      name: "Send Message Test",
+      name: await interactiveT(ctx, "sendMessage.name"),
       category: "interactive",
       status: "fail",
-      message: "Failed to send message",
+      message: await interactiveT(ctx, "sendMessage.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -473,10 +490,10 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
     if (ctx.config.selectors.stopButton === "") {
       return {
         id: "stop-button-thinking",
-        name: "Stop Button (While AI Thinking)",
+        name: await interactiveT(ctx, "stopButtonThinking.name"),
         category: "interactive",
         status: "skip",
-        message: "No stop button selector in config",
+        message: await interactiveT(ctx, "stopButtonThinking.selectorMissing"),
         duration: Date.now() - start,
         timestamp: Date.now(),
       };
@@ -507,10 +524,10 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
     if (result.exists && result.visible) {
       return {
         id: "stop-button-thinking",
-        name: "Stop Button (While AI Thinking)",
+        name: await interactiveT(ctx, "stopButtonThinking.name"),
         category: "interactive",
         status: "pass",
-        message: "Stop button visible while AI is thinking",
+        message: await interactiveT(ctx, "stopButtonThinking.visible"),
         details: { selector: ctx.config.selectors.stopButton, element: result },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -518,10 +535,10 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
     } else {
       return {
         id: "stop-button-thinking",
-        name: "Stop Button (While AI Thinking)",
+        name: await interactiveT(ctx, "stopButtonThinking.name"),
         category: "interactive",
         status: "warning",
-        message: "Stop button not visible (AI might have finished quickly)",
+        message: await interactiveT(ctx, "stopButtonThinking.notVisible"),
         details: { selector: ctx.config.selectors.stopButton, element: result },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -530,10 +547,10 @@ export async function testStopButtonWhileThinking(ctx: TestContext): Promise<Pro
   } catch (error) {
     return {
       id: "stop-button-thinking",
-      name: "Stop Button (While AI Thinking)",
+      name: await interactiveT(ctx, "stopButtonThinking.name"),
       category: "interactive",
       status: "fail",
-      message: "Stop button test failed",
+      message: await interactiveT(ctx, "stopButtonThinking.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -589,10 +606,10 @@ export async function testUserMessageInspect(ctx: TestContext): Promise<Provider
     ) {
       return {
         id: "user-message-inspect",
-        name: "User Message Inspect",
+        name: await interactiveT(ctx, "userMessageInspect.name"),
         category: "scraping",
         status: "pass",
-        message: "User message found and inspected successfully",
+        message: await interactiveT(ctx, "userMessageInspect.found"),
         details: {
           ...(ctx.config.scrapeSelectors.userWrapper !== undefined &&
           ctx.config.scrapeSelectors.userWrapper !== ""
@@ -605,14 +622,14 @@ export async function testUserMessageInspect(ctx: TestContext): Promise<Provider
       };
     }
 
-    throw new Error("User message not found or text mismatch");
+    throw new Error(await interactiveT(ctx, "userMessageInspect.notFoundOrMismatch"));
   } catch (error) {
     return {
       id: "user-message-inspect",
-      name: "User Message Inspect",
+      name: await interactiveT(ctx, "userMessageInspect.name"),
       category: "scraping",
       status: "fail",
-      message: "Failed to inspect user message",
+      message: await interactiveT(ctx, "userMessageInspect.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -637,7 +654,7 @@ export async function testAIResponseInspect(ctx: TestContext): Promise<ProviderT
     }, PROVIDER_TEST.TIMEOUT_RESPONSE_WAIT);
 
     if (!hasResponse) {
-      throw new Error("No AI response after 15s");
+      throw new Error(await interactiveT(ctx, "aiResponseInspect.noResponse"));
     }
 
     const script = `
@@ -677,10 +694,10 @@ export async function testAIResponseInspect(ctx: TestContext): Promise<ProviderT
     if (result.found === true && result.textContent !== undefined && result.textContent !== "") {
       return {
         id: "ai-response-inspect",
-        name: "AI Response Inspect",
+        name: await interactiveT(ctx, "aiResponseInspect.name"),
         category: "scraping",
         status: "pass",
-        message: "AI response found and inspected successfully",
+        message: await interactiveT(ctx, "aiResponseInspect.found"),
         details: {
           ...(ctx.config.scrapeSelectors.assistantWrapper !== undefined &&
           ctx.config.scrapeSelectors.assistantWrapper !== ""
@@ -693,14 +710,14 @@ export async function testAIResponseInspect(ctx: TestContext): Promise<ProviderT
       };
     }
 
-    throw new Error("AI response not found");
+    throw new Error(await interactiveT(ctx, "aiResponseInspect.notFound"));
   } catch (error) {
     return {
       id: "ai-response-inspect",
-      name: "AI Response Inspect",
+      name: await interactiveT(ctx, "aiResponseInspect.name"),
       category: "scraping",
       status: "fail",
-      message: "Failed to inspect AI response",
+      message: await interactiveT(ctx, "aiResponseInspect.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),

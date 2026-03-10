@@ -7,7 +7,11 @@ import type {
   LoadedLanguagePack,
   TranslationCatalog,
 } from "../../src/types/i18n.js";
-import { mergeTranslationCatalogs, isTranslationCatalog } from "./catalog.js";
+import {
+  mergeTranslationCatalogs,
+  isTranslationCatalog,
+  normalizeLogNamespaceCatalog,
+} from "./catalog.js";
 import {
   getBuiltInLanguageDescriptor,
   getBuiltInLanguageDescriptors,
@@ -84,7 +88,7 @@ async function loadExternalCatalog(baseDir: string, localeFolder: string): Promi
 
   if (await pathExists(indexPath)) {
     const raw = await readJsonFile(indexPath);
-    return isTranslationCatalog(raw) ? raw : {};
+    return normalizeLogNamespaceCatalog(isTranslationCatalog(raw) ? raw : {});
   }
 
   const entries = await readdir(languageDir, { withFileTypes: true });
@@ -101,7 +105,7 @@ async function loadExternalCatalog(baseDir: string, localeFolder: string): Promi
     }
   }
 
-  return mergeTranslationCatalogs(catalogs);
+  return normalizeLogNamespaceCatalog(mergeTranslationCatalogs(catalogs));
 }
 
 async function listExternalLanguages(baseDir: string): Promise<LanguageDescriptor[]> {
@@ -168,7 +172,7 @@ export async function loadInstalledLanguage(
     if (builtIn === null) {
       return {
         ...externalDescriptor,
-        catalog: externalCatalog,
+        catalog: normalizeLogNamespaceCatalog(externalCatalog),
       };
     }
 
@@ -176,7 +180,9 @@ export async function loadInstalledLanguage(
       ...builtIn,
       ...externalDescriptor,
       source: "external",
-      catalog: mergeTranslationCatalogs([builtIn.catalog, externalCatalog]),
+      catalog: normalizeLogNamespaceCatalog(
+        mergeTranslationCatalogs([builtIn.catalog, externalCatalog])
+      ),
     };
   } catch {
     return builtIn;

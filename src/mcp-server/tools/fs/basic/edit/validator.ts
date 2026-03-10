@@ -1,9 +1,10 @@
 import { countBracketsContextAware } from "../../../dev/structure-visualizer.js";
 import type { BracketDifference } from "./types.js";
 
-export function checkBracketBalance(
-  content: string
-): { ok: boolean; differences?: BracketDifference[] } {
+export function checkBracketBalance(content: string): {
+  ok: boolean;
+  differences?: BracketDifference[];
+} {
   const result = countBracketsContextAware(content);
 
   if (result.balanced) {

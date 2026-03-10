@@ -11,7 +11,7 @@ import type { TestContext } from "./types.ts";
 /**
  * Check if current URL is in excluded list (login/auth pages)
  */
-export function testExcludedUrl(ctx: TestContext): ProviderTestResult {
+export async function testExcludedUrl(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   const currentUrl = ctx.webview.getURL();
 
@@ -26,11 +26,14 @@ export function testExcludedUrl(ctx: TestContext): ProviderTestResult {
   if (isExcluded) {
     return {
       id: "excluded-url-check",
-      name: "Excluded URL Check",
+      name: await ctx.t("preflight.excludedUrlCheck.name"),
       category: "preflight",
       status: "fail",
-      message: `Current page is excluded (login/auth page)`,
-      details: { selector: currentUrl, error: "URL in excludedUrls list" },
+      message: await ctx.t("preflight.excludedUrlCheck.pageExcluded"),
+      details: {
+        selector: currentUrl,
+        error: await ctx.t("preflight.excludedUrlCheck.urlListedError"),
+      },
       duration: Date.now() - start,
       timestamp: Date.now(),
     };
@@ -38,10 +41,10 @@ export function testExcludedUrl(ctx: TestContext): ProviderTestResult {
 
   return {
     id: "excluded-url-check",
-    name: "Excluded URL Check",
+    name: await ctx.t("preflight.excludedUrlCheck.name"),
     category: "preflight",
     status: "pass",
-    message: "Page is valid for testing",
+    message: await ctx.t("preflight.excludedUrlCheck.pageValid"),
     details: { selector: currentUrl },
     duration: Date.now() - start,
     timestamp: Date.now(),

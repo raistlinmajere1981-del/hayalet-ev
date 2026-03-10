@@ -10,6 +10,8 @@
  * @version 2.0.0
  */
 
+import type { TranslationParams } from "./i18n.js";
+
 /**
  * Standardized log levels
  * Mapping: console.log → DEBUG, console.info → INFO, etc.
@@ -103,6 +105,8 @@ export interface LogEntry {
   level: LogLevel;
   category: LogCategory | string; // Allow custom categories
   message: string;
+  messageKey?: string; // Canonical translation key for replay/re-translation
+  messageParams?: TranslationParams; // Translation params used to resolve the message
   locale?: string; // Locale that was active when the log entry was emitted
 
   visibility?: LogVisibility; // UI display level (1-3)

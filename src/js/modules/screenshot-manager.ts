@@ -35,7 +35,10 @@ class ScreenshotManagerClass {
         res = (await window.electronAPI.capturePage("region", region)) as ScreenshotResult | null;
       }
     } catch (err) {
-      Logger.warn("screenshot", screenshotT("capturePageFailed", { message: getErrorMessage(err) }));
+      Logger.warn(
+        "screenshot",
+        screenshotT("capturePageFailed", { message: getErrorMessage(err) })
+      );
     }
     if (res?.success !== true || (res.dataUrl === undefined && res.data === undefined)) {
       res = (await this.captureSystem("", {
@@ -77,7 +80,10 @@ class ScreenshotManagerClass {
         return await this.persist(res, tag, opts.format);
       }
     } catch (err) {
-      Logger.error("screenshot", screenshotT("captureSystemFailed", { message: getErrorMessage(err) }));
+      Logger.error(
+        "screenshot",
+        screenshotT("captureSystemFailed", { message: getErrorMessage(err) })
+      );
     }
     try {
       if (window.electronAPI?.capturePage !== undefined) {

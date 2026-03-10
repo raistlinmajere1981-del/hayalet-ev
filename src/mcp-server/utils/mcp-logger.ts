@@ -274,15 +274,21 @@ class MCPLogger {
         category: "mcp",
         source: "mcp-server",
         message: entry.message,
-        locale: entry.locale,
         context: {
           ...(entry.toolName != null ? { toolName: entry.toolName } : {}),
           operation: entry.operation,
           ...(entry.duration !== undefined ? { duration: entry.duration } : {}),
           ...(entry.agentContext !== undefined ? { agentContext: entry.agentContext } : {}),
         },
-        error: entry.error,
       };
+
+      if (entry.locale !== undefined) {
+        unifiedEntry.locale = entry.locale;
+      }
+
+      if (entry.error !== undefined) {
+        unifiedEntry.error = entry.error;
+      }
 
       appendFile(structuredPath, JSON.stringify(unifiedEntry) + "\n", "utf-8", (err) => {
         if (err) {
@@ -346,9 +352,9 @@ function writeLoggerInternalError(key: string, params?: Record<string, string | 
  */
 export function logToolCall(toolName: string, args: unknown): { startTime: number } {
   const startTime = Date.now();
-  logger
-    .logToolStart(toolName, args)
-    .catch((err) => writeLoggerInternalError("startLogFailed", { message: String(err) }));
+  logger.logToolStart(toolName, args).catch((err) => {
+    writeLoggerInternalError("startLogFailed", { message: String(err) });
+  });
   return { startTime };
 }
 
@@ -361,9 +367,9 @@ export function logToolSuccess(
   duration: number,
   agentContext?: unknown
 ): void {
-  logger
-    .logToolSuccess(toolName, result, duration, agentContext)
-    .catch((err) => writeLoggerInternalError("successLogFailed", { message: String(err) }));
+  logger.logToolSuccess(toolName, result, duration, agentContext).catch((err) => {
+    writeLoggerInternalError("successLogFailed", { message: String(err) });
+  });
 }
 
 /**
@@ -376,12 +382,14 @@ export function logToolError(
   startTime?: number
 ): void {
   const duration = startTime != null && startTime > 0 ? Date.now() - startTime : undefined;
-  logger
-    .logToolError(toolName, error, duration)
-    .catch((err) => writeLoggerInternalError("errorLogFailed", { message: String(err) }));
+  logger.logToolError(toolName, error, duration).catch((err) => {
+    writeLoggerInternalError("errorLogFailed", { message: String(err) });
+  });
 
   // Keep stderr output for MCP client (required by MCP protocol)
-  console.error(createMcpTranslatorSync()("mcpServer.logs.toolError", { toolName, message: error.message }));
+  console.error(
+    createMcpTranslatorSync()("mcpServer.logs.toolError", { toolName, message: error.message })
+  );
 }
 
 /**
@@ -389,9 +397,9 @@ export function logToolError(
  */
 export function logError(message: string, error?: Error): void {
   const err = error ?? new Error(message);
-  logger
-    .logToolError("general", err)
-    .catch((e) => writeLoggerInternalError("generalLogFailed", { message: String(e) }));
+  logger.logToolError("general", err).catch((e) => {
+    writeLoggerInternalError("generalLogFailed", { message: String(e) });
+  });
 }
 
 // ============================================================================

@@ -290,7 +290,9 @@ export async function initializeTimeline(args: {
 
   if (!state.timelineLoading && !hasMoreTimelineSessions(state)) {
     const total = state.timelineLoadedSessionIds.size;
-    updateTimelineMeta(total > 0 ? timelineT("historyLoaded", { count: total }) : timelineT("liveConnected"));
+    updateTimelineMeta(
+      total > 0 ? timelineT("historyLoaded", { count: total }) : timelineT("liveConnected")
+    );
   }
 }
 

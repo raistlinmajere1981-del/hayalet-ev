@@ -8,8 +8,10 @@
  */
 
 import { Logger } from "../logger/index.js";
-import { LogCategory, LogLevel } from "@shared/index.js";
+import { LogCategory } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
+import { AppI18n } from "../i18n/index.js";
 
 interface WebviewElement {
   getWebContentsId?: () => number;
@@ -51,6 +53,10 @@ interface WebviewHandler {
 
 const webviewHandlers: Record<string, WebviewHandler> = {};
 
+function trafficWebviewEventsT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.traffic.${key}`, params);
+}
+
 export function normalizeHref(href: string | undefined): string {
   if (href === undefined || href === "") return "";
   const parts = href.split("?");
@@ -73,7 +79,7 @@ export function attachWebviewEvents(
 
   const { onNavigation, onDomReady, onFailLoad, buildProbeScript } = callbacks;
 
-  Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Attaching webview events", {
+  Logger.info(LogCategory.TRAFFIC, trafficWebviewEventsT("attachingWebviewEvents", { provider }), {
     provider,
   });
 
@@ -118,7 +124,7 @@ export function attachWebviewEvents(
       handleNavEvent(webviewEl.getURL?.(), "dom-ready");
     } catch (_e) {}
 
-    Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Webview DOM ready", {
+    Logger.info(LogCategory.TRAFFIC, trafficWebviewEventsT("webviewDomReady", { provider }), {
       provider,
     });
 
@@ -126,7 +132,7 @@ export function attachWebviewEvents(
   };
 
   const failLoadHandler = (): void => {
-    Logger.error(LogCategory.TRAFFIC, new Error("Webview load failed"), {
+    Logger.error(LogCategory.TRAFFIC, trafficWebviewEventsT("webviewLoadFailed", { provider }), {
       provider,
     });
 
@@ -176,7 +182,7 @@ export function detachWebviewEvents(provider: string): void {
   const handlers = webviewHandlers[provider];
   if (!handlers) return;
 
-  Logger.panel(LogCategory.TRAFFIC, LogLevel.INFO, "Detaching webview events", {
+  Logger.info(LogCategory.TRAFFIC, trafficWebviewEventsT("detachingWebviewEvents", { provider }), {
     provider,
   });
 

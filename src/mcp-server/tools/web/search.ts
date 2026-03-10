@@ -48,14 +48,15 @@ type WebTranslator = (key: string, params?: Record<string, string | number | boo
 
 const webSearchDefinitionTranslator = createMcpTranslatorSync();
 
-function webSearchDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function webSearchDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return webSearchDefinitionTranslator(`mcpServer.webTools.definition.search.${key}`, params);
 }
 
-function webSearchT(t: WebTranslator, key: string, params?: Record<string, string | number | boolean>): string {
+function webSearchT(
+  t: WebTranslator,
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
   return t(`mcpServer.webTools.search.${key}`, params);
 }
 
@@ -337,8 +338,7 @@ function formatSearchResults(
     webSearchT(t, "results.provider", { provider }),
     webSearchT(t, "results.count", {
       count: results.length,
-      suffix:
-        results.length < requestedCount ? webSearchT(t, "results.allShownSuffix") : "",
+      suffix: results.length < requestedCount ? webSearchT(t, "results.allShownSuffix") : "",
     }),
     "",
     "═".repeat(60),
@@ -355,9 +355,7 @@ function formatSearchResults(
   lines.push("═".repeat(60));
   lines.push("");
   lines.push(webSearchT(t, "results.fetchHintTitle"));
-  lines.push(
-    webSearchT(t, "results.fetchHintCommand", { url: results[0]?.url ?? "URL" })
-  );
+  lines.push(webSearchT(t, "results.fetchHintCommand", { url: results[0]?.url ?? "URL" }));
 
   return lines.join("\n");
 }

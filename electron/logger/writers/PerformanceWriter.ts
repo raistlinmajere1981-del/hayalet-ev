@@ -11,6 +11,7 @@ import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";
 import type { LogWriterConfig } from "@electron/types/logging.js";
+import { loggerWriterT } from "./i18n.ts";
 
 interface PerformanceEntry {
   timestamp: string;
@@ -72,7 +73,12 @@ export class PerformanceWriter {
       const line = JSON.stringify(perfEntry) + "\n";
       await appendFile(this.filePath, line, "utf-8");
     } catch (error) {
-      console.error("[PerformanceWriter] Write failed:", error);
+      console.error(
+        await loggerWriterT("writerWriteFailed", {
+          writer: "PerformanceWriter",
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
       throw error;
     }
   }

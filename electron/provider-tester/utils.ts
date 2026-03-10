@@ -9,6 +9,7 @@
 import { PROVIDER_TEST_INTERVALS } from "../../shared/timeouts.ts";
 
 import type { ProviderTestResult, TestCategory } from "../../src/types/provider.ts";
+import type { TranslationParams } from "../../src/types/i18n.ts";
 
 import type { WebviewTag, ElementCheckResult, SelectorTestOptions } from "./types.ts";
 import { ScenarioCancelledError } from "./scenario-runner.ts";
@@ -105,7 +106,10 @@ export function createSkipResult(
 /**
  * Generic selector test
  */
-export function createTestSelector(executeScript: (script: string) => Promise<unknown>) {
+export function createTestSelector(
+  executeScript: (script: string) => Promise<unknown>,
+  t: (key: string, params?: TranslationParams) => Promise<string>
+) {
   return async (opts: SelectorTestOptions): Promise<ProviderTestResult> => {
     const start = Date.now();
 
@@ -172,7 +176,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
       }
 
       if (result === null) {
-        throw new Error("No selector candidates provided");
+        throw new Error(await t("selector.noCandidates"));
       }
 
       const failedChecks = opts.checks.filter(
@@ -198,7 +202,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
           name: opts.name,
           category: opts.category,
           status: "pass",
-          message: `All checks passed: ${opts.checks.join(", ")}`,
+          message: await t("selector.allChecksPassed", { checks: opts.checks.join(", ") }),
           details,
           duration: Date.now() - start,
           timestamp: Date.now(),
@@ -210,7 +214,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
         name: opts.name,
         category: opts.category,
         status: "fail",
-        message: `Failed checks: ${failedChecks.join(", ")}`,
+        message: await t("selector.failedChecks", { checks: failedChecks.join(", ") }),
         details,
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -221,7 +225,7 @@ export function createTestSelector(executeScript: (script: string) => Promise<un
         name: opts.name,
         category: opts.category,
         status: "fail",
-        message: "Element not found or script error",
+        message: await t("selector.elementNotFoundOrScriptError"),
         details: { selector: opts.selector, error: (error as Error).message },
         duration: Date.now() - start,
         timestamp: Date.now(),

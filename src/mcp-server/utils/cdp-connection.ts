@@ -93,9 +93,9 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
 
     // fetch failed (generic network error).
     if (err.message.includes("fetch failed")) {
-      const fetchError = new Error(
-        cdpConnectionT("fetchFailed", { port: CDP_PORT })
-      ) as Error & { cause?: unknown };
+      const fetchError = new Error(cdpConnectionT("fetchFailed", { port: CDP_PORT })) as Error & {
+        cause?: unknown;
+      };
       fetchError.cause = error;
       throw fetchError;
     }
@@ -184,9 +184,7 @@ export async function sendCDPCommand(
           clearTimeout(timeoutId);
           ws.off("message", messageHandler);
           if (response.error) {
-            reject(
-              new Error(cdpConnectionT("cdpError", { message: response.error.message }))
-            );
+            reject(new Error(cdpConnectionT("cdpError", { message: response.error.message })));
           } else {
             resolve(response.result ?? {});
           }

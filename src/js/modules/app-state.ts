@@ -183,11 +183,16 @@ class AppStateClass {
       try {
         listener(snapshot);
       } catch (err) {
-        Logger.errorT(LogCategory.SYSTEM, "app.logs.appState.listenerError", {
-          message: err instanceof Error ? err.message : String(err),
-        }, {
-          error: err,
-        });
+        Logger.errorT(
+          LogCategory.SYSTEM,
+          "app.logs.appState.listenerError",
+          {
+            message: err instanceof Error ? err.message : String(err),
+          },
+          {
+            error: err,
+          }
+        );
       }
     });
   }

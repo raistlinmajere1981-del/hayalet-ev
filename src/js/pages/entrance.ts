@@ -6,10 +6,7 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { MAX_LOGS_TERMINAL } from "@limits";
 
 import type { AppSettings } from "@shared/settings.js";
-import {
-  isAssistantAccountsSettingsPath,
-  isAssistantSlotSettingsPath,
-} from "@shared/settings.js";
+import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import { AppState } from "../modules/app-state.js";
 import { CoreEngine } from "../modules/core-engine.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
@@ -24,11 +21,7 @@ import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
 import { AppI18n } from "../modules/i18n/index.js";
-import {
-  applyEntranceStaticTranslations,
-  formatTime,
-  t as entranceT,
-} from "./entrance/i18n.js";
+import { applyEntranceStaticTranslations, formatTime, t as entranceT } from "./entrance/i18n.js";
 
 export class EntranceHallController {
   defaultsApplied: boolean;
@@ -97,9 +90,7 @@ export class EntranceHallController {
           changedPaths.includes("*") ||
           changedPaths.some(
             (path) =>
-              path.startsWith("slots") ||
-              path.startsWith("accounts") ||
-              path.startsWith("general")
+              path.startsWith("slots") || path.startsWith("accounts") || path.startsWith("general")
           );
 
         if (shouldApplyWebviewGating) {
@@ -157,11 +148,9 @@ export class EntranceHallController {
   }
 
   setupI18nBindings(): void {
-    if (this._unsubI18n === null) {
-      this._unsubI18n = AppI18n.subscribe(() => {
-        this.applyTranslatedUi();
-      });
-    }
+    this._unsubI18n ??= AppI18n.subscribe(() => {
+      this.applyTranslatedUi();
+    });
 
     this.applyTranslatedUi();
   }
@@ -316,11 +305,15 @@ export class EntranceHallController {
         avatarElement.style.backgroundImage = "";
       }
     } catch (error) {
-      Logger.error(LogCategory.ENTRANCE, entranceT("logs.avatarLoadError", {
-        message: getErrorMessage(error),
-      }), {
-        context: { userType },
-      });
+      Logger.error(
+        LogCategory.ENTRANCE,
+        entranceT("logs.avatarLoadError", {
+          message: getErrorMessage(error),
+        }),
+        {
+          context: { userType },
+        }
+      );
 
       avatarElement.innerHTML = "";
       avatarElement.style.backgroundImage = "";
@@ -350,10 +343,7 @@ export class EntranceHallController {
         ButtonStates.setError(toggleBtn, entranceT("slot.missingAccount"), 1500);
       }
       this.updateUserStatus(userType);
-      Logger.warn(
-        LogCategory.ENTRANCE,
-        entranceT("logs.slotConnectBlocked", { slot: userType })
-      );
+      Logger.warn(LogCategory.ENTRANCE, entranceT("logs.slotConnectBlocked", { slot: userType }));
       return;
     }
 
@@ -369,6 +359,7 @@ export class EntranceHallController {
       Logger.success(LogCategory.ENTRANCE, entranceT("logs.slotConnected", { name: nickname }));
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "connected");
     } else {
+      const errorMessage = result.message ?? entranceT("logs.unknownMessage");
       if (toggleBtn) {
         ButtonStates.setError(toggleBtn, entranceT("slot.connectError"), 1500);
       }
@@ -377,7 +368,7 @@ export class EntranceHallController {
         LogLevel.ERROR,
         entranceT("logs.slotConnectError", {
           name: nickname,
-          message: result.message ?? entranceT("logs.unknownMessage"),
+          message: errorMessage,
         })
       );
     }
@@ -438,6 +429,7 @@ export class EntranceHallController {
       );
       await this.updateRememberedConnectionState(userType as "ai1" | "ai2", "disconnected");
     } else {
+      const errorMessage = result.message ?? entranceT("logs.unknownMessage");
       if (toggleBtn) {
         ButtonStates.setError(toggleBtn, entranceT("slot.connectError"), 1500);
       }
@@ -446,7 +438,7 @@ export class EntranceHallController {
         LogLevel.ERROR,
         entranceT("logs.slotDisconnectError", {
           name: nickname,
-          message: result.message ?? entranceT("logs.unknownMessage"),
+          message: errorMessage,
         })
       );
     }

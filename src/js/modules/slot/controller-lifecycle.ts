@@ -1,5 +1,7 @@
 import { getErrorMessage } from "@shared/index.js";
 import type { SlotId } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
+import { AppI18n } from "../i18n/index.js";
 import { normalizeUrl } from "../webview/methods/shared/url-utils.js";
 import type { TransitionResult } from "./state-machine.js";
 import type { SlotOperationResult, SlotStateData } from "./controller-state.js";
@@ -70,6 +72,10 @@ interface LifecycleContext {
   config: LifecycleConfig;
 }
 
+function slotLifecycleT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.slotLifecycle.${key}`, params);
+}
+
 export async function connectSlotLifecycle(
   slot: SlotId,
   options: { force?: boolean; url?: string; correlationId?: string } = {},
@@ -77,47 +83,49 @@ export async function connectSlotLifecycle(
 ): Promise<SlotOperationResult> {
   const slotState = context.getSlot(slot);
   if (!slotState) {
-    return { success: false, message: "invalid-slot" };
+    return { success: false, message: slotLifecycleT("invalidSlot") };
   }
 
   const correlationId = context.generateCorrelationId(slot, "connect");
 
-  context.log(slot, "info", "Connect requested", { correlationId });
+  context.log(slot, "info", slotLifecycleT("connectRequested"), { correlationId });
 
   if (slotState.state === context.states.EMPTY) {
-    context.log(slot, "warning", "Cannot connect: no account assigned", { correlationId });
-    return { success: false, message: "no-account-assigned", correlationId };
+    context.log(slot, "warning", slotLifecycleT("connectBlockedNoAccount"), { correlationId });
+    return { success: false, message: slotLifecycleT("connectBlockedNoAccount"), correlationId };
   }
 
   if (slotState.state === context.states.CONNECTED && options.force !== true) {
-    context.log(slot, "debug", "Already connected", { correlationId });
-    return { success: true, message: "already-connected", correlationId };
+    context.log(slot, "debug", slotLifecycleT("alreadyConnected"), { correlationId });
+    return { success: true, message: slotLifecycleT("alreadyConnected"), correlationId };
   }
 
   if (slotState.state === context.states.CONNECTING) {
-    context.log(slot, "warning", "Connection already in progress", { correlationId });
-    return { success: false, message: "connection-in-progress", correlationId };
+    context.log(slot, "warning", slotLifecycleT("connectionInProgress"), { correlationId });
+    return { success: false, message: slotLifecycleT("connectionInProgress"), correlationId };
   }
 
   if (slotState.state === context.states.ERROR) {
-    context.log(slot, "info", "Recovering from ERROR state", { correlationId });
+    context.log(slot, "info", slotLifecycleT("recoveringFromError"), { correlationId });
     slotState.error = null;
     context.transition(slot, context.states.ASSIGNED);
   }
 
   if (slotState.state === context.states.CONNECTED && options.force === true) {
-    context.log(slot, "info", "Force reconnect - disconnecting first", { correlationId });
+    context.log(slot, "info", slotLifecycleT("forceReconnect"), { correlationId });
     await context.disconnect(slot, { force: true });
   }
 
   if (!slotState.webview) {
-    context.log(slot, "error", "Cannot connect: webview not registered", { correlationId });
-    return { success: false, message: "webview-not-registered", correlationId };
+    context.log(slot, "error", slotLifecycleT("connectBlockedNoWebview"), { correlationId });
+    return { success: false, message: slotLifecycleT("connectBlockedNoWebview"), correlationId };
   }
 
   if (options.url !== undefined && options.url !== "") {
     slotState._overrideUrl = options.url;
-    context.log(slot, "debug", `URL override set: ${options.url}`, { correlationId });
+    context.log(slot, "debug", slotLifecycleT("urlOverrideSet", { url: options.url }), {
+      correlationId,
+    });
   }
 
   slotState.correlationId = correlationId;
@@ -127,12 +135,15 @@ export async function connectSlotLifecycle(
     context.log(
       slot,
       "error",
-      `Invalid state transition blocked: ${slotState.state} -> connecting. ${transitionResult.error ?? "unknown"}`,
+      slotLifecycleT("invalidConnectTransition", {
+        state: slotState.state,
+        message: transitionResult.error ?? "unknown",
+      }),
       { correlationId }
     );
     return {
       success: false,
-      message: "invalid-state-transition",
+      message: slotLifecycleT("invalidStateTransition"),
       correlationId,
       ...(transitionResult.error !== undefined ? { error: transitionResult.error } : {}),
     };
@@ -182,7 +193,7 @@ export async function connectSlotLifecycle(
           context.log(
             slot,
             "debug",
-            `Provider info sent to webview: ${slotState.providerConfig.id}`,
+            slotLifecycleT("providerInfoSent", { providerId: slotState.providerConfig.id }),
             { correlationId }
           );
         }
@@ -190,7 +201,7 @@ export async function connectSlotLifecycle(
         context.log(
           slot,
           "warning",
-          `Failed to send provider info to webview: ${getErrorMessage(sendErr)}`,
+          slotLifecycleT("providerInfoSendFailed", { message: getErrorMessage(sendErr) }),
           { correlationId }
         );
       }
@@ -205,7 +216,7 @@ export async function connectSlotLifecycle(
 
     if (isExcluded) {
       context.emit(slot, context.events.URL_EXCLUDED, { url: currentUrl, correlationId });
-      context.log(slot, "info", `URL excluded: ${currentUrl} - traffic disabled`, {
+      context.log(slot, "info", slotLifecycleT("urlExcluded", { url: currentUrl }), {
         correlationId,
       });
     } else {
@@ -228,11 +239,11 @@ export async function connectSlotLifecycle(
     context.log(
       slot,
       "success",
-      `Connected successfully (${elapsed}ms)${isExcluded ? " [URL excluded]" : ""}`,
+      slotLifecycleT(isExcluded ? "connectedUrlExcluded" : "connected", { elapsedMs: elapsed }),
       { correlationId }
     );
 
-    return { success: true, message: "connected", correlationId };
+    return { success: true, message: slotLifecycleT("connected"), correlationId };
   } catch (error) {
     clearTimeout(slot, "connect");
     return handleConnectError(
@@ -259,24 +270,28 @@ export async function disconnectSlotLifecycle(
 ): Promise<SlotOperationResult> {
   const slotState = context.getSlot(slot);
   if (!slotState) {
-    return { success: false, message: "invalid-slot" };
+    return { success: false, message: slotLifecycleT("invalidSlot") };
   }
 
   const correlationId = context.generateCorrelationId(slot, "disconnect");
 
-  context.log(slot, "info", "Disconnect requested", { correlationId });
+  context.log(slot, "info", slotLifecycleT("disconnectRequested"), { correlationId });
 
   if (slotState.state === context.states.EMPTY) {
-    return { success: true, message: "not-assigned", correlationId };
+    return { success: true, message: slotLifecycleT("notAssigned"), correlationId };
   }
 
   if (slotState.state === context.states.ASSIGNED) {
-    context.log(slot, "debug", "Already disconnected (ASSIGNED state)", { correlationId });
-    return { success: true, message: "already-disconnected", correlationId };
+    context.log(slot, "debug", slotLifecycleT("alreadyDisconnectedAssigned"), { correlationId });
+    return {
+      success: true,
+      message: slotLifecycleT("alreadyDisconnectedAssigned"),
+      correlationId,
+    };
   }
 
   if (slotState.state === context.states.DISCONNECTING) {
-    return { success: false, message: "disconnect-in-progress", correlationId };
+    return { success: false, message: slotLifecycleT("disconnectInProgress"), correlationId };
   }
 
   const transitionResult = context.transition(slot, context.states.DISCONNECTING);
@@ -284,12 +299,15 @@ export async function disconnectSlotLifecycle(
     context.log(
       slot,
       "error",
-      `Invalid state transition blocked: ${slotState.state} -> disconnecting. ${transitionResult.error ?? "unknown"}`,
+      slotLifecycleT("invalidDisconnectTransition", {
+        state: slotState.state,
+        message: transitionResult.error ?? "unknown",
+      }),
       { correlationId }
     );
     return {
       success: false,
-      message: "invalid-state-transition",
+      message: slotLifecycleT("invalidStateTransition"),
       correlationId,
       ...(transitionResult.error !== undefined ? { error: transitionResult.error } : {}),
     };
@@ -322,17 +340,20 @@ export async function disconnectSlotLifecycle(
     context.transition(slot, context.states.ASSIGNED);
     context.emit(slot, context.events.DISCONNECT_COMPLETE, { correlationId });
 
-    context.log(slot, "success", "Disconnected successfully", { correlationId });
-    return { success: true, message: "disconnected", correlationId };
+    context.log(slot, "success", slotLifecycleT("disconnected"), { correlationId });
+    return { success: true, message: slotLifecycleT("disconnected"), correlationId };
   } catch (error) {
     slotState.domReady = false;
     slotState.trafficStarted = false;
     context.transition(slot, context.states.ASSIGNED);
 
-    context.log(slot, "warning", `Disconnect completed with errors: ${getErrorMessage(error)}`, {
-      correlationId,
-    });
-    return { success: true, message: "disconnected-with-errors", correlationId };
+    context.log(
+      slot,
+      "warning",
+      slotLifecycleT("disconnectCompletedWithErrors", { message: getErrorMessage(error) }),
+      { correlationId }
+    );
+    return { success: true, message: slotLifecycleT("disconnectedWithErrors"), correlationId };
   }
 }
 
@@ -382,11 +403,14 @@ export async function startSlotTraffic(
   try {
     slotState.trafficStarted = true;
     context.emit(slot, context.events.TRAFFIC_STARTED, { correlationId });
-    context.log(slot, "debug", "Traffic started", { correlationId });
+    context.log(slot, "debug", slotLifecycleT("trafficStarted"), { correlationId });
   } catch (err) {
-    context.log(slot, "warning", `Traffic start warning: ${getErrorMessage(err)}`, {
-      correlationId,
-    });
+    context.log(
+      slot,
+      "warning",
+      slotLifecycleT("trafficStartWarning", { message: getErrorMessage(err) }),
+      { correlationId }
+    );
   }
   await Promise.resolve();
 }
@@ -405,11 +429,14 @@ export async function stopSlotTraffic(
   try {
     slotState.trafficStarted = false;
     context.emit(slot, context.events.TRAFFIC_STOPPED, { correlationId });
-    context.log(slot, "debug", "Traffic stopped", { correlationId });
+    context.log(slot, "debug", slotLifecycleT("trafficStopped"), { correlationId });
   } catch (err) {
-    context.log(slot, "warning", `Traffic stop warning: ${getErrorMessage(err)}`, {
-      correlationId,
-    });
+    context.log(
+      slot,
+      "warning",
+      slotLifecycleT("trafficStopWarning", { message: getErrorMessage(err) }),
+      { correlationId }
+    );
   }
   await Promise.resolve();
 }

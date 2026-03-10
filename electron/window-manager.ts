@@ -66,7 +66,11 @@ export async function minimizeToTray(): Promise<void> {
 
     _isMinimizedToTray = true;
     _mainWindow.hide();
-    await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.window.logs.minimizedToTray");
+    await logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.window.logs.minimizedToTray"
+    );
   } catch (err) {
     await logger.logInternalT(
       LogCategory.MAIN,
@@ -108,8 +112,8 @@ function createTrayInternal(): void {
       "electron.window.logs.creatingTrayIcon",
       undefined,
       {
-      iconPath: _trayIconPath,
-      iconSize: icon.getSize(),
+        iconPath: _trayIconPath,
+        iconSize: icon.getSize(),
       }
     );
 
@@ -118,7 +122,11 @@ function createTrayInternal(): void {
     void updateTrayMenu();
 
     _tray.on("click", () => {
-      void logger.logInternalT(LogCategory.MAIN, LogLevel.DEBUG, "electron.window.logs.trayClicked");
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.DEBUG,
+        "electron.window.logs.trayClicked"
+      );
       restoreFromTray();
     });
 
@@ -166,8 +174,6 @@ async function updateTrayMenu(): Promise<void> {
     translateElectronMessage("app.documentTitle"),
   ]);
 
-  if (_tray === null) return;
-
   const contextMenu = Menu.buildFromTemplate([
     {
       label: showLabel,
@@ -206,7 +212,11 @@ function restoreFromTray(): void {
   if (_mainWindow !== null) {
     _mainWindow.show();
     _mainWindow.focus();
-    void logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.window.logs.restoredFromTray");
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.window.logs.restoredFromTray"
+    );
   }
 }
 

@@ -27,7 +27,7 @@ export async function runDOMTests(ctx: TestContext): Promise<ProviderTestResult[
 export async function testInputField(ctx: TestContext): Promise<ProviderTestResult> {
   return await ctx.testSelector({
     id: "input-field",
-    name: "Input Field Accessibility",
+    name: await ctx.t("dom.inputField.name"),
     selector: ctx.config.selectors.inputField,
     category: "dom",
     checks: ["exists", "visible", "editable"],
@@ -38,14 +38,14 @@ export async function testAttachButton(ctx: TestContext): Promise<ProviderTestRe
   if (ctx.config.selectors.attachButton === undefined || ctx.config.selectors.attachButton === "") {
     return ctx.createSkipResult(
       "attach-button",
-      "Attach Button",
+      await ctx.t("dom.attachButton.name"),
       "dom",
-      "No attachButton selector in config"
+      await ctx.t("dom.attachButton.selectorMissing")
     );
   }
   return await ctx.testSelector({
     id: "attach-button",
-    name: "Attach Button",
+    name: await ctx.t("dom.attachButton.name"),
     selector: ctx.config.selectors.attachButton,
     category: "dom",
     checks: ["exists", "visible"],
@@ -57,9 +57,9 @@ export async function testFileInput(ctx: TestContext): Promise<ProviderTestResul
   if (ctx.config.fileInputSelectors.length === 0) {
     return ctx.createSkipResult(
       "file-input",
-      "File Input",
+      await ctx.t("dom.fileInput.name"),
       "dom",
-      "No fileInputSelectors in config"
+      await ctx.t("dom.fileInput.selectorMissing")
     );
   }
 
@@ -76,10 +76,10 @@ export async function testFileInput(ctx: TestContext): Promise<ProviderTestResul
     if (found !== undefined) {
       return {
         id: "file-input",
-        name: "File Input",
+        name: await ctx.t("dom.fileInput.name"),
         category: "dom",
         status: "pass",
-        message: "File input found",
+        message: await ctx.t("dom.fileInput.found"),
         details: { selector: found.selector },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -88,10 +88,10 @@ export async function testFileInput(ctx: TestContext): Promise<ProviderTestResul
 
     return {
       id: "file-input",
-      name: "File Input",
+      name: await ctx.t("dom.fileInput.name"),
       category: "dom",
       status: "fail",
-      message: "No file input found",
+      message: await ctx.t("dom.fileInput.notFound"),
       details: { selector: ctx.config.fileInputSelectors.join(", ") },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -99,10 +99,10 @@ export async function testFileInput(ctx: TestContext): Promise<ProviderTestResul
   } catch (error) {
     return {
       id: "file-input",
-      name: "File Input",
+      name: await ctx.t("dom.fileInput.name"),
       category: "dom",
       status: "fail",
-      message: "File input test failed",
+      message: await ctx.t("dom.fileInput.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -115,9 +115,9 @@ export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestRe
   if (ctx.config.uploadTargetSelectors.length === 0) {
     return ctx.createSkipResult(
       "upload-target",
-      "Upload Target",
+      await ctx.t("dom.uploadTarget.name"),
       "dom",
-      "No uploadTargetSelectors in config"
+      await ctx.t("dom.uploadTarget.selectorMissing")
     );
   }
 
@@ -134,10 +134,10 @@ export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestRe
     if (found !== undefined) {
       return {
         id: "upload-target",
-        name: "Upload Target (Drag & Drop)",
+        name: await ctx.t("dom.uploadTarget.name"),
         category: "dom",
         status: "pass",
-        message: "Upload target found",
+        message: await ctx.t("dom.uploadTarget.found"),
         details: { selector: found.selector },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -146,10 +146,10 @@ export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestRe
 
     return {
       id: "upload-target",
-      name: "Upload Target (Drag & Drop)",
+      name: await ctx.t("dom.uploadTarget.name"),
       category: "dom",
       status: "warning",
-      message: "No upload target found",
+      message: await ctx.t("dom.uploadTarget.notFound"),
       details: { selector: ctx.config.uploadTargetSelectors.join(", ") },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -157,10 +157,10 @@ export async function testUploadTarget(ctx: TestContext): Promise<ProviderTestRe
   } catch (error) {
     return {
       id: "upload-target",
-      name: "Upload Target (Drag & Drop)",
+      name: await ctx.t("dom.uploadTarget.name"),
       category: "dom",
       status: "fail",
-      message: "Upload target test failed",
+      message: await ctx.t("dom.uploadTarget.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -173,9 +173,9 @@ export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderT
   if (ctx.config.criticalSelectors.length === 0) {
     return ctx.createSkipResult(
       "critical-selectors",
-      "Critical Selectors",
+      await ctx.t("dom.criticalSelectors.name"),
       "dom",
-      "No criticalSelectors in config"
+      await ctx.t("dom.criticalSelectors.selectorMissing")
     );
   }
 
@@ -194,10 +194,10 @@ export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderT
     if (failed.length === 0) {
       return {
         id: "critical-selectors",
-        name: "Critical Selectors",
+        name: await ctx.t("dom.criticalSelectors.name"),
         category: "dom",
         status: "pass",
-        message: `All ${results.length} critical selectors found`,
+        message: await ctx.t("dom.criticalSelectors.allFound", { count: results.length }),
         duration: Date.now() - start,
         timestamp: Date.now(),
       };
@@ -205,10 +205,13 @@ export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderT
 
     return {
       id: "critical-selectors",
-      name: "Critical Selectors",
+      name: await ctx.t("dom.criticalSelectors.name"),
       category: "dom",
       status: "warning",
-      message: `${failed.length}/${results.length} critical selectors not found`,
+      message: await ctx.t("dom.criticalSelectors.missingCount", {
+        missing: failed.length,
+        total: results.length,
+      }),
       details: { selector: failed.map((f: SelectorCheckResult) => f.selector).join(", ") },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -216,10 +219,10 @@ export async function testCriticalSelectors(ctx: TestContext): Promise<ProviderT
   } catch (error) {
     return {
       id: "critical-selectors",
-      name: "Critical Selectors",
+      name: await ctx.t("dom.criticalSelectors.name"),
       category: "dom",
       status: "fail",
-      message: "Critical selectors test failed",
+      message: await ctx.t("dom.criticalSelectors.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),

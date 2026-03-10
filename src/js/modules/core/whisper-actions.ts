@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { AppI18n } from "../i18n/index.js";
 import { AppState } from "../app-state.js";
 import { CommandManager } from "../command-manager.js";
@@ -40,6 +41,14 @@ interface WhisperCommandContext {
 
 function whisperRuntimeT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.whisper.runtime.${key}`, params);
+}
+
+function whisperRuntimeError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number>
+): string {
+  return formatErrorWithDetail(whisperRuntimeT(key, params), detail);
 }
 
 function formatWhisperRuntimeTimestamp(value: Date = new Date()): string {
@@ -135,13 +144,9 @@ export async function enqueueWhisperJobWithContext(
     when: record.when,
   };
 
-  Logger.info(
-    LogCategory.WHISPER,
-    whisperRuntimeT("queuedForAccount", { accountId, slot }),
-    {
-      context: { accountId, slot, whisperId },
-    }
-  );
+  Logger.info(LogCategory.WHISPER, whisperRuntimeT("queuedForAccount", { accountId, slot }), {
+    context: { accountId, slot, whisperId },
+  });
 
   const exec = async (): Promise<CommandResult> => {
     const result = await context.sendMessage({ provider: slot, text });
@@ -149,7 +154,7 @@ export async function enqueueWhisperJobWithContext(
       if (whisperId !== "") {
         WhisperManager.markReady(accountId, whisperId);
       }
-      throw new Error(result.message ?? whisperRuntimeT("sendFailed"));
+      throw new Error(whisperRuntimeError("sendFailed", result.message));
     }
     if (whisperId !== "") {
       WhisperManager.WhisperManagerDone(accountId, whisperId);

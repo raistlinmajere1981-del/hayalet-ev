@@ -131,7 +131,12 @@ export interface ProviderWebviewSyncConfig {
 
 export type ProviderUiLanguageSupport = "supported" | "partial" | "unsupported";
 export type ProviderUiLanguageSyncMode = "automatic" | "manual" | "not-applicable";
-export type ProviderUiLanguagePersistence = "cookie" | "localStorage" | "url" | "account" | "session";
+export type ProviderUiLanguagePersistence =
+  | "cookie"
+  | "localStorage"
+  | "url"
+  | "account"
+  | "session";
 
 export interface ProviderUiLanguageSignals {
   localStorageKeys?: string[];

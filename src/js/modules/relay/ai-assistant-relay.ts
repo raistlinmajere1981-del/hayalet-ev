@@ -18,15 +18,19 @@ import { BaseRelay } from "./base-relay.js";
 import type { CoreEngineInterface } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
 import { SlotController } from "../slot-controller.js";
+import { AppI18n } from "../i18n/index.js";
 import { resolveComposedProtocolMessage } from "../protocol-message-composer.js";
 import { START_STOP_PROTOCOL_HEADERS } from "../protocol-default-headers.js";
 import { PROTOCOL_KEY } from "@slots";
 
-const AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE =
-  START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_START;
+const AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE = START_STOP_PROTOCOL_HEADERS.ANALYZE_AI_ASSISTANT_START;
 
 interface SyncResult {
   messages?: { role?: string; text?: string; content?: string }[];
+}
+
+function relayT(key: string, params?: Record<string, string>): string {
+  return AppI18n.t(`app.logs.aiAssistantRelay.${key}`, params);
 }
 
 export class AIAssistantRelay extends BaseRelay {
@@ -59,15 +63,15 @@ export class AIAssistantRelay extends BaseRelay {
     const source = opts.sourceSlot;
 
     if (source === undefined || (source !== "ai1" && source !== "ai2")) {
-      throw new Error("Invalid sourceSlot: must be 'ai1' or 'ai2'");
+      throw new Error(relayT("invalidSourceSlot"));
     }
 
     if (SlotController.isConnected(source) === false) {
-      throw new Error(`Source slot ${source} is not connected`);
+      throw new Error(relayT("sourceDisconnected", { source }));
     }
 
     if (SlotController.isConnected(this._targetSlot) === false) {
-      throw new Error(`Assistant (${this._targetSlot}) is not connected`);
+      throw new Error(relayT("assistantDisconnected", { target: this._targetSlot }));
     }
 
     this._sourceSlot = source;
@@ -111,15 +115,20 @@ export class AIAssistantRelay extends BaseRelay {
       const protocol = await this._loadProtocol();
 
       this._sessionState = "protocol-sent";
-      this._logT("info", "app.logs.aiAssistantRelay.protocolSending", {
-        provider: aiSlot,
-      }, {
-        sessionId: this._session?.id,
-        protocolLength: protocol.length,
-      });
+      this._logT(
+        "info",
+        "app.logs.aiAssistantRelay.protocolSending",
+        {
+          provider: aiSlot,
+        },
+        {
+          sessionId: this._session?.id,
+          protocolLength: protocol.length,
+        }
+      );
 
       if (this.coreEngine.sendMessage === undefined) {
-        throw new Error("sendMessage method not available");
+        throw new Error(relayT("sendMessageUnavailable"));
       }
       await this.coreEngine.sendMessage({
         provider: aiSlot,
@@ -236,12 +245,17 @@ export class AIAssistantRelay extends BaseRelay {
     const sessionId = this._session?.id ?? "unknown";
 
     if (this._sessionState === "protocol-sent" && provider === this._sourceSlot) {
-      this._logT("info", "app.logs.aiAssistantRelay.protocolReplyReceived", {
-        sessionId,
-        provider,
-      }, {
-        excerpt: text.slice(0, 200),
-      });
+      this._logT(
+        "info",
+        "app.logs.aiAssistantRelay.protocolReplyReceived",
+        {
+          sessionId,
+          provider,
+        },
+        {
+          excerpt: text.slice(0, 200),
+        }
+      );
 
       await this._forwardMessage(provider, this._targetSlot, text);
 
@@ -289,7 +303,7 @@ export class AIAssistantRelay extends BaseRelay {
 
     try {
       if (this.coreEngine.sendMessage === undefined) {
-        throw new Error("sendMessage method not available");
+        throw new Error(relayT("sendMessageUnavailable"));
       }
       await this.coreEngine.sendMessage({
         provider: to,

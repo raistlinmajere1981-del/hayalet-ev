@@ -9,8 +9,10 @@
 
 import { TIMEOUTS } from "@timeouts";
 import type { SlotId } from "@shared/index.js";
-import { LogLevel } from "@shared/index.js";
+import { LogLevel, getErrorMessage } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
+import { AppI18n } from "../i18n/index.js";
 
 type WebviewElement = HTMLElement & {
   getURL?: () => string;
@@ -56,6 +58,10 @@ type LogFn = (
 
 type EmitFn = (slot: SlotId, event: string, data: Record<string, unknown>) => void;
 
+function slotWebviewT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.slotWebview.${key}`, params);
+}
+
 export function ensureWebviewMounted(slot: SlotId, webview: WebviewElement): boolean {
   const mountEl = document.getElementById(`${slot}-webview-mount`);
   if (!mountEl || mountEl.contains(webview)) {
@@ -96,14 +102,14 @@ export async function attachWebview(
   const webview = slotState.webview;
 
   if (!webview) {
-    throw new Error("Webview not available");
+    throw new Error(slotWebviewT("webviewNotAvailable"));
   }
 
   markWebviewAttached(webview);
 
   const moved = ensureWebviewMounted(slot, webview);
   if (moved) {
-    logFn(slot, LogLevel.DEBUG, "Webview moved to mount point", { correlationId });
+    logFn(slot, LogLevel.DEBUG, slotWebviewT("movedToMountPoint"), { correlationId });
   }
 
   const currentSrc = webview.getAttribute("src") ?? "";
@@ -142,12 +148,14 @@ export async function attachWebview(
   slotState._targetUrl = targetUrl;
 
   if (!needsLoad && currentUrl !== "") {
-    logFn(slot, LogLevel.DEBUG, `Webview already loaded: ${currentUrl}`, { correlationId });
+    logFn(slot, LogLevel.DEBUG, slotWebviewT("alreadyLoadedAtUrl", { url: currentUrl }), {
+      correlationId,
+    });
   }
 
   slotState.lastActivity = Date.now();
   emitFn(slot, eventAttached, { correlationId });
-  logFn(slot, LogLevel.DEBUG, "Webview attached", { correlationId });
+  logFn(slot, LogLevel.DEBUG, slotWebviewT("attached"), { correlationId });
 
   return await Promise.resolve({ needsLoad: slotState._pendingLoad ?? false, targetUrl });
 }
@@ -171,9 +179,11 @@ export async function detachWebview(
     markWebviewDetached(webview);
 
     emitFn(slot, eventDetached, { correlationId });
-    logFn(slot, LogLevel.DEBUG, "Webview detached", { correlationId });
+    logFn(slot, LogLevel.DEBUG, slotWebviewT("detached"), { correlationId });
   } catch (err) {
-    logFn(slot, LogLevel.ERROR, `Webview detach error: ${String(err)}`, { correlationId });
+    logFn(slot, LogLevel.ERROR, slotWebviewT("detachError", { message: getErrorMessage(err) }), {
+      correlationId,
+    });
   }
 
   slotState._pendingLoad = false;
@@ -197,7 +207,7 @@ export async function waitForDomReady(
   const webview = slotState.webview;
 
   if (!webview) {
-    await Promise.reject(new Error("Webview not available"));
+    await Promise.reject(new Error(slotWebviewT("webviewNotAvailable")));
     return;
   }
 
@@ -207,7 +217,7 @@ export async function waitForDomReady(
         const loadedUrl = webview.getURL?.() ?? "";
         const isLoading = webview.isLoading?.();
         if (loadedUrl !== "" && isLoading !== true) {
-          logFn(slot, LogLevel.DEBUG, "Webview already loaded", { correlationId });
+          logFn(slot, LogLevel.DEBUG, slotWebviewT("alreadyLoaded"), { correlationId });
           resolve();
           return;
         }
@@ -216,13 +226,13 @@ export async function waitForDomReady(
 
     const timeoutId = setTimeout(() => {
       clearDomReadyHandler(slot);
-      reject(new Error("DOM ready timeout"));
+      reject(new Error(slotWebviewT("domReadyTimeout")));
     }, TIMEOUTS.DOM_READY);
 
     const handler = (): void => {
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
-      logFn(slot, LogLevel.DEBUG, "DOM ready event received", { correlationId });
+      logFn(slot, LogLevel.DEBUG, slotWebviewT("domReadyReceived"), { correlationId });
       resolve();
     };
 
@@ -230,7 +240,13 @@ export async function waitForDomReady(
       clearTimeout(timeoutId);
       clearDomReadyHandler(slot);
       if (event.errorCode !== -3 && event.errorCode !== -102) {
-        reject(new Error(`Load failed: ${event.errorDescription ?? "unknown"}`));
+        reject(
+          new Error(
+            slotWebviewT("loadFailed", {
+              message: event.errorDescription ?? "unknown",
+            })
+          )
+        );
       } else {
         resolve();
       }
@@ -247,7 +263,9 @@ export async function waitForDomReady(
       slotState._targetUrl !== undefined &&
       slotState._targetUrl !== ""
     ) {
-      logFn(slot, LogLevel.INFO, `Loading URL: ${slotState._targetUrl}`, { correlationId });
+      logFn(slot, LogLevel.INFO, slotWebviewT("loadingUrl", { url: slotState._targetUrl }), {
+        correlationId,
+      });
       webview.setAttribute("src", slotState._targetUrl);
       slotState._pendingLoad = false;
       delete slotState._targetUrl;

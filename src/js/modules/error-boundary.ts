@@ -57,19 +57,6 @@ class ErrorBoundaryClass {
       event.preventDefault();
     });
 
-    window.addEventListener("error", (event) => {
-      const error: unknown = event.error ?? event.message;
-      this._handleError(error, {
-        source: "global-error",
-        metadata: {
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-        },
-      });
-      event.preventDefault();
-    });
-
     this._initialized = true;
     Logger.infoT(LogCategory.SYSTEM, "app.logs.errorBoundary.initialized", undefined, {
       visibility: LogVisibility.PANEL,
@@ -174,12 +161,12 @@ class ErrorBoundaryClass {
         message: report.message,
       },
       {
-      error: error instanceof Error ? error : new Error(String(error)),
-      context: {
-        source: context.source,
-        operation: context.operation,
-        ...context.metadata,
-      },
+        error: error instanceof Error ? error : new Error(String(error)),
+        context: {
+          source: context.source,
+          operation: context.operation,
+          ...context.metadata,
+        },
       }
     );
 

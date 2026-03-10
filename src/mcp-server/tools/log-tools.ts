@@ -52,11 +52,7 @@ function buildFilterInfo(
     .join(", ");
 }
 
-function formatSummaryStatus(
-  t: McpTranslator,
-  isActive: boolean,
-  endReason?: string
-): string {
+function formatSummaryStatus(t: McpTranslator, isActive: boolean, endReason?: string): string {
   if (isActive) {
     return logToolsT(t, "summaryStatusActive");
   }
@@ -305,7 +301,12 @@ export async function listLogSessions(
     const error = err as Error;
     logToolError("hev_list_log_sessions", error, { limit });
     return {
-      content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionListReadError", { message: error.message })}` }],
+      content: [
+        {
+          type: "text",
+          text: `❌ ${logToolsT(t, "sessionListReadError", { message: error.message })}`,
+        },
+      ],
       isError: true,
     };
   }
@@ -341,7 +342,9 @@ export async function getSessionSummary(
     if (!existsSync(structuredPath)) {
       if (!existsSync(sessionDir)) {
         return {
-          content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` }],
+          content: [
+            { type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` },
+          ],
           isError: true,
         };
       }
@@ -409,7 +412,9 @@ export async function getSessionSummary(
         };
       } catch {
         return {
-          content: [{ type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` }],
+          content: [
+            { type: "text", text: `❌ ${logToolsT(t, "sessionFilesReadError", { sessionId })}` },
+          ],
           isError: true,
         };
       }
@@ -439,13 +444,14 @@ export async function getSessionSummary(
       ? Math.round(resolvedSummary["duration"] / 1000)
       : undefined;
   const isActive = endTime == null;
+  const endLabel = isActive ? logToolsT(t, "summaryEndActive") : endTime;
 
   const output = [
     logToolsT(t, "sessionSummaryTitle", { sessionId }),
     "",
     logToolsT(t, "summaryStart", { value: startTime }),
     logToolsT(t, "summaryEnd", {
-      value: isActive ? logToolsT(t, "summaryEndActive") : (endTime ?? logToolsT(t, "notAvailable")),
+      value: endLabel,
     }),
     logToolsT(t, "summaryStatus", { value: formatSummaryStatus(t, isActive, endReason) }),
     logToolsT(t, "summaryDuration", {

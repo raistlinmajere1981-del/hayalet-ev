@@ -23,7 +23,7 @@ import type { SyncMessagesParams, SyncMessagesResult } from "@electron/types";
 const logger = getLoggerCore();
 
 async function archiveT(key: string): Promise<string> {
-  let settings: { general?: { language?: unknown } } = {};
+  let settings: { general?: { language?: unknown } };
   try {
     settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
   } catch {
@@ -31,16 +31,12 @@ async function archiveT(key: string): Promise<string> {
   }
 
   const locale = normalizeAppLanguage(settings.general?.language);
-  const activePack =
-    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
-  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+  const activePack = (await loadAvailableLanguage(locale)) ?? fallbackPack;
+  const activeCatalog = activePack?.catalog ?? {};
+  const fallbackCatalog = fallbackPack?.catalog;
 
-  return translateCatalog(
-    activePack.catalog,
-    `electron.archive.${key}`,
-    undefined,
-    fallbackCatalog
-  );
+  return translateCatalog(activeCatalog, `electron.archive.${key}`, undefined, fallbackCatalog);
 }
 
 function getErrorMessage(error: unknown): string {
@@ -74,14 +70,17 @@ async function logDatabaseInfo(
   );
 }
 
-async function logDatabaseError(operation: string, context: Record<string, unknown>): Promise<void> {
+async function logDatabaseError(
+  operation: string,
+  context: Record<string, unknown>
+): Promise<void> {
   await logger.logInternalT(
     LogCategory.DATABASE,
     LogLevel.ERROR,
     "electron.database.logs.operationFailed",
     {
       operation,
-      message: getErrorMessage(context.error),
+      message: getErrorMessage(context["error"]),
     },
     context
   );
@@ -352,12 +351,16 @@ export class SQLiteArchiveManager {
       `);
       updateStmt.run(totalCount, now, conversationId);
 
-      await logDatabaseInfo("syncMessagesComplete", { added: addedCount, total: totalCount }, {
-        accountId: this.accountId,
-        conversationId,
-        added: addedCount,
-        total: totalCount,
-      });
+      await logDatabaseInfo(
+        "syncMessagesComplete",
+        { added: addedCount, total: totalCount },
+        {
+          accountId: this.accountId,
+          conversationId,
+          added: addedCount,
+          total: totalCount,
+        }
+      );
 
       return {
         success: true,
@@ -455,8 +458,7 @@ export class SQLiteArchiveManager {
         | undefined;
 
       if (existing === undefined) {
-        const nextTitle =
-          normalizedTitle !== "" ? normalizedTitle : await this.buildAutoTitle(db);
+        const nextTitle = normalizedTitle !== "" ? normalizedTitle : await this.buildAutoTitle(db);
         const titleSource: ConversationTitleSource = normalizedTitle !== "" ? "synced" : "system";
         const insertStmt = db.prepare(`
           INSERT INTO conversations (
@@ -685,11 +687,15 @@ export class SQLiteArchiveManager {
         new Date().toISOString()
       );
 
-      await logDatabaseInfo("attachmentSaved", { originalName }, {
-        attachmentId,
-        messageId,
-        originalName,
-      });
+      await logDatabaseInfo(
+        "attachmentSaved",
+        { originalName },
+        {
+          attachmentId,
+          messageId,
+          originalName,
+        }
+      );
 
       return { success: true, data: { attachmentId, storedPath: relativePath } };
     } catch (err) {
@@ -809,9 +815,13 @@ export class SQLiteArchiveManager {
       const stmt = db.prepare(`DELETE FROM conversations WHERE account_id = ?`);
       stmt.run(this.accountId);
 
-      await logDatabaseInfo("accountDataCleared", { accountId: this.accountId }, {
-        accountId: this.accountId,
-      });
+      await logDatabaseInfo(
+        "accountDataCleared",
+        { accountId: this.accountId },
+        {
+          accountId: this.accountId,
+        }
+      );
 
       return { success: true };
     } catch (err) {

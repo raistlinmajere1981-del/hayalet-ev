@@ -38,17 +38,11 @@ interface TypeHelperResult {
   interface_definitions?: Record<string, string>;
 }
 
-function tsTypeHelperT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function tsTypeHelperT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.typescriptTypeHelper.${key}`, params);
 }
 
-function tsTypeHelperDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function tsTypeHelperDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(
     `mcpServer.devTools.typescriptTypeHelper.definition.${key}`,
     params

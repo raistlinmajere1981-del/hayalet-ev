@@ -11,6 +11,7 @@ import type { SyncResult } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
 import { SlotController } from "../slot-controller.js";
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 import type { CoreEngine as CoreEngineType } from "../core-engine.js";
 
 interface ProtocolPayload {
@@ -30,6 +31,10 @@ interface ProtocolSessionOpts {
   providers?: string[];
   protocolPayload?: ProtocolPayload;
   attachments?: ProtocolAttachment[];
+}
+
+function relayT(key: string): string {
+  return AppI18n.t(`app.logs.aiaiRelay.${key}`);
 }
 
 export class AIAIRelay extends BaseRelay {
@@ -91,7 +96,7 @@ export class AIAIRelay extends BaseRelay {
       const provider0 = providersArray[0];
       const provider1 = providersArray[1];
       if (provider0 === undefined || provider1 === undefined) {
-        throw new Error("Invalid providers in session");
+        throw new Error(relayT("invalidProvidersInSession"));
       }
 
       this._session = {
@@ -114,7 +119,7 @@ export class AIAIRelay extends BaseRelay {
       };
 
       const first = providersArray[0];
-      if (first === undefined) throw new Error("First provider is undefined");
+      if (first === undefined) throw new Error(relayT("firstProviderUndefined"));
       const protocolPayload = this._session.protocolPayload as Record<string, unknown> | undefined;
       const protocolMessage = protocolPayload?.["message"];
       const message = typeof protocolMessage === "string" ? protocolMessage : "";
@@ -228,12 +233,17 @@ export class AIAIRelay extends BaseRelay {
       if (s.lastMessageTimes[ai1] === now) return;
       s.lastMessageTimes[ai1] = now;
 
-      this._logT("info", "app.logs.aiaiRelay.protocolReplyReceived", {
-        sessionId: s.id,
-        provider: ai1,
-      }, {
-        excerpt: text.slice(0, 200),
-      });
+      this._logT(
+        "info",
+        "app.logs.aiaiRelay.protocolReplyReceived",
+        {
+          sessionId: s.id,
+          provider: ai1,
+        },
+        {
+          excerpt: text.slice(0, 200),
+        }
+      );
 
       const protocolPayload = s.protocolPayload as Record<string, unknown> | undefined;
       const protocolMessage = protocolPayload?.["message"];

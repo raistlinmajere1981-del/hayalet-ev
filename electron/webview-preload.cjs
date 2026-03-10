@@ -3,6 +3,35 @@ const { contextBridge, ipcRenderer } = require("electron");
 let __global_hayalet_slot = null;
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const opencodeUiSessionUpdatedHandlers = new Map();
+let __hayalet_preload_locale = "tr";
+
+const WEBVIEW_PRELOAD_MESSAGES = {
+  en: {
+    settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
+    providerConfigSet: "Provider config set: {{providerId}} {{providerName}}",
+    slotSetViaIpc: "Slot set via IPC: {{slot}}",
+    providerConfigLoadFailed: "Provider config could not be loaded for {{providerId}}",
+    providerConfigSetFailed: "Provider config could not be assigned: {{message}}",
+    providerConfigSetOuterFailed:
+      "Provider config assignment failed before completion: {{message}}",
+    providerLanguageSyncFailed: "Provider language sync failed: {{message}}",
+    slotSetFailed: "Slot assignment failed: {{message}}",
+    providerUsageSendFailed: "Provider usage telemetry could not be sent: {{message}}",
+    providerHandlerFailed: "The hayalet-set-provider handler failed: {{message}}",
+  },
+  tr: {
+    settingUpProvider: "{{slot}} slotu için provider kuruluyor (kaynak: {{source}})",
+    providerConfigSet: "Provider config ayarlandı: {{providerId}} {{providerName}}",
+    slotSetViaIpc: "Slot IPC üzerinden ayarlandı: {{slot}}",
+    providerConfigLoadFailed: "{{providerId}} için provider config yüklenemedi",
+    providerConfigSetFailed: "Provider config atanamadı: {{message}}",
+    providerConfigSetOuterFailed: "Provider config ataması tamamlanmadan hata oluştu: {{message}}",
+    providerLanguageSyncFailed: "Provider dil senkronizasyonu başarısız: {{message}}",
+    slotSetFailed: "Slot atanamadı: {{message}}",
+    providerUsageSendFailed: "Provider kullanım telemetrisi gönderilemedi: {{message}}",
+    providerHandlerFailed: "hayalet-set-provider handler başarısız: {{message}}",
+  },
+};
 
 function normalizeAppLanguage(value) {
   if (typeof value !== "string") {
@@ -74,6 +103,7 @@ async function loadAppLanguageState() {
     const pack = await ipcRenderer.invoke("i18n-load-language", appLocale);
     const resolvedLocale =
       pack && typeof pack.locale === "string" ? normalizeAppLanguage(pack.locale) : appLocale;
+    __hayalet_preload_locale = resolvedLocale;
     const selectorLanguage =
       pack && typeof pack.selectorLanguage === "string"
         ? pack.selectorLanguage
@@ -85,12 +115,43 @@ async function loadAppLanguageState() {
       direction,
     };
   } catch (_) {
+    __hayalet_preload_locale = appLocale;
     return {
       appLocale,
       providerLocale: resolveSelectorLanguage(appLocale),
       direction: "ltr",
     };
   }
+}
+
+function getWebviewPreloadErrorMessage(error) {
+  if (error && typeof error.message === "string" && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch (_) {
+    return String(error);
+  }
+}
+
+function webviewPreloadT(key, params) {
+  const locale = resolveSelectorLanguage(__hayalet_preload_locale) === "en" ? "en" : "tr";
+  const template =
+    (WEBVIEW_PRELOAD_MESSAGES[locale] && WEBVIEW_PRELOAD_MESSAGES[locale][key]) ||
+    (WEBVIEW_PRELOAD_MESSAGES.en && WEBVIEW_PRELOAD_MESSAGES.en[key]) ||
+    key;
+
+  return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
+    const value =
+      params && Object.prototype.hasOwnProperty.call(params, token) ? params[token] : "";
+    return value == null ? "" : String(value);
+  });
 }
 
 async function applyProviderUiLanguageSync(cfg, providerId) {
@@ -123,7 +184,8 @@ async function applyProviderUiLanguageSync(cfg, providerId) {
   };
 
   if (strategy && strategy.syncMode === "automatic" && strategy.support !== "unsupported") {
-    const signals = strategy.signals && typeof strategy.signals === "object" ? strategy.signals : {};
+    const signals =
+      strategy.signals && typeof strategy.signals === "object" ? strategy.signals : {};
 
     if (Array.isArray(strategy.persistence) && strategy.persistence.includes("localStorage")) {
       try {
@@ -309,11 +371,10 @@ function setupProvider() {
   }
 
   console.info(
-    "[Hayalet-Preload] Setting up provider for slot:",
-    slot,
-    "(from",
-    __global_hayalet_slot ? "IPC" : "hash",
-    ")"
+    webviewPreloadT("settingUpProvider", {
+      slot,
+      source: __global_hayalet_slot ? "IPC" : "hash",
+    })
   );
 
   let readyState = "loading";
@@ -421,35 +482,56 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
 
     const cfg = await ipcRenderer.invoke("get-provider-config", providerId);
     if (!cfg) {
-      console.error("[Hayalet-Preload] Failed to get provider config for:", providerId);
+      console.error(webviewPreloadT("providerConfigLoadFailed", { providerId }));
       return;
     }
 
     try {
       try {
         window.__hayalet_provider_config = cfg;
-        console.info("[Hayalet-Preload] Provider config set:", cfg.id, cfg.name);
+        console.info(
+          webviewPreloadT("providerConfigSet", {
+            providerId: cfg.id,
+            providerName: cfg.name,
+          })
+        );
       } catch (e) {
-        console.error("[Hayalet-Preload] Failed to set provider config:", e);
+        console.error(
+          webviewPreloadT("providerConfigSetFailed", { message: getWebviewPreloadErrorMessage(e) }),
+          e
+        );
       }
     } catch (e) {
-      console.error("[Hayalet-Preload] Outer error setting provider config:", e);
+      console.error(
+        webviewPreloadT("providerConfigSetOuterFailed", {
+          message: getWebviewPreloadErrorMessage(e),
+        }),
+        e
+      );
     }
 
     try {
       await applyProviderUiLanguageSync(cfg, providerId);
     } catch (err) {
-      console.warn("[Hayalet-Preload] Provider language sync failed:", err);
+      console.warn(
+        webviewPreloadT("providerLanguageSyncFailed", {
+          message: getWebviewPreloadErrorMessage(err),
+        }),
+        err
+      );
     }
 
     if (slot) {
       try {
         __global_hayalet_slot = slot;
         window.__hayalet_slot = slot;
-        console.info("[Hayalet-Preload] Slot set via IPC:", slot);
+        console.info(webviewPreloadT("slotSetViaIpc", { slot }));
         setupProvider();
       } catch (err) {
-        console.warn("[Hayalet-Preload] Failed to set slot:", err);
+        console.warn(
+          webviewPreloadT("slotSetFailed", { message: getWebviewPreloadErrorMessage(err) }),
+          err
+        );
       }
     }
 
@@ -535,7 +617,12 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
                             tokens: toks,
                           });
                         } catch (err) {
-                          console.warn("[Hayalet-Webview] provider-usage send failed", err);
+                          console.warn(
+                            webviewPreloadT("providerUsageSendFailed", {
+                              message: getWebviewPreloadErrorMessage(err),
+                            }),
+                            err
+                          );
                         }
                       }
                     })
@@ -578,7 +665,12 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
                               tokens: toks,
                             });
                           } catch (err) {
-                            console.warn("[Hayalet-Webview] provider-usage send failed", err);
+                            console.warn(
+                              webviewPreloadT("providerUsageSendFailed", {
+                                message: getWebviewPreloadErrorMessage(err),
+                              }),
+                              err
+                            );
                           }
                         }
                       } catch (_) {}
@@ -599,7 +691,12 @@ ipcRenderer.on("hayalet-set-provider", async (event, payload) => {
     } catch (_) {}
   } catch (err) {
     if (typeof console !== "undefined" && console.warn) {
-      console.warn("hayalet-set-provider handler error", err);
+      console.warn(
+        webviewPreloadT("providerHandlerFailed", {
+          message: getWebviewPreloadErrorMessage(err),
+        }),
+        err
+      );
     }
   }
 });

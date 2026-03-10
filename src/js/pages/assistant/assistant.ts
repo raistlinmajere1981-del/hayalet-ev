@@ -13,6 +13,7 @@
 import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { getMimeTypeFromPath } from "../../constants/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { FileManager } from "../../modules/file-manager.js";
@@ -105,6 +106,10 @@ const ASSISTANT_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
 
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
+}
+
+function assistantError(key: string, detail?: unknown, params?: TranslationParams): string {
+  return formatErrorWithDetail(assistantT(`errors.${key}`, params), detail);
 }
 
 function formatAssistantScenarioStatusLabel(status: string): string {
@@ -257,7 +262,9 @@ export class AssistantController {
     this.catchCommandsCheckbox = document.getElementById(
       "assistant-catch-commands-check"
     ) as HTMLInputElement | null;
-    this.devtoolsBtn = document.getElementById("assistant-devtools-btn") as HTMLButtonElement | null;
+    this.devtoolsBtn = document.getElementById(
+      "assistant-devtools-btn"
+    ) as HTMLButtonElement | null;
     this.testBtn = document.getElementById("ai0-test-btn") as HTMLButtonElement | null;
     this.urlDisplay = document.getElementById("assistant-url-display");
     this.statusDot = document.getElementById("assistant-status-dot");
@@ -412,7 +419,9 @@ export class AssistantController {
   } {
     return {
       overlay: document.getElementById("assistant-identity-modal"),
-      input: document.getElementById("assistant-identity-nickname-input") as HTMLInputElement | null,
+      input: document.getElementById(
+        "assistant-identity-nickname-input"
+      ) as HTMLInputElement | null,
     };
   }
 
@@ -543,12 +552,12 @@ export class AssistantController {
     }
 
     try {
-        const updated = await this._saveAssistantIdentityPatch({ nickname: nextNickname });
-        if (updated) {
-          Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.nicknameUpdated"), {
-            nickname: nextNickname,
-          });
-        }
+      const updated = await this._saveAssistantIdentityPatch({ nickname: nextNickname });
+      if (updated) {
+        Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.nicknameUpdated"), {
+          nickname: nextNickname,
+        });
+      }
 
       this._closeIdentityNicknameModal();
     } catch (error) {
@@ -780,13 +789,9 @@ export class AssistantController {
     try {
       await SettingsManager.set("assistants.keepServersOnAppClose", enabled);
     } catch (error) {
-      Logger.warn(
-        LogCategory.ASSISTANT_CORE,
-        assistantT("logs.keepServersPreferenceSaveFailed"),
-        {
-          error: (error as Error).message,
-        }
-      );
+      Logger.warn(LogCategory.ASSISTANT_CORE, assistantT("logs.keepServersPreferenceSaveFailed"), {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -1156,12 +1161,12 @@ export class AssistantController {
     if (electronApi !== undefined && typeof electronApi.opencodeServeStop === "function") {
       const result = await electronApi.opencodeServeStop();
       if (result.success !== true && typeof result.error === "string" && result.error !== "") {
-        throw new Error(result.error);
+        throw new Error(assistantError("systemServerStopFailed", result.error));
       }
     } else if (adapter !== null) {
       const result = await adapter.stopServer();
       if (result.success !== true && typeof result.error === "string" && result.error !== "") {
-        throw new Error(result.error);
+        throw new Error(assistantError("systemServerStopFailed", result.error));
       }
     }
 
@@ -1174,7 +1179,9 @@ export class AssistantController {
     await toggleAssistantConnection(this, options);
   }
 
-  async _handleDeliveryRequest(request: AssistantDeliveryRequest): Promise<AssistantDeliveryResult> {
+  async _handleDeliveryRequest(
+    request: AssistantDeliveryRequest
+  ): Promise<AssistantDeliveryResult> {
     const message = request.message.trim();
     if (message === "") {
       return {
@@ -1743,9 +1750,7 @@ export class AssistantController {
     const shouldRefreshProviderSelect =
       changedPaths.includes("*") ||
       changedPaths.some(
-        (path) =>
-          isAssistantAccountsSettingsPath(path) ||
-          isAssistantSlotSettingsPath(path)
+        (path) => isAssistantAccountsSettingsPath(path) || isAssistantSlotSettingsPath(path)
       );
 
     if (shouldRefreshProviderSelect) {
@@ -1858,7 +1863,7 @@ export class AssistantController {
               if (typeof window.__setDisabledMcpServers === "function") {
                 window.__setDisabledMcpServers(${JSON.stringify(disabledList)});
               }
-            } catch(e) { console.warn("[MCP-Sync] failed:", e); }
+            } catch(e) { console.warn(${JSON.stringify(assistantT("mcpSyncFailed"))}, e); }
           })();`
         );
       } catch (_) {

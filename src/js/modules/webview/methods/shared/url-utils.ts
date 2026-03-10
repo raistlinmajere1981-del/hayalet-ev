@@ -95,11 +95,11 @@ export function isUrlExcluded(url: string, excludedUrls: string[]): boolean {
  * Use this instead of repeated isUrlExcluded wrappers across modules.
  * It resolves the provider config automatically.
  *
-  * @param {string} providerSlot - Slot ID (ai0, ai1, ai2)
+ * @param {string} providerSlot - Slot ID (ai0, ai1, ai2)
  * @param {string} url - URL to check
  * @returns {boolean} - Whether the URL is excluded
  *
-  * @example
+ * @example
  * // Old usage (repeated in each module):
  * // const providerId = AppState.getProviderIdForSlot(slot);
  * // const cfg = ProviderRegistry.get(providerId);

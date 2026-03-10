@@ -48,9 +48,9 @@ export function applyStaticTranslations(root: ParentNode = document): void {
 }
 
 export async function bootstrapOpencodeUiI18n(): Promise<void> {
-  const { SettingsManager } = await import("../../modules/settings-manager.js");
-  await SettingsManager.load();
-  await AppI18n.bootstrap(SettingsManager);
+  const { SettingsManager: settingsManager } = await import("../../modules/settings-manager.js");
+  await settingsManager.load();
+  await AppI18n.bootstrap(settingsManager);
 
   if (hasBootstrapped) {
     applyStaticTranslations();
@@ -72,6 +72,31 @@ export function disposeOpencodeUiI18n(): void {
 
 export function t(key: string, params?: TranslationParams): string {
   return AppI18n.t(resolveScopedKey(key), params);
+}
+
+function normalizeErrorDetail(detail: unknown): string {
+  if (typeof detail === "string" && detail.trim() !== "") {
+    return detail.trim();
+  }
+
+  if (detail instanceof Error && detail.message.trim() !== "") {
+    return detail.message.trim();
+  }
+
+  return "";
+}
+
+export function formatDetailedErrorMessage(
+  baseKey: string,
+  detail?: unknown,
+  params?: TranslationParams
+): string {
+  const normalizedDetail = normalizeErrorDetail(detail);
+  if (normalizedDetail !== "") {
+    return t(`${baseKey}WithDetail`, { ...(params ?? {}), message: normalizedDetail });
+  }
+
+  return t(baseKey, params);
 }
 
 export function getIntlLocale(): string {

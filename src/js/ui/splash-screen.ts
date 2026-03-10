@@ -70,8 +70,12 @@ function getElements(): SplashElements {
   return elements;
 }
 
-function splashLog(key: string, params?: Record<string, string | number>): string {
-  return AppI18n.t(`shell.logs.${key}`, params);
+function logSplashDebug(
+  key: string,
+  params?: Record<string, string | number>,
+  context?: Record<string, unknown>
+): void {
+  Logger.debugT(LogCategory.UI_SPLASH, `app.logs.${key}`, params, context);
 }
 
 function createSplashElement(): HTMLElement {
@@ -113,7 +117,7 @@ const splashScreen = {
     isVisible = true;
     currentProgress = 0;
 
-    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashShown"), { timestamp: showTime });
+    logSplashDebug("splashShown", undefined, { timestamp: showTime });
   },
 
   /**
@@ -141,7 +145,7 @@ const splashScreen = {
     isInitialized = false;
     elements = { container: null, progress: null, status: null, logo: null };
 
-    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashRemoved"), {
+    logSplashDebug("splashRemoved", undefined, {
       totalTime: Date.now() - showTime,
     });
   },
@@ -161,7 +165,7 @@ const splashScreen = {
 
     progress.style.width = `${value}%`;
 
-    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashProgressUpdated"), { percent: value });
+    logSplashDebug("splashProgressUpdated", undefined, { percent: value });
   },
 
   setIndeterminate(): void {
@@ -182,7 +186,7 @@ const splashScreen = {
 
     status.textContent = message;
 
-    Logger.debug(LogCategory.UI_SPLASH, splashLog("splashStatusUpdated"), { message });
+    logSplashDebug("splashStatusUpdated", undefined, { message });
   },
 
   update(percent: number, message: string): void {

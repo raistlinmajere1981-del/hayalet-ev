@@ -45,14 +45,15 @@ type UrlValidationResult =
 
 const webFetchDefinitionTranslator = createMcpTranslatorSync();
 
-function webFetchDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function webFetchDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return webFetchDefinitionTranslator(`mcpServer.webTools.definition.${key}`, params);
 }
 
-function webFetchT(t: WebTranslator, key: string, params?: Record<string, string | number | boolean>): string {
+function webFetchT(
+  t: WebTranslator,
+  key: string,
+  params?: Record<string, string | number | boolean>
+): string {
   return t(`mcpServer.webTools.fetch.${key}`, params);
 }
 
@@ -157,7 +158,11 @@ export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult>
 /**
  * Format scraped content for display
  */
-function formatFetchedContent(scraped: ScrapedContent, maxLength: number, t: WebTranslator): string {
+function formatFetchedContent(
+  scraped: ScrapedContent,
+  maxLength: number,
+  t: WebTranslator
+): string {
   const lines: string[] = [
     webFetchT(t, "content.title", { title: scraped.title }),
     webFetchT(t, "content.url", { url: scraped.url }),

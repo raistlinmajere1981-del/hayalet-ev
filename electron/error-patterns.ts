@@ -94,8 +94,7 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "ipcRenderer\\.invoke.*timed out",
     category: "ipc",
-    suggestion:
-      "The IPC call timed out. Check whether the main process is responding.",
+    suggestion: "The IPC call timed out. Check whether the main process is responding.",
     checkFiles: ["electron/main.js", "electron/preload.cjs"],
     relatedDocs: [],
     severity: "high",
@@ -239,7 +238,8 @@ const ERROR_PATTERNS: ErrorHint[] = [
   {
     pattern: "Google.*auth.*failed|OAuth.*error",
     category: "googledrive",
-    suggestion: "A Google Drive authentication error occurred. Refresh the credentials or reconnect the account.",
+    suggestion:
+      "A Google Drive authentication error occurred. Refresh the credentials or reconnect the account.",
     checkFiles: ["electron/googledrive-manager.js"],
     relatedDocs: [],
     severity: "high",

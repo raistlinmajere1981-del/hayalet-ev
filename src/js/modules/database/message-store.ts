@@ -1,6 +1,16 @@
 import { LogCategory } from "@shared/logging-core";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
+
+function databaseT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.database.${key}`, params);
+}
+
+function databaseStoreError(store: string, operation: string, detail?: unknown): string {
+  return formatErrorWithDetail(databaseT("operationFailed", { store, operation }), detail);
+}
 
 const messageStore = {
   /**
@@ -61,12 +71,18 @@ const messageStore = {
       const { accountId, webUrl, messages, authors: _authors } = params;
 
       if (accountId === "" || webUrl === "") {
-        return { success: false, error: "Missing required parameters" };
+        return {
+          success: false,
+          error: databaseStoreError("MessageStore", "sync", databaseT("missingParameters")),
+        };
       }
 
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
-        return { success: false, error: "API not available" };
+        return {
+          success: false,
+          error: databaseStoreError("MessageStore", "sync", databaseT("apiUnavailable")),
+        };
       }
 
       const messagesWithIndex = messages.map(
@@ -94,15 +110,30 @@ const messageStore = {
           }
         | undefined;
 
-      return result ?? { success: false, error: "API not available" };
+      if (result === undefined) {
+        return {
+          success: false,
+          error: databaseStoreError("MessageStore", "sync", databaseT("apiUnavailable")),
+        };
+      }
+
+      return {
+        ...result,
+        ...(result.success === true
+          ? {}
+          : {
+              error: databaseStoreError("MessageStore", "sync", result.error),
+            }),
+      };
     } catch (err) {
+      const errorMessage = databaseStoreError("MessageStore", "sync", err);
       Logger.errorT(
         LogCategory.DATABASE,
         "app.logs.database.storeOperationFailed",
         { store: "MessageStore", operation: "sync", message: getErrorMessage(err) },
         { context: { webUrl: params.webUrl, accountId: params.accountId } }
       );
-      return { success: false, error: getErrorMessage(err) };
+      return { success: false, error: errorMessage };
     }
   },
 

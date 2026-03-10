@@ -126,7 +126,7 @@ export function bindAssistantPrimaryWebviewEvents(
           : null;
       if (cfg !== null) {
         try {
-          if (typeof options.webviewEl.send === "function" && currentProviderId) {
+          if (typeof options.webviewEl.send === "function" && currentProviderId !== "") {
             options.webviewEl.send("hayalet-set-provider", {
               providerId: currentProviderId,
               slot: "ai0",
@@ -139,7 +139,16 @@ export function bindAssistantPrimaryWebviewEvents(
                   window.__hayalet_provider_config = ${JSON.stringify(cfg)};
                   return true;
                 } catch (e) {
-                  console.error('[Hayalet-Config-Inject] Failed:', e);
+                  console.error(
+                    ${JSON.stringify(
+                      AppI18n.t("webview.messageSender.logs.providerConfigInjectionFailed", {
+                        provider: "ai0",
+                        providerId: currentProviderId,
+                        message: "{{message}}",
+                      })
+                    )}.replace("{{message}}", e instanceof Error ? e.message : String(e)),
+                    e
+                  );
                   return false;
                 }
               })();

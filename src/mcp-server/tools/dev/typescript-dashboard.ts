@@ -56,10 +56,7 @@ function tsDashboardT(key: string, params?: Record<string, string | number | boo
   return createMcpTranslatorSync()(`mcpServer.devTools.typescriptDashboard.${key}`, params);
 }
 
-function tsDashboardDefT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function tsDashboardDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(
     `mcpServer.devTools.typescriptDashboard.definition.${key}`,
     params
@@ -286,10 +283,11 @@ function formatDashboard(data: {
   output += `${tsDashboardT("runtime.recommendedActionsTitle")}\n`;
   if (data.topErrors[0]) {
     const topError = data.topErrors[0];
-    output += tsDashboardT("runtime.focusTopError", {
-      code: topError.code,
-      description: topError.description,
-    }) + "\n";
+    output +=
+      tsDashboardT("runtime.focusTopError", {
+        code: topError.code,
+        description: topError.description,
+      }) + "\n";
     output += tsDashboardT("runtime.errorsInCategory", { count: topError.count }) + "\n";
 
     // Suggest fix strategy

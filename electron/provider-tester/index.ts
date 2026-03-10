@@ -8,6 +8,7 @@ import {
   PROVIDER_TEST_TIMEOUTS,
 } from "../../shared/timeouts.ts";
 import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
+import type { TranslationParams } from "../../src/types/i18n.ts";
 
 import type {
   ProviderConfig,
@@ -39,6 +40,7 @@ import {
   createTestSelector,
   waitForCondition,
 } from "./utils.ts";
+import { providerTesterT } from "./i18n.ts";
 import {
   runCommandScenario as runConfiguredCommandScenario,
   ScenarioCancelledError,
@@ -312,11 +314,14 @@ export class ProviderTester {
         : undefined;
 
     const executeScript = createExecuteScript(webview);
+    const appLanguage = options.appLanguage ?? DEFAULT_APP_LANGUAGE;
+    const t = async (key: string, params?: TranslationParams): Promise<string> =>
+      await providerTesterT(appLanguage, key, params);
     this.ctx = {
       slot,
       webview,
       config,
-      appLanguage: options.appLanguage ?? DEFAULT_APP_LANGUAGE,
+      appLanguage,
       ...(this.abortSignal !== undefined ? { abortSignal: this.abortSignal } : {}),
       ...(this.shell !== null ? { shell: this.shell } : {}),
       executeScript,
@@ -327,9 +332,14 @@ export class ProviderTester {
       clickElement: createClickElement(executeScript),
       isElementVisible: createIsElementVisible(executeScript),
       waitForCondition,
+      t,
       createSkipResult,
-      testSelector: createTestSelector(executeScript),
+      testSelector: createTestSelector(executeScript, t),
     };
+  }
+
+  private async runtimeT(key: string, params?: TranslationParams): Promise<string> {
+    return await providerTesterT(this.ctx.appLanguage, key, params);
   }
 
   async runTestSuite(): Promise<ProviderTestSuite> {
@@ -342,8 +352,8 @@ export class ProviderTester {
     this.syncSessions = [];
     this.runId =
       this.runId !== "" ? this.runId : generateRunId(this.slot, this.config.id, scenarioId);
-    this.assertScenarioReadiness(scenarioId);
-    const scenarioDefinition = this.resolveScenarioDefinition(scenarioId);
+    await this.assertScenarioReadiness(scenarioId);
+    const scenarioDefinition = await this.resolveScenarioDefinition(scenarioId);
 
     const scenario = await runConfiguredCommandScenario({
       runId: this.runId,
@@ -417,13 +427,15 @@ export class ProviderTester {
     });
   }
 
-  private resolveScenarioDefinition(scenarioId: ProviderScenarioId): ProviderScenarioDefinition {
+  private async resolveScenarioDefinition(
+    scenarioId: ProviderScenarioId
+  ): Promise<ProviderScenarioDefinition> {
     const scenario = Object.values(this.config.scenarios ?? {}).find(
       (candidate) => candidate.id === scenarioId
     );
 
     if (scenario === undefined) {
-      throw new Error(`Unsupported provider scenario: ${scenarioId}`);
+      throw new Error(await this.runtimeT("scenario.unsupportedProviderScenario", { scenarioId }));
     }
 
     return scenario;
@@ -565,14 +577,14 @@ export class ProviderTester {
       input: {
         source: sourceKey,
       },
-      run: (): ScenarioCommandResult => {
+      run: async (): Promise<ScenarioCommandResult> => {
         const start = Date.now();
         const result = createShellResult(
           command.id,
           command.label,
           "advanced",
           "fail",
-          `Scenario command source is empty: ${sourceKey}`,
+          await this.runtimeT("scenario.sourceEmpty", { source: sourceKey }),
           undefined,
           Date.now() - start
         );
@@ -758,7 +770,11 @@ export class ProviderTester {
       case "refresh-conversation-list":
         return await this.executeRefreshConversationListScenarioCommand(stepId, stepName);
       default:
-        return this.createUnsupportedScenarioCommandResult(input.command.action, stepId, stepName);
+        return await this.createUnsupportedScenarioCommandResult(
+          input.command.action,
+          stepId,
+          stepName
+        );
     }
   }
 
@@ -824,17 +840,17 @@ export class ProviderTester {
     }
   }
 
-  private createUnsupportedScenarioCommandResult(
+  private async createUnsupportedScenarioCommandResult(
     action: string,
     stepId: string,
     stepName: string
-  ): ScenarioCommandResult {
+  ): Promise<ScenarioCommandResult> {
     const result = createShellResult(
       stepId,
       stepName,
       "advanced",
       "fail",
-      `Unsupported scenario command action: ${action}`
+      await this.runtimeT("scenario.unsupportedScenarioCommandAction", { action })
     );
 
     return {
@@ -879,7 +895,7 @@ export class ProviderTester {
   ): Promise<ScenarioCommandResult> {
     const start = Date.now();
     if (command.target !== "sync-sidebar-open-button") {
-      return this.createUnsupportedScenarioCommandResult(
+      return await this.createUnsupportedScenarioCommandResult(
         `click:${command.target ?? "unknown"}`,
         stepId,
         stepName
@@ -894,7 +910,7 @@ export class ProviderTester {
         stepName,
         "preflight",
         "pass",
-        "Sidebar already open",
+        await this.runtimeT("scenario.sidebarAlreadyOpen"),
         undefined,
         Date.now() - start
       );
@@ -916,7 +932,7 @@ export class ProviderTester {
         stepName,
         "preflight",
         "fail",
-        "Sidebar open button not found",
+        await this.runtimeT("scenario.sidebarOpenButtonNotFound"),
         undefined,
         Date.now() - start
       );
@@ -937,10 +953,10 @@ export class ProviderTester {
     const becameVisible = afterClickState.historyVisible || afterClickState.closeVisible;
     const status: TestStatus = clicked || becameVisible ? "pass" : "fail";
     const message = clicked
-      ? "Sidebar open button clicked"
+      ? await this.runtimeT("scenario.sidebarOpenButtonClicked")
       : becameVisible
-        ? "Sidebar became visible"
-        : "Sidebar open button click failed";
+        ? await this.runtimeT("scenario.sidebarBecameVisible")
+        : await this.runtimeT("scenario.sidebarOpenButtonClickFailed");
     const result = createShellResult(
       stepId,
       stepName,
@@ -972,7 +988,7 @@ export class ProviderTester {
   ): Promise<ScenarioCommandResult> {
     const start = Date.now();
     if (command.target !== "sync-sidebar-ready") {
-      return this.createUnsupportedScenarioCommandResult(
+      return await this.createUnsupportedScenarioCommandResult(
         `wait:${command.target ?? "unknown"}`,
         stepId,
         stepName
@@ -997,7 +1013,9 @@ export class ProviderTester {
       stepName,
       "preflight",
       ready ? "pass" : "fail",
-      ready ? "Sidebar ready" : "Sidebar did not become ready",
+      ready
+        ? await this.runtimeT("scenario.sidebarReady")
+        : await this.runtimeT("scenario.sidebarNotReady"),
       undefined,
       Date.now() - start
     );
@@ -1023,7 +1041,7 @@ export class ProviderTester {
   ): Promise<ScenarioCommandResult> {
     const start = Date.now();
     if (command.target !== "sync-sidebar-ready") {
-      return this.createUnsupportedScenarioCommandResult(
+      return await this.createUnsupportedScenarioCommandResult(
         `check:${command.target ?? "unknown"}`,
         stepId,
         stepName
@@ -1037,7 +1055,9 @@ export class ProviderTester {
       stepName,
       "preflight",
       ready ? "pass" : "fail",
-      ready ? "Sidebar is visible" : "Sidebar is not visible",
+      ready
+        ? await this.runtimeT("scenario.sidebarVisible")
+        : await this.runtimeT("scenario.sidebarNotVisible"),
       undefined,
       Date.now() - start
     );
@@ -1067,8 +1087,8 @@ export class ProviderTester {
     const status: TestStatus = sessions.length > 0 ? "pass" : "fail";
     const message =
       sessions.length > 0
-        ? `Collected ${sessions.length} visible sessions`
-        : "No visible sessions found in sidebar";
+        ? await this.runtimeT("scenario.collectedVisibleSessions", { count: sessions.length })
+        : await this.runtimeT("scenario.noVisibleSessions");
     const result = createShellResult(
       stepId,
       stepName,
@@ -1105,7 +1125,7 @@ export class ProviderTester {
         stepName,
         "interactive",
         "fail",
-        "Navigate command is missing a session"
+        await this.runtimeT("scenario.navigateMissingSession")
       );
       return {
         status: "fail",
@@ -1123,7 +1143,10 @@ export class ProviderTester {
         stepName,
         "interactive",
         "pass",
-        `Opened ${session.title}; loading indicator settled as ${loadingState}`,
+        await this.runtimeT("scenario.openedSession", {
+          title: session.title,
+          state: loadingState,
+        }),
         {
           selector: session.url,
         },
@@ -1180,7 +1203,7 @@ export class ProviderTester {
         stepName,
         "interactive",
         "fail",
-        "Sync command is missing a session"
+        await this.runtimeT("scenario.syncMissingSession")
       );
       return {
         status: "fail",
@@ -1228,7 +1251,7 @@ export class ProviderTester {
       stepName,
       "advanced",
       "pass",
-      "Conversation list refreshed",
+      await this.runtimeT("scenario.conversationListRefreshed"),
       undefined,
       Date.now() - start
     );
@@ -1243,20 +1266,24 @@ export class ProviderTester {
     };
   }
 
-  private assertScenarioReadiness(scenarioId: ProviderScenarioId): void {
+  private async assertScenarioReadiness(scenarioId: ProviderScenarioId): Promise<void> {
     if (scenarioId !== "webview-sync") {
       return;
     }
 
-    const syncConfig = this.getWebviewSyncConfig();
+    const syncConfig = await this.getWebviewSyncConfig();
     if (syncConfig.readiness !== "verified") {
-      throw new Error(`Provider ${this.config.id} webview-sync is not verified`);
+      throw new Error(
+        await this.runtimeT("scenario.webviewSyncNotVerified", { providerId: this.config.id })
+      );
     }
   }
 
-  private getWebviewSyncConfig(): ProviderWebviewSyncConfig {
+  private async getWebviewSyncConfig(): Promise<ProviderWebviewSyncConfig> {
     if (this.config.webviewSync === undefined) {
-      throw new Error(`Provider ${this.config.id} is missing webviewSync config`);
+      throw new Error(
+        await this.runtimeT("scenario.webviewSyncConfigMissing", { providerId: this.config.id })
+      );
     }
 
     return this.config.webviewSync;
@@ -1308,7 +1335,9 @@ export class ProviderTester {
     const providerModule = await loadProviderModule(this.config.id);
     const scrapeMessages = providerModule?.["scrapeMessages"];
     if (typeof scrapeMessages !== "function") {
-      throw new Error(`Provider scraper not found for ${this.config.id}`);
+      throw new Error(
+        await this.runtimeT("scenario.providerScraperMissing", { providerId: this.config.id })
+      );
     }
 
     const rawMessages = (await this.webview.executeJavaScript(`
@@ -1334,7 +1363,10 @@ export class ProviderTester {
     });
 
     if (syncResult.success !== true) {
-      throw new Error(syncResult.error ?? `Message sync failed for ${session.url}`);
+      throw new Error(
+        syncResult.error ??
+          (await this.runtimeT("scenario.messageSyncFailed", { url: session.url }))
+      );
     }
 
     const metadataResult = await databaseManager.upsertConversationMetadata(null, {
@@ -1345,7 +1377,8 @@ export class ProviderTester {
     });
     if (metadataResult.success !== true) {
       throw new Error(
-        metadataResult.error ?? `Conversation metadata sync failed for ${session.url}`
+        metadataResult.error ??
+          (await this.runtimeT("scenario.metadataSyncFailed", { url: session.url }))
       );
     }
 
@@ -1361,7 +1394,10 @@ export class ProviderTester {
   ): Promise<SyncSessionOutcome> {
     const accountId = await this.resolveSlotAccountId();
     if (accountId === "") {
-      return { status: "fail", message: `No account assigned for ${this.slot}` };
+      return {
+        status: "fail",
+        message: await this.runtimeT("scenario.noAccountAssigned", { slot: this.slot }),
+      };
     }
 
     const databaseManager = await this.resolveDatabaseManager();
@@ -1372,12 +1408,16 @@ export class ProviderTester {
       title: session.title,
     });
     if (result.success !== true) {
-      return { status: "fail", message: result.error ?? `Soft sync failed for ${session.url}` };
+      return {
+        status: "fail",
+        message:
+          result.error ?? (await this.runtimeT("scenario.softSyncFailed", { url: session.url })),
+      };
     }
 
     return {
       status: "pass",
-      message: `Soft sync saved ${session.title}`,
+      message: await this.runtimeT("scenario.softSyncSaved", { title: session.title }),
       details: {
         selector: session.url,
       },
@@ -1396,14 +1436,20 @@ export class ProviderTester {
   ): Promise<SyncSessionOutcome> {
     const accountId = await this.resolveSlotAccountId();
     if (accountId === "") {
-      return { status: "fail", message: `No account assigned for ${this.slot}` };
+      return {
+        status: "fail",
+        message: await this.runtimeT("scenario.noAccountAssigned", { slot: this.slot }),
+      };
     }
 
     try {
       const syncResult = await this.performFullSyncForSession(session, accountId);
       return {
         status: "pass",
-        message: `Full sync added ${syncResult.added} messages for ${session.title}`,
+        message: await this.runtimeT("scenario.fullSyncAdded", {
+          added: syncResult.added,
+          title: session.title,
+        }),
         details: {
           selector: session.url,
         },
@@ -1427,7 +1473,10 @@ export class ProviderTester {
   ): Promise<SyncSessionOutcome> {
     const accountId = await this.resolveSlotAccountId();
     if (accountId === "") {
-      return { status: "fail", message: `No account assigned for ${this.slot}` };
+      return {
+        status: "fail",
+        message: await this.runtimeT("scenario.noAccountAssigned", { slot: this.slot }),
+      };
     }
 
     const databaseManager = await this.resolveDatabaseManager();
@@ -1438,7 +1487,9 @@ export class ProviderTester {
     if (resetResult.success !== true) {
       return {
         status: "fail",
-        message: resetResult.error ?? `Clean reset failed for ${session.url}`,
+        message:
+          resetResult.error ??
+          (await this.runtimeT("scenario.cleanResetFailed", { url: session.url })),
       };
     }
 
@@ -1446,7 +1497,11 @@ export class ProviderTester {
       const syncResult = await this.performFullSyncForSession(session, accountId);
       return {
         status: "pass",
-        message: `Clean sync reset ${resetResult.data?.deletedCount ?? 0} messages and imported ${syncResult.added} for ${session.title}`,
+        message: await this.runtimeT("scenario.cleanSyncCompleted", {
+          deletedCount: resetResult.data?.deletedCount ?? 0,
+          added: syncResult.added,
+          title: session.title,
+        }),
         details: {
           selector: session.url,
         },
@@ -1473,7 +1528,7 @@ export class ProviderTester {
     historyVisible: boolean;
     clickedOpen: boolean;
   }> {
-    const syncConfig = this.getWebviewSyncConfig();
+    const syncConfig = await this.getWebviewSyncConfig();
 
     return (await this.ctx.executeScript(`
       (() => {
@@ -1554,7 +1609,7 @@ export class ProviderTester {
   }
 
   private async collectVisibleSyncSessions(): Promise<SyncSessionPreviewItem[]> {
-    const syncConfig = this.getWebviewSyncConfig();
+    const syncConfig = await this.getWebviewSyncConfig();
     const result = (await this.ctx.executeScript(`
       (() => {
         const itemSelectors = ${JSON.stringify(syncConfig.history.itemSelectors)};
@@ -1600,15 +1655,15 @@ export class ProviderTester {
     const loadPromise = this.webview.loadURL(defaultUrl);
     await loadPromise;
     const loadingState = await this.observeLoadingIndicatorAfterNavigation();
-    const urlCheck = testExcludedUrl(this.ctx);
+    const urlCheck = await testExcludedUrl(this.ctx);
 
     results.push(
       createShellResult(
         "default-page-navigation",
-        "Default Page Navigation",
+        await this.runtimeT("scenario.defaultPageNavigationName"),
         "preflight",
         "pass",
-        `Navigated to ${defaultUrl}`,
+        await this.runtimeT("scenario.navigatedTo", { url: defaultUrl }),
         { selector: defaultUrl },
         Date.now() - start
       )
@@ -1616,16 +1671,16 @@ export class ProviderTester {
     results.push(
       createShellResult(
         "loading-indicator-observation",
-        "Loading Indicator Observation",
+        await this.runtimeT("scenario.loadingIndicatorObservationName"),
         "preflight",
         "pass",
-        `Loading indicator settled as ${loadingState}`
+        await this.runtimeT("scenario.loadingIndicatorSettled", { state: loadingState })
       )
     );
     results.push(urlCheck);
 
     this.pushResults(results);
-    return this.summarizeStep(results, "Default page reset failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.defaultPageResetFailed"));
   }
 
   private async runDisabledSendStep(): Promise<AggregatedCommandStepResult> {
@@ -1635,18 +1690,18 @@ export class ProviderTester {
       await testSendButtonDisabled(this.ctx),
       createShellResult(
         "send-indicator-disabled",
-        "Send Indicator Disabled",
+        await this.runtimeT("scenario.sendIndicatorDisabledName"),
         "interactive",
         (await this.waitForShellIndicator("send", "busy", PROVIDER_TEST_TIMEOUTS.SEND_INDICATOR))
           ? "pass"
           : "fail",
         (await this.readShellIndicator("send")) === "busy"
-          ? "Topbar send indicator is busy/disabled"
-          : "Topbar send indicator did not show disabled state"
+          ? await this.runtimeT("scenario.sendIndicatorBusy")
+          : await this.runtimeT("scenario.sendIndicatorDisabledMissing")
       ),
     ]);
 
-    return this.summarizeStep(results, "Disabled send state failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.disabledSendStateFailed"));
   }
 
   private async runDragDropStep(): Promise<AggregatedCommandStepResult> {
@@ -1655,12 +1710,12 @@ export class ProviderTester {
       await testCriticalSelectors(this.ctx),
     ]);
 
-    return this.summarizeStep(results, "Drag and drop surface failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.dragDropSurfaceFailed"));
   }
 
   private async runInjectMessageStep(): Promise<AggregatedCommandStepResult> {
     const results = this.pushResults([await testTextInjection(this.ctx)]);
-    return this.summarizeStep(results, "Message injection failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.messageInjectionFailed"));
   }
 
   private async runEnabledSendStep(): Promise<AggregatedCommandStepResult> {
@@ -1673,15 +1728,15 @@ export class ProviderTester {
     const indicatorNow = await this.readShellIndicator("send");
     const indicatorResult = createShellResult(
       "send-indicator-enabled",
-      "Send Indicator Enabled",
+      await this.runtimeT("scenario.sendIndicatorEnabledName"),
       "interactive",
       indicatorStatus ? "pass" : "fail",
       indicatorNow === "idle"
-        ? "Topbar send indicator is idle/enabled"
-        : "Topbar send indicator did not return to enabled state"
+        ? await this.runtimeT("scenario.sendIndicatorIdle")
+        : await this.runtimeT("scenario.sendIndicatorEnabledMissing")
     );
     const results = this.pushResults([enabledResult, indicatorResult]);
-    return this.summarizeStep(results, "Enabled send state failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.enabledSendStateFailed"));
   }
 
   private async runAttachFileStep(): Promise<AggregatedCommandStepResult> {
@@ -1690,7 +1745,10 @@ export class ProviderTester {
       await testFileInput(this.ctx),
       await testFileUpload(this.ctx),
     ]);
-    return this.summarizeStep(results, "Attach step completed with warnings");
+    return this.summarizeStep(
+      results,
+      await this.runtimeT("scenario.attachStepCompletedWithWarnings")
+    );
   }
 
   private async runSendThinkingStep(): Promise<AggregatedCommandStepResult> {
@@ -1698,17 +1756,17 @@ export class ProviderTester {
     const thinkingBusy = await this.waitForShellIndicator("thinking", "busy", 8000);
     const thinkingResult = createShellResult(
       "thinking-indicator",
-      "Thinking Indicator",
+      await this.runtimeT("scenario.thinkingIndicatorName"),
       "interactive",
       thinkingBusy ? "pass" : "fail",
       thinkingBusy
-        ? "Topbar thinking indicator became busy"
-        : "Thinking indicator did not become busy"
+        ? await this.runtimeT("scenario.thinkingIndicatorBusy")
+        : await this.runtimeT("scenario.thinkingIndicatorMissing")
     );
     const stopResult = await testStopButtonWhileThinking(this.ctx);
     const stopScrapeResult = await testStopButton(this.ctx);
     const results = this.pushResults([sendResult, thinkingResult, stopResult, stopScrapeResult]);
-    return this.summarizeStep(results, "Send/thinking step failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.sendThinkingFailed"));
   }
 
   private async runFinalBubblesStep(): Promise<AggregatedCommandStepResult> {
@@ -1718,7 +1776,7 @@ export class ProviderTester {
       await testAssistantMessageScraping(this.ctx),
       await testMessageContainer(this.ctx),
     ]);
-    return this.summarizeStep(results, "Final message bubble checks failed");
+    return this.summarizeStep(results, await this.runtimeT("scenario.finalBubbleChecksFailed"));
   }
 
   private async runScrollStep(): Promise<AggregatedCommandStepResult> {
@@ -1763,12 +1821,12 @@ export class ProviderTester {
       );
       const result = createShellResult(
         "scroll-behavior",
-        "Scroll Behavior",
+        await this.runtimeT("scenario.scrollBehaviorName"),
         "scraping",
         found !== undefined ? "pass" : "fail",
         found !== undefined
-          ? "Scroll container reached the final response"
-          : "No scroll container could reach the final response",
+          ? await this.runtimeT("scenario.scrollReachedFinalResponse")
+          : await this.runtimeT("scenario.scrollDidNotReachFinalResponse"),
         {
           selector:
             found?.selector ??
@@ -1780,19 +1838,19 @@ export class ProviderTester {
         Date.now() - start
       );
       this.pushResult(result);
-      return this.summarizeStep([result], "Scroll behavior failed");
+      return this.summarizeStep([result], await this.runtimeT("scenario.scrollBehaviorFailed"));
     } catch (error) {
       const result = createShellResult(
         "scroll-behavior",
-        "Scroll Behavior",
+        await this.runtimeT("scenario.scrollBehaviorName"),
         "scraping",
         "fail",
-        "Scroll behavior test failed",
+        await this.runtimeT("scenario.scrollBehaviorTestFailed"),
         { error: (error as Error).message },
         Date.now() - start
       );
       this.pushResult(result);
-      return this.summarizeStep([result], "Scroll behavior failed");
+      return this.summarizeStep([result], await this.runtimeT("scenario.scrollBehaviorFailed"));
     }
   }
 
@@ -1801,7 +1859,10 @@ export class ProviderTester {
       await testMicrophoneButton(this.ctx),
       await testVoiceButton(this.ctx),
     ]);
-    return this.summarizeStep(results, "Provider capability checks completed");
+    return this.summarizeStep(
+      results,
+      await this.runtimeT("scenario.providerCapabilityChecksCompleted")
+    );
   }
 
   private async readShellIndicator(

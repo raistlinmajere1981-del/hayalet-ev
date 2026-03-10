@@ -60,14 +60,17 @@ async function logDatabaseInfo(
   );
 }
 
-async function logDatabaseError(operation: string, context: Record<string, unknown>): Promise<void> {
+async function logDatabaseError(
+  operation: string,
+  context: Record<string, unknown>
+): Promise<void> {
   await logger.logInternalT(
     LogCategory.DATABASE,
     LogLevel.ERROR,
     "electron.database.logs.operationFailed",
     {
       operation,
-      message: getErrorMessage(context.error),
+      message: getErrorMessage(context["error"]),
     },
     context
   );
@@ -464,10 +467,14 @@ export const databaseManager = {
       const accountFolder = getAccountFolder(accountId);
       if (existsSync(accountFolder)) {
         rmSync(accountFolder, { recursive: true, force: true });
-        await logDatabaseInfo("accountFolderDeleted", { accountId }, {
-          accountId,
-          folder: accountFolder,
-        });
+        await logDatabaseInfo(
+          "accountFolderDeleted",
+          { accountId },
+          {
+            accountId,
+            folder: accountFolder,
+          }
+        );
       }
 
       return { success: true };

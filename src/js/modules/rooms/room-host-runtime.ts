@@ -1,6 +1,7 @@
 import type { InstalledRoomRecord, RoomCommandScope } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { CoreEngine } from "../core-engine.js";
+import { AppI18n } from "../i18n/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 import { ServerCommands } from "../server-commands.js";
 import { RoomCommandRegistry, type RoomCommandHandler } from "./room-command-registry.js";
@@ -79,6 +80,10 @@ function isRoomCommandPayload(
   payload: unknown
 ): payload is { command?: string; payload?: Record<string, unknown> } {
   return payload !== null && typeof payload === "object" && Array.isArray(payload) === false;
+}
+
+function roomHostT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.logs.roomHost.${key}`, params);
 }
 
 function toHostExports(result: unknown): RoomHostExports {
@@ -289,9 +294,15 @@ class RoomHostRuntimeClass {
       evaluator(module, exports);
       return module.exports;
     } catch (error) {
-      throw new Error(`Room host evaluation failed (${roomId}): ${getErrorMessage(error)}`, {
-        cause: error,
-      });
+      throw new Error(
+        roomHostT("evaluationFailed", {
+          roomId,
+          message: getErrorMessage(error),
+        }),
+        {
+          cause: error,
+        }
+      );
     }
   }
 

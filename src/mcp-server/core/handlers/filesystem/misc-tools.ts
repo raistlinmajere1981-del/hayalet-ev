@@ -263,7 +263,8 @@ export function createFilesystemMiscTools(projectRoot: string): ToolEntry[] {
           output = fsT(t, "misc.commandCompleted", { exitCode: result.exitCode });
         }
         if (result.timedOut === true) output = `${fsT(t, "misc.commandTimedOut")}\n${output}`;
-        if (typeof result.pid === "number") output += `\n${fsT(t, "misc.pidLine", { pid: result.pid })}`;
+        if (typeof result.pid === "number")
+          output += `\n${fsT(t, "misc.pidLine", { pid: result.pid })}`;
         return {
           content: [{ type: "text", text: output }],
           isError: result.exitCode !== 0,

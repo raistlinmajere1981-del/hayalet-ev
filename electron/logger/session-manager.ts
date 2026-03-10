@@ -13,12 +13,17 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { Paths } from "../paths.ts";
 import type { AppState, SessionMeta, SessionSummary, SessionListItem } from "@electron/types";
+import { translateElectronMessage } from "../i18n/language-service.ts";
 
 let LOG_DIR: string | null = null;
 let SESSION_ID: string | null = null;
 let SESSION_DIR: string | null = null;
 
 let appStateSnapshot: AppState = {};
+
+async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
+  return await translateElectronMessage(`electron.logger.${key}`, params);
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -61,14 +66,14 @@ export async function ensureSessionDir(): Promise<void> {
   if (SESSION_DIR === null || SESSION_DIR.length === 0) initLogSystem();
 
   if (SESSION_DIR === null || SESSION_DIR.length === 0) {
-    throw new Error("SESSION_DIR not initialized");
+    throw new Error(await loggerT("sessionDirNotInitialized"));
   }
 
   if (!existsSync(SESSION_DIR)) {
     await mkdir(SESSION_DIR, { recursive: true });
 
     if (SESSION_ID === null || SESSION_ID.length === 0) {
-      throw new Error("SESSION_ID not initialized");
+      throw new Error(await loggerT("sessionIdNotInitialized"));
     }
 
     const meta: SessionMeta = {
@@ -95,7 +100,7 @@ export async function writeSessionSummary(
     await ensureSessionDir();
 
     if (SESSION_ID === null || SESSION_ID.length === 0) {
-      throw new Error("SESSION_ID not initialized");
+      throw new Error(await loggerT("sessionIdNotInitialized"));
     }
 
     const snapshotStartTime =
@@ -118,7 +123,7 @@ export async function writeSessionSummary(
     };
 
     if (SESSION_DIR === null || SESSION_DIR.length === 0) {
-      throw new Error("SESSION_DIR not initialized");
+      throw new Error(await loggerT("sessionDirNotInitialized"));
     }
 
     await writeFile(join(SESSION_DIR, "summary.json"), JSON.stringify(summary, null, 2));
@@ -192,7 +197,11 @@ export async function clearLogs(targetSessionId: string | null = null): Promise<
       await rm(sessionDir, { recursive: true, force: true });
     }
   } catch (err) {
-    console.error("Failed to clear logs:", err);
+    console.error(
+      await loggerT("clearLogsFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      })
+    );
   }
 }
 

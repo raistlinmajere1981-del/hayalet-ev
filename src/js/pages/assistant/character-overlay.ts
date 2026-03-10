@@ -47,7 +47,14 @@ function translateCharacterCatalogKey(
 
   const pack = getBuiltInLanguagePack(locale);
   const fallbackCatalog = getBuiltInLanguagePack("en")?.catalog;
-  return pack ? translateCatalog(pack.catalog, `shell.assistant.characterOverlay.${key}`, undefined, fallbackCatalog) : characterT(key);
+  return pack
+    ? translateCatalog(
+        pack.catalog,
+        `shell.assistant.characterOverlay.${key}`,
+        undefined,
+        fallbackCatalog
+      )
+    : characterT(key);
 }
 
 function getCategoryLabel(category: CharacterCategory, locale?: AppLanguage): string {
@@ -336,7 +343,7 @@ export class CharacterOverlay {
   private async _loadFromDisk(): Promise<void> {
     try {
       const api = window.electronAPI;
-      if (!api) throw new Error("electronAPI is unavailable");
+      if (!api) throw new Error(characterT("errors.electronApiUnavailable"));
       const b64 = await api.readFile(CHARACTER_MD_PATH);
       if (b64 == null || b64 === "") {
         this.selected = new Set();
@@ -381,9 +388,9 @@ export class CharacterOverlay {
 
     try {
       const api = window.electronAPI;
-      if (!api) throw new Error("electronAPI is unavailable");
+      if (!api) throw new Error(characterT("errors.electronApiUnavailable"));
       const b64 = await api.readFile(CHARACTER_MD_PATH);
-      if (b64 == null || b64 === "") throw new Error("Could not read the character profile file");
+      if (b64 == null || b64 === "") throw new Error(characterT("errors.profileReadFailed"));
       const current = atob(b64);
       const updated = current
         .replace(
@@ -419,7 +426,12 @@ export class CharacterOverlay {
           }
         }, 2000);
       }
-      console.error("[CharacterOverlay] Save failed:", err);
+      console.error(
+        characterT("errors.saveFailed", {
+          message: err instanceof Error ? err.message : String(err),
+        }),
+        err
+      );
     }
   }
 

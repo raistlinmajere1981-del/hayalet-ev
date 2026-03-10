@@ -37,7 +37,7 @@ export async function loadSettings(): Promise<AppSettings | null> {
       "electron.settings.createdDefaultFile",
       undefined,
       {
-      settingsPath: getSettingsPath(),
+        settingsPath: getSettingsPath(),
       }
     );
 

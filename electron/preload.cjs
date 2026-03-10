@@ -5,6 +5,76 @@ const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
+let __hayalet_preload_locale = "tr";
+
+const PRELOAD_MESSAGES = {
+  en: {
+    appScriptLoaded: "/js/app.js loaded via src.",
+    disableSpellcheckFailed: "Failed to disable spellcheck: {{message}}",
+    appScriptLoadFailed: "Failed to load /js/app.js via src: {{message}}",
+    injectInitAppFailed: "injectInitApp failed: {{message}}",
+    initFailed: "Preload initialization failed: {{message}}",
+  },
+  tr: {
+    appScriptLoaded: "/js/app.js kaynak üzerinden yüklendi.",
+    disableSpellcheckFailed: "Spellcheck devre dışı bırakılamadı: {{message}}",
+    appScriptLoadFailed: "/js/app.js kaynak üzerinden yüklenemedi: {{message}}",
+    injectInitAppFailed: "injectInitApp başarısız: {{message}}",
+    initFailed: "Preload başlatılamadı: {{message}}",
+  },
+};
+
+function normalizePreloadLocale(value) {
+  if (typeof value !== "string") {
+    return "tr";
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/_/g, "-");
+  return normalized === "en" || normalized.startsWith("en-") ? "en" : "tr";
+}
+
+async function syncPreloadLocale() {
+  try {
+    const settings = await ipcRenderer.invoke("load-settings");
+    __hayalet_preload_locale = normalizePreloadLocale(
+      settings && settings.general && settings.general.language
+    );
+  } catch (_) {}
+
+  return __hayalet_preload_locale;
+}
+
+function getPreloadErrorMessage(error) {
+  if (error && typeof error.message === "string" && error.message.trim() !== "") {
+    return error.message.trim();
+  }
+
+  if (typeof error === "string" && error.trim() !== "") {
+    return error.trim();
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch (_) {
+    return String(error);
+  }
+}
+
+function preloadT(key, params) {
+  const locale = __hayalet_preload_locale === "en" ? "en" : "tr";
+  const template =
+    (PRELOAD_MESSAGES[locale] && PRELOAD_MESSAGES[locale][key]) ||
+    (PRELOAD_MESSAGES.en && PRELOAD_MESSAGES.en[key]) ||
+    key;
+
+  return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
+    const value =
+      params && Object.prototype.hasOwnProperty.call(params, token) ? params[token] : "";
+    return value == null ? "" : String(value);
+  });
+}
+
+void syncPreloadLocale();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
@@ -244,7 +314,10 @@ try {
           el.autocomplete = "off";
         });
       } catch (err) {
-        console.warn("[Hayalet-Preload] disableSpellcheck failed", err);
+        console.warn(
+          preloadT("disableSpellcheckFailed", { message: getPreloadErrorMessage(err) }),
+          err
+        );
       }
     }
 
@@ -258,15 +331,18 @@ try {
         s.type = "module";
         s.src = "/js/app.js"; // Set the src directly
         s.onload = () => {
-          console.info("[Hayalet-Preload] /js/app.js loaded via src.");
+          console.info(preloadT("appScriptLoaded"));
         };
         s.onerror = (err) => {
-          console.error("[Hayalet-Preload] Error loading /js/app.js via src:", JSON.stringify(err));
+          console.error(preloadT("appScriptLoadFailed", { message: getPreloadErrorMessage(err) }));
         };
 
         (document.head || document.documentElement).appendChild(s);
       } catch (err) {
-        console.warn("injectInitApp failed", err);
+        console.warn(
+          preloadT("injectInitAppFailed", { message: getPreloadErrorMessage(err) }),
+          err
+        );
       }
     }
 
@@ -277,5 +353,5 @@ try {
     }
   }
 } catch (e) {
-  console.warn("[Hayalet-Preload] init failed", e);
+  console.warn(preloadT("initFailed", { message: getPreloadErrorMessage(e) }), e);
 }

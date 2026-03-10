@@ -143,10 +143,14 @@ export async function editFileContent(options: EditFileOptions): Promise<ToolRes
         content: [
           {
             type: "text",
-            text: `${editT(t, "errors.atomicRollbackTitle", { filePath })}\n⏱️ ${elapsed}ms\n\n${editT(t, "errors.atomicRollbackSummary", {
-              failCount,
-              totalEdits: edits.length,
-            })}\n\n${failDetails}`,
+            text: `${editT(t, "errors.atomicRollbackTitle", { filePath })}\n⏱️ ${elapsed}ms\n\n${editT(
+              t,
+              "errors.atomicRollbackSummary",
+              {
+                failCount,
+                totalEdits: edits.length,
+              }
+            )}\n\n${failDetails}`,
           },
         ],
         isError: true,

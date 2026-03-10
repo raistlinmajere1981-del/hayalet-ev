@@ -47,10 +47,10 @@ export async function testStopButton(ctx: TestContext): Promise<ProviderTestResu
     if (visible) {
       return {
         id: "stop-button",
-        name: "Stop Button (AI Thinking)",
+        name: await ctx.t("scraping.stopButton.name"),
         category: "scraping",
         status: "pass",
-        message: "Stop button visible during AI response",
+        message: await ctx.t("scraping.stopButton.visible"),
         details: { selector: ctx.config.selectors.stopButton },
         duration: Date.now() - start,
         timestamp: Date.now(),
@@ -59,20 +59,20 @@ export async function testStopButton(ctx: TestContext): Promise<ProviderTestResu
 
     return {
       id: "stop-button",
-      name: "Stop Button (AI Thinking)",
+      name: await ctx.t("scraping.stopButton.name"),
       category: "scraping",
       status: "skip",
-      message: "AI response too fast, stop button not shown",
+      message: await ctx.t("scraping.stopButton.skippedFastResponse"),
       duration: Date.now() - start,
       timestamp: Date.now(),
     };
   } catch (error) {
     return {
       id: "stop-button",
-      name: "Stop Button (AI Thinking)",
+      name: await ctx.t("scraping.stopButton.name"),
       category: "scraping",
       status: "warning",
-      message: "Stop button not detected",
+      message: await ctx.t("scraping.stopButton.notDetected"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -97,7 +97,7 @@ export async function testAssistantMessageScraping(ctx: TestContext): Promise<Pr
       return count > 0;
     }, PROVIDER_TEST.TIMEOUT_RESPONSE_WAIT);
 
-    if (!hasResponse) throw new Error("No AI response after 15s");
+    if (!hasResponse) throw new Error(await ctx.t("scraping.assistantMessage.noResponse"));
 
     const script =
       "(function() {" +
@@ -106,7 +106,9 @@ export async function testAssistantMessageScraping(ctx: TestContext): Promise<Pr
       ";" +
       "  const messages = Array.from(document.querySelectorAll(assistantSelector));" +
       "  const lastMessage = messages[messages.length - 1];" +
-      '  if (!lastMessage) throw new Error("No assistant message found");' +
+      "  if (!lastMessage) throw new Error(" +
+      JSON.stringify(await ctx.t("scraping.assistantMessage.noAssistantMessage")) +
+      ");" +
       '  const text = lastMessage.textContent || lastMessage.innerText || "";' +
       "  return { found: true, text: text.trim().slice(0, 100) };" +
       "})()";
@@ -116,10 +118,10 @@ export async function testAssistantMessageScraping(ctx: TestContext): Promise<Pr
     if (result.found === true && result.text !== undefined && result.text.length > 0) {
       return {
         id: "assistant-message-scraping",
-        name: "Assistant Message Scraping",
+        name: await ctx.t("scraping.assistantMessage.name"),
         category: "scraping",
         status: "pass",
-        message: "Assistant message successfully scraped",
+        message: await ctx.t("scraping.assistantMessage.scraped"),
         details: {
           ...(ctx.config.scrapeSelectors.assistantWrapper !== undefined &&
           ctx.config.scrapeSelectors.assistantWrapper !== ""
@@ -132,14 +134,14 @@ export async function testAssistantMessageScraping(ctx: TestContext): Promise<Pr
       };
     }
 
-    throw new Error("Assistant message empty");
+    throw new Error(await ctx.t("scraping.assistantMessage.empty"));
   } catch (error) {
     return {
       id: "assistant-message-scraping",
-      name: "Assistant Message Scraping",
+      name: await ctx.t("scraping.assistantMessage.name"),
       category: "scraping",
       status: "fail",
-      message: "Failed to scrape assistant message",
+      message: await ctx.t("scraping.assistantMessage.failed"),
       details: { error: (error as Error).message },
       duration: Date.now() - start,
       timestamp: Date.now(),
@@ -150,7 +152,7 @@ export async function testAssistantMessageScraping(ctx: TestContext): Promise<Pr
 export async function testMessageContainer(ctx: TestContext): Promise<ProviderTestResult> {
   return await ctx.testSelector({
     id: "message-container",
-    name: "Message Container",
+    name: await ctx.t("scraping.messageContainer.name"),
     selector: ctx.config.selectors.messageContainer,
     category: "scraping",
     checks: ["exists", "visible"],
@@ -161,14 +163,14 @@ export async function testVoiceButton(ctx: TestContext): Promise<ProviderTestRes
   if (ctx.config.selectors.voiceButton === undefined || ctx.config.selectors.voiceButton === "") {
     return ctx.createSkipResult(
       "voice-button",
-      "Voice Button",
+      await ctx.t("scraping.voiceButton.name"),
       "advanced",
-      "No voiceButton selector in config"
+      await ctx.t("scraping.voiceButton.selectorMissing")
     );
   }
   return await ctx.testSelector({
     id: "voice-button",
-    name: "Voice Button",
+    name: await ctx.t("scraping.voiceButton.name"),
     selector: ctx.config.selectors.voiceButton,
     category: "advanced",
     checks: ["exists", "visible"],

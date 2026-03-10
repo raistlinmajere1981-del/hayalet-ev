@@ -44,6 +44,9 @@ export async function attachFiles(
   const emptyFilesMessage = JSON.stringify(uploadT("noFiles"));
   const fileInputNotFoundPrefix = JSON.stringify(uploadT("fileInputNotFound"));
   const filesInjectedMessage = JSON.stringify(uploadT("filesInjected"));
+  const attachButtonClickFailedMessage = JSON.stringify(uploadT("attachButtonClickFailed"));
+  const querySelectorFailedMessage = JSON.stringify(uploadT("querySelectorFailed"));
+  const shadowQueryFailedMessage = JSON.stringify(uploadT("shadowQueryFailed"));
   const filesPayload = JSON.stringify(files);
   const runtimeConfig = await getRuntimeProviderConfig(webview);
   const inputSelectors = getRuntimeConfigCandidates(
@@ -84,7 +87,7 @@ export async function attachFiles(
           break;
         }
       } catch (err) {
-        console.warn("[Hayalet-Injection] attach button click failed", err);
+        console.warn(${attachButtonClickFailedMessage}, err);
       }
     }
 
@@ -93,7 +96,7 @@ export async function attachFiles(
         const direct = document.querySelector(selector);
         if (direct) return direct;
       } catch (err) {
-        console.warn("[Hayalet-Injection] querySelector failed", err);
+        console.warn(${querySelectorFailedMessage}, err);
       }
 
       const all = Array.from(document.querySelectorAll("*"));
@@ -104,7 +107,7 @@ export async function attachFiles(
           const found = sr.querySelector(selector);
           if (found) return found;
         } catch (err) {
-          console.warn("[Hayalet-Injection] shadowRoot query failed", err);
+          console.warn(${shadowQueryFailedMessage}, err);
         }
       }
       return null;

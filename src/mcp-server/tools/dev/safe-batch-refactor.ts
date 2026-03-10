@@ -335,9 +335,7 @@ function applyOperation(content: string, op: RefactorOperation): string {
   // 🛡️ SAFETY CHECK: Detect runaway replacement (file size explosion)
   if (result.length > content.length * 2) {
     // Write to stderr (critical safety warning)
-    process.stderr.write(
-      `${safeBatchRefactorT("runtime.fileSizeDoubledLog")}\n`
-    );
+    process.stderr.write(`${safeBatchRefactorT("runtime.fileSizeDoubledLog")}\n`);
     return content; // Return original to prevent data loss
   }
 

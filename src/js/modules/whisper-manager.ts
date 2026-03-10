@@ -160,10 +160,7 @@ class WhisperManagerClass {
       }
     } catch (e) {
       const err = e as Error;
-      Logger.warn(
-        LogCategory.WHISPER,
-        whisperT("loadFailed", { accountId, message: err.message })
-      );
+      Logger.warn(LogCategory.WHISPER, whisperT("loadFailed", { accountId, message: err.message }));
     }
 
     return { pending: [], done: [] };
@@ -324,10 +321,7 @@ class WhisperManagerClass {
         void (async (): Promise<void> => {
           const slot = resolveDeliverySlot(accountId);
           if (slot === null) {
-            Logger.warn(
-              LogCategory.WHISPER,
-              whisperT("accountSlotMissing", { accountId })
-            );
+            Logger.warn(LogCategory.WHISPER, whisperT("accountSlotMissing", { accountId }));
             return;
           }
 

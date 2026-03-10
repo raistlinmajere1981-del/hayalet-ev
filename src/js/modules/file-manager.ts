@@ -1,6 +1,7 @@
 import { Logger } from "./logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../shared/i18n/error-detail.js";
 import { getMimeType, getFilename, generateUniqueId } from "../constants/index.js";
 import { AppI18n } from "./i18n/index.js";
 
@@ -28,6 +29,10 @@ function fileManagerT(key: string, params?: Record<string, string | number>): st
   return AppI18n.t(`app.fileManager.${key}`, params);
 }
 
+function fileManagerError(key: string, detail?: unknown): string {
+  return formatErrorWithDetail(fileManagerT(key), detail);
+}
+
 class FileManagerClass {
   paths: Record<string, string>;
 
@@ -45,8 +50,9 @@ class FileManagerClass {
       const res = (await electronApi.fmEnsureDirs(scope)) as
         | { success: boolean; message?: string; paths?: Record<string, string> }
         | undefined;
-      if (res === undefined || res.success === false)
-        throw new Error(res?.message ?? "ensureDirs failed");
+      if (res === undefined || res.success === false) {
+        throw new Error(fileManagerError("ensureDirsOperationFailed", res?.message));
+      }
       if (res.paths !== undefined && typeof res.paths === "object") {
         this.paths = { ...this.paths, ...res.paths };
       }
@@ -239,7 +245,7 @@ class FileManagerClass {
         | { success: boolean; path?: string; message?: string }
         | undefined;
       if (res == null || res.success === false) {
-        throw new Error(res?.message ?? "writeFileAtomic failed");
+        throw new Error(fileManagerError("writeAtomicOperationFailed", res?.message));
       }
       return res.path ?? "";
     } catch (err) {

@@ -431,9 +431,7 @@ export async function visualizeStructure(
 
     if (inMultilineComment) {
       commentBlocks.push({ type: "multi", start: multilineStart });
-      errors.push(
-        structureVizT("runtime.unclosedCommentError", { startLine: multilineStart })
-      );
+      errors.push(structureVizT("runtime.unclosedCommentError", { startLine: multilineStart }));
     }
 
     if (commentBlocks.length === 0) {
@@ -447,9 +445,7 @@ export async function visualizeStructure(
 
       multiComments.slice(0, 5).forEach((c) => {
         if (c.end != null && c.end > 0) {
-          output.push(
-            structureVizT("runtime.commentBlockClosed", { start: c.start, end: c.end })
-          );
+          output.push(structureVizT("runtime.commentBlockClosed", { start: c.start, end: c.end }));
         } else {
           output.push(structureVizT("runtime.commentBlockUnclosed", { start: c.start }));
         }

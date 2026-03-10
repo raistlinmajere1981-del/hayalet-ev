@@ -1,5 +1,7 @@
 import type { SlotId } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
+import { AppI18n } from "../i18n/index.js";
 import type { SlotStateMachine } from "./state-machine.js";
 import { SlotStates, createSlotStateMachine } from "./state-machine.js";
 import {
@@ -40,6 +42,10 @@ export interface SlotOperationResult {
   message: string;
   correlationId?: string;
   error?: string;
+}
+
+function slotStateT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.slotState.${key}`, params);
 }
 
 export function createSlotState(slotId: string): SlotStateData {
@@ -95,7 +101,7 @@ export function ensureWebviewMounted(
   const moved = ensureSlotWebviewMountedInDom(slot, slotState.webview);
   if (moved) {
     slotState.lastActivity = Date.now();
-    log(slot, "debug", "Webview mounted to slot container");
+    log(slot, "debug", slotStateT("webviewMounted"));
   }
 
   return moved;
@@ -144,9 +150,9 @@ export function parkWebview(
   emit(slot, detachedEvent, { reason });
 
   if (reason === "inactive_cleanup") {
-    log(slot, "info", "Inactive webview parked");
+    log(slot, "info", slotStateT("inactiveWebviewParked"));
   } else {
-    log(slot, "debug", `Webview parked (${reason})`);
+    log(slot, "debug", slotStateT("webviewParked", { reason }));
   }
 
   return true;

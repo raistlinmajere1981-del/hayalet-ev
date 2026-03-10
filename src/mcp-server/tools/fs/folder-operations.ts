@@ -43,8 +43,15 @@ export const EXPAND_FOLDER_TOOL = {
   inputSchema: {
     type: "object" as const,
     properties: {
-      folder_path: { type: "string", description: folderToolDefinitionT("expandFolder.folderPath") },
-      max_depth: { type: "integer", description: folderToolDefinitionT("expandFolder.maxDepth"), default: 3 },
+      folder_path: {
+        type: "string",
+        description: folderToolDefinitionT("expandFolder.folderPath"),
+      },
+      max_depth: {
+        type: "integer",
+        description: folderToolDefinitionT("expandFolder.maxDepth"),
+        default: 3,
+      },
     },
     required: ["folder_path"],
   },

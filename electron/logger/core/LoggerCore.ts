@@ -30,6 +30,11 @@ import { matchErrorPattern } from "../../error-patterns.js";
 import { buildSessionStats } from "./session-stats.js";
 import { createElectronTranslator } from "../../i18n/language-service.ts";
 
+interface LocalizedMessageMeta {
+  key: string;
+  params?: TranslationParams;
+}
+
 export class LoggerCore {
   private static instance: LoggerCore | null = null;
 
@@ -71,9 +76,14 @@ export class LoggerCore {
     return LoggerCore.instance;
   }
 
+  private async translateLoggerMessage(key: string, params?: TranslationParams): Promise<string> {
+    const translator = await createElectronTranslator();
+    return translator.t(key, params);
+  }
+
   public async init(logDir?: string): Promise<void> {
     if (this.isInitialized) {
-      console.warn("[LoggerCore] Already initialized");
+      console.warn(await this.translateLoggerMessage("electron.logger.logs.alreadyInitialized"));
       return;
     }
 
@@ -109,7 +119,7 @@ export class LoggerCore {
       if (!this.isInitialized) {
         return {
           success: false,
-          message: "LoggerCore not initialized",
+          message: await this.translateLoggerMessage("electron.logger.notInitialized"),
         };
       }
 
@@ -129,7 +139,11 @@ export class LoggerCore {
         entriesWritten: entries.length,
       };
     } catch (error) {
-      console.error("[LoggerCore] Batch processing failed:", error);
+      console.error(
+        await this.translateLoggerMessage("electron.logger.logs.batchProcessingFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        })
+      );
       return {
         success: false,
         message: (error as Error).message,
@@ -210,6 +224,8 @@ export class LoggerCore {
         level: entry.level,
         category: entry.category,
         message: entry.message,
+        messageKey: entry.messageKey,
+        messageParams: entry.messageParams,
         locale: entry.locale,
         timestamp: entry.timestamp,
         visibility,
@@ -250,13 +266,16 @@ export class LoggerCore {
     level: LogLevel,
     message: string,
     context?: Record<string, unknown>,
-    locale?: string
+    locale?: string,
+    localized?: LocalizedMessageMeta
   ): Promise<void> {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       category,
       message,
+      ...(localized !== undefined ? { messageKey: localized.key } : {}),
+      ...(localized?.params !== undefined ? { messageParams: localized.params } : {}),
       ...(locale !== undefined ? { locale } : {}),
       sessionId: this.sessionManager.getSessionId(),
       source: "main",
@@ -274,7 +293,14 @@ export class LoggerCore {
     context?: Record<string, unknown>
   ): Promise<void> {
     const translator = await createElectronTranslator();
-    await this.logInternal(category, level, translator.t(key, params), context, translator.locale);
+    await this.logInternal(
+      category,
+      level,
+      translator.t(key, params),
+      context,
+      translator.locale,
+      params === undefined ? { key } : { key, params }
+    );
   }
 
   public getSessionId(): string {
@@ -308,7 +334,7 @@ export class LoggerCore {
     this.sessionEntries = [];
     this.isInitialized = false;
     // eslint-disable-next-line no-console
-    console.log("[LoggerCore] Shutdown complete");
+    console.log(await this.translateLoggerMessage("electron.logger.logs.shutdownComplete"));
   }
 }
 

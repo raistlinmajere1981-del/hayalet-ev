@@ -114,7 +114,10 @@ export class AccountPanel {
 
     if (avatarPath !== null && avatarPath !== undefined && avatarPath !== "") {
       try {
-        if (!electronApi) throw new Error("electron API unavailable");
+        if (!electronApi) {
+          previewEl.innerHTML = '<div class="avatar-placeholder">👤</div>';
+          return;
+        }
         const data = await electronApi.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarAlt"))}" class="img-cover">`;
@@ -135,7 +138,10 @@ export class AccountPanel {
 
     if (avatarPath !== null && avatarPath !== "") {
       try {
-        if (!electronApi) throw new Error("electron API unavailable");
+        if (!electronApi) {
+          previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
+          return;
+        }
         const data = await electronApi.readFile(avatarPath);
         const mimeType = getMimeTypeFromPath(avatarPath);
         previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarPreviewAlt"))}" class="img-cover">`;

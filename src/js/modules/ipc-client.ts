@@ -19,6 +19,7 @@
 import { Logger, LogCategory } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { IPCChannel, IPCParams, IPCResult } from "@shared/ipc-channels.js";
+import { AppI18n } from "./i18n/index.js";
 
 interface IPCElectronAPI {
   invoke: (channel: string, params?: unknown) => Promise<unknown>;
@@ -43,7 +44,7 @@ class IPCClientClass {
     if (!this._api) {
       const electronAPI = window.electronAPI;
       if (!isIPCElectronAPI(electronAPI)) {
-        throw new Error("electronAPI not available - preload script may not have loaded");
+        throw new Error(AppI18n.t("app.logs.ipcClient.apiUnavailable"));
       }
       this._api = electronAPI;
     }

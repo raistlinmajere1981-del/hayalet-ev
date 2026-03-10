@@ -15,7 +15,7 @@ import type {
   ProviderWebviewSyncMode,
   TestCategory,
 } from "../../src/types/provider.ts";
-import type { SelectorLanguage } from "../../src/types/i18n.ts";
+import type { SelectorLanguage, TranslationParams } from "../../src/types/i18n.ts";
 import type { SyncMessagesParams } from "../types/index.ts";
 
 type UpsertConversationMetadataParams = {
@@ -151,6 +151,7 @@ export interface TestContext {
     timeout: number,
     signal?: AbortSignal
   ) => Promise<boolean>;
+  t: (key: string, params?: TranslationParams) => Promise<string>;
   createSkipResult: (
     id: string,
     name: string,

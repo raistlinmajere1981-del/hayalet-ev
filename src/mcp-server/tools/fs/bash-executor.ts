@@ -105,14 +105,18 @@ export async function executeBash(
 
       const maxOutput = 50000;
       if (stdout.length > maxOutput) {
-        stdout = stdout.slice(0, maxOutput) + `\n... ${bashT(t, "truncated", {
-          count: stdout.length - maxOutput,
-        })}`;
+        stdout =
+          stdout.slice(0, maxOutput) +
+          `\n... ${bashT(t, "truncated", {
+            count: stdout.length - maxOutput,
+          })}`;
       }
       if (stderr.length > maxOutput) {
-        stderr = stderr.slice(0, maxOutput) + `\n... ${bashT(t, "truncated", {
-          count: stderr.length - maxOutput,
-        })}`;
+        stderr =
+          stderr.slice(0, maxOutput) +
+          `\n... ${bashT(t, "truncated", {
+            count: stderr.length - maxOutput,
+          })}`;
       }
 
       resolve({

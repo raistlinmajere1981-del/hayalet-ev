@@ -1,5 +1,6 @@
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../../modules/logger/index.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
@@ -143,7 +144,7 @@ async function openAttachmentByPath(filePath: string): Promise<void> {
         : { success: false, message: analyzeBubbleT("errors.openFailed") };
     const res = isOpenPathResult(rawRes) ? rawRes : null;
     if (res?.success !== true) {
-      throw new Error(res?.message ?? analyzeBubbleT("errors.openFailed"));
+      throw new Error(formatErrorWithDetail(analyzeBubbleT("errors.openFailed"), res?.message));
     }
   } catch (err) {
     Logger.warn(

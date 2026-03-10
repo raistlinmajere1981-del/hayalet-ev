@@ -72,7 +72,7 @@ export function setupNavigation(): void {
       LogCategory.SYSTEM,
       shellT("logs.navigationSetupError", { message: getErrorMessage(error) }),
       {
-      error: error instanceof Error ? error : new Error(String(error)),
+        error: error instanceof Error ? error : new Error(String(error)),
       }
     );
   }
@@ -146,7 +146,7 @@ export function setupTopBarButtons(): void {
           LogCategory.UI_THEME,
           shellT("logs.themeChanged", { theme: ThemeManager.current }),
           {
-          visibility: LogVisibility.VERBOSE,
+            visibility: LogVisibility.VERBOSE,
           }
         );
       });
@@ -198,7 +198,7 @@ export function setupTopBarButtons(): void {
       LogCategory.SYSTEM,
       shellT("logs.topBarSetupError", { message: getErrorMessage(error) }),
       {
-      error: error instanceof Error ? error : new Error(String(error)),
+        error: error instanceof Error ? error : new Error(String(error)),
       }
     );
   }

@@ -18,8 +18,10 @@ import type { ToolEntry, ToolContext } from "../registry.js";
 export function createContextTools(context: ToolContext): ToolEntry[] {
   const { PROJECT_ROOT } = context;
 
-  const contextHandlerT = (key: string, params?: Record<string, string | number | boolean>) =>
-    createMcpTranslatorSync()(`mcpServer.contextTools.handler.${key}`, params);
+  const contextHandlerT = (
+    key: string,
+    params?: Record<string, string | number | boolean>
+  ): string => createMcpTranslatorSync()(`mcpServer.contextTools.handler.${key}`, params);
 
   return [
     {
@@ -38,9 +40,7 @@ export function createContextTools(context: ToolContext): ToolEntry[] {
           "",
           contextHandlerT("available", {
             value:
-              result.available.length > 0
-                ? result.available.join(", ")
-                : contextHandlerT("none"),
+              result.available.length > 0 ? result.available.join(", ") : contextHandlerT("none"),
           }),
           contextHandlerT("repomix", { value: result.repomixVersion }),
         ];

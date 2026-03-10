@@ -1,8 +1,10 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { Script } from "node:vm";
 
+import type { TranslationParams } from "../../src/types/i18n.ts";
 import type { LocalizedSelectorEntry } from "../../src/types/provider.ts";
 import { resolveSelectorCandidates } from "../../shared/provider-selector-resolution.ts";
+import { translateElectronMessage } from "../i18n/language-service.ts";
 
 interface PromotionTarget {
   group: string;
@@ -18,6 +20,18 @@ interface PromoteProviderConfigFileOptions {
 
 interface PromoteProviderConfigFileResult {
   updated: boolean;
+}
+
+async function selectorPromotionT(
+  locale: unknown,
+  key: string,
+  params?: TranslationParams
+): Promise<string> {
+  return await translateElectronMessage(
+    `electron.providerTester.selectorPromotion.${key}`,
+    params,
+    locale
+  );
 }
 
 function normalizeLocale(locale: string): string {
@@ -297,7 +311,7 @@ export async function promoteProviderConfigFile({
   promotions,
 }: PromoteProviderConfigFileOptions): Promise<PromoteProviderConfigFileResult> {
   if (isPackagedPath(configPath)) {
-    throw new Error(`Refusing to promote selectors in packaged config: ${configPath}`);
+    throw new Error(await selectorPromotionT(locale, "packagedConfigRefused", { configPath }));
   }
 
   let source = await readFile(configPath, "utf8");

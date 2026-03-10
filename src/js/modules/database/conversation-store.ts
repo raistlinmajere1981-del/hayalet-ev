@@ -5,9 +5,19 @@ import { LogCategory } from "@shared/logging-core";
  * @module src/js/modules/database/conversation-store
  */
 
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
+import { AppI18n } from "../i18n/index.js";
 import type { Conversation } from "@shared/database.js";
+
+function databaseT(key: string, params?: Record<string, string | number>): string {
+  return AppI18n.t(`app.database.${key}`, params);
+}
+
+function databaseStoreError(store: string, operation: string, detail?: unknown): string {
+  return formatErrorWithDetail(databaseT("operationFailed", { store, operation }), detail);
+}
 
 function isConversation(value: unknown): value is Conversation {
   if (value === null || typeof value !== "object") {
@@ -98,7 +108,10 @@ const conversationStore = {
     try {
       const dbUpdateConversation = window.electronAPI?.dbUpdateConversation;
       if (typeof dbUpdateConversation !== "function") {
-        return { success: false, error: "electronAPI.dbUpdateConversation unavailable" };
+        return {
+          success: false,
+          error: databaseStoreError("ConversationStore", "update", databaseT("apiUnavailable")),
+        };
       }
 
       const result = await dbUpdateConversation({
@@ -109,16 +122,21 @@ const conversationStore = {
 
       return {
         success: result.success === true,
-        ...(typeof result.error === "string" ? { error: result.error } : {}),
+        ...(result.success === true
+          ? {}
+          : {
+              error: databaseStoreError("ConversationStore", "update", result.error),
+            }),
       };
     } catch (err) {
+      const errorMessage = databaseStoreError("ConversationStore", "update", err);
       Logger.errorT(
         LogCategory.DATABASE,
         "app.logs.database.storeOperationFailed",
         { store: "ConversationStore", operation: "update", message: getErrorMessage(err) },
         { context: { accountId, conversationId, data } }
       );
-      return { success: false, error: getErrorMessage(err) };
+      return { success: false, error: errorMessage };
     }
   },
 
@@ -135,7 +153,10 @@ const conversationStore = {
     try {
       const dbDeleteConversation = window.electronAPI?.dbDeleteConversation;
       if (typeof dbDeleteConversation !== "function") {
-        return { success: false, error: "electronAPI.dbDeleteConversation unavailable" };
+        return {
+          success: false,
+          error: databaseStoreError("ConversationStore", "delete", databaseT("apiUnavailable")),
+        };
       }
 
       const result = await dbDeleteConversation({
@@ -145,16 +166,21 @@ const conversationStore = {
 
       return {
         success: result.success === true,
-        ...(typeof result.error === "string" ? { error: result.error } : {}),
+        ...(result.success === true
+          ? {}
+          : {
+              error: databaseStoreError("ConversationStore", "delete", result.error),
+            }),
       };
     } catch (err) {
+      const errorMessage = databaseStoreError("ConversationStore", "delete", err);
       Logger.errorT(
         LogCategory.DATABASE,
         "app.logs.database.storeOperationFailed",
         { store: "ConversationStore", operation: "delete", message: getErrorMessage(err) },
         { context: { accountId, conversationId } }
       );
-      return { success: false, error: getErrorMessage(err) };
+      return { success: false, error: errorMessage };
     }
   },
 

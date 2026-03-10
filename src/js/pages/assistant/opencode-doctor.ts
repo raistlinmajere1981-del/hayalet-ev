@@ -1,6 +1,7 @@
 import { LogCategory } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
 import type { AppSettings } from "@shared/settings.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
@@ -158,7 +159,9 @@ async function launchOpencodeInstallFlow(): Promise<void> {
 
   const result = (await electronApi.opencodeLaunchInstall()) as OpencodeInstallLaunchResult;
   if (result.success !== true) {
-    throw new Error(result.error ?? assistantT("opencodeDoctor.errors.installFlowFailed"));
+    throw new Error(
+      formatErrorWithDetail(assistantT("opencodeDoctor.errors.installFlowFailed"), result.error)
+    );
   }
 
   if (result.fallbackToBrowser === true) {
@@ -227,7 +230,9 @@ export async function handleOpencodeActionButtonClick(
       detectedVersion
     )) as OpencodeUpdateCheckResult;
     if (result.success !== true) {
-      throw new Error(result.error ?? assistantT("opencodeDoctor.errors.updateCheckFailed"));
+      throw new Error(
+        formatErrorWithDetail(assistantT("opencodeDoctor.errors.updateCheckFailed"), result.error)
+      );
     }
 
     const latestVersion =
@@ -375,7 +380,10 @@ export async function openOpencodeSettingsModal(
         lastValidation = null;
         setCheckResult(
           assistantT("opencodeDoctor.settingsModal.checkFailed", {
-            message: result.error ?? assistantT("opencodeDoctor.settingsModal.unknownError"),
+            message: formatErrorWithDetail(
+              assistantT("opencodeDoctor.settingsModal.unknownError"),
+              result.error
+            ),
           }),
           "error"
         );
@@ -466,7 +474,10 @@ export async function openOpencodeSettingsModal(
             const normalizedPortText = portInput?.value.trim() ?? "";
             const parsedPort = Number.parseInt(normalizedPortText, 10);
             if (Number.isInteger(parsedPort) !== true || parsedPort < 1024 || parsedPort > 65535) {
-              setCheckResult(assistantT("opencodeDoctor.settingsModal.defaultPortInvalid"), "error");
+              setCheckResult(
+                assistantT("opencodeDoctor.settingsModal.defaultPortInvalid"),
+                "error"
+              );
               return;
             }
 

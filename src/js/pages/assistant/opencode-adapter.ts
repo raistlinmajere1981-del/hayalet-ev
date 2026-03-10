@@ -9,6 +9,7 @@
 
 import { LogCategory } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
@@ -17,6 +18,10 @@ import type { AssistantProviderAdapter, ServerResult, ServerStatus } from "@shar
 
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
+}
+
+function assistantError(key: string, detail?: unknown, params?: TranslationParams): string {
+  return formatErrorWithDetail(assistantT(`errors.${key}`, params), detail);
 }
 
 export class OpenCodeAdapter implements AssistantProviderAdapter {
@@ -49,11 +54,9 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
-      Logger.infoT(
-        LogCategory.ASSISTANT_CORE,
-        "shell.assistant.logs.providerServeStarting",
-        { name: this.name }
-      );
+      Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStarting", {
+        name: this.name,
+      });
 
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
@@ -91,7 +94,9 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
         const portResult = await electronApi.opencodeServeFindPort(portRange.start, portRange.end);
         if (portResult.error !== undefined && portResult.error !== "") {
-          throw new Error(portResult.error);
+          throw new Error(
+            assistantError("providerServeStartFailed", portResult.error, { name: this.name })
+          );
         }
         port = portResult.port;
       } else {
@@ -131,13 +136,17 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       } else {
         this._isRunning = false;
         this._currentPort = null;
+        const errorMessage = assistantError("providerServeStartFailed", result.error, {
+          name: this.name,
+        });
         return {
           success: false,
-          error: result.error ?? assistantT("errors.providerServeStartFailed", { name: this.name }),
+          error: errorMessage,
         };
       }
     } catch (e) {
       const err = e as Error;
+      const errorMessage = assistantError("providerServeStartFailed", err, { name: this.name });
       this._isRunning = false;
       this._currentPort = null;
       Logger.errorT(
@@ -145,20 +154,18 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         "shell.assistant.logs.providerServeStartError",
         { name: this.name },
         {
-          error: err.message,
+          error: errorMessage,
         }
       );
-      return { success: false, error: err.message };
+      return { success: false, error: errorMessage };
     }
   }
 
   async stopServer(): Promise<ServerResult> {
     try {
-      Logger.infoT(
-        LogCategory.ASSISTANT_CORE,
-        "shell.assistant.logs.providerServeStopping",
-        { name: this.name }
-      );
+      Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStopping", {
+        name: this.name,
+      });
 
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
@@ -171,17 +178,28 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       this._isRunning = false;
       this._currentPort = null;
 
-        if (result.success === true) {
-        Logger.infoT(
-          LogCategory.ASSISTANT_CORE,
-          "shell.assistant.logs.providerServeStopped",
-          { name: this.name }
-        );
+      if (result.success === true) {
+        Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStopped", {
+          name: this.name,
+        });
+        return result;
       }
 
-      return result;
+      const errorMessage = assistantError("providerServeStopFailed", result.error, {
+        name: this.name,
+      });
+      Logger.errorT(
+        LogCategory.ASSISTANT_CORE,
+        "shell.assistant.logs.providerServeStopError",
+        { name: this.name },
+        {
+          error: errorMessage,
+        }
+      );
+      return { ...result, success: false, error: errorMessage };
     } catch (e) {
       const err = e as Error;
+      const errorMessage = assistantError("providerServeStopFailed", err, { name: this.name });
       this._isRunning = false;
       this._currentPort = null;
       Logger.errorT(
@@ -189,10 +207,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         "shell.assistant.logs.providerServeStopError",
         { name: this.name },
         {
-          error: err.message,
+          error: errorMessage,
         }
       );
-      return { success: false, error: err.message };
+      return { success: false, error: errorMessage };
     }
   }
 

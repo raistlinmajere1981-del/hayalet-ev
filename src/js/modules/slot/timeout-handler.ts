@@ -8,6 +8,8 @@
  */
 
 import { getErrorMessage } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
+import { AppI18n } from "../i18n/index.js";
 
 const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -47,6 +49,10 @@ type EmitFn = (slot: string, event: string, data: Record<string, unknown>) => vo
 type TransitionFn = (slot: string, state: string) => void;
 type CleanupFn = (slot: string, correlationId: string) => void;
 
+function slotTimeoutT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.logs.slotTimeout.${key}`, params);
+}
+
 export function handleConnectTimeout(
   slotState: SlotState,
   slot: string,
@@ -58,9 +64,9 @@ export function handleConnectTimeout(
   connectFailedEvent: string,
   cleanupFn: CleanupFn
 ): void {
-  logFn(slot, "error", "Connection timeout", { correlationId });
+  logFn(slot, "error", slotTimeoutT("connectionTimeout"), { correlationId });
 
-  slotState.error = new Error("Connection timeout");
+  slotState.error = new Error(slotTimeoutT("connectionTimeout"));
   emitFn(slot, connectFailedEvent, { correlationId, error: "timeout" });
 
   cleanupFn(slot, correlationId);
@@ -80,7 +86,7 @@ export function handleConnectError(
   cleanupFn: CleanupFn
 ): { success: boolean; message: string; correlationId: string } {
   const errorMsg = getErrorMessage(error);
-  logFn(slot, "error", `Connection failed: ${errorMsg}`, { correlationId });
+  logFn(slot, "error", slotTimeoutT("connectionFailed", { message: errorMsg }), { correlationId });
 
   slotState.error = error instanceof Error ? error : new Error(errorMsg);
   emitFn(slot, connectFailedEvent, { correlationId, error: errorMsg });
@@ -116,6 +122,8 @@ export async function cleanupAfterError(
     slotState.domReady = false;
     slotState.trafficStarted = false;
   } catch (err) {
-    logFn(slot, "warning", `Cleanup warning: ${getErrorMessage(err)}`, { correlationId });
+    logFn(slot, "warning", slotTimeoutT("cleanupWarning", { message: getErrorMessage(err) }), {
+      correlationId,
+    });
   }
 }

@@ -45,9 +45,7 @@
 
         <div class="assistant-command-rail">
           <div class="assistant-connect-actions">
-            <button class="btn btn-sm btn-primary" id="assistant-connect-btn">
-              Start
-            </button>
+            <button class="btn btn-sm btn-primary" id="assistant-connect-btn">Start</button>
             <button
               class="btn btn-sm btn-secondary"
               id="assistant-ghost-agent-btn"
@@ -213,29 +211,45 @@
           <!-- Left panel: filters and actions -->
           <div class="memory-filter-panel">
             <div class="memory-panel-section">
-              <div class="memory-section-title" data-shell-i18n-text="assistant.memoryOverlay.filterSectionTitle">
+              <div
+                class="memory-section-title"
+                data-shell-i18n-text="assistant.memoryOverlay.filterSectionTitle"
+              >
                 Filters
               </div>
               <div class="memory-filter-group">
-                <label class="memory-filter-label" data-shell-i18n-text="assistant.memoryOverlay.namespaceLabel">
+                <label
+                  class="memory-filter-label"
+                  data-shell-i18n-text="assistant.memoryOverlay.namespaceLabel"
+                >
                   Namespace
                 </label>
                 <select id="mem-filter-namespace" class="select select-sm">
-                  <option value="" data-shell-i18n-text="assistant.memoryOverlay.allOption">All</option>
+                  <option value="" data-shell-i18n-text="assistant.memoryOverlay.allOption">
+                    All
+                  </option>
                   <option value="global">global</option>
                   <option value="policy">policy</option>
                 </select>
               </div>
               <div class="memory-filter-group">
-                <label class="memory-filter-label" data-shell-i18n-text="assistant.memoryOverlay.providerLabel">
+                <label
+                  class="memory-filter-label"
+                  data-shell-i18n-text="assistant.memoryOverlay.providerLabel"
+                >
                   Provider
                 </label>
                 <select id="mem-filter-provider" class="select select-sm">
-                  <option value="" data-shell-i18n-text="assistant.memoryOverlay.allOption">All</option>
+                  <option value="" data-shell-i18n-text="assistant.memoryOverlay.allOption">
+                    All
+                  </option>
                 </select>
               </div>
               <div class="memory-filter-group">
-                <label class="memory-filter-label" data-shell-i18n-text="assistant.memoryOverlay.tagsLabel">
+                <label
+                  class="memory-filter-label"
+                  data-shell-i18n-text="assistant.memoryOverlay.tagsLabel"
+                >
                   Tags
                 </label>
                 <div class="memory-tag-cloud" id="mem-tag-cloud">
@@ -245,7 +259,10 @@
             </div>
 
             <div class="memory-panel-section">
-              <div class="memory-section-title" data-shell-i18n-text="assistant.memoryOverlay.newRecordTitle">
+              <div
+                class="memory-section-title"
+                data-shell-i18n-text="assistant.memoryOverlay.newRecordTitle"
+              >
                 New Record
               </div>
               <div class="memory-new-form" id="memory-new-form">
@@ -304,12 +321,18 @@
             </div>
 
             <div class="memory-panel-section">
-              <div class="memory-section-title" data-shell-i18n-text="assistant.memoryOverlay.bulkActionsTitle">
+              <div
+                class="memory-section-title"
+                data-shell-i18n-text="assistant.memoryOverlay.bulkActionsTitle"
+              >
                 Bulk Actions
               </div>
               <div class="memory-bulk-actions">
                 <div class="memory-prune-form">
-                  <label class="memory-filter-label" data-shell-i18n-text="assistant.memoryOverlay.pruneLabel">
+                  <label
+                    class="memory-filter-label"
+                    data-shell-i18n-text="assistant.memoryOverlay.pruneLabel"
+                  >
                     Prune
                   </label>
                   <div class="memory-prune-row">
@@ -366,7 +389,9 @@
             <div class="memory-list" id="memory-list">
               <div class="memory-empty-state" id="memory-empty-state">
                 <span>🧠</span>
-                <span data-shell-i18n-text="assistant.memoryOverlay.emptyState">No records yet</span>
+                <span data-shell-i18n-text="assistant.memoryOverlay.emptyState"
+                  >No records yet</span
+                >
               </div>
             </div>
           </div>
@@ -399,7 +424,10 @@
           <!-- Left panel: active profile -->
           <div class="character-active-panel">
             <div class="character-panel-header">
-              <span class="character-panel-title" data-shell-i18n-text="assistant.characterOverlay.activeProfileTitle">
+              <span
+                class="character-panel-title"
+                data-shell-i18n-text="assistant.characterOverlay.activeProfileTitle"
+              >
                 Active Profile
               </span>
               <span class="character-active-count" id="character-active-count">0 features</span>
@@ -420,7 +448,10 @@
           <!-- Right panel: feature pool -->
           <div class="character-pool-panel">
             <div class="character-panel-header">
-              <span class="character-panel-title" data-shell-i18n-text="assistant.characterOverlay.poolTitle">
+              <span
+                class="character-panel-title"
+                data-shell-i18n-text="assistant.characterOverlay.poolTitle"
+              >
                 Feature Pool
               </span>
             </div>
@@ -433,7 +464,10 @@
         <!-- Footer -->
         <div class="character-footer">
           <div class="character-footer-info">
-            <span class="character-footer-note" data-shell-i18n-text="assistant.characterOverlay.footerNote">
+            <span
+              class="character-footer-note"
+              data-shell-i18n-text="assistant.characterOverlay.footerNote"
+            >
               Changes become active in the next session.
             </span>
             <button
@@ -506,7 +540,10 @@
             data-shell-i18n-placeholder="assistant.identityModal.placeholder"
             autocomplete="off"
           />
-          <p class="assistant-identity-modal__hint" data-shell-i18n-text="assistant.identityModal.hint">
+          <p
+            class="assistant-identity-modal__hint"
+            data-shell-i18n-text="assistant.identityModal.hint"
+          >
             When saved, the same name will be used for all assistant accounts under AI0.
           </p>
         </div>

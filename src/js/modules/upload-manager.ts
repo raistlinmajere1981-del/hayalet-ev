@@ -6,6 +6,7 @@
  */
 
 import { AppI18n } from "./i18n/index.js";
+import { formatErrorWithDetail } from "../../../shared/i18n/error-detail.js";
 
 interface FilePayload {
   name: string;
@@ -23,6 +24,14 @@ type ServiceName = "CATBOX" | "UGUU" | "TMPFILE" | "GOOGLEDRIVE";
 
 function uploadT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.upload.${key}`, params);
+}
+
+function uploadError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number>
+): string {
+  return formatErrorWithDetail(uploadT(key, params), detail);
 }
 
 function getServiceLabel(serviceName: string): string {
@@ -104,7 +113,7 @@ const uploadManager = {
       | ((options: unknown) => Promise<{ success?: boolean; url?: string; message?: string }>)
       | undefined;
     if (!ipcMethod) {
-      throw new Error(`IPC method not available: ${service.ipcMethod}`);
+      throw new Error(uploadT("ipcMethodUnavailable", { method: service.ipcMethod }));
     }
 
     const uploadResults = await Promise.all(
@@ -122,7 +131,7 @@ const uploadManager = {
             return {
               error: {
                 file: file.name,
-                error: result.message ?? "Upload failed",
+                error: uploadError("uploadFailedGeneric", result.message),
               },
             };
           }
@@ -130,7 +139,7 @@ const uploadManager = {
           return {
             error: {
               file: file.name,
-              error: err instanceof Error ? err.message : String(err),
+              error: uploadError("uploadFailedGeneric", err),
             },
           };
         }
@@ -178,7 +187,7 @@ const uploadManager = {
     };
 
     if (result.success !== true) {
-      throw new Error(result.message ?? uploadT("googleDriveUploadFailed"));
+      throw new Error(uploadError("googleDriveUploadFailed", result.message));
     }
 
     const uploaded = result.uploadedLinks ?? result.uploaded ?? result.data?.uploadedLinks ?? [];
@@ -241,7 +250,9 @@ const uploadManager = {
   },
 
   serviceUnavailable(serviceName: string): UploadResponse {
-    return this.createError(uploadT("serviceUnavailable", { service: getServiceLabel(serviceName) }));
+    return this.createError(
+      uploadT("serviceUnavailable", { service: getServiceLabel(serviceName) })
+    );
   },
 
   t(key: string, params?: Record<string, string | number>): string {

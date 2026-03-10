@@ -79,7 +79,10 @@ export function initDraft(): void {
   try {
     draftPath = "data/analyze-draft.json";
   } catch (err) {
-    Logger.warn(LogCategory.ANALYZE, draftT("logs.pathPrepareFailed", { message: getErrorMessage(err) }));
+    Logger.warn(
+      LogCategory.ANALYZE,
+      draftT("logs.pathPrepareFailed", { message: getErrorMessage(err) })
+    );
   }
 }
 

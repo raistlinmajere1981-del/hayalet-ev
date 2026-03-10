@@ -45,6 +45,14 @@ export async function attachFiles(
   const dropTargetNotFoundMessage = JSON.stringify(uploadT("dropTargetNotFound"));
   const dragDropSuccessMessage = JSON.stringify(uploadT("dragDropSuccess"));
   const dragDropAttemptedMessage = uploadT("dragDropAttempted");
+  const querySelectorFailedMessage = JSON.stringify(uploadT("querySelectorFailed"));
+  const shadowQueryFailedMessage = JSON.stringify(uploadT("shadowQueryFailed"));
+  const targetResolutionFailedMessage = JSON.stringify(uploadT("targetResolutionFailed"));
+  const boundsReadFailedMessage = JSON.stringify(uploadT("boundsReadFailed"));
+  const dataTransferConfigFailedMessage = JSON.stringify(uploadT("dataTransferConfigFailed"));
+  const dragEnterDispatchFailedMessage = JSON.stringify(uploadT("dragEnterDispatchFailed"));
+  const dragOverDispatchFailedMessage = JSON.stringify(uploadT("dragOverDispatchFailed"));
+  const dropDispatchFailedMessage = JSON.stringify(uploadT("dropDispatchFailed"));
   const filesPayload = JSON.stringify(files);
   const runtimeConfig = await getRuntimeProviderConfig(webview);
   const uploadTargetCandidates = getRuntimeConfigCandidates(
@@ -167,7 +175,7 @@ export async function attachFiles(
         const direct = document.querySelector(selector);
         if (direct) return direct;
       } catch (err) {
-        console.warn("[Hayalet-DragDrop] querySelector failed", err);
+        console.warn(${querySelectorFailedMessage}, err);
       }
 
       const all = Array.from(document.querySelectorAll("*"));
@@ -178,7 +186,7 @@ export async function attachFiles(
           const found = sr.querySelector(selector);
           if (found) return found;
         } catch (err) {
-          console.warn("[Hayalet-DragDrop] shadowRoot query failed", err);
+          console.warn(${shadowQueryFailedMessage}, err);
         }
       }
       return null;
@@ -198,7 +206,7 @@ export async function attachFiles(
             break;
           }
         } catch (err) {
-          console.warn("[Hayalet-DragDrop] target resolution failed", err);
+          console.warn(${targetResolutionFailedMessage}, err);
         }
       }
       if (!target) {
@@ -223,14 +231,14 @@ export async function attachFiles(
         cy = Math.round(rect.top + rect.height / 2);
       }
     } catch (err) {
-      console.warn("[Hayalet-DragDrop] getBoundingClientRect failed", err);
+      console.warn(${boundsReadFailedMessage}, err);
     }
 
     try {
       dataTransfer.dropEffect = 'copy';
       dataTransfer.effectAllowed = 'all';
     } catch (err) {
-      console.warn("[Hayalet-DragDrop] dataTransfer config failed", err);
+      console.warn(${dataTransferConfigFailedMessage}, err);
     }
 
     const dragEnterEvent = new DragEvent('dragenter', {
@@ -264,16 +272,16 @@ export async function attachFiles(
 
     return new Promise((resolve) => {
       try { dropTarget.dispatchEvent(dragEnterEvent); } catch (err) {
-        console.warn("[Hayalet-DragDrop] dragenter dispatch failed", err);
+        console.warn(${dragEnterDispatchFailedMessage}, err);
       }
 
       setTimeout(() => {
         try { dropTarget.dispatchEvent(dragOverEvent); } catch (err) {
-          console.warn("[Hayalet-DragDrop] dragover dispatch failed", err);
+          console.warn(${dragOverDispatchFailedMessage}, err);
         }
         setTimeout(() => {
           try { dropTarget.dispatchEvent(dropEvent); } catch (err) {
-            console.warn("[Hayalet-DragDrop] drop dispatch failed", err);
+            console.warn(${dropDispatchFailedMessage}, err);
           }
 
           setTimeout(() => {

@@ -161,7 +161,10 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
       state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
       render(refs, state);
       if (result.success === true) {
-        Toast.success(roomText("toasts.importSuccess"), result.room?.id ?? result.path ?? selectedPath);
+        Toast.success(
+          roomText("toasts.importSuccess"),
+          result.room?.id ?? result.path ?? selectedPath
+        );
       } else {
         Toast.error(roomText("toasts.importError"), result.error ?? selectedPath);
       }

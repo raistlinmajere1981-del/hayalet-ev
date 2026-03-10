@@ -1,4 +1,8 @@
-import type { OverlayLogEntry, OverlayState } from "./live-log-overlay-model.js";
+import {
+  getOverlayEntryMessage,
+  type OverlayLogEntry,
+  type OverlayState,
+} from "./live-log-overlay-model.js";
 import { formatDateTime, formatTime, t as entranceT } from "./i18n.js";
 
 interface OverlayRenderParams {
@@ -133,7 +137,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     }
 
     const haystack =
-      `${entry.message} ${entry.category} ${entry.source} ${entry.sessionId}`.toLowerCase();
+      `${getOverlayEntryMessage(entry)} ${entry.category} ${entry.source} ${entry.sessionId}`.toLowerCase();
     return haystack.includes(searchFilter);
   });
 
@@ -163,6 +167,7 @@ export function renderEntries(params: OverlayRenderParams): void {
     const time = formatTime(new Date(entry.timestamp));
     const category = formatLogCategory(entry.category);
     const safeLevel = escapeHtml(formatLevelLabel(entry.level));
+    const displayMessage = escapeHtml(getOverlayEntryMessage(entry));
 
     row.innerHTML = `
       <div class="log-entry-header">
@@ -171,7 +176,7 @@ export function renderEntries(params: OverlayRenderParams): void {
         <span class="log-app">${escapeHtml(entry.app)}</span>
         <span class="log-category">${escapeHtml(category)}</span>
       </div>
-      <div class="log-message">${escapeHtml(entry.message)}</div>
+      <div class="log-message">${displayMessage}</div>
     `;
 
     row.addEventListener("click", () => {

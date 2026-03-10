@@ -98,10 +98,7 @@ export class WhisperPanel {
       const row = document.createElement("div");
       row.className = "entrance-whisper-item";
 
-      const when =
-        record.when !== undefined && record.when !== 0
-          ? formatTime(record.when)
-          : "-";
+      const when = record.when !== undefined && record.when !== 0 ? formatTime(record.when) : "-";
 
       const accountLabel = this.getAccountLabel(record.accountId, accountMap);
 

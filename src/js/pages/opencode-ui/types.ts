@@ -5,6 +5,7 @@ export interface ApiProxyResult {
   data?: unknown;
   error?: string;
   status?: number;
+  statusText?: string;
 }
 
 export interface FetchOptions {

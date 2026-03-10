@@ -24,7 +24,7 @@ interface ResultBase {
 }
 
 async function translateElectronMessage(key: string, params?: TranslationParams): Promise<string> {
-  let settings: { general?: { language?: unknown } } = {};
+  let settings: { general?: { language?: unknown } };
   try {
     settings = ((await loadSettings()) ?? {}) as { general?: { language?: unknown } };
   } catch {
@@ -32,11 +32,12 @@ async function translateElectronMessage(key: string, params?: TranslationParams)
   }
 
   const locale = normalizeAppLanguage(settings.general?.language);
-  const activePack =
-    (await loadAvailableLanguage(locale)) ?? getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)!;
-  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackPack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE);
+  const activePack = (await loadAvailableLanguage(locale)) ?? fallbackPack;
+  const activeCatalog = activePack?.catalog ?? {};
+  const fallbackCatalog = fallbackPack?.catalog;
 
-  return translateCatalog(activePack.catalog, key, params, fallbackCatalog);
+  return translateCatalog(activeCatalog, key, params, fallbackCatalog);
 }
 
 async function fileManagerT(key: string, params?: TranslationParams): Promise<string> {
@@ -189,11 +190,12 @@ export async function copyToAssets(
             })
         );
       } catch (e) {
-        void logger.logInternal(
+        void logger.logInternalT(
           LogCategory.FILE_MANAGER,
           LogLevel.WARNING,
-          "Failed to remove existing user avatar",
-          { error: e }
+          "electron.fileManager.logs.userAvatarRemoveFailed",
+          { message: e instanceof Error ? e.message : String(e) },
+          { error: e instanceof Error ? e.message : String(e) }
         );
       }
     }
@@ -241,10 +243,10 @@ export async function deleteAsset(
   assetPath: string
 ): Promise<ResultBase> {
   try {
-    if (assetPath.length === 0) throw new Error("assetPath missing");
+    if (assetPath.length === 0) throw new Error(await fileManagerT("assetPathMissing"));
     const target = assetPath;
     if (!existsSync(target)) {
-      return { success: true, message: "Asset not found" };
+      return { success: true, message: await fileManagerT("assetNotFound") };
     }
     await rm(target, { force: true });
     return { success: true };
@@ -269,7 +271,9 @@ export async function generateTree(
     const excludePatterns = options.exclude ?? ["node_modules", "dist", ".vite"];
     const isProject = basePath === "project" || basePath === ".";
     if (isProject) basePath = Paths.getProjectRoot();
-    if (!existsSync(basePath)) return { success: false, message: `Path not found: ${basePath}` };
+    if (!existsSync(basePath)) {
+      return { success: false, message: await fileManagerT("pathNotFound", { path: basePath }) };
+    }
     const shouldExclude = (name: string): boolean =>
       excludePatterns.some((pattern) => {
         if (pattern.includes("*")) {

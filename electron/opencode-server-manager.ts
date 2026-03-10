@@ -7,6 +7,7 @@ import { Paths } from "./paths.js";
 import { LogCategory, LogLevel } from "../src/types/logging-core.js";
 import type { ServerOptions, ServerInfo, ServerBinaryInfo } from "./types/server.ts";
 import { SERVER_TIMEOUTS } from "@timeouts";
+import { translateElectronMessage } from "./i18n/language-service.ts";
 
 const logger = getLoggerCore();
 
@@ -236,7 +237,9 @@ export class OpenCodeServerManager {
   async start(options: ServerOptions = {}): Promise<ServerInfo> {
     // Fail when a process started by this manager is already running.
     if (this.process !== null) {
-      throw new Error("OpenCode server already running");
+      throw new Error(
+        await translateElectronMessage("electron.opencodeServer.serverAlreadyRunning")
+      );
     }
 
     // First, look for a running server in the port range.
@@ -262,13 +265,19 @@ export class OpenCodeServerManager {
     if (options.port !== undefined) {
       const available = await this.isPortAvailable(options.port);
       if (!available) {
-        throw new Error(`Port ${options.port} is already in use`);
+        throw new Error(
+          await translateElectronMessage("electron.opencodeServer.portAlreadyInUse", {
+            port: options.port,
+          })
+        );
       }
       port = options.port;
     } else {
       const foundPort = await this.findAvailablePort();
       if (foundPort === null) {
-        throw new Error("No available port found (tried 4096-4110)");
+        throw new Error(
+          await translateElectronMessage("electron.opencodeServer.noAvailablePortFound")
+        );
       }
       port = foundPort;
     }
@@ -277,7 +286,10 @@ export class OpenCodeServerManager {
     const binaryInfo = await this.diagnoseBinary({ binaryPath: binaryCommand });
     if (!binaryInfo.available) {
       throw new Error(
-        `OpenCode binary check failed (${binaryCommand}): ${binaryInfo.error ?? "unknown error"}`
+        await translateElectronMessage("electron.opencodeServer.binaryCheckFailed", {
+          command: binaryCommand,
+          message: binaryInfo.error ?? "unknown error",
+        })
       );
     }
     const binaryExecutable = binaryInfo.resolvedPath ?? binaryInfo.command;
@@ -322,9 +334,15 @@ export class OpenCodeServerManager {
 
     this.process.stdout?.on("data", (data: unknown) => {
       const output = chunkToString(data);
-      void logger.logInternalT(LogCategory.MAIN, LogLevel.DEBUG, "electron.opencodeServer.logs.stdout", undefined, {
-        output,
-      });
+      void logger.logInternalT(
+        LogCategory.MAIN,
+        LogLevel.DEBUG,
+        "electron.opencodeServer.logs.stdout",
+        undefined,
+        {
+          output,
+        }
+      );
     });
 
     this.process.stderr?.on("data", (data: unknown) => {

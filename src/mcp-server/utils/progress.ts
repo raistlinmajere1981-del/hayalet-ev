@@ -125,9 +125,7 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
     const heartbeatMessage = progressT("ongoing", { operation });
     const messageSuffix = lastMessage !== "" ? ` - ${lastMessage}` : "";
 
-    console.error(
-      `[PROGRESS] ⏳ ${heartbeatMessage} [${elapsed}s] ${progressStr}${messageSuffix}`
-    );
+    console.error(`[PROGRESS] ⏳ ${heartbeatMessage} [${elapsed}s] ${progressStr}${messageSuffix}`);
 
     void sendProgressNotification(
       currentStep,

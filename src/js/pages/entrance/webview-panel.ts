@@ -2,6 +2,7 @@ import type { WebviewTag } from "electron";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../../modules/logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController } from "../../modules/slot-controller.js";
@@ -41,10 +42,7 @@ function providerTestT(key: string, params?: Record<string, string | number | bo
   return AppI18n.t(`providerTest.${key}`, params);
 }
 
-function entranceWebviewT(
-  key: string,
-  params?: Record<string, string | number | boolean>
-): string {
+function entranceWebviewT(key: string, params?: Record<string, string | number | boolean>): string {
   return AppI18n.t(`entrance.webview.${key}`, params);
 }
 
@@ -817,7 +815,7 @@ export class WebviewPanel {
       });
 
       if (result.success !== true) {
-        throw new Error(result.message ?? providerTestT("delivery.failed"));
+        throw new Error(formatErrorWithDetail(providerTestT("delivery.failed"), result.message));
       }
 
       state.message = providerTestT("scenario.deliverySent");
@@ -1095,8 +1093,7 @@ export class WebviewPanel {
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.disconnected.title");
-          if (subtitle)
-            subtitle.textContent = AppI18n.t("entrance.webview.disconnected.subtitle");
+          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.disconnected.subtitle");
         }
         if (webviewEl) webviewEl.style.display = "none";
         continue;
@@ -1238,7 +1235,7 @@ export class WebviewPanel {
             : null;
         if (cfg !== null) {
           try {
-            if (typeof webviewEl.send === "function" && currentProviderId) {
+            if (typeof webviewEl.send === "function" && currentProviderId !== "") {
               webviewEl.send("hayalet-set-provider", {
                 providerId: currentProviderId,
                 slot: type,
@@ -1251,7 +1248,16 @@ export class WebviewPanel {
                     window.__hayalet_provider_config = ${JSON.stringify(cfg)};
                     return true;
                   } catch (e) {
-                    console.error('[Hayalet-Config-Inject] Failed:', e);
+                    console.error(
+                      ${JSON.stringify(
+                        AppI18n.t("webview.messageSender.logs.providerConfigInjectionFailed", {
+                          provider: type,
+                          providerId: currentProviderId,
+                          message: "{{message}}",
+                        })
+                      )}.replace("{{message}}", e instanceof Error ? e.message : String(e)),
+                      e
+                    );
                     return false;
                   }
                 })();
@@ -1319,9 +1325,7 @@ export class WebviewPanel {
                   ? payload.tokens.join(",")
                   : String(payload.tokens ?? "");
                 titleEl.textContent =
-                  tokens !== ""
-                    ? entranceWebviewT("usageTitleWithTokens", { base, tokens })
-                    : base;
+                  tokens !== "" ? entranceWebviewT("usageTitleWithTokens", { base, tokens }) : base;
               }
             }
           }
@@ -1346,8 +1350,7 @@ export class WebviewPanel {
             "error",
             entranceWebviewT("logs.loadFailed", {
               code: event.errorCode ?? 0,
-              description:
-                event.errorDescription ?? entranceWebviewT("logs.unknownLoadError"),
+              description: event.errorDescription ?? entranceWebviewT("logs.unknownLoadError"),
             })
           );
         } else if (event.errorCode === -3) {

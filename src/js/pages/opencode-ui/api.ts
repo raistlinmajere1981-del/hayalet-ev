@@ -1,4 +1,5 @@
 import type { ApiProxyResult, FetchOptions, HttpMethod } from "./types.js";
+import { formatDetailedErrorMessage, t } from "./i18n.js";
 
 let opencodeUiBaseUrl = "http://127.0.0.1:4096";
 
@@ -69,6 +70,18 @@ function extractProxyErrorMessage(data: unknown): string {
   return "";
 }
 
+function formatHttpStatus(status: unknown, statusText?: unknown): string {
+  const normalizedStatusText = typeof statusText === "string" ? statusText.trim() : "";
+
+  if (typeof status === "number" && Number.isFinite(status)) {
+    return normalizedStatusText !== ""
+      ? t("api.httpStatusWithText", { status, statusText: normalizedStatusText })
+      : t("api.httpStatus", { status });
+  }
+
+  return t("api.requestFailed");
+}
+
 export async function apiCall<T = Record<string, unknown>>(
   method: HttpMethod,
   path: string,
@@ -86,29 +99,41 @@ export async function apiCall<T = Record<string, unknown>>(
 
     if (!result.success) {
       const proxyDetail = result.error ?? extractProxyErrorMessage(result.data);
-      const detail =
-        proxyDetail !== "" ? proxyDetail : `HTTP ${String(result.status ?? "unknown")}`;
-      throw new Error(detail);
+      throw new Error(
+        proxyDetail !== ""
+          ? formatDetailedErrorMessage("api.requestFailed", proxyDetail)
+          : formatHttpStatus(result.status, result.statusText)
+      );
     }
 
     return (result.data ?? {}) as T;
   }
 
-  const options: FetchOptions = { method };
-  if (body !== undefined) {
-    options.headers = { "Content-Type": "application/json" };
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(`HTTP ${String(response.status)} ${response.statusText}`);
-  }
-
-  const text = await response.text();
   try {
-    return JSON.parse(text) as T;
-  } catch (_error) {
-    return { _raw: text } as T;
+    const options: FetchOptions = { method };
+    if (body !== undefined) {
+      options.headers = { "Content-Type": "application/json" };
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(formatHttpStatus(response.status, response.statusText));
+    }
+
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch (_error) {
+      return { _raw: text } as T;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("HTTP ")) {
+      throw error;
+    }
+
+    throw new Error(formatDetailedErrorMessage("api.networkFailed", error), {
+      cause: error,
+    });
   }
 }

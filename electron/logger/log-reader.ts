@@ -21,12 +21,17 @@ import type {
   SessionSummary,
   StructuredLogEntry,
 } from "@electron/types";
+import { translateElectronMessage } from "../i18n/language-service.ts";
+
+async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
+  return await translateElectronMessage(`electron.logger.${key}`, params);
+}
 
 export async function readConsoleLogs(tail: number = 100): Promise<string> {
   try {
     const sessionDir = getSessionDir();
     if (sessionDir === null || sessionDir.length === 0 || !existsSync(sessionDir)) {
-      return "No session logs found";
+      return await loggerT("consoleLogsNotFound");
     }
 
     const files = await readdir(sessionDir);
@@ -41,7 +46,9 @@ export async function readConsoleLogs(tail: number = 100): Promise<string> {
 
     return allLines.slice(-tail).join("\n");
   } catch (err: unknown) {
-    return `Failed to read logs: ${(err as Error).message}`;
+    return await loggerT("consoleLogsReadFailed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
@@ -49,14 +56,16 @@ export async function readErrorLogs(tail: number = 100): Promise<string> {
   try {
     const errorLog = getErrorLogPath();
     if (errorLog === null || errorLog.length === 0 || !existsSync(errorLog)) {
-      return "No error logs found";
+      return await loggerT("errorLogsNotFound");
     }
 
     const content = await readFile(errorLog, "utf-8");
     const lines = content.split("\n").filter((l) => l.trim().length > 0);
     return lines.slice(-tail).join("\n");
   } catch (err: unknown) {
-    return `Failed to read error logs: ${(err as Error).message}`;
+    return await loggerT("errorLogsReadFailed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
@@ -89,11 +98,15 @@ function parseStructuredLine(line: string): StructuredLogEntry | null {
     const contextRaw = parsed["context"];
     const metaRaw = parsed["meta"];
     const aiHintRaw = parsed["aiHint"];
+    const messageParamsRaw = parsed["messageParams"];
 
     return {
       timestamp,
       source: sourceRaw as StructuredLogEntry["source"],
       message,
+      ...(typeof parsed["messageKey"] === "string" ? { messageKey: parsed["messageKey"] } : {}),
+      ...(isRecord(messageParamsRaw) ? { messageParams: messageParamsRaw } : {}),
+      ...(typeof parsed["locale"] === "string" ? { locale: parsed["locale"] } : {}),
       ...(isLogLevelValue(levelRaw) ? { level: levelRaw } : {}),
       ...(isRecord(contextRaw) ? { context: contextRaw as LogContext } : {}),
       ...(typeof parsed["isoTimestamp"] === "string"
@@ -125,7 +138,7 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
 export async function readAllLogs(targetSessionId: string | null = null): Promise<AllLogsResult> {
   const logDir = getLogDir();
   if (logDir === null || logDir.length === 0) {
-    throw new Error("Log directory not initialized");
+    throw new Error(await loggerT("logDirectoryNotInitialized"));
   }
 
   const sessionId = targetSessionId ?? getSessionId();
@@ -143,7 +156,7 @@ export async function readAllLogs(targetSessionId: string | null = null): Promis
 
   try {
     if (sessionDir === null || sessionDir.length === 0 || !existsSync(sessionDir)) {
-      return { ...result, error: "Session not found" };
+      return { ...result, error: await loggerT("sessionNotFound") };
     }
 
     const files = await readdir(sessionDir);
@@ -185,7 +198,9 @@ export async function readAllLogs(targetSessionId: string | null = null): Promis
       ) as SessionSummary | null;
     }
   } catch (err: unknown) {
-    result.error = `Failed to read logs: ${(err as Error).message}`;
+    result.error = await loggerT("allLogsReadFailed", {
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return result;

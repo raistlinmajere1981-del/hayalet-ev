@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@shared/index.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { TIMEOUTS } from "@timeouts";
 import type { AppSettings } from "@shared/settings.js";
 import { AppState } from "../app-state.js";
@@ -40,6 +41,14 @@ export interface CoreRuntimeHandles {
 
 function whisperT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.whisper.runtime.${key}`, params);
+}
+
+function whisperError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number>
+): string {
+  return formatErrorWithDetail(whisperT(key, params), detail);
 }
 
 interface CoreRuntimeEngineRef {
@@ -121,7 +130,7 @@ export async function initializeCoreRuntime(
         text
       );
       if (!result.success) {
-        throw new Error(result.message ?? whisperT("sendFailed"));
+        throw new Error(whisperError("sendFailed", result.message));
       }
     }
   );

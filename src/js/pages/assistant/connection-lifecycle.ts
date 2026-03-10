@@ -76,7 +76,9 @@ export async function toggleAssistantConnection(
       controller._setButtonState(ConnectButtonState.ERROR, error.message);
     } finally {
       controller._finishConnectFlow();
-      await new Promise((resolve) => setTimeout(resolve, ASSISTANT_TIMEOUTS.STAGE_TRANSITION_SHORT));
+      await new Promise((resolve) =>
+        setTimeout(resolve, ASSISTANT_TIMEOUTS.STAGE_TRANSITION_SHORT)
+      );
       controller._updateConnectionUI();
     }
     return;
@@ -156,7 +158,7 @@ export async function toggleAssistantConnection(
             LogCategory.ASSISTANT_CORE,
             assistantT("logs.providerServerTimeout", { name: adapter.name }),
             {
-            url: result.url,
+              url: result.url,
             }
           );
 
@@ -187,11 +189,15 @@ export async function toggleAssistantConnection(
           url: targetUrl,
         });
       } else {
+        const errorMessage =
+          typeof result.error === "string" && result.error !== ""
+            ? result.error
+            : assistantT("errors.providerServeStartFailed", { name: adapter.name });
         Logger.error(
           LogCategory.ASSISTANT_CORE,
           assistantT("logs.providerServerStartFailed", { name: adapter.name }),
           {
-          error: result.error,
+            error: errorMessage,
           }
         );
       }

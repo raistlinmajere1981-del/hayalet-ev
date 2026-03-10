@@ -114,7 +114,8 @@ export async function findAndReplace(
       return {
         success: true,
         replacements: occurrences,
-        preview: previewLines.join("\n") + `\n(${findReplaceT("previewTotal", { count: occurrences })})`,
+        preview:
+          previewLines.join("\n") + `\n(${findReplaceT("previewTotal", { count: occurrences })})`,
       };
     }
 

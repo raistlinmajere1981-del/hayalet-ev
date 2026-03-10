@@ -75,7 +75,11 @@ async function clearPartitionCache(partitionName: string): Promise<ClearResult> 
 }
 
 export async function clearStartupCache(): Promise<{ main: ClearResult; assistant: ClearResult }> {
-  await logger.logInternalT(LogCategory.MAIN, LogLevel.INFO, "electron.session.logs.startupCacheClearingStarted");
+  await logger.logInternalT(
+    LogCategory.MAIN,
+    LogLevel.INFO,
+    "electron.session.logs.startupCacheClearingStarted"
+  );
 
   const results = {
     main: await clearPartitionCache(PARTITIONS.MAIN),

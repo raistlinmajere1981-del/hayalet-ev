@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "fs/promises";
 import { existsSync } from "fs";
 import { dirname, join, resolve } from "path";
+import { formatErrorWithDetail } from "../shared/i18n/error-detail.ts";
 import { Paths } from "./paths.ts";
 import type {
   InstalledRoomRecord,
@@ -17,6 +18,7 @@ import {
   normalizeRoomRelativePath,
   validateRoomManifest,
 } from "@shared/index.js";
+import { translateElectronMessage } from "./i18n/language-service.ts";
 
 interface RoomManagerOptions {
   workspaceRoot?: string;
@@ -35,6 +37,21 @@ interface RoomBundleValidationResult {
   valid: boolean;
   errors: string[];
   bundle?: RoomBundle;
+}
+
+async function roomPackageT(
+  key: string,
+  params?: Record<string, string | number | boolean>
+): Promise<string> {
+  return await translateElectronMessage(`electron.roomPackage.${key}`, params);
+}
+
+async function roomPackageError(
+  key: string,
+  detail?: unknown,
+  params?: Record<string, string | number | boolean>
+): Promise<string> {
+  return formatErrorWithDetail(await roomPackageT(key, params), detail);
 }
 
 function cloneCommandSpecs(
@@ -338,7 +355,7 @@ export class RoomPackageManager {
     const installedRoot = this.getInstalledRoot();
     const normalizedRoomId = normalizeRoomId(roomId);
     if (normalizedRoomId === "") {
-      return { success: false, error: "roomId is required" };
+      return { success: false, error: await roomPackageT("roomIdRequired") };
     }
 
     const workspaceRooms = await this.listWorkspaceRooms();
@@ -347,13 +364,16 @@ export class RoomPackageManager {
     );
 
     if (target === undefined) {
-      return { success: false, error: `Room not found in workspace: ${normalizedRoomId}` };
+      return {
+        success: false,
+        error: await roomPackageT("roomNotFoundInWorkspace", { roomId: normalizedRoomId }),
+      };
     }
 
     if (target.valid !== true || target.manifest === undefined) {
       return {
         success: false,
-        error: `Room workspace is invalid: ${target.errors.join("; ")}`,
+        error: await roomPackageError("workspaceInvalid", target.errors.join("; ")),
       };
     }
 
@@ -384,11 +404,16 @@ export class RoomPackageManager {
     if (runtimeStat?.isFile() !== true) {
       return {
         success: false,
-        error: `Installed runtime entry missing: ${record.runtimeEntryPath}`,
+        error: await roomPackageT("installedRuntimeEntryMissing", {
+          path: record.runtimeEntryPath,
+        }),
       };
     }
     if (hostStat?.isFile() !== true) {
-      return { success: false, error: `Installed host entry missing: ${record.hostEntryPath}` };
+      return {
+        success: false,
+        error: await roomPackageT("installedHostEntryMissing", { path: record.hostEntryPath }),
+      };
     }
 
     const registry = await this.readRegistry();
@@ -406,13 +431,16 @@ export class RoomPackageManager {
   async removeInstalledRoom(roomId: string): Promise<RoomOperationResult> {
     const normalizedRoomId = normalizeRoomId(roomId);
     if (normalizedRoomId === "") {
-      return { success: false, error: "roomId is required" };
+      return { success: false, error: await roomPackageT("roomIdRequired") };
     }
 
     const registry = await this.readRegistry();
     const current = registry.rooms.find((item) => item.id === normalizedRoomId);
     if (current === undefined) {
-      return { success: false, error: `Installed room not found: ${normalizedRoomId}` };
+      return {
+        success: false,
+        error: await roomPackageT("installedRoomNotFound", { roomId: normalizedRoomId }),
+      };
     }
 
     await rm(current.installedDir, { recursive: true, force: true });
@@ -430,19 +458,25 @@ export class RoomPackageManager {
     const workspaceRoot = this.getWorkspaceRoot();
     const normalizedRoomId = normalizeRoomId(roomId);
     if (normalizedRoomId === "") {
-      return { success: false, error: "roomId is required" };
+      return { success: false, error: await roomPackageT("roomIdRequired") };
     }
 
     const registry = await this.readRegistry();
     const current = registry.rooms.find((item) => item.id === normalizedRoomId);
     if (current === undefined) {
-      return { success: false, error: `Installed room not found: ${normalizedRoomId}` };
+      return {
+        success: false,
+        error: await roomPackageT("installedRoomNotFound", { roomId: normalizedRoomId }),
+      };
     }
 
     const exportDir = join(workspaceRoot, current.id);
     await this.ensureRoots();
     if (existsSync(exportDir) && options.overwrite !== true) {
-      return { success: false, error: `Workspace room already exists: ${exportDir}` };
+      return {
+        success: false,
+        error: await roomPackageT("workspaceRoomExists", { path: exportDir }),
+      };
     }
 
     if (options.overwrite === true) {
@@ -459,7 +493,7 @@ export class RoomPackageManager {
   ): Promise<RoomOperationResult> {
     const normalizedRoomId = normalizeRoomId(roomId);
     if (normalizedRoomId === "") {
-      return { success: false, error: "roomId is required" };
+      return { success: false, error: await roomPackageT("roomIdRequired") };
     }
 
     const workspaceRooms = await this.listWorkspaceRooms();
@@ -468,14 +502,17 @@ export class RoomPackageManager {
     );
 
     if (target?.manifest === undefined) {
-      return { success: false, error: `Room not found in workspace: ${normalizedRoomId}` };
+      return {
+        success: false,
+        error: await roomPackageT("roomNotFoundInWorkspace", { roomId: normalizedRoomId }),
+      };
     }
 
     const targetManifest = target.manifest;
     if (target.valid !== true) {
       return {
         success: false,
-        error: `Room workspace is invalid: ${target.errors.join("; ")}`,
+        error: await roomPackageError("workspaceInvalid", target.errors.join("; ")),
       };
     }
 
@@ -521,7 +558,7 @@ export class RoomPackageManager {
   ): Promise<RoomOperationResult> {
     const rawBundleFile = bundleFile.trim();
     if (rawBundleFile === "") {
-      return { success: false, error: "bundleFile is required" };
+      return { success: false, error: await roomPackageT("bundleFileRequired") };
     }
     const normalizedBundleFile = resolve(rawBundleFile);
 
@@ -531,7 +568,7 @@ export class RoomPackageManager {
     } catch (error) {
       return {
         success: false,
-        error: `Bundle read failed: ${error instanceof Error ? error.message : String(error)}`,
+        error: await roomPackageError("bundleReadFailed", error),
       };
     }
 
@@ -539,7 +576,7 @@ export class RoomPackageManager {
     if (validation.valid !== true || validation.bundle === undefined) {
       return {
         success: false,
-        error: `Bundle is invalid: ${validation.errors.join("; ")}`,
+        error: await roomPackageError("bundleInvalid", validation.errors.join("; ")),
       };
     }
 
@@ -550,7 +587,7 @@ export class RoomPackageManager {
     if (existsSync(workspaceDir) && options.overwriteWorkspace !== true) {
       return {
         success: false,
-        error: `Workspace room already exists: ${workspaceDir}`,
+        error: await roomPackageT("workspaceRoomExists", { path: workspaceDir }),
       };
     }
 
