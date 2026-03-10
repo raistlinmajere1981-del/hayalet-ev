@@ -1076,7 +1076,7 @@ export class WebviewPanel {
         if (urlDisplay) urlDisplay.textContent = "";
         if (webviewEl) webviewEl.style.display = "none";
         if (overlayEl) {
-          overlayEl.className = "webview-overlay empty"; // State class
+          overlayEl.className = "webview-overlay empty";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.noAccount.title");
@@ -1089,7 +1089,7 @@ export class WebviewPanel {
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
         if (overlayEl) {
-          overlayEl.className = "webview-overlay disconnected"; // State class
+          overlayEl.className = "webview-overlay disconnected";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.disconnected.title");
@@ -1102,7 +1102,7 @@ export class WebviewPanel {
       if (state.connecting) {
         this.setDevtoolsEnabled(provider, false);
         if (overlayEl) {
-          overlayEl.className = "webview-overlay connecting"; // State class + spinner animation
+          overlayEl.className = "webview-overlay connecting";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.connecting.title");
@@ -1182,9 +1182,7 @@ export class WebviewPanel {
       let currentUrl = "";
       try {
         currentUrl = webviewEl.getURL?.() ?? "";
-      } catch (_) {
-        // Leave the value empty when the URL cannot be read.
-      }
+      } catch (_) {}
       const isExcluded = WebviewManager.isUrlExcluded(type, currentUrl);
 
       const state = this.loadLogState[type] ?? { lastStart: 0, lastStop: 0 };
@@ -1290,7 +1288,7 @@ export class WebviewPanel {
         message,
       });
 
-      // Level: 0=log, 1=warn, 2=error, 3=debug
+      // NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.
       const logLevel = level === 2 ? "error" : level === 1 ? "warn" : "debug";
       if (logLevel === "error") {
         Logger.error(LogCategory.WEBVIEW, new Error(consoleMessage), {

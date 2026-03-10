@@ -3,9 +3,6 @@ import { join } from "path";
 import type { FolderEntry } from "@shared/index-mcp.js";
 import { IGNORE_DIRS } from "./constants.js";
 
-/**
- * Read a folder tree recursively.
- */
 export async function readFolderStructure(
   folderPath: string,
   maxDepth: number = 3,
@@ -59,9 +56,6 @@ export async function readFolderStructure(
   }
 }
 
-/**
- * Format the folder structure as text.
- */
 export function formatFolderStructure(entries: FolderEntry[], indent: string = ""): string {
   const lines: string[] = [];
 

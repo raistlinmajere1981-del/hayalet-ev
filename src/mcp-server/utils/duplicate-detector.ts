@@ -1,44 +1,30 @@
-/**
- * Context-Aware Duplicate Detection
- *
- * AST-based scope detection to eliminate false positives.
- * Only flags duplicates within the same scope (function, class, block).
- * Includes template/boilerplate exception for documentation files.
- */
-
 import { parse } from "@typescript-eslint/typescript-estree";
 import type { TSESTree } from "@typescript-eslint/typescript-estree";
 import { readFile } from "fs/promises";
 
-/**
- * Template patterns that are allowed to repeat (documentation, config files)
- */
 const TEMPLATE_PATTERNS = [
-  /^\*\*Category:\*\*/, // Markdown: **Category:** Development
-  /^\*\*Prefix:\*\*/, // Markdown: **Prefix:** `hev_dev_*`
-  /^\*\*Description:\*\*/, // Markdown: **Description:** ...
-  /^\*\*Tool:\*\*/, // Markdown: **Tool:** tool_name
-  /^\*\*Use Case:\*\*/, // Markdown: **Use Case:** ...
-  /^\*\*When:\*\*/, // Markdown: **When:** ...
-  /^\*\*Impact:\*\*/, // Markdown: **Impact:** ...
-  /^\*\*Status:\*\*/, // Markdown: **Status:** ...
-  /^---+$/, // Markdown: horizontal separators
-  /^===+$/, // Markdown: heading underlines
-  /^#{1,6}\s/, // Markdown: headings
-  /^\s*\|\s*[-:]+\s*\|/, // Markdown: table separators
-  /^import\s+.*from\s+['"].*['"];?$/, // ES6 imports
-  /^export\s+\{.*\}\s+from/, // ES6 re-exports
-  /^\s*\/\/\s*TODO:/, // TODO comments
-  /^\s*\/\/\s*FIXME:/, // FIXME comments
-  /^\s*console\.(log|warn|error)\(/, // Console statements
+  /^\*\*Category:\*\*/,
+  /^\*\*Prefix:\*\*/,
+  /^\*\*Description:\*\*/,
+  /^\*\*Tool:\*\*/,
+  /^\*\*Use Case:\*\*/,
+  /^\*\*When:\*\*/,
+  /^\*\*Impact:\*\*/,
+  /^\*\*Status:\*\*/,
+  /^---+$/,
+  /^===+$/,
+  /^#{1,6}\s/,
+  /^\s*\|\s*[-:]+\s*\|/,
+  /^import\s+.*from\s+['"].*['"];?$/,
+  /^export\s+\{.*\}\s+from/,
+  /^\s*\/\/\s*TODO:/,
+  /^\s*\/\/\s*FIXME:/,
+  /^\s*console\.(log|warn|error)\(/,
 ];
 
-/**
- * Check if a line matches any template pattern
- */
 function isTemplatePattern(line: string): boolean {
   const trimmed = line.trim();
-  if (trimmed.length === 0) return true; // Empty lines are templates
+  if (trimmed.length === 0) return true;
   return TEMPLATE_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
@@ -65,9 +51,6 @@ interface DuplicateInfo {
   scope: string;
 }
 
-/**
- * Build a map of line numbers to their scope information
- */
 function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
   const scopeMap = new Map<number, ScopeInfo>();
 
@@ -87,7 +70,6 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
 
     let newScope: ScopeInfo | null = null;
 
-    // Detect scope-creating nodes
     if (
       node.type === "FunctionDeclaration" ||
       node.type === "FunctionExpression" ||
@@ -152,7 +134,7 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
         parentScope: currentScope,
       };
     } else if (node.type === "BlockStatement") {
-      // Only create scope for blocks that are not part of function/class
+      // NOTE: Only create scope for blocks that are not part of function/class.
       if (
         currentScope.type !== "function" &&
         currentScope.type !== "method" &&
@@ -170,14 +152,12 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
 
     const scopeToUse = newScope ?? currentScope;
 
-    // Map all lines in this node to the current scope
     for (let line = start; line <= end; line++) {
       if (!scopeMap.has(line) || (newScope && scopeMap.get(line)?.type === "file")) {
         scopeMap.set(line, scopeToUse);
       }
     }
 
-    // Visit children
     const keys = Object.keys(node) as Array<keyof typeof node>;
     for (const key of keys) {
       const child = node[key];
@@ -200,31 +180,22 @@ function buildScopeMap(ast: TSESTree.Program): Map<number, ScopeInfo> {
   return scopeMap;
 }
 
-/**
- * Check if two scopes are the same
- */
 function areSameScope(scope1: ScopeInfo, scope2: ScopeInfo): boolean {
-  // Must be same type
   if (scope1.type !== scope2.type) return false;
 
-  // Must have same range
   if (scope1.startLine !== scope2.startLine || scope1.endLine !== scope2.endLine) {
     return false;
   }
 
-  // For switch-case, also check parent scope (different functions = different scope)
   if (scope1.type === "switch-case") {
-    // If both have parent scopes, they must match
     if (scope1.parentScope && scope2.parentScope) {
       return areSameScope(scope1.parentScope, scope2.parentScope);
     }
-    // If one has parent and other doesn't, they're different
     if (scope1.parentScope || scope2.parentScope) {
       return false;
     }
   }
 
-  // For function, method, class, interface, type-alias: name and range is enough
   if (
     scope1.type === "function" ||
     scope1.type === "method" ||
@@ -235,13 +206,9 @@ function areSameScope(scope1: ScopeInfo, scope2: ScopeInfo): boolean {
     return scope1.name === scope2.name;
   }
 
-  // For blocks and file: range is enough (already checked above)
   return true;
 }
 
-/**
- * Detect context-aware duplicates
- */
 export async function detectContextAwareDuplicates(
   filePath: string,
   changedLineStart: number,
@@ -252,7 +219,6 @@ export async function detectContextAwareDuplicates(
     const content = await readFile(filePath, "utf-8");
     const lines = content.split("\n");
 
-    // Parse AST (only for JS/TS files)
     const ext = filePath.toLowerCase();
     const isCodeFile =
       ext.endsWith(".ts") ||
@@ -321,15 +287,12 @@ export async function detectContextAwareDuplicates(
 
     return duplicates;
   } catch (error) {
-    // Duplicate detection is advisory and must not block the caller.
+    // NOTE: Duplicate detection is advisory and must not block the caller.
     process.stderr.write(`Duplicate detection error: ${String(error)}\n`);
     return [];
   }
 }
 
-/**
- * Fallback duplicate detection for files that cannot be parsed safely.
- */
 function detectSimpleDuplicates(
   lines: string[],
   changedLineStart: number,

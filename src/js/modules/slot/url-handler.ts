@@ -1,12 +1,3 @@
-/**
- * UrlHandler - slot URL operations
- *
- * Handles slot webview URL changes:
- * - URL change tracking
- * - URL exclusion checks
- * - Navigation event handling
- */
-
 import {
   normalizeUrl,
   isUrlExcluded as checkUrlExcluded,

@@ -1,9 +1,3 @@
-/**
- * Development Tools - TypeScript Error Dashboard
- *
- * Analyzes TypeScript errors and presents them in dashboard format
- */
-
 import { execSync } from "child_process";
 import _fs from "fs";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -169,7 +163,6 @@ function parseTypescriptErrors(
   }> = [];
 
   output.split("\n").forEach((line) => {
-    // Parse: src/file.ts(123,45): error TS2532: Object is possibly 'undefined'.
     const match = line.match(/^(.+?)\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)$/);
     if (match) {
       errors.push({
@@ -212,14 +205,12 @@ function formatDashboard(data: {
 
   let output = "";
 
-  // Header
   output += `${tsDashboardT("runtime.title")}\n`;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
   output += `${tsDashboardT("runtime.totalErrors", { total: data.total })}\n`;
   if (statsLine !== "") output += statsLine;
   output += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
-  // Top Error Codes
   output += `${tsDashboardT("runtime.topErrorCodesTitle")}\n`;
   data.topErrors.forEach((err, idx) => {
     const percentage = ((err.count / data.total) * 100).toFixed(1);
@@ -236,7 +227,6 @@ function formatDashboard(data: {
   });
   output += "\n";
 
-  // Top Files
   output += `${tsDashboardT("runtime.topFilesTitle")}\n`;
   data.topFiles.forEach((file, idx) => {
     const shortPath = file.file.replace(data.projectRoot, ".");
@@ -249,7 +239,6 @@ function formatDashboard(data: {
   });
   output += "\n";
 
-  // Category Breakdown
   output += `${tsDashboardT("runtime.byCategoryTitle")}\n`;
   const byCategory: Record<string, number> = {};
   Object.entries(data.byErrorCode).forEach(([code, count]) => {
@@ -267,7 +256,6 @@ function formatDashboard(data: {
     });
   output += "\n";
 
-  // Recommendations
   output += `${tsDashboardT("runtime.recommendedActionsTitle")}\n`;
   if (data.topErrors[0]) {
     const topError = data.topErrors[0];
@@ -278,7 +266,6 @@ function formatDashboard(data: {
       }) + "\n";
     output += tsDashboardT("runtime.errorsInCategory", { count: topError.count }) + "\n";
 
-    // Suggest fix strategy
     if (["TS2722", "TS2532", "TS18048"].includes(topError.code)) {
       output += `\n${tsDashboardT("runtime.fixerTitle")}\n`;
       output += `${tsDashboardT("runtime.fixerErrorCodes", { code: topError.code })}\n`;
@@ -295,10 +282,6 @@ function generateBar(count: number, total: number, width: number = 10): string {
   const empty = width - filled;
   return "█".repeat(filled) + "░".repeat(empty);
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const TYPESCRIPT_DASHBOARD_TOOL = {
   name: "hev_dev_typescript_dashboard",

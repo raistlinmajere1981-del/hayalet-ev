@@ -1,11 +1,3 @@
-/**
- * Error Pattern Type Definitions
- *
- * Type definitions for the error pattern database and match results.
- *
- * @module electron/types/error-patterns
- */
-
 export interface ErrorHint {
   pattern: string;
   category: string;

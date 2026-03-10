@@ -1,12 +1,3 @@
-/**
- * TimeoutHandler - slot timeout and error handling
- *
- * Handles timeout and error scenarios for slot operations:
- * - start/clear timeouts
- * - connection error handling
- * - post-error cleanup
- */
-
 import { getErrorMessage } from "@shared/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
 import { AppI18n } from "../i18n/index.js";

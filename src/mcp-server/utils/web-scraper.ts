@@ -1,14 +1,7 @@
-/**
- * Web Scraper Utility
- * Extract clean text from HTML and process page content
- */
-
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import { WEB_TIMEOUTS } from "@timeouts";
 import { createMcpTranslatorSync, readMcpAppLanguageSync } from "./i18n/index.js";
-
-// Elements to remove as noise.
 const REMOVE_SELECTORS = [
   "script",
   "style",
@@ -45,8 +38,6 @@ const REMOVE_SELECTORS = [
   "[role='complementary']",
   "[aria-hidden='true']",
 ];
-
-// Preferred content containers.
 const CONTENT_SELECTORS = [
   "article",
   "main",
@@ -57,7 +48,7 @@ const CONTENT_SELECTORS = [
   ".entry",
   "#content",
   "#main",
-  ".markdown-body", // GitHub
+  ".markdown-body",
   ".post-content",
   ".article-content",
   ".entry-content",
@@ -82,14 +73,11 @@ export interface FetchOptions {
 
 const DEFAULT_OPTIONS: FetchOptions = {
   timeout: WEB_TIMEOUTS.PAGE_FETCH,
-  maxLength: 50000, // ~50KB text
+  maxLength: 50000,
   includeLinks: true,
   userAgent: "Mozilla/5.0 (compatible; app/1.0; +https://github.com/)",
 };
 
-/**
- * Fetch page content from a URL and clean it.
- */
 export async function fetchAndParse(
   url: string,
   options: FetchOptions = {}
@@ -99,14 +87,10 @@ export async function fetchAndParse(
   const locale = readMcpAppLanguageSync();
   const acceptLanguage =
     locale === "en" ? "en-US,en;q=0.9,tr-TR,tr;q=0.7" : "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7";
-
-  // URL validation.
   const parsedUrl = new URL(url);
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     throw new Error(t("mcpServer.webTools.scraper.errors.httpHttpsOnly"));
   }
-
-  // Fetch with timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
@@ -149,15 +133,11 @@ export async function fetchAndParse(
   }
 }
 
-/**
- * Parse HTML and extract clean content.
- */
 export function parseHTML(html: string, url: string, options: FetchOptions = {}): ScrapedContent {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const t = createMcpTranslatorSync();
   const $ = cheerio.load(html);
-  // $ is also referenced from explanatory comments below.
-  void $; // Prevent unused warning
+  void $;
 
   REMOVE_SELECTORS.forEach((selector) => {
     $(selector).remove();
@@ -216,9 +196,6 @@ export function parseHTML(html: string, url: string, options: FetchOptions = {})
   return result;
 }
 
-/**
- * Extract clean text from an element.
- */
 function extractText(
   element: cheerio.Cheerio<AnyNode>,
   $: cheerio.CheerioAPI,
@@ -229,8 +206,6 @@ function extractText(
   element.find("p, h1, h2, h3, h4, h5, h6, li, td, th, pre, blockquote, div").each((_, el) => {
     const $el = $(el);
     const tagName = el.type === "tag" ? el.tagName.toLowerCase() : "";
-
-    // Skip container nodes that would duplicate nested paragraph or div text.
     if ($el.find("p, div").length > 0 && !["pre", "blockquote"].includes(tagName)) {
       return;
     }
@@ -264,9 +239,6 @@ function extractText(
     .trim();
 }
 
-/**
- * Extract Markdown from an element.
- */
 function extractMarkdown(
   element: cheerio.Cheerio<AnyNode>,
   $: cheerio.CheerioAPI,
@@ -279,8 +251,6 @@ function extractMarkdown(
     .each((_, el) => {
       const $el = $(el);
       const tagName = el.type === "tag" ? el.tagName.toLowerCase() : "";
-
-      // Skip nested elements and process only the top level.
       if ($el.parents("p, li, h1, h2, h3, h4, h5, h6").length > 0) {
         return;
       }
@@ -338,45 +308,27 @@ function extractMarkdown(
     .trim();
 }
 
-/**
- * Process inline elements (bold, italic, link, code).
- */
 function processInlineElements(
   $el: cheerio.Cheerio<AnyNode>,
   _$: cheerio.CheerioAPI,
   includeLinks: boolean
 ): string {
   let html = $el.html() ?? "";
-
-  // Strong/Bold
   html = html.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "**$1**");
   html = html.replace(/<b[^>]*>(.*?)<\/b>/gi, "**$1**");
-
-  // Em/Italic
   html = html.replace(/<em[^>]*>(.*?)<\/em>/gi, "*$1*");
   html = html.replace(/<i[^>]*>(.*?)<\/i>/gi, "*$1*");
-
-  // Inline code
   html = html.replace(/<code[^>]*>(.*?)<\/code>/gi, "`$1`");
-
-  // Links
   if (includeLinks) {
     html = html.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "[$2]($1)");
   } else {
     html = html.replace(/<a[^>]*>(.*?)<\/a>/gi, "$1");
   }
-
-  // Remove remaining HTML tags.
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
-/**
- * Truncate text to a target length.
- */
 export function truncateText(text: string, maxLength: number, suffix = "..."): string {
   if (text.length <= maxLength) return text;
-
-  // Cut at a word boundary.
   const truncated = text.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
 
@@ -387,9 +339,6 @@ export function truncateText(text: string, maxLength: number, suffix = "..."): s
   return truncated + suffix;
 }
 
-/**
- * Check whether a URL is reachable.
- */
 export async function checkUrlAccessible(
   url: string,
   timeout = WEB_TIMEOUTS.URL_CHECK

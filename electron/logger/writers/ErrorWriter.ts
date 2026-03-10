@@ -1,11 +1,3 @@
-/**
- * Error Log Writer - Error-only log file
- *
- * Writes only ERROR level logs for quick error review
- *
- * @module electron/logger/writers/ErrorWriter
- */
-
 import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";

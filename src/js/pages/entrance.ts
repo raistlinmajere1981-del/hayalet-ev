@@ -57,8 +57,8 @@ export class EntranceHallController {
     this.webviewPanel.init();
 
     this.setupEventListeners();
-    this.setupLogArea(); // Stage 2: log area for Level 1-2
-    this.setupLiveLogOverlay(); // Stage 3: live overlay for Level 1-2-3
+    this.setupLogArea();
+    this.setupLiveLogOverlay();
     await this.loadUserSettings();
     this.setupI18nBindings();
 
@@ -186,7 +186,7 @@ export class EntranceHallController {
     const openModal = (): void => {
       if (!modal || !modalBody) return;
       modalBody.innerHTML = "";
-      const all = Logger.getRecentLogs(500); // Get all recent logs
+      const all = Logger.getRecentLogs(500);
       [...all].reverse().forEach((entry) => {
         modalBody.appendChild(createLogElement(entry, true));
       });
@@ -664,9 +664,7 @@ export class EntranceHallController {
     return cleaned;
   }
 
-  /**
-   * Escape HTML to prevent XSS
-   */
+  // NOTE: Escape HTML to prevent XSS.
   escapeHtml(text: string): string {
     const div = document.createElement("div");
     div.textContent = text;

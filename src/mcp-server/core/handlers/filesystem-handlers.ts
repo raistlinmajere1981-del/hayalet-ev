@@ -1,8 +1,3 @@
-/**
- * Filesystem Tool Handlers
- * File I/O, grep, bash, trash, diff, chunked operations
- */
-
 import { createFilesystemMiscTools } from "./filesystem/misc-tools.js";
 import { createFilesystemBasicTools } from "./filesystem/basic-tools.js";
 import type { ToolEntry, ToolContext } from "../registry.js";

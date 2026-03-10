@@ -1,9 +1,3 @@
-/**
- * OpenCode Provider - main module
- *
- * Exports for message sending and file operations.
- */
-
 export * from "./scraper.js";
 
 export { sendMessage } from "../../methods/message/injection.js";

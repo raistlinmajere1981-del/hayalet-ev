@@ -1,31 +1,3 @@
-/**
- * Animation Controller
- *
- * GSAP wrapper for consistent animations throughout the app.
- * Provides simplified API for common animation patterns.
- *
- * @example
- * ```typescript
- * import { Anim } from './ui';
- *
- * // Simple animations
- * Anim.fadeIn(element);
- * Anim.fadeOut(element);
- * Anim.slideIn(element, 'left');
- *
- * // Timeline for complex sequences
- * const tl = Anim.timeline();
- * tl.add(Anim.fadeIn(el1))
- *   .add(Anim.slideIn(el2, 'bottom'), '-=0.2');
- *
- * // Stagger animations
- * Anim.stagger('.card', { opacity: 0, y: 20 }, { opacity: 1, y: 0 }, 0.1);
- *
- * // Draggable (for games)
- * Anim.makeDraggable('.piece', { bounds: '.board' });
- * ```
- */
-
 import { gsap } from "gsap";
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
@@ -348,11 +320,7 @@ const animationController = {
     gsap.globalTimeline.resume();
   },
 
-  /**
-   * Make element draggable
-   * Note: Requires GSAP Draggable plugin (Club GreenSock)
-   * This is a placeholder for future implementation
-   */
+  // NOTE: Draggable requires the GSAP Club plugin; this is a placeholder.
   makeDraggable(target: gsap.DOMTarget, _options: DraggableOptions = {}): void {
     Logger.debug(
       LogCategory.UI_ANIMATION,

@@ -1,7 +1,3 @@
-/**
- * Intent-based tool recommendation and workflow guidance.
- */
-
 import type { ToolResult } from "@shared/index-mcp.js";
 import type { TranslationParams } from "../../types/i18n.js";
 import { createMcpTranslatorSync } from "../utils/i18n/index.js";

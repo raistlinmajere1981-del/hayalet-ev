@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Component States
- * Reusable state classes for status indicators and UI feedback
- * @version 5.4.0
- */
-
-/* === VISIBILITY === */
 .is-hidden {
   display: none !important;
 }
@@ -13,14 +6,12 @@
   visibility: hidden;
 }
 
-/* === DISABLED === */
 .is-disabled {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-/* === LOADING === */
 .is-loading {
   position: relative;
   pointer-events: none;
@@ -34,8 +25,6 @@
   border-radius: inherit;
 }
 
-/* === STATUS COLORS === */
-/* Generic state backgrounds */
 .is-success {
   background: var(--color-success-bg);
   color: var(--color-success);
@@ -56,14 +45,11 @@
   color: var(--color-info);
 }
 
-/* === STATUS DOT STATES === */
-/* These extend the base .status-dot from indicators.css */
 .is-connected {
   background: var(--color-success);
   box-shadow: var(--glow-success);
 }
 
-/* === INTERACTIVE STATES === */
 .is-active {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-muted);
@@ -74,7 +60,6 @@
   border-color: var(--color-accent);
 }
 
-/* === FEEDBACK === */
 .has-error {
   border-color: var(--color-error) !important;
 }

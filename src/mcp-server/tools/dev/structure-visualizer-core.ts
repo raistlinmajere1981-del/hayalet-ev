@@ -1,9 +1,3 @@
-/**
- * Development Tools - Structure Visualizer
- *
- * Visualizes file structure with AST, scope hierarchy, and bracket analysis.
- */
-
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
 import type { NodePath } from "@babel/traverse";
@@ -67,7 +61,7 @@ export async function visualizeStructure(
     try {
       const { parse } = await import("@babel/parser");
       const traverseImport = await import("@babel/traverse");
-      // Support both CommonJS and ESM Babel traverse exports.
+      // NOTE: Support both CommonJS and ESM Babel traverse exports.
       interface TraverseModule {
         default?: TraverseFn | { default?: TraverseFn };
       }
@@ -269,7 +263,6 @@ export async function visualizeStructure(
             `${indent}${lineRange.padEnd(8)} │ ${prefix}${icon} ${scope.name.padEnd(25)} ${status}`
           );
 
-          // Find children
           const children = scopes.filter(
             (child) =>
               child.start > scope.start &&
@@ -298,7 +291,7 @@ export async function visualizeStructure(
         output.push("━".repeat(50));
         output.push("");
 
-        scopeCount = scopes.length; // Save count before leaving scope
+        scopeCount = scopes.length;
       }
 
       output.push(structureVizT("runtime.astParseSuccess", { scopeCount }));
@@ -310,24 +303,19 @@ export async function visualizeStructure(
     }
   }
 
-  // Bracket analysis (always run, context-aware)
   if (showBrackets) {
     output.push("");
     output.push(structureVizT("runtime.bracketAnalysisTitle"));
     output.push("━".repeat(50));
 
-    // If AST parse was successful, brackets are guaranteed to be balanced
     if (astParseSuccess) {
       output.push(structureVizT("runtime.bracketsBalancedAst"));
       output.push("━".repeat(50));
-      // Skip manual counting, AST parse guarantees correctness
     } else {
-      // Fallback to manual bracket counting for non-JS files or parse failures
       const bracketCounts = countBracketsContextAware(content);
       const unclosedBrackets: Array<{ char: string; line: number; col: number }> = [];
       const extraBrackets: Array<{ char: string; line: number; col: number }> = [];
 
-      // Calculate unclosed and extra brackets
       const bracketPairs = { "(": ")", "{": "}", "[": "]" };
 
       for (const [openChar, closeChar] of Object.entries(bracketPairs)) {
@@ -337,11 +325,9 @@ export async function visualizeStructure(
         if (!openList || !closeList) continue;
 
         if (openList.length > closeList.length) {
-          // More opens than closes - some are unclosed
           const diff = openList.length - closeList.length;
           unclosedBrackets.push(...openList.slice(-diff).map((b) => ({ char: openChar, ...b })));
         } else if (closeList.length > openList.length) {
-          // More closes than opens - some are extra
           const diff = closeList.length - openList.length;
           extraBrackets.push(...closeList.slice(-diff).map((b) => ({ char: closeChar, ...b })));
         }
@@ -390,10 +376,9 @@ export async function visualizeStructure(
       }
 
       output.push("━".repeat(50));
-    } // End of else block (fallback manual counting)
+    }
   }
 
-  // Comment analysis
   if (showComments) {
     output.push("");
     output.push(structureVizT("runtime.commentBlocksTitle"));
@@ -407,12 +392,10 @@ export async function visualizeStructure(
       const line = lines[i];
       if (line == null || line === "") continue;
 
-      // Single line comments
       if (line.includes("//")) {
         commentBlocks.push({ type: "single", start: i + 1 });
       }
 
-      // Multi-line comments
       if (line.includes("/*")) {
         inMultilineComment = true;
         multilineStart = i + 1;
@@ -466,9 +449,6 @@ export async function visualizeStructure(
   };
 }
 
-/**
- * Context-aware bracket counting (ignores brackets inside strings and regexes)
- */
 export function countBracketsContextAware(content: string): {
   open: { [key: string]: Array<{ line: number; col: number }> };
   close: { [key: string]: Array<{ line: number; col: number }> };
@@ -492,46 +472,37 @@ export function countBracketsContextAware(content: string): {
   let inSingleLineComment: boolean;
   let inMultiLineComment = false;
 
-  // Track nested `${...}` interpolation blocks inside template literals.
-  // Each item stores the brace depth captured at a template-literal nesting level.
-  // Push when `${` is entered inside a template literal.
-  // Pop when `}` closes the current interpolation block.
-  const templateLiteralStack: number[] = []; // stores brace depth at each template level
+  const templateLiteralStack: number[] = [];
 
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
     if (line == null || line === "") continue;
-    inSingleLineComment = false; // Reset at start of each line
+    inSingleLineComment = false;
 
     for (let col = 0; col < line.length; col++) {
       const char = line[col];
       const nextChar = col < line.length - 1 ? line[col + 1] : "";
 
-      // Skip if in single-line comment
       if (inSingleLineComment) continue;
 
-      // Multi-line comment detection
       if (!inString && !inRegex && char === "/" && nextChar === "*") {
         inMultiLineComment = true;
-        col++; // Skip next char
+        col++;
         continue;
       }
       if (inMultiLineComment && char === "*" && nextChar === "/") {
         inMultiLineComment = false;
-        col++; // Skip next char
+        col++;
         continue;
       }
       if (inMultiLineComment) continue;
 
-      // Single-line comment detection
       if (!inString && !inRegex && char === "/" && nextChar === "/") {
         inSingleLineComment = true;
         continue;
       }
 
-      // String detection (with proper escape handling via backslash counting)
       if ((char === '"' || char === "'" || char === "`") && !inRegex) {
-        // Count preceding backslashes to handle escaped quotes correctly
         let bsCount = 0;
         let bsPos = col - 1;
         while (bsPos >= 0 && line[bsPos] === "\\") {
@@ -552,23 +523,19 @@ export function countBracketsContextAware(content: string): {
         continue;
       }
 
-      // Template literal ${...} interpolation handling
       if (inString && stringChar === "`") {
         if (char === "$" && nextChar === "{") {
-          // Entering interpolation — pause template literal, start counting code
-          templateLiteralStack.push(0); // push brace depth counter
+          templateLiteralStack.push(0);
           inString = false;
           stringChar = "";
-          col++; // skip the '{' after '$'
+          col++;
           continue;
         }
-        continue; // skip other chars inside template literal
+        continue;
       }
 
-      // Skip if in regular string (single/double quote)
       if (inString) continue;
 
-      // Template literal interpolation brace tracking
       if (templateLiteralStack.length > 0) {
         if (char === "{") {
           const lastIdx = templateLiteralStack.length - 1;
@@ -580,7 +547,6 @@ export function countBracketsContextAware(content: string): {
           const lastIdx = templateLiteralStack.length - 1;
           const depth = templateLiteralStack[lastIdx] ?? 0;
           if (depth === 0) {
-            // This } closes the interpolation — back to template literal
             templateLiteralStack.pop();
             inString = true;
             stringChar = "`";
@@ -591,23 +557,18 @@ export function countBracketsContextAware(content: string): {
             continue;
           }
         }
-        // Other chars inside interpolation are normal code — fall through to bracket counting below
       }
 
-      // Regex detection with proper escape handling
       if (char === "/" && !inRegex) {
-        // Check if this / is escaped by counting preceding backslashes
         let backslashCount = 0;
         let checkPos = col - 1;
         while (checkPos >= 0 && line[checkPos] === "\\") {
           backslashCount++;
           checkPos--;
         }
-        // If odd number of backslashes, the / is escaped
         const isEscaped = backslashCount % 2 === 1;
 
         if (!isEscaped) {
-          // Check if previous non-whitespace token suggests division operator
           let prevTokenEnd = col - 1;
           while (
             prevTokenEnd >= 0 &&
@@ -618,7 +579,6 @@ export function countBracketsContextAware(content: string): {
             prevTokenEnd--;
           }
 
-          // If previous token ends with identifier, digit, or closing bracket, it's division
           const prevTokenChar =
             prevTokenEnd >= 0 && line[prevTokenEnd] != null && line[prevTokenEnd] !== ""
               ? line[prevTokenEnd]
@@ -646,7 +606,7 @@ export function countBracketsContextAware(content: string): {
               "~",
               "^",
             ];
-            // Use prevTokenEnd (whitespace-skipped) instead of checkPos (backslash-skipped)
+            // NOTE: Use prevTokenEnd (whitespace-skipped) instead of checkPos (backslash-skipped).
             const prevChar = prevTokenEnd >= 0 ? line[prevTokenEnd] : undefined;
             const charBefore = typeof prevChar === "string" ? prevChar : "";
             const isRegexStart =
@@ -659,7 +619,6 @@ export function countBracketsContextAware(content: string): {
           }
         }
       } else if (char === "/" && inRegex) {
-        // Check if regex-ending / is escaped
         let backslashCount = 0;
         let checkPos = col - 1;
         while (checkPos >= 0 && line[checkPos] === "\\") {
@@ -669,7 +628,6 @@ export function countBracketsContextAware(content: string): {
         const isEscaped = backslashCount % 2 === 1;
 
         if (!isEscaped) {
-          // Verify this is truly regex end by checking next char (flags or delimiter)
           const regexFlags = ["i", "g", "m", "s", "u", "y", ".", " ", ")", ";", ",", "}", "]"];
           const isRegexEnd =
             (nextChar != null && nextChar !== "" && regexFlags.includes(nextChar)) ||
@@ -682,15 +640,10 @@ export function countBracketsContextAware(content: string): {
         }
       }
 
-      // Skip if in regex
       if (inRegex) continue;
 
-      // Skip generic types (< and >)
-      // TypeScript: Map<string, number>, Record<K, V>, Array<T>
       let isGenericType = false;
       if (char === "<" || char === ">") {
-        // Check if this is likely a generic type
-        // Pattern: word< or >, or <word
         const prevWord = line.substring(Math.max(0, col - 10), col).match(/[A-Za-z_$][\w$]*$/);
         const nextWord = line
           .substring(col + 1, Math.min(line.length, col + 11))
@@ -701,7 +654,6 @@ export function countBracketsContextAware(content: string): {
         }
       }
 
-      // Count brackets (only outside strings, regexes, comments, and generic types)
       if (!isGenericType) {
         if (char === "(" || char === "{" || char === "[") {
           open[char]?.push({ line: lineIdx + 1, col: col + 1 });
@@ -712,7 +664,6 @@ export function countBracketsContextAware(content: string): {
     }
   }
 
-  // Check balance
   const balanced =
     (open["("]?.length ?? 0) === (close[")"]?.length ?? 0) &&
     (open["{"]?.length ?? 0) === (close["}"]?.length ?? 0) &&

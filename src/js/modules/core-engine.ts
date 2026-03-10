@@ -30,7 +30,7 @@ import {
   type ServerCommandsRef,
   type WhisperRecord,
 } from "./core/whisper-actions.js";
-// ServerCommands injected from app bootstrap to break circular dependency
+// NOTE: ServerCommands injected from app bootstrap to break circular dependency.
 let _serverCommands: ServerCommandsRef | null = null;
 function registerServerCommands(sc: ServerCommandsRef): void {
   _serverCommands = sc;
@@ -294,7 +294,6 @@ class CoreEngineClass {
     });
   }
 
-  /** Replace <AI0>, <AI1>, and <AI2> tags in protocol text with nicknames. */
   replaceProtocolTags(text: string): string {
     return replaceProtocolTags(text);
   }

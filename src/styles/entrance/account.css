@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev - Entrance Account & User Settings Styles
- * User settings, accounts, account form
- * @version 5.4.0
- */
-
-/* === USER SETTINGS === */
 .user-settings-column {
   display: flex;
   flex-direction: column;
@@ -73,7 +66,6 @@
   gap: var(--space-2);
 }
 
-/* === ACCOUNTS CONTAINER === */
 .accounts-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -110,7 +102,6 @@
   border: var(--border-1) solid var(--color-accent);
 }
 
-/* Avatar spans two rows in height */
 .account-avatar-2row {
   width: var(--size-avatar-md);
   height: var(--size-avatar-md);
@@ -127,7 +118,6 @@
   background-position: center;
 }
 
-/* Info grid: nickname+provider on top, email below */
 .account-info-grid {
   flex: 1;
   min-width: 0;
@@ -168,7 +158,6 @@
   flex-shrink: 0;
 }
 
-/* === ACCOUNT FORM === */
 .account-form {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
@@ -209,7 +198,6 @@
   background-position: center;
 }
 
-/* === WHISPER CONTAINER (Entrance panel - prefixed to avoid conflict with whisper page) === */
 .entrance-whisper-container {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,4 @@
-/**
- * Progress Indicator Utility
- *
- * Progress reporting for long-running operations.
- * Sends updates through MCP notifications and stderr.
- */
+// NOTE: Progress reporting uses MCP notifications plus stderr logging.
 
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { createMcpTranslatorSync } from "./i18n/index.js";
@@ -14,7 +9,7 @@ function progressT(key: string, params?: Record<string, string | number | boolea
   return progressTranslator(`mcpServer.progress.${key}`, params);
 }
 
-// Global server reference (set from index.ts)
+// NOTE: Global server reference set from index.ts.
 let mcpServer: Server | null = null;
 let currentProgressToken: string | number | null = null;
 
@@ -22,49 +17,30 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * Set the MCP server reference from index.ts.
- */
 export function setMcpServer(server: Server): void {
   mcpServer = server;
 }
 
-/**
- * Set the active progress token from the request metadata.
- */
 export function setProgressToken(token: string | number | null): void {
   currentProgressToken = token;
 }
 
 export interface ProgressOptions {
-  /** Human-readable operation name */
   operation: string;
-  /** Total step count when known */
   total?: number;
-  /** Heartbeat interval (ms) */
   interval?: number;
-  /** Quiet mode prints only important updates */
   quiet?: boolean;
-  /** Progress token for MCP notifications */
   progressToken?: string | number;
 }
 
 export interface ProgressTracker {
-  /** Update the current progress step */
   update: (current: number, message?: string) => void;
-  /** Emit an informational message */
   log: (message: string) => void;
-  /** Mark the operation as completed */
   done: (message?: string) => void;
-  /** Mark the operation as failed */
   fail: (error: string) => void;
-  /** Stop the heartbeat without marking completion */
   stop: () => void;
 }
 
-/**
- * Send an MCP progress notification when available.
- */
 async function sendProgressNotification(
   progress: number,
   total: number | undefined,
@@ -84,13 +60,10 @@ async function sendProgressNotification(
       } as Record<string, unknown>,
     });
   } catch {
-    // Ignore notification failures.
+    // NOTE: Ignore notification failures.
   }
 }
 
-/**
- * Create a progress tracker for a long-running operation.
- */
 export function createProgress(options: ProgressOptions): ProgressTracker {
   const { operation, total, interval = 2000, quiet = false, progressToken } = options;
   const startTime = Date.now();
@@ -203,9 +176,6 @@ export function createProgress(options: ProgressOptions): ProgressTracker {
   };
 }
 
-/**
- * Wrap an async operation and surface progress when it exceeds a timeout.
- */
 export async function withTimeout<T>(
   operation: string,
   fn: () => Promise<T>,

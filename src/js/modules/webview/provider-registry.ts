@@ -37,27 +37,14 @@ function updateProviderMaps(id: string, config: unknown): void {
 }
 
 const providerRegistry = {
-  /**
-   * Returns the provider config (AI + Assistant).
-   * @param {string} id - Provider ID (chatgpt, grok, gemini, opencode, opencode-ui)
-   * @returns {Object|null}
-   */
   get(id: string): Record<string, unknown> | null {
     return (allProviders as ProviderMap)[id] ?? null;
   },
 
-  /**
-   * Returns only the primary AI providers.
-   * @returns {Object[]}
-   */
   getAll(): Record<string, unknown>[] {
     return Object.values(providers);
   },
 
-  /**
-   * Returns only the primary AI provider IDs.
-   * @returns {string[]}
-   */
   getIds(): string[] {
     return Object.keys(providers);
   },

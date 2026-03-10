@@ -1,15 +1,8 @@
-/**
- * Hayalet-ev - Entrance Page Styles
- * Layout aligned with the sample visual
- * @version 5.4.0
- */
-
 @import "./entrance/slot.css";
 @import "./entrance/account.css";
 @import "./entrance/report.css";
 @import "./entrance/test.css";
 
-/* === PAGE LAYOUT === */
 #page-entrance {
   height: calc(100vh - var(--topbar-height));
   overflow-y: auto;
@@ -22,7 +15,6 @@
   background: var(--bg-app);
 }
 
-/* === SLOT GRID === */
 .slot-grid {
   flex: 1;
   display: grid;
@@ -32,16 +24,13 @@
   min-height: 0;
 }
 
-/* === RESPONSIVE === */
 @media (max-width: 1280px) {
-  /* --bp-xl */
   .accordion-panels {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 1024px) {
-  /* --bp-lg */
   .slot-grid {
     grid-template-columns: 1fr;
     gap: var(--space-3);
@@ -57,7 +46,6 @@
 }
 
 @media (max-width: 768px) {
-  /* --bp-md */
   .user-settings-column {
     gap: var(--space-1);
   }

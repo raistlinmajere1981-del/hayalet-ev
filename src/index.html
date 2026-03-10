@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="/styles/assistant.css" />
   </head>
   <body>
-    <!-- Splash screen -->
     <div id="splash-screen" class="splash">
       <div class="splash-content">
         <div class="splash-logo-container">
@@ -31,7 +30,6 @@
       </div>
     </div>
 
-    <!-- Global webview container (always in DOM, hidden offscreen) -->
     <div
       id="global-webview-container"
       style="
@@ -69,7 +67,6 @@
       ></webview>
     </div>
 
-    <!-- Side navigation overlay -->
     <div class="side-nav-overlay" id="side-nav-overlay">
       <div class="side-nav-trigger"></div>
       <nav class="side-nav-menu">
@@ -133,7 +130,6 @@
     </div>
 
     <div id="app">
-      <!-- Top bar -->
       <div class="top-bar">
         <div class="top-bar-left">
           <div class="logo">
@@ -144,11 +140,8 @@
 
         <div class="top-bar-center">
           <div class="indicators">
-            <!-- Indicator cluster group -->
             <div class="indicators-group">
-              <!-- Top row: AI1 - flow line - assistant - flow line - AI2 -->
               <div class="indicators-row">
-                <!-- AI1 cluster -->
                 <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
                   <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai1"></div>
                   <div class="indicator-content">
@@ -204,7 +197,6 @@
                   </div>
                 </div>
 
-                <!-- AI1 ↔ AI0 relay flow line -->
                 <div class="relay-flow-wrapper">
                   <button
                     class="relay-toggle-btn"
@@ -227,7 +219,6 @@
                   </div>
                 </div>
 
-                <!-- Assistant (AI0) cluster -->
                 <div class="indicator-cluster indicator-cluster-assistant" id="cluster-ai0">
                   <div class="indicator-avatar indicator-avatar-md" id="indicator-avatar-ai0"></div>
                   <div class="indicator-content">
@@ -272,7 +263,6 @@
                   </div>
                 </div>
 
-                <!-- AI0 ↔ AI2 relay flow line -->
                 <div class="relay-flow-wrapper relay-flow-wrapper-rtl">
                   <div
                     class="relay-flow-line"
@@ -295,7 +285,6 @@
                   </button>
                 </div>
 
-                <!-- AI2 cluster -->
                 <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
                   <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai2"></div>
                   <div class="indicator-content">
@@ -351,9 +340,6 @@
                   </div>
                 </div>
               </div>
-              <!-- /.indicators-row -->
-
-              <!-- AI1 ↔ AI2 relay -->
               <div class="relay-flow-bottom-row">
                 <button
                   class="relay-toggle-btn relay-btn-bottom-left"
@@ -385,12 +371,10 @@
                 </button>
               </div>
             </div>
-            <!-- /.indicators-group -->
-          </div>
+            </div>
         </div>
 
         <div class="top-bar-right">
-          <!-- Window controls -->
           <div class="window-controls">
             <button
               class="icon-btn"
@@ -436,7 +420,6 @@
             </button>
           </div>
 
-          <!-- Live log and theme selector -->
           <div class="top-bar-actions">
             <button
               class="icon-btn"
@@ -509,7 +492,6 @@
         <div id="pages-container"></div>
       </div>
 
-      <!-- Report reader modal -->
       <div class="modal modal-document modal-wide hidden" id="report-modal">
         <div class="modal-content">
           <div class="modal-header">
@@ -692,10 +674,8 @@
       </div>
     </div>
 
-    <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Livefix restart countdown overlay -->
     <div class="livefix-countdown-overlay hidden" id="livefix-countdown-overlay">
       <div class="livefix-countdown-card">
         <div class="livefix-countdown-icon">⚡</div>

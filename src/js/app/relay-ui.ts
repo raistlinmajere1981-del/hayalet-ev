@@ -1,10 +1,3 @@
-/**
- * Relay UI
- *
- * Manages top bar relay buttons, relay indicators,
- * and flow line animations.
- */
-
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory } from "../modules/logger/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
@@ -112,11 +105,6 @@ function bindRelayI18n(): void {
   relayI18nBound = true;
 }
 
-/**
- * Updates the relay indicator flow line animations.
- * AI-AI uses the bottom line, AI1-Assistant uses the left line,
- * and Assistant-AI2 uses the right line.
- */
 export function updateRelayIndicator(): void {
   const flowAi1Ai0 = document.getElementById("relay-flow-ai1-ai0");
   const flowAi0Ai2 = document.getElementById("relay-flow-ai0-ai2");

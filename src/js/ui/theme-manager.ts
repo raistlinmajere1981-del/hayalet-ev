@@ -1,27 +1,4 @@
-/**
- * Theme Manager
- *
- * Manages application themes.
- * Currently only Obsidian (dark, cyan accents) is active.
- * Theme infrastructure is preserved for future expansion.
- *
- * @example
- * ```typescript
- * import { ThemeManager } from './ui/theme-manager';
- *
- * // Set theme
- * ThemeManager.set('obsidian');
- *
- * // Get available themes
- * ThemeManager.getAvailableThemes();
- *
- * // Listen for changes
- * const unsubscribe = ThemeManager.onChange((theme) => {
- *   console.log('Theme changed to:', theme);
- * });
- * ```
- */
-
+// NOTE: Theme infrastructure is retained for future expansion; only "obsidian" is active.
 import { AppI18n } from "../modules/i18n/index.js";
 
 export type ThemeId = "obsidian";
@@ -198,11 +175,6 @@ const themeManager = {
     isInitialized = true;
   },
 
-  /**
-   * Set theme
-   * @param theme - Theme ID to set
-   * @param persist - Whether to persist to localStorage (default: true)
-   */
   set(theme: ThemeId, persist: boolean = true): void {
     if (!isValidTheme(theme)) {
       console.warn(themeT("invalidTheme", { theme }));
@@ -217,7 +189,7 @@ const themeManager = {
     }
 
     notifyListeners(theme);
-    // Logger.debug() - omitted to avoid init issues at startup
+    // NOTE: Avoid Logger.debug() here to prevent init issues during startup.
   },
 
   next(): void {
@@ -250,11 +222,6 @@ const themeManager = {
     return THEMES[id];
   },
 
-  /**
-   * Subscribe to theme changes
-   * @param callback - Function to call when theme changes
-   * @returns Unsubscribe function
-   */
   onChange(callback: ThemeChangeCallback): () => void {
     listeners.add(callback);
     return () => {
@@ -280,7 +247,7 @@ if (typeof document !== "undefined") {
     themeManager.init();
   }
 
-  // Expose to window for consistent access across Vite HMR reloads
+  // NOTE: Expose to window for consistent access across Vite HMR reloads.
   window.__ThemeManager = themeManager;
 }
 

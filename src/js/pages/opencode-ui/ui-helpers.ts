@@ -1,17 +1,6 @@
-/**
- * OpenCode UI helpers
- * Custom dropdown, sidebar toggle, collapsible panels, tool search
- */
-
 import type { CustomSelectAPI, CustomSelectCallback, CustomSelectItem } from "./types.js";
 import { t } from "./i18n.js";
 
-/**
- * Create a custom select dropdown.
- * @param dropdownId - Dropdown container element ID
- * @param onSelect - Selection callback (value, text)
- * @returns Custom select API
- */
 export function setupCustomSelect(
   dropdownId: string,
   onSelect: CustomSelectCallback
@@ -59,7 +48,6 @@ export function setupCustomSelect(
         (btn as HTMLElement).dataset["value"] = item.value;
         (btn as HTMLElement).dataset["label"] = item.label;
 
-        // Rich content: label + subtitle + badge
         if (
           (item.subtitle !== undefined && item.subtitle !== "") ||
           (item.badge !== undefined && item.badge !== "")
@@ -109,9 +97,6 @@ export function setupCustomSelect(
   };
 }
 
-/**
- * Set up the sidebar toggle button.
- */
 export function setupSidebarToggle(btnId: string, sidebarId: string): void {
   const btn = document.getElementById(btnId) as HTMLElement;
   const sidebar = document.getElementById(sidebarId) as HTMLElement;
@@ -121,9 +106,6 @@ export function setupSidebarToggle(btnId: string, sidebarId: string): void {
   });
 }
 
-/**
- * Initialize all UI helpers.
- */
 export function initUIHelpers(): void {
   setupSidebarToggle("toggle-left", "sidebar-left");
   setupSidebarToggle("toggle-right", "sidebar-right");

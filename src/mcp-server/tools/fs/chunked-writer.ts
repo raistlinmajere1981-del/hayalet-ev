@@ -1,9 +1,3 @@
-/**
- * Filesystem Tools - Chunked Writer
- *
- * Large file handling with chunks.
- */
-
 import { writeFile, access, readFile, unlink } from "fs/promises";
 import { dirname } from "path";
 import { mkdir } from "fs/promises";

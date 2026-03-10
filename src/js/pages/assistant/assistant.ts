@@ -1,15 +1,5 @@
-/**
- * AssistantController - Assistant (AI0) page controller
- *
- * Handles provider selection, connection management, webview control,
- * and AI-Assistant relay flows.
- *
- * Server lifecycle is delegated to provider adapters.
- * To add a new provider:
- * 1. Implement the `AssistantProviderAdapter` interface
- * 2. Register it in `provider-registry.ts`
- */
-
+// NOTE: Server lifecycle is delegated to provider adapters.
+// NOTE: To add a provider, implement AssistantProviderAdapter and register in provider-registry.ts.
 import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
@@ -287,7 +277,7 @@ export class AssistantController {
     await this._syncAssistantRuntimeDefaults();
     await this._syncIdentityCard();
 
-    // Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
+    // NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
     const ai0Wv = document.getElementById("ai0-webview");
     const electronApi = window.electronAPI;
     if (ai0Wv !== null && ai0Wv.getAttribute("preload") === null) {
@@ -297,9 +287,7 @@ export class AssistantController {
         }
         const pp = await electronApi.getPreloadPath("ai0");
         if (pp !== "") ai0Wv.setAttribute("preload", pp);
-      } catch (_) {
-        /* silent */
-      }
+      } catch (_) {}
     }
 
     this.memoryBtn = document.getElementById("assistant-memory-btn") as HTMLButtonElement | null;
@@ -342,7 +330,6 @@ export class AssistantController {
       }
     );
 
-    // Load the disabled MCP server list from settings.
     this._loadDisabledMcpServers();
     registerAssistantDeliveryHandler(this._handleDeliveryRequest.bind(this));
 
@@ -912,9 +899,6 @@ export class AssistantController {
     }
   }
 
-  /**
-   * Resolve the active adapter for the selected provider.
-   */
   _initActiveAdapter(): void {
     const providerId = this.providerSelect?.value;
     if (providerId === undefined || providerId === "") {
@@ -1040,9 +1024,6 @@ export class AssistantController {
     applyConnectButtonState(this.connectBtn, state, errorMsg);
   }
 
-  /**
-   * Persist MCP toggle changes coming from the health webview.
-   */
   async _onMcpToggleFromHealth(server: string, enabled: boolean): Promise<void> {
     if (enabled) {
       this._disabledMcpServers.delete(server);
@@ -1050,7 +1031,6 @@ export class AssistantController {
       this._disabledMcpServers.add(server);
     }
 
-    // Persist to settings.
     await this._saveDisabledMcpServers();
 
     Logger.info(
@@ -1322,7 +1302,6 @@ export class AssistantController {
     const providerId = this.providerSelect?.value;
     if (providerId === undefined || providerId === "") return;
 
-    // Update the adapter.
     this._activeAdapter = AssistantProviderRegistry.getAdapter(providerId);
 
     const provider = ProviderRegistry.getAssistant(providerId);
@@ -1735,7 +1714,7 @@ export class AssistantController {
   _updateOverlay(
     overlayEl: HTMLElement | null,
     stateClass: string,
-    _icon: string, // Unused - CSS spinner is used instead
+    _icon: string,
     title: string,
     subtitle: string
   ): void {
@@ -1818,9 +1797,6 @@ export class AssistantController {
       },
     });
   }
-  /**
-   * Load the disabled MCP server list from settings.
-   */
   _loadDisabledMcpServers(): void {
     const settings = SettingsManager.getSnapshot() as AppSettings | null;
     const list = settings?.assistants?.disabledMcpServers;
@@ -1841,9 +1817,6 @@ export class AssistantController {
     }
   }
 
-  /**
-   * Save the disabled MCP server list to settings.
-   */
   async _saveDisabledMcpServers(): Promise<void> {
     try {
       await SettingsManager.set(
@@ -1857,14 +1830,10 @@ export class AssistantController {
     }
   }
 
-  /**
-   * Send the current disabled MCP server list to the health webview for sync.
-   */
   _syncDisabledMcpToHealth(): void {
     const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
     if (!ai0Webview) return;
 
-    // Sync the disabled MCP list when it exists.
     if (this._disabledMcpServers.size > 0) {
       try {
         const disabledList = Array.from(this._disabledMcpServers);
@@ -1878,7 +1847,7 @@ export class AssistantController {
           })();`
         );
       } catch (_) {
-        // Ignore silently if the webview is not ready yet
+        // NOTE: Ignore if the webview is not ready yet.
       }
     }
   }

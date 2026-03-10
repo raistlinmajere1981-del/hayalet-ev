@@ -1,10 +1,3 @@
-/**
- * Indicator Avatars
- *
- * Manages top bar AI slot avatar indicators.
- * Updates the connection state and avatar image for each slot.
- */
-
 import { AppState } from "../modules/app-state.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { getErrorMessage } from "@shared/index.js";
@@ -17,7 +10,7 @@ import { shellT } from "./shell-i18n.js";
 export function updateIndicatorAvatars(): void {
   const getAvatar = (provider: string): string | undefined => AppState.getAvatar(provider);
 
-  // AI0 uses the selected provider logo only while connected.
+  // NOTE: AI0 uses the provider logo only while connected.
   const ai0Connected = SlotController.isConnected("ai0");
   const ai0AvatarPath = ai0Connected === true ? getAvatar("ai0") : undefined;
 
@@ -45,10 +38,6 @@ export function updateIndicatorAvatars(): void {
     },
   };
 
-  /**
-   * @param {string | undefined} filePath
-   * @returns {Promise<string | null>}
-   */
   const buildDataUrl = async (filePath: string | undefined): Promise<string | null> => {
     if (filePath === undefined || filePath === "" || window.electronAPI?.readFile === undefined)
       return null;
@@ -62,11 +51,6 @@ export function updateIndicatorAvatars(): void {
     }
   };
 
-  /**
-   * @param {HTMLElement | null} el
-   * @param {string | null} src
-   * @param {boolean} connected
-   */
   const applyAvatar = (
     el: HTMLElement | null,
     src: string | null,
@@ -162,9 +146,7 @@ export function updateIndicatorAvatars(): void {
             btn.__convRefreshHandler = handler;
             btn.addEventListener("click", handler);
           }
-        } catch (e) {
-          /* noop */
-        }
+        } catch (e) {}
       }
     } catch (e) {
       Logger.debug(

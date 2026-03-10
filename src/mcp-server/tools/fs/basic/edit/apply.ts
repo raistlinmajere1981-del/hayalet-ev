@@ -3,9 +3,6 @@ import { escapeRegex, findMatchInfo, findMatchInfoRegex } from "./match.js";
 import { filterByScope } from "./scope.js";
 import type { ApplyEditResult, EditMatchInfo, FileEdit, MatchScope } from "./types.js";
 
-/**
- * Apply a single edit to content with scope and whitespace options.
- */
 export function applyEdit(
   content: string,
   edit: FileEdit,

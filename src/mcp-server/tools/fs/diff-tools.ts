@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Diff Tools
- */
-
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { diffFiles, diffContent } from "../../utils/diff-utils.js";
 

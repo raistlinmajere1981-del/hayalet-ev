@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Toast Components
- * Notification toasts with theme colors
- * @version 5.4.0
- */
-
-/* === TOAST CONTAINER === */
 .toast-container {
   --toast-max-w: 400px;
 
@@ -19,7 +12,6 @@
   max-width: var(--toast-max-w);
 }
 
-/* === BASE TOAST === */
 .toast {
   display: flex;
   align-items: flex-start;
@@ -34,7 +26,6 @@
   animation: toast-enter var(--duration-normal) var(--ease-out);
 }
 
-/* === TOAST ICON === */
 .toast-icon {
   flex-shrink: 0;
   width: var(--space-5);
@@ -45,7 +36,6 @@
   font-size: var(--text-lg);
 }
 
-/* === TOAST CONTENT === */
 .toast-content {
   flex: 1;
   min-width: 0;
@@ -64,7 +54,6 @@
   line-height: var(--leading-relaxed);
 }
 
-/* === TOAST CLOSE === */
 .toast-close {
   flex-shrink: 0;
   width: var(--size-icon-sm);
@@ -85,9 +74,7 @@
   color: var(--text-primary);
 }
 
-/* === TOAST VARIANTS === */
 
-/* Success */
 .toast-success {
   border-left: var(--border-3) solid var(--color-success);
 }
@@ -96,7 +83,6 @@
   color: var(--color-success);
 }
 
-/* Error */
 .toast-error {
   border-left: var(--border-3) solid var(--color-error);
 }
@@ -105,7 +91,6 @@
   color: var(--color-error);
 }
 
-/* Warning */
 .toast-warning {
   border-left: var(--border-3) solid var(--color-warning);
 }
@@ -114,7 +99,6 @@
   color: var(--color-warning);
 }
 
-/* Info */
 .toast-info {
   border-left: var(--border-3) solid var(--color-info);
 }
@@ -123,7 +107,6 @@
   color: var(--color-info);
 }
 
-/* === TOAST PROGRESS BAR === */
 .toast-progress {
   position: absolute;
   bottom: 0;
@@ -143,7 +126,6 @@
   }
 }
 
-/* === TOAST ACTION === */
 .toast-action {
   margin-top: var(--space-2);
 }
@@ -165,7 +147,6 @@
   color: var(--text-inverse);
 }
 
-/* === TOAST EXIT ANIMATION === */
 .toast-out {
   animation: toast-exit var(--duration-fast) var(--ease-out) forwards;
 }

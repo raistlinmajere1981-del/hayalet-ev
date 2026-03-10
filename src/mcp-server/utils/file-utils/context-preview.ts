@@ -1,9 +1,6 @@
 import { readFile } from "fs/promises";
 import { detectContextAwareDuplicates } from "../duplicate-detector.js";
 
-/**
- * Build a context preview for a changed region.
- */
 export async function getContextPreview(
   filePath: string,
   startLine: number,

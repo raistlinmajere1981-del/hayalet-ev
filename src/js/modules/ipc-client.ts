@@ -1,21 +1,3 @@
-/**
- * IPC Client - Type-Safe IPC Wrapper
- *
- * Provides type-safe IPC calls from the renderer process to the main process.
- *
- * @example
- * import { IPC } from "./ipc-client.js";
- *
- * // Type-safe call - params and result types are inferred automatically
- * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
- * if (result.success) {
- *   // result.data is typed as DbConversation[]
- * }
- *
- * // Returns null on error
- * const safeResult = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
- */
-
 import { Logger, LogCategory } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import type { IPCChannel, IPCParams, IPCResult } from "@shared/ipc-channels.js";
@@ -51,34 +33,10 @@ class IPCClientClass {
     return this._api;
   }
 
-  /**
-   * Type-safe IPC invoke
-   *
-   * @param channel - IPC channel name
-   * @param params - Channel params (typed automatically)
-   * @returns Promise<Result> - Channel result (typed automatically)
-   * @throws Error - When the IPC call fails
-   *
-   * @example
-   * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
-   */
   async invoke<T extends IPCChannel>(channel: T, params?: IPCParams<T>): Promise<IPCResult<T>> {
     return await (this.api.invoke(channel, params) as Promise<IPCResult<T>>);
   }
 
-  /**
-   * Safe IPC invoke - returns null on error and never throws.
-   *
-   * @param channel - IPC channel name
-   * @param params - Channel params
-   * @returns Promise<Result | null> - Result or null
-   *
-   * @example
-   * const result = await IPC.safeInvoke("db-get-messages", { accountId: "123", conversationId: "456" });
-   * if (result) {
-   *   // result type is inferred automatically
-   * }
-   */
   async safeInvoke<T extends IPCChannel>(
     channel: T,
     params?: IPCParams<T>
@@ -99,23 +57,10 @@ class IPCClientClass {
     }
   }
 
-  /**
-   * IPC send (fire-and-forget)
-   *
-   * @param channel - IPC channel name
-   * @param params - Channel params
-   */
   send<T extends IPCChannel>(channel: T, params?: IPCParams<T>): void {
     this.api.send(channel, params);
   }
 
-  /**
-   * IPC event listener
-   *
-   * @param channel - IPC channel name
-   * @param callback - Event callback
-   * @returns Unsubscribe function
-   */
   on<T extends IPCChannel>(channel: T, callback: (result: IPCResult<T>) => void): () => void {
     return this.api.on(channel, (data) => {
       callback(data as IPCResult<T>);

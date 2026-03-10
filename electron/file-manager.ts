@@ -346,10 +346,6 @@ export async function openPath(targetPath: string): Promise<ResultBase> {
   }
 }
 
-// ========================================
-// PROTOCOL MANAGEMENT
-// ========================================
-
 const DEFAULT_PROTOCOL_KEYS = [
   "AI-assistant",
   "analyze-AI1-AI2",
@@ -371,7 +367,6 @@ async function ensureProtocolsJson(): Promise<Record<string, string>> {
     protocols[key] = "";
   });
 
-  // Create the data/ directory and write the JSON file.
   await ensureDir(Paths.getDataDir());
   await writeFile(protocolsPath, JSON.stringify(protocols, null, 2), "utf-8");
   await logger.logInternal(

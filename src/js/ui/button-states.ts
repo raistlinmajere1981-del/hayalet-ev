@@ -1,28 +1,3 @@
-/**
- * Button States Manager
- *
- * Manages button loading, success, and error states with animations.
- *
- * @example
- * ```typescript
- * import { ButtonStates } from './ui';
- *
- * const btn = document.querySelector('#submit-btn') as HTMLButtonElement;
- *
- * // Set loading state
- * ButtonStates.setLoading(btn, 'Kaydediliyor...');
- *
- * // After async operation
- * ButtonStates.setSuccess(btn, 'Kaydedildi!'); // Auto-resets after 1.5s
- *
- * // Or on error
- * ButtonStates.setError(btn, 'Hata!'); // Auto-resets after 2s
- *
- * // Manual reset
- * ButtonStates.reset(btn);
- * ```
- */
-
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { DEFAULT_SUCCESS_DURATION, DEFAULT_ERROR_DURATION } from "@ui-constants";
@@ -74,11 +49,6 @@ function clearTimeout(data: ButtonData): void {
 }
 
 const buttonStates = {
-  /**
-   * Set button to loading state
-   * @param button - Target button element
-   * @param text - Optional loading text (replaces button content)
-   */
   setLoading(button: HTMLButtonElement, text?: string): void {
     const data = getButtonData(button);
 
@@ -103,12 +73,6 @@ const buttonStates = {
     });
   },
 
-  /**
-   * Set button to success state (auto-resets after duration)
-   * @param button - Target button element
-   * @param text - Optional success text
-   * @param duration - Time before reset (ms), default: 1500
-   */
   setSuccess(
     button: HTMLButtonElement,
     text?: string,
@@ -140,12 +104,6 @@ const buttonStates = {
     });
   },
 
-  /**
-   * Set button to error state (auto-resets after duration)
-   * @param button - Target button element
-   * @param text - Optional error text
-   * @param duration - Time before reset (ms), default: 2000
-   */
   setError(
     button: HTMLButtonElement,
     text?: string,
@@ -177,10 +135,6 @@ const buttonStates = {
     });
   },
 
-  /**
-   * Reset button to original state
-   * @param button - Target button element
-   */
   reset(button: HTMLButtonElement): void {
     const data = getButtonData(button);
 
@@ -197,20 +151,11 @@ const buttonStates = {
     });
   },
 
-  /**
-   * Get current button state
-   * @param button - Target button element
-   * @returns Current state
-   */
   getState(button: HTMLButtonElement): ButtonState {
     const data = buttonDataMap.get(button);
     return data?.state ?? "idle";
   },
 
-  /**
-   * Check if button is in loading state
-   * @param button - Target button element
-   */
   isLoading(button: HTMLButtonElement): boolean {
     return buttonStates.getState(button) === "loading";
   },
@@ -219,12 +164,6 @@ const buttonStates = {
     Logger.debugT(LogCategory.UI, "app.logs.uiButtonStates.destroyed");
   },
 
-  /**
-   * Execute async function with automatic button states
-   * @param button - Target button element
-   * @param fn - Async function to execute
-   * @param options - Optional text overrides
-   */
   async wrap<T>(
     button: HTMLButtonElement,
     fn: () => Promise<T>,

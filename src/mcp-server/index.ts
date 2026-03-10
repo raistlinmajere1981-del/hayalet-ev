@@ -1,13 +1,8 @@
 #!/usr/bin/env node
-/**
- * MCP Server Entry Point
- * app MCP Server - 87 development tools
- */
-
-// Load environment variables first (silent to avoid JSONRPC pollution)
+// NOTE: Load environment variables silently to avoid JSON-RPC output pollution.
 import dotenv from "dotenv";
 
-// Suppress dotenv console output to prevent JSONRPC parsing errors
+// NOTE: Suppress dotenv console output to prevent JSON-RPC parsing errors.
 const originalWrite = process.stdout.write;
 process.stdout.write = (() => true) as typeof process.stdout.write;
 dotenv.config();

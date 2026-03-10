@@ -1,13 +1,3 @@
-/**
- * ProbeScriptBuilder - webview probe script builder
- *
- * Builds the probe script that runs inside the webview.
- * The probe script:
- * - detects Send/Stop/Voice buttons
- * - tracks scroll state
- * - listens for user interactions
- */
-
 import { ProviderRegistry } from "../webview/provider-registry.js";
 import { AppState } from "../app-state.js";
 import { AppI18n } from "../i18n/index.js";
@@ -174,7 +164,7 @@ export function buildProbeScript(provider: string): string {
           try {
             const list = document.querySelectorAll(tag);
             for (let i = 0; i < list.length && i < 250; i += 1) pushIfScrollable(list[i]);
-          } catch (_) { /* noop */ }
+          } catch (_) {}
         }
         candidates.sort((a, b) => b.gap - a.gap);
         return candidates[0]?.el ?? document.scrollingElement ?? document.documentElement ?? document.body;

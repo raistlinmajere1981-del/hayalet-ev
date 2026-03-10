@@ -1,11 +1,8 @@
 <div class="page hidden" id="page-entrance">
   <div class="entrance-page">
-    <!-- Slot cards grid -->
     <div class="slot-grid">
-      <!-- AI1 slot card -->
       <div class="slot-card glass-panel" data-slot="ai1">
         <div class="slot-header">
-          <!-- Top row: avatar, info, methods, actions -->
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai1-avatar"></div>
@@ -15,7 +12,6 @@
               <span class="slot-nickname" id="ai1-nickname">AI1</span>
               <select id="ai1-account-select" class="select-compact"></select>
             </div>
-            <!-- Methods (message on top, file below) -->
             <div class="slot-methods-column">
               <div class="setting-group">
                 <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
@@ -121,7 +117,6 @@
           <div class="slot-url" id="ai1-url-display">-</div>
         </div>
         <div class="slot-webview-container" id="ai1-webview-mount">
-          <!-- Overlay -->
           <div class="webview-overlay empty" id="ai1-webview-overlay">
             <div class="overlay-icon"></div>
             <div class="overlay-title" data-i18n-text="webview.noAccount.title">
@@ -131,15 +126,12 @@
               Assign an account from Settings
             </div>
           </div>
-          <!-- Webview will be mounted here dynamically -->
-        </div>
+          </div>
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
       </div>
 
-      <!-- AI2 slot card -->
       <div class="slot-card glass-panel" data-slot="ai2">
         <div class="slot-header">
-          <!-- Top row: avatar, info, methods, actions -->
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
               <div class="avatar-placeholder img-cover" id="ai2-avatar"></div>
@@ -149,7 +141,6 @@
               <span class="slot-nickname" id="ai2-nickname">AI2</span>
               <select id="ai2-account-select" class="select-compact"></select>
             </div>
-            <!-- Methods (message on top, file below) -->
             <div class="slot-methods-column">
               <div class="setting-group">
                 <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
@@ -255,7 +246,6 @@
           <div class="slot-url" id="ai2-url-display">-</div>
         </div>
         <div class="slot-webview-container" id="ai2-webview-mount">
-          <!-- Overlay -->
           <div class="webview-overlay empty" id="ai2-webview-overlay">
             <div class="overlay-icon"></div>
             <div class="overlay-title" data-i18n-text="webview.noAccount.title">
@@ -265,13 +255,11 @@
               Assign an account from Settings
             </div>
           </div>
-          <!-- Webview will be mounted here dynamically -->
-        </div>
+          </div>
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai2-scenario-overlay"></div>
       </div>
     </div>
 
-    <!-- Control panel (accordion) -->
     <div class="control-panel-accordion">
       <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="false">
         <span class="accordion-icon">⚙️</span>
@@ -281,14 +269,12 @@
 
       <div class="accordion-content" id="settings-accordion-content">
         <div class="accordion-panels">
-          <!-- User settings -->
           <div class="panel-item glass-panel" data-panel="user">
             <div class="panel-header">
               <span class="panel-title" data-i18n-text="panels.user">USER & DRIVE</span>
             </div>
             <div class="panel-content">
               <div class="user-settings-column">
-                <!-- Avatar and nickname -->
                 <div class="user-avatar-row">
                   <div
                     class="user-avatar-wrapper"
@@ -317,7 +303,6 @@
                   <select id="app-language-select" class="select select-sm"></select>
                   <div class="form-hint" id="app-language-restart-hint"></div>
                 </div>
-                <!-- Google Drive status -->
                 <div class="gdrive-status-row">
                   <label class="form-label" data-i18n-text="user.googleDrive.label"
                     >Google Drive</label
@@ -377,7 +362,6 @@
             </div>
           </div>
 
-          <!-- Accounts -->
           <div class="panel-item glass-panel" data-panel="accounts">
             <div class="panel-header">
               <span class="panel-title" data-i18n-text="panels.accounts">ACCOUNT MANAGEMENT</span>
@@ -385,8 +369,7 @@
             <div class="panel-content">
               <div class="accounts-container">
                 <div class="account-list" id="account-list">
-                  <!-- Dynamic content -->
-                </div>
+                  </div>
                 <div class="account-form">
                   <div class="account-form-header">
                     <span id="account-form-title" data-i18n-text="accounts.form.createTitle"
@@ -444,7 +427,6 @@
             </div>
           </div>
 
-          <!-- Whisper queue -->
           <div class="panel-item glass-panel" data-panel="whisper">
             <div class="panel-header">
               <span class="panel-title" data-i18n-text="panels.whisper">PENDING COMMANDS</span>
@@ -461,13 +443,11 @@
                   </button>
                 </div>
                 <div class="entrance-whisper-list" id="whisper-pending-list">
-                  <!-- Dynamic content -->
-                </div>
+                  </div>
               </div>
             </div>
           </div>
 
-          <!-- Report panel -->
           <div class="panel-item glass-panel" data-panel="report">
             <div class="panel-header">
               <span class="panel-title" data-i18n-text="panels.report">LIVE REPORT</span>
@@ -488,7 +468,6 @@
   </div>
 </div>
 
-<!-- Advanced live log overlay -->
 <div id="live-log-overlay" class="live-log-overlay hidden" aria-hidden="true">
   <div class="live-log-backdrop" id="live-log-backdrop"></div>
   <div

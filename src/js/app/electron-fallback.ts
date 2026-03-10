@@ -1,10 +1,4 @@
-/**
- * Electron API Fallback
- *
- * Provides a mock implementation of `window.electronAPI`
- * when running outside Electron (web/dev).
- */
-
+// NOTE: Provide a mock window.electronAPI for web/dev runs outside Electron.
 import { getFilename } from "../constants/index.js";
 import { DEFAULT_APP_LANGUAGE } from "../../types/i18n.js";
 import {
@@ -16,10 +10,6 @@ import { normalizeAppLanguage } from "../../../shared/i18n/locale.js";
 export function ensureElectronApiFallback(): void {
   if (window.electronAPI) return;
   const storageKey = "app-settings-v1";
-  /**
-   * @param {Response} resp
-   * @returns {Promise<string|null>}
-   */
   const toBase64 = async (resp: Response): Promise<string | null> => {
     try {
       const buf = await resp.arrayBuffer();

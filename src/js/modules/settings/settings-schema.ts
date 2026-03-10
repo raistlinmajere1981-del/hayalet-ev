@@ -168,7 +168,6 @@ export function normalizeSettings(raw: unknown): AppSettings {
   } else if (merged.assistantAccounts.length === 0) {
     merged.assistantAccounts = [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
   } else {
-    // Ensure default assistant accounts exist.
     if (
       !merged.assistantAccounts.find((a: { id: string }) => a.id === DEFAULT_OPENCODE_UI_ACCOUNT_ID)
     ) {

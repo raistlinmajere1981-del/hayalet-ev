@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Toggle Switch Component
- * On/off toggle switches with status colors
- * @version 5.4.0
- */
-
-/* === TOGGLE SWITCH === */
 .ds-toggle {
   position: relative;
   display: inline-block;

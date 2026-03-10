@@ -1,18 +1,4 @@
-/**
- * IPC Channel Type Definitions
- *
- * This file contains type-safe definitions for all IPC channels.
- * It provides type safety for communication between the Main and Renderer processes.
- *
- * @example
- * // Type-safe IPC call
- * const result = await IPC.invoke("db-get-conversations", { accountId: "123" });
- * // result is automatically typed as DbGetConversationsResult
- */
-
 import type { ProviderScenarioResult, ProviderTestSuite } from "./provider.js";
-
-// Database Channel Types
 
 export interface DbInitAccountParams {
   accountId: string;
@@ -211,8 +197,6 @@ export interface DbSearchAllAccountsResult {
   error?: string;
 }
 
-// Settings Channel Types
-
 export interface LoadSettingsResult {
   [key: string]: unknown;
 }
@@ -225,8 +209,6 @@ export interface SaveSettingsResult {
   success: boolean;
   error?: string;
 }
-
-// File System Channel Types
 
 export interface ReadFileParams {
   filePath: string;
@@ -256,8 +238,6 @@ export interface FileExistsResult {
   exists: boolean;
 }
 
-// Window Channel Types
-
 export interface OpenDevToolsParams {
   webviewId?: string;
 }
@@ -265,8 +245,6 @@ export interface OpenDevToolsParams {
 export interface SetAlwaysOnTopParams {
   value: boolean;
 }
-
-// Memory Channel Types
 
 export interface MemoryItem {
   id: string;
@@ -381,16 +359,7 @@ export interface MemoryDeleteAllResult {
   error?: string;
 }
 
-// IPC Channel Map - type mapping for all channels
-
-/**
- * IPC Channel Map
- *
- * Defines the params and result types for each IPC channel.
- * This map is used for type-safe IPC calls.
- */
 export interface IPCChannelMap {
-  // Database
   "db-init-account": { params: DbInitAccountParams; result: DbInitAccountResult };
   "db-get-conversations": { params: DbGetConversationsParams; result: DbGetConversationsResult };
   "db-get-messages": { params: DbGetMessagesParams; result: DbGetMessagesResult };
@@ -412,16 +381,13 @@ export interface IPCChannelMap {
     result: DbSearchAllAccountsResult;
   };
 
-  // Settings
   "load-settings": { params: undefined; result: LoadSettingsResult };
   "save-settings": { params: SaveSettingsParams; result: SaveSettingsResult };
 
-  // File System
   "read-file": { params: ReadFileParams; result: ReadFileResult };
   "write-file": { params: WriteFileParams; result: WriteFileResult };
   "file-exists": { params: FileExistsParams; result: FileExistsResult };
 
-  // Window
   "open-devtools": { params: OpenDevToolsParams | undefined; result: undefined };
   "set-always-on-top": { params: SetAlwaysOnTopParams; result: undefined };
   "minimize-window": { params: undefined; result: undefined };
@@ -445,17 +411,8 @@ export interface IPCChannelMap {
   };
 }
 
-/**
- * IPC Channel Names
- */
 export type IPCChannel = keyof IPCChannelMap;
 
-/**
- * IPC Channel Params Helper
- */
 export type IPCParams<T extends IPCChannel> = IPCChannelMap[T]["params"];
 
-/**
- * IPC Channel Result Helper
- */
 export type IPCResult<T extends IPCChannel> = IPCChannelMap[T]["result"];

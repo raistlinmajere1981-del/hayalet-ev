@@ -1,35 +1,23 @@
-/**
- * Hayalet-ev Design System - Size Tokens
- * @version 5.4.0
- */
-
 :root {
-  /* === ICON SIZES === */
   --size-icon-sm: 24px;
   --size-icon-md: 32px;
   --size-icon-lg: 48px;
   --size-icon-xl: 64px;
 
-  /* === DOT SIZES === */
   --size-dot-sm: 8px;
   --size-dot-md: 10px;
   --size-dot-lg: 14px;
 
-  /* === CONTROL SIZES === */
   --size-control-md: 28px;
   --size-control-lg: 36px;
 
-  /* === SELECT SIZES === */
   --size-select-max-w: 140px;
 
-  /* === LAYOUT SIZES === */
   --sidebar-width: 320px;
 
-  /* === AVATAR SIZES === */
   --size-avatar-md: 40px;
   --size-avatar-lg: 48px;
 
-  /* === TOGGLE SIZES === */
   --size-toggle-w: 28px;
   --size-toggle-h: 16px;
   --size-toggle-thumb: 12px;

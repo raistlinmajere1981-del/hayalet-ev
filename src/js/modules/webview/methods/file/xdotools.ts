@@ -1,9 +1,3 @@
-/**
- * XDotools file method
- * System-level file attachment simulation
- * Provider-agnostic implementation
- */
-
 import { AppI18n } from "../../../i18n/index.js";
 
 interface FilePayload {
@@ -30,8 +24,6 @@ export async function attachFiles(
   if (files.length === 0) {
     return await Promise.resolve({ success: false, message: uploadT("noFiles") });
   }
-
-  // TODO: Replace this placeholder with the real XDotools bridge.
 
   return await Promise.resolve({
     success: false,

@@ -1,9 +1,3 @@
-/**
- * Development Tools - Tool Registration Helper
- *
- * Yeni tool eklerken handlers, registry ve index'e otomatik ekleme
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -13,9 +7,9 @@ import { logToolError } from "../../utils/mcp-logger.js";
 interface ToolRegistrationOptions {
   tool_name: string;
   description: string;
-  function_name: string; // e.g., "myNewTool"
-  tool_constant: string; // e.g., "MY_NEW_TOOL"
-  auto_add_to?: string[]; // ["handlers", "registry", "index"]
+  function_name: string;
+  tool_constant: string;
+  auto_add_to?: string[];
   test_immediately?: boolean;
   auto_build_restart?: boolean;
   dry_run?: boolean;
@@ -55,23 +49,18 @@ export function registerNewTool(
   try {
     const root = projectRoot;
 
-    // 1. Add to dev/index.ts exports
     if (autoAddTo.includes("index")) {
       const indexPath = join(root, "src", "mcp-server", "tools", "dev", "index.ts");
       const success = addToDevIndex(indexPath, functionName, toolConstant, dryRun);
       if (success) modifiedFiles.push("dev/index.ts");
     }
 
-    // 2. Add to handler file (dev-handlers.ts in new unified registry)
     if (autoAddTo.includes("handlers")) {
       const handlersPath = join(root, "src", "mcp-server", "core", "handlers", "dev-handlers.ts");
       const success = addToHandlers(handlersPath, toolName, functionName, dryRun);
       if (success) modifiedFiles.push("core/handlers/dev-handlers.ts");
     }
 
-    // 3. Registry step no longer needed — in unified registry, definition + handler
-    //    are co-located in handler files. Adding to dev-handlers.ts covers both.
-    //    Kept for backward compat but skips if target doesn't exist.
     if (autoAddTo.includes("registry")) {
       const registryPath = join(root, "src", "mcp-server", "core", "handlers", "dev-handlers.ts");
       const success = addToRegistry(registryPath, toolName, description, dryRun);
@@ -103,10 +92,6 @@ export function registerNewTool(
   }
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
 function addToDevIndex(
   filePath: string,
   functionName: string,
@@ -116,11 +101,9 @@ function addToDevIndex(
   try {
     const content = readFileSync(filePath, "utf-8");
 
-    // Add export
     const exportLine = `export { ${functionName}, ${toolConstant} } from "./${functionName}.js";`;
     const importLine = `import { ${toolConstant} } from "./${functionName}.js";`;
 
-    // Find insertion points
     const lines = content.split("\\n");
     let exportInsertAt = -1;
     let importInsertAt = -1;
@@ -162,11 +145,9 @@ function addToHandlers(
     const content = readFileSync(filePath, "utf-8");
     const lines = content.split("\\n");
 
-    // Find last dev tool handler
     let insertAt = -1;
     for (let i = lines.length - 1; i >= 0; i--) {
       if (lines[i]?.includes('if (name === "hev_dev_') === true) {
-        // Find end of this block
         for (let j = i; j < lines.length; j++) {
           if (lines[j]?.trim() === "}") {
             insertAt = j + 1;
@@ -206,7 +187,6 @@ function addToRegistry(
     const content = readFileSync(filePath, "utf-8");
     const lines = content.split("\\n");
 
-    // Find the closing ];
     let insertAt = -1;
     for (let i = lines.length - 1; i >= 0; i--) {
       if (lines[i]?.includes("export const TOOL_DEFINITIONS = [") === true) {
@@ -270,10 +250,6 @@ function formatOutput(
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const TOOL_REGISTRATION_HELPER_TOOL = {
   name: "hev_dev_register_tool",

@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Bash Executor
- */
-
 import { spawn } from "child_process";
 import { logToolError as _logToolError } from "../../utils/mcp-logger.js";
 import { FS_TIMEOUTS } from "@timeouts";
@@ -151,7 +147,6 @@ export async function executeBash(
   });
 }
 
-// Tool Definition
 export const BASH_EXECUTOR_TOOL = {
   name: "hev_fs_bash",
   description: bashToolDefinitionT("bash.description"),

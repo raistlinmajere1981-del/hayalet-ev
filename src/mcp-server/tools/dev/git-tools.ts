@@ -1,9 +1,3 @@
-/**
- * Development Tools - Git Tools
- *
- * Git diff and stat output.
- */
-
 import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError } from "../../utils/mcp-logger.js";

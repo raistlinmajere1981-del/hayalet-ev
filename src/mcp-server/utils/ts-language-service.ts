@@ -1,23 +1,4 @@
-/**
- * TypeScript Language Service Manager
- *
- * Lazy-initialized, multi-tsconfig, auto-dispose TS Language Service.
- * Selects the correct tsconfig based on file path and creates a LanguageService instance.
- * Disposes inactive instances to avoid unnecessary memory pressure.
- *
- * Capabilities:
- *   - getTypeInfo(file, line, col)       → hover-style type information
- *   - getDefinition(file, line, col)     → go-to-definition
- *   - getReferences(file, line, col)     → find-all-references
- *   - getCompletions(file, line, col)    → code completion
- *   - getQuickFixes(file, line, col)     → code actions / quick fixes
- *   - getDiagnostics(file)               → file diagnostics
- *   - getRenameEdits(file, line, col, newName) → safe rename
- *   - getDocumentSymbols(file)           → document symbol tree
- *   - getSignatureHelp(file, line, col)  → function signature help
- *
- * @version 1.0.0
- */
+// NOTE: Lazy, multi-tsconfig language service with auto-dispose to cap memory use.
 
 import * as ts from "typescript";
 import { readFileSync, existsSync } from "fs";
@@ -26,7 +7,7 @@ import { join, relative, dirname } from "path";
 export interface TsConfigMapping {
   name: string;
   configPath: string;
-  /** Glob-like prefixes to match files to this tsconfig */
+  // NOTE: Glob-like prefixes to match files to this tsconfig.
   pathPrefixes: string[];
 }
 
@@ -115,16 +96,16 @@ interface ProjectInstance {
   compilerOptions: ts.CompilerOptions;
 }
 
-/** Auto-dispose after 90 seconds of inactivity */
+// NOTE: Auto-dispose after 90 seconds of inactivity.
 const DISPOSE_TIMEOUT_MS = 90_000;
 
-/** Check interval for disposal */
+// NOTE: Disposal check interval.
 const DISPOSE_CHECK_INTERVAL_MS = 30_000;
 
-/** Max concurrent loaded projects (LRU eviction). Keep at 1 for low-memory systems */
+// NOTE: Keep at most one warm project to cap memory usage on small machines.
 const MAX_LOADED_PROJECTS = 1;
 
-/** Category map from TS enum */
+// NOTE: Map TS diagnostic categories to result labels.
 const DIAGNOSTIC_CATEGORIES: Record<number, DiagnosticResult["category"]> = {
   [ts.DiagnosticCategory.Error]: "error",
   [ts.DiagnosticCategory.Warning]: "warning",
@@ -144,9 +125,6 @@ export class TsLanguageServiceManager {
     this.startDisposeWatcher();
   }
 
-  /**
-   * Auto-detect tsconfig files and map path prefixes.
-   */
   private detectConfigs(): TsConfigMapping[] {
     const mappings: TsConfigMapping[] = [];
 
@@ -171,9 +149,6 @@ export class TsLanguageServiceManager {
     return mappings;
   }
 
-  /**
-   * Determine which tsconfig a file belongs to.
-   */
   private resolveConfig(filePath: string): TsConfigMapping | null {
     const rel = filePath.startsWith("/") ? relative(this.projectRoot, filePath) : filePath;
 
@@ -188,9 +163,6 @@ export class TsLanguageServiceManager {
     return fallback ?? this.configs[0] ?? null;
   }
 
-  /**
-   * Get or create a LanguageService for the given config.
-   */
   private getProject(config: TsConfigMapping): ProjectInstance {
     const existing = this.projects.get(config.name);
     if (existing) {
@@ -266,9 +238,6 @@ export class TsLanguageServiceManager {
     return project;
   }
 
-  /**
-   * Get the LanguageService for a file, auto-resolving tsconfig.
-   */
   private getServiceForFile(filePath: string): {
     service: ts.LanguageService;
     absolutePath: string;
@@ -280,7 +249,7 @@ export class TsLanguageServiceManager {
     const project = this.getProject(config);
     const absolutePath = filePath.startsWith("/") ? filePath : join(this.projectRoot, filePath);
 
-    // Add ad-hoc files on demand so tool calls can inspect newly created files.
+    // NOTE: Add ad-hoc files on demand so tool calls can inspect newly created files.
     if (!project.fileNames.includes(absolutePath)) {
       if (existsSync(absolutePath)) {
         project.fileNames.push(absolutePath);
@@ -293,9 +262,6 @@ export class TsLanguageServiceManager {
     return { service: project.service, absolutePath, project };
   }
 
-  /**
-   * Convert line/col (1-based) to TS offset position.
-   */
   private getPosition(
     service: ts.LanguageService,
     filePath: string,
@@ -305,17 +271,17 @@ export class TsLanguageServiceManager {
     const program = service.getProgram();
     const sourceFile = program?.getSourceFile(filePath);
     if (!sourceFile) {
-      // Fall back to text scanning when the file is not in the current TS program.
+      // NOTE: Fall back to text scanning when the file is not in the current TS program.
       const content = readFileSync(filePath, "utf-8");
       const lines = content.split("\n");
       let pos = 0;
       for (let i = 0; i < line - 1 && i < lines.length; i++) {
-        pos += (lines[i]?.length ?? 0) + 1; // +1 for newline
+        pos += (lines[i]?.length ?? 0) + 1;
       }
       return pos + (column - 1);
     }
 
-    // Clamp coordinates so callers can safely probe near line endings.
+    // NOTE: Clamp coordinates so callers can safely probe near line endings.
     const lineCount = sourceFile.getLineStarts().length;
     const safeLine = Math.max(0, Math.min(line - 1, lineCount - 1));
     const lineStart = sourceFile.getLineStarts()[safeLine] ?? 0;
@@ -329,9 +295,6 @@ export class TsLanguageServiceManager {
     return sourceFile.getPositionOfLineAndCharacter(safeLine, safeCol);
   }
 
-  /**
-   * Convert TS offset to line/col (1-based).
-   */
   private getLineCol(
     sourceFile: ts.SourceFile,
     position: number
@@ -357,9 +320,6 @@ export class TsLanguageServiceManager {
     }
   }
 
-  /**
-   * Get type information at a position (hover-like).
-   */
   getTypeInfo(filePath: string, line: number, column: number): TypeInfoResult | null {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return null;
@@ -376,9 +336,6 @@ export class TsLanguageServiceManager {
     };
   }
 
-  /**
-   * Get definition location(s) for a symbol.
-   */
   getDefinition(filePath: string, line: number, column: number): DefinitionResult[] {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return [];
@@ -423,9 +380,6 @@ export class TsLanguageServiceManager {
     });
   }
 
-  /**
-   * Find all references to a symbol across the project.
-   */
   getReferences(filePath: string, line: number, column: number): ReferenceResult[] {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return [];
@@ -467,9 +421,6 @@ export class TsLanguageServiceManager {
     return results;
   }
 
-  /**
-   * Get completions at a position.
-   */
   getCompletions(
     filePath: string,
     line: number,
@@ -522,9 +473,6 @@ export class TsLanguageServiceManager {
     });
   }
 
-  /**
-   * Get detailed completion info for a specific item.
-   */
   getCompletionDetails(
     filePath: string,
     line: number,
@@ -552,9 +500,6 @@ export class TsLanguageServiceManager {
     };
   }
 
-  /**
-   * Get diagnostics (errors/warnings) for a file.
-   */
   getDiagnostics(filePath: string): DiagnosticResult[] {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return [];
@@ -587,9 +532,6 @@ export class TsLanguageServiceManager {
     });
   }
 
-  /**
-   * Get rename edits for a symbol across the project.
-   */
   getRenameEdits(
     filePath: string,
     line: number,
@@ -610,12 +552,7 @@ export class TsLanguageServiceManager {
       };
     }
 
-    const renameLocations = ctx.service.findRenameLocations(
-      ctx.absolutePath,
-      pos,
-      /* findInStrings */ false,
-      /* findInComments */ false
-    );
+    const renameLocations = ctx.service.findRenameLocations(ctx.absolutePath, pos, false, false);
 
     if (!renameLocations) return { canRename: true, edits: [] };
 
@@ -648,9 +585,6 @@ export class TsLanguageServiceManager {
     };
   }
 
-  /**
-   * Get document symbols (outline) for a file.
-   */
   getDocumentSymbols(filePath: string): DocumentSymbolResult[] {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return [];
@@ -690,7 +624,7 @@ export class TsLanguageServiceManager {
       return result;
     };
 
-    // Root level is usually the module itself — return its children
+    // NOTE: Root level is usually the module itself — return its children.
     if (navTree.childItems) {
       return navTree.childItems.map(convert).filter((c): c is DocumentSymbolResult => c !== null);
     }
@@ -699,9 +633,6 @@ export class TsLanguageServiceManager {
     return root ? [root] : [];
   }
 
-  /**
-   * Get signature help at a position (function call parameter hints).
-   */
   getSignatureHelp(filePath: string, line: number, column: number): SignatureHelpResult[] {
     const ctx = this.getServiceForFile(filePath);
     if (!ctx) return [];
@@ -725,11 +656,6 @@ export class TsLanguageServiceManager {
     }));
   }
 
-  // ─── Utility Methods ───────────────────────────────────
-
-  /**
-   * Get statistics about loaded projects.
-   */
   getStats(): {
     loadedProjects: Array<{
       name: string;
@@ -753,9 +679,6 @@ export class TsLanguageServiceManager {
     };
   }
 
-  /**
-   * Force dispose a specific project or all projects.
-   */
   dispose(configName?: string): void {
     if (configName != null && configName !== "") {
       const project = this.projects.get(configName);
@@ -771,9 +694,6 @@ export class TsLanguageServiceManager {
     }
   }
 
-  /**
-   * Invalidate a file (force re-read on next request).
-   */
   invalidateFile(filePath: string): void {
     const abs = filePath.startsWith("/") ? filePath : join(this.projectRoot, filePath);
 
@@ -785,9 +705,6 @@ export class TsLanguageServiceManager {
     }
   }
 
-  /**
-   * Full shutdown — dispose all projects and stop watcher.
-   */
   shutdown(): void {
     this.dispose();
     if (this.disposeTimer) {
@@ -797,22 +714,13 @@ export class TsLanguageServiceManager {
   }
 }
 
-// ─── Singleton ───────────────────────────────────────────
-
 let _instance: TsLanguageServiceManager | null = null;
 
-/**
- * Get the singleton TsLanguageServiceManager instance.
- * Creates one if it doesn't exist.
- */
 export function getTsLanguageService(projectRoot: string): TsLanguageServiceManager {
   _instance ??= new TsLanguageServiceManager(projectRoot);
   return _instance;
 }
 
-/**
- * Shutdown the singleton instance (for cleanup).
- */
 export function shutdownTsLanguageService(): void {
   if (_instance) {
     _instance.shutdown();

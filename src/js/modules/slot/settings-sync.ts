@@ -1,12 +1,3 @@
-/**
- * SettingsSync - Slot settings synchronization
- *
- * This module handles synchronization between slots and settings changes:
- * - account assignment tracking
- * - provider config updates
- * - settings change handling
- */
-
 import { ProviderRegistry } from "../webview/provider-registry.js";
 import type { SlotId } from "@shared/index.js";
 import { LogLevel } from "@shared/index.js";

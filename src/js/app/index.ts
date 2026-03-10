@@ -1,10 +1,3 @@
-/**
- * App Entry Point - Orchestrator
- *
- * Coordinates all modules and manages the application lifecycle.
- * Each module keeps its own implementation details in its own file.
- */
-
 import { AppState } from "../modules/app-state.js";
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory, LogLevel, LogVisibility } from "../modules/logger/index.js";
@@ -47,7 +40,6 @@ import {
 import { setupRoomOverlay } from "./room-overlay.js";
 import { setupBackupOverlay } from "./backup-overlay.js";
 
-// Extend the Window interface for shared module access.
 declare global {
   interface Window {
     SlotController: typeof SlotController;
@@ -66,7 +58,6 @@ let isInitializing = false;
 let isInitialized = false;
 
 async function initApp(): Promise<void> {
-  // Prevent duplicate initialization.
   if (isInitializing || isInitialized) {
     console.warn(AppI18n.t("app.logs.initSkippedDuplicate"));
     return;
@@ -75,7 +66,7 @@ async function initApp(): Promise<void> {
   isInitializing = true;
   let initSucceeded = false;
 
-  // Inject ServerCommands into CoreEngine to break the circular dependency.
+  // NOTE: Inject ServerCommands into CoreEngine to break the circular dependency.
   registerServerCommands(ServerCommands);
 
   try {
@@ -195,7 +186,6 @@ async function initApp(): Promise<void> {
 
     SplashScreen.update(90, AppI18n.t("app.startup.finalizing"));
 
-    // Startup flag handling: --start-page and --auto-connect arguments.
     const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
       | { startPage: string | null; autoConnect: boolean }
       | undefined;
@@ -213,7 +203,7 @@ async function initApp(): Promise<void> {
     SlotController.on(SlotEvent.STATE_CHANGED, () => {
       updateIndicatorAvatars();
       updateRelayIndicator();
-      updateRelayButtonStates(); // Update relay button states on slot connection changes
+      updateRelayButtonStates();
     });
 
     Logger.panelT(LogCategory.SYSTEM, LogLevel.INFO, "app.logs.appStarted", undefined, {
@@ -223,7 +213,7 @@ async function initApp(): Promise<void> {
     SplashScreen.complete();
     await SplashScreen.hide();
 
-    // --auto-connect: click the assistant connect button automatically on the assistant page.
+    // NOTE: --auto-connect clicks the assistant connect button on the assistant page.
     if (autoConnect && startPage === "assistant") {
       setTimeout(() => {
         const connectBtn = document.getElementById(

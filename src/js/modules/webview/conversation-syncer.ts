@@ -1,15 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
-/**
- * ConversationSyncer - conversation sync and archiving
- *
- * This module pulls conversation data from the webview and archives it:
- * - Extract messages with DOM scraping
- * - Sync with the archive system
- * - Coordinate with TrafficManager
- * - Trigger automatic sync when thinking returns to idle
- */
-
 import { Logger } from "../logger/index.js";
 import { waitForDomReady } from "./methods/shared/file-utils.js";
 import { getErrorMessage } from "@shared/index.js";
@@ -188,21 +178,10 @@ class ConversationSyncerClass {
     Logger.infoT(LogCategory.WEBVIEW, syncLogKey("initialized"));
   }
 
-  /**
-   * Checks whether the URL is excluded.
-   * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
-   */
   isUrlExcluded(providerSlot: string, url: string): boolean {
     return isSlotUrlExcluded(providerSlot, url);
   }
 
-  /**
-   * Syncs the conversation (called by WebviewManager).
-   * @param {string} provider - Slot ID
-   * @param {HTMLElement} webview - Webview element
-   * @param {Object} options - { catchEnabled }
-   * @returns {Promise<Object>}
-   */
   async syncConversation(
     provider: string,
     webview: Electron.WebviewTag | WebviewElement | null | undefined,
@@ -287,7 +266,7 @@ class ConversationSyncerClass {
         };
       }
 
-      // In relay mode the user-side author actually comes from the peer AI.
+      // NOTE: In relay mode the user-side author actually comes from the peer AI.
       const relayState = AppState.getAssistantRelay();
       const isRelayActive = relayState.active === true;
       const relaySource =
@@ -302,14 +281,13 @@ class ConversationSyncerClass {
       };
 
       const normalized: ScrapedMessage[] = messages.map((m: ScrapedMessage) => {
-        // If the message contains a hev-sender tag (++cmd delivery), override the author.
+        // NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.
         const textContent =
           typeof m.text === "string" ? m.text : typeof m.content === "string" ? m.content : "";
         const senderMatch = /<!--\s*hev-sender:([^-]+?)\s*-->/.exec(textContent);
         const senderOverride = senderMatch?.[1]?.trim();
         return {
           ...m,
-          // Remove the tag from the stored text.
           text:
             senderMatch !== null
               ? textContent.replace(/\s*<!--\s*hev-sender:[^-]+?\s*-->\s*/, "").trim()
@@ -520,12 +498,6 @@ class ConversationSyncerClass {
     }
   }
 
-  /**
-   * Syncs the provider (moved from SyncHandler).
-   * @param {string} provider - Slot ID
-   * @param {Object} opts - { from: 'auto' | 'manual' | 'retry' }
-   * @returns {Promise<Object>}
-   */
   async syncProvider(provider: string, opts: { from?: string } = {}): Promise<SyncResult> {
     if (provider === "") return { success: false, message: syncT("providerMissing") };
 
@@ -648,10 +620,6 @@ class ConversationSyncerClass {
     }
   }
 
-  /**
-   * Stable durumunu bildir
-   * @private
-   */
   _notifyStable(provider: string, res: SyncResult): void {
     try {
       const list = this._stableListeners[provider] ?? [];
@@ -720,10 +688,6 @@ class ConversationSyncerClass {
     return this._lastSyncResult[provider] ?? null;
   }
 
-  /**
-   * Archive durumunu getir (DB'den)
-   * @private
-   */
   async _getArchiveStatus(
     provider: string,
     webUrl: string

@@ -161,7 +161,7 @@ export class AccountPanel {
     avatarPath?: string;
   }): void {
     this._editingAccountId = account.id;
-    this._newAccountAvatarPath = account.avatarPath ?? null; // Start with the existing avatar
+    this._newAccountAvatarPath = account.avatarPath ?? null;
 
     const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
     const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
@@ -173,7 +173,7 @@ export class AccountPanel {
     if (emailEl) emailEl.value = account.email;
     if (providerEl) {
       providerEl.value = account.provider;
-      providerEl.disabled = true; // Keep the provider stable because the ID depends on it
+      providerEl.disabled = true;
     }
     if (nicknameEl) nicknameEl.value = account.nickname ?? "";
 
@@ -181,7 +181,7 @@ export class AccountPanel {
     if (cancelBtn) cancelBtn.classList.remove("hidden");
     if (title) title.textContent = entranceT("accounts.form.editTitle");
 
-    this.render(); // Re-render the list to show the current selection
+    this.render();
   }
 
   cancelEdit(): void {
@@ -322,8 +322,8 @@ export class AccountPanel {
       const updated = { ...settings, accounts: [...accounts, newAccount] };
       await this.settingsManager.save(updated);
 
-      this.cancelEdit(); // Reset the form state
-      this.renderAccountList(); // Refresh the account list
+      this.cancelEdit();
+      this.renderAccountList();
 
       window.dispatchEvent(new CustomEvent("account-list-updated"));
 
@@ -390,9 +390,10 @@ export class AccountPanel {
         finalAvatarPath = copied?.path ?? finalAvatarPath;
       }
 
+      // NOTE: Keep account IDs stable even when emails change.
       const updatedAccount: Account = {
         ...oldAccount,
-        email, // Keep the account ID stable even if the email changes.
+        email,
         nickname: nickname === "" ? oldAccount.provider : nickname,
         ...(finalAvatarPath !== "" ? { avatarPath: finalAvatarPath } : {}),
       };
@@ -443,7 +444,6 @@ export class AccountPanel {
 
       const updatedAccounts = accounts.filter((a: { id: string }) => a.id !== accountId);
 
-      // Delete the account data folder and database.
       try {
         const dbDeleteAccount = electronApi["dbDeleteAccount"];
         if (dbDeleteAccount) {

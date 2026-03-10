@@ -1,17 +1,3 @@
-/**
- * Slot State Machine - Robust State Management
- *
- * Provides a type-safe, validated state machine for SlotController.
- * Prevents invalid state transitions and keeps history for debugging.
- *
- * Features:
- * - Type-safe state and event definitions
- * - Transition validation (allowed transitions)
- * - State history tracking
- * - Guard conditions
- * - Side effects
- */
-
 import { Logger } from "../logger/index.js";
 import { MAX_HISTORY_SIZE } from "@limits";
 import { LogCategory, LogLevel } from "@shared/index.js";
@@ -31,33 +17,33 @@ export type SlotStateType = (typeof slotStates)[keyof typeof slotStates];
 
 const ALLOWED_TRANSITIONS: Record<SlotStateType, SlotStateType[]> = {
   [slotStates.EMPTY]: [
-    slotStates.ASSIGNED, // When an account is assigned
+    slotStates.ASSIGNED,
   ],
   [slotStates.ASSIGNED]: [
-    slotStates.EMPTY, // When the account is removed
-    slotStates.CONNECTING, // When a connection starts
-    slotStates.ERROR, // On error
+    slotStates.EMPTY,
+    slotStates.CONNECTING,
+    slotStates.ERROR,
   ],
   [slotStates.CONNECTING]: [
-    slotStates.CONNECTED, // Connection succeeded
-    slotStates.ASSIGNED, // Connection cancelled
-    slotStates.ERROR, // Connection error
-    slotStates.DISCONNECTING, // Force disconnect during connect
+    slotStates.CONNECTED,
+    slotStates.ASSIGNED,
+    slotStates.ERROR,
+    slotStates.DISCONNECTING,
   ],
   [slotStates.CONNECTED]: [
-    slotStates.DISCONNECTING, // Normal disconnect
-    slotStates.ERROR, // Connection dropped
-    slotStates.CONNECTING, // Force reconnect
+    slotStates.DISCONNECTING,
+    slotStates.ERROR,
+    slotStates.CONNECTING,
   ],
   [slotStates.DISCONNECTING]: [
-    slotStates.ASSIGNED, // Disconnect completed
-    slotStates.EMPTY, // Account was also removed
-    slotStates.ERROR, // Disconnect error
+    slotStates.ASSIGNED,
+    slotStates.EMPTY,
+    slotStates.ERROR,
   ],
   [slotStates.ERROR]: [
-    slotStates.EMPTY, // Account removed
-    slotStates.ASSIGNED, // Recovery (manual or automatic)
-    slotStates.CONNECTING, // Retry connection
+    slotStates.EMPTY,
+    slotStates.ASSIGNED,
+    slotStates.CONNECTING,
   ],
 };
 
@@ -101,10 +87,6 @@ export class SlotStateMachine {
     return ALLOWED_TRANSITIONS[this._currentState];
   }
 
-  /**
-   * Perform a state transition.
-   * @returns True if the transition succeeds, false if invalid
-   */
   transition(targetState: SlotStateType, context?: TransitionContext): TransitionResult {
     const fromState = this._currentState;
 
@@ -271,10 +253,6 @@ export class SlotStateMachine {
     };
   }
 
-  /**
-   * Add a transition callback.
-   * @returns Unsubscribe function
-   */
   onTransition(
     callback: (from: SlotStateType, to: SlotStateType, context?: TransitionContext) => void
   ): () => void {
@@ -297,9 +275,6 @@ export class SlotStateMachine {
     return states.includes(this._currentState);
   }
 
-  /**
-   * Return state-machine debug info.
-   */
   getDebugInfo(): SlotStateMachineDebugInfo {
     return {
       slotId: this._slotId,

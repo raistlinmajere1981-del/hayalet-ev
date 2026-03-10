@@ -1,15 +1,3 @@
-/**
- * Handler Registry - Bootstrap
- *
- * All tool modules are imported here and registered into the unified registry.
- * Each module returns ToolEntry[] (co-located definition + handler).
- *
- * Adding a new tool module:
- * 1. Create handler file with createXxxTools() → ToolEntry[]
- * 2. Import and add to registerAllTools() below
- * 3. Done — no other files to update
- */
-
 import { registerTools, getToolCount, getRegistryStats } from "../registry.js";
 import type { ToolContext } from "../registry.js";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -31,12 +19,7 @@ function startupT(key: string, params?: Record<string, string | number | boolean
   return startupTranslator(`mcpServer.startup.${key}`, params);
 }
 
-/**
- * Register all tool modules into the unified registry.
- * Called once during server bootstrap.
- */
 export function registerAllTools(context: ToolContext): void {
-  // Each module self-registers with the central registry.
   registerTools(createElectronTools(context), "electron");
   registerTools(createMcpAnalysisTools(), "mcp-analysis");
   registerTools(createCdpTools(), "cdp");
@@ -48,7 +31,6 @@ export function registerAllTools(context: ToolContext): void {
   registerTools(createUiTools(), "ui");
   registerTools(createWebTools(), "web");
 
-  // Log the registration summary to stderr (MCP protocol).
   const stats = getRegistryStats();
   const categories = Object.entries(stats)
     .filter(([k]) => k !== "total")
@@ -63,9 +45,6 @@ export function registerAllTools(context: ToolContext): void {
   );
 }
 
-/**
- * Get handler statistics (backward compatible).
- */
 export function getHandlerStats(): Record<string, number> {
   return getRegistryStats();
 }

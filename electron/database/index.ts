@@ -1,11 +1,4 @@
-/**
- * DatabaseManager - SQLite Archive Manager
- *
- * Per-account SQLite database for conversation archiving
- * Format: data/{email}_{provider}/archive.db
- *
- * @module electron/database
- */
+// NOTE: Per-account SQLite archive at data/{email}_{provider}/archive.db.
 
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
@@ -84,7 +77,7 @@ function getManager(accountId: string): SQLiteArchiveManager {
 
   const manager = activeManagers.get(accountId);
   if (manager === undefined) {
-    // Extremely rare: Map set failed or raced. Use a safe fallback.
+    // NOTE: Extremely rare: Map set failed or raced. Use a safe fallback.
     const created = new SQLiteArchiveManager(accountId);
     activeManagers.set(accountId, created);
     return created;
@@ -455,15 +448,12 @@ export const databaseManager = {
     { accountId }: { accountId: string }
   ): Promise<IpcResult<void>> {
     try {
-      // 1. Clear database records
       const manager = getManager(accountId);
       await manager.clearAccountData();
 
-      // 2. Close database connection and remove from pool
       activeManagers.delete(accountId);
       closeDatabaseForAccount(accountId);
 
-      // 3. Remove account data folder (db + attachments)
       const accountFolder = getAccountFolder(accountId);
       if (existsSync(accountFolder)) {
         rmSync(accountFolder, { recursive: true, force: true });

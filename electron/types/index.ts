@@ -1,12 +1,3 @@
-/**
- * Electron Main Process Type Definitions
- *
- * This file contains shared type definitions for all modules under electron/.
- * The types are used for the incremental TypeScript migration.
- *
- * @module electron/types
- */
-
 import type { IpcMainInvokeEvent, BrowserWindow } from "electron";
 import type { LogLevel } from "@shared/index.js";
 
@@ -63,7 +54,7 @@ export interface SyncMessagesParams {
   messages: Array<{
     role: "user" | "assistant";
     text: string;
-    /** Sender nickname (preserves the real sender in relay/++cmd scenarios) */
+    // NOTE: Sender nickname preserves the real sender in relay/++cmd scenarios.
     author?: string;
     index?: number;
     domIndex?: number;
@@ -225,7 +216,6 @@ export interface CommandDefinition {
 
 export type { IpcMainInvokeEvent, BrowserWindow } from "electron";
 
-// Re-export domain types
 export type { ServerOptions, ServerInfo } from "./server.ts";
 export type { ErrorHint, MatchedHint } from "./error-patterns.ts";
 export type { PathConfig, PathResolver } from "./paths.js";

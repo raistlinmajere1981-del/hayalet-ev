@@ -17,12 +17,6 @@ function chunkToString(data: unknown): string {
   return String(data);
 }
 
-/**
- * OpenCode serve server management service
- * - Port collision checks
- * - Automatic port discovery (4096-4110)
- * - Process lifecycle management
- */
 export class OpenCodeServerManager {
   private process: ChildProcess | null = null;
   private currentPort: number | null = null;
@@ -113,7 +107,6 @@ export class OpenCodeServerManager {
         try {
           child.kill("SIGKILL");
         } catch {
-          // ignore
         }
         finish({
           exitCode: null,
@@ -196,10 +189,8 @@ export class OpenCodeServerManager {
     return await find(start);
   }
 
-  /**
-   * Searches for a running OpenCode server within the port range.
-   * Verifies whether each occupied port is a real OpenCode server by running a health check.
-   */
+  // NOTE: Searches for a running OpenCode server within the port range.
+  // NOTE: Verifies whether each occupied port is a real OpenCode server by running a health check.
   async findRunningServer(start = 4096, end = 4110): Promise<ServerInfo> {
     const find = async (port: number): Promise<ServerInfo> => {
       if (port > end) return { running: false };
@@ -235,14 +226,14 @@ export class OpenCodeServerManager {
   }
 
   async start(options: ServerOptions = {}): Promise<ServerInfo> {
-    // Fail when a process started by this manager is already running.
+    // NOTE: Fail when a process started by this manager is already running.
     if (this.process !== null) {
       throw new Error(
         await translateElectronMessage("electron.opencodeServer.serverAlreadyRunning")
       );
     }
 
-    // First, look for a running server in the port range.
+    // NOTE: First, look for a running server in the port range.
     const existing = await this.findRunningServer(options.port ?? 4096, options.port ?? 4110);
     if (existing.running === true && existing.port != null) {
       await logger.logInternalT(
@@ -296,7 +287,6 @@ export class OpenCodeServerManager {
 
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"];
 
-    // Add configured CORS origins.
     const cors = options.cors ?? ["http://localhost:5173"];
     cors.forEach((origin) => {
       args.push("--cors", origin);
@@ -393,7 +383,7 @@ export class OpenCodeServerManager {
   }
 
   async stop(): Promise<void> {
-    // If the process was started by this manager, stop it directly.
+    // NOTE: If the process was started by this manager, stop it directly.
     if (this.process !== null) {
       await logger.logInternalT(
         LogCategory.MAIN,
@@ -482,9 +472,7 @@ export class OpenCodeServerManager {
     };
   }
 
-  /**
-   * Server health check (HTTP request via Node.js - CSP bypass)
-   */
+  // NOTE: Server health check (HTTP request via Node.js - CSP bypass).
   async checkHealth(url: string): Promise<{ success: boolean; error?: string }> {
     const http = await import("http");
     return await new Promise((resolve) => {

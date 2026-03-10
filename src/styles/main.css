@@ -1,15 +1,4 @@
-/**
- * Hayalet-ev - Main Stylesheet
- * Global layout, topbar, relay flows, and utilities
- * @version 5.4.0
- */
-
-/* Import Design System */
 @import "./design-system/index.css";
-
-/* ========================================
- * GLOBAL RESET & BASE
- * ======================================== */
 
 *,
 *::before,
@@ -48,7 +37,6 @@ button {
   font-family: inherit;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: var(--size-dot-sm);
   height: var(--size-dot-sm);
@@ -67,10 +55,6 @@ button {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* ========================================
- * APP LAYOUT
- * ======================================== */
-
 #app {
   display: flex;
   flex-direction: column;
@@ -88,7 +72,6 @@ button {
   height: 100%;
 }
 
-/* Page base */
 .page {
   height: 100%;
   overflow-y: auto;
@@ -548,10 +531,6 @@ button {
   }
 }
 
-/* ========================================
- * TOPBAR
- * ======================================== */
-
 .top-bar {
   display: flex;
   align-items: center;
@@ -565,7 +544,6 @@ button {
   box-sizing: border-box;
 }
 
-/* Topbar sections */
 .top-bar-left {
   display: flex;
   align-items: center;
@@ -599,7 +577,6 @@ button {
   gap: var(--space-2);
 }
 
-/* Logo */
 .logo {
   display: flex;
   align-items: center;
@@ -607,18 +584,16 @@ button {
 }
 
 .app-logo {
-  width: var(--size-icon-xl); /* 64px - logo boyutu */
+  width: var(--size-icon-xl);
   height: var(--size-icon-xl);
   border-radius: var(--radius-lg);
   object-fit: cover;
 
-  /* Subtle border */
   border: var(--border-2) solid var(--border-glass);
   box-shadow: var(--shadow-card);
   transition: var(--transition-normal);
 }
 
-/* Logo hover efekti */
 .app-logo:hover {
   border-color: var(--color-accent);
   box-shadow: var(--shadow-card), var(--glow-accent);
@@ -641,10 +616,6 @@ button {
 .logo-text:hover {
   text-shadow: var(--shadow-logo-text-hover);
 }
-
-/* ========================================
- * THEME DROPDOWN
- * ======================================== */
 
 .theme-dropdown {
   position: relative;
@@ -730,10 +701,6 @@ button {
   font-size: var(--text-lg);
 }
 
-/* ========================================
- * INDICATORS ROW
- * ======================================== */
-
 .indicators {
   display: flex;
   align-items: center;
@@ -762,10 +729,6 @@ button {
   align-items: flex-start;
   gap: var(--space-3);
 }
-
-/* ========================================
- * RELAY FLOW LINES
- * ======================================== */
 
 .relay-flow-wrapper {
   display: flex;
@@ -810,7 +773,6 @@ button {
   font-size: var(--text-sm);
 }
 
-/* Start/Stop icons */
 .relay-toggle-btn .icon-play {
   display: block;
 }
@@ -824,7 +786,6 @@ button {
   display: block;
 }
 
-/* Flow line */
 .relay-flow-line {
   position: relative;
   width: var(--relay-line-width);
@@ -913,15 +874,10 @@ button {
   animation: flow-rtl var(--duration-flow-slow) ease-in-out infinite;
 }
 
-/* ========================================
- * UTILITY CLASSES
- * ======================================== */
-
 .hidden {
   display: none !important;
 }
 
-/* === MENU HIDDEN (AI command: hide topbar/nav) === */
 body.menu-hidden .top-bar {
   display: none;
 }
@@ -930,7 +886,6 @@ body.menu-hidden .main-content {
   height: 100vh;
 }
 
-/* === FORM HELPERS === */
 .form-label {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
@@ -951,19 +906,16 @@ body.menu-hidden .main-content {
   color: var(--color-success);
 }
 
-/* === IMAGE UTILITIES === */
 .img-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* === BUTTON TEXT (responsive hide) === */
 .btn-text {
   white-space: nowrap;
 }
 
-/* === LOAD MORE === */
 .load-more-btn {
   display: block;
   width: 100%;
@@ -984,7 +936,6 @@ body.menu-hidden .main-content {
   color: var(--color-accent);
 }
 
-/* === EMPTY STATE === */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -997,7 +948,6 @@ body.menu-hidden .main-content {
   font-size: var(--text-xs);
 }
 
-/* === APP SHELL (full-viewport container) === */
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -1005,42 +955,29 @@ body.menu-hidden .main-content {
   overflow: hidden;
 }
 
-/* === ERROR MESSAGE === */
 .error-msg {
   color: var(--color-error);
 }
 
-/* ========================================
- * RESPONSIVE
- * ======================================== */
-
-/* 1920px - Full HD, no scroll */
 @media (min-width: 1920px) {
-  /* --bp-2xl */
   body {
     overflow: hidden;
   }
 }
 
-/* Below 1920px - allow vertical scroll if needed */
 @media (max-width: 1920px) {
-  /* --bp-2xl */
   body {
     overflow-y: auto;
   }
 }
 
-/* Tablet - hide center indicators */
 @media (max-width: 1024px) {
-  /* --bp-lg */
   .top-bar-center {
     display: none;
   }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
-  /* --bp-md */
   .logo-text {
     display: none;
   }

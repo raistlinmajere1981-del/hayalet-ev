@@ -20,7 +20,7 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
       }
     }
   } catch {
-    // Fallback below.
+    // NOTE: Intentionally ignored.
   }
 
   try {
@@ -34,7 +34,7 @@ export async function detectSystemActiveServerStatus(): Promise<SystemActiveServ
       }
     }
   } catch {
-    // Ignore and fall through.
+    // NOTE: Intentionally ignored.
   }
 
   return {

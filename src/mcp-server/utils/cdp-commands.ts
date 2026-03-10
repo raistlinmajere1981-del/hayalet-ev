@@ -1,8 +1,4 @@
-/**
- * CDP UI Automation Commands
- *
- * High-level commands for interacting with DOM elements inside Electron.
- */
+// NOTE: High-level DOM helpers executed via CDP.
 
 import type WebSocket from "ws";
 import { withConnection, evaluateJS, sendCDPCommand } from "./cdp-connection.js";
@@ -11,7 +7,6 @@ import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const cdpCommandT = createMcpTranslatorSync();
 
-/** Click result */
 interface ClickResult {
   success: boolean;
   error?: string;
@@ -21,7 +16,6 @@ interface ClickResult {
   textContent?: string;
 }
 
-/** Element info */
 interface ElementInfo {
   exists: boolean;
   selector: string;
@@ -34,7 +28,6 @@ interface ElementInfo {
   textContent?: string;
 }
 
-/** Element list item */
 interface ElementListItem {
   index: number;
   tagName: string;
@@ -44,7 +37,6 @@ interface ElementListItem {
   visible: boolean;
 }
 
-/** Window info */
 interface WindowInfo {
   title: string;
   url: string;
@@ -57,7 +49,6 @@ interface WindowInfo {
   scrollY: number;
 }
 
-/** Key modifiers */
 interface KeyModifiers {
   ctrl?: boolean;
   alt?: boolean;
@@ -65,9 +56,6 @@ interface KeyModifiers {
   meta?: boolean;
 }
 
-/**
- * Click an element by selector
- */
 export async function clickBySelector(selector: string): Promise<ClickResult> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -82,9 +70,6 @@ export async function clickBySelector(selector: string): Promise<ClickResult> {
   });
 }
 
-/**
- * Click an element by matching visible text
- */
 export async function clickByText(text: string, tagName = "*"): Promise<ClickResult> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -101,9 +86,6 @@ export async function clickByText(text: string, tagName = "*"): Promise<ClickRes
   });
 }
 
-/**
- * Fill an input field
- */
 export async function fillInput(
   selector: string,
   value: string,
@@ -118,7 +100,6 @@ export async function fillInput(
         if (${String(clear)}) el.value = "";
         el.value = ${JSON.stringify(value)};
         
-        // Trigger input events.
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
         
@@ -133,9 +114,6 @@ export async function fillInput(
   });
 }
 
-/**
- * Read the page structure (for debugging)
- */
 export async function getPageStructure(maxDepth = 3): Promise<Record<string, unknown>> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -144,7 +122,8 @@ export async function getPageStructure(maxDepth = 3): Promise<Record<string, unk
           if (depth > maxDepth || !el) return null;
           
           const children = Array.from(el.children ?? [])
-            .slice(0, 10) // Max 10 child nodes per element.
+            // NOTE: Limit children per element to keep payloads small.
+            .slice(0, 10)
             .map(child => getStructure(child, depth + 1, maxDepth))
             .filter(Boolean);
           
@@ -170,9 +149,6 @@ export async function getPageStructure(maxDepth = 3): Promise<Record<string, unk
   });
 }
 
-/**
- * Check whether an element exists
- */
 export async function checkElement(selector: string): Promise<ElementInfo> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -198,9 +174,6 @@ export async function checkElement(selector: string): Promise<ElementInfo> {
   });
 }
 
-/**
- * Find all matching elements
- */
 export async function findElements(selector: string, limit = 20): Promise<ElementListItem[]> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -220,38 +193,28 @@ export async function findElements(selector: string, limit = 20): Promise<Elemen
   });
 }
 
-/**
- * Capture a screenshot through CDP
- *
- * Note: On multi-monitor setups, screenshots can fail while the window is in the
- * background. Call Page.bringToFront first to improve reliability.
- */
+// NOTE: On multi-monitor setups, screenshots can fail while in background. Bring to front first.
 export async function takeScreenshot(format = "png", quality = 80): Promise<string> {
   return await withConnection(async (ws: WebSocket) => {
-    // Bring the window to the front first.
     await sendCDPCommand(ws, "Page.bringToFront", {}, CDP_TIMEOUTS.COMMAND_FAST);
 
-    // Enable the Page domain.
     await sendCDPCommand(ws, "Page.enable", {}, CDP_TIMEOUTS.COMMAND_FAST);
 
-    // Capture the screenshot.
     const result = await sendCDPCommand(
       ws,
       "Page.captureScreenshot",
       {
         format,
         quality: format === "jpeg" ? quality : undefined,
-        fromSurface: true, // Read from the compositor surface for better reliability.
+        // NOTE: Read from the compositor surface for better reliability.
+        fromSurface: true,
       },
       CDP_TIMEOUTS.SCREENSHOT
     );
-    return result["data"] as string; // Base64 encoded.
+    return result["data"] as string;
   });
 }
 
-/**
- * Read the window dimensions
- */
 export async function getWindowInfo(): Promise<WindowInfo> {
   return await withConnection(async (ws: WebSocket) => {
     const script = `
@@ -273,9 +236,6 @@ export async function getWindowInfo(): Promise<WindowInfo> {
   });
 }
 
-/**
- * Scroll to a specific position
- */
 export async function scrollTo(
   x = 0,
   y = 0,
@@ -292,9 +252,6 @@ export async function scrollTo(
   });
 }
 
-/**
- * Send a keyboard event
- */
 export async function pressKey(
   key: string,
   modifiers: KeyModifiers = {}
@@ -322,9 +279,6 @@ export async function pressKey(
   });
 }
 
-/**
- * Execute arbitrary JavaScript
- */
 export async function executeScript(code: string, timeout?: number): Promise<unknown> {
   return await withConnection(async (ws: WebSocket) => {
     return await evaluateJS(ws, code, true, timeout);

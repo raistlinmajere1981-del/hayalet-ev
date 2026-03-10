@@ -1,15 +1,3 @@
-/**
- * UI Module - Barrel Export
- *
- * Central export point for all UI-related modules.
- * Import UI utilities from here for cleaner imports.
- *
- * @example
- * ```typescript
- * import { ThemeManager, Toast, ButtonStates, Modal } from './ui';
- * ```
- */
-
 export { ThemeManager } from "./theme-manager";
 export type { ThemeId } from "./theme-manager";
 

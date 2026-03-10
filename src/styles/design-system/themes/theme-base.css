@@ -1,14 +1,4 @@
-/**
- * Hayalet-ev Design System - Theme Base
- * Theme-agnostic variable definitions and fallbacks
- * @version 5.4.0
- */
-
 :root {
-  /* === SEMANTIC COLOR ALIASES === */
-  /* Themes override these variables */
-
-  /* Background */
   --bg-app: var(--slate-900);
   --bg-surface: var(--slate-800);
   --bg-elevated: var(--slate-700);
@@ -17,23 +7,19 @@
   --bg-input: rgba(15, 23, 42, 0.6);
   --bg-overlay: rgba(0, 0, 0, 0.7);
 
-  /* Text */
   --text-primary: var(--slate-100);
   --text-secondary: var(--slate-300);
   --text-muted: var(--slate-500);
   --text-inverse: var(--slate-900);
 
-  /* Border */
   --border-default: rgba(71, 85, 105, 0.5);
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-focus: var(--cyan-400);
 
-  /* Accent */
   --color-accent: var(--cyan-400);
   --color-accent-muted: var(--cyan-alpha-20);
   --accent-gradient: linear-gradient(135deg, var(--cyan-400) 0%, var(--teal-400) 100%);
 
-  /* Status */
   --color-success: var(--emerald-400);
   --color-success-bg: var(--emerald-alpha-20);
   --color-warning: var(--amber-400);
@@ -43,23 +29,18 @@
   --color-info: var(--blue-400);
   --color-info-bg: var(--blue-alpha-15);
 
-  /* Interactive */
   --hover-overlay: rgba(255, 255, 255, 0.05);
   --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--color-accent);
 
-  /* Shadows & Glows */
   --glow-accent: var(--glow-cyan-md);
 
-  /* Scrollbar */
   --scrollbar-track: var(--bg-surface);
   --scrollbar-thumb: var(--slate-600);
   --scrollbar-thumb-hover: var(--slate-500);
 
-  /* Relay flow */
   --relay-particle-color: var(--color-accent);
   --relay-track-color: rgba(34, 211, 238, 0.15);
 
-  /* Indicator dots */
   --dot-inactive: var(--slate-600);
   --dot-loading: var(--amber-400);
   --dot-send: var(--cyan-400);

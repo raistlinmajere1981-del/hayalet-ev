@@ -28,13 +28,13 @@ export interface LogWriterConfig {
   enableErrorLog: boolean;
   enablePerformanceLog: boolean;
   compressionEnabled: boolean;
-  maxFileSize: number; // MB, rotate after this
+  maxFileSize: number;
 }
 
 export interface LogReaderOptions {
   sessionId?: string;
-  tail?: number; // Last N lines
-  follow?: boolean; // Real-time streaming
+  tail?: number;
+  follow?: boolean;
   filter?: {
     level?: string[];
     category?: string[];
@@ -47,7 +47,7 @@ export interface SessionSummary {
   sessionId: string;
   startTime: string;
   endTime?: string;
-  duration?: number; // ms
+  duration?: number;
 
   stats: {
     totalLogs: number;
@@ -61,11 +61,11 @@ export interface SessionSummary {
     timestamp: string;
     category: string;
     message: string;
-    count: number; // Clustered count
+    count: number;
   }>;
 
   performance?: {
-    averageLogRate: number; // logs/sec
-    peakMemoryUsage?: number; // MB
+    averageLogRate: number;
+    peakMemoryUsage?: number;
   };
 }

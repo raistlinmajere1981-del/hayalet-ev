@@ -352,7 +352,7 @@ try {
 
         const s = document.createElement("script");
         s.type = "module";
-        s.src = "/js/app.js"; // Set the src directly
+        s.src = "/js/app.js";
         s.onload = () => {
           console.info(preloadT("appScriptLoaded"));
         };

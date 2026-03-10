@@ -1,9 +1,3 @@
-/**
- * Development Tools - AST-based Code Insertion
- *
- * TypeScript AST kullanarak kod ekleme yapar (duplicate prevention)
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import ts from "typescript";
@@ -12,7 +6,7 @@ import { logToolError } from "../../utils/mcp-logger.js";
 
 interface ASTInsertOptions {
   file_path: string;
-  after_pattern: string; // Function/class name or regex
+  after_pattern: string;
   insert_type: "if_block" | "function" | "method" | "import" | "export";
   code: string;
   dry_run?: boolean;
@@ -51,7 +45,6 @@ export function insertCodeWithAST(
     const content = readFileSync(fullPath, "utf-8");
     const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
 
-    // Find insertion point using AST
     const insertionPoint = findInsertionPoint(sourceFile, afterPattern, insertType);
 
     if (!insertionPoint) {
@@ -61,17 +54,14 @@ export function insertCodeWithAST(
       };
     }
 
-    // Insert code at the found position
     const lines = content.split("\n");
     const newCode = formatCode(code, insertType, lines[insertionPoint.line - 1] ?? "");
 
     lines.splice(insertionPoint.line, 0, newCode);
     const newContent = lines.join("\n");
 
-    // Generate preview
     const preview = generatePreview(lines, insertionPoint.line, newCode);
 
-    // Apply if not dry run
     if (!dryRun) {
       writeFileSync(fullPath, newContent, "utf-8");
     }
@@ -91,10 +81,6 @@ export function insertCodeWithAST(
   }
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
 function findInsertionPoint(
   sourceFile: ts.SourceFile,
   pattern: string,
@@ -103,11 +89,9 @@ function findInsertionPoint(
   let insertionPoint: { line: number; column: number } | null = null;
 
   function visit(node: ts.Node): void {
-    // Find the target node based on pattern
     if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) {
       const name = node.name?.getText(sourceFile);
       if (name !== undefined && (name === pattern || name.match(new RegExp(pattern)))) {
-        // Insert after this function/method
         const pos = sourceFile.getLineAndCharacterOfPosition(node.end);
         insertionPoint = { line: pos.line + 1, column: 0 };
       }
@@ -129,7 +113,6 @@ function findInsertionPoint(
 }
 
 function formatCode(code: string, _insertType: string, previousLine: string): string {
-  // Match indentation of previous line
   const indent = previousLine.match(/^\\s*/)?.[0] ?? "";
 
   const lines = code.split("\\n");
@@ -176,10 +159,6 @@ function formatOutput(filePath: string, line: number, dryRun: boolean): string {
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const AST_CODE_INSERTER_TOOL = {
   name: "hev_dev_ast_insert",

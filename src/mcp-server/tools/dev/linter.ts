@@ -1,9 +1,3 @@
-/**
- * Development Tools - Linter
- *
- * ESLint runner (single file)
- */
-
 import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
@@ -27,7 +21,6 @@ export function lintFile(
 
   try {
     const fixArg = fix ? " --fix" : "";
-    // Enable cache for faster subsequent runs
     const cmd = `npx eslint "${filePath}" --format stylish --cache --cache-location node_modules/.cache/eslint${fixArg}`;
     progress.update(0, linterT("progress.lintingFile", { filePath }));
 
@@ -48,7 +41,6 @@ export function lintFile(
       const error = err as { stdout?: string; stderr?: string; status?: number };
       const output = error.stdout ?? error.stderr ?? "";
 
-      // Parse error/warning counts
       const errorMatch = output.match(/(\d+) errors?/);
       const warningMatch = output.match(/(\d+) warnings?/);
       const errorCount = errorMatch ? parseInt(errorMatch[1] ?? "0") : 0;

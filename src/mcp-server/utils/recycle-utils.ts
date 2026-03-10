@@ -1,12 +1,3 @@
-/**
- * Recycle Bin Utilities
- *
- * Trash system for deleted files.
- * - Files move under `.rovo/trash/`
- * - Entries are stored with timestamps
- * - Supports restore and permanent delete flows
- */
-
 import {
   existsSync,
   mkdirSync,
@@ -22,18 +13,10 @@ import {
 import { join, basename, dirname, relative } from "path";
 import { createMcpTranslatorSync } from "./i18n/index.js";
 
-// ============================================
-// Constants
-// ============================================
-
 const TRASH_DIR = ".rovo/trash";
 const OPERATION_LOG = ".rovo/operation-log.json";
-const MAX_OPERATIONS = 100; // Keep the most recent 100 operations.
+const MAX_OPERATIONS = 100;
 const mcpT = createMcpTranslatorSync();
-
-// ============================================
-// Types
-// ============================================
 
 export interface TrashItem {
   originalPath: string;
@@ -76,11 +59,6 @@ function parseOperationLog(raw: string): OperationLog {
   }
 }
 
-// ============================================
-// Trash Operations
-// ============================================
-
-/** Ensure that the trash directory exists. */
 export function ensureTrashDir(projectRoot: string): string {
   const trashPath = join(projectRoot, TRASH_DIR);
   if (!existsSync(trashPath)) {
@@ -89,7 +67,6 @@ export function ensureTrashDir(projectRoot: string): string {
   return trashPath;
 }
 
-/** Move a file or directory into the trash. */
 export function moveToTrash(projectRoot: string, filePath: string): TrashItem | null {
   if (!existsSync(filePath)) {
     return null;
@@ -104,7 +81,6 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
   const stats = statSync(filePath);
   const isDirectory = stats.isDirectory();
 
-  // Move the file into the trash location.
   renameSync(filePath, trashPath);
 
   const item: TrashItem = {
@@ -115,7 +91,6 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
     isDirectory,
   };
 
-  // Record the action for undo support.
   logOperation(projectRoot, {
     id: generateId(),
     type: "delete",
@@ -127,7 +102,6 @@ export function moveToTrash(projectRoot: string, filePath: string): TrashItem | 
   return item;
 }
 
-/** List files currently stored in the trash. */
 export function listTrash(projectRoot: string): TrashItem[] {
   const trashDir = join(projectRoot, TRASH_DIR);
   if (!existsSync(trashDir)) {
@@ -141,9 +115,8 @@ export function listTrash(projectRoot: string): TrashItem[] {
     const trashPath = join(trashDir, file);
     const stats = statSync(trashPath);
 
-    // Parse filename: timestamp__original__path
     const parts = file.split("__");
-    if (parts[0] == null || parts[0] === "") continue; // Skip invalid entries
+    if (parts[0] == null || parts[0] === "") continue;
     const timestamp = parts[0].replace(/-/g, ":").replace(/T/g, " ").slice(0, 19);
     const originalRelative = parts.slice(1).join("/");
     const originalPath = join(projectRoot, originalRelative);
@@ -160,7 +133,6 @@ export function listTrash(projectRoot: string): TrashItem[] {
   return items.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
 }
 
-/** Restore a file from the trash. */
 export function restoreFromTrash(
   projectRoot: string,
   trashPath: string
@@ -171,18 +143,15 @@ export function restoreFromTrash(
 
   const fileName = basename(trashPath);
 
-  // Parse the original path from the trash filename.
   const parts = fileName.split("__");
   const originalRelative = parts.slice(1).join("/");
   const originalPath = join(projectRoot, originalRelative);
 
-  // Recreate the destination directory when needed.
   const targetDir = dirname(originalPath);
   if (!existsSync(targetDir)) {
     mkdirSync(targetDir, { recursive: true });
   }
 
-  // Rename the restored file if the destination already exists.
   let finalPath = originalPath;
   if (existsSync(originalPath)) {
     const ext = originalPath.includes(".") ? "." + originalPath.split(".").pop() : "";
@@ -195,7 +164,6 @@ export function restoreFromTrash(
   return { success: true, restoredTo: finalPath };
 }
 
-/** Empty the trash directory. */
 export function emptyTrash(
   projectRoot: string,
   olderThanDays?: number
@@ -217,7 +185,6 @@ export function emptyTrash(
     const trashPath = join(trashDir, file);
     const stats = statSync(trashPath);
 
-    // Skip entries newer than the retention cutoff.
     if (olderThanDays != null && olderThanDays > 0 && stats.mtimeMs > cutoff) {
       continue;
     }
@@ -230,11 +197,6 @@ export function emptyTrash(
   return { deleted, freedBytes };
 }
 
-// ============================================
-// Backup Operations
-// ============================================
-
-/** Create a backup copy for a file. */
 export function createBackup(
   projectRoot: string,
   filePath: string,
@@ -251,7 +213,6 @@ export function createBackup(
 
   copyFileSync(filePath, backupPath);
 
-  // Record the backup for undo support.
   logOperation(projectRoot, {
     id: generateId(),
     type: "backup",
@@ -262,10 +223,6 @@ export function createBackup(
 
   return { success: true, backupPath };
 }
-
-// ============================================
-// Operation Log (undo support)
-// ============================================
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -292,7 +249,6 @@ export function logOperation(projectRoot: string, operation: Operation): void {
   const log = getOperationLog(projectRoot);
   log.operations.unshift(operation);
 
-  // Max limit
   if (log.operations.length > MAX_OPERATIONS) {
     log.operations = log.operations.slice(0, MAX_OPERATIONS);
   }
@@ -305,7 +261,6 @@ export function getOperationHistory(projectRoot: string, limit: number = 20): Op
   return log.operations.slice(0, limit);
 }
 
-/** Undo the latest undoable operation. */
 export function undoLastOperation(projectRoot: string): {
   success: boolean;
   message: string;
@@ -377,7 +332,6 @@ export function undoLastOperation(projectRoot: string): {
       }
     }
 
-    // Mark the operation as no longer undoable.
     const op = log.operations[opIndex];
     if (op) op.canUndo = false;
     saveOperationLog(projectRoot, log);

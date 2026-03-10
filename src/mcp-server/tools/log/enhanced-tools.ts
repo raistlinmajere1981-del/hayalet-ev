@@ -1,15 +1,4 @@
-/**
- * Enhanced MCP Log Tools
- *
- * Advanced logging tools for AI agents:
- * - Real-time streaming
- * - Error clustering
- * - Correlation tracing
- * - Performance analysis
- * - Batch export
- *
- * @module mcp-server/tools/log/enhanced-tools
- */
+// NOTE: Advanced MCP log analysis helpers for agents.
 
 import { readFile, readdir } from "fs/promises";
 import { join } from "path";
@@ -19,8 +8,8 @@ import { createMcpTranslator } from "../../utils/i18n/index.js";
 import type { LogEntry, LogQueryFilter } from "@shared/index.js";
 
 export interface StreamLogsArgs {
-  sessionId?: string; // Specific session or current
-  tail?: number; // Start from last N lines
+  sessionId?: string;
+  tail?: number;
   filter?: AdvancedLogFilter;
 }
 
@@ -77,7 +66,7 @@ export interface AnalyzeErrorsArgs {
   sessionId?: string;
   timeRange?: { from: string; to: string };
   groupBy?: "category" | "message" | "stack";
-  minClusterSize?: number; // Minimum errors to form a cluster
+  minClusterSize?: number;
 }
 
 export interface ErrorCluster {
@@ -198,7 +187,7 @@ export interface CorrelationTrace {
   operation: string;
   category: string;
   timeline: LogEntry[];
-  duration?: number; // ms
+  duration?: number;
   status: "success" | "failed" | "incomplete";
   result?: string;
 }

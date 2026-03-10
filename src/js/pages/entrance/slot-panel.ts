@@ -22,7 +22,7 @@ export class SlotPanel {
   settingsManager: SettingsManager;
 
   constructor(slotId: string, settingsManager: SettingsManager) {
-    this.slotId = slotId; // "ai1" or "ai2"
+    this.slotId = slotId;
     this.settingsManager = settingsManager;
   }
 
@@ -35,7 +35,7 @@ export class SlotPanel {
     window.addEventListener("slot-account-changed", ((e: Event) => {
       const detail = (e as CustomEvent<unknown>).detail;
       if (hasSlotAccountChangedDetail(detail) && detail.slot !== this.slotId) {
-        this.render(); // Refresh this slot when another slot changes
+        this.render();
       }
     }) as EventListener);
 
@@ -95,8 +95,8 @@ export class SlotPanel {
     const otherAccountId = settings.slots[otherSlot].accountId;
 
     const availableAccounts = accounts.filter((a: { id: string }) => {
-      if (a.id === slotSettings.accountId) return true; // Show self
-      if (a.id === otherAccountId) return false; // Hide other
+      if (a.id === slotSettings.accountId) return true;
+      if (a.id === otherAccountId) return false;
       return true;
     });
 

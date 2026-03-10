@@ -1,8 +1,4 @@
-/**
- * Integration layer for existing MCP log tools
- *
- * Wraps existing tools with new architecture
- */
+// NOTE: Integration layer for legacy log tooling.
 
 import { readFile, readdir, stat } from "fs/promises";
 import { join } from "path";
@@ -49,9 +45,6 @@ function logIntegrationT(
   return t(`mcpServer.logIntegration.${key}`, params);
 }
 
-/**
- * Read electron logs (enhanced version of existing tool)
- */
 export async function readElectronLogs(args: {
   sessionId?: string;
   type?: "console" | "error" | "structured";
@@ -138,9 +131,6 @@ export async function readElectronLogs(args: {
   };
 }
 
-/**
- * List log sessions (enhanced)
- */
 export async function listLogSessions(args?: {
   limit?: number;
   includeStats?: boolean;
@@ -183,7 +173,7 @@ export async function listLogSessions(args?: {
             session.stats = summaryRaw["stats"];
           }
         } catch {
-          // Ignore malformed summary files and continue with basic session info.
+          // NOTE: Ignore malformed summary files and continue with basic session info.
         }
       }
 
@@ -212,9 +202,6 @@ export async function listLogSessions(args?: {
   };
 }
 
-/**
- * Get session summary (enhanced)
- */
 export async function getSessionSummary(args: { sessionId?: string }): Promise<unknown> {
   const t = await createMcpTranslator();
   const logDir = join(PROJECT_ROOT, "logs", "app");

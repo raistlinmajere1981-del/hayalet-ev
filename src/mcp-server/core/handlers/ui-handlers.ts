@@ -1,10 +1,3 @@
-/**
- * UI Tool Handlers
- * Message box display with various styles
- *
- * Co-located: definition + handler in ToolEntry format
- */
-
 import { renderMessageBox } from "../../tools/ui-tools.js";
 import type { ToolEntry } from "../registry.js";
 

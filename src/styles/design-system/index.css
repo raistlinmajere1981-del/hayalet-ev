@@ -1,13 +1,3 @@
-/**
- * Hayalet-ev Design System
- * 
- * A modern, glassmorphism-based design system
- * Theme: Obsidian (dark, cyan accents)
- * 
- * @version 5.4.0
- */
-
-/* === DESIGN TOKENS === */
 @import "./tokens/colors.css";
 @import "./tokens/typography.css";
 @import "./tokens/spacing.css";
@@ -17,11 +7,9 @@
 @import "./tokens/z-index.css";
 @import "./tokens/sizes.css";
 
-/* === THEMES === */
 @import "./themes/theme-base.css";
 @import "./themes/theme-obsidian.css";
 
-/* === COMPONENTS === */
 @import "./components/buttons.css";
 @import "./components/inputs.css";
 @import "./components/toast.css";

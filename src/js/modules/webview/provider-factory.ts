@@ -1,9 +1,3 @@
-/**
- * Provider Factory
- *
- * Manages provider modules.
- */
-
 export type ProviderModule = Record<string, unknown>;
 
 import * as chatgptProvider from "./providers/chatgpt/index.js";

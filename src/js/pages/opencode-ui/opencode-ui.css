@@ -2,7 +2,6 @@
   --opencode-ui-accent: var(--accent-primary, #4b8bff);
 }
 
-/* MCP Toggle Switch */
 .ds-mcp-switch {
   position: relative;
   display: inline-block;
@@ -53,7 +52,6 @@
   transform: translateX(16px);
 }
 
-/* Error badge variant */
 .ds-status-badge--error {
   color: var(--status-error, #ff4d4f);
   background: rgba(255, 77, 79, 0.1);

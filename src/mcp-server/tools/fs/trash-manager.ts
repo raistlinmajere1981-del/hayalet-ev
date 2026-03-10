@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Trash Manager
- */
-
 import { restoreFromTrash, emptyTrash } from "../../utils/recycle-utils.js";
 import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { formatBytes } from "./shared/helpers.js";
@@ -23,7 +19,6 @@ export function trashList(_projectRoot: string): {
   items: Array<{ path: string; deletedAt: string; size: string }>;
   total: number;
 } {
-  // TODO: Wire this to the shared recycle metadata once trash listing is implemented.
   const items: Array<{ path: string; mtime: number; metadata?: Record<string, unknown> }> = [];
   return {
     items: items.map((item) => ({

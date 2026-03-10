@@ -1,7 +1,3 @@
-/**
- * Electron tools for runtime checks and discovery output.
- */
-
 import { exec } from "child_process";
 import { promisify } from "util";
 import { ELECTRON_TIMEOUTS } from "@timeouts";
@@ -74,7 +70,7 @@ export async function testElectron(
       };
     }
   } catch {
-    // Ignore the probe error and continue with the explicit start attempt.
+    // NOTE: Ignore the probe error and continue with the explicit start attempt.
   }
 
   try {

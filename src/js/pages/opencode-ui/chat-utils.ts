@@ -1,7 +1,3 @@
-/**
- * OpenCode UI chat utilities.
- */
-
 import { formatTime, t } from "./i18n.js";
 
 export function escapeHtml(str: string): string {
@@ -10,14 +6,6 @@ export function escapeHtml(str: string): string {
   return div.innerHTML;
 }
 
-/**
- * Append a chat message to the DOM.
- * @param role - "user" | "assistant"
- * @param text - Raw text (or input passed to renderFn when provided)
- * @param extra - Extra text shown next to the timestamp
- * @param files - File attachments
- * @param renderFn - Optional markdown render function (injected by chat.ts)
- */
 export function addMessage(
   role: string,
   text: string,

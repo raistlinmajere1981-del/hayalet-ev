@@ -1,10 +1,3 @@
-/**
- * Electron & Log Tool Handlers
- * Health checks, electron testing, tool discovery, log reading
- *
- * Co-located: definition + handler in ToolEntry format
- */
-
 import { testElectron, listTools, mcpHealthCheck } from "../../tools/electron-tools.js";
 import { handleSuggestTool } from "../../tools/tool-discovery.js";
 import { TOOL_DISCOVERY_DEFINITIONS } from "../../tools/tool-discovery.js";

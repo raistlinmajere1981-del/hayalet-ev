@@ -1,11 +1,3 @@
-/**
- * Basic file operations.
- *
- * Provides read, write, list, delete, and move primitives for filesystem tools.
- *
- * @module fs/basic/operations
- */
-
 import { readFile, writeFile, unlink, readdir, stat, mkdir, rename, access } from "fs/promises";
 import { dirname, join } from "path";
 import { logToolError } from "../../../utils/mcp-logger.js";
@@ -65,10 +57,7 @@ export interface DirectoryEntry {
   modified: string;
 }
 
-/**
- * Validate file path for security
- * Blocks path traversal attempts
- */
+// NOTE: Block path traversal attempts.
 function validatePath(filePath: string): { valid: boolean; errorKey?: string } {
   const normalized = filePath.replace(/\\/g, "/");
 
@@ -86,9 +75,6 @@ function validatePath(filePath: string): { valid: boolean; errorKey?: string } {
   return { valid: true };
 }
 
-/**
- * Read file content with optional start_line/end_line range or head/tail
- */
 export async function readFileContent(options: ReadFileOptions): Promise<ToolResult> {
   const {
     file_path: filePath,
@@ -218,9 +204,6 @@ export async function readFileContent(options: ReadFileOptions): Promise<ToolRes
   }
 }
 
-/**
- * Add line numbers to content
- */
 function addLineNumbers(content: string, startLine = 1): string {
   const lines = content.split("\n");
   return lines
@@ -231,9 +214,6 @@ function addLineNumbers(content: string, startLine = 1): string {
     .join("\n");
 }
 
-/**
- * Write content to file
- */
 export async function writeFileContent(options: WriteFileOptions): Promise<ToolResult> {
   const { file_path: filePath, content, overwrite = false, encoding = "utf8" } = options;
   const t = await createMcpTranslator();
@@ -264,9 +244,7 @@ export async function writeFileContent(options: WriteFileOptions): Promise<ToolR
           ],
           isError: true,
         };
-      } catch {
-        // The file does not exist yet.
-      }
+      } catch {}
     }
 
     const dir = dirname(filePath);
@@ -298,9 +276,6 @@ export async function writeFileContent(options: WriteFileOptions): Promise<ToolR
   }
 }
 
-/**
- * List directory contents
- */
 export async function listDirectory(options: ListDirectoryOptions): Promise<ToolResult> {
   const { path: dirPath, max_depth: maxDepth = 1, include_hidden: includeHidden = false } = options;
   const t = await createMcpTranslator();
@@ -344,9 +319,6 @@ export async function listDirectory(options: ListDirectoryOptions): Promise<Tool
   }
 }
 
-/**
- * Read directory recursively up to max_depth
- */
 async function readDirectoryRecursive(
   dirPath: string,
   maxDepth: number,
@@ -390,9 +362,6 @@ async function readDirectoryRecursive(
   return results;
 }
 
-/**
- * Format directory listing for display
- */
 function formatDirectoryListing(
   rootPath: string,
   entries: Array<{ entry: DirectoryEntry; depth: number }>,
@@ -426,18 +395,12 @@ function formatDirectoryListing(
   return lines.join("\n");
 }
 
-/**
- * Format bytes to human readable
- */
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-/**
- * Delete file or directory
- */
 export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult> {
   const { file_path: filePath, recursive = false } = options;
   const t = await createMcpTranslator();
@@ -499,9 +462,6 @@ export async function deleteFile(options: DeleteFileOptions): Promise<ToolResult
   }
 }
 
-/**
- * Move or rename file/directory
- */
 export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
   const { source, destination, overwrite = false } = options;
   const t = await createMcpTranslator();
@@ -558,9 +518,7 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
           ],
           isError: true,
         };
-      } catch {
-        // The destination does not exist yet.
-      }
+      } catch {}
     }
 
     const destDir = dirname(destination);
@@ -585,10 +543,6 @@ export async function moveFile(options: MoveFileOptions): Promise<ToolResult> {
     };
   }
 }
-
-// ============================================
-// Tool Definitions
-// ============================================
 
 export const READ_FILE_TOOL = {
   name: "hev_fs_read",

@@ -1,9 +1,3 @@
-/**
- * Provider Config Parser
- *
- * Reads provider config files and parses selector metadata.
- */
-
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { createMcpTranslatorSync } from "./i18n/index.js";
@@ -76,12 +70,10 @@ const PROVIDERS = ["chatgpt", "gemini", "grok", "opencode"] as const;
 
 export type ProviderId = (typeof PROVIDERS)[number];
 
-/** Resolve the provider config file path. */
 export function getConfigPath(projectRoot: string, provider: string): string {
   return join(projectRoot, "src/js/modules/webview/providers", provider, "config.ts");
 }
 
-/** List providers that currently have a config file. */
 export function listProviders(projectRoot: string): ProviderInfo[] {
   return PROVIDERS.map((id) => {
     const configPath = getConfigPath(projectRoot, id);
@@ -94,10 +86,6 @@ export function listProviders(projectRoot: string): ProviderInfo[] {
   }).filter((p) => p.exists);
 }
 
-/**
- * Parse the config object from the provider source file.
- * Uses regex-based extraction without runtime evaluation.
- */
 export function parseProviderConfig(projectRoot: string, provider: string): ProviderConfig | null {
   const configPath = getConfigPath(projectRoot, provider);
 
@@ -119,7 +107,6 @@ export function parseProviderConfig(projectRoot: string, provider: string): Prov
   }
 }
 
-/** Extract the config object from a TypeScript source string. */
 function extractConfigFromSource(source: string, providerId: string): ProviderConfig {
   const config: ProviderConfig = {
     id: providerId,
@@ -307,14 +294,11 @@ function extractSelectorMatrix(source: string): ProviderSelectorMatrix | undefin
   return Object.keys(selectors).length > 0 ? { selectors } : undefined;
 }
 
-/** Extract string values from a nested object literal. */
 function extractSelectorsObject(source: string, objectKey: string): Record<string, string> {
   const result: Record<string, string> = {};
   const objectContent = extractObjectContent(source, objectKey);
   if (objectContent === null) return result;
 
-  // Parse key-value pairs and support backtick template literals.
-  // Pattern: key: `value` (may contain " and ')
   const backtickPattern = /(\w+):\s*`([^`]*)`/g;
   let match;
 
@@ -326,7 +310,6 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
     }
   }
 
-  // Pattern: key: "value" (may contain ')
   const doubleQuotePattern = /(\w+):\s*"([^"]*)"/g;
   while ((match = doubleQuotePattern.exec(objectContent)) !== null) {
     const key = match[1];
@@ -336,7 +319,6 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
     }
   }
 
-  // Pattern: key: 'value' (may contain ")
   const singleQuotePattern = /(\w+):\s*'([^']*)'/g;
   while ((match = singleQuotePattern.exec(objectContent)) !== null) {
     const key = match[1];
@@ -349,16 +331,13 @@ function extractSelectorsObject(source: string, objectKey: string): Record<strin
   return result;
 }
 
-/** Extract a string array from the source. */
 function extractStringArray(source: string, arrayKey: string): string[] {
   return extractStringArrayFromContent(source, arrayKey);
 }
 
-/** Flatten every selector in the config into a single list. */
 export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
   const result: FlatSelector[] = [];
 
-  // selectors object
   if (Object.keys(config.selectors).length > 0) {
     for (const [key, value] of Object.entries(config.selectors)) {
       if (typeof value === "string" && value.trim() !== "") {
@@ -379,7 +358,6 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
     }
   }
 
-  // scrapeSelectors object
   if (config.scrapeSelectors) {
     for (const [key, value] of Object.entries(config.scrapeSelectors)) {
       if (typeof value === "string" && value.trim() !== "") {
@@ -413,7 +391,6 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
     }
   }
 
-  // Array selectors
   const arrayCategories = [
     "criticalSelectors",
     "fileInputSelectors",
@@ -441,7 +418,6 @@ export function flattenSelectors(config: ProviderConfig): FlatSelector[] {
   return result;
 }
 
-/** Group selectors by category. */
 export function groupSelectorsByCategory(
   selectors: FlatSelector[]
 ): Record<string, FlatSelector[]> {

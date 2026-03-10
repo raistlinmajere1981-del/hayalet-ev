@@ -1,13 +1,3 @@
-/**
- * SessionManager - log session management
- *
- * This module manages log sessions:
- * - Generating session IDs
- * - Creating session directories
- * - Writing session metadata and summaries
- * - Listing sessions
- */
-
 import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";

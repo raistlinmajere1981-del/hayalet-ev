@@ -1,15 +1,5 @@
 import { getFilename } from "../../constants/index.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-
-/**
- * UploadHandler - Analyze page file upload flow
- *
- * This module handles file selection and list rendering:
- * - File picker dialog
- * - Staged file management
- * - Upload list rendering
- */
-
 export interface StagedFile {
   name: string;
   path: string;

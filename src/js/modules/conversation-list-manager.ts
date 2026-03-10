@@ -85,7 +85,6 @@ class ConversationListManagerClass {
       this.renderAll({ silent: true });
     });
 
-    // When URL changes to the default page, reset the conversation list to "new".
     SlotController.on(
       SlotEvent.URL_CHANGED,
       (payload: { event?: string; slot?: string; data?: { isDefaultPage?: boolean } }) => {

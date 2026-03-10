@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Sidebar Component
- * Collapsible sidebar panels, session list, session actions
- * @version 5.4.0
- */
-
-/* === SIDEBAR CONTAINER === */
 .ds-sidebar {
   display: flex;
   flex-direction: column;
@@ -29,7 +22,6 @@
   border-width: 0;
 }
 
-/* === SIDEBAR HEADER === */
 .ds-sidebar__header {
   display: flex;
   align-items: center;
@@ -97,7 +89,6 @@
   }
 }
 
-/* === SIDEBAR BODY (scrollable) === */
 .ds-sidebar__body {
   flex: 1;
   overflow-y: auto;
@@ -105,14 +96,12 @@
   padding: var(--space-2);
 }
 
-/* === SIDEBAR FOOTER === */
 .ds-sidebar__footer {
   flex-shrink: 0;
   padding: var(--space-3) var(--space-4);
   border-top: var(--border-1) solid var(--border-default);
 }
 
-/* === SESSION LIST === */
 .ds-session-list {
   display: flex;
   flex-direction: column;
@@ -149,7 +138,6 @@
   color: var(--color-accent);
 }
 
-/* === SESSION ITEM === */
 .ds-session {
   display: flex;
   flex-direction: column;
@@ -184,7 +172,6 @@
   background: var(--color-warning-bg);
 }
 
-/* Session top row: indicator + title + badge */
 .ds-session__header {
   display: flex;
   align-items: center;
@@ -231,7 +218,6 @@
   min-width: 0;
 }
 
-/* Session badge (thinking/idle) */
 .ds-session__badge {
   display: inline-flex;
   align-items: center;
@@ -282,14 +268,12 @@
   }
 }
 
-/* Session meta row */
 .ds-session__meta {
   font-size: var(--text-2xs);
   color: var(--text-muted);
   padding-left: calc(var(--size-dot-sm) + var(--space-2));
 }
 
-/* Session action buttons */
 .ds-session__actions {
   display: flex;
   align-items: center;
@@ -334,7 +318,6 @@
   color: var(--color-warning);
 }
 
-/* === COLLAPSIBLE PANEL (for right sidebar sections) === */
 .ds-panel {
   border-radius: var(--radius-lg);
   background: var(--hover-overlay);
@@ -406,7 +389,6 @@
   display: none;
 }
 
-/* Panel search input */
 .ds-panel__search {
   width: 100%;
   height: var(--input-height-sm);
@@ -430,7 +412,6 @@
   border-color: var(--border-focus);
 }
 
-/* Panel list items */
 .ds-panel__item {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
@@ -445,7 +426,6 @@
   color: var(--text-primary);
 }
 
-/* Panel add button (dashed) */
 .ds-panel__add {
   display: flex;
   align-items: center;

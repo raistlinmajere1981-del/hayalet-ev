@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Navigation Components
- * Side nav overlay menu - Floating pill style
- * @version 5.4.0
- */
-
-/* === SIDE NAV OVERLAY === */
 .side-nav-overlay {
   position: fixed;
   top: 50%;
@@ -20,13 +13,12 @@
   pointer-events: auto;
 }
 
-/* === TRIGGER AREA === */
 .side-nav-trigger {
   position: absolute;
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  height: 50px; /* Only the small visible line area */
+  height: 50px;
   width: var(--side-nav-trigger-width);
   background: linear-gradient(to left, var(--bg-elevated), transparent);
   opacity: 0.6;
@@ -42,7 +34,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 2px; /* Thin line */
+  width: 2px;
   height: var(--size-avatar-md);
   background: var(--text-muted);
   border-radius: var(--radius-full);
@@ -50,13 +42,11 @@
   transition: var(--transition-fast);
 }
 
-/* The trigger is hidden only when the menu is open */
 .side-nav-overlay.is-open .side-nav-trigger {
   opacity: 0;
   pointer-events: none;
 }
 
-/* === SIDE NAV MENU === */
 .side-nav-menu {
   display: flex;
   flex-direction: column;
@@ -72,12 +62,10 @@
   transition: transform var(--duration-normal) var(--ease-out);
 }
 
-/* The menu opens only with the .is-open class (JavaScript-controlled) */
 .side-nav-overlay.is-open .side-nav-menu {
   transform: translateX(0);
 }
 
-/* === NAV BUTTON === */
 .side-nav-btn {
   display: flex;
   flex-direction: column;
@@ -126,7 +114,6 @@
   max-width: 100%;
 }
 
-/* === TABS === */
 .tabs {
   display: flex;
   border-bottom: var(--border-1) solid var(--border-default);

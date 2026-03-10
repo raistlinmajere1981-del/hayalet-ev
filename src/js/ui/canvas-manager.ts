@@ -1,33 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * Canvas Manager (Placeholder)
- *
- * Future implementation for Canvas/WebGL based visualizations.
- * Planned features:
- * - Game board rendering (backgammon, chess)
- * - Particle effects
- * - Data visualizations
- * - Custom drawing canvas
- *
- * @example
- * ```typescript
- * import { Canvas } from './ui';
- *
- * // Create canvas instance
- * const canvas = Canvas.create(container, { width: 800, height: 600 });
- *
- * // Draw operations
- * canvas.clear();
- * canvas.drawRect(0, 0, 100, 100, '#ff0000');
- * canvas.drawCircle(50, 50, 25, '#00ff00');
- *
- * // Game board
- * const board = Canvas.createBoard(container, 'backgammon');
- * board.setPieces(gameState);
- * board.onMove((from, to) => handleMove(from, to));
- * ```
- */
-
+// NOTE: Placeholder; canvas/WebGL features are intentionally not implemented yet.
 import { Logger } from "../modules/logger/index.js";
 
 export interface CanvasOptions {

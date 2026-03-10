@@ -1,8 +1,3 @@
-/**
- * Development Tool Handlers
- * Project analysis, linting, testing, AST operations, refactoring
- */
-
 import { createCoreDevTools } from "./dev/core-tools.js";
 import { createRefactorDevTools } from "./dev/refactor-tools.js";
 import { createTsLanguageDevTools } from "./dev/ts-language-tools.js";

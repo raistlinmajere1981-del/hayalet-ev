@@ -52,7 +52,6 @@ export const config = {
     'div[data-scroll-root="true"]',
     "div:has(> main#main)",
     'div.relative.flex.min-h-0.min-w-0.flex-1.flex-col[class*="overflow-y-auto"]',
-    // Fallback: main element (doesn't scroll itself but helps fallback find the parent)
     "main#main",
     "main.min-h-0",
     "div.flex.h-full.flex-col.overflow-y-auto",

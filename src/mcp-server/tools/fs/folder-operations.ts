@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Folder Operations
- */
-
 import { logToolError } from "../../utils/mcp-logger.js";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 

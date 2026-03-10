@@ -1,10 +1,3 @@
-/**
- * Page Initialization
- *
- * Handles HTML template injection, controller creation,
- * and webview registration.
- */
-
 import type { WebviewTag } from "electron";
 import { SlotController } from "../modules/slot-controller.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
@@ -43,9 +36,6 @@ export function setupUILogListener(): void {
   window.electronAPI.ipcRenderer.on("log:ui-notify", () => {});
 }
 
-/**
- * Creates and initializes page controllers.
- */
 export async function initControllers(controllers: Record<string, PageController>): Promise<void> {
   controllers["entrance"] = new EntranceHallController();
   controllers["analyze"] = new AnalyzeController();
@@ -68,9 +58,6 @@ export async function initControllers(controllers: Record<string, PageController
   await ConversationListManager.init();
 }
 
-/**
- * Registers webviews with SlotController.
- */
 export function registerWebviews(): void {
   const ai0Webview = document.getElementById("ai0-webview") as WebviewTag | null;
   const ai1Webview = document.getElementById("ai1-webview") as WebviewTag | null;

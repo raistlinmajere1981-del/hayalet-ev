@@ -1,9 +1,3 @@
-/**
- * Git Utilities - Safe Git Operations with Auto-Recovery
- *
- * Handles common git issues like stale lock files.
- */
-
 import { existsSync, statSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import { join } from "path";
@@ -22,9 +16,6 @@ function gitUtilsT(key: string, params?: Record<string, string | number | boolea
   return createMcpTranslatorSync()(`mcpServer.gitTools.utils.${key}`, params);
 }
 
-/**
- * Check if git index.lock exists and is stale
- */
 export function checkGitLock(workspacePath: string): GitLockCheckResult {
   const lockFile = join(workspacePath, ".git", "index.lock");
 
@@ -39,23 +30,20 @@ export function checkGitLock(workspacePath: string): GitLockCheckResult {
     return {
       hasLock: true,
       isStale: ageMinutes > STALE_LOCK_THRESHOLD_MINUTES,
-      ageMinutes: Math.round(ageMinutes * 10) / 10, // Round to 1 decimal
+      ageMinutes: Math.round(ageMinutes * 10) / 10,
       path: lockFile,
     };
   } catch (error) {
-    // If we can't stat the file, assume it's not a problem
+    // NOTE: If we can't stat the file, assume it's not a problem.
     return { hasLock: false, isStale: false };
   }
 }
 
-/**
- * Remove stale git lock file
- */
 export function removeStaleLock(workspacePath: string): boolean {
   const lockCheck = checkGitLock(workspacePath);
 
   if (!lockCheck.hasLock) {
-    return false; // No lock to remove
+    return false;
   }
 
   if (!lockCheck.isStale) {
@@ -75,9 +63,6 @@ export function removeStaleLock(workspacePath: string): boolean {
   }
 }
 
-/**
- * Execute git command with auto-recovery
- */
 export function safeGitCommand(
   command: string,
   workspacePath: string,
@@ -132,17 +117,11 @@ export function safeGitCommand(
   throw lastError ?? new Error(gitUtilsT("commandFailed"));
 }
 
-/**
- * Safe git add with auto-recovery
- */
 export function safeGitAdd(files: string | string[], workspacePath: string): string {
   const fileList = Array.isArray(files) ? files.join(" ") : files;
   return safeGitCommand(`git add ${fileList}`, workspacePath);
 }
 
-/**
- * Safe git commit with auto-recovery
- */
 export function safeGitCommit(
   message: string,
   workspacePath: string,
@@ -153,9 +132,6 @@ export function safeGitCommit(
   return safeGitCommand(`git commit ${allowEmptyFlag}-m "${escapedMessage}"`, workspacePath);
 }
 
-/**
- * Check git status (read-only, no lock issues)
- */
 export function getGitStatus(workspacePath: string): string {
   return execSync("git status --porcelain", {
     cwd: workspacePath,

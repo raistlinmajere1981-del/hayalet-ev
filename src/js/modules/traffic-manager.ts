@@ -1,15 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * TrafficManager - webview traffic indicator orchestrator
- *
- * Child modules:
- * - traffic/loading-tracker.js: page loading state
- * - traffic/thinking-tracker.js: AI thinking state
- * - traffic/send-tracker.js: send button state
- * - traffic/probe-script-builder.js: probe script builder
- * - traffic/webview-events.js: webview event management
- */
-
 import { Logger } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppState } from "./app-state.js";
@@ -45,7 +34,8 @@ type TrafficWebview = RawWebviewElement & {
 };
 
 const TIMING_CONFIG = {
-  pollIntervalMs: 4000, // Tuned to reduce LatencyInfo buildup during relay mode (4s)
+  // NOTE: Poll interval tuned to reduce LatencyInfo buildup during relay mode.
+  pollIntervalMs: 4000,
   loading: {
     maxWaitForScrollMs: 15000,
     autoScrollIntervalMs: 1000,
@@ -158,11 +148,7 @@ class TrafficManagerClass {
     this.sendTracker = new SendTracker(TIMING_CONFIG);
   }
 
-  /**
-   * Skip the loading trigger on the next URL change.
-   * Used when a message leaves the default page.
-   * @param {string} provider - ai0, ai1, ai2
-   */
+  // NOTE: Skip the next loading trigger after leaving the default page.
   skipNextLoadingFor(provider: string): void {
     if (provider !== "" && Object.prototype.hasOwnProperty.call(this._skipNextLoading, provider)) {
       this._skipNextLoading[provider] = true;
@@ -172,7 +158,7 @@ class TrafficManagerClass {
     }
   }
 
-  /** @deprecated Use isSlotUrlExcluded from url-utils.ts directly */
+  // NOTE: Deprecated; use isSlotUrlExcluded from url-utils.ts directly.
   isUrlExcluded(providerSlot: string, url: string): boolean {
     return isSlotUrlExcluded(providerSlot, url);
   }
@@ -191,7 +177,7 @@ class TrafficManagerClass {
       try {
         listener(snapshot);
       } catch (_err) {
-        // Error ignored
+        // NOTE: Ignore listener errors to keep iteration running.
       }
     });
   }
@@ -204,27 +190,22 @@ class TrafficManagerClass {
   }
 
   cacheIndicators(): void {
-    // Assistant (AI0) indicators
     if (this.indicators["ai0"]) {
       this.indicators["ai0"].loading = document.getElementById("ai0-loading-indicator");
       this.indicators["ai0"].send = document.getElementById("ai0-send-indicator");
       this.indicators["ai0"].thinking = document.getElementById("ai0-thinking-indicator");
     }
-    // AI1 indicators
     if (this.indicators["ai1"]) {
       this.indicators["ai1"].loading = document.getElementById("ai1-loading-indicator");
       this.indicators["ai1"].send = document.getElementById("ai1-send-indicator");
       this.indicators["ai1"].thinking = document.getElementById("ai1-thinking-indicator");
     }
-    // AI2 indicators
     if (this.indicators["ai2"]) {
       this.indicators["ai2"].loading = document.getElementById("ai2-loading-indicator");
       this.indicators["ai2"].send = document.getElementById("ai2-send-indicator");
       this.indicators["ai2"].thinking = document.getElementById("ai2-thinking-indicator");
     }
   }
-
-  // Webview Attachment
 
   private toTrafficWebview(webviewEl: RawWebviewElement): TrafficWebview | null {
     if (typeof webviewEl.executeJavaScript !== "function") return null;
@@ -271,7 +252,6 @@ class TrafficManagerClass {
       const previousHref = viewState.lastHref;
       viewState.lastHref = href;
 
-      // Detect transitions from the default page to a conversation page.
       const providerId = AppState.getProviderIdForSlot(provider) ?? "";
       const wasOnDefaultPage = isDefaultPage(previousHref, providerId);
       const isOnDefaultPage = isDefaultPage(href, providerId);
@@ -297,7 +277,8 @@ class TrafficManagerClass {
       startedAt: Date.now(),
       backoffMs: TIMING_CONFIG.pollIntervalMs,
       nextProbeAt: Date.now(),
-      probing: false, // Race condition fix: probe lock flag
+      // NOTE: Probe lock flag to avoid concurrent probing.
+      probing: false,
     };
     this.startPolling();
     this.state[provider] ??= defaultState();
@@ -336,10 +317,6 @@ class TrafficManagerClass {
     }
   }
 
-  /**
-   * Cleanup method - clears all timers and resources.
-   * Should be called during application shutdown.
-   */
   destroy(): void {
     Object.keys(this._runners).forEach((provider) => {
       this.stop(provider);
@@ -373,11 +350,11 @@ class TrafficManagerClass {
           const runner = this._runners[provider];
           if (!runner) return;
           if (now < (runner.nextProbeAt ?? 0)) return;
-          // Race condition fix: Skip if already probing this provider
+          // NOTE: Skip if already probing this provider.
           if (runner.probing === true) return;
 
           try {
-            runner.probing = true; // Lock
+            runner.probing = true;
             const ok = await this.probe(provider);
             if (ok === true) {
               runner.backoffMs = TIMING_CONFIG.pollIntervalMs;
@@ -404,7 +381,7 @@ class TrafficManagerClass {
             );
             runner.nextProbeAt = Date.now() + (runner.backoffMs ?? TIMING_CONFIG.pollIntervalMs);
           } finally {
-            runner.probing = false; // Unlock
+            runner.probing = false;
           }
         };
         await Promise.all(
@@ -426,7 +403,8 @@ class TrafficManagerClass {
           () => {
             void loop();
           },
-          Math.max(500, Math.floor(TIMING_CONFIG.pollIntervalMs / 3)) // 1000ms - daha az agresif polling
+          // NOTE: Use a shorter delay to keep polling responsive.
+          Math.max(500, Math.floor(TIMING_CONFIG.pollIntervalMs / 3))
         );
       }
     };
@@ -646,9 +624,7 @@ class TrafficManagerClass {
   logEvent(event: { messageKey: string; messageParams?: Record<string, string> }): void {
     try {
       Logger.debugT(LogCategory.TRAFFIC, event.messageKey, event.messageParams);
-    } catch (_) {
-      /* noop */
-    }
+    } catch (_) {}
   }
 
   refreshIndicators(provider: string): void {
@@ -694,11 +670,6 @@ class TrafficManagerClass {
     this.notifyListeners(provider);
   }
 
-  /**
-   * Add or remove the thinking glow effect on the cluster.
-   * @param {string} provider - ai0, ai1, ai2
-   * @param {string} status - busy or idle
-   */
   _updateClusterThinkingGlow(provider: string, status: string): void {
     const cluster = document.getElementById(`cluster-${provider}`);
     if (!cluster) return;
@@ -772,16 +743,11 @@ class TrafficManagerClass {
       try {
         listener({ provider: channel, state: { status, message } });
       } catch {
-        // Listener error ignored to not break iteration
+        // NOTE: Ignore listener errors to keep iteration running.
       }
     });
   }
 
-  /**
-   * Get current traffic state for a provider
-   * @param {string} provider - ai0, ai1, ai2
-   * @returns {TrafficState|null}
-   */
   getState(provider: string): TrafficState | null {
     return this.state[provider] ?? null;
   }

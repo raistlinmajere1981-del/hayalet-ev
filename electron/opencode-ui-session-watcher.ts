@@ -51,7 +51,7 @@ function readSessionChangeToken(dbPath: string, sessionId: string): string | nul
 }
 
 function createWatchTargets(dbPath: string): string[] {
-  // SQLite WAL mode updates can hit -wal/-shm more often than the main db.
+  // NOTE: SQLite WAL mode updates can hit -wal/-shm more often than the main db.
   return [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
 }
 
@@ -113,7 +113,7 @@ export class OpencodeUiSessionWatcherRegistry {
       }, 120);
     };
 
-    // Best-effort watchers: file targets and parent directory.
+    // NOTE: Best-effort watchers: file targets and parent directory.
     for (const target of createWatchTargets(entry.dbPath)) {
       try {
         if (!existsSync(target)) continue;
@@ -131,12 +131,12 @@ export class OpencodeUiSessionWatcherRegistry {
       entry.watchers.push(watcher);
     } catch {}
 
-    // Fallback poll to avoid missing events on platforms where fs.watch is flaky.
+    // NOTE: Fallback poll to avoid missing events on platforms where fs.watch is flaky.
     entry.pollTimer = setInterval(() => {
       scheduleCheck();
     }, 2000);
 
-    // Prime token and send an initial "updated" to let UI catch up without interval polling.
+    // NOTE: Prime token and send an initial "updated" to let UI catch up without interval polling.
     scheduleCheck();
 
     webContents.once("destroyed", () => {

@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Splash Screen
- * Fullscreen startup surface with centered splash card
- * @version 5.4.0
- */
-
-/* === SPLASH CONTAINER === */
 .splash {
   position: fixed;
   inset: 0;
@@ -25,7 +18,6 @@
   animation: fade-out var(--duration-slow) var(--ease-out) forwards;
 }
 
-/* === SPLASH CARD === */
 .splash-content {
   --splash-min-w: 360px;
   --splash-max-w: 460px;
@@ -51,7 +43,6 @@
   max-width: var(--splash-max-w);
 }
 
-/* === LOGO === */
 .splash-logo-container {
   position: relative;
   display: flex;
@@ -80,7 +71,6 @@
   z-index: 0;
 }
 
-/* === TITLE === */
 .splash-title {
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
@@ -95,7 +85,6 @@
   margin: calc(var(--space-2) * -1) 0 0 0;
 }
 
-/* === LOADER === */
 .splash-loader {
   width: var(--splash-loader-w);
   height: var(--splash-loader-h);
@@ -126,7 +115,6 @@
   }
 }
 
-/* === STATUS TEXT === */
 .splash-status {
   font-size: var(--text-sm);
   color: var(--text-secondary);
@@ -135,9 +123,7 @@
   min-height: var(--space-5);
 }
 
-/* === RESPONSIVE === */
 @media (max-width: 480px) {
-  /* --bp-xs */
   .splash-content {
     margin: var(--space-4);
     padding: var(--space-8);

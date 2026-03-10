@@ -1,12 +1,3 @@
-/**
- * Development Tools - TypeScript Language Service Tools
- *
- * MCP tools powered by the TS Language Service API for type info, definitions,
- * references, rename, diagnostics, and document symbols.
- *
- * Backend: src/mcp-server/utils/ts-language-service.ts
- */
-
 import { getTsLanguageService } from "../../utils/ts-language-service.js";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import type {
@@ -19,8 +10,6 @@ import type {
   DocumentSymbolResult,
   SignatureHelpResult,
 } from "../../utils/ts-language-service.js";
-
-// ─── Shared metadata ────────────────────────────────────
 
 const TS_TOOL_METADATA_BASE = {
   category: "development" as const,
@@ -36,8 +25,6 @@ function tsLangT(key: string, params?: Record<string, string | number | boolean>
 function tsLangDefT(key: string, params?: Record<string, string | number | boolean>): string {
   return createMcpTranslatorSync()(`mcpServer.devTools.tsLanguage.definition.${key}`, params);
 }
-
-// ─── Helper: format output ──────────────────────────────
 
 function formatTypeInfo(result: TypeInfoResult): string {
   let output = `${tsLangT("runtime.typeInfoTitle")}\n`;
@@ -83,7 +70,6 @@ function formatReferences(results: ReferenceResult[]): string {
     }) + "\n";
   output += `${tsLangT("runtime.filesCount", { count: files.length })}\n\n`;
 
-  // Group by file
   for (const file of files) {
     const fileRefs = results.filter((r) => r.file === file);
     output += `📄 ${file}\n`;
@@ -224,8 +210,6 @@ function formatSignatureHelp(results: SignatureHelpResult[]): string {
   return output;
 }
 
-// ─── Handler Functions ──────────────────────────────────
-
 export function tsGetTypeInfo(
   projectRoot: string,
   filePath: string,
@@ -329,8 +313,6 @@ export function tsGetStats(projectRoot: string): string {
   output += `${tsLangT("runtime.totalFiles", { count: stats.totalFiles })}\n`;
   return output;
 }
-
-// ─── Tool Definitions ───────────────────────────────────
 
 export const TS_TYPE_INFO_TOOL = {
   name: "hev_dev_type_info",
@@ -635,8 +617,6 @@ export const TS_SERVICE_STATS_TOOL = {
     tags: ["typescript", "service", "stats", "diagnostics"],
   },
 };
-
-// ─── All Tool Definitions ───────────────────────────────
 
 export const TS_LANGUAGE_TOOL_DEFINITIONS = [
   TS_TYPE_INFO_TOOL,

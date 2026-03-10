@@ -1,15 +1,8 @@
-/**
- * Development Tools - Syntax Checker
- *
- * Checks file syntax issues, bracket balance, and optional ESLint validation.
- */
-
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
 import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
-// Detailed bracket-counting helper shared with the structure visualizer.
 import { countBracketsContextAware } from "./structure-visualizer.js";
 
 interface SyntaxCheckResult {
@@ -68,7 +61,6 @@ export async function checkSyntax(
   const bracketDetails: { open: number; close: number; type: string }[] = [];
 
   if (checkBrackets) {
-    // Try AST parse first for JS/TS files (more reliable)
     let astParseSuccess = false;
     if ([".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"].includes(ext)) {
       try {
@@ -88,14 +80,12 @@ export async function checkSyntax(
         astParseSuccess = true;
         bracketsBalanced = true;
       } catch {
-        // AST parse failed, fallback to manual counting
       }
     }
 
     if (astParseSuccess) {
       output.push(syntaxCheckerT("runtime.bracketsOkAst"));
     } else {
-      // Fallback to manual bracket counting
       const bracketCounts = countBracketsContextAware(content);
 
       const brackets = [

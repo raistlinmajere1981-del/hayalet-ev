@@ -1,9 +1,3 @@
-/**
- * Development Tools - Safe Batch Refactor
- *
- * Batch refactoring with per-step validation and automatic rollback support.
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { spawn } from "child_process";
@@ -77,7 +71,6 @@ export async function safelyRefactorCode(
     auto_rollback_on_error: autoRollbackOnError = true,
     dry_run: dryRun = false,
   } = options;
-  // Accept both repo-relative and absolute file paths.
   const { isAbsolute } = await import("path");
   const fullPath = isAbsolute(filePath)
     ? filePath
@@ -148,7 +141,6 @@ export async function safelyRefactorCode(
       if (!dryRun) {
         writeFileSync(fullPath, newContent, "utf-8");
       } else if (verifyAfterEach) {
-        // Dry runs still write temporarily so validation sees real parser output.
         writeFileSync(fullPath, newContent, "utf-8");
       }
 
@@ -207,16 +199,10 @@ export async function safelyRefactorCode(
   }
 }
 
-/**
- * Normalize whitespace for pattern matching
- */
 function normalizeWhitespace(str: string): string {
   return str.replace(/\s+/g, " ").trim();
 }
 
-/**
- * Check if line matches pattern with whitespace-agnostic comparison
- */
 function matchesPattern(line: string, pattern: string, useRegex: boolean): boolean {
   if (useRegex) {
     const regex = new RegExp(pattern);
@@ -226,9 +212,6 @@ function matchesPattern(line: string, pattern: string, useRegex: boolean): boole
   return normalizeWhitespace(line).includes(normalizeWhitespace(pattern));
 }
 
-/**
- * Replace pattern in line preserving indentation
- */
 function replaceInLine(
   line: string,
   pattern: string,
@@ -242,7 +225,6 @@ function replaceInLine(
     return line.replace(regex, replacement);
   }
 
-  // Whitespace-agnostic string replacement
   const normalizedLine = normalizeWhitespace(line);
   const normalizedPattern = normalizeWhitespace(pattern);
 
@@ -250,19 +232,16 @@ function replaceInLine(
     return line;
   }
 
-  // Simple approach: Replace in normalized version, then reapply to original
-  // This preserves the structure while being whitespace-agnostic
   const trimmedLine = line.trim();
   const trimmedPattern = pattern.trim();
 
-  // Use regex with escaped pattern for safe replacement
   const escapedPattern = trimmedPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(escapedPattern.replace(/\s+/g, "\\s+"), "g");
 
   const replaced = trimmedLine.replace(regex, replacement.trim());
 
   if (replaced === trimmedLine) {
-    return line; // No change
+    return line;
   }
 
   return indent + replaced;
@@ -271,17 +250,13 @@ function replaceInLine(
 function applyOperation(content: string, op: RefactorOperation): string {
   const lines = content.split("\\n");
 
-  // Detect if pattern is INTENTIONAL regex (has unescaped regex operators)
-  // Simple heuristic: If pattern looks like plain code with [], (), {}, it's NOT regex
-  // Only treat as regex if it has .*, .+, ^, $, |, (?:...) etc.
   const hasRegexOperators = /\.\*|\.\+|\^|\$|\||\(\?[:=!]/.test(op.pattern);
   const isRegexPattern = hasRegexOperators;
 
   let replacementCount = 0;
-  const MAX_REPLACEMENTS = 1000; // Safety limit
+  const MAX_REPLACEMENTS = 1000;
 
   if (op.target_lines && op.target_lines.length > 0) {
-    // Apply only to specific lines
     op.target_lines.forEach((lineNum) => {
       if (lineNum > 0 && lineNum <= lines.length && replacementCount < MAX_REPLACEMENTS) {
         const oldLine = lines[lineNum - 1] ?? "";
@@ -296,7 +271,6 @@ function applyOperation(content: string, op: RefactorOperation): string {
       }
     });
   } else {
-    // Apply to all lines
     for (let i = 0; i < lines.length && replacementCount < MAX_REPLACEMENTS; i++) {
       const oldLine = lines[i] ?? "";
 
@@ -312,11 +286,9 @@ function applyOperation(content: string, op: RefactorOperation): string {
 
   const result = lines.join("\\n");
 
-  // 🛡️ SAFETY CHECK: Detect runaway replacement (file size explosion)
   if (result.length > content.length * 2) {
-    // Write to stderr (critical safety warning)
     process.stderr.write(`${safeBatchRefactorT("runtime.fileSizeDoubledLog")}\n`);
-    return content; // Return original to prevent data loss
+    return content;
   }
 
   return result;
@@ -337,7 +309,6 @@ async function getTypeScriptErrorCount(filePath: string, projectRoot: string): P
     });
 
     tsc.on("close", () => {
-      // Count errors for this specific file
       const errors = stderrOutput
         .split("\n")
         .filter((line) => line.includes(filePath) && line.includes("error TS")).length;
@@ -345,16 +316,11 @@ async function getTypeScriptErrorCount(filePath: string, projectRoot: string): P
     });
 
     tsc.on("error", () => {
-      // If spawn fails, assume no errors and continue
       resolve(0);
     });
   });
 }
 
-/**
- * Apply AST-based transformation operation
- * NEW: Safe refactoring using jscodeshift
- */
 function applyASTOperation(
   content: string,
   filePath: string,
@@ -397,12 +363,10 @@ function applyASTOperation(
       };
     }
 
-    // Additional syntax validation with Prettier
     if (result.modified === true && result.code != null && result.code !== "") {
       validateWithPrettier(result.code, filePath)
         .then((validation) => {
           if (!validation.valid) {
-            // Log warning but don't block (AST should be valid)
             process.stderr.write(
               `${safeBatchRefactorT("runtime.prettierValidationWarning", {
                 error: validation.error ?? safeBatchRefactorT("common.unknown"),
@@ -410,9 +374,7 @@ function applyASTOperation(
             );
           }
         })
-        .catch(() => {
-          // Ignore validation errors
-        });
+        .catch(() => {});
     }
 
     return {
@@ -470,10 +432,6 @@ function formatOutput(
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const SAFE_BATCH_REFACTOR_TOOL = {
   name: "hev_dev_safe_batch_refactor",

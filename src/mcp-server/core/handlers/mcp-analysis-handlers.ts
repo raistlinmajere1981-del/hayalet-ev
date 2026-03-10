@@ -1,10 +1,3 @@
-/**
- * MCP Analysis & Streaming Handlers
- * MCP tool usage analytics, error correlation, and streaming logs.
- *
- * Co-located: definitions and handlers in ToolEntry format.
- */
-
 import {
   analyzeMcpToolUsage,
   getMcpToolPerformance,

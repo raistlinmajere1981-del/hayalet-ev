@@ -1,9 +1,3 @@
-/**
- * Development Tools - TypeScript Batch Fixer
- *
- * Automatically fixes TypeScript errors in batch
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -13,7 +7,7 @@ import { DEV_TIMEOUTS } from "@timeouts";
 
 interface BatchFixOptions {
   file_path: string;
-  error_codes?: string[]; // e.g., ["TS2532", "TS18048"]
+  error_codes?: string[];
   fix_strategy?: "add_guards" | "add_assertions" | "strict_null_check";
   dry_run?: boolean;
   auto_apply?: boolean;
@@ -56,8 +50,7 @@ export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: strin
   const content = readFileSync(fullPath, "utf-8");
   const lines = content.split("\n");
 
-  // Step 1: Get TypeScript errors for this file
-  const errors = getTypescriptErrors(filePath, projectRoot); // Use relative path for grep
+  const errors = getTypescriptErrors(filePath, projectRoot);
   const targetErrors = errors.filter((err) => errorCodes.includes(err.code));
 
   if (targetErrors.length === 0) {
@@ -68,7 +61,6 @@ export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: strin
     };
   }
 
-  // Step 2: Apply fixes based on strategy
   const changes: Array<{
     line: number;
     before: string;
@@ -88,10 +80,8 @@ export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: strin
     }
   }
 
-  // Step 3: Generate preview
   const preview = generatePreview(changes, filePath);
 
-  // Step 4: Apply changes if not dry_run
   if (!dryRun && (autoApply || changes.length > 0)) {
     applyChanges(fullPath, lines, changes);
   }
@@ -104,10 +94,6 @@ export function fixTypescriptErrors(options: BatchFixOptions, projectRoot: strin
     changes,
   };
 }
-
-// ============================================
-// Helper Functions
-// ============================================
 
 function getTypescriptErrors(
   filePath: string,
@@ -125,20 +111,17 @@ function getTypescriptErrors(
         shell: "/bin/bash",
       });
     } catch (execError: unknown) {
-      // tsc returns non-zero on errors, but we still want the output
       interface ExecError {
         stdout?: string;
         stderr?: string;
       }
       const err = execError as ExecError;
       result = err.stdout ?? err.stderr ?? "";
-      // Debug log to stderr
       process.stderr.write(
         `[DEBUG] execError caught, stdout length: ${err.stdout?.length ?? 0}, stderr length: ${err.stderr?.length ?? 0}\n`
       );
     }
 
-    // Debug log to stderr
     process.stderr.write(`[DEBUG] getTypescriptErrors result length: ${result.length}\n`);
 
     const errors: Array<{
@@ -149,7 +132,6 @@ function getTypescriptErrors(
     }> = [];
 
     result.split("\n").forEach((line) => {
-      // Parse: src/file.ts(123,45): error TS2532: Object is possibly 'undefined'.
       const match = line.match(/\((\d+),(\d+)\):\s*error\s+(TS\d+):\s*(.+)/);
       if (match) {
         errors.push({
@@ -163,7 +145,6 @@ function getTypescriptErrors(
 
     return errors;
   } catch (error) {
-    // Fallback: other errors (timeout, etc.)
     logToolError("typescript-batch-fixer", error as Error, {});
     return [];
   }
@@ -257,7 +238,6 @@ function applyChanges(
 ): void {
   const newLines = [...lines];
 
-  // Apply edits bottom-up so earlier replacements do not shift later targets.
   changes.sort((a, b) => b.line - a.line);
 
   for (const change of changes) {
@@ -327,10 +307,6 @@ function formatOutput(
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const TYPESCRIPT_BATCH_FIXER_TOOL = {
   name: "hev_dev_fix_typescript_batch",

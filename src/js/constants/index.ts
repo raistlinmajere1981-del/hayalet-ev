@@ -1,9 +1,3 @@
-/**
- * Constants barrel export
- *
- * Re-export all constants from a single entry point.
- */
-
 export { TIMEOUTS, INTERVALS, DELAYS } from "@timeouts";
 export {
   getExtension,

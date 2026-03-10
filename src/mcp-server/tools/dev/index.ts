@@ -1,9 +1,3 @@
-/**
- * Development Tools - Export Hub
- *
- * Central export hub for all development tools
- */
-
 export { analyzeProject, PROJECT_ANALYZER_TOOL } from "./project-analyzer.js";
 export { bootstrapContext, CONTEXT_GENERATOR_TOOL } from "./context-generator.js";
 export { generateDiagram, DIAGRAM_GENERATOR_TOOL } from "./diagram-generator.js";
@@ -96,7 +90,6 @@ export const DEV_TOOL_DEFINITIONS = [
   ...TS_LANGUAGE_TOOL_DEFINITIONS,
 ];
 
-// Auto-generated metadata for listTools()
 export const DEV_TOOL_METADATA = {
   category: "Development",
   emoji: "🔧",

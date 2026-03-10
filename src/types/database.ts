@@ -1,12 +1,3 @@
-/**
- * Database Types - database type definitions
- *
- * @module src/js/types/database
- */
-
-// Conversation Types
-
-/** Conversation record */
 export interface Conversation {
   id: string;
   accountId: string;
@@ -21,7 +12,6 @@ export interface Conversation {
   tags?: string[];
 }
 
-/** Conversation update payload */
 export interface ConversationUpdate {
   accountId: string;
   conversationId: string;
@@ -32,12 +22,8 @@ export interface ConversationUpdate {
   [key: string]: unknown;
 }
 
-// Message Types
-
-/** Message role */
 export type MessageRole = "user" | "assistant" | "system";
 
-/** Message record */
 export interface Message {
   id: string;
   conversationId: string;
@@ -51,7 +37,6 @@ export interface Message {
   metadata?: MessageMetadata;
 }
 
-/** Message metadata */
 export interface MessageMetadata {
   model?: string;
   tokens?: number;
@@ -60,7 +45,6 @@ export interface MessageMetadata {
   [key: string]: unknown;
 }
 
-/** Attachment added to a message */
 export interface MessageAttachment {
   id: string;
   name: string;
@@ -69,9 +53,6 @@ export interface MessageAttachment {
   size?: number;
 }
 
-// Sync Types
-
-/** Message synchronization payload */
 export interface MessageSyncPayload {
   accountId: string;
   webUrl: string;
@@ -79,7 +60,6 @@ export interface MessageSyncPayload {
   authors?: SyncAuthors;
 }
 
-/** Message to synchronize */
 export interface SyncMessage {
   role: MessageRole;
   text: string;
@@ -87,13 +67,11 @@ export interface SyncMessage {
   contentHash?: string;
 }
 
-/** Author information */
 export interface SyncAuthors {
   user?: string;
   assistant?: string;
 }
 
-/** Synchronization result */
 export interface SyncResult {
   success: boolean;
   conversationId?: string;
@@ -103,9 +81,6 @@ export interface SyncResult {
   message?: string;
 }
 
-// Search Types
-
-/** Search parameters */
 export interface SearchParams {
   accountId?: string;
   query: string;
@@ -114,7 +89,6 @@ export interface SearchParams {
   filters?: SearchFilters;
 }
 
-/** Search filters */
 export interface SearchFilters {
   role?: MessageRole;
   dateFrom?: number;
@@ -122,16 +96,12 @@ export interface SearchFilters {
   conversationId?: string;
 }
 
-/** Search result */
 export interface SearchResult {
   messages: Message[];
   total: number;
   hasMore: boolean;
 }
 
-// Attachment Store Types
-
-/** Stored attachment */
 export interface StoredAttachment {
   id: string;
   conversationId: string;

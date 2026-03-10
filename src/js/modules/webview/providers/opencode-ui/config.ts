@@ -1,11 +1,5 @@
 import { WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
 
-/**
- * OpenCode UI Provider Configuration
- *
- * OpenCode UI - native wrapper page backed by OpenCode serve.
- */
-
 export const OPENCODE_UI_DEFAULTS = {
   port: 4096,
   hostname: "127.0.0.1",

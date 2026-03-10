@@ -1,16 +1,9 @@
-/**
- * Hayalet-ev Design System - Border Tokens
- * @version 5.4.0
- */
-
 :root {
-  /* === BORDER WIDTHS === */
   --border-1: 1px;
   --border-2: 2px;
   --border-3: 3px;
   --border-4: 4px;
 
-  /* === BORDER RADIUS === */
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -19,7 +12,6 @@
   --radius-2xl: 16px;
   --radius-full: 9999px;
 
-  /* === COMPONENT RADIUS === */
   --radius-btn: var(--radius-lg);
   --radius-btn-sm: var(--radius-md);
   --radius-input: var(--radius-lg);

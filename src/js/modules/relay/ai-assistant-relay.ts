@@ -1,19 +1,3 @@
-/**
- * AIAssistantRelay - manages communication between an AI slot and Assistant (AI0)
- *
- * This relay coordinates AI-to-Assistant conversations:
- * - AI1 ↔ AI0 (Assistant) message delivery
- * - AI2 ↔ AI0 (Assistant) message delivery
- *
- * Assistant (AI0) acts as a helper AI for technical questions.
- *
- * Flow:
- * 1. Send the protocol to the AI
- * 2. AI replies and the message is forwarded to Assistant
- * 3. Assistant replies and the message is forwarded back to the AI
- * 4. The loop continues
- */
-
 import { BaseRelay } from "./base-relay.js";
 import type { CoreEngineInterface } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
@@ -106,10 +90,6 @@ export class AIAssistantRelay extends BaseRelay {
     await this._sendProtocolToAI(source);
   }
 
-  /**
-   * Read the protocol and send it to the AI.
-   * @private
-   */
   async _sendProtocolToAI(aiSlot: string): Promise<void> {
     try {
       const protocol = await this._loadProtocol();
@@ -148,10 +128,6 @@ export class AIAssistantRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Load protocol content from the composed protocol source.
-   * @private
-   */
   async _loadProtocol(): Promise<string> {
     const resolvedMessage = await resolveComposedProtocolMessage({
       fallbackTitle: AI_ASSISTANT_PROTOCOL_FALLBACK_TITLE,
@@ -226,12 +202,8 @@ export class AIAssistantRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Manage the relay flow with a simple state machine.
-   * @private
-   */
   async _handleStateMachine(provider: string, text: string): Promise<void> {
-    // Timestamp-based duplicate protection.
+    // NOTE: Timestamp-based duplicate protection.
     const now = Date.now();
 
     if (this._lastMessageTimes[provider] === now) {
@@ -274,10 +246,6 @@ export class AIAssistantRelay extends BaseRelay {
     });
   }
 
-  /**
-   * Forward the message to the target slot.
-   * @private
-   */
   async _forwardMessage(from: string, to: string | null, text: string): Promise<boolean> {
     if (to === null || SlotController.isConnected(to) === false) {
       this._logT("info", "app.logs.aiAssistantRelay.forwardSkippedTargetNotConnected", {
@@ -326,10 +294,6 @@ export class AIAssistantRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Process the normal relay flow in the `relay-active` state.
-   * @private
-   */
   async _handleRelayFlow(provider: string, text: string): Promise<void> {
     let target: string | null;
 

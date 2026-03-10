@@ -1,35 +1,3 @@
-/**
- * Modal Manager
- *
- * Manages modal dialogs with animations and keyboard support.
- *
- * @example
- * ```typescript
- * import { Modal } from './ui';
- *
- * // Basic modal
- * const modal = Modal.open({
- *   title: 'Confirm',
- *   content: 'Are you sure you want to perform this action?',
- *   buttons: [
- *     { label: 'Cancel', variant: 'secondary', onClick: () => modal.close() },
- *     { label: 'Confirm', variant: 'primary', onClick: () => handleConfirm() }
- *   ]
- * });
- *
- * // Confirm dialog (shorthand)
- * const confirmed = await Modal.confirm({
- *   title: 'Delete Confirmation',
- *   message: 'Are you sure you want to delete this item?',
- *   confirmText: 'Delete',
- *   confirmVariant: 'danger'
- * });
- *
- * // Alert (shorthand)
- * await Modal.alert('Error', 'Something went wrong.');
- * ```
- */
-
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { AppI18n } from "../modules/i18n/index.js";
@@ -37,21 +5,21 @@ import { AppI18n } from "../modules/i18n/index.js";
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 
 interface ModalButton {
-  label?: string; // New API: preferred
-  text?: string; // Legacy API: backward compatibility
-  variant?: ButtonVariant; // New API: preferred
-  class?: string; // Legacy API: backward compatibility (e.g., 'btn-primary', 'btn-ghost')
+  label?: string; // NOTE: New API preferred; keep for backward compatibility with legacy text.
+  text?: string; // NOTE: Legacy API; keep for backward compatibility.
+  variant?: ButtonVariant; // NOTE: New API preferred; keep for backward compatibility with class.
+  class?: string; // NOTE: Legacy API; kept for backward compatibility (e.g., 'btn-primary').
   onClick?: () => void | Promise<void>;
-  closeOnClick?: boolean; // default: true
+  closeOnClick?: boolean;
 }
 
 interface ModalOptions {
   title?: string;
   content: string | HTMLElement;
   size?: "sm" | "small" | "md" | "medium" | "lg" | "large" | "xl" | "xlarge";
-  closable?: boolean; // default: true
-  closeOnOverlay?: boolean; // default: true
-  closeOnEscape?: boolean; // default: true
+  closable?: boolean;
+  closeOnOverlay?: boolean;
+  closeOnEscape?: boolean;
   buttons?: ModalButton[];
   onClose?: () => void;
 }
@@ -187,10 +155,6 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 const modalApi = {
-  /**
-   * Open a modal dialog
-   * @returns Modal instance with close method
-   */
   open(options: ModalOptions): ModalInstance {
     const id = generateId();
     const element = createModalElement(id, options);

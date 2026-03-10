@@ -1,12 +1,3 @@
-/**
- * OpenCode assistant provider adapter.
- *
- * Manages the OpenCode server subprocess:
- * - Connect: starts `opencode serve` and routes the webview to the URL
- * - Disconnect: stops the subprocess
- * - App close: main process stops the subprocess automatically
- */
-
 import { LogCategory } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
@@ -63,7 +54,6 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         return { success: false, error: assistantT("errors.electronApiUnavailable") };
       }
 
-      // Check whether a server is already running first.
       const portRange = this._resolvePortRange();
       const running = await electronApi.opencodeServeFindRunning(portRange.start, portRange.end);
       if (running.running === true && running.port !== undefined && running.port !== 0) {
@@ -88,7 +78,6 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         };
       }
 
-      // No running server was found, so start a new one.
       let port: number | undefined;
 
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
@@ -216,7 +205,7 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
   async waitForReady(url: string, timeoutMs = 90000, signal?: AbortSignal): Promise<boolean> {
     const start = Date.now();
-    const checkInterval = 500; // Poll every 500ms
+    const checkInterval = 500;
     let port: number | null;
     const electronApi = window.electronAPI;
 
@@ -248,12 +237,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
             return true;
           }
         }
-      } catch (_e) {
-        // Port check failed, continue
-      }
+      } catch (_e) {}
 
       try {
-        // CSP bypass: run the health check over IPC.
+        // NOTE: CSP bypass: run the health check over IPC.
         const healthFn = electronApi["opencodeServeHealth"] as
           | ((healthUrl: string) => Promise<unknown>)
           | undefined;
@@ -303,12 +290,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
     };
   }
 
-  /** Whether the server is running. */
   get isRunning(): boolean {
     return this._isRunning;
   }
 
-  /** Update the running flag for external health probes. */
   setRunning(value: boolean): void {
     this._isRunning = value;
     if (!value) {

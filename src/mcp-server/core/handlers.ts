@@ -1,10 +1,3 @@
-/**
- * Tool Call Handlers - Unified Registry Pattern
- *
- * Routes tool calls to handlers via the central registry.
- * All handlers are registered during bootstrap in handlers/index.ts.
- */
-
 import { getHandler, getToolCount, getRegisteredToolNames, getRegistryStats } from "./registry.js";
 import { logToolCall, logToolSuccess, logToolError } from "../utils/mcp-logger.js";
 import { createMcpTranslatorSync } from "../utils/i18n/index.js";
@@ -44,10 +37,6 @@ export async function executeHandlerWithLogging(
   }
 }
 
-/**
- * Main handler dispatcher.
- * Routes tool calls to appropriate handler from registry.
- */
 export async function handleToolCall(
   name: string,
   args?: Record<string, unknown>
@@ -69,8 +58,7 @@ export async function handleToolCall(
     };
   }
 
-  // Guard: some LLMs occasionally send tool_input as a raw string.
-  // Try to parse it automatically before failing.
+  // NOTE: Some LLMs occasionally send tool_input as a raw string; parse before failing.
   let safeArgs = args;
   if (typeof args === "string") {
     try {
@@ -109,9 +97,6 @@ export async function handleToolCall(
   }
 }
 
-/**
- * Get handler information (for diagnostics).
- */
 export function getHandlerInfo(): {
   totalHandlers: number;
   categories: Record<string, number>;

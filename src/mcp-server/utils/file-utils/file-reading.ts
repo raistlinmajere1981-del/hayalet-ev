@@ -10,9 +10,6 @@ function fileReadingT(key: string, params?: Record<string, string | number>): st
   return createMcpTranslatorSync()(`mcpServer.fileUtils.fileReading.${key}`, params);
 }
 
-/**
- * Read a file and apply collapsed view when needed.
- */
 export async function readFileWithCollapse(filePath: string): Promise<FileContent> {
   try {
     const ext = extname(filePath).toLowerCase();
@@ -56,9 +53,6 @@ export async function readFileWithCollapse(filePath: string): Promise<FileConten
   }
 }
 
-/**
- * Expand specific line ranges.
- */
 export async function expandLineRanges(
   filePath: string,
   ranges: [number, number][]
@@ -97,9 +91,6 @@ export async function expandLineRanges(
   return result.join("\n");
 }
 
-/**
- * Find code symbols (function, class, etc.) and expand them.
- */
 export async function expandSymbols(filePath: string, patterns: string[]): Promise<string> {
   const content = await readFile(filePath, "utf-8");
   const ext = extname(filePath).toLowerCase();

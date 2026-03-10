@@ -1,10 +1,3 @@
-/**
- * Development Tools - TypeScript Type Inference Helper
- *
- * Analyzes type mismatches and suggests likely fixes.
- * TS Language Service backed: real semantic analysis with immediate results.
- */
-
 import { readFileSync } from "fs";
 import { join } from "path";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -62,11 +55,9 @@ export function analyzeTypeConflicts(
   const fullPath = projectRoot !== "" ? join(projectRoot, filePath) : filePath;
 
   try {
-    // Get diagnostics through the TS Language Service without invoking `tsc`.
     const mgr = getTsLanguageService(projectRoot);
     const allDiagnostics = mgr.getDiagnostics(filePath);
 
-    // Keep only mismatch-oriented diagnostics for this focused report.
     const typeMismatchCodes = [2345, 2322, 2339, 2741, 2304, 2305];
     const typeMismatchErrors = allDiagnostics.filter(
       (d) => d.category === "error" && typeMismatchCodes.includes(d.code)
@@ -111,7 +102,6 @@ export function analyzeTypeConflicts(
       };
     }
 
-    // Analyze each conflict individually.
     const conflicts: TypeConflict[] = [];
     for (const error of typeMismatchErrors) {
       const conflict = analyzeDiagnostic(error);
@@ -120,13 +110,11 @@ export function analyzeTypeConflicts(
       }
     }
 
-    // Extract interface definitions through the TS API for better accuracy.
     let interfaceDefinitions: Record<string, string> = {};
     if (showInterfaces) {
       interfaceDefinitions = extractInterfacesWithApi(mgr, filePath, fullPath);
     }
 
-    // Format the final output block.
     const output = formatTypeHelperOutput(conflicts, interfaceDefinitions, filePath, suggestFixes);
 
     return {
@@ -145,10 +133,6 @@ export function analyzeTypeConflicts(
   }
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
 function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
   const conflict: TypeConflict = {
     error_code: diag.code,
@@ -159,7 +143,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     raw_message: diag.message,
   };
 
-  // TS2345: Argument of type 'X' is not assignable to parameter of type 'Y'
   if (diag.code === 2345) {
     const match = diag.message.match(
       /Argument of type '([^']+)' is not assignable to parameter of type '([^']+)'/
@@ -176,7 +159,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     }
   }
 
-  // TS2322: Type 'X' is not assignable to type 'Y'
   if (diag.code === 2322) {
     const match = diag.message.match(/Type '([^']+)' is not assignable to type '([^']+)'/);
     const actualType = match?.[1];
@@ -191,7 +173,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     }
   }
 
-  // TS2339: Property 'X' does not exist on type 'Y'
   if (diag.code === 2339) {
     const match = diag.message.match(/Property '([^']+)' does not exist on type '([^']+)'/);
     const missingProp = match?.[1];
@@ -207,7 +188,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     }
   }
 
-  // TS2741: Property 'X' is missing in type 'Y' but required in type 'Z'
   if (diag.code === 2741) {
     const match = diag.message.match(
       /Property '([^']+)' is missing in type '([^']+)' but required in type '([^']+)'/
@@ -226,7 +206,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     }
   }
 
-  // TS2304: Cannot find name 'X'
   if (diag.code === 2304) {
     const match = diag.message.match(/Cannot find name '([^']+)'/);
     const missingName = match?.[1];
@@ -238,7 +217,6 @@ function analyzeDiagnostic(diag: DiagnosticResult): TypeConflict | null {
     }
   }
 
-  // TS2305: Module '"X"' has no exported member 'Y'
   if (diag.code === 2305) {
     const match = diag.message.match(/Module '"([^"]+)"' has no exported member '([^']+)'/);
     const moduleName = match?.[1];
@@ -284,7 +262,6 @@ function extractInterfacesWithApi(
   const interfaces: Record<string, string> = {};
 
   try {
-    // TS API ile document symbols'den interface'leri al
     const symbols = mgr.getDocumentSymbols(filePath);
     const interfaceSymbols = symbols.filter((s) => s.kind === "interface" || s.kind === "type");
 
@@ -302,7 +279,6 @@ function extractInterfacesWithApi(
       }
     }
   } catch {
-    // Fallback: regex
     try {
       const content = readFileSync(fullPath, "utf-8");
       const interfaceRegex = /interface\s+(\w+)\s*\{([^}]+)\}/g;
@@ -313,7 +289,7 @@ function extractInterfacesWithApi(
         }
       }
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 
@@ -378,10 +354,6 @@ function formatTypeHelperOutput(
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const TYPESCRIPT_TYPE_HELPER_TOOL = {
   name: "hev_dev_typescript_type_helper",

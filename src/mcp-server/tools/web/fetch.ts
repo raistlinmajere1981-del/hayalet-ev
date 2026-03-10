@@ -1,11 +1,4 @@
-/**
- * Web Search Tools - Part 2: Content Fetch & Scrape
- *
- * Fetches content from a URL and parses HTML
- * Uses the existing web-scraper.ts utility
- *
- * @module web/fetch
- */
+// NOTE: Fetch and parse web content using the shared scraper utilities.
 
 import { fetchAndParse } from "../../utils/web-scraper.js";
 import type { ScrapedContent } from "../../utils/web-scraper.js";
@@ -56,9 +49,7 @@ function webFetchT(
 const ALLOWED_PROTOCOLS = ["http:", "https:"];
 const BLOCKED_DOMAINS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"];
 
-/**
- * Reject unsupported protocols and local addresses before fetching remote content.
- */
+// NOTE: Reject unsupported protocols and local addresses before fetching remote content.
 function validateUrl(url: string): UrlValidationResult {
   try {
     const parsed = new URL(url);
@@ -87,9 +78,6 @@ function validateUrl(url: string): UrlValidationResult {
   }
 }
 
-/**
- * Fetch and parse content from a URL.
- */
 export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult> {
   const { url, maxLength = 10000, includeLinks = true } = options;
   const t = await createMcpTranslator();
@@ -140,9 +128,6 @@ export async function webFetchUrl(options: WebFetchOptions): Promise<ToolResult>
   }
 }
 
-/**
- * Format scraped content for display.
- */
 function formatFetchedContent(
   scraped: ScrapedContent,
   maxLength: number,
@@ -195,9 +180,6 @@ function formatFetchedContent(
   return lines.join("\n");
 }
 
-/**
- * Search and fetch content from top results
- */
 export async function webSearchAndFetch(args: {
   query: string;
   num_results?: number;
@@ -287,9 +269,6 @@ export async function webSearchAndFetch(args: {
   };
 }
 
-/**
- * Extract URLs from search result text.
- */
 function extractUrlsFromSearchResults(text: string): string[] {
   const urls: string[] = [];
   const lines = text.split("\n");

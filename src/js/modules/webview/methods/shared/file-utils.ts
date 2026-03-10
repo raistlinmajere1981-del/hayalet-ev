@@ -1,8 +1,3 @@
-/**
- * Validate files array
- * @param {Array} files - Files to validate
- * @returns {Object} Validation result
- */
 import { AppI18n } from "../../../i18n/index.js";
 
 interface FilePayload {
@@ -40,13 +35,6 @@ export function validateFiles(files: FilePayload[]): { valid: boolean; message?:
   return { valid: true };
 }
 
-/**
- * Standardize error response
- * @param {string} message - Error message
- * @param {Array} errors - Additional errors (optional)
- * @param {string} serviceName - Service name (optional)
- * @returns {Object} Standardized error response
- */
 export function createErrorResponse(
   message: string,
   errors: UploadError[] = [],
@@ -61,10 +49,6 @@ export function createErrorResponse(
   };
 }
 
-/**
- * Wait for webview dom-ready event
- * @param {HTMLElement} webview - Webview element
- */
 export async function waitForDomReady(webview: {
   addEventListener?: (
     event: string,

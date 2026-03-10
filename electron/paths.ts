@@ -1,16 +1,5 @@
-/**
- * Centralized Path Management System
- *
- * Single source of truth for ALL paths in the application.
- *
- * RULES:
- * 1. ALL path construction MUST go through this module
- * 2. NO direct use of process.cwd() outside this file
- * 3. NO hardcoded relative paths (../) outside this file
- * 4. Dev/prod detection happens once, here
- *
- * @module electron/paths
- */
+// NOTE: All path construction must go through this module; avoid process.cwd() or ../ paths elsewhere.
+// NOTE: Dev/prod detection should only happen here.
 
 import { join } from "path";
 import { pathToFileURL } from "url";
@@ -44,10 +33,7 @@ function pathsT(key: string): string {
   );
 }
 
-/**
- * Initialize path configuration.
- * Must be called after app.whenReady() in main.ts.
- */
+// NOTE: Call after app.whenReady() in main.ts.
 export function initPaths(electronDirname: string): void {
   if (config !== null) {
     console.warn(pathsT("alreadyInitialized"));
@@ -69,9 +55,6 @@ export function initPaths(electronDirname: string): void {
   };
 }
 
-/**
- * Get initialized config or throw error.
- */
 function getConfig(): PathConfig & { electronDir: string } {
   if (config === null) {
     throw new Error(pathsT("notInitialized"));

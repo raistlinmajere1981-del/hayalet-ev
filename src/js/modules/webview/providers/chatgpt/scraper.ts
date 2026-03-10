@@ -1,12 +1,3 @@
-/**
- * Scrape ChatGPT messages.
- *
- * Note: normalizeText and hashString are defined inline because of
- * webview injection constraints. Single source of truth:
- * @see ../shared/scraper-helpers.ts
- *
- * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number, domId?: string | null }>}
- */
 export function scrapeMessages(): Array<{
   index: number;
   role: string;
@@ -18,12 +9,12 @@ export function scrapeMessages(): Array<{
   function normalizeText(str: string): string {
     if (str === "") return "";
     return str
-      .replace(/\r\n/g, "\n") // Windows line endings → Unix
-      .replace(/\r/g, "\n") // Old Mac line endings → Unix
-      .replace(/[\t ]+/g, " ") // Multiple spaces/tabs → single space
-      .replace(/ *\n */g, "\n") // Spaces around newlines → just newline
-      .replace(/\n{3,}/g, "\n\n") // 3+ newlines → 2 newlines
-      .trim(); // Leading/trailing whitespace
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/[\t ]+/g, " ")
+      .replace(/ *\n */g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
 
   function hashString(str: string): string {

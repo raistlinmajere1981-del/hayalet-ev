@@ -401,7 +401,6 @@ export function setupWindowHandlers(): void {
       command = "cmd";
       args = ["/c", "start", "cmd", "/K", `cd /d "${targetPath}"`];
     } else {
-      // Linux - use gnome-terminal or fallback
       command = "gnome-terminal";
       args = ["--working-directory=" + targetPath];
     }

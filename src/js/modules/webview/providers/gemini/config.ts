@@ -51,9 +51,7 @@ export const config = {
   contentContainers: ["div", "message-content"],
   uploadTargetSelectors: [
     "div[xapfileselectordropzone]",
-    // Keep as fallback
     "file-drop-indicator",
-    // Extra fallbacks
     ".text-input-field",
     ".ql-editor.textarea",
     'rich-textarea .ql-editor[contenteditable="true"]',

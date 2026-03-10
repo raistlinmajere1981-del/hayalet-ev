@@ -85,14 +85,10 @@ const logger = getLoggerCore();
 const moduleFilename = fileURLToPath(import.meta.url);
 const moduleDirname = dirname(moduleFilename);
 
-// Initialize centralized path system
 initPaths(moduleDirname);
 
-// Set the port used for CDP (Chrome DevTools Protocol) remote debugging
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
-
-// Note: If you experience GPU-related crashes on older systems, uncomment these lines:
 
 let mainWindow: BrowserWindow | null = null;
 const opencodeUiSessionWatchers = new OpencodeUiSessionWatcherRegistry();
@@ -727,7 +723,6 @@ registerHandler("opencode-serve-doctor", async (_event, options?: { binaryPath?:
   }
 });
 
-// OpenCode UI Session FS — OpenCode disk session database read/list/ensure
 registerHandler("opencode-ui-fs-list-sessions", (_event, dbPath?: string) => {
   const options =
     typeof dbPath === "string" && dbPath.trim() !== "" ? { dbPath: dbPath.trim() } : undefined;

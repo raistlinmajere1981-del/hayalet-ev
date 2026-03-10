@@ -1,12 +1,3 @@
-/**
- * OpenCode UI assistant provider adapter.
- *
- * Manages the OpenCode server subprocess:
- * - Connect: starts `opencode serve` and routes to the native opencode-ui page
- * - Disconnect: stops the subprocess
- * - App close: main process stops the subprocess automatically
- */
-
 import { LogCategory } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
 import type { AppSettings } from "@shared/settings.js";

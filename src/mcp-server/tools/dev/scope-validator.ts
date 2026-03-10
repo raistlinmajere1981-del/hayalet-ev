@@ -1,9 +1,3 @@
-/**
- * Development Tools - Scope Validator
- *
- * Validates scope integrity for line-based edits.
- */
-
 import { readFileSync, existsSync } from "fs";
 import { parse } from "@babel/parser";
 import traverseImport from "@babel/traverse";
@@ -48,9 +42,6 @@ interface ScopeValidationResult {
   bracketIssues: string[];
 }
 
-/**
- * Analyze the scope impact of a line-range deletion or replacement.
- */
 export function analyzeScopeImpact(
   filePath: string,
   startLine: number,
@@ -74,7 +65,6 @@ export function analyzeScopeImpact(
   const content = readFileSync(filePath, "utf-8");
   const ext = filePath.split(".").pop();
 
-  // Only validate JS/TS-like files.
   if (!["js", "ts", "jsx", "tsx", "mjs", "cjs"].includes(ext ?? "")) {
     return {
       success: true,
@@ -87,7 +77,7 @@ export function analyzeScopeImpact(
   }
 
   try {
-    // Debug logs are intentionally omitted. The MCP server should not write to stdout.
+    // NOTE: Debug logs are intentionally omitted. The MCP server should not write to stdout.
 
     const ast = parse(content, {
       sourceType: "module",
@@ -332,7 +322,6 @@ export function analyzeScopeImpact(
       }
     }
   } catch (err) {
-    // Fall back to bracket-level validation when AST parsing fails.
     const error = err as Error;
     warnings.push(scopeValidatorT("runtime.astParsingFailed", { message: error.message }));
   }
@@ -347,9 +336,6 @@ export function analyzeScopeImpact(
   };
 }
 
-/**
- * Check whether the content change is only a variable rename.
- */
 function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
   const normalize = (s: string): unknown => {
     return s
@@ -361,9 +347,6 @@ function isOnlyVariableRename(oldContent: string, newContent: string): boolean {
   return normalize(oldContent) === normalize(newContent);
 }
 
-/**
- * Check whether the content change is only a type annotation update.
- */
 function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
   const removeTypes = (s: string): unknown => {
     return s
@@ -376,18 +359,12 @@ function isOnlyTypeChange(oldContent: string, newContent: string): boolean {
   return removeTypes(oldContent) === removeTypes(newContent);
 }
 
-/**
- * Check whether the edit only adds optional chaining.
- */
 function isOnlyOptionalChainingAddition(oldContent: string, newContent: string): boolean {
   const removeOptional = (s: string): string => s.replace(/\?\./g, ".").replace(/\??\[/g, "[");
 
   return removeOptional(oldContent) === removeOptional(newContent);
 }
 
-/**
- * Validate bracket balance before and after an edit.
- */
 export function validateBracketBalance(
   oldContent: string,
   newContent: string

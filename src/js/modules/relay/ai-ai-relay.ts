@@ -1,11 +1,3 @@
-/**
- * AIAIRelay - relay that manages communication between two AIs
- *
- * This class manages AI-to-AI conversations:
- * - Simple relay: AI1 ↔ AI2 message forwarding
- * - Protocol relay: sessions that start with a structured protocol
- */
-
 import { BaseRelay } from "./base-relay.js";
 import type { SyncResult } from "./base-relay.js";
 import { LogCategory } from "@shared/logging-core";
@@ -49,19 +41,10 @@ export class AIAIRelay extends BaseRelay {
     this._lastMessageTimes = { ai1: 0, ai2: 0 };
   }
 
-  /**
-   * Does this relay manage this provider?
-   * @param {string} provider - AI slot
-   * @returns {boolean}
-   */
   override handlesProvider(provider: string): boolean {
     return this._active === true && this._providers.includes(provider);
   }
 
-  /**
-   * Start a simple AI-to-AI relay session.
-   * @param {Object} opts - { providers: ['ai1', 'ai2'] }
-   */
   override async start(opts: { providers?: string[] } = {}): Promise<void> {
     this._providers =
       Array.isArray(opts.providers) && opts.providers.length > 0 ? opts.providers : ["ai1", "ai2"];
@@ -81,13 +64,6 @@ export class AIAIRelay extends BaseRelay {
     await Promise.resolve();
   }
 
-  /**
-   * Start a protocol-based AI-AI session.
-   * Send the protocol to providers[0], forward the response to providers[1],
-   * then keep relaying messages in both directions while the session stays active.
-   *
-   * @param {Object} opts - { providers, protocolPayload, attachments }
-   */
   async startProtocolSession(opts: ProtocolSessionOpts = {}): Promise<void> {
     try {
       const id = this._generateSessionId(LogCategory.RELAY);
@@ -171,18 +147,10 @@ export class AIAIRelay extends BaseRelay {
     await Promise.resolve();
   }
 
-  /**
-   * Stop the protocol session (alias for stop).
-   */
   override async stopProtocolSession(): Promise<void> {
     await this.stop();
   }
 
-  /**
-   * Called when AI thinking completes.
-   * @param {string} provider - AI slot (ai1 or ai2)
-   * @param {Object} syncResult - Conversation sync result
-   */
   override async handleThinkingComplete(
     provider: string,
     syncResult: SyncResult | null
@@ -217,10 +185,6 @@ export class AIAIRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Handle the protocol flow.
-   * @private
-   */
   async _handleProtocolFlow(provider: string, text: string): Promise<void> {
     const s = this._session;
     if (s?.providers === undefined || s.lastMessageTimes === undefined) return;
@@ -354,10 +318,6 @@ export class AIAIRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Handle the simple relay flow.
-   * @private
-   */
   async _handleSimpleRelayFlow(provider: string, text: string): Promise<void> {
     const now = Date.now();
     if (this._lastMessageTimes[provider] === now) return;
@@ -414,24 +374,12 @@ export class AIAIRelay extends BaseRelay {
     }
   }
 
-  /**
-   * Determine the target provider from the source provider.
-   * @private
-   * @param {string} source - Source AI slot
-   * @returns {string} - Target AI slot
-   */
   _determineTarget(source: string): string {
     const idx = this._providers.indexOf(source);
     if (idx === -1) return this._providers[0] ?? "";
     return this._providers[(idx + 1) % this._providers.length] ?? "";
   }
 
-  /**
-   * Track thinking-state transitions.
-   * @param {string} provider - AI slot
-   * @param {string} thinkingState - New thinking state
-   * @returns {boolean} - Did thinking finish?
-   */
   checkThinkingTransition(provider: string, thinkingState: string): boolean {
     const prev = this._prevThinking[provider] ?? "idle";
     this._prevThinking[provider] = thinkingState;

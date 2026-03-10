@@ -1,9 +1,3 @@
-/**
- * Development Tools - ESLint Dashboard
- *
- * ESLint rule analytics, clustering, and insights
- */
-
 import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { logToolError, logToolCall } from "../../utils/mcp-logger.js";
@@ -39,7 +33,8 @@ interface DashboardResult {
 
 interface EslintMessage {
   ruleId: string | null;
-  severity: number; // 1=warning, 2=error
+  // NOTE: Severity levels: 1=warning, 2=error.
+  severity: number;
   message: string;
   line: number;
   column: number;
@@ -67,37 +62,31 @@ function eslintDashDefT(key: string, params?: Record<string, string | number | b
   return createMcpTranslatorSync()(`mcpServer.devTools.eslintDashboard.definition.${key}`, params);
 }
 
-// ESLint rule categories
 const RULE_CATEGORIES: Record<string, string> = {
-  // Code Quality
   "no-unused-vars": "codeQuality",
   "no-console": "codeQuality",
   "no-debugger": "codeQuality",
   "no-unreachable": "codeQuality",
   "no-constant-condition": "codeQuality",
 
-  // Best Practices
   eqeqeq: "bestPractices",
   "no-eval": "bestPractices",
   "no-implied-eval": "bestPractices",
   "no-with": "bestPractices",
   curly: "bestPractices",
 
-  // TypeScript
   "@typescript-eslint/no-explicit-any": "typescript",
   "@typescript-eslint/no-unused-vars": "typescript",
   "@typescript-eslint/explicit-module-boundary-types": "typescript",
   "@typescript-eslint/no-non-null-assertion": "typescript",
   "@typescript-eslint/ban-ts-comment": "typescript",
 
-  // Formatting
   indent: "formatting",
   quotes: "formatting",
   semi: "formatting",
   "comma-dangle": "formatting",
   "no-trailing-spaces": "formatting",
 
-  // Imports
   "import/no-unresolved": "imports",
   "import/named": "imports",
   "import/default": "imports",
@@ -137,15 +126,11 @@ export function generateEslintDashboard(
     const startTime = Date.now();
     progress.update(0, eslintDashT("progress.running"));
 
-    // Run ESLint with JSON output
-    // Split pattern by spaces to handle multiple patterns
     const patterns = pattern.split(/\s+/).filter((p) => p.length > 0);
 
-    // Use shell-safe command construction with NODE_OPTIONS for memory
-    // Note: --cache disabled to always show fresh results
+    // NOTE: --cache disabled to always show fresh results.
     const cmd = `NODE_OPTIONS="--max-old-space-size=4096" npx eslint ${patterns.map((p) => `"${p}"`).join(" ")} --format json`;
 
-    // Debug logging
     logToolCall("hev_dev_eslint_dashboard", { patterns, cmd, cwd });
 
     let rawOutput: string;
@@ -153,15 +138,14 @@ export function generateEslintDashboard(
       rawOutput = execSync(cmd, {
         cwd,
         encoding: "utf-8",
-        timeout: 300_000, // 5 minutes for type-aware linting
-        maxBuffer: 20 * 1024 * 1024, // 20MB buffer
-        shell: "/bin/bash", // Explicitly use bash for glob expansion
+        timeout: 300_000,
+        maxBuffer: 20 * 1024 * 1024,
+        shell: "/bin/bash",
       });
       logToolCall("hev_dev_eslint_dashboard", { outputLength: rawOutput.length });
     } catch (err) {
       const error = err as { stdout?: string; stderr?: string; code?: string };
 
-      // If timeout or no output, return empty result with message
       if (error.code === "ETIMEDOUT" || error.stdout === undefined || error.stdout.length === 0) {
         progress.stop();
         return {
@@ -189,7 +173,6 @@ export function generateEslintDashboard(
 
     progress.update(50, eslintDashT("progress.analyzing"));
 
-    // Parse JSON output with error handling
     let results: EslintFileResult[] = [];
     try {
       const parsed: unknown = JSON.parse(rawOutput.length > 0 ? rawOutput : "[]");
@@ -217,7 +200,6 @@ export function generateEslintDashboard(
       };
     }
 
-    // Aggregate statistics
     const byRule: Record<
       string,
       {
@@ -238,10 +220,8 @@ export function generateEslintDashboard(
     results.forEach((fileResult) => {
       const { filePath, messages, errorCount, warningCount } = fileResult;
 
-      // Skip files with no issues
       if (messages.length === 0) return;
 
-      // Track by file
       byFile[filePath] = {
         errors: errorCount,
         warnings: warningCount,
@@ -251,7 +231,6 @@ export function generateEslintDashboard(
       totalWarnings += warningCount;
       totalProblems += messages.length;
 
-      // Track by rule
       messages.forEach((msg) => {
         const ruleId = msg.ruleId ?? "(no-rule)";
         const severity = msg.severity === 2 ? "error" : "warning";
@@ -404,7 +383,7 @@ function formatDashboard(data: {
     showFixable,
   } = data;
 
-  // Always show stats if provided (use !== undefined to allow 0 values)
+  // NOTE: Always show stats when provided (use !== undefined to allow 0 values).
   const statsLine =
     data.executionTime !== undefined && data.allFiles !== undefined && data.allFolders !== undefined
       ? eslintDashT("runtime.statsLine", {
@@ -416,8 +395,6 @@ function formatDashboard(data: {
         }) + "\n"
       : "";
 
-  // Debug line for testing
-  // const debugLine = `[DEBUG] executionTime=${data.executionTime}, allFiles=${data.allFiles}, allFolders=${data.allFolders}\n`;
 
   let output = `\n${eslintDashT("runtime.title")}\n`;
   output += "━".repeat(60) + "\n";
@@ -430,7 +407,6 @@ function formatDashboard(data: {
 
   output += "━".repeat(60) + "\n\n";
 
-  // Top rules
   output += `${eslintDashT("runtime.topRulesTitle")}\n`;
   topRules.forEach((rule, i) => {
     const icon = rule.severity === "error" ? "🔴" : "🟡";
@@ -453,7 +429,6 @@ function formatDashboard(data: {
       }) + "\n";
     output += eslintDashT("runtime.ruleDescriptionLine", { description: rule.description }) + "\n";
 
-    // Show top 3 files with this rule
     const topLocations = rule.locations.sort((a, b) => b.lines.length - a.lines.length).slice(0, 3);
 
     if (topLocations.length > 0) {
@@ -474,7 +449,6 @@ function formatDashboard(data: {
     }
   });
 
-  // Top files
   output += `\n${eslintDashT("runtime.topFilesTitle")}\n`;
   topFiles.forEach((file, i) => {
     const shortPath = file.file.length > 60 ? "..." + file.file.slice(-57) : file.file;
@@ -486,7 +460,6 @@ function formatDashboard(data: {
       }) + "\n";
   });
 
-  // By category
   output += `\n${eslintDashT("runtime.byCategoryTitle")}\n`;
   Object.entries(byCategory)
     .sort((a, b) => b[1] - a[1])
@@ -500,7 +473,6 @@ function formatDashboard(data: {
         }) + "\n";
     });
 
-  // Recommendations
   output += `\n${eslintDashT("runtime.recommendedActionsTitle")}\n`;
   if (topRules.length > 0) {
     const topRule = topRules[0];

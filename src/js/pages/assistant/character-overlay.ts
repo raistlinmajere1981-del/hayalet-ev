@@ -1,10 +1,4 @@
-/**
- * CharacterOverlay - AI character profile manager
- *
- * Opened from the 🎭 button on the Assistant page.
- * Users pick features from the pool and save them to `.rovo/_metadata/CHARACTER.md`.
- */
-
+// NOTE: Opened from the assistant page; writes selected features to .rovo/_metadata/CHARACTER.md.
 import type { AppLanguage } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { translateCatalog } from "../../../../shared/i18n/catalog.js";
@@ -24,8 +18,8 @@ interface CharacterCategory {
 }
 
 interface ConflictPair {
-  a: string; // feature id
-  b: string; // feature id
+  a: string;
+  b: string;
 }
 
 function characterT(key: string, params?: Record<string, string | number>): string {
@@ -69,7 +63,6 @@ function normalizeProfileLabel(label: string): string {
   return label.trim().toLocaleLowerCase("tr-TR");
 }
 
-// === Feature Pool ===
 const CATEGORIES: CharacterCategory[] = [
   {
     id: "tone",
@@ -225,7 +218,6 @@ for (const cat of CATEGORIES) {
   }
 }
 
-// === Conflict Pairs ===
 const CONFLICTS: ConflictPair[] = [
   { a: "style-direct", b: "style-stepbystep" },
   { a: "style-code-first", b: "style-explain-first" },
@@ -245,7 +237,6 @@ const CONFLICTS: ConflictPair[] = [
   { a: "tone-emoji-few", b: "tone-emoji-none" },
 ];
 
-// === Ready Message ===
 const CHARACTER_MD_PATH = ".rovo/_metadata/CHARACTER.md";
 
 export class CharacterOverlay {
@@ -258,7 +249,7 @@ export class CharacterOverlay {
   private emptyState: HTMLElement | null = null;
   private saveBtn: HTMLButtonElement | null = null;
 
-  // Keep a snapshot of the persisted selection so close() can discard local edits.
+  // NOTE: Snapshot the persisted selection so close() can discard local edits.
   private selected: Set<string> = new Set();
   private savedSelected: Set<string> = new Set();
   private unsubscribeI18n: (() => void) | null = null;
@@ -329,11 +320,9 @@ export class CharacterOverlay {
 
   private close(): void {
     this.overlay?.classList.add("hidden");
-    // Revert untouched changes back to the saved selection
     this.selected = new Set(this.savedSelected);
   }
 
-  // === Disk Read ===
   private async _loadFromDisk(): Promise<void> {
     try {
       const api = window.electronAPI;
@@ -353,14 +342,13 @@ export class CharacterOverlay {
     }
   }
 
-  // Parse the active profile from CHARACTER.md
   private _parseProfile(content: string): Set<string> {
     const result = new Set<string>();
     const match = content.match(/<!--PROFILE_START-->([\s\S]*?)<!--PROFILE_END-->/);
     if (!match) return result;
 
     const block = match[1] ?? "";
-    // Each line uses the "- Label" format
+    // NOTE: Each line uses the "- Label" format.
     const lines = block
       .split("\n")
       .map((l) => l.trim())
@@ -375,7 +363,6 @@ export class CharacterOverlay {
     return result;
   }
 
-  // === Disk Write ===
   private async save(): Promise<void> {
     const profileBlock = this._buildProfileBlock();
     const timestamp = new Date().toISOString().split("T")[0] ?? "";
@@ -397,7 +384,6 @@ export class CharacterOverlay {
       await api.fmWriteFileAtomic({ path: CHARACTER_MD_PATH, data: updated, encoding: "utf-8" });
       this.savedSelected = new Set(this.selected);
 
-      // Button feedback
       if (this.saveBtn) {
         const orig = this.saveBtn.textContent;
         this.saveBtn.classList.add("saved");
@@ -444,7 +430,6 @@ export class CharacterOverlay {
     return block + "\n";
   }
 
-  // === Pool Render ===
   private _renderPool(): void {
     if (!this.poolList) return;
     this.poolList.innerHTML = "";
@@ -490,7 +475,6 @@ export class CharacterOverlay {
     }
   }
 
-  // Refresh the pool view (active markers)
   private _updatePool(): void {
     if (!this.poolList) return;
 
@@ -505,13 +489,11 @@ export class CharacterOverlay {
         if (check) check.textContent = isActive ? "✓" : "";
         if (isActive) activeCount++;
       }
-      // Badge
       const badge = this.poolList.querySelector(`[data-badge="${cat.id}"]`);
       if (badge) badge.textContent = activeCount > 0 ? String(activeCount) : "";
     }
   }
 
-  // === Toggle ===
   private _toggleFeature(id: string): void {
     if (this.selected.has(id)) {
       this.selected.delete(id);
@@ -523,11 +505,10 @@ export class CharacterOverlay {
     this._checkConflicts();
   }
 
-  // === Active Panel Render ===
   private _renderActivePanel(): void {
     if (!this.activeList) return;
 
-    // Clear only the groups first and preserve the empty state
+    // NOTE: Clear only the groups first to preserve the empty state.
     const groups = this.activeList.querySelectorAll(".character-group");
     groups.forEach((g) => {
       g.remove();
@@ -573,7 +554,6 @@ export class CharacterOverlay {
     }
   }
 
-  // === Conflict Check ===
   private _checkConflicts(): void {
     if (!this.conflictsEl || !this.conflictText) return;
 

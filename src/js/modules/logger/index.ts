@@ -1,9 +1,3 @@
-/**
- * app Unified Logger - Public API
- *
- * @module logger
- */
-
 export { Logger } from "./Logger.js";
 export { Logger as default } from "./Logger.js";
 

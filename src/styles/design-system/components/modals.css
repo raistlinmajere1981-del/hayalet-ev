@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Modal Components
- * Dialogs and modal overlays with glassmorphism
- * @version 5.4.0
- */
-
-/* === MODAL CONTAINER === */
 .modal {
   position: fixed;
   inset: 0;
@@ -19,7 +12,6 @@
   display: none;
 }
 
-/* === MODAL CONTENT === */
 .modal-content {
   --modal-max-w: 500px;
 
@@ -37,7 +29,6 @@
   animation: modal-enter var(--duration-normal) var(--ease-out);
 }
 
-/* === MODAL HEADER === */
 .modal-header {
   display: flex;
   align-items: center;
@@ -77,16 +68,14 @@
   color: var(--text-primary);
 }
 
-/* === MODAL BODY === */
 .modal-body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: var(--space-4);
-  min-height: 0; /* Important: allows flex child to shrink below content size */
+  min-height: 0;
 }
 
-/* === MODAL FOOTER === */
 .modal-footer {
   display: flex;
   align-items: center;
@@ -98,7 +87,6 @@
   flex-shrink: 0;
 }
 
-/* === DOCUMENT MODAL BASE (shared by wide & read) === */
 .modal-document .modal-content {
   background: var(--bg-surface);
   border-color: var(--border-default);
@@ -116,7 +104,6 @@
   white-space: pre-wrap;
 }
 
-/* === WIDE MODAL VARIANT === */
 .modal-wide {
   z-index: var(--z-overlay);
 }
@@ -129,7 +116,6 @@
   font-size: var(--text-xs);
 }
 
-/* === READ MODAL VARIANT === */
 .modal-read .modal-content {
   --modal-max-w: 800px;
 }
@@ -142,7 +128,6 @@
   font-size: var(--text-sm);
 }
 
-/* === MODAL CLOSING ANIMATION === */
 .modal-closing {
   animation: modal-exit var(--duration-fast) var(--ease-out) forwards;
 }
@@ -158,7 +143,6 @@
   }
 }
 
-/* === CONFIRM DIALOG === */
 .modal-confirm {
   display: flex;
   flex-direction: column;
@@ -185,7 +169,6 @@
   line-height: var(--leading-relaxed);
 }
 
-/* === DS-MODAL (prompt modal vb.) === */
 .ds-modal {
   position: fixed;
   inset: 0;
@@ -304,7 +287,6 @@
   filter: brightness(1.15);
 }
 
-/* === PROMPT CARDS === */
 .ds-prompt-card {
   padding: var(--space-2) var(--space-3);
   background: var(--bg-elevated);
@@ -378,11 +360,6 @@
   white-space: nowrap;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Livefix Restart Countdown Overlay
-   5-second countdown before restart
-   ───────────────────────────────────────────────────────────── */
-
 .livefix-countdown-overlay {
   position: fixed;
   inset: 0;
@@ -446,7 +423,6 @@
   margin-top: -8px;
 }
 
-/* Animasyonlar */
 @keyframes livefix-fade-in {
   from {
     opacity: 0;

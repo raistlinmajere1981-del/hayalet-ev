@@ -1,10 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * Conversation Store - conversation CRUD operations
- *
- * @module src/js/modules/database/conversation-store
- */
-
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
@@ -42,11 +36,6 @@ function toConversationArray(value: unknown): Conversation[] {
 }
 
 const conversationStore = {
-  /**
-   * List conversations.
-   * @param {string} accountId - Account ID
-   * @returns {Promise<Array>}
-   */
   async list(accountId: string): Promise<Conversation[]> {
     try {
       if (accountId === "") {
@@ -72,12 +61,6 @@ const conversationStore = {
     }
   },
 
-  /**
-   * Return a single conversation.
-   * @param {string} accountId - Account ID
-   * @param {string} conversationId
-   * @returns {Promise<Object|null>}
-   */
   async get(accountId: string, conversationId: string): Promise<Conversation | null> {
     try {
       const conversations = await this.list(accountId);
@@ -93,13 +76,6 @@ const conversationStore = {
     }
   },
 
-  /**
-   * Update a conversation.
-   * @param {string} accountId - Account ID
-   * @param {string} conversationId
-   * @param {Object} data - { title?, summary? }
-   * @returns {Promise<{ success: boolean }>}
-   */
   async update(
     accountId: string,
     conversationId: string,
@@ -140,12 +116,6 @@ const conversationStore = {
     }
   },
 
-  /**
-   * Delete a conversation.
-   * @param {string} accountId - Account ID
-   * @param {string} conversationId
-   * @returns {Promise<{ success: boolean; error?: string }>}
-   */
   async delete(
     accountId: string,
     conversationId: string
@@ -184,12 +154,6 @@ const conversationStore = {
     }
   },
 
-  /**
-   * Find a conversation by URL.
-   * @param {string} accountId - Account ID
-   * @param {string} webUrl
-   * @returns {Promise<Object|null>}
-   */
   async findByUrl(accountId: string, webUrl: string): Promise<Conversation | null> {
     try {
       const conversations = await this.list(accountId);

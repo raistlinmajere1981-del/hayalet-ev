@@ -1,13 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * PendingArchiveHandler - pending archive operation management
- *
- * Manages archive-copy operations that should run after an AI response completes:
- * - pending archive registration
- * - processing during stable state
- * - cleanup work
- */
-
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { FileManager } from "../file-manager.js";

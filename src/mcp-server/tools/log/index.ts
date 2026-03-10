@@ -1,9 +1,3 @@
-/**
- * MCP Log Tools - Public API
- *
- * Combines existing and enhanced log tools
- */
-
 export {
   streamLogs,
   analyzeErrors,

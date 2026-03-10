@@ -1,13 +1,3 @@
-/**
- * Web Tools - Export Hub
- *
- * Central export hub for all web tools
- * - Web search (DuckDuckGo)
- * - Content fetch & scrape
- *
- * @module web
- */
-
 export { webSearch } from "./search.js";
 export { webFetchUrl, webSearchAndFetch } from "./fetch.js";
 

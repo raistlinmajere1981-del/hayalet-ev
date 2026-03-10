@@ -1,9 +1,3 @@
-/**
- * Development Tools - Cache Manager
- *
- * Project cache management (export/import map, file hashes)
- */
-
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { createHash } from "crypto";
@@ -61,18 +55,16 @@ export async function updateCache(
 ): Promise<CacheResult> {
   const cachePath = join(PROJECT_ROOT, ".rovo/cache.json");
 
-  // Load existing cache
   let existingCache: CacheData | null = null;
   if (existsSync(cachePath) && options.force !== true) {
     try {
       const parsed: unknown = JSON.parse(readFileSync(cachePath, "utf-8"));
       existingCache = parseCacheData(parsed);
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 
-  // Show mode
   if (options.show === true && existingCache !== null) {
     return {
       updated: false,
@@ -82,7 +74,6 @@ export async function updateCache(
     };
   }
 
-  // Build new cache
   const newCache: CacheData = {
     version: "1.0.0",
     timestamp: new Date().toISOString(),
@@ -110,7 +101,6 @@ export async function updateCache(
         ),
       ].map((m) => m[1] ?? "");
 
-      // Check if changed
       if (existingCache?.files[file]?.hash !== hash) {
         changedFiles.push(file);
       }
@@ -119,11 +109,10 @@ export async function updateCache(
       newCache.stats.totalLines += lines;
       newCache.stats.totalExports += exports.length;
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 
-  // Write cache
   writeFileSync(cachePath, JSON.stringify(newCache, null, 2), "utf-8");
 
   return {

@@ -1,11 +1,4 @@
-/**
- * Real-time Log Streaming Tool
- *
- * Provides tail -f like functionality for log files
- * with live updates using fs.watch
- *
- * @module mcp-server/tools/log/streaming
- */
+// NOTE: Stream logs in real time using fs.watch.
 
 import { existsSync, readFileSync, statSync, watch } from "fs";
 import { readdir } from "fs/promises";
@@ -118,7 +111,7 @@ function readInitialLogs(filePath: string, args: StreamLogsRealtimeArgs): LogEnt
         entries.push(entry);
       }
     } catch {
-      // Skip invalid lines.
+      // NOTE: Skip invalid lines.
     }
   }
 
@@ -167,7 +160,7 @@ async function startFileWatcher(
                 printLogEntry(entry, t);
               }
             } catch {
-              // Skip incomplete or invalid lines.
+              // NOTE: Skip incomplete or invalid lines.
             }
           }
         } catch (err) {
@@ -222,7 +215,7 @@ function matchesFilter(entry: LogEntry, filter: StreamLogsRealtimeArgs["filter"]
         return false;
       }
     } catch {
-      // Ignore invalid regex values.
+      // NOTE: Ignore invalid regex values.
     }
   }
 

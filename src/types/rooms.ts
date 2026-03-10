@@ -1,7 +1,3 @@
-/**
- * Room package and workspace types.
- */
-
 export const ROOM_SCHEMA_VERSION = 1 as const;
 
 export type RoomCommandScope = "room-ui" | "ai-slots" | "assistant" | "system";

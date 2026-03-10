@@ -1,11 +1,3 @@
-/**
- * Basic Filesystem Tools - Export Hub
- *
- * Central export entry point for basic file CRUD operations.
- *
- * @module fs/basic
- */
-
 export {
   readFileContent,
   writeFileContent,

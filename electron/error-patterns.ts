@@ -1,10 +1,3 @@
-/**
- * Error Pattern Database for app
- *
- * Known error patterns and resolution hints.
- * Automatic hinting for AI debugging flows.
- */
-
 import type { ErrorHint, MatchedHint } from "./types/error-patterns.ts";
 export type { ErrorHint, MatchedHint } from "./types/error-patterns.ts";
 

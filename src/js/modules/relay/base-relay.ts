@@ -1,15 +1,5 @@
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import type { TranslationParams } from "@shared/i18n.js";
-/**
- * BaseRelay - base class for all relay types
- *
- * This abstract class defines shared relay behavior:
- * - UI indicator updates
- * - Event dispatch
- * - Logging
- * - Basic state management
- */
-
 import { Logger } from "../logger/index.js";
 
 export interface CoreEngineInterface {
@@ -82,44 +72,23 @@ export class BaseRelay {
     this._forwardCount = 0;
   }
 
-  /**
-   * Whether the relay is active.
-   * @returns {boolean}
-   */
   get isActive(): boolean {
     return this._active;
   }
 
-  /**
-   * Session information.
-   * @returns {Object|null}
-   */
   get session(): RelaySession | null {
     return this._session;
   }
 
-  /**
-   * Forward count.
-   * @returns {number}
-   */
   get forwardCount(): number {
     return this._forwardCount;
   }
 
-  /**
-   * Start the relay session. Subclasses must override this.
-   * @abstract
-   * @param {Object} _opts - Session options
-   */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   start(_opts = {}): Promise<void> {
     return Promise.reject(new Error("start() must be implemented by subclass"));
   }
 
-  /**
-   * Stop the relay session. Subclasses must override this.
-   * @abstract
-   */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   stop(): Promise<void> {
     return Promise.reject(new Error("stop() must be implemented by subclass"));
@@ -129,33 +98,15 @@ export class BaseRelay {
     await this.stop();
   }
 
-  /**
-   * Called when AI thinking completes. Subclasses must override this.
-   * @abstract
-   * @param {string} _provider - AI slot (ai1 or ai2)
-   * @param {Object} _syncResult - Conversation sync result
-   */
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   handleThinkingComplete(_provider: string, _syncResult: SyncResult | null): Promise<void> {
     return Promise.reject(new Error("handleThinkingComplete() must be implemented by subclass"));
   }
 
-  /**
-   * Whether this relay manages the given provider.
-   * @param {string} _provider - AI slot
-   * @returns {boolean}
-   */
   handlesProvider(_provider: string): boolean {
     return false;
   }
 
-  /**
-   * Add a log event.
-   * @protected
-   * @param {string} level - Log level (info, warning, error)
-   * @param {string} message - Log message
-   * @param {Object} context - Extra context
-   */
   _log(level: string, message: string, context: Record<string, unknown> = {}): void {
     const logContext = {
       relayType: this.constructor.name,
@@ -197,12 +148,6 @@ export class BaseRelay {
     }
   }
 
-  /**
-   * Dispatch a custom event.
-   * @protected
-   * @param {string} eventName - Event name
-   * @param {Object} detail - Event details
-   */
   _dispatchEvent(eventName: string, detail: Record<string, unknown> = {}): void {
     try {
       window.dispatchEvent(
@@ -214,18 +159,10 @@ export class BaseRelay {
         })
       );
     } catch {
-      /* noop */
+      // NOTE: Ignore dispatch errors.
     }
   }
 
-  /**
-   * Update the UI indicator.
-   * @protected
-   * @param {string} elementId - DOM element ID
-   * @param {string} text - Text to display
-   * @param {string[]} addClasses - CSS classes to add
-   * @param {string[]} removeClasses - CSS classes to remove
-   */
   _updateIndicatorElement(
     elementId: string,
     text: string,
@@ -244,26 +181,16 @@ export class BaseRelay {
         el.classList.remove(cls);
       });
     } catch {
-      /* noop */
+      // NOTE: Ignore dispatch errors.
     }
   }
 
-  /**
-   * Reset the session state.
-   * @protected
-   */
   _resetState(): void {
     this._active = false;
     this._session = null;
     this._forwardCount = 0;
   }
 
-  /**
-   * Generate a unique session ID.
-   * @protected
-   * @param {string} prefix - ID prefix
-   * @returns {string}
-   */
   _generateSessionId(prefix = LogCategory.RELAY): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }

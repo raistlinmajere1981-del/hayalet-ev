@@ -159,10 +159,6 @@ class CommandManagerClass {
     };
   }
 
-  /**
-   * @param {object} [payload={}]
-   * @returns {object}
-   */
   sanitizePayload(payload: unknown = {}): Record<string, unknown> {
     const rest = toRecord(payload);
     try {
@@ -198,10 +194,6 @@ class CommandManagerClass {
     return jobs;
   }
 
-  /**
-   * @param {any} [item={}]
-   * @returns {CommandJob}
-   */
   addJob(item: Partial<CommandJob> & { target?: string } = {}): CommandJob {
     const deferred = this.defer();
     const payloadObj = toRecord(item.payload);
@@ -227,9 +219,6 @@ class CommandManagerClass {
     return job;
   }
 
-  /**
-   * @returns {CommandJob | undefined}
-   */
   getNextJob(): CommandJob | undefined {
     if (this.queue.length === 0) return undefined;
     return this.queue.shift();

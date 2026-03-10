@@ -1,13 +1,3 @@
-/**
- * Project Root Resolver
- *
- * PROJECT_ROOT lives in a dedicated file to avoid circular dependencies.
- *
- * Source and build directory layouts differ, so relying on a fixed folder
- * depth is brittle. Instead, walk upward from the current file and find
- * repository markers.
- */
-
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

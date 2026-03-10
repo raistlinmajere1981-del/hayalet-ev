@@ -1,9 +1,3 @@
-/**
- * File drag and drop method
- * Simulates drag-and-drop file upload
- * Provider-agnostic implementation using runtime config for DOM selectors
- */
-
 import { AppI18n } from "../../../i18n/index.js";
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";

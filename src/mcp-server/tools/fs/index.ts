@@ -1,9 +1,3 @@
-/**
- * Filesystem Tools - Export Hub
- *
- * Central export entry point for filesystem tools.
- */
-
 export { expandCodeChunks, findAndReplaceCode } from "./code-operations.js";
 export { createChunkedFile, appendChunk } from "./chunked-writer.js";
 export { grep, showFile } from "./search.js";

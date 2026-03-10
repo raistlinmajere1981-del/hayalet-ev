@@ -1,37 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * Audio Manager (Placeholder)
- *
- * Future implementation for audio/sound effects.
- * Planned features:
- * - Notification sounds
- * - UI feedback sounds
- * - Background music
- * - Voice playback integration
- *
- * @example
- * ```typescript
- * import { Audio } from './ui';
- *
- * // Initialize
- * await Audio.init();
- *
- * // Play sounds
- * Audio.play('notification');
- * Audio.play('click');
- * Audio.play('success');
- *
- * // Volume control
- * Audio.setVolume(0.5);
- * Audio.mute();
- * Audio.unmute();
- *
- * // Custom sounds
- * Audio.register('custom', '/sounds/custom.mp3');
- * Audio.play('custom');
- * ```
- */
-
+// NOTE: Placeholder implementation; audio features are intentionally minimal.
 import { Logger } from "../modules/logger/index.js";
 
 export type SoundId =
@@ -122,10 +90,6 @@ const audioManager = {
     });
   },
 
-  /**
-   * Set global volume
-   * @param volume 0.0 to 1.0
-   */
   setVolume(volume: number): void {
     globalVolume = Math.max(0, Math.min(1, volume));
     Logger.debugT(

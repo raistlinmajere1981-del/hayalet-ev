@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Chat Component
- * Chat messages, input bar, mode/model selectors
- * @version 5.4.0
- */
-
-/* === CHAT LAYOUT === */
 .ds-chat {
   display: flex;
   flex-direction: column;
@@ -14,7 +7,6 @@
   overflow: hidden;
 }
 
-/* === CHAT MESSAGES AREA === */
 .ds-chat__messages {
   flex: 1;
   overflow-y: auto;
@@ -25,7 +17,6 @@
   gap: var(--space-4);
 }
 
-/* Empty state (centered logo/message) */
 .ds-chat__empty {
   display: flex;
   flex-direction: column;
@@ -42,7 +33,6 @@
   opacity: 0.3;
 }
 
-/* === CHAT MESSAGE BUBBLE === */
 .ds-message {
   display: flex;
   flex-direction: column;
@@ -186,7 +176,6 @@
   color: var(--text-primary);
 }
 
-/* === CHAT INPUT BAR === */
 .ds-chat__input-bar {
   flex-shrink: 0;
   padding: var(--space-3) var(--space-4);
@@ -197,7 +186,6 @@
   gap: var(--space-2);
 }
 
-/* Top toolbar: mode/model + file/image buttons */
 .ds-chat__toolbar {
   display: flex;
   align-items: center;
@@ -218,7 +206,6 @@
   margin-right: calc(var(--input-height) + var(--space-2));
 }
 
-/* Mode / Model dropdown (compact select) */
 .ds-chat__select {
   height: var(--btn-height-xs);
   padding: 0 var(--space-6) 0 var(--space-3);
@@ -245,7 +232,6 @@
   border-color: var(--border-focus);
 }
 
-/* Dropdown option styling (override browser native white background) */
 .ds-chat__select option {
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -260,7 +246,6 @@
   background: var(--hover-overlay);
 }
 
-/* === CUSTOM SELECT DROPDOWN (replaces native <select>) === */
 .ds-custom-select {
   position: relative;
 }
@@ -352,7 +337,6 @@
   color: var(--color-accent);
 }
 
-/* Enriched dropdown items (label + subtitle + badge) */
 .ds-custom-select__item-label {
   flex: 1;
   font-weight: var(--font-medium);
@@ -396,7 +380,6 @@
   color: var(--color-warning, #f59e0b);
 }
 
-/* Prune / Clear action buttons */
 .ds-chat__action-btn {
   display: inline-flex;
   align-items: center;
@@ -424,7 +407,6 @@
   color: var(--color-error);
 }
 
-/* File / Image attachment buttons */
 .ds-chat__attach-btn {
   display: inline-flex;
   align-items: center;
@@ -446,7 +428,6 @@
   color: var(--text-secondary);
 }
 
-/* Input row: textarea + send button */
 .ds-chat__input-row {
   display: flex;
   align-items: flex-end;
@@ -478,7 +459,6 @@
   border-color: var(--border-focus);
 }
 
-/* Send button */
 .ds-chat__send {
   display: flex;
   align-items: center;
@@ -513,7 +493,6 @@
   transform: none;
 }
 
-/* Token counter (below input) */
 .ds-chat__token-info {
   display: flex;
   justify-content: flex-end;
@@ -522,7 +501,6 @@
   padding-right: var(--space-2);
 }
 
-/* === STREAMING INDICATOR === */
 .ds-chat__streaming {
   display: inline-flex;
   align-items: center;

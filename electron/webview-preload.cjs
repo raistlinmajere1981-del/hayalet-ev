@@ -176,7 +176,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   deviceAction: (action, payload) => ipcRenderer.invoke("device-action", action, payload),
   generateTree: (basePath, options) => ipcRenderer.invoke("generate-tree", basePath, options),
 
-  // OpenCode Native UI - Config & Filesystem
   loadOpencodeConfig: () => ipcRenderer.invoke("opc-load-config"),
   saveOpencodeConfig: (config) => ipcRenderer.invoke("opc-save-config", config),
   opcAddRecentFolder: (path, name) => ipcRenderer.invoke("opc-add-recent-folder", path, name),
@@ -194,7 +193,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   opcJoinPath: (...segments) => ipcRenderer.invoke("opc-join-path", ...segments),
   opcPathInfo: (path) => ipcRenderer.invoke("opc-path-info", path),
 
-  // OpenCode CLI Integration (Agent & Model Lists)
   opcListModels: () => ipcRenderer.invoke("opc-list-models"),
   opcListAgents: () => ipcRenderer.invoke("opc-list-agents"),
   opcGetAgentModelPreference: (folderPath) =>
@@ -348,9 +346,6 @@ function setupProvider() {
   }, 1000);
 }
 
-// Don't call setupProvider() immediately - wait for IPC message
-// setupProvider(); // Removed: causes race condition, slot info comes via IPC
-
 ipcRenderer.on("app-set-provider", async (event, payload) => {
   try {
     const providerId = typeof payload === "string" ? payload : payload?.providerId;
@@ -403,7 +398,6 @@ ipcRenderer.on("app-set-provider", async (event, payload) => {
       }
     }
 
-    // --- Apply DOM selector filters (simple remove) ---
     try {
       const sels = (cfg.filters && cfg.filters.selectors) || [];
       if (sels && sels.length) {
@@ -427,7 +421,6 @@ ipcRenderer.on("app-set-provider", async (event, payload) => {
       }
     } catch (_) {}
 
-    // --- Telemetry: intercept fetch and XHR for configured endpoints ---
     try {
       const endpoints = (cfg.telemetry && cfg.telemetry.endpoints) || [];
       const tokenPaths = (cfg.telemetry && cfg.telemetry.tokenPaths) || [];

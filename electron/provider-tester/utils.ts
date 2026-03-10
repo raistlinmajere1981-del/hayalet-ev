@@ -1,11 +1,3 @@
-/**
- * Provider Tester - Utility Functions
- *
- * Shared helpers used by all test modules.
- *
- * @module electron/provider-tester/utils
- */
-
 import { PROVIDER_TEST_INTERVALS } from "../../shared/timeouts.ts";
 
 import type { ProviderTestResult, TestCategory } from "../../src/types/provider.ts";
@@ -14,18 +6,12 @@ import type { TranslationParams } from "../../src/types/i18n.ts";
 import type { WebviewTag, ElementCheckResult, SelectorTestOptions } from "./types.ts";
 import { ScenarioCancelledError } from "./scenario-runner.ts";
 
-/**
- * Execute JavaScript in webview context
- */
 export function createExecuteScript(webview: WebviewTag): (script: string) => Promise<unknown> {
   return async (script: string): Promise<unknown> => {
     return await webview.executeJavaScript(script);
   };
 }
 
-/**
- * Click an element by selector
- */
 export function createClickElement(executeScript: (script: string) => Promise<unknown>) {
   return async (selector: string): Promise<boolean> => {
     const result = await executeScript(
@@ -42,9 +28,6 @@ export function createClickElement(executeScript: (script: string) => Promise<un
   };
 }
 
-/**
- * Check if an element is visible
- */
 export function createIsElementVisible(executeScript: (script: string) => Promise<unknown>) {
   return async (selector: string): Promise<boolean> => {
     const result = await executeScript(
@@ -61,9 +44,6 @@ export function createIsElementVisible(executeScript: (script: string) => Promis
   };
 }
 
-/**
- * Wait for a condition to become true
- */
 export async function waitForCondition(
   condition: () => Promise<boolean>,
   timeout: number,
@@ -83,9 +63,6 @@ export async function waitForCondition(
   return await poll();
 }
 
-/**
- * Create a skip result
- */
 export function createSkipResult(
   id: string,
   name: string,
@@ -103,9 +80,6 @@ export function createSkipResult(
   };
 }
 
-/**
- * Generic selector test
- */
 export function createTestSelector(
   executeScript: (script: string) => Promise<unknown>,
   t: (key: string, params?: TranslationParams) => Promise<string>

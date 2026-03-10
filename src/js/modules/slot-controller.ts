@@ -1,17 +1,4 @@
 import { LogCategory, LogLevel } from "@shared/logging-core";
-/**
- * SlotController - central slot lifecycle orchestrator
- *
- * Manages all slot operations (account assignment, connection, webview, traffic)
- * through a single state machine.
- *
- * Child modules:
- * - slot/webview-handler.js: Webview attach/detach/dom-ready
- * - slot/url-handler.js: URL change tracking and exclusion
- * - slot/timeout-handler.js: timeout and error handling
- * - slot/settings-sync.js: settings synchronization
- */
-
 import { Logger } from "./logger/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { AppI18n } from "./i18n/index.js";
@@ -98,12 +85,12 @@ class SlotControllerClass {
   _boundLog: typeof this._log;
   _boundEmit: typeof this._emit;
   _boundTransition: typeof this._transition;
-  // Race-condition guard: one operation lock per slot.
+  // NOTE: One operation lock per slot to avoid race conditions.
   _operationLocks: Record<string, Promise<unknown> | null>;
 
   constructor() {
     this._slots = {
-      ai0: createSlotState("ai0"), // Assistant slot
+      ai0: createSlotState("ai0"),
       ai1: createSlotState("ai1"),
       ai2: createSlotState("ai2"),
     };
@@ -116,10 +103,7 @@ class SlotControllerClass {
     this._boundTransition = this._transition.bind(this);
   }
 
-  /**
-   * Race condition fix: Acquire operation lock for a slot
-   * Prevents concurrent operations on the same slot
-   */
+  // NOTE: Acquire an operation lock to prevent concurrent slot operations.
   private async _acquireLock<T>(slot: string, operation: () => Promise<T>): Promise<T> {
     const waitForUnlock = async (): Promise<void> => {
       const pending = this._operationLocks[slot];
@@ -250,7 +234,7 @@ class SlotControllerClass {
     if (!slotState) return;
 
     if (slotState.webviewRegistered && slotState.webview === webview) {
-      return; // Prevent duplicate registration.
+      return;
     }
 
     slotState.webview = webview as WebviewElement;
@@ -265,7 +249,7 @@ class SlotControllerClass {
     const slotState = this._getSlot(slot);
     if (!slotState) return;
 
-    // Race condition fix: Await disconnect to prevent state inconsistency
+    // NOTE: Await disconnect to prevent state inconsistencies.
     if (slotState.state === SlotState.CONNECTED) {
       this._log(slot, "warning", AppI18n.t("app.logs.slotController.unregisterConnected"));
       this.disconnect(slot, { force: true })
@@ -294,7 +278,8 @@ class SlotControllerClass {
             }
           );
         });
-      return; // Exit early - disconnect will handle cleanup
+      // NOTE: Exit early; disconnect handles cleanup.
+      return;
     }
 
     slotState.webview = null;
@@ -331,7 +316,7 @@ class SlotControllerClass {
     slot: SlotId,
     options: { force?: boolean; url?: string; correlationId?: string } = {}
   ): Promise<SlotOperationResult> {
-    // Race condition fix: Use lock to prevent concurrent connect operations
+    // NOTE: Use lock to prevent concurrent connect operations.
     return await this._acquireLock(slot, async () => await this._connectInternal(slot, options));
   }
 
@@ -343,7 +328,7 @@ class SlotControllerClass {
   }
 
   async disconnect(slot: string, _options: { force?: boolean } = {}): Promise<SlotOperationResult> {
-    // Race condition fix: Use lock to prevent concurrent disconnect operations
+    // NOTE: Use lock to prevent concurrent disconnect operations.
     return await this._acquireLock(
       slot,
       async () => await this._disconnectInternal(slot, _options)
@@ -423,10 +408,6 @@ class SlotControllerClass {
     await cleanupSlotAfterError(slot, correlationId, this._getLifecycleContext());
   }
 
-  /**
-   * State transition with validation
-   * @returns TransitionResult with success status and details
-   */
   _transition(slot: string, newState: string, reason?: string): TransitionResult {
     const slotState = this._getSlot(slot);
     if (!slotState) {
@@ -446,7 +427,7 @@ class SlotControllerClass {
     });
 
     if (result.success) {
-      // Keep the legacy state field in sync for backward compatibility.
+      // NOTE: Keep legacy state in sync for backward compatibility.
       slotState.state = newState;
       slotState.lastActivity = Date.now();
 
@@ -477,9 +458,6 @@ class SlotControllerClass {
     return slotData.stateMachine.state;
   }
 
-  /**
-   * State machine debug bilgisini al
-   */
   getStateMachineDebugInfo(slot: string): unknown {
     const slotData = this._getSlot(slot);
     if (!slotData) return null;

@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - History Manager
- */
-
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { undoLastOperation, getOperationHistory } from "../../utils/recycle-utils.js";
 

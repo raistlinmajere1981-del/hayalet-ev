@@ -1,32 +1,3 @@
-/**
- * Toast Manager
- *
- * Non-blocking notification system with auto-dismiss.
- *
- * @example
- * ```typescript
- * import { Toast } from './ui';
- *
- * // Quick methods
- * Toast.success('Success!', 'Connection established');
- * Toast.error('Error!', 'Connection lost');
- * Toast.warning('Warning!', 'Your session is about to expire');
- * Toast.info('Info', 'A new update is available');
- *
- * // Loading with update
- * const id = Toast.loading('Loading...');
- * // ... async operation
- * Toast.update(id, { type: 'success', title: 'Completed!' });
- *
- * // With action button
- * Toast.show({
- *   type: 'info',
- *   title: 'Update',
- *   message: 'A new version is available',
- *   action: { label: 'Install', onClick: () => update() }
- * });
- * ```
- */
 import { AppI18n } from "../modules/i18n/index.js";
 
 export type ToastType = "success" | "error" | "warning" | "info" | "loading";
@@ -40,10 +11,10 @@ export interface ToastOptions {
   type: ToastType;
   title: string;
   message?: string;
-  duration?: number; // ms, 0 = manual close, default: 4000
-  closable?: boolean; // default: true
+  duration?: number;
+  closable?: boolean;
   action?: ToastAction;
-  progress?: boolean; // show progress bar
+  progress?: boolean;
 }
 
 interface ToastInstance {
@@ -58,7 +29,7 @@ const ICONS: Record<ToastType, string> = {
   error: "✕",
   warning: "⚠",
   info: "ℹ",
-  loading: "", // CSS spinner
+  loading: "",
 };
 
 const DEFAULT_DURATIONS: Record<ToastType, number> = {
@@ -66,7 +37,7 @@ const DEFAULT_DURATIONS: Record<ToastType, number> = {
   error: 5000,
   warning: 4000,
   info: 4000,
-  loading: 0, // No auto-dismiss
+  loading: 0,
 };
 
 let container: HTMLDivElement | null = null;
@@ -167,10 +138,6 @@ function scheduleRemoval(instance: ToastInstance): void {
 }
 
 const toast = {
-  /**
-   * Show a toast notification
-   * @returns Toast ID for later reference
-   */
   show(options: ToastOptions): string {
     const id = generateId();
     const containerEl = ensureContainer();
@@ -329,6 +296,5 @@ const toast = {
   },
 };
 
-// Backward compatibility alias - use Toast directly in new code
-/** @deprecated Use Toast directly */
+// NOTE: Deprecated alias retained for backward compatibility.
 export { toast as Toast, toast as ToastManager };

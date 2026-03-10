@@ -1,11 +1,3 @@
-/**
- * Log Reader - Query and retrieve logs
- *
- * Provides methods to read and filter logs from structured.jsonl
- *
- * @module electron/logger/readers/LogReader
- */
-
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";

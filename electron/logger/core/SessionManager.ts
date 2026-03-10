@@ -1,15 +1,3 @@
-/**
- * Session Manager - Handles log session lifecycle
- *
- * Responsibilities:
- * - Create unique session IDs
- * - Manage session directories
- * - Generate session summaries
- * - Cleanup old sessions
- *
- * @module electron/logger/core/SessionManager
- */
-
 import { join } from "path";
 import { mkdir, writeFile, readdir, stat, rm } from "fs/promises";
 import { existsSync } from "fs";
@@ -112,7 +100,7 @@ export class SessionManager {
   }
 
   private async cleanupOldSessions(): Promise<void> {
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+    const maxAge = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     try {

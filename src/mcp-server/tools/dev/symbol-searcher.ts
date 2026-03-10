@@ -1,10 +1,3 @@
-/**
- * Development Tools - Symbol Searcher
- *
- * Search for project symbols (function, class, interface, type, const).
- * Hybrid approach: fast regex scan + TS Language Service enrichment.
- */
-
 import { readFileSync } from "fs";
 import { join } from "path";
 import { DEV_CONFIG } from "./shared/config.js";
@@ -26,16 +19,10 @@ function symbolSearchDefT(key: string, params?: Record<string, string | number |
   return createMcpTranslatorSync()(`mcpServer.devTools.symbolSearcher.definition.${key}`, params);
 }
 
-/**
- * Escape special characters in a regex pattern.
- */
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Hybrid symbol search: fast regex scan + TS API type enrichment.
- */
 export async function searchSymbol(
   projectRoot: string,
   symbol: string,
@@ -44,15 +31,12 @@ export async function searchSymbol(
   const symbolType = options.type ?? "all";
   const matches: SymbolMatch[] = [];
 
-  // Collect project files from configured source directories.
-  const allFiles: string[] = [];
-  for (const srcDir of DEV_CONFIG.srcDirs) {
-    // eslint-disable-next-line no-await-in-loop
-    const files = await getAllFiles(srcDir, projectRoot);
-    allFiles.push(...files);
-  }
+  const allFiles = (
+    await Promise.all(
+      DEV_CONFIG.srcDirs.map(async (srcDir) => await getAllFiles(srcDir, projectRoot))
+    )
+  ).flat();
 
-  // Build search patterns for the requested symbol shape.
   const escapedSymbol = escapeRegex(symbol);
   const patterns: Record<string, RegExp> = {
     function: new RegExp(
@@ -70,7 +54,6 @@ export async function searchSymbol(
       ? Object.entries(patterns)
       : [[symbolType, patterns[symbolType] as RegExp]];
 
-  // Phase 1: fast regex scan for likely definitions.
   for (const file of allFiles) {
     try {
       const content = readFileSync(join(projectRoot, file), "utf-8");
@@ -90,11 +73,10 @@ export async function searchSymbol(
         }
       }
     } catch {
-      /* ignore unreadable files */
+      // NOTE: Ignore unreadable files.
     }
   }
 
-  // Phase 2: enrich the first few matches with TS Language Service type data.
   try {
     const mgr = getTsLanguageService(projectRoot);
     const enrichLimit = Math.min(matches.length, 10);
@@ -103,7 +85,6 @@ export async function searchSymbol(
       const m = matches[i];
       if (!m) continue;
       try {
-        // Find the symbol column on the matched line.
         const content = readFileSync(join(projectRoot, m.file), "utf-8");
         const line = content.split("\n")[m.line - 1] ?? "";
         const col = line.indexOf(symbol);
@@ -114,14 +95,13 @@ export async function searchSymbol(
           }
         }
       } catch {
-        /* skip enrichment for this match */
+        // NOTE: Skip enrichment for this match.
       }
     }
   } catch {
-    /* TS API unavailable, regex results are still valid */
+    // NOTE: TS API unavailable; regex results are still valid.
   }
 
-  // Deduplicate by file + line + symbol type.
   const seen = new Set<string>();
   const unique = matches.filter((m) => {
     const key = `${m.file}:${m.line}:${m.type}`;
@@ -138,10 +118,6 @@ export async function searchSymbol(
       : "regex",
   };
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const SYMBOL_SEARCHER_TOOL = {
   name: "hev_dev_search_symbol",

@@ -1,11 +1,4 @@
-/**
- * Advanced file edit operations.
- *
- * Supports atomic mode, overlap detection, whitespace-tolerant matching,
- * line-ending normalization, match scope control, and rich result output.
- *
- * @module fs/basic/edit
- */
+// NOTE: Advanced file edit operations with atomic and conflict detection.
 
 import { readFile, writeFile } from "fs/promises";
 import { logToolError } from "../../../utils/mcp-logger.js";
@@ -34,11 +27,6 @@ function editToolDefinitionT(key: string, params?: TranslationParams): string {
   return editToolDefinitionTranslator(`mcpServer.fs.toolDefinitions.edit.${key}`, params);
 }
 
-/**
- * Apply multiple edits to a file with pattern matching.
- * Supports atomic mode, conflict detection, scope control,
- * EOL normalization, and format-preserving whitespace matching.
- */
 export async function editFileContent(options: EditFileOptions): Promise<ToolResult> {
   const {
     file_path: filePath,

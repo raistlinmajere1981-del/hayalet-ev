@@ -1,13 +1,3 @@
-/**
- * MCP Server Setup & Bootstrap
- * Server initialization and main function
- *
- * Uses unified registry pattern:
- * - All tools registered once via registerAllTools()
- * - getAllDefinitions() for ListTools
- * - handleToolCall() for CallTool
- */
-
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
@@ -22,7 +12,6 @@ import { handleToolCall } from "./handlers.js";
 
 const LOG_DIR = join(PROJECT_ROOT, "logs", "app");
 
-// MCP Server version — single source of truth.
 const MCP_VERSION = "3.0.0";
 const startupTranslator = createMcpTranslatorSync();
 
@@ -49,22 +38,17 @@ export function initializeMcpServer(): McpServerInitialization {
     }
   );
 
-  // Register all tools into the unified registry.
   registerAllTools({ PROJECT_ROOT, LOG_DIR });
 
-  // Provide the server reference to the progress utility.
   setMcpServer(server);
 
-  // List tools handler — reads from the registry.
   server.setRequestHandler(ListToolsRequestSchema, () => {
     return { tools: getAllDefinitions() };
   });
 
-  // Call tool handler — routes through the registry.
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    // Set the progress token if the request provided one.
     const progressToken = (request.params as { _meta?: { progressToken?: string | number } })._meta
       ?.progressToken;
     setProgressToken(progressToken ?? null);
@@ -81,7 +65,7 @@ export async function main(): Promise<void> {
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    // Keep the process alive for stdio-based MCP clients.
+    // NOTE: Keep the process alive for stdio-based MCP clients.
     process.stdin.resume();
     process.stderr.write(
       `${startupT("serverStarted", {

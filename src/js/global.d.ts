@@ -136,10 +136,7 @@ type ToolRegistry = {
 
 declare global {
   interface Window {
-    /**
-     * API exposed by the Electron preload layer.
-     * @see electron/preload.cjs
-     */
+    // NOTE: API exposed by the Electron preload layer (electron/preload.cjs).
     electronAPI?: ElectronAPI;
     roomAPI?: {
       ready: (payload?: Record<string, unknown>) => boolean;
@@ -473,14 +470,11 @@ declare global {
       _closeInstance?: (instanceId: string) => Promise<void>;
     };
 
-    // Theme Manager (window extension for HMR)
     __ThemeManager?: unknown;
 
-    // MCP server management
     __setDisabledMcpServers?: (list: string[]) => void;
     __lastMcpServers?: Record<string, string>;
 
-    // Chat page utilities
     copyCodeBlock?: (btn: HTMLElement) => void;
   }
 
@@ -790,7 +784,6 @@ declare global {
       ) => () => void;
     };
 
-    // Legacy Logging API (backward compatibility)
     logWrite: (payload: Record<string, unknown>) => Promise<IPCResult>;
     getSessionId: () => Promise<string>;
     getEarlyLogs: () => Promise<
@@ -914,7 +907,6 @@ declare global {
       status?: number;
     }>;
 
-    // OpenCode UI filesystem (session ensure/read/list)
     opencodeUiFsEnsureSession: (
       sessionId: string,
       title?: string,

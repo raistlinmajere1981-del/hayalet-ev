@@ -1,12 +1,3 @@
-/**
- * Provider Tester - Interactive Tests
- *
- * Tests that interact with the page: input injection, button clicks,
- * send message, file upload, etc.
- *
- * @module electron/provider-tester/interactive-tests
- */
-
 import { PROVIDER_TEST_DELAYS } from "../../shared/timeouts.ts";
 import { formatErrorWithDetail } from "../../shared/i18n/error-detail.ts";
 import type { ProviderTestResult } from "../../src/types/provider.ts";
@@ -23,9 +14,6 @@ async function interactiveT(
   return await ctx.t(`interactive.${key}`, params);
 }
 
-/**
- * Run all interactive tests
- */
 export async function runInteractiveTests(ctx: TestContext): Promise<InteractiveTestsResult> {
   const results: ProviderTestResult[] = [];
   let aborted = false;
@@ -267,7 +255,7 @@ export async function testTextInjection(ctx: TestContext): Promise<ProviderTestR
         for (let i = 0; i < message.length; i++) {
           currentValue += message[i];
           
-          // Use native setter to bypass React's value tracking
+          // NOTE: Use native setter to bypass React's value tracking.
           const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.HTMLTextAreaElement.prototype, 
             'value'

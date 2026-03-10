@@ -1,9 +1,4 @@
-/**
- * CDP (Chrome DevTools Protocol) Connection Manager
- *
- * Connects to the Electron app over WebSocket and
- * executes JavaScript remotely.
- */
+// NOTE: CDP connections execute JavaScript remotely in Electron.
 
 import WebSocket from "ws";
 import { CDP_TIMEOUTS } from "@timeouts";
@@ -16,7 +11,6 @@ function cdpConnectionT(key: string, params?: Record<string, string | number | b
   return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
 }
 
-/** CDP Target interface */
 interface CDPTarget {
   id: string;
   type: string;
@@ -25,7 +19,6 @@ interface CDPTarget {
   webSocketDebuggerUrl: string;
 }
 
-/** CDP Response interface */
 interface CDPResponse {
   id?: number;
   result?: Record<string, unknown>;
@@ -36,7 +29,6 @@ interface CDPResponse {
   };
 }
 
-/** CDP Evaluate Result */
 interface EvaluateResult {
   result?: { value?: unknown };
   exceptionDetails?: {
@@ -45,12 +37,8 @@ interface EvaluateResult {
   };
 }
 
-/**
- * Discover Electron debug endpoints
- */
 export async function discoverTargets(): Promise<CDPTarget[]> {
   try {
-    // Target discovery timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
@@ -73,7 +61,6 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
   } catch (error) {
     const err = error as Error & { code?: string };
 
-    // Timeout error.
     if (err.name === "AbortError") {
       const timeoutError = new Error(
         cdpConnectionT("connectionTimeout", { port: CDP_PORT })
@@ -82,7 +69,6 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
       throw timeoutError;
     }
 
-    // Connection refused.
     if (err.code === "ECONNREFUSED" || err.message.includes("ECONNREFUSED")) {
       const connectionError = new Error(
         cdpConnectionT("connectionRefused", { port: CDP_PORT })
@@ -91,7 +77,6 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
       throw connectionError;
     }
 
-    // fetch failed (generic network error).
     if (err.message.includes("fetch failed")) {
       const fetchError = new Error(cdpConnectionT("fetchFailed", { port: CDP_PORT })) as Error & {
         cause?: unknown;
@@ -104,23 +89,17 @@ export async function discoverTargets(): Promise<CDPTarget[]> {
   }
 }
 
-/**
- * Find the main window target
- */
 async function findMainWindow(): Promise<CDPTarget | null> {
   const targets = await discoverTargets();
 
-  // Prefer a "page" target first.
+  // NOTE: Prefer a "page" target first.
   const pageTarget = targets.find((t) => t.type === "page");
   if (pageTarget) return pageTarget;
 
-  // Otherwise return the first target.
+  // NOTE: Fall back to the first target if no "page" target is available.
   return targets[0] ?? null;
 }
 
-/**
- * Open a WebSocket connection to a specific target
- */
 async function connectToTarget(wsUrl: string): Promise<WebSocket> {
   return await new Promise((resolve, reject) => {
     let resolved = false;
@@ -140,7 +119,6 @@ async function connectToTarget(wsUrl: string): Promise<WebSocket> {
       }
     });
 
-    // WebSocket connection timeout.
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -151,7 +129,6 @@ async function connectToTarget(wsUrl: string): Promise<WebSocket> {
   });
 }
 
-// Global ID counter for CDP commands
 let cdpCommandId = 1;
 
 function rawDataToText(data: WebSocket.RawData): string {
@@ -166,9 +143,6 @@ function rawDataToText(data: WebSocket.RawData): string {
   return "";
 }
 
-/**
- * Send a CDP command and wait for the response.
- */
 export async function sendCDPCommand(
   ws: WebSocket,
   method: string,
@@ -190,7 +164,7 @@ export async function sendCDPCommand(
           }
         }
       } catch {
-        // Ignore JSON parse errors and keep listening.
+        // NOTE: Ignore JSON parse errors and keep listening.
       }
     };
 
@@ -212,9 +186,6 @@ export async function sendCDPCommand(
   });
 }
 
-/**
- * Execute JavaScript inside Electron.
- */
 export async function evaluateJS(
   ws: WebSocket,
   expression: string,
@@ -246,9 +217,6 @@ export async function evaluateJS(
   return result.result?.value;
 }
 
-/**
- * Connect to Electron, run the command, and close the connection.
- */
 export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): Promise<T> {
   const target = await findMainWindow();
   if (!target) {
@@ -265,7 +233,6 @@ export async function withConnection<T>(action: (ws: WebSocket) => Promise<T>): 
   }
 }
 
-/** Connection status result */
 interface ConnectionStatus {
   connected: boolean;
   port: string | number;
@@ -278,9 +245,6 @@ interface ConnectionStatus {
   error?: string;
 }
 
-/**
- * Check the Electron connection status.
- */
 export async function checkConnection(): Promise<ConnectionStatus> {
   try {
     const targets = await discoverTargets();

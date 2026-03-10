@@ -24,7 +24,6 @@ const IGNORED_DIRS = new Set([
 ]);
 const EXCLUDED_PATH_PREFIXES = [
   "ghost-agent/",
-  "electron/provider-tester/",
 ];
 const EXCLUDED_PATHS = new Set([
   "src/js/pages/shared/provider-test-presentation.ts",

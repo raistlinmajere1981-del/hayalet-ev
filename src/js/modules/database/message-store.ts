@@ -13,12 +13,6 @@ function databaseStoreError(store: string, operation: string, detail?: unknown):
 }
 
 const messageStore = {
-  /**
-   * List messages.
-   * @param {string} accountId - Account ID
-   * @param {string} conversationId
-   * @returns {Promise<Array>}
-   */
   async list(accountId: string, conversationId: string): Promise<unknown[]> {
     try {
       if (accountId === "" || conversationId === "") {
@@ -46,15 +40,6 @@ const messageStore = {
     }
   },
 
-  /**
-   * Synchronize messages (incremental sync).
-   * @param {Object} params
-   * @param {string} params.accountId - Account ID
-   * @param {string} params.webUrl - Conversation URL
-   * @param {Array} params.messages - Scraped messages
-   * @param {Object} params.authors - { user: "...", assistant: "..." }
-   * @returns {Promise<{ success: boolean, conversationId?: string, added?: number, total?: number }>}
-   */
   async sync(params: {
     accountId: string;
     webUrl: string;
@@ -137,13 +122,6 @@ const messageStore = {
     }
   },
 
-  /**
-   * Search messages (FTS5).
-   * @param {string} accountId - Account ID
-   * @param {string} query
-   * @param {number} limit
-   * @returns {Promise<Array>}
-   */
   async search(accountId: string, query: string, limit = 50): Promise<unknown[]> {
     try {
       if (accountId === "" || query === "") {

@@ -1,12 +1,3 @@
-/**
- * MessageSender - Webview message delivery management
- *
- * This module manages message and file delivery to AI webviews:
- * - Message injection/XDotools methods
- * - File uploads (dragdrop, injection, link-based)
- * - Send button triggering
- */
-
 import { Logger } from "../logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { TrafficManager } from "../traffic-manager.js";
@@ -122,10 +113,6 @@ class MessageSenderClass {
     return getProvider(providerId) ?? null;
   }
 
-  /**
-   * Check whether the URL is excluded
-   * @deprecated Use isSlotUrlExcluded from url-utils.ts directly
-   */
   isUrlExcluded(providerSlot: string, url: string): boolean {
     return isSlotUrlExcluded(providerSlot, url);
   }
@@ -155,11 +142,9 @@ class MessageSenderClass {
       throw new Error(messageSenderT("providerModuleMissing", { provider, providerId }));
     }
 
-    // Provider selection debug removed
-
     await waitForDomReady(webview);
 
-    // Provider config fallback - sadece config yoksa inject et
+    // NOTE: Inject provider config only when missing.
     const providerConfig = ProviderRegistry.get(providerId);
     try {
       const checkScript = `(function() { return !!window.__app_provider_config; })();`;
@@ -231,8 +216,6 @@ class MessageSenderClass {
         })
       );
     }
-
-    // Method selection debug removed
 
     try {
       webview.focus?.();
@@ -330,10 +313,6 @@ class MessageSenderClass {
     };
   }
 
-  /**
-   * Link-based file upload (catbox, uguu, googledrive, tmpfile)
-   * @private
-   */
   async _handleLinkBasedUpload(
     webview: MessageSenderWebview,
     provider: string,
@@ -398,10 +377,6 @@ class MessageSenderClass {
     return fileResult;
   }
 
-  /**
-   * Direct file upload (injection, dragdrop, xdotools)
-   * @private
-   */
   async _handleDirectUpload(
     webview: MessageSenderWebview,
     provider: string,
@@ -447,10 +422,6 @@ class MessageSenderClass {
     return fileResult;
   }
 
-  /**
-   * Click the send button
-   * @private
-   */
   async _triggerSendButton(
     webview: MessageSenderWebview,
     provider: string,

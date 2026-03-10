@@ -1,17 +1,6 @@
-/**
- * Provider Tester - DOM Tests
- *
- * Static DOM element existence and visibility checks.
- *
- * @module electron/provider-tester/dom-tests
- */
-
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext, SelectorCheckResult } from "./types.ts";
 
-/**
- * Run all DOM tests
- */
 export async function runDOMTests(ctx: TestContext): Promise<ProviderTestResult[]> {
   const results: ProviderTestResult[] = [];
 

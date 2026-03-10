@@ -1,9 +1,3 @@
-/**
- * Analyze message actions and read modal helpers.
- *
- * Manages message action behavior and the read modal.
- */
-
 import { AppState } from "../../modules/app-state.js";
 
 export interface MessageActionPayload {

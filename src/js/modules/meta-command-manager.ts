@@ -1,27 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * Meta Command Manager - Renderer Process
- *
- * Allows AIs to define new commands dynamically.
- * Commands are stored and executed as JavaScript code.
- *
- * Command format:
- * ++meta:DefineCommand(CommandName, "description", `
- *   async function(args, context) {
- *     // context: { Logger, AppState, TrafficManager, ... }
- *     // Logger usage:
- *     context.Logger.infoT(context.LogCategory.SYSTEM, "app.commandQueue.completed", { id: "example" });
- *     return { success: true, result: "..." };
- *   }
- * `)
- *
- * ++meta:DeleteCommand(CommandName)
- * ++meta:ListCommands()
- *
- * NOTE: The Unified Logger system is used.
- * Logger and LogCategory enum values are available in the context.
- */
-
 import { Logger } from "./logger/index.js";
 import { formatErrorWithDetail } from "../../../shared/i18n/error-detail.js";
 import { AppState } from "./app-state.js";
@@ -65,15 +42,6 @@ function metaCommandError(
   return formatErrorWithDetail(metaCommandT(key, params), detail);
 }
 
-/**
- * Context object passed to custom commands
- *
- * Available in context:
- * - Logger: Unified logging system
- * - LogCategory: Log category enum
- * - LogVisibility: Visibility level enum
- * - AppState, TrafficManager, SlotController, WebviewManager, RelayManager
- */
 function createContext(): Record<string, unknown> {
   return {
     Logger,

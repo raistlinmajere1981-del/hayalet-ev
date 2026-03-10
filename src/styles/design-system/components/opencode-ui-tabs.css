@@ -1,7 +1,3 @@
-/**
- * OpenCode UI right sidebar tabs
- */
-
 .ds-sidebar__body--right {
   display: flex;
   flex-direction: column;

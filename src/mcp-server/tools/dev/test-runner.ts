@@ -1,9 +1,3 @@
-/**
- * Development Tools - Test Runner
- *
- * Test runner with automatic Vitest/Jest detection
- */
-
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -34,7 +28,6 @@ export function testRun(
   try {
     let cmd = "npm test";
 
-    // Check if project uses vitest, jest, or mocha
     const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
     const pkg: PackageJsonLike =
       typeof pkgRaw === "object" && pkgRaw !== null ? (pkgRaw as PackageJsonLike) : {};
@@ -62,7 +55,6 @@ export function testRun(
         maxBuffer: 10 * 1024 * 1024,
       });
 
-      // Parse test results
       const passMatch = output.match(/(\d+)\s+pass/i);
       const failMatch = output.match(/(\d+)\s+fail/i);
       const passed = passMatch ? parseInt(passMatch[1] ?? "0") : 0;

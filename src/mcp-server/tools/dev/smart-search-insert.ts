@@ -1,9 +1,3 @@
-/**
- * Development Tools - Smart Search and Insert
- *
- * Natural language ile pozisyon bulma ve kod ekleme
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -11,7 +5,7 @@ import { logToolError } from "../../utils/mcp-logger.js";
 
 interface SmartInsertOptions {
   file_path: string;
-  anchor: string; // Natural language: "last if block", "after function X", etc.
+  anchor: string;
   position: "before" | "after" | "inside_start" | "inside_end";
   code: string;
   dry_run?: boolean;
@@ -44,7 +38,6 @@ export function smartInsertCode(
     const content = readFileSync(fullPath, "utf-8");
     const lines = content.split("\\n");
 
-    // Parse anchor and find insertion point
     const insertionLine = findInsertionPoint(lines, anchor, position);
 
     if (!insertionLine) {
@@ -54,16 +47,13 @@ export function smartInsertCode(
       };
     }
 
-    // Insert code
     const indent = getIndentation(lines[insertionLine.targetLine] ?? "");
     const formattedCode = formatCodeWithIndent(code, indent);
 
     lines.splice(insertionLine.insertAt, 0, formattedCode);
 
-    // Generate preview
     const preview = generatePreview(lines, insertionLine.insertAt, formattedCode);
 
-    // Apply if not dry run
     if (!dryRun) {
       writeFileSync(fullPath, lines.join("\\n"), "utf-8");
     }
@@ -83,10 +73,6 @@ export function smartInsertCode(
   }
 }
 
-// ============================================
-// Helper Functions
-// ============================================
-
 function findInsertionPoint(
   lines: string[],
   anchor: string,
@@ -94,11 +80,9 @@ function findInsertionPoint(
 ): { targetLine: number; insertAt: number } | null {
   const lowerAnchor = anchor.toLowerCase();
 
-  // Pattern: "last if block"
   if (lowerAnchor.includes("last if block") || lowerAnchor.includes("last if statement")) {
     for (let i = lines.length - 1; i >= 0; i--) {
       if (lines[i]?.trim().startsWith("if (") === true) {
-        // Find the closing of this if block
         let braceCount = 0;
         for (let j = i; j < lines.length; j++) {
           braceCount += (lines[j]?.match(/{/g) ?? []).length;
@@ -111,7 +95,6 @@ function findInsertionPoint(
     }
   }
 
-  // Pattern: "after function X"
   const afterFunctionMatch = lowerAnchor.match(/after function (\\w+)/);
   if (afterFunctionMatch) {
     const funcName = afterFunctionMatch[1] ?? "";
@@ -120,7 +103,6 @@ function findInsertionPoint(
         lines[i]?.includes(`function ${funcName}`) === true ||
         lines[i]?.includes(`${funcName}(`) === true
       ) {
-        // Find end of function
         let braceCount = 0;
         for (let j = i; j < lines.length; j++) {
           braceCount += (lines[j]?.match(/{/g) ?? []).length;
@@ -133,12 +115,10 @@ function findInsertionPoint(
     }
   }
 
-  // Pattern: "end of file"
   if (lowerAnchor.includes("end of file")) {
     return { targetLine: lines.length - 1, insertAt: lines.length };
   }
 
-  // Pattern: exact line number
   const lineMatch = lowerAnchor.match(/line (\\d+)/);
   if (lineMatch) {
     const lineNum = parseInt(lineMatch[1] ?? "0", 10);
@@ -193,10 +173,6 @@ function formatOutput(filePath: string, line: number, dryRun: boolean): string {
 
   return output;
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const SMART_SEARCH_INSERT_TOOL = {
   name: "hev_dev_smart_insert",

@@ -15,7 +15,6 @@
   </head>
   <body>
     <div class="app-shell">
-      <!-- ===== WORKSPACE BAR ===== -->
       <div class="ds-workspace-bar">
         <button
           class="ds-workspace-bar__toggle-left ds-workspace-bar__toggle-left--active"
@@ -48,9 +47,7 @@
         </button>
       </div>
 
-      <!-- ===== 3-COLUMN LAYOUT ===== -->
       <div class="ds-layout-3col">
-        <!-- ===== LEFT SIDEBAR — Sessions ===== -->
         <div class="ds-sidebar" id="sidebar-left">
           <div class="ds-sidebar__header">
             <span class="ds-sidebar__icon">💬</span>
@@ -66,7 +63,6 @@
             </button>
           </div>
 
-          <!-- New chat button -->
           <div class="px-2 py-2">
             <button
               class="btn btn-primary w-full"
@@ -98,14 +94,12 @@
             </button>
           </div>
 
-          <!-- Session list -->
           <div class="ds-sidebar__body">
             <div class="ds-session-list" id="session-list">
               <div class="empty-state" data-i18n-text="common.loading">Loading...</div>
             </div>
           </div>
 
-          <!-- Usage indicator (footer) -->
           <div class="ds-sidebar__footer" id="usage-footer">
             <div class="ds-usage">
               <div class="ds-usage__header">
@@ -124,9 +118,7 @@
           </div>
         </div>
 
-        <!-- ===== CENTER — Chat Area ===== -->
         <div class="ds-chat" id="chat-area">
-          <!-- Messages -->
           <div class="ds-chat__messages" id="chat-messages">
             <div class="ds-chat__empty" id="chat-empty">
               <img
@@ -144,12 +136,9 @@
             </div>
           </div>
 
-          <!-- Input bar -->
           <div class="ds-chat__input-bar">
-            <!-- Toolbar: mode/model selects + file/image buttons -->
             <div class="ds-chat__toolbar">
               <div class="ds-chat__toolbar-left">
-                <!-- Custom Mode Dropdown -->
                 <div class="ds-custom-select" id="mode-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
                     <span class="ds-custom-select__label" data-i18n-text="workspace.modeLabel">
@@ -157,10 +146,8 @@
                     </span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- Populated by JavaScript -->
-                  </div>
+                    </div>
                 </div>
-                <!-- Custom Model Dropdown -->
                 <div class="ds-custom-select" id="model-dropdown">
                   <button class="ds-custom-select__trigger" type="button">
                     <span class="ds-custom-select__label" data-i18n-text="workspace.modelLabel">
@@ -168,8 +155,7 @@
                     </span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- Populated by JavaScript -->
-                  </div>
+                    </div>
                 </div>
                 <button
                   type="button"
@@ -188,8 +174,7 @@
                     </span>
                   </button>
                   <div class="ds-custom-select__menu">
-                    <!-- Populated by JavaScript -->
-                  </div>
+                    </div>
                 </div>
               </div>
               <div class="ds-chat__toolbar-right">
@@ -231,14 +216,12 @@
               </div>
             </div>
 
-            <!-- Attachment chip area -->
             <div
               id="clipboard-preview-area"
               class="ds-attachment-tray is-hidden"
               aria-live="polite"
             ></div>
 
-            <!-- Input row -->
             <div class="ds-chat__input-row">
               <textarea
                 class="ds-chat__textarea"
@@ -259,7 +242,6 @@
           </div>
         </div>
 
-        <!-- ===== RIGHT SIDEBAR — Panels ===== -->
         <div class="ds-sidebar ds-sidebar--right" id="sidebar-right">
           <div class="ds-sidebar__body ds-sidebar__body--right">
             <div class="ds-right-inspector">
@@ -678,17 +660,13 @@
             </div>
           </div>
 
-          <!-- Footer -->
           <div class="ds-footer-bar">
             <span id="last-check">—</span>
             <span id="error-area"></span>
           </div>
         </div>
       </div>
-      <!-- /ds-layout-3col -->
-    </div>
-    <!-- /app-shell -->
-
+      </div>
     <script type="module" src="/js/pages/opencode-ui/app.ts"></script>
   </body>
 </html>

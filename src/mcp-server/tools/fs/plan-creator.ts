@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Plan Creator
- */
-
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 interface TechnicalPlan {

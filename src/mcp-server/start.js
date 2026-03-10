@@ -1,19 +1,13 @@
 #!/usr/bin/env node
-/**
- * MCP Server Launcher
- * Runs the TypeScript entry point via Node's `--import tsx` loader to avoid
- * the tsx CLI IPC layer, which can fail before MCP initialize completes.
- */
-
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import dotenv from "dotenv";
 
-// Load .env from project root (silent to avoid JSONRPC pollution)
+// NOTE: Load .env from project root (silent to avoid JSONRPC pollution).
 dotenv.config({
   path: join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".env"),
-  quiet: true, // Suppress dotenv console output
+  quiet: true,
 });
 
 const __filename = fileURLToPath(import.meta.url);

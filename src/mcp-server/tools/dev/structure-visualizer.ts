@@ -1,10 +1,3 @@
-/**
- * Development Tools - Structure Visualizer
- *
- * Public surface + MCP tool definition.
- * Core implementation lives in structure-visualizer-core.ts
- */
-
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 
 export { visualizeStructure, countBracketsContextAware } from "./structure-visualizer-core.js";
@@ -15,10 +8,6 @@ function structureVizDefT(key: string, params?: Record<string, string | number |
     params
   );
 }
-
-// ============================================
-// MCP Tool Definition
-// ============================================
 
 export const STRUCTURE_VISUALIZER_TOOL = {
   name: "hev_dev_visualize_structure",

@@ -1,11 +1,3 @@
-/**
- * Console Interceptor - Override main process console.*
- *
- * Intercepts console.log/warn/error/etc and routes them through LoggerCore
- *
- * @module electron/logger/core/ConsoleInterceptor
- */
-
 import { LoggerCore } from "./LoggerCore.js";
 import { LogLevel as LL, LogCategory as LC } from "@shared/index.js";
 import { readElectronAppLanguageSync } from "../../i18n/language-service.ts";

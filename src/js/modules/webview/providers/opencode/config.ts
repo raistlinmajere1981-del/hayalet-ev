@@ -1,13 +1,5 @@
 import { WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
 
-/**
- * OpenCode Provider Configuration
- *
- * OpenCode - AI assistant interface (local server)
- * Start it with the OpenCode serve command:
- * opencode serve --port 4096 --hostname 127.0.0.1 --cors http://localhost:5173 /workspace/path
- */
-
 export const OPENCODE_DEFAULTS = {
   port: 4096,
   hostname: "127.0.0.1",
@@ -33,32 +25,14 @@ export const config = {
 
   isAssistant: true,
 
-  /**
-   * Build the server URL dynamically.
-   * @param {number} port - Server port
-   * @returns {string} Server URL
-   */
   getServerUrl(port = OPENCODE_DEFAULTS.port): string {
     return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
   },
 
-  /**
-   * Build the URL with a workspace parameter.
-   * @param {string} workspace - Workspace directory path
-   * @param {number} port - Optional server port
-   * @returns {string} Full URL
-   */
   getWorkspaceUrl(_workspace: string, port = OPENCODE_DEFAULTS.port): string {
     return `http://${OPENCODE_DEFAULTS.hostname}:${port}`;
   },
 
-  /**
-   * Build the server command.
-   * @param {number} port - Server port
-   * @param {string} cors - CORS origin
-   * @param {string} workspace - Workspace path
-   * @returns {object} Command and arguments
-   */
   getServerCommand(
     port = OPENCODE_DEFAULTS.port,
     cors = OPENCODE_DEFAULTS.cors,
@@ -132,11 +106,9 @@ export const config = {
     userMessage: '[data-slot="user-message-text"]',
     userWrapper: '[data-slot="user-message-text"]',
     assistantMessage: '[data-slot="session-turn-assistant-content"] [data-component="markdown"]',
-    // Wrapper selector for assistant messages (test compatibility)
+    // NOTE: Keep wrapper/preferred/fallback selectors aligned for test compatibility.
     assistantWrapper: '[data-slot="session-turn-assistant-content"] [data-component="markdown"]',
-    // Preferred selector (test compatibility)
     preferred: '[data-slot="session-turn-assistant-content"] [data-component="markdown"]',
-    // Fallback
     fallback:
       '[data-slot="text-part-body"] [data-component="markdown"], [data-slot="session-turn-markdown"], [data-slot="session-turn-summary-section"] [data-component="markdown"], [data-component="user-message"], [data-component="markdown"]',
   },

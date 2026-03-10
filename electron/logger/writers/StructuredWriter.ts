@@ -1,14 +1,3 @@
-/**
- * Structured Log Writer - Primary log storage (JSONL format)
- *
- * Writes logs in JSON Lines format for:
- * - Easy parsing and filtering
- * - Streaming processing
- * - MCP tool integration
- *
- * @module electron/logger/writers/StructuredWriter
- */
-
 import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";

@@ -1,13 +1,3 @@
-/**
- * Git PR Tools for MCP Server
- *
- * PR workflows built on top of the GitHub CLI (`gh`):
- * - git_fork_setup: fork and branch preparation
- * - git_create_pr: create a PR
- * - git_check_guidelines: inspect contribution guidelines
- * - git_pr_status: current PR status
- */
-
 import { spawn } from "child_process";
 import { access, readFile } from "fs/promises";
 import { join } from "path";
@@ -350,7 +340,7 @@ export async function gitCheckGuidelines(
       output += `${t("guidelines.contentLabel")}\n   ${content.replace(/\n/g, "\n   ")}\n`;
       break;
     } catch {
-      // Continue scanning optional template locations.
+      // NOTE: Continue scanning optional template locations.
     }
   }
   if (!checks["prTemplate"]) {
@@ -371,7 +361,7 @@ export async function gitCheckGuidelines(
         break;
       }
     } catch {
-      // Continue scanning optional files for DCO references.
+      // NOTE: Continue scanning optional files for DCO references.
     }
   }
   if (!checks["dcoRequired"]) {
@@ -403,7 +393,7 @@ export async function gitCheckGuidelines(
       output += `\n${t("guidelines.makeTargets", { targets: targets.join(", ") })}\n`;
     }
   } catch {
-    // Makefile support is optional.
+    // NOTE: Makefile support is optional.
   }
 
   output += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -587,7 +577,7 @@ export const GIT_TOOL_DEFINITIONS = [
   },
 ];
 
-// Auto-generated metadata for listTools()
+// NOTE: Auto-generated metadata for listTools().
 export const GIT_TOOL_METADATA = {
   category: "Git & PR",
   emoji: "🔀",

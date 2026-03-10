@@ -1,14 +1,6 @@
-/**
- * CDP Tools - TypeScript
- */
+// NOTE: MCP tool handlers for CDP-driven Electron automation.
 
 import type { ToolResult } from "@shared/index-mcp.js";
-
-/**
- * CDP (Chrome DevTools Protocol) MCP Tools
- *
- * Tool handlers for remotely controlling the Electron application.
- */
 
 import { checkConnection, discoverTargets as _discoverTargets } from "../utils/cdp-connection.js";
 import { createMcpTranslatorSync } from "../utils/i18n/index.js";
@@ -33,9 +25,6 @@ function cdpT(key: string, params?: Record<string, string | number | boolean>): 
   return createMcpTranslatorSync()(`mcpServer.cdpTools.${key}`, params);
 }
 
-/**
- * Log CDP errors and return an error result
- */
 function cdpError(
   toolName: string,
   error: Error,
@@ -61,9 +50,6 @@ function isNonEmptyString(value: string | undefined): value is string {
   return value !== undefined && value.length > 0;
 }
 
-/**
- * Check the Electron connection status
- */
 export async function checkElectronConnection(): Promise<ToolResult> {
   try {
     const status = await checkConnection();
@@ -102,9 +88,6 @@ export async function checkElectronConnection(): Promise<ToolResult> {
   }
 }
 
-/**
- * Send a command to Electron (execute JavaScript)
- */
 export async function sendCommandToElectron(
   args: Record<string, unknown> = {}
 ): Promise<ToolResult> {
@@ -407,9 +390,6 @@ export async function toggleMcpPanelServers(
   }
 }
 
-/**
- * Capture a screenshot of the Electron window
- */
 export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<ToolResult> {
   const {
     format = "png",
@@ -420,7 +400,6 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
   try {
     const base64Data = await takeScreenshot(format, quality);
 
-    // Dosyaya kaydetme opsiyonu
     if (isNonEmptyString(savePath)) {
       const { writeFile } = await import("fs/promises");
       const buffer = Buffer.from(base64Data, "base64");
@@ -439,7 +418,6 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
       };
     }
 
-    // Return as Base64 (for small previews)
     return {
       content: [
         {
@@ -456,9 +434,6 @@ export async function takeCdpScreenshot(args: Record<string, unknown>): Promise<
   }
 }
 
-/**
- * Electron pencere bilgilerini al
- */
 export async function getElectronWindowInfo(): Promise<ToolResult> {
   try {
     const info = await getWindowInfo();
@@ -486,9 +461,6 @@ export async function getElectronWindowInfo(): Promise<ToolResult> {
   }
 }
 
-/**
- * Click an element by CSS selector
- */
 export async function clickElementBySelector(args: Record<string, unknown>): Promise<ToolResult> {
   const { selector } = args as { selector?: string };
 
@@ -524,9 +496,6 @@ export async function clickElementBySelector(args: Record<string, unknown>): Pro
   }
 }
 
-/**
- * Click an element by text content
- */
 export async function clickElementByText(args: Record<string, unknown>): Promise<ToolResult> {
   const { text, tagName = "*" } = args as { text?: string; tagName?: string };
 
@@ -563,9 +532,6 @@ export async function clickElementByText(args: Record<string, unknown>): Promise
   }
 }
 
-/**
- * Fill a value into an input field
- */
 export async function fillInputField(args: Record<string, unknown>): Promise<ToolResult> {
   const {
     selector,
@@ -605,9 +571,6 @@ export async function fillInputField(args: Record<string, unknown>): Promise<Too
   }
 }
 
-/**
- * Retrieve the page structure (DOM tree)
- */
 export async function getPageDomStructure(args: Record<string, unknown>): Promise<ToolResult> {
   const { maxDepth = 3 } = args as { maxDepth?: number };
 
@@ -631,9 +594,6 @@ export async function getPageDomStructure(args: Record<string, unknown>): Promis
   }
 }
 
-/**
- * Find an element and show its details
- */
 export async function inspectElement(args: Record<string, unknown>): Promise<ToolResult> {
   const { selector } = args as { selector?: string };
 
@@ -678,9 +638,6 @@ export async function inspectElement(args: Record<string, unknown>): Promise<Too
   }
 }
 
-/**
- * Birden fazla elementi bul
- */
 export async function queryElements(args: Record<string, unknown>): Promise<ToolResult> {
   const { selector, limit = 20 } = args as { selector?: string; limit?: number };
 
@@ -724,9 +681,6 @@ export async function queryElements(args: Record<string, unknown>): Promise<Tool
   }
 }
 
-/**
- * Send a keyboard key
- */
 export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolResult> {
   const {
     key,
@@ -766,9 +720,6 @@ export async function sendKeyPress(args: Record<string, unknown>): Promise<ToolR
   }
 }
 
-/**
- * Sayfada scroll yap
- */
 export async function scrollPage(args: Record<string, unknown>): Promise<ToolResult> {
   const {
     x = 0,

@@ -200,7 +200,7 @@ export async function runCommandScenario(
 
   emitCommand(options, "started");
 
-  // Scenario commands are intentionally serialized because later steps depend on earlier output.
+  // NOTE: Scenario commands are intentionally serialized because later steps depend on earlier output.
   /* eslint-disable no-await-in-loop */
   outer: for (let commandIndex = 0; commandIndex < options.commands.length; commandIndex += 1) {
     throwIfCancelled(options.signal);

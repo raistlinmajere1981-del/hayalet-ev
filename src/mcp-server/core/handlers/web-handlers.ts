@@ -1,10 +1,3 @@
-/**
- * Web Tool Handlers
- * Web search and content fetching
- *
- * Co-located: definition + handler in ToolEntry format
- */
-
 import { webSearch } from "../../tools/web/search.js";
 import { webFetchUrl, webSearchAndFetch } from "../../tools/web/fetch.js";
 import { WEB_TOOL_DEFINITIONS } from "../../tools/web/index.js";
@@ -13,7 +6,7 @@ import type { ToolEntry } from "../registry.js";
 export function createWebTools(): ToolEntry[] {
   return [
     {
-      definition: WEB_TOOL_DEFINITIONS[0], // hev_web_search
+      definition: WEB_TOOL_DEFINITIONS[0],
       handler: async (args): Promise<unknown> => {
         return await webSearch({
           query: (args as { query: string }).query,
@@ -30,7 +23,7 @@ export function createWebTools(): ToolEntry[] {
       },
     },
     {
-      definition: WEB_TOOL_DEFINITIONS[1], // hev_web_fetch_url
+      definition: WEB_TOOL_DEFINITIONS[1],
       handler: async (args): Promise<unknown> => {
         return await webFetchUrl({
           url: (args as { url: string }).url,
@@ -40,7 +33,7 @@ export function createWebTools(): ToolEntry[] {
       },
     },
     {
-      definition: WEB_TOOL_DEFINITIONS[2], // hev_web_search_and_fetch
+      definition: WEB_TOOL_DEFINITIONS[2],
       handler: async (args): Promise<unknown> => {
         return await webSearchAndFetch({
           query: (args as { query: string }).query,

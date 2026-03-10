@@ -5,9 +5,6 @@ function findReplaceT(key: string, params?: Record<string, string | number>): st
   return createMcpTranslatorSync()(`mcpServer.fileUtils.findReplace.${key}`, params);
 }
 
-/**
- * Find and replace text in a file.
- */
 export async function findAndReplace(
   filePath: string,
   find: string,

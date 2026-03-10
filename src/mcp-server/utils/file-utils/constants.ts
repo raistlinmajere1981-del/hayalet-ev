@@ -1,7 +1,7 @@
-/** Maximum file size for collapsed view (bytes) */
+// NOTE: Maximum file size for collapsed view (bytes).
 export const COLLAPSE_THRESHOLD = 5000;
 
-/** Supported code file extensions */
+// NOTE: Supported code file extensions.
 export const CODE_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
@@ -26,7 +26,7 @@ export const CODE_EXTENSIONS = new Set([
   ".svelte",
 ]);
 
-/** Binary file extensions (skipped) */
+// NOTE: Binary file extensions (skipped).
 export const BINARY_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -62,7 +62,7 @@ export const BINARY_EXTENSIONS = new Set([
   ".sqlite3",
 ]);
 
-/** Directories to ignore */
+// NOTE: Directories to ignore.
 export const IGNORE_DIRS = new Set([
   "node_modules",
   ".git",

@@ -1,9 +1,3 @@
-/**
- * Settings Types
- *
- * @module src/js/types/settings
- */
-
 import type { SlotId, ProviderId, AllProviderId, AssistantProviderId } from "./common.js";
 import type { AppLanguage } from "./i18n.js";
 export type { AppLanguage } from "./i18n.js";
@@ -23,9 +17,6 @@ export function isAssistantAccountsSettingsPath(path: string): boolean {
   return matchesSettingsPath(path, ASSISTANT_ACCOUNTS_SETTINGS_KEY);
 }
 
-// Account Types
-
-/** Account metadata. */
 export interface Account {
   id: string;
   provider: AllProviderId;
@@ -40,15 +31,11 @@ export interface Account {
   lastSessionUrl?: string | null;
 }
 
-/** Slot-to-account mapping. */
 export interface SlotAssignment {
   slot: SlotId;
   accountId: string | null;
 }
 
-// Settings Schema Types
-
-/** Slot settings. */
 export interface SlotSettings {
   accountId: string | null;
   provider?: ProviderId | null;
@@ -63,13 +50,10 @@ export interface SlotSettings {
   lastConnectionState?: "connected" | "disconnected" | null;
 }
 
-/** Preferred upload method. */
 export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "dragdrop" | "injection";
 
-/** Preferred message injection method. */
 export type MessageMethod = "injection" | "xdotools";
 
-/** Global application settings. */
 export interface GeneralSettings {
   theme?: "light" | "dark" | "system";
   language?: AppLanguage;
@@ -78,7 +62,6 @@ export interface GeneralSettings {
   autoUpdate?: boolean;
 }
 
-/** Upload settings. */
 export interface UploadSettings {
   preferredMethod: UploadMethod;
   fallbackMethod?: UploadMethod;
@@ -86,7 +69,6 @@ export interface UploadSettings {
   allowedTypes?: string[];
 }
 
-/** Google Drive settings. */
 export interface GoogleDriveSettings {
   connected: boolean;
   email?: string;
@@ -103,7 +85,6 @@ export interface OpencodeUiModelPreferences {
   lastSelectedModelKey?: string | null;
 }
 
-/** Root application settings schema. */
 export interface AppSettings {
   version?: string;
   general?: GeneralSettings;
@@ -117,11 +98,11 @@ export interface AppSettings {
   slots: {
     ai1: SlotSettings;
     ai2: SlotSettings;
-    [key: string]: SlotSettings; // Dynamic slot access
+    [key: string]: SlotSettings;
   };
-  assistantSlot?: SlotSettings; // AI0 slot
+  assistantSlot?: SlotSettings;
   accounts: Account[];
-  assistantAccounts?: Account[]; // AI0 accounts
+  assistantAccounts?: Account[];
   upload?: UploadSettings;
   googleDrive?: GoogleDriveSettings;
   assistants?: {
@@ -132,18 +113,13 @@ export interface AppSettings {
     lastOpencodeUrl?: string | null;
     lastOpencodeUiSessionId?: string | null;
     lastActiveRelay?: string | null;
-    /** MCP servers disabled by the user. */
     disabledMcpServers?: string[];
-    /** OpenCode server startup preferences. */
     opencode?: {
-      /** Uses the PATH `opencode` binary when empty or null. */
+      // NOTE: Empty or null uses the PATH "opencode" binary.
       binaryPath?: string | null;
-      /** Preferred starting port for the server. */
       defaultPort?: number;
-      /** Version resolved from the last successful binary probe. */
       version?: string | null;
     };
-    /** OpenCode UI model selection preferences. */
     opencodeUi?: OpencodeUiModelPreferences;
   };
   logging?: {
@@ -155,12 +131,9 @@ export interface AppSettings {
     enableStateSnapshots?: boolean;
     snapshotInterval?: number;
   };
-  [key: string]: unknown; // Additional forward-compatible fields
+  [key: string]: unknown;
 }
 
-// Settings Events
-
-/** Settings change event. */
 export interface SettingsChangeEvent {
   path: string;
   oldValue: unknown;
@@ -168,5 +141,4 @@ export interface SettingsChangeEvent {
   timestamp: number;
 }
 
-/** Settings listener callback. */
 export type SettingsListener = (event: SettingsChangeEvent) => void;

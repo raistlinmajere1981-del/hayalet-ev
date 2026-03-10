@@ -1,11 +1,4 @@
-/**
- * MemoryOverlay - MCP shared memory viewer
- *
- * Opened from the 🧠 button on the Assistant page.
- * Uses the `memory-search`, `memory-delete`, `memory-update`, `memory-write`,
- * `memory-prune`, and `memory-delete-all` IPC channels.
- */
-
+// NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory.
 import { AppI18n } from "../../modules/i18n/index.js";
 
 interface MemoryItem {
@@ -86,7 +79,6 @@ export class MemoryOverlay {
   private statImportance: HTMLElement | null = null;
   private statUpdated: HTMLElement | null = null;
 
-  // New form
   private newContent: HTMLTextAreaElement | null = null;
   private newSummary: HTMLInputElement | null = null;
   private newTags: HTMLInputElement | null = null;
@@ -96,7 +88,6 @@ export class MemoryOverlay {
   private newPinned: HTMLInputElement | null = null;
   private newSaveBtn: HTMLButtonElement | null = null;
 
-  // Bulk
   private pruneMaxInput: HTMLInputElement | null = null;
   private pruneDaysInput: HTMLInputElement | null = null;
   private pruneBtn: HTMLButtonElement | null = null;
@@ -308,7 +299,6 @@ export class MemoryOverlay {
       const provider = optionalNonEmpty(item.sourceProvider);
       if (provider !== undefined) providers.add(provider);
     }
-    // Update only when the options differ from the current state
     const existingOptions = Array.from(this.filterProvider.options)
       .map((o) => o.value)
       .filter((v) => v !== "");
@@ -318,7 +308,6 @@ export class MemoryOverlay {
       newProviders.some((p) => !existingOptions.includes(p));
 
     if (changed) {
-      // Preserve the first option
       while (this.filterProvider.options.length > 1) {
         this.filterProvider.remove(1);
       }
@@ -335,7 +324,6 @@ export class MemoryOverlay {
   private _renderList(items: MemoryItem[]): void {
     if (!this.listEl) return;
 
-    // Clear current cards (keep the empty state)
     const cards = this.listEl.querySelectorAll(".memory-card");
     cards.forEach((c) => {
       c.remove();
@@ -421,7 +409,6 @@ export class MemoryOverlay {
       </div>
     `;
 
-    // Expand toggle
     const contentEl = card.querySelector<HTMLElement>(".memory-card-content");
     const expandBtn = card.querySelector<HTMLElement>(".memory-card-expand-btn");
     if (contentEl && expandBtn) {
@@ -435,15 +422,12 @@ export class MemoryOverlay {
       });
     }
 
-    // Pin toggle
     const pinBtn = card.querySelector(".pin-btn");
     pinBtn?.addEventListener("click", () => void this._handlePin(item));
 
-    // Delete
     const delBtn = card.querySelector(".delete-btn");
     delBtn?.addEventListener("click", () => void this._handleDelete(item.id));
 
-    // Edit
     const editBtn = card.querySelector(".edit-btn");
     const editForm = card.querySelector<HTMLElement>(".memory-card-edit-form");
     const editCancelBtn = card.querySelector<HTMLElement>(".edit-cancel-btn");
@@ -454,7 +438,6 @@ export class MemoryOverlay {
     this._setupImportancePicker(editImportancePicker, (v) => {
       editImportanceValue = v;
     });
-    // Highlight initial
     if (editImportancePicker) {
       const spans = editImportancePicker.querySelectorAll("span[data-star]");
       spans.forEach((s) => {
@@ -573,7 +556,6 @@ export class MemoryOverlay {
         sourceProvider: "app-ui",
       });
 
-      // Reset the form
       if (this.newContent) this.newContent.value = "";
       if (this.newSummary) this.newSummary.value = "";
       if (this.newTags) this.newTags.value = "";

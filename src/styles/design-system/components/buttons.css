@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Button Components
- * Modern buttons with action animations
- * @version 5.4.0
- */
-
-/* === BASE BUTTON === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -37,7 +30,6 @@
   pointer-events: none;
 }
 
-/* === SIZE VARIANTS === */
 .btn-xs {
   height: var(--btn-height-xs);
   padding: 0 var(--space-2);
@@ -60,7 +52,6 @@
   width: var(--btn-height-sm);
 }
 
-/* === PRIMARY BUTTON === */
 .btn-primary {
   background: var(--accent-gradient);
   color: var(--text-inverse);
@@ -79,7 +70,6 @@
   transform: translateY(0);
 }
 
-/* === SECONDARY BUTTON === */
 .btn-secondary {
   background: var(--bg-glass);
   color: var(--text-primary);
@@ -93,7 +83,6 @@
   color: var(--color-accent);
 }
 
-/* === GHOST BUTTON === */
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
@@ -105,7 +94,6 @@
   color: var(--text-primary);
 }
 
-/* === DANGER BUTTON === */
 .btn-danger {
   background: var(--color-error);
   color: var(--text-on-brand);
@@ -117,7 +105,6 @@
   box-shadow: var(--glow-error);
 }
 
-/* === ICON BUTTONS === */
 .icon-btn {
   display: inline-flex;
   align-items: center;

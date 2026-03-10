@@ -469,7 +469,6 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
   }
 }
 
-/** Provider hostname allowlists used by the webview navigation guard. */
 const PROVIDER_ALLOWED_DOMAINS: Record<string, string[]> = {
   "chatgpt.com": ["chatgpt.com", "auth.openai.com", "auth0.openai.com", "openai.com"],
   "gemini.google.com": ["gemini.google.com", "accounts.google.com", "myaccount.google.com"],
@@ -478,16 +477,13 @@ const PROVIDER_ALLOWED_DOMAINS: Record<string, string[]> = {
   localhost: ["127.0.0.1", "localhost"],
 };
 
-/**
- * Checks whether the target URL belongs to the provider domain.
- * Determines the provider domain from the webview partition or current URL.
- */
 function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
   let target: URL;
   try {
     target = new URL(targetUrl);
   } catch {
-    return true; // Ignore malformed targets instead of blocking navigation entirely.
+    // NOTE: Ignore malformed targets instead of blocking navigation entirely.
+    return true;
   }
 
   // NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.
@@ -499,12 +495,14 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
   try {
     providerHostname = new URL(currentUrl).hostname;
   } catch {
-    return true; // Skip enforcement when the current provider URL is unavailable.
+    // NOTE: Skip enforcement when the current provider URL is unavailable.
+    return true;
   }
 
   const allowedDomains = findAllowedDomains(providerHostname);
   if (allowedDomains === null) {
-    return true; // Unknown providers fall back to permissive navigation.
+    // NOTE: Unknown providers fall back to permissive navigation.
+    return true;
   }
 
   const targetHostname = target.hostname;
@@ -514,7 +512,6 @@ function isUrlAllowedInWebview(targetUrl: string, currentUrl: string): boolean {
   });
 }
 
-/** Resolve the allowlist for a provider hostname. */
 function findAllowedDomains(hostname: string): string[] | null {
   for (const [key, domains] of Object.entries(PROVIDER_ALLOWED_DOMAINS)) {
     if (hostname === key || hostname.endsWith(`.${key}`)) {
@@ -529,11 +526,6 @@ function findAllowedDomains(hostname: string): string[] | null {
   return null;
 }
 
-/**
- * Adds the navigation guard to every webview.
- * - will-navigate: links opened in the same window
- * - setWindowOpenHandler: target="_blank" or window.open() calls
- */
 function setupWebviewNavigationGuard(): void {
   app.on("web-contents-created", (_event, contents) => {
     if (contents.getType() !== "webview") return;

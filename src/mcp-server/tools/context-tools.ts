@@ -1,13 +1,3 @@
-/**
- * Context Generation Tools for MCP Server
- *
- * Multi-level project context generation with Repomix integration:
- * - hev_context_generate: generate context for a selected level
- * - hev_context_module: generate focused context for a specific module
- * - hev_context_status: inspect current context cache status
- * - hev_context_diff: inspect files affected by recent changes
- */
-
 import { execSync, spawn } from "child_process";
 import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
 import { join } from "path";
@@ -262,7 +252,7 @@ export function contextStatus(projectRoot: string): ContextStatus {
   try {
     status.repomixVersion = execSync("repomix --version", { encoding: "utf-8" }).trim();
   } catch {
-    /* ignore */
+    // NOTE: Intentionally ignored.
   }
 
   for (const level of ["L1", "L2", "L3", "L4"] as ContextLevel[]) {
@@ -297,10 +287,6 @@ export function contextStatus(projectRoot: string): ContextStatus {
 
   return status;
 }
-
-// ============================================
-// Tool 3: Module Context (Custom)
-// ============================================
 
 export async function moduleContext(
   projectRoot: string,
@@ -393,10 +379,6 @@ export async function moduleContext(
   };
 }
 
-// ============================================
-// Tool 4: Read Context
-// ============================================
-
 export function readContext(
   projectRoot: string,
   level: ContextLevel
@@ -423,10 +405,6 @@ export function readContext(
     },
   };
 }
-
-// ============================================
-// Tool Definitions
-// ============================================
 
 export const CONTEXT_TOOL_DEFINITIONS = [
   {
@@ -561,7 +539,6 @@ export const CONTEXT_TOOL_DEFINITIONS = [
   },
 ];
 
-// Auto-generated metadata for listTools()
 export const CONTEXT_TOOL_METADATA = {
   category: "Context Generation",
   emoji: "📊",

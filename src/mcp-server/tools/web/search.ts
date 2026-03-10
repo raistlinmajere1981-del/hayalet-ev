@@ -1,11 +1,3 @@
-/**
- * Web Search Tools - Part 1: Core Search Operations
- *
- * Provider-backed web search with SearXNG first and DuckDuckGo fallback.
- *
- * @module web/search
- */
-
 import { search, SafeSearchType } from "duck-duck-scrape";
 import { logToolError } from "../../utils/mcp-logger.js";
 import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -139,10 +131,6 @@ function recordRequest(): void {
   lastRequestTime = now;
 }
 
-// ============================================
-// Provider Implementations
-// ============================================
-
 async function searchWithDuckDuckGo(options: WebSearchOptions): Promise<ToolResult> {
   const { query, numResults = 10, safeSearch = true, region = "tr-tr" } = options;
   const t = await createMcpTranslator();
@@ -268,10 +256,6 @@ async function searchWithSearxng(options: WebSearchOptions): Promise<ToolResult>
   throw new Error(lastError);
 }
 
-// ============================================
-// Search Entry Point
-// ============================================
-
 export async function webSearch(options: WebSearchOptions): Promise<ToolResult> {
   const provider = resolveProvider(options.provider);
   const t = await createMcpTranslator();
@@ -352,10 +336,6 @@ function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + "...";
 }
-
-// ============================================
-// Tool Definitions
-// ============================================
 
 export const WEB_SEARCH_TOOL = {
   name: "hev_web_search",

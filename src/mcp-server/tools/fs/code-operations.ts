@@ -1,8 +1,4 @@
-/**
- * Filesystem Tools - Code Operations
- *
- * Code-specific operations: expand chunks, find & replace
- */
+// NOTE: Code-specific helpers for expand and find/replace.
 
 import { readFile } from "fs/promises";
 import { expandSymbols, expandLineRanges, addLineNumbers } from "../../utils/file-utils.js";
@@ -35,19 +31,18 @@ export async function expandCodeChunks(
   patterns: string[] = []
 ): Promise<{ content: string; error?: string }> {
   try {
-    // Search by symbol patterns first.
+    // NOTE: Prefer symbol expansion when patterns are provided.
     if (patterns.length > 0) {
       const content = await expandSymbols(filePath, patterns);
       return { content };
     }
 
-    // Expand via explicit line ranges.
+    // NOTE: Fall back to explicit line ranges.
     if (lineRanges.length > 0) {
       const content = await expandLineRanges(filePath, lineRanges);
       return { content };
     }
 
-    // If no filter is provided, return the whole file.
     const fileContent = await readFile(filePath, "utf-8");
     return { content: addLineNumbers(fileContent) };
   } catch (error) {
@@ -62,19 +57,17 @@ export async function findAndReplaceCode(
   replace: string,
   ignoreWhitespace?: boolean,
   dryRun?: boolean,
-  validateSyntax?: boolean // NEW: Prettier-based syntax validation (default: true)
+  validateSyntax?: boolean
 ): Promise<ReplaceResult> {
   const progress = createProgress({ operation: codeOpsT("progress.operation"), quiet: true });
   progress.update(0, codeOpsT("progress.processing", { filePath }));
 
-  // First, do a dry-run to get the new content for validation
+  // NOTE: Run a dry-run first to validate before writing.
   const result = await findAndReplace(filePath, find, replace, {
     ...(ignoreWhitespace !== undefined ? { ignoreWhitespace } : {}),
-    dryRun: true, // Always dry-run first for validation
+    dryRun: true,
   });
 
-  // NEW: Prettier-based syntax validation (if enabled and code file)
-  // NEW: Prettier-based syntax validation (if enabled and code file)
   if (
     validateSyntax !== false &&
     result.success &&
@@ -83,7 +76,6 @@ export async function findAndReplaceCode(
   ) {
     try {
       const originalContent = await readFile(filePath, "utf-8");
-      // Manually apply the replacement to get new content for validation
       const newContent =
         ignoreWhitespace === true
           ? originalContent.replace(
@@ -112,24 +104,21 @@ export async function findAndReplaceCode(
         };
       }
     } catch (err) {
-      // If validation fails unexpectedly, log but don't block
+      // NOTE: Validation failures should not block execution.
       logToolError("findAndReplaceCode:syntaxValidation", err as Error, { filePath });
     }
   }
 
-  // If validation passed and not dry-run, actually write the file
   if (dryRun !== true && result.success) {
     await findAndReplace(filePath, find, replace, {
       ...(ignoreWhitespace !== undefined ? { ignoreWhitespace } : {}),
-      dryRun: false, // Now actually write
+      dryRun: false,
     });
   }
 
-  // Build a context preview when a change was applied.
   let contextPreview: string | undefined;
   if (result.success && result.replacements > 0) {
     try {
-      // Find the first changed line.
       const content = await readFile(filePath, "utf-8");
       const lines = content.split("\n");
       let firstChangeLineIndex = -1;
@@ -143,7 +132,6 @@ export async function findAndReplaceCode(
       }
 
       if (firstChangeLineIndex >= 0) {
-        // Show context around the first changed line.
         contextPreview = await getContextPreview(
           filePath,
           firstChangeLineIndex,
@@ -152,7 +140,7 @@ export async function findAndReplaceCode(
         );
       }
     } catch (err) {
-      // Continue silently if the context preview cannot be built.
+      // NOTE: Continue silently if the context preview cannot be built.
     }
   }
 
@@ -178,7 +166,6 @@ export async function findAndReplaceCode(
   };
 }
 
-// Tool Definitions
 export const EXPAND_CODE_CHUNKS_TOOL = {
   name: "hev_fs_expand_code_chunks",
   description: codeOpsDefT("expand.description"),

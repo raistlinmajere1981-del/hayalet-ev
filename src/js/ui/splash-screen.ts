@@ -1,32 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * Splash Screen Manager
- *
- * Full-screen loading splash with progress indication.
- * Shows during app initialization with minimum display time.
- *
- * @example
- * ```typescript
- * import { SplashScreen } from './ui';
- *
- * // Show splash (usually already visible from HTML)
- * SplashScreen.show();
- *
- * // Update progress
- * SplashScreen.setStatus('Loading settings...');
- * SplashScreen.setProgress(25);
- *
- * // Continue with loading...
- * SplashScreen.setStatus('Starting modules...');
- * SplashScreen.setProgress(50);
- *
- * // Complete and hide (waits minimum time)
- * SplashScreen.setStatus('Ready!');
- * SplashScreen.setProgress(100);
- * await SplashScreen.hide(); // Waits min 2s, then fades out
- * ```
- */
-
 import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
 import { AppI18n } from "../modules/i18n/index.js";
@@ -108,7 +80,7 @@ const splashScreen = {
     if (!container) {
       container = createSplashElement();
       document.body.insertBefore(container, document.body.firstChild);
-      isInitialized = false; // Force re-fetch elements
+      isInitialized = false; // NOTE: Force re-fetch after injecting DOM.
       getElements();
     }
 
@@ -120,11 +92,6 @@ const splashScreen = {
     logSplashDebug("splashShown", undefined, { timestamp: showTime });
   },
 
-  /**
-   * Hide splash screen with fade animation
-   * Waits for minimum display time before hiding
-   * @returns Promise that resolves when fully hidden
-   */
   async hide(): Promise<void> {
     const { container } = getElements();
     if (!container || !isVisible) return;
@@ -150,10 +117,6 @@ const splashScreen = {
     });
   },
 
-  /**
-   * Set progress bar percentage
-   * @param percent - Progress value (0-100)
-   */
   setProgress(percent: number): void {
     const { progress } = getElements();
     if (!progress) return;
@@ -176,10 +139,6 @@ const splashScreen = {
     progress.classList.add("indeterminate");
   },
 
-  /**
-   * Set status message
-   * @param message - Status text to display
-   */
   setStatus(message: string): void {
     const { status } = getElements();
     if (!status) return;

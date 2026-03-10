@@ -1,9 +1,3 @@
-/**
- * Provider Tester - Type Definitions & Constants
- *
- * @module electron/provider-tester/types
- */
-
 import { PROVIDER_TEST_TIMEOUTS } from "../../shared/timeouts.ts";
 
 import type {
@@ -30,8 +24,6 @@ type ResetConversationMessagesParams = {
   webUrl: string;
 };
 
-// ─── Constants ───
-
 export const PROVIDER_TEST = {
   TEST_MESSAGE:
     "Sadece 1'den 20'ye kadar numaralari, her satirda bir tane olacak sekilde yaz. Baska hicbir sey ekleme.",
@@ -45,8 +37,6 @@ export const PROVIDER_TEST = {
   RETRY_DOM_CHECK: 3,
   RETRY_DELAY: PROVIDER_TEST_TIMEOUTS.RETRY_DELAY,
 } as const;
-
-// ─── Interfaces ───
 
 export interface ElementCheckResult {
   exists: boolean;
@@ -129,12 +119,6 @@ export interface ProviderTestRunOptions {
   abortSignal?: AbortSignal;
 }
 
-// ─── Test Context ───
-
-/**
- * Shared context passed to all test functions.
- * Contains webview, config, and utility helpers.
- */
 export interface TestContext {
   slot: ProviderTestSlot;
   webview: WebviewTag;

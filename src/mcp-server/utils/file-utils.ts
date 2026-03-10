@@ -1,10 +1,3 @@
-/**
- * File Utilities facade
- *
- * Keeps the public API backward-compatible while delegating implementation
- * to focused submodules.
- */
-
 export {
   COLLAPSE_THRESHOLD,
   CODE_EXTENSIONS,

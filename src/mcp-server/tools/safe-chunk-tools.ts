@@ -1,9 +1,5 @@
-/**
- * Safe Chunk Tools - safe chunking for large files
- *
- * Problem: large files may become incomplete because of LLM output token limits.
- * Solution: streaming writes + checksum validation + rollback.
- */
+// NOTE: Large file outputs can exceed LLM token limits.
+// NOTE: Use streaming writes, checksums, and rollback to keep chunked writes safe.
 
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { createHash } from "crypto";
@@ -15,7 +11,7 @@ import { logToolError } from "../utils/mcp-logger.js";
 interface ChunkMetadata {
   index: number;
   totalChunks: number;
-  checksum: string; // MD5 of content
+  checksum: string;
   size: number;
   lineCount: number;
 }
@@ -29,7 +25,7 @@ interface ChunkSession {
   metadata: ChunkMetadata[];
 }
 
-// Keep live sessions in memory until finalize or cancel completes.
+// NOTE: Keep live sessions in memory until finalize or cancel completes.
 const activeSessions = new Map<string, ChunkSession>();
 
 function safeChunkT(key: string, params?: Record<string, string | number | boolean>): string {
@@ -55,7 +51,7 @@ function validateUTF8(content: string): boolean {
 }
 
 function validateChunkBoundary(content: string): { valid: boolean; warning?: string } {
-  // Prefer newline-terminated chunks so split boundaries stay predictable.
+  // NOTE: Prefer newline-terminated chunks so split boundaries stay predictable.
   if (!content.endsWith("\n")) {
     return {
       valid: true,
@@ -63,10 +59,10 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
     };
   }
 
-  const lastChar = content.slice(-2, -1); // Before newline
+  const lastChar = content.slice(-2, -1);
   const lastCharCode = lastChar.charCodeAt(0);
 
-  // Reject chunks that end halfway through a surrogate pair.
+  // NOTE: Reject chunks that end halfway through a surrogate pair.
   if (lastCharCode >= 0xd800 && lastCharCode <= 0xdbff) {
     return {
       valid: false,
@@ -77,14 +73,7 @@ function validateChunkBoundary(content: string): { valid: boolean; warning?: str
   return { valid: true };
 }
 
-/**
- * hev_fs_start_chunked_session - start a safe chunked write session
- *
- * Usage:
- * 1. Start the session (provide the total chunk count)
- * 2. Call hev_fs_write_chunk for each chunk
- * 3. Call hev_fs_finalize_chunked to assemble the file
- */
+// NOTE: Call order: start session -> write chunks -> finalize.
 export function startChunkedSession(
   filePath: string,
   totalChunks: number,
@@ -136,9 +125,6 @@ export function startChunkedSession(
   }
 }
 
-/**
- * hev_fs_write_chunk - validate and persist a single chunk
- */
 export async function writeChunk(
   sessionId: string,
   chunkIndex: number,
@@ -280,9 +266,6 @@ export async function writeChunk(
   }
 }
 
-/**
- * hev_fs_finalize_chunked - merge chunks and write the file
- */
 export async function finalizeChunked(
   sessionId: string,
   projectRoot: string,
@@ -377,7 +360,7 @@ export async function finalizeChunked(
         // eslint-disable-next-line no-await-in-loop
         await unlink(chunkPath);
       } catch {
-        // Ignore temp cleanup failures after the final file is already durable.
+        // NOTE: Ignore temp cleanup failures after the final file is already durable.
       }
     }
 
@@ -415,9 +398,6 @@ export async function finalizeChunked(
   }
 }
 
-/**
- * hev_fs_chunk_session_status - show the session status
- */
 export function getSessionStatus(sessionId: string): {
   success: boolean;
   message: string;
@@ -491,9 +471,6 @@ export function getSessionStatus(sessionId: string): {
   };
 }
 
-/**
- * hev_fs_cancel_chunk_session - cancel the session and clean up temp chunks
- */
 export async function cancelSession(
   sessionId: string,
   projectRoot: string
@@ -516,7 +493,7 @@ export async function cancelSession(
         // eslint-disable-next-line no-await-in-loop
         await unlink(chunkPath);
       } catch {
-        // Ignore missing temp files during best-effort cleanup.
+        // NOTE: Ignore missing temp files during best-effort cleanup.
       }
     }
 
@@ -709,7 +686,7 @@ export const SAFE_CHUNK_TOOL_DEFINITIONS = [
   },
 ];
 
-// Auto-generated metadata for listTools()
+// NOTE: Auto-generated metadata for listTools().
 export const SAFE_CHUNK_TOOL_METADATA = {
   category: "Filesystem",
   emoji: "📁",

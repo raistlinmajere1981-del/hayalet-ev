@@ -1,7 +1,3 @@
-/**
- * LogTools - log reading and query utilities.
- */
-
 import { readFile, readdir } from "fs/promises";
 import { basename, dirname, join } from "path";
 import { existsSync } from "fs";
@@ -79,7 +75,6 @@ function parseStructuredLine(line: string): StructuredLine | null {
   }
 }
 
-/** Log read arguments */
 interface LogReadArgs {
   app?: "app" | "mcp-server" | "ghost-agent";
   type?: "all" | "console" | "error" | "structured";
@@ -99,17 +94,11 @@ function resolveAppLogDir(
   return join(baseLogsDir, app);
 }
 
-/**
- * read_electron_logs handler
- *
- * Note: this defaults to "console" logs. Console logs are now combined
- * main + renderer output, while structured logs remain available for JSON analysis.
- */
 export async function readElectronLogs(logDir: string, args?: LogReadArgs): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const {
     app = "app",
-    type = "console", // Default: console (combined main + renderer logs).
+    type = "console",
     tail = 50,
     source,
     level,
@@ -233,16 +222,12 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
   };
 }
 
-/** Session list item */
 interface SessionListItem {
   id: string;
   hasErrors: boolean;
   hasSummary: boolean;
 }
 
-/**
- * list_log_sessions handler
- */
 export async function listLogSessions(
   logDir: string,
   args?: { app?: "app" | "mcp-server" | "ghost-agent"; limit?: number }
@@ -304,9 +289,6 @@ export async function listLogSessions(
   }
 }
 
-/**
- * get_session_summary handler
- */
 export async function getSessionSummary(
   logDir: string,
   args?: { app?: "app" | "mcp-server" | "ghost-agent"; sessionId?: string }

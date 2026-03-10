@@ -1,16 +1,6 @@
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import type { TranslationParams } from "@shared/i18n.js";
-/**
- * AnalyzeController - Analyze page controller (orchestrator)
- *
- * Submodules:
- * - analyze/message-renderer.js: Message rendering
- * - analyze/upload-handler.js: File upload flow
- * - analyze/context-menu.js: Message actions and the read modal
- * - analyze/draft-manager.js: Draft management
- */
-
 import { SettingsManager } from "../modules/settings-manager.js";
 import { TrafficManager } from "../modules/traffic-manager.js";
 import { CoreEngine } from "../modules/core-engine.js";
@@ -357,7 +347,7 @@ export class AnalyzeController {
       void this.handleAnalyzeStop();
     });
 
-    // Prevent duplicate sends while the button is already loading.
+    // NOTE: Prevent duplicate sends while the button is already loading.
     const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
     if (sendBtn) {
       sendBtn.addEventListener("click", () => {
@@ -376,7 +366,7 @@ export class AnalyzeController {
       this.updateSendButtonState();
     });
 
-    // Allow Ctrl+Enter sending while still preventing duplicate dispatches.
+    // NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.
     document.getElementById("compose-input")?.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
@@ -680,9 +670,7 @@ export class AnalyzeController {
   onHide(): void {
     try {
       this._persistDraft();
-    } catch (_) {
-      /* noop */
-    }
+    } catch (_) {}
 
     if (this.beforeUnloadHandler) {
       window.removeEventListener("beforeunload", this.beforeUnloadHandler);

@@ -1,9 +1,3 @@
-/**
- * Selector Validator
- *
- * Tests selectors inside webviews through CDP.
- */
-
 import WebSocket from "ws";
 import { discoverTargets, sendCDPCommand } from "./cdp-connection.js";
 import { createMcpTranslatorSync } from "./i18n/index.js";
@@ -74,9 +68,6 @@ function selectorValidatorT(
   return createMcpTranslatorSync()(`mcpServer.cdpTools.connectionErrors.${key}`, params);
 }
 
-/**
- * Find all webview targets and label them by provider
- */
 export async function discoverWebviews(
   providerConfigs: ProviderConfig[]
 ): Promise<WebviewTarget[]> {
@@ -114,9 +105,6 @@ export async function discoverWebviews(
     });
 }
 
-/**
- * Find the webview for a specific provider
- */
 export async function findProviderWebview(
   provider: string,
   providerConfigs: ProviderConfig[]
@@ -125,9 +113,6 @@ export async function findProviderWebview(
   return webviews.find((w) => w.provider === provider) ?? null;
 }
 
-/**
- * Connect to a webview
- */
 async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSocket> {
   return await new Promise((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
@@ -149,9 +134,6 @@ async function connectToWebview(wsUrl: string, timeout = 10000): Promise<WebSock
   });
 }
 
-/**
- * Test a single selector inside a webview
- */
 export async function testSelector(ws: WebSocket, selector: string): Promise<SelectorTestResult> {
   try {
     const jsCode = `
@@ -241,9 +223,6 @@ export async function testSelector(ws: WebSocket, selector: string): Promise<Sel
   }
 }
 
-/**
- * Inspect an element inside the webview (detailed).
- */
 export async function inspectElement(
   ws: WebSocket,
   selector: string,
@@ -386,9 +365,6 @@ export async function inspectElement(
   }
 }
 
-/**
- * Validate all selectors for a provider.
- */
 export async function validateProviderSelectors(
   webview: WebviewTarget,
   selectors: FlatSelector[],
@@ -472,9 +448,6 @@ export async function validateProviderSelectors(
   return result;
 }
 
-/**
- * Provider'da tek element inspect et
- */
 export async function inspectProviderElement(
   webview: WebviewTarget,
   selector: string,

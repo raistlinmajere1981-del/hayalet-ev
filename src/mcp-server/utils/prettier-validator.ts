@@ -1,11 +1,4 @@
-/**
- * Prettier-based Syntax Validation
- *
- * Industry-standard syntax validation using Prettier's parser
- * Replaces custom bracket validation with battle-tested solution (100M+ weekly downloads)
- *
- * @module prettier-validator
- */
+// NOTE: Use Prettier parsing for syntax validation instead of custom bracket checks.
 
 import * as prettier from "prettier";
 import { logToolError } from "./mcp-logger.js";
@@ -18,25 +11,11 @@ export interface PrettierValidationResult {
   errorColumn?: number;
 }
 
-/**
- * Validate syntax using Prettier
- *
- * @param code - Code to validate
- * @param filePath - File path (for auto-detecting parser)
- * @param options - Prettier options
- * @returns Validation result with formatted code if successful
- *
- * @example
- * const result = await validateWithPrettier('const x = 10;', 'test.js');
- * if (result.valid) {
- *   console.log('Valid syntax');
- * }
- */
 export async function validateWithPrettier(
   code: string,
   filePath: string,
   options?: {
-    format?: boolean; // Return formatted code?
+    format?: boolean;
     semi?: boolean;
     singleQuote?: boolean;
     tabWidth?: number;
@@ -79,16 +58,6 @@ export async function validateWithPrettier(
   }
 }
 
-/**
- * Validate bracket balance by attempting to format
- *
- * Prettier will fail if brackets are unbalanced
- * This is more reliable than custom string-counting methods
- *
- * @example
- * const result = await validateBrackets('function test() { return true;', 'test.js');
- * // result.balanced = false (missing closing brace)
- */
 export async function validateBrackets(
   code: string,
   filePath: string
@@ -104,17 +73,6 @@ export async function validateBrackets(
   return returnValue;
 }
 
-/**
- * Compare syntax validity before/after edit
- *
- * Use case: Ensure edit doesn't introduce syntax errors
- *
- * @example
- * const before = 'const result = sum(a, b);';
- * const after = 'const result = sum(a, b;';  // Missing )
- * const result = await compareBeforeAfter(before, after, 'test.js');
- * // result.valid = false, result.newErrors = ['Unexpected token']
- */
 export async function compareBeforeAfter(
   beforeCode: string,
   afterCode: string,
@@ -128,7 +86,7 @@ export async function compareBeforeAfter(
   const beforeResult = await validateWithPrettier(beforeCode, filePath);
   const afterResult = await validateWithPrettier(afterCode, filePath);
 
-  // If before was valid but after is invalid, edit broke syntax
+  // NOTE: If before was valid but after is invalid, the edit broke syntax.
   const introducedError = beforeResult.valid && !afterResult.valid;
 
   const result: {
@@ -147,32 +105,26 @@ export async function compareBeforeAfter(
   return result;
 }
 
-/**
- * Check if file is a code file that Prettier can parse
- *
- * @param filePath - File path to check
- * @returns True if Prettier supports this file type
- */
 export function isCodeFile(filePath: string): boolean {
   const ext = filePath.split(".").pop()?.toLowerCase();
   return [
     "js",
     "jsx",
     "ts",
-    "tsx", // JavaScript/TypeScript
+    "tsx",
     "mjs",
-    "cjs", // ES Modules / CommonJS
+    "cjs",
     "json",
-    "jsonc", // JSON
+    "jsonc",
     "css",
     "scss",
-    "less", // Stylesheets
+    "less",
     "html",
     "vue",
-    "svelte", // Markup
+    "svelte",
     "md",
-    "mdx", // Markdown
+    "mdx",
     "yaml",
-    "yml", // YAML
+    "yml",
   ].includes(ext ?? "");
 }

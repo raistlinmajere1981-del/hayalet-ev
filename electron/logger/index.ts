@@ -1,15 +1,3 @@
-/**
- * app Main Process Logger - Public API
- *
- * Usage in main.ts:
- * ```typescript
- * import { initLogger, getLoggerCore, ConsoleInterceptor } from './logger/index.js';
- *
- * await initLogger();
- * ConsoleInterceptor.install(); // Override console.*
- * ```
- */
-
 export * from "./core/index.js";
 export * from "./writers/index.js";
 export * from "./readers/index.js";

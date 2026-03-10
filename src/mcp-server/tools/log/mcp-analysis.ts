@@ -1,7 +1,4 @@
-/**
- * MCP Log Analysis Tools
- * Session 5.5: analyze MCP tool usage patterns.
- */
+// NOTE: Analyze MCP log streams for usage and performance stats.
 
 import { readFile } from "fs/promises";
 import { existsSync, readdirSync } from "fs";
@@ -81,13 +78,10 @@ function parseStructuredEvent(line: string, unknownValue: string): StructuredEve
   }
 }
 
-/**
- * Get the current session ID from the logs directory.
- */
 function getCurrentSessionId(logDir: string): string {
   try {
     const sessions = readdirSync(logDir)
-      .filter((f) => /^\d{8}-\d{6}/.test(f)) // YYYYMMDD-HHMMSS format
+      .filter((f) => /^\d{8}-\d{6}/.test(f))
       .sort()
       .reverse();
 
@@ -97,9 +91,6 @@ function getCurrentSessionId(logDir: string): string {
   }
 }
 
-/**
- * Analyze MCP tool usage patterns.
- */
 export async function analyzeMcpToolUsage(args: {
   sessionId?: string;
   timeRange?: { from: string; to: string };
@@ -184,9 +175,6 @@ export async function analyzeMcpToolUsage(args: {
   };
 }
 
-/**
- * Get performance metrics for a specific MCP tool.
- */
 export async function getMcpToolPerformance(args: {
   toolName: string;
   sessionId?: string;
@@ -251,12 +239,9 @@ export async function getMcpToolPerformance(args: {
   };
 }
 
-/**
- * Correlate MCP errors with nearby system events.
- */
 export async function correlateMcpErrors(args: {
   sessionId?: string;
-  timeWindow?: number; // milliseconds
+  timeWindow?: number;
 }): Promise<{
   mcpErrors: Array<{
     timestamp: string;
@@ -325,9 +310,6 @@ export async function correlateMcpErrors(args: {
   return { mcpErrors: correlatedErrors };
 }
 
-/**
- * Get the AI agent's tool usage trace.
- */
 export async function getAgentToolTrace(args: { sessionId?: string; limit?: number }): Promise<{
   totalTools: number;
   toolSequence: Array<{
@@ -353,7 +335,6 @@ export async function getAgentToolTrace(args: { sessionId?: string; limit?: numb
     .filter((line) => line.trim() !== "")
     .map((line) => JSON.parse(line) as MCPLogEntry);
 
-  // Build the visible call sequence.
   const toolSequence = entries
     .slice(-limit * 2)
     .slice(-limit)

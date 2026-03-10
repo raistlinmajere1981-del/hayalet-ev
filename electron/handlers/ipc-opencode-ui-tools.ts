@@ -1,9 +1,4 @@
-/**
- * IPC Handler — app MCP Tool List
- *
- * Parses `.rovo/_metadata/TOOL-LIST.md` (auto-generated on each MCP build)
- * and returns structured tool data for the OpenCode UI.
- */
+// NOTE: Parses .rovo/_metadata/TOOL-LIST.md (auto-generated per MCP build) for OpenCode UI.
 
 import { join } from "path";
 import { mkdir, readFile, stat, writeFile } from "fs/promises";

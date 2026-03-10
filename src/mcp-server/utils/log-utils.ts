@@ -1,7 +1,3 @@
-/**
- * LogUtils - MCP Server log helpers
- */
-
 import { readdir, readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
@@ -9,7 +5,6 @@ import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const logUtilsT = createMcpTranslatorSync();
 
-/** Log filter options */
 interface LogFilters {
   source?: string;
   level?: string;
@@ -18,15 +13,11 @@ interface LogFilters {
   tail?: number;
 }
 
-/** Session info result */
 interface SessionInfo {
   meta: Record<string, unknown> | null;
   summary: Record<string, unknown> | null;
 }
 
-/**
- * Find the latest session
- */
 export async function findLatestSession(logDir: string): Promise<string | null> {
   try {
     if (!existsSync(logDir)) return null;
@@ -44,9 +35,6 @@ export async function findLatestSession(logDir: string): Promise<string | null> 
   }
 }
 
-/**
- * Read session logs
- */
 export async function readSessionLogs(
   logDir: string,
   sessionId: string,
@@ -100,9 +88,6 @@ export async function readSessionLogs(
   }
 }
 
-/**
- * Filter logs
- */
 export function filterLogs(content: string, filters: LogFilters = {}): string[] {
   const { source, level, contains, correlationId, tail = 50 } = filters;
 
@@ -130,9 +115,6 @@ export function filterLogs(content: string, filters: LogFilters = {}): string[] 
   return lines.slice(-tail);
 }
 
-/**
- * Read session metadata and summary info
- */
 export async function readSessionInfo(logDir: string, sessionId: string): Promise<SessionInfo> {
   const sessionDir = join(logDir, sessionId);
   const metaPath = join(sessionDir, "session-metadata.json");
@@ -152,7 +134,7 @@ export async function readSessionInfo(logDir: string, sessionId: string): Promis
       summary = JSON.parse(await readFile(summaryPath, "utf-8")) as Record<string, unknown>;
     }
   } catch {
-    // Ignore parse errors.
+    // NOTE: Ignore parse errors.
   }
 
   return { meta, summary };

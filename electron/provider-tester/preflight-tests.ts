@@ -1,16 +1,5 @@
-/**
- * Provider Tester - Preflight Tests
- *
- * Navigation and URL validation before running actual tests.
- *
- * @module electron/provider-tester/preflight-tests
- */
-
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext } from "./types.ts";
-/**
- * Check if current URL is in excluded list (login/auth pages)
- */
 export async function testExcludedUrl(ctx: TestContext): Promise<ProviderTestResult> {
   const start = Date.now();
   const currentUrl = ctx.webview.getURL();

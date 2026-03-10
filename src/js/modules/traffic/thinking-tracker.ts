@@ -110,8 +110,6 @@ export class ThinkingTracker {
       }
     }
 
-    // Periodic debug removed - state changes are logged via Logger.panel above
-
     return { indicator, newState: viewState, event };
   }
 

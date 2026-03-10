@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev - Entrance Provider Test Styles
- * Provider test buttons and test results modal
- * @version 5.4.0
- */
-
-/* === PROVIDER TEST BUTTONS === */
 #ai1-test-btn,
 #ai2-test-btn,
 #ai1-sync-btn,
@@ -36,7 +29,6 @@
   cursor: not-allowed;
 }
 
-/* === TEST RESULTS MODAL === */
 .test-results-summary {
   background: var(--hover-overlay);
   border-radius: var(--radius-lg);
@@ -138,7 +130,6 @@
   word-break: break-all;
 }
 
-/* Test Category */
 .test-category {
   margin-bottom: var(--space-6);
 }
@@ -159,7 +150,6 @@
   gap: var(--space-2);
 }
 
-/* Test Result Item */
 .test-result-item {
   background: var(--hover-overlay);
   border-radius: var(--radius-md);
@@ -226,7 +216,6 @@
   line-height: var(--leading-relaxed);
 }
 
-/* Test Details */
 .test-details {
   margin-top: var(--space-2);
   margin-left: var(--space-7);
@@ -264,7 +253,6 @@
   color: var(--color-error);
 }
 
-/* Error message in modal */
 .error-message {
   padding: var(--space-4);
   background: var(--color-error-bg);

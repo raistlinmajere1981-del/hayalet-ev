@@ -1,9 +1,3 @@
-/**
- * SQLite Archive Manager - Conversation & Message Storage
- *
- * @module electron/database/sqlite-archive
- */
-
 import type { Conversation, Message, IpcResult } from "@electron/types";
 import type Database from "better-sqlite3";
 import { getLoggerCore } from "../logger/index.js";

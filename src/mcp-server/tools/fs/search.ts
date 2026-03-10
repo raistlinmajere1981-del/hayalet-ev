@@ -1,7 +1,3 @@
-/**
- * Filesystem Tools - Search Operations
- */
-
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { showFileContent, getFileSummary } from "./shared/helpers.js";
 

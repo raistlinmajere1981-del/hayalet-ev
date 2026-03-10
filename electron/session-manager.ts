@@ -1,11 +1,4 @@
-/**
- * Session Manager - Electron session/cache management
- *
- * Clears cache during application startup.
- * Preserves login data (cookies, localStorage).
- *
- * @module electron/session-manager
- */
+// NOTE: Clears cache on startup while preserving login data (cookies, localStorage).
 
 import { session } from "electron";
 import { getLoggerCore } from "./logger/index.js";
@@ -21,8 +14,8 @@ interface ClearResult {
 }
 
 const CLEARABLE_STORAGES: ("cachestorage" | "serviceworkers")[] = [
-  "cachestorage", // Service worker cache (~100-300 MB)
-  "serviceworkers", // SW registrations
+  "cachestorage",
+  "serviceworkers",
 ];
 
 async function clearPartitionCache(partitionName: string): Promise<ClearResult> {

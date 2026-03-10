@@ -1,9 +1,3 @@
-/**
- * Hayalet-ev Design System - Loader Components
- * @version 5.4.0
- */
-
-/* === WEBVIEW OVERLAY === */
 .webview-overlay {
   position: absolute;
   inset: 0;
@@ -11,7 +5,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-5); /* 20px - wider spacing */
+  gap: var(--space-5);
   background: var(--bg-surface);
   border: var(--border-2) dashed var(--border-default);
   border-radius: var(--radius-lg);
@@ -28,7 +22,6 @@
   pointer-events: none;
 }
 
-/* Keep Electron webview hidden until overlay is fully dismissed. */
 .webview-wrapper webview {
   opacity: 1;
   visibility: visible;
@@ -40,7 +33,6 @@
   visibility: hidden;
 }
 
-/* === SPINNER (CSS) === */
 .webview-overlay .overlay-icon {
   width: var(--size-icon-lg);
   height: var(--size-icon-lg);
@@ -51,19 +43,16 @@
   transition: var(--transition-normal);
 }
 
-/* Connecting state - spinner animasyonu */
 .webview-overlay.connecting .overlay-icon {
   animation: spin var(--duration-pulse) linear infinite;
 }
 
-/* Error state - pulse animasyonu */
 .webview-overlay.error .overlay-icon {
   border-color: var(--color-error);
   border-top-color: transparent;
   animation: pulse var(--duration-flow) ease-in-out infinite;
 }
 
-/* Empty/Disconnected - statik */
 .webview-overlay.empty .overlay-icon,
 .webview-overlay.disconnected .overlay-icon {
   border-color: var(--border-default);
@@ -71,9 +60,8 @@
   opacity: 0.4;
 }
 
-/* === TEXT === */
 .webview-overlay .overlay-title {
-  font-size: var(--text-xl); /* 20px - larger */
+  font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   margin: 0;
@@ -88,7 +76,6 @@
   margin: 0;
 }
 
-/* State-specific colors */
 .webview-overlay.error .overlay-title {
   color: var(--color-error);
 }

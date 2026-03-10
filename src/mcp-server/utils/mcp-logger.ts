@@ -1,11 +1,4 @@
-/**
- * MCP logger that mirrors tool lifecycle events into the mcp-server session logs.
- *
- * It writes both tool-specific records and a unified structured stream so
- * diagnostics can correlate MCP activity with the rest of the application.
- * - Creates mcp-tools.jsonl for detailed MCP logs
- * - Writes to structured.jsonl for unified log analysis
- */
+// NOTE: Mirror tool lifecycle events into per-tool and unified session logs.
 
 import { appendFile, existsSync, mkdirSync, readdirSync, statSync } from "fs";
 import { join } from "path";
@@ -68,9 +61,6 @@ class MCPLogger {
     this.logDir = LOG_BASE_DIR;
   }
 
-  /**
-   * Get current session ID from latest session directory
-   */
   private getCurrentSessionId(): string {
     try {
       if (this.currentSessionId != null && this.currentSessionId !== "") {
@@ -144,9 +134,6 @@ class MCPLogger {
     };
   }
 
-  /**
-   * Log MCP tool start
-   */
   async logToolStart(toolName: string, args: unknown, agentContext?: unknown): Promise<void> {
     const lifecycle = this.buildLifecycleMessage("start", toolName);
     const entry: MCPLogEntry = {
@@ -165,9 +152,6 @@ class MCPLogger {
     await this.writeToLog(entry);
   }
 
-  /**
-   * Log MCP tool success
-   */
   async logToolSuccess(
     toolName: string,
     result: unknown,
@@ -192,9 +176,6 @@ class MCPLogger {
     await this.writeToLog(entry);
   }
 
-  /**
-   * Log MCP tool error
-   */
   async logToolError(
     toolName: string,
     error: Error,
@@ -221,11 +202,10 @@ class MCPLogger {
     };
 
     await this.writeToLog(entry);
-    // stderr is safe here; stdout must remain valid JSON-RPC output.
+    // WARNING: stderr is safe here; stdout must remain valid JSON-RPC output.
     process.stderr.write(`${entry.message}\n`);
   }
 
-  /** Mirror each entry into the tool-specific and unified session logs. */
   // eslint-disable-next-line @typescript-eslint/require-await
   private async writeToLog(entry: MCPLogEntry): Promise<void> {
     try {
@@ -282,9 +262,7 @@ class MCPLogger {
     }
   }
 
-  /**
-   * Sanitize arguments (remove sensitive data, truncate large args)
-   */
+  // NOTE: Sanitize arguments by truncating large payloads.
   private sanitizeArgs(args: unknown): unknown {
     if (args === null || args === undefined) return args;
 
@@ -295,9 +273,7 @@ class MCPLogger {
     return args;
   }
 
-  /**
-   * Sanitize result (truncate large results)
-   */
+  // NOTE: Sanitize results by truncating large payloads.
   private sanitizeResult(result: unknown): unknown {
     if (result === null || result === undefined) return result;
 
@@ -309,7 +285,6 @@ class MCPLogger {
   }
 }
 
-// Singleton instance
 const logger = new MCPLogger();
 
 function writeLoggerInternalError(key: string, params?: Record<string, string | number>): void {
@@ -317,10 +292,6 @@ function writeLoggerInternalError(key: string, params?: Record<string, string | 
   process.stderr.write(`${t(`mcpServer.logs.${key}`, params)}\n`);
 }
 
-/**
- * Log tool call start (backward compatible)
- * Returns startTime for duration calculation
- */
 export function logToolCall(toolName: string, args: unknown): { startTime: number } {
   const startTime = Date.now();
   logger.logToolStart(toolName, args).catch((err) => {
@@ -329,7 +300,6 @@ export function logToolCall(toolName: string, args: unknown): { startTime: numbe
   return { startTime };
 }
 
-/** Log tool call success. */
 export function logToolSuccess(
   toolName: string,
   result: unknown,
@@ -341,7 +311,6 @@ export function logToolSuccess(
   });
 }
 
-/** Log tool call error. */
 export function logToolError(
   toolName: string,
   error: Error,
@@ -359,9 +328,6 @@ export function logToolError(
   );
 }
 
-/**
- * General error logging.
- */
 export function logError(message: string, error?: Error): void {
   const err = error ?? new Error(message);
   logger.logToolError("general", err).catch((e) => {

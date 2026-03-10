@@ -1,19 +1,7 @@
-/**
- * Provider Tester - Scraping & Response Tests
- *
- * Tests for message scraping, stop button during response,
- * and message container validation.
- *
- * @module electron/provider-tester/scraping-tests
- */
-
 import type { ProviderTestResult } from "../../src/types/provider.ts";
 import type { TestContext, MessageScrapingResult } from "./types.ts";
 import { PROVIDER_TEST } from "./types.ts";
 
-/**
- * Run all response/scraping tests
- */
 export async function runScrapingTests(ctx: TestContext): Promise<ProviderTestResult[]> {
   const results: ProviderTestResult[] = [];
 
@@ -24,9 +12,6 @@ export async function runScrapingTests(ctx: TestContext): Promise<ProviderTestRe
   return results;
 }
 
-/**
- * Run advanced tests (voice button, etc.)
- */
 export async function runAdvancedTests(ctx: TestContext): Promise<ProviderTestResult[]> {
   const results: ProviderTestResult[] = [];
 

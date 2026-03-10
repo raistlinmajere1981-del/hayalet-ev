@@ -1,17 +1,8 @@
-/**
- * Development Tools - Shared Utilities
- *
- * Shared helper utilities
- */
-
 import { readFileSync, existsSync } from "fs";
 import { readdir } from "fs/promises";
 import { join, relative } from "path";
 import { DEV_CONFIG } from "./config.js";
 
-/**
- * Get all files in specified directories recursively
- */
 export async function getAllFiles(
   dir: string,
   projectRoot: string,
@@ -39,9 +30,6 @@ export async function getAllFiles(
   return files;
 }
 
-/**
- * Count lines in a file
- */
 export function countLines(filePath: string): number {
   try {
     const content = readFileSync(filePath, "utf-8");

@@ -1,9 +1,4 @@
-/**
- * IPC Memory Handlers
- *
- * IPC handlers for memory store operations.
- * Uses the same shared memory DB as the MCP server: data/shared/assistant-memory.db
- */
+// NOTE: Uses shared memory DB at data/shared/assistant-memory.db.
 
 import { join } from "path";
 import { registerHandler } from "./ipc-helpers.ts";

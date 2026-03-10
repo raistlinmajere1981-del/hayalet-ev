@@ -1,9 +1,3 @@
-/**
- * Development Tools - Shared Configuration
- *
- * Shared config constants used across the project
- */
-
 export const DEV_CONFIG = {
   srcDirs: ["src/js", "electron", "src/mcp-server"],
   ignoreDirs: ["node_modules", ".git", "dist", ".vite", "logs", "data", "test-screenshots"],

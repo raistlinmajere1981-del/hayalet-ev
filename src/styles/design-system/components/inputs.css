@@ -1,11 +1,3 @@
-/**
- * Hayalet-ev Design System - Input Components
- * Form elements with glassmorphism styling
- * @version 5.4.0
- */
-
-/* === BASE INPUT === */
-/* .input is the primary class; .form-input is kept as an alias for compatibility */
 .input,
 .form-input {
   display: block;
@@ -45,7 +37,6 @@
   cursor: not-allowed;
 }
 
-/* Size variants */
 .input-sm,
 .form-input.input-sm {
   height: var(--input-height-sm);
@@ -53,7 +44,6 @@
   font-size: var(--text-xs);
 }
 
-/* === TEXTAREA === */
 textarea.input,
 textarea.form-input {
   height: auto;
@@ -67,10 +57,6 @@ textarea.large {
   min-height: calc(var(--space-20) * 1.5);
 }
 
-/* === SELECT === */
-/* .select        → full-width (forms, panels)
-   .select-compact → small inline selects
-   .select-compact.pill → rounded compact variant */
 .select,
 .select-compact {
   font-family: var(--font-sans);
@@ -93,7 +79,6 @@ textarea.large {
   border-color: var(--color-accent);
 }
 
-/* Full-width select */
 .select {
   display: block;
   width: 100%;
@@ -111,7 +96,6 @@ textarea.large {
   box-shadow: 0 0 0 3px var(--color-accent-muted);
 }
 
-/* Dropdown option styling (override browser native white background) */
 .select option,
 .select-compact option {
   background: var(--bg-surface);
@@ -124,14 +108,12 @@ textarea.large {
   color: var(--color-accent);
 }
 
-/* Compact select */
 .select-compact {
   padding: var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   border-radius: var(--radius-sm);
 }
 
-/* Pill modifier */
 .select-compact.pill {
   border-radius: var(--radius-full);
 }

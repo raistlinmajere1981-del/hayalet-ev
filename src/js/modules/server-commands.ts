@@ -1,17 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * ServerCommands - command dispatcher (orchestrator)
- *
- * Submodules:
- * - commands/utils.js: shared helper functions
- * - commands/device-commands.js: DeviceManager handler
- * - commands/screenshot-commands.js: screenshot handlers
- * - commands/window-commands.js: window handlers
- * - commands/whisper-commands.js: Whisper handler
- * - commands/file-commands.js: file handlers
- * - commands/ai-chat-commands.js: AI chat handlers
- */
-
 import { Logger } from "./logger/index.js";
 import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
@@ -313,12 +300,6 @@ handlers["listcustomcommands"] = (): {
 };
 
 const serverCommands = {
-  /**
-   * Komutu calistir
-   * @param {string} commandName - Komut adi
-   * @param {Object} payload - Komut payload'i
-   * @returns {Promise<Object>}
-   */
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
     const canonicalCommandName = resolveCanonicalCommandName(commandName);
     const key = canonicalCommandName !== "" ? canonicalCommandName.toLowerCase() : "";
@@ -365,10 +346,6 @@ const serverCommands = {
     return { success: false, message: AppI18n.t("app.commands.runtime.undefinedCommand") };
   },
 
-  /**
-   * Komut listesini getir (sistem + custom)
-   * @returns {string[]}
-   */
   list(): string[] {
     const customCmds = MetaCommandManager.getCommandNames();
     return Array.from(
@@ -376,9 +353,6 @@ const serverCommands = {
     );
   },
 
-  /**
-   * Kategoriye gore komut listesini getir
-   */
   listByCategory(category: CommandCategory): string[] {
     const builtIns = BUILTIN_COMMANDS.filter((command) => command.category === category).map(
       (command) => command.name
@@ -396,9 +370,6 @@ const serverCommands = {
     return Array.from(merged);
   },
 
-  /**
-   * Komut katalogunu getir
-   */
   getCatalog(category?: CommandCategory): CommandCatalogItem[] {
     const builtIns = BUILTIN_COMMANDS.filter((command) =>
       category !== undefined ? command.category === category : true
@@ -423,20 +394,12 @@ const serverCommands = {
     return [...builtIns, ...custom, ...RoomCommandRegistry.getCatalog(category)];
   },
 
-  /**
-   * Komut metadata'sini getir
-   */
   getCommandMeta(commandName: string): CommandCatalogItem | undefined {
     const catalog = this.getCatalog();
     const key = resolveCanonicalCommandName(commandName).toLowerCase();
     return catalog.find((item) => item.name.toLowerCase() === key);
   },
 
-  /**
-   * Handler kayitli mi kontrol et (sistem + custom)
-   * @param {string} commandName - Komut adi
-   * @returns {boolean}
-   */
   has(commandName: string): boolean {
     const canonicalCommandName = resolveCanonicalCommandName(commandName);
     const key = canonicalCommandName !== "" ? canonicalCommandName.toLowerCase() : "";
@@ -447,20 +410,10 @@ const serverCommands = {
     );
   },
 
-  /**
-   * Komut aciklamasini getir
-   * @param {string} commandName - Komut adi
-   * @returns {CommandDescriptionInfo | undefined}
-   */
   getDescription(commandName: string): CommandDescriptionInfo | undefined {
     return getCommandDescription(commandName);
   },
 
-  /**
-   * Komut aciklamasini formatli metin olarak getir (UI icin)
-   * @param {string} commandName - Komut adi
-   * @returns {string}
-   */
   getDescriptionText(commandName: string): string {
     const builtIn = getCommandDescriptionText(commandName);
     if (builtIn !== "") {
@@ -469,11 +422,6 @@ const serverCommands = {
     return RoomCommandRegistry.getDescriptionText(commandName);
   },
 
-  /**
-   * Ozel handler kaydet
-   * @param {string} commandName - Komut adi
-   * @param {Function} handler - Handler fonksiyonu
-   */
   register(commandName: string, handler: (payload?: unknown) => Promise<unknown>): void {
     if (typeof handler === "function") {
       handlers[commandName.toLowerCase()] = handler;

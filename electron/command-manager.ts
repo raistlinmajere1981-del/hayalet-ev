@@ -34,11 +34,7 @@ async function ensureCommandDirs(): Promise<CommandDirs> {
   return { root, doneDir, failedDir };
 }
 
-/**
- * Main Process: Command Queue Persistence Layer
- * This module handles file I/O only.
- * Queue management lives in the renderer (`src/js/modules/command-manager.js`).
- */
+// NOTE: Queue management lives in src/js/modules/command-manager.js; this module is file I/O only.
 
 export async function commandInit(
   _event: IpcMainInvokeEvent
@@ -159,7 +155,6 @@ export async function commandCleanupTemp(
         .filter((p) => p.length > 0 && existsSync(p))
         .map(async (p) => {
           await unlink(p).catch(() => {
-            /* noop */
           });
         })
     );
@@ -185,7 +180,6 @@ export async function commandMoveFailed(
       await Promise.all(
         entries.map(async (e) => {
           await rename(join(srcDir, e.name), join(destDir, e.name)).catch(() => {
-            /* noop */
           });
         })
       );
@@ -199,10 +193,8 @@ export async function commandMoveFailed(
         const base = basename(p);
         await rename(p, join(destDir, base)).catch(async () => {
           await copyFile(p, join(destDir, base)).catch(() => {
-            /* noop */
           });
           await unlink(p).catch(() => {
-            /* noop */
           });
         });
       })
@@ -258,7 +250,6 @@ export async function commandCleanupJob(
     const jobDir = join(root, jobId);
     if (existsSync(jobDir)) {
       await rm(jobDir, { recursive: true, force: true }).catch(() => {
-        /* noop */
       });
     }
     return { success: true };

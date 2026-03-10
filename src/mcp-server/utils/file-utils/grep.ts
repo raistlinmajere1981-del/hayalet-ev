@@ -3,9 +3,6 @@ import { basename, extname, join } from "path";
 import type { GrepMatch } from "@shared/index-mcp.js";
 import { BINARY_EXTENSIONS, IGNORE_DIRS } from "./constants.js";
 
-/**
- * Search for a pattern inside file content.
- */
 export async function grepFile(
   filePath: string,
   pattern: RegExp,
@@ -42,9 +39,6 @@ export async function grepFile(
   }
 }
 
-/**
- * Search files recursively.
- */
 export async function grepDirectory(
   dirPath: string,
   contentPattern: RegExp | null,
@@ -94,7 +88,7 @@ export async function grepDirectory(
         }
       }
     } catch {
-      // Continue when an entry cannot be accessed.
+      // NOTE: Continue when an entry cannot be accessed.
     }
   }
 
@@ -102,9 +96,6 @@ export async function grepDirectory(
   return allMatches;
 }
 
-/**
- * Simple glob pattern matching.
- */
 export function matchGlob(path: string, pattern: string): boolean {
   const placeholder = "\x00GLOBSTAR\x00";
   const regexPattern = pattern

@@ -1,7 +1,3 @@
-/**
- * OpenCode UI Provider - main module
- */
-
 export { config } from "./config.js";
 export * from "../opencode/scraper.js";
 

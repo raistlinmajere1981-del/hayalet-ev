@@ -1,10 +1,3 @@
-/**
- * Git Tool Handlers
- * Fork setup, PR creation, contribution guidelines check
- *
- * Co-located: definition + handler in ToolEntry format
- */
-
 import {
   gitForkSetup,
   gitCreatePr,
@@ -17,7 +10,7 @@ import type { ToolEntry } from "../registry.js";
 export function createGitTools(): ToolEntry[] {
   return [
     {
-      definition: GIT_TOOL_DEFINITIONS[0], // hev_git_fork_setup
+      definition: GIT_TOOL_DEFINITIONS[0],
       handler: async (args): Promise<unknown> => {
         const a = args as Record<string, unknown>;
         const result = await gitForkSetup(
@@ -31,7 +24,7 @@ export function createGitTools(): ToolEntry[] {
       },
     },
     {
-      definition: GIT_TOOL_DEFINITIONS[1], // hev_git_create_pr
+      definition: GIT_TOOL_DEFINITIONS[1],
       handler: async (args): Promise<unknown> => {
         const a = args as Record<string, unknown>;
         const result = await gitCreatePr(
@@ -44,14 +37,14 @@ export function createGitTools(): ToolEntry[] {
       },
     },
     {
-      definition: GIT_TOOL_DEFINITIONS[2], // hev_git_check_guidelines
+      definition: GIT_TOOL_DEFINITIONS[2],
       handler: async (args): Promise<unknown> => {
         const result = await gitCheckGuidelines((args as { cwd?: string }).cwd);
         return { content: [{ type: "text", text: result.message }] };
       },
     },
     {
-      definition: GIT_TOOL_DEFINITIONS[3], // hev_git_pr_status
+      definition: GIT_TOOL_DEFINITIONS[3],
       handler: async (args): Promise<unknown> => {
         const result = await gitPrStatus((args as { cwd?: string }).cwd);
         return { content: [{ type: "text", text: result.message }] };

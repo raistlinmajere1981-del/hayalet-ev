@@ -1,10 +1,3 @@
-/**
- * Development Tools - Codemod
- *
- * AST-based code transformations using jscodeshift
- * Safe refactoring with formatting preservation
- */
-
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import {
   replaceFunctionCalls,
@@ -57,17 +50,6 @@ function codemodDefT(key: string, params?: Record<string, string | number | bool
   return createMcpTranslatorSync()(`mcpServer.devTools.codemod.definition.${key}`, params);
 }
 
-/**
- * Run a codemod transformation
- *
- * @example
- * // Rename function calls
- * runCodemod({
- *   file_path: 'file.js',
- *   transformation: { type: 'function_call', old_name: 'oldFunc', new_name: 'newFunc' },
- *   dry_run: true
- * })
- */
 export async function runCodemod(options: CodemodOptions): Promise<CodemodResult> {
   const {
     file_path: filePath,
@@ -208,7 +190,6 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
       };
     }
 
-    // Syntax validation
     const syntaxValid = true;
     if (validateSyntax && result.modified && result.code != null && result.code !== "") {
       const syntaxCheck = await validateWithPrettier(result.code, filePath);
@@ -225,7 +206,6 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
       }
     }
 
-    // Write file (if not dry-run and modified)
     if (!dryRun && result.modified && result.code != null && result.code !== "") {
       writeFileSync(filePath, result.code, "utf-8");
     }
@@ -247,10 +227,6 @@ export async function runCodemod(options: CodemodOptions): Promise<CodemodResult
     };
   }
 }
-
-// ============================================
-// Tool Definition
-// ============================================
 
 export const CODEMOD_TOOL = {
   name: "hev_dev_codemod",

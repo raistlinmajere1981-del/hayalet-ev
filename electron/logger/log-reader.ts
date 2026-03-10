@@ -1,13 +1,3 @@
-/**
- * LogReader - log reading and query operations
- *
- * This module manages reading and querying log files:
- * - Reading console logs
- * - Reading error logs
- * - Reading all logs (session-based)
- * - Querying logs (filters)
- */
-
 import { readFile, readdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";

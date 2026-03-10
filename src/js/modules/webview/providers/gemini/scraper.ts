@@ -1,13 +1,3 @@
-/**
- * Scrape Gemini messages.
- * Gemini prefers the DOM ID when available, otherwise it falls back to the hash.
- *
- * Note: normalizeText and hashString are defined inline because of
- * webview injection constraints. Single source of truth:
- * @see ../shared/scraper-helpers.ts
- *
- * @returns {Array<{ index: number, role: string, text: string, contentHash: string, domIndex: number, domId?: string }>}
- */
 interface ScrapedMessage {
   index: number;
   role: string;
@@ -116,7 +106,7 @@ export function scrapeMessages(): ScrapedMessage[] {
       domId = idElement.id;
     }
 
-    // Add a hash for fallback lookup or duplicate detection.
+    // NOTE: Add a hash for fallback lookup or duplicate detection.
     const contentHash = hashString(textContent);
     result.push({ index: idx, role, text: textContent, contentHash, domIndex: idx, domId });
   });

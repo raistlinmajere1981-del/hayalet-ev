@@ -1,14 +1,11 @@
 import type { CodeStructure } from "@shared/index-mcp.js";
 
-/**
- * Extract code structure from a TypeScript/JavaScript file.
- * Simple regex-based parser used for performance instead of full AST parsing.
- */
+// NOTE: Regex-based parsing is used for performance instead of full AST parsing.
 export function parseCodeStructure(content: string, extension: string): CodeStructure[] {
   const structures: CodeStructure[] = [];
   const lines = content.split("\n");
 
-  // Only parse TS/JS files.
+  // NOTE: Only parse TS/JS files.
   if (![".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"].includes(extension)) {
     return structures;
   }

@@ -1,13 +1,4 @@
 import { LogCategory } from "@shared/logging-core";
-/**
- * DraftManager - draft management for the Analyze page
- *
- * Manages the draft message in the compose area:
- * - draft persistence on `beforeunload`
- * - draft loading
- * - Base64 decode
- */
-
 import { Logger } from "../../modules/logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { FileManager } from "../../modules/file-manager.js";
@@ -52,11 +43,6 @@ function isStagedFile(value: unknown): value is StagedFile {
   return nameValid && pathValid && commandPathValid && originalNameValid;
 }
 
-/**
- * Decode a Base64-encoded string.
- * @param {string} data - Base64-encoded string
- * @returns {string}
- */
 function decodeBase64(data: string): string {
   try {
     const binary = atob(data);
@@ -71,10 +57,6 @@ function decodeBase64(data: string): string {
   }
 }
 
-/**
- * Initialize the draft system.
- * @returns {Promise<void>}
- */
 export function initDraft(): void {
   try {
     draftPath = "data/analyze-draft.json";
@@ -86,10 +68,6 @@ export function initDraft(): void {
   }
 }
 
-/**
- * Load the draft.
- * @returns {Promise<{message: string, files: Array}>}
- */
 export async function loadDraft(): Promise<{ message: string; files: StagedFile[] }> {
   if (draftPath === "" || window.electronAPI === undefined) {
     return { message: "", files: [] };
@@ -119,12 +97,6 @@ export async function loadDraft(): Promise<{ message: string; files: StagedFile[
   }
 }
 
-/**
- * Persist the draft.
- * @param {string} message - Compose input value
- * @param {Array} files - Staged files
- * @returns {Promise<void>}
- */
 export async function persistDraft(message: string, files: unknown[]): Promise<void> {
   if (draftPath === "") return;
 

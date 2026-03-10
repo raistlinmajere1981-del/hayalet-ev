@@ -1,13 +1,3 @@
-/**
- * LogWriter - log writing operations
- *
- * This module manages writes to log files:
- * - Log message formatting
- * - File writes (with chunk rotation)
- * - Structured logs (JSONL)
- * - State snapshot writes
- */
-
 import { appendFile } from "fs/promises";
 import { join } from "path";
 import { ensureSessionDir, getSessionDir, getAppState } from "./session-manager.ts";
@@ -106,7 +96,7 @@ export async function writeLog(
       await appendFile(ERROR_LOG, logMessage);
     }
   } catch {
-    // Write failure is silently ignored to prevent recursive logging
+    // NOTE: Write failure is silently ignored to prevent recursive logging.
   }
 }
 
@@ -125,7 +115,7 @@ export async function writeErrorLog(
     const logMessage = formatLog(level, source, args, context);
     await appendFile(ERROR_LOG, logMessage);
   } catch {
-    // Write failure is silently ignored to prevent recursive logging
+    // NOTE: Write failure is silently ignored to prevent recursive logging.
   }
 }
 
@@ -161,7 +151,7 @@ export async function writeStructuredLog(entry: StructuredLogEntry): Promise<voi
       }
     }
   } catch {
-    // Write failure is silently ignored to prevent recursive logging
+    // NOTE: Write failure is silently ignored to prevent recursive logging.
   }
 }
 
@@ -180,7 +170,7 @@ export async function writeStateSnapshot(): Promise<void> {
     const snapshotPath = join(sessionDir, "state-snapshots.jsonl");
     await appendFile(snapshotPath, JSON.stringify(snapshot) + "\n");
   } catch {
-    // Write failure is silently ignored to prevent recursive logging
+    // NOTE: Write failure is silently ignored to prevent recursive logging.
   }
 }
 

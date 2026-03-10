@@ -2,17 +2,6 @@ import { Logger } from "./logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 
 class CatchManagerClass {
-  /**
-   * Scans a list of messages for commands based on a given prefix.
-   * @param {object} options
-   * @param {string} options.provider - The provider of the messages (e.g., 'ai1', 'ai2').
-   * @param {string} options.webUrl - The URL of the conversation.
-   * @param {any[]} [options.messages=[]] - The list of message objects to scan.
-   * @param {number} [options.prevCount=0] - The number of messages previously synced.
-   * @param {boolean} [options.hasExisting=false] - Whether the conversation already exists in the archive.
-   * @param {string} [options.prefix='cmd'] - The command prefix to look for (e.g., 'cmd', 'chat', 'bg').
-   * @returns {Promise<any[]>} - A promise that resolves to an array of found and validated commands.
-   */
   catchCommands({
     provider,
     webUrl,

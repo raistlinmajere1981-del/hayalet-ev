@@ -1,14 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
 import type { CoreEngine } from "./core-engine.js";
-
-/**
- * RelayManager - Relay Orchestrator
- *
- * This module manages and coordinates all relay types:
- * - AIAIRelay: communication between two AIs
- * - AIAssistantRelay: communication between the AI and Assistant (AI0)
- */
-
 import { TrafficManager } from "./traffic-manager.js";
 import { WebviewManager } from "./webview-manager.js";
 import { SettingsManager } from "./settings-manager.js";
@@ -55,10 +46,6 @@ class RelayManagerClass {
     Logger.infoT(LogCategory.RELAY, "app.logs.relayManager.initialized");
   }
 
-  /**
-   * Checks whether any relay is active.
-   * @returns {boolean}
-   */
   isActive(): boolean {
     const ai1Active = this._aiaiRelay !== null && this._aiaiRelay.isActive === true;
     const assistantRelayActive =
@@ -66,26 +53,14 @@ class RelayManagerClass {
     return ai1Active || assistantRelayActive;
   }
 
-  /**
-   * Checks whether the AI-AI relay is active.
-   * @returns {boolean}
-   */
   isAIAIActive(): boolean {
     return this._aiaiRelay !== null && this._aiaiRelay.isActive === true;
   }
 
-  /**
-   * Checks whether the AI-Assistant relay is active.
-   * @returns {boolean}
-   */
   isAIAssistantActive(): boolean {
     return this._aiAssistantRelay !== null && this._aiAssistantRelay.isActive === true;
   }
 
-  /**
-   * Returns the source slot of the AI-Assistant relay.
-   * @returns {string|null}
-   */
   getAIAssistantSourceSlot(): string | null {
     return this._aiAssistantRelay !== null ? this._aiAssistantRelay.sourceSlot : null;
   }
@@ -196,10 +171,6 @@ class RelayManagerClass {
     }
   }
 
-  /**
-   * Handles TrafficManager updates.
-   * @private
-   */
   async _onTrafficUpdate(snapshot: {
     provider?: string;
     state?: { thinkingState?: string };
@@ -262,18 +233,10 @@ class RelayManagerClass {
     }
   }
 
-  /**
-   * Returns the AI-AI relay instance.
-   * @returns {AIAIRelay}
-   */
   get aiaiRelay(): AIAIRelay | null {
     return this._aiaiRelay;
   }
 
-  /**
-   * Returns the AI-Assistant relay instance.
-   * @returns {AIAssistantRelay}
-   */
   get aiAssistantRelay(): AIAssistantRelay | null {
     return this._aiAssistantRelay;
   }

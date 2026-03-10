@@ -50,7 +50,7 @@ export class UserPanel {
       });
       nickInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
-          nickInput.blur(); // Triggers save via blur
+          nickInput.blur();
         }
       });
     }

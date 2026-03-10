@@ -1,9 +1,3 @@
-/**
- * Development Tools - Line Editor
- *
- * Line-based file editing (a find-and-replace alternative for large files)
- */
-
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
@@ -83,11 +77,10 @@ export async function editLines(
     }
 
     case "delete": {
-      const safeMode = options.safeMode ?? true; // Default: true for safety
+      const safeMode = options.safeMode ?? true;
       const validateBrackets = options.validateBrackets !== false;
       const force = options.force === true;
 
-      // SCOPE VALIDATION (if safe mode enabled)
       if (safeMode && !force) {
         const scopeCheck = analyzeScopeImpact(filePath, options.startLine, end);
         if (scopeCheck.willBreakScope) {
@@ -103,11 +96,9 @@ export async function editLines(
 
       const newLines = [...lines.slice(0, start), ...lines.slice(end)];
 
-      // BRACKET VALIDATION (Prettier-first, fallback to custom)
       if (validateBrackets && !force) {
         const newContent = newLines.join("\n");
 
-        // Try Prettier first for JS/TS files (more reliable)
         if (isCodeFile(filePath)) {
           const prettierCheck = await prettierValidateBrackets(newContent, filePath);
           if (!prettierCheck.balanced) {
@@ -119,7 +110,6 @@ export async function editLines(
             };
           }
         } else {
-          // Fallback to custom bracket validation for non-JS/TS files
           const bracketCheck = validateBracketBalance(originalContent, newContent);
           if (!bracketCheck.balanced) {
             return {
@@ -136,7 +126,7 @@ export async function editLines(
       try {
         contextPreview = await getContextPreview(filePath, start, end, 5);
       } catch (err) {
-        /* ignore */
+        // NOTE: Intentionally ignored.
       }
 
       if (options.dryRun !== true) {
@@ -174,7 +164,7 @@ export async function editLines(
           5
         );
       } catch (err) {
-        /* ignore */
+        // NOTE: Intentionally ignored.
       }
 
       return {
@@ -203,7 +193,7 @@ export async function editLines(
       try {
         contextPreview = await getContextPreview(filePath, start, start + insertLines.length, 5);
       } catch (err) {
-        /* ignore */
+        // NOTE: Intentionally ignored.
       }
 
       return {
@@ -222,17 +212,13 @@ export async function editLines(
         return { success: false, message: lineEditorT("runtime.contentRequired") };
       }
 
-      const safeMode = options.safeMode ?? true; // Default: true for safety
+      const safeMode = options.safeMode ?? true;
       const validateBrackets = options.validateBrackets !== false;
       const force = options.force === true;
 
-      // SCOPE VALIDATION (if safe mode enabled)
-      // For replace operations, only check scope if line count changes significantly
       if (safeMode && !force) {
         const replaceLineCount = options.content.split("\n").length;
         const originalLineCount = end - start;
-        // Only run scope check if we're removing more lines than adding (net deletion)
-        // Single-line replacements (1→1) and line additions are safe
         if (replaceLineCount < originalLineCount) {
           const scopeCheck = analyzeScopeImpact(filePath, options.startLine, end);
           if (scopeCheck.willBreakScope) {
@@ -252,11 +238,9 @@ export async function editLines(
       const replaceLines = options.content.split("\n");
       const newLines = [...lines.slice(0, start), ...replaceLines, ...lines.slice(end)];
 
-      // BRACKET VALIDATION (Prettier-first, fallback to custom)
       if (validateBrackets && !force) {
         const newContent = newLines.join("\n");
 
-        // Try Prettier first for JS/TS files (more reliable)
         if (isCodeFile(filePath)) {
           const prettierCheck = await prettierValidateBrackets(newContent, filePath);
           if (!prettierCheck.balanced) {
@@ -268,7 +252,6 @@ export async function editLines(
             };
           }
         } else {
-          // Fallback to custom bracket validation for non-JS/TS files
           const bracketCheck = validateBracketBalance(originalContent, newContent);
           if (!bracketCheck.balanced) {
             return {
@@ -324,7 +307,7 @@ export async function editLines(
       try {
         contextPreview = await getContextPreview(filePath, start, start + replaceLines.length, 5);
       } catch (err) {
-        /* ignore */
+        // NOTE: Intentionally ignored.
       }
 
       return {

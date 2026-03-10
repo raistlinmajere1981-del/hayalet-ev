@@ -1,14 +1,3 @@
-/**
- * ErrorBoundary - global error capture and handling
- *
- * Captures renderer-process errors and handles them safely.
- * Prevents critical failures from taking down the entire application.
- *
- * Usage:
- * - Wrap async functions: ErrorBoundary.wrap()
- * - Install global handlers: ErrorBoundary.init()
- */
-
 import { Logger, LogCategory, LogVisibility } from "./logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 
@@ -63,17 +52,6 @@ class ErrorBoundaryClass {
     });
   }
 
-  /**
-   * Run an async function safely.
-   * Logs the error and returns null when it fails.
-   *
-   * @example
-   * const result = await ErrorBoundary.wrap(
-   *   () => riskyAsyncOperation(),
-   *   "module-name",
-   *   "operation-description"
-   * );
-   */
   async wrap<T>(fn: () => Promise<T>, source: string, operation?: string): Promise<T | null> {
     try {
       return await fn();
@@ -121,9 +99,6 @@ class ErrorBoundaryClass {
     };
   }
 
-  /**
-   * Return recent errors for debugging.
-   */
   getRecentErrors(): ErrorReport[] {
     return [...this._recentErrors];
   }
@@ -173,9 +148,7 @@ class ErrorBoundaryClass {
     for (const callback of this._errorCallbacks) {
       try {
         callback(report);
-      } catch (_e) {
-        /* noop */
-      }
+      } catch (_e) {}
     }
   }
 }

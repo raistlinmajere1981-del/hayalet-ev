@@ -1,12 +1,3 @@
-/**
- * Diff Utilities
- *
- * File and content comparison helpers:
- * - Unified diff formatting
- * - Line-based comparison
- * - Change summaries
- */
-
 import { readFileSync, existsSync } from "fs";
 import { createMcpTranslatorSync } from "./i18n/index.js";
 
@@ -36,9 +27,6 @@ export interface ContentDiffResult {
   unified: string;
 }
 
-/**
- * Compare two string arrays
- */
 function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
   const oldLen = oldLines.length;
   const newLen = newLines.length;
@@ -98,9 +86,6 @@ function computeDiff(oldLines: string[], newLines: string[]): DiffLine[] {
   return tempResult;
 }
 
-/**
- * Convert a diff into unified format
- */
 function toUnifiedFormat(diff: DiffLine[], contextLines: number = 3): string {
   if (diff.length === 0) {
     return "";
@@ -180,9 +165,6 @@ function formatHunk(hunk: DiffLine[]): string[] {
   return lines;
 }
 
-/**
- * Compare two files
- */
 export function diffFiles(file1: string, file2: string): DiffResult {
   if (!existsSync(file1)) {
     return {
@@ -238,9 +220,6 @@ export function diffFiles(file1: string, file2: string): DiffResult {
   };
 }
 
-/**
- * Compare two text blocks
- */
 export function diffContent(
   content1: string,
   content2: string,
@@ -270,9 +249,6 @@ export function diffContent(
   };
 }
 
-/**
- * Show file content with line numbers
- */
 export function showFileContent(filePath: string, startLine?: number, endLine?: number): string {
   if (!existsSync(filePath)) {
     return diffUtilsT("mcpServer.fs.diffUtils.fileNotFound", { filePath });
@@ -295,9 +271,6 @@ export function showFileContent(filePath: string, startLine?: number, endLine?: 
   return result.join("\n");
 }
 
-/**
- * File summary (git-diff style)
- */
 export function getFileSummary(filePath: string): {
   lines: number;
   words: number;
@@ -313,7 +286,6 @@ export function getFileSummary(filePath: string): {
   const words = content.split(/\s+/).filter((w) => w.length > 0).length;
   const chars = content.length;
 
-  // Detect the language from the file extension.
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
   const languageMap: Record<string, string> = {
     ts: "TypeScript",
@@ -339,10 +311,6 @@ export function getFileSummary(filePath: string): {
 
   return { lines, words, chars, language };
 }
-
-// ============================================
-// Patch Apply (Unified Diff)
-// ============================================
 
 export interface PatchApplyResult {
   success: boolean;
@@ -465,7 +433,6 @@ export function applyUnifiedPatch(originalContent: string, patch: string): Patch
         appliedLines += 1;
         continue;
       }
-      // type === "add"
       newContent.push(line.content);
       appliedLines += 1;
     }

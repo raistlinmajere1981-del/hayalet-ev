@@ -1,10 +1,3 @@
-/**
- * IPC Database Handlers
- *
- * IPC handlers for database operations.
- * Extracted from main.ts to make the implementation modular.
- */
-
 import { registerHandler } from "./ipc-helpers.ts";
 import { DatabaseManager } from "../database/index.ts";
 import type { SyncMessagesParams } from "@electron/types";

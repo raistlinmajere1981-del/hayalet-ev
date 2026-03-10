@@ -54,7 +54,7 @@ class AppStateClass {
     };
     this.assistantRelay = {
       active: false,
-      sourceSlot: null, // "ai1" or "ai2"
+      sourceSlot: null,
     };
   }
 

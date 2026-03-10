@@ -1,8 +1,5 @@
 import { parseCodeStructure } from "./parse-structure.js";
 
-/**
- * Create a collapsed view by hiding function/class bodies.
- */
 export function createCollapsedView(content: string, extension: string): string {
   const structures = parseCodeStructure(content, extension);
   if (structures.length === 0) {
@@ -37,9 +34,6 @@ export function createCollapsedView(content: string, extension: string): string 
   return result.join("\n");
 }
 
-/**
- * Create line-numbered content.
- */
 export function addLineNumbers(content: string): string {
   const lines = content.split("\n");
   return lines.map((line, i) => `${String(i).padStart(4)} ${line}`).join("\n");

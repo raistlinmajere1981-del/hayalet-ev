@@ -1,10 +1,3 @@
-/**
- * Hayalet-ev Design System - Data Row Components
- * Key-value rows, item rows, model rows for sidebar panels
- * @version 5.4.0
- */
-
-/* === KEY-VALUE ROW (status details, settings) === */
 .ds-kv-row {
   display: flex;
   align-items: center;
@@ -30,7 +23,6 @@
   font-size: var(--text-2xs);
 }
 
-/* === ITEM ROW (MCP servers, tools list) === */
 .ds-item-row {
   display: flex;
   align-items: center;
@@ -47,7 +39,6 @@
   flex: 1;
 }
 
-/* === MODEL ROW (model list cards) === */
 .ds-model-row {
   display: flex;
   align-items: center;
@@ -79,7 +70,6 @@
   font-size: var(--text-2xs);
 }
 
-/* === SIDEBAR FOOTER BAR === */
 .ds-footer-bar {
   display: flex;
   align-items: center;

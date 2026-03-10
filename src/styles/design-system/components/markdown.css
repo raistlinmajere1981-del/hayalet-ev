@@ -1,17 +1,9 @@
-/**
- * Hayalet-ev Design System - Markdown Rendering Component
- * Styles for rendered markdown content within message bubbles
- * @version 5.4.0
- */
-
-/* === MARKDOWN BASE === */
 .ds-markdown {
   line-height: var(--leading-relaxed);
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
-/* Headings */
 .ds-markdown h1,
 .ds-markdown h2,
 .ds-markdown h3 {
@@ -30,13 +22,11 @@
   font-size: 1em;
 }
 
-/* Paragraphs */
 .ds-markdown p {
   margin: 0.4em 0;
   line-height: var(--leading-relaxed);
 }
 
-/* Lists */
 .ds-markdown ul,
 .ds-markdown ol {
   margin: 0.4em 0;
@@ -47,7 +37,6 @@
   margin: 0.15em 0;
 }
 
-/* Inline code */
 .ds-markdown code {
   background: var(--bg-code, rgba(0, 0, 0, 0.3));
   padding: 0.15em 0.4em;
@@ -56,7 +45,6 @@
   font-size: 0.88em;
 }
 
-/* Code blocks */
 .ds-markdown pre {
   background: var(--bg-code, rgba(0, 0, 0, 0.3));
   border-radius: var(--radius-md);
@@ -73,7 +61,6 @@
   line-height: var(--leading-normal);
 }
 
-/* Blockquote */
 .ds-markdown blockquote {
   border-left: var(--border-3) solid var(--color-accent);
   margin: 0.5em 0;
@@ -81,7 +68,6 @@
   color: var(--text-muted);
 }
 
-/* Table */
 .ds-markdown table {
   border-collapse: collapse;
   width: 100%;
@@ -101,7 +87,6 @@
   font-weight: var(--font-semibold);
 }
 
-/* Links */
 .ds-markdown a {
   color: var(--color-accent);
   text-decoration: none;
@@ -111,14 +96,12 @@
   text-decoration: underline;
 }
 
-/* Images */
 .ds-markdown img {
   max-width: 100%;
   border-radius: var(--radius-md);
   margin: 0.3em 0;
 }
 
-/* === CODE BLOCK WRAPPER === */
 .ds-code-block {
   position: relative;
   border: var(--border-1) solid var(--border-glass);
@@ -193,7 +176,6 @@
   overflow: hidden;
 }
 
-/* === TOOL CALL CARD === */
 .ds-tool-call {
   background: var(--bg-elevated);
   border: var(--border-1) solid var(--border-glass);
@@ -297,7 +279,6 @@
   white-space: pre-wrap;
 }
 
-/* === FILE CHIPS === */
 .ds-file-chips {
   display: flex;
   flex-wrap: wrap;
@@ -321,7 +302,6 @@
   text-overflow: ellipsis;
 }
 
-/* === CLIPBOARD PREVIEW === */
 .ds-clipboard-preview {
   display: inline-flex;
   align-items: center;

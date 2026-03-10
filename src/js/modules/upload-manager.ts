@@ -1,10 +1,3 @@
-/**
- * UploadManager - Centralized Upload Management
- *
- * This module manages file uploads and service availability checks.
- * It replaces the scattered logic under webview/methods/shared.
- */
-
 import { AppI18n } from "./i18n/index.js";
 import { formatErrorWithDetail } from "../../../shared/i18n/error-detail.js";
 

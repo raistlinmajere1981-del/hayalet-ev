@@ -1,13 +1,3 @@
-/**
- * Console Log Writer - Human-readable log format
- *
- * Writes logs in readable format with:
- * - Timestamp, level, visibility, source, category, message
- * - Metadata appended as JSON (if present)
- *
- * @module electron/logger/writers/ConsoleWriter
- */
-
 import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";

@@ -43,7 +43,6 @@ export class ArchivesController {
   _unsubSettings: (() => void) | null;
   _unsubI18n: (() => void) | null;
 
-  // Protocol editor state
   _protocols: Record<string, string>;
   _selectedProtocolKey: string | null;
 
@@ -64,7 +63,6 @@ export class ArchivesController {
   resultsFilesEl: HTMLElement | null;
   _selectedEntry: ArchiveEntry | null;
 
-  // Protocol editor elements
   protocolListEl: HTMLElement | null;
   protocolEditorTitleEl: HTMLElement | null;
   protocolTextareaEl: HTMLTextAreaElement | null;
@@ -101,7 +99,6 @@ export class ArchivesController {
     this.resultsFilesEl = null;
     this._selectedEntry = null;
 
-    // Protocol editor
     this._protocols = {};
     this._selectedProtocolKey = null;
     this.protocolListEl = null;
@@ -143,7 +140,6 @@ export class ArchivesController {
     this.resultsMessagesEl = document.getElementById("results-messages");
     this.resultsFilesEl = document.getElementById("results-files");
 
-    // Protocol editor elements
     this.protocolListEl = document.getElementById("protocol-list");
     this.protocolEditorTitleEl = document.getElementById("protocol-editor-title");
     this.protocolTextareaEl = document.getElementById(
@@ -216,12 +212,10 @@ export class ArchivesController {
       });
     });
 
-    // Protocol editor events
     this.protocolSaveBtn?.addEventListener("click", () => {
       void this.saveSelectedProtocol();
     });
 
-    // Protocol tag buttons — insert tag at cursor position
     this.protocolTagButtonsEl?.querySelectorAll(".protocol-tag-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const tag = (btn as HTMLElement).dataset["tag"];
@@ -487,18 +481,14 @@ export class ArchivesController {
   }
   onHide(): void {
     this.clearStatus();
-    // Phase 3: Clean up the search timeout to prevent memory leaks.
+    // NOTE: Clear the search timeout to avoid leaks.
     if (this._searchTimeout) {
       clearTimeout(this._searchTimeout);
       this._searchTimeout = null;
     }
   }
 
-  // ==========================================
-  // Protocol Editor Methods
-  // ==========================================
 
-  /** Load protocols from the JSON file. */
   async loadProtocols(): Promise<void> {
     try {
       this._protocols = await loadProtocolsFromApi(window.electronAPI);
@@ -514,7 +504,6 @@ export class ArchivesController {
     }
   }
 
-  /** Render the protocol list in the sidebar. */
   renderProtocolList(): void {
     renderProtocolListView({
       protocolListEl: this.protocolListEl,
@@ -526,7 +515,6 @@ export class ArchivesController {
     });
   }
 
-  /** Select a protocol and load it into the editor. */
   selectProtocol(key: string): void {
     this._selectedProtocolKey = key;
     this.renderProtocolList();
@@ -544,7 +532,6 @@ export class ArchivesController {
     });
   }
 
-  /** Save the selected protocol. */
   async saveSelectedProtocol(): Promise<void> {
     if (this._selectedProtocolKey === null || this._selectedProtocolKey === "") {
       this.setProtocolStatus(archivesT("protocol.status.selectionRequired"), "warning");
@@ -594,12 +581,10 @@ export class ArchivesController {
     }
   }
 
-  /** Insert a tag at the textarea cursor position. */
   insertTagAtCursor(textarea: HTMLTextAreaElement, tag: string): void {
     insertTagAtCursorInEditor(textarea, tag);
   }
 
-  /** Show the protocol status message. */
   setProtocolStatus(text: string, type = "info"): void {
     setProtocolStatusView(this.protocolStatusEl, text, type);
   }

@@ -1,6 +1,5 @@
 <div class="page hidden" id="page-assistant">
   <div class="assistant-container">
-    <!-- Top control panel -->
     <div class="assistant-topbar">
       <div class="assistant-topbar-primary assistant-primary-panel">
         <div class="assistant-identity-card">
@@ -37,8 +36,7 @@
 
             <div class="assistant-provider-meta">
               <select id="assistant-provider-select" class="select-compact">
-                <!-- Providers are populated dynamically by JavaScript. -->
-              </select>
+                </select>
             </div>
           </div>
         </div>
@@ -198,10 +196,8 @@
       </div>
     </div>
 
-    <!-- Memory viewer overlay -->
     <div class="modal hidden" id="memory-overlay">
       <div class="modal-content memory-modal">
-        <!-- Header -->
         <div class="modal-header">
           <div class="memory-header-left">
             <h2 class="modal-title">
@@ -225,9 +221,7 @@
           </button>
         </div>
 
-        <!-- Body: two panels -->
         <div class="memory-body">
-          <!-- Left panel: filters and actions -->
           <div class="memory-filter-panel">
             <div class="memory-panel-section">
               <div
@@ -282,8 +276,7 @@
                   Tags
                 </label>
                 <div class="memory-tag-cloud" id="mem-tag-cloud">
-                  <!-- Rendered by JavaScript. -->
-                </div>
+                  </div>
               </div>
             </div>
 
@@ -427,7 +420,6 @@
             </div>
           </div>
 
-          <!-- Right panel: record list -->
           <div class="memory-list-panel">
             <div class="memory-search-bar">
               <input
@@ -451,12 +443,8 @@
         </div>
       </div>
     </div>
-    <!-- /Memory viewer overlay -->
-
-    <!-- Character profile overlay -->
     <div class="modal hidden" id="character-overlay">
       <div class="modal-content character-modal">
-        <!-- Header -->
         <div class="modal-header">
           <h2 class="modal-title">
             <span aria-hidden="true">🎭</span>
@@ -472,9 +460,7 @@
           </button>
         </div>
 
-        <!-- Body: two panels -->
         <div class="character-body">
-          <!-- Left panel: active profile -->
           <div class="character-active-panel">
             <div class="character-panel-header">
               <span
@@ -498,7 +484,6 @@
             </div>
           </div>
 
-          <!-- Right panel: feature pool -->
           <div class="character-pool-panel">
             <div class="character-panel-header">
               <span
@@ -509,12 +494,10 @@
               </span>
             </div>
             <div class="character-pool-list" id="character-pool-list">
-              <!-- Accordion categories are rendered by JavaScript. -->
-            </div>
+              </div>
           </div>
         </div>
 
-        <!-- Footer -->
         <div class="character-footer">
           <div class="character-footer-info">
             <span
@@ -557,9 +540,6 @@
         </div>
       </div>
     </div>
-    <!-- /Character profile overlay -->
-
-    <!-- AI0 Nickname Overlay -->
     <div class="modal hidden" id="assistant-identity-modal">
       <div class="modal-content assistant-identity-modal">
         <div class="modal-header">
@@ -619,13 +599,9 @@
         </div>
       </div>
     </div>
-    <!-- /AI0 Nickname Overlay -->
-
-    <!-- Webview Paneli -->
     <div class="assistant-webview-panel" id="assistant-webview-panel">
       <aside class="assistant-test-panel hidden" id="ai0-test-side-panel"></aside>
       <div class="webview-wrapper" id="ai0-webview-mount">
-        <!-- Overlay displayed above the webview -->
         <div class="webview-overlay empty" id="ai0-webview-overlay">
           <div class="overlay-icon"></div>
           <div class="overlay-title" data-shell-i18n-text="assistant.connectionUi.noAccountTitle">
@@ -638,8 +614,7 @@
             Select a provider and connect
           </div>
         </div>
-        <!-- The webview will be mounted here dynamically. -->
-      </div>
+        </div>
     </div>
   </div>
 </div>

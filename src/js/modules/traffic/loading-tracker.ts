@@ -72,7 +72,7 @@ export class LoadingTracker {
 
     try {
       if (typeof webview.getWebContentsId !== "function") return false;
-      webview.getWebContentsId(); // Throws if not ready
+      webview.getWebContentsId();
       if (webview.isLoading?.() === true) return false;
     } catch (_) {
       return false;
@@ -97,7 +97,7 @@ export class LoadingTracker {
       "article",
     ];
 
-    const _scrollDebounceMs = 10; // shared/timeouts.ts: ASSISTANT_TIMEOUTS.LOADING_TRACKER_DEBOUNCE
+    const _scrollDebounceMs = 10;
     const script = `(async () => {
       const scrollerSelectors = ${JSON.stringify(scrollerSelectors)};
       const contentContainers = ${JSON.stringify(contentContainers)};
@@ -126,7 +126,7 @@ export class LoadingTracker {
               
               return el;
             }
-          } catch (_) { /* noop */ }
+          } catch (_) {}
         }
         return null;
       };
@@ -152,7 +152,7 @@ export class LoadingTracker {
             for (let i = 0; i < list.length && i < 250; i += 1) {
               pushIfScrollable(list[i]);
             }
-          } catch (_) { /* noop */ }
+          } catch (_) {}
         }
         candidates.sort((a, b) => b.priority - a.priority);
         return candidates[0]?.el ?? document.scrollingElement ?? document.documentElement ?? document.body;
@@ -299,8 +299,6 @@ export class LoadingTracker {
 
       viewState = result.newState;
     }
-
-    // Periodic debug removed - state changes are logged via Logger.panel above
 
     return { indicator, newState: viewState, event };
   }

@@ -1,11 +1,4 @@
-/**
- * Development Tools - ESLint Project
- *
- * Batch ESLint runner with glob pattern support
- */
-
 import { execSync } from "child_process";
-// import { globSync } from "glob";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { createProgress } from "../../utils/progress.js";
 import { logToolError } from "../../utils/mcp-logger.js";
@@ -59,7 +52,6 @@ export function lintProject(
     const cwd = projectRoot;
     progress.update(0, lintProjectT("progress.scanning"));
 
-    // Build ESLint command
     const fixArg = fix ? " --fix" : "";
     const cacheArg = cache ? " --cache" : "";
     const maxWarningsArg = maxWarnings >= 0 ? ` --max-warnings ${maxWarnings}` : "";
@@ -73,8 +65,8 @@ export function lintProject(
       const output = execSync(cmd, {
         cwd,
         encoding: "utf-8",
-        timeout: DEV_TIMEOUTS.LINT * 5, // 5x timeout for project-wide
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        timeout: DEV_TIMEOUTS.LINT * 5,
+        maxBuffer: 10 * 1024 * 1024,
       });
 
       progress.done(lintProjectT("progress.noIssues"));
@@ -95,7 +87,6 @@ export function lintProject(
 
       progress.update(75, lintProjectT("progress.parsing"));
 
-      // Parse ESLint output
       const stats = parseEslintOutput(output);
 
       progress.fail(
@@ -137,7 +128,6 @@ function parseEslintOutput(output: string): {
   files_checked: number;
   files_with_issues: number;
 } {
-  // Parse summary line: "✖ 23 problems (15 errors, 8 warnings)"
   const problemMatch = output.match(/(\d+)\s+problems?\s+\((\d+)\s+errors?,\s+(\d+)\s+warnings?\)/);
   const errorMatch = output.match(/(\d+)\s+errors?/);
   const warningMatch = output.match(/(\d+)\s+warnings?/);
@@ -145,11 +135,9 @@ function parseEslintOutput(output: string): {
     /(\d+)\s+errors?\s+and\s+(\d+)\s+warnings?\s+potentially\s+fixable/
   );
 
-  // Count files with issues (lines starting with file path)
   const fileMatches = output.match(/^\/.+\.(js|ts|jsx|tsx)$/gm);
   const filesWithIssues = fileMatches ? fileMatches.length : 0;
 
-  // Try to count total files checked
   const filesCheckedMatch = output.match(/(\d+)\s+files?\s+linted/);
   const filesChecked = filesCheckedMatch ? parseInt(filesCheckedMatch[1] ?? "0") : filesWithIssues;
 

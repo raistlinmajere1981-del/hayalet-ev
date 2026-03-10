@@ -1,9 +1,3 @@
-/**
- * Development Tools - Context Generator
- *
- * Session context document generation (.rovo/context.md)
- */
-
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -45,12 +39,10 @@ export async function bootstrapContext(
   const lines: string[] = [];
   const now = new Date().toISOString().split("T")[0] ?? "unknown-date";
 
-  // Header
   lines.push(t("document.title"));
   lines.push(t("document.generatedAt", { date: now }));
   lines.push("");
 
-  // Package info
   try {
     const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
     const pkg: PackageJsonLike =
@@ -60,7 +52,6 @@ export async function bootstrapContext(
       t("document.projectName", { name: pkg.name ?? "unknown", version: pkg.version ?? "0.0.0" })
     );
 
-    // Git info
     try {
       const branch = execSync("git branch --show-current", {
         cwd: projectRoot,
@@ -77,14 +68,13 @@ export async function bootstrapContext(
         })
       );
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
     lines.push("");
   } catch {
-    /* ignore */
+    // NOTE: Intentionally ignored.
   }
 
-  // Directory stats
   lines.push(t("document.structureTitle"));
   for (const srcDir of DEV_CONFIG.srcDirs) {
     // eslint-disable-next-line no-await-in-loop
@@ -99,7 +89,6 @@ export async function bootstrapContext(
   }
   lines.push("");
 
-  // Module map
   lines.push(t("document.moduleMapTitle"));
   lines.push("");
   lines.push(t("document.orchestratorsTitle"));
@@ -109,21 +98,18 @@ export async function bootstrapContext(
   lines.push(t("document.orchestrators.slotController"));
   lines.push("");
 
-  // Critical rules
   lines.push(t("document.rulesTitle"));
   lines.push(t("document.rules.noConsoleLog"));
   lines.push(t("document.rules.addContext"));
   lines.push(t("document.rules.checkLogs"));
   lines.push("");
 
-  // Commands
   lines.push(t("document.commandsTitle"));
   lines.push(t("document.commands.start"));
   lines.push(t("document.commands.lint"));
   lines.push(t("document.commands.preCommit"));
   lines.push("");
 
-  // Recent commits
   try {
     const commits = execSync("git log --oneline -5", { cwd: projectRoot, encoding: "utf-8" })
       .trim()
@@ -134,7 +120,7 @@ export async function bootstrapContext(
     }
     lines.push("");
   } catch {
-    /* ignore */
+    // NOTE: Intentionally ignored.
   }
 
   lines.push("---");
@@ -142,7 +128,6 @@ export async function bootstrapContext(
 
   const content = lines.join("\n");
 
-  // Write to file if not print mode
   let outputPath: string | undefined;
   if (options.print !== true) {
     outputPath = join(PROJECT_ROOT, ".rovo/context.md");

@@ -1,10 +1,4 @@
-/**
- * UI Tools - Visual message rendering for MCP
- *
- * @module ui-tools
- * @category UI/Display
- * @description Provides formatted, visually appealing message boxes for better UX
- */
+// NOTE: Render formatted message boxes for MCP responses.
 
 import { createMcpTranslatorSync, loadMcpLanguageSync } from "../utils/i18n/index.js";
 import { logToolCall, logToolSuccess, logToolError } from "../utils/mcp-logger.js";
@@ -127,7 +121,7 @@ function renderProgressBar(
 ): string {
   const style = PROGRESS_STYLES[progress.style ?? "bar"];
   const percentage = progress.percentage ?? Math.round((progress.current / progress.total) * 100);
-  const barWidth = width - 20; // Reserve space for percentage and count
+  const barWidth = width - 20;
   const filledWidth = Math.round((barWidth * percentage) / 100);
   const emptyWidth = barWidth - filledWidth;
 
@@ -227,13 +221,10 @@ export function renderMessageBox(options: MessageBoxOptions): string {
   const displayIcon = icon ?? typeConfig.icon;
   const lines: string[] = [];
 
-  // Calculate content width (excluding borders)
-  const contentWidth = width - 4; // 2 for borders + 2 for padding
+  const contentWidth = width - 4;
 
-  // Top border
   lines.push(chars.topLeft + chars.horizontal.repeat(width - 2) + chars.topRight);
 
-  // Title line with icon
   let titleText = `${displayIcon}  ${title.toUpperCase()}`;
   if (timestamp) {
     const time = new Date().toLocaleTimeString(getUiLocale());
@@ -244,10 +235,8 @@ export function renderMessageBox(options: MessageBoxOptions): string {
   }
   lines.push(chars.vertical + titleText + chars.vertical);
 
-  // Middle separator
   lines.push(chars.leftJoin + chars.horizontal.repeat(width - 2) + chars.rightJoin);
 
-  // Message content
   if (message != null && message !== "") {
     const wrappedLines = wrapText(message, contentWidth - 2);
     wrappedLines.forEach((line) => {
@@ -256,14 +245,12 @@ export function renderMessageBox(options: MessageBoxOptions): string {
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Progress bar
   if (progress) {
     const progressBar = renderProgressBar(progress, contentWidth);
     lines.push(chars.vertical + "  " + progressBar.padEnd(contentWidth) + "  " + chars.vertical);
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Table
   if (table) {
     const tableLines = renderTable(table, contentWidth, boxStyle);
     tableLines.forEach((line) => {
@@ -272,7 +259,6 @@ export function renderMessageBox(options: MessageBoxOptions): string {
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Menu
   if (menu) {
     const menuLines = renderMenu(menu, contentWidth);
     menuLines.forEach((line) => {
@@ -281,7 +267,6 @@ export function renderMessageBox(options: MessageBoxOptions): string {
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Tree
   if (tree) {
     const treeLines = renderTree(tree);
     treeLines.forEach((line) => {
@@ -290,7 +275,6 @@ export function renderMessageBox(options: MessageBoxOptions): string {
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Details
   if (details && details.length > 0) {
     lines.push(
       chars.vertical + ("  " + messageBoxT("detailsTitle")).padEnd(width - 2) + chars.vertical
@@ -306,22 +290,17 @@ export function renderMessageBox(options: MessageBoxOptions): string {
     lines.push(chars.vertical + "  ".repeat(width / 2) + chars.vertical);
   }
 
-  // Actions
   if (actions && actions.length > 0) {
     lines.push(chars.leftJoin + chars.horizontal.repeat(width - 2) + chars.rightJoin);
     const actionsText = actions.map((action) => `[${action}]`).join("  ");
     lines.push(chars.vertical + "  " + actionsText.padEnd(contentWidth) + "  " + chars.vertical);
   }
 
-  // Bottom border
   lines.push(chars.bottomLeft + chars.horizontal.repeat(width - 2) + chars.bottomRight);
 
   return lines.join("\n");
 }
 
-/**
- * MCP Tool: Display formatted message box
- */
 const hevMessageBox = {
   name: "hev_message_box",
   description: messageBoxDefT("description"),
@@ -472,6 +451,5 @@ const hevMessageBox = {
   },
 };
 
-// Export for ui-tools module
 export { hevMessageBox as hev_message_box };
 export const UI_TOOL_DEFINITIONS = [hevMessageBox];

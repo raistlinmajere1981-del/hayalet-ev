@@ -1,9 +1,3 @@
-/**
- * Development Tools - Project Analyzer
- *
- * Project statistics, dependency, and git state analysis
- */
-
 import { readFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -60,7 +54,6 @@ export async function analyzeProject(
     summary: { totalFiles: 0, totalLines: 0, byDirectory: {} },
   };
 
-  // Dosya istatistikleri
   let step = 0;
   for (const srcDir of DEV_CONFIG.srcDirs) {
     progress.update(++step, projectAnalyzerT("progress.scanningDir", { srcDir }));
@@ -78,7 +71,6 @@ export async function analyzeProject(
     result.summary.totalLines += dirLines;
   }
 
-  // Dependencies
   if (mode === "deps" || mode === "full") {
     try {
       const pkgRaw: unknown = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf-8"));
@@ -91,11 +83,10 @@ export async function analyzeProject(
         development: getObjectKeys(pkg.devDependencies),
       };
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 
-  // Git info
   if (mode === "summary" || mode === "full") {
     try {
       const branch = execSync("git branch --show-current", {
@@ -108,11 +99,10 @@ export async function analyzeProject(
       const status = execSync("git status --short", { cwd: projectRoot, encoding: "utf-8" }).trim();
       result.git = { branch, lastCommits: commits, hasChanges: status.length > 0 };
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 
-  // Module analysis
   if (mode === "modules" || mode === "full") {
     step += 1;
     progress.update(step, projectAnalyzerT("progress.analyzingModules"));
@@ -125,7 +115,6 @@ export async function analyzeProject(
     }
 
     for (const file of allFiles.slice(0, 50)) {
-      // Limit for performance
       try {
         const content = readFileSync(join(projectRoot, file), "utf-8");
         const imports = [...content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)].map(
@@ -140,7 +129,7 @@ export async function analyzeProject(
           result.modules.push({ file, imports, exports });
         }
       } catch {
-        /* ignore */
+        // NOTE: Intentionally ignored.
       }
     }
   }

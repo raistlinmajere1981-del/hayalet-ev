@@ -1,9 +1,3 @@
-/**
- * File injection method
- * Direct file input element manipulation
- * Provider-agnostic implementation using runtime config
- */
-
 import { AppI18n } from "../../../i18n/index.js";
 import { waitForDomReady } from "../shared/file-utils.js";
 import { validateFiles, createErrorResponse } from "../shared/file-utils.js";

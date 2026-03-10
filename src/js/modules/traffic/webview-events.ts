@@ -1,12 +1,3 @@
-/**
- * WebviewEvents - traffic webview event management
- *
- * Handles webview navigation events:
- * - event listener attachment/detachment
- * - navigation event handling
- * - DOM ready handling
- */
-
 import { Logger } from "../logger/index.js";
 import { LogCategory } from "@shared/index.js";
 import { getErrorMessage } from "@shared/index.js";
@@ -86,10 +77,10 @@ export function attachWebviewEvents(
   const ensureBridge = (): void => {
     try {
       if (typeof webviewEl.getWebContentsId !== "function") return;
-      webviewEl.getWebContentsId(); // Throws if not ready
-      if (webviewEl.isLoading?.() === true) return; // Wait while loading is still in progress
+      webviewEl.getWebContentsId();
+      if (webviewEl.isLoading?.() === true) return;
     } catch (_) {
-      return; // The webview is not ready yet
+      return;
     }
 
     const script = buildProbeScript(provider);
@@ -112,8 +103,6 @@ export function attachWebviewEvents(
     if (href === "about:blank" || href.startsWith("data:")) {
       return;
     }
-
-    // Navigation event debug removed - handled by traffic manager
 
     onNavigation(provider, href);
   };

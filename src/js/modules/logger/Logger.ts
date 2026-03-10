@@ -1,31 +1,3 @@
-/**
- * app Unified Logger - Renderer Process
- *
- * Primary logging API for renderer process. Replaces all console.* calls.
- *
- * Features:
- * - 3-level visibility system (toast/panel/verbose)
- * - Structured logging with rich context
- * - Operation tracking with correlation IDs
- * - Automatic toast integration
- * - IPC batching for performance
- * - Console override for legacy code
- *
- * @example
- * ```typescript
- * // Simple logging
- * Logger.success('webview', 'Message sent successfully');
- * Logger.error('slot', new Error('Slot assignment failed'), { slotId: 'AI1' });
- *
- * // Operation tracking
- * const corrId = Logger.startOperation('send-message', 'webview', { provider: 'chatgpt' });
- * Logger.debug('webview', 'Finding input field', { correlationId: corrId });
- * Logger.endOperation(corrId, true, 'Message delivered');
- * ```
- *
- * @module Logger
- */
-
 import type {
   LogEntry,
   LogLevel,
@@ -61,9 +33,9 @@ class Logger {
 
   private config: LoggerConfig = {
     sessionId: "",
-    maxMemoryLogs: 500, // Keep last 500 logs in memory
-    batchSize: 50, // Send to main after 50 logs
-    batchInterval: 100, // Or after 100ms
+    maxMemoryLogs: 500,
+    batchSize: 50,
+    batchInterval: 100,
     enableConsoleOverride: true,
     enableToastIntegration: true,
   };
@@ -99,7 +71,7 @@ class Logger {
 
     logger.startBatchTimer();
 
-    // Log initialization (use debug to avoid toast trigger during init)
+    // NOTE: Use debug to avoid toast triggers during init.
     Logger.debugT(LC.SYSTEM, "app.logs.logger.initialized", undefined, {
       sessionId,
       config: logger.config,
@@ -148,10 +120,6 @@ class Logger {
     Logger.getInstance().logLocalized(category, level, key, LV.PANEL, params, context);
   }
 
-  /**
-   * DEBUG level (Visibility 3) - Verbose debugging
-   * Hidden from users, visible in logs only
-   */
   public static debug(
     category: LogCategory | string,
     message: string,
@@ -385,7 +353,7 @@ class Logger {
 
     this.entries.push(entry);
     if (this.entries.length > this.config.maxMemoryLogs) {
-      this.entries.shift(); // Remove oldest
+      this.entries.shift();
     }
 
     this.queueForIPC(entry);

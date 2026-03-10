@@ -1,9 +1,3 @@
-/**
- * Development Tools - Diagram Generator
- *
- * Generate module dependency diagrams (Mermaid/DOT).
- */
-
 import { readFileSync } from "fs";
 import { join, basename } from "path";
 import { DEV_CONFIG } from "./shared/config.js";
@@ -46,7 +40,7 @@ export async function generateDiagram(
         graph.set(fileName, imports);
       }
     } catch {
-      /* ignore */
+      // NOTE: Intentionally ignored.
     }
   }
 

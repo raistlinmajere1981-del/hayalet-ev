@@ -1,11 +1,4 @@
-/**
- * SQLite Database Manager - Per-Account Database Factory
- *
- * Creates and manages a separate SQLite database file for each account.
- * Format: data/{email}_{provider}/archive.db
- *
- * @module electron/database/sqlite-manager
- */
+// NOTE: Per-account SQLite archive at data/{email}_{provider}/archive.db.
 
 import Database from "better-sqlite3";
 import { join } from "path";

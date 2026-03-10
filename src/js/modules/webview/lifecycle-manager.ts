@@ -1,16 +1,5 @@
 import { LogCategory } from "@shared/logging-core";
 import { ASSISTANT_TIMEOUTS } from "@timeouts";
-/**
- * LifecycleManager - Webview lifecycle management
- *
- * This module manages webview registration, attachment, detachment, and cleanup:
- * - register: register a webview
- * - attach: attach a webview to a slot
- * - detach: detach a webview from a slot
- * - destroy: remove a webview completely
- * - cleanupInactive: clean up inactive webviews
- */
-
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { TrafficManager } from "../traffic-manager.js";
@@ -100,12 +89,6 @@ class LifecycleManagerClass {
     return found as Electron.WebviewTag | null;
   }
 
-  /**
-   * Attach a webview to a slot
-   * @param {string} provider - Slot ID
-   * @param {HTMLElement} webview - Webview element
-   * @param {Object} opts - { providerId, onReady }
-   */
   attach(
     provider: string,
     webview: Electron.WebviewTag,
@@ -413,10 +396,6 @@ class LifecycleManagerClass {
     }
   }
 
-  /**
-   * Return all registered webviews.
-   * @returns {Object}
-   */
   getAll(): Record<string, Electron.WebviewTag> {
     const all: Record<string, Electron.WebviewTag> = { ...this.webviews };
 

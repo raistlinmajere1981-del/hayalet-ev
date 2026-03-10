@@ -1,15 +1,3 @@
-/**
- * app Main Process Logger Core
- *
- * Central orchestrator for main process logging:
- * - Receives batched logs from renderer via IPC
- * - Intercepts main process console.*
- * - Coordinates writers (structured, console, error, performance)
- * - Manages session lifecycle
- *
- * @module electron/logger/core/LoggerCore
- */
-
 import type { IpcMainInvokeEvent } from "electron";
 import { BrowserWindow } from "electron";
 import type { LogEntry, LogLevel, LogCategory, TranslationParams } from "@shared/index.js";
@@ -60,7 +48,7 @@ export class LoggerCore {
       enableErrorLog: true,
       enablePerformanceLog: true,
       compressionEnabled: false,
-      maxFileSize: 10, // 10 MB
+      maxFileSize: 10,
     };
 
     this.structuredWriter = new StructuredWriter(this.writerConfig);
@@ -183,10 +171,8 @@ export class LoggerCore {
     this.enqueueUIBroadcast(enriched);
   }
 
-  /**
-   * Queue log broadcasts to UI (renderer process).
-   * Uses short interval batching to avoid UI spam without dropping events.
-   */
+  // NOTE: Queue log broadcasts to UI (renderer process).
+  // NOTE: Uses short interval batching to avoid UI spam without dropping events.
   private enqueueUIBroadcast(entry: LogEntry): void {
     this.uiBroadcastQueue.push(entry);
 
@@ -255,7 +241,8 @@ export class LoggerCore {
       ...entry,
       locale: entry.locale ?? readElectronAppLanguageSync(),
       sessionId: entry.sessionId ?? this.sessionManager.getSessionId(),
-      isoTimestamp: entry.timestamp, // Alias for backward compat
+      // NOTE: Alias for backward compat.
+      isoTimestamp: entry.timestamp,
     };
   }
 

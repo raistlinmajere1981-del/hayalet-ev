@@ -1,17 +1,7 @@
-/**
- * Relay Types - communication types for AI-AI and AI-Assistant flows
- *
- * @module src/js/types/relay
- */
-
 import type { SlotId, Attachment } from "./common.js";
 
-// Relay Message Types
-
-/** Relay message type */
 export type RelayMessageType = "text" | "command" | "file" | "system";
 
-/** Relay message */
 export interface RelayMessage {
   id: string;
   type: RelayMessageType;
@@ -23,7 +13,6 @@ export interface RelayMessage {
   metadata?: RelayMessageMetadata;
 }
 
-/** Relay message metadata */
 export interface RelayMessageMetadata {
   originalMessageId?: string;
   replyTo?: string;
@@ -31,12 +20,8 @@ export interface RelayMessageMetadata {
   [key: string]: unknown;
 }
 
-// Relay State Types
-
-/** Relay status */
 export type RelayStatus = "idle" | "active" | "paused" | "error";
 
-/** Relay state */
 export interface RelayState {
   status: RelayStatus;
   source: SlotId | null;
@@ -46,9 +31,6 @@ export interface RelayState {
   error?: string;
 }
 
-// Relay Config Types
-
-/** Relay configuration */
 export interface RelayConfig {
   autoStart?: boolean;
   maxQueueSize?: number;
@@ -58,19 +40,14 @@ export interface RelayConfig {
   filters?: RelayFilters;
 }
 
-/** Relay filters */
 export interface RelayFilters {
   allowedTypes?: RelayMessageType[];
   blockedPatterns?: string[];
   maxMessageLength?: number;
 }
 
-// AI-AI Relay Types
-
-/** AI-AI relay mode */
 export type AIRelayMode = "ping-pong" | "broadcast" | "chain";
 
-/** AI-AI relay configuration */
 export interface AIRelayConfig extends RelayConfig {
   mode: AIRelayMode;
   participants: SlotId[];
@@ -78,7 +55,6 @@ export interface AIRelayConfig extends RelayConfig {
   maxTurns?: number;
 }
 
-/** AI-AI relay state */
 export interface AIRelayState extends RelayState {
   mode: AIRelayMode;
   currentTurn: SlotId | null;
@@ -86,25 +62,18 @@ export interface AIRelayState extends RelayState {
   participants: SlotId[];
 }
 
-// AI-Assistant relay types
-
-/** Assistant relay configuration. */
 export interface AssistantRelayConfig extends RelayConfig {
   assistantSlot: SlotId;
   userSlot: SlotId;
   commandPrefix?: string;
 }
 
-/** Assistant relay state. */
 export interface AssistantRelayState extends RelayState {
   assistantSlot: SlotId;
   userSlot: SlotId;
   pendingCommands: string[];
 }
 
-// Relay Events
-
-/** Relay event type. */
 export type RelayEventType =
   | "message:received"
   | "message:sent"
@@ -113,7 +82,6 @@ export type RelayEventType =
   | "turn:changed"
   | "queue:updated";
 
-/** Relay event */
 export interface RelayEvent {
   type: RelayEventType;
   relay: string;
@@ -121,5 +89,4 @@ export interface RelayEvent {
   data: unknown;
 }
 
-/** Relay event listener */
 export type RelayEventListener = (event: RelayEvent) => void;

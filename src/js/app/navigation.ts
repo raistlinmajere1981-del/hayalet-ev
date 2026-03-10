@@ -1,10 +1,3 @@
-/**
- * Navigation & Window Controls
- *
- * Handles page transitions, window controls, top bar buttons,
- * and side navigation state.
- */
-
 import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory, LogVisibility } from "../modules/logger/index.js";
 import { WindowManager } from "../modules/window-manager.js";
@@ -43,16 +36,10 @@ function matchesPageDataset(candidate: string | undefined, pageName: string): bo
   return normalizePageName(candidate) === pageName;
 }
 
-/**
- * Sets the shared controller references.
- */
 export function setControllers(c: Record<string, PageController>): void {
   controllers = c;
 }
 
-/**
- * Returns the active page name.
- */
 export function getCurrentPage(): string | null {
   return currentPage;
 }
@@ -76,9 +63,6 @@ export function setupNavigation(): void {
   }
 }
 
-/**
- * @param {string} pageName
- */
 export function showPage(pageName: string): void {
   const normalizedPageName = normalizePageName(pageName);
   const previousPage = currentPage;
@@ -202,9 +186,6 @@ export function setupTopBarButtons(): void {
   }
 }
 
-/**
- * @param {string} pageName
- */
 export function setActiveNavigation(pageName: string): void {
   const normalizedPageName = normalizePageName(pageName);
   const menuItems = document.querySelectorAll(".menu-item");
@@ -233,5 +214,5 @@ export function setActiveNavigation(pageName: string): void {
 }
 
 export function setupReportPanel(): void {
-  // Kept for backward compatibility.
+  // NOTE: Kept for backward compatibility.
 }

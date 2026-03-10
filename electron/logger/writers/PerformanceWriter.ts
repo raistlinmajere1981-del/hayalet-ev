@@ -1,12 +1,3 @@
-/**
- * Performance Log Writer - Performance metrics tracking
- *
- * Writes logs with performance data (duration, memory) in JSONL format
- * for analysis and monitoring
- *
- * @module electron/logger/writers/PerformanceWriter
- */
-
 import { join } from "path";
 import { appendFile, mkdir } from "fs/promises";
 import type { LogEntry } from "@shared/index.js";
@@ -18,8 +9,8 @@ interface PerformanceEntry {
   category: string;
   operation?: string;
   correlationId?: string;
-  duration?: number; // ms
-  memoryUsage?: number; // MB
+  duration?: number;
+  memoryUsage?: number;
   context?: Record<string, unknown>;
 }
 

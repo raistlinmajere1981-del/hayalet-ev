@@ -1,11 +1,4 @@
-/**
- * Meta Command Manager - Electron Main Process
- *
- * Allows AIs to define new commands dynamically.
- * Commands are stored persistently in config/custom-commands.json.
- *
- * Security: none - JavaScript code can run with full system access.
- */
+// WARNING: JavaScript commands run with full system access.
 
 import fs from "fs";
 import path from "path";
