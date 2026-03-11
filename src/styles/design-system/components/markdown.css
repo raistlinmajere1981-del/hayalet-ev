@@ -38,7 +38,7 @@
 }
 
 .ds-markdown code {
-  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  background: var(--bg-code);
   padding: 0.15em 0.4em;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
@@ -46,7 +46,7 @@
 }
 
 .ds-markdown pre {
-  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  background: var(--bg-code);
   border-radius: var(--radius-md);
   padding: var(--space-3);
   overflow-x: auto;
@@ -257,7 +257,7 @@
 }
 
 .ds-tool-call__result {
-  background: var(--bg-code, rgba(0, 0, 0, 0.3));
+  background: var(--bg-code);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
   margin-top: var(--space-2);

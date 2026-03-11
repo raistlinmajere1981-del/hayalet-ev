@@ -104,7 +104,7 @@
   color: var(--text-secondary);
   white-space: pre-wrap;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0)),
+    var(--effect-gradient-surface-subtle),
     var(--bg-surface-2);
 }
 
@@ -113,7 +113,7 @@
 }
 
 .modal-wide .modal-content {
-  --modal-max-w: 900px;
+  --modal-max-w: var(--layout-modal-document-w);
 }
 
 .modal-wide .modal-body {

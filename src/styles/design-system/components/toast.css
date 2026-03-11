@@ -111,7 +111,7 @@
 .toast-warning,
 .toast-info {
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--effect-gradient-surface-raised),
     var(--bg-panel);
 }
 
@@ -175,7 +175,7 @@
   left: 50%;
   bottom: var(--space-6);
   transform: translateX(-50%);
-  min-width: min(28rem, calc(100vw - var(--space-8)));
+  min-width: var(--layout-toast-min-w);
   padding: var(--space-2-5) var(--space-5);
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-lg);

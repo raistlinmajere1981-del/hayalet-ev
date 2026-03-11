@@ -394,8 +394,8 @@
 }
 
 .ds-custom-select__item-badge.ds-credit-badge--low {
-  background: var(--color-success-muted, rgba(16, 185, 129, 0.15));
-  color: var(--color-success, #10b981);
+  background: var(--color-success-muted);
+  color: var(--color-success);
 }
 
 .ds-custom-select__item-badge.ds-credit-badge--mid {
@@ -404,8 +404,8 @@
 }
 
 .ds-custom-select__item-badge.ds-credit-badge--high {
-  background: var(--color-warning-muted, rgba(245, 158, 11, 0.15));
-  color: var(--color-warning, #f59e0b);
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
 }
 
 .ds-chat__action-btn {

@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-6);
-  width: min(var(--splash-max-w), calc(100vw - var(--space-12)));
+  width: var(--layout-splash-shell-w);
   min-height: 300px;
   padding: clamp(var(--space-10), 4vw, var(--space-14));
   background: var(--bg-glass);

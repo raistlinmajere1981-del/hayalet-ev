@@ -3,6 +3,9 @@
   --layout-page-height: calc(100vh - var(--topbar-height));
   --layout-room-manager-modal-w: min(1080px, calc(100vw - 3rem));
   --layout-archives-bottom-h: 320px;
+  --layout-toast-min-w: min(28rem, calc(100vw - var(--space-8)));
+  --layout-splash-shell-w: min(var(--splash-max-w), calc(100vw - var(--space-12)));
+  --layout-modal-document-w: 900px;
 
   --layout-live-log-max-w: 1500px;
   --layout-live-log-search-min: 220px;
