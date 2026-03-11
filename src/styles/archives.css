@@ -1,7 +1,7 @@
 .archives-wrapper {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--topbar-height));
+  height: var(--layout-page-height);
   overflow: hidden;
   gap: var(--space-4);
   padding: var(--space-4);
@@ -21,7 +21,7 @@
 .archives-bottom {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  height: 320px;
+  height: var(--layout-archives-bottom-h);
   flex-shrink: 0;
   gap: var(--space-4);
   overflow: hidden;

@@ -205,7 +205,7 @@
 }
 
 .panel-item {
-  --panel-item-height: 300px;
+  --panel-item-height: var(--layout-panel-item-h);
 
   display: flex;
   flex-direction: column;

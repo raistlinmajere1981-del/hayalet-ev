@@ -1,5 +1,8 @@
 :root {
+  --layout-app-height: 100vh;
   --layout-page-height: calc(100vh - var(--topbar-height));
+  --layout-room-manager-modal-w: min(1080px, calc(100vw - 3rem));
+  --layout-archives-bottom-h: 320px;
 
   --layout-live-log-max-w: 1500px;
   --layout-live-log-search-min: 220px;
@@ -25,6 +28,14 @@
   --layout-panel-list-max-h: 260px;
   --layout-panel-scroll-vh-sm: 50vh;
   --layout-character-active-w: 42%;
+  --layout-panel-item-h: 300px;
+
+  --layout-server-topbar-min-h: 48px;
+  --layout-server-workspace-columns: minmax(0, 1.25fr) minmax(360px, 1fr);
+  --layout-server-command-tab-min-w: 88px;
+  --layout-server-command-list-min-h: 180px;
+  --layout-server-command-guide-min-h: 160px;
+  --layout-server-workspace-stack-min-h: 420px;
 
   --layout-whisper-sidebar-min: 320px;
   --layout-whisper-sidebar-max: 380px;

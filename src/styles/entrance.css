@@ -4,7 +4,7 @@
 @import "./entrance/test.css";
 
 #page-entrance {
-  height: calc(100vh - var(--topbar-height));
+  height: var(--layout-page-height);
   overflow-y: auto;
 }
 
