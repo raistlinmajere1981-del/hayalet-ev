@@ -44,6 +44,7 @@ export function applyShellStaticTranslations(root: ParentNode = document): void 
   applyAttributeTranslation(root, "data-shell-i18n-title", "title");
   applyAttributeTranslation(root, "data-shell-i18n-placeholder", "placeholder");
   applyAttributeTranslation(root, "data-shell-i18n-aria-label", "aria-label");
+  applyAttributeTranslation(root, "data-shell-i18n-alt", "alt");
   document.title = AppI18n.t("app.documentTitle");
 }
 

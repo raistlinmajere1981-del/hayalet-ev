@@ -6,7 +6,7 @@ import type {
   ProviderTestSuite,
 } from "@shared/provider.js";
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../types/rooms.js";
-import type { LanguageDescriptor, LoadedLanguagePack } from "../types/i18n.js";
+import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 
 export {};
 
@@ -30,6 +30,8 @@ type AttachmentType = "file" | "image" | "text" | "agent";
 type IPCResult = {
   success?: boolean;
   error?: string;
+  errorKey?: string;
+  errorParams?: TranslationParams;
   [key: string]: unknown;
 };
 

@@ -8,6 +8,7 @@ import type {
   RuntimeState,
 } from "./types.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 
 export interface OpencodeUiSessionStorage {
   listSessionsFromDisk(): Promise<OpencodeUiSessionSummary[]>;
@@ -33,7 +34,9 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
         dbPathArg()
       )) as OpencodeUiFsListResult;
       if (result.success !== true) {
-        throw new Error(formatDetailedErrorMessage("storage.listFailed", result.error));
+        throw new Error(
+          formatDetailedErrorMessage("storage.listFailed", resolveIpcErrorMessage(result))
+        );
       }
 
       const sessions = Array.isArray(result.sessions) ? result.sessions : [];
@@ -59,7 +62,9 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsEnsureResult;
 
       if (result.success !== true) {
-        throw new Error(formatDetailedErrorMessage("storage.ensureFailed", result.error));
+        throw new Error(
+          formatDetailedErrorMessage("storage.ensureFailed", resolveIpcErrorMessage(result))
+        );
       }
     },
 
@@ -93,7 +98,9 @@ export function createSessionStorage(runtime: RuntimeState): OpencodeUiSessionSt
       )) as OpencodeUiFsArchiveResult;
 
       if (result.success !== true) {
-        throw new Error(formatDetailedErrorMessage("storage.archiveFailed", result.error));
+        throw new Error(
+          formatDetailedErrorMessage("storage.archiveFailed", resolveIpcErrorMessage(result))
+        );
       }
     },
   };

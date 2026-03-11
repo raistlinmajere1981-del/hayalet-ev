@@ -42,7 +42,7 @@ class AppI18nManager {
   private currentLocale: AppLanguage = DEFAULT_APP_LANGUAGE;
   private activePack: LoadedLanguagePack = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE) ?? {
     locale: DEFAULT_APP_LANGUAGE,
-    nativeName: "Türkçe",
+    nativeName: DEFAULT_APP_LANGUAGE,
     source: "builtin",
     catalog: {},
   };

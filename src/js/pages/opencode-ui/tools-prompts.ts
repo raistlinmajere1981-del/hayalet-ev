@@ -1,5 +1,6 @@
 import { apiCall } from "./api.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";
 
@@ -117,7 +118,9 @@ async function readQuickPromptsFromStore(): Promise<QuickPromptRecord[]> {
         return legacyPrompts;
       }
 
-      throw new Error(formatDetailedErrorMessage("prompt.loadError", result.error));
+      throw new Error(
+        formatDetailedErrorMessage("prompt.loadError", resolveIpcErrorMessage(result))
+      );
     }
 
     if (prompts.length > 0) {
@@ -157,7 +160,9 @@ async function writeQuickPromptsToStore(
     normalizedPrompts
   )) as QuickPromptStoreResponse;
   if (result.success !== true) {
-    throw new Error(formatDetailedErrorMessage("prompt.saveError", result.error));
+    throw new Error(
+      formatDetailedErrorMessage("prompt.saveError", resolveIpcErrorMessage(result))
+    );
   }
 
   clearLegacyQuickPrompts();

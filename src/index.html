@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr" data-theme="obsidian">
+<html lang="und" data-theme="obsidian">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hayalet Ev</title>
+    <title></title>
     <link rel="stylesheet" href="/styles/main.css" />
     <link rel="stylesheet" href="/styles/entrance.css" />
     <link rel="stylesheet" href="/styles/archives.css" />
@@ -16,17 +16,21 @@
     <div id="splash-screen" class="splash">
       <div class="splash-content">
         <div class="splash-logo-container">
-          <img src="/assets/logo.jpg" alt="Hayalet Ev" class="splash-logo" id="splash-logo" />
+          <img
+            src="/assets/logo.jpg"
+            alt=""
+            class="splash-logo"
+            id="splash-logo"
+            data-shell-i18n-alt="app.documentTitle"
+          />
           <div class="splash-logo-glow"></div>
         </div>
-        <h1 class="splash-title">Hayalet Ev</h1>
-        <p class="splash-version">v5.4.0</p>
+        <h1 class="splash-title" data-shell-i18n-text="app.documentTitle"></h1>
+        <p class="splash-version" data-shell-i18n-text="app.splash.version"></p>
         <div class="splash-loader">
           <div class="splash-progress" id="splash-progress"></div>
         </div>
-        <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting">
-          Starting...
-        </p>
+        <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting"></p>
       </div>
     </div>
 
@@ -66,58 +70,56 @@
         <button
           class="side-nav-btn active"
           data-page="entrance"
-          title="Entrance Hall"
+          title=""
           data-shell-i18n-title="sideNav.entranceTitle"
         >
           <span class="side-nav-icon">🏠</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.entranceLabel">Entrance</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.entranceLabel"></span>
         </button>
         <button
           class="side-nav-btn"
           data-page="analyze"
-          title="Analyze Room"
+          title=""
           data-shell-i18n-title="sideNav.analyzeTitle"
         >
           <span class="side-nav-icon">🔍</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.analyzeLabel">Analyze</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.analyzeLabel"></span>
         </button>
         <button
           class="side-nav-btn"
           data-page="assistant"
-          title="Assistant Room"
+          title=""
           data-shell-i18n-title="sideNav.assistantTitle"
         >
           <span class="side-nav-icon">🤖</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.assistantLabel"
-            >Assistant</span
-          >
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.assistantLabel"></span>
         </button>
         <button
           class="side-nav-btn"
           data-page="server"
-          title="Server Room"
+          title=""
           data-shell-i18n-title="sideNav.serverTitle"
         >
           <span class="side-nav-icon">🖥️</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.serverLabel">Server</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.serverLabel"></span>
         </button>
         <button
           class="side-nav-btn"
           data-page="archives"
-          title="Archives Room"
+          title=""
           data-shell-i18n-title="sideNav.archivesTitle"
         >
           <span class="side-nav-icon">📁</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.archivesLabel">Archives</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.archivesLabel"></span>
         </button>
         <button
           class="side-nav-btn"
           data-page="whisper"
-          title="Whisper Room"
+          title=""
           data-shell-i18n-title="sideNav.whisperTitle"
         >
           <span class="side-nav-icon">👂</span>
-          <span class="side-nav-label" data-shell-i18n-text="sideNav.whisperLabel">Whisper</span>
+          <span class="side-nav-label" data-shell-i18n-text="sideNav.whisperLabel"></span>
         </button>
       </nav>
     </div>
@@ -126,8 +128,13 @@
       <div class="top-bar">
         <div class="top-bar-left">
           <div class="logo">
-            <img src="/assets/logo.jpg" class="app-logo" alt="Hayalet Ev logo" />
-            <span class="logo-text">Hayalet Ev</span>
+            <img
+              src="/assets/logo.jpg"
+              class="app-logo"
+              alt=""
+              data-shell-i18n-alt="app.documentTitle"
+            />
+            <span class="logo-text" data-shell-i18n-text="app.documentTitle"></span>
           </div>
         </div>
 
@@ -140,38 +147,29 @@
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
-                          Loading
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading"></span>
                         <div
                           class="indicator-dot loading"
                           id="ai1-loading-indicator"
-                          title="Loading"
+                          title=""
                           data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
-                          Sending
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending"></span>
                         <div
                           class="indicator-dot"
                           id="ai1-send-indicator"
-                          title="Sending"
+                          title=""
                           data-shell-i18n-title="indicators.sending"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        >
-                          Thinking
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.thinking"></span>
                         <div
                           class="indicator-dot"
                           id="ai1-thinking-indicator"
-                          title="Thinking"
+                          title=""
                           data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
@@ -181,7 +179,7 @@
                       <button
                         id="conversation-refresh-ai1"
                         class="conv-refresh"
-                        title="Refresh"
+                        title=""
                         data-shell-i18n-title="indicators.refreshTitle"
                       >
                         ⟳
@@ -194,7 +192,7 @@
                   <button
                     class="relay-toggle-btn"
                     id="relay-btn-ai1-ai0"
-                    title="AI1 ↔ Assistant Relay Start/Stop"
+                    title=""
                     data-shell-i18n-title="relay.toggle.ai1Assistant"
                   >
                     <span class="relay-btn-icon icon-play">▶</span>
@@ -203,7 +201,7 @@
                   <div
                     class="relay-flow-line"
                     id="relay-flow-ai1-ai0"
-                    title="AI1 ↔ Assistant Relay"
+                    title=""
                     data-shell-i18n-title="relay.flow.ai1Assistant"
                   >
                     <div class="flow-track">
@@ -217,38 +215,29 @@
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
-                          Loading
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading"></span>
                         <div
                           class="indicator-dot"
                           id="ai0-loading-indicator"
-                          title="Loading"
+                          title=""
                           data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
-                          Sending
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending"></span>
                         <div
                           class="indicator-dot"
                           id="ai0-send-indicator"
-                          title="Sending"
+                          title=""
                           data-shell-i18n-title="indicators.sending"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        >
-                          Thinking
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.thinking"></span>
                         <div
                           class="indicator-dot"
                           id="ai0-thinking-indicator"
-                          title="Thinking"
+                          title=""
                           data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
@@ -260,7 +249,7 @@
                   <div
                     class="relay-flow-line"
                     id="relay-flow-ai0-ai2"
-                    title="Assistant ↔ AI2 Relay"
+                    title=""
                     data-shell-i18n-title="relay.flow.assistantAi2"
                   >
                     <div class="flow-track">
@@ -270,7 +259,7 @@
                   <button
                     class="relay-toggle-btn"
                     id="relay-btn-ai0-ai2"
-                    title="Assistant ↔ AI2 Relay Start/Stop"
+                    title=""
                     data-shell-i18n-title="relay.toggle.assistantAi2"
                   >
                     <span class="relay-btn-icon icon-play">◀</span>
@@ -283,38 +272,29 @@
                   <div class="indicator-content">
                     <div class="indicator-dots-row">
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading">
-                          Loading
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading"></span>
                         <div
                           class="indicator-dot loading"
                           id="ai2-loading-indicator"
-                          title="Loading"
+                          title=""
                           data-shell-i18n-title="indicators.loading"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending">
-                          Sending
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending"></span>
                         <div
                           class="indicator-dot"
                           id="ai2-send-indicator"
-                          title="Sending"
+                          title=""
                           data-shell-i18n-title="indicators.sending"
                         ></div>
                       </div>
                       <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        >
-                          Thinking
-                        </span>
+                        <span class="indicator-dot-label" data-shell-i18n-text="indicators.thinking"></span>
                         <div
                           class="indicator-dot"
                           id="ai2-thinking-indicator"
-                          title="Thinking"
+                          title=""
                           data-shell-i18n-title="indicators.thinking"
                         ></div>
                       </div>
@@ -324,7 +304,7 @@
                       <button
                         id="conversation-refresh-ai2"
                         class="conv-refresh"
-                        title="Refresh"
+                        title=""
                         data-shell-i18n-title="indicators.refreshTitle"
                       >
                         ⟳
@@ -337,7 +317,7 @@
                 <button
                   class="relay-toggle-btn relay-btn-bottom-left"
                   id="relay-btn-ai1-ai2-left"
-                  title="AI1 → AI2 Relay"
+                  title=""
                   data-shell-i18n-title="relay.toggle.ai1Ai2"
                 >
                   <span class="relay-btn-icon icon-play">▶</span>
@@ -346,7 +326,7 @@
                 <div
                   class="relay-flow-line-bottom"
                   id="relay-flow-ai1-ai2"
-                  title="AI1 ↔ AI2 Relay"
+                  title=""
                   data-shell-i18n-title="relay.flow.ai1Ai2"
                 >
                   <div class="flow-track-horizontal">
@@ -356,7 +336,7 @@
                 <button
                   class="relay-toggle-btn relay-btn-bottom-right"
                   id="relay-btn-ai1-ai2-right"
-                  title="AI2 → AI1 Relay"
+                  title=""
                   data-shell-i18n-title="relay.toggle.ai2Ai1"
                 >
                   <span class="relay-btn-icon icon-play">◀</span>
@@ -372,7 +352,7 @@
             <button
               class="icon-btn"
               id="window-minimize-to-tray"
-              title="Minimize to System Tray"
+              title=""
               data-shell-i18n-title="window.minimizeToTray"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -382,7 +362,7 @@
             <button
               class="icon-btn"
               id="window-minimize"
-              title="Minimize to Taskbar"
+              title=""
               data-shell-i18n-title="window.minimize"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -392,7 +372,7 @@
             <button
               class="icon-btn"
               id="window-fullscreen"
-              title="Tam Ekran"
+              title=""
               data-shell-i18n-title="window.fullscreen"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -402,7 +382,7 @@
             <button
               class="icon-btn"
               id="window-close"
-              title="Kapat"
+              title=""
               data-shell-i18n-title="common.close"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -417,7 +397,7 @@
             <button
               class="icon-btn"
               id="backup-overlay-open"
-              title="Backup Center"
+              title=""
               data-shell-i18n-title="backup.openTitle"
             >
               <svg
@@ -435,7 +415,7 @@
             <button
               class="icon-btn"
               id="rooms-overlay-open"
-              title="Room Management"
+              title=""
               data-shell-i18n-title="rooms.openTitle"
             >
               <svg
@@ -451,45 +431,43 @@
               </svg>
             </button>
             <button
-              class="btn btn-ghost btn-xs"
-              id="report-modal-open"
-              title="Live Log Overlay"
-              data-shell-i18n-title="liveLog.openTitle"
-              data-shell-i18n-text="liveLog.openButton"
-            >
-              📊 Live Log
-            </button>
+                          class="btn btn-ghost btn-xs"
+                          id="report-modal-open"
+                          title=""
+                          data-shell-i18n-title="liveLog.openTitle"
+                          data-shell-i18n-text="liveLog.openButton"
+                        ></button>
             <div class="theme-dropdown" id="theme-dropdown">
               <button
                 class="theme-dropdown-btn"
                 id="theme-dropdown-btn"
-                title="Select Theme"
+                title=""
                 data-shell-i18n-title="theme.selectTitle"
               >
                 <span class="theme-dropdown-icon" id="theme-current-icon">🌑</span>
-                <span id="theme-current-name">Obsidian</span>
+                <span id="theme-current-name"></span>
                 <span>▼</span>
               </button>
               <div class="theme-dropdown-menu" id="theme-dropdown-menu">
                 <button class="theme-dropdown-item is-active" data-theme="obsidian">
                   <span class="theme-dropdown-icon">🌑</span>
                   <span class="theme-dropdown-copy">
-                    <strong>Obsidian</strong>
-                    <small>Deep control room</small>
+                    <strong data-shell-i18n-text="app.themes.obsidian.name"></strong>
+                    <small data-shell-i18n-text="app.themes.obsidian.description"></small>
                   </span>
                 </button>
                 <button class="theme-dropdown-item" data-theme="ivory-lab">
                   <span class="theme-dropdown-icon">☀️</span>
                   <span class="theme-dropdown-copy">
-                    <strong>Ivory Lab</strong>
-                    <small>Editorial light mode</small>
+                    <strong data-shell-i18n-text="app.themes.ivory-lab.name"></strong>
+                    <small data-shell-i18n-text="app.themes.ivory-lab.description"></small>
                   </span>
                 </button>
                 <button class="theme-dropdown-item" data-theme="ember-console">
                   <span class="theme-dropdown-icon">🔥</span>
                   <span class="theme-dropdown-copy">
-                    <strong>Ember Console</strong>
-                    <small>Warm operator mode</small>
+                    <strong data-shell-i18n-text="app.themes.ember-console.name"></strong>
+                    <small data-shell-i18n-text="app.themes.ember-console.description"></small>
                   </span>
                 </button>
               </div>
@@ -505,16 +483,12 @@
       <div class="modal modal-document modal-wide hidden" id="report-modal">
         <div class="modal-content">
           <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="reportModal.title">
-              Live Log View
-            </span>
+            <span class="modal-title" data-shell-i18n-text="reportModal.title"></span>
             <button
-              class="btn btn-ghost"
-              id="report-modal-close"
-              data-shell-i18n-text="common.close"
-            >
-              Kapat
-            </button>
+                          class="btn btn-ghost"
+                          id="report-modal-close"
+                          data-shell-i18n-text="common.close"
+                        ></button>
           </div>
           <div class="modal-body" id="report-modal-body"></div>
         </div>
@@ -523,29 +497,23 @@
       <div class="modal modal-document modal-wide hidden" id="rooms-overlay">
         <div class="modal-content room-manager-modal">
           <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="rooms.title">Room Management</span>
+            <span class="modal-title" data-shell-i18n-text="rooms.title"></span>
             <div class="room-manager-toolbar">
               <button
-                class="btn btn-primary btn-sm"
-                id="rooms-overlay-import"
-                data-shell-i18n-text="rooms.importButton"
-              >
-                Select Package
-              </button>
+                              class="btn btn-primary btn-sm"
+                              id="rooms-overlay-import"
+                              data-shell-i18n-text="rooms.importButton"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="rooms-overlay-refresh"
-                data-shell-i18n-text="common.refresh"
-              >
-                Refresh
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="rooms-overlay-refresh"
+                              data-shell-i18n-text="common.refresh"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="rooms-overlay-close"
-                data-shell-i18n-text="common.close"
-              >
-                Close
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="rooms-overlay-close"
+                              data-shell-i18n-text="common.close"
+                            ></button>
             </div>
           </div>
           <div class="modal-body room-manager-body">
@@ -554,34 +522,26 @@
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
                   <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="rooms.workspaceSectionTitle"
-                  >
-                    Workspace Rooms
-                  </div>
+                                      class="room-manager-section-title"
+                                      data-shell-i18n-text="rooms.workspaceSectionTitle"
+                                    ></div>
                   <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="rooms.workspaceSectionNote"
-                  >
-                    Rooms under rooms/
-                  </div>
+                                      class="room-manager-section-note"
+                                      data-shell-i18n-text="rooms.workspaceSectionNote"
+                                    ></div>
                 </div>
                 <div class="room-manager-list" id="rooms-workspace-list"></div>
               </section>
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
                   <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="rooms.installedSectionTitle"
-                  >
-                    Installed Rooms
-                  </div>
+                                      class="room-manager-section-title"
+                                      data-shell-i18n-text="rooms.installedSectionTitle"
+                                    ></div>
                   <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="rooms.installedSectionNote"
-                  >
-                    Rooms added to the menu
-                  </div>
+                                      class="room-manager-section-note"
+                                      data-shell-i18n-text="rooms.installedSectionNote"
+                                    ></div>
                 </div>
                 <div class="room-manager-list" id="rooms-installed-list"></div>
               </section>
@@ -592,50 +552,38 @@
       <div class="modal modal-document modal-wide hidden" id="backup-overlay">
         <div class="modal-content room-manager-modal">
           <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="backup.title">Backup Center</span>
+            <span class="modal-title" data-shell-i18n-text="backup.title"></span>
             <div class="room-manager-toolbar">
               <button
-                class="btn btn-primary btn-sm"
-                id="backup-overlay-create"
-                data-shell-i18n-text="backup.createButton"
-              >
-                Create Backup
-              </button>
+                              class="btn btn-primary btn-sm"
+                              id="backup-overlay-create"
+                              data-shell-i18n-text="backup.createButton"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-select"
-                data-shell-i18n-text="backup.selectButton"
-              >
-                Select Bundle
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="backup-overlay-select"
+                              data-shell-i18n-text="backup.selectButton"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-open-folder"
-                data-shell-i18n-text="backup.openFolderButton"
-              >
-                Open Folder
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="backup-overlay-open-folder"
+                              data-shell-i18n-text="backup.openFolderButton"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-refresh"
-                data-shell-i18n-text="common.refresh"
-              >
-                Refresh
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="backup-overlay-refresh"
+                              data-shell-i18n-text="common.refresh"
+                            ></button>
               <button
-                class="btn btn-danger btn-sm"
-                id="backup-overlay-restore"
-                data-shell-i18n-text="backup.restoreButton"
-              >
-                Restore
-              </button>
+                              class="btn btn-danger btn-sm"
+                              id="backup-overlay-restore"
+                              data-shell-i18n-text="backup.restoreButton"
+                            ></button>
               <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-close"
-                data-shell-i18n-text="common.close"
-              >
-                Close
-              </button>
+                              class="btn btn-ghost btn-sm"
+                              id="backup-overlay-close"
+                              data-shell-i18n-text="common.close"
+                            ></button>
             </div>
           </div>
           <div class="modal-body room-manager-body">
@@ -644,34 +592,26 @@
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
                   <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="backup.scopeSectionTitle"
-                  >
-                    Scope Selection
-                  </div>
+                                      class="room-manager-section-title"
+                                      data-shell-i18n-text="backup.scopeSectionTitle"
+                                    ></div>
                   <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="backup.scopeSectionNote"
-                  >
-                    Categories, checkboxes and presets
-                  </div>
+                                      class="room-manager-section-note"
+                                      data-shell-i18n-text="backup.scopeSectionNote"
+                                    ></div>
                 </div>
                 <div class="room-manager-list" id="backup-overlay-scopes"></div>
               </section>
               <section class="room-manager-section">
                 <div class="room-manager-section-head">
                   <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="backup.historySectionTitle"
-                  >
-                    Bundles
-                  </div>
+                                      class="room-manager-section-title"
+                                      data-shell-i18n-text="backup.historySectionTitle"
+                                    ></div>
                   <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="backup.historySectionNote"
-                  >
-                    Local backups and restore preview
-                  </div>
+                                      class="room-manager-section-note"
+                                      data-shell-i18n-text="backup.historySectionNote"
+                                    ></div>
                 </div>
                 <div class="backup-history-stack">
                   <div class="room-manager-list" id="backup-overlay-list"></div>
@@ -689,20 +629,14 @@
     <div class="livefix-countdown-overlay hidden" id="livefix-countdown-overlay">
       <div class="livefix-countdown-card">
         <div class="livefix-countdown-icon">⚡</div>
-        <div class="livefix-countdown-title" data-shell-i18n-text="livefix.restartTitle">
-          Application Restarting
-        </div>
+        <div class="livefix-countdown-title" data-shell-i18n-text="livefix.restartTitle"></div>
         <div
-          class="livefix-countdown-subtitle"
-          id="livefix-countdown-subtitle"
-          data-shell-i18n-text="livefix.appliedSubtitle"
-        >
-          Live fix applied
-        </div>
+                  class="livefix-countdown-subtitle"
+                  id="livefix-countdown-subtitle"
+                  data-shell-i18n-text="livefix.appliedSubtitle"
+                ></div>
         <div class="livefix-countdown-number" id="livefix-countdown-number">5</div>
-        <div class="livefix-countdown-label" data-shell-i18n-text="livefix.secondsLabel">
-          seconds
-        </div>
+        <div class="livefix-countdown-label" data-shell-i18n-text="livefix.secondsLabel"></div>
       </div>
     </div>
   </body>

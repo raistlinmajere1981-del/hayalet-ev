@@ -12,6 +12,9 @@
       "finalizing": "Son hazırlıklar...",
       "startupError": "Başlatma hatası"
     },
+    "splash": {
+      "version": "v5.4.0"
+    },
     "server": {
       "page": {
         "delegateButton": "Kontrolü Devret",
@@ -284,6 +287,9 @@
         "settingsLoadError": "Settings yükleme hatası: {{message}}",
         "archiveReadError": "Arşiv okunamadı: {{message}}"
       }
+    },
+    "protocol": {
+      "controlTransferred": "Kontrol devredildi."
     },
     "upload": {
       "validationFailed": "Doğrulama başarısız",
@@ -735,6 +741,20 @@
     "theme": {
       "selectTitle": "Tema seç"
     },
+    "themes": {
+      "obsidian": {
+        "name": "Obsidian",
+        "description": "Derin siyahlar ve neon vurgular"
+      },
+      "ivory-lab": {
+        "name": "Ivory Lab",
+        "description": "Aydınlık, minimal çalışma alanı"
+      },
+      "ember-console": {
+        "name": "Ember Console",
+        "description": "Sıcak, terminal esintili görünüm"
+      }
+    },
     "reportModal": {
       "title": "Canlı Log Görünümü"
     },
@@ -1158,6 +1178,7 @@
           "updateCheckFailed": "OpenCode update kontrolü başarısız oldu."
         },
         "toasts": {
+          "loadingTitle": "OpenCode",
           "installPageOpenedTitle": "OpenCode install sayfası açıldı",
           "installPageOpenedMessage": "Terminal açılamadı, resmi kurulum sayfası açıldı.",
           "installTerminalOpenedTitle": "OpenCode kurulum terminali açıldı",
@@ -2125,6 +2146,12 @@
       }
     },
     "ipc": {
+      "errors": {
+        "handlerError": "IPC handler hatası: {{message}}",
+        "loggerBatchAppendFailed": "Logger batch append başarısız: {{message}}",
+        "operationFailed": "IPC işlem başarısız: {{message}}",
+        "memoryOperationFailed": "Bellek işlemi başarısız: {{message}}"
+      },
       "logs": {
         "handlerError": "IPC handler hatası: {{message}}",
         "loggerBatchAppendFailed": "Logger batch append başarısız: {{message}}"
@@ -5111,6 +5138,12 @@
       "accountUpdateError": "Hesap güncelleme hatası: {{message}}",
       "accountDeleteDataError": "Hesap verileri silinemedi: {{message}}",
       "accountDeleteSuccess": "Hesap silindi",
+      "catchManager": {
+        "commandFound": "Komut yakalandı: ++{{prefix}}:{{name}}{{args}}"
+      },
+      "roomProtocolRegistry": {
+        "collisionSkipped": "Protokol anahtarı {{protocolKey}} zaten {{existingRoomId}} ile eşleşiyor; {{skippedRoomId}} atlandı."
+      },
       "systemCategory": "Sistem"
     }
   },
@@ -5124,6 +5157,7 @@
     "workspace": {
       "toggleLeftTitle": "Sol paneli aç/kapat",
       "addTitle": "Yeni Workspace",
+      "mainLabel": "Çalışma Alanı",
       "toggleRightTitle": "Sağ paneli aç/kapat",
       "modeLabel": "Mod ▾",
       "modelLabel": "Model ▾",
@@ -5311,6 +5345,7 @@
       "emptyMcp": "MCP server bulunamadı",
       "versionLabel": "Versiyon",
       "urlLabel": "URL",
+      "urlDetailsTitle": "Sunucu URL detayları",
       "copyUrlTitle": "URL'yi kopyala",
       "copyUrlLabel": "Kopyala",
       "directoryLabel": "Dizin",

@@ -1,6 +1,7 @@
 import { SlotController, SlotState } from "./slot-controller.js";
 import { LogCategory } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
+import { AppI18n } from "./i18n/index.js";
 import { START_STOP_PROTOCOL_HEADERS } from "./protocol-default-headers.js";
 import { RoomProtocolRegistry } from "./rooms/room-protocol-registry.js";
 
@@ -93,7 +94,7 @@ function buildProtocolPayload({
 
   if (room === "server" && scenario === "takecontrol") {
     return {
-      message: "Kontrol Devredildi",
+      message: AppI18n.t("app.protocol.controlTransferred"),
       protocolKey: "takecontrol",
       targets: /** @type {any[]} */ connected,
     };

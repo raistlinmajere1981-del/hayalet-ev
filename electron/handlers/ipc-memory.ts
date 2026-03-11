@@ -21,6 +21,16 @@ function getStore(): MemoryStore {
   return _store;
 }
 
+function buildMemoryIpcError(error: unknown): { success: false; error: string; errorKey: string; errorParams: { message: string } } {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    success: false,
+    error: message,
+    errorKey: "electron.ipc.errors.memoryOperationFailed",
+    errorParams: { message },
+  };
+}
+
 export function setupMemoryHandlers(): void {
   registerHandler(
     "memory-search",
@@ -45,7 +55,7 @@ export function setupMemoryHandlers(): void {
         const result = await store.searchMemory(searchArg);
         return { success: true, data: result };
       } catch (err) {
-        return { success: false, error: (err as Error).message };
+        return buildMemoryIpcError(err);
       }
     }
   );
@@ -58,7 +68,7 @@ export function setupMemoryHandlers(): void {
       const result = await store.getStats(statsArg);
       return { success: true, data: result };
     } catch (err) {
-      return { success: false, error: (err as Error).message };
+      return buildMemoryIpcError(err);
     }
   });
 
@@ -68,7 +78,7 @@ export function setupMemoryHandlers(): void {
       const deleted = await store.deleteMemory(params.id);
       return { success: true, deleted };
     } catch (err) {
-      return { success: false, error: (err as Error).message };
+      return buildMemoryIpcError(err);
     }
   });
 
@@ -98,7 +108,7 @@ export function setupMemoryHandlers(): void {
         const updated = await store.updateMemory(updateArg);
         return { success: true, updated };
       } catch (err) {
-        return { success: false, error: (err as Error).message };
+        return buildMemoryIpcError(err);
       }
     }
   );
@@ -131,7 +141,7 @@ export function setupMemoryHandlers(): void {
         const item = await store.writeMemory(writeArg);
         return { success: true, data: item };
       } catch (err) {
-        return { success: false, error: (err as Error).message };
+        return buildMemoryIpcError(err);
       }
     }
   );
@@ -156,7 +166,7 @@ export function setupMemoryHandlers(): void {
         const deleted = await store.pruneMemory(pruneArg);
         return { success: true, deleted };
       } catch (err) {
-        return { success: false, error: (err as Error).message };
+        return buildMemoryIpcError(err);
       }
     }
   );
@@ -176,7 +186,7 @@ export function setupMemoryHandlers(): void {
       /* eslint-enable no-await-in-loop */
       return { success: true, deleted: count };
     } catch (err) {
-      return { success: false, error: (err as Error).message };
+      return buildMemoryIpcError(err);
     }
   });
 }

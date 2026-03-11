@@ -12,6 +12,9 @@
       "finalizing": "Finalizing...",
       "startupError": "Startup error"
     },
+    "splash": {
+      "version": "v5.4.0"
+    },
     "server": {
       "page": {
         "delegateButton": "Delegate Control",
@@ -284,6 +287,9 @@
         "settingsLoadError": "Settings load error: {{message}}",
         "archiveReadError": "Archive could not be read: {{message}}"
       }
+    },
+    "protocol": {
+      "controlTransferred": "Control transferred."
     },
     "upload": {
       "validationFailed": "Validation failed",
@@ -735,6 +741,20 @@
     "theme": {
       "selectTitle": "Select theme"
     },
+    "themes": {
+      "obsidian": {
+        "name": "Obsidian",
+        "description": "Deep blacks and neon accents"
+      },
+      "ivory-lab": {
+        "name": "Ivory Lab",
+        "description": "Bright, minimal workspace"
+      },
+      "ember-console": {
+        "name": "Ember Console",
+        "description": "Warm, terminal-inspired glow"
+      }
+    },
     "reportModal": {
       "title": "Live Log View"
     },
@@ -1158,6 +1178,7 @@
           "updateCheckFailed": "The OpenCode update check failed."
         },
         "toasts": {
+          "loadingTitle": "OpenCode",
           "installPageOpenedTitle": "OpenCode install page opened",
           "installPageOpenedMessage": "The terminal could not be opened, so the official install page was opened instead.",
           "installTerminalOpenedTitle": "OpenCode install terminal opened",
@@ -2125,6 +2146,12 @@
       }
     },
     "ipc": {
+      "errors": {
+        "handlerError": "IPC handler error: {{message}}",
+        "loggerBatchAppendFailed": "Logger batch append failed: {{message}}",
+        "operationFailed": "IPC operation failed: {{message}}",
+        "memoryOperationFailed": "Memory operation failed: {{message}}"
+      },
       "logs": {
         "handlerError": "IPC handler error: {{message}}",
         "loggerBatchAppendFailed": "Logger batch append failed: {{message}}"
@@ -5111,6 +5138,12 @@
       "accountUpdateError": "Account update error: {{message}}",
       "accountDeleteDataError": "Account data could not be deleted: {{message}}",
       "accountDeleteSuccess": "Account deleted",
+      "catchManager": {
+        "commandFound": "Detected command: ++{{prefix}}:{{name}}{{args}}"
+      },
+      "roomProtocolRegistry": {
+        "collisionSkipped": "Protocol key {{protocolKey}} already belongs to {{existingRoomId}}; skipping {{skippedRoomId}}."
+      },
       "systemCategory": "System"
     }
   },
@@ -5124,6 +5157,7 @@
     "workspace": {
       "toggleLeftTitle": "Toggle left panel",
       "addTitle": "New Workspace",
+      "mainLabel": "Workspace",
       "toggleRightTitle": "Toggle right panel",
       "modeLabel": "Mode ▾",
       "modelLabel": "Model ▾",
@@ -5311,6 +5345,7 @@
       "emptyMcp": "No MCP servers found",
       "versionLabel": "Version",
       "urlLabel": "URL",
+      "urlDetailsTitle": "Server URL details",
       "copyUrlTitle": "Copy URL",
       "copyUrlLabel": "Copy",
       "directoryLabel": "Directory",

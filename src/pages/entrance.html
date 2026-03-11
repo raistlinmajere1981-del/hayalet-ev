@@ -14,39 +14,31 @@
             </div>
             <div class="slot-methods-column">
               <div class="setting-group">
-                <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
+                <label class="setting-label" data-i18n-text="slot.messageLabel"></label>
                 <select
                   id="ai1-msg-method"
                   class="select-compact"
-                  title="Message Sending Method"
+                  title=""
                   data-i18n-title="slot.messageMethodTitle"
                 >
-                  <option value="injection" data-i18n-text="slot.methods.injection">
-                    Injection
-                  </option>
-                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
+                  <option value="injection" data-i18n-text="slot.methods.injection"></option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools"></option>
                 </select>
               </div>
               <div class="setting-group">
-                <label class="setting-label" data-i18n-text="slot.fileLabel">File:</label>
+                <label class="setting-label" data-i18n-text="slot.fileLabel"></label>
                 <select
                   id="ai1-file-method"
                   class="select-compact"
-                  title="File Sending Method"
+                  title=""
                   data-i18n-title="slot.fileMethodTitle"
                 >
-                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop">
-                    Drag & Drop
-                  </option>
-                  <option value="injection" data-i18n-text="slot.methods.injection">
-                    Injection
-                  </option>
-                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
-                  <option value="uguu" data-i18n-text="slot.methods.uguu">Uguu</option>
-                  <option value="catbox" data-i18n-text="slot.methods.catbox">Catbox</option>
-                  <option value="googledrive" data-i18n-text="slot.methods.googledrive">
-                    Google Drive
-                  </option>
+                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop"></option>
+                  <option value="injection" data-i18n-text="slot.methods.injection"></option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools"></option>
+                  <option value="uguu" data-i18n-text="slot.methods.uguu"></option>
+                  <option value="catbox" data-i18n-text="slot.methods.catbox"></option>
+                  <option value="googledrive" data-i18n-text="slot.methods.googledrive"></option>
                 </select>
               </div>
             </div>
@@ -54,40 +46,38 @@
               <div class="slot-checkboxes-column">
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Capture and process AI commands"
+                  title=""
                   data-i18n-title="slot.catchTitle"
                 >
                   <input type="checkbox" id="ai1-catch-check" />
-                  <span data-i18n-text="slot.catchLabel">Capture Commands</span>
+                  <span data-i18n-text="slot.catchLabel"></span>
                 </label>
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Resume the last session on connect"
+                  title=""
                   data-i18n-title="slot.resumeTitle"
                 >
                   <input type="checkbox" id="ai1-resume-last-session-check" />
-                  <span data-i18n-text="slot.resumeLabel">Resume last session</span>
+                  <span data-i18n-text="slot.resumeLabel"></span>
                 </label>
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Remember connection state and auto-connect on startup"
+                  title=""
                   data-i18n-title="slot.rememberTitle"
                 >
                   <input type="checkbox" id="ai1-remember-connection-check" />
-                  <span data-i18n-text="slot.rememberLabel">Remember connection state</span>
+                  <span data-i18n-text="slot.rememberLabel"></span>
                 </label>
               </div>
               <button
-                class="btn btn-primary btn-sm slot-connect-btn"
-                id="ai1-toggle-btn"
-                data-i18n-text="slot.selectAccount"
-              >
-                Select Account
-              </button>
+                              class="btn btn-primary btn-sm slot-connect-btn"
+                              id="ai1-toggle-btn"
+                              data-i18n-text="slot.selectAccount"
+                            ></button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-devtools-btn"
-                title="DevTools"
+                title=""
                 data-i18n-title="slot.devtoolsTitle"
               >
                 🔧
@@ -95,7 +85,7 @@
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-test-btn"
-                title="Provider Test"
+                title=""
                 data-i18n-title="slot.providerTestTitle"
                 disabled
               >
@@ -104,7 +94,7 @@
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-sync-btn"
-                title="Provider Sync"
+                title=""
                 data-i18n-title="slot.providerSyncTitle"
                 disabled
               >
@@ -119,12 +109,8 @@
         <div class="slot-webview-container" id="ai1-webview-mount">
           <div class="webview-overlay empty" id="ai1-webview-overlay">
             <div class="overlay-icon"></div>
-            <div class="overlay-title" data-i18n-text="webview.noAccount.title">
-              No Account Assigned
-            </div>
-            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle">
-              Assign an account from Settings
-            </div>
+            <div class="overlay-title" data-i18n-text="webview.noAccount.title"></div>
+            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle"></div>
           </div>
         </div>
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
@@ -143,39 +129,31 @@
             </div>
             <div class="slot-methods-column">
               <div class="setting-group">
-                <label class="setting-label" data-i18n-text="slot.messageLabel">Message:</label>
+                <label class="setting-label" data-i18n-text="slot.messageLabel"></label>
                 <select
                   id="ai2-msg-method"
                   class="select-compact"
-                  title="Message Sending Method"
+                  title=""
                   data-i18n-title="slot.messageMethodTitle"
                 >
-                  <option value="injection" data-i18n-text="slot.methods.injection">
-                    Injection
-                  </option>
-                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
+                  <option value="injection" data-i18n-text="slot.methods.injection"></option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools"></option>
                 </select>
               </div>
               <div class="setting-group">
-                <label class="setting-label" data-i18n-text="slot.fileLabel">File:</label>
+                <label class="setting-label" data-i18n-text="slot.fileLabel"></label>
                 <select
                   id="ai2-file-method"
                   class="select-compact"
-                  title="File Sending Method"
+                  title=""
                   data-i18n-title="slot.fileMethodTitle"
                 >
-                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop">
-                    Drag & Drop
-                  </option>
-                  <option value="injection" data-i18n-text="slot.methods.injection">
-                    Injection
-                  </option>
-                  <option value="xdotools" data-i18n-text="slot.methods.xdotools">XdoTools</option>
-                  <option value="uguu" data-i18n-text="slot.methods.uguu">Uguu</option>
-                  <option value="catbox" data-i18n-text="slot.methods.catbox">Catbox</option>
-                  <option value="googledrive" data-i18n-text="slot.methods.googledrive">
-                    Google Drive
-                  </option>
+                  <option value="dragdrop" data-i18n-text="slot.methods.dragdrop"></option>
+                  <option value="injection" data-i18n-text="slot.methods.injection"></option>
+                  <option value="xdotools" data-i18n-text="slot.methods.xdotools"></option>
+                  <option value="uguu" data-i18n-text="slot.methods.uguu"></option>
+                  <option value="catbox" data-i18n-text="slot.methods.catbox"></option>
+                  <option value="googledrive" data-i18n-text="slot.methods.googledrive"></option>
                 </select>
               </div>
             </div>
@@ -183,40 +161,38 @@
               <div class="slot-checkboxes-column">
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Capture and process AI commands"
+                  title=""
                   data-i18n-title="slot.catchTitle"
                 >
                   <input type="checkbox" id="ai2-catch-check" />
-                  <span data-i18n-text="slot.catchLabel">Capture Commands</span>
+                  <span data-i18n-text="slot.catchLabel"></span>
                 </label>
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Resume the last session on connect"
+                  title=""
                   data-i18n-title="slot.resumeTitle"
                 >
                   <input type="checkbox" id="ai2-resume-last-session-check" />
-                  <span data-i18n-text="slot.resumeLabel">Resume last session</span>
+                  <span data-i18n-text="slot.resumeLabel"></span>
                 </label>
                 <label
                   class="ds-choice-chip ds-choice-chip--segmented"
-                  title="Remember connection state and auto-connect on startup"
+                  title=""
                   data-i18n-title="slot.rememberTitle"
                 >
                   <input type="checkbox" id="ai2-remember-connection-check" />
-                  <span data-i18n-text="slot.rememberLabel">Remember connection state</span>
+                  <span data-i18n-text="slot.rememberLabel"></span>
                 </label>
               </div>
               <button
-                class="btn btn-primary btn-sm slot-connect-btn"
-                id="ai2-toggle-btn"
-                data-i18n-text="slot.selectAccount"
-              >
-                Select Account
-              </button>
+                              class="btn btn-primary btn-sm slot-connect-btn"
+                              id="ai2-toggle-btn"
+                              data-i18n-text="slot.selectAccount"
+                            ></button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-devtools-btn"
-                title="DevTools"
+                title=""
                 data-i18n-title="slot.devtoolsTitle"
               >
                 🔧
@@ -224,7 +200,7 @@
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-test-btn"
-                title="Provider Test"
+                title=""
                 data-i18n-title="slot.providerTestTitle"
                 disabled
               >
@@ -233,7 +209,7 @@
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-sync-btn"
-                title="Provider Sync"
+                title=""
                 data-i18n-title="slot.providerSyncTitle"
                 disabled
               >
@@ -248,12 +224,8 @@
         <div class="slot-webview-container" id="ai2-webview-mount">
           <div class="webview-overlay empty" id="ai2-webview-overlay">
             <div class="overlay-icon"></div>
-            <div class="overlay-title" data-i18n-text="webview.noAccount.title">
-              No Account Assigned
-            </div>
-            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle">
-              Assign an account from Settings
-            </div>
+            <div class="overlay-title" data-i18n-text="webview.noAccount.title"></div>
+            <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle"></div>
           </div>
         </div>
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai2-scenario-overlay"></div>
@@ -263,7 +235,7 @@
     <div class="control-panel-accordion ds-surface-card ds-surface-card--stack">
       <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="false">
         <span class="accordion-icon">⚙️</span>
-        <span class="accordion-title" data-i18n-text="panels.settings">Settings</span>
+        <span class="accordion-title" data-i18n-text="panels.settings"></span>
         <span class="accordion-chevron">▼</span>
       </button>
 
@@ -274,9 +246,7 @@
             data-panel="user"
           >
             <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.user"
-                >USER & DRIVE</span
-              >
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.user"></span>
             </div>
             <div class="panel-content">
               <div class="user-settings-column">
@@ -284,7 +254,7 @@
                   <div
                     class="user-avatar-wrapper"
                     id="user-avatar-edit-btn"
-                    title="Change Avatar"
+                    title=""
                     data-i18n-title="user.changeAvatarTitle"
                   >
                     <div class="avatar-placeholder img-cover" id="user-avatar"></div>
@@ -294,7 +264,7 @@
                     type="text"
                     id="user-nickname-input"
                     class="input input-sm"
-                    placeholder="Nickname"
+                    placeholder=""
                     data-i18n-placeholder="user.nicknamePlaceholder"
                   />
                 </div>
@@ -309,59 +279,51 @@
                   <div class="form-hint" id="app-language-restart-hint"></div>
                 </div>
                 <div class="gdrive-status-row">
-                  <label class="form-label" data-i18n-text="user.googleDrive.label"
-                    >Google Drive</label
-                  >
+                  <label class="form-label" data-i18n-text="user.googleDrive.label"></label>
                   <span
                     class="status-dot"
                     id="gdrive-status-dot"
-                    title="Connection Status"
+                    title=""
                     data-i18n-title="user.googleDrive.statusTitle"
                   ></span>
                   <span
-                    class="status-text"
-                    id="gdrive-status-text"
-                    data-i18n-text="user.googleDrive.disconnected"
-                  >
-                    Drive Not Connected
-                  </span>
+                                      class="status-text"
+                                      id="gdrive-status-text"
+                                      data-i18n-text="user.googleDrive.disconnected"
+                                    ></span>
                 </div>
                 <input
                   type="text"
                   id="gdrive-client-id"
                   class="input input-sm"
-                  placeholder="Client ID"
+                  placeholder=""
                   data-i18n-placeholder="user.googleDrive.clientIdPlaceholder"
                 />
                 <input
                   type="text"
                   id="gdrive-client-secret"
                   class="input input-sm"
-                  placeholder="Client Secret"
+                  placeholder=""
                   data-i18n-placeholder="user.googleDrive.clientSecretPlaceholder"
                 />
                 <input
                   type="text"
                   id="gdrive-auth-code"
                   class="input input-sm"
-                  placeholder="Auth Code"
+                  placeholder=""
                   data-i18n-placeholder="user.googleDrive.authCodePlaceholder"
                 />
                 <div class="btn-group-inline">
                   <button
-                    class="btn btn-secondary btn-sm"
-                    id="gdrive-start-auth"
-                    data-i18n-text="user.googleDrive.startAuth"
-                  >
-                    Auth URL
-                  </button>
+                                      class="btn btn-secondary btn-sm"
+                                      id="gdrive-start-auth"
+                                      data-i18n-text="user.googleDrive.startAuth"
+                                    ></button>
                   <button
-                    class="btn btn-primary btn-sm"
-                    id="gdrive-connect-btn"
-                    data-i18n-text="user.googleDrive.connect"
-                  >
-                    Connect
-                  </button>
+                                      class="btn btn-primary btn-sm"
+                                      id="gdrive-connect-btn"
+                                      data-i18n-text="user.googleDrive.connect"
+                                    ></button>
                 </div>
               </div>
             </div>
@@ -372,18 +334,14 @@
             data-panel="accounts"
           >
             <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.accounts"
-                >ACCOUNT MANAGEMENT</span
-              >
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.accounts"></span>
             </div>
             <div class="panel-content">
               <div class="accounts-container">
                 <div class="account-list" id="account-list"></div>
                 <div class="account-form">
                   <div class="account-form-header">
-                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"
-                      >New Account</span
-                    >
+                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"></span>
                     <span id="account-status-msg" class="form-hint"></span>
                   </div>
                   <div class="account-form-body">
@@ -391,14 +349,14 @@
                       type="text"
                       id="new-account-email"
                       class="input input-sm"
-                      placeholder="Email"
+                      placeholder=""
                       data-i18n-placeholder="accounts.form.emailPlaceholder"
                     />
                     <input
                       type="text"
                       id="new-account-nickname"
                       class="input input-sm"
-                      placeholder="Nickname"
+                      placeholder=""
                       data-i18n-placeholder="accounts.form.nicknamePlaceholder"
                     />
                     <select id="new-account-provider" class="select">
@@ -409,26 +367,20 @@
                     <div class="account-form-avatar-row">
                       <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
                       <button
-                        class="btn btn-ghost btn-sm"
-                        id="new-account-avatar-browse"
-                        data-i18n-text="accounts.form.avatarButton"
-                      >
-                        📷 Avatar
-                      </button>
+                                              class="btn btn-ghost btn-sm"
+                                              id="new-account-avatar-browse"
+                                              data-i18n-text="accounts.form.avatarButton"
+                                            ></button>
                       <button
-                        class="btn btn-primary btn-sm"
-                        id="settings-create-account"
-                        data-i18n-text="accounts.form.createAction"
-                      >
-                        Add
-                      </button>
+                                              class="btn btn-primary btn-sm"
+                                              id="settings-create-account"
+                                              data-i18n-text="accounts.form.createAction"
+                                            ></button>
                       <button
-                        class="btn btn-danger btn-sm hidden"
-                        id="settings-cancel-edit"
-                        data-i18n-text="accounts.form.cancelAction"
-                      >
-                        Cancel
-                      </button>
+                                              class="btn btn-danger btn-sm hidden"
+                                              id="settings-cancel-edit"
+                                              data-i18n-text="accounts.form.cancelAction"
+                                            ></button>
                     </div>
                   </div>
                 </div>
@@ -441,20 +393,16 @@
             data-panel="whisper"
           >
             <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.whisper"
-                >PENDING COMMANDS</span
-              >
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.whisper"></span>
             </div>
             <div class="panel-content">
               <div class="entrance-whisper-container">
                 <div class="entrance-whisper-header">
                   <button
-                    class="btn btn-ghost btn-sm"
-                    id="whisper-clear-btn"
-                    data-i18n-text="whisper.clear"
-                  >
-                    🗑️ Clear
-                  </button>
+                                      class="btn btn-ghost btn-sm"
+                                      id="whisper-clear-btn"
+                                      data-i18n-text="whisper.clear"
+                                    ></button>
                 </div>
                 <div class="entrance-whisper-list" id="whisper-pending-list"></div>
               </div>
@@ -466,16 +414,12 @@
             data-panel="report"
           >
             <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.report"
-                >LIVE REPORT</span
-              >
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.report"></span>
             </div>
             <div class="panel-content">
               <div class="report-container">
                 <div class="report-content" id="entrance-report-content">
-                  <div class="log-entry" data-i18n-text="report.initialEntry">
-                    System started...
-                  </div>
+                  <div class="log-entry" data-i18n-text="report.initialEntry"></div>
                 </div>
               </div>
             </div>
@@ -492,39 +436,33 @@
     class="live-log-shell"
     role="dialog"
     aria-modal="true"
-    aria-label="Live Log Center"
+    aria-label=""
     data-i18n-aria-label="liveLog.dialogAriaLabel"
   >
     <div class="live-log-header">
-      <h3 data-i18n-text="liveLog.title">Live Log Center</h3>
+      <h3 data-i18n-text="liveLog.title"></h3>
       <div class="live-log-header-actions">
         <button
-          class="btn btn-ghost btn-sm"
-          id="live-log-pause"
-          title="Pause stream"
-          data-i18n-title="liveLog.pauseTitle"
-          data-i18n-text="liveLog.pause"
-        >
-          Pause
-        </button>
+                  class="btn btn-ghost btn-sm"
+                  id="live-log-pause"
+                  title=""
+                  data-i18n-title="liveLog.pauseTitle"
+                  data-i18n-text="liveLog.pause"
+                ></button>
         <button
-          class="btn btn-ghost btn-sm"
-          id="live-log-clear"
-          title="Clear list"
-          data-i18n-title="liveLog.clearTitle"
-          data-i18n-text="liveLog.clear"
-        >
-          Clear
-        </button>
+                  class="btn btn-ghost btn-sm"
+                  id="live-log-clear"
+                  title=""
+                  data-i18n-title="liveLog.clearTitle"
+                  data-i18n-text="liveLog.clear"
+                ></button>
         <button
-          class="btn btn-ghost btn-sm"
-          id="live-log-close"
-          title="Close"
-          data-i18n-title="liveLog.closeTitle"
-          data-i18n-text="liveLog.close"
-        >
-          Close
-        </button>
+                  class="btn btn-ghost btn-sm"
+                  id="live-log-close"
+                  title=""
+                  data-i18n-title="liveLog.closeTitle"
+                  data-i18n-text="liveLog.close"
+                ></button>
       </div>
     </div>
 
@@ -539,27 +477,27 @@
         </button>
       </div>
       <label class="live-log-control">
-        <span data-i18n-text="liveLog.sessionLabel">Session</span>
+        <span data-i18n-text="liveLog.sessionLabel"></span>
         <select id="live-log-session-select" class="select"></select>
       </label>
       <label class="live-log-control">
-        <span data-i18n-text="liveLog.levelLabel">Level</span>
+        <span data-i18n-text="liveLog.levelLabel"></span>
         <select id="live-log-level-select" class="select">
-          <option value="all" data-i18n-text="liveLog.levels.all">all</option>
-          <option value="error" data-i18n-text="liveLog.levels.error">error</option>
-          <option value="warning" data-i18n-text="liveLog.levels.warning">warning</option>
-          <option value="info" data-i18n-text="liveLog.levels.info">info</option>
-          <option value="success" data-i18n-text="liveLog.levels.success">success</option>
-          <option value="debug" data-i18n-text="liveLog.levels.debug">debug</option>
+          <option value="all" data-i18n-text="liveLog.levels.all"></option>
+          <option value="error" data-i18n-text="liveLog.levels.error"></option>
+          <option value="warning" data-i18n-text="liveLog.levels.warning"></option>
+          <option value="info" data-i18n-text="liveLog.levels.info"></option>
+          <option value="success" data-i18n-text="liveLog.levels.success"></option>
+          <option value="debug" data-i18n-text="liveLog.levels.debug"></option>
         </select>
       </label>
       <label class="live-log-control live-log-control-search">
-        <span data-i18n-text="liveLog.searchLabel">Search</span>
+        <span data-i18n-text="liveLog.searchLabel"></span>
         <input
           id="live-log-search"
           class="input"
           type="text"
-          placeholder="message/category/source"
+          placeholder=""
           data-i18n-placeholder="liveLog.searchPlaceholder"
         />
       </label>
@@ -569,14 +507,12 @@
     <div class="live-log-body">
       <div class="live-log-content" id="live-log-content"></div>
       <aside class="live-log-detail">
-        <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle">Entry Detail</div>
+        <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle"></div>
         <div
-          class="live-log-detail-meta"
-          id="live-log-meta"
-          data-i18n-text="liveLog.noEntrySelected"
-        >
-          No entry selected
-        </div>
+                  class="live-log-detail-meta"
+                  id="live-log-meta"
+                  data-i18n-text="liveLog.noEntrySelected"
+                ></div>
         <pre class="live-log-detail-context" id="live-log-context"></pre>
       </aside>
     </div>

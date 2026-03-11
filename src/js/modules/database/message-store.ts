@@ -3,6 +3,7 @@ import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
+import { resolveIpcErrorMessage } from "../ipc-errors.js";
 
 function databaseT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.database.${key}`, params);
@@ -107,7 +108,11 @@ const messageStore = {
         ...(result.success === true
           ? {}
           : {
-              error: databaseStoreError("MessageStore", "sync", result.error),
+              error: databaseStoreError(
+                "MessageStore",
+                "sync",
+                resolveIpcErrorMessage(result) ?? result.error
+              ),
             }),
       };
     } catch (err) {

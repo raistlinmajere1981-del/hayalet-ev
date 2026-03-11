@@ -3,6 +3,7 @@ import type { TranslationParams } from "@shared/i18n.js";
 import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import type { AppSettings } from "@shared/settings.js";
 import type { AssistantProviderAdapter, ServerResult, ServerStatus } from "@shared/assistant.js";
@@ -82,9 +83,10 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
 
       if (portSelection === "auto" || portSelection === undefined || portSelection === "") {
         const portResult = await electronApi.opencodeServeFindPort(portRange.start, portRange.end);
-        if (portResult.error !== undefined && portResult.error !== "") {
+        const portErrorMessage = resolveIpcErrorMessage(portResult) ?? portResult.error;
+        if (portErrorMessage !== undefined && portErrorMessage !== "") {
           throw new Error(
-            assistantError("providerServeStartFailed", portResult.error, { name: this.name })
+            assistantError("providerServeStartFailed", portErrorMessage, { name: this.name })
           );
         }
         port = portResult.port;
@@ -125,9 +127,13 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
       } else {
         this._isRunning = false;
         this._currentPort = null;
-        const errorMessage = assistantError("providerServeStartFailed", result.error, {
-          name: this.name,
-        });
+        const errorMessage = assistantError(
+          "providerServeStartFailed",
+          resolveIpcErrorMessage(result) ?? result.error,
+          {
+            name: this.name,
+          }
+        );
         return {
           success: false,
           error: errorMessage,
@@ -174,9 +180,13 @@ export class OpenCodeAdapter implements AssistantProviderAdapter {
         return result;
       }
 
-      const errorMessage = assistantError("providerServeStopFailed", result.error, {
-        name: this.name,
-      });
+      const errorMessage = assistantError(
+        "providerServeStopFailed",
+        resolveIpcErrorMessage(result) ?? result.error,
+        {
+          name: this.name,
+        }
+      );
       Logger.errorT(
         LogCategory.ASSISTANT_CORE,
         "shell.assistant.logs.providerServeStopError",

@@ -1,5 +1,6 @@
 import type { IpcMainInvokeEvent, BrowserWindow } from "electron";
 import type { LogLevel } from "@shared/index.js";
+import type { TranslationParams } from "@shared/i18n.js";
 
 export type IpcHandler<Args extends unknown[] = unknown[], R = unknown> = (
   event: IpcMainInvokeEvent,
@@ -10,6 +11,8 @@ export interface IpcResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  errorKey?: string;
+  errorParams?: TranslationParams;
   code?: string;
 }
 

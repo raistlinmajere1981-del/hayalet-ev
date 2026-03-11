@@ -61,9 +61,14 @@ class RoomProtocolRegistryClass {
 
       const existing = nextEntries.get(key);
       if (existing !== undefined && existing.roomId !== room.id) {
-        Logger.warn(
+        Logger.warnT(
           LogCategory.SYSTEM,
-          `Room protocol collision skipped: ${spec.key} (${existing.roomId} vs ${room.id})`,
+          "app.logs.roomProtocolRegistry.collisionSkipped",
+          {
+            protocolKey: spec.key,
+            existingRoomId: existing.roomId,
+            skippedRoomId: room.id,
+          },
           {
             context: {
               protocolKey: spec.key,

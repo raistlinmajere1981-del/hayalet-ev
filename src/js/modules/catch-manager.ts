@@ -59,9 +59,15 @@ class CatchManagerClass {
           text,
           webUrl,
         });
-        Logger.info(
+        const argsSuffix = argsRaw !== undefined && argsRaw !== "" ? " | " + argsRaw : "";
+        Logger.infoT(
           LogCategory.CATCH_MANAGER,
-          `Komut bulundu [${prefix}]: ${name}${argsRaw !== undefined && argsRaw !== "" ? " | " + argsRaw : ""}`,
+          "app.logs.catchManager.commandFound",
+          {
+            prefix,
+            name,
+            args: argsSuffix,
+          },
           {
             category: `catch-${provider}`,
           }

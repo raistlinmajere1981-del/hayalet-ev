@@ -1,54 +1,47 @@
 <div class="page hidden" id="page-whisper">
   <div class="whisper-layout">
     <div class="panel glass-panel ds-surface-card whisper-create-panel">
-      <h3 data-shell-i18n-text="app.whisper.page.title">Add Whisper</h3>
+      <h3 data-shell-i18n-text="app.whisper.page.title"></h3>
       <div class="whisper-form-grid">
         <label
-          class="whisper-form-label"
-          for="whisper-add-account"
-          data-shell-i18n-text="app.whisper.page.accountLabel"
-          >Account</label
-        >
+                  class="whisper-form-label"
+                  for="whisper-add-account"
+                  data-shell-i18n-text="app.whisper.page.accountLabel"
+                ></label>
         <select id="whisper-add-account" class="select"></select>
 
         <label
-          class="whisper-form-label"
-          for="whisper-add-text"
-          data-shell-i18n-text="app.whisper.page.messageLabel"
-          >Message</label
-        >
+                  class="whisper-form-label"
+                  for="whisper-add-text"
+                  data-shell-i18n-text="app.whisper.page.messageLabel"
+                ></label>
         <textarea
           id="whisper-add-text"
           class="whisper-textarea input"
           rows="4"
-          placeholder="Write the whisper message"
+          placeholder=""
           data-shell-i18n-placeholder="app.whisper.page.messagePlaceholder"
         ></textarea>
 
         <label
-          class="whisper-form-label"
-          for="whisper-add-when"
-          data-shell-i18n-text="app.whisper.page.timeLabel"
-          >Time</label
-        >
+                  class="whisper-form-label"
+                  for="whisper-add-when"
+                  data-shell-i18n-text="app.whisper.page.timeLabel"
+                ></label>
         <input id="whisper-add-when" type="datetime-local" class="input" />
       </div>
 
       <div class="whisper-form-actions">
         <button
-          id="whisper-add-btn"
-          class="btn btn-primary"
-          data-shell-i18n-text="app.whisper.page.addButton"
-        >
-          Add Entry
-        </button>
+                  id="whisper-add-btn"
+                  class="btn btn-primary"
+                  data-shell-i18n-text="app.whisper.page.addButton"
+                ></button>
         <button
-          id="whisper-refresh-btn"
-          class="btn btn-ghost"
-          data-shell-i18n-text="common.refresh"
-        >
-          Refresh
-        </button>
+                  id="whisper-refresh-btn"
+                  class="btn btn-ghost"
+                  data-shell-i18n-text="common.refresh"
+                ></button>
       </div>
 
       <div id="whisper-add-feedback" class="whisper-feedback"></div>

@@ -6,6 +6,7 @@ import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { Toast } from "../../ui/toast-manager.js";
 import { getOpencodePreferences, normalizeOpencodePort } from "./opencode-preferences.js";
 
@@ -160,7 +161,10 @@ async function launchOpencodeInstallFlow(): Promise<void> {
   const result = (await electronApi.opencodeLaunchInstall()) as OpencodeInstallLaunchResult;
   if (result.success !== true) {
     throw new Error(
-      formatErrorWithDetail(assistantT("opencodeDoctor.errors.installFlowFailed"), result.error)
+      formatErrorWithDetail(
+        assistantT("opencodeDoctor.errors.installFlowFailed"),
+        resolveIpcErrorMessage(result) ?? result.error
+      )
     );
   }
 
@@ -187,7 +191,7 @@ export async function handleOpencodeActionButtonClick(
     getDetectedOpencodeVersion() !== null
       ? assistantT("opencodeDoctor.loading.checkingUpdates")
       : assistantT("opencodeDoctor.loading.preparingInstall");
-  const loadingToastId = Toast.loading("OpenCode", loadingMessage);
+  const loadingToastId = Toast.loading(assistantT("opencodeDoctor.toasts.loadingTitle"), loadingMessage);
 
   setOpencodeActionButtonState(actionButton, {
     icon: "…",
@@ -231,7 +235,10 @@ export async function handleOpencodeActionButtonClick(
     )) as OpencodeUpdateCheckResult;
     if (result.success !== true) {
       throw new Error(
-        formatErrorWithDetail(assistantT("opencodeDoctor.errors.updateCheckFailed"), result.error)
+        formatErrorWithDetail(
+          assistantT("opencodeDoctor.errors.updateCheckFailed"),
+          resolveIpcErrorMessage(result) ?? result.error
+        )
       );
     }
 
@@ -382,7 +389,7 @@ export async function openOpencodeSettingsModal(
           assistantT("opencodeDoctor.settingsModal.checkFailed", {
             message: formatErrorWithDetail(
               assistantT("opencodeDoctor.settingsModal.unknownError"),
-              result.error
+              resolveIpcErrorMessage(result) ?? result.error
             ),
           }),
           "error"

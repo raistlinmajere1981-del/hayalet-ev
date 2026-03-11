@@ -6,6 +6,7 @@ import type { AssistantProviderAdapter, SlotStateInfo } from "@shared/assistant.
 
 import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import type { OverlayStage } from "./overlay-stage.js";
@@ -189,9 +190,10 @@ export async function toggleAssistantConnection(
           url: targetUrl,
         });
       } else {
+        const resolvedErrorMessage = resolveIpcErrorMessage(result) ?? result.error;
         const errorMessage =
-          typeof result.error === "string" && result.error !== ""
-            ? result.error
+          typeof resolvedErrorMessage === "string" && resolvedErrorMessage !== ""
+            ? resolvedErrorMessage
             : assistantT("errors.providerServeStartFailed", { name: adapter.name });
         Logger.error(
           LogCategory.ASSISTANT_CORE,

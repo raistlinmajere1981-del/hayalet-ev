@@ -1,4 +1,10 @@
 import type { ProviderScenarioResult, ProviderTestSuite } from "./provider.js";
+import type { TranslationParams } from "./i18n.js";
+
+type IpcErrorMeta = {
+  errorKey?: string;
+  errorParams?: TranslationParams;
+};
 
 export interface DbInitAccountParams {
   accountId: string;
@@ -415,4 +421,11 @@ export type IPCChannel = keyof IPCChannelMap;
 
 export type IPCParams<T extends IPCChannel> = IPCChannelMap[T]["params"];
 
-export type IPCResult<T extends IPCChannel> = IPCChannelMap[T]["result"];
+export type IPCResult<T extends IPCChannel> = IPCChannelMap[T]["result"] extends undefined
+  ? {
+      success?: boolean;
+      error?: string;
+      errorKey?: string;
+      errorParams?: TranslationParams;
+    }
+  : IPCChannelMap[T]["result"] & IpcErrorMeta;

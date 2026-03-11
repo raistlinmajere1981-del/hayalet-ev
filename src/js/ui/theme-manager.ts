@@ -6,7 +6,6 @@ type ThemeChangeCallback = (theme: ThemeId) => void;
 
 interface ThemeInfo {
   id: ThemeId;
-  name: string;
   icon: string;
   isDark: boolean;
 }
@@ -22,19 +21,16 @@ interface ThemeConfig {
 export const THEMES: Record<ThemeId, ThemeInfo> = {
   obsidian: {
     id: "obsidian",
-    name: "Obsidian",
     icon: "🌑",
     isDark: true,
   },
   "ivory-lab": {
     id: "ivory-lab",
-    name: "Ivory Lab",
     icon: "☀️",
     isDark: false,
   },
   "ember-console": {
     id: "ember-console",
-    name: "Ember Console",
     icon: "🔥",
     isDark: true,
   },
@@ -54,9 +50,14 @@ let currentTheme: ThemeId = CONFIG.defaultTheme;
 const listeners: Set<ThemeChangeCallback> = new Set();
 let isInitialized = false;
 let themeChannel: BroadcastChannel | null = null;
+let i18nUnsubscribe: (() => void) | null = null;
 
 function themeT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.logs.themeManager.${key}`, params);
+}
+
+function getThemeName(theme: ThemeId): string {
+  return AppI18n.t(`app.themes.${theme}.name`);
 }
 
 function isValidTheme(theme: string): theme is ThemeId {
@@ -121,7 +122,7 @@ function updateThemeDropdownUI(theme: ThemeId): void {
   const currentName = document.getElementById("theme-current-name");
 
   if (currentIcon) currentIcon.textContent = themeInfo.icon;
-  if (currentName) currentName.textContent = themeInfo.name;
+  if (currentName) currentName.textContent = getThemeName(theme);
 
   const menuItems = document.querySelectorAll(".theme-dropdown-item");
   menuItems.forEach((item) => {
@@ -256,6 +257,11 @@ const themeManager = {
     }
 
     setupSyncListeners();
+    if (i18nUnsubscribe === null) {
+      i18nUnsubscribe = AppI18n.subscribe(() => {
+        updateThemeDropdownUI(currentTheme);
+      });
+    }
     isInitialized = true;
   },
 
@@ -311,7 +317,7 @@ const themeManager = {
   },
 
   getName(): string {
-    return THEMES[currentTheme].name;
+    return getThemeName(currentTheme);
   },
 };
 

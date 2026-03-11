@@ -7,6 +7,7 @@ import { SlotController } from "./slot-controller.js";
 import { WebviewManager } from "./webview-manager.js";
 import { RelayManager } from "./relay-manager.js";
 import { AppI18n } from "./i18n/index.js";
+import { resolveIpcErrorMessage } from "./ipc-errors.js";
 
 interface CustomCommand {
   name: string;
@@ -157,7 +158,12 @@ async function defineCommand(
     return {
       success: Boolean(result.success),
       ...(result.error !== undefined
-        ? { error: metaCommandError("defineCommandFailed", result.error) }
+        ? {
+            error: metaCommandError(
+              "defineCommandFailed",
+              resolveIpcErrorMessage(result) ?? result.error
+            ),
+          }
         : {}),
       ...(parsedCommand !== undefined ? { command: parsedCommand } : {}),
     };
@@ -192,7 +198,12 @@ async function deleteCommand(name: string): Promise<CommandResult> {
       ...result,
       ...(result.success === true
         ? {}
-        : { error: metaCommandError("deleteCommandFailed", result.error) }),
+        : {
+            error: metaCommandError(
+              "deleteCommandFailed",
+              resolveIpcErrorMessage(result) ?? result.error
+            ),
+          }),
     } as CommandResult;
   } catch (err) {
     const error = err instanceof Error ? err : new Error(String(err));

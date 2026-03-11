@@ -1,5 +1,6 @@
 import type { ApiProxyResult, FetchOptions, HttpMethod } from "./types.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 
 let opencodeUiBaseUrl = "http://127.0.0.1:4096";
 
@@ -98,7 +99,8 @@ export async function apiCall<T = Record<string, unknown>>(
     const result = (await window.electronAPI["opencodeUiApiProxy"](proxyPayload)) as ApiProxyResult;
 
     if (!result.success) {
-      const proxyDetail = result.error ?? extractProxyErrorMessage(result.data);
+      const proxyDetail =
+        resolveIpcErrorMessage(result) ?? extractProxyErrorMessage(result.data);
       throw new Error(
         proxyDetail !== ""
           ? formatDetailedErrorMessage("api.requestFailed", proxyDetail)

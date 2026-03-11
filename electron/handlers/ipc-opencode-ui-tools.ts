@@ -154,13 +154,16 @@ export function setupOpencodeUiToolsHandlers(): void {
       cachedMtime = mtimeMs;
       return cachedResult;
     } catch (err) {
+      const message = (err as Error).message;
       return {
         success: false,
         total: 0,
         generatedAt: "",
         categories: [],
         toolNames: [],
-        error: (err as Error).message,
+        error: message,
+        errorKey: "electron.ipc.errors.operationFailed",
+        errorParams: { message },
       } satisfies HevToolListResult;
     }
   });
@@ -191,6 +194,8 @@ export function setupOpencodeUiToolsHandlers(): void {
         prompts: [],
         path: filePath,
         error: error.message,
+        errorKey: "electron.ipc.errors.operationFailed",
+        errorParams: { message: error.message },
       } satisfies OpencodeUiQuickPromptStoreResult;
     }
   });
@@ -208,11 +213,14 @@ export function setupOpencodeUiToolsHandlers(): void {
         path: filePath,
       } satisfies OpencodeUiQuickPromptStoreResult;
     } catch (err) {
+      const message = (err as Error).message;
       return {
         success: false,
         prompts: [],
         path: filePath,
-        error: (err as Error).message,
+        error: message,
+        errorKey: "electron.ipc.errors.operationFailed",
+        errorParams: { message },
       } satisfies OpencodeUiQuickPromptStoreResult;
     }
   });

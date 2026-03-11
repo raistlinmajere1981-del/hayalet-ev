@@ -3,6 +3,7 @@ import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { Logger } from "../logger/index.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../i18n/index.js";
+import { resolveIpcErrorMessage } from "../ipc-errors.js";
 import type { Conversation } from "@shared/database.js";
 
 function databaseT(key: string, params?: Record<string, string | number>): string {
@@ -101,7 +102,11 @@ const conversationStore = {
         ...(result.success === true
           ? {}
           : {
-              error: databaseStoreError("ConversationStore", "update", result.error),
+              error: databaseStoreError(
+                "ConversationStore",
+                "update",
+                resolveIpcErrorMessage(result) ?? result.error
+              ),
             }),
       };
     } catch (err) {
@@ -139,7 +144,11 @@ const conversationStore = {
         ...(result.success === true
           ? {}
           : {
-              error: databaseStoreError("ConversationStore", "delete", result.error),
+              error: databaseStoreError(
+                "ConversationStore",
+                "delete",
+                resolveIpcErrorMessage(result) ?? result.error
+              ),
             }),
       };
     } catch (err) {

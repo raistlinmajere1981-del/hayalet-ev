@@ -43,6 +43,7 @@ export function applyStaticTranslations(root: ParentNode = document): void {
   applyAttributeTranslation(root, "data-i18n-title", "title");
   applyAttributeTranslation(root, "data-i18n-placeholder", "placeholder");
   applyAttributeTranslation(root, "data-i18n-aria-label", "aria-label");
+  applyAttributeTranslation(root, "data-i18n-alt", "alt");
 
   document.title = t("documentTitle");
 }

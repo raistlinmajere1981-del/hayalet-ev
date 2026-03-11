@@ -55,14 +55,16 @@ function createSplashElement(): HTMLElement {
   splash.id = ELEMENT_IDS.container;
   splash.className = "splash";
 
+  const title = AppI18n.t("app.documentTitle");
+  const versionLabel = AppI18n.t("app.splash.version");
   splash.innerHTML = `
     <div class="splash-content">
       <div class="splash-logo-container">
-        <img src="/assets/logo.jpg" alt="Hayalet Ev" class="splash-logo" id="${ELEMENT_IDS.logo}" />
+        <img src="/assets/logo.jpg" alt="${title}" class="splash-logo" id="${ELEMENT_IDS.logo}" />
         <div class="splash-logo-glow"></div>
       </div>
-      <h1 class="splash-title">Hayalet Ev</h1>
-      <p class="splash-version">v5.4.0</p>
+      <h1 class="splash-title">${title}</h1>
+      <p class="splash-version">${versionLabel}</p>
       <div class="splash-loader">
         <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
       </div>

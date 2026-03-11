@@ -8,6 +8,7 @@ import { getMimeTypeFromPath } from "../../constants/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { FileManager } from "../../modules/file-manager.js";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
@@ -1160,13 +1161,15 @@ export class AssistantController {
 
     if (electronApi !== undefined && typeof electronApi.opencodeServeStop === "function") {
       const result = await electronApi.opencodeServeStop();
-      if (result.success !== true && typeof result.error === "string" && result.error !== "") {
-        throw new Error(assistantError("systemServerStopFailed", result.error));
+      const stopErrorMessage = resolveIpcErrorMessage(result);
+      if (result.success !== true && stopErrorMessage !== undefined && stopErrorMessage !== "") {
+        throw new Error(assistantError("systemServerStopFailed", stopErrorMessage));
       }
     } else if (adapter !== null) {
       const result = await adapter.stopServer();
-      if (result.success !== true && typeof result.error === "string" && result.error !== "") {
-        throw new Error(assistantError("systemServerStopFailed", result.error));
+      const stopErrorMessage = resolveIpcErrorMessage(result) ?? result.error;
+      if (result.success !== true && stopErrorMessage !== undefined && stopErrorMessage !== "") {
+        throw new Error(assistantError("systemServerStopFailed", stopErrorMessage));
       }
     }
 

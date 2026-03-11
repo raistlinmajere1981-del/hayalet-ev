@@ -426,6 +426,7 @@ export function setupWindowHandlers(): void {
         success: false,
         installedVersion: "",
         error: await ipcWindowT("installedOpencodeVersionMissing"),
+        errorKey: "electron.ipcWindow.installedOpencodeVersionMissing",
       };
     }
 

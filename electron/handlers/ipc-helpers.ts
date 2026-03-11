@@ -14,22 +14,26 @@ export const handleIPC =
     try {
       return await handlerFn(event, ...args);
     } catch (err) {
+      const error = err as Error;
+      const message = error?.message ?? String(err);
       await logger.logInternalT(
         LogCategory.IPC,
         LogLevel.ERROR,
         "electron.ipc.logs.handlerError",
-        { message: (err as Error).message },
+        { message },
         {
           error: {
-            name: (err as Error).name,
-            message: (err as Error).message,
-            stack: (err as Error).stack,
+            name: error?.name ?? "Error",
+            message,
+            stack: error?.stack,
           },
         }
       );
       return {
         success: false,
-        error: (err as Error).message,
+        error: message,
+        errorKey: "electron.ipc.errors.handlerError",
+        errorParams: { message },
         code: "IPC_ERROR",
       };
     }
@@ -56,23 +60,27 @@ export const handleLoggerAppendBatch = async (
     });
     return { success: true };
   } catch (err) {
+    const error = err as Error;
+    const message = error?.message ?? String(err);
     await logger.logInternalT(
       LogCategory.IPC,
       LogLevel.ERROR,
       "electron.ipc.logs.loggerBatchAppendFailed",
-      { message: (err as Error).message },
+      { message },
       {
         entriesCount: Array.isArray(entries) ? entries.length : 0,
         error: {
-          name: (err as Error).name,
-          message: (err as Error).message,
-          stack: (err as Error).stack,
+          name: error?.name ?? "Error",
+          message,
+          stack: error?.stack,
         },
       }
     );
     return {
       success: false,
-      error: (err as Error).message,
+      error: message,
+      errorKey: "electron.ipc.errors.loggerBatchAppendFailed",
+      errorParams: { message },
     };
   }
 };
