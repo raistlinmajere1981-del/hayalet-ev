@@ -1,10 +1,12 @@
 import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import { PARTITIONS } from "@slots";
 import { Paths } from "./paths.ts";
 import { buildPreloadAdditionalArguments, type StartupFlags } from "./startup-flags.ts";
 import type { TranslationParams } from "../src/types/i18n.ts";
-import { translateElectronMessage } from "./i18n/language-service.ts";
+import { readElectronAppLanguageSync, translateElectronMessage } from "./i18n/language-service.ts";
+import { resolveAcceptLanguage } from "../shared/i18n/locale.js";
 
 interface ExtendedWebPreferences extends Electron.WebPreferences {
   navigationTheme?: string;
@@ -37,6 +39,14 @@ function resolveCorsAllowOrigin(isDev: boolean, referrer?: string): string {
   } catch {
     return fallbackOrigin;
   }
+}
+
+function applyPreferredLanguageHeader(targetSession: Electron.Session): void {
+  targetSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const headers = details.requestHeaders;
+    headers["Accept-Language"] = resolveAcceptLanguage(readElectronAppLanguageSync());
+    callback({ requestHeaders: headers });
+  });
 }
 
 export function initTray(iconPath: string): void {
@@ -291,8 +301,13 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     callback({ responseHeaders });
   });
 
+  const mainWebviewSession = session.fromPartition(PARTITIONS.MAIN);
+  const assistantSession = session.fromPartition(PARTITIONS.ASSISTANT);
+
+  applyPreferredLanguageHeader(mainWebviewSession);
+  applyPreferredLanguageHeader(assistantSession);
+
   // NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.
-  const assistantSession = session.fromPartition("persist:ai0");
   assistantSession.webRequest.onHeadersReceived((details, callback) => {
     const headers: Record<string, string[]> = { ...details.responseHeaders };
     const cspKey = Object.keys(headers).find(

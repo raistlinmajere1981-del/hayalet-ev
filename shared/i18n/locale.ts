@@ -47,3 +47,19 @@ export function resolveIntlLocale(value: unknown): string {
   }
   return canonicalizeLocaleTag(normalized);
 }
+
+export function resolveAcceptLanguage(value: unknown): string {
+  const normalized = normalizeAppLanguage(value);
+  const intlLocale = resolveIntlLocale(normalized);
+  const language = intlLocale.split("-")[0] ?? DEFAULT_APP_LANGUAGE;
+
+  if (intlLocale.toLowerCase() === "tr-tr") {
+    return "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7";
+  }
+
+  if (intlLocale.toLowerCase() === "en-us") {
+    return "en-US,en;q=0.9,tr-TR;q=0.8,tr;q=0.7";
+  }
+
+  return `${intlLocale},${language};q=0.9,en-US;q=0.8,en;q=0.7`;
+}
