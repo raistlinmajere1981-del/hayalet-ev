@@ -1,11 +1,11 @@
 #page-whisper {
-  height: calc(100vh - var(--topbar-height));
+  height: var(--layout-page-height);
   overflow: hidden;
 }
 
 #page-whisper .whisper-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 380px) 1fr;
+  grid-template-columns: minmax(var(--layout-whisper-sidebar-min), var(--layout-whisper-sidebar-max)) 1fr;
   gap: var(--space-4);
   height: 100%;
   padding: var(--space-4);
@@ -56,7 +56,7 @@
 }
 
 #page-whisper .whisper-feedback {
-  min-height: 18px;
+  min-height: var(--size-control-xs);
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
@@ -71,22 +71,11 @@
 
 #page-whisper .whisper-accounts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--layout-whisper-card-min), 1fr));
   gap: var(--space-3);
   min-height: 0;
   overflow-y: auto;
   padding-right: var(--space-1);
-}
-
-#page-whisper .whisper-global-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-lg);
-  color: var(--text-tertiary);
-  min-height: 180px;
-  background: var(--bg-panel);
 }
 
 #page-whisper .whisper-account-card {
@@ -103,7 +92,7 @@
 
 #page-whisper .whisper-account-header {
   display: grid;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 #page-whisper .whisper-account-title {
@@ -134,18 +123,6 @@
   letter-spacing: var(--tracking-wide);
 }
 
-#page-whisper .whisper-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface-2);
-  max-height: 260px;
-  overflow-y: auto;
-  padding: var(--space-2);
-}
-
 #page-whisper .whisper-empty {
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -153,85 +130,9 @@
   padding: var(--space-4) var(--space-2);
 }
 
-#page-whisper .whisper-row {
-  display: grid;
-  grid-template-columns: 130px 1fr auto;
-  gap: var(--space-2);
-  align-items: center;
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-3);
-  padding: var(--space-2);
-}
-
-#page-whisper .whisper-row-meta {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-}
-
-#page-whisper .whisper-row-text {
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#page-whisper .whisper-row-actions {
-  display: flex;
-  gap: var(--space-1);
-}
-
-#page-whisper .whisper-action-btn {
-  border: var(--border-1) solid var(--border-default);
-  background: var(--bg-muted);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-#page-whisper .whisper-action-btn:hover {
-  border-color: var(--border-strong);
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-}
-
-#page-whisper .whisper-action-btn.danger:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-@media (max-width: 1024px) {
-  #page-whisper .whisper-layout {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-  }
-
-  #page-whisper .whisper-create-panel {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-
-  #page-whisper .whisper-accounts {
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-}
-
 @media (max-width: 640px) {
   #page-whisper .whisper-layout {
     padding: var(--space-2);
     gap: var(--space-2);
-  }
-
-  #page-whisper .whisper-row {
-    grid-template-columns: 1fr;
-  }
-
-  #page-whisper .whisper-row-actions {
-    justify-content: flex-end;
   }
 }

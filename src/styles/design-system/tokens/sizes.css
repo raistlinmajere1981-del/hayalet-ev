@@ -5,13 +5,17 @@
   --size-icon-xl: 64px;
 
   --size-dot-sm: 8px;
+  --size-dot-control: 9px;
   --size-dot-md: 10px;
   --size-dot-lg: 14px;
 
   --size-control-xs: 18px;
+  --size-control-compact: 26px;
   --size-control-md: 28px;
+  --size-control-pill: 34px;
   --size-control-lg: 36px;
   --size-control-xl: 42px;
+  --size-control-2xl: 44px;
 
   --size-select-max-w: 140px;
   --size-dropdown-md: 220px;

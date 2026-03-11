@@ -1,0 +1,33 @@
+:root {
+  --layout-page-height: calc(100vh - var(--topbar-height));
+
+  --layout-live-log-max-w: 1500px;
+  --layout-live-log-search-min: 220px;
+  --layout-live-log-detail-min: 300px;
+
+  --layout-modal-compact-w: 420px;
+  --layout-modal-character-w: 860px;
+  --layout-modal-memory-w: 960px;
+  --layout-modal-vw-lg: 96vw;
+  --layout-modal-vh-lg: 80vh;
+  --layout-modal-vh-xl: 85vh;
+
+  --layout-panel-sidebar-w: 260px;
+  --layout-panel-compose-h: 200px;
+  --layout-panel-compose-files-w: 250px;
+  --layout-panel-compose-user-w: 170px;
+  --layout-panel-test-ratio: 34%;
+  --layout-panel-test-min: 280px;
+  --layout-panel-rail-max: 160px;
+  --layout-panel-status-max: 260px;
+  --layout-panel-indicator-max: 320px;
+  --layout-panel-card-min-h: 180px;
+  --layout-panel-list-max-h: 260px;
+  --layout-panel-scroll-vh-sm: 50vh;
+  --layout-character-active-w: 42%;
+
+  --layout-whisper-sidebar-min: 320px;
+  --layout-whisper-sidebar-max: 380px;
+  --layout-whisper-card-min: 320px;
+  --layout-whisper-row-meta-w: 130px;
+}
