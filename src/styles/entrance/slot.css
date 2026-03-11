@@ -84,7 +84,7 @@
 .slot-checkboxes-column {
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .slot-connect-btn {

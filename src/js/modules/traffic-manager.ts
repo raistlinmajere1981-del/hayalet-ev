@@ -48,8 +48,8 @@ const TIMING_CONFIG = {
 };
 
 const STATUS_COLORS = {
-  busy: "#e74c3c",
-  idle: "#2ecc71",
+  busy: "var(--traffic-status-busy)",
+  idle: "var(--traffic-status-idle)",
 };
 
 const defaultStatus = (): { loading: string; thinking: string; send: string } => ({

@@ -200,7 +200,7 @@
   flex-direction: column;
   gap: var(--space-4);
   width: 100%;
-  max-width: 480px;
+  max-width: var(--layout-modal-dialog-w);
   padding: var(--space-5);
   background: var(--bg-panel-strong);
   border: var(--border-1) solid var(--border-default);
@@ -238,63 +238,20 @@
 
 .ds-modal__input,
 .ds-modal__textarea {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg-input);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  font-family: inherit;
-  outline: none;
-  transition: var(--transition-fast);
-}
-
-.ds-modal__input:focus,
-.ds-modal__textarea:focus {
-  border-color: var(--color-accent-strong);
-  box-shadow: 0 0 0 3px var(--color-accent-muted);
+  --field-bg: var(--bg-input);
+  --field-border-color: var(--border-default);
+  --field-focus-border: var(--color-accent-strong);
+  --field-focus-shadow: 0 0 0 3px var(--color-accent-muted);
 }
 
 .ds-modal__textarea {
-  resize: vertical;
-  min-height: 100px;
+  --field-textarea-min-h: var(--layout-modal-field-min-h);
 }
 
 .ds-modal__actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-.ds-modal__btn {
-  padding: var(--space-2) var(--space-4);
-  border: var(--border-1) solid var(--border-glass);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.ds-modal__btn--secondary {
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.ds-modal__btn--secondary:hover {
-  background: var(--hover-overlay);
-  color: var(--text-primary);
-}
-
-.ds-modal__btn--primary {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: var(--bg-primary);
-}
-
-.ds-modal__btn--primary:hover {
-  filter: brightness(1.15);
 }
 
 .ds-prompt-card {
@@ -308,7 +265,7 @@
 }
 
 .ds-prompt-card:hover {
-  border-color: var(--accent-primary);
+  border-color: var(--color-accent);
   background: var(--hover-overlay);
 }
 
@@ -342,22 +299,11 @@
 }
 
 .ds-prompt-card__btn {
-  padding: 2px 4px;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  line-height: 1;
+  padding: 0 var(--space-2);
 }
 
-.ds-prompt-card__btn:hover {
-  background: var(--hover-overlay);
-}
-
-.ds-prompt-card__btn--danger:hover {
-  background: var(--status-error);
+.ds-prompt-card__btn--danger {
+  box-shadow: none;
 }
 
 .ds-prompt-card__content {
@@ -373,7 +319,7 @@
 .livefix-countdown-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--z-livefix);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -391,38 +337,38 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-8, 32px) var(--space-10, 40px);
+  padding: var(--space-8) var(--space-10);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), var(--bg-panel-strong)),
     var(--bg-panel-strong);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 44%, var(--border-default));
-  border-radius: var(--radius-lg, 12px);
+  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 44%, var(--border-default));
+  border-radius: var(--radius-lg);
   box-shadow:
     var(--effect-inset-highlight),
     var(--floating-shadow);
-  min-width: 280px;
+  min-width: var(--size-panel-compact);
   text-align: center;
 }
 
 .livefix-countdown-icon {
-  font-size: 36px;
+  font-size: var(--text-4xl);
   animation: livefix-pulse 1s ease-in-out infinite;
 }
 
 .livefix-countdown-title {
-  font-size: var(--text-lg, 17px);
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
   color: var(--text-primary);
 }
 
 .livefix-countdown-subtitle {
-  font-size: var(--text-sm, 13px);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
 }
 
 .livefix-countdown-number {
-  font-size: 56px;
-  font-weight: 700;
+  font-size: var(--text-5xl);
+  font-weight: var(--font-bold);
   color: var(--color-accent);
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -434,7 +380,7 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-top: -8px;
+  margin-top: calc(var(--space-2) * -1);
 }
 
 @keyframes livefix-fade-in {

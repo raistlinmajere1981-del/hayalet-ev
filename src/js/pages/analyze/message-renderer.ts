@@ -345,7 +345,7 @@ export async function renderMessages(
 
       if (visibleStart > 0) {
         const loadMoreBtn = document.createElement("button");
-        loadMoreBtn.className = "load-more-btn";
+        loadMoreBtn.className = "load-more-btn btn btn-secondary btn-sm";
         loadMoreBtn.textContent = analyzeRendererT("actions.loadMore", { count: visibleStart });
         loadMoreBtn.onclick = (): void => {
           loadMoreMessages(provider, container, callbacks);

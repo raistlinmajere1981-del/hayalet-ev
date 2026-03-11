@@ -1,28 +1,12 @@
 .msg-action-btn,
 .whisper-action-btn,
 .memory-card-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--size-control-md);
-  padding: var(--space-1) var(--space-2);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+  gap: var(--space-1);
 }
 
 .msg-action-btn:hover,
 .whisper-action-btn:hover,
 .memory-card-btn:hover {
-  background: var(--bg-surface-3);
-  border-color: var(--border-strong);
   color: var(--color-accent);
 }
 
@@ -42,7 +26,8 @@
   line-height: var(--leading-none);
 }
 
-.whisper-action-btn.danger:hover {
+.whisper-action-btn.danger:hover,
+.memory-card-btn.delete-btn:hover {
   border-color: var(--color-error);
   color: var(--color-error);
 }
@@ -911,7 +896,7 @@
   color: var(--text-tertiary);
 }
 
-@media (max-width: 1280px) {
+@media (--breakpoint-max-1280) {
   .compose-row {
     grid-template-columns: 1fr;
   }
@@ -922,7 +907,7 @@
   }
 }
 
-@media (max-width: 1200px) {
+@media (--breakpoint-max-1200) {
   .live-log-toolbar {
     grid-template-columns: 1fr 1fr;
   }
@@ -943,7 +928,7 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (--breakpoint-max-1024) {
   #page-whisper .whisper-layout {
     grid-template-columns: 1fr;
     overflow-y: auto;
@@ -961,7 +946,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .compose-input-row {
     flex-direction: column;
   }
@@ -994,7 +979,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (--breakpoint-max-640) {
   #page-whisper .whisper-row {
     grid-template-columns: 1fr;
   }

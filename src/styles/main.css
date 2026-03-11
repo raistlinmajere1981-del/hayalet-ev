@@ -38,6 +38,20 @@ button {
   font-family: inherit;
 }
 
+.app-offscreen-webviews {
+  position: fixed;
+  top: var(--layout-offscreen-offset);
+  left: var(--layout-offscreen-offset);
+  width: var(--size-webview-offscreen);
+  height: var(--size-webview-offscreen);
+  overflow: hidden;
+}
+
+.app-offscreen-webview {
+  width: 100%;
+  height: 100%;
+}
+
 ::-webkit-scrollbar {
   width: var(--size-dot-sm);
   height: var(--size-dot-sm);
@@ -142,7 +156,7 @@ button {
 }
 
 .room-shell-panel--runtime {
-  min-height: 32rem;
+  min-height: var(--layout-room-runtime-panel-min-h);
 }
 
 .room-shell-message {
@@ -153,7 +167,7 @@ button {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  min-height: 2rem;
+  min-height: var(--layout-room-chip-min-h);
   padding: 0 var(--space-3);
   border-radius: var(--radius-full);
   background: var(--bg-glass);
@@ -167,11 +181,11 @@ button {
 }
 
 .room-runtime-status[data-state="error"] {
-  color: var(--color-danger);
+  color: var(--color-error);
 }
 
 .room-runtime-event {
-  min-height: 1.5rem;
+  min-height: var(--layout-room-runtime-event-min-h);
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -180,7 +194,7 @@ button {
 
 .room-runtime-mount {
   flex: 1;
-  min-height: 24rem;
+  min-height: var(--layout-room-runtime-webview-min-h);
   overflow: hidden;
   border-radius: var(--radius-lg);
   border: var(--border-1) solid var(--border-default);
@@ -190,9 +204,9 @@ button {
 .room-runtime-webview {
   display: flex;
   width: 100%;
-  min-height: 24rem;
+  min-height: var(--layout-room-runtime-webview-min-h);
   height: 100%;
-  background: #fff;
+  background: var(--app-webview-host-bg);
 }
 
 .room-meta-list {
@@ -250,7 +264,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 2rem;
+  min-height: var(--layout-room-chip-min-h);
   padding: 0 var(--space-3);
   border-radius: var(--radius-full);
   border: var(--border-1) solid var(--border-glass);
@@ -269,7 +283,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  min-height: 26rem;
+  min-height: var(--layout-room-section-min-h);
   padding: var(--space-4);
   border-radius: var(--radius-xl);
   border: var(--border-1) solid var(--border-glass);
@@ -296,7 +310,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  min-height: 12rem;
+  min-height: var(--layout-room-list-min-h);
 }
 
 .room-manager-card {
@@ -346,7 +360,7 @@ button {
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--effect-state-error-soft);
-  color: var(--color-danger);
+  color: var(--color-error);
   font-size: var(--text-sm);
 }
 
@@ -359,7 +373,7 @@ button {
 .room-manager-state-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 2rem;
+  min-height: var(--layout-room-chip-min-h);
   padding: 0 var(--space-3);
   border-radius: var(--radius-full);
   background: var(--bg-app);
@@ -375,14 +389,14 @@ button {
 }
 
 .room-manager-state-badge[data-state="invalid"] {
-  color: var(--color-danger);
+  color: var(--color-error);
 }
 
 .room-manager-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 12rem;
+  min-height: var(--layout-room-list-min-h);
   padding: var(--space-6);
   border-radius: var(--radius-lg);
   border: var(--border-1) dashed var(--border-glass);
@@ -488,7 +502,7 @@ button {
 }
 
 .backup-preview-panel {
-  min-height: 12rem;
+  min-height: var(--layout-room-list-min-h);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   border: var(--border-1) solid var(--border-glass);
@@ -520,11 +534,11 @@ button {
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--effect-state-error-soft);
-  color: var(--color-danger);
+  color: var(--color-error);
   font-size: var(--text-sm);
 }
 
-@media (max-width: 900px) {
+@media (--breakpoint-max-900) {
   .room-shell-grid {
     grid-template-columns: 1fr;
   }
@@ -842,23 +856,7 @@ body.menu-hidden .main-content {
 }
 
 .load-more-btn {
-  display: block;
   width: 100%;
-  padding: var(--space-2);
-  background: var(--bg-elevated);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  text-align: center;
-}
-
-.load-more-btn:hover {
-  background: var(--hover-overlay);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
 }
 
 .app-shell {
@@ -866,37 +864,62 @@ body.menu-hidden .main-content {
   flex-direction: column;
   height: var(--layout-app-height);
   overflow: hidden;
+  background: var(--app-shell-bg);
 }
 
 .app-shell--opencode {
-  background:
-    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 36%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 54%, transparent), var(--bg-app));
+  --app-shell-bg: var(--opencode-shell-bg);
+  --app-shell-surface-blur: var(--blur-surface-md);
+  --app-shell-layout-bg: var(--opencode-shell-layout-bg);
+  --app-shell-sidebar-bg: var(--opencode-shell-sidebar-bg);
+  --app-shell-sidebar-section-bg: var(--opencode-shell-sidebar-section-bg);
+  --app-shell-session-tabs-padding: var(--space-1) var(--space-3) var(--space-2);
+  --app-shell-session-tab-bg: var(--opencode-shell-session-tab-bg);
+  --app-shell-session-tab-active-bg: var(--opencode-shell-session-tab-active-bg);
+  --app-shell-session-tab-active-text: var(--text-primary);
+  --app-shell-session-bg: var(--opencode-shell-session-bg);
+  --app-shell-session-hover-bg: var(--opencode-shell-session-hover-bg);
+  --app-shell-session-active-bg: var(--opencode-shell-session-active-bg);
+  --app-shell-session-active-border: var(--opencode-shell-session-active-border);
+  --app-shell-empty-state-border: var(--border-1) dashed color-mix(in srgb, var(--border-default) 84%, transparent);
+  --app-shell-empty-state-bg: var(--opencode-shell-empty-state-bg);
+  --app-shell-empty-state-shadow: var(--effect-inset-highlight);
+  --app-shell-chat-empty-bg: var(--opencode-shell-chat-empty-bg);
+  --app-shell-chat-empty-icon-fit: contain;
+  --app-shell-usage-padding: var(--space-3);
+  --app-shell-usage-radius: var(--radius-lg);
+  --app-shell-usage-border: var(--border-1) solid color-mix(in srgb, var(--border-default) 84%, transparent);
+  --app-shell-usage-bg: var(--opencode-shell-usage-bg);
+  --app-shell-usage-shadow: var(--surface-outline);
+  --app-shell-usage-value-color: var(--text-primary);
+  --app-shell-progress-track-bg: var(--opencode-shell-progress-track-bg);
+  --app-shell-progress-track-border: var(--border-1) solid color-mix(in srgb, var(--border-default) 68%, transparent);
+  --app-shell-progress-fill-bg: var(--opencode-shell-progress-fill-bg);
 }
 
 .error-msg {
   color: var(--color-error);
 }
 
-@media (min-width: 1920px) {
+@media (--breakpoint-min-1920) {
   body {
     overflow: hidden;
   }
 }
 
-@media (max-width: 1920px) {
+@media (--breakpoint-max-1920) {
   body {
     overflow-y: auto;
   }
 }
 
-@media (max-width: 1024px) {
+@media (--breakpoint-max-1024) {
   .top-bar-center {
     display: none;
   }
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .logo-text {
     display: none;
   }

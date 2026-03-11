@@ -583,6 +583,20 @@ async function bootstrapOpencodeUiApp(): Promise<void> {
   });
 }
 
+function syncThemeFromQuery(): void {
+  const themeParam = new URLSearchParams(window.location.search).get("theme");
+  if (themeParam == null || themeParam === "") {
+    return;
+  }
+
+  const theme = ThemeManager.getAvailableThemes().find((item) => item.id === themeParam);
+  if (theme == null) {
+    return;
+  }
+
+  ThemeManager.set(theme.id, false);
+}
+
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   window.addEventListener("opencode-ui:mcp-changed", () => {
     void (async (): Promise<void> => {
@@ -595,6 +609,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
   void (async (): Promise<void> => {
     ThemeManager.init();
+    syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
     await bootstrapOpencodeUiApp();
   })();

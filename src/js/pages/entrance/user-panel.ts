@@ -94,8 +94,9 @@ export class UserPanel {
     const gdBtn = document.getElementById("gdrive-connect-btn");
     const isConnected = gd.connected === true;
 
-    if (gdStatus) {
-      gdStatus.style.backgroundColor = isConnected ? "#4CAF50" : "#ccc";
+    if (gdStatus instanceof HTMLElement) {
+      gdStatus.classList.toggle("connected", isConnected);
+      gdStatus.classList.remove("warning", "error");
     }
     if (gdText) {
       gdText.textContent = isConnected

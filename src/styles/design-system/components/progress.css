@@ -14,14 +14,15 @@
   width: 100%;
   height: var(--space-1-5);
   border-radius: var(--radius-full);
-  background: var(--hover-overlay);
+  background: var(--app-shell-progress-track-bg);
+  border: var(--app-shell-progress-track-border);
   overflow: hidden;
 }
 
 .ds-progress__fill {
   height: 100%;
   border-radius: var(--radius-full);
-  background: var(--accent-gradient);
+  background: var(--app-shell-progress-fill-bg);
   transition: width var(--duration-normal) var(--ease-out);
   min-width: 0;
 }
@@ -56,6 +57,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--app-shell-usage-padding);
+  border-radius: var(--app-shell-usage-radius);
+  border: var(--app-shell-usage-border);
+  background: var(--app-shell-usage-bg);
+  box-shadow: var(--app-shell-usage-shadow);
 }
 
 .ds-usage__header {
@@ -73,5 +79,5 @@
 .ds-usage__value {
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
-  color: var(--color-accent);
+  color: var(--app-shell-usage-value-color);
 }

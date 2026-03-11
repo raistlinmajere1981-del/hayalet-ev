@@ -380,9 +380,9 @@ export class MemoryOverlay {
         </div>
         <div class="memory-card-importance" title="${importanceTitle}">${stars(item.importance)}</div>
         <div class="memory-card-actions">
-          <button class="memory-card-btn pin-btn" title="${pinTitle}">${item.pinned ? "📍" : "📌"}</button>
-          <button class="memory-card-btn edit-btn" title="${editTitle}">✏️</button>
-          <button class="memory-card-btn delete-btn" title="${deleteTitle}">🗑️</button>
+          <button class="memory-card-btn pin-btn btn btn-xs btn-ghost" title="${pinTitle}">${item.pinned ? "📍" : "📌"}</button>
+          <button class="memory-card-btn edit-btn btn btn-xs btn-ghost" title="${editTitle}">✏️</button>
+          <button class="memory-card-btn delete-btn btn btn-xs btn-ghost" title="${deleteTitle}">🗑️</button>
         </div>
       </div>
       <div class="memory-card-summary">${item.summary ?? ""}</div>

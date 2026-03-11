@@ -518,7 +518,7 @@
   min-height: 0;
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .archives-wrapper {
     overflow-y: auto;
   }

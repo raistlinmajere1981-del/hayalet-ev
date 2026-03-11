@@ -100,7 +100,7 @@
 }
 
 .assistant-topbar .slot-nickname {
-  font-size: 1rem;
+  font-size: var(--assistant-title-size);
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
@@ -177,7 +177,7 @@
   border: var(--border-1) solid var(--assistant-role-border);
   background: var(--assistant-role-bg);
   color: var(--assistant-role-text);
-  font-size: 0.65rem;
+  font-size: var(--assistant-role-font-size);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -285,14 +285,12 @@
   gap: var(--space-2);
   min-height: var(--size-control-pill);
   padding: 0 var(--space-3);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
-    var(--bg-surface-2);
-  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 88%, transparent);
+  background: var(--assistant-pill-bg);
+  border: var(--border-1) solid var(--assistant-pill-border);
   border-radius: var(--radius-full);
   color: var(--text-primary);
   flex-shrink: 0;
-  box-shadow: var(--effect-inset-highlight);
+  box-shadow: var(--assistant-pill-shadow);
 }
 
 .assistant-status-extended {
@@ -341,14 +339,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
-  font-size: 0.8rem;
+  font-size: var(--assistant-status-font-size);
   min-width: 0;
 }
 
 .assistant-status-extended .status-info span {
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: var(--assistant-status-font-size);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -388,7 +386,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-  font-size: 0.78rem;
+  font-size: var(--assistant-status-inline-font-size);
 }
 
 .assistant-opencode-action-btn {
@@ -396,9 +394,9 @@
   min-width: var(--size-control-compact);
   height: var(--size-control-compact);
   padding: 0;
-  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 26%, var(--border-default));
+  border: var(--border-1) solid var(--assistant-pill-accent-border);
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--color-accent-soft) 82%, transparent);
+  background: var(--assistant-pill-accent-bg);
   color: var(--color-accent);
   flex: 0 0 auto;
   justify-content: center;
@@ -410,26 +408,22 @@
 }
 
 .assistant-opencode-action-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-accent-soft) 64%, transparent);
+  background: var(--assistant-pill-accent-bg-hover);
   color: var(--text-primary);
 }
 
 .assistant-inline-tools .btn-icon,
 .assistant-opencode-actions .btn-icon {
   border-radius: var(--radius-xl);
-  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 88%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
-    var(--bg-surface-2);
+  border: var(--border-1) solid var(--assistant-pill-border);
+  background: var(--assistant-pill-bg);
   box-shadow: none;
 }
 
 .assistant-inline-tools .btn-icon:hover:not(:disabled),
 .assistant-opencode-actions .btn-icon:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--color-accent) 34%, var(--border-default));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 76%, var(--color-accent-soft)), var(--bg-surface-2)),
-    var(--bg-surface-2);
+  border-color: var(--assistant-pill-border-strong);
+  background: var(--assistant-pill-bg-hover);
 }
 
 .assistant-opencode-indicator.is-ready {
@@ -586,7 +580,7 @@
   display: inline-flex;
 }
 
-@media (max-width: 1240px) {
+@media (--breakpoint-max-1240) {
   .assistant-topbar {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -601,7 +595,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .assistant-topbar {
     gap: var(--space-2-5);
     padding: var(--space-2-5);
@@ -676,7 +670,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (--breakpoint-max-560) {
   .assistant-session-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -711,7 +705,7 @@
 
 #assistant-connect-btn {
   flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 32%, transparent);
+  border: var(--border-1) solid var(--assistant-pill-accent-border);
   background: var(--accent-gradient);
   box-shadow: var(--surface-shadow), var(--glow-accent);
 }
@@ -722,10 +716,8 @@
 }
 
 #assistant-ghost-agent-btn {
-  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 88%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
-    var(--bg-surface-2);
+  border: var(--border-1) solid var(--assistant-pill-border);
+  background: var(--assistant-pill-bg);
 }
 
 #assistant-provider-select {

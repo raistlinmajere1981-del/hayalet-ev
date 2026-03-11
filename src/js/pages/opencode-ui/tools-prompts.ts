@@ -243,7 +243,7 @@ function buildPromptCard(prompt: QuickPromptRecord): HTMLElement {
 
   const applyButton = document.createElement("button");
   applyButton.type = "button";
-  applyButton.className = "ds-prompt-card__btn";
+  applyButton.className = "ds-prompt-card__btn btn btn-xs btn-ghost";
   applyButton.textContent = t("prompt.applyButton");
   applyButton.setAttribute("title", t("prompt.applyTitle"));
   applyButton.setAttribute("data-prompt-action", "apply");
@@ -251,7 +251,7 @@ function buildPromptCard(prompt: QuickPromptRecord): HTMLElement {
 
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
-  deleteButton.className = "ds-prompt-card__btn ds-prompt-card__btn--danger";
+  deleteButton.className = "ds-prompt-card__btn ds-prompt-card__btn--danger btn btn-xs btn-danger";
   deleteButton.textContent = t("prompt.deleteButton");
   deleteButton.setAttribute("title", t("prompt.deleteTitle"));
   deleteButton.setAttribute("data-prompt-action", "delete");

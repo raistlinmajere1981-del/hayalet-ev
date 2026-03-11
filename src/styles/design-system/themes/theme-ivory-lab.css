@@ -57,4 +57,36 @@
   --assistant-role-bg: rgba(244, 63, 94, 0.1);
   --assistant-role-border: rgba(244, 63, 94, 0.14);
   --assistant-role-text: #9f1239;
+
+  --opencode-shell-bg:
+    radial-gradient(circle at top left, rgba(244, 63, 94, 0.14), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(139, 107, 76, 0.1), transparent 20%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.7) 0%, var(--bg-app) 100%);
+  --opencode-shell-layout-bg:
+    radial-gradient(circle at top, rgba(244, 63, 94, 0.1), transparent 38%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.9) 0%, rgba(245, 239, 230, 0.74) 100%);
+  --opencode-shell-sidebar-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98) 0%, rgba(245, 239, 230, 0.98) 100%);
+  --opencode-shell-sidebar-section-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96) 0%, rgba(238, 228, 213, 0.96) 100%);
+  --opencode-shell-session-tab-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.92) 0%, rgba(245, 239, 230, 0.96) 100%);
+  --opencode-shell-session-tab-active-bg:
+    linear-gradient(180deg, rgba(244, 63, 94, 0.18) 0%, rgba(255, 252, 246, 0.96) 100%);
+  --opencode-shell-session-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.76) 0%, rgba(245, 239, 230, 0.96) 100%);
+  --opencode-shell-session-hover-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96) 0%, rgba(238, 228, 213, 0.96) 100%);
+  --opencode-shell-session-active-bg:
+    linear-gradient(180deg, rgba(244, 63, 94, 0.14) 0%, rgba(255, 252, 246, 0.98) 100%);
+  --opencode-shell-session-active-border: rgba(244, 63, 94, 0.34);
+  --opencode-shell-empty-state-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.88) 0%, rgba(245, 239, 230, 0.98) 100%);
+  --opencode-shell-chat-empty-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.96) 0%, rgba(245, 239, 230, 0.98) 100%);
+  --opencode-shell-usage-bg:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98) 0%, rgba(238, 228, 213, 0.98) 100%);
+  --opencode-shell-progress-track-bg: rgba(96, 72, 51, 0.08);
+  --opencode-shell-progress-fill-bg:
+    linear-gradient(135deg, rgba(244, 63, 94, 0.92) 0%, rgba(194, 65, 12, 0.92) 100%);
 }

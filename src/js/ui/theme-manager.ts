@@ -16,6 +16,7 @@ interface ThemeConfig {
   defaultTheme: ThemeId;
   attribute: string;
   transitionDuration: number;
+  channelName: string;
 }
 
 export const THEMES: Record<ThemeId, ThemeInfo> = {
@@ -46,11 +47,13 @@ const CONFIG: ThemeConfig = {
   defaultTheme: "obsidian",
   attribute: "data-theme",
   transitionDuration: 200,
+  channelName: "hayalet-ev-theme",
 };
 
 let currentTheme: ThemeId = CONFIG.defaultTheme;
 const listeners: Set<ThemeChangeCallback> = new Set();
 let isInitialized = false;
+let themeChannel: BroadcastChannel | null = null;
 
 function themeT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.logs.themeManager.${key}`, params);
@@ -73,6 +76,26 @@ function getStoredTheme(): ThemeId | null {
 function storeTheme(theme: ThemeId): void {
   try {
     localStorage.setItem(CONFIG.storageKey, theme);
+  } catch {}
+}
+
+function createThemeChannel(): BroadcastChannel | null {
+  if (themeChannel != null || typeof BroadcastChannel === "undefined") {
+    return themeChannel;
+  }
+
+  try {
+    themeChannel = new BroadcastChannel(CONFIG.channelName);
+  } catch {
+    themeChannel = null;
+  }
+
+  return themeChannel;
+}
+
+function broadcastTheme(theme: ThemeId): void {
+  try {
+    createThemeChannel()?.postMessage({ theme });
   } catch {}
 }
 
@@ -118,6 +141,55 @@ function notifyListeners(theme: ThemeId): void {
       );
     }
   });
+}
+
+function applyManagedTheme(
+  theme: ThemeId,
+  options: { animate?: boolean; persist?: boolean; broadcast?: boolean } = {}
+): void {
+  if (theme === currentTheme && isInitialized) {
+    return;
+  }
+
+  currentTheme = theme;
+  applyTheme(theme, options.animate ?? true);
+
+  if (options.persist !== false) {
+    storeTheme(theme);
+  }
+
+  if (options.broadcast !== false) {
+    broadcastTheme(theme);
+  }
+
+  notifyListeners(theme);
+}
+
+function syncThemeFromExternal(theme: string | null | undefined): void {
+  if (theme == null || theme === "" || !isValidTheme(theme) || theme === currentTheme) {
+    return;
+  }
+
+  applyManagedTheme(theme, { animate: true, persist: false, broadcast: false });
+}
+
+function setupSyncListeners(): void {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== CONFIG.storageKey) {
+      return;
+    }
+
+    syncThemeFromExternal(event.newValue);
+  });
+
+  const channel = createThemeChannel();
+  if (channel == null) {
+    return;
+  }
+
+  channel.onmessage = (event: MessageEvent<{ theme?: ThemeId }>) => {
+    syncThemeFromExternal(event.data?.theme);
+  };
 }
 
 function setupDropdownListeners(): void {
@@ -183,6 +255,7 @@ const themeManager = {
       setupDropdownListeners();
     }
 
+    setupSyncListeners();
     isInitialized = true;
   },
 
@@ -192,14 +265,7 @@ const themeManager = {
       return;
     }
 
-    currentTheme = theme;
-    applyTheme(theme, true);
-
-    if (persist) {
-      storeTheme(theme);
-    }
-
-    notifyListeners(theme);
+    applyManagedTheme(theme, { animate: true, persist, broadcast: true });
     // NOTE: Avoid Logger.debug() here to prevent init issues during startup.
   },
 

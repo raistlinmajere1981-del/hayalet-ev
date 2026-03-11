@@ -5,13 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenCode UI - Chat</title>
     <link rel="stylesheet" href="/styles/main.css" />
-    <link rel="stylesheet" href="/js/pages/opencode-ui/opencode-ui.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   </head>
   <body class="opencode-native-page">
     <div class="app-shell app-shell--opencode">
@@ -157,7 +150,7 @@
                 </div>
                 <button
                   type="button"
-                  class="ds-chat__action-btn ds-chat__action-btn--ghost"
+                  class="btn btn-ghost btn-xs ds-chat__action-btn"
                   id="model-settings-btn"
                   title="Model settings"
                   data-i18n-title="modelSettings.openTitle"
@@ -176,7 +169,7 @@
               </div>
               <div class="ds-chat__toolbar-right">
                 <button
-                  class="ds-chat__action-btn"
+                  class="btn btn-secondary btn-xs ds-chat__action-btn"
                   id="prune-btn"
                   title="Remove the last message pair"
                   data-i18n-title="chat.pruneTitle"
@@ -185,7 +178,7 @@
                   ✂ Prune
                 </button>
                 <button
-                  class="ds-chat__action-btn ds-chat__action-btn--danger"
+                  class="btn btn-danger btn-xs ds-chat__action-btn"
                   id="clear-btn"
                   title="Clear the whole chat"
                   data-i18n-title="chat.clearTitle"
@@ -194,14 +187,14 @@
                   🗑 Clear
                 </button>
                 <button
-                  class="ds-chat__attach-btn"
+                  class="btn btn-secondary btn-xs ds-chat__action-btn ds-chat__attach-btn"
                   id="attach-file-btn"
                   data-i18n-text="chat.attachFileLabel"
                 >
                   📎 File
                 </button>
                 <button
-                  class="ds-chat__attach-btn"
+                  class="btn btn-secondary btn-xs ds-chat__action-btn ds-chat__attach-btn"
                   id="attach-image-btn"
                   title="Paste an image from the clipboard (Ctrl+V)"
                   data-i18n-title="chat.attachClipboardTitle"
@@ -221,14 +214,14 @@
 
             <div class="ds-chat__input-row">
               <textarea
-                class="ds-chat__textarea"
+                class="input ds-chat__textarea"
                 id="chat-input"
                 placeholder="Write your message... (Enter for newline, Ctrl+Enter to send)"
                 data-i18n-placeholder="chat.inputPlaceholder"
                 rows="3"
               ></textarea>
               <button
-                class="ds-chat__send"
+                class="btn btn-primary btn-icon ds-chat__send"
                 id="send-btn"
                 title="Send"
                 data-i18n-title="chat.sendTitle"
@@ -512,7 +505,7 @@
                     <label class="ds-modal__label" data-i18n-text="prompt.nameLabel">Name</label>
                     <input
                       type="text"
-                      class="ds-modal__input"
+                      class="input ds-modal__input"
                       id="prompt-modal-name"
                       placeholder="Prompt name..."
                       data-i18n-placeholder="prompt.namePlaceholder"
@@ -523,7 +516,7 @@
                       >Content</label
                     >
                     <textarea
-                      class="ds-modal__textarea"
+                      class="input ds-modal__textarea"
                       id="prompt-modal-content"
                       rows="5"
                       placeholder="Prompt content..."
@@ -532,14 +525,14 @@
                   </div>
                   <div class="ds-modal__actions">
                     <button
-                      class="ds-modal__btn ds-modal__btn--secondary"
+                      class="ds-modal__btn ds-modal__btn--secondary btn btn-sm btn-secondary"
                       id="prompt-modal-cancel"
                       data-i18n-text="prompt.cancel"
                     >
                       Cancel
                     </button>
                     <button
-                      class="ds-modal__btn ds-modal__btn--primary"
+                      class="ds-modal__btn ds-modal__btn--primary btn btn-sm btn-primary"
                       id="prompt-modal-save"
                       data-i18n-text="prompt.save"
                     >
@@ -563,7 +556,7 @@
                     </div>
                     <button
                       type="button"
-                      class="ds-chat__action-btn ds-chat__action-btn--ghost"
+                      class="btn btn-ghost btn-xs ds-chat__action-btn"
                       id="model-settings-close"
                       title="Close"
                       data-i18n-title="modelSettings.closeTitle"
@@ -577,7 +570,7 @@
                   <div class="model-settings__filters">
                     <input
                       type="search"
-                      class="ds-modal__input"
+                      class="input ds-modal__input"
                       id="model-settings-search"
                       placeholder="Search providers or models..."
                       data-i18n-placeholder="modelSettings.searchPlaceholder"

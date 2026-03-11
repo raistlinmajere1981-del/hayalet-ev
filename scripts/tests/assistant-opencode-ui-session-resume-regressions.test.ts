@@ -33,3 +33,11 @@ test("opencode-ui connect url resolver injects resumeSessionId from settings", (
   assert.match(content, /assistants\?\.lastOpencodeUiSessionId/);
   assert.match(content, /parsed\.searchParams\.set\("resumeSessionId", resumeSessionId\)/);
 });
+
+test("opencode-ui connect url resolver injects active theme and assistant syncs live theme updates", () => {
+  const content = readAssistantIndex();
+
+  assert.match(content, /parsed\.searchParams\.set\("theme", ThemeManager\.current\)/);
+  assert.match(content, /ThemeManager\.onChange\(\(theme\) =>/);
+  assert.match(content, /window\.__ThemeManager && typeof window\.__ThemeManager\.set === "function"/);
+});

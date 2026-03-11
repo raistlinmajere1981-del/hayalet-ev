@@ -147,7 +147,7 @@
 }
 
 .live-log-control-search {
-  min-width: var(--space-56);
+  min-width: var(--layout-live-log-search-min);
 }
 
 .live-log-metrics {
@@ -246,7 +246,7 @@
   color: var(--color-info);
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .live-log-header {
     flex-direction: column;
     align-items: flex-start;

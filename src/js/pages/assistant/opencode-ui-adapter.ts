@@ -44,6 +44,11 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
     return trimmed !== "" ? trimmed : undefined;
   }
 
+  private _buildPageUrl(port: number): string {
+    const params = new URLSearchParams({ port: String(port) });
+    return `/pages/opencode-ui.html?${params.toString()}`;
+  }
+
   async startServer(portSelection?: string): Promise<ServerResult> {
     try {
       Logger.infoT(LogCategory.ASSISTANT_CORE, "shell.assistant.logs.providerServeStarting", {
@@ -62,7 +67,7 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
         this._currentPort = running.port;
         this._serverUrl = running.url ?? `http://127.0.0.1:${this._currentPort}/`;
 
-        const pageUrl = `/pages/opencode-ui.html?port=${String(this._currentPort)}`;
+        const pageUrl = this._buildPageUrl(this._currentPort);
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,
@@ -111,7 +116,7 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
         this._isRunning = true;
         this._currentPort = result.port ?? port ?? 4096;
         this._serverUrl = result.url ?? `http://127.0.0.1:${this._currentPort}/`;
-        const pageUrl = `/pages/opencode-ui.html?port=${String(this._currentPort)}`;
+        const pageUrl = this._buildPageUrl(this._currentPort);
 
         Logger.infoT(
           LogCategory.ASSISTANT_CORE,

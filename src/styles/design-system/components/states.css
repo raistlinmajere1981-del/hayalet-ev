@@ -75,6 +75,10 @@
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-8);
+  border: var(--app-shell-empty-state-border);
+  border-radius: var(--app-shell-empty-state-radius);
+  background: var(--app-shell-empty-state-bg);
+  box-shadow: var(--app-shell-empty-state-shadow);
   text-align: center;
   color: var(--text-muted);
   font-size: var(--text-xs);

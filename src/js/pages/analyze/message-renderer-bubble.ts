@@ -73,7 +73,7 @@ export function createMessageBubble(
     actionConfigs.forEach(({ action, icon, title }) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "msg-action-btn";
+      button.className = "msg-action-btn btn btn-xs btn-secondary btn-icon";
       button.textContent = icon;
       button.title = title;
       button.setAttribute("aria-label", title);

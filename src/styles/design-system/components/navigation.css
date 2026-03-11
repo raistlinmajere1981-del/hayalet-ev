@@ -18,7 +18,7 @@
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  height: 50px;
+  height: var(--size-control-3xl);
   width: var(--side-nav-trigger-width);
   background: linear-gradient(to left, var(--bg-elevated), transparent);
   opacity: 0.6;
@@ -34,7 +34,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 2px;
+  width: var(--space-0-5);
   height: var(--size-avatar-md);
   background: var(--text-muted);
   border-radius: var(--radius-full);

@@ -93,7 +93,7 @@ function createToastElement(id: string, options: ToastOptions): HTMLDivElement {
     actionDiv.className = "toast-action";
 
     const actionBtn = document.createElement("button");
-    actionBtn.className = "toast-action-btn";
+    actionBtn.className = "toast-action-btn btn btn-xs btn-secondary";
     actionBtn.textContent = options.action.label;
     actionBtn.addEventListener("click", (): void => {
       options.action?.onClick();

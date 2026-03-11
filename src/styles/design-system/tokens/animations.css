@@ -8,6 +8,7 @@
   --duration-flow: 1.5s;
   --duration-flow-slow: 2s;
 
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
   --transition-fast: all var(--duration-fast) var(--ease-out);

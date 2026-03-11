@@ -316,7 +316,7 @@
   min-height: var(--layout-server-command-guide-min-h);
 }
 
-@media (max-width: 1280px) {
+@media (--breakpoint-max-1280) {
   .server-workspace {
     grid-template-columns: 1fr;
   }
@@ -326,7 +326,7 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (--breakpoint-max-1024) {
   .server-panels {
     grid-template-columns: 1fr;
   }
@@ -344,7 +344,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (--breakpoint-max-640) {
   .server-topbar .left {
     flex-wrap: wrap;
   }

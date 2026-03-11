@@ -466,16 +466,13 @@ export class EntranceHallController {
       avatarEl.style.opacity = hasAccount && !connected ? "0.5" : "1";
     }
 
-    if (statusDot) {
+    if (statusDot instanceof HTMLElement) {
+      statusDot.classList.remove("connected", "warning");
       if (!hasAccount) {
-        statusDot.classList.remove("connected");
-        statusDot.style.backgroundColor = "#999";
       } else if (connected) {
         statusDot.classList.add("connected");
-        statusDot.style.backgroundColor = "#4CAF50";
       } else {
-        statusDot.classList.remove("connected");
-        statusDot.style.backgroundColor = "#FFA726";
+        statusDot.classList.add("warning");
       }
     }
 

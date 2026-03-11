@@ -233,7 +233,7 @@
   margin-right: auto;
 }
 
-@media (max-width: 768px) {
+@media (--breakpoint-max-768) {
   .conversation-grid {
     grid-template-columns: 1fr;
     gap: var(--space-3);

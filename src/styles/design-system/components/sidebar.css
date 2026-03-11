@@ -3,13 +3,14 @@
   flex-direction: column;
   width: var(--sidebar-width);
   min-width: 0;
-  background: var(--bg-panel);
+  background: var(--app-shell-sidebar-bg);
   border-right: var(--border-1) solid var(--border-default);
   transition:
     width var(--duration-normal) var(--ease-out),
     min-width var(--duration-normal) var(--ease-out);
   overflow: hidden;
   box-shadow: var(--surface-shadow);
+  backdrop-filter: var(--app-shell-surface-blur);
 }
 
 .ds-sidebar--right {
@@ -30,7 +31,7 @@
   padding: var(--space-3) var(--space-4);
   min-height: var(--space-12);
   flex-shrink: 0;
-  background: var(--bg-surface-2);
+  background: var(--app-shell-sidebar-section-bg);
   border-bottom: var(--border-1) solid var(--border-default);
 }
 
@@ -103,6 +104,7 @@
   flex-shrink: 0;
   padding: var(--space-3) var(--space-4);
   border-top: var(--border-1) solid var(--border-default);
+  background: var(--app-shell-sidebar-section-bg);
 }
 
 .ds-session-list {
@@ -114,14 +116,14 @@
 .ds-session-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  padding: 0 var(--space-3) var(--space-2);
+  gap: var(--app-shell-session-tabs-gap);
+  padding: var(--app-shell-session-tabs-padding);
 }
 
 .ds-session-tab {
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-md);
-  background: var(--bg-muted);
+  background: var(--app-shell-session-tab-bg);
   color: var(--text-tertiary);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
@@ -131,14 +133,14 @@
 }
 
 .ds-session-tab:hover {
-  background: var(--bg-surface-3);
+  background: var(--app-shell-session-tab-hover-bg);
   color: var(--text-secondary);
 }
 
 .ds-session-tab.is-active {
-  background: var(--color-accent-soft);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  background: var(--app-shell-session-tab-active-bg);
+  border-color: var(--app-shell-session-tab-active-border);
+  color: var(--app-shell-session-tab-active-text);
 }
 
 .ds-session {
@@ -147,7 +149,7 @@
   gap: var(--space-1);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  background: var(--bg-muted);
+  background: var(--app-shell-session-bg);
   cursor: pointer;
   transition: var(--transition-fast);
   position: relative;
@@ -155,13 +157,13 @@
 }
 
 .ds-session:hover {
-  background: var(--bg-surface-3);
-  border-color: var(--border-default);
+  background: var(--app-shell-session-hover-bg);
+  border-color: var(--app-shell-session-hover-border);
 }
 
 .ds-session--active {
-  background: var(--color-accent-soft);
-  border: var(--border-1) solid var(--color-accent);
+  background: var(--app-shell-session-active-bg);
+  border: var(--border-1) solid var(--app-shell-session-active-border);
 }
 
 .ds-session--active:hover {

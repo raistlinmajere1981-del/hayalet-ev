@@ -12,6 +12,7 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
+import { ThemeManager, type ThemeId } from "../../ui/theme-manager.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
   registerAssistantDeliveryHandler,
@@ -152,6 +153,7 @@ export class AssistantController {
   _unsubTraffic: (() => void) | null;
   _unsubAppState: (() => void) | null;
   _unsubI18n: (() => void) | null;
+  _unsubTheme: (() => void) | null;
   _isServerRunning: boolean;
   _systemServerPort: number | null;
   _activeAdapter: AssistantProviderAdapter | null;
@@ -201,6 +203,7 @@ export class AssistantController {
     this._unsubTraffic = null;
     this._unsubAppState = null;
     this._unsubI18n = null;
+    this._unsubTheme = null;
     this._isServerRunning = false;
     this._systemServerPort = null;
     this._activeAdapter = null;
@@ -311,6 +314,10 @@ export class AssistantController {
 
     this._unsubAppState = AppState.subscribe(() => {
       void this._syncIdentityCard();
+    });
+
+    this._unsubTheme ??= ThemeManager.onChange((theme) => {
+      this._syncOpencodeUiTheme(theme);
     });
 
     this._unsubI18n ??= AppI18n.subscribe(() => {
@@ -1077,6 +1084,8 @@ export class AssistantController {
         if (dbPath !== "") {
           parsed.searchParams.set("dbPath", dbPath);
         }
+
+        parsed.searchParams.set("theme", ThemeManager.current);
 
         return baseUrl.startsWith("/")
           ? `${parsed.pathname}${parsed.search}${parsed.hash}`
@@ -1852,8 +1861,50 @@ export class AssistantController {
     }
   }
 
+  _syncOpencodeUiTheme(theme: ThemeId = ThemeManager.current): void {
+    const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
+    if (ai0Webview == null) {
+      return;
+    }
+
+    const activeProviderId = this.providerSelect?.value ?? this._activeAdapter?.id ?? "";
+    const currentUrl =
+      typeof ai0Webview.getURL === "function" ? ai0Webview.getURL() ?? "" : ai0Webview.src ?? "";
+    const shouldSyncTheme =
+      activeProviderId === "opencode-ui" || currentUrl.includes("/pages/opencode-ui.html");
+
+    if (!shouldSyncTheme) {
+      return;
+    }
+
+    try {
+      void ai0Webview.executeJavaScript?.(
+        `(function() {
+          try {
+            const nextTheme = ${JSON.stringify(theme)};
+            if (window.__ThemeManager && typeof window.__ThemeManager.set === "function") {
+              window.__ThemeManager.set(nextTheme, true);
+              return true;
+            }
+
+            document.documentElement.setAttribute("data-theme", nextTheme);
+            try {
+              localStorage.setItem("app-theme", nextTheme);
+            } catch (_) {}
+            return true;
+          } catch (_) {
+            return false;
+          }
+        })();`
+      );
+    } catch (_) {
+      // NOTE: Ignore if the webview has not finished loading yet.
+    }
+  }
+
   onShow(): void {
     this._updateConnectionUI();
+    this._syncOpencodeUiTheme();
   }
 
   onHide(): void {}
@@ -1880,6 +1931,7 @@ export class AssistantController {
     this._unsubTraffic?.();
     this._unsubAppState?.();
     this._unsubI18n?.();
+    this._unsubTheme?.();
     this.memoryOverlay.destroy();
   }
 }

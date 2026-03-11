@@ -1,4 +1,5 @@
 :root {
+  --space-0-25: 1px;
   --space-0-5: 2px;
   --space-1: 4px;
   --space-1-5: 6px;
@@ -12,6 +13,7 @@
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
+  --space-14: 56px;
   --space-16: 64px;
   --space-20: 80px;
   --space-24: 96px;

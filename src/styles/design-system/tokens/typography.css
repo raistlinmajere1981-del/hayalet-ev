@@ -4,6 +4,7 @@
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Monaco, Consolas, monospace;
 
   --text-2xs: 10px;
+  --text-caption: 13px;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;
@@ -11,6 +12,8 @@
   --text-xl: 20px;
   --text-2xl: 24px;
   --text-3xl: 32px;
+  --text-4xl: 36px;
+  --text-5xl: 56px;
 
   --font-medium: 500;
   --font-semibold: 600;

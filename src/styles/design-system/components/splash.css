@@ -31,7 +31,7 @@
   justify-content: center;
   gap: var(--space-6);
   width: var(--layout-splash-shell-w);
-  min-height: 300px;
+  min-height: var(--layout-splash-min-h);
   padding: clamp(var(--space-10), 4vw, var(--space-14));
   background: var(--bg-glass);
   border: var(--border-1) solid var(--border-glass);
@@ -123,12 +123,12 @@
   min-height: var(--space-5);
 }
 
-@media (max-width: 480px) {
+@media (--breakpoint-max-480) {
   .splash-content {
     margin: var(--space-4);
     padding: var(--space-8);
     min-width: auto;
-    min-height: 260px;
+    min-height: var(--layout-splash-min-h-sm);
   }
 
   .splash-logo {

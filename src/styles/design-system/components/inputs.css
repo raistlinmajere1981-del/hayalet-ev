@@ -1,3 +1,12 @@
+:root {
+  --field-font-family: var(--font-sans);
+  --field-color: var(--text-primary);
+  --field-blur: var(--glass-blur);
+  --field-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 2%, transparent);
+  --field-textarea-resize: vertical;
+  --field-textarea-leading: var(--leading-relaxed);
+}
+
 .input,
 .form-input {
   display: block;

@@ -311,14 +311,14 @@ export class WhisperController {
     actions.className = "whisper-row-actions";
 
     const editBtn = document.createElement("button");
-    editBtn.className = "whisper-action-btn";
+    editBtn.className = "whisper-action-btn btn btn-xs btn-secondary";
     editBtn.textContent = whisperT("actions.edit");
     editBtn.addEventListener("click", () => {
       void this.handleUpdate(accountId, record, isPending);
     });
 
     const deleteBtn = document.createElement("button");
-    deleteBtn.className = "whisper-action-btn danger";
+    deleteBtn.className = "whisper-action-btn danger btn btn-xs btn-danger";
     deleteBtn.textContent = whisperT("actions.delete");
     deleteBtn.addEventListener("click", () => {
       void this.handleDelete(accountId, record.id);

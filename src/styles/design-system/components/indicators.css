@@ -185,13 +185,13 @@
   width: var(--size-dot-sm);
   height: var(--size-dot-sm);
   border-radius: var(--radius-full);
-  background: var(--dot-inactive);
+  background: var(--status-inactive);
   flex-shrink: 0;
 }
 
 .status-dot.connected,
 .status-dot.success {
-  background: var(--color-success);
+  background: var(--status-connected);
   box-shadow: var(--glow-success);
 }
 
@@ -201,7 +201,7 @@
 }
 
 .status-dot.warning {
-  background: var(--color-warning);
+  background: var(--status-warning);
 }
 
 .slot-status-dot {
@@ -211,14 +211,18 @@
   width: var(--size-dot-lg);
   height: var(--size-dot-lg);
   border-radius: var(--radius-full);
-  background: var(--dot-inactive);
+  background: var(--status-inactive);
   border: var(--border-2) solid var(--bg-elevated);
   transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .slot-status-dot.connected {
-  background: var(--color-success);
+  background: var(--status-connected);
   box-shadow: var(--glow-success);
+}
+
+.slot-status-dot.warning {
+  background: var(--status-warning);
 }
 
 .badge {

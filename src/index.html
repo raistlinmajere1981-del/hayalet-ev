@@ -32,38 +32,31 @@
 
     <div
       id="global-webview-container"
-      style="
-        position: fixed;
-        top: -99999px;
-        left: -99999px;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-      "
+      class="app-offscreen-webviews"
     >
       <webview
         id="ai0-webview"
+        class="app-offscreen-webview"
         partition="persist:ai0"
         allowpopups
         spellcheck="false"
         webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
-        style="width: 100%; height: 100%"
       ></webview>
       <webview
         id="ai1-webview"
+        class="app-offscreen-webview"
         partition="persist:main"
         allowpopups
         spellcheck="false"
         webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
-        style="width: 100%; height: 100%"
       ></webview>
       <webview
         id="ai2-webview"
+        class="app-offscreen-webview"
         partition="persist:main"
         allowpopups
         spellcheck="false"
         webpreferences="spellcheck=false, backgroundThrottling=false, contextIsolation=true, nodeIntegration=false"
-        style="width: 100%; height: 100%"
       ></webview>
     </div>
 

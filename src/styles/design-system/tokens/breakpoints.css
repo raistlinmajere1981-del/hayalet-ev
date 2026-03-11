@@ -1,1 +1,12 @@
-/* NOTE: Keep these @media breakpoints (px) in sync here because custom properties cannot be used in @media queries: xs 480, sm 640, md 768, lg 1024, xl 1280, 2xl 1920. */
+/* NOTE: Numeric breakpoint names avoid semantic drift across page-specific responsive layouts. */
+@custom-media --breakpoint-max-480 (max-width: 480px);
+@custom-media --breakpoint-max-560 (max-width: 560px);
+@custom-media --breakpoint-max-640 (max-width: 640px);
+@custom-media --breakpoint-max-768 (max-width: 768px);
+@custom-media --breakpoint-max-900 (max-width: 900px);
+@custom-media --breakpoint-max-1024 (max-width: 1024px);
+@custom-media --breakpoint-max-1200 (max-width: 1200px);
+@custom-media --breakpoint-max-1240 (max-width: 1240px);
+@custom-media --breakpoint-max-1280 (max-width: 1280px);
+@custom-media --breakpoint-max-1920 (max-width: 1920px);
+@custom-media --breakpoint-min-1920 (min-width: 1920px);

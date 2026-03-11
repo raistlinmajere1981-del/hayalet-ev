@@ -4,6 +4,7 @@
   --size-icon-lg: 48px;
   --size-icon-xl: 64px;
 
+  --size-dot-xs: 6px;
   --size-dot-sm: 8px;
   --size-dot-control: 9px;
   --size-dot-md: 10px;
@@ -16,9 +17,12 @@
   --size-control-lg: 36px;
   --size-control-xl: 42px;
   --size-control-2xl: 44px;
+  --size-control-3xl: 50px;
 
+  --size-webview-offscreen: 1px;
   --size-select-max-w: 140px;
   --size-dropdown-md: 220px;
+  --size-status-pill-min-w: 4.5rem;
 
   --sidebar-width: 320px;
   --size-panel-compact: 280px;
