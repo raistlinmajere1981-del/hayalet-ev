@@ -14,10 +14,7 @@ export * from "./logging-core.js";
 export * from "./assistant.js";
 
 // NOTE: Explicit type re-exports keep IDE type hints stable.
-export type {
-  BaseResult,
-  ErrorLike,
-} from "./common.js";
+export type { BaseResult, ErrorLike } from "./common.js";
 
 export type {
   CommandJob,
@@ -29,10 +26,7 @@ export type {
   ExecutorOptions,
 } from "./commands.js";
 
-export type {
-  Conversation,
-  ConversationUpdate,
-} from "./database.js";
+export type { Conversation, ConversationUpdate } from "./database.js";
 
 export type {
   BaseSelectors,
@@ -42,11 +36,7 @@ export type {
   OpenCodeConfig,
 } from "./provider.js";
 
-export type {
-  ThinkingState,
-  ThinkingIndicator,
-  ThinkingEvent,
-} from "./traffic.js";
+export type { ThinkingState, ThinkingIndicator, ThinkingEvent } from "./traffic.js";
 
 export type {
   LogEntry,
@@ -57,8 +47,4 @@ export type {
   LogExportResult,
 } from "./logging-core.js";
 
-export {
-  LogLevel,
-  LogVisibility,
-  LogCategory,
-} from "./logging-core.js";
+export { LogLevel, LogVisibility, LogCategory } from "./logging-core.js";

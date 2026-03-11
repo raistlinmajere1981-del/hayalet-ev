@@ -395,7 +395,6 @@ function formatDashboard(data: {
         }) + "\n"
       : "";
 
-
   let output = `\n${eslintDashT("runtime.title")}\n`;
   output += "━".repeat(60) + "\n";
   output += eslintDashT("runtime.summary", { totalProblems, totalErrors, totalWarnings }) + "\n";

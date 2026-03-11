@@ -488,7 +488,6 @@ export class ArchivesController {
     }
   }
 
-
   async loadProtocols(): Promise<void> {
     try {
       this._protocols = await loadProtocolsFromApi(window.electronAPI);

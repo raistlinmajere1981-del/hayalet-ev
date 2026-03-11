@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { parse } from "@typescript-eslint/typescript-estree";
 import { fileURLToPath } from "url";
 import { dirname, extname, join, relative } from "path";
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
@@ -168,103 +169,47 @@ function classifyComment(text) {
 }
 
 function extractComments(source) {
-  const comments = [];
   const lineStarts = buildLineStarts(source);
-  let index = 0;
-  let state = "code";
+  let parsedComments = [];
 
-  while (index < source.length) {
-    const char = source[index];
-    const next = source[index + 1];
-
-    if (state === "line-comment") {
-      const start = comments[comments.length - 1].startOffset;
-      let end = index;
-      while (end < source.length && source[end] !== "\n") end += 1;
-      const raw = source.slice(start + 2, end);
-      comments[comments.length - 1].raw = raw;
-      comments[comments.length - 1].endOffset = end;
-      comments[comments.length - 1].endLine = positionToLine(lineStarts, Math.max(start, end - 1));
-      state = "code";
-      index = end;
-      continue;
-    }
-
-    if (state === "block-comment") {
-      if (char === "*" && next === "/") {
-        const record = comments[comments.length - 1];
-        const rawStart = record.startOffset + (record.kind === "jsdoc" ? 3 : 2);
-        const raw = source.slice(rawStart, index);
-        record.raw = raw;
-        record.endOffset = index + 2;
-        record.endLine = positionToLine(lineStarts, index);
-        state = "code";
-        index += 2;
-        continue;
-      }
-      index += 1;
-      continue;
-    }
-
-    if (state === "'" || state === '"' || state === "`") {
-      if (char === "\\") {
-        index += 2;
-        continue;
-      }
-      if (char === state) {
-        state = "code";
-      }
-      index += 1;
-      continue;
-    }
-
-    if (char === "'" || char === '"' || char === "`") {
-      state = char;
-      index += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "/") {
-      comments.push({
-        kind: "line",
-        startOffset: index,
-        startLine: positionToLine(lineStarts, index),
-        endOffset: index,
-        endLine: positionToLine(lineStarts, index),
-        raw: "",
-      });
-      state = "line-comment";
-      index += 2;
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      const isJsdoc = source[index + 2] === "*";
-      comments.push({
-        kind: isJsdoc ? "jsdoc" : "block",
-        startOffset: index,
-        startLine: positionToLine(lineStarts, index),
-        endOffset: index,
-        endLine: positionToLine(lineStarts, index),
-        raw: "",
-      });
-      state = "block-comment";
-      index += 2;
-      continue;
-    }
-
-    index += 1;
+  try {
+    const ast = parse(source, {
+      comment: true,
+      loc: true,
+      range: true,
+      jsx: true,
+      errorOnUnknownASTType: false,
+    });
+    parsedComments = ast.comments ?? [];
+  } catch {
+    return [];
   }
 
-  return comments
+  return parsedComments
     .map((comment) => {
-      const text = cleanCommentText(comment.raw);
+      const startOffset = comment.range?.[0] ?? 0;
+      const endOffset = comment.range?.[1] ?? startOffset;
+      const startLine = comment.loc?.start.line ?? positionToLine(lineStarts, startOffset);
+      const endLine =
+        comment.loc?.end.line ?? positionToLine(lineStarts, Math.max(startOffset, endOffset - 1));
+      const kind = comment.type === "Block" && source.slice(startOffset, startOffset + 3) === "/**"
+        ? "jsdoc"
+        : comment.type === "Line"
+          ? "line"
+          : "block";
+      const raw =
+        kind === "jsdoc"
+          ? source.slice(startOffset + 3, Math.max(startOffset + 3, endOffset - 2))
+          : kind === "block"
+            ? source.slice(startOffset + 2, Math.max(startOffset + 2, endOffset - 2))
+            : comment.value ?? "";
+      const text = cleanCommentText(raw);
       const classification = classifyComment(text);
       if (!isMeaningfulComment(text, classification)) return null;
       return {
         kind: classification.kind,
-        startLine: comment.startLine,
-        endLine: comment.endLine,
+        startLine,
+        endLine,
         text,
         prefix: classification.prefix,
       };

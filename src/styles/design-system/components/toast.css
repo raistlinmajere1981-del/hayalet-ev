@@ -74,7 +74,6 @@
   color: var(--text-primary);
 }
 
-
 .toast-success {
   border-left: var(--border-3) solid var(--color-success);
 }

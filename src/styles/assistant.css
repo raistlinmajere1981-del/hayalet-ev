@@ -350,7 +350,6 @@
   box-shadow: var(--glow-success);
 }
 
-
 .assistant-status .status-dot.connecting,
 .assistant-status-extended .status-dot.status-connecting {
   background: var(--color-warning);

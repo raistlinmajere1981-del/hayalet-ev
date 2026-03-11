@@ -106,8 +106,7 @@ export class OpenCodeServerManager {
       timer = setTimeout(() => {
         try {
           child.kill("SIGKILL");
-        } catch {
-        }
+        } catch {}
         finish({
           exitCode: null,
           stdout,

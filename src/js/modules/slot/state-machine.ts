@@ -16,35 +16,17 @@ export { slotStates as SlotStates };
 export type SlotStateType = (typeof slotStates)[keyof typeof slotStates];
 
 const ALLOWED_TRANSITIONS: Record<SlotStateType, SlotStateType[]> = {
-  [slotStates.EMPTY]: [
-    slotStates.ASSIGNED,
-  ],
-  [slotStates.ASSIGNED]: [
-    slotStates.EMPTY,
-    slotStates.CONNECTING,
-    slotStates.ERROR,
-  ],
+  [slotStates.EMPTY]: [slotStates.ASSIGNED],
+  [slotStates.ASSIGNED]: [slotStates.EMPTY, slotStates.CONNECTING, slotStates.ERROR],
   [slotStates.CONNECTING]: [
     slotStates.CONNECTED,
     slotStates.ASSIGNED,
     slotStates.ERROR,
     slotStates.DISCONNECTING,
   ],
-  [slotStates.CONNECTED]: [
-    slotStates.DISCONNECTING,
-    slotStates.ERROR,
-    slotStates.CONNECTING,
-  ],
-  [slotStates.DISCONNECTING]: [
-    slotStates.ASSIGNED,
-    slotStates.EMPTY,
-    slotStates.ERROR,
-  ],
-  [slotStates.ERROR]: [
-    slotStates.EMPTY,
-    slotStates.ASSIGNED,
-    slotStates.CONNECTING,
-  ],
+  [slotStates.CONNECTED]: [slotStates.DISCONNECTING, slotStates.ERROR, slotStates.CONNECTING],
+  [slotStates.DISCONNECTING]: [slotStates.ASSIGNED, slotStates.EMPTY, slotStates.ERROR],
+  [slotStates.ERROR]: [slotStates.EMPTY, slotStates.ASSIGNED, slotStates.CONNECTING],
 };
 
 interface StateHistoryEntry {

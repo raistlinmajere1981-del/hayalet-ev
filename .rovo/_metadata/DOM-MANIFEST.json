@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-10T15:59:43.581Z",
+  "generatedAt": "2026-03-11T08:37:31.062Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 443,
-    "ids": 418,
+    "ids": 417,
     "testIds": 15,
-    "querySelectors": 124,
-    "totalSelectors": 557
+    "querySelectors": 123,
+    "totalSelectors": 555
   },
   "lookup": {
     "id": {
@@ -394,7 +394,6 @@
       "status-ai2": "#status-ai2",
       "status-hint": "#status-hint",
       "status-text": "#status-text",
-      "submit-btn": "#submit-btn",
       "theme-current-icon": "#theme-current-icon",
       "theme-current-name": "#theme-current-name",
       "theme-dropdown": "#theme-dropdown",
@@ -547,7 +546,6 @@
       "id_mcp_list_ds_item_row": "#mcp-list .ds-item-row",
       "id_send_btn": "#send-btn",
       "id_session_list": "#session-list",
-      "id_submit_btn": "#submit-btn",
       "id_tools_list_ds_panel_item": "#tools-list .ds-panel__item",
       "a_href": "a[href^=",
       "button": "button",

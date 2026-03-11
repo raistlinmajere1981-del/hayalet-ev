@@ -154,8 +154,7 @@ export async function commandCleanupTemp(
       tempPaths
         .filter((p) => p.length > 0 && existsSync(p))
         .map(async (p) => {
-          await unlink(p).catch(() => {
-          });
+          await unlink(p).catch(() => {});
         })
     );
     return { success: true };
@@ -179,8 +178,7 @@ export async function commandMoveFailed(
       const entries = await readdir(srcDir, { withFileTypes: true });
       await Promise.all(
         entries.map(async (e) => {
-          await rename(join(srcDir, e.name), join(destDir, e.name)).catch(() => {
-          });
+          await rename(join(srcDir, e.name), join(destDir, e.name)).catch(() => {});
         })
       );
     }
@@ -192,10 +190,8 @@ export async function commandMoveFailed(
       validTempPaths.map(async (p) => {
         const base = basename(p);
         await rename(p, join(destDir, base)).catch(async () => {
-          await copyFile(p, join(destDir, base)).catch(() => {
-          });
-          await unlink(p).catch(() => {
-          });
+          await copyFile(p, join(destDir, base)).catch(() => {});
+          await unlink(p).catch(() => {});
         });
       })
     );
@@ -249,8 +245,7 @@ export async function commandCleanupJob(
     const { root } = await ensureCommandDirs();
     const jobDir = join(root, jobId);
     if (existsSync(jobDir)) {
-      await rm(jobDir, { recursive: true, force: true }).catch(() => {
-      });
+      await rm(jobDir, { recursive: true, force: true }).catch(() => {});
     }
     return { success: true };
   } catch (err) {

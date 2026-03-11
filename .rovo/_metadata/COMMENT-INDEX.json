@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-10T23:08:11.238Z",
+  "generatedAt": "2026-03-11T08:37:30.247Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -17,14 +17,14 @@
   },
   "stats": {
     "filesScanned": 425,
-    "filesWithComments": 101,
+    "filesWithComments": 102,
     "commentsIndexed": 234,
-    "fileLevelComments": 188,
-    "symbolLevelComments": 46,
+    "fileLevelComments": 189,
+    "symbolLevelComments": 45,
     "prefixCounts": {
-      "none": 6,
+      "none": 1,
       "AI": 0,
-      "NOTE": 223,
+      "NOTE": 228,
       "WARNING": 5,
       "TODO": 0
     }
@@ -325,8 +325,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 192,
-          "endLine": 192,
+          "startLine": 191,
+          "endLine": 191,
           "text": "NOTE: Searches for a running OpenCode server within the port range.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -334,8 +334,8 @@
         },
         {
           "kind": "note",
-          "startLine": 193,
-          "endLine": 193,
+          "startLine": 192,
+          "endLine": 192,
           "text": "NOTE: Verifies whether each occupied port is a real OpenCode server by running a health check.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -343,8 +343,8 @@
         },
         {
           "kind": "note",
-          "startLine": 229,
-          "endLine": 229,
+          "startLine": 228,
+          "endLine": 228,
           "text": "NOTE: Fail when a process started by this manager is already running.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -352,8 +352,8 @@
         },
         {
           "kind": "note",
-          "startLine": 236,
-          "endLine": 236,
+          "startLine": 235,
+          "endLine": 235,
           "text": "NOTE: First, look for a running server in the port range.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -361,8 +361,8 @@
         },
         {
           "kind": "note",
-          "startLine": 386,
-          "endLine": 386,
+          "startLine": 385,
+          "endLine": 385,
           "text": "NOTE: If the process was started by this manager, stop it directly.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -370,8 +370,8 @@
         },
         {
           "kind": "note",
-          "startLine": 475,
-          "endLine": 475,
+          "startLine": 474,
+          "endLine": 474,
           "text": "NOTE: Server health check (HTTP request via Node.js - CSP bypass).",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -882,9 +882,9 @@
         "note": 3
       },
       "byPrefix": {
-        "none": 3,
+        "none": 0,
         "AI": 0,
-        "NOTE": 0,
+        "NOTE": 3,
         "WARNING": 0,
         "TODO": 0
       },
@@ -894,8 +894,8 @@
           "kind": "note",
           "startLine": 377,
           "endLine": 377,
-          "text": "The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.",
-          "prefix": null,
+          "text": "NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.",
+          "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
@@ -903,8 +903,8 @@
           "kind": "note",
           "startLine": 378,
           "endLine": 378,
-          "text": "It is kept for future ai0 DB support even though the tag is not consumed today.",
-          "prefix": null,
+          "text": "NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.",
+          "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
@@ -912,8 +912,8 @@
           "kind": "note",
           "startLine": 485,
           "endLine": 485,
-          "text": "The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.",
-          "prefix": null,
+          "text": "NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.",
+          "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         }
@@ -921,13 +921,12 @@
     },
     {
       "path": "src/js/modules/commands/command-descriptions.ts",
-      "totalComments": 2,
+      "totalComments": 1,
       "byKind": {
-        "jsdoc": 1,
-        "note": 1
+        "jsdoc": 1
       },
       "byPrefix": {
-        "none": 2,
+        "none": 1,
         "AI": 0,
         "NOTE": 0,
         "WARNING": 0,
@@ -942,15 +941,6 @@
           "startLine": 3,
           "endLine": 13,
           "text": "Command description registry for the server command panel.\n\nEach command exposes four localized fields:\n- description: one-line summary\n- detail: detailed behavior description\n- usage: inline command usage format\n- example: example command invocation\n\n@module commands/command-descriptions",
-          "prefix": null,
-          "scopeType": "interface",
-          "scopeName": "CommandDescriptionInfo"
-        },
-        {
-          "kind": "note",
-          "startLine": 18,
-          "endLine": 18,
-          "text": "Detailed behavior description.",
           "prefix": null,
           "scopeType": "interface",
           "scopeName": "CommandDescriptionInfo"
@@ -2560,6 +2550,32 @@
       ]
     },
     {
+      "path": "src/mcp-server/tools/dev/typescript-type-helper.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 292,
+          "endLine": 292,
+          "text": "NOTE: Intentionally ignored.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
       "path": "src/mcp-server/tools/electron-tools.ts",
       "totalComments": 1,
       "byKind": {
@@ -3267,9 +3283,9 @@
         "note": 2
       },
       "byPrefix": {
-        "none": 1,
+        "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -3277,10 +3293,10 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 258,
-          "endLine": 258,
-          "text": "\") || changedLine.startsWith(\"/*\")) continue;",
-          "prefix": null,
+          "startLine": 137,
+          "endLine": 137,
+          "text": "NOTE: Only create scope for blocks that are not part of function/class.",
+          "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
         },
@@ -3955,23 +3971,6 @@
       ]
     },
     {
-      "file": "src/js/modules/commands/command-descriptions.ts",
-      "type": "interface",
-      "name": "CommandDescriptionInfo",
-      "comments": [
-        {
-          "startLine": 3,
-          "kind": "jsdoc",
-          "text": "Command description registry for the server command panel.\n\nEach command exposes four localized fields:\n- description: one-line summary\n- detail: detailed behavior description\n- usage: inline command usage format\n- example: example command invocation\n\n@module commands/command-descriptions"
-        },
-        {
-          "startLine": 18,
-          "kind": "note",
-          "text": "Detailed behavior description."
-        }
-      ]
-    },
-    {
       "file": "src/types/assistant.ts",
       "type": "interface",
       "name": "AssistantProviderAdapter",
@@ -4117,6 +4116,18 @@
           "startLine": 139,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
+        }
+      ]
+    },
+    {
+      "file": "src/js/modules/commands/command-descriptions.ts",
+      "type": "interface",
+      "name": "CommandDescriptionInfo",
+      "comments": [
+        {
+          "startLine": 3,
+          "kind": "jsdoc",
+          "text": "Command description registry for the server command panel.\n\nEach command exposes four localized fields:\n- description: one-line summary\n- detail: detailed behavior description\n- usage: inline command usage format\n- example: example command invocation\n\n@module commands/command-descriptions"
         }
       ]
     },

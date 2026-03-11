@@ -79,8 +79,7 @@ export async function checkSyntax(
         });
         astParseSuccess = true;
         bracketsBalanced = true;
-      } catch {
-      }
+      } catch {}
     }
 
     if (astParseSuccess) {

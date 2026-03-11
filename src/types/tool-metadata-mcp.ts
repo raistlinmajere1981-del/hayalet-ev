@@ -12,16 +12,9 @@ export type ToolCategory =
   | "provider"
   | "ui";
 
-export type ToolPriority =
-  | "critical"
-  | "high"
-  | "medium"
-  | "low";
+export type ToolPriority = "critical" | "high" | "medium" | "low";
 
-export type ToolComplexity =
-  | "simple"
-  | "medium"
-  | "complex";
+export type ToolComplexity = "simple" | "medium" | "complex";
 
 export interface WorkflowStep {
   step: number;
