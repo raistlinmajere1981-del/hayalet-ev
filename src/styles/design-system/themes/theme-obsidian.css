@@ -1,7 +1,12 @@
 [data-theme="obsidian"] {
-  --bg-app: #0a0f1a;
-  --bg-surface: #0d1320;
-  --bg-elevated: #111827;
+  --bg-canvas: radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 32%), #0a0f1a;
+  --bg-app: var(--bg-canvas);
+  --bg-surface: rgba(13, 19, 32, 0.84);
+  --bg-surface-2: rgba(11, 17, 29, 0.9);
+  --bg-surface-3: rgba(17, 24, 39, 0.96);
+  --bg-elevated: rgba(17, 24, 39, 0.98);
+  --bg-panel: linear-gradient(180deg, rgba(10, 15, 26, 0.96) 0%, rgba(7, 11, 20, 0.98) 100%);
+  --bg-panel-strong: linear-gradient(180deg, rgba(6, 10, 18, 0.98) 0%, rgba(5, 9, 17, 1) 100%);
   --bg-overlay: rgba(0, 0, 0, 0.75);
 
   --color-success-bg: var(--emerald-alpha-20);

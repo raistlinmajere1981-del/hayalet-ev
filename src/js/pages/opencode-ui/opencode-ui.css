@@ -1,5 +1,114 @@
 :root {
-  --opencode-ui-accent: var(--accent-primary, #4b8bff);
+  --opencode-ui-accent: var(--color-accent);
+}
+
+.opencode-native-page {
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 32%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 42%, transparent), var(--bg-app));
+}
+
+.app-shell--opencode .ds-layout-3col {
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 66%, transparent), var(--bg-app));
+}
+
+.app-shell--opencode .ds-sidebar,
+.app-shell--opencode .ds-chat,
+.app-shell--opencode .ds-right-inspector {
+  backdrop-filter: blur(14px);
+}
+
+.app-shell--opencode .ds-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 96%, transparent), var(--bg-panel)),
+    var(--bg-panel);
+}
+
+.app-shell--opencode .ds-sidebar__header,
+.app-shell--opencode .ds-sidebar__footer {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+}
+
+.app-shell--opencode .ds-session-tabs {
+  padding-top: var(--space-1);
+}
+
+.app-shell--opencode .ds-session-tab {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+}
+
+.app-shell--opencode .ds-session-tab.is-active {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 90%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    var(--bg-surface-3);
+  color: var(--text-primary);
+}
+
+.app-shell--opencode .ds-session {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 38%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+  box-shadow: var(--surface-outline);
+}
+
+.app-shell--opencode .ds-session:hover {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
+}
+
+.app-shell--opencode .ds-session--active {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 86%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    var(--bg-surface-3);
+  border-color: color-mix(in srgb, var(--color-accent) 46%, var(--border-default));
+}
+
+.app-shell--opencode .empty-state {
+  border: var(--border-1) dashed color-mix(in srgb, var(--border-default) 84%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 82%, transparent), color-mix(in srgb, var(--bg-surface-3) 90%, transparent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent);
+}
+
+.app-shell--opencode .ds-chat__empty {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), color-mix(in srgb, var(--bg-surface-3) 88%, transparent));
+}
+
+.app-shell--opencode .ds-chat__empty-icon {
+  object-fit: contain;
+}
+
+.app-shell--opencode .ds-usage {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 84%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+  box-shadow: var(--surface-outline);
+}
+
+.app-shell--opencode .ds-usage__value {
+  color: var(--text-primary);
+}
+
+.app-shell--opencode .ds-progress__track {
+  background: color-mix(in srgb, var(--bg-surface-3) 88%, transparent);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 68%, transparent);
+}
+
+.app-shell--opencode .ds-progress__fill {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 92%, white 8%) 0%, var(--color-accent) 100%);
 }
 
 .ds-mcp-switch {
@@ -27,9 +136,10 @@
 .ds-mcp-switch__slider {
   position: absolute;
   inset: 0;
-  background: var(--bg-tertiary, #555);
+  background: var(--bg-muted);
+  border: var(--border-1) solid var(--border-default);
   border-radius: 10px;
-  transition: background 0.2s ease;
+  transition: var(--transition-fast);
 }
 
 .ds-mcp-switch__slider::before {
@@ -39,13 +149,14 @@
   height: 14px;
   left: 3px;
   bottom: 3px;
-  background: #fff;
+  background: var(--text-primary);
   border-radius: 50%;
   transition: transform 0.2s ease;
 }
 
 .ds-mcp-switch__input:checked + .ds-mcp-switch__slider {
-  background: var(--opencode-ui-accent, #4b8bff);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
 }
 
 .ds-mcp-switch__input:checked + .ds-mcp-switch__slider::before {
@@ -53,14 +164,14 @@
 }
 
 .ds-status-badge--error {
-  color: var(--status-error, #ff4d4f);
-  background: rgba(255, 77, 79, 0.1);
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 
 .ds-mcp-group + .ds-mcp-group {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  border-top: 1px solid var(--border-default);
 }
 
 .ds-mcp-group__header {
@@ -71,27 +182,27 @@
 }
 
 .ds-mcp-group__title {
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .ds-mcp-group__count {
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 10px;
   font-family: var(--font-mono, monospace);
 }
 
 .ds-mcp-tool-count {
-  color: var(--opencode-ui-accent, #4b8bff);
+  color: var(--color-accent);
   font-size: 10px;
   font-family: var(--font-mono, monospace);
   white-space: nowrap;
 }
 
 .ds-tools-group__header {
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 600;
   margin: 8px 0 4px;
@@ -102,13 +213,14 @@
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--bg-secondary, #2a2a2a);
-  color: var(--text-primary, #e0e0e0);
+  background: var(--bg-panel-strong);
+  color: var(--text-primary);
   padding: 10px 20px;
-  border-radius: 8px;
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
   font-size: 13px;
   z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--floating-shadow);
   opacity: 1;
   transition: opacity 0.3s ease;
 }
@@ -121,10 +233,10 @@
   align-self: center;
   margin: 8px 0 18px;
   padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary, #b8bfd6);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -135,9 +247,9 @@
 }
 
 .ds-history-load-more:hover {
-  background: rgba(75, 139, 255, 0.14);
-  border-color: rgba(75, 139, 255, 0.4);
-  color: var(--text-primary, #f2f5ff);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .ds-attachment-tray {
@@ -155,15 +267,15 @@
   max-width: 100%;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary, #b8bfd6);
+  border: 1px solid var(--border-default);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .ds-attachment-chip__meta {
   flex-shrink: 0;
-  color: var(--opencode-ui-accent, #4b8bff);
+  color: var(--color-accent);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -184,20 +296,20 @@
   height: 18px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary, #f2f5ff);
+  background: var(--hover-overlay);
+  color: var(--text-primary);
   cursor: pointer;
   line-height: 1;
 }
 
 .ds-attachment-chip__remove:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--bg-surface-3);
 }
 
 .ds-session__title-input {
-  background: var(--bg-primary, #1a1a1a);
-  color: var(--text-primary, #e0e0e0);
-  border: 1px solid var(--opencode-ui-accent, #4b8bff);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--color-accent);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: inherit;
@@ -207,7 +319,7 @@
 }
 
 .ds-session__title-input:focus {
-  box-shadow: 0 0 0 2px rgba(75, 139, 255, 0.3);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
 }
 
 .ds-panel__icon {
@@ -220,13 +332,28 @@
   justify-content: space-between;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 88%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+  box-shadow: var(--surface-outline);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.ds-provider-row:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--border-default));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft)), var(--bg-surface-2)),
+    var(--bg-surface-2);
+  transform: translateY(-1px);
 }
 
 .ds-provider-name {
-  color: var(--text-secondary, #b8bfd6);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -235,8 +362,8 @@
 }
 
 .ds-provider-badge {
-  color: var(--text-muted, #999);
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 10px;
@@ -268,7 +395,7 @@
   display: block;
   min-width: 0;
   max-width: 100%;
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-family: var(--font-mono, monospace);
   white-space: nowrap;
@@ -281,12 +408,12 @@
 }
 
 .ds-chat__action-btn--ghost {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-default);
 }
 
 .ds-chat__action-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface-3);
 }
 
 .ds-modal__content--wide {
@@ -306,7 +433,7 @@
 
 .model-settings__subtitle {
   margin: 6px 0 0;
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -322,9 +449,9 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-secondary, #b8bfd6);
+  border: 1px solid var(--border-default);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   font-size: 11px;
 }
 
@@ -343,7 +470,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-secondary, #b8bfd6);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -356,10 +483,15 @@
 
 .model-settings__panel {
   min-height: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-default);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
   padding: 14px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent),
+    var(--surface-shadow);
 }
 
 .model-settings__panel--models {
@@ -372,8 +504,9 @@
 
 .model-settings__panel-title {
   margin-bottom: 12px;
-  color: var(--text-primary, #f2f5ff);
-  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -405,9 +538,12 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 56%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
+  box-shadow: var(--surface-outline);
 }
 
 .model-settings__model-row.is-hidden {
@@ -422,7 +558,7 @@
 
 .model-settings__provider-name,
 .model-settings__model-title {
-  color: var(--text-primary, #f2f5ff);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.45;
@@ -431,7 +567,7 @@
 .model-settings__provider-subtitle,
 .model-settings__model-subtitle {
   margin-top: 3px;
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -447,10 +583,10 @@
 .model-settings__icon-btn,
 .model-settings__action-btn,
 .model-settings__toggle-btn {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-default);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary, #b8bfd6);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition:
     background 0.2s ease,
@@ -475,9 +611,9 @@
 .model-settings__action-btn:hover,
 .model-settings__toggle-btn:hover,
 .model-settings__icon-btn.is-active {
-  background: rgba(75, 139, 255, 0.12);
-  border-color: rgba(75, 139, 255, 0.45);
-  color: var(--text-primary, #f2f5ff);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .model-settings__badge-row {
@@ -492,19 +628,19 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-muted, #999);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
   font-size: 10px;
 }
 
 .model-settings__badge--active {
-  color: var(--text-primary, #f2f5ff);
-  border-color: rgba(75, 139, 255, 0.45);
+  color: var(--text-primary);
+  border-color: var(--color-accent);
 }
 
 .model-settings__badge--default {
-  color: var(--opencode-ui-accent, #4b8bff);
+  color: var(--color-accent);
 }
 
 .model-settings__group + .model-settings__group {
@@ -513,7 +649,7 @@
 
 .model-settings__group-title {
   margin-bottom: 8px;
-  color: var(--text-secondary, #b8bfd6);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -537,10 +673,13 @@
 }
 
 .ds-todo-item {
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--border-default);
   border-radius: 10px;
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
   padding: 10px;
+  box-shadow: var(--surface-outline);
 }
 
 .ds-todo-item--completed {
@@ -560,8 +699,8 @@
   border-radius: 999px;
   font-size: 10px;
   line-height: 1.4;
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
-  color: var(--text-muted, #999);
+  border: 1px solid var(--border-default);
+  color: var(--text-tertiary);
 }
 
 .ds-todo-item__badge--status {
@@ -569,11 +708,11 @@
 }
 
 .ds-todo-item__badge--priority {
-  color: var(--opencode-ui-accent, #4b8bff);
+  color: var(--color-accent);
 }
 
 .ds-todo-item__content {
-  color: var(--text-secondary, #b8bfd6);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -585,14 +724,17 @@
 }
 
 .ds-file-item {
-  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.1));
+  border: 1px solid var(--border-default);
   border-radius: 10px;
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
   padding: 10px;
+  box-shadow: var(--surface-outline);
 }
 
 .ds-file-item__name {
-  color: var(--text-primary, #f2f5ff);
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
@@ -600,7 +742,7 @@
 
 .ds-file-item__path {
   margin-top: 4px;
-  color: var(--text-muted, #999);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-family: var(--font-mono, monospace);
   line-height: 1.45;

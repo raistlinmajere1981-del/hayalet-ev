@@ -6,11 +6,14 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-5);
-  background: var(--bg-surface);
-  border: var(--border-2) dashed var(--border-default);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
+    var(--bg-panel);
+  border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-lg);
   margin: var(--space-2);
   z-index: var(--z-elevated);
+  box-shadow: var(--surface-shadow);
   transition:
     opacity var(--duration-normal) var(--ease-out),
     visibility var(--duration-normal) var(--ease-out);
@@ -37,7 +40,7 @@
   width: var(--size-icon-lg);
   height: var(--size-icon-lg);
   border: var(--border-4) solid var(--border-default);
-  border-top-color: var(--color-accent);
+  border-top-color: var(--color-accent-strong);
   border-radius: var(--radius-full);
   opacity: 0.8;
   transition: var(--transition-normal);
@@ -61,6 +64,7 @@
 }
 
 .webview-overlay .overlay-title {
+  font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
@@ -69,7 +73,7 @@
 
 .webview-overlay .overlay-subtitle {
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-align: center;
   max-width: var(--sidebar-width);
   line-height: var(--leading-normal);

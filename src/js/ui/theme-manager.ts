@@ -1,7 +1,6 @@
-// NOTE: Theme infrastructure is retained for future expansion; only "obsidian" is active.
 import { AppI18n } from "../modules/i18n/index.js";
 
-export type ThemeId = "obsidian";
+export type ThemeId = "obsidian" | "ivory-lab" | "ember-console";
 
 type ThemeChangeCallback = (theme: ThemeId) => void;
 
@@ -26,9 +25,21 @@ export const THEMES: Record<ThemeId, ThemeInfo> = {
     icon: "🌑",
     isDark: true,
   },
+  "ivory-lab": {
+    id: "ivory-lab",
+    name: "Ivory Lab",
+    icon: "☀️",
+    isDark: false,
+  },
+  "ember-console": {
+    id: "ember-console",
+    name: "Ember Console",
+    icon: "🔥",
+    isDark: true,
+  },
 };
 
-const THEME_ORDER: ThemeId[] = ["obsidian"];
+const THEME_ORDER: ThemeId[] = ["obsidian", "ivory-lab", "ember-console"];
 
 const CONFIG: ThemeConfig = {
   storageKey: "app-theme",

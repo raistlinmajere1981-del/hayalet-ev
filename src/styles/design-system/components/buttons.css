@@ -56,12 +56,12 @@
   background: var(--accent-gradient);
   color: var(--text-inverse);
   border-color: transparent;
-  box-shadow: var(--glow-accent);
+  box-shadow: var(--surface-shadow), var(--glow-accent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.1);
-  box-shadow: var(--glow-cyan-lg);
+  filter: brightness(1.04);
+  box-shadow: var(--surface-shadow-hover), var(--glow-accent);
   transform: translateY(-1px);
 }
 
@@ -71,16 +71,17 @@
 }
 
 .btn-secondary {
-  background: var(--bg-glass);
+  background: var(--bg-surface);
   color: var(--text-primary);
   border-color: var(--border-default);
   backdrop-filter: var(--glass-blur);
+  box-shadow: var(--surface-outline), var(--surface-shadow);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--bg-glass-hover);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .btn-ghost {
@@ -102,7 +103,7 @@
 
 .btn-danger:hover:not(:disabled) {
   background: var(--red-500);
-  box-shadow: var(--glow-error);
+  box-shadow: var(--surface-shadow), var(--glow-error);
 }
 
 .icon-btn {

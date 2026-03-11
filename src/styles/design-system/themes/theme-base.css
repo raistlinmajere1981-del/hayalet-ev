@@ -1,24 +1,35 @@
 :root {
-  --bg-app: var(--slate-900);
-  --bg-surface: var(--slate-800);
-  --bg-elevated: var(--slate-700);
-  --bg-glass: rgba(15, 23, 42, 0.8);
-  --bg-glass-hover: rgba(15, 23, 42, 0.9);
-  --bg-input: rgba(15, 23, 42, 0.6);
-  --bg-overlay: rgba(0, 0, 0, 0.7);
+  --bg-canvas: radial-gradient(circle at top, rgba(34, 211, 238, 0.1), transparent 32%), #0b1220;
+  --bg-app: var(--bg-canvas);
+  --bg-surface: rgba(15, 23, 42, 0.82);
+  --bg-surface-2: rgba(17, 24, 39, 0.9);
+  --bg-surface-3: rgba(30, 41, 59, 0.96);
+  --bg-elevated: rgba(32, 44, 68, 0.98);
+  --bg-panel: linear-gradient(180deg, rgba(13, 19, 32, 0.94) 0%, rgba(10, 15, 26, 0.98) 100%);
+  --bg-panel-strong: linear-gradient(180deg, rgba(8, 14, 24, 0.98) 0%, rgba(6, 11, 20, 1) 100%);
+  --bg-muted: rgba(148, 163, 184, 0.08);
+  --bg-glass: rgba(15, 23, 42, 0.78);
+  --bg-glass-hover: rgba(21, 32, 52, 0.9);
+  --bg-input: rgba(15, 23, 42, 0.62);
+  --bg-overlay: var(--black-alpha-70);
 
   --text-primary: var(--slate-100);
-  --text-secondary: var(--slate-300);
-  --text-muted: var(--slate-500);
+  --text-secondary: rgba(226, 232, 240, 0.82);
+  --text-muted: rgba(148, 163, 184, 0.82);
+  --text-tertiary: rgba(148, 163, 184, 0.62);
   --text-inverse: var(--slate-900);
 
-  --border-default: rgba(71, 85, 105, 0.5);
+  --border-default: rgba(148, 163, 184, 0.18);
+  --border-strong: rgba(148, 163, 184, 0.32);
   --border-glass: rgba(255, 255, 255, 0.08);
   --border-focus: var(--cyan-400);
 
   --color-accent: var(--cyan-400);
+  --color-accent-strong: var(--cyan-500);
   --color-accent-muted: var(--cyan-alpha-20);
+  --color-accent-soft: var(--cyan-alpha-28);
   --accent-gradient: linear-gradient(135deg, var(--cyan-400) 0%, var(--teal-400) 100%);
+  --accent-gradient-strong: linear-gradient(135deg, var(--cyan-500) 0%, var(--teal-500) 100%);
 
   --color-success: var(--emerald-400);
   --color-success-bg: var(--emerald-alpha-20);
@@ -33,10 +44,26 @@
   --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--color-accent);
 
   --glow-accent: var(--glow-cyan-md);
+  --surface-outline: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --surface-shadow: var(--shadow-surface);
+  --surface-shadow-hover: var(--shadow-surface-hover);
+  --floating-shadow: var(--shadow-floating);
 
   --scrollbar-track: var(--bg-surface);
   --scrollbar-thumb: var(--slate-600);
   --scrollbar-thumb-hover: var(--slate-500);
+
+  --assistant-topbar-bg: linear-gradient(180deg, rgba(4, 10, 20, 0.96) 0%, rgba(8, 16, 30, 0.92) 100%);
+  --assistant-topbar-border: rgba(56, 189, 248, 0.16);
+  --assistant-topbar-shadow:
+    0 18px 38px -24px rgba(2, 6, 23, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --assistant-chip-bg: rgba(15, 23, 42, 0.68);
+  --assistant-chip-hover: rgba(15, 23, 42, 0.84);
+  --assistant-chip-border: rgba(148, 163, 184, 0.14);
+  --assistant-role-bg: rgba(8, 145, 178, 0.12);
+  --assistant-role-border: rgba(34, 211, 238, 0.16);
+  --assistant-role-text: rgba(165, 243, 252, 0.9);
 
   --relay-particle-color: var(--color-accent);
   --relay-track-color: rgba(34, 211, 238, 0.15);

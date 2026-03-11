@@ -10,8 +10,9 @@
   font-size: var(--text-xs);
   font-family: var(--font-mono);
   color: var(--text-secondary);
-  background: var(--bg-surface);
-  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
   padding: var(--space-2);
 }
 
@@ -29,11 +30,13 @@
   margin-bottom: var(--space-1);
   align-items: center;
   font-size: var(--text-sm);
-  border-bottom: var(--border-1) solid var(--border-glass);
+  border: var(--border-1) solid transparent;
+  border-radius: var(--radius-md);
 }
 
 .report-container .log-entry:hover {
-  background-color: var(--bg-glass);
+  background-color: var(--bg-muted);
+  border-color: var(--border-default);
 }
 
 .report-container .log-time {
@@ -104,8 +107,8 @@
 .live-log-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(5, 8, 13, 0.66);
-  backdrop-filter: blur(4px);
+  background: var(--bg-overlay);
+  backdrop-filter: blur(10px);
 }
 
 .live-log-shell {
@@ -114,10 +117,10 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: var(--border-1) solid var(--border-glass);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, rgba(14, 19, 28, 0.96), rgba(9, 12, 18, 0.92));
-  box-shadow: var(--shadow-lg);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-modal);
+  background: var(--bg-panel-strong);
+  box-shadow: var(--floating-shadow);
   overflow: hidden;
 }
 
@@ -127,13 +130,14 @@
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-1) solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.03);
+  border-bottom: var(--border-1) solid var(--border-default);
+  background: var(--bg-surface-3);
 }
 
 .live-log-header h3 {
   margin: 0;
-  font-size: var(--text-base);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   letter-spacing: 0.01em;
   color: var(--text-primary);
@@ -151,8 +155,8 @@
   gap: var(--space-3);
   align-items: end;
   padding: var(--space-3) var(--space-4);
-  border-bottom: var(--border-1) solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: var(--border-1) solid var(--border-default);
+  background: var(--bg-surface-2);
 }
 
 .live-log-app-tabs {
@@ -167,8 +171,8 @@
 .live-log-app-tabs .btn.is-active {
   opacity: 1;
   border-color: var(--color-accent);
-  color: var(--text-on-brand);
-  background: color-mix(in srgb, var(--color-accent) 38%, transparent);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
 }
 
 .live-log-control {
@@ -180,7 +184,7 @@
 
 .live-log-control span {
   font-size: var(--text-xs);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -207,7 +211,10 @@
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-3);
-  border-right: var(--border-1) solid var(--border-glass);
+  border-right: var(--border-1) solid var(--border-default);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0)),
+    var(--bg-surface-2);
 }
 
 .live-log-content .log-entry {
@@ -215,18 +222,18 @@
   gap: var(--space-1);
   margin-bottom: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border: var(--border-1) solid var(--border-glass);
+  border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-muted);
   font-size: var(--text-xs);
   cursor: pointer;
 }
 
 .live-log-content .log-entry:hover,
 .live-log-content .log-entry.is-selected {
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-sm);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-strong);
+  box-shadow: var(--surface-shadow);
+  background: var(--bg-surface-3);
 }
 
 .live-log-content .log-entry-header {
@@ -244,7 +251,7 @@
 .live-log-content .log-app {
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-xs);
-  border: var(--border-1) solid var(--border-glass);
+  border: var(--border-1) solid var(--border-default);
   color: var(--text-secondary);
   font-size: var(--text-xs);
 }
@@ -288,14 +295,15 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--bg-surface-2);
 }
 
 .live-log-detail-title {
-  font-size: var(--text-xs);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .live-log-detail-meta {
@@ -304,8 +312,8 @@
   line-height: 1.4;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
-  border: var(--border-1) solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.03);
+  border: var(--border-1) solid var(--border-default);
+  background: var(--bg-panel);
 }
 
 .live-log-detail-context {
@@ -319,18 +327,18 @@
   line-height: 1.45;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
-  border: var(--border-1) solid var(--border-glass);
-  background: rgba(8, 11, 16, 0.7);
+  border: var(--border-1) solid var(--border-default);
+  background: var(--bg-panel);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .live-log-content .log-empty-state {
-  border: var(--border-1) dashed var(--border-glass);
+  border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
   text-align: center;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .log-entry.log-toast {

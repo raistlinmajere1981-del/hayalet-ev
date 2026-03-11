@@ -3,12 +3,13 @@
   flex-direction: column;
   width: var(--sidebar-width);
   min-width: 0;
-  background: var(--bg-surface);
+  background: var(--bg-panel);
   border-right: var(--border-1) solid var(--border-default);
   transition:
     width var(--duration-normal) var(--ease-out),
     min-width var(--duration-normal) var(--ease-out);
   overflow: hidden;
+  box-shadow: var(--surface-shadow);
 }
 
 .ds-sidebar--right {
@@ -29,7 +30,8 @@
   padding: var(--space-3) var(--space-4);
   min-height: var(--space-12);
   flex-shrink: 0;
-  border-bottom: var(--border-1) solid var(--border-glass);
+  background: var(--bg-surface-2);
+  border-bottom: var(--border-1) solid var(--border-default);
 }
 
 .ds-sidebar__icon {
@@ -38,7 +40,8 @@
 }
 
 .ds-sidebar__title {
-  font-size: var(--text-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
   white-space: nowrap;
@@ -47,7 +50,7 @@
 
 .ds-sidebar__subtitle {
   font-size: var(--text-2xs);
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -73,7 +76,7 @@
 
 .ds-sidebar__refresh-btn:hover {
   color: var(--text-primary);
-  background: var(--bg-glass);
+  background: var(--bg-muted);
 }
 
 .ds-sidebar__refresh-btn.is-spinning {
@@ -118,8 +121,8 @@
 .ds-session-tab {
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-muted);
+  background: var(--bg-muted);
+  color: var(--text-tertiary);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   padding: var(--space-2) var(--space-3);
@@ -128,12 +131,12 @@
 }
 
 .ds-session-tab:hover {
-  background: var(--hover-overlay);
+  background: var(--bg-surface-3);
   color: var(--text-secondary);
 }
 
 .ds-session-tab.is-active {
-  background: var(--color-accent-muted);
+  background: var(--color-accent-soft);
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
@@ -144,23 +147,25 @@
   gap: var(--space-1);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  background: var(--hover-overlay);
+  background: var(--bg-muted);
   cursor: pointer;
   transition: var(--transition-fast);
   position: relative;
+  border: var(--border-1) solid transparent;
 }
 
 .ds-session:hover {
-  background: var(--bg-elevated);
+  background: var(--bg-surface-3);
+  border-color: var(--border-default);
 }
 
 .ds-session--active {
-  background: var(--color-accent-muted);
+  background: var(--color-accent-soft);
   border: var(--border-1) solid var(--color-accent);
 }
 
 .ds-session--active:hover {
-  background: var(--color-accent-muted);
+  background: var(--color-accent-soft);
 }
 
 .ds-session--working {
@@ -236,8 +241,8 @@
 }
 
 .ds-session__badge--idle {
-  background: var(--hover-overlay);
-  color: var(--text-muted);
+  background: var(--bg-surface-3);
+  color: var(--text-tertiary);
 }
 
 .ds-session__badge--active {
@@ -320,9 +325,14 @@
 
 .ds-panel {
   border-radius: var(--radius-lg);
-  background: var(--hover-overlay);
-  border: var(--border-1) solid var(--border-glass);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 94%, transparent), var(--bg-surface-2)),
+    var(--bg-surface-2);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 90%, transparent);
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent),
+    var(--surface-shadow);
 }
 
 .ds-panel + .ds-panel {
@@ -337,10 +347,11 @@
   cursor: pointer;
   user-select: none;
   transition: var(--transition-fast);
+  border-bottom: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
 }
 
 .ds-panel__header:hover {
-  background: var(--hover-overlay);
+  background: color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft));
 }
 
 .ds-panel__icon {
@@ -383,6 +394,8 @@
 
 .ds-panel__body {
   padding: 0 var(--space-4) var(--space-3);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 90%, transparent), transparent 120px);
 }
 
 .ds-panel--collapsed .ds-panel__body {
@@ -419,10 +432,12 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition-fast);
+  border: var(--border-1) solid transparent;
 }
 
 .ds-panel__item:hover {
-  background: var(--hover-overlay);
+  background: color-mix(in srgb, var(--bg-surface-3) 82%, var(--color-accent-soft));
+  border-color: color-mix(in srgb, var(--border-default) 84%, transparent);
   color: var(--text-primary);
 }
 
@@ -433,7 +448,7 @@
   width: 100%;
   height: var(--input-height-sm);
   border-radius: var(--radius-md);
-  background: var(--hover-overlay);
+  background: color-mix(in srgb, var(--bg-surface-3) 90%, transparent);
   border: var(--border-1) dashed var(--border-default);
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -444,5 +459,5 @@
 .ds-panel__add:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
-  background: var(--color-accent-muted);
+  background: color-mix(in srgb, var(--color-accent-soft) 82%, transparent);
 }

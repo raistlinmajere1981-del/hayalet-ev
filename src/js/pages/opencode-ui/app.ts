@@ -79,6 +79,7 @@ import type {
 } from "./types.js";
 import { config as opencodeUiConfig } from "../../modules/webview/providers/opencode-ui/config.js";
 import { bootstrapOpencodeUiI18n, t } from "./i18n.js";
+import { ThemeManager } from "../../ui/theme-manager.js";
 type SessionListContext = Parameters<typeof loadSessionListAndRenderFromModule>[0];
 type HistoryContext = Parameters<typeof loadActiveSessionHistoryFromModule>[0];
 type BootstrapContext = Parameters<typeof initializeSessionSelectionFromModule>[0];
@@ -593,6 +594,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   });
 
   void (async (): Promise<void> => {
+    ThemeManager.init();
     await bootstrapOpencodeUiI18n();
     await bootstrapOpencodeUiApp();
   })();

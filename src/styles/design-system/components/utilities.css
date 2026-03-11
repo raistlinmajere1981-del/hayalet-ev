@@ -215,16 +215,17 @@
 }
 
 .glass-panel {
-  background: var(--bg-glass);
-  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-panel);
+  border: var(--border-1) solid var(--border-default);
   backdrop-filter: var(--glass-blur);
+  box-shadow: var(--surface-shadow);
 }
 
 .glass-panel-elevated {
-  background: var(--bg-glass);
-  border: var(--border-1) solid var(--border-glass);
+  background: var(--bg-panel-strong);
+  border: var(--border-1) solid var(--border-default);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--floating-shadow);
 }
 
 .select-none {

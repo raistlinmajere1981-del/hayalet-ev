@@ -10,11 +10,15 @@
 .ds-right-inspector {
   display: flex;
   flex-direction: column;
-  border: var(--border-1) solid var(--border-glass);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 88%, transparent);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(180deg, rgba(10, 20, 42, 0.92), rgba(7, 15, 30, 0.9)), var(--bg-surface);
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 96%, transparent), var(--bg-surface-2)),
+    var(--bg-surface);
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent),
+    var(--surface-shadow);
 }
 
 .ds-right-tabs {
@@ -23,8 +27,9 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-2);
-  border-bottom: var(--border-1) solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.02);
+  border-bottom: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 88%, transparent), var(--bg-surface-2));
 }
 
 .ds-right-tab {
@@ -47,14 +52,15 @@
 
 .ds-right-tab:hover {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft));
 }
 
 .ds-right-tab.is-active {
   color: var(--text-primary);
-  border-color: rgba(33, 240, 255, 0.45);
-  background: linear-gradient(180deg, rgba(12, 132, 160, 0.28), rgba(8, 82, 112, 0.18));
-  box-shadow: inset 0 0 0 1px rgba(33, 240, 255, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 48%, var(--border-default));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 92%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 .ds-right-tabs__toggle {
@@ -74,13 +80,13 @@
 
 .ds-right-tabs__toggle:hover {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft));
 }
 
 .ds-right-tabs__toggle[aria-pressed="true"] {
   color: var(--text-primary);
-  border-color: rgba(33, 240, 255, 0.35);
-  background: rgba(33, 240, 255, 0.12);
+  border-color: color-mix(in srgb, var(--color-accent) 38%, var(--border-default));
+  background: color-mix(in srgb, var(--color-accent-soft) 82%, transparent);
 }
 
 .ds-sidebar__body--right.is-tabs-hidden .ds-right-inspector {
@@ -113,10 +119,11 @@
   gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  border: var(--border-1) solid rgba(255, 255, 255, 0.07);
+  border: var(--border-1) solid color-mix(in srgb, var(--border-default) 76%, transparent);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 56%, transparent), color-mix(in srgb, var(--bg-surface-3) 94%, transparent)),
     var(--bg-elevated);
+  box-shadow: var(--surface-outline);
 }
 
 .ds-right-panel-card__meta {
@@ -175,8 +182,8 @@
 
 .ds-right-secondary .ds-panel {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
-    var(--hover-overlay);
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    var(--bg-surface-2);
 }
 
 .ds-right-secondary .ds-panel__header {
@@ -210,7 +217,9 @@
   gap: var(--space-2);
   padding: var(--space-2);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
   margin-bottom: 0;
 }
 
@@ -237,7 +246,9 @@
   row-gap: 2px;
   padding: var(--space-2);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), var(--bg-surface-3)),
+    var(--bg-surface-3);
   margin-bottom: 0;
 }
 
@@ -263,6 +274,6 @@
 .ds-health-mcp-count {
   margin-left: var(--space-1);
   padding-left: var(--space-1);
-  border-left: var(--border-1) solid var(--border-glass);
+  border-left: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
   font-size: var(--text-2xs);
 }

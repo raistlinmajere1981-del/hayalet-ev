@@ -27,4 +27,7 @@
   --shadow-dropdown: 0 20px 40px -8px rgba(0, 0, 0, 0.5);
   --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   --shadow-toast: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-surface: 0 18px 42px -24px rgba(0, 0, 0, 0.55);
+  --shadow-surface-hover: 0 24px 54px -24px rgba(0, 0, 0, 0.65);
+  --shadow-floating: 0 30px 60px -24px rgba(0, 0, 0, 0.6);
 }
