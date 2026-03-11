@@ -1,4 +1,9 @@
-<div class="page hidden" id="page-analyze">
+<section class="page hidden" id="page-analyze" aria-labelledby="page-analyze-title">
+  <h2
+    class="visually-hidden"
+    id="page-analyze-title"
+    data-shell-i18n-text="sideNav.analyzeLabel"
+  ></h2>
   <div class="analyze-wrapper">
     <div class="conversation-grid">
       <div class="conv-card glass-panel ds-surface-card ds-surface-card--stack" id="card-ai1">
@@ -8,15 +13,21 @@
             <div>
               <div class="name" id="name-ai1">AI1</div>
               <div
-                              class="status"
-                              id="status-ai1"
-                              data-shell-i18n-text="app.analyze.page.connectedStatus"
-                            ></div>
+                class="status"
+                id="status-ai1"
+                data-shell-i18n-text="app.analyze.page.connectedStatus"
+              ></div>
             </div>
           </div>
         </div>
 
-        <div class="conv-body" id="messages-ai1">
+        <div
+          class="conv-body"
+          id="messages-ai1"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
           <div class="message-placeholder" data-shell-i18n-text="app.analyze.page.noMessages"></div>
         </div>
       </div>
@@ -28,14 +39,20 @@
             <div>
               <div class="name" id="name-ai2">AI2</div>
               <div
-                              class="status"
-                              id="status-ai2"
-                              data-shell-i18n-text="app.analyze.page.connectedStatus"
-                            ></div>
+                class="status"
+                id="status-ai2"
+                data-shell-i18n-text="app.analyze.page.connectedStatus"
+              ></div>
             </div>
           </div>
         </div>
-        <div class="conv-body" id="messages-ai2">
+        <div
+          class="conv-body"
+          id="messages-ai2"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
           <div class="message-placeholder" data-shell-i18n-text="app.analyze.page.noMessages"></div>
         </div>
       </div>
@@ -48,17 +65,19 @@
             <div class="avatar-circle" id="avatar-user-compose">U</div>
             <div class="compose-user-meta">
               <div
-                              class="name"
-                              id="name-user-compose"
-                              data-shell-i18n-text="app.analyze.page.userLabel"
-                            ></div>
+                class="name"
+                id="name-user-compose"
+                data-shell-i18n-text="app.analyze.page.userLabel"
+              ></div>
             </div>
           </div>
 
           <textarea
             class="form-input large"
             id="compose-input"
+            aria-label=""
             placeholder=""
+            data-shell-i18n-aria-label="app.analyze.page.composePlaceholder"
             data-shell-i18n-placeholder="app.analyze.page.composePlaceholder"
             spellcheck="false"
           ></textarea>
@@ -66,15 +85,15 @@
 
         <div class="compose-actions">
           <button
-                      class="btn btn-primary btn-sm compose-start-action"
-                      id="compose-start-btn"
-                      data-shell-i18n-text="app.analyze.page.startChatButton"
-                    ></button>
+            class="btn btn-primary btn-sm compose-start-action"
+            id="compose-start-btn"
+            data-shell-i18n-text="app.analyze.page.startChatButton"
+          ></button>
           <button
-                      class="btn btn-danger btn-sm compose-start-action"
-                      id="compose-stop-btn"
-                      data-shell-i18n-text="app.analyze.page.stopChatButton"
-                    ></button>
+            class="btn btn-danger btn-sm compose-start-action"
+            id="compose-stop-btn"
+            data-shell-i18n-text="app.analyze.page.stopChatButton"
+          ></button>
           <div class="send-controls">
             <label class="ds-choice-chip ds-choice-chip--segmented"
               ><input type="checkbox" id="send-ai1" checked />
@@ -93,15 +112,19 @@
             <span class="btn-text" data-shell-i18n-text="app.analyze.page.sendButton"></span>
           </button>
           <button
-                      class="btn btn-secondary btn-sm"
-                      id="upload-add-btn"
-                      data-shell-i18n-text="app.analyze.page.addFileButton"
-                    ></button>
+            class="btn btn-secondary btn-sm"
+            id="upload-add-btn"
+            data-shell-i18n-text="app.analyze.page.addFileButton"
+          ></button>
         </div>
       </div>
 
       <div class="compose-files glass-panel ds-surface-card">
-        <div class="file-box" id="upload-list" data-shell-i18n-text="app.analyze.page.noFiles"></div>
+        <div
+          class="file-box"
+          id="upload-list"
+          data-shell-i18n-text="app.analyze.page.noFiles"
+        ></div>
       </div>
     </div>
   </div>
@@ -109,9 +132,13 @@
   <div class="modal modal-document modal-read hidden" id="read-modal">
     <div class="modal-content">
       <div class="modal-header">
-        <button class="btn btn-ghost" id="read-modal-close" data-shell-i18n-text="common.close"></button>
+        <button
+          class="btn btn-ghost"
+          id="read-modal-close"
+          data-shell-i18n-text="common.close"
+        ></button>
       </div>
       <div class="modal-body" id="read-modal-body"></div>
     </div>
   </div>
-</div>
+</section>

@@ -44,6 +44,7 @@ export class UserPanel {
 
   setupListeners(): void {
     const nickInput = document.getElementById("user-nickname-input") as HTMLInputElement | null;
+    const avatarEditBtn = document.getElementById("user-avatar-edit-btn");
     if (nickInput) {
       nickInput.addEventListener("blur", () => {
         void this.saveNickname();
@@ -55,8 +56,18 @@ export class UserPanel {
       });
     }
 
-    document.getElementById("user-avatar-edit-btn")?.addEventListener("click", () => {
+    const handleAvatarEdit = (): void => {
       void this.browseAvatar();
+    };
+
+    avatarEditBtn?.addEventListener("click", handleAvatarEdit);
+    avatarEditBtn?.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      handleAvatarEdit();
     });
 
     document.getElementById("gdrive-start-auth")?.addEventListener("click", () => {

@@ -5,10 +5,26 @@
   --blur-surface-md: blur(14px);
   --blur-surface-lg: blur(16px);
 
-  --effect-gradient-surface-soft: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0));
-  --effect-gradient-surface-subtle: linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0));
-  --effect-gradient-surface-raised: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
-  --effect-gradient-surface-overlay: linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0));
+  --effect-gradient-surface-soft: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.01),
+    rgba(255, 255, 255, 0)
+  );
+  --effect-gradient-surface-subtle: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.012),
+    rgba(255, 255, 255, 0)
+  );
+  --effect-gradient-surface-raised: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.015),
+    rgba(255, 255, 255, 0)
+  );
+  --effect-gradient-surface-overlay: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.018),
+    rgba(255, 255, 255, 0)
+  );
   --effect-overlay-shell: rgba(15, 23, 42, 0.92);
 
   --effect-surface-soft: rgba(255, 255, 255, 0.03);
@@ -30,5 +46,6 @@
   --effect-outline-accent: 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent);
   --effect-glow-relay-particle: 0 0 10px var(--relay-particle-color);
   --effect-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent);
-  --effect-inset-divider-strong: inset 1px 0 0 color-mix(in srgb, var(--border-default) 56%, transparent);
+  --effect-inset-divider-strong: inset 1px 0 0
+    color-mix(in srgb, var(--border-default) 56%, transparent);
 }

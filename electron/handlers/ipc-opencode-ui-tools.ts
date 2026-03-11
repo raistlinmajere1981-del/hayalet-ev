@@ -18,6 +18,8 @@ export interface HevToolListResult {
   categories: HevToolCategory[];
   toolNames: string[];
   error?: string;
+  errorKey?: string;
+  errorParams?: { message: string };
 }
 
 interface QuickPromptRecord {
@@ -32,6 +34,8 @@ interface OpencodeUiQuickPromptStoreResult {
   prompts: QuickPromptRecord[];
   path: string;
   error?: string;
+  errorKey?: string;
+  errorParams?: { message: string };
 }
 
 const CATEGORY_HEADER_RE = /^## (.+?) \((\d+) tools?\)$/;

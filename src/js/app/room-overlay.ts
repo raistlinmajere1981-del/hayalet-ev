@@ -167,10 +167,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
           result.room?.id ?? result.path ?? selectedPath
         );
       } else {
-        Toast.error(
-          roomText("toasts.importError"),
-          resolveIpcErrorMessage(result) ?? selectedPath
-        );
+        Toast.error(roomText("toasts.importError"), resolveIpcErrorMessage(result) ?? selectedPath);
       }
     })();
   });
@@ -229,10 +226,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         if (result.success === true) {
           Toast.success(roomText("toasts.packageSuccess"), result.path ?? roomId);
         } else {
-          Toast.error(
-            roomText("toasts.packageError"),
-            resolveIpcErrorMessage(result) ?? roomId
-          );
+          Toast.error(roomText("toasts.packageError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
     }
@@ -274,10 +268,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         if (result.success === true) {
           Toast.success(roomText("toasts.exportSuccess"), result.path ?? roomId);
         } else {
-          Toast.error(
-            roomText("toasts.exportError"),
-            resolveIpcErrorMessage(result) ?? roomId
-          );
+          Toast.error(roomText("toasts.exportError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
       return;
@@ -297,10 +288,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
         if (result.success === true) {
           Toast.success(roomText("toasts.removeSuccess"), roomId);
         } else {
-          Toast.error(
-            roomText("toasts.removeError"),
-            resolveIpcErrorMessage(result) ?? roomId
-          );
+          Toast.error(roomText("toasts.removeError"), resolveIpcErrorMessage(result) ?? roomId);
         }
       })();
     }

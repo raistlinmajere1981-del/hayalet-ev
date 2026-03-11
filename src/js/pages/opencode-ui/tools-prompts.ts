@@ -160,9 +160,7 @@ async function writeQuickPromptsToStore(
     normalizedPrompts
   )) as QuickPromptStoreResponse;
   if (result.success !== true) {
-    throw new Error(
-      formatDetailedErrorMessage("prompt.saveError", resolveIpcErrorMessage(result))
-    );
+    throw new Error(formatDetailedErrorMessage("prompt.saveError", resolveIpcErrorMessage(result)));
   }
 
   clearLegacyQuickPrompts();

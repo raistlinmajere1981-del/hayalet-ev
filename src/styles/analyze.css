@@ -239,3 +239,18 @@
     flex-direction: column;
   }
 }
+
+@media (--breakpoint-max-height-700) {
+  .conversation-grid {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .conv-body {
+    padding: var(--space-3);
+  }
+
+  .compose-area textarea {
+    min-height: var(--space-16);
+  }
+}

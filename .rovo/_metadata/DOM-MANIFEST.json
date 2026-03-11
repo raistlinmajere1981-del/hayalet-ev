@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-11T08:37:31.062Z",
+  "generatedAt": "2026-03-11T21:18:07.715Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 443,
-    "ids": 417,
+    "filesScanned": 444,
+    "ids": 424,
     "testIds": 15,
     "querySelectors": 123,
-    "totalSelectors": 555
+    "totalSelectors": 562
   },
   "lookup": {
     "id": {
@@ -290,12 +290,19 @@
       "new-account-nickname": "#new-account-nickname",
       "new-account-provider": "#new-account-provider",
       "new-session-btn": "#new-session-btn",
+      "opencode-page-title": "#opencode-page-title",
       "page-analyze": "#page-analyze",
+      "page-analyze-title": "#page-analyze-title",
       "page-archives": "#page-archives",
+      "page-archives-title": "#page-archives-title",
       "page-assistant": "#page-assistant",
+      "page-assistant-title": "#page-assistant-title",
       "page-entrance": "#page-entrance",
+      "page-entrance-title": "#page-entrance-title",
       "page-server": "#page-server",
+      "page-server-title": "#page-server-title",
       "page-whisper": "#page-whisper",
+      "page-whisper-title": "#page-whisper-title",
       "pages-container": "#pages-container",
       "plugin-status": "#plugin-status",
       "prompt-count": "#prompt-count",

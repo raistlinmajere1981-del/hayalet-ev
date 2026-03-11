@@ -176,3 +176,17 @@
     display: none;
   }
 }
+
+@media (--breakpoint-max-640) {
+  .ds-workspace-bar {
+    padding: 0 var(--space-2);
+  }
+
+  .ds-workspace-bar__center {
+    justify-content: flex-start;
+  }
+
+  .ds-workspace-tab {
+    padding: 0 var(--space-3);
+  }
+}

@@ -161,7 +161,7 @@
 
 .form-group {
   display: grid;
-  grid-template-columns: var(--space-16) 1fr;
+  grid-template-columns: minmax(0, var(--space-16)) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
 }
@@ -209,6 +209,7 @@
 .form-actions {
   display: flex;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .archives-search {
@@ -505,7 +506,23 @@
   }
 
   .archive-item {
-    min-width: var(--panel-min-height);
+    min-width: min(var(--layout-archives-card-min-w-sm), calc(100vw - var(--space-6)));
     margin-bottom: 0;
+  }
+}
+
+@media (--breakpoint-max-640) {
+  .form-group {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: var(--space-1-5);
+  }
+
+  .form-group label {
+    min-width: 0;
+  }
+
+  .form-actions > * {
+    flex: 1 1 var(--layout-action-flex-min);
   }
 }

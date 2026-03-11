@@ -1,4 +1,9 @@
-<div class="page hidden" id="page-entrance">
+<section class="page hidden" id="page-entrance" aria-labelledby="page-entrance-title">
+  <h2
+    class="visually-hidden"
+    id="page-entrance-title"
+    data-shell-i18n-text="sideNav.entranceLabel"
+  ></h2>
   <div class="entrance-page">
     <div class="slot-grid">
       <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai1">
@@ -70,15 +75,17 @@
                 </label>
               </div>
               <button
-                              class="btn btn-primary btn-sm slot-connect-btn"
-                              id="ai1-toggle-btn"
-                              data-i18n-text="slot.selectAccount"
-                            ></button>
+                class="btn btn-primary btn-sm slot-connect-btn"
+                id="ai1-toggle-btn"
+                data-i18n-text="slot.selectAccount"
+              ></button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-devtools-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.devtoolsTitle"
+                data-i18n-aria-label="slot.devtoolsTitle"
               >
                 🔧
               </button>
@@ -86,7 +93,9 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-test-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.providerTestTitle"
+                data-i18n-aria-label="slot.providerTestTitle"
                 disabled
               >
                 🧪
@@ -95,7 +104,9 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai1-sync-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.providerSyncTitle"
+                data-i18n-aria-label="slot.providerSyncTitle"
                 disabled
               >
                 🔄
@@ -185,15 +196,17 @@
                 </label>
               </div>
               <button
-                              class="btn btn-primary btn-sm slot-connect-btn"
-                              id="ai2-toggle-btn"
-                              data-i18n-text="slot.selectAccount"
-                            ></button>
+                class="btn btn-primary btn-sm slot-connect-btn"
+                id="ai2-toggle-btn"
+                data-i18n-text="slot.selectAccount"
+              ></button>
               <button
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-devtools-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.devtoolsTitle"
+                data-i18n-aria-label="slot.devtoolsTitle"
               >
                 🔧
               </button>
@@ -201,7 +214,9 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-test-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.providerTestTitle"
+                data-i18n-aria-label="slot.providerTestTitle"
                 disabled
               >
                 🧪
@@ -210,7 +225,9 @@
                 class="btn btn-ghost btn-icon btn-sm"
                 id="ai2-sync-btn"
                 title=""
+                aria-label=""
                 data-i18n-title="slot.providerSyncTitle"
+                data-i18n-aria-label="slot.providerSyncTitle"
                 disabled
               >
                 🔄
@@ -255,7 +272,11 @@
                     class="user-avatar-wrapper"
                     id="user-avatar-edit-btn"
                     title=""
+                    role="button"
+                    tabindex="0"
+                    aria-label=""
                     data-i18n-title="user.changeAvatarTitle"
+                    data-i18n-aria-label="user.changeAvatarTitle"
                   >
                     <div class="avatar-placeholder img-cover" id="user-avatar"></div>
                     <div class="user-edit-overlay">📷</div>
@@ -287,10 +308,10 @@
                     data-i18n-title="user.googleDrive.statusTitle"
                   ></span>
                   <span
-                                      class="status-text"
-                                      id="gdrive-status-text"
-                                      data-i18n-text="user.googleDrive.disconnected"
-                                    ></span>
+                    class="status-text"
+                    id="gdrive-status-text"
+                    data-i18n-text="user.googleDrive.disconnected"
+                  ></span>
                 </div>
                 <input
                   type="text"
@@ -315,15 +336,15 @@
                 />
                 <div class="btn-group-inline">
                   <button
-                                      class="btn btn-secondary btn-sm"
-                                      id="gdrive-start-auth"
-                                      data-i18n-text="user.googleDrive.startAuth"
-                                    ></button>
+                    class="btn btn-secondary btn-sm"
+                    id="gdrive-start-auth"
+                    data-i18n-text="user.googleDrive.startAuth"
+                  ></button>
                   <button
-                                      class="btn btn-primary btn-sm"
-                                      id="gdrive-connect-btn"
-                                      data-i18n-text="user.googleDrive.connect"
-                                    ></button>
+                    class="btn btn-primary btn-sm"
+                    id="gdrive-connect-btn"
+                    data-i18n-text="user.googleDrive.connect"
+                  ></button>
                 </div>
               </div>
             </div>
@@ -367,20 +388,20 @@
                     <div class="account-form-avatar-row">
                       <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
                       <button
-                                              class="btn btn-ghost btn-sm"
-                                              id="new-account-avatar-browse"
-                                              data-i18n-text="accounts.form.avatarButton"
-                                            ></button>
+                        class="btn btn-ghost btn-sm"
+                        id="new-account-avatar-browse"
+                        data-i18n-text="accounts.form.avatarButton"
+                      ></button>
                       <button
-                                              class="btn btn-primary btn-sm"
-                                              id="settings-create-account"
-                                              data-i18n-text="accounts.form.createAction"
-                                            ></button>
+                        class="btn btn-primary btn-sm"
+                        id="settings-create-account"
+                        data-i18n-text="accounts.form.createAction"
+                      ></button>
                       <button
-                                              class="btn btn-danger btn-sm hidden"
-                                              id="settings-cancel-edit"
-                                              data-i18n-text="accounts.form.cancelAction"
-                                            ></button>
+                        class="btn btn-danger btn-sm hidden"
+                        id="settings-cancel-edit"
+                        data-i18n-text="accounts.form.cancelAction"
+                      ></button>
                     </div>
                   </div>
                 </div>
@@ -399,12 +420,16 @@
               <div class="entrance-whisper-container">
                 <div class="entrance-whisper-header">
                   <button
-                                      class="btn btn-ghost btn-sm"
-                                      id="whisper-clear-btn"
-                                      data-i18n-text="whisper.clear"
-                                    ></button>
+                    class="btn btn-ghost btn-sm"
+                    id="whisper-clear-btn"
+                    data-i18n-text="whisper.clear"
+                  ></button>
                 </div>
-                <div class="entrance-whisper-list" id="whisper-pending-list"></div>
+                <div
+                  class="entrance-whisper-list"
+                  id="whisper-pending-list"
+                  aria-live="polite"
+                ></div>
               </div>
             </div>
           </div>
@@ -418,7 +443,13 @@
             </div>
             <div class="panel-content">
               <div class="report-container">
-                <div class="report-content" id="entrance-report-content">
+                <div
+                  class="report-content"
+                  id="entrance-report-content"
+                  role="log"
+                  aria-live="polite"
+                  aria-relevant="additions text"
+                >
                   <div class="log-entry" data-i18n-text="report.initialEntry"></div>
                 </div>
               </div>
@@ -428,7 +459,7 @@
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <div id="live-log-overlay" class="live-log-overlay hidden" aria-hidden="true">
   <div class="live-log-backdrop" id="live-log-backdrop"></div>
@@ -443,26 +474,26 @@
       <h3 data-i18n-text="liveLog.title"></h3>
       <div class="live-log-header-actions">
         <button
-                  class="btn btn-ghost btn-sm"
-                  id="live-log-pause"
-                  title=""
-                  data-i18n-title="liveLog.pauseTitle"
-                  data-i18n-text="liveLog.pause"
-                ></button>
+          class="btn btn-ghost btn-sm"
+          id="live-log-pause"
+          title=""
+          data-i18n-title="liveLog.pauseTitle"
+          data-i18n-text="liveLog.pause"
+        ></button>
         <button
-                  class="btn btn-ghost btn-sm"
-                  id="live-log-clear"
-                  title=""
-                  data-i18n-title="liveLog.clearTitle"
-                  data-i18n-text="liveLog.clear"
-                ></button>
+          class="btn btn-ghost btn-sm"
+          id="live-log-clear"
+          title=""
+          data-i18n-title="liveLog.clearTitle"
+          data-i18n-text="liveLog.clear"
+        ></button>
         <button
-                  class="btn btn-ghost btn-sm"
-                  id="live-log-close"
-                  title=""
-                  data-i18n-title="liveLog.closeTitle"
-                  data-i18n-text="liveLog.close"
-                ></button>
+          class="btn btn-ghost btn-sm"
+          id="live-log-close"
+          title=""
+          data-i18n-title="liveLog.closeTitle"
+          data-i18n-text="liveLog.close"
+        ></button>
       </div>
     </div>
 
@@ -505,18 +536,26 @@
     </div>
 
     <div class="live-log-body">
-      <div class="live-log-content" id="live-log-content"></div>
+      <div
+        class="live-log-content"
+        id="live-log-content"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+      ></div>
       <aside class="live-log-detail">
         <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle"></div>
         <div
-                  class="live-log-detail-meta"
-                  id="live-log-meta"
-                  data-i18n-text="liveLog.noEntrySelected"
-                ></div>
+          class="live-log-detail-meta"
+          id="live-log-meta"
+          role="status"
+          aria-live="polite"
+          data-i18n-text="liveLog.noEntrySelected"
+        ></div>
         <pre class="live-log-detail-context" id="live-log-context"></pre>
       </aside>
     </div>
   </div>
-</div>
 
-<script type="module" src="/js/pages/entrance.ts"></script>
+  <script type="module" src="/js/pages/entrance.ts"></script>
+</div>

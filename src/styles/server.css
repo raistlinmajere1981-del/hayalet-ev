@@ -23,6 +23,7 @@
   color: var(--text-secondary);
   flex-wrap: nowrap;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .server-topbar .select {
@@ -184,12 +185,15 @@
   display: flex;
   gap: var(--space-3);
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .command-toolbar-group {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .command-toolbar-group label {
@@ -200,6 +204,9 @@
 
 .command-category-tabs {
   margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .command-category-tab {
@@ -324,8 +331,25 @@
 }
 
 @media (--breakpoint-max-640) {
+  .server-topbar {
+    padding: var(--space-2) var(--space-3);
+    margin: var(--space-3) var(--space-3) 0;
+  }
+
   .server-topbar .left {
     flex-wrap: wrap;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .server-topbar .left > * {
+    flex: 1 1 var(--layout-toolbar-item-flex-min);
+  }
+
+  .server-topbar .select,
+  .server-topbar .btn {
+    width: 100%;
+    min-width: 0;
   }
 
   .command-item {
@@ -334,5 +358,18 @@
 
   .command-item-actions {
     justify-content: flex-start;
+  }
+
+  .command-toolbar-row,
+  .command-toolbar-group,
+  .command-category-tabs {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .command-category-tab,
+  #server-command-run {
+    flex: 1 1 var(--layout-action-flex-min);
+    min-width: 0;
   }
 }

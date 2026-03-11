@@ -99,8 +99,7 @@ export async function apiCall<T = Record<string, unknown>>(
     const result = (await window.electronAPI["opencodeUiApiProxy"](proxyPayload)) as ApiProxyResult;
 
     if (!result.success) {
-      const proxyDetail =
-        resolveIpcErrorMessage(result) ?? extractProxyErrorMessage(result.data);
+      const proxyDetail = resolveIpcErrorMessage(result) ?? extractProxyErrorMessage(result.data);
       throw new Error(
         proxyDetail !== ""
           ? formatDetailedErrorMessage("api.requestFailed", proxyDetail)

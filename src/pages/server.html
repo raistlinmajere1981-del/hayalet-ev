@@ -1,4 +1,9 @@
-<div class="page hidden" id="page-server">
+<section class="page hidden" id="page-server" aria-labelledby="page-server-title">
+  <h2
+    class="visually-hidden"
+    id="page-server-title"
+    data-shell-i18n-text="sideNav.serverLabel"
+  ></h2>
   <div class="server-room">
     <div class="server-topbar ds-toolbar-surface">
       <div class="left">
@@ -7,15 +12,15 @@
           <option value="ai2">AI2</option>
         </select>
         <button
-                  class="btn btn-secondary"
-                  id="server-delegate-btn"
-                  data-shell-i18n-text="app.server.page.delegateButton"
-                ></button>
+          class="btn btn-secondary"
+          id="server-delegate-btn"
+          data-shell-i18n-text="app.server.page.delegateButton"
+        ></button>
         <button
-                  class="btn btn-secondary"
-                  id="server-reclaim-btn"
-                  data-shell-i18n-text="app.server.page.reclaimButton"
-                ></button>
+          class="btn btn-secondary"
+          id="server-reclaim-btn"
+          data-shell-i18n-text="app.server.page.reclaimButton"
+        ></button>
       </div>
     </div>
 
@@ -26,16 +31,25 @@
             class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-timeline-panel"
           >
             <div
-                          class="panel-title ds-surface-card__header ds-panel-title"
-                          data-shell-i18n-text="app.server.page.timelineTitle"
-                        ></div>
+              class="panel-title ds-surface-card__header ds-panel-title"
+              data-shell-i18n-text="app.server.page.timelineTitle"
+            ></div>
             <div
-                          class="server-timeline-meta"
-                          id="server-timeline-meta"
-                          data-shell-i18n-text="app.server.page.timelineHint"
-                        ></div>
-            <div class="log-list server-timeline-list" id="server-command-timeline">
-              <div class="log-empty-state" data-shell-i18n-text="app.server.page.timelineEmpty"></div>
+              class="server-timeline-meta"
+              id="server-timeline-meta"
+              data-shell-i18n-text="app.server.page.timelineHint"
+            ></div>
+            <div
+              class="log-list server-timeline-list"
+              id="server-command-timeline"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions text"
+            >
+              <div
+                class="log-empty-state"
+                data-shell-i18n-text="app.server.page.timelineEmpty"
+              ></div>
             </div>
           </div>
         </div>
@@ -46,16 +60,16 @@
           class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-command-panel"
         >
           <div
-                      class="panel-title ds-surface-card__header ds-panel-title"
-                      data-shell-i18n-text="app.server.page.commandPanelTitle"
-                    ></div>
+            class="panel-title ds-surface-card__header ds-panel-title"
+            data-shell-i18n-text="app.server.page.commandPanelTitle"
+          ></div>
           <div class="command-manager">
             <div class="command-toolbar-row">
               <div class="command-toolbar-group">
                 <label
-                                  for="server-command-slot-select"
-                                  data-shell-i18n-text="app.server.page.slotLabel"
-                                ></label>
+                  for="server-command-slot-select"
+                  data-shell-i18n-text="app.server.page.slotLabel"
+                ></label>
                 <select id="server-command-slot-select" class="select">
                   <option value="ai1">AI1</option>
                   <option value="ai2">AI2</option>
@@ -88,26 +102,31 @@
                 id="server-command-test-args"
                 class="input"
                 type="text"
+                aria-label=""
                 placeholder=""
+                data-shell-i18n-aria-label="app.server.page.testArgsPlaceholder"
                 data-shell-i18n-placeholder="app.server.page.testArgsPlaceholder"
               />
               <button
-                              id="server-command-run"
-                              class="btn btn-primary btn-sm"
-                              type="button"
-                              data-shell-i18n-text="app.server.page.runCommandButton"
-                            ></button>
+                id="server-command-run"
+                class="btn btn-primary btn-sm"
+                type="button"
+                data-shell-i18n-text="app.server.page.runCommandButton"
+              ></button>
             </div>
 
             <div class="command-list" id="server-command-list">
-              <div class="log-empty-state" data-shell-i18n-text="app.server.page.emptyCategory"></div>
+              <div
+                class="log-empty-state"
+                data-shell-i18n-text="app.server.page.emptyCategory"
+              ></div>
             </div>
 
             <div class="command-detail">
               <label
-                              for="server-command-detail"
-                              data-shell-i18n-text="app.server.page.commandDetailLabel"
-                            ></label>
+                for="server-command-detail"
+                data-shell-i18n-text="app.server.page.commandDetailLabel"
+              ></label>
               <textarea
                 id="server-command-detail"
                 class="form-input guide-text"
@@ -122,4 +141,4 @@
       </div>
     </div>
   </div>
-</div>
+</section>

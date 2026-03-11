@@ -33,7 +33,9 @@
   background: var(--ds-toggle-track-bg);
   border: var(--border-1) solid var(--ds-toggle-track-border);
   border-radius: var(--radius-full);
-  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .ds-toggle__slider::before,
@@ -57,7 +59,9 @@
 
 .ds-toggle input:checked + .ds-toggle__slider::before,
 .ds-mcp-switch__input:checked + .ds-mcp-switch__slider::before {
-  transform: translateX(calc(var(--ds-toggle-track-w) - var(--ds-toggle-thumb) - (var(--ds-toggle-offset) * 2)));
+  transform: translateX(
+    calc(var(--ds-toggle-track-w) - var(--ds-toggle-thumb) - (var(--ds-toggle-offset) * 2))
+  );
 }
 
 .ds-mcp-switch {

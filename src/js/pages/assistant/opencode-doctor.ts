@@ -191,7 +191,10 @@ export async function handleOpencodeActionButtonClick(
     getDetectedOpencodeVersion() !== null
       ? assistantT("opencodeDoctor.loading.checkingUpdates")
       : assistantT("opencodeDoctor.loading.preparingInstall");
-  const loadingToastId = Toast.loading(assistantT("opencodeDoctor.toasts.loadingTitle"), loadingMessage);
+  const loadingToastId = Toast.loading(
+    assistantT("opencodeDoctor.toasts.loadingTitle"),
+    loadingMessage
+  );
 
   setOpencodeActionButtonState(actionButton, {
     icon: "…",

@@ -468,10 +468,9 @@ export class EntranceHallController {
 
     if (statusDot instanceof HTMLElement) {
       statusDot.classList.remove("connected", "warning");
-      if (!hasAccount) {
-      } else if (connected) {
+      if (hasAccount && connected) {
         statusDot.classList.add("connected");
-      } else {
+      } else if (hasAccount) {
         statusDot.classList.add("warning");
       }
     }

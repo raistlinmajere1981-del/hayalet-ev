@@ -188,8 +188,8 @@ function setupSyncListeners(): void {
     return;
   }
 
-  channel.onmessage = (event: MessageEvent<{ theme?: ThemeId }>) => {
-    syncThemeFromExternal(event.data?.theme);
+  channel.onmessage = (event: MessageEvent<{ theme?: ThemeId }>): void => {
+    syncThemeFromExternal(event.data.theme);
   };
 }
 
@@ -257,11 +257,9 @@ const themeManager = {
     }
 
     setupSyncListeners();
-    if (i18nUnsubscribe === null) {
-      i18nUnsubscribe = AppI18n.subscribe(() => {
-        updateThemeDropdownUI(currentTheme);
-      });
-    }
+    i18nUnsubscribe ??= AppI18n.subscribe(() => {
+      updateThemeDropdownUI(currentTheme);
+    });
     isInitialized = true;
   },
 

@@ -6,9 +6,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-5);
-  background:
-    var(--effect-gradient-surface-overlay),
-    var(--bg-panel);
+  background: var(--effect-gradient-surface-overlay), var(--bg-panel);
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-lg);
   margin: var(--space-2);

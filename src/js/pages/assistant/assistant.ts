@@ -1872,7 +1872,7 @@ export class AssistantController {
 
     const activeProviderId = this.providerSelect?.value ?? this._activeAdapter?.id ?? "";
     const currentUrl =
-      typeof ai0Webview.getURL === "function" ? ai0Webview.getURL() ?? "" : ai0Webview.src ?? "";
+      typeof ai0Webview.getURL === "function" ? ai0Webview.getURL() : (ai0Webview.src ?? "");
     const shouldSyncTheme =
       activeProviderId === "opencode-ui" || currentUrl.includes("/pages/opencode-ui.html");
 

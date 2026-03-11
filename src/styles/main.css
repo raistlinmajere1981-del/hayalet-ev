@@ -38,6 +38,19 @@ button {
   font-family: inherit;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: var(--space-0-25);
+  height: var(--space-0-25);
+  padding: 0;
+  margin: calc(var(--space-0-25) * -1);
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .app-offscreen-webviews {
   position: fixed;
   top: var(--layout-offscreen-offset);

@@ -14,7 +14,7 @@ export const handleIPC =
     try {
       return await handlerFn(event, ...args);
     } catch (err) {
-      const error = err as Error;
+      const error = err instanceof Error ? err : null;
       const message = error?.message ?? String(err);
       await logger.logInternalT(
         LogCategory.IPC,
@@ -49,7 +49,7 @@ export const registerHandler = <Args extends unknown[], R>(
 export const handleLoggerAppendBatch = async (
   _event: IpcMainInvokeEvent,
   entries: unknown[]
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<IpcResult> => {
   try {
     const logger = LoggerCore.getInstance();
     await logger.handleBatch(_event, {
@@ -60,7 +60,7 @@ export const handleLoggerAppendBatch = async (
     });
     return { success: true };
   } catch (err) {
-    const error = err as Error;
+    const error = err instanceof Error ? err : null;
     const message = error?.message ?? String(err);
     await logger.logInternalT(
       LogCategory.IPC,

@@ -21,7 +21,12 @@ function getStore(): MemoryStore {
   return _store;
 }
 
-function buildMemoryIpcError(error: unknown): { success: false; error: string; errorKey: string; errorParams: { message: string } } {
+function buildMemoryIpcError(error: unknown): {
+  success: false;
+  error: string;
+  errorKey: string;
+  errorParams: { message: string };
+} {
   const message = error instanceof Error ? error.message : String(error);
   return {
     success: false,

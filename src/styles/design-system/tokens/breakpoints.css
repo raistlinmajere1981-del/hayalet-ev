@@ -10,3 +10,5 @@
 @custom-media --breakpoint-max-1280 (max-width: 1280px);
 @custom-media --breakpoint-max-1920 (max-width: 1920px);
 @custom-media --breakpoint-min-1920 (min-width: 1920px);
+@custom-media --breakpoint-max-height-700 (max-height: 700px);
+@custom-media --breakpoint-max-height-720 (max-height: 720px);

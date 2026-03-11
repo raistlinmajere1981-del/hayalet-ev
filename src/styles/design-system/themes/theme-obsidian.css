@@ -24,12 +24,24 @@
   --opencode-shell-layout-bg:
     radial-gradient(circle at top, rgba(34, 211, 238, 0.12), transparent 42%),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 72%, transparent), var(--bg-app));
-  --opencode-shell-sidebar-bg:
-    linear-gradient(180deg, rgba(9, 15, 27, 0.98) 0%, rgba(6, 11, 20, 0.98) 100%);
-  --opencode-shell-sidebar-section-bg:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 15, 26, 0.98) 100%);
-  --opencode-shell-session-tab-active-bg:
-    linear-gradient(180deg, rgba(34, 211, 238, 0.18) 0%, rgba(17, 24, 39, 0.96) 100%);
-  --opencode-shell-usage-bg:
-    linear-gradient(180deg, rgba(17, 24, 39, 0.96) 0%, rgba(11, 17, 29, 0.98) 100%);
+  --opencode-shell-sidebar-bg: linear-gradient(
+    180deg,
+    rgba(9, 15, 27, 0.98) 0%,
+    rgba(6, 11, 20, 0.98) 100%
+  );
+  --opencode-shell-sidebar-section-bg: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.96) 0%,
+    rgba(10, 15, 26, 0.98) 100%
+  );
+  --opencode-shell-session-tab-active-bg: linear-gradient(
+    180deg,
+    rgba(34, 211, 238, 0.18) 0%,
+    rgba(17, 24, 39, 0.96) 100%
+  );
+  --opencode-shell-usage-bg: linear-gradient(
+    180deg,
+    rgba(17, 24, 39, 0.96) 0%,
+    rgba(11, 17, 29, 0.98) 100%
+  );
 }

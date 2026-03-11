@@ -110,9 +110,7 @@
 .toast-error,
 .toast-warning,
 .toast-info {
-  background-image:
-    var(--effect-gradient-surface-raised),
-    var(--bg-panel);
+  background-image: var(--effect-gradient-surface-raised), var(--bg-panel);
 }
 
 .toast-progress {
