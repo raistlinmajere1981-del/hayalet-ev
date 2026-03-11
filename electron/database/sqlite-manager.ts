@@ -1,6 +1,6 @@
 // NOTE: Per-account SQLite archive at data/{email}_{provider}/archive.db.
 
-import Database from "better-sqlite3";
+import Database, { type BetterSqlite3Database } from "../native/better-sqlite3.js";
 import { join } from "path";
 import { mkdirSync } from "fs";
 import { getLoggerCore } from "../logger/index.js";
@@ -12,7 +12,7 @@ const logger = getLoggerCore();
 type AccountKey = string;
 
 interface DatabaseInstance {
-  db: Database.Database;
+  db: BetterSqlite3Database;
   accountId: string;
   accountFolder: string;
   lastAccessed: number;
@@ -20,12 +20,12 @@ interface DatabaseInstance {
 
 const databasePool = new Map<AccountKey, DatabaseInstance>();
 
-function hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
+function hasColumn(db: BetterSqlite3Database, tableName: string, columnName: string): boolean {
   const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
   return rows.some((row) => row.name === columnName);
 }
 
-function ensureConversationSchema(db: Database.Database): void {
+function ensureConversationSchema(db: BetterSqlite3Database): void {
   const addedTitleSource = !hasColumn(db, "conversations", "title_source");
   if (addedTitleSource) {
     db.exec("ALTER TABLE conversations ADD COLUMN title_source TEXT NOT NULL DEFAULT 'system'");
@@ -54,7 +54,7 @@ function ensureConversationSchema(db: Database.Database): void {
   `);
 }
 
-function initializeSchema(db: Database.Database): void {
+function initializeSchema(db: BetterSqlite3Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
@@ -120,7 +120,7 @@ function initializeSchema(db: Database.Database): void {
   db.exec("PRAGMA foreign_keys = ON");
 }
 
-export function getDatabaseForAccount(accountId: string): Database.Database {
+export function getDatabaseForAccount(accountId: string): BetterSqlite3Database {
   const existing = databasePool.get(accountId);
   if (existing !== undefined) {
     existing.lastAccessed = Date.now();

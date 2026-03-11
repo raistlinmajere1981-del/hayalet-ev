@@ -101,18 +101,18 @@ export class UserPanel {
     }
 
     const gdStatus = document.getElementById("gdrive-status-dot");
-    const gdText = document.getElementById("gdrive-status-text");
     const gdBtn = document.getElementById("gdrive-connect-btn");
     const isConnected = gd.connected === true;
+    const driveStatusLabel = isConnected
+      ? AppI18n.t("entrance.user.googleDrive.connected")
+      : AppI18n.t("entrance.user.googleDrive.disconnected");
 
     if (gdStatus instanceof HTMLElement) {
       gdStatus.classList.toggle("connected", isConnected);
-      gdStatus.classList.remove("warning", "error");
-    }
-    if (gdText) {
-      gdText.textContent = isConnected
-        ? AppI18n.t("entrance.user.googleDrive.connected")
-        : AppI18n.t("entrance.user.googleDrive.disconnected");
+      gdStatus.classList.toggle("error", !isConnected);
+      gdStatus.classList.remove("warning");
+      gdStatus.title = driveStatusLabel;
+      gdStatus.setAttribute("aria-label", driveStatusLabel);
     }
     if (gdBtn) {
       gdBtn.textContent = isConnected
@@ -164,15 +164,10 @@ export class UserPanel {
     }
 
     const labelEl = document.getElementById("app-language-label");
-    const hintEl = document.getElementById("app-language-restart-hint");
     const selectEl = document.getElementById("app-language-select") as HTMLSelectElement | null;
 
     if (labelEl) {
       labelEl.textContent = AppI18n.t("entrance.user.language.label");
-    }
-
-    if (hintEl) {
-      hintEl.textContent = AppI18n.t("entrance.user.language.restartHint");
     }
 
     if (!selectEl) {

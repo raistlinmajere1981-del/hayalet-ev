@@ -57,7 +57,7 @@ function themeT(key: string, params?: Record<string, string | number>): string {
 }
 
 function getThemeName(theme: ThemeId): string {
-  return AppI18n.t(`app.themes.${theme}.name`);
+  return AppI18n.t(`shell.themes.${theme}.name`);
 }
 
 function isValidTheme(theme: string): theme is ThemeId {

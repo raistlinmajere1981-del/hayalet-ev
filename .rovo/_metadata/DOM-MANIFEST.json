@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-11T22:06:16.554Z",
+  "generatedAt": "2026-03-11T23:52:20.350Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 444,
-    "ids": 424,
+    "filesScanned": 447,
+    "ids": 422,
     "testIds": 15,
     "querySelectors": 123,
-    "totalSelectors": 562
+    "totalSelectors": 560
   },
   "lookup": {
     "id": {
@@ -76,7 +76,6 @@
       "ai2-webview-overlay": "#ai2-webview-overlay",
       "app": "#app",
       "app-language-label": "#app-language-label",
-      "app-language-restart-hint": "#app-language-restart-hint",
       "app-language-select": "#app-language-select",
       "archive-filter-ai1": "#archive-filter-ai1",
       "archive-filter-ai2": "#archive-filter-ai2",
@@ -198,7 +197,6 @@
       "gdrive-connect-btn": "#gdrive-connect-btn",
       "gdrive-start-auth": "#gdrive-start-auth",
       "gdrive-status-dot": "#gdrive-status-dot",
-      "gdrive-status-text": "#gdrive-status-text",
       "ghost-close-btn": "#ghost-close-btn",
       "ghost-loading-overlay": "#ghost-loading-overlay",
       "ghost-provider-connect-btn": "#ghost-provider-connect-btn",

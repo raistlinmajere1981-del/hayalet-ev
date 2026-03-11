@@ -104,20 +104,14 @@ interface BindAssistantPrimaryWebviewEventsOptions {
   urlDisplay: HTMLElement | null;
   scheduleSaveLastOpencodeUrl: (url: string) => void;
   syncDisabledMcpToHealth: () => void;
+  syncThemeToWebview: () => void;
 }
 
 export function bindAssistantPrimaryWebviewEvents(
   options: BindAssistantPrimaryWebviewEventsOptions
 ): void {
-  options.webviewEl.addEventListener("did-stop-loading", () => {
+  options.webviewEl.addEventListener("dom-ready", () => {
     void (async (): Promise<void> => {
-      try {
-        if (typeof options.webviewEl.getWebContentsId !== "function") return;
-        options.webviewEl.getWebContentsId();
-      } catch (_) {
-        return;
-      }
-
       const currentProviderId =
         options.providerSelect?.value ?? AppState.getProviderIdForSlot("ai0");
       const cfg =
@@ -161,6 +155,7 @@ export function bindAssistantPrimaryWebviewEvents(
       }
 
       options.syncDisabledMcpToHealth();
+      options.syncThemeToWebview();
     })();
   });
 

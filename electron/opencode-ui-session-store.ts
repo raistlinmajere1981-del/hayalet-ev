@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import Database from "better-sqlite3";
+import Database, { type BetterSqlite3Database } from "./native/better-sqlite3.js";
 import {
   aggregateUsage,
   extractChangedFiles,
@@ -74,7 +74,7 @@ export function resolveOpencodeUiDbPath(options?: OpencodeUiStoreOptions): strin
   return DEFAULT_OPENCODE_DB_PATH;
 }
 
-function sessionTableHasWorkspaceId(db: Database.Database): boolean {
+function sessionTableHasWorkspaceId(db: BetterSqlite3Database): boolean {
   try {
     const rows = db.prepare("PRAGMA table_info(session)").all() as Array<{ name?: unknown }>;
     return rows.some((row) => asString(row.name) === "workspace_id");

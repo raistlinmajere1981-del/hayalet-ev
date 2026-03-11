@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import Database from "better-sqlite3";
+import type BetterSqlite3 from "better-sqlite3";
 import test from "node:test";
 
+import Database from "../../electron/native/better-sqlite3.ts";
 import {
   ensureOpencodeUiSession,
   listOpencodeUiSessions,
@@ -13,7 +14,7 @@ import {
 import { t } from "../../src/js/pages/opencode-ui/i18n.ts";
 
 interface DbFixture {
-  db: Database.Database;
+  db: BetterSqlite3.Database;
   dbPath: string;
   cleanup: () => void;
 }

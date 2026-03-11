@@ -1,5 +1,5 @@
 import type { Conversation, Message, IpcResult } from "@electron/types";
-import type Database from "better-sqlite3";
+import type { BetterSqlite3Database } from "../native/better-sqlite3.js";
 import { getLoggerCore } from "../logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { loadSettings } from "../settings-manager.ts";
@@ -108,7 +108,7 @@ export class SQLiteArchiveManager {
     this.accountId = accountId;
   }
 
-  private getDb(): Database.Database {
+  private getDb(): BetterSqlite3Database {
     return getDatabaseForAccount(this.accountId);
   }
 
@@ -138,7 +138,7 @@ export class SQLiteArchiveManager {
     return hashString(`${conversationId}-${domIndex}-${contentHash}`);
   }
 
-  private async buildAutoTitle(db: Database.Database): Promise<string> {
+  private async buildAutoTitle(db: BetterSqlite3Database): Promise<string> {
     const countStmt = db.prepare(
       `SELECT COUNT(*) as count FROM conversations WHERE account_id = ?`
     );

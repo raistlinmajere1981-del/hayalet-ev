@@ -1,7 +1,7 @@
 import { existsSync, watch } from "node:fs";
 import { dirname } from "node:path";
 import type { WebContents } from "electron";
-import Database from "better-sqlite3";
+import Database, { type BetterSqlite3Database } from "./native/better-sqlite3.js";
 import { resolveOpencodeUiDbPath } from "./opencode-ui-session-store.ts";
 
 const SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
@@ -29,7 +29,10 @@ function readSessionChangeToken(dbPath: string, sessionId: string): string | nul
     return null;
   }
 
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  const db: BetterSqlite3Database = new Database(dbPath, {
+    readonly: true,
+    fileMustExist: true,
+  });
   try {
     const pragmaRow = db.prepare("PRAGMA data_version").get() as
       | { data_version?: unknown }

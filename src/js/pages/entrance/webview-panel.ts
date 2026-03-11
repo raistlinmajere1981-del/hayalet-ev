@@ -1207,14 +1207,65 @@ export class WebviewPanel {
       }, 700);
     };
 
-    webviewEl.addEventListener("did-start-loading", () => {
-      try {
-        if (typeof webviewEl.getWebContentsId !== "function") return;
-        webviewEl.getWebContentsId();
-      } catch (_) {
-        return;
-      }
+    const injectProviderConfig = (): void => {
+      void (async (): Promise<void> => {
+        let currentUrl: string;
+        try {
+          currentUrl = webviewEl.getURL?.() ?? "";
+        } catch (_) {
+          return;
+        }
 
+        const isExcluded = WebviewManager.isUrlExcluded(type, currentUrl);
+        if (isExcluded === true) return;
+
+        const slotProviderId = AppState.getProviderIdForSlot(type);
+        const currentProviderId = slotProviderId ?? providerId;
+        const cfg =
+          currentProviderId !== null && currentProviderId !== ""
+            ? ProviderRegistry.get(currentProviderId)
+            : null;
+        if (cfg === null) {
+          return;
+        }
+
+        try {
+          if (typeof webviewEl.send === "function" && currentProviderId !== "") {
+            webviewEl.send("app-set-provider", {
+              providerId: currentProviderId,
+              slot: type,
+            });
+          } else {
+            const configScript = `
+              (function() {
+                try {
+                  window.__app_slot = ${JSON.stringify(type)};
+                  window.__app_provider_config = ${JSON.stringify(cfg)};
+                  return true;
+                } catch (e) {
+                  console.error(
+                    ${JSON.stringify(
+                      AppI18n.t("webview.messageSender.logs.providerConfigInjectionFailed", {
+                        provider: type,
+                        providerId: currentProviderId,
+                        message: "{{message}}",
+                      })
+                    )}.replace("{{message}}", e instanceof Error ? e.message : String(e)),
+                    e
+                  );
+                  return false;
+                }
+              })();
+            `;
+            await webviewEl.executeJavaScript?.(configScript);
+          }
+        } catch (_err) {
+          void _err;
+        }
+      })();
+    };
+
+    webviewEl.addEventListener("did-start-loading", () => {
       let currentUrl = "";
       try {
         currentUrl = webviewEl.getURL?.() ?? "";
@@ -1231,78 +1282,31 @@ export class WebviewPanel {
       this.loadLogState[type] = state;
     });
 
+    webviewEl.addEventListener("dom-ready", () => {
+      injectProviderConfig();
+    });
+
     webviewEl.addEventListener("did-stop-loading", () => {
-      void (async (): Promise<void> => {
-        try {
-          if (typeof webviewEl.getWebContentsId !== "function") return;
-          webviewEl.getWebContentsId();
-        } catch (_) {
-          return;
-        }
+      const state = this.loadLogState[type] ?? { lastStart: 0, lastStop: 0 };
+      const now = Date.now();
 
-        const state = this.loadLogState[type] ?? { lastStart: 0, lastStop: 0 };
-        const now = Date.now();
+      if (now - state.lastStop > 1200) {
+        this.addLog(type, "info", entranceWebviewT("logs.pageLoaded"), { visibility: 3 });
+        state.lastStop = now;
+      }
+      this.loadLogState[type] = state;
 
-        if (now - state.lastStop > 1200) {
-          this.addLog(type, "info", entranceWebviewT("logs.pageLoaded"), { visibility: 3 });
-          state.lastStop = now;
-        }
-        this.loadLogState[type] = state;
+      let currentUrl: string;
+      try {
+        currentUrl = webviewEl.getURL?.() ?? "";
+      } catch (_) {
+        return;
+      }
 
-        let currentUrl: string;
-        try {
-          currentUrl = webviewEl.getURL?.() ?? "";
-        } catch (_) {
-          return;
-        }
+      const isExcluded = WebviewManager.isUrlExcluded(type, currentUrl);
+      if (isExcluded === true) return;
 
-        const isExcluded = WebviewManager.isUrlExcluded(type, currentUrl);
-        if (isExcluded === true) return;
-
-        scheduleSessionUrlSave(type, currentUrl);
-
-        const slotProviderId = AppState.getProviderIdForSlot(type);
-        const currentProviderId = slotProviderId ?? providerId;
-        const cfg =
-          currentProviderId !== null && currentProviderId !== ""
-            ? ProviderRegistry.get(currentProviderId)
-            : null;
-        if (cfg !== null) {
-          try {
-            if (typeof webviewEl.send === "function" && currentProviderId !== "") {
-              webviewEl.send("app-set-provider", {
-                providerId: currentProviderId,
-                slot: type,
-              });
-            } else {
-              const configScript = `
-                (function() {
-                  try {
-                    window.__app_slot = ${JSON.stringify(type)};
-                    window.__app_provider_config = ${JSON.stringify(cfg)};
-                    return true;
-                  } catch (e) {
-                    console.error(
-                      ${JSON.stringify(
-                        AppI18n.t("webview.messageSender.logs.providerConfigInjectionFailed", {
-                          provider: type,
-                          providerId: currentProviderId,
-                          message: "{{message}}",
-                        })
-                      )}.replace("{{message}}", e instanceof Error ? e.message : String(e)),
-                      e
-                    );
-                    return false;
-                  }
-                })();
-              `;
-              await webviewEl.executeJavaScript?.(configScript);
-            }
-          } catch (_err) {
-            void _err;
-          }
-        }
-      })();
+      scheduleSessionUrlSave(type, currentUrl);
     });
 
     webviewEl.addEventListener("did-navigate-in-page", () => {

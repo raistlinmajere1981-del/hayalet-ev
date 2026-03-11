@@ -1841,6 +1841,9 @@ export class AssistantController {
       syncDisabledMcpToHealth: () => {
         this._syncDisabledMcpToHealth();
       },
+      syncThemeToWebview: () => {
+        this._syncOpencodeUiTheme(ThemeManager.current, { assumeDomReady: true });
+      },
     });
   }
   _loadDisabledMcpServers(): void {
@@ -1898,15 +1901,29 @@ export class AssistantController {
     }
   }
 
-  _syncOpencodeUiTheme(theme: ThemeId = ThemeManager.current): void {
+  _syncOpencodeUiTheme(
+    theme: ThemeId = ThemeManager.current,
+    options: { assumeDomReady?: boolean } = {}
+  ): void {
     const ai0Webview = document.getElementById("ai0-webview") as WebviewElement | null;
     if (ai0Webview == null) {
       return;
     }
 
+    if (typeof ai0Webview.executeJavaScript !== "function") {
+      return;
+    }
+
+    const slotState = SlotController.getState("ai0") as
+      | (SlotStateInfo & { domReady?: boolean })
+      | null;
+    const isDomReady = options.assumeDomReady === true || slotState?.domReady === true;
+    if (!isDomReady) {
+      return;
+    }
+
     const activeProviderId = this.providerSelect?.value ?? this._activeAdapter?.id ?? "";
-    const currentUrl =
-      typeof ai0Webview.getURL === "function" ? ai0Webview.getURL() : (ai0Webview.src ?? "");
+    const currentUrl = slotState?.currentUrl ?? "";
     const shouldSyncTheme =
       activeProviderId === "opencode-ui" || currentUrl.includes("/pages/opencode-ui.html");
 
@@ -1915,7 +1932,7 @@ export class AssistantController {
     }
 
     try {
-      void ai0Webview.executeJavaScript?.(
+      void ai0Webview.executeJavaScript(
         `(function() {
           try {
             const nextTheme = ${JSON.stringify(theme)};
