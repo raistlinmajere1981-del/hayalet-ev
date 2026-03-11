@@ -3,6 +3,9 @@
   --field-color: var(--text-primary);
   --field-blur: var(--glass-blur);
   --field-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 2%, transparent);
+  --field-shadow-fallback: inset 0 var(--border-1) 0
+    color-mix(in srgb, var(--text-inverse) 2%, transparent);
+  --field-focus-ring-size: var(--size-focus-ring);
   --field-textarea-resize: vertical;
   --field-textarea-leading: var(--leading-relaxed);
 }
@@ -21,7 +24,7 @@
   border-radius: var(--field-radius, var(--radius-input));
   backdrop-filter: var(--field-blur, var(--glass-blur));
   transition: var(--transition-fast);
-  box-shadow: var(--field-shadow, inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 2%, transparent));
+  box-shadow: var(--field-shadow, var(--field-shadow-fallback));
 }
 
 .input::placeholder,
@@ -38,7 +41,10 @@
 .form-input:focus {
   outline: none;
   border-color: var(--field-focus-border, var(--color-accent-strong));
-  box-shadow: var(--field-focus-shadow, 0 0 0 3px var(--color-accent-muted));
+  box-shadow: var(
+    --field-focus-shadow,
+    0 0 0 var(--field-focus-ring-size) var(--color-accent-muted)
+  );
 }
 
 .input:disabled,
@@ -102,7 +108,9 @@ textarea.large {
 }
 
 .select:focus {
-  box-shadow: 0 0 0 3px var(--color-accent-muted), var(--surface-shadow);
+  box-shadow:
+    0 0 0 var(--field-focus-ring-size) var(--color-accent-muted),
+    var(--surface-shadow);
 }
 
 .select option,

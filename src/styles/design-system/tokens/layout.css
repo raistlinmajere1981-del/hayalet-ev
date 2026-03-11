@@ -27,6 +27,11 @@
   --layout-markdown-chip-max-w: 220px;
   --layout-dropdown-max-h: 280px;
   --layout-workspace-url-min-w: 240px;
+  --layout-chat-empty-max-w: 420px;
+  --layout-toast-max-w: 400px;
+  --layout-modal-default-w: 500px;
+  --layout-modal-default-wide-w: 800px;
+  --layout-workspace-sidebar-max-w: min(38vw, 560px);
 
   --layout-modal-compact-w: 420px;
   --layout-modal-character-w: 860px;
@@ -56,6 +61,7 @@
   --layout-server-command-tab-min-w: 88px;
   --layout-server-command-list-min-h: 180px;
   --layout-server-command-guide-min-h: 160px;
+  --layout-server-command-guide-max-h: 280px;
   --layout-server-workspace-stack-min-h: 420px;
 
   --layout-whisper-sidebar-min: 320px;

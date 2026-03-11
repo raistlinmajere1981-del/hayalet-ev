@@ -130,7 +130,7 @@ button {
   font-family: var(--font-display);
   font-size: var(--text-3xl);
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tracking-hero);
 }
 
 .room-shell-subtitle {
@@ -149,10 +149,6 @@ button {
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5);
-  background: var(--bg-panel);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-card);
-  box-shadow: var(--surface-shadow);
 }
 
 .room-shell-panel--runtime {
@@ -639,7 +635,6 @@ button {
   text-shadow: var(--shadow-logo-text-hover);
 }
 
-
 .indicators {
   display: flex;
   align-items: center;
@@ -881,19 +876,22 @@ body.menu-hidden .main-content {
   --app-shell-session-hover-bg: var(--opencode-shell-session-hover-bg);
   --app-shell-session-active-bg: var(--opencode-shell-session-active-bg);
   --app-shell-session-active-border: var(--opencode-shell-session-active-border);
-  --app-shell-empty-state-border: var(--border-1) dashed color-mix(in srgb, var(--border-default) 84%, transparent);
+  --app-shell-empty-state-border: var(--border-1) dashed
+    color-mix(in srgb, var(--border-default) 84%, transparent);
   --app-shell-empty-state-bg: var(--opencode-shell-empty-state-bg);
   --app-shell-empty-state-shadow: var(--effect-inset-highlight);
   --app-shell-chat-empty-bg: var(--opencode-shell-chat-empty-bg);
   --app-shell-chat-empty-icon-fit: contain;
   --app-shell-usage-padding: var(--space-3);
   --app-shell-usage-radius: var(--radius-lg);
-  --app-shell-usage-border: var(--border-1) solid color-mix(in srgb, var(--border-default) 84%, transparent);
+  --app-shell-usage-border: var(--border-1) solid
+    color-mix(in srgb, var(--border-default) 84%, transparent);
   --app-shell-usage-bg: var(--opencode-shell-usage-bg);
   --app-shell-usage-shadow: var(--surface-outline);
   --app-shell-usage-value-color: var(--text-primary);
   --app-shell-progress-track-bg: var(--opencode-shell-progress-track-bg);
-  --app-shell-progress-track-border: var(--border-1) solid color-mix(in srgb, var(--border-default) 68%, transparent);
+  --app-shell-progress-track-border: var(--border-1) solid
+    color-mix(in srgb, var(--border-default) 68%, transparent);
   --app-shell-progress-fill-bg: var(--opencode-shell-progress-fill-bg);
 }
 

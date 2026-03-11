@@ -205,7 +205,7 @@
 
 .ds-session__indicator--working {
   background: var(--color-warning);
-  box-shadow: 0 0 0 4px var(--color-warning-bg);
+  box-shadow: 0 0 0 var(--size-focus-ring-strong) var(--color-warning-bg);
   animation: ds-session-working-pulse 1.2s ease-in-out infinite;
 }
 
@@ -328,13 +328,15 @@
 .ds-panel {
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 94%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 94%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 90%, transparent);
   overflow: hidden;
-  box-shadow:
-    var(--effect-inset-highlight),
-    var(--surface-shadow);
+  box-shadow: var(--effect-inset-highlight), var(--surface-shadow);
 }
 
 .ds-panel + .ds-panel {
@@ -396,8 +398,11 @@
 
 .ds-panel__body {
   padding: 0 var(--space-4) var(--space-3);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 90%, transparent), transparent 120px);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-2) 90%, transparent),
+    transparent calc(var(--space-24) + var(--space-6))
+  );
 }
 
 .ds-panel--collapsed .ds-panel__body {

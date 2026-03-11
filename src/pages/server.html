@@ -1,6 +1,6 @@
 <div class="page hidden" id="page-server">
   <div class="server-room">
-    <div class="server-topbar">
+    <div class="server-topbar ds-toolbar-surface">
       <div class="left">
         <select id="server-controller-select" class="select">
           <option value="ai1">AI1</option>
@@ -26,8 +26,13 @@
     <div class="server-workspace">
       <div class="server-workspace-left">
         <div class="server-panels">
-          <div class="server-panel glass-panel server-timeline-panel">
-            <div class="panel-title" data-shell-i18n-text="app.server.page.timelineTitle">
+          <div
+            class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-timeline-panel"
+          >
+            <div
+              class="panel-title ds-surface-card__header ds-panel-title"
+              data-shell-i18n-text="app.server.page.timelineTitle"
+            >
               Command Flow (Command → Result)
             </div>
             <div
@@ -47,8 +52,13 @@
       </div>
 
       <div class="server-workspace-right">
-        <div class="server-panel glass-panel server-command-panel">
-          <div class="panel-title" data-shell-i18n-text="app.server.page.commandPanelTitle">
+        <div
+          class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-command-panel"
+        >
+          <div
+            class="panel-title ds-surface-card__header ds-panel-title"
+            data-shell-i18n-text="app.server.page.commandPanelTitle"
+          >
             Command Control Panel
           </div>
           <div class="command-manager">

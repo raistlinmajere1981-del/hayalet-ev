@@ -133,7 +133,7 @@
 
 .indicator-dot.send {
   background: var(--dot-send);
-  box-shadow: 0 0 8px var(--dot-send);
+  box-shadow: 0 0 var(--size-status-glow-sm) var(--dot-send);
 }
 
 .indicator-dot.thinking {
@@ -143,7 +143,7 @@
 
 .indicator-dot.active {
   background: var(--color-accent);
-  box-shadow: 0 0 8px var(--color-accent);
+  box-shadow: 0 0 var(--size-status-glow-sm) var(--color-accent);
 }
 
 .indicator-select-row {
@@ -206,8 +206,8 @@
 
 .slot-status-dot {
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  bottom: var(--size-status-badge-offset);
+  right: var(--size-status-badge-offset);
   width: var(--size-dot-lg);
   height: var(--size-dot-lg);
   border-radius: var(--radius-full);
@@ -269,6 +269,6 @@
 .indicator-cluster-assistant.thinking-active {
   box-shadow:
     var(--shadow-3d-inset),
-    0 0 12px var(--amber-alpha-25);
+    0 0 var(--size-status-glow-md) var(--amber-alpha-25);
   border-color: var(--color-warning);
 }

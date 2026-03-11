@@ -31,18 +31,11 @@
 .archives-sidebar {
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--surface-shadow);
 }
 
 .sidebar-header {
-  padding: var(--space-4);
-  background: var(--bg-surface-3);
-  border-bottom: var(--border-1) solid var(--border-default);
+  align-items: flex-start;
 }
 
 .sidebar-header h3 {
@@ -134,21 +127,11 @@
 .archives-detail {
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  backdrop-filter: var(--glass-blur);
-  box-shadow: var(--surface-shadow);
 }
 
 .detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface-3);
-  border-bottom: var(--border-1) solid var(--border-default);
+  justify-content: flex-start;
 }
 
 .detail-header h3 {
@@ -231,20 +214,11 @@
 .archives-search {
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface);
-  border: var(--border-1) solid var(--border-glass);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  backdrop-filter: var(--glass-blur);
 }
 
 .search-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border-bottom: var(--border-1) solid var(--border-default);
 }
 
 .search-header h3 {
@@ -350,17 +324,11 @@
 .protocol-sidebar {
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface);
-  border: var(--border-1) solid var(--border-glass);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  backdrop-filter: var(--glass-blur);
 }
 
 .protocol-header {
-  padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border-bottom: var(--border-1) solid var(--border-default);
 }
 
 .protocol-header h3 {
@@ -421,20 +389,11 @@
 .protocol-editor {
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface);
-  border: var(--border-1) solid var(--border-glass);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  backdrop-filter: var(--glass-blur);
 }
 
 .protocol-editor-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
   background: var(--bg-elevated);
-  border-bottom: var(--border-1) solid var(--border-default);
 }
 
 .protocol-editor-header h3 {

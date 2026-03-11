@@ -1,7 +1,7 @@
 <div class="page hidden" id="page-entrance">
   <div class="entrance-page">
     <div class="slot-grid">
-      <div class="slot-card glass-panel" data-slot="ai1">
+      <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai1">
         <div class="slot-header">
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
@@ -130,7 +130,7 @@
         <div class="webview-overlay hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
       </div>
 
-      <div class="slot-card glass-panel" data-slot="ai2">
+      <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai2">
         <div class="slot-header">
           <div class="slot-header-top">
             <div class="slot-avatar-wrapper">
@@ -260,7 +260,7 @@
       </div>
     </div>
 
-    <div class="control-panel-accordion">
+    <div class="control-panel-accordion ds-surface-card ds-surface-card--stack">
       <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="false">
         <span class="accordion-icon">⚙️</span>
         <span class="accordion-title" data-i18n-text="panels.settings">Settings</span>
@@ -269,9 +269,14 @@
 
       <div class="accordion-content" id="settings-accordion-content">
         <div class="accordion-panels">
-          <div class="panel-item glass-panel" data-panel="user">
-            <div class="panel-header">
-              <span class="panel-title" data-i18n-text="panels.user">USER & DRIVE</span>
+          <div
+            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="user"
+          >
+            <div class="panel-header ds-surface-card__header">
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.user"
+                >USER & DRIVE</span
+              >
             </div>
             <div class="panel-content">
               <div class="user-settings-column">
@@ -362,9 +367,14 @@
             </div>
           </div>
 
-          <div class="panel-item glass-panel" data-panel="accounts">
-            <div class="panel-header">
-              <span class="panel-title" data-i18n-text="panels.accounts">ACCOUNT MANAGEMENT</span>
+          <div
+            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="accounts"
+          >
+            <div class="panel-header ds-surface-card__header">
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.accounts"
+                >ACCOUNT MANAGEMENT</span
+              >
             </div>
             <div class="panel-content">
               <div class="accounts-container">
@@ -426,9 +436,14 @@
             </div>
           </div>
 
-          <div class="panel-item glass-panel" data-panel="whisper">
-            <div class="panel-header">
-              <span class="panel-title" data-i18n-text="panels.whisper">PENDING COMMANDS</span>
+          <div
+            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="whisper"
+          >
+            <div class="panel-header ds-surface-card__header">
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.whisper"
+                >PENDING COMMANDS</span
+              >
             </div>
             <div class="panel-content">
               <div class="entrance-whisper-container">
@@ -446,9 +461,14 @@
             </div>
           </div>
 
-          <div class="panel-item glass-panel" data-panel="report">
-            <div class="panel-header">
-              <span class="panel-title" data-i18n-text="panels.report">LIVE REPORT</span>
+          <div
+            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="report"
+          >
+            <div class="panel-header ds-surface-card__header">
+              <span class="panel-title ds-panel-title" data-i18n-text="panels.report"
+                >LIVE REPORT</span
+              >
             </div>
             <div class="panel-content">
               <div class="report-container">

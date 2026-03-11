@@ -13,7 +13,7 @@
 }
 
 .modal-content {
-  --modal-max-w: 500px;
+  --modal-max-w: var(--layout-modal-default-w);
 
   display: flex;
   flex-direction: column;
@@ -103,9 +103,7 @@
   line-height: var(--leading-relaxed);
   color: var(--text-secondary);
   white-space: pre-wrap;
-  background:
-    var(--effect-gradient-surface-subtle),
-    var(--bg-surface-2);
+  background: var(--effect-gradient-surface-subtle), var(--bg-surface-2);
 }
 
 .modal-wide {
@@ -121,7 +119,7 @@
 }
 
 .modal-read .modal-content {
-  --modal-max-w: 800px;
+  --modal-max-w: var(--layout-modal-default-wide-w);
 }
 
 .modal-read .modal-header {
@@ -233,7 +231,7 @@
   font-weight: var(--font-medium);
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-meta);
 }
 
 .ds-modal__input,
@@ -339,13 +337,15 @@
   gap: var(--space-3);
   padding: var(--space-8) var(--space-10);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), var(--bg-panel-strong)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 94%, transparent),
+      var(--bg-panel-strong)
+    ),
     var(--bg-panel-strong);
   border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 44%, var(--border-default));
   border-radius: var(--radius-lg);
-  box-shadow:
-    var(--effect-inset-highlight),
-    var(--floating-shadow);
+  box-shadow: var(--effect-inset-highlight), var(--floating-shadow);
   min-width: var(--size-panel-compact);
   text-align: center;
 }
@@ -376,10 +376,10 @@
 }
 
 .livefix-countdown-label {
-  font-size: var(--text-xs, 11px);
+  font-size: var(--text-xs, var(--text-micro));
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-kicker);
   margin-top: calc(var(--space-2) * -1);
 }
 

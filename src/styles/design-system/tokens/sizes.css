@@ -48,4 +48,11 @@
   --size-modal-wide: 1100px;
   --size-modal-tall: min(80vh, 860px);
   --size-empty-icon-lg: 2rem;
+  --size-focus-ring: 3px;
+  --size-focus-ring-strong: 4px;
+  --size-status-glow-sm: 8px;
+  --size-status-glow-md: 12px;
+  --size-status-badge-offset: -2px;
+  --size-motion-lift-sm: -1px;
+  --size-motion-drop-sm: 4px;
 }

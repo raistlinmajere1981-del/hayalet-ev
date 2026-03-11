@@ -220,7 +220,8 @@ export class WhisperController {
 
   renderAccountCard(account: Account, bucket: WhisperAccountBucket): HTMLElement {
     const card = document.createElement("section");
-    card.className = "panel glass-panel whisper-account-card";
+    card.className =
+      "panel glass-panel ds-surface-card ds-surface-card--stack whisper-account-card";
 
     const header = document.createElement("div");
     header.className = "whisper-account-header";

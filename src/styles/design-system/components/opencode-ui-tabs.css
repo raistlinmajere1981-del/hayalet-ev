@@ -14,9 +14,7 @@
   border-radius: var(--radius-xl);
   background: var(--app-shell-inspector-bg);
   overflow: hidden;
-  box-shadow:
-    var(--effect-inset-highlight),
-    var(--surface-shadow);
+  box-shadow: var(--effect-inset-highlight), var(--surface-shadow);
   backdrop-filter: var(--app-shell-surface-blur);
 }
 
@@ -27,8 +25,11 @@
   gap: var(--space-1);
   padding: var(--space-2);
   border-bottom: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 88%, transparent), var(--bg-surface-2));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-3) 88%, transparent),
+    var(--bg-surface-2)
+  );
 }
 
 .ds-right-tab {
@@ -57,9 +58,12 @@
 .ds-right-tab.is-active {
   color: var(--text-primary);
   border-color: color-mix(in srgb, var(--color-accent) 48%, var(--border-default));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 92%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent-soft) 92%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+  );
+  box-shadow: inset 0 0 0 var(--border-1) color-mix(in srgb, var(--color-accent) 14%, transparent);
 }
 
 .ds-right-tabs__toggle {
@@ -120,7 +124,11 @@
   border-radius: var(--radius-lg);
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 76%, transparent);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 56%, transparent), color-mix(in srgb, var(--bg-surface-3) 94%, transparent)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 56%, transparent),
+      color-mix(in srgb, var(--bg-surface-3) 94%, transparent)
+    ),
     var(--bg-elevated);
   box-shadow: var(--surface-outline);
 }
@@ -181,7 +189,11 @@
 
 .ds-right-secondary .ds-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 48%, transparent),
+      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+    ),
     var(--bg-surface-2);
 }
 
@@ -217,7 +229,11 @@
   padding: var(--space-2);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), var(--bg-surface-3)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 48%, transparent),
+      var(--bg-surface-3)
+    ),
     var(--bg-surface-3);
   margin-bottom: 0;
 }
@@ -246,7 +262,11 @@
   padding: var(--space-2);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 48%, transparent), var(--bg-surface-3)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 48%, transparent),
+      var(--bg-surface-3)
+    ),
     var(--bg-surface-3);
   margin-bottom: 0;
 }
@@ -338,7 +358,11 @@
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 88%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 88%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   box-shadow: var(--surface-outline);
   transition:
@@ -352,9 +376,13 @@
 .model-settings__model-row:hover {
   border-color: color-mix(in srgb, var(--color-accent) 42%, var(--border-default));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft)), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 78%, var(--color-accent-soft)),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
-  transform: translateY(-1px);
+  transform: translateY(var(--size-motion-lift-sm));
 }
 
 .ds-provider-name,
@@ -504,12 +532,14 @@
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 90%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   padding: calc(var(--space-3) + var(--space-0-5));
-  box-shadow:
-    var(--effect-inset-highlight),
-    var(--surface-shadow);
+  box-shadow: var(--effect-inset-highlight), var(--surface-shadow);
 }
 
 .model-settings__panel-title {
@@ -626,7 +656,11 @@
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 52%, transparent),
+      var(--bg-surface-3)
+    ),
     var(--bg-surface-3);
   padding: var(--space-2-5);
   box-shadow: var(--surface-outline);
@@ -646,7 +680,7 @@
 .ds-todo-item__badge {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-0-5) calc(var(--space-1) + 1px);
+  padding: var(--space-0-5) calc(var(--space-1) + var(--border-1));
   border-radius: var(--radius-full);
   font-size: var(--text-2xs);
   line-height: 1.4;
@@ -672,7 +706,11 @@
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 52%, transparent),
+      var(--bg-surface-3)
+    ),
     var(--bg-surface-3);
   padding: var(--space-2-5);
   box-shadow: var(--surface-outline);

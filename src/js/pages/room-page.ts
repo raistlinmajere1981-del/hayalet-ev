@@ -89,8 +89,8 @@ export class RoomPageController implements PageController {
           <p class="room-shell-subtitle" data-room-role="subtitle"></p>
         </div>
         <div class="room-shell-grid">
-          <section class="glass-panel room-shell-panel room-shell-panel--runtime">
-            <div class="panel-title">${roomPageT("page.runtimeTitle")}</div>
+          <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel room-shell-panel--runtime">
+            <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.runtimeTitle")}</div>
             <div class="room-runtime-status" data-room-role="runtime-status" data-state="idle">
               ${roomPageT("status.preparing")}
             </div>
@@ -99,8 +99,8 @@ export class RoomPageController implements PageController {
             </div>
             <div class="room-runtime-mount" data-room-role="runtime-mount"></div>
           </section>
-          <section class="glass-panel room-shell-panel">
-            <div class="panel-title">${roomPageT("page.entryPointsTitle")}</div>
+          <section class="glass-panel ds-surface-card ds-surface-card--stack room-shell-panel">
+            <div class="panel-title ds-surface-card__header ds-panel-title">${roomPageT("page.entryPointsTitle")}</div>
             <div class="room-meta-list">
               <div class="room-meta-row">
                 <span class="room-meta-label">${roomPageT("page.labels.id")}</span>

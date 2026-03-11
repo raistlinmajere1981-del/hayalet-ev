@@ -14,6 +14,7 @@
   --text-3xl: 32px;
   --text-4xl: 36px;
   --text-5xl: 56px;
+  --text-micro: 11px;
 
   --font-medium: 500;
   --font-semibold: 600;
@@ -27,4 +28,12 @@
   --tracking-tight: 0.01em;
   --tracking-wide: 0.025em;
   --tracking-wider: 0.04em;
+  --tracking-hero: -0.03em;
+  --tracking-title: -0.02em;
+  --tracking-tightest: -0.06em;
+  --tracking-meta: 0.05em;
+  --tracking-panel: 0.06em;
+  --tracking-label: 0.08em;
+  --tracking-kicker: 0.1em;
+  --tracking-pill: 0.12em;
 }

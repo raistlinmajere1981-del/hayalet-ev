@@ -31,11 +31,7 @@
 .conv-card {
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-card);
   overflow: hidden;
-  box-shadow: var(--surface-shadow);
 }
 
 .conv-header {
@@ -43,9 +39,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface-3);
-  border-bottom: var(--border-1) solid var(--border-default);
 }
 
 .identity {
@@ -59,8 +52,7 @@
   height: var(--size-avatar-md);
   border-radius: var(--radius-full);
   background:
-    radial-gradient(circle at top, var(--color-accent-soft), transparent 60%),
-    var(--bg-surface);
+    radial-gradient(circle at top, var(--color-accent-soft), transparent 60%), var(--bg-surface);
   border: var(--border-1) solid var(--border-default);
   color: var(--text-primary);
   display: flex;

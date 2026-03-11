@@ -243,7 +243,7 @@
 .scenario-overlay__eyebrow {
   font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   color: var(--text-secondary);
   margin-bottom: var(--space-1);
 }

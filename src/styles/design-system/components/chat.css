@@ -1,11 +1,21 @@
 .ds-chat {
+  --ds-chat-meta-min-h: 1.1em;
+
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
   background:
-    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 72%, transparent), transparent 44%),
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--color-accent) 14%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 72%, transparent),
+      transparent 44%
+    ),
     var(--bg-app);
   overflow: hidden;
   backdrop-filter: var(--app-shell-surface-blur);
@@ -20,8 +30,18 @@
   flex-direction: column;
   gap: var(--space-4);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 58%, transparent), transparent 42%),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 18%, transparent 82%, color-mix(in srgb, var(--color-accent) 4%, transparent));
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 58%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-accent) 5%, transparent),
+      transparent 18%,
+      transparent 82%,
+      color-mix(in srgb, var(--color-accent) 4%, transparent)
+    );
 }
 
 .ds-chat__empty {
@@ -31,7 +51,7 @@
   justify-content: center;
   flex: 1;
   gap: var(--space-4);
-  max-width: min(420px, 100%);
+  max-width: min(var(--layout-chat-empty-max-w), 100%);
   margin: auto;
   padding: clamp(var(--space-6), 4vw, var(--space-10));
   border-radius: calc(var(--radius-card) + var(--space-0-5));
@@ -49,7 +69,11 @@
   border-radius: calc(var(--radius-xl) + var(--space-0-5));
   border: var(--border-1) solid color-mix(in srgb, var(--border-default) 72%, transparent);
   background:
-    radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 68%),
+    radial-gradient(
+      circle at 30% 30%,
+      color-mix(in srgb, var(--color-accent) 16%, transparent),
+      transparent 68%
+    ),
     color-mix(in srgb, var(--bg-surface-3) 92%, transparent);
   box-shadow: var(--surface-outline);
   opacity: 0.82;
@@ -137,7 +161,7 @@
   font-size: var(--text-2xs);
   color: var(--text-muted);
   padding: 0 var(--space-2);
-  min-height: 1.1em;
+  min-height: var(--ds-chat-meta-min-h);
 }
 
 .ds-message--user .ds-message__meta,
@@ -204,7 +228,11 @@
   flex-shrink: 0;
   padding: var(--space-3) var(--space-4);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 74%, transparent), var(--bg-panel)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 74%, transparent),
+      var(--bg-panel)
+    ),
     var(--bg-panel);
   border-top: var(--border-1) solid var(--border-default);
   display: flex;
@@ -317,7 +345,7 @@
   box-shadow: var(--floating-shadow);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(4px);
+  transform: translateY(var(--size-motion-drop-sm));
   transition: var(--transition-fast);
   z-index: var(--z-dropdown);
 }
@@ -458,8 +486,8 @@
 
 .ds-attachment-chip__remove {
   flex-shrink: 0;
-  width: var(--size-control-xs, 18px);
-  height: var(--size-control-xs, 18px);
+  width: var(--size-control-xs);
+  height: var(--size-control-xs);
   border: none;
   border-radius: var(--radius-full);
   background: var(--hover-overlay);
@@ -485,7 +513,11 @@
   --field-radius: var(--radius-lg);
   --field-font-size: var(--text-sm);
   --field-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), var(--bg-input)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 94%, transparent),
+      var(--bg-input)
+    ),
     var(--bg-input);
   --field-border-color: var(--border-default);
   --field-focus-border: var(--border-focus);

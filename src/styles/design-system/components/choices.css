@@ -1,4 +1,6 @@
 .ds-choice-chip {
+  --ds-choice-hover-translate: var(--size-motion-lift-sm);
+
   --ds-choice-gap: var(--space-1-5);
   --ds-choice-min-h: var(--size-choice-pill);
   --ds-choice-pad-x: var(--space-2-5);
@@ -41,7 +43,7 @@
   background: var(--ds-choice-bg-hover);
   border-color: var(--ds-choice-border-hover);
   color: var(--ds-choice-text-hover);
-  transform: translateY(-1px);
+  transform: translateY(var(--ds-choice-hover-translate));
 }
 
 .ds-choice-chip:focus-within {

@@ -56,11 +56,14 @@
   --scrollbar-thumb: var(--slate-600);
   --scrollbar-thumb-hover: var(--slate-500);
 
-  --assistant-topbar-bg: linear-gradient(180deg, rgba(4, 10, 20, 0.96) 0%, rgba(8, 16, 30, 0.92) 100%);
+  --assistant-topbar-bg: linear-gradient(
+    180deg,
+    rgba(4, 10, 20, 0.96) 0%,
+    rgba(8, 16, 30, 0.92) 100%
+  );
   --assistant-topbar-border: rgba(56, 189, 248, 0.16);
   --assistant-topbar-shadow:
-    0 18px 38px -24px rgba(2, 6, 23, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 18px 38px -24px rgba(2, 6, 23, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --assistant-chip-bg: rgba(15, 23, 42, 0.68);
   --assistant-chip-hover: rgba(15, 23, 42, 0.84);
   --assistant-chip-border: rgba(148, 163, 184, 0.14);
@@ -68,60 +71,129 @@
   --assistant-role-border: rgba(34, 211, 238, 0.16);
   --assistant-role-text: rgba(165, 243, 252, 0.9);
   --assistant-pill-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --assistant-pill-bg-hover:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 86%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 86%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --assistant-pill-border: color-mix(in srgb, var(--border-default) 88%, transparent);
-  --assistant-pill-border-strong: color-mix(in srgb, var(--color-accent) 34%, var(--border-default));
+  --assistant-pill-border-strong: color-mix(
+    in srgb,
+    var(--color-accent) 34%,
+    var(--border-default)
+  );
   --assistant-pill-shadow: var(--effect-inset-highlight);
   --assistant-pill-accent-bg: color-mix(in srgb, var(--color-accent-soft) 82%, transparent);
   --assistant-pill-accent-bg-hover: color-mix(in srgb, var(--color-accent-soft) 64%, transparent);
-  --assistant-pill-accent-border: color-mix(in srgb, var(--color-accent) 26%, var(--border-default));
+  --assistant-pill-accent-border: color-mix(
+    in srgb,
+    var(--color-accent) 26%,
+    var(--border-default)
+  );
   --assistant-title-size: var(--text-base);
   --assistant-role-font-size: var(--text-2xs);
   --assistant-status-font-size: var(--text-caption);
   --assistant-status-inline-font-size: var(--text-xs);
 
   --opencode-shell-bg:
-    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 36%),
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 36%
+    ),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 54%, transparent), var(--bg-app));
   --opencode-shell-layout-bg:
-    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 44%),
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--color-accent) 8%, transparent),
+      transparent 44%
+    ),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 66%, transparent), var(--bg-app));
   --opencode-shell-sidebar-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 96%, transparent), var(--bg-panel)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-2) 96%, transparent),
+      var(--bg-panel)
+    ),
     var(--bg-panel);
   --opencode-shell-sidebar-section-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 92%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 92%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --opencode-shell-session-tab-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 90%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --opencode-shell-session-tab-active-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 90%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 90%, transparent),
+      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+    ),
     var(--bg-surface-3);
   --opencode-shell-session-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 38%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 38%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --opencode-shell-session-hover-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface) 52%, transparent), var(--bg-surface-3)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface) 52%, transparent),
+      var(--bg-surface-3)
+    ),
     var(--bg-surface-3);
   --opencode-shell-session-active-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 86%, transparent), color-mix(in srgb, var(--bg-surface-3) 92%, transparent)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-accent-soft) 86%, transparent),
+      color-mix(in srgb, var(--bg-surface-3) 92%, transparent)
+    ),
     var(--bg-surface-3);
-  --opencode-shell-session-active-border: color-mix(in srgb, var(--color-accent) 46%, var(--border-default));
-  --opencode-shell-empty-state-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 82%, transparent), color-mix(in srgb, var(--bg-surface-3) 90%, transparent));
-  --opencode-shell-chat-empty-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), color-mix(in srgb, var(--bg-surface-3) 88%, transparent));
+  --opencode-shell-session-active-border: color-mix(
+    in srgb,
+    var(--color-accent) 46%,
+    var(--border-default)
+  );
+  --opencode-shell-empty-state-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-2) 82%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 90%, transparent)
+  );
+  --opencode-shell-chat-empty-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-2) 94%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 88%, transparent)
+  );
   --opencode-shell-usage-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 90%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 90%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface-2);
   --opencode-shell-progress-track-bg: color-mix(in srgb, var(--bg-surface-3) 88%, transparent);
-  --opencode-shell-progress-fill-bg:
-    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 92%, white 8%) 0%, var(--color-accent) 100%);
+  --opencode-shell-progress-fill-bg: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 92%, white 8%) 0%,
+    var(--color-accent) 100%
+  );
 
   --relay-particle-color: var(--color-accent);
   --relay-track-color: rgba(34, 211, 238, 0.15);
@@ -129,8 +201,16 @@
   --app-shell-bg: transparent;
   --app-shell-surface-blur: none;
   --app-shell-layout-bg:
-    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 48%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-app) 72%, var(--bg-surface-2)), var(--bg-app));
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--color-accent) 10%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-app) 72%, var(--bg-surface-2)),
+      var(--bg-app)
+    );
   --app-shell-sidebar-bg: var(--bg-panel);
   --app-shell-sidebar-section-bg: var(--bg-surface-2);
   --app-shell-session-tabs-gap: var(--space-2);
@@ -149,12 +229,14 @@
   --app-shell-empty-state-bg: transparent;
   --app-shell-empty-state-shadow: none;
   --app-shell-empty-state-radius: var(--radius-lg);
-  --app-shell-chat-empty-border: var(--border-1) solid color-mix(in srgb, var(--border-default) 80%, transparent);
-  --app-shell-chat-empty-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 94%, transparent), color-mix(in srgb, var(--bg-surface-3) 88%, transparent));
-  --app-shell-chat-empty-shadow:
-    var(--effect-inset-highlight),
-    var(--surface-shadow);
+  --app-shell-chat-empty-border: var(--border-1) solid
+    color-mix(in srgb, var(--border-default) 80%, transparent);
+  --app-shell-chat-empty-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-surface-2) 94%, transparent),
+    color-mix(in srgb, var(--bg-surface-3) 88%, transparent)
+  );
+  --app-shell-chat-empty-shadow: var(--effect-inset-highlight), var(--surface-shadow);
   --app-shell-chat-empty-icon-fit: cover;
   --app-shell-usage-padding: 0;
   --app-shell-usage-radius: 0;
@@ -166,9 +248,27 @@
   --app-shell-progress-track-border: 0 solid transparent;
   --app-shell-progress-fill-bg: var(--accent-gradient);
   --app-shell-inspector-bg:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-3) 96%, transparent), var(--bg-surface-2)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-surface-3) 96%, transparent),
+      var(--bg-surface-2)
+    ),
     var(--bg-surface);
   --app-webview-host-bg: var(--bg-surface-2);
+  --surface-card-bg: var(--bg-panel);
+  --surface-card-border: var(--border-default);
+  --surface-card-radius: var(--radius-card);
+  --surface-card-blur: var(--glass-blur);
+  --surface-card-shadow: var(--surface-shadow);
+  --surface-card-header-padding: var(--space-3) var(--space-4);
+  --surface-card-header-bg: var(--bg-surface-3);
+  --surface-card-header-border: var(--border-default);
+  --surface-card-body-padding: var(--space-3) var(--space-4);
+  --toolbar-surface-bg: var(--bg-panel);
+  --toolbar-surface-border: var(--border-default);
+  --toolbar-surface-radius: var(--radius-card);
+  --toolbar-surface-blur: var(--glass-blur);
+  --toolbar-surface-shadow: var(--surface-shadow);
 
   --status-inactive: var(--slate-600);
   --status-connected: var(--color-success);

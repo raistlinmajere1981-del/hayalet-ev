@@ -1,4 +1,6 @@
 .btn {
+  --btn-translate-hover: var(--size-motion-lift-sm);
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -62,7 +64,7 @@
 .btn-primary:hover:not(:disabled) {
   filter: brightness(1.04);
   box-shadow: var(--surface-shadow-hover), var(--glow-accent);
-  transform: translateY(-1px);
+  transform: translateY(var(--btn-translate-hover));
 }
 
 .btn-primary:active:not(:disabled) {
