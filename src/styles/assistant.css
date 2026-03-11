@@ -292,7 +292,7 @@
   border-radius: var(--radius-full);
   color: var(--text-primary);
   flex-shrink: 0;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent);
+  box-shadow: var(--effect-inset-highlight);
 }
 
 .assistant-status-extended {
@@ -527,7 +527,7 @@
   min-height: 0;
   backdrop-filter: var(--glass-blur);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent),
+    var(--effect-inset-highlight),
     0 24px 40px color-mix(in srgb, var(--bg-app) 44%, transparent),
     var(--surface-shadow);
 }
@@ -577,7 +577,7 @@
     linear-gradient(180deg, color-mix(in srgb, var(--bg-surface-2) 90%, transparent), var(--bg-app));
   border-radius: 0;
   overflow: hidden;
-  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--border-default) 56%, transparent);
+  box-shadow: var(--effect-inset-divider-strong);
 }
 
 .assistant-webview-panel .webview-wrapper webview {

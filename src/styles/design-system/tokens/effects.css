@@ -1,4 +1,6 @@
 :root {
+  --blur-surface-xs: blur(6px);
+  --blur-surface-sm-alt: blur(8px);
   --blur-surface-sm: blur(10px);
   --blur-surface-md: blur(14px);
   --blur-surface-lg: blur(16px);
@@ -25,4 +27,6 @@
 
   --effect-outline-accent: 0 0 0 1px color-mix(in srgb, var(--color-accent) 55%, transparent);
   --effect-glow-relay-particle: 0 0 10px var(--relay-particle-color);
+  --effect-inset-highlight: inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 4%, transparent);
+  --effect-inset-divider-strong: inset 1px 0 0 color-mix(in srgb, var(--border-default) 56%, transparent);
 }
