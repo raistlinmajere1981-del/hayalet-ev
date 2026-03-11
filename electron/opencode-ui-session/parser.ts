@@ -19,7 +19,12 @@ function opencodeUiParserT(key: string, params?: Record<string, string | number>
     getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
   const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
 
-  return translateCatalog(activeCatalog ?? fallbackCatalog ?? {}, `opencodeUi.${key}`, params, fallbackCatalog);
+  return translateCatalog(
+    activeCatalog ?? fallbackCatalog ?? {},
+    `opencodeUi.${key}`,
+    params,
+    fallbackCatalog
+  );
 }
 
 function mergeText(current: string, next: string): string {
@@ -88,9 +93,12 @@ function formatStepStartPart(partData: JsonRecord | null): string {
     return opencodeUiParserT("message.stepStartTitle");
   }
 
-  return `${opencodeUiParserT("message.stepStartTitle")}\n${opencodeUiParserT("message.stepSnapshotLabel", {
-    snapshot: snapshot.slice(0, 12),
-  })}`;
+  return `${opencodeUiParserT("message.stepStartTitle")}\n${opencodeUiParserT(
+    "message.stepSnapshotLabel",
+    {
+      snapshot: snapshot.slice(0, 12),
+    }
+  )}`;
 }
 
 function formatStepFinishPart(partData: JsonRecord | null): string {

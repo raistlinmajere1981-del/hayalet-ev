@@ -28,7 +28,11 @@ import {
   updateUsagePlaceholders as updateUsagePlaceholdersFromModule,
 } from "./render-actions.js";
 import type { RenderContext } from "./render-actions.js";
-import { initQuickPromptPanel, loadToolsFinalSnapshot, refreshQuickPromptPanel } from "./tools-prompts.js";
+import {
+  initQuickPromptPanel,
+  loadToolsFinalSnapshot,
+  refreshQuickPromptPanel,
+} from "./tools-prompts.js";
 import { addMessage } from "./chat-utils.js";
 import {
   buildMessageRequestBody,
@@ -529,9 +533,10 @@ function initUtilityActions(): void {
   initQuickPromptPanel({ showToast });
 }
 
-function refreshLocalizedDynamicPanels(): Promise<void> {
+async function refreshLocalizedDynamicPanels(): Promise<void> {
   if (localeRefreshInFlight != null) {
-    return localeRefreshInFlight;
+    await localeRefreshInFlight;
+    return;
   }
 
   localeRefreshInFlight = (async (): Promise<void> => {
@@ -551,7 +556,7 @@ function refreshLocalizedDynamicPanels(): Promise<void> {
     localeRefreshInFlight = null;
   });
 
-  return localeRefreshInFlight;
+  await localeRefreshInFlight;
 }
 
 function bindLocaleRefresh(): void {

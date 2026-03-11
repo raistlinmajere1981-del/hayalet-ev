@@ -53,10 +53,7 @@ export async function aiaiChatStartHandler(
 ): Promise<CommandHandlerResult> {
   const { CoreEngine: coreEngine } = await import("../core-engine.js");
   const providerRaw = payload.provider ?? "ai1";
-  const provider =
-    providerRaw === "ai1" || providerRaw === "ai2"
-      ? providerRaw
-      : "ai1";
+  const provider = providerRaw === "ai1" || providerRaw === "ai2" ? providerRaw : "ai1";
   const argsLabel = payload.args ?? "";
 
   try {
@@ -74,8 +71,7 @@ export async function aiaiChatStartHandler(
       if (radio !== null && !radio.disabled) {
         radio.checked = true;
       }
-    } catch {
-    }
+    } catch {}
 
     Logger.panel(
       LogCategory.COMMAND,
@@ -92,19 +88,14 @@ export async function aiaiChatStartHandler(
     });
 
     if (result.success === true) {
-      Logger.panel(
-        LogCategory.COMMAND,
-        LogLevel.INFO,
-        aiChatT("relaySendTriggered"),
-        {
-          eventType: "coreengine-ai-send",
-          provider,
-          triggerCommand: "AIAIChatStart",
-          triggerSource: payload.source ?? "manual",
-          detail: "ai1, ai2 protocol-start",
-          timestamp: formatCommandTimestamp(),
-        }
-      );
+      Logger.panel(LogCategory.COMMAND, LogLevel.INFO, aiChatT("relaySendTriggered"), {
+        eventType: "coreengine-ai-send",
+        provider,
+        triggerCommand: "AIAIChatStart",
+        triggerSource: payload.source ?? "manual",
+        detail: "ai1, ai2 protocol-start",
+        timestamp: formatCommandTimestamp(),
+      });
     }
 
     logCommandResult("AIAIChatStart", {
@@ -112,7 +103,8 @@ export async function aiaiChatStartHandler(
       sender: payload.sender ?? providerRaw,
       args: argsLabel,
       success: result.success,
-      detail: result.message ?? (result.success ? aiChatT("statusStarted") : aiChatT("statusError")),
+      detail:
+        result.message ?? (result.success ? aiChatT("statusStarted") : aiChatT("statusError")),
     });
 
     return result;
@@ -159,19 +151,14 @@ export async function aiaiChatStopHandler(
     });
 
     if (result.success === true) {
-      Logger.panel(
-        LogCategory.COMMAND,
-        LogLevel.INFO,
-        aiChatT("relayStopTriggered"),
-        {
-          eventType: "coreengine-ai-send",
-          provider: providerRaw,
-          triggerCommand: "AIAIChatStop",
-          triggerSource: payload.source ?? "manual",
-          detail: "ai1, ai2 protocol-stop",
-          timestamp: formatCommandTimestamp(),
-        }
-      );
+      Logger.panel(LogCategory.COMMAND, LogLevel.INFO, aiChatT("relayStopTriggered"), {
+        eventType: "coreengine-ai-send",
+        provider: providerRaw,
+        triggerCommand: "AIAIChatStop",
+        triggerSource: payload.source ?? "manual",
+        detail: "ai1, ai2 protocol-stop",
+        timestamp: formatCommandTimestamp(),
+      });
     }
 
     logCommandResult("AIAIChatStop", {
@@ -201,10 +188,7 @@ export async function aiAssistantChatStartHandler(
   payload: CommandPayload = {}
 ): Promise<CommandHandlerResult> {
   const providerRaw = payload.provider ?? "ai1";
-  const provider =
-    providerRaw === "ai1" || providerRaw === "ai2"
-      ? providerRaw
-      : "ai1";
+  const provider = providerRaw === "ai1" || providerRaw === "ai2" ? providerRaw : "ai1";
 
   try {
     const sourceConn = SlotController.isConnected(provider);

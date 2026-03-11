@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-08T13:48:42.857Z",
+  "rooms": [
+    {
+      "id": "xox",
+      "name": "XOX Room",
+      "version": "1.0.0",
+      "description": "Play XOX against an attached AI slot through room-scoped ++cmd commands.",
+      "sourceDir": "/home/raistlin/hayalet-ev/rooms/xox",
+      "installedDir": "/home/raistlin/hayalet-ev/data/rooms/xox",
+      "manifestPath": "/home/raistlin/hayalet-ev/data/rooms/xox/manifest.json",
+      "runtimeEntryPath": "/home/raistlin/hayalet-ev/data/rooms/xox/ui/index.html",
+      "hostEntryPath": "/home/raistlin/hayalet-ev/data/rooms/xox/host/index.js",
+      "commandSpecs": [
+        {
+          "name": "XOXStartGame",
+          "description": "Start a new XOX game and send the room protocol to the selected AI slot.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "XOXUserMove",
+          "description": "Apply the user move from the room UI and request the AI response.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "XOXAIMove",
+          "description": "Apply the AI move returned with ++cmd:XOXAIMove({...}).",
+          "scope": "ai-slots"
+        },
+        {
+          "name": "XOXResetGame",
+          "description": "Reset the room game state to idle.",
+          "scope": "room-ui"
+        },
+        {
+          "name": "XOXSyncState",
+          "description": "Push the current XOX room state to the UI runtime.",
+          "scope": "system"
+        },
+        {
+          "name": "XOXShowResult",
+          "description": "Update the room result banner from host-side game logic.",
+          "scope": "system"
+        }
+      ],
+      "protocolSpecs": [
+        {
+          "key": "xox-start",
+          "room": "xox",
+          "scenario": "start",
+          "title": "[START][XOX]",
+          "editable": true
+        }
+      ],
+      "installedAt": "2026-03-08T13:48:42.857Z",
+      "updatedAt": "2026-03-08T13:48:42.857Z"
+    }
+  ]
+}

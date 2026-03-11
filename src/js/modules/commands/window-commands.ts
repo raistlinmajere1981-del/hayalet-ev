@@ -3,7 +3,7 @@ import { Logger } from "../logger/index.js";
 import { WindowManager } from "../window-manager.js";
 import type { CommandPayload } from "./utils.js";
 import { parseArgs, logCommandResult } from "./utils.js";
-import { getErrorMessage } from '@shared/index.js';
+import { getErrorMessage } from "@shared/index.js";
 
 type WindowCommandResult = {
   success: boolean;
@@ -13,7 +13,6 @@ type WindowCommandResult = {
   executed?: boolean;
   message?: string;
 };
-
 
 function parseWindowArgs(rawArgs = ""): { action: string } {
   const parts = parseArgs(rawArgs);
@@ -29,17 +28,17 @@ export function windowManagerHandler(payload: CommandPayload = {}): WindowComman
 
   try {
     const result = WindowManager.apply(action) === true;
-    
+
     Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `WindowManager çalıştı | action: ${action}`);
-    
-      logCommandResult("WindowManager", {
-        providerRaw,
-        sender,
-        args: argsLabel,
-        success: true,
-        detail: `action: ${action}, success: ${String(result)}`,
-      });
-    
+
+    logCommandResult("WindowManager", {
+      providerRaw,
+      sender,
+      args: argsLabel,
+      success: true,
+      detail: `action: ${action}, success: ${String(result)}`,
+    });
+
     return {
       success: result,
       command: "WindowManager",
@@ -50,7 +49,7 @@ export function windowManagerHandler(payload: CommandPayload = {}): WindowComman
   } catch (err) {
     const errMsg = getErrorMessage(err);
     Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `WindowManager hata: ${errMsg}`);
-    
+
     logCommandResult("WindowManager", {
       providerRaw,
       sender,
@@ -58,7 +57,7 @@ export function windowManagerHandler(payload: CommandPayload = {}): WindowComman
       success: false,
       detail: errMsg,
     });
-    
+
     return { success: false, message: errMsg };
   }
 }
@@ -87,7 +86,7 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
     if (electronApi === undefined) {
       throw new Error("electronAPI mevcut değil");
     }
-    
+
     logCommandResult("Restart", {
       providerRaw,
       sender,
@@ -95,9 +94,9 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
       success: true,
       detail: "Uygulama yeniden başlatılıyor...",
     });
-    
+
     await electronApi.appRestart();
-    
+
     return {
       success: true,
       command: "Restart",
@@ -106,7 +105,7 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
   } catch (err) {
     const errMsg = getErrorMessage(err);
     Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `Restart hata: ${errMsg}`);
-    
+
     logCommandResult("Restart", {
       providerRaw,
       sender,
@@ -114,7 +113,7 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
       success: false,
       detail: errMsg,
     });
-    
+
     return { success: false, message: errMsg };
   }
 }

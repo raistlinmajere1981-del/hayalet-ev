@@ -33,7 +33,9 @@ temp/
 *.tmp
 
 # Data directory (user databases and attachments)
-data/
+data/*
+!data/rooms/
+!data/rooms/**
 
 # User-specific assets (profile pictures etc.)
 src/assets/*@*.png
@@ -41,9 +43,8 @@ src/assets/*@*.png
 # Commands (runtime data)
 /commands/
 
-# Config directory (contains settings and sensitive data)
-config/
-!config/searxng_settings.yml
+# Config settings may contain sensitive data
+config/settings.json
 
 # Settings (may contain sensitive data - legacy, now in config/)
 settings.json

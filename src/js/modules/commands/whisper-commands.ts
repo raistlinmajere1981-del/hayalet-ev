@@ -72,7 +72,9 @@ function parseWhisperArgs(
   };
 }
 
-export async function whisperManagerHandler(payload: CommandPayload = {}): Promise<CommandHandlerResult> {
+export async function whisperManagerHandler(
+  payload: CommandPayload = {}
+): Promise<CommandHandlerResult> {
   const { providerRaw, providerName } = await resolveProvider(payload);
   const sourceAccountId = resolveSourceAccountId(payload);
   const { accountId, text, when } = parseWhisperArgs(payload.args, sourceAccountId);
@@ -82,7 +84,7 @@ export async function whisperManagerHandler(payload: CommandPayload = {}): Promi
     return {
       success: false,
       message:
-        "Kullanım: ++cmd:WhisperManager(<accountId>, \"<mesaj>\", \"<zaman>\") veya ++cmd:WhisperManager(\"<mesaj>\", \"<zaman>\")",
+        'Kullanım: ++cmd:WhisperManager(<accountId>, "<mesaj>", "<zaman>") veya ++cmd:WhisperManager("<mesaj>", "<zaman>")',
     };
   }
 

@@ -4,29 +4,32 @@ import { Logger } from "../logger/index.js";
 import DeviceManager from "../device-manager.js";
 import type { CommandPayload } from "./utils.js";
 import { parseArgs, logCommandResult } from "./utils.js";
-import { getErrorMessage } from '@shared/index.js';
+import { getErrorMessage } from "@shared/index.js";
 
 type CommandHandlerResult = { success: boolean; message?: string; [key: string]: unknown };
 
-export async function deviceManagerHandler(payload: CommandPayload = {}): Promise<CommandHandlerResult> {
+export async function deviceManagerHandler(
+  payload: CommandPayload = {}
+): Promise<CommandHandlerResult> {
   const providerRaw = typeof payload.provider === "string" ? payload.provider : "AI";
   const rawArgs = typeof payload.args === "string" ? payload.args : "";
   const parsedParts = parseArgs(rawArgs);
-  const parts: string[] = Array.isArray(parsedParts)
-    ? parsedParts.map((part) => String(part))
-    : [];
+  const parts: string[] = Array.isArray(parsedParts) ? parsedParts.map((part) => String(part)) : [];
   const action = (parts[0] ?? "").toLowerCase();
   const params = parts.slice(1);
   const argsLabel = rawArgs;
-  const sender = typeof payload.sender === "string" && payload.sender !== ""
-    ? payload.sender
-    : providerRaw;
-  
+  const sender =
+    typeof payload.sender === "string" && payload.sender !== "" ? payload.sender : providerRaw;
+
   try {
-    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `DeviceManager çağrıldı | action=${action} args=${params.join(",")}`);
-    
+    Logger.panel(
+      LogCategory.COMMAND,
+      LogLevel.INFO,
+      `DeviceManager çağrıldı | action=${action} args=${params.join(",")}`
+    );
+
     let res: { success: boolean; message?: string } = { success: false, message: "no-action" };
-    
+
     if (action === "move" || action === "movemouse") {
       const x = Number(params[0] ?? 0);
       const y = Number(params[1] ?? 0);
@@ -64,7 +67,7 @@ export async function deviceManagerHandler(payload: CommandPayload = {}): Promis
       success: res.success,
       detail: res.message ?? (res.success ? "executed" : "failed"),
     });
-    
+
     return { success: res.success, result: res };
   } catch (err) {
     const errMsg = getErrorMessage(err);

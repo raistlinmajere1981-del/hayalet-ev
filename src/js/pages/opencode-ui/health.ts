@@ -616,7 +616,9 @@ export async function loadStatusContext(): Promise<void> {
     if (workspaceLabelEl != null) {
       const parts = path.split("/").filter((part) => part !== "");
       const folderName =
-        parts.length > 0 ? (parts[parts.length - 1] ?? t("workspace.mainLabel")) : t("workspace.mainLabel");
+        parts.length > 0
+          ? (parts[parts.length - 1] ?? t("workspace.mainLabel"))
+          : t("workspace.mainLabel");
       workspaceLabelEl.textContent = folderName;
     }
   }

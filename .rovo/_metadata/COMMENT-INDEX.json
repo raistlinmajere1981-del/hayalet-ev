@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-11T21:18:06.812Z",
+  "generatedAt": "2026-03-11T22:06:15.691Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -892,8 +892,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 377,
-          "endLine": 377,
+          "startLine": 361,
+          "endLine": 361,
           "text": "NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -901,8 +901,8 @@
         },
         {
           "kind": "note",
-          "startLine": 378,
-          "endLine": 378,
+          "startLine": 362,
+          "endLine": 362,
           "text": "NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -910,8 +910,8 @@
         },
         {
           "kind": "note",
-          "startLine": 485,
-          "endLine": 485,
+          "startLine": 469,
+          "endLine": 469,
           "text": "NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1494,8 +1494,8 @@
         },
         {
           "kind": "note",
-          "startLine": 284,
-          "endLine": 284,
+          "startLine": 285,
+          "endLine": 285,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1503,8 +1503,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1862,
-          "endLine": 1862,
+          "startLine": 1896,
+          "endLine": 1896,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1512,8 +1512,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1904,
-          "endLine": 1904,
+          "startLine": 1938,
+          "endLine": 1938,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1706,8 +1706,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 663,
-          "endLine": 663,
+          "startLine": 664,
+          "endLine": 664,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1758,8 +1758,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 208,
-          "endLine": 208,
+          "startLine": 210,
+          "endLine": 210,
           "text": "NOTE: app.ts owns webview registration to avoid duplicate lifecycle hooks.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1767,8 +1767,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1291,
-          "endLine": 1291,
+          "startLine": 1327,
+          "endLine": 1327,
           "text": "NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.",
           "prefix": "NOTE",
           "scopeType": "file",
