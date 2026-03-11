@@ -5,7 +5,7 @@ logs/
 archives/
 config/
 data/
-commands/
+/commands/
 screenshots/
 tmp/
 temp/
