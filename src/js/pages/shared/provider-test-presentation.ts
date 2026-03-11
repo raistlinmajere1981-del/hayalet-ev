@@ -5,6 +5,7 @@ import type {
   ProviderTestSlot,
   ProviderTestResult,
   ProviderTestSuite,
+  ProviderWebviewSyncMode,
   TestStatus,
 } from "../../../types/provider.ts";
 import { AppI18n } from "../../modules/i18n/index.js";
@@ -65,6 +66,67 @@ function providerTestT(key: string, params?: Record<string, string | number | bo
   return AppI18n.t(`providerTest.${key}`, params);
 }
 
+const SCENARIO_TITLE_KEYS: Record<string, string> = {
+  "webview-test": "scenario.labels.webviewTest",
+  "webview-sync": "scenario.labels.webviewSync",
+};
+
+const SCENARIO_COMMAND_KEYS: Record<string, string> = {
+  "reset-default-page": "scenario.commands.resetDefaultPage",
+  "disabled-send": "scenario.commands.disabledSend",
+  "drag-drop-surface": "scenario.commands.dragDropSurface",
+  "inject-message": "scenario.commands.injectMessage",
+  "enabled-send": "scenario.commands.enabledSend",
+  "attach-file": "scenario.commands.attachFile",
+  "send-thinking": "scenario.commands.sendThinking",
+  "final-bubbles": "scenario.commands.finalBubbles",
+  "scroll-behavior": "scenario.commands.scrollBehavior",
+  "provider-capabilities": "scenario.commands.providerCapabilities",
+  "open-sidebar": "scenario.commands.openSidebar",
+  "wait-sidebar-ready": "scenario.commands.waitSidebarReady",
+  "check-sidebar-ready": "scenario.commands.checkSidebarReady",
+  "collect-session-urls": "scenario.commands.collectSessionUrls",
+  "soft-sync-session": "scenario.commands.softSyncSession",
+  "navigate-session": "scenario.commands.navigateSession",
+  "sync-session": "scenario.commands.syncSession",
+  "refresh-conversation-list": "scenario.commands.refreshConversationList",
+};
+
+const SCENARIO_SYNC_MODE_KEYS: Record<ProviderWebviewSyncMode, string> = {
+  soft: "scenario.syncModes.soft",
+  full: "scenario.syncModes.full",
+  clean: "scenario.syncModes.clean",
+};
+
+function translateProviderScenarioLabel(key: string | undefined, fallback: string): string {
+  if (key == null || key === "") {
+    return fallback;
+  }
+
+  const translated = providerTestT(key);
+  return translated === `providerTest.${key}` ? fallback : translated;
+}
+
+export function getScenarioTitleLabel(scenarioId: string, fallback?: string): string {
+  const normalizedFallback = fallback?.trim() ?? "";
+  return translateProviderScenarioLabel(
+    SCENARIO_TITLE_KEYS[scenarioId],
+    normalizedFallback !== "" ? normalizedFallback : scenarioId
+  );
+}
+
+export function getScenarioCommandLabel(commandId: string, fallback?: string): string {
+  const normalizedFallback = fallback?.trim() ?? "";
+  return translateProviderScenarioLabel(
+    SCENARIO_COMMAND_KEYS[commandId],
+    normalizedFallback !== "" ? normalizedFallback : commandId
+  );
+}
+
+export function getScenarioSyncModeLabel(mode: ProviderWebviewSyncMode): string {
+  return translateProviderScenarioLabel(SCENARIO_SYNC_MODE_KEYS[mode], mode);
+}
+
 export const resolveScenarioSurface = resolveProviderTestSurface;
 
 export function resolveProviderTestSurface(slot: ProviderTestSlot): ProviderTestSurface {
@@ -89,7 +151,7 @@ function toDisplayRow(command: ProviderScenarioCommandReport): ScenarioDisplayRo
 
   return {
     id: command.id,
-    name: command.name,
+    name: getScenarioCommandLabel(command.id, command.name),
     status: command.status,
     message: command.message,
     ...(sessionPreview !== undefined ? { sessionPreview } : {}),

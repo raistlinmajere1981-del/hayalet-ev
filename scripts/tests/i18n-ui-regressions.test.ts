@@ -188,6 +188,9 @@ test("mixed-locale smoke test covers key UI strings", () => {
     { path: ["app", "startup", "starting"], label: "app.startup.starting" },
     { path: ["shell", "assistant", "opencodeDoctor", "indicatorMissing"], label: "shell.assistant.opencodeDoctor.indicatorMissing" },
     { path: ["opencodeUi", "workspace", "mainLabel"], label: "opencodeUi.workspace.mainLabel" },
+    { path: ["opencodeUi", "message", "patchTitle"], label: "opencodeUi.message.patchTitle" },
+    { path: ["opencodeUi", "message", "stepStartTitle"], label: "opencodeUi.message.stepStartTitle" },
+    { path: ["opencodeUi", "chat", "attachmentFallbackName"], label: "opencodeUi.chat.attachmentFallbackName" },
   ];
 
   for (const item of pairs) {

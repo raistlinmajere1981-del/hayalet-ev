@@ -35,6 +35,7 @@ interface QuickPromptPanelOptions {
 
 const QUICK_PROMPTS_STORAGE_KEY = "app:opencode-ui:quick-prompts";
 let quickPromptCache: QuickPromptRecord[] = [];
+let quickPromptPanelOptions: QuickPromptPanelOptions | null = null;
 
 interface QuickPromptStoreResponse {
   success?: boolean;
@@ -354,6 +355,8 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
     return;
   }
 
+  quickPromptPanelOptions = options;
+
   const addButton = document.getElementById("add-prompt-btn") as HTMLButtonElement | null;
   const promptsListEl = document.getElementById("prompts-list");
   const modal = document.getElementById("prompt-modal");
@@ -472,6 +475,14 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
     event.preventDefault();
     void handleQuickPromptAction(action, promptId, options);
   });
+}
+
+export async function refreshQuickPromptPanel(): Promise<void> {
+  if (quickPromptPanelOptions == null) {
+    return;
+  }
+
+  await refreshQuickPromptList(quickPromptPanelOptions);
 }
 
 function normalizeToolIds(data: unknown): string[] {

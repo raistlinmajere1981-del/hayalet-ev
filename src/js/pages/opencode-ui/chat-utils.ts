@@ -51,8 +51,8 @@ export function addMessage(
         typeof fileEntry === "string"
           ? fileEntry
           : typeof fileEntry === "object"
-            ? String(fileEntry.name ?? fileEntry.fileName ?? fileEntry.path ?? "ek")
-            : "attachment";
+            ? String(fileEntry.name ?? fileEntry.fileName ?? fileEntry.path ?? t("chat.attachmentFallbackName"))
+            : t("chat.attachmentFallbackName");
       const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
       let icon = "FILE";
       if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].indexOf(ext) !== -1) {

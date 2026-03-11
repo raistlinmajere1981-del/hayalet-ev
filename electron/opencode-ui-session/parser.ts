@@ -1,4 +1,8 @@
 import { asNumber, asRecord, asString, parseRecord, stringifyValue } from "./shared.ts";
+import { readElectronAppLanguageSync } from "../i18n/language-service.ts";
+import { getBuiltInLanguagePack } from "../../shared/i18n/bundled-languages.ts";
+import { translateCatalog } from "../../shared/i18n/catalog.ts";
+import { DEFAULT_APP_LANGUAGE } from "../../src/types/i18n.ts";
 import type {
   JsonRecord,
   MessageRow,
@@ -7,6 +11,16 @@ import type {
   OpencodeUiToolCall,
   PartRow,
 } from "./types.ts";
+
+function opencodeUiParserT(key: string, params?: Record<string, string | number>): string {
+  const locale = readElectronAppLanguageSync();
+  const activeCatalog =
+    getBuiltInLanguagePack(locale)?.catalog ??
+    getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+  const fallbackCatalog = getBuiltInLanguagePack(DEFAULT_APP_LANGUAGE)?.catalog;
+
+  return translateCatalog(activeCatalog ?? fallbackCatalog ?? {}, `opencodeUi.${key}`, params, fallbackCatalog);
+}
 
 function mergeText(current: string, next: string): string {
   if (next.trim() === "") {
@@ -52,16 +66,16 @@ function formatReasoningPart(partData: JsonRecord | null): string {
 
   const text = asString(partData["text"]).trim();
   if (text !== "") {
-    return `Reasoning\n${text}`;
+    return `${opencodeUiParserT("message.reasoningTitle")}\n${text}`;
   }
 
   const metadata = asRecord(partData["metadata"]);
   const openai = asRecord(metadata?.["openai"]);
   if (asString(openai?.["reasoningEncryptedContent"]).trim() !== "") {
-    return "Reasoning\nIcerik sifreli veya ozet bos.";
+    return `${opencodeUiParserT("message.reasoningTitle")}\n${opencodeUiParserT("message.reasoningUnavailable")}`;
   }
 
-  return "Reasoning";
+  return opencodeUiParserT("message.reasoningTitle");
 }
 
 function formatStepStartPart(partData: JsonRecord | null): string {
@@ -71,10 +85,12 @@ function formatStepStartPart(partData: JsonRecord | null): string {
 
   const snapshot = asString(partData["snapshot"]).trim();
   if (snapshot === "") {
-    return "Step start";
+    return opencodeUiParserT("message.stepStartTitle");
   }
 
-  return `Step start\nSnapshot: ${snapshot.slice(0, 12)}`;
+  return `${opencodeUiParserT("message.stepStartTitle")}\n${opencodeUiParserT("message.stepSnapshotLabel", {
+    snapshot: snapshot.slice(0, 12),
+  })}`;
 }
 
 function formatStepFinishPart(partData: JsonRecord | null): string {
@@ -82,16 +98,16 @@ function formatStepFinishPart(partData: JsonRecord | null): string {
     return "";
   }
 
-  const lines = ["Step finish"];
+  const lines = [opencodeUiParserT("message.stepFinishTitle")];
   const reason = asString(partData["reason"]).trim();
   if (reason !== "") {
-    lines.push(`Reason: ${reason}`);
+    lines.push(opencodeUiParserT("message.stepReasonLabel", { reason }));
   }
 
   const tokens = asRecord(partData["tokens"]);
   const totalTokens = asNumber(tokens?.["total"]);
   if (totalTokens > 0) {
-    lines.push(`Tokens: ${String(totalTokens)}`);
+    lines.push(opencodeUiParserT("message.stepTokensLabel", { count: String(totalTokens) }));
   }
 
   return lines.join("\n");
@@ -104,15 +120,15 @@ function formatPatchPart(partData: JsonRecord | null): string {
 
   const filesRaw = partData["files"];
   if (!Array.isArray(filesRaw) || filesRaw.length === 0) {
-    return "Patch";
+    return opencodeUiParserT("message.patchTitle");
   }
 
   const files = filesRaw.map((item) => toCompactLabel(item)).filter((item) => item !== "");
   if (files.length === 0) {
-    return "Patch";
+    return opencodeUiParserT("message.patchTitle");
   }
 
-  return `Patch\nFiles:\n- ${files.join("\n- ")}`;
+  return `${opencodeUiParserT("message.patchTitle")}\n${opencodeUiParserT("message.patchFilesLabel")}\n- ${files.join("\n- ")}`;
 }
 
 function formatStructuredAssistantPart(partData: JsonRecord | null): string {
@@ -304,7 +320,7 @@ export function parseMessages(
       if (partType === "file" && role === "user") {
         const fileName = asString(
           partData?.["filename"],
-          asString(partData?.["name"], "attachment")
+          asString(partData?.["name"], opencodeUiParserT("chat.attachmentFallbackName"))
         );
         const mediaType = asString(
           partData?.["mime"],

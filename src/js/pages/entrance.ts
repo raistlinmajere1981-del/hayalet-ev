@@ -161,6 +161,7 @@ export class EntranceHallController {
     this.accountPanel.render();
     this.slotPanelAi1.render();
     this.slotPanelAi2.render();
+    this.webviewPanel.onLocaleChanged();
     this.updateUI();
   }
 

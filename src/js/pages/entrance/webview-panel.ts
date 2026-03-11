@@ -20,9 +20,12 @@ import {
   filterScenarioDisplayRows,
   formatScenarioStatusLabel,
   generateProviderTestResultsHTML,
+  getScenarioCommandLabel,
   getScenarioEmptyMessage,
   getScenarioReadyLabel,
   getScenarioResultsFilterAriaLabel,
+  getScenarioSyncModeLabel,
+  getScenarioTitleLabel,
   resolveScenarioSurface,
   type ScenarioStatusFilter,
 } from "../shared/provider-test-presentation.js";
@@ -57,7 +60,6 @@ interface SlotState {
 
 interface ScenarioOverlayState {
   scenarioId: string;
-  scenarioTitle: string;
   syncMode: ProviderWebviewSyncMode;
   testedSlot: SlotType;
   hostSlot: SlotType;
@@ -389,7 +391,7 @@ export class WebviewPanel {
     return this.scenarioOverlayState?.hostSlot === slot;
   }
 
-  openScenarioLauncher(slot: SlotType, scenarioId: string, scenarioTitle: string): void {
+  openScenarioLauncher(slot: SlotType, scenarioId: string): void {
     if (this.scenarioOverlayState?.phase === "running") {
       return;
     }
@@ -401,7 +403,6 @@ export class WebviewPanel {
 
     this.scenarioOverlayState = {
       scenarioId,
-      scenarioTitle,
       syncMode: "full",
       testedSlot: slot,
       hostSlot: surface.hostSlot,
@@ -414,6 +415,41 @@ export class WebviewPanel {
       message: providerTestT("scenario.hint"),
       suite: null,
     };
+
+    this.renderScenarioOverlay();
+  }
+
+  onLocaleChanged(): void {
+    const state = this.scenarioOverlayState;
+    if (!state) {
+      return;
+    }
+
+    state.providerName = AppState.getNickname(state.testedSlot);
+    const scenarioTitle = getScenarioTitleLabel(state.scenarioId);
+
+    if (state.phase === "launcher") {
+      state.message = providerTestT("scenario.hint");
+    } else if (state.phase === "running" && state.commands.length === 0) {
+      state.message =
+        state.runId === null
+          ? providerTestT("scenario.startedMessage", {
+              providerName: state.providerName,
+              scenarioTitle,
+            })
+          : providerTestT("scenario.preparingMessage", {
+              providerName: state.providerName,
+              scenarioTitle,
+            });
+    } else if (state.phase === "completed" && state.suite !== null) {
+      state.message = buildScenarioCompletionMessage({
+        passed: state.suite.passed,
+        totalTests: state.suite.totalTests,
+        commands: state.commands,
+        ...(state.suite.aborted !== undefined ? { aborted: state.suite.aborted } : {}),
+        ...(state.suite.abortReason !== undefined ? { abortReason: state.suite.abortReason } : {}),
+      });
+    }
 
     this.renderScenarioOverlay();
   }
@@ -487,7 +523,7 @@ export class WebviewPanel {
       state.phase = "running";
       state.message = providerTestT("scenario.preparingMessage", {
         providerName: state.providerName,
-        scenarioTitle: state.scenarioTitle,
+        scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       });
     }
 
@@ -530,7 +566,7 @@ export class WebviewPanel {
     const summary = buildScenarioProgressSummary({
       slot: state.testedSlot,
       providerName: state.providerName,
-      scenarioTitle: state.scenarioTitle,
+      scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       commands: displayCommands,
     });
     const counts = buildScenarioStatusCounts({ commands: displayCommands });
@@ -561,9 +597,9 @@ export class WebviewPanel {
       state.scenarioId === "webview-sync"
         ? `
             <div class="scenario-sync-mode" role="group" aria-label="${providerTestT("scenario.syncModeAria")}">
-              <button class="scenario-sync-mode__option${state.syncMode === "soft" ? " is-active" : ""}" type="button" data-sync-mode="soft" ${isRunning ? "disabled" : ""}>Soft</button>
-              <button class="scenario-sync-mode__option${state.syncMode === "full" ? " is-active" : ""}" type="button" data-sync-mode="full" ${isRunning ? "disabled" : ""}>Full</button>
-              <button class="scenario-sync-mode__option${state.syncMode === "clean" ? " is-active" : ""}" type="button" data-sync-mode="clean" ${isRunning ? "disabled" : ""}>Clean</button>
+              <button class="scenario-sync-mode__option${state.syncMode === "soft" ? " is-active" : ""}" type="button" data-sync-mode="soft" ${isRunning ? "disabled" : ""}>${getScenarioSyncModeLabel("soft")}</button>
+              <button class="scenario-sync-mode__option${state.syncMode === "full" ? " is-active" : ""}" type="button" data-sync-mode="full" ${isRunning ? "disabled" : ""}>${getScenarioSyncModeLabel("full")}</button>
+              <button class="scenario-sync-mode__option${state.syncMode === "clean" ? " is-active" : ""}" type="button" data-sync-mode="clean" ${isRunning ? "disabled" : ""}>${getScenarioSyncModeLabel("clean")}</button>
             </div>
           `
         : "";
@@ -605,7 +641,7 @@ export class WebviewPanel {
               return `
                     <div class="scenario-step scenario-step--${row.status}">
                       <div class="scenario-step__body">
-                        <span class="scenario-step__name">${row.name}</span>
+                        <span class="scenario-step__name">${getScenarioCommandLabel(row.id, row.name)}</span>
                         ${row.message !== "" ? `<span class="${messageClass}">${row.message}</span>` : ""}
                         ${previewMarkup}
                       </div>
@@ -618,7 +654,7 @@ export class WebviewPanel {
     overlayEl.innerHTML = `
       <div class="scenario-overlay__header">
             <div>
-              <div class="scenario-overlay__eyebrow">${state.testedSlot.toUpperCase()} ${state.scenarioTitle}</div>
+              <div class="scenario-overlay__eyebrow">${state.testedSlot.toUpperCase()} ${getScenarioTitleLabel(state.scenarioId)}</div>
               <div class="overlay-title">${summary.title}</div>
               <div class="overlay-subtitle">${state.message}</div>
             </div>
@@ -865,7 +901,7 @@ export class WebviewPanel {
       state.suite = null;
       state.message = providerTestT("scenario.startedMessage", {
         providerName: state.providerName,
-        scenarioTitle: state.scenarioTitle,
+        scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       });
       this.renderScenarioOverlay();
 
@@ -963,7 +999,7 @@ export class WebviewPanel {
     if (this.scenarioOverlayState?.phase === "running") return;
 
     this.collapseSettingsAccordion();
-    this.openScenarioLauncher(slot, "webview-test", "webview-test");
+    this.openScenarioLauncher(slot, "webview-test");
   }
 
   handleSyncClick(slot: "ai1" | "ai2"): void {
@@ -972,7 +1008,7 @@ export class WebviewPanel {
     if (this.scenarioOverlayState?.phase === "running") return;
 
     this.collapseSettingsAccordion();
-    this.openScenarioLauncher(slot, "webview-sync", "webview-sync");
+    this.openScenarioLauncher(slot, "webview-sync");
   }
 
   collapseSettingsAccordion(): void {

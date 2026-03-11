@@ -10,6 +10,7 @@ import {
   listOpencodeUiSessions,
   readOpencodeUiSession,
 } from "../../electron/opencode-ui-session-store.ts";
+import { t } from "../../src/js/pages/opencode-ui/i18n.ts";
 
 interface DbFixture {
   db: Database.Database;
@@ -540,11 +541,11 @@ test("readOpencodeUiSession reads structured assistant parts and latest todos", 
     assert.equal(result.session?.messages[1]?.text, "assistant delta text");
     assert.equal(result.session?.messages[2]?.text, "");
     assert.equal(result.session?.messages[2]?.toolCalls?.[0]?.name, "bash");
-    assert.match(result.session?.messages[3]?.text ?? "", /Step start/);
-    assert.match(result.session?.messages[3]?.text ?? "", /Reasoning/);
-    assert.match(result.session?.messages[3]?.text ?? "", /Patch/);
+    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.stepStartTitle")));
+    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.reasoningTitle")));
+    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.patchTitle")));
     assert.match(result.session?.messages[3]?.text ?? "", /app\.ts/);
-    assert.match(result.session?.messages[3]?.text ?? "", /Step finish/);
+    assert.match(result.session?.messages[3]?.text ?? "", new RegExp(t("message.stepFinishTitle")));
     assert.equal(result.session?.messages[4]?.toolCalls?.[0]?.name, "todowrite");
     assert.equal(result.session?.todos?.length, 2);
     assert.equal(result.session?.todos?.[0]?.content, "Investigate bug");

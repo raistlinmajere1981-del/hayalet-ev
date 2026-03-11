@@ -127,17 +127,17 @@ function renderSessionList(
         ? ""
         : '<button class="ds-session__action ds-session__action--archive" data-action="archive" title="' +
           escapeHtml(t("session.actionArchive")) +
-          '">Arc</button>';
+          `">${escapeHtml(t("session.actionArchiveShort"))}</button>`;
       const forkAction = archived
         ? ""
         : '<button class="ds-session__action" data-action="fork" title="' +
           escapeHtml(t("session.actionFork")) +
-          '">Fork</button>';
+          `">${escapeHtml(t("session.actionForkShort"))}</button>`;
       const renameAction = archived
         ? ""
         : '<button class="ds-session__action" data-action="rename" title="' +
           escapeHtml(t("session.actionRename")) +
-          '">Edit</button>';
+          `">${escapeHtml(t("session.actionRenameShort"))}</button>`;
       const stateLabel = getSessionStateLabel(visualState);
 
       return (
@@ -173,7 +173,7 @@ function renderSessionList(
         archiveAction +
         '<button class="ds-session__action ds-session__action--delete" data-action="delete" title="' +
         escapeHtml(t("session.actionDelete")) +
-        '">Del</button>' +
+        `">${escapeHtml(t("session.actionDeleteShort"))}</button>` +
         "</div>" +
         "</div>"
       );
@@ -350,7 +350,7 @@ export async function handleSessionAction(
     );
     const forkId = normalizeSessionId(response);
     if (forkId !== "") {
-      await context.ensureSessionInDisk(forkId, "Fork");
+      await context.ensureSessionInDisk(forkId, t("session.actionFork"));
       await activateSession(context, forkId);
     } else {
       await context.loadSessionListAndRender({ preserveActive: true });

@@ -28,7 +28,7 @@ import {
   updateUsagePlaceholders as updateUsagePlaceholdersFromModule,
 } from "./render-actions.js";
 import type { RenderContext } from "./render-actions.js";
-import { initQuickPromptPanel, loadToolsFinalSnapshot } from "./tools-prompts.js";
+import { initQuickPromptPanel, loadToolsFinalSnapshot, refreshQuickPromptPanel } from "./tools-prompts.js";
 import { addMessage } from "./chat-utils.js";
 import {
   buildMessageRequestBody,
@@ -80,6 +80,7 @@ import type {
 import { config as opencodeUiConfig } from "../../modules/webview/providers/opencode-ui/config.js";
 import { bootstrapOpencodeUiI18n, t } from "./i18n.js";
 import { ThemeManager } from "../../ui/theme-manager.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 type SessionListContext = Parameters<typeof loadSessionListAndRenderFromModule>[0];
 type HistoryContext = Parameters<typeof loadActiveSessionHistoryFromModule>[0];
 type BootstrapContext = Parameters<typeof initializeSessionSelectionFromModule>[0];
@@ -110,6 +111,8 @@ let modelDropdown: CustomSelectAPI | null = null;
 let effortDropdown: CustomSelectAPI | null = null;
 let modelSettingsOverlayController: ReturnType<typeof createModelSettingsOverlayController> | null =
   null;
+let localeRefreshBound = false;
+let localeRefreshInFlight: Promise<void> | null = null;
 
 function getInitialUsageText(): string {
   return t("usage.diskDb");
@@ -526,6 +529,42 @@ function initUtilityActions(): void {
   initQuickPromptPanel({ showToast });
 }
 
+function refreshLocalizedDynamicPanels(): Promise<void> {
+  if (localeRefreshInFlight != null) {
+    return localeRefreshInFlight;
+  }
+
+  localeRefreshInFlight = (async (): Promise<void> => {
+    const refreshJobs = [
+      loadSessionListAndRender({ preserveActive: true }),
+      loadActiveSessionHistory(),
+      loadStatusContext(),
+      loadToolsFinalSnapshot(),
+      loadAgents(),
+      loadProviderContextAndModels(),
+      refreshQuickPromptPanel(),
+    ];
+
+    await Promise.allSettled(refreshJobs);
+    modelSettingsOverlayController?.refresh();
+  })().finally(() => {
+    localeRefreshInFlight = null;
+  });
+
+  return localeRefreshInFlight;
+}
+
+function bindLocaleRefresh(): void {
+  if (localeRefreshBound) {
+    return;
+  }
+
+  localeRefreshBound = true;
+  AppI18n.subscribe(() => {
+    void refreshLocalizedDynamicPanels();
+  });
+}
+
 async function initializeSessionSelection(resumeSessionId: string): Promise<void> {
   await initializeSessionSelectionFromModule(bootstrapContext(), resumeSessionId);
 }
@@ -612,5 +651,6 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
     await bootstrapOpencodeUiApp();
+    bindLocaleRefresh();
   })();
 }

@@ -1,4 +1,5 @@
 import type { OpencodeUiSessionMessage } from "./types.js";
+import { t } from "./i18n.js";
 
 export function normalizeString(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -119,7 +120,7 @@ export function extractTextFromPart(part: unknown): string {
   if (type === "reasoning") {
     const text = normalizeString(record["text"]).trim();
     if (text !== "") {
-      return `Reasoning\n${text}`;
+      return `${t("message.reasoningTitle")}\n${text}`;
     }
 
     const metadata =
@@ -135,22 +136,24 @@ export function extractTextFromPart(part: unknown): string {
         ? (metadata["openai"] as Record<string, unknown>)
         : null;
     if (normalizeString(openai?.["reasoningEncryptedContent"]).trim() !== "") {
-      return "Reasoning\nIcerik sifreli veya ozet bos.";
+      return `${t("message.reasoningTitle")}\n${t("message.reasoningUnavailable")}`;
     }
 
-    return "Reasoning";
+    return t("message.reasoningTitle");
   }
 
   if (type === "step-start") {
     const snapshot = normalizeString(record["snapshot"]).trim();
-    return snapshot !== "" ? `Step start\nSnapshot: ${snapshot.slice(0, 12)}` : "Step start";
+    return snapshot !== ""
+      ? `${t("message.stepStartTitle")}\n${t("message.stepSnapshotLabel", { snapshot: snapshot.slice(0, 12) })}`
+      : t("message.stepStartTitle");
   }
 
   if (type === "step-finish") {
-    const lines = ["Step finish"];
+    const lines = [t("message.stepFinishTitle")];
     const reason = normalizeString(record["reason"]).trim();
     if (reason !== "") {
-      lines.push(`Reason: ${reason}`);
+      lines.push(t("message.stepReasonLabel", { reason }));
     }
 
     const tokens =
@@ -161,7 +164,7 @@ export function extractTextFromPart(part: unknown): string {
         : null;
     const total = Number(tokens?.["total"] ?? 0);
     if (Number.isFinite(total) && total > 0) {
-      lines.push(`Tokens: ${String(total)}`);
+      lines.push(t("message.stepTokensLabel", { count: String(total) }));
     }
 
     return lines.join("\n");
@@ -170,11 +173,13 @@ export function extractTextFromPart(part: unknown): string {
   if (type === "patch") {
     const filesRaw = record["files"];
     if (!Array.isArray(filesRaw) || filesRaw.length === 0) {
-      return "Patch";
+      return t("message.patchTitle");
     }
 
     const files = filesRaw.map((item) => toCompactLabel(item)).filter((item) => item !== "");
-    return files.length > 0 ? `Patch\nFiles:\n- ${files.join("\n- ")}` : "Patch";
+    return files.length > 0
+      ? `${t("message.patchTitle")}\n${t("message.patchFilesLabel")}\n- ${files.join("\n- ")}`
+      : t("message.patchTitle");
   }
 
   return "";

@@ -62,6 +62,8 @@ import {
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
   filterScenarioDisplayRows,
+  getScenarioCommandLabel,
+  getScenarioTitleLabel,
   type ScenarioStatusFilter,
 } from "../shared/provider-test-presentation.js";
 import {
@@ -83,7 +85,6 @@ import type {
 
 interface ScenarioPanelState {
   scenarioId: string;
-  scenarioTitle: string;
   providerName: string;
   phase: "launcher" | "running" | "completed";
   filter: ScenarioStatusFilter;
@@ -326,6 +327,7 @@ export class AssistantController {
       this._refreshOpencodeDoctorStatus();
       this.memoryOverlay.onLocaleChanged();
       if (this.scenarioPanelState !== null) {
+        this._syncScenarioPanelLocale();
         this._renderTestPanel();
       }
     });
@@ -1358,14 +1360,13 @@ export class AssistantController {
     }
   }
 
-  _openScenarioPanel(scenarioId: string, scenarioTitle: string): void {
+  _openScenarioPanel(scenarioId: string): void {
     if (this.scenarioPanelState?.phase === "running") {
       return;
     }
 
     this.scenarioPanelState = {
       scenarioId,
-      scenarioTitle,
       providerName: this._getCurrentProviderLabel(),
       phase: "launcher",
       filter: "all",
@@ -1375,6 +1376,39 @@ export class AssistantController {
       suite: null,
     };
     this._renderTestPanel();
+  }
+
+  _syncScenarioPanelLocale(): void {
+    const state = this.scenarioPanelState;
+    if (!state) {
+      return;
+    }
+
+    state.providerName = this._getCurrentProviderLabel();
+    const scenarioTitle = getScenarioTitleLabel(state.scenarioId);
+
+    if (state.phase === "launcher") {
+      state.message = assistantT("runtime.scenarioHint");
+    } else if (state.phase === "running" && state.commands.length === 0) {
+      state.message =
+        state.runId === null
+          ? assistantT("runtime.scenarioStarted", {
+              providerName: state.providerName,
+              scenarioTitle,
+            })
+          : assistantT("runtime.scenarioPreparing", {
+              providerName: state.providerName,
+              scenarioTitle,
+            });
+    } else if (state.phase === "completed" && state.suite !== null) {
+      state.message = buildAssistantScenarioCompletionMessage({
+        passed: state.suite.passed,
+        totalTests: state.suite.totalTests,
+        commands: state.commands,
+        ...(state.suite.aborted !== undefined ? { aborted: state.suite.aborted } : {}),
+        ...(state.suite.abortReason !== undefined ? { abortReason: state.suite.abortReason } : {}),
+      });
+    }
   }
 
   _closeTestPanel(): void {
@@ -1426,7 +1460,7 @@ export class AssistantController {
       state.phase = "running";
       state.message = assistantT("runtime.scenarioPreparing", {
         providerName: state.providerName,
-        scenarioTitle: state.scenarioTitle,
+        scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       });
     }
 
@@ -1464,7 +1498,7 @@ export class AssistantController {
     const summary = buildScenarioProgressSummary({
       slot: "ai0",
       providerName: state.providerName,
-      scenarioTitle: state.scenarioTitle,
+      scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       commands: displayCommands,
     });
     const counts = buildScenarioStatusCounts({ commands: displayCommands });
@@ -1497,7 +1531,7 @@ export class AssistantController {
               (row) => `
                     <div class="scenario-step scenario-step--${row.status}">
                       <div class="scenario-step__body">
-                        <span class="scenario-step__name">${row.name}</span>
+                        <span class="scenario-step__name">${getScenarioCommandLabel(row.id, row.name)}</span>
                         ${row.message !== "" ? `<span class="scenario-step__message">${row.message}</span>` : ""}
                       </div>
                       <span class="scenario-step__status">${formatAssistantScenarioStatusLabel(row.status)}</span>
@@ -1509,8 +1543,8 @@ export class AssistantController {
     panel.innerHTML = `
         <div class="assistant-test-panel__header">
           <div>
-            <div class="scenario-overlay__eyebrow">AI0 ${state.scenarioTitle}</div>
-            <div class="assistant-test-panel__title">${assistantT("scenarioPanel.runningTitle", { providerName: state.providerName, scenarioTitle: state.scenarioTitle })}</div>
+            <div class="scenario-overlay__eyebrow">AI0 ${getScenarioTitleLabel(state.scenarioId)}</div>
+            <div class="assistant-test-panel__title">${assistantT("scenarioPanel.runningTitle", { providerName: state.providerName, scenarioTitle: getScenarioTitleLabel(state.scenarioId) })}</div>
             <div class="assistant-test-panel__subtitle">${state.message}</div>
           </div>
         <button class="btn btn-ghost btn-sm assistant-test-panel__close" type="button" ${state.phase === "running" ? "disabled" : ""}>${assistantT("scenarioPanel.closeButton")}</button>
@@ -1617,7 +1651,7 @@ export class AssistantController {
       state.suite = null;
       state.message = assistantT("runtime.scenarioStarted", {
         providerName: state.providerName,
-        scenarioTitle: state.scenarioTitle,
+        scenarioTitle: getScenarioTitleLabel(state.scenarioId),
       });
       this._renderTestPanel();
 
@@ -1705,7 +1739,7 @@ export class AssistantController {
     if (!btn || btn.disabled) return;
     if (this.scenarioPanelState?.phase === "running") return;
 
-    this._openScenarioPanel("webview-test", "webview-test");
+    this._openScenarioPanel("webview-test");
   }
 
   _updateConnectionUI(skipSystemServerSync = false): void {
