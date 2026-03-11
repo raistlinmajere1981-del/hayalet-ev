@@ -2,17 +2,17 @@
 .form-input {
   display: block;
   width: 100%;
-  height: var(--input-height);
-  padding: 0 var(--space-3);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  color: var(--text-primary);
-  background: var(--bg-input);
-  border: var(--border-1) solid var(--border-default);
-  border-radius: var(--radius-input);
-  backdrop-filter: var(--glass-blur);
+  min-height: var(--field-height, var(--input-height));
+  padding: var(--field-padding-block, 0) var(--field-padding-inline, var(--space-3));
+  font-family: var(--field-font-family, var(--font-sans));
+  font-size: var(--field-font-size, var(--text-sm));
+  color: var(--field-color, var(--text-primary));
+  background: var(--field-bg, var(--bg-input));
+  border: var(--border-1) solid var(--field-border-color, var(--border-default));
+  border-radius: var(--field-radius, var(--radius-input));
+  backdrop-filter: var(--field-blur, var(--glass-blur));
   transition: var(--transition-fast);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  box-shadow: var(--field-shadow, inset 0 1px 0 color-mix(in srgb, var(--text-inverse) 2%, transparent));
 }
 
 .input::placeholder,
@@ -28,8 +28,8 @@
 .input:focus,
 .form-input:focus {
   outline: none;
-  border-color: var(--color-accent-strong);
-  box-shadow: 0 0 0 3px var(--color-accent-muted), var(--surface-shadow);
+  border-color: var(--field-focus-border, var(--color-accent-strong));
+  box-shadow: var(--field-focus-shadow, 0 0 0 3px var(--color-accent-muted));
 }
 
 .input:disabled,
@@ -40,18 +40,17 @@
 
 .input-sm,
 .form-input.input-sm {
-  height: var(--input-height-sm);
+  min-height: var(--field-height-sm, var(--input-height-sm));
   padding: 0 var(--space-2);
   font-size: var(--text-xs);
 }
 
 textarea.input,
 textarea.form-input {
-  height: auto;
-  min-height: var(--space-20);
-  padding: var(--space-3);
-  resize: vertical;
-  line-height: var(--leading-relaxed);
+  min-height: var(--field-textarea-min-h, var(--space-20));
+  padding: var(--field-textarea-padding, var(--space-3));
+  resize: var(--field-textarea-resize, vertical);
+  line-height: var(--field-textarea-leading, var(--leading-relaxed));
 }
 
 textarea.large {
@@ -83,7 +82,7 @@ textarea.large {
 .select {
   display: block;
   width: 100%;
-  height: var(--input-height);
+  min-height: var(--input-height);
   padding: 0 var(--space-8) 0 var(--space-3);
   font-size: var(--text-sm);
   color: var(--text-primary);
@@ -110,11 +109,19 @@ textarea.large {
 }
 
 .select-compact {
-  padding: var(--space-1) var(--space-2);
+  min-height: var(--input-height-sm);
+  padding: 0 var(--space-2);
   font-size: var(--text-xs);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .select-compact.pill {
   border-radius: var(--radius-full);
+}
+
+.select-sm {
+  min-height: var(--input-height-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-md);
 }

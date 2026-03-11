@@ -394,9 +394,9 @@ export class MemoryOverlay {
         <span title="${accessCountTitle}">👁️ ${item.accessCount}</span>
       </div>
       <div class="memory-card-edit-form hidden">
-        <textarea class="memory-textarea edit-content-input">${item.content}</textarea>
-        <input class="memory-input edit-summary-input" type="text" value="${item.summary ?? ""}" placeholder="${editSummaryPlaceholder}" />
-        <input class="memory-input edit-tags-input" type="text" value="${item.tags.join(", ")}" placeholder="${editTagsPlaceholder}" />
+        <textarea class="memory-textarea input edit-content-input">${item.content}</textarea>
+        <input class="memory-input input input-sm edit-summary-input" type="text" value="${item.summary ?? ""}" placeholder="${editSummaryPlaceholder}" />
+        <input class="memory-input input input-sm edit-tags-input" type="text" value="${item.tags.join(", ")}" placeholder="${editTagsPlaceholder}" />
         <div class="memory-edit-row">
           <div class="memory-importance-picker edit-importance" data-value="${item.importance}">
             <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>

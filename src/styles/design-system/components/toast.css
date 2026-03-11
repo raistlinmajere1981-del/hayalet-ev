@@ -169,3 +169,25 @@
     transform: translateX(100%) scale(0.9);
   }
 }
+
+.ds-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  min-width: min(28rem, calc(100vw - var(--space-8)));
+  padding: var(--space-2-5) var(--space-5);
+  border: var(--border-1) solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel-strong);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  box-shadow: var(--floating-shadow);
+  z-index: var(--z-toast);
+  opacity: 1;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.ds-toast--fade {
+  opacity: 0;
+}

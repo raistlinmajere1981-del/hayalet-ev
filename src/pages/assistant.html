@@ -80,7 +80,7 @@
 
         <div class="assistant-session-controls">
           <label
-            class="catch-label"
+            class="ds-choice-chip ds-choice-chip--segmented"
             for="assistant-resume-last-session"
             title="Resume the last session after connecting"
             data-shell-i18n-title="assistant.page.resumeLastSessionTitle"
@@ -89,7 +89,7 @@
             <span data-shell-i18n-text="assistant.page.resumeLastSessionLabel">Last session</span>
           </label>
           <label
-            class="catch-label"
+            class="ds-choice-chip ds-choice-chip--segmented"
             for="assistant-keep-servers-on-close"
             title="Keep services running when the window closes"
             data-shell-i18n-title="assistant.page.keepServersOnCloseTitle"
@@ -100,7 +100,7 @@
             </span>
           </label>
           <label
-            class="catch-label"
+            class="ds-choice-chip ds-choice-chip--segmented"
             for="assistant-catch-commands-check"
             title="Catch and handle assistant commands"
             data-shell-i18n-title="assistant.page.catchCommandsTitle"
@@ -109,7 +109,7 @@
             <span data-shell-i18n-text="assistant.page.catchCommandsLabel">Catch commands</span>
           </label>
           <label
-            class="catch-label"
+            class="ds-choice-chip ds-choice-chip--segmented"
             for="assistant-offline-mode-check"
             title="Offline mode"
             data-shell-i18n-title="assistant.page.offlineModeTitle"
@@ -288,21 +288,21 @@
               <div class="memory-new-form" id="memory-new-form">
                 <textarea
                   id="mem-new-content"
-                  class="memory-textarea"
+                  class="memory-textarea input"
                   placeholder="Content (required)"
                   data-shell-i18n-placeholder="assistant.memoryOverlay.contentPlaceholder"
                   rows="3"
                 ></textarea>
                 <input
                   id="mem-new-summary"
-                  class="memory-input"
+                  class="memory-input input input-sm"
                   type="text"
                   placeholder="Summary (optional)"
                   data-shell-i18n-placeholder="assistant.memoryOverlay.summaryPlaceholder"
                 />
                 <input
                   id="mem-new-tags"
-                  class="memory-input"
+                  class="memory-input input input-sm"
                   type="text"
                   placeholder="Tags (comma-separated)"
                   data-shell-i18n-placeholder="assistant.memoryOverlay.tagsPlaceholder"
@@ -382,7 +382,7 @@
                   <div class="memory-prune-row">
                     <input
                       id="mem-prune-max"
-                      class="memory-input-sm"
+                      class="memory-input-sm input input-sm"
                       type="number"
                       value="50"
                       min="1"
@@ -391,7 +391,7 @@
                     />
                     <input
                       id="mem-prune-days"
-                      class="memory-input-sm"
+                      class="memory-input-sm input input-sm"
                       type="number"
                       value="30"
                       min="1"
@@ -430,7 +430,7 @@
               <span class="memory-result-count" id="mem-result-count"></span>
             </div>
             <div class="memory-list" id="memory-list">
-              <div class="memory-empty-state" id="memory-empty-state">
+              <div class="memory-empty-state empty-state" id="memory-empty-state">
                 <span>🧠</span>
                 <span data-shell-i18n-text="assistant.memoryOverlay.emptyState"
                   >No records yet</span
@@ -474,7 +474,7 @@
               <span id="character-conflict-text"></span>
             </div>
             <div class="character-active-list" id="character-active-list">
-              <div class="character-empty-state" id="character-empty-state">
+              <div class="character-empty-state empty-state" id="character-empty-state">
                 <span data-shell-i18n-text="assistant.characterOverlay.emptyState">
                   Add features from the right panel
                 </span>
@@ -563,7 +563,7 @@
           </label>
           <input
             id="assistant-identity-nickname-input"
-            class="assistant-identity-modal__input"
+            class="assistant-identity-modal__input input"
             type="text"
             maxlength="60"
             placeholder="AI0 nickname"

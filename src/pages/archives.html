@@ -7,7 +7,7 @@
             Conversations
           </h3>
           <div class="provider-toggle">
-            <label class="toggle-label">
+            <label class="ds-choice-chip ds-choice-chip--segmented">
               <input
                 type="radio"
                 name="archives-provider"
@@ -17,7 +17,7 @@
               />
               <span id="archives-provider-ai1">AI1</span>
             </label>
-            <label class="toggle-label">
+            <label class="ds-choice-chip ds-choice-chip--segmented">
               <input type="radio" name="archives-provider" value="ai2" id="archive-filter-ai2" />
               <span id="archives-provider-ai2">AI2</span>
             </label>
@@ -127,7 +127,7 @@
             Search
           </h3>
           <div class="search-scope">
-            <label class="scope-label">
+            <label class="ds-choice-chip ds-choice-chip--segmented">
               <input type="radio" name="search-scope" value="current" checked />
               <span
                 id="archives-scope-current"
@@ -136,7 +136,7 @@
                 Current Account
               </span>
             </label>
-            <label class="scope-label">
+            <label class="ds-choice-chip ds-choice-chip--segmented">
               <input type="radio" name="search-scope" value="all" />
               <span id="archives-scope-all" data-shell-i18n-text="app.archives.page.scopeAll">
                 All Accounts
@@ -238,12 +238,12 @@
               Select a protocol from the left to edit
             </p>
           </div>
-          <textarea
-            class="protocol-textarea hidden"
-            id="protocol-textarea"
-            placeholder="Protocol content..."
-            data-shell-i18n-placeholder="app.archives.page.protocolPlaceholder"
-          ></textarea>
+            <textarea
+              class="protocol-textarea form-input hidden"
+              id="protocol-textarea"
+              placeholder="Protocol content..."
+              data-shell-i18n-placeholder="app.archives.page.protocolPlaceholder"
+            ></textarea>
         </div>
         <div class="form-hint" id="protocol-status"></div>
       </div>

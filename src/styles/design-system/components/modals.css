@@ -210,6 +210,10 @@
   animation: modal-enter var(--duration-normal) var(--ease-out);
 }
 
+.ds-modal__content--wide {
+  max-width: var(--size-modal-wide);
+}
+
 .ds-modal__title {
   font-family: var(--font-display);
   font-size: var(--text-lg);

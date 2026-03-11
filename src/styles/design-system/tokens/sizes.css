@@ -8,12 +8,18 @@
   --size-dot-md: 10px;
   --size-dot-lg: 14px;
 
+  --size-control-xs: 18px;
   --size-control-md: 28px;
   --size-control-lg: 36px;
+  --size-control-xl: 42px;
 
   --size-select-max-w: 140px;
+  --size-dropdown-md: 220px;
 
   --sidebar-width: 320px;
+  --size-panel-compact: 280px;
+  --size-panel-wide: 360px;
+  --size-panel-scroll-max-h: 52vh;
 
   --size-avatar-md: 40px;
   --size-avatar-lg: 48px;
@@ -22,4 +28,16 @@
   --size-toggle-h: 16px;
   --size-toggle-thumb: 12px;
   --size-toggle-offset: 2px;
+
+  --size-switch-track-lg-w: 36px;
+  --size-switch-track-lg-h: 20px;
+  --size-switch-thumb-lg: 14px;
+  --size-switch-offset-lg: 3px;
+
+  --size-choice-pill: 28px;
+  --size-choice-pill-sm: 26px;
+  --size-input-inline-sm: 70px;
+  --size-modal-wide: 1100px;
+  --size-modal-tall: min(80vh, 860px);
+  --size-empty-icon-lg: 2rem;
 }
