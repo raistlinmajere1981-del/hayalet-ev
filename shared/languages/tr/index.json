@@ -982,13 +982,13 @@
         "nicknameUpdateTitle": "AI0 takma adını güncelle",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Bağlanınca son oturuma dön",
-        "resumeLastSessionLabel": "Son session",
+        "resumeLastSessionLabel": "Son Oturuma Devam",
         "keepServersOnCloseTitle": "Pencere kapanınca servisleri açık bırak",
-        "keepServersOnCloseLabel": "Sunucuları kapatma",
+        "keepServersOnCloseLabel": "Kapanışta Sunucuları Kapatma",
         "catchCommandsTitle": "Asistan komutlarını yakala ve işle",
-        "catchCommandsLabel": "Komut yakala",
+        "catchCommandsLabel": "Komutları Yakala",
         "offlineModeTitle": "Offline mod",
-        "offlineModeLabel": "Offline",
+        "offlineModeLabel": "Offline Mod",
         "devtoolsTitle": "DevTools"
       },
       "buttonStates": {

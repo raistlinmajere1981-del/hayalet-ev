@@ -982,13 +982,13 @@
         "nicknameUpdateTitle": "Update AI0 nickname",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Resume the last session after connecting",
-        "resumeLastSessionLabel": "Last session",
+        "resumeLastSessionLabel": "Resume Last Session",
         "keepServersOnCloseTitle": "Keep services running when the window closes",
-        "keepServersOnCloseLabel": "Keep servers running",
+        "keepServersOnCloseLabel": "Do Not Stop Servers on Close",
         "catchCommandsTitle": "Catch and handle assistant commands",
-        "catchCommandsLabel": "Catch commands",
+        "catchCommandsLabel": "Catch Commands",
         "offlineModeTitle": "Offline mode",
-        "offlineModeLabel": "Offline",
+        "offlineModeLabel": "Offline Mode",
         "devtoolsTitle": "DevTools"
       },
       "buttonStates": {

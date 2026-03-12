@@ -203,7 +203,9 @@
 .assistant-session-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  width: min(100%, 24rem);
+  justify-self: end;
   justify-content: end;
   align-content: center;
   gap: var(--space-1) var(--space-1-5);
@@ -212,7 +214,8 @@
 
 .assistant-session-controls .ds-choice-chip {
   --ds-choice-min-h: var(--size-choice-pill-sm);
-  --ds-choice-pad-x: var(--space-2);
+  --ds-choice-gap: var(--space-1);
+  --ds-choice-pad-x: var(--space-1-5);
   --ds-choice-border: var(--assistant-chip-border);
   --ds-choice-border-hover: var(--border-strong);
   --ds-choice-border-active: color-mix(in srgb, var(--color-success) 42%, var(--border-default));
@@ -222,8 +225,11 @@
   --ds-choice-text: var(--text-secondary);
   --ds-choice-text-active: var(--text-primary);
 
-  font-size: var(--text-micro);
+  font-size: var(--text-2xs);
+  justify-self: stretch;
+  justify-content: center;
   min-width: 0;
+  width: 100%;
 }
 
 .assistant-opencode-panel {
@@ -236,13 +242,17 @@
 
 .assistant-opencode-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-1-5);
-  flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
-.assistant-opencode-actions {
-  justify-content: flex-start;
+.assistant-opencode-action-row {
+  display: grid;
+  grid-template-columns: repeat(3, var(--size-control-pill));
+  gap: var(--space-1-5);
+  justify-content: end;
 }
 
 .assistant-command-rail {
@@ -286,12 +296,16 @@
   box-shadow: var(--assistant-pill-shadow);
 }
 
+.assistant-runtime-stack.assistant-topbar-chip {
+  border-radius: calc(var(--space-2) + var(--space-0-5));
+}
+
 .assistant-runtime-stack {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  width: min(100%, 380px);
+  width: min(100%, 460px);
   min-width: 0;
   max-width: 100%;
   padding: var(--space-1-5) var(--space-3);
@@ -307,7 +321,8 @@
 .assistant-runtime-stack__row + .assistant-runtime-stack__row {
   margin-top: var(--space-1-5);
   padding-top: var(--space-1-5);
-  border-top: var(--border-1) solid color-mix(in srgb, var(--assistant-pill-border) 72%, transparent);
+  border-top: var(--border-1) solid
+    color-mix(in srgb, var(--assistant-pill-border) 72%, transparent);
 }
 
 .assistant-status-extended {
@@ -398,7 +413,7 @@
 
 #assistant-opencode-indicator-text {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 14ch;
   color: var(--text-primary);
   line-height: 1;
   white-space: nowrap;
@@ -438,6 +453,13 @@
   border: var(--border-1) solid var(--assistant-pill-border);
   background: var(--assistant-pill-bg);
   box-shadow: none;
+}
+
+.assistant-opencode-action-row .btn-icon {
+  width: var(--size-control-pill);
+  min-width: var(--size-control-pill);
+  padding: 0;
+  justify-content: center;
 }
 
 .assistant-identity-tool-btn:hover:not(:disabled),
@@ -616,6 +638,7 @@
   }
 
   .assistant-session-controls {
+    justify-self: start;
     justify-content: start;
   }
 }
@@ -706,11 +729,11 @@
   }
 
   .assistant-session-controls .ds-choice-chip {
+    justify-self: stretch;
     min-width: 0;
     justify-content: center;
   }
 
-  #assistant-ghost-agent-btn,
   #assistant-connect-btn {
     flex: 1 1 var(--layout-action-flex-min-lg);
     min-width: 0;
@@ -754,6 +777,8 @@
 }
 
 #assistant-ghost-agent-btn {
+  width: 100%;
+  min-width: 0;
   border: var(--border-1) solid var(--assistant-pill-border);
   background: var(--assistant-pill-bg);
 }

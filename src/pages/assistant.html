@@ -75,17 +75,12 @@
               id="assistant-connect-btn"
               data-shell-i18n-text="assistant.buttonStates.idle"
             ></button>
-            <button
-              class="btn btn-sm btn-secondary"
-              id="assistant-ghost-agent-btn"
-              data-shell-i18n-text="assistant.page.ghostAgentButton"
-            ></button>
           </div>
         </div>
 
         <div class="assistant-session-controls">
           <label
-            class="ds-choice-chip ds-choice-chip--segmented"
+            class="ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
             for="assistant-resume-last-session"
             title=""
             data-shell-i18n-title="assistant.page.resumeLastSessionTitle"
@@ -94,7 +89,7 @@
             <span data-shell-i18n-text="assistant.page.resumeLastSessionLabel"></span>
           </label>
           <label
-            class="ds-choice-chip ds-choice-chip--segmented"
+            class="ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
             for="assistant-keep-servers-on-close"
             title=""
             data-shell-i18n-title="assistant.page.keepServersOnCloseTitle"
@@ -103,7 +98,7 @@
             <span data-shell-i18n-text="assistant.page.keepServersOnCloseLabel"></span>
           </label>
           <label
-            class="ds-choice-chip ds-choice-chip--segmented"
+            class="ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
             for="assistant-catch-commands-check"
             title=""
             data-shell-i18n-title="assistant.page.catchCommandsTitle"
@@ -112,7 +107,7 @@
             <span data-shell-i18n-text="assistant.page.catchCommandsLabel"></span>
           </label>
           <label
-            class="ds-choice-chip ds-choice-chip--segmented"
+            class="ds-choice-chip ds-choice-chip--segmented ds-choice-chip--dense"
             for="assistant-offline-mode-check"
             title=""
             data-shell-i18n-title="assistant.page.offlineModeTitle"
@@ -165,39 +160,47 @@
         </div>
 
         <div class="assistant-opencode-actions">
-          <button
-            class="btn btn-ghost btn-icon btn-sm"
-            id="assistant-opencode-settings-btn"
-            title=""
-            aria-label=""
-            data-shell-i18n-title="assistant.opencodeDoctor.settingsModal.title"
-            data-shell-i18n-aria-label="assistant.opencodeDoctor.settingsModal.title"
-          >
-            ⚙️
-          </button>
+          <div class="assistant-opencode-action-row">
+            <button
+              class="btn btn-ghost btn-icon btn-sm"
+              id="assistant-opencode-settings-btn"
+              title=""
+              aria-label=""
+              data-shell-i18n-title="assistant.opencodeDoctor.settingsModal.title"
+              data-shell-i18n-aria-label="assistant.opencodeDoctor.settingsModal.title"
+            >
+              ⚙️
+            </button>
+
+            <button
+              class="btn btn-ghost btn-icon btn-sm"
+              id="ai0-test-btn"
+              title=""
+              aria-label=""
+              disabled
+              data-shell-i18n-title="assistant.connectionUi.testButtonReady"
+              data-shell-i18n-aria-label="assistant.connectionUi.testButtonReady"
+            >
+              🧪
+            </button>
+
+            <button
+              class="btn btn-ghost btn-icon btn-sm"
+              id="assistant-devtools-btn"
+              title=""
+              aria-label=""
+              data-shell-i18n-title="assistant.page.devtoolsTitle"
+              data-shell-i18n-aria-label="assistant.page.devtoolsTitle"
+            >
+              🔧
+            </button>
+          </div>
 
           <button
-            class="btn btn-ghost btn-icon btn-sm"
-            id="ai0-test-btn"
-            title=""
-            aria-label=""
-            disabled
-            data-shell-i18n-title="assistant.connectionUi.testButtonReady"
-            data-shell-i18n-aria-label="assistant.connectionUi.testButtonReady"
-          >
-            🧪
-          </button>
-
-          <button
-            class="btn btn-ghost btn-icon btn-sm"
-            id="assistant-devtools-btn"
-            title=""
-            aria-label=""
-            data-shell-i18n-title="assistant.page.devtoolsTitle"
-            data-shell-i18n-aria-label="assistant.page.devtoolsTitle"
-          >
-            🔧
-          </button>
+            class="btn btn-sm btn-secondary"
+            id="assistant-ghost-agent-btn"
+            data-shell-i18n-text="assistant.page.ghostAgentButton"
+          ></button>
         </div>
 
         <div id="assistant-url-display">-</div>

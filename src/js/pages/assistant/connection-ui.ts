@@ -138,7 +138,6 @@ export function updateAssistantConnectionUI(
 
   const buttonState = resolveAssistantConnectButtonState({
     ...(slotState?.state !== undefined ? { slotState: slotState.state } : {}),
-    isServerRunning: controller._isServerRunning,
     connectFlowActive: controller._connectFlowActive,
   });
   controller._setButtonState(buttonState);
