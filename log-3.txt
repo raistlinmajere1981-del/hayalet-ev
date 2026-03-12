@@ -1,0 +1,217 @@
+1) Overall logging/observability assessment
+
+The repository has strong intent (structured JSONL, sessionized logs, visibility levels, localized log messages), but it is not yet production-grade coherent due to split logging stacks, silent-failure paths, and uneven correlation/context standards across renderer/electron/MCP paths. The result is partial observability with real reconstruction blind spots during async failures and retries.
+2) Critical blind spots
+Finding A — Dual logger stacks create fragmented truth
+
+    File path(s): electron/main.ts, electron/logger/core/SessionManager.ts, electron/logger/session-manager.ts, electron/logger/log-writer.ts
+
+    Severity: Critical
+
+    Confidence: High
+
+    Why it matters: You can’t reliably reconstruct incidents if different subsystems write to different session models and metadata conventions.
+
+    Exact issue: Main process initializes the new LoggerCore stack, but still imports/uses legacy session/log reader-writer modules in parallel (logger/session-manager.ts, log-writer.ts, log-reader.ts). This creates mixed metadata formats (session-metadata.json vs meta.json) and divergent behavior paths.
+
+    Exact fix direction: Deprecate legacy logger pipeline behind feature flag, migrate remaining legacy consumers to LoggerCore readers/writers, and enforce one canonical session schema.
+
+Finding B — Silent write failures in legacy log writers
+
+    File path(s): electron/logger/log-writer.ts
+
+    Severity: Critical
+
+    Confidence: High
+
+    Why it matters: Disk/log write failures are exactly the events you need during incidents.
+
+    Exact issue: Multiple catch blocks intentionally swallow write errors with no fallback signal (catch {} with comment).
+
+    Exact fix direction: Keep recursion-safe behavior, but increment in-memory counter + emit throttled stderr heartbeat + expose health metric in session summary.
+
+Finding C — Silent errors in session read/summary paths
+
+    File path(s): electron/logger/session-manager.ts, src/mcp-server/utils/log-utils.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Read-path failures make postmortems untrustworthy (empty lists look like “no issues”).
+
+    Exact issue: Session listing/summary parsing drops errors silently in catch blocks and returns empty/fallback values without diagnostic markers.
+
+    Exact fix direction: Return structured “degraded-read” flags and log parser/read errors to structured logs with reason codes.
+
+Finding D — Async retry/recovery paths partially observable
+
+    File path(s): src/js/modules/webview/conversation-syncer.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Retry loops without complete lifecycle logs are hard to diagnose for flapping providers.
+
+    Exact issue: Retry scheduling is logged, but timer cancellation/reset and archive status fallback failure path (_getArchiveStatus) are not logged; failures are swallowed there.
+
+    Exact fix direction: Add explicit retry_scheduled/retry_cancelled/retry_exhausted/archive_status_fallback events with consistent context (provider, retry count, reason).
+
+3) Slot symmetry analysis
+Finding E — ai0 lifecycle asymmetry vs ai1/ai2
+
+    File path(s): src/js/modules/webview/conversation-syncer.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: For cross-slot relay/debugging, unequal instrumentation creates false negatives (“ai0 did nothing”).
+
+    Exact issue: Auto-sync transition watcher tracks only ai1/ai2; ai0 is excluded from this lifecycle logic. Also ai0 uses syncLatestMessage while others use full sync path, yielding different observability shapes by design but without a standardized “mode” marker in log context.
+
+    Exact fix direction: Keep intentional behavior, but add explicit syncMode: latest|full and unify lifecycle event names across all slots.
+
+Finding F — Slot event listener failures are swallowed
+
+    File path(s): src/js/modules/slot/controller-events.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Listener failure can break reactive workflows silently while slot state keeps advancing.
+
+    Exact issue: Listener exceptions are swallowed with empty catch in event emission loop.
+
+    Exact fix direction: Log listener failure at warning with event type/slot/correlation and listener identity hash.
+
+Finding G — Similar operations produce different log shapes
+
+    File path(s): src/js/modules/slot/controller-events.ts, src/js/modules/relay/base-relay.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Inconsistent context keys reduce queryability.
+
+    Exact issue: Slot logs use slotId + optional correlationId, while relay logs add relayType/sessionId with varying keys; there’s no enforced common envelope for actor/slot/provider/session tuple.
+
+    Exact fix direction: Introduce shared log context contract (slotId, provider, relayType, conversationId, sessionId, correlationId) with validator.
+
+4) Multilingual / log visibility analysis
+Finding H — User-visible log text localization is inconsistent across layers
+
+    File path(s): src/js/modules/logger/Logger.ts, electron/logger/writers/ErrorWriter.ts, electron/preload.cjs, electron/webview-preload.cjs
+
+    Severity: High
+
+    Confidence: Medium-High
+
+    Why it matters: UI-facing logs/toasts and overlays should be locale-safe; developer logs should stay stable.
+
+    Exact issue: Renderer supports localized keys (messageKey, locale), but lower layers still generate hardcoded English strings (e.g., writer formatting, preload fallbacks), mixing localized and raw English in shared surfaces.
+
+    Exact fix direction: Enforce policy: UI-visible messages must use i18n keys; internal developer diagnostics must use stable English codes + optional localized display layer.
+
+Finding I — Visibility semantics exist, but enforcement is soft
+
+    File path(s): src/types/logging-core.ts, electron/logger/core/LoggerCore.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Production triage needs strict channeling (toast/panel/verbose) to avoid signal loss.
+
+    Exact issue: Visibility levels are defined, but when rebroadcasting to UI, defaulting/fallbacks are applied (visibility ?? 3) and both batch + per-entry messages are sent, increasing ambiguity/noise on consumers.
+
+    Exact fix direction: Enforce mandatory visibility in entry schema at creation time; send either batch or single, not both, per consumer type.
+
+5) Hayalet-ev vs MCP logging consistency analysis
+Finding J — MCP log root mismatch and naming drift
+
+    File path(s): src/mcp-server/core/server-setup.ts, src/mcp-server/utils/mcp-logger.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Tooling and operators expect one deterministic log root.
+
+    Exact issue: Server setup defines LOG_DIR under logs/app, while MCP logger writes to logs/mcp-server; this split is easy to misconfigure in tooling pipelines.
+
+    Exact fix direction: Define one MCP log-root authority and pass it through DI into logger/tool handlers.
+
+Finding K — MCP and app correlation schema are not aligned
+
+    File path(s): src/mcp-server/utils/mcp-logger.ts, src/js/modules/logger/Logger.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Cross-system tracing (UI action → MCP tool call) requires shared IDs.
+
+    Exact issue: MCP records agentContext with optional conversationId/requestId, app logs focus on context with optional slotId/provider; no universal trace field shared across both domains by default.
+
+    Exact fix direction: Adopt global traceId/spanId + conversationId and propagate from renderer → electron → MCP calls.
+
+6) Noisy / duplicate / low-value logging areas
+Finding L — Console interception likely duplicates logs and inflates LEGACY noise
+
+    File path(s): src/js/modules/logger/Logger.ts, electron/logger/core/ConsoleInterceptor.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Noise reduces alertability and increases storage cost.
+
+    Exact issue: Both renderer and electron intercept global console and re-log into LEGACY categories, while many components still call Logger APIs directly; this tends to duplicate semantically identical events.
+
+    Exact fix direction: Add de-dup policy (hash/time window), disable one interceptor in prod, or tag origin=console-intercept and filter from primary SLO dashboards.
+
+Finding M — Some real failures are logged only as debug
+
+    File path(s): src/js/modules/traffic-manager.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Operationally important failures become invisible under normal verbosity.
+
+    Exact issue: Probe/polling failures, timer clear failures, and state-clear failures are mostly debug, even when they affect readiness/traffic health; this under-signals runtime instability.
+
+    Exact fix direction: Promote repeated failure patterns to warn with rate limiting and include backoff state.
+
+7) Priority hardening plan
+
+    Unify logger architecture (P0): retire legacy electron logger modules and schemas; single writer/reader/session format.
+
+    Make failure paths observable (P0): replace silent catches with recursion-safe telemetry counters + throttled diagnostic events.
+
+    Introduce global trace contract (P0): traceId/spanId/conversationId/slot/provider/session.
+
+    Standardize slot lifecycle telemetry (P1): normalize ai0/ai1/ai2 event schema with syncMode.
+
+    Severity policy hardening (P1): escalate repeated runtime instability from debug→warn.
+
+    Localization boundary policy (P1): UI-visible localized; internal stable English diagnostic codes.
+
+    Noise controls (P2): dedupe console interception and avoid batch+single rebroadcast duplication.
+
+Commands used for this audit
+
+    ✅ find .. -name AGENTS.md -print
+
+    ✅ rg --files electron src shared | rg -n "log|logger|observ|diagnostic|traffic|relay|ipc|webview|runtime|slot"
+
+    ✅ rg -n "catch \\{\\}|catch \\(_|catch \\([^)]*\\) \\{\\s*\\}" src electron shared -g '!ghost-agent/**'
+
+    ✅ rg -n "correlationId" src/js/modules/traffic-manager.ts src/js/modules/webview/conversation-syncer.ts src/js/modules/relay/*.ts src/js/modules/slot/*.ts src/mcp-server/utils/mcp-logger.ts
+
+    ✅ Multiple nl -ba <file> | sed -n '<range>' inspections for the cited files above.

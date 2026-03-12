@@ -1,12 +1,12 @@
 // NOTE: Stream logs in real time using fs.watch.
 
 import { existsSync, readFileSync, statSync, watch } from "fs";
-import { readdir } from "fs/promises";
 import { join } from "path";
 import type { LogEntry } from "@shared/index.js";
 import type { TranslationParams } from "../../../types/i18n.js";
 import { createMcpTranslator, createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
+import { findLatestSession, resolveExistingLogDir } from "../../utils/log-utils.js";
 
 type McpTranslator = (key: string, params?: TranslationParams) => string;
 
@@ -46,7 +46,7 @@ export async function streamLogsRealtime(
   args: StreamLogsRealtimeArgs
 ): Promise<StreamLogsRealtimeResult> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getLatestSessionId(logDir, t));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -289,19 +289,9 @@ function printLogEntry(entry: LogEntry, t: McpTranslator): void {
 }
 
 async function getLatestSessionId(logDir: string, t: McpTranslator): Promise<string> {
-  const sessions = await readdir(logDir);
-  const sorted = sessions
-    .filter((name) => !name.startsWith("."))
-    .sort()
-    .reverse();
-
-  if (sorted.length === 0) {
-    throw new Error(streamingT(t, "noSessionsFound"));
-  }
-
-  const latest = sorted[0];
+  const latest = await findLatestSession(logDir);
   if (latest == null || latest === "") {
-    throw new Error(streamingT(t, "failedToGetLatestSession"));
+    throw new Error(streamingT(t, "noSessionsFound"));
   }
 
   return latest;

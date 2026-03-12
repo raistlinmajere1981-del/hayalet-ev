@@ -1,10 +1,11 @@
 // NOTE: Advanced MCP log analysis helpers for agents.
 
-import { readFile, readdir } from "fs/promises";
+import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 import { createMcpTranslator } from "../../utils/i18n/index.js";
+import { findLatestSession, resolveExistingLogDir } from "../../utils/log-utils.js";
 import type { LogEntry, LogQueryFilter } from "@shared/index.js";
 
 export interface StreamLogsArgs {
@@ -31,7 +32,7 @@ function enhancedLogT(
 
 export async function streamLogs(args: StreamLogsArgs): Promise<LogEntry[]> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -88,7 +89,7 @@ export interface AnalyzeErrorsResult {
 
 export async function analyzeErrors(args: AnalyzeErrorsArgs): Promise<AnalyzeErrorsResult> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -194,7 +195,7 @@ export interface CorrelationTrace {
 
 export async function traceCorrelation(args: TraceCorrelationArgs): Promise<CorrelationTrace> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -287,7 +288,7 @@ export async function getPerformanceReport(
   args: PerformanceReportArgs
 ): Promise<PerformanceReport> {
   const t = await createMcpTranslator();
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getCurrentSessionId(logDir));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
@@ -378,7 +379,7 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
   const startTime = Date.now();
   const t = await createMcpTranslator();
 
-  const logDir = join(PROJECT_ROOT, "logs", "app");
+  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionDir = join(logDir, args.sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");
 
@@ -427,9 +428,7 @@ export async function exportLogs(args: ExportLogsArgs): Promise<ExportLogsResult
 }
 
 async function getCurrentSessionId(logDir: string): Promise<string> {
-  const sessions = await readdir(logDir);
-  const sorted = sessions.sort().reverse();
-  return sorted[0] ?? "";
+  return (await findLatestSession(logDir)) ?? "";
 }
 
 function applyAdvancedFilters(entries: LogEntry[], filter: AdvancedLogFilter): LogEntry[] {

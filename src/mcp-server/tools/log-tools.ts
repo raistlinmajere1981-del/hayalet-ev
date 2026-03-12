@@ -1,11 +1,13 @@
 import { readFile, readdir } from "fs/promises";
-import { basename, dirname, join } from "path";
+import { join } from "path";
 import { existsSync } from "fs";
 import {
   findLatestSession,
   readSessionLogs,
   filterLogs,
   readSessionInfo,
+  resolveExistingLogDir,
+  type LogAppId,
 } from "../utils/log-utils.js";
 import { createMcpTranslator } from "../utils/i18n/index.js";
 import { logToolError } from "../utils/mcp-logger.js";
@@ -76,7 +78,7 @@ function parseStructuredLine(line: string): StructuredLine | null {
 }
 
 interface LogReadArgs {
-  app?: "app" | "mcp-server" | "ghost-agent";
+  app?: LogAppId;
   type?: "all" | "console" | "error" | "structured";
   tail?: number;
   source?: string;
@@ -86,18 +88,10 @@ interface LogReadArgs {
   sessionId?: string;
 }
 
-function resolveAppLogDir(
-  logDir: string,
-  app: "app" | "mcp-server" | "ghost-agent" = "app"
-): string {
-  const baseLogsDir = basename(logDir) === "logs" ? logDir : dirname(logDir);
-  return join(baseLogsDir, app);
-}
-
 export async function readElectronLogs(logDir: string, args?: LogReadArgs): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const {
-    app = "app",
+    app = "hayalet-ev",
     type = "console",
     tail = 50,
     source,
@@ -107,7 +101,7 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     sessionId: requestedSessionId,
   } = args ?? {};
 
-  const targetLogDir = resolveAppLogDir(logDir, app);
+  const targetLogDir = await resolveExistingLogDir(logDir, app);
 
   const sessionId = requestedSessionId ?? (await findLatestSession(targetLogDir));
 
@@ -230,11 +224,11 @@ interface SessionListItem {
 
 export async function listLogSessions(
   logDir: string,
-  args?: { app?: "app" | "mcp-server" | "ghost-agent"; limit?: number }
+  args?: { app?: LogAppId; limit?: number }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "app";
-  const targetLogDir = resolveAppLogDir(logDir, app);
+  const app = args?.app ?? "hayalet-ev";
+  const targetLogDir = await resolveExistingLogDir(logDir, app);
   const limit = args?.limit ?? 10;
 
   if (!existsSync(targetLogDir)) {
@@ -291,11 +285,11 @@ export async function listLogSessions(
 
 export async function getSessionSummary(
   logDir: string,
-  args?: { app?: "app" | "mcp-server" | "ghost-agent"; sessionId?: string }
+  args?: { app?: LogAppId; sessionId?: string }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "app";
-  const targetLogDir = resolveAppLogDir(logDir, app);
+  const app = args?.app ?? "hayalet-ev";
+  const targetLogDir = await resolveExistingLogDir(logDir, app);
   const sessionId = args?.sessionId ?? (await findLatestSession(targetLogDir));
 
   if (sessionId == null) {

@@ -126,6 +126,8 @@ class TrafficManagerClass {
   pollTimer: ReturnType<typeof setInterval> | null;
   _runners: Record<string, ProbeRunner>;
   _skipNextLoading: Record<string, boolean>;
+  logEventFailureWarned: boolean;
+
   loadingTracker: LoadingTracker;
   thinkingTracker: ThinkingTracker;
   sendTracker: SendTracker;
@@ -134,10 +136,10 @@ class TrafficManagerClass {
     this.indicators = { ai0: {}, ai1: {}, ai2: {} };
     this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState() };
     this.listeners = [];
-    this.webviews = {};
-    this.pollTimer = null;
     this._runners = {};
     this._skipNextLoading = { ai0: false, ai1: false, ai2: false };
+    this.logEventFailureWarned = false;
+
 
     this.loadingTracker = new LoadingTracker(TIMING_CONFIG);
     this.thinkingTracker = new ThinkingTracker(TIMING_CONFIG);
@@ -620,7 +622,16 @@ class TrafficManagerClass {
   logEvent(event: { messageKey: string; messageParams?: Record<string, string> }): void {
     try {
       Logger.debugT(LogCategory.TRAFFIC, event.messageKey, event.messageParams);
-    } catch (_) {}
+    } catch (err) {
+      if (this.logEventFailureWarned) return;
+      this.logEventFailureWarned = true;
+      if (typeof console === "undefined" || typeof console.warn !== "function") return;
+      console.warn("[traffic] log event emission failed", {
+        error: getErrorMessage(err),
+        event,
+      });
+    }
+
   }
 
   refreshIndicators(provider: string): void {

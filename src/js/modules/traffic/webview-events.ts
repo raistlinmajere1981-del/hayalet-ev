@@ -44,6 +44,18 @@ interface WebviewHandler {
 
 const webviewHandlers: Record<string, WebviewHandler> = {};
 
+const bridgeDiagnostics = new Set<string>();
+
+function warnBridgeOnce(provider: string, error: unknown): void {
+  if (bridgeDiagnostics.has(provider)) return;
+  bridgeDiagnostics.add(provider);
+  Logger.warn(LogCategory.TRAFFIC, "[traffic] webview probe injection failed", {
+    provider,
+    error: getErrorMessage(error),
+  });
+}
+
+
 function trafficWebviewEventsT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.traffic.${key}`, params);
 }
@@ -84,7 +96,10 @@ export function attachWebviewEvents(
     }
 
     const script = buildProbeScript(provider);
-    webviewEl.executeJavaScript(script).catch(() => {});
+    webviewEl.executeJavaScript(script).catch((err) => {
+      warnBridgeOnce(provider, err);
+    });
+
   };
 
   const handleNavEvent = (url: string | undefined, _eventType: string): void => {

@@ -1,7 +1,10 @@
+import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "../logger/index.js";
+import { AppI18n } from "../i18n/index.js";
 import { SettingsManager } from "../settings-manager.js";
 import type { CommandPayload } from "@shared/commands.js";
+import { resolveIntlLocale } from "../../../../shared/i18n/locale.js";
 
 export type { CommandPayload };
 
@@ -26,7 +29,15 @@ export function parseArgs(rawArgs = ""): string[] {
 }
 
 function getTimestamp(): string {
-  return new Date().toLocaleString("tr-TR");
+  return formatCommandTimestamp();
+}
+
+export function commandRuntimeT(key: string, params?: TranslationParams): string {
+  return AppI18n.t(`app.commands.runtime.${key}`, params);
+}
+
+export function formatCommandTimestamp(): string {
+  return new Date().toLocaleString(resolveIntlLocale(AppI18n.getLocale()));
 }
 
 export async function resolveProvider(
@@ -65,7 +76,13 @@ export function logCommandResult(command: string, opts: LogCommandOpts = {}): vo
   const { providerRaw, sender, args = "", success = true, detail = "" } = opts;
   const stamp = getTimestamp();
   const senderStr = sender !== undefined && sender !== "" ? sender : "AI";
-  const message = `${senderStr} - ${command}(${args}) - ${stamp} - ${detail !== "" ? detail : success === true ? "Başarılı" : "Hata"}`;
+  const outcome =
+    detail !== ""
+      ? detail
+      : success === true
+        ? commandRuntimeT("logSuccess")
+        : commandRuntimeT("logError");
+  const message = `${senderStr} - ${command}(${args}) - ${stamp} - ${outcome}`;
 
   const context = {
     eventType: "command-result",
@@ -91,12 +108,17 @@ export function createDefaultHandler(
 ) => Promise<{ success: boolean; command: string; args: string | undefined; detail: string }> {
   return async (payload: CommandPayload = {}) => {
     const argsValue = payload.args ?? "";
-    const info = argsValue !== "" ? ` | args: ${argsValue}` : "";
-    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `${name} çalıştı${info}`);
+    const info =
+      argsValue !== "" ? commandRuntimeT("logArgsInfo", { args: argsValue }) : "";
+    Logger.panel(
+      LogCategory.COMMAND,
+      LogLevel.INFO,
+      commandRuntimeT("logRan", { command: name, info })
+    );
 
     const { providerRaw, sender } = await resolveProvider(payload);
     const argsLabel = payload.args ?? "";
-    const detail = payload.detail ?? "Başarılı";
+    const detail = payload.detail ?? commandRuntimeT("logSuccess");
 
     logCommandResult(name, {
       providerRaw,

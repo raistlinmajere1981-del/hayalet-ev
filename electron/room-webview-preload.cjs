@@ -14,7 +14,7 @@ function schedulePendingHostFlush() {
     return;
   }
 
-  pendingHostFlushTimer = setTimeout(() => {
+  pendingHostFlushTimer = globalThis.setTimeout(() => {
     pendingHostFlushTimer = null;
     flushPendingHostEvents();
   }, 50);

@@ -72,7 +72,13 @@ export function emitSlotEvent(
   listeners.forEach((listener) => {
     try {
       listener(payload);
-    } catch {}
+    } catch (error) {
+      Logger.warn(LogCategory.SLOT, `[${slot.toUpperCase()}] slot listener failed`, {
+        slotId: slot,
+        event,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   if (event === stateChangedEvent) {
@@ -106,7 +112,7 @@ export function logSlotEvent(
   } else if (level === "debug") {
     Logger.debug(category, formattedMessage, logContext);
   } else if (level === "success") {
-    Logger.info(category, formattedMessage, { ...logContext, outcome: "success" });
+    Logger.panel(category, LogLevel.SUCCESS, formattedMessage, logContext);
   } else {
     Logger.info(category, formattedMessage, logContext);
   }

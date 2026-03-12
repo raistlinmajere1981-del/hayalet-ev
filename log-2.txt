@@ -1,0 +1,228 @@
+1) Overall logging/observability assessment
+
+Assessment: The repository has a strong base (structured logs, per-session folders, contextual fields, UI streaming), but it is not yet production-grade for cross-component diagnostics because of:
+
+    inconsistent schemas between Hayalet-ev app and MCP server,
+
+    partial silent-failure patterns,
+
+    duplicate UI log delivery,
+
+    and multilingual coupling in persisted log messages.
+
+2) Critical blind spots
+Finding A — Renderer→Main log flush can silently drop batches
+
+    File path(s): src/js/modules/logger/Logger.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: If IPC bridge is unavailable, logs are dropped without fallback persistence or telemetry; this creates invisible gaps exactly when environment/bridge is unstable.
+
+    Exact issue: flushBatch() returns immediately when appendBatch is missing, with no warning/error log or local durable buffer fallback.
+
+    Exact fix direction: Add explicit degraded-mode logging and fallback queue persistence (e.g., in-memory retry + bounded backoff + “dropped_count” metric event).
+
+Finding B — MCP unknown-tool and parse failures are not logged in observability stream
+
+    File path(s): src/mcp-server/core/handlers.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Tool misuse/invalid payloads are high-signal production diagnostics; currently they only return error responses, so operators can’t reconstruct misuse patterns from logs.
+
+    Exact issue: Unknown tool and parse-error branches return isError: true responses but do not emit logToolError or equivalent audit entries.
+
+    Exact fix direction: Emit structured error logs for unknown tool, input parse fail, and top-level execution fail with request metadata (tool name, argument preview, request correlation).
+
+Finding C — MCP file appends are fire-and-forget (loss risk on shutdown/crash)
+
+    File path(s): src/mcp-server/utils/mcp-logger.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: Non-awaited callback appendFile can lose tail logs during crashes or rapid process termination.
+
+    Exact issue: writeToLog() uses callback-style appendFile twice and returns immediately; no flush/await semantics for durability guarantees.
+
+    Exact fix direction: Use promise-based fs writes (fs/promises.appendFile) and await both writes; optionally add buffered writer with explicit flush() on process signals.
+
+3) Slot symmetry analysis (ai0 / ai1 / ai2)
+Finding D — ai0 has special lifecycle path; ai1/ai2 rely on generic slot path (asymmetric observability)
+
+    File path(s): src/js/pages/assistant/connection-lifecycle.ts, src/js/modules/slot-controller.ts
+
+    Severity: Medium-High
+
+    Confidence: High
+
+    Why it matters: Incident reconstruction across slots should be isomorphic; ai0-specific connection orchestration generates a different log narrative than ai1/ai2.
+
+    Exact issue: toggleAssistantConnection() is hard-coded to ai0 connect/disconnect flow with extra provider/server lifecycle logs; other slots are handled through different paths and don’t get identical lifecycle envelopes.
+
+    Exact fix direction: Introduce a shared slot lifecycle wrapper for all slots (same event names, context keys, severity policy), then layer ai0-only UX on top.
+
+Finding E — “success” slot events are logged as INFO, not SUCCESS
+
+    File path(s): src/js/modules/slot/controller-events.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Severity semantics become ambiguous; downstream alerting/filters can’t distinguish success transitions cleanly.
+
+    Exact issue: level === "success" routes to Logger.info(...) with outcome: "success" instead of LogLevel.SUCCESS event level.
+
+    Exact fix direction: Emit true SUCCESS level for success outcomes (or formally deprecate SUCCESS everywhere and normalize to INFO+outcome).
+
+4) Multilingual / log visibility analysis
+Finding F — Persisted log message text is locale-bound, reducing cross-locale operational comparability
+
+    File path(s): src/js/modules/logger/Logger.ts, src/mcp-server/utils/mcp-logger.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: In production, analysts need stable, language-independent signatures for aggregation and incident search.
+
+    Exact issue: Both app and MCP generate human-localized message text at write time; message text changes by locale, fragmenting analytics.
+
+    Exact fix direction: Persist stable machine event codes + params as source of truth; render localized text at UI layer only.
+
+Finding G — Live log UI uses message directly and ignores messageKey for render-time localization
+
+    File path(s): src/js/pages/entrance/live-log-overlay-model.ts, src/js/pages/entrance/live-log-overlay-render.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: UI-visible logs are not language-switch-safe after capture; users changing language won’t get coherent re-rendered translations.
+
+    Exact issue: Model preserves messageKey, but renderer displays only entry.message text.
+
+    Exact fix direction: If messageKey exists, resolve localized display at render-time from key+params; keep raw message as fallback.
+
+Finding H — Developer/internal vs user-facing channel separation is blurred
+
+    File path(s): src/js/modules/logger/Logger.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Internal operational errors becoming toast-visible can create user-noise and translation burden.
+
+    Exact issue: Logger.error always routes to TOAST visibility, not panel/verbose by default.
+
+    Exact fix direction: Introduce explicit API split: errorUser() vs errorInternal() and default internal errors to panel/verbose.
+
+5) Hayalet-ev vs MCP logging consistency analysis
+Finding I — Level vocabulary mismatch (warning vs warn)
+
+    File path(s): src/types/logging-core.ts, src/mcp-server/utils/mcp-logger.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Cross-app dashboards and queries become brittle due to normalization logic.
+
+    Exact issue: App schema uses warning; MCP logger type uses warn.
+
+    Exact fix direction: Standardize on one canonical level set across app and MCP (prefer shared enum package).
+
+Finding J — Context/correlation asymmetry between app logs and MCP logs
+
+    File path(s): src/types/logging-core.ts, src/mcp-server/utils/mcp-logger.ts, src/mcp-server/core/handlers.ts
+
+    Severity: High
+
+    Confidence: High
+
+    Why it matters: End-to-end traceability (UI action → IPC → MCP tool) is difficult without shared IDs.
+
+    Exact issue: App schema supports correlationId, slot/provider context; MCP unified entries do not include first-class correlation/request IDs, and handler logging adapter doesn’t propagate such IDs into log calls.
+
+    Exact fix direction: Add mandatory requestId, correlationId, conversationId, provider, slotId fields in MCP logs and pass from request metadata through all tool lifecycle logs.
+
+Finding K — Log root usage is semantically confusing
+
+    File path(s): src/mcp-server/core/server-setup.ts, src/mcp-server/utils/mcp-logger.ts
+
+    Severity: Medium
+
+    Confidence: Medium
+
+    Why it matters: Operators expect MCP logs under MCP app scope; mixed usage increases onboarding/debug cost.
+
+    Exact issue: Server setup defines LOG_DIR = logs/app, while MCP logger writes under logs/mcp-server.
+
+    Exact fix direction: Unify directory strategy and explicitly document when tools intentionally read/write cross-app logs.
+
+6) Noisy / duplicate / low-value logging areas
+Finding L — UI receives both batch and per-item broadcasts (duplicate stream risk)
+
+    File path(s): electron/logger/core/LoggerCore.ts, src/js/pages/entrance/live-log-overlay.ts
+
+    Severity: Medium-High
+
+    Confidence: High
+
+    Why it matters: Duplicate ingestion increases UI noise and processing overhead; can distort “volume” perception.
+
+    Exact issue: Main process sends both log:ui-notify-batch and individual log:ui-notify; overlay subscribes to both and ingests both streams.
+
+    Exact fix direction: Choose one transport (prefer batch) or add dedupe token logic before UI append.
+
+Finding M — Multiple swallowed errors in traffic/webview cleanup paths
+
+    File path(s): src/js/modules/traffic/webview-events.ts, src/js/modules/traffic-manager.ts
+
+    Severity: Medium
+
+    Confidence: High
+
+    Why it matters: Async lifecycle failures (bridge inject/remove listeners) become invisible, creating blind spots for retry/cleanup diagnostics.
+
+    Exact issue: Several catch blocks drop errors silently (catch {} / catch(() => {})) in attach/detach and event dispatch paths.
+
+    Exact fix direction: Replace silent catches with debug-level structured logs containing provider/slot and phase.
+
+7) Priority hardening plan
+
+    Schema unification first (P0): one shared level enum, one correlation contract (requestId, correlationId, slotId, provider, conversationId), one canonical JSONL shape across app+MCP.
+
+    Durability + failure visibility (P0): remove silent drops (flushBatch, MCP callback writes), add bounded retries and explicit dropped-log counters.
+
+    Stream dedupe and channel cleanup (P1): batch-only UI broadcast or strict dedupe keying.
+
+    Slot observability symmetry (P1): unify ai0/ai1/ai2 lifecycle envelopes and severity mapping.
+
+    Localization architecture split (P1): persist stable machine event codes; localize only in UI render path.
+
+    Noise reduction with signal preservation (P2): downgrade repetitive debug churn, but never swallow lifecycle cleanup/retry/timeout failures.
+
+Commands used for this audit
+
+    ✅ npm run mode:status && npm run whereami
+
+    ✅ rg --files -g 'AGENTS.md'
+
+    ✅ rg -n --glob '!ghost-agent/**' "\\b(logger|logEvent|log\\(|console\\.(log|warn|error|info|debug))\\b" electron src shared scripts --max-columns 200
+
+    ✅ find src/js/modules/logger electron/logger src/mcp-server -maxdepth 3 -type f
+
+    ✅ rg -n --glob '!ghost-agent/**' "catch \\(_[a-zA-Z]*\\) \\{\\s*(void 0;)?\\s*\\}|catch \\{\\s*\\}|\\.catch\\(\\(\\) => \\{\\}\\)" src/js electron src/mcp-server -g '*.ts'
+
+    ✅ multiple targeted sed -n / nl -ba ... | sed -n inspections for cited files above.
+
+No code changes were made, so no commit/PR was created.

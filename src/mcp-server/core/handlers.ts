@@ -39,11 +39,26 @@ export async function executeHandlerWithLogging(
 
 export async function handleToolCall(
   name: string,
-  args?: Record<string, unknown>
+  args?: Record<string, unknown> | string,
+  logging: LoggingAdapter = defaultLoggingAdapter
 ): Promise<unknown> {
   const handler = getHandler(name);
 
   if (!handler) {
+    logging.logToolError(
+      name === "" ? "unknown-tool" : name,
+      new Error(
+        handlerT("mcpServer.handlers.unknownTool", {
+          name,
+          count: getToolCount(),
+        })
+      ),
+      {
+        requestedTool: name,
+        availableToolCount: getToolCount(),
+      }
+    );
+
     return {
       content: [
         {
@@ -59,11 +74,24 @@ export async function handleToolCall(
   }
 
   // NOTE: Some LLMs occasionally send tool_input as a raw string; parse before failing.
-  let safeArgs = args;
+  let safeArgs: Record<string, unknown> | undefined =
+    typeof args === "string" ? undefined : args;
   if (typeof args === "string") {
     try {
       safeArgs = JSON.parse(args) as Record<string, unknown>;
     } catch {
+      logging.logToolError(
+        name === "" ? "tool-input-parse" : name,
+        new Error(
+          handlerT("mcpServer.handlers.toolInputParseError", {
+            value: String(args).slice(0, 200),
+          })
+        ),
+        {
+          rawArgsPreview: String(args).slice(0, 200),
+        }
+      );
+
       return {
         content: [
           {
@@ -79,7 +107,12 @@ export async function handleToolCall(
   }
 
   try {
-    return await executeHandlerWithLogging(name, safeArgs, handler);
+    return await executeHandlerWithLogging(
+      name,
+      safeArgs as Record<string, unknown> | undefined,
+      handler,
+      logging
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

@@ -3,7 +3,7 @@ import { Logger } from "../logger/index.js";
 
 import { WebviewManager } from "../webview-manager.js";
 import type { CommandPayload } from "./utils.js";
-import { parseArgs, logCommandResult } from "./utils.js";
+import { commandRuntimeT, formatCommandTimestamp, parseArgs, logCommandResult } from "./utils.js";
 import { getErrorMessage } from "@shared/index.js";
 
 type CommandHandlerResult = { success: boolean; message?: string; [key: string]: unknown };
@@ -23,7 +23,10 @@ export async function listFilesHandler(
 
   try {
     if (isTestMode) {
-      const message = `Test modu: ListFiles sonucu kullanıcıya raporlandi | scope: ${scope}`;
+      const message = commandRuntimeT("testModeReported", {
+        command: "ListFiles",
+        detail: commandRuntimeT("scopeDetail", { scope }),
+      });
       Logger.toast(LogCategory.COMMAND, LogLevel.INFO, message, {
         eventType: "command-test-mode",
         command: "ListFiles",
@@ -44,11 +47,15 @@ export async function listFilesHandler(
       };
     }
 
-    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `ListFiles başlatılıyor | scope: ${scope}`);
+    Logger.panel(
+      LogCategory.COMMAND,
+      LogLevel.INFO,
+      commandRuntimeT("listFilesStarting", { scope })
+    );
 
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      throw new Error("electronAPI mevcut değil");
+      throw new Error(commandRuntimeT("apiUnavailable"));
     }
 
     const exclude = scope === "project" ? ["node_modules", "dist", ".vite"] : undefined;
@@ -60,7 +67,7 @@ export async function listFilesHandler(
       | undefined;
 
     if (treeResult?.success !== true) {
-      throw new Error(treeResult?.message ?? "Tree generation failed");
+      throw new Error(treeResult?.message ?? commandRuntimeT("treeGenerationFailed"));
     }
 
     const treePath = treeResult.path ?? "";
@@ -70,7 +77,7 @@ export async function listFilesHandler(
     try {
       await WebviewManager.send({
         provider: providerRaw,
-        text: `Dosya Listesi (${scope}): ${lines} satır`,
+        text: commandRuntimeT("listFilesAttachmentText", { scope, lines }),
         attachments: [
           {
             name: fileName,
@@ -81,23 +88,29 @@ export async function listFilesHandler(
       Logger.panel(
         LogCategory.COMMAND,
         LogLevel.INFO,
-        `ListFiles gönderildi -> ${providerRaw} | ${fileName}`
+        commandRuntimeT("listFilesSent", { provider: providerRaw, fileName })
       );
       Logger.panel(
         LogCategory.COMMAND,
         LogLevel.INFO,
-        `CoreEngine -> ${providerRaw} gönderim tetiklendi`,
+        commandRuntimeT("deliveryTriggered", { provider: providerRaw }),
         {
           eventType: "coreengine-ai-send",
           provider: providerRaw,
           triggerCommand: "ListFiles",
           triggerSource: payload.source ?? "manual",
-          detail: `${fileName} (${lines} satır)`,
-          timestamp: new Date().toLocaleString("tr-TR"),
+          detail: commandRuntimeT("listFilesSummary", { fileName, lines }),
+          timestamp: formatCommandTimestamp(),
         }
       );
     } catch (err) {
-      Logger.debug(LogCategory.COMMAND, `ListFiles gönderilemedi: ${getErrorMessage(err)}`);
+      Logger.debug(
+        LogCategory.COMMAND,
+        commandRuntimeT("deliveryFailed", {
+          command: "ListFiles",
+          message: getErrorMessage(err),
+        })
+      );
     }
 
     logCommandResult("ListFiles", {
@@ -105,7 +118,7 @@ export async function listFilesHandler(
       sender,
       args: argsLabel,
       success: true,
-      detail: `${lines} lines, ${fileName}`,
+      detail: commandRuntimeT("listFilesSummary", { lines, fileName }),
     });
 
     return {
@@ -118,16 +131,20 @@ export async function listFilesHandler(
     };
   } catch (err) {
     const errMsg = getErrorMessage(err);
-    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `ListFiles hata: ${errMsg}`);
+    const localizedError = commandRuntimeT("commandError", {
+      command: "ListFiles",
+      message: errMsg,
+    });
+    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, localizedError);
 
     logCommandResult("ListFiles", {
       providerRaw,
       sender,
       args: argsLabel,
       success: false,
-      detail: errMsg,
+      detail: localizedError,
     });
 
-    return { success: false, message: errMsg };
+    return { success: false, message: localizedError };
   }
 }

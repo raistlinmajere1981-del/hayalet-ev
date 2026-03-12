@@ -4,7 +4,7 @@ import { Logger } from "../logger/index.js";
 import { ScreenshotManager } from "../screenshot-manager.js";
 import { WebviewManager } from "../webview-manager.js";
 import type { CommandPayload } from "./utils.js";
-import { parseArgs, logCommandResult } from "./utils.js";
+import { commandRuntimeT, formatCommandTimestamp, parseArgs, logCommandResult } from "./utils.js";
 import { getFilename } from "../../constants/index.js";
 import { getErrorMessage } from "@shared/index.js";
 
@@ -27,7 +27,10 @@ export async function screenshotManagerHandler(
 
   try {
     if (isTestMode) {
-      const message = `Test modu: ScreenshotManager sonucu kullanıcıya raporlandi | kind: ${kind}`;
+      const message = commandRuntimeT("testModeReported", {
+        command: "ScreenshotManager",
+        detail: commandRuntimeT("kindDetail", { kind }),
+      });
       Logger.toast(LogCategory.COMMAND, LogLevel.INFO, message, {
         eventType: "command-test-mode",
         command: "ScreenshotManager",
@@ -74,36 +77,43 @@ export async function screenshotManagerHandler(
     const sender = payload.sender ?? providerRaw;
 
     if (saved !== "") {
-      Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `ScreenshotManager çalıştı | kind: ${kind}`);
+      Logger.panel(
+        LogCategory.COMMAND,
+        LogLevel.INFO,
+        commandRuntimeT("screenshotRan", { kind })
+      );
 
       try {
         await WebviewManager.send({
           provider: providerRaw,
-          text: `Ekran görüntüsü: ${kind}`,
+          text: commandRuntimeT("screenshotAttachmentText", { kind }),
           attachments: [{ name: getFilename(saved), path: saved }],
         });
         Logger.panel(
           LogCategory.COMMAND,
           LogLevel.INFO,
-          `ScreenshotManager gönderildi -> ${providerRaw} | ${saved}`
+          commandRuntimeT("screenshotSent", { provider: providerRaw, path: saved })
         );
         Logger.panel(
           LogCategory.COMMAND,
           LogLevel.INFO,
-          `CoreEngine -> ${providerRaw} gönderim tetiklendi`,
+          commandRuntimeT("deliveryTriggered", { provider: providerRaw }),
           {
             eventType: "coreengine-ai-send",
             provider: providerRaw,
             triggerCommand: "ScreenshotManager",
             triggerSource: payload.source ?? "manual",
             detail: saved,
-            timestamp: new Date().toLocaleString("tr-TR"),
+            timestamp: formatCommandTimestamp(),
           }
         );
       } catch (err) {
         Logger.debug(
           LogCategory.COMMAND,
-          `ScreenshotManager gönderilemedi: ${getErrorMessage(err)}`
+          commandRuntimeT("deliveryFailed", {
+            command: "ScreenshotManager",
+            message: getErrorMessage(err),
+          })
         );
       }
 
@@ -112,7 +122,7 @@ export async function screenshotManagerHandler(
         sender,
         args: argsLabel,
         success: true,
-        detail: `Kaydedildi: ${saved}`,
+        detail: commandRuntimeT("screenshotSaved", { path: saved }),
       });
 
       return {
@@ -123,23 +133,27 @@ export async function screenshotManagerHandler(
       };
     }
 
-    Logger.debug(LogCategory.COMMAND, `ScreenshotManager çalıştı fakat sonuç boş | kind: ${kind}`);
-    return { success: false, message: "Screenshot alınamadı" };
+    Logger.debug(LogCategory.COMMAND, commandRuntimeT("screenshotEmptyLog", { kind }));
+    return { success: false, message: commandRuntimeT("screenshotEmpty") };
   } catch (err) {
     const errMsg = getErrorMessage(err);
-    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `ScreenshotManager hata: ${errMsg}`);
+    const localizedError = commandRuntimeT("commandError", {
+      command: "ScreenshotManager",
+      message: errMsg,
+    });
+    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, localizedError);
 
     logCommandResult("ScreenshotManager", {
       providerRaw,
       sender: payload.sender ?? providerRaw,
       args: payload.args ?? "",
       success: false,
-      detail: errMsg,
+      detail: localizedError,
     });
 
     return {
       success: false,
-      message: errMsg,
+      message: localizedError,
     };
   }
 }

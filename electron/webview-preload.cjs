@@ -6,6 +6,20 @@ const opencodeUiSessionUpdatedHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
 
+const WEBVIEW_PRELOAD_DIAGNOSTIC_ONCE = new Set();
+
+function warnWebviewOnce(key, message, context) {
+  if (WEBVIEW_PRELOAD_DIAGNOSTIC_ONCE.has(key)) return;
+  WEBVIEW_PRELOAD_DIAGNOSTIC_ONCE.add(key);
+  if (typeof console === "undefined" || typeof console.warn !== "function") return;
+  if (context !== undefined) {
+    console.warn(message, context);
+    return;
+  }
+  console.warn(message);
+}
+
+
 const WEBVIEW_PRELOAD_MESSAGE_FALLBACKS = {
   settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
   providerConfigSet: "Provider config set: {{providerId}} {{providerName}}",
@@ -56,7 +70,14 @@ async function syncWebviewPreloadLocale() {
     const settings = await ipcRenderer.invoke("load-settings");
     const locale = settings && settings.general && settings.general.language;
     appLocale = normalizeAppLanguage(locale);
-  } catch (_) {}
+  } catch (err) {
+    warnWebviewOnce(
+      "webview-preload-locale-settings",
+      "[webview-preload] failed to load settings for locale sync",
+      { error: getWebviewPreloadErrorMessage(err) }
+    );
+  }
+
 
   try {
     const pack = await ipcRenderer.invoke("i18n-load-language", appLocale);
@@ -65,10 +86,16 @@ async function syncWebviewPreloadLocale() {
     __app_preload_locale = resolvedLocale;
     __app_preload_catalog =
       pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
-  } catch (_) {
+  } catch (err) {
+    warnWebviewOnce(
+      "webview-preload-locale-pack",
+      "[webview-preload] failed to load language pack for locale sync",
+      { error: getWebviewPreloadErrorMessage(err) }
+    );
     __app_preload_catalog = null;
     __app_preload_locale = appLocale;
   }
+
 }
 
 function getWebviewPreloadErrorMessage(error) {
@@ -269,7 +296,14 @@ function setupProvider() {
         sendState,
         thinkingState,
       });
-    } catch (e) {}
+    } catch (err) {
+      warnWebviewOnce(
+        `webview-preload-provider-state-${slot}`,
+        "[webview-preload] provider state send failed",
+        { slot, error: getWebviewPreloadErrorMessage(err) }
+      );
+    }
+
   }
 
   function checkReady() {

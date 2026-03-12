@@ -1,19 +1,44 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify", "log:ui-notify-batch"]);
+const ALLOWED_IPC_RENDERER_CHANNELS = new Set(["log:ui-notify-batch"]);
 const OPENCODE_UI_SESSION_UPDATED_CHANNEL = "opencode-ui:session-updated";
 const PROVIDER_SCENARIO_PROGRESS_CHANNEL = "provider-scenario:progress";
+const SETTINGS_BROADCAST_NAME = "app-settings";
 const opencodeUiSessionUpdatedHandlers = new Map();
 const providerScenarioProgressHandlers = new Map();
 let __app_preload_locale = "tr";
 let __app_preload_catalog = null;
+let __app_preload_settings_channel = null;
+
+const PRELOAD_DIAGNOSTIC_ONCE = new Set();
+
+function warnPreloadOnce(key, message, error) {
+  if (PRELOAD_DIAGNOSTIC_ONCE.has(key)) return;
+  PRELOAD_DIAGNOSTIC_ONCE.add(key);
+  if (typeof console === "undefined" || typeof console.warn !== "function") return;
+  if (error !== undefined) {
+    console.warn(message, { error: getPreloadErrorMessage(error) });
+    return;
+  }
+  console.warn(message);
+}
+
 
 const PRELOAD_MESSAGE_FALLBACKS = {
-  appScriptLoaded: "/js/app.js loaded via src.",
-  disableSpellcheckFailed: "Failed to disable spellcheck: {{message}}",
-  appScriptLoadFailed: "Failed to load /js/app.js via src: {{message}}",
-  injectInitAppFailed: "injectInitApp failed: {{message}}",
-  initFailed: "Preload initialization failed: {{message}}",
+  en: {
+    appScriptLoaded: "/js/app.js loaded via src.",
+    disableSpellcheckFailed: "Failed to disable spellcheck: {{message}}",
+    appScriptLoadFailed: "Failed to load /js/app.js via src: {{message}}",
+    injectInitAppFailed: "injectInitApp failed: {{message}}",
+    initFailed: "Preload initialization failed: {{message}}",
+  },
+  tr: {
+    appScriptLoaded: "/js/app.js kaynak üzerinden yüklendi.",
+    disableSpellcheckFailed: "Yazım denetimi kapatılamadı: {{message}}",
+    appScriptLoadFailed: "/js/app.js kaynak üzerinden yüklenemedi: {{message}}",
+    injectInitAppFailed: "injectInitApp başarısız: {{message}}",
+    initFailed: "Preload başlatma hatası: {{message}}",
+  },
 };
 
 function normalizePreloadLocale(value) {
@@ -47,22 +72,88 @@ function readCatalogValue(catalog, path) {
   return typeof current === "string" ? current : null;
 }
 
-async function syncPreloadLocale() {
-  try {
-    const settings = await ipcRenderer.invoke("load-settings");
-    const nextLocale = normalizePreloadLocale(
-      settings && settings.general && settings.general.language
-    );
-    __app_preload_locale = nextLocale;
+function readLocaleFromSettings(settings) {
+  return normalizePreloadLocale(settings && settings.general && settings.general.language);
+}
 
-    const pack = await ipcRenderer.invoke("i18n-load-language", nextLocale);
-    __app_preload_catalog =
-      pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
-  } catch (_) {
-    __app_preload_catalog = null;
+function getPreloadFallbackTemplate(key) {
+  const messageLocale = resolvePreloadMessageLocale(__app_preload_locale);
+  return (
+    (PRELOAD_MESSAGE_FALLBACKS[messageLocale] &&
+      PRELOAD_MESSAGE_FALLBACKS[messageLocale][key]) ||
+    PRELOAD_MESSAGE_FALLBACKS.en[key] ||
+    key
+  );
+}
+
+async function syncPreloadLocale(nextSettings) {
+  let nextLocale;
+
+  try {
+    const settings =
+      nextSettings && typeof nextSettings === "object"
+        ? nextSettings
+        : await ipcRenderer.invoke("load-settings");
+    nextLocale = readLocaleFromSettings(settings);
+  } catch (err) {
+    warnPreloadOnce(
+      "preload-locale-settings",
+      "[preload] failed to load settings for locale sync",
+      err
+    );
+    nextLocale = normalizePreloadLocale(__app_preload_locale);
   }
 
+
+  __app_preload_locale = nextLocale;
+
+  try {
+    const pack = await ipcRenderer.invoke("i18n-load-language", nextLocale);
+    const resolvedLocale =
+      pack && typeof pack.locale === "string" ? normalizePreloadLocale(pack.locale) : nextLocale;
+    __app_preload_locale = resolvedLocale;
+    __app_preload_catalog =
+      pack && pack.catalog && typeof pack.catalog === "object" ? pack.catalog : null;
+  } catch (err) {
+    warnPreloadOnce(
+      "preload-locale-pack",
+      "[preload] failed to load language pack for locale sync",
+      err
+    );
+    __app_preload_catalog = null;
+    __app_preload_locale = nextLocale;
+  }
+
+
   return __app_preload_locale;
+}
+
+function startPreloadLocaleSync() {
+  if (
+    typeof globalThis.BroadcastChannel !== "function" ||
+    __app_preload_settings_channel !== null
+  ) {
+    return;
+  }
+
+  try {
+    __app_preload_settings_channel = new globalThis.BroadcastChannel(SETTINGS_BROADCAST_NAME);
+    __app_preload_settings_channel.onmessage = (event) => {
+      const message = event && typeof event === "object" ? event.data : null;
+      if (!message || typeof message !== "object" || message.type !== "settings-changed") {
+        return;
+      }
+      void syncPreloadLocale(message.payload);
+    };
+  } catch (err) {
+    warnPreloadOnce(
+      "preload-broadcast-channel",
+      "[preload] settings broadcast channel failed to initialize",
+      err
+    );
+    __app_preload_settings_channel = null;
+  }
+
 }
 
 function getPreloadErrorMessage(error) {
@@ -86,7 +177,7 @@ function preloadT(key, params) {
   const template =
     readCatalogValue(__app_preload_catalog, `electron.preload.${key}.${messageLocale}`) ||
     readCatalogValue(__app_preload_catalog, "electron.preload." + key) ||
-    PRELOAD_MESSAGE_FALLBACKS[key] ||
+    getPreloadFallbackTemplate(key) ||
     key;
 
   return template.replace(/\{\{(\w+)\}\}/g, (_, token) => {
@@ -97,11 +188,16 @@ function preloadT(key, params) {
 }
 
 void syncPreloadLocale();
+startPreloadLocaleSync();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   readDirectoryFiles: (dirPath) => ipcRenderer.invoke("read-directory-files", dirPath),
   loadSettings: () => ipcRenderer.invoke("load-settings"),
-  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
+  saveSettings: async (settings) => {
+    const result = await ipcRenderer.invoke("save-settings", settings);
+    void syncPreloadLocale(settings);
+    return result;
+  },
   i18nListLanguages: () => ipcRenderer.invoke("i18n-list-languages"),
   i18nLoadLanguage: (locale) => ipcRenderer.invoke("i18n-load-language", locale),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
@@ -209,7 +305,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     readConsoleLogs: (tail) => ipcRenderer.invoke("read-console-logs", tail),
     readErrorLogs: (tail) => ipcRenderer.invoke("read-error-logs", tail),
     getLogPaths: () => ipcRenderer.invoke("get-log-paths"),
-    onLogUINotify: (callback) => ipcRenderer.on("log:ui-notify", (event, data) => callback(data)),
   },
   whisperLoad: (params) => ipcRenderer.invoke("whisper-load", params),
   whisperSave: (params) => ipcRenderer.invoke("whisper-save", params),

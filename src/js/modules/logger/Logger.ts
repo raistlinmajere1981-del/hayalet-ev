@@ -46,6 +46,7 @@ class Logger {
   private listeners: Array<(entry: LogEntry) => void> = [];
   private batchTimer: ReturnType<typeof setTimeout> | null = null;
   private isInitialized = false;
+  private hasWarnedBatchBridgeUnavailable = false;
 
   private constructor() {}
 
@@ -382,26 +383,47 @@ class Logger {
 
   private queueForIPC(entry: LogEntry): void {
     this.batchQueue.push(entry);
+    if (this.batchQueue.length > this.config.maxMemoryLogs) {
+      this.batchQueue = this.batchQueue.slice(-this.config.maxMemoryLogs);
+    }
 
     if (this.batchQueue.length >= this.config.batchSize) {
       this.flushBatch();
     }
   }
 
+  private requeueBatch(batch: LogEntry[]): void {
+    if (batch.length === 0) return;
+
+    this.batchQueue = [...batch, ...this.batchQueue].slice(-this.config.maxMemoryLogs);
+  }
+
   private flushBatch(): void {
     if (this.batchQueue.length === 0) return;
+
+    const appendBatch = window.electronAPI?.logger.appendBatch;
+    if (typeof appendBatch !== "function") {
+      if (!this.hasWarnedBatchBridgeUnavailable) {
+        this.hasWarnedBatchBridgeUnavailable = true;
+        console.warn(loggerT("batchBridgeUnavailable"));
+      }
+      return;
+    }
+    this.hasWarnedBatchBridgeUnavailable = false;
 
     const batch = [...this.batchQueue];
     this.batchQueue = [];
 
-    const appendBatch = window.electronAPI?.logger.appendBatch;
-    if (typeof appendBatch !== "function") {
-      return;
-    }
-
-    appendBatch(batch).catch((error: Error) => {
-      console.error(loggerT("batchSendFailed", { message: error.message }), error);
-    });
+    appendBatch(batch)
+      .then((result) => {
+        if (result?.success === false) {
+          this.requeueBatch(batch);
+        }
+      })
+      .catch((error: Error) => {
+        this.requeueBatch(batch);
+        console.error(loggerT("batchSendFailed", { message: error.message }), error);
+      });
   }
 
   private startBatchTimer(): void {

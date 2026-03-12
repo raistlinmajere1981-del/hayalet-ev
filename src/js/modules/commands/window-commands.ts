@@ -2,7 +2,7 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "../logger/index.js";
 import { WindowManager } from "../window-manager.js";
 import type { CommandPayload } from "./utils.js";
-import { parseArgs, logCommandResult } from "./utils.js";
+import { commandRuntimeT, parseArgs, logCommandResult } from "./utils.js";
 import { getErrorMessage } from "@shared/index.js";
 
 type WindowCommandResult = {
@@ -28,15 +28,20 @@ export function windowManagerHandler(payload: CommandPayload = {}): WindowComman
 
   try {
     const result = WindowManager.apply(action) === true;
+    const status = result ? commandRuntimeT("logSuccess") : commandRuntimeT("logError");
 
-    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `WindowManager çalıştı | action: ${action}`);
+    Logger.panel(
+      LogCategory.COMMAND,
+      LogLevel.INFO,
+      commandRuntimeT("windowManagerRan", { action })
+    );
 
     logCommandResult("WindowManager", {
       providerRaw,
       sender,
       args: argsLabel,
       success: true,
-      detail: `action: ${action}, success: ${String(result)}`,
+      detail: commandRuntimeT("windowActionResult", { action, status }),
     });
 
     return {
@@ -48,17 +53,21 @@ export function windowManagerHandler(payload: CommandPayload = {}): WindowComman
     };
   } catch (err) {
     const errMsg = getErrorMessage(err);
-    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `WindowManager hata: ${errMsg}`);
+    const localizedError = commandRuntimeT("commandError", {
+      command: "WindowManager",
+      message: errMsg,
+    });
+    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, localizedError);
 
     logCommandResult("WindowManager", {
       providerRaw,
       sender,
       args: argsLabel,
       success: false,
-      detail: errMsg,
+      detail: localizedError,
     });
 
-    return { success: false, message: errMsg };
+    return { success: false, message: localizedError };
   }
 }
 
@@ -80,11 +89,11 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
   const sender = payload.sender ?? providerRaw;
 
   try {
-    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, `Restart başlatılıyor`);
+    Logger.panel(LogCategory.COMMAND, LogLevel.INFO, commandRuntimeT("restartStarting"));
 
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
-      throw new Error("electronAPI mevcut değil");
+      throw new Error(commandRuntimeT("apiUnavailable"));
     }
 
     logCommandResult("Restart", {
@@ -92,7 +101,7 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
       sender,
       args: argsLabel,
       success: true,
-      detail: "Uygulama yeniden başlatılıyor...",
+      detail: commandRuntimeT("restartRequested"),
     });
 
     await electronApi.appRestart();
@@ -100,20 +109,24 @@ export async function restartHandler(payload: CommandPayload = {}): Promise<Wind
     return {
       success: true,
       command: "Restart",
-      message: "Uygulama yeniden başlatılıyor...",
+      message: commandRuntimeT("restartRequested"),
     };
   } catch (err) {
     const errMsg = getErrorMessage(err);
-    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, `Restart hata: ${errMsg}`);
+    const localizedError = commandRuntimeT("commandError", {
+      command: "Restart",
+      message: errMsg,
+    });
+    Logger.panel(LogCategory.COMMAND, LogLevel.ERROR, localizedError);
 
     logCommandResult("Restart", {
       providerRaw,
       sender,
       args: argsLabel,
       success: false,
-      detail: errMsg,
+      detail: localizedError,
     });
 
-    return { success: false, message: errMsg };
+    return { success: false, message: localizedError };
   }
 }

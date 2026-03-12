@@ -156,9 +156,9 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["hayalet-ev", "app", "mcp-server", "ghost-agent"],
               description: electronToolT("readLogs.app"),
-              default: "app",
+              default: "hayalet-ev",
             },
             tail: {
               type: "number",
@@ -223,9 +223,9 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["hayalet-ev", "app", "mcp-server", "ghost-agent"],
               description: electronToolT("listLogSessions.app"),
-              default: "app",
+              default: "hayalet-ev",
             },
           },
         },
@@ -301,9 +301,9 @@ export function createElectronTools(context: ToolContext): ToolEntry[] {
             },
             app: {
               type: "string",
-              enum: ["app", "mcp-server", "ghost-agent"],
+              enum: ["hayalet-ev", "app", "mcp-server", "ghost-agent"],
               description: electronToolT("getSessionSummary.app"),
-              default: "app",
+              default: "hayalet-ev",
             },
           },
         },

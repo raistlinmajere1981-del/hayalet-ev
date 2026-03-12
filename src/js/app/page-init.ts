@@ -33,7 +33,7 @@ export function setupUILogListener(): void {
     return;
   }
 
-  window.electronAPI.ipcRenderer.on("log:ui-notify", () => {});
+  window.electronAPI.ipcRenderer.on("log:ui-notify-batch", () => {});
 }
 
 export async function initControllers(controllers: Record<string, PageController>): Promise<void> {

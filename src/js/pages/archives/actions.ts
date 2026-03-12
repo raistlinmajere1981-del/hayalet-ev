@@ -3,13 +3,29 @@ import { LogCategory } from "@shared/logging-core";
 import { AppState } from "../../modules/app-state.js";
 import { ConversationListManager } from "../../modules/conversation-list-manager.js";
 import { AppI18n } from "../../modules/i18n/index.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
 import { Logger } from "../../modules/logger/index.js";
 import { ButtonStates } from "../../ui/button-states.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import { mapFileResult, mapMessageResult, toRecord, toRecordArray, unwrapIpcData } from "./ipc-mappers.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./types.js";
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
+}
+
+type ArchivesIpcResult = {
+  success?: boolean;
+  error?: string;
+  errorKey?: string;
+  errorParams?: TranslationParams;
+};
+
+function resolveArchiveActionError(
+  result: ArchivesIpcResult | undefined,
+  fallbackKey: string
+): string {
+  return resolveIpcErrorMessage(result) ?? archivesT(fallbackKey);
 }
 
 export interface ArchivesActionsContext {
@@ -74,13 +90,13 @@ export async function deleteArchiveEntry(
       accountId: accountInfo.id,
       conversationId: entry.id,
     });
-    const result = resultRaw as { success?: boolean; error?: string } | undefined;
+    const result = resultRaw as ArchivesIpcResult | undefined;
 
     if (result?.success !== true) {
       if (deleteBtn) {
         ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus(result?.error ?? archivesT("actions.status.deleteFailed"), "error");
+      ctx.setStatus(resolveArchiveActionError(result, "actions.status.deleteFailed"), "error");
       return;
     }
 
@@ -108,7 +124,7 @@ export async function deleteArchiveEntry(
       ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
     }
     Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.deleteError", { message: err.message }));
-    ctx.setStatus(archivesT("actions.status.deleteError"), "error");
+    ctx.setStatus(formatErrorWithDetail(archivesT("actions.status.deleteError"), err), "error");
   }
 }
 
@@ -297,7 +313,7 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
       title: newTitle,
       summary: newSummary,
     });
-    const result = resultRaw as { success?: boolean; error?: string } | undefined;
+    const result = resultRaw as ArchivesIpcResult | undefined;
 
     if (result?.success === true) {
       if (saveBtn) {
@@ -311,10 +327,7 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
       if (saveBtn) {
         ButtonStates.setError(saveBtn, archivesT("actions.buttons.error"), 1500);
       }
-      ctx.setStatus(
-        (result as { error?: string }).error ?? archivesT("actions.status.saveFailed"),
-        "error"
-      );
+      ctx.setStatus(resolveArchiveActionError(result, "actions.status.saveFailed"), "error");
     }
   } catch (error) {
     const err = error as Error;
@@ -322,6 +335,6 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
       ButtonStates.setError(saveBtn, archivesT("actions.buttons.error"), 1500);
     }
     Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.saveError", { message: err.message }));
-    ctx.setStatus(archivesT("actions.status.saveFailed"), "error");
+    ctx.setStatus(formatErrorWithDetail(archivesT("actions.status.saveFailed"), err), "error");
   }
 }

@@ -1,6 +1,7 @@
 // NOTE: Mirror tool lifecycle events into per-tool and unified session logs.
 
-import { appendFile, existsSync, mkdirSync, readdirSync, statSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "fs";
+import { appendFile } from "fs/promises";
 import { join } from "path";
 import { createMcpTranslatorSync, readMcpAppLanguageSync } from "./i18n/index.js";
 import { PROJECT_ROOT } from "./project-root.js";
@@ -179,6 +180,7 @@ class MCPLogger {
   async logToolError(
     toolName: string,
     error: Error,
+    args?: unknown,
     duration?: number,
     agentContext?: unknown
   ): Promise<void> {
@@ -191,6 +193,7 @@ class MCPLogger {
       toolName,
       operation: "error",
       ...(duration !== undefined ? { duration } : {}),
+      ...(args !== undefined ? { args: this.sanitizeArgs(args) } : {}),
       error: {
         name: error.name,
         message: error.message,
@@ -206,7 +209,6 @@ class MCPLogger {
     process.stderr.write(`${entry.message}\n`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   private async writeToLog(entry: MCPLogEntry): Promise<void> {
     try {
       const sessionId = this.getCurrentSessionId();
@@ -217,15 +219,6 @@ class MCPLogger {
       }
 
       const mcpLogPath = join(sessionDir, "mcp-tools.jsonl");
-      appendFile(mcpLogPath, JSON.stringify(entry) + "\n", "utf-8", (err) => {
-        if (err) {
-          const { t } = this.getTranslator();
-          process.stderr.write(
-            `${t("mcpServer.logs.writeMcpToolsFailed", { message: String(err) })}\n`
-          );
-        }
-      });
-
       const structuredPath = join(sessionDir, "structured.jsonl");
       const unifiedEntry: UnifiedLogEntry = {
         timestamp: entry.timestamp,
@@ -245,20 +238,29 @@ class MCPLogger {
         unifiedEntry.error = entry.error;
       }
 
-      appendFile(structuredPath, JSON.stringify(unifiedEntry) + "\n", "utf-8", (err) => {
-        if (err) {
-          const { t } = this.getTranslator();
-          process.stderr.write(
-            `${t("mcpServer.logs.writeStructuredFailed", { message: String(err) })}\n`
-          );
-        }
-      });
+      const [mcpResult, structuredResult] = await Promise.allSettled([
+        appendFile(mcpLogPath, JSON.stringify(entry) + "\n", "utf-8"),
+        appendFile(structuredPath, JSON.stringify(unifiedEntry) + "\n", "utf-8"),
+      ]);
 
-      return;
+      if (mcpResult.status === "rejected") {
+        const { t } = this.getTranslator();
+        process.stderr.write(
+          `${t("mcpServer.logs.writeMcpToolsFailed", { message: String(mcpResult.reason) })}\n`
+        );
+      }
+
+      if (structuredResult.status === "rejected") {
+        const { t } = this.getTranslator();
+        process.stderr.write(
+          `${t("mcpServer.logs.writeStructuredFailed", {
+            message: String(structuredResult.reason),
+          })}\n`
+        );
+      }
     } catch (error) {
       const { t } = this.getTranslator();
       process.stderr.write(`${t("mcpServer.logs.writeFailed", { message: String(error) })}\n`);
-      return;
     }
   }
 
@@ -314,11 +316,11 @@ export function logToolSuccess(
 export function logToolError(
   toolName: string,
   error: Error,
-  _args: unknown,
+  args: unknown,
   startTime?: number
 ): void {
   const duration = startTime != null && startTime > 0 ? Date.now() - startTime : undefined;
-  logger.logToolError(toolName, error, duration).catch((err) => {
+  logger.logToolError(toolName, error, args, duration).catch((err) => {
     writeLoggerInternalError("errorLogFailed", { message: String(err) });
   });
 

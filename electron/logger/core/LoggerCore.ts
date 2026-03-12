@@ -223,9 +223,6 @@ export class LoggerCore {
     for (const window of allWindows) {
       if (!window.isDestroyed()) {
         window.webContents.send("log:ui-notify-batch", payload);
-        for (const item of payload) {
-          window.webContents.send("log:ui-notify", item);
-        }
       }
     }
 

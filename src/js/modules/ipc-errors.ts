@@ -19,7 +19,9 @@ export function resolveIpcErrorMessage(payload?: IpcErrorPayload | null): string
 
   if (typeof payload.error === "string") {
     const trimmed = payload.error.trim();
-    return trimmed === "" ? undefined : trimmed;
+    return trimmed === ""
+      ? undefined
+      : AppI18n.t("electron.ipc.errors.operationFailed", { message: trimmed });
   }
 
   return undefined;

@@ -114,7 +114,7 @@ export async function applyAssistantIdentityToChatEmpty(getById: ByIdFn = byId):
   }
 
   if (subtitleEl != null) {
-    subtitleEl.textContent = "Hos geldin. Bugun ne yapmak istersin?";
+    subtitleEl.textContent = t("chat.emptySubtitle");
   }
 
   if (logoEl == null) {

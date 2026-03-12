@@ -124,7 +124,15 @@ export function translateCatalog(
 ): string {
   const template = getTranslationValue(catalog, key) ?? getTranslationValue(fallbackCatalog, key);
   if (typeof template !== "string") {
-    return key;
+    if (typeof console !== "undefined" && typeof console.warn === "function") {
+      console.warn(`[i18n] Missing translation key: ${key}`);
+    }
+
+    return (
+      getTranslationValue(catalog, "app.common.translationMissing") ??
+      getTranslationValue(fallbackCatalog, "app.common.translationMissing") ??
+      "Translation unavailable"
+    );
   }
 
   return interpolateTranslation(template, params);

@@ -13,6 +13,8 @@ export interface PathResolver {
   getDataDir(): string;
   getConfigDir(): string;
   getLogsDir(): string;
+  getMainAppLogsDir(): string;
+  getLegacyMainAppLogsDir(): string;
   getCommandsDir(): string;
   getAssetsDir(): string;
   getRoomsWorkspaceDir(): string;

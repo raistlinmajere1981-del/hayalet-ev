@@ -1,0 +1,143 @@
+# Hayalet-ev Main App i18n / Multilingual Completeness Audit
+
+Scope: **main Hayalet-ev app only** (renderer, electron, preload, shared). `ghost-agent` excluded.
+
+## 1) Overall assessment
+
+- Catalog parity between `en` and `tr` is structurally strong (same flattened key count and no missing key on either side).
+- However, production-readiness is currently blocked by **runtime bypasses**: command/toast/log flows still emit hardcoded TR/EN strings directly instead of translation keys, causing mixed-language UI output.
+- Fallback behavior currently returns raw translation keys when lookup fails, which leaks internal key names into UI/log surfaces.
+- Locale formatting is inconsistent in several places (`tr-TR` forced or locale omitted), causing language drift in user-facing timestamps.
+
+## 2) Missing i18n coverage by module/page
+
+### Finding A — Command subsystem uses direct user-facing strings (mixed TR/EN)
+- **File path:** `src/js/modules/commands/*.ts`
+- **Severity:** Critical
+- **Confidence:** High
+- **Why it matters:** Command panel + toast output is user-visible; direct literals bypass locale selection and create mixed-language UX.
+- **Exact problem:** Multiple handlers return/display literal strings (usage, success, error, test mode, restart text) without `AppI18n.t`.
+- **Exact fix direction:** Create `app.commands.<module>.*` key groups and route all command message text through translator helper (`commandT`) before logging/returning.
+
+### Finding B — Electron command bridges expose raw/non-localized messages
+- **File path:** `electron/server-commands.ts`, `electron/command-manager.ts`, `electron/whisper-manager.ts`, `electron/device-manager.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Renderer can surface these messages in command results/toasts; they bypass app language.
+- **Exact problem:** Returned `message` values include English and Turkish literals (`Usage ...`, `jobId eksik`, `Account ID gerekli`, `unknown action`, etc.).
+- **Exact fix direction:** Standardize return payload to `code + params` and translate in renderer, or localize in electron with `createElectronTranslator()` and key-based mapping.
+
+### Finding C — Webview send-path emits English debug text that can surface via logs
+- **File path:** `src/js/modules/webview/message-sender.ts`
+- **Severity:** Medium
+- **Confidence:** High
+- **Why it matters:** These messages are injected into failure details used by logging/UI diagnostics.
+- **Exact problem:** Script returns hardcoded messages (`send button not found`, `send button disabled`, `send clicked`).
+- **Exact fix direction:** Return stable machine codes from injected script; map codes to localized messages in renderer before log/UI presentation.
+
+## 3) Hardcoded user-facing strings by file
+
+### Finding D — `window-commands.ts` has user-visible TR hardcoded values
+- **File path:** `src/js/modules/commands/window-commands.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Restart and error texts are visible in command output.
+- **Exact problem:** Direct strings like `Restart başlatılıyor`, `electronAPI mevcut değil`, `Uygulama yeniden başlatılıyor...`, and `... hata:`.
+- **Exact fix direction:** Replace with translation keys (`app.commands.window.*`) and parameterized templates.
+
+### Finding E — `screenshot-commands.ts` bypasses i18n for core UI text
+- **File path:** `src/js/modules/commands/screenshot-commands.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Toast/panel messages and outbound text are user-visible.
+- **Exact problem:** Hardcoded texts (`Test modu...`, `Ekran görüntüsü: ...`, `Screenshot alınamadı`, etc.).
+- **Exact fix direction:** Move all literals to i18n catalog; keep only machine identifiers in code.
+
+### Finding F — `file-commands.ts` and `whisper-commands.ts` are partially localized, partially hardcoded
+- **File path:** `src/js/modules/commands/file-commands.ts`, `src/js/modules/commands/whisper-commands.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Same command UX has inconsistent language behavior across flows.
+- **Exact problem:** Hardcoded usage and status strings (`Kullanım ...`, `ListFiles ...`, `WhisperManager ...`) coexist with i18n elsewhere.
+- **Exact fix direction:** Introduce per-command translation adapter and enforce no literal user text in handlers.
+
+### Finding G — Shared command utility injects non-localized success/failure labels
+- **File path:** `src/js/modules/commands/utils.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** This utility is reused by many commands; it amplifies language leakage globally.
+- **Exact problem:** Uses fixed TR status labels (`Başarılı`, `Hata`, `çalıştı`) and fixed `tr-TR` timestamp.
+- **Exact fix direction:** Convert utility to accept translation callbacks / key names and locale-aware formatter.
+
+## 4) Inconsistent key usage / duplicate key patterns
+
+### Finding H — Two different localization strategies coexist in one app layer
+- **File path:** `src/js/modules/commands/ai-chat-commands.ts` vs other command handlers
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Same UX area (commands) has inconsistent engineering pattern; regressions are likely.
+- **Exact problem:** `ai-chat-commands.ts` uses structured translation helper while peer command modules use literals.
+- **Exact fix direction:** Promote `aiChatT` pattern to all command modules and add lint rule preventing string literals in command result logs.
+
+### Finding I — Preload messages use nested per-language keys (`.en`/`.tr`) unlike rest of catalog
+- **File path:** `shared/languages/en/index.json`, `shared/languages/tr/index.json`, `electron/preload.cjs`
+- **Severity:** Medium
+- **Confidence:** High
+- **Why it matters:** Key shape differs from normal namespace model and makes tool/lint validation harder.
+- **Exact problem:** `electron.preload.*` and `electron.webviewPreload.*` store both languages inside each locale file, then preload manually selects `.en/.tr`.
+- **Exact fix direction:** Normalize to standard key-per-locale model (string leafs in each locale file), remove custom `.en/.tr` branch lookup in preload translator.
+
+## 5) Fallback and language-sync risks
+
+### Finding J — Missing translation lookup returns raw key text
+- **File path:** `shared/i18n/catalog.ts`
+- **Severity:** Critical
+- **Confidence:** High
+- **Why it matters:** In production UI/logs, users can see internal key names instead of readable fallback text.
+- **Exact problem:** `translateCatalog` returns `key` when template not found.
+- **Exact fix direction:** Return controlled fallback string (localized generic) + emit telemetry; optionally strict mode in dev that throws.
+
+### Finding K — Backup overlay date formatting ignores selected app locale
+- **File path:** `src/js/app/backup-overlay-markup.ts`
+- **Severity:** Medium
+- **Confidence:** High
+- **Why it matters:** Date format can mismatch current language and region expectations.
+- **Exact problem:** Uses `date.toLocaleString()` without locale argument.
+- **Exact fix direction:** Use `resolveIntlLocale(AppI18n.getLocale())` + consistent formatter helper shared across modules.
+
+### Finding L — Command timestamp formatting forces `tr-TR` in several paths
+- **File path:** `src/js/modules/commands/utils.ts`, `src/js/modules/commands/file-commands.ts`, `src/js/modules/commands/screenshot-commands.ts`
+- **Severity:** High
+- **Confidence:** High
+- **Why it matters:** Even when app locale is EN, command timeline can still show Turkish locale format.
+- **Exact problem:** Explicit `toLocaleString("tr-TR")` in command logs/metadata.
+- **Exact fix direction:** Replace with one centralized `formatCommandTimestamp()` using resolved app locale.
+
+### Finding M — Preload starts with hardcoded `tr` locale before async sync
+- **File path:** `electron/preload.cjs`
+- **Severity:** Medium
+- **Confidence:** Medium
+- **Why it matters:** Early preload messages can be emitted in wrong language until settings fetch completes.
+- **Exact problem:** `__app_preload_locale` defaults to `"tr"`; language is synchronized asynchronously.
+- **Exact fix direction:** Read language synchronously in main/preload bootstrap or send locale in initial preload context to avoid startup race.
+
+## 6) Production-critical multilingual issues
+
+1. Command system hardcoded strings and forced TR date formatting (Critical/High).
+2. Raw key leak fallback (`translateCatalog -> key`) (Critical).
+3. Electron-main message payloads with mixed TR/EN literals (High).
+
+These three together are enough to produce user-facing mixed language output in real workflows.
+
+## 7) Recommended cleanup plan (priority order)
+
+1. **Create command i18n migration pass** (all `src/js/modules/commands/*`): replace literals with key-based translator wrappers.
+2. **Introduce locale-safe timestamp/number/date helpers** and remove all forced `tr-TR` formatting.
+3. **Normalize electron/main return contracts** to machine codes + translated UI mapping.
+4. **Harden fallback strategy** in `translateCatalog` (no raw key leakage in production).
+5. **Unify preload key model** with main locale catalogs; remove nested `.en/.tr` key pattern.
+6. **Add regression checks**:
+   - scan for command literal leaks,
+   - assert no `toLocaleString("tr-TR")` in renderer paths,
+   - enforce no raw fallback key shown in UI snapshots/logs.
+

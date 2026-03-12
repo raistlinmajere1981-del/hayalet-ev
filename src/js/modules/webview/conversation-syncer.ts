@@ -712,6 +712,12 @@ class ConversationSyncerClass {
         newEntry: existing === null,
       };
     } catch (_error) {
+      const errorMessage = _error instanceof Error ? _error.message : String(_error);
+      Logger.warn(LogCategory.WEBVIEW, "[archive-status-fallback] Failed to inspect archive status", {
+        provider,
+        webUrl,
+        error: errorMessage,
+      });
       return { existing: null, prevCount: 0, newEntry: true };
     }
   }

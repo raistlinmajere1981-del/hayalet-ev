@@ -1,13 +1,16 @@
 // NOTE: Analyze MCP log streams for usage and performance stats.
 
 import { readFile } from "fs/promises";
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 
 const MCP_LOG_DIR = join(PROJECT_ROOT, "logs", "mcp-server");
-const APP_LOG_DIR = join(PROJECT_ROOT, "logs", "app");
+const APP_LOG_DIR_CANDIDATES = [
+  join(PROJECT_ROOT, "logs", "hayalet-ev"),
+  join(PROJECT_ROOT, "logs", "app"),
+];
 
 interface MCPLogEntry {
   timestamp: string;
@@ -78,17 +81,51 @@ function parseStructuredEvent(line: string, unknownValue: string): StructuredEve
   }
 }
 
-function getCurrentSessionId(logDir: string): string {
+function getCurrentSessionId(logDir: string | string[]): string {
   try {
-    const sessions = readdirSync(logDir)
-      .filter((f) => /^\d{8}-\d{6}/.test(f))
-      .sort()
-      .reverse();
+    const logDirs = Array.isArray(logDir) ? logDir : [logDir];
+    const sessions = logDirs.flatMap((candidateDir) => {
+      if (!existsSync(candidateDir)) return [];
 
-    return sessions[0] ?? "default";
+      return readdirSync(candidateDir)
+        .map((entryName) => {
+          try {
+            const sessionPath = join(candidateDir, entryName);
+            const sessionStat = statSync(sessionPath);
+            if (!sessionStat.isDirectory()) return null;
+            return { entryName, mtimeMs: sessionStat.mtimeMs };
+          } catch {
+            return null;
+          }
+        })
+        .filter((entry): entry is { entryName: string; mtimeMs: number } => entry !== null);
+    });
+
+    sessions.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+    return sessions[0]?.entryName ?? "default";
   } catch {
     return "default";
   }
+}
+
+function resolveAppStructuredLogPath(preferredSessionId: string): string | null {
+  for (const logDir of APP_LOG_DIR_CANDIDATES) {
+    const preferredPath = join(logDir, preferredSessionId, "structured.jsonl");
+    if (existsSync(preferredPath)) {
+      return preferredPath;
+    }
+  }
+
+  const fallbackSessionId = getCurrentSessionId(APP_LOG_DIR_CANDIDATES);
+  for (const logDir of APP_LOG_DIR_CANDIDATES) {
+    const fallbackPath = join(logDir, fallbackSessionId, "structured.jsonl");
+    if (existsSync(fallbackPath)) {
+      return fallbackPath;
+    }
+  }
+
+  return null;
 }
 
 export async function analyzeMcpToolUsage(args: {
@@ -258,11 +295,7 @@ export async function correlateMcpErrors(args: {
   const unknownError = analysisRuntimeT("unknownError");
   const sessionId = args.sessionId ?? getCurrentSessionId(MCP_LOG_DIR);
   const mcpLogPath = join(MCP_LOG_DIR, sessionId, "mcp-tools.jsonl");
-  const preferredAppSessionPath = join(APP_LOG_DIR, sessionId, "structured.jsonl");
-  const appSessionId = existsSync(preferredAppSessionPath)
-    ? sessionId
-    : getCurrentSessionId(APP_LOG_DIR);
-  const structuredLogPath = join(APP_LOG_DIR, appSessionId, "structured.jsonl");
+  const structuredLogPath = resolveAppStructuredLogPath(sessionId);
   const timeWindow = args.timeWindow ?? 5000;
 
   if (!existsSync(mcpLogPath)) {
@@ -277,7 +310,7 @@ export async function correlateMcpErrors(args: {
     .filter((e) => e.operation === "error");
 
   let structuredEvents: StructuredEvent[] = [];
-  if (existsSync(structuredLogPath)) {
+  if (structuredLogPath !== null && existsSync(structuredLogPath)) {
     const structuredContent = await readFile(structuredLogPath, "utf-8");
     structuredEvents = structuredContent
       .split("\n")
