@@ -122,6 +122,7 @@ async function initApp(): Promise<void> {
       );
     }
     injectPageTemplates();
+    registerWebviews();
     applyShellStaticTranslations();
     SplashScreen.update(50, AppI18n.t("app.startup.startingModules"));
 
@@ -168,8 +169,6 @@ async function initApp(): Promise<void> {
     window.WebviewManager = WebviewManager;
     window.AppState = AppState;
     window.ConversationListManager = ConversationListManager;
-
-    registerWebviews();
 
     const entranceController = controllers["entrance"] as
       | { applyDefaultConnections?: () => void }

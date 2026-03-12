@@ -170,21 +170,6 @@
   display: none;
 }
 
-.assistant-role-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--space-5);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-full);
-  border: var(--border-1) solid var(--assistant-role-border);
-  background: var(--assistant-role-bg);
-  color: var(--assistant-role-text);
-  font-size: var(--assistant-role-font-size);
-  letter-spacing: var(--tracking-pill);
-  text-transform: uppercase;
-}
-
 .assistant-identity-row {
   display: flex;
   align-items: center;
@@ -193,16 +178,20 @@
   flex-wrap: wrap;
 }
 
-.assistant-inline-tools {
+.assistant-identity-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-1-5);
+  gap: var(--space-1);
+  min-width: 0;
 }
 
-.assistant-inline-tools .btn-icon {
+.assistant-identity-tool-btn {
   width: var(--size-control-pill);
   min-width: var(--size-control-pill);
   height: var(--size-control-pill);
+  padding: 0;
+  border-radius: var(--radius-xl);
+  font-size: var(--text-sm);
 }
 
 .assistant-provider-meta {
@@ -283,9 +272,7 @@
 }
 
 .assistant-topbar-chip,
-.assistant-status,
-.assistant-status-extended,
-.assistant-opencode-indicator {
+.assistant-status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -299,10 +286,34 @@
   box-shadow: var(--assistant-pill-shadow);
 }
 
+.assistant-runtime-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: min(100%, 380px);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-1-5) var(--space-3);
+}
+
+.assistant-runtime-stack__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.assistant-runtime-stack__row + .assistant-runtime-stack__row {
+  margin-top: var(--space-1-5);
+  padding-top: var(--space-1-5);
+  border-top: var(--border-1) solid color-mix(in srgb, var(--assistant-pill-border) 72%, transparent);
+}
+
 .assistant-status-extended {
   min-width: 0;
   overflow: hidden;
-  max-width: var(--layout-panel-status-max);
+  max-width: none;
 }
 
 .assistant-status .status-dot,
@@ -343,10 +354,12 @@
 
 .assistant-status-extended .status-info {
   display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-0-5);
   font-size: var(--assistant-status-font-size);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .assistant-status-extended .status-info span {
@@ -364,7 +377,7 @@
 
 .assistant-status-extended .status-info small {
   display: block;
-  max-width: var(--layout-panel-rail-max);
+  max-width: 100%;
   color: var(--text-secondary);
   line-height: 1;
   white-space: nowrap;
@@ -374,8 +387,8 @@
 
 .assistant-opencode-indicator {
   min-width: 0;
-  max-width: var(--layout-panel-indicator-max);
-  padding-right: var(--space-1-5);
+  max-width: none;
+  width: 100%;
 }
 
 .assistant-opencode-indicator .status-dot {
@@ -406,6 +419,7 @@
   color: var(--color-accent);
   flex: 0 0 auto;
   justify-content: center;
+  margin-left: auto;
 }
 
 .assistant-opencode-action-btn.is-busy {
@@ -418,7 +432,7 @@
   color: var(--text-primary);
 }
 
-.assistant-inline-tools .btn-icon,
+.assistant-identity-tool-btn,
 .assistant-opencode-actions .btn-icon {
   border-radius: var(--radius-xl);
   border: var(--border-1) solid var(--assistant-pill-border);
@@ -426,24 +440,21 @@
   box-shadow: none;
 }
 
-.assistant-inline-tools .btn-icon:hover:not(:disabled),
+.assistant-identity-tool-btn:hover:not(:disabled),
 .assistant-opencode-actions .btn-icon:hover:not(:disabled) {
   border-color: var(--assistant-pill-border-strong);
   background: var(--assistant-pill-bg-hover);
 }
 
 .assistant-opencode-indicator.is-ready {
-  border-color: color-mix(in srgb, var(--color-success) 42%, var(--border-default));
   color: var(--text-primary);
 }
 
 .assistant-opencode-indicator.is-missing {
-  border-color: color-mix(in srgb, var(--color-warning) 42%, var(--border-default));
   color: var(--text-primary);
 }
 
 .assistant-opencode-indicator.is-error {
-  border-color: color-mix(in srgb, var(--color-error) 42%, var(--border-default));
   color: var(--text-primary);
 }
 
@@ -656,6 +667,7 @@
 
   .assistant-chip-row,
   .assistant-opencode-actions,
+  .assistant-runtime-stack,
   .assistant-status-extended,
   .assistant-opencode-indicator,
   #assistant-provider-select {

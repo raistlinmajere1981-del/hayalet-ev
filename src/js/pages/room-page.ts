@@ -5,6 +5,7 @@ import { RoomHostRuntime } from "../modules/rooms/room-host-runtime.js";
 import { toRoomRuntimeFileUrl } from "../modules/rooms/room-runtime-url.js";
 
 type RoomRuntimeState = "idle" | "loading" | "ready" | "error";
+type RoomHostMessage = Record<string, unknown>;
 
 type RoomWebviewElement = HTMLElement & {
   src: string;
@@ -29,6 +30,7 @@ export class RoomPageController implements PageController {
   private lastRuntimeEvent = roomPageT("status.handshakeWaiting");
   private preloadUrlPromise: Promise<string> | null = null;
   private unsubscribeI18n: (() => void) | null = null;
+  private readonly pendingHostMessages = new WeakMap<RoomWebviewElement, RoomHostMessage[]>();
 
   constructor(room: InstalledRoomRecord, pageName: string) {
     this.room = { ...room };
@@ -209,13 +211,18 @@ export class RoomPageController implements PageController {
       mount.replaceChildren(webview);
     }
 
+    const currentSrc = webview.getAttribute("src") ?? "";
+    if (currentSrc !== runtimeUrl) {
+      this.markRuntimeReady(webview, false);
+      this.resetPendingHostMessages(webview);
+    }
+
     await RoomHostRuntime.ensureRoomHost(this.room, {
       sendToRoom: (payload) => {
-        webview.send?.("room-host-message", payload);
+        this.sendRuntimeMessage(webview, payload);
       },
     });
 
-    const currentSrc = webview.getAttribute("src") ?? "";
     if (currentSrc !== runtimeUrl) {
       this.runtimeState = "loading";
       this.lastRuntimeEvent = runtimeUrl;
@@ -234,23 +241,26 @@ export class RoomPageController implements PageController {
 
     webview.addEventListener("did-start-loading", () => {
       const page = this.getPage();
+      this.markRuntimeReady(webview, false);
       this.runtimeState = "loading";
-      this.lastRuntimeEvent =
-        webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent = webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }
     });
 
+    webview.addEventListener("dom-ready", () => {
+      this.markRuntimeReady(webview, true);
+      this.flushPendingHostMessages(webview);
+    });
+
     webview.addEventListener("did-stop-loading", () => {
       const page = this.getPage();
       this.runtimeState = "ready";
-      this.lastRuntimeEvent =
-        webview.getURL?.() ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent = webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }
-      this.sendHostContext(webview, "did-stop-loading");
     });
 
     webview.addEventListener("did-fail-load", (event) => {
@@ -304,7 +314,7 @@ export class RoomPageController implements PageController {
   }
 
   private sendHostContext(webview: RoomWebviewElement, reason: string): void {
-    webview.send?.("room-host-message", {
+    this.sendRuntimeMessage(webview, {
       type: "host-context",
       reason,
       room: {
@@ -315,6 +325,65 @@ export class RoomPageController implements PageController {
         hostEntryPath: this.room.hostEntryPath,
       },
     });
+  }
+
+  private getPendingHostMessages(webview: RoomWebviewElement): RoomHostMessage[] {
+    const existing = this.pendingHostMessages.get(webview);
+    if (existing !== undefined) {
+      return existing;
+    }
+
+    const next: RoomHostMessage[] = [];
+    this.pendingHostMessages.set(webview, next);
+    return next;
+  }
+
+  private resetPendingHostMessages(webview: RoomWebviewElement): void {
+    this.pendingHostMessages.set(webview, []);
+  }
+
+  private markRuntimeReady(webview: RoomWebviewElement, ready: boolean): void {
+    webview.dataset["roomRuntimeReady"] = ready ? "true" : "false";
+  }
+
+  private isRuntimeReady(webview: RoomWebviewElement): boolean {
+    return webview.dataset["roomRuntimeReady"] === "true";
+  }
+
+  private sendRuntimeMessage(webview: RoomWebviewElement, payload: RoomHostMessage): void {
+    if (!this.isRuntimeReady(webview)) {
+      this.getPendingHostMessages(webview).push(payload);
+      return;
+    }
+
+    try {
+      webview.send?.("room-host-message", payload);
+    } catch {
+      this.markRuntimeReady(webview, false);
+      this.getPendingHostMessages(webview).push(payload);
+    }
+  }
+
+  private flushPendingHostMessages(webview: RoomWebviewElement): void {
+    if (!this.isRuntimeReady(webview)) {
+      return;
+    }
+
+    const queue = this.getPendingHostMessages(webview);
+    if (queue.length === 0) {
+      return;
+    }
+
+    const pending = queue.splice(0, queue.length);
+    for (const payload of pending) {
+      try {
+        webview.send?.("room-host-message", payload);
+      } catch {
+        this.markRuntimeReady(webview, false);
+        queue.unshift(payload);
+        break;
+      }
+    }
   }
 
   private describeRoomCommand(payload: unknown): string {

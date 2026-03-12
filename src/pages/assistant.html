@@ -36,7 +36,30 @@
               >
                 Assistant
               </span>
-              <span class="assistant-role-pill">AI0</span>
+              <div class="assistant-identity-actions">
+                <button
+                  class="btn btn-ghost btn-icon btn-sm assistant-identity-tool-btn"
+                  id="assistant-memory-btn"
+                  title=""
+                  type="button"
+                  aria-label=""
+                  data-shell-i18n-title="assistant.memoryOverlay.title"
+                  data-shell-i18n-aria-label="assistant.memoryOverlay.title"
+                >
+                  🧠
+                </button>
+                <button
+                  class="btn btn-ghost btn-icon btn-sm assistant-identity-tool-btn"
+                  id="assistant-character-btn"
+                  title=""
+                  type="button"
+                  aria-label=""
+                  data-shell-i18n-title="assistant.characterOverlay.title"
+                  data-shell-i18n-aria-label="assistant.characterOverlay.title"
+                >
+                  🎭
+                </button>
+              </div>
             </div>
 
             <div class="assistant-provider-meta">
@@ -57,29 +80,6 @@
               id="assistant-ghost-agent-btn"
               data-shell-i18n-text="assistant.page.ghostAgentButton"
             ></button>
-          </div>
-
-          <div class="assistant-inline-tools">
-            <button
-              class="btn btn-ghost btn-icon btn-sm"
-              id="assistant-memory-btn"
-              title=""
-              aria-label=""
-              data-shell-i18n-title="assistant.memoryOverlay.title"
-              data-shell-i18n-aria-label="assistant.memoryOverlay.title"
-            >
-              🧠
-            </button>
-            <button
-              class="btn btn-ghost btn-icon btn-sm"
-              id="assistant-character-btn"
-              title=""
-              aria-label=""
-              data-shell-i18n-title="assistant.characterOverlay.title"
-              data-shell-i18n-aria-label="assistant.characterOverlay.title"
-            >
-              🎭
-            </button>
           </div>
         </div>
 
@@ -125,40 +125,42 @@
 
       <div class="assistant-opencode-panel">
         <div class="assistant-chip-row">
-          <div class="assistant-status-extended assistant-topbar-chip">
-            <span class="status-dot" id="assistant-status-dot"></span>
-            <div class="status-info">
-              <span
-                id="assistant-status-text"
-                data-shell-i18n-text="assistant.connectionUi.disconnectedTitle"
-              ></span>
-              <small id="assistant-status-details" role="status" aria-live="polite"></small>
+          <div class="assistant-runtime-stack assistant-topbar-chip">
+            <div class="assistant-status-extended assistant-runtime-stack__row">
+              <span class="status-dot" id="assistant-status-dot"></span>
+              <div class="status-info">
+                <span
+                  id="assistant-status-text"
+                  data-shell-i18n-text="assistant.connectionUi.disconnectedTitle"
+                ></span>
+                <small id="assistant-status-details" role="status" aria-live="polite"></small>
+              </div>
             </div>
-          </div>
 
-          <div
-            class="assistant-opencode-indicator assistant-topbar-chip"
-            id="assistant-opencode-indicator"
-            title=""
-          >
-            <span class="status-dot status-checking" id="assistant-opencode-indicator-dot"></span>
-            <span
-              id="assistant-opencode-indicator-text"
-              role="status"
-              aria-live="polite"
-              data-shell-i18n-text="assistant.opencodeDoctor.loading.checkingUpdates"
-            ></span>
-            <button
-              class="btn btn-ghost btn-icon btn-sm assistant-opencode-action-btn"
-              id="assistant-opencode-action-btn"
+            <div
+              class="assistant-opencode-indicator assistant-runtime-stack__row"
+              id="assistant-opencode-indicator"
               title=""
-              type="button"
-              aria-label=""
-              data-shell-i18n-title="assistant.opencodeDoctor.actionInProgress"
-              data-shell-i18n-aria-label="assistant.opencodeDoctor.checkUpdatesAriaLabel"
             >
-              ↻
-            </button>
+              <span class="status-dot status-checking" id="assistant-opencode-indicator-dot"></span>
+              <span
+                id="assistant-opencode-indicator-text"
+                role="status"
+                aria-live="polite"
+                data-shell-i18n-text="assistant.opencodeDoctor.loading.checkingUpdates"
+              ></span>
+              <button
+                class="btn btn-ghost btn-icon btn-sm assistant-opencode-action-btn"
+                id="assistant-opencode-action-btn"
+                title=""
+                type="button"
+                aria-label=""
+                data-shell-i18n-title="assistant.opencodeDoctor.actionInProgress"
+                data-shell-i18n-aria-label="assistant.opencodeDoctor.checkUpdatesAriaLabel"
+              >
+                ↻
+              </button>
+            </div>
           </div>
         </div>
 

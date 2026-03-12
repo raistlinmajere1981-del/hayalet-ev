@@ -1,4 +1,6 @@
 import type { OpencodeUiToolsReadyPayload } from "./bootstrap-actions.js";
+import { getMimeTypeFromPath } from "../../constants/index.js";
+import { AppState } from "../../modules/app-state.js";
 import { formatDateTime, t } from "./i18n.js";
 import type { RuntimeState } from "./types.js";
 
@@ -90,6 +92,56 @@ export function getLogoFallback(getById: ByIdFn = byId): void {
     logoEl.style.display = "block";
     logoEl.removeAttribute("src");
   };
+}
+
+function getAssistantEmptyStateNickname(): string {
+  const nickname = AppState.getNickname("ai0").trim();
+  if (nickname !== "" && nickname !== "AI0") {
+    return nickname;
+  }
+
+  return "Rovo";
+}
+
+export async function applyAssistantIdentityToChatEmpty(getById: ByIdFn = byId): Promise<void> {
+  const logoEl = getById<HTMLImageElement>("logo");
+  const titleEl = getById<HTMLElement>("chat-empty-title");
+  const subtitleEl = getById<HTMLElement>("chat-empty-subtitle");
+  const nickname = getAssistantEmptyStateNickname();
+
+  if (titleEl != null) {
+    titleEl.textContent = nickname;
+  }
+
+  if (subtitleEl != null) {
+    subtitleEl.textContent = "Hos geldin. Bugun ne yapmak istersin?";
+  }
+
+  if (logoEl == null) {
+    return;
+  }
+
+  getLogoFallback(getById);
+  logoEl.alt = t("documentTitle");
+  logoEl.classList.remove("is-avatar");
+  logoEl.src = "/assets/opencode.png";
+
+  const avatarPath = AppState.getAvatar("ai0").trim();
+  const readFile = window.electronAPI?.readFile;
+  if (avatarPath === "" || typeof readFile !== "function") {
+    return;
+  }
+
+  try {
+    const imageData = await readFile(avatarPath);
+    if (typeof imageData !== "string" || imageData.trim() === "") {
+      return;
+    }
+
+    logoEl.src = `data:${getMimeTypeFromPath(avatarPath)};base64,${imageData}`;
+    logoEl.alt = nickname;
+    logoEl.classList.add("is-avatar");
+  } catch (_error) {}
 }
 
 export function formatTimestamp(value: number): string {

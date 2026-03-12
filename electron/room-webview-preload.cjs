@@ -2,13 +2,49 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 const ROOM_HOST_MESSAGE_CHANNEL = "room-host-message";
 const hostMessageHandlers = new Set();
+const pendingHostEvents = [];
+let pendingHostFlushTimer = null;
+
+function trySendToHost(channel, payload) {
+  ipcRenderer.sendToHost(channel, payload);
+}
+
+function schedulePendingHostFlush() {
+  if (pendingHostFlushTimer !== null) {
+    return;
+  }
+
+  pendingHostFlushTimer = setTimeout(() => {
+    pendingHostFlushTimer = null;
+    flushPendingHostEvents();
+  }, 50);
+}
+
+function flushPendingHostEvents() {
+  if (pendingHostEvents.length === 0) {
+    return;
+  }
+
+  while (pendingHostEvents.length > 0) {
+    const next = pendingHostEvents[0];
+    try {
+      trySendToHost(next.channel, next.payload);
+      pendingHostEvents.shift();
+    } catch {
+      schedulePendingHostFlush();
+      return;
+    }
+  }
+}
 
 function emitToHost(channel, payload = {}) {
   try {
-    ipcRenderer.sendToHost(channel, payload);
+    trySendToHost(channel, payload);
     return true;
   } catch {
-    return false;
+    pendingHostEvents.push({ channel, payload });
+    schedulePendingHostFlush();
+    return true;
   }
 }
 

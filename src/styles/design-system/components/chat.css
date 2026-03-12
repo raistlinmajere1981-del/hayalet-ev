@@ -80,6 +80,36 @@
   object-fit: var(--app-shell-chat-empty-icon-fit);
 }
 
+.ds-chat__empty-icon.is-avatar {
+  padding: 0;
+  opacity: 1;
+  object-fit: cover;
+  background: none;
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--border-default));
+  box-shadow:
+    0 0 0 var(--space-0-5) color-mix(in srgb, var(--color-accent) 12%, transparent),
+    var(--surface-outline);
+}
+
+.ds-chat__empty-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+#chat-empty-title {
+  font-family: var(--font-display);
+  font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
+  color: var(--text-primary);
+}
+
+#chat-empty-subtitle {
+  max-width: 30ch;
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
 .ds-message {
   display: flex;
   flex-direction: column;

@@ -56,6 +56,7 @@ import { normalizeAgentItems } from "./provider-catalog.js";
 import { DEFAULT_OPENCODE_UI_MODEL_PREFERENCES } from "./model-preferences.js";
 import { createModelSettingsOverlayController } from "./model-settings-overlay.js";
 import {
+  applyAssistantIdentityToChatEmpty,
   byId,
   clearChatArea,
   copyWorkspaceUrl,
@@ -551,6 +552,7 @@ async function refreshLocalizedDynamicPanels(): Promise<void> {
     ];
 
     await Promise.allSettled(refreshJobs);
+    await applyAssistantIdentityToChatEmpty(byId);
     modelSettingsOverlayController?.refresh();
   })().finally(() => {
     localeRefreshInFlight = null;
@@ -655,6 +657,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     ThemeManager.init();
     syncThemeFromQuery();
     await bootstrapOpencodeUiI18n();
+    await applyAssistantIdentityToChatEmpty(byId);
     await bootstrapOpencodeUiApp();
     bindLocaleRefresh();
   })();
