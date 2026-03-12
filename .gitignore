@@ -37,8 +37,8 @@ data/*
 !data/rooms/
 !data/rooms/**
 
-# User-specific assets (profile pictures etc.)
-src/assets/*@*.png
+# Assets allowlist
+src/assets/*
 
 # Commands (runtime data)
 /commands/
@@ -58,9 +58,14 @@ screenshots/
 *.png
 *.jpg
 *.jpeg
-!src/assets/*.png
-!src/assets/*.jpg
-!src/assets/*.jpeg
+!src/assets/assistant.png
+!src/assets/chatgpt.png
+!src/assets/default.png
+!src/assets/gemini.png
+!src/assets/grok.png
+!src/assets/icon.png
+!src/assets/logo.jpg
+!src/assets/opencode.png
 
 # Ghost agent workspace
 .hayalet-ghost-agent/
