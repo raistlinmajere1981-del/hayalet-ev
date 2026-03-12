@@ -223,6 +223,25 @@ function setupDropdownListeners(): void {
   });
 }
 
+function setupSettingsPanelListeners(): void {
+  const list = document.getElementById("theme-settings-list");
+  if (list == null) {
+    return;
+  }
+
+  list.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const item = target.closest(".theme-dropdown-item");
+
+    if (item != null) {
+      const theme = item.getAttribute("data-theme");
+      if (theme != null && theme !== "" && isValidTheme(theme)) {
+        themeManager.set(theme);
+      }
+    }
+  });
+}
+
 const themeManager = {
   get current(): ThemeId {
     return currentTheme;
@@ -251,9 +270,13 @@ const themeManager = {
     applyTheme(currentTheme, false);
 
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", setupDropdownListeners);
+      document.addEventListener("DOMContentLoaded", () => {
+        setupDropdownListeners();
+        setupSettingsPanelListeners();
+      });
     } else {
       setupDropdownListeners();
+      setupSettingsPanelListeners();
     }
 
     setupSyncListeners();

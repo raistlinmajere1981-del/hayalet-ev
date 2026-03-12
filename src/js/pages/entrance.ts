@@ -1,9 +1,7 @@
 import { Logger } from "../modules/logger/index.js";
-import type { LogEntry } from "@shared/logging-core";
 import { LogCategory, LogLevel } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import { SettingsManager } from "../modules/settings-manager.js";
-import { MAX_LOGS_TERMINAL } from "@limits";
 
 import type { AppSettings } from "@shared/settings.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
@@ -21,7 +19,7 @@ import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
 import { AppI18n } from "../modules/i18n/index.js";
-import { applyEntranceStaticTranslations, formatTime, t as entranceT } from "./entrance/i18n.js";
+import { applyEntranceStaticTranslations, t as entranceT } from "./entrance/i18n.js";
 
 export class EntranceHallController {
   defaultsApplied: boolean;
@@ -57,7 +55,6 @@ export class EntranceHallController {
     this.webviewPanel.init();
 
     this.setupEventListeners();
-    this.setupLogArea();
     this.setupLiveLogOverlay();
     await this.loadUserSettings();
     this.setupI18nBindings();
@@ -163,75 +160,6 @@ export class EntranceHallController {
     this.slotPanelAi2.render();
     this.webviewPanel.onLocaleChanged();
     this.updateUI();
-  }
-
-  setupReportPanel(): void {
-    const reportModalOpen = document.getElementById("report-modal-open");
-    const modal = document.getElementById("report-modal");
-    const modalBody = document.getElementById("report-modal-body");
-    const modalClose = document.getElementById("report-modal-close");
-    const entranceReportContent = document.getElementById("entrance-report-content");
-
-    const createLogElement = (entry: LogEntry, showVisibility = false): HTMLDivElement => {
-      const line = document.createElement("div");
-      line.className = "ds-log-entry";
-      const visibility = entry.visibility ?? 3;
-      const visibilityBadge = showVisibility ? `[L${visibility}] ` : "";
-      const source = entry.category;
-      line.textContent = `[${entry.timestamp}] ${visibilityBadge}[${source}] ${entry.message}`;
-      if (visibility === 1) line.classList.add("log-toast");
-      else if (visibility === 2) line.classList.add("log-panel");
-      return line;
-    };
-
-    const openModal = (): void => {
-      if (!modal || !modalBody) return;
-      modalBody.innerHTML = "";
-      const all = Logger.getRecentLogs(500);
-      [...all].reverse().forEach((entry) => {
-        modalBody.appendChild(createLogElement(entry, true));
-      });
-      modal.classList.remove("is-hidden");
-    };
-
-    const closeModal = (): void => modal?.classList.add("is-hidden");
-
-    reportModalOpen?.addEventListener("click", openModal);
-    modal?.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modalClose?.addEventListener("click", closeModal);
-
-    if (entranceReportContent) {
-      entranceReportContent.innerHTML = "";
-      const panelLogs = Logger.getRecentLogs(200).filter(
-        (e) => e.visibility !== undefined && e.visibility <= 2
-      );
-      [...panelLogs].reverse().forEach((entry) => {
-        entranceReportContent.appendChild(createLogElement(entry));
-      });
-    }
-
-    Logger.subscribe((entry) => {
-      if (entranceReportContent && (entry.visibility ?? 3) <= 2) {
-        const logEntry = createLogElement(entry);
-        if (entranceReportContent.firstChild) {
-          entranceReportContent.insertBefore(logEntry, entranceReportContent.firstChild);
-        } else {
-          entranceReportContent.appendChild(logEntry);
-        }
-      }
-
-      const modalIsOpen = modal?.classList.contains("is-hidden") === false;
-      if (modalBody && modalIsOpen) {
-        const modalLine = createLogElement(entry, true);
-        if (modalBody.firstChild) {
-          modalBody.insertBefore(modalLine, modalBody.firstChild);
-        } else {
-          modalBody.appendChild(modalLine);
-        }
-      }
-    });
   }
 
   async loadUserSettings(): Promise<void> {
@@ -581,69 +509,6 @@ export class EntranceHallController {
         toggleBtn.click();
       });
     });
-  }
-
-  setupLogArea(): void {
-    if (!window.electronAPI?.ipcRenderer) {
-      Logger.warn(LogCategory.ENTRANCE, entranceT("logs.logAreaIpcUnavailable"));
-      return;
-    }
-
-    const logContainer = document.getElementById("entrance-report-content");
-    if (!logContainer) {
-      Logger.debug(LogCategory.ENTRANCE, entranceT("logs.logAreaMissing"));
-      return;
-    }
-
-    const MAX_LOGS = MAX_LOGS_TERMINAL;
-    let logCount = 0;
-
-    const logHandler = (
-      _event: unknown,
-      logData: {
-        level: string;
-        category: string;
-        message: string;
-        timestamp: string;
-        visibility?: number;
-        context?: Record<string, unknown>;
-      }
-    ): void => {
-      const visibility = logData.visibility ?? 3;
-      if (visibility > 2) {
-        return;
-      }
-
-      const logEntry = document.createElement("div");
-      logEntry.className = `ds-log-entry ds-log-level-${logData.level}`;
-      const time = formatTime(new Date(logData.timestamp));
-      const category = this.formatLogCategory(logData.category);
-
-      logEntry.innerHTML = `
-        <span class="ds-log-time">${time}</span>
-        <span class="ds-log-level-badge ds-log-level-badge-${logData.level}">${logData.level.toUpperCase()}</span>
-        <span class="ds-log-category">${category}</span>
-        <span class="ds-log-message">${this.escapeHtml(logData.message)}</span>
-      `;
-
-
-      logContainer.appendChild(logEntry);
-      logCount++;
-
-      if (logCount > MAX_LOGS) {
-        const firstLog = logContainer.querySelector(".ds-log-entry");
-        if (firstLog) {
-          firstLog.remove();
-          logCount--;
-        }
-      }
-
-      logContainer.scrollTop = logContainer.scrollHeight;
-    };
-
-    window.electronAPI.ipcRenderer.on("log:ui-notify", logHandler as (...args: unknown[]) => void);
-
-    Logger.info(LogCategory.ENTRANCE, entranceT("logs.logAreaReady"));
   }
 
   formatLogCategory(category: string): string {

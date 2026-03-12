@@ -518,7 +518,33 @@
         "customCommandCount": "{{count}} custom command found",
         "outOfScopeLog": "Command out of scope: {{command}}",
         "undefinedCommandLog": "Undefined command: {{command}}",
-        "undefinedCommand": "Undefined command"
+        "undefinedCommand": "Undefined command",
+        "logSuccess": "Success",
+        "logError": "Error",
+        "logArgsInfo": " | args: {{args}}",
+        "logRan": "{{command}} ran{{info}}",
+        "testModeReported": "Test mode: {{command}} result was reported to the user | {{detail}}",
+        "scopeDetail": "scope: {{scope}}",
+        "kindDetail": "kind: {{kind}}",
+        "apiUnavailable": "electronAPI is unavailable",
+        "treeGenerationFailed": "Tree generation failed",
+        "listFilesStarting": "ListFiles started | scope: {{scope}}",
+        "listFilesAttachmentText": "File List ({{scope}}): {{lines}} lines",
+        "listFilesSent": "ListFiles sent -> {{provider}} | {{fileName}}",
+        "deliveryTriggered": "CoreEngine -> {{provider}} delivery triggered",
+        "deliveryFailed": "{{command}} could not be delivered: {{message}}",
+        "listFilesSummary": "{{lines}} lines, {{fileName}}",
+        "windowManagerRan": "WindowManager ran | action: {{action}}",
+        "windowActionResult": "action: {{action}}, status: {{status}}",
+        "restartStarting": "Restart starting",
+        "restartRequested": "Application is restarting...",
+        "screenshotAttachmentText": "Screenshot: {{kind}}",
+        "screenshotRan": "ScreenshotManager ran | kind: {{kind}}",
+        "screenshotSent": "ScreenshotManager sent -> {{provider}} | {{path}}",
+        "screenshotSaved": "Saved: {{path}}",
+        "screenshotEmpty": "Screenshot could not be captured",
+        "screenshotEmptyLog": "ScreenshotManager ran but returned no output | kind: {{kind}}",
+        "commandError": "{{command}} error: {{message}}"
       },
       "executor": {
         "jobStarting": "Job starting: {{provider}}",
@@ -734,6 +760,21 @@
       "minimize": "Minimize to taskbar",
       "fullscreen": "Fullscreen"
     },
+    "settingsHub": {
+      "openTitle": "Open the settings deck",
+      "openButton": "Settings",
+      "ariaLabel": "Settings deck",
+      "kicker": "Topbar settings",
+      "title": "Control Deck",
+      "subtitle": "Manage backup, room management, live log and theme selection on one surface.",
+      "currentThemeLabel": "Active theme",
+      "nav": {
+        "theme": "Theme",
+        "backup": "Backup",
+        "rooms": "Rooms",
+        "liveLog": "Live Log"
+      }
+    },
     "liveLog": {
       "openTitle": "Open the live log overlay",
       "openButton": "📊 Live Log"
@@ -936,7 +977,8 @@
       "cancel": "Cancel",
       "confirm": "Confirm",
       "ok": "OK",
-      "save": "Save"
+      "save": "Save",
+      "translationMissing": "Translation unavailable"
     },
     "commandQueue": {
       "initSkipped": "CommandManager init skipped: electronAPI.commandInit is unavailable",
@@ -1366,6 +1408,7 @@
         "operationFailed": "Operation failed: {{name}} {{result}}",
         "operationNotFound": "Operation not found: {{correlationId}}",
         "notInitialized": "Logger is not initialized yet; call Logger.init() first",
+        "batchBridgeUnavailable": "Logger batch bridge is unavailable; buffering renderer logs in memory until IPC recovers",
         "batchSendFailed": "Failed to send the log batch to main: {{message}}",
         "toastIntegrationFailed": "Toast integration failed: {{message}}",
         "listenerError": "Log listener error: {{message}}",
@@ -5233,6 +5276,7 @@
     },
     "chat": {
       "waitingConnection": "Waiting for connection...",
+      "emptySubtitle": "Welcome. What would you like to do today?",
       "inputPlaceholder": "Write your message... (Enter for newline, Ctrl+Enter to send)",
       "sendTitle": "Send",
       "pruneTitle": "Remove the last message pair",

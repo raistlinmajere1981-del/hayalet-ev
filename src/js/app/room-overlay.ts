@@ -15,11 +15,8 @@ import {
 import { shellT } from "./shell-i18n.js";
 
 interface RoomOverlayRefs {
-  openButton: HTMLButtonElement | null;
-  closeButton: HTMLButtonElement | null;
   importButton: HTMLButtonElement | null;
   refreshButton: HTMLButtonElement | null;
-  overlay: HTMLElement | null;
   summary: HTMLElement | null;
   workspaceList: HTMLElement | null;
   installedList: HTMLElement | null;
@@ -37,11 +34,8 @@ function roomText(key: string): string {
 
 function getRefs(): RoomOverlayRefs {
   return {
-    openButton: document.getElementById("rooms-overlay-open") as HTMLButtonElement | null,
-    closeButton: document.getElementById("rooms-overlay-close") as HTMLButtonElement | null,
     importButton: document.getElementById("rooms-overlay-import") as HTMLButtonElement | null,
     refreshButton: document.getElementById("rooms-overlay-refresh") as HTMLButtonElement | null,
-    overlay: document.getElementById("rooms-overlay"),
     summary: document.getElementById("rooms-overlay-summary"),
     workspaceList: document.getElementById("rooms-workspace-list"),
     installedList: document.getElementById("rooms-installed-list"),
@@ -78,23 +72,14 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
   };
 
   if (
-    refs.openButton === null ||
-    refs.closeButton === null ||
     refs.importButton === null ||
     refs.refreshButton === null ||
-    refs.overlay === null ||
     refs.summary === null ||
     refs.workspaceList === null ||
     refs.installedList === null
   ) {
     return;
   }
-
-  const close = (): void => {
-    refs.overlay?.classList.add("is-hidden");
-    state.isOpen = false;
-    document.body.classList.remove("is-scroll-locked");
-  };
 
   const refresh = async (): Promise<void> => {
     state.installedRooms = await RoomRegistry.refreshInstalledRooms();
@@ -103,11 +88,13 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     render(refs, state);
   };
 
-  const open = async (): Promise<void> => {
+  const activate = async (): Promise<void> => {
     state.isOpen = true;
-    refs.overlay?.classList.remove("is-hidden");
-    document.body.classList.add("is-scroll-locked");
     await refresh();
+  };
+
+  const deactivate = (): void => {
+    state.isOpen = false;
   };
 
   RoomRegistry.subscribe((rooms) => {
@@ -124,11 +111,6 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
   });
 
-  refs.openButton.addEventListener("click", () => {
-    void open();
-  });
-
-  refs.closeButton.addEventListener("click", close);
   refs.importButton.addEventListener("click", () => {
     void (async (): Promise<void> => {
       const api = window.electronAPI;
@@ -173,18 +155,6 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
   });
   refs.refreshButton.addEventListener("click", () => {
     void refresh();
-  });
-
-  refs.overlay.addEventListener("click", (event) => {
-    if (event.target === refs.overlay) {
-      close();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.isOpen === true) {
-      close();
-    }
   });
 
   refs.workspaceList.addEventListener("click", (event) => {
@@ -246,7 +216,7 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     }
 
     if (action === "open") {
-      close();
+      deactivate();
       showPage(getRoomPageName(roomId));
       return;
     }
@@ -295,4 +265,16 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
   });
 
   render(refs, state);
+
+  document.addEventListener(
+    "settings-hub:state-change",
+    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
+      if (event.detail?.open === true && event.detail.activePanel === "rooms") {
+        void activate();
+        return;
+      }
+
+      deactivate();
+    }) as EventListener
+  );
 }

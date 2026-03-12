@@ -43,14 +43,11 @@ interface BackupPreviewResult {
 }
 
 interface BackupOverlayRefs {
-  openButton: HTMLButtonElement | null;
-  closeButton: HTMLButtonElement | null;
   createButton: HTMLButtonElement | null;
   selectButton: HTMLButtonElement | null;
   openFolderButton: HTMLButtonElement | null;
   refreshButton: HTMLButtonElement | null;
   restoreButton: HTMLButtonElement | null;
-  overlay: HTMLElement | null;
   summary: HTMLElement | null;
   scopes: HTMLElement | null;
   list: HTMLElement | null;
@@ -70,8 +67,6 @@ interface BackupOverlayState {
 
 function getRefs(): BackupOverlayRefs {
   return {
-    openButton: document.getElementById("backup-overlay-open") as HTMLButtonElement | null,
-    closeButton: document.getElementById("backup-overlay-close") as HTMLButtonElement | null,
     createButton: document.getElementById("backup-overlay-create") as HTMLButtonElement | null,
     selectButton: document.getElementById("backup-overlay-select") as HTMLButtonElement | null,
     openFolderButton: document.getElementById(
@@ -79,7 +74,6 @@ function getRefs(): BackupOverlayRefs {
     ) as HTMLButtonElement | null,
     refreshButton: document.getElementById("backup-overlay-refresh") as HTMLButtonElement | null,
     restoreButton: document.getElementById("backup-overlay-restore") as HTMLButtonElement | null,
-    overlay: document.getElementById("backup-overlay"),
     summary: document.getElementById("backup-overlay-summary"),
     scopes: document.getElementById("backup-overlay-scopes"),
     list: document.getElementById("backup-overlay-list"),
@@ -166,14 +160,11 @@ export function setupBackupOverlay(): void {
   };
 
   if (
-    refs.openButton === null ||
-    refs.closeButton === null ||
     refs.createButton === null ||
     refs.selectButton === null ||
     refs.openFolderButton === null ||
     refs.refreshButton === null ||
     refs.restoreButton === null ||
-    refs.overlay === null ||
     refs.summary === null ||
     refs.scopes === null ||
     refs.list === null ||
@@ -182,13 +173,8 @@ export function setupBackupOverlay(): void {
     return;
   }
 
-  const close = (): void => {
-    refs.overlay?.classList.add("is-hidden");
-    state.isOpen = false;
-    document.body.classList.remove("is-scroll-locked");
-  };
-
-  const open = async (): Promise<void> => {
+  const activate = async (): Promise<void> => {
+    state.isOpen = true;
     if (state.scopes.length === 0) {
       await loadMetadata(state);
     }
@@ -197,14 +183,11 @@ export function setupBackupOverlay(): void {
       await refreshPreview(state);
     }
     render(refs, state);
-    refs.overlay?.classList.remove("is-hidden");
-    document.body.classList.add("is-scroll-locked");
-    state.isOpen = true;
-    Logger.debugT(LogCategory.UI_MODAL, "app.logs.backup.overlayOpened");
   };
 
-  refs.openButton.addEventListener("click", () => void open());
-  refs.closeButton.addEventListener("click", close);
+  const deactivate = (): void => {
+    state.isOpen = false;
+  };
 
   refs.refreshButton.addEventListener("click", () => {
     void (async (): Promise<void> => {
@@ -394,21 +377,21 @@ export function setupBackupOverlay(): void {
     })();
   });
 
-  refs.overlay.addEventListener("click", (event) => {
-    if (event.target === refs.overlay) {
-      close();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.isOpen === true) {
-      close();
-    }
-  });
-
   AppI18n.subscribe(() => {
     if (state.isOpen === true) {
       render(refs, state);
     }
   });
+
+  document.addEventListener(
+    "settings-hub:state-change",
+    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
+      if (event.detail?.open === true && event.detail.activePanel === "backup") {
+        void activate();
+        return;
+      }
+
+      deactivate();
+    }) as EventListener
+  );
 }

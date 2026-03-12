@@ -136,248 +136,296 @@
         </div>
 
         <div class="top-bar-center">
-          <div class="indicators">
-            <div class="indicators-group">
-              <div class="indicators-row">
-                <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
-                  <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai1"></div>
-                  <div class="indicator-content">
-                    <div class="indicator-dots-row">
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.loading"
-                        ></span>
-                        <div
-                          class="indicator-dot loading"
-                          id="ai1-loading-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.loading"
-                        ></div>
+          <div class="indicators topbar-indicators">
+            <div class="topbar-slot-lane">
+              <div class="indicators-group indicators-group--topbar">
+                <div class="indicators-row">
+                  <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai1">
+                    <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai1"></div>
+                    <div class="indicator-content">
+                      <div class="indicator-dots-row">
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.loading"
+                          ></span>
+                          <div
+                            class="indicator-dot loading"
+                            id="ai1-loading-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.loading"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.sending"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai1-send-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.sending"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.thinking"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai1-thinking-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.thinking"
+                          ></div>
+                        </div>
                       </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.sending"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai1-send-indicator"
+                      <div class="indicator-select-row">
+                        <select id="conversation-ai1" class="select-compact indicator"></select>
+                        <button
+                          id="conversation-refresh-ai1"
+                          class="conv-refresh"
                           title=""
-                          data-shell-i18n-title="indicators.sending"
-                        ></div>
-                      </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai1-thinking-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.thinking"
-                        ></div>
+                          aria-label=""
+                          data-shell-i18n-title="indicators.refreshTitle"
+                          data-shell-i18n-aria-label="indicators.refreshTitle"
+                        >
+                          ⟳
+                        </button>
                       </div>
                     </div>
-                    <div class="indicator-select-row">
-                      <select id="conversation-ai1" class="select-compact indicator"></select>
-                      <button
-                        id="conversation-refresh-ai1"
-                        class="conv-refresh"
-                        title=""
-                        aria-label=""
-                        data-shell-i18n-title="indicators.refreshTitle"
-                        data-shell-i18n-aria-label="indicators.refreshTitle"
-                      >
-                        ⟳
-                      </button>
+                  </div>
+
+                  <div class="relay-flow-wrapper">
+                    <button
+                      class="relay-toggle-btn"
+                      id="relay-btn-ai1-ai0"
+                      title=""
+                      aria-label=""
+                      data-shell-i18n-title="relay.toggle.ai1Assistant"
+                      data-shell-i18n-aria-label="relay.toggle.ai1Assistant"
+                    >
+                      <span class="relay-btn-icon icon-play">▶</span>
+                      <span class="relay-btn-icon icon-stop">⏹</span>
+                    </button>
+                    <div
+                      class="relay-flow-line"
+                      id="relay-flow-ai1-ai0"
+                      title=""
+                      data-shell-i18n-title="relay.flow.ai1Assistant"
+                    >
+                      <div class="flow-track">
+                        <div class="flow-particle"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="indicator-cluster indicator-cluster-assistant" id="cluster-ai0">
+                    <div class="indicator-avatar indicator-avatar-md" id="indicator-avatar-ai0"></div>
+                    <div class="indicator-content">
+                      <div class="indicator-dots-row">
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.loading"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai0-loading-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.loading"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.sending"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai0-send-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.sending"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.thinking"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai0-thinking-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.thinking"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="relay-flow-wrapper relay-flow-wrapper-rtl">
+                    <div
+                      class="relay-flow-line"
+                      id="relay-flow-ai0-ai2"
+                      title=""
+                      data-shell-i18n-title="relay.flow.assistantAi2"
+                    >
+                      <div class="flow-track">
+                        <div class="flow-particle"></div>
+                      </div>
+                    </div>
+                    <button
+                      class="relay-toggle-btn"
+                      id="relay-btn-ai0-ai2"
+                      title=""
+                      aria-label=""
+                      data-shell-i18n-title="relay.toggle.assistantAi2"
+                      data-shell-i18n-aria-label="relay.toggle.assistantAi2"
+                    >
+                      <span class="relay-btn-icon icon-play">◀</span>
+                      <span class="relay-btn-icon icon-stop">⏹</span>
+                    </button>
+                  </div>
+
+                  <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
+                    <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai2"></div>
+                    <div class="indicator-content">
+                      <div class="indicator-dots-row">
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.loading"
+                          ></span>
+                          <div
+                            class="indicator-dot loading"
+                            id="ai2-loading-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.loading"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.sending"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai2-send-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.sending"
+                          ></div>
+                        </div>
+                        <div class="indicator-dot-item">
+                          <span
+                            class="indicator-dot-label"
+                            data-shell-i18n-text="indicators.thinking"
+                          ></span>
+                          <div
+                            class="indicator-dot"
+                            id="ai2-thinking-indicator"
+                            title=""
+                            data-shell-i18n-title="indicators.thinking"
+                          ></div>
+                        </div>
+                      </div>
+                      <div class="indicator-select-row">
+                        <select id="conversation-ai2" class="select-compact indicator"></select>
+                        <button
+                          id="conversation-refresh-ai2"
+                          class="conv-refresh"
+                          title=""
+                          aria-label=""
+                          data-shell-i18n-title="indicators.refreshTitle"
+                          data-shell-i18n-aria-label="indicators.refreshTitle"
+                        >
+                          ⟳
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                <div class="relay-flow-wrapper">
+                <div class="relay-flow-bottom-row">
                   <button
-                    class="relay-toggle-btn"
-                    id="relay-btn-ai1-ai0"
+                    class="relay-toggle-btn relay-btn-bottom-left"
+                    id="relay-btn-ai1-ai2-left"
                     title=""
                     aria-label=""
-                    data-shell-i18n-title="relay.toggle.ai1Assistant"
-                    data-shell-i18n-aria-label="relay.toggle.ai1Assistant"
+                    data-shell-i18n-title="relay.toggle.ai1Ai2"
+                    data-shell-i18n-aria-label="relay.toggle.ai1Ai2"
                   >
                     <span class="relay-btn-icon icon-play">▶</span>
                     <span class="relay-btn-icon icon-stop">⏹</span>
                   </button>
                   <div
-                    class="relay-flow-line"
-                    id="relay-flow-ai1-ai0"
+                    class="relay-flow-line-bottom"
+                    id="relay-flow-ai1-ai2"
                     title=""
-                    data-shell-i18n-title="relay.flow.ai1Assistant"
+                    data-shell-i18n-title="relay.flow.ai1Ai2"
                   >
-                    <div class="flow-track">
-                      <div class="flow-particle"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="indicator-cluster indicator-cluster-assistant" id="cluster-ai0">
-                  <div class="indicator-avatar indicator-avatar-md" id="indicator-avatar-ai0"></div>
-                  <div class="indicator-content">
-                    <div class="indicator-dots-row">
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.loading"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai0-loading-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.loading"
-                        ></div>
-                      </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.sending"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai0-send-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.sending"
-                        ></div>
-                      </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai0-thinking-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.thinking"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="relay-flow-wrapper relay-flow-wrapper-rtl">
-                  <div
-                    class="relay-flow-line"
-                    id="relay-flow-ai0-ai2"
-                    title=""
-                    data-shell-i18n-title="relay.flow.assistantAi2"
-                  >
-                    <div class="flow-track">
+                    <div class="flow-track-horizontal">
                       <div class="flow-particle"></div>
                     </div>
                   </div>
                   <button
-                    class="relay-toggle-btn"
-                    id="relay-btn-ai0-ai2"
+                    class="relay-toggle-btn relay-btn-bottom-right"
+                    id="relay-btn-ai1-ai2-right"
                     title=""
                     aria-label=""
-                    data-shell-i18n-title="relay.toggle.assistantAi2"
-                    data-shell-i18n-aria-label="relay.toggle.assistantAi2"
+                    data-shell-i18n-title="relay.toggle.ai2Ai1"
+                    data-shell-i18n-aria-label="relay.toggle.ai2Ai1"
                   >
                     <span class="relay-btn-icon icon-play">◀</span>
                     <span class="relay-btn-icon icon-stop">⏹</span>
                   </button>
                 </div>
-
-                <div class="indicator-cluster indicator-cluster-wide" id="cluster-ai2">
-                  <div class="indicator-avatar indicator-avatar-lg" id="indicator-avatar-ai2"></div>
-                  <div class="indicator-content">
-                    <div class="indicator-dots-row">
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.loading"
-                        ></span>
-                        <div
-                          class="indicator-dot loading"
-                          id="ai2-loading-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.loading"
-                        ></div>
-                      </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.sending"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai2-send-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.sending"
-                        ></div>
-                      </div>
-                      <div class="indicator-dot-item">
-                        <span
-                          class="indicator-dot-label"
-                          data-shell-i18n-text="indicators.thinking"
-                        ></span>
-                        <div
-                          class="indicator-dot"
-                          id="ai2-thinking-indicator"
-                          title=""
-                          data-shell-i18n-title="indicators.thinking"
-                        ></div>
-                      </div>
-                    </div>
-                    <div class="indicator-select-row">
-                      <select id="conversation-ai2" class="select-compact indicator"></select>
-                      <button
-                        id="conversation-refresh-ai2"
-                        class="conv-refresh"
-                        title=""
-                        aria-label=""
-                        data-shell-i18n-title="indicators.refreshTitle"
-                        data-shell-i18n-aria-label="indicators.refreshTitle"
-                      >
-                        ⟳
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
-              <div class="relay-flow-bottom-row">
-                <button
-                  class="relay-toggle-btn relay-btn-bottom-left"
-                  id="relay-btn-ai1-ai2-left"
-                  title=""
-                  aria-label=""
-                  data-shell-i18n-title="relay.toggle.ai1Ai2"
-                  data-shell-i18n-aria-label="relay.toggle.ai1Ai2"
-                >
-                  <span class="relay-btn-icon icon-play">▶</span>
-                  <span class="relay-btn-icon icon-stop">⏹</span>
-                </button>
+
+              <div
+                class="indicator-cluster indicator-cluster-wide indicator-cluster-dummy"
+                id="cluster-us1"
+              >
                 <div
-                  class="relay-flow-line-bottom"
-                  id="relay-flow-ai1-ai2"
-                  title=""
-                  data-shell-i18n-title="relay.flow.ai1Ai2"
+                  class="indicator-avatar indicator-avatar-lg indicator-avatar-dummy"
+                  id="indicator-avatar-us1"
                 >
-                  <div class="flow-track-horizontal">
-                    <div class="flow-particle"></div>
+                  US
+                </div>
+                <div class="indicator-content">
+                  <div class="indicator-dots-row">
+                    <div class="indicator-dot-item">
+                      <span class="indicator-dot-label" data-shell-i18n-text="indicators.loading"></span>
+                      <div
+                        class="indicator-dot loading"
+                        id="us1-loading-indicator"
+                        title=""
+                        data-shell-i18n-title="indicators.loading"
+                      ></div>
+                    </div>
+                    <div class="indicator-dot-item">
+                      <span class="indicator-dot-label" data-shell-i18n-text="indicators.sending"></span>
+                      <div
+                        class="indicator-dot"
+                        id="us1-send-indicator"
+                        title=""
+                        data-shell-i18n-title="indicators.sending"
+                      ></div>
+                    </div>
+                    <div class="indicator-dot-item">
+                      <span class="indicator-dot-label" data-shell-i18n-text="indicators.thinking"></span>
+                      <div
+                        class="indicator-dot"
+                        id="us1-thinking-indicator"
+                        title=""
+                        data-shell-i18n-title="indicators.thinking"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="indicator-select-row">
+                    <div class="indicator-dummy-field" aria-hidden="true">US1</div>
                   </div>
                 </div>
-                <button
-                  class="relay-toggle-btn relay-btn-bottom-right"
-                  id="relay-btn-ai1-ai2-right"
-                  title=""
-                  aria-label=""
-                  data-shell-i18n-title="relay.toggle.ai2Ai1"
-                  data-shell-i18n-aria-label="relay.toggle.ai2Ai1"
-                >
-                  <span class="relay-btn-icon icon-play">◀</span>
-                  <span class="relay-btn-icon icon-stop">⏹</span>
-                </button>
               </div>
             </div>
           </div>
@@ -439,12 +487,12 @@
 
           <div class="top-bar-actions">
             <button
-              class="icon-btn"
-              id="backup-overlay-open"
+              class="settings-hub-trigger"
+              id="topbar-settings-open"
               title=""
               aria-label=""
-              data-shell-i18n-title="backup.openTitle"
-              data-shell-i18n-aria-label="backup.openTitle"
+              data-shell-i18n-title="settingsHub.openTitle"
+              data-shell-i18n-aria-label="settingsHub.openTitle"
             >
               <svg
                 width="16"
@@ -454,74 +502,14 @@
                 aria-hidden="true"
               >
                 <path
-                  d="M2.5 2A1.5 1.5 0 0 0 1 3.5v2A1.5 1.5 0 0 0 2.5 7H3v5.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V7h.5A1.5 1.5 0 0 0 15 5.5v-2A1.5 1.5 0 0 0 13.5 2h-11ZM4 7h8v5.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5V7Zm4-3.5a.5.5 0 0 1 .5.5v2h-1V4a.5.5 0 0 1 .5-.5Z"
+                  d="M2.5 3A1.5 1.5 0 0 1 4 1.5h8A1.5 1.5 0 0 1 13.5 3v1a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 4V3Zm2 0v1a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5H5a.5.5 0 0 0-.5.5ZM1.5 8A1.5 1.5 0 0 1 3 6.5h4A1.5 1.5 0 0 1 8.5 8v1A1.5 1.5 0 0 1 7 10.5H3A1.5 1.5 0 0 1 1.5 9V8Zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5V8a.5.5 0 0 0-.5-.5H3Zm6.5.5A1.5 1.5 0 0 1 11 6.5h2A1.5 1.5 0 0 1 14.5 8v4a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 9.5 12V8Zm1.5-.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 .5-.5V8a.5.5 0 0 0-.5-.5h-2Z"
                 />
               </svg>
+              <span
+                class="settings-hub-trigger__label"
+                data-shell-i18n-text="settingsHub.openButton"
+              ></span>
             </button>
-            <button
-              class="icon-btn"
-              id="rooms-overlay-open"
-              title=""
-              aria-label=""
-              data-shell-i18n-title="rooms.openTitle"
-              data-shell-i18n-aria-label="rooms.openTitle"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2 2h5v5H2V2zm7 0h5v5H9V2zM2 9h5v5H2V9zm7 0h5v5H9V9zm1-6v3h3V3h-3zM3 3v3h3V3H3zm0 7v3h3v-3H3zm7 0v3h3v-3h-3z"
-                />
-              </svg>
-            </button>
-            <button
-              class="btn btn-ghost btn-xs"
-              id="report-modal-open"
-              title=""
-              data-shell-i18n-title="liveLog.openTitle"
-              data-shell-i18n-text="liveLog.openButton"
-            ></button>
-            <div class="theme-dropdown" id="theme-dropdown">
-              <button
-                class="theme-dropdown-btn"
-                id="theme-dropdown-btn"
-                title=""
-                aria-label=""
-                data-shell-i18n-title="theme.selectTitle"
-                data-shell-i18n-aria-label="theme.selectTitle"
-              >
-                <span class="theme-dropdown-icon" id="theme-current-icon">🌑</span>
-                <span id="theme-current-name"></span>
-                <span>▼</span>
-              </button>
-              <div class="theme-dropdown-menu" id="theme-dropdown-menu">
-                <button class="theme-dropdown-item is-active" data-theme="obsidian">
-                  <span class="theme-dropdown-icon">🌑</span>
-                  <span class="theme-dropdown-copy">
-                    <strong data-shell-i18n-text="themes.obsidian.name"></strong>
-                    <small data-shell-i18n-text="themes.obsidian.description"></small>
-                  </span>
-                </button>
-                <button class="theme-dropdown-item" data-theme="ivory-lab">
-                  <span class="theme-dropdown-icon">☀️</span>
-                  <span class="theme-dropdown-copy">
-                    <strong data-shell-i18n-text="themes.ivory-lab.name"></strong>
-                    <small data-shell-i18n-text="themes.ivory-lab.description"></small>
-                  </span>
-                </button>
-                <button class="theme-dropdown-item" data-theme="ember-console">
-                  <span class="theme-dropdown-icon">🔥</span>
-                  <span class="theme-dropdown-copy">
-                    <strong data-shell-i18n-text="themes.ember-console.name"></strong>
-                    <small data-shell-i18n-text="themes.ember-console.description"></small>
-                  </span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -530,148 +518,410 @@
         <div id="pages-container"></div>
       </main>
 
-      <div class="modal modal-document modal-wide is-hidden" id="report-modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="reportModal.title"></span>
+      <div class="settings-hub-overlay is-hidden" id="settings-hub-overlay" aria-hidden="true">
+        <div class="settings-hub-backdrop" id="settings-hub-backdrop"></div>
+        <div
+          class="settings-hub-shell"
+          role="dialog"
+          aria-modal="true"
+          aria-label=""
+          data-shell-i18n-aria-label="settingsHub.ariaLabel"
+        >
+          <div class="settings-hub-header">
+            <div class="settings-hub-heading">
+              <span class="settings-hub-kicker" data-shell-i18n-text="settingsHub.kicker"></span>
+              <h2 class="settings-hub-title" data-shell-i18n-text="settingsHub.title"></h2>
+              <p class="settings-hub-subtitle" data-shell-i18n-text="settingsHub.subtitle"></p>
+            </div>
             <button
-              class="btn btn-ghost"
-              id="report-modal-close"
+              class="btn btn-ghost btn-sm"
+              id="settings-hub-close"
               data-shell-i18n-text="common.close"
             ></button>
           </div>
-          <div class="modal-body" id="report-modal-body"></div>
+
+          <div class="settings-hub-layout">
+            <aside
+              class="settings-hub-nav"
+              role="tablist"
+              aria-label=""
+              data-shell-i18n-aria-label="settingsHub.ariaLabel"
+            >
+              <button
+                class="settings-hub-tab is-active"
+                id="settings-tab-theme"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="settings-panel-theme"
+                data-settings-panel="theme"
+              >
+                <span class="settings-hub-tab__index">01</span>
+                <span class="settings-hub-tab__label" data-shell-i18n-text="settingsHub.nav.theme"></span>
+              </button>
+              <button
+                class="settings-hub-tab"
+                id="settings-tab-backup"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="backup-overlay"
+                data-settings-panel="backup"
+              >
+                <span class="settings-hub-tab__index">02</span>
+                <span class="settings-hub-tab__label" data-shell-i18n-text="settingsHub.nav.backup"></span>
+              </button>
+              <button
+                class="settings-hub-tab"
+                id="settings-tab-rooms"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="rooms-overlay"
+                data-settings-panel="rooms"
+              >
+                <span class="settings-hub-tab__index">03</span>
+                <span class="settings-hub-tab__label" data-shell-i18n-text="settingsHub.nav.rooms"></span>
+              </button>
+              <button
+                class="settings-hub-tab"
+                id="settings-tab-live-log"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="live-log-overlay"
+                data-settings-panel="live-log"
+              >
+                <span class="settings-hub-tab__index">04</span>
+                <span
+                  class="settings-hub-tab__label"
+                  data-shell-i18n-text="settingsHub.nav.liveLog"
+                ></span>
+              </button>
+            </aside>
+
+            <div class="settings-hub-panels">
+              <section
+                class="settings-hub-panel is-active"
+                id="settings-panel-theme"
+                role="tabpanel"
+                aria-labelledby="settings-tab-theme"
+                data-settings-panel="theme"
+              >
+                <div class="settings-panel-shell">
+                  <div class="settings-panel-head">
+                    <div class="settings-panel-copy">
+                      <span
+                        class="settings-panel-kicker"
+                        data-shell-i18n-text="settingsHub.nav.theme"
+                      ></span>
+                      <h3 class="settings-panel-title" data-shell-i18n-text="theme.selectTitle"></h3>
+                    </div>
+                    <div class="settings-theme-current">
+                      <span class="theme-dropdown-icon settings-theme-current__icon" id="theme-current-icon"
+                        >🌑</span
+                      >
+                      <div class="settings-theme-current__copy">
+                        <span
+                          class="settings-theme-current__label"
+                          data-shell-i18n-text="settingsHub.currentThemeLabel"
+                        ></span>
+                        <strong id="theme-current-name"></strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="settings-theme-grid" id="theme-settings-list">
+                    <button
+                      class="theme-dropdown-item settings-theme-option is-active"
+                      type="button"
+                      data-theme="obsidian"
+                    >
+                      <span class="theme-dropdown-icon">🌑</span>
+                      <span class="theme-dropdown-copy">
+                        <strong data-shell-i18n-text="themes.obsidian.name"></strong>
+                        <small data-shell-i18n-text="themes.obsidian.description"></small>
+                      </span>
+                    </button>
+                    <button
+                      class="theme-dropdown-item settings-theme-option"
+                      type="button"
+                      data-theme="ivory-lab"
+                    >
+                      <span class="theme-dropdown-icon">☀️</span>
+                      <span class="theme-dropdown-copy">
+                        <strong data-shell-i18n-text="themes.ivory-lab.name"></strong>
+                        <small data-shell-i18n-text="themes.ivory-lab.description"></small>
+                      </span>
+                    </button>
+                    <button
+                      class="theme-dropdown-item settings-theme-option"
+                      type="button"
+                      data-theme="ember-console"
+                    >
+                      <span class="theme-dropdown-icon">🔥</span>
+                      <span class="theme-dropdown-copy">
+                        <strong data-shell-i18n-text="themes.ember-console.name"></strong>
+                        <small data-shell-i18n-text="themes.ember-console.description"></small>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="settings-hub-panel is-hidden"
+                id="backup-overlay"
+                role="tabpanel"
+                aria-labelledby="settings-tab-backup"
+                data-settings-panel="backup"
+                aria-hidden="true"
+                hidden
+              >
+                <div class="settings-panel-shell">
+                  <div class="settings-panel-head">
+                    <div class="settings-panel-copy">
+                      <span
+                        class="settings-panel-kicker"
+                        data-shell-i18n-text="settingsHub.nav.backup"
+                      ></span>
+                      <h3 class="settings-panel-title" data-shell-i18n-text="backup.title"></h3>
+                    </div>
+                    <div class="room-manager-toolbar">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        id="backup-overlay-create"
+                        data-shell-i18n-text="backup.createButton"
+                      ></button>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="backup-overlay-select"
+                        data-shell-i18n-text="backup.selectButton"
+                      ></button>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="backup-overlay-open-folder"
+                        data-shell-i18n-text="backup.openFolderButton"
+                      ></button>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="backup-overlay-refresh"
+                        data-shell-i18n-text="common.refresh"
+                      ></button>
+                      <button
+                        class="btn btn-danger btn-sm"
+                        id="backup-overlay-restore"
+                        data-shell-i18n-text="backup.restoreButton"
+                      ></button>
+                    </div>
+                  </div>
+
+                  <div class="settings-panel-scroll room-manager-body">
+                    <div class="room-manager-summary" id="backup-overlay-summary"></div>
+                    <div class="room-manager-grid">
+                      <section class="room-manager-section">
+                        <div class="room-manager-section-head">
+                          <div
+                            class="room-manager-section-title"
+                            data-shell-i18n-text="backup.scopeSectionTitle"
+                          ></div>
+                          <div
+                            class="room-manager-section-note"
+                            data-shell-i18n-text="backup.scopeSectionNote"
+                          ></div>
+                        </div>
+                        <div class="room-manager-list" id="backup-overlay-scopes"></div>
+                      </section>
+                      <section class="room-manager-section">
+                        <div class="room-manager-section-head">
+                          <div
+                            class="room-manager-section-title"
+                            data-shell-i18n-text="backup.historySectionTitle"
+                          ></div>
+                          <div
+                            class="room-manager-section-note"
+                            data-shell-i18n-text="backup.historySectionNote"
+                          ></div>
+                        </div>
+                        <div class="backup-history-stack">
+                          <div class="room-manager-list" id="backup-overlay-list"></div>
+                          <div class="backup-preview-panel" id="backup-overlay-preview"></div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="settings-hub-panel is-hidden"
+                id="rooms-overlay"
+                role="tabpanel"
+                aria-labelledby="settings-tab-rooms"
+                data-settings-panel="rooms"
+                aria-hidden="true"
+                hidden
+              >
+                <div class="settings-panel-shell">
+                  <div class="settings-panel-head">
+                    <div class="settings-panel-copy">
+                      <span
+                        class="settings-panel-kicker"
+                        data-shell-i18n-text="settingsHub.nav.rooms"
+                      ></span>
+                      <h3 class="settings-panel-title" data-shell-i18n-text="rooms.title"></h3>
+                    </div>
+                    <div class="room-manager-toolbar">
+                      <button
+                        class="btn btn-primary btn-sm"
+                        id="rooms-overlay-import"
+                        data-shell-i18n-text="rooms.importButton"
+                      ></button>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="rooms-overlay-refresh"
+                        data-shell-i18n-text="common.refresh"
+                      ></button>
+                    </div>
+                  </div>
+
+                  <div class="settings-panel-scroll room-manager-body">
+                    <div class="room-manager-summary" id="rooms-overlay-summary"></div>
+                    <div class="room-manager-grid">
+                      <section class="room-manager-section">
+                        <div class="room-manager-section-head">
+                          <div
+                            class="room-manager-section-title"
+                            data-shell-i18n-text="rooms.workspaceSectionTitle"
+                          ></div>
+                          <div
+                            class="room-manager-section-note"
+                            data-shell-i18n-text="rooms.workspaceSectionNote"
+                          ></div>
+                        </div>
+                        <div class="room-manager-list" id="rooms-workspace-list"></div>
+                      </section>
+                      <section class="room-manager-section">
+                        <div class="room-manager-section-head">
+                          <div
+                            class="room-manager-section-title"
+                            data-shell-i18n-text="rooms.installedSectionTitle"
+                          ></div>
+                          <div
+                            class="room-manager-section-note"
+                            data-shell-i18n-text="rooms.installedSectionNote"
+                          ></div>
+                        </div>
+                        <div class="room-manager-list" id="rooms-installed-list"></div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                class="settings-hub-panel settings-hub-panel--live-log is-hidden"
+                id="live-log-overlay"
+                role="tabpanel"
+                aria-labelledby="settings-tab-live-log"
+                data-settings-panel="live-log"
+                aria-hidden="true"
+                hidden
+              >
+                <div class="live-log-shell settings-live-log-shell">
+                  <div class="live-log-header">
+                    <div class="settings-panel-copy">
+                      <span
+                        class="settings-panel-kicker"
+                        data-shell-i18n-text="settingsHub.nav.liveLog"
+                      ></span>
+                      <h3 data-i18n-text="liveLog.title"></h3>
+                    </div>
+                    <div class="live-log-header-actions">
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="live-log-pause"
+                        title=""
+                        data-i18n-title="liveLog.pauseTitle"
+                        data-i18n-text="liveLog.pause"
+                      ></button>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="live-log-clear"
+                        title=""
+                        data-i18n-title="liveLog.clearTitle"
+                        data-i18n-text="liveLog.clear"
+                      ></button>
+                    </div>
+                  </div>
+
+                  <div class="live-log-toolbar">
+                    <div class="live-log-app-tabs" id="live-log-app-tabs">
+                      <button class="btn btn-secondary btn-sm is-active" data-app="app" type="button">
+                        app
+                      </button>
+                      <button class="btn btn-secondary btn-sm" data-app="mcp-server" type="button">
+                        mcp-server
+                      </button>
+                      <button class="btn btn-secondary btn-sm" data-app="ghost-agent" type="button">
+                        ghost-agent
+                      </button>
+                    </div>
+                    <label class="live-log-control">
+                      <span data-i18n-text="liveLog.sessionLabel"></span>
+                      <select id="live-log-session-select" class="select"></select>
+                    </label>
+                    <label class="live-log-control">
+                      <span data-i18n-text="liveLog.levelLabel"></span>
+                      <select id="live-log-level-select" class="select">
+                        <option value="all" data-i18n-text="liveLog.levels.all"></option>
+                        <option value="error" data-i18n-text="liveLog.levels.error"></option>
+                        <option value="warning" data-i18n-text="liveLog.levels.warning"></option>
+                        <option value="info" data-i18n-text="liveLog.levels.info"></option>
+                        <option value="success" data-i18n-text="liveLog.levels.success"></option>
+                        <option value="debug" data-i18n-text="liveLog.levels.debug"></option>
+                      </select>
+                    </label>
+                    <label class="live-log-control live-log-control-search">
+                      <span data-i18n-text="liveLog.searchLabel"></span>
+                      <input
+                        id="live-log-search"
+                        class="input"
+                        type="text"
+                        placeholder=""
+                        data-i18n-placeholder="liveLog.searchPlaceholder"
+                      />
+                    </label>
+                    <div class="live-log-metrics" id="live-log-metrics"></div>
+                  </div>
+
+                  <div class="live-log-body">
+                    <div
+                      class="live-log-content"
+                      id="live-log-content"
+                      role="log"
+                      aria-live="polite"
+                      aria-relevant="additions text"
+                    ></div>
+                    <aside class="live-log-detail">
+                      <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle"></div>
+                      <div
+                        class="live-log-detail-meta"
+                        id="live-log-meta"
+                        role="status"
+                        aria-live="polite"
+                        data-i18n-text="liveLog.noEntrySelected"
+                      ></div>
+                      <pre class="live-log-detail-context" id="live-log-context"></pre>
+                    </aside>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="modal modal-document modal-wide is-hidden" id="rooms-overlay">
-        <div class="modal-content room-manager-modal">
-          <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="rooms.title"></span>
-            <div class="room-manager-toolbar">
-              <button
-                class="btn btn-primary btn-sm"
-                id="rooms-overlay-import"
-                data-shell-i18n-text="rooms.importButton"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="rooms-overlay-refresh"
-                data-shell-i18n-text="common.refresh"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="rooms-overlay-close"
-                data-shell-i18n-text="common.close"
-              ></button>
-            </div>
-          </div>
-          <div class="modal-body room-manager-body">
-            <div class="room-manager-summary" id="rooms-overlay-summary"></div>
-            <div class="room-manager-grid">
-              <section class="room-manager-section">
-                <div class="room-manager-section-head">
-                  <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="rooms.workspaceSectionTitle"
-                  ></div>
-                  <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="rooms.workspaceSectionNote"
-                  ></div>
-                </div>
-                <div class="room-manager-list" id="rooms-workspace-list"></div>
-              </section>
-              <section class="room-manager-section">
-                <div class="room-manager-section-head">
-                  <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="rooms.installedSectionTitle"
-                  ></div>
-                  <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="rooms.installedSectionNote"
-                  ></div>
-                </div>
-                <div class="room-manager-list" id="rooms-installed-list"></div>
-              </section>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal modal-document modal-wide is-hidden" id="backup-overlay">
-        <div class="modal-content room-manager-modal">
-          <div class="modal-header">
-            <span class="modal-title" data-shell-i18n-text="backup.title"></span>
-            <div class="room-manager-toolbar">
-              <button
-                class="btn btn-primary btn-sm"
-                id="backup-overlay-create"
-                data-shell-i18n-text="backup.createButton"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-select"
-                data-shell-i18n-text="backup.selectButton"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-open-folder"
-                data-shell-i18n-text="backup.openFolderButton"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-refresh"
-                data-shell-i18n-text="common.refresh"
-              ></button>
-              <button
-                class="btn btn-danger btn-sm"
-                id="backup-overlay-restore"
-                data-shell-i18n-text="backup.restoreButton"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="backup-overlay-close"
-                data-shell-i18n-text="common.close"
-              ></button>
-            </div>
-          </div>
-          <div class="modal-body room-manager-body">
-            <div class="room-manager-summary" id="backup-overlay-summary"></div>
-            <div class="room-manager-grid">
-              <section class="room-manager-section">
-                <div class="room-manager-section-head">
-                  <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="backup.scopeSectionTitle"
-                  ></div>
-                  <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="backup.scopeSectionNote"
-                  ></div>
-                </div>
-                <div class="room-manager-list" id="backup-overlay-scopes"></div>
-              </section>
-              <section class="room-manager-section">
-                <div class="room-manager-section-head">
-                  <div
-                    class="room-manager-section-title"
-                    data-shell-i18n-text="backup.historySectionTitle"
-                  ></div>
-                  <div
-                    class="room-manager-section-note"
-                    data-shell-i18n-text="backup.historySectionNote"
-                  ></div>
-                </div>
-                <div class="backup-history-stack">
-                  <div class="room-manager-list" id="backup-overlay-list"></div>
-                  <div class="backup-preview-panel" id="backup-overlay-preview"></div>
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div

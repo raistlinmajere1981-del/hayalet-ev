@@ -518,7 +518,33 @@
         "customCommandCount": "{{count}} custom command bulundu",
         "outOfScopeLog": "Komut kapsam disi: {{command}}",
         "undefinedCommandLog": "Tanimsiz komut: {{command}}",
-        "undefinedCommand": "Tanimsiz komut"
+        "undefinedCommand": "Tanimsiz komut",
+        "logSuccess": "Başarılı",
+        "logError": "Hata",
+        "logArgsInfo": " | argümanlar: {{args}}",
+        "logRan": "{{command}} çalıştı{{info}}",
+        "testModeReported": "Test modu: {{command}} sonucu kullanıcıya raporlandı | {{detail}}",
+        "scopeDetail": "kapsam: {{scope}}",
+        "kindDetail": "tür: {{kind}}",
+        "apiUnavailable": "electronAPI mevcut değil",
+        "treeGenerationFailed": "Ağaç üretimi başarısız",
+        "listFilesStarting": "ListFiles başlatıldı | kapsam: {{scope}}",
+        "listFilesAttachmentText": "Dosya Listesi ({{scope}}): {{lines}} satır",
+        "listFilesSent": "ListFiles gönderildi -> {{provider}} | {{fileName}}",
+        "deliveryTriggered": "CoreEngine -> {{provider}} gönderimi tetiklendi",
+        "deliveryFailed": "{{command}} gönderilemedi: {{message}}",
+        "listFilesSummary": "{{lines}} satır, {{fileName}}",
+        "windowManagerRan": "WindowManager çalıştı | aksiyon: {{action}}",
+        "windowActionResult": "aksiyon: {{action}}, durum: {{status}}",
+        "restartStarting": "Yeniden başlatma başlatılıyor",
+        "restartRequested": "Uygulama yeniden başlatılıyor...",
+        "screenshotAttachmentText": "Ekran görüntüsü: {{kind}}",
+        "screenshotRan": "ScreenshotManager çalıştı | tür: {{kind}}",
+        "screenshotSent": "ScreenshotManager gönderildi -> {{provider}} | {{path}}",
+        "screenshotSaved": "Kaydedildi: {{path}}",
+        "screenshotEmpty": "Ekran görüntüsü alınamadı",
+        "screenshotEmptyLog": "ScreenshotManager çalıştı fakat sonuç üretmedi | tür: {{kind}}",
+        "commandError": "{{command}} hatası: {{message}}"
       },
       "executor": {
         "jobStarting": "Job başlatılıyor: {{provider}}",
@@ -734,6 +760,21 @@
       "minimize": "Görev çubuğuna küçült",
       "fullscreen": "Tam ekran"
     },
+    "settingsHub": {
+      "openTitle": "Ayar güvertesini aç",
+      "openButton": "Ayarlar",
+      "ariaLabel": "Ayar güvertesi",
+      "kicker": "Topbar ayarları",
+      "title": "Kontrol Güvertesi",
+      "subtitle": "Backup, oda yönetimi, canlı log ve temayı tek yüzeyde yönet.",
+      "currentThemeLabel": "Aktif tema",
+      "nav": {
+        "theme": "Tema",
+        "backup": "Backup",
+        "rooms": "Odalar",
+        "liveLog": "Canlı Log"
+      }
+    },
     "liveLog": {
       "openTitle": "Canlı log overlay'ini aç",
       "openButton": "📊 Canlı Log"
@@ -936,7 +977,8 @@
       "cancel": "İptal",
       "confirm": "Onayla",
       "ok": "Tamam",
-      "save": "Kaydet"
+      "save": "Kaydet",
+      "translationMissing": "Çeviri şu anda kullanılamıyor"
     },
     "commandQueue": {
       "initSkipped": "CommandManager init atlandı: electronAPI.commandInit mevcut değil",
@@ -1366,6 +1408,7 @@
         "operationFailed": "İşlem başarısız: {{name}} {{result}}",
         "operationNotFound": "İşlem bulunamadı: {{correlationId}}",
         "notInitialized": "Logger henüz başlatılmadı; önce Logger.init() çağrılmalı",
+        "batchBridgeUnavailable": "Logger batch köprüsü kullanılamıyor; IPC geri gelene kadar renderer logları bellekte tamponlanacak",
         "batchSendFailed": "Log batch'i main process'e gönderilemedi: {{message}}",
         "toastIntegrationFailed": "Toast entegrasyonu başarısız: {{message}}",
         "listenerError": "Log listener hatası: {{message}}",
@@ -5233,6 +5276,7 @@
     },
     "chat": {
       "waitingConnection": "Bağlantı bekleniyor...",
+      "emptySubtitle": "Hoş geldin. Bugün ne yapmak istersin?",
       "inputPlaceholder": "Mesajınızı yazın... (Enter yeni satır, Ctrl+Enter gönder)",
       "sendTitle": "Gönder",
       "pruneTitle": "Son mesaj çiftini kaldır",

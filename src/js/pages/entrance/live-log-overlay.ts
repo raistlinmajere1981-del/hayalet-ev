@@ -37,10 +37,7 @@ export function setupEntranceLiveLogOverlay({
   }
 
   const overlay = document.getElementById("live-log-overlay");
-  const overlayBackdrop = document.getElementById("live-log-backdrop");
   const overlayContent = document.getElementById("live-log-content");
-  const openBtn = document.getElementById("report-modal-open") as HTMLButtonElement | null;
-  const closeBtn = document.getElementById("live-log-close") as HTMLButtonElement | null;
   const pauseBtn = document.getElementById("live-log-pause") as HTMLButtonElement | null;
   const clearBtn = document.getElementById("live-log-clear") as HTMLButtonElement | null;
   const appTabs = document.getElementById("live-log-app-tabs");
@@ -55,10 +52,7 @@ export function setupEntranceLiveLogOverlay({
 
   if (
     !overlay ||
-    !overlayBackdrop ||
     !overlayContent ||
-    !openBtn ||
-    !closeBtn ||
     !pauseBtn ||
     !clearBtn ||
     !appTabs ||
@@ -77,6 +71,14 @@ export function setupEntranceLiveLogOverlay({
   const maxLogs = Math.max(MAX_LOGS_SERVER * 20, 500);
   const pollIntervalMs = 2000;
   const state = createInitialOverlayState();
+
+  const getAppDirCandidates = (app: typeof state.activeApp): string[] => {
+    if (app === "app") {
+      return ["hayalet-ev", "app"];
+    }
+
+    return [app];
+  };
 
   const render = (): void => {
     renderEntries({
@@ -137,16 +139,25 @@ export function setupEntranceLiveLogOverlay({
       return;
     }
 
-    const appDir = joinPath(state.baseLogsDir, app);
     try {
-      const entriesRaw = await electronApi.readDirectoryFiles(appDir);
-      const entries = Array.isArray(entriesRaw) ? entriesRaw : [];
+      const sessionSet = new Set<string>();
 
-      const sessions = entries
-        .filter((entry) => isRecord(entry) && entry["isDirectory"] === true)
-        .map((entry) => asText((entry as Record<string, unknown>)["name"]))
-        .filter((name) => name !== "" && !name.startsWith("."))
-        .sort((a, b) => b.localeCompare(a));
+      for (const appDirName of getAppDirCandidates(app)) {
+        const appDir = joinPath(state.baseLogsDir, appDirName);
+        try {
+          const entriesRaw = await electronApi.readDirectoryFiles(appDir);
+          const entries = Array.isArray(entriesRaw) ? entriesRaw : [];
+          entries
+            .filter((entry) => isRecord(entry) && entry["isDirectory"] === true)
+            .map((entry) => asText((entry as Record<string, unknown>)["name"]))
+            .filter((name) => name !== "" && !name.startsWith("."))
+            .forEach((name) => {
+              sessionSet.add(name);
+            });
+        } catch {}
+      }
+
+      const sessions = Array.from(sessionSet).sort((a, b) => b.localeCompare(a));
 
       state.sessionsByApp[app] = sessions;
 
@@ -171,8 +182,17 @@ export function setupEntranceLiveLogOverlay({
       return;
     }
 
-    const structuredPath = joinPath(state.baseLogsDir, app, sessionId, "structured.jsonl");
-    const encoded = await electronApi.readFile(structuredPath);
+    let encoded = "";
+    for (const appDirName of getAppDirCandidates(app)) {
+      const structuredPath = joinPath(state.baseLogsDir, appDirName, sessionId, "structured.jsonl");
+      try {
+        const nextEncoded = await electronApi.readFile(structuredPath);
+        if (typeof nextEncoded === "string" && nextEncoded !== "") {
+          encoded = nextEncoded;
+          break;
+        }
+      } catch {}
+    }
 
     if (typeof encoded !== "string" || encoded === "") {
       if (force) {
@@ -234,8 +254,7 @@ export function setupEntranceLiveLogOverlay({
     }, pollIntervalMs);
   };
 
-  const openOverlay = (): void => {
-    overlay.classList.remove("is-hidden");
+  const activate = (): void => {
     overlay.setAttribute("aria-hidden", "false");
     setActiveTabUI(state, appButtons);
     setPauseButtonUI(state, pauseBtn);
@@ -245,8 +264,7 @@ export function setupEntranceLiveLogOverlay({
     })();
   };
 
-  const closeOverlay = (): void => {
-    overlay.classList.add("is-hidden");
+  const deactivate = (): void => {
     overlay.setAttribute("aria-hidden", "true");
     stopPolling();
   };
@@ -275,18 +293,6 @@ export function setupEntranceLiveLogOverlay({
       render();
     }
   };
-
-  openBtn.addEventListener("click", () => {
-    openOverlay();
-  });
-
-  closeBtn.addEventListener("click", () => {
-    closeOverlay();
-  });
-
-  overlayBackdrop.addEventListener("click", () => {
-    closeOverlay();
-  });
 
   appButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -334,16 +340,6 @@ export function setupEntranceLiveLogOverlay({
     renderDetail(detailMeta, detailContext, null);
   });
 
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !overlay.classList.contains("is-hidden")) {
-      closeOverlay();
-    }
-  });
-
-  electronApi.ipcRenderer.on("log:ui-notify", (_event: unknown, payload: unknown) => {
-    handleIncomingPayload(payload);
-  });
-
   electronApi.ipcRenderer.on("log:ui-notify-batch", (_event: unknown, payload: unknown) => {
     handleIncomingPayload(payload);
   });
@@ -357,4 +353,16 @@ export function setupEntranceLiveLogOverlay({
   setPauseButtonUI(state, pauseBtn);
   render();
   Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayReady"));
+
+  document.addEventListener(
+    "settings-hub:state-change",
+    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
+      if (event.detail?.open === true && event.detail.activePanel === "live-log") {
+        activate();
+        return;
+      }
+
+      deactivate();
+    }) as EventListener
+  );
 }
