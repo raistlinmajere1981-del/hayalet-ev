@@ -95,24 +95,42 @@ export interface LogContext {
 export interface SessionMeta {
   sessionId: string;
   startTime: string;
-  platform: string;
-  nodeVersion: string;
-  electronVersion: string;
-  appVersion: string;
+  platform?: string;
+  nodeVersion?: string;
+  electronVersion?: string;
+  appVersion?: string;
+  pid?: number;
+}
+
+export type SessionEndReason =
+  | "normal"
+  | "crash"
+  | "unknown"
+  | "active"
+  | "incomplete"
+  | "from-structured";
+
+export interface SessionStats {
+  totalLogs: number;
+  byLevel: Record<string, number>;
+  byCategory: Record<string, number>;
+  errorCount: number;
+  warningCount: number;
+  chunks?: number;
 }
 
 export interface SessionSummary {
   sessionId: string;
   startTime: string;
-  endTime: string;
-  endReason: "normal" | "crash" | "unknown" | "active";
-  stats: {
-    totalLogs: number;
-    errors: number;
-    warnings: number;
-    chunks: number;
+  endTime?: string;
+  endReason?: SessionEndReason;
+  duration?: number;
+  stats: SessionStats;
+  performance?: {
+    averageLogRate: number;
+    peakMemoryUsage?: number;
   };
-  lastState: AppState;
+  lastState?: AppState;
 }
 
 export interface SessionListItem {

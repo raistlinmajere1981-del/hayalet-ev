@@ -3,7 +3,15 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { getSessionDir, getLogDir, getSessionId } from "./session-manager.ts";
 import { getErrorLogPath } from "./log-writer.ts";
+import {
+  LEGACY_SESSION_META_FILENAME,
+  normalizeSessionMeta,
+  normalizeSessionSummary,
+  SESSION_META_FILENAME,
+  SESSION_SUMMARY_FILENAME,
+} from "./session-context.ts";
 import { LogLevel } from "@shared/index.js";
+import { Paths } from "../paths.ts";
 import type {
   LogContext,
   LogQueryParams,
@@ -15,6 +23,34 @@ import { translateElectronMessage } from "../i18n/language-service.ts";
 
 async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
   return await translateElectronMessage(`electron.logger.${key}`, params);
+}
+
+function getMainAppLogDirCandidates(): string[] {
+  const logDir = getLogDir();
+  let pathCandidates: string[] = [];
+
+  try {
+    pathCandidates = [Paths.getMainAppLogsDir(), Paths.getLegacyMainAppLogsDir()];
+  } catch {
+    pathCandidates = [];
+  }
+
+  return Array.from(
+    new Set(
+      [logDir, ...pathCandidates].filter((value): value is string => value != null && value !== "")
+    )
+  );
+}
+
+function resolveSessionDir(targetSessionId: string): string | null {
+  for (const logDir of getMainAppLogDirCandidates()) {
+    const sessionDir = join(logDir, targetSessionId);
+    if (existsSync(sessionDir)) {
+      return sessionDir;
+    }
+  }
+
+  return null;
 }
 
 export async function readConsoleLogs(tail: number = 100): Promise<string> {
@@ -126,14 +162,9 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
 }
 
 export async function readAllLogs(targetSessionId: string | null = null): Promise<AllLogsResult> {
-  const logDir = getLogDir();
-  if (logDir === null || logDir.length === 0) {
-    throw new Error(await loggerT("logDirectoryNotInitialized"));
-  }
-
   const sessionId = targetSessionId ?? getSessionId();
   const hasTargetSessionId = targetSessionId !== null && targetSessionId.length > 0;
-  const sessionDir = hasTargetSessionId ? join(logDir, targetSessionId) : getSessionDir();
+  const sessionDir = hasTargetSessionId ? resolveSessionDir(targetSessionId) : getSessionDir();
 
   const result: AllLogsResult = {
     sessionId,
@@ -174,18 +205,18 @@ export async function readAllLogs(targetSessionId: string | null = null): Promis
         .filter((entry): entry is StructuredLogEntry => entry !== null);
     }
 
-    const sessionMetaPath = join(sessionDir, "session-metadata.json");
-    const legacyMetaPath = join(sessionDir, "meta.json");
+    const sessionMetaPath = join(sessionDir, SESSION_META_FILENAME);
+    const legacyMetaPath = join(sessionDir, LEGACY_SESSION_META_FILENAME);
     const metaPath = existsSync(sessionMetaPath) ? sessionMetaPath : legacyMetaPath;
     if (existsSync(metaPath)) {
-      result.meta = parseJsonObject(await readFile(metaPath, "utf-8")) as SessionMeta | null;
+      result.meta = normalizeSessionMeta(parseJsonObject(await readFile(metaPath, "utf-8")));
     }
 
-    const summaryPath = join(sessionDir, "summary.json");
+    const summaryPath = join(sessionDir, SESSION_SUMMARY_FILENAME);
     if (existsSync(summaryPath)) {
-      result.summary = parseJsonObject(
-        await readFile(summaryPath, "utf-8")
-      ) as SessionSummary | null;
+      result.summary = normalizeSessionSummary(
+        parseJsonObject(await readFile(summaryPath, "utf-8"))
+      );
     }
   } catch (err: unknown) {
     result.error = await loggerT("allLogsReadFailed", {

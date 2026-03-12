@@ -2,17 +2,36 @@ import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { Paths } from "../paths.ts";
-import type { AppState, SessionMeta, SessionSummary, SessionListItem } from "@electron/types";
+import type { AppState, SessionListItem } from "@electron/types";
 import { translateElectronMessage } from "../i18n/language-service.ts";
+import {
+  buildSessionMeta,
+  buildSessionSummary,
+  createSessionId,
+  LEGACY_SESSION_META_FILENAME,
+  normalizeSessionMeta,
+  normalizeSessionSummary,
+  SESSION_META_FILENAME,
+  SESSION_SUMMARY_FILENAME,
+} from "./session-context.ts";
 
 let LOG_DIR: string | null = null;
 let SESSION_ID: string | null = null;
 let SESSION_DIR: string | null = null;
+let SESSION_START_TIME: string | null = null;
 
 let appStateSnapshot: AppState = {};
 
 async function loggerT(key: string, params?: Record<string, string | number>): Promise<string> {
   return await translateElectronMessage(`electron.logger.${key}`, params);
+}
+
+function getAppLogDirCandidates(): string[] {
+  try {
+    return Array.from(new Set([Paths.getMainAppLogsDir(), Paths.getLegacyMainAppLogsDir()]));
+  } catch {
+    return [];
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,16 +47,22 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
   }
 }
 
+function getSessionStartTime(): string {
+  if (SESSION_START_TIME != null && SESSION_START_TIME.length > 0) {
+    return SESSION_START_TIME;
+  }
+
+  const fallback =
+    typeof appStateSnapshot.startTime === "string" && appStateSnapshot.startTime.length > 0
+      ? appStateSnapshot.startTime
+      : new Date().toISOString();
+
+  SESSION_START_TIME = fallback;
+  return fallback;
+}
+
 export function generateSessionId(): string {
-  const now = new Date();
-  const pad = (n: number): string => n.toString().padStart(2, "0");
-  const day = pad(now.getDate());
-  const month = pad(now.getMonth() + 1);
-  const year = now.getFullYear();
-  const hours = pad(now.getHours());
-  const minutes = pad(now.getMinutes());
-  const seconds = pad(now.getSeconds());
-  return `${day}-${month}-${year}_${hours}-${minutes}-${seconds}`;
+  return createSessionId();
 }
 
 export function initLogSystem(sessionId: string | null = null): {
@@ -45,8 +70,9 @@ export function initLogSystem(sessionId: string | null = null): {
   logDir: string;
   sessionDir: string;
 } {
-  LOG_DIR = join(Paths.getLogsDir(), "app");
+  LOG_DIR = Paths.getMainAppLogsDir();
   SESSION_ID = sessionId ?? generateSessionId();
+  SESSION_START_TIME = getSessionStartTime();
   SESSION_DIR = join(LOG_DIR, SESSION_ID);
 
   return { sessionId: SESSION_ID, logDir: LOG_DIR, sessionDir: SESSION_DIR };
@@ -66,16 +92,14 @@ export async function ensureSessionDir(): Promise<void> {
       throw new Error(await loggerT("sessionIdNotInitialized"));
     }
 
-    const meta: SessionMeta = {
+    const meta: SessionMeta = buildSessionMeta({
       sessionId: SESSION_ID,
-      startTime: new Date().toISOString(),
-      platform: process.platform,
-      nodeVersion: process.version,
-      electronVersion: process.versions.electron,
+      startTime: getSessionStartTime(),
       appVersion: process.env["npm_package_version"] ?? "unknown",
-    };
+      pid: process.pid,
+    });
 
-    await writeFile(join(SESSION_DIR, "meta.json"), JSON.stringify(meta, null, 2));
+    await writeFile(join(SESSION_DIR, SESSION_META_FILENAME), JSON.stringify(meta, null, 2));
   }
 }
 
@@ -93,74 +117,77 @@ export async function writeSessionSummary(
       throw new Error(await loggerT("sessionIdNotInitialized"));
     }
 
-    const snapshotStartTime =
-      typeof appStateSnapshot.startTime === "string" && appStateSnapshot.startTime.length > 0
-        ? appStateSnapshot.startTime
-        : new Date().toISOString();
-
-    const summary: SessionSummary = {
+    const summary: SessionSummary = buildSessionSummary({
       sessionId: SESSION_ID,
-      startTime: snapshotStartTime,
+      startTime: getSessionStartTime(),
       endTime: new Date().toISOString(),
       endReason: endReason as SessionSummary["endReason"],
       stats: {
         totalLogs,
-        errors: errorCount,
-        warnings: warnCount,
+        byLevel: {},
+        byCategory: {},
+        errorCount,
+        warningCount: warnCount,
         chunks: chunkIndex,
       },
       lastState: appStateSnapshot,
-    };
+    });
 
     if (SESSION_DIR === null || SESSION_DIR.length === 0) {
       throw new Error(await loggerT("sessionDirNotInitialized"));
     }
 
-    await writeFile(join(SESSION_DIR, "summary.json"), JSON.stringify(summary, null, 2));
+    await writeFile(join(SESSION_DIR, SESSION_SUMMARY_FILENAME), JSON.stringify(summary, null, 2));
   } catch (_err) {}
 }
 
 export async function listSessions(): Promise<SessionListItem[]> {
   try {
     if (LOG_DIR === null || LOG_DIR.length === 0) initLogSystem();
-    if (LOG_DIR === null || LOG_DIR.length === 0 || !existsSync(LOG_DIR)) return [];
-    const logDir = LOG_DIR;
+    const logDirs = getAppLogDirCandidates().filter((dir) => existsSync(dir));
+    if (logDirs.length === 0) return [];
 
-    const entries = await readdir(logDir, { withFileTypes: true });
-    const sessions = (
-      await Promise.all(
-        entries.map(async (entry): Promise<SessionListItem | null> => {
-          if (!entry.isDirectory()) return null;
+    const sessionMap = new Map<string, SessionListItem>();
 
-          const metaPath = join(logDir, entry.name, "meta.json");
-          const summaryPath = join(logDir, entry.name, "summary.json");
+    for (const logDir of logDirs) {
+      // eslint-disable-next-line no-await-in-loop
+      const entries = await readdir(logDir, { withFileTypes: true });
 
-          let meta = null;
-          let summary = null;
+      for (const entry of entries) {
+        if (!entry.isDirectory() || sessionMap.has(entry.name)) continue;
 
-          try {
-            const [metaContent, summaryContent] = await Promise.all([
-              existsSync(metaPath) ? readFile(metaPath, "utf-8") : Promise.resolve(null),
-              existsSync(summaryPath) ? readFile(summaryPath, "utf-8") : Promise.resolve(null),
-            ]);
-            meta =
-              metaContent !== null ? (parseJsonObject(metaContent) as SessionMeta | null) : null;
-            summary =
-              summaryContent !== null
-                ? (parseJsonObject(summaryContent) as SessionSummary | null)
-                : null;
-          } catch {}
+        const sessionMetaPath = join(logDir, entry.name, SESSION_META_FILENAME);
+        const legacyMetaPath = join(logDir, entry.name, LEGACY_SESSION_META_FILENAME);
+        const metaPath = existsSync(sessionMetaPath) ? sessionMetaPath : legacyMetaPath;
+        const summaryPath = join(logDir, entry.name, SESSION_SUMMARY_FILENAME);
 
-          return {
-            sessionId: entry.name,
-            startTime: meta?.startTime ?? null,
-            endTime: summary?.endTime ?? null,
-            endReason: summary?.endReason ?? (entry.name === SESSION_ID ? "active" : "unknown"),
-            stats: summary?.stats ?? null,
-          };
-        })
-      )
-    ).filter((session): session is SessionListItem => session !== null);
+        let meta = null;
+        let summary = null;
+
+        try {
+          const [metaContent, summaryContent] = await Promise.all([
+            existsSync(metaPath) ? readFile(metaPath, "utf-8") : Promise.resolve(null),
+            existsSync(summaryPath) ? readFile(summaryPath, "utf-8") : Promise.resolve(null),
+          ]);
+          meta =
+            metaContent !== null ? normalizeSessionMeta(parseJsonObject(metaContent)) : null;
+          summary =
+            summaryContent !== null
+              ? normalizeSessionSummary(parseJsonObject(summaryContent))
+              : null;
+        } catch {}
+
+        sessionMap.set(entry.name, {
+          sessionId: entry.name,
+          startTime: meta?.startTime ?? null,
+          endTime: summary?.endTime ?? null,
+          endReason: summary?.endReason ?? (entry.name === SESSION_ID ? "active" : "unknown"),
+          stats: summary?.stats ?? null,
+        });
+      }
+    }
+
+    const sessions = Array.from(sessionMap.values());
 
     sessions.sort((a, b) => {
       if (a.startTime === null || a.startTime.length === 0) return 1;

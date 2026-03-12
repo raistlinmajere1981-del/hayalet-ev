@@ -42,30 +42,4 @@ export interface LogReaderOptions {
     correlationId?: string;
   };
 }
-
-export interface SessionSummary {
-  sessionId: string;
-  startTime: string;
-  endTime?: string;
-  duration?: number;
-
-  stats: {
-    totalLogs: number;
-    byLevel: Record<string, number>;
-    byCategory: Record<string, number>;
-    errorCount: number;
-    warningCount: number;
-  };
-
-  errors?: Array<{
-    timestamp: string;
-    category: string;
-    message: string;
-    count: number;
-  }>;
-
-  performance?: {
-    averageLogRate: number;
-    peakMemoryUsage?: number;
-  };
-}
+export type { SessionEndReason, SessionMeta, SessionStats, SessionSummary } from "./index.js";
