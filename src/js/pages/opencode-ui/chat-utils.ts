@@ -19,7 +19,7 @@ export function addMessage(
   if (role === "assistant" && text.trim() === "" && hasFiles !== true) {
     return null;
   }
-  if (chatEmpty) chatEmpty.style.display = "none";
+  if (chatEmpty) chatEmpty.classList.add("is-hidden");
 
   const msgDiv = document.createElement("div");
   msgDiv.className = "ds-message ds-message--" + role;
@@ -30,8 +30,7 @@ export function addMessage(
     bubbleDiv.classList.add("ds-markdown");
     bubbleDiv.innerHTML = renderFn ? renderFn(text) : escapeHtml(text).replace(/\n/g, "<br>");
   } else {
-    bubbleDiv.style.whiteSpace = "pre-wrap";
-    bubbleDiv.style.wordBreak = "break-word";
+    bubbleDiv.classList.add("ds-message__bubble--plain");
     bubbleDiv.textContent = text;
   }
 

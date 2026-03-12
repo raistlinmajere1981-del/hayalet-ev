@@ -60,11 +60,7 @@ export function ensureWebviewMounted(slot: SlotId, webview: WebviewElement): boo
   }
 
   mountEl.appendChild(webview);
-  webview.style.position = "relative";
-  webview.style.top = "0";
-  webview.style.left = "0";
-  webview.style.width = "100%";
-  webview.style.height = "100%";
+  webview.classList.add("webview-frame");
   return true;
 }
 
@@ -73,13 +69,14 @@ export function markWebviewAttached(webview: WebviewElement): void {
   if (detachedAttr !== null && detachedAttr !== "") {
     webview.removeAttribute("data-detached");
   }
-  webview.style.display = "";
+  webview.classList.remove("is-hidden");
+  webview.classList.add("webview-frame");
 }
 
 export function markWebviewDetached(webview: WebviewElement): void {
   webview.setAttribute("data-detached", "1");
   webview.removeAttribute("src");
-  webview.style.display = "none";
+  webview.classList.add("is-hidden");
 }
 
 export async function attachWebview(

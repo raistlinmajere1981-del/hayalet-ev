@@ -1,4 +1,4 @@
-<section class="page hidden" id="page-entrance" aria-labelledby="page-entrance-title">
+<section class="page page-entrance is-hidden" id="page-entrance" aria-labelledby="page-entrance-title">
   <h2
     class="visually-hidden"
     id="page-entrance-title"
@@ -90,7 +90,7 @@
                 🔧
               </button>
               <button
-                class="btn btn-ghost btn-icon btn-sm"
+                class="btn btn-ghost btn-icon btn-sm slot-test-btn"
                 id="ai1-test-btn"
                 title=""
                 aria-label=""
@@ -101,7 +101,7 @@
                 🧪
               </button>
               <button
-                class="btn btn-ghost btn-icon btn-sm"
+                class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
                 id="ai1-sync-btn"
                 title=""
                 aria-label=""
@@ -118,13 +118,13 @@
           <div class="slot-url" id="ai1-url-display">-</div>
         </div>
         <div class="slot-webview-container" id="ai1-webview-mount">
-          <div class="webview-overlay empty" id="ai1-webview-overlay">
+          <div class="webview-overlay is-empty" id="ai1-webview-overlay">
             <div class="overlay-icon"></div>
             <div class="overlay-title" data-i18n-text="webview.noAccount.title"></div>
             <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle"></div>
           </div>
         </div>
-        <div class="webview-overlay hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
+        <div class="webview-overlay is-hidden scenario-slot-overlay" id="ai1-scenario-overlay"></div>
       </div>
 
       <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai2">
@@ -211,7 +211,7 @@
                 🔧
               </button>
               <button
-                class="btn btn-ghost btn-icon btn-sm"
+                class="btn btn-ghost btn-icon btn-sm slot-test-btn"
                 id="ai2-test-btn"
                 title=""
                 aria-label=""
@@ -222,7 +222,7 @@
                 🧪
               </button>
               <button
-                class="btn btn-ghost btn-icon btn-sm"
+                class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
                 id="ai2-sync-btn"
                 title=""
                 aria-label=""
@@ -239,13 +239,13 @@
           <div class="slot-url" id="ai2-url-display">-</div>
         </div>
         <div class="slot-webview-container" id="ai2-webview-mount">
-          <div class="webview-overlay empty" id="ai2-webview-overlay">
+          <div class="webview-overlay is-empty" id="ai2-webview-overlay">
             <div class="overlay-icon"></div>
             <div class="overlay-title" data-i18n-text="webview.noAccount.title"></div>
             <div class="overlay-subtitle" data-i18n-text="webview.noAccount.subtitle"></div>
           </div>
         </div>
-        <div class="webview-overlay hidden scenario-slot-overlay" id="ai2-scenario-overlay"></div>
+        <div class="webview-overlay is-hidden scenario-slot-overlay" id="ai2-scenario-overlay"></div>
       </div>
     </div>
 
@@ -259,13 +259,13 @@
       <div class="accordion-content" id="settings-accordion-content">
         <div class="accordion-panels">
           <div
-            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
             data-panel="user"
           >
-            <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.user"></span>
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.user"></span>
             </div>
-            <div class="panel-content">
+            <div class="entrance-panel__content">
               <div class="user-settings-column">
                 <div class="user-avatar-row">
                   <div
@@ -345,13 +345,13 @@
           </div>
 
           <div
-            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
             data-panel="accounts"
           >
-            <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.accounts"></span>
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.accounts"></span>
             </div>
-            <div class="panel-content">
+            <div class="entrance-panel__content">
               <div class="accounts-container">
                 <div class="account-list" id="account-list"></div>
                 <div class="account-form">
@@ -392,7 +392,7 @@
                         data-i18n-text="accounts.form.createAction"
                       ></button>
                       <button
-                        class="btn btn-danger btn-sm hidden"
+                        class="btn btn-danger btn-sm is-hidden"
                         id="settings-cancel-edit"
                         data-i18n-text="accounts.form.cancelAction"
                       ></button>
@@ -404,13 +404,13 @@
           </div>
 
           <div
-            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
             data-panel="whisper"
           >
-            <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.whisper"></span>
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.whisper"></span>
             </div>
-            <div class="panel-content">
+            <div class="entrance-panel__content">
               <div class="entrance-whisper-container">
                 <div class="entrance-whisper-header">
                   <button
@@ -429,13 +429,13 @@
           </div>
 
           <div
-            class="panel-item glass-panel ds-surface-card ds-surface-card--stack"
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
             data-panel="report"
           >
-            <div class="panel-header ds-surface-card__header">
-              <span class="panel-title ds-panel-title" data-i18n-text="panels.report"></span>
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.report"></span>
             </div>
-            <div class="panel-content">
+            <div class="entrance-panel__content">
               <div class="report-container">
                 <div
                   class="report-content"
@@ -444,7 +444,7 @@
                   aria-live="polite"
                   aria-relevant="additions text"
                 >
-                  <div class="log-entry" data-i18n-text="report.initialEntry"></div>
+                  <div class="ds-log-entry" data-i18n-text="report.initialEntry"></div>
                 </div>
               </div>
             </div>
@@ -455,7 +455,7 @@
   </div>
 </section>
 
-<div id="live-log-overlay" class="live-log-overlay hidden" aria-hidden="true">
+<div id="live-log-overlay" class="live-log-overlay is-hidden" aria-hidden="true">
   <div class="live-log-backdrop" id="live-log-backdrop"></div>
   <div
     class="live-log-shell"

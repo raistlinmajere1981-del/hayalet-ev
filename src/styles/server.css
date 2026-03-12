@@ -146,7 +146,7 @@
   color: var(--text-muted);
 }
 
-.log-entry {
+.server-room .ds-log-entry {
   padding: var(--space-2) var(--space-3);
   margin-bottom: var(--space-2);
   background: var(--bg-surface-2);
@@ -155,16 +155,16 @@
   word-break: break-word;
 }
 
-.log-entry.error {
+.server-room .ds-log-entry.is-error {
   border-left-color: var(--color-error);
   background: var(--color-error-bg);
 }
 
-.log-empty-state {
+.server-room .ds-log-empty {
   opacity: 0.6;
 }
 
-.log-list:has(.log-entry) .log-empty-state {
+.log-list:has(.ds-log-entry) .ds-log-empty {
   display: none;
 }
 
@@ -213,18 +213,18 @@
   min-width: var(--layout-server-command-tab-min-w);
 }
 
-.command-category-tab.active {
+.command-category-tab.is-active {
   background: var(--color-accent-soft);
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
-.command-run-row #server-command-test-args {
+.command-run-row .server-command-test-args {
   flex: 1;
   min-width: 0;
 }
 
-#server-command-run {
+.server-command-run {
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -368,7 +368,7 @@
   }
 
   .command-category-tab,
-  #server-command-run {
+  .server-command-run {
     flex: 1 1 var(--layout-action-flex-min);
     min-width: 0;
   }

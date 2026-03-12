@@ -227,7 +227,7 @@ export function setupEntranceLiveLogOverlay({
   const startPolling = (): void => {
     stopPolling();
     state.pollTimer = setInterval(() => {
-      if (state.paused || overlay.classList.contains("hidden")) {
+      if (state.paused || overlay.classList.contains("is-hidden")) {
         return;
       }
       void loadActiveSessionLogs(false);
@@ -235,7 +235,7 @@ export function setupEntranceLiveLogOverlay({
   };
 
   const openOverlay = (): void => {
-    overlay.classList.remove("hidden");
+    overlay.classList.remove("is-hidden");
     overlay.setAttribute("aria-hidden", "false");
     setActiveTabUI(state, appButtons);
     setPauseButtonUI(state, pauseBtn);
@@ -246,7 +246,7 @@ export function setupEntranceLiveLogOverlay({
   };
 
   const closeOverlay = (): void => {
-    overlay.classList.add("hidden");
+    overlay.classList.add("is-hidden");
     overlay.setAttribute("aria-hidden", "true");
     stopPolling();
   };
@@ -271,7 +271,7 @@ export function setupEntranceLiveLogOverlay({
 
     appendEntries(state, "app", incoming, maxLogs);
 
-    if (!overlay.classList.contains("hidden") && state.activeApp === "app") {
+    if (!overlay.classList.contains("is-hidden") && state.activeApp === "app") {
       render();
     }
   };
@@ -335,7 +335,7 @@ export function setupEntranceLiveLogOverlay({
   });
 
   window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !overlay.classList.contains("hidden")) {
+    if (event.key === "Escape" && !overlay.classList.contains("is-hidden")) {
       closeOverlay();
     }
   });

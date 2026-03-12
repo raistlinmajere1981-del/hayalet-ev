@@ -178,7 +178,7 @@ export class AccountPanel {
     if (nicknameEl) nicknameEl.value = account.nickname ?? "";
 
     if (btn) btn.textContent = entranceT("accounts.form.updateAction");
-    if (cancelBtn) cancelBtn.classList.remove("hidden");
+    if (cancelBtn) cancelBtn.classList.remove("is-hidden");
     if (title) title.textContent = entranceT("accounts.form.editTitle");
 
     this.render();
@@ -203,7 +203,7 @@ export class AccountPanel {
     if (nicknameEl) nicknameEl.value = "";
 
     if (btn) btn.textContent = entranceT("accounts.form.createAction");
-    if (cancelBtn) cancelBtn.classList.add("hidden");
+    if (cancelBtn) cancelBtn.classList.add("is-hidden");
     if (title) title.textContent = entranceT("accounts.form.createTitle");
     this.render();
     void this.renderNewAccountAvatarPreview();
@@ -491,12 +491,14 @@ export class AccountPanel {
     const statusEl = document.getElementById("account-status-msg");
     if (!statusEl) return;
 
+    const normalizedType = type.startsWith("is-") ? type : `is-${type}`;
     statusEl.textContent = message;
-    statusEl.className = `status-msg ${type}`;
-    statusEl.style.opacity = "1";
+    statusEl.className = `ds-status-msg ${normalizedType}`;
+    statusEl.classList.add("is-visible");
+
 
     setTimeout(() => {
-      statusEl.style.opacity = "0";
+      statusEl.classList.remove("is-visible");
     }, 3000);
   }
 }

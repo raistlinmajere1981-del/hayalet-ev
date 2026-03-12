@@ -134,8 +134,8 @@ export class EntranceHallController {
       const accordionContent = document.getElementById("settings-accordion-content");
       if (accordionToggle && accordionContent) {
         accordionToggle.addEventListener("click", () => {
-          const isOpen = accordionContent.classList.contains("open");
-          accordionContent.classList.toggle("open");
+          const isOpen = accordionContent.classList.contains("is-expanded");
+          accordionContent.classList.toggle("is-expanded");
           accordionToggle.setAttribute("aria-expanded", String(!isOpen));
         });
       }
@@ -174,7 +174,7 @@ export class EntranceHallController {
 
     const createLogElement = (entry: LogEntry, showVisibility = false): HTMLDivElement => {
       const line = document.createElement("div");
-      line.className = "log-entry";
+      line.className = "ds-log-entry";
       const visibility = entry.visibility ?? 3;
       const visibilityBadge = showVisibility ? `[L${visibility}] ` : "";
       const source = entry.category;
@@ -191,10 +191,10 @@ export class EntranceHallController {
       [...all].reverse().forEach((entry) => {
         modalBody.appendChild(createLogElement(entry, true));
       });
-      modal.classList.remove("hidden");
+      modal.classList.remove("is-hidden");
     };
 
-    const closeModal = (): void => modal?.classList.add("hidden");
+    const closeModal = (): void => modal?.classList.add("is-hidden");
 
     reportModalOpen?.addEventListener("click", openModal);
     modal?.addEventListener("click", (e) => {
@@ -222,7 +222,7 @@ export class EntranceHallController {
         }
       }
 
-      const modalIsOpen = modal?.classList.contains("hidden") === false;
+      const modalIsOpen = modal?.classList.contains("is-hidden") === false;
       if (modalBody && modalIsOpen) {
         const modalLine = createLogElement(entry, true);
         if (modalBody.firstChild) {
@@ -271,7 +271,7 @@ export class EntranceHallController {
     const electronApi = window.electronAPI;
     if (!electronApi?.readFile) {
       avatarElement.innerHTML = "";
-      avatarElement.style.backgroundImage = "";
+      avatarElement.style.removeProperty("--avatar-image");
       return;
     }
 
@@ -296,14 +296,15 @@ export class EntranceHallController {
 
         const mimeType = getMimeTypeFromPath(candidate);
         avatarElement.innerHTML = ``;
-        avatarElement.style.backgroundImage = `url(data:${mimeType};base64,${imageData})`;
+        // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
+        avatarElement.style.setProperty("--avatar-image", `url(data:${mimeType};base64,${imageData})`);
         return true;
       };
 
       const loaded = await tryLoadCandidate(0);
       if (!loaded) {
         avatarElement.innerHTML = "";
-        avatarElement.style.backgroundImage = "";
+        avatarElement.style.removeProperty("--avatar-image");
       }
     } catch (error) {
       Logger.error(
@@ -317,7 +318,7 @@ export class EntranceHallController {
       );
 
       avatarElement.innerHTML = "";
-      avatarElement.style.backgroundImage = "";
+      avatarElement.style.removeProperty("--avatar-image");
     }
   }
 
@@ -456,23 +457,21 @@ export class EntranceHallController {
     const avatarEl = document.getElementById(`${userType}-avatar`);
 
     if (userType === "user") {
-      if (avatarEl) avatarEl.style.opacity = "1";
+      avatarEl?.classList.remove("is-dimmed");
       return;
     }
 
     const hasAccount = !!AppState.getAccountForSlot(userType);
     const connected = SlotController.isConnected(userType) === true;
 
-    if (avatarEl) {
-      avatarEl.style.opacity = hasAccount && !connected ? "0.5" : "1";
-    }
+    avatarEl?.classList.toggle("is-dimmed", hasAccount && !connected);
 
     if (statusDot instanceof HTMLElement) {
-      statusDot.classList.remove("connected", "warning");
+      statusDot.classList.remove("is-connected", "is-warning");
       if (hasAccount && connected) {
-        statusDot.classList.add("connected");
+        statusDot.classList.add("is-connected");
       } else if (hasAccount) {
-        statusDot.classList.add("warning");
+        statusDot.classList.add("is-warning");
       }
     }
 
@@ -616,23 +615,23 @@ export class EntranceHallController {
       }
 
       const logEntry = document.createElement("div");
-      logEntry.className = `log-entry log-level-${logData.level}`;
-
+      logEntry.className = `ds-log-entry ds-log-level-${logData.level}`;
       const time = formatTime(new Date(logData.timestamp));
       const category = this.formatLogCategory(logData.category);
 
       logEntry.innerHTML = `
-        <span class="log-time">${time}</span>
-        <span class="log-level log-level-badge-${logData.level}">${logData.level.toUpperCase()}</span>
-        <span class="log-category">${category}</span>
-        <span class="log-message">${this.escapeHtml(logData.message)}</span>
+        <span class="ds-log-time">${time}</span>
+        <span class="ds-log-level-badge ds-log-level-badge-${logData.level}">${logData.level.toUpperCase()}</span>
+        <span class="ds-log-category">${category}</span>
+        <span class="ds-log-message">${this.escapeHtml(logData.message)}</span>
       `;
+
 
       logContainer.appendChild(logEntry);
       logCount++;
 
       if (logCount > MAX_LOGS) {
-        const firstLog = logContainer.querySelector(".log-entry");
+        const firstLog = logContainer.querySelector(".ds-log-entry");
         if (firstLog) {
           firstLog.remove();
           logCount--;

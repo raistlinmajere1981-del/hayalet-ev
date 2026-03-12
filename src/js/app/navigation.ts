@@ -77,12 +77,12 @@ export function showPage(pageName: string): void {
     }
   }
   document.querySelectorAll(".page").forEach((page) => {
-    page.classList.add("hidden");
+    page.classList.add("is-hidden");
   });
 
   const pageElement = findPageElement(normalizedPageName);
   if (pageElement !== null) {
-    pageElement.classList.remove("hidden");
+    pageElement.classList.remove("is-hidden");
     currentPage = normalizedPageName;
 
     const controller = controllers[normalizedPageName];
@@ -144,11 +144,11 @@ export function setupTopBarButtons(): void {
 
     if (sideNavOverlay !== null && sideNavTrigger !== null && sideNavMenu !== null) {
       sideNavTrigger.addEventListener("mouseenter", () => {
-        sideNavOverlay.classList.add("is-open");
+        sideNavOverlay.classList.add("is-expanded");
       });
 
       sideNavMenu.addEventListener("mouseleave", () => {
-        sideNavOverlay.classList.remove("is-open");
+        sideNavOverlay.classList.remove("is-expanded");
       });
 
       sideNavTrigger.addEventListener("mouseleave", (e) => {
@@ -156,7 +156,7 @@ export function setupTopBarButtons(): void {
         if (relatedTarget === null || sideNavMenu.contains(relatedTarget) === false) {
           setTimeout(() => {
             if (sideNavOverlay.matches(":hover") === false) {
-              sideNavOverlay.classList.remove("is-open");
+              sideNavOverlay.classList.remove("is-expanded");
             }
           }, 100);
         }
@@ -190,24 +190,24 @@ export function setActiveNavigation(pageName: string): void {
   const normalizedPageName = normalizePageName(pageName);
   const menuItems = document.querySelectorAll(".menu-item");
   menuItems.forEach((mi) => {
-    mi.classList.remove("active");
+    mi.classList.remove("is-active");
   });
   if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
     menuItems.forEach((mi) => {
       if (matchesPageDataset((mi as HTMLElement).dataset["page"], normalizedPageName)) {
-        mi.classList.add("active");
+        mi.classList.add("is-active");
       }
     });
   }
 
   const sideNavBtns = document.querySelectorAll(".side-nav-btn");
   sideNavBtns.forEach((btn) => {
-    btn.classList.remove("active");
+    btn.classList.remove("is-active");
   });
   if (SPECIAL_PAGES.includes(normalizedPageName) === false) {
     sideNavBtns.forEach((btn) => {
       if (matchesPageDataset((btn as HTMLElement).dataset["page"], normalizedPageName)) {
-        btn.classList.add("active");
+        btn.classList.add("is-active");
       }
     });
   }

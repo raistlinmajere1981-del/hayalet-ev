@@ -24,7 +24,16 @@
   border-radius: var(--radius-full);
   background: var(--app-shell-progress-fill-bg);
   transition: width var(--duration-normal) var(--ease-out);
+  width: 0%;
   min-width: 0;
+}
+
+.ds-progress__fill.is-full {
+  width: 100%;
+}
+
+.ds-progress__fill.is-empty {
+  width: 0%;
 }
 
 .ds-progress__fill--warning {

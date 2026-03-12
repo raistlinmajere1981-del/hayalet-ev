@@ -62,7 +62,7 @@
   min-height: 0;
 }
 
-.accordion-content.open,
+.accordion-content.is-expanded,
 .accordion-toggle[aria-expanded="true"] + .accordion-content {
   grid-template-rows: 1fr;
 }

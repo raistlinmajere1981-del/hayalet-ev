@@ -40,7 +40,7 @@ function renderSummary(runtime: RuntimeState): string {
 
 function renderProviderRows(runtime: RuntimeState): string {
   if (runtime.providerItems.length === 0) {
-    return `<div class="empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
+    return `<div class="ds-empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
   }
 
   return runtime.providerItems
@@ -95,7 +95,7 @@ function filterModelItems(runtime: RuntimeState, ui: OverlayUiState): SelectItem
 function renderModelRows(runtime: RuntimeState, ui: OverlayUiState): string {
   const items = filterModelItems(runtime, ui);
   if (items.length === 0) {
-    return `<div class="empty-state">${escapeHtml(t("modelSettings.filteredEmpty"))}</div>`;
+    return `<div class="ds-empty-state">${escapeHtml(t("modelSettings.filteredEmpty"))}</div>`;
   }
 
   const grouped = new Map<string, SelectItem[]>();

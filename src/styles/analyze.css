@@ -20,9 +20,6 @@
   grid-template-columns: 1fr;
 }
 
-.conv-card.hidden-slot {
-  display: none;
-}
 
 .conv-card:only-child {
   grid-column: 1 / -1;
@@ -73,7 +70,7 @@
   color: var(--text-primary);
 }
 
-.identity .status {
+.identity .identity-status {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
@@ -86,6 +83,22 @@
   flex-direction: column;
   gap: var(--space-3);
   background: var(--effect-gradient-surface-soft), var(--bg-surface-2);
+}
+
+.conv-card.slot-empty .conv-body,
+.conv-card.slot-disconnected .conv-body {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.msg-virtual-scroll {
+  height: 400px;
+  overflow: auto;
+  position: relative;
+}
+
+.msg-virtual-content {
+  position: relative;
 }
 
 .message-placeholder {

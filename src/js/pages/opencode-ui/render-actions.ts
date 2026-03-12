@@ -18,7 +18,8 @@ export function updateUsagePlaceholders(context: RenderContext, text: string): v
 
   const usageFillEl = context.byId<HTMLElement>("usage-fill");
   if (usageFillEl != null) {
-    usageFillEl.style.width = "0%";
+    usageFillEl.classList.remove("is-full");
+    usageFillEl.classList.add("is-empty");
   }
 
   const usageStatsEl = context.byId<HTMLElement>("usage-stats");
@@ -54,7 +55,8 @@ export function updateUsageFromSession(
 
   const usageFillEl = context.byId<HTMLElement>("usage-fill");
   if (usageFillEl != null) {
-    usageFillEl.style.width = "100%";
+    usageFillEl.classList.remove("is-empty");
+    usageFillEl.classList.add("is-full");
   }
 
   const usageStatsEl = context.byId<HTMLElement>("usage-stats");
@@ -122,7 +124,7 @@ export function renderTodoPanel(context: RenderContext, todos: OpencodeUiTodoIte
     panel.innerHTML = buildRightTabPanelCard(
       t("panel.todoTitle"),
       t("panel.todoEyebrow"),
-      `<div class="empty-state">${escapeHtml(t("panel.todoEmpty"))}</div>`,
+      `<div class="ds-empty-state">${escapeHtml(t("panel.todoEmpty"))}</div>`,
       "0"
     );
     return;
@@ -181,7 +183,7 @@ export function renderFilesPanel(
     panel.innerHTML = buildRightTabPanelCard(
       t("panel.filesTitle"),
       t("panel.filesEyebrow"),
-      `<div class="empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
+      `<div class="ds-empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
       "0"
     );
     return;
@@ -216,7 +218,7 @@ export function renderFilesPanel(
     panel.innerHTML = buildRightTabPanelCard(
       t("panel.filesTitle"),
       t("panel.filesEyebrow"),
-      `<div class="empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
+      `<div class="ds-empty-state">${escapeHtml(t("panel.filesEmpty"))}</div>`,
       "0"
     );
     return;
@@ -238,7 +240,7 @@ export function createHistoricAssistantToolHost(context: RenderContext): HTMLEle
 
   const chatEmpty = context.byId<HTMLElement>("chat-empty");
   if (chatEmpty != null) {
-    chatEmpty.style.display = "none";
+    chatEmpty.classList.add("is-hidden");
   }
 
   const host = document.createElement("div");

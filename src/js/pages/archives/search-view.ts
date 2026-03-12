@@ -59,11 +59,11 @@ export function switchSearchTab(
   resultsFilesEl: HTMLElement | null
 ): void {
   document.querySelectorAll(".search-tabs .tab-btn").forEach((btn) => {
-    btn.classList.toggle("active", (btn as HTMLElement).dataset["tab"] === tab);
+    btn.classList.toggle("is-active", (btn as HTMLElement).dataset["tab"] === tab);
   });
 
-  resultsMessagesEl?.classList.toggle("active", tab === "messages");
-  resultsFilesEl?.classList.toggle("active", tab === "files");
+  resultsMessagesEl?.classList.toggle("is-active", tab === "messages");
+  resultsFilesEl?.classList.toggle("is-active", tab === "files");
 }
 
 export function clearSearchResultsView(args: {
@@ -79,7 +79,7 @@ export function clearSearchResultsView(args: {
   if (filesCountEl) filesCountEl.textContent = "0";
   if (resultsMessagesEl) resultsMessagesEl.innerHTML = "";
   if (resultsFilesEl) resultsFilesEl.innerHTML = "";
-  searchEmptyEl?.classList.remove("hidden");
+  searchEmptyEl?.classList.remove("is-hidden");
 }
 
 export function renderSearchResultsView(args: {
@@ -110,7 +110,7 @@ export function renderSearchResultsView(args: {
   if (filesCountEl) filesCountEl.textContent = String(attachments.length);
 
   const hasResults = messages.length > 0 || attachments.length > 0;
-  searchEmptyEl?.classList.toggle("hidden", hasResults || searchQuery === "");
+  searchEmptyEl?.classList.toggle("is-hidden", hasResults || searchQuery === "");
 
   if (resultsMessagesEl) {
     if (messages.length === 0) {

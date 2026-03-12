@@ -160,16 +160,16 @@
   padding: 0;
 }
 
-#rtab-health .ds-kv-row {
+.ds-rtab-panel--health .ds-kv-row {
   gap: var(--space-3);
   align-items: flex-start;
 }
 
-#rtab-health .ds-kv-row__label {
+.ds-rtab-panel--health .ds-kv-row__label {
   flex: 0 0 var(--layout-data-label-w-sm);
 }
 
-#rtab-health .ds-kv-row__value {
+.ds-rtab-panel--health .ds-kv-row__value {
   flex: 1;
   min-width: 0;
   max-width: none;
@@ -338,7 +338,7 @@
   display: none;
 }
 
-#providers-list,
+.ds-providers-list,
 .ds-todo-list,
 .ds-file-list {
   display: flex;
@@ -450,7 +450,7 @@
   min-width: 0;
 }
 
-#workspace-url-display {
+.ds-workspace-url-display {
   display: block;
   min-width: 0;
   max-width: 100%;
@@ -764,14 +764,14 @@
     height: calc(var(--btn-height-xs) + var(--space-0-5));
   }
 
-  #rtab-health .ds-kv-row {
+  .ds-rtab-panel--health .ds-kv-row {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-1);
   }
-
-  #rtab-health .ds-kv-row__value {
+  
+  .ds-rtab-panel--health .ds-kv-row__value {
     width: 100%;
     text-align: left;
   }
-}
+  }

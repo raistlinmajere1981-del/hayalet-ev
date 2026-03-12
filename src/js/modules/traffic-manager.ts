@@ -47,10 +47,6 @@ const TIMING_CONFIG = {
   },
 };
 
-const STATUS_COLORS = {
-  busy: "var(--traffic-status-busy)",
-  idle: "var(--traffic-status-idle)",
-};
 
 const defaultStatus = (): { loading: string; thinking: string; send: string } => ({
   loading: "idle",
@@ -650,9 +646,9 @@ class TrafficManagerClass {
       typeof dot !== "boolean" &&
       dot instanceof HTMLElement
     ) {
-      const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS];
-      dot.style.display = "inline-block";
-      dot.style.backgroundColor = color;
+      const isBusy = status === "busy";
+      dot.classList.toggle("is-busy", isBusy);
+      dot.classList.toggle("is-idle", !isBusy);
 
       if (kind === "loading" || kind === "thinking") {
         if (status === "busy") {

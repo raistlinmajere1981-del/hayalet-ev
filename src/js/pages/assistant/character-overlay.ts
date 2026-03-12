@@ -314,12 +314,12 @@ export class CharacterOverlay {
       this._renderActivePanel();
       this._updatePool();
       this._checkConflicts();
-      this.overlay?.classList.remove("hidden");
+      this.overlay?.classList.remove("is-hidden");
     });
   }
 
   private close(): void {
-    this.overlay?.classList.add("hidden");
+    this.overlay?.classList.add("is-hidden");
     this.selected = new Set(this.savedSelected);
   }
 
@@ -449,7 +449,7 @@ export class CharacterOverlay {
         </span>
       `;
       header.addEventListener("click", () => {
-        accordion.classList.toggle("open");
+        accordion.classList.toggle("is-expanded");
       });
 
       const body = document.createElement("div");
@@ -484,7 +484,7 @@ export class CharacterOverlay {
         const item = this.poolList.querySelector(`[data-feature-id="${feature.id}"]`);
         if (!item) continue;
         const isActive = this.selected.has(feature.id);
-        item.classList.toggle("active", isActive);
+        item.classList.toggle("is-active", isActive);
         const check = item.querySelector(".character-pool-item-check");
         if (check) check.textContent = isActive ? "✓" : "";
         if (isActive) activeCount++;
@@ -517,7 +517,7 @@ export class CharacterOverlay {
     const totalActive = this.selected.size;
 
     if (this.emptyState) {
-      this.emptyState.style.display = totalActive === 0 ? "flex" : "none";
+      this.emptyState.classList.toggle("is-hidden", totalActive !== 0);
     }
     if (this.activeCount) {
       this.activeCount.textContent = characterT("activeCount", { count: totalActive });
@@ -575,9 +575,9 @@ export class CharacterOverlay {
 
     if (conflictMessages.length > 0) {
       this.conflictText.textContent = conflictMessages.join(" • ");
-      this.conflictsEl.removeAttribute("hidden");
+      this.conflictsEl.classList.remove("is-hidden");
     } else {
-      this.conflictsEl.setAttribute("hidden", "");
+      this.conflictsEl.classList.add("is-hidden");
     }
   }
 }

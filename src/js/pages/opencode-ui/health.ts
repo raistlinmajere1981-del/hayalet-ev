@@ -500,7 +500,7 @@ function renderMcpServers(mcpServers: McpStatusMap, hevToolCount: number | null)
   }
 
   if (entries.length === 0) {
-    listEl.innerHTML = `<div class="empty-state">${t("health.emptyMcp")}</div>`;
+    listEl.innerHTML = `<div class="ds-empty-state">${t("health.emptyMcp")}</div>`;
     return;
   }
 

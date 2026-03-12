@@ -9,6 +9,33 @@
   backdrop-filter: var(--glass-blur);
 }
 
+.indicator-cluster.is-empty {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.indicator-cluster.is-disconnected {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.indicator-cluster.is-connected {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.indicator-cluster.is-empty .indicator-avatar {
+  opacity: 0.3;
+}
+
+.indicator-cluster.is-disconnected .indicator-avatar {
+  opacity: 0.6;
+}
+
+.indicator-cluster.is-connected .indicator-avatar {
+  opacity: 1;
+}
+
 .indicator-cluster-wide,
 .indicator-cluster-assistant {
   flex-direction: row;
@@ -50,9 +77,11 @@
   width: var(--size-control-md);
   height: var(--size-control-md);
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
+  background-color: var(--bg-elevated);
+  background-image: var(--avatar-image, none);
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   flex-shrink: 0;
 }
 
@@ -119,6 +148,7 @@
 }
 
 .indicator-dot {
+  display: inline-block;
   width: var(--size-dot-sm);
   height: var(--size-dot-sm);
   border-radius: var(--radius-full);
@@ -141,9 +171,17 @@
   box-shadow: none;
 }
 
-.indicator-dot.active {
+.indicator-dot.is-active {
   background: var(--color-accent);
   box-shadow: 0 0 var(--size-status-glow-sm) var(--color-accent);
+}
+
+.indicator-dot.is-busy {
+  background: var(--traffic-status-busy);
+}
+
+.indicator-dot.is-idle {
+  background: var(--traffic-status-idle);
 }
 
 .indicator-select-row {
@@ -189,18 +227,18 @@
   flex-shrink: 0;
 }
 
-.status-dot.connected,
-.status-dot.success {
+.status-dot.is-connected,
+.status-dot.is-success {
   background: var(--status-connected);
   box-shadow: var(--glow-success);
 }
 
-.status-dot.error {
+.status-dot.is-error {
   background: var(--color-error);
   box-shadow: var(--glow-error);
 }
 
-.status-dot.warning {
+.status-dot.is-warning {
   background: var(--status-warning);
 }
 
@@ -216,12 +254,12 @@
   transition: background-color var(--duration-fast) var(--ease-out);
 }
 
-.slot-status-dot.connected {
+.slot-status-dot.is-connected {
   background: var(--status-connected);
   box-shadow: var(--glow-success);
 }
 
-.slot-status-dot.warning {
+.slot-status-dot.is-warning {
   background: var(--status-warning);
 }
 

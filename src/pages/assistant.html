@@ -1,4 +1,4 @@
-<section class="page hidden" id="page-assistant" aria-labelledby="page-assistant-title">
+<section class="page is-hidden" id="page-assistant" aria-labelledby="page-assistant-title">
   <h2
     class="visually-hidden"
     id="page-assistant-title"
@@ -63,7 +63,7 @@
             </div>
 
             <div class="assistant-provider-meta">
-              <select id="assistant-provider-select" class="select-compact"></select>
+              <select id="assistant-provider-select" class="select-compact assistant-provider-select"></select>
             </div>
           </div>
         </div>
@@ -71,7 +71,7 @@
         <div class="assistant-command-rail">
           <div class="assistant-connect-actions">
             <button
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-primary assistant-connect-btn"
               id="assistant-connect-btn"
               data-shell-i18n-text="assistant.buttonStates.idle"
             ></button>
@@ -126,6 +126,7 @@
               <div class="status-info">
                 <span
                   id="assistant-status-text"
+                  class="assistant-status-text"
                   data-shell-i18n-text="assistant.connectionUi.disconnectedTitle"
                 ></span>
                 <small id="assistant-status-details" role="status" aria-live="polite"></small>
@@ -137,8 +138,12 @@
               id="assistant-opencode-indicator"
               title=""
             >
-              <span class="status-dot status-checking" id="assistant-opencode-indicator-dot"></span>
               <span
+                class="status-dot assistant-opencode-indicator-dot is-loading"
+                id="assistant-opencode-indicator-dot"
+              ></span>
+              <span
+                class="assistant-opencode-indicator-text"
                 id="assistant-opencode-indicator-text"
                 role="status"
                 aria-live="polite"
@@ -197,17 +202,17 @@
           </div>
 
           <button
-            class="btn btn-sm btn-secondary"
+            class="btn btn-sm btn-secondary assistant-ghost-agent-btn"
             id="assistant-ghost-agent-btn"
             data-shell-i18n-text="assistant.page.ghostAgentButton"
           ></button>
         </div>
 
-        <div id="assistant-url-display">-</div>
+        <div id="assistant-url-display" class="assistant-url-display">-</div>
       </div>
     </div>
 
-    <div class="modal hidden" id="memory-overlay">
+    <div class="modal is-hidden" id="memory-overlay">
       <div class="modal-content memory-modal">
         <div class="modal-header">
           <div class="memory-header-left">
@@ -414,7 +419,7 @@
               <span class="memory-result-count" id="mem-result-count"></span>
             </div>
             <div class="memory-list" id="memory-list">
-              <div class="memory-empty-state empty-state" id="memory-empty-state">
+              <div class="memory-empty-state ds-empty-state" id="memory-empty-state">
                 <span>🧠</span>
                 <span data-shell-i18n-text="assistant.memoryOverlay.emptyState"></span>
               </div>
@@ -423,7 +428,7 @@
         </div>
       </div>
     </div>
-    <div class="modal hidden" id="character-overlay">
+    <div class="modal is-hidden" id="character-overlay">
       <div class="modal-content character-modal">
         <div class="modal-header">
           <h2 class="modal-title">
@@ -449,12 +454,12 @@
               ></span>
               <span class="character-active-count" id="character-active-count"></span>
             </div>
-            <div class="character-conflicts" id="character-conflicts" hidden>
+            <div class="character-conflicts is-hidden" id="character-conflicts">
               <span class="character-conflict-icon">⚠️</span>
               <span id="character-conflict-text"></span>
             </div>
             <div class="character-active-list" id="character-active-list">
-              <div class="character-empty-state empty-state" id="character-empty-state">
+              <div class="character-empty-state ds-empty-state" id="character-empty-state">
                 <span data-shell-i18n-text="assistant.characterOverlay.emptyState"></span>
               </div>
             </div>
@@ -497,7 +502,7 @@
               data-shell-i18n-text="common.cancel"
             ></button>
             <button
-              class="btn btn-sm btn-primary"
+              class="btn btn-sm btn-primary character-save-btn"
               id="character-save-btn"
               data-shell-i18n-text="common.save"
             ></button>
@@ -505,7 +510,7 @@
         </div>
       </div>
     </div>
-    <div class="modal hidden" id="assistant-identity-modal">
+    <div class="modal is-hidden" id="assistant-identity-modal">
       <div class="modal-content assistant-identity-modal">
         <div class="modal-header">
           <h2 class="modal-title" data-shell-i18n-text="assistant.identityModal.title"></h2>
@@ -555,9 +560,9 @@
       </div>
     </div>
     <div class="assistant-webview-panel" id="assistant-webview-panel">
-      <aside class="assistant-test-panel hidden" id="ai0-test-side-panel"></aside>
+      <aside class="assistant-test-panel is-hidden" id="ai0-test-side-panel"></aside>
       <div class="webview-wrapper" id="ai0-webview-mount">
-        <div class="webview-overlay empty" id="ai0-webview-overlay">
+        <div class="webview-overlay is-empty" id="ai0-webview-overlay">
           <div class="overlay-icon"></div>
           <div
             class="overlay-title"

@@ -126,7 +126,7 @@ class LifecycleManagerClass {
       const detachedAttr = webview.getAttribute("data-detached");
       if (detachedAttr !== null && detachedAttr !== "") {
         webview.removeAttribute("data-detached");
-        webview.style.display = "";
+        webview.classList.remove("is-hidden");
       }
 
       const isActive = AppState.getState().activeProvider === provider;
@@ -264,7 +264,7 @@ class LifecycleManagerClass {
 
       if (webview && cleanupDom) {
         webview.setAttribute("data-detached", "1");
-        webview.style.display = "none";
+        webview.classList.add("is-hidden");
         webview.removeAttribute("src");
       }
     } catch (_err) {

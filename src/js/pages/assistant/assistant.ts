@@ -440,7 +440,7 @@ export class AssistantController {
     }
 
     input.value = AppState.getNickname("ai0");
-    overlay.classList.remove("hidden");
+    overlay.classList.remove("is-hidden");
 
     requestAnimationFrame(() => {
       input.focus();
@@ -450,7 +450,7 @@ export class AssistantController {
 
   _closeIdentityNicknameModal(): void {
     const { overlay } = this._getIdentityNicknameModalElements();
-    overlay?.classList.add("hidden");
+    overlay?.classList.add("is-hidden");
   }
 
   _setupIdentityNicknameModalEvents(): void {
@@ -715,7 +715,7 @@ export class AssistantController {
 
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const isConnected = slotState?.state === SlotState.CONNECTED || this._isServerRunning;
-    dot.classList.toggle("connected", isConnected);
+    dot.classList.toggle("is-connected", isConnected);
   }
 
   async _updateAvatar(avatarPath: string | null): Promise<void> {
@@ -727,7 +727,7 @@ export class AssistantController {
     const electronApi = window.electronAPI;
     if (!electronApi?.readFile) {
       avatarElement.innerHTML = "";
-      avatarElement.style.backgroundImage = "";
+      avatarElement.style.removeProperty("--avatar-image");
       return;
     }
 
@@ -756,21 +756,22 @@ export class AssistantController {
 
         const mimeType = getMimeTypeFromPath(candidate);
         avatarElement.innerHTML = "";
-        avatarElement.style.backgroundImage = `url(data:${mimeType};base64,${imageData})`;
+        // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
+        avatarElement.style.setProperty("--avatar-image", `url(data:${mimeType};base64,${imageData})`);
         return true;
       };
 
       const loaded = await tryLoadCandidate(0);
       if (!loaded) {
         avatarElement.innerHTML = "";
-        avatarElement.style.backgroundImage = "";
+        avatarElement.style.removeProperty("--avatar-image");
       }
     } catch (error) {
       Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarLoadFailed"), {
         error: error instanceof Error ? error.message : String(error),
       });
       avatarElement.innerHTML = "";
-      avatarElement.style.backgroundImage = "";
+      avatarElement.style.removeProperty("--avatar-image");
     }
   }
 
@@ -1413,7 +1414,7 @@ export class AssistantController {
 
   _closeTestPanel(): void {
     this.scenarioPanelState = null;
-    this.testPanel?.classList.add("hidden");
+    this.testPanel?.classList.add("is-hidden");
   }
 
   _requestScenarioCancellation(runId: string | null): void {
@@ -1491,7 +1492,7 @@ export class AssistantController {
     const panel = this.testPanel;
     if (!state || !panel) return;
 
-    panel.classList.remove("hidden");
+    panel.classList.remove("is-hidden");
 
     const displayCommands =
       state.commands.length > 0 ? state.commands : (state.suite?.commands ?? []);
@@ -1603,10 +1604,7 @@ export class AssistantController {
       const textarea = document.createElement("textarea");
       textarea.value = text;
       textarea.setAttribute("readonly", "true");
-      textarea.style.position = "fixed";
-      textarea.style.top = "0";
-      textarea.style.left = "-9999px";
-      textarea.style.opacity = "0";
+      textarea.classList.add("clipboard-proxy");
       document.body.appendChild(textarea);
 
       try {

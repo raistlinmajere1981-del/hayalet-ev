@@ -1,9 +1,9 @@
-#page-whisper {
+.page-whisper {
   height: var(--layout-page-height);
   overflow: hidden;
 }
 
-#page-whisper .whisper-layout {
+.page-whisper .whisper-layout {
   display: grid;
   grid-template-columns:
     minmax(var(--layout-whisper-sidebar-min), var(--layout-whisper-sidebar-max))
@@ -14,7 +14,7 @@
   box-sizing: border-box;
 }
 
-#page-whisper .whisper-create-panel {
+.page-whisper .whisper-create-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -22,25 +22,25 @@
   padding: var(--space-4);
 }
 
-#page-whisper .whisper-create-panel h3 {
+.page-whisper .whisper-create-panel h3 {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
 }
 
-#page-whisper .whisper-form-grid {
+.page-whisper .whisper-form-grid {
   display: grid;
   gap: var(--space-2);
 }
 
-#page-whisper .whisper-form-label {
+.page-whisper .whisper-form-label {
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
   color: var(--text-tertiary);
 }
 
-#page-whisper .whisper-textarea {
+.page-whisper .whisper-textarea {
   --field-textarea-min-h: calc(var(--space-20) + var(--space-2));
   --field-padding-block: var(--space-2);
   --field-padding-inline: var(--space-3);
@@ -48,27 +48,27 @@
   --field-radius: var(--radius-lg);
 }
 
-#page-whisper .whisper-form-actions {
+.page-whisper .whisper-form-actions {
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-#page-whisper .whisper-feedback {
+.page-whisper .whisper-feedback {
   min-height: var(--size-control-xs);
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
-#page-whisper .whisper-feedback.success {
+.page-whisper .whisper-feedback.is-success {
   color: var(--color-success);
 }
 
-#page-whisper .whisper-feedback.error {
+.page-whisper .whisper-feedback.is-error {
   color: var(--color-error);
 }
 
-#page-whisper .whisper-accounts {
+.page-whisper .whisper-accounts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--layout-whisper-card-min), 1fr));
   gap: var(--space-3);
@@ -77,7 +77,7 @@
   padding-right: var(--space-1);
 }
 
-#page-whisper .whisper-account-card {
+.page-whisper .whisper-account-card {
   display: grid;
   grid-template-rows: auto auto auto;
   gap: var(--space-3);
@@ -85,12 +85,12 @@
   padding: var(--space-4);
 }
 
-#page-whisper .whisper-account-header {
+.page-whisper .whisper-account-header {
   display: grid;
   gap: var(--space-0-5);
 }
 
-#page-whisper .whisper-account-title {
+.page-whisper .whisper-account-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-base);
@@ -98,18 +98,18 @@
   color: var(--text-primary);
 }
 
-#page-whisper .whisper-account-subtitle {
+.page-whisper .whisper-account-subtitle {
   font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
-#page-whisper .whisper-section {
+.page-whisper .whisper-section {
   display: grid;
   gap: var(--space-2);
   min-height: 0;
 }
 
-#page-whisper .whisper-section-title {
+.page-whisper .whisper-section-title {
   margin: 0;
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
@@ -118,7 +118,7 @@
   letter-spacing: var(--tracking-wide);
 }
 
-#page-whisper .whisper-empty {
+.page-whisper .whisper-empty {
   color: var(--text-muted);
   font-size: var(--text-xs);
   text-align: center;
@@ -126,12 +126,12 @@
 }
 
 @media (--breakpoint-max-640) {
-  #page-whisper .whisper-layout {
+  .page-whisper .whisper-layout {
     padding: var(--space-2);
     gap: var(--space-2);
   }
 
-  #page-whisper .whisper-form-actions > * {
+  .page-whisper .whisper-form-actions > * {
     flex: 1 1 var(--layout-action-flex-min);
   }
 }

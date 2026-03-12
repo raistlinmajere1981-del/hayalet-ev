@@ -86,7 +86,7 @@ const splashScreen = {
       getElements();
     }
 
-    container.classList.remove("hidden", "splash-hiding");
+    container.classList.remove("is-hidden", "splash-hiding");
     showTime = Date.now();
     isVisible = true;
     currentProgress = 0;
@@ -128,7 +128,8 @@ const splashScreen = {
 
     progress.classList.remove("indeterminate");
 
-    progress.style.width = `${value}%`;
+    // NOTE: Progress is runtime-driven via CSS var to avoid width injection.
+    progress.style.setProperty("--splash-progress", `${value}%`);
 
     logSplashDebug("splashProgressUpdated", undefined, { percent: value });
   },
@@ -137,7 +138,7 @@ const splashScreen = {
     const { progress } = getElements();
     if (!progress) return;
 
-    progress.style.width = "";
+    progress.style.removeProperty("--splash-progress");
     progress.classList.add("indeterminate");
   },
 
@@ -153,7 +154,7 @@ const splashScreen = {
   update(percent: number, message: string): void {
     if (!isVisible) {
       const { container } = getElements();
-      if (container && !container.classList.contains("hidden")) {
+      if (container && !container.classList.contains("is-hidden")) {
         isVisible = true;
         showTime = Date.now();
       }

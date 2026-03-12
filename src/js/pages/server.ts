@@ -140,9 +140,9 @@ export class ServerController {
     buttons?.forEach((button) => {
       const category = (button.dataset["category"] ?? "") as CommandCategory;
       if (category === this.activeCategory) {
-        button.classList.add("active");
+        button.classList.add("is-active");
       } else {
-        button.classList.remove("active");
+        button.classList.remove("is-active");
       }
     });
   }
@@ -303,7 +303,7 @@ export class ServerController {
 
     if (list.length === 0) {
       const empty = document.createElement("div");
-      empty.className = "log-empty-state";
+      empty.className = "ds-log-empty";
       empty.textContent = serverCommandPanelT("status.emptyCategory");
       this.commandList.appendChild(empty);
       if (this.commandDetail !== null) {

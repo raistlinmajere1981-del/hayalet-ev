@@ -499,7 +499,7 @@ export function normalizeConnectedProviderIds(payload: unknown): string[] {
 
 export function renderProviderRows(items: ProviderItem[]): string {
   if (items.length === 0) {
-    return `<div class="empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
+    return `<div class="ds-empty-state">${escapeHtml(t("modelSettings.providerMissing"))}</div>`;
   }
 
   return items

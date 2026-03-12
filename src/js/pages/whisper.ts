@@ -173,8 +173,8 @@ export class WhisperController {
     }
 
     this.feedbackEl.textContent = message;
-    this.feedbackEl.classList.remove("success", "error");
-    this.feedbackEl.classList.add(type);
+    this.feedbackEl.classList.remove("is-success", "is-error");
+    this.feedbackEl.classList.add(type === "success" ? "is-success" : "is-error");
 
     if (this.feedbackTimer) {
       clearTimeout(this.feedbackTimer);
@@ -185,7 +185,7 @@ export class WhisperController {
         return;
       }
       this.feedbackEl.textContent = "";
-      this.feedbackEl.classList.remove("success", "error");
+      this.feedbackEl.classList.remove("is-success", "is-error");
       this.feedbackTimer = null;
     }, 3500);
   }

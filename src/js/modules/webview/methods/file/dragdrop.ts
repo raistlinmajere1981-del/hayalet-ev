@@ -148,13 +148,14 @@ export async function attachFiles(
               }
             }
             
-            if (containsDragText) {
-              try {
-                overlay.remove();
-              } catch (_) {
-                overlay.style.display = 'none';
+              if (containsDragText) {
+                try {
+                  overlay.remove();
+                } catch (_) {
+                  // NOTE: Keep inline as a last-resort hide for third-party overlays.
+                  overlay.style.display = 'none';
+                }
               }
-            }
           }
         });
       });

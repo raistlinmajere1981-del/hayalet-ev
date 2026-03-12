@@ -145,7 +145,7 @@ export function renderEntries(params: OverlayRenderParams): void {
 
   if (filtered.length === 0) {
     const empty = document.createElement("div");
-    empty.className = "log-empty-state";
+    empty.className = "ds-log-empty";
     empty.textContent = entranceT("liveLog.empty");
     overlayContent.appendChild(empty);
     renderDetail(detailMeta, detailContext, null);
@@ -156,7 +156,7 @@ export function renderEntries(params: OverlayRenderParams): void {
   filtered.slice(0, maxLogs).forEach((entry) => {
     const row = document.createElement("div");
     row.className =
-      `log-entry log-level-${entry.level}` +
+      `ds-log-entry ds-log-level-${entry.level}` +
       (entry.id === state.selectedEntryId ? " is-selected" : "");
     row.dataset["entryId"] = entry.id;
 
@@ -166,14 +166,15 @@ export function renderEntries(params: OverlayRenderParams): void {
     const displayMessage = escapeHtml(entry.message);
 
     row.innerHTML = `
-      <div class="log-entry-header">
-        <span class="log-time">${escapeHtml(time)}</span>
-        <span class="log-level log-level-badge-${entry.level}">${safeLevel}</span>
-        <span class="log-app">${escapeHtml(entry.app)}</span>
-        <span class="log-category">${escapeHtml(category)}</span>
+      <div class="ds-log-entry__header">
+        <span class="ds-log-time">${escapeHtml(time)}</span>
+        <span class="ds-log-level-badge ds-log-level-badge-${entry.level}">${safeLevel}</span>
+        <span class="ds-log-app">${escapeHtml(entry.app)}</span>
+        <span class="ds-log-category">${escapeHtml(category)}</span>
       </div>
-      <div class="log-message">${displayMessage}</div>
+      <div class="ds-log-message">${displayMessage}</div>
     `;
+
 
     row.addEventListener("click", () => {
       state.selectedEntryId = entry.id;

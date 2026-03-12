@@ -55,28 +55,28 @@ function setOpencodeIndicatorState(
   const dot = elements.indicatorDot;
   if (indicator == null || dot == null) return;
 
-  indicator.classList.remove("is-ready", "is-missing", "is-error");
-  dot.classList.remove("status-ready", "status-missing", "status-error", "status-checking");
+  indicator.classList.remove("is-success", "is-warning", "is-error");
+  dot.classList.remove("is-success", "is-warning", "is-error", "is-loading");
 
   if (state === "ready") {
-    indicator.classList.add("is-ready");
-    dot.classList.add("status-ready");
+    indicator.classList.add("is-success");
+    dot.classList.add("is-success");
     return;
   }
 
   if (state === "missing") {
-    indicator.classList.add("is-missing");
-    dot.classList.add("status-missing");
+    indicator.classList.add("is-warning");
+    dot.classList.add("is-warning");
     return;
   }
 
   if (state === "error") {
     indicator.classList.add("is-error");
-    dot.classList.add("status-error");
+    dot.classList.add("is-error");
     return;
   }
 
-  dot.classList.add("status-checking");
+  dot.classList.add("is-loading");
 }
 
 function setOpencodeActionButtonState(
@@ -362,12 +362,11 @@ export async function openOpencodeSettingsModal(
     if (checkResult == null) return;
 
     checkResult.textContent = message;
+    checkResult.classList.remove("text-success", "text-error");
     if (tone === "success") {
-      checkResult.style.color = "var(--color-success)";
+      checkResult.classList.add("text-success");
     } else if (tone === "error") {
-      checkResult.style.color = "var(--color-error)";
-    } else {
-      checkResult.style.color = "var(--text-secondary)";
+      checkResult.classList.add("text-error");
     }
   };
 

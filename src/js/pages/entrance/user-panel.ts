@@ -108,9 +108,9 @@ export class UserPanel {
       : AppI18n.t("entrance.user.googleDrive.disconnected");
 
     if (gdStatus instanceof HTMLElement) {
-      gdStatus.classList.toggle("connected", isConnected);
-      gdStatus.classList.toggle("error", !isConnected);
-      gdStatus.classList.remove("warning");
+      gdStatus.classList.toggle("is-connected", isConnected);
+      gdStatus.classList.toggle("is-error", !isConnected);
+      gdStatus.classList.remove("is-warning");
       gdStatus.title = driveStatusLabel;
       gdStatus.setAttribute("aria-label", driveStatusLabel);
     }

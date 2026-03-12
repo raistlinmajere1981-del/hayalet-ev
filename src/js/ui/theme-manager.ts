@@ -104,9 +104,9 @@ function applyTheme(theme: ThemeId, animate: boolean = true): void {
   const root = document.documentElement;
 
   if (animate) {
-    root.style.transition = `background-color ${CONFIG.transitionDuration}ms ease, color ${CONFIG.transitionDuration}ms ease`;
+    root.classList.add("theme-transition");
     setTimeout(() => {
-      root.style.transition = "";
+      root.classList.remove("theme-transition");
     }, CONFIG.transitionDuration);
   }
 
@@ -202,11 +202,11 @@ function setupDropdownListeners(): void {
 
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    dropdown.classList.toggle("is-open");
+    dropdown.classList.toggle("is-expanded");
   });
 
   document.addEventListener("click", () => {
-    dropdown.classList.remove("is-open");
+    dropdown.classList.remove("is-expanded");
   });
 
   menu.addEventListener("click", (e) => {
@@ -217,7 +217,7 @@ function setupDropdownListeners(): void {
       const theme = item.getAttribute("data-theme");
       if (theme != null && theme !== "" && isValidTheme(theme)) {
         themeManager.set(theme);
-        dropdown.classList.remove("is-open");
+        dropdown.classList.remove("is-expanded");
       }
     }
   });

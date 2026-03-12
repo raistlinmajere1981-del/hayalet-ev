@@ -410,7 +410,7 @@ function pruneLastMessages(): void {
     if (!chatMessages.contains(chatEmpty)) {
       chatMessages.appendChild(chatEmpty);
     }
-    chatEmpty.style.display = "";
+    chatEmpty.classList.remove("is-hidden");
   }
 }
 

@@ -63,9 +63,6 @@ export function applyConnectButtonState(
   connectButton.className = "btn " + config.classes.join(" ");
   connectButton.textContent = config.text;
   connectButton.disabled = config.disabled;
-  connectButton.style.opacity = "";
-  connectButton.style.transform = "";
-  connectButton.style.transition = "";
 }
 
 export function updateServerStatusView(
@@ -91,13 +88,13 @@ export function updateServerStatusView(
   }
 
   if (status.running) {
-    elements.statusDot?.classList.remove("status-disconnected", "status-error");
-    elements.statusDot?.classList.add("status-connected");
+    elements.statusDot?.classList.remove("is-inactive", "is-error", "is-warning");
+    elements.statusDot?.classList.add("is-connected");
     return;
   }
 
-  elements.statusDot?.classList.remove("status-connected", "status-error");
-  elements.statusDot?.classList.add("status-disconnected");
+  elements.statusDot?.classList.remove("is-connected", "is-error", "is-warning");
+  elements.statusDot?.classList.add("is-inactive");
 }
 
 export function updateOverlayView(
@@ -137,14 +134,14 @@ export function updateTrafficStatusView(
   const { loading, thinking, send } = status;
 
   if (elements.statusDot != null) {
-    elements.statusDot.classList.remove("loading", "thinking", "send-disabled");
+    elements.statusDot.classList.remove("is-loading", "is-busy", "is-disabled");
 
     if (loading === "busy") {
-      elements.statusDot.classList.add("loading");
+      elements.statusDot.classList.add("is-loading");
     } else if (thinking === "busy") {
-      elements.statusDot.classList.add("thinking");
+      elements.statusDot.classList.add("is-busy");
     } else if (send === "busy") {
-      elements.statusDot.classList.add("send-disabled");
+      elements.statusDot.classList.add("is-disabled");
     }
   }
 

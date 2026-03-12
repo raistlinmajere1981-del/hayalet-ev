@@ -160,7 +160,7 @@ const modalApi = {
     const element = createModalElement(id, options);
 
     document.body.appendChild(element);
-    document.body.style.overflow = "hidden";
+    document.body.classList.add("is-scroll-locked");
 
     const focusableElements = element.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -210,7 +210,7 @@ const modalApi = {
       }
 
       if (modals.size === 0) {
-        document.body.style.overflow = "";
+        document.body.classList.remove("is-scroll-locked");
         document.removeEventListener("keydown", handleKeyDown);
       }
 
@@ -300,7 +300,7 @@ const modalApi = {
 
       const messageEl = document.createElement("p");
       messageEl.textContent = message;
-      messageEl.style.marginBottom = "var(--space-4)";
+      messageEl.className = "modal-prompt-message";
       content.appendChild(messageEl);
 
       const input = document.createElement("input");

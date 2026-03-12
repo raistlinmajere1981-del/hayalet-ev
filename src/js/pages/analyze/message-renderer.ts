@@ -296,14 +296,11 @@ export async function renderMessages(
     if (needsVirtualization) {
       const scrollContainer = document.createElement("div");
       scrollContainer.className = "msg-virtual-scroll";
-      scrollContainer.style.height = "400px";
-      scrollContainer.style.overflow = "auto";
-      scrollContainer.style.position = "relative";
 
       const contentContainer = document.createElement("div");
       contentContainer.className = "msg-virtual-content";
-      contentContainer.style.position = "relative";
       const totalHeight = totalMessages * MESSAGE_HEIGHT_ESTIMATE;
+      // NOTE: Virtualized list heights are runtime-derived from message count.
       contentContainer.style.height = `${totalHeight}px`;
 
       const visibleStart = Math.max(0, totalMessages - VISIBLE_MESSAGE_COUNT);
@@ -319,6 +316,7 @@ export async function renderMessages(
         attachmentsBasePath,
       });
 
+      // NOTE: Virtualization spacers depend on runtime message counts.
       const spacerTop = document.createElement("div");
       spacerTop.style.height = `${visibleStart * MESSAGE_HEIGHT_ESTIMATE}px`;
       contentContainer.appendChild(spacerTop);
@@ -412,6 +410,7 @@ function loadMoreMessages(
 
   const spacerTop = contentContainer.firstChild;
   if (spacerTop instanceof HTMLElement) {
+    // NOTE: Virtualized spacers use runtime heights based on scroll state.
     spacerTop.style.height = `${newVisibleStart * MESSAGE_HEIGHT_ESTIMATE}px`;
   }
 

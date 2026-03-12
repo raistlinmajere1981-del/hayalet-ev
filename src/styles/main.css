@@ -51,6 +51,33 @@ button {
   border: 0;
 }
 
+:root.theme-transition {
+  transition:
+    background-color var(--duration-theme-transition) ease,
+    color var(--duration-theme-transition) ease;
+}
+
+body.is-scroll-locked {
+  overflow: hidden;
+}
+
+/* NOTE: Offscreen clipboard proxy preserves execCommand fallback without layout shifts. */
+.clipboard-proxy {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  opacity: 0;
+}
+
+.webview-frame {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+}
+
 .app-offscreen-webviews {
   position: fixed;
   top: var(--layout-offscreen-offset);
@@ -105,10 +132,6 @@ button {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-}
-
-.page.hidden {
-  display: none;
 }
 
 .room-shell {
@@ -821,7 +844,7 @@ button {
   animation: flow-rtl var(--duration-flow-slow) ease-in-out infinite;
 }
 
-.hidden {
+.is-hidden {
   display: none !important;
 }
 
@@ -845,11 +868,11 @@ body.menu-hidden .main-content {
   min-height: var(--space-4);
 }
 
-.form-hint.error {
+.form-hint.is-error {
   color: var(--color-error);
 }
 
-.form-hint.success {
+.form-hint.is-success {
   color: var(--color-success);
 }
 

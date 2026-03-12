@@ -1,4 +1,4 @@
-<section class="page hidden" id="page-archives" aria-labelledby="page-archives-title">
+<section class="page is-hidden" id="page-archives" aria-labelledby="page-archives-title">
   <h2
     class="visually-hidden"
     id="page-archives-title"
@@ -40,14 +40,14 @@
         </div>
 
         <div class="detail-content" id="detail-content">
-          <div class="empty-state" id="detail-empty">
+          <div class="ds-empty-state" id="detail-empty">
             <p
               id="archives-detail-empty-text"
               data-shell-i18n-text="app.archives.page.detailEmpty"
             ></p>
           </div>
 
-          <form class="conversation-form hidden" id="conversation-form">
+          <form class="conversation-form is-hidden" id="conversation-form">
             <div class="form-group">
               <label
                 for="archive-title"
@@ -150,11 +150,11 @@
             data-shell-i18n-placeholder="app.archives.page.searchPlaceholder"
             autocomplete="off"
           />
-          <button type="button" class="btn-clear hidden" id="btn-clear-search">×</button>
+          <button type="button" class="btn-clear is-hidden" id="btn-clear-search">×</button>
         </div>
 
         <div class="search-tabs">
-          <button class="tab-btn active" data-tab="messages">
+          <button class="tab-btn is-active" data-tab="messages">
             <span
               id="archives-messages-tab-label"
               data-shell-i18n-text="app.archives.page.messagesTab"
@@ -178,7 +178,7 @@
             ></p>
           </div>
 
-          <div class="results-panel active" id="results-messages"></div>
+          <div class="results-panel is-active" id="results-messages"></div>
           <div class="results-panel" id="results-files"></div>
         </div>
       </div>
@@ -207,7 +207,7 @@
             id="protocol-editor-title"
             data-shell-i18n-text="app.archives.page.protocolEditorPlaceholderTitle"
           ></h3>
-          <div class="protocol-tag-buttons hidden" id="protocol-tag-buttons">
+          <div class="protocol-tag-buttons is-hidden" id="protocol-tag-buttons">
             <button type="button" class="btn btn-ghost btn-xs protocol-tag-btn" data-tag="<AI0>">
               &lt;AI0&gt;
             </button>
@@ -219,20 +219,20 @@
             </button>
           </div>
           <button
-            class="btn btn-primary btn-sm hidden"
+            class="btn btn-primary btn-sm is-hidden"
             id="btn-protocol-save"
             data-shell-i18n-text="app.archives.page.protocolSaveButton"
           ></button>
         </div>
         <div class="protocol-editor-content">
-          <div class="empty-state" id="protocol-empty">
+          <div class="ds-empty-state" id="protocol-empty">
             <p
               id="archives-protocol-empty-text"
               data-shell-i18n-text="app.archives.page.protocolEmpty"
             ></p>
           </div>
           <textarea
-            class="protocol-textarea form-input hidden"
+            class="protocol-textarea form-input is-hidden"
             id="protocol-textarea"
             placeholder=""
             data-shell-i18n-placeholder="app.archives.page.protocolPlaceholder"

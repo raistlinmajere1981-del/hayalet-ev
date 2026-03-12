@@ -88,8 +88,8 @@ export function getLogoFallback(getById: ByIdFn = byId): void {
   if (logoEl == null) return;
 
   logoEl.onerror = function (): void {
-    logoEl.style.background = "var(--accent-gradient)";
-    logoEl.style.display = "block";
+    logoEl.classList.remove("is-avatar");
+    logoEl.classList.add("is-fallback");
     logoEl.removeAttribute("src");
   };
 }
@@ -124,6 +124,7 @@ export async function applyAssistantIdentityToChatEmpty(getById: ByIdFn = byId):
   getLogoFallback(getById);
   logoEl.alt = t("documentTitle");
   logoEl.classList.remove("is-avatar");
+  logoEl.classList.remove("is-fallback");
   logoEl.src = "/assets/opencode.png";
 
   const avatarPath = AppState.getAvatar("ai0").trim();
@@ -140,6 +141,7 @@ export async function applyAssistantIdentityToChatEmpty(getById: ByIdFn = byId):
 
     logoEl.src = `data:${getMimeTypeFromPath(avatarPath)};base64,${imageData}`;
     logoEl.alt = nickname;
+    logoEl.classList.remove("is-fallback");
     logoEl.classList.add("is-avatar");
   } catch (_error) {}
 }
@@ -158,7 +160,7 @@ export function clearChatArea(runtime: RuntimeState, getById: ByIdFn = byId): vo
   chatMessages.innerHTML = "";
   if (chatEmpty != null) {
     chatMessages.appendChild(chatEmpty);
-    chatEmpty.style.display = "";
+    chatEmpty.classList.remove("is-hidden");
   }
 
   runtime.lastRenderedMessageCount = 0;

@@ -276,7 +276,6 @@ export class AnalyzeController {
     const card = document.getElementById(`card-${slot}`);
     const status = document.getElementById(`status-${slot}`);
     const sendToggle = document.getElementById(`send-${slot}`);
-    const messageArea = document.getElementById(`${slot}-message-area`);
 
     if (status) {
       if (!hasAccount) status.textContent = analyzeT("page.slotEmptyStatus");
@@ -294,11 +293,6 @@ export class AnalyzeController {
       (sendToggle as HTMLInputElement).disabled = !hasAccount || !connected;
       if (!hasAccount || !connected) (sendToggle as HTMLInputElement).checked = false;
     }
-
-    if (messageArea) {
-      messageArea.style.opacity = !hasAccount || !connected ? "0.5" : "1";
-      messageArea.style.pointerEvents = !hasAccount || !connected ? "none" : "auto";
-    }
   }
 
   _updateGridLayout(ai1Connected: boolean, ai2Connected: boolean): void {
@@ -314,8 +308,8 @@ export class AnalyzeController {
 
     grid.classList.toggle("single-ai", singleAi);
 
-    if (cardAi1) cardAi1.classList.toggle("hidden-slot", onlyAi2);
-    if (cardAi2) cardAi2.classList.toggle("hidden-slot", onlyAi1);
+    if (cardAi1) cardAi1.classList.toggle("is-hidden", onlyAi2);
+    if (cardAi2) cardAi2.classList.toggle("is-hidden", onlyAi1);
   }
 
   _updateAIAIControls(): void {

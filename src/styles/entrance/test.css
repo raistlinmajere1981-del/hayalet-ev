@@ -1,30 +1,24 @@
-#ai1-test-btn,
-#ai2-test-btn,
-#ai1-sync-btn,
-#ai2-sync-btn {
+.slot-test-btn,
+.slot-sync-btn {
   transition: var(--transition-fast);
   opacity: 1;
 }
 
-#ai1-test-btn:hover:not(:disabled),
-#ai2-test-btn:hover:not(:disabled),
-#ai1-sync-btn:hover:not(:disabled),
-#ai2-sync-btn:hover:not(:disabled) {
+.slot-test-btn:hover:not(:disabled),
+.slot-sync-btn:hover:not(:disabled) {
   background: var(--color-accent-muted);
   transform: scale(1.05);
 }
 
-#ai1-test-btn.testing,
-#ai2-test-btn.testing,
-#ai1-sync-btn.testing,
-#ai2-sync-btn.testing {
+.slot-test-btn.is-loading,
+.slot-test-btn.testing,
+.slot-sync-btn.is-loading,
+.slot-sync-btn.testing {
   animation: pulse-scale var(--duration-pulse) infinite;
 }
 
-#ai1-test-btn:disabled,
-#ai2-test-btn:disabled,
-#ai1-sync-btn:disabled,
-#ai2-sync-btn:disabled {
+.slot-test-btn:disabled,
+.slot-sync-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }

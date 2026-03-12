@@ -58,11 +58,12 @@ export function updateIndicatorAvatars(): void {
   ): void => {
     if (el === null) return;
     if (src !== null && src !== "") {
-      el.style.backgroundImage = `url('${src}')`;
+      // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
+      el.style.setProperty("--avatar-image", `url('${src}')`);
       el.classList.remove("avatar-placeholder");
       el.textContent = "";
     } else {
-      el.style.backgroundImage = "";
+      el.style.removeProperty("--avatar-image");
       el.classList.add("avatar-placeholder");
       el.textContent = "";
     }
@@ -70,20 +71,12 @@ export function updateIndicatorAvatars(): void {
     const cluster = el.closest(".indicator-cluster");
     if (!(cluster instanceof HTMLElement)) return;
 
+    cluster.classList.remove("is-empty", "is-disconnected", "is-connected");
     if (slotState === "empty") {
-      el.style.opacity = "0.3";
-      cluster.style.opacity = "0.5";
-      cluster.style.pointerEvents = "none";
-      cluster.classList.remove("is-connected");
+      cluster.classList.add("is-empty");
     } else if (slotState === "disconnected") {
-      el.style.opacity = "0.6";
-      cluster.style.opacity = "0.7";
-      cluster.style.pointerEvents = "none";
-      cluster.classList.remove("is-connected");
+      cluster.classList.add("is-disconnected");
     } else {
-      el.style.opacity = "1";
-      cluster.style.opacity = "1";
-      cluster.style.pointerEvents = "auto";
       cluster.classList.add("is-connected");
     }
   };

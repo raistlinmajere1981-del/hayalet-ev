@@ -110,8 +110,8 @@ function renderSessionList(
   if (visibleSessions.length === 0) {
     listEl.innerHTML =
       context.runtime.sessionTab === "archived"
-        ? `<div class="empty-state">${escapeHtml(t("session.emptyArchived"))}</div>`
-        : `<div class="empty-state">${escapeHtml(t("session.emptyActive"))}</div>`;
+        ? `<div class="ds-empty-state">${escapeHtml(t("session.emptyArchived"))}</div>`
+        : `<div class="ds-empty-state">${escapeHtml(t("session.emptyActive"))}</div>`;
     return;
   }
 
@@ -234,7 +234,7 @@ export async function loadSessionListAndRender(
     const listEl = context.byId<HTMLElement>("session-list");
     if (listEl != null) {
       listEl.innerHTML =
-        '<div class="empty-state">' +
+        '<div class="ds-empty-state">' +
         escapeHtml(
           t("session.listReadError", {
             message: error instanceof Error ? error.message : String(error),

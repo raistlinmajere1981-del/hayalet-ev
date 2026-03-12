@@ -31,5 +31,5 @@ export function buildRoomNavMarkup(room: InstalledRoomRecord): string {
 
 export function buildRoomPageMarkup(room: InstalledRoomRecord): string {
   const pageName = getRoomPageName(room.id);
-  return `<div class="page hidden room-page" id="page-${escapeHtml(pageName)}" data-room-page="true" data-room-id="${escapeHtml(room.id)}"></div>`;
+  return `<div class="page is-hidden room-page" id="page-${escapeHtml(pageName)}" data-room-page="true" data-room-id="${escapeHtml(room.id)}"></div>`;
 }

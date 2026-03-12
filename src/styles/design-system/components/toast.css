@@ -121,6 +121,7 @@
   background: var(--color-accent);
   border-radius: 0 0 var(--radius-toast) var(--radius-toast);
   animation: toast-progress linear forwards;
+  animation-duration: var(--toast-duration, 0ms);
 }
 
 @keyframes toast-progress {

@@ -120,7 +120,8 @@ function createToastElement(id: string, options: ToastOptions): HTMLDivElement {
   if (options.progress === true && options.duration != null && options.duration > 0) {
     const progressDiv = document.createElement("div");
     progressDiv.className = "toast-progress";
-    progressDiv.style.animationDuration = `${options.duration}ms`;
+    // NOTE: Duration is runtime-defined; keep via CSS var.
+    progressDiv.style.setProperty("--toast-duration", `${options.duration}ms`);
     toastEl.appendChild(progressDiv);
   }
 

@@ -181,7 +181,7 @@ export class ArchivesController {
 
     this.searchInputEl?.addEventListener("input", (e) => {
       this.searchQuery = (e.target as HTMLInputElement).value;
-      this.clearSearchBtn?.classList.toggle("hidden", this.searchQuery === "");
+      this.clearSearchBtn?.classList.toggle("is-hidden", this.searchQuery === "");
 
       if (this._searchTimeout) clearTimeout(this._searchTimeout);
       this._searchTimeout = setTimeout(() => {
@@ -192,7 +192,7 @@ export class ArchivesController {
     this.clearSearchBtn?.addEventListener("click", () => {
       if (this.searchInputEl) this.searchInputEl.value = "";
       this.searchQuery = "";
-      this.clearSearchBtn?.classList.add("hidden");
+      this.clearSearchBtn?.classList.add("is-hidden");
       this.clearSearchResults();
     });
 
@@ -325,7 +325,6 @@ export class ArchivesController {
       const titleWrap = document.createElement("div");
       titleWrap.className = "archive-title";
       titleWrap.textContent = entry.title ?? entry.id;
-      titleWrap.style.flex = "1";
       titleWrap.addEventListener("click", () => {
         if (this.selectedId !== entry.id) {
           this.clearStatus();
@@ -345,7 +344,7 @@ export class ArchivesController {
       });
 
       if (entry.id === this.selectedId) {
-        item.classList.add("active");
+        item.classList.add("is-selected");
       }
       item.appendChild(titleWrap);
       item.appendChild(removeBtn);
@@ -359,11 +358,11 @@ export class ArchivesController {
 
   fillForm(entry: ArchiveEntry | null): void {
     if (entry) {
-      this.detailEmptyEl?.classList.add("hidden");
-      this.conversationFormEl?.classList.remove("hidden");
+      this.detailEmptyEl?.classList.add("is-hidden");
+      this.conversationFormEl?.classList.remove("is-hidden");
     } else {
-      this.detailEmptyEl?.classList.remove("hidden");
-      this.conversationFormEl?.classList.add("hidden");
+      this.detailEmptyEl?.classList.remove("is-hidden");
+      this.conversationFormEl?.classList.add("is-hidden");
     }
 
     if (this.titleEl) this.titleEl.value = entry?.title ?? "";
@@ -439,7 +438,7 @@ export class ArchivesController {
   setStatus(text: string, type = "info"): void {
     if (!this.statusEl) return;
     this.statusEl.textContent = text;
-    this.statusEl.className = `form-hint ${type}`;
+    this.statusEl.className = `form-hint is-${type}`;
   }
 
   clearStatus(): void {

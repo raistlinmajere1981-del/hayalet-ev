@@ -183,9 +183,9 @@ export function setupBackupOverlay(): void {
   }
 
   const close = (): void => {
-    refs.overlay?.classList.add("hidden");
+    refs.overlay?.classList.add("is-hidden");
     state.isOpen = false;
-    document.body.style.removeProperty("overflow");
+    document.body.classList.remove("is-scroll-locked");
   };
 
   const open = async (): Promise<void> => {
@@ -197,8 +197,8 @@ export function setupBackupOverlay(): void {
       await refreshPreview(state);
     }
     render(refs, state);
-    refs.overlay?.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
+    refs.overlay?.classList.remove("is-hidden");
+    document.body.classList.add("is-scroll-locked");
     state.isOpen = true;
     Logger.debugT(LogCategory.UI_MODAL, "app.logs.backup.overlayOpened");
   };

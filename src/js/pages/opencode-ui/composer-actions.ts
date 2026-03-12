@@ -281,6 +281,7 @@ export async function sendComposerMessage(context: ComposerUiContext): Promise<v
 
   const previousText = chatInput.value;
   chatInput.value = "";
+  // NOTE: Auto-resize relies on runtime scrollHeight; keep inline height reset.
   chatInput.style.height = "";
   addMessage("user", text, undefined, buildOutgoingAttachmentPreview(stagedAttachments));
   context.scrollChatToBottom(true);

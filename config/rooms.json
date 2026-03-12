@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-08T13:48:42.857Z",
+  "updatedAt": "2026-03-12T08:25:21.448Z",
   "rooms": [
     {
       "id": "xox",
@@ -53,8 +53,8 @@
           "editable": true
         }
       ],
-      "installedAt": "2026-03-08T13:48:42.857Z",
-      "updatedAt": "2026-03-08T13:48:42.857Z"
+      "installedAt": "2026-03-12T08:25:21.448Z",
+      "updatedAt": "2026-03-12T08:25:21.448Z"
     }
   ]
 }

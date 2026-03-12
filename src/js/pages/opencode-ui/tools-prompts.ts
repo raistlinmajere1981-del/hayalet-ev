@@ -298,7 +298,7 @@ function renderQuickPromptList(prompts: QuickPromptRecord[]): void {
 
   if (quickPromptCache.length === 0) {
     const emptyState = document.createElement("div");
-    emptyState.className = "empty-state";
+    emptyState.className = "ds-empty-state";
     emptyState.textContent = t("prompt.empty");
     promptsListEl.appendChild(emptyState);
     return;
@@ -552,7 +552,7 @@ function renderToolSnapshot(opencodeToolIds: string[], hevToolIds: string[]): vo
   }
 
   if (allToolIds.length === 0) {
-    toolsListEl.innerHTML = `<div class="empty-state">${t("panel.toolsEmpty")}</div>`;
+    toolsListEl.innerHTML = `<div class="ds-empty-state">${t("panel.toolsEmpty")}</div>`;
     return;
   }
 

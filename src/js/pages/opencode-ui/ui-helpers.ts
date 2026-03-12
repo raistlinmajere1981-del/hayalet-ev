@@ -12,11 +12,12 @@ export function setupCustomSelect(
 
   trigger.addEventListener("click", function (e: Event) {
     e.stopPropagation();
-    document.querySelectorAll(".ds-custom-select.is-open").forEach(function (el) {
-      if (el !== dropdown) el.classList.remove("is-open");
+    document.querySelectorAll(".ds-custom-select.is-expanded").forEach(function (el) {
+      if (el !== dropdown) el.classList.remove("is-expanded");
     });
-    dropdown.classList.toggle("is-open");
+    dropdown.classList.toggle("is-expanded");
   });
+
 
   menu.addEventListener("click", function (e: Event) {
     const item = (e.target as HTMLElement).closest(".ds-custom-select__item");
@@ -29,7 +30,7 @@ export function setupCustomSelect(
     });
     item.classList.add("is-active");
     label.textContent = text + " \u25be";
-    dropdown.classList.remove("is-open");
+    dropdown.classList.remove("is-expanded");
     void onSelect(value, text);
   });
 
@@ -111,10 +112,11 @@ export function initUIHelpers(): void {
   setupSidebarToggle("toggle-right", "sidebar-right");
 
   document.addEventListener("click", function () {
-    document.querySelectorAll(".ds-custom-select.is-open").forEach(function (el) {
-      el.classList.remove("is-open");
+    document.querySelectorAll(".ds-custom-select.is-expanded").forEach(function (el) {
+      el.classList.remove("is-expanded");
     });
   });
+
 
   const rightTabs = Array.from(
     document.querySelectorAll<HTMLButtonElement>(".ds-right-tab[data-rtab]")
@@ -185,7 +187,7 @@ export function initUIHelpers(): void {
       const items = document.querySelectorAll("#tools-list .ds-panel__item");
       items.forEach(function (item) {
         const name = item.textContent.toLowerCase();
-        (item as HTMLElement).style.display = name.indexOf(query) >= 0 ? "" : "none";
+        item.classList.toggle("is-hidden", name.indexOf(query) < 0);
       });
     });
   }

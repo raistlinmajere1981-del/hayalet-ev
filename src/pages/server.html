@@ -1,4 +1,4 @@
-<section class="page hidden" id="page-server" aria-labelledby="page-server-title">
+<section class="page is-hidden" id="page-server" aria-labelledby="page-server-title">
   <h2
     class="visually-hidden"
     id="page-server-title"
@@ -31,7 +31,7 @@
             class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-timeline-panel"
           >
             <div
-              class="panel-title ds-surface-card__header ds-panel-title"
+              class="server-panel-title ds-surface-card__header ds-panel-title"
               data-shell-i18n-text="app.server.page.timelineTitle"
             ></div>
             <div
@@ -47,7 +47,7 @@
               aria-relevant="additions text"
             >
               <div
-                class="log-empty-state"
+                class="ds-log-empty"
                 data-shell-i18n-text="app.server.page.timelineEmpty"
               ></div>
             </div>
@@ -60,7 +60,7 @@
           class="server-panel glass-panel ds-surface-card ds-surface-card--stack server-command-panel"
         >
           <div
-            class="panel-title ds-surface-card__header ds-panel-title"
+            class="server-panel-title ds-surface-card__header ds-panel-title"
             data-shell-i18n-text="app.server.page.commandPanelTitle"
           ></div>
           <div class="command-manager">
@@ -81,7 +81,7 @@
                 id="server-command-category-tabs"
               >
                 <button
-                  class="btn btn-secondary btn-sm command-category-tab active"
+                  class="btn btn-secondary btn-sm command-category-tab is-active"
                   data-category="ai1-ai2"
                   type="button"
                 >
@@ -100,7 +100,7 @@
             <div class="command-toolbar-row command-run-row">
               <input
                 id="server-command-test-args"
-                class="input"
+                class="input server-command-input server-command-test-args"
                 type="text"
                 aria-label=""
                 placeholder=""
@@ -109,7 +109,7 @@
               />
               <button
                 id="server-command-run"
-                class="btn btn-primary btn-sm"
+                class="btn btn-primary btn-sm server-command-run"
                 type="button"
                 data-shell-i18n-text="app.server.page.runCommandButton"
               ></button>
@@ -117,7 +117,7 @@
 
             <div class="command-list" id="server-command-list">
               <div
-                class="log-empty-state"
+                class="ds-log-empty"
                 data-shell-i18n-text="app.server.page.emptyCategory"
               ></div>
             </div>

@@ -342,14 +342,14 @@ export class WebviewPanel {
     const btn = document.getElementById(`${provider}-devtools-btn`) as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = !enabled;
-    btn.classList.toggle("disabled", !enabled);
+    btn.classList.toggle("is-disabled", !enabled);
   }
 
   setTestButtonEnabled(provider: string, enabled: boolean): void {
     const btn = document.getElementById(`${provider}-test-btn`) as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = !enabled;
-    btn.classList.toggle("disabled", !enabled);
+    btn.classList.toggle("is-disabled", !enabled);
 
     if (!enabled) {
       btn.title = providerTestT("buttonTitles.testDisabled");
@@ -364,7 +364,7 @@ export class WebviewPanel {
     const btn = document.getElementById(`${provider}-sync-btn`) as HTMLButtonElement | null;
     if (!btn) return;
     btn.disabled = !enabled;
-    btn.classList.toggle("disabled", !enabled);
+    btn.classList.toggle("is-disabled", !enabled);
 
     if (!enabled) {
       btn.title = providerTestT("buttonTitles.syncDisabled");
@@ -466,7 +466,7 @@ export class WebviewPanel {
     const overlayEl = document.getElementById(`${state.hostSlot}-scenario-overlay`);
     if (overlayEl) {
       overlayEl.innerHTML = "";
-      overlayEl.className = "webview-overlay hidden scenario-slot-overlay";
+      overlayEl.className = "webview-overlay is-hidden scenario-slot-overlay";
     }
 
     const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
@@ -558,7 +558,7 @@ export class WebviewPanel {
     if (!overlayEl || !mountEl) return;
 
     overlayEl.className = "webview-overlay scenario-slot-overlay scenario-overlay";
-    overlayEl.classList.remove("hidden");
+    overlayEl.classList.remove("is-hidden");
     mountEl.classList.add("webview-content-blocked");
 
     const displayCommands =
@@ -749,10 +749,7 @@ export class WebviewPanel {
       const textarea = document.createElement("textarea");
       textarea.value = text;
       textarea.setAttribute("readonly", "true");
-      textarea.style.position = "fixed";
-      textarea.style.top = "0";
-      textarea.style.left = "-9999px";
-      textarea.style.opacity = "0";
+      textarea.classList.add("clipboard-proxy");
       document.body.appendChild(textarea);
 
       try {
@@ -1016,11 +1013,12 @@ export class WebviewPanel {
     const toggle = document.getElementById("settings-accordion-toggle");
     if (!content || !toggle) return;
 
-    if (content.classList.contains("open")) {
-      content.classList.remove("open");
+    if (content.classList.contains("is-expanded")) {
+      content.classList.remove("is-expanded");
       toggle.setAttribute("aria-expanded", "false");
     }
   }
+
 
   showTestResultsModal(results: ProviderTestSuite): void {
     void import("../../ui/modal-manager.js").then((module) => {
@@ -1099,7 +1097,7 @@ export class WebviewPanel {
           state.hasAccount && this.hasVerifiedSyncScenario(provider)
         );
         if (webviewEl) {
-          webviewEl.style.display = state.connected || state.connecting ? "" : "none";
+          webviewEl.classList.toggle("is-hidden", !(state.connected || state.connecting));
         }
         this.renderScenarioOverlay();
         continue;
@@ -1110,9 +1108,9 @@ export class WebviewPanel {
         this.setTestButtonEnabled(provider, false);
         this.setSyncButtonEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
-        if (webviewEl) webviewEl.style.display = "none";
+        if (webviewEl) webviewEl.classList.add("is-hidden");
         if (overlayEl) {
-          overlayEl.className = "webview-overlay empty";
+          overlayEl.className = "webview-overlay is-empty";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.noAccount.title");
@@ -1125,20 +1123,20 @@ export class WebviewPanel {
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
         if (overlayEl) {
-          overlayEl.className = "webview-overlay disconnected";
+          overlayEl.className = "webview-overlay is-disconnected";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.disconnected.title");
           if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.disconnected.subtitle");
         }
-        if (webviewEl) webviewEl.style.display = "none";
+        if (webviewEl) webviewEl.classList.add("is-hidden");
         continue;
       }
 
       if (state.connecting) {
         this.setDevtoolsEnabled(provider, false);
         if (overlayEl) {
-          overlayEl.className = "webview-overlay connecting";
+          overlayEl.className = "webview-overlay is-connecting";
           const title = overlayEl.querySelector(".overlay-title");
           const subtitle = overlayEl.querySelector(".overlay-subtitle");
           if (title) title.textContent = AppI18n.t("entrance.webview.connecting.title");
@@ -1160,7 +1158,7 @@ export class WebviewPanel {
       this.setSyncButtonEnabled(provider, this.hasVerifiedSyncScenario(provider));
 
       if (overlayEl) {
-        overlayEl.classList.add("hidden");
+        overlayEl.classList.add("is-hidden");
       }
 
       const mountId = `${provider}-webview-mount`;

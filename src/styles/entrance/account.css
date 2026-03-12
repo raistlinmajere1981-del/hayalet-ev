@@ -25,6 +25,7 @@
 .user-avatar-wrapper .avatar-placeholder {
   width: 100%;
   height: 100%;
+  background-image: var(--avatar-image, none);
   background-size: cover;
   background-position: center;
 }
@@ -116,6 +117,7 @@
 .account-avatar-2row .avatar-placeholder {
   width: 100%;
   height: 100%;
+  background-image: var(--avatar-image, none);
   background-size: cover;
   background-position: center;
 }

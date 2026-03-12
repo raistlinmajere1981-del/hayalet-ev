@@ -8,7 +8,7 @@
   z-index: var(--z-modal);
 }
 
-.modal.hidden {
+.modal.is-hidden {
   display: none;
 }
 
@@ -75,6 +75,10 @@
   overflow-x: hidden;
   padding: var(--space-4);
   min-height: 0;
+}
+
+.modal-prompt-message {
+  margin-bottom: var(--space-4);
 }
 
 .modal-footer {
@@ -326,7 +330,7 @@
   animation: livefix-fade-in 0.2s ease-out;
 }
 
-.livefix-countdown-overlay.hidden {
+.livefix-countdown-overlay.is-hidden {
   display: none;
 }
 

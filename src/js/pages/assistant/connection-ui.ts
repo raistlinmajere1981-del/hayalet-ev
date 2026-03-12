@@ -62,7 +62,7 @@ export function updateAssistantConnectionUI(
 
   if (webviewEl != null && mountEl != null && !mountEl.contains(webviewEl)) {
     SlotController.ensureWebviewMounted("ai0");
-    webviewEl.style.cssText = "position: relative; top: 0; left: 0; width: 100%; height: 100%;";
+    webviewEl.classList.add("webview-frame");
   }
 
   if (webviewEl !== null && webviewEl.dataset["eventsSetup"] === undefined) {
@@ -73,13 +73,19 @@ export function updateAssistantConnectionUI(
   let overlayVisible = false;
 
   if (overlayEl != null) {
-    overlayEl.classList.remove("hidden", "empty", "disconnected", "connecting", "error");
+    overlayEl.classList.remove(
+      "is-hidden",
+      "is-empty",
+      "is-disconnected",
+      "is-connecting",
+      "is-error"
+    );
 
     if (!hasAccount) {
       overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
-        "empty",
+        "is-empty",
         "🤖",
         assistantConnectionT("noAccountTitle"),
         assistantConnectionT("noAccountSubtitle")
@@ -91,7 +97,7 @@ export function updateAssistantConnectionUI(
         connectFlowActive: controller._connectFlowActive,
         stage: controller._connectOverlayStage,
       });
-      controller._updateOverlay(overlayEl, "connecting", "🔄", stage.title, stage.subtitle);
+      controller._updateOverlay(overlayEl, "is-connecting", "🔄", stage.title, stage.subtitle);
     } else if (shouldHoldToolsReadyOverlay) {
       overlayVisible = true;
       const holdTitle =
@@ -105,12 +111,12 @@ export function updateAssistantConnectionUI(
           ? controller._connectOverlayStage.subtitle
           : assistantConnectionT("toolsLoadingSubtitle");
 
-      controller._updateOverlay(overlayEl, "connecting", "🔄", holdTitle, holdSubtitle);
+      controller._updateOverlay(overlayEl, "is-connecting", "🔄", holdTitle, holdSubtitle);
     } else if (isError) {
       overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
-        "error",
+        "is-error",
         "❌",
         assistantConnectionT("connectionErrorTitle"),
         slotState.error ?? assistantConnectionT("connectionErrorRetry")
@@ -119,13 +125,13 @@ export function updateAssistantConnectionUI(
       overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
-        "disconnected",
+        "is-disconnected",
         "⚡",
         assistantConnectionT("disconnectedTitle"),
         assistantConnectionT("disconnectedSubtitle")
       );
     } else {
-      overlayEl.classList.add("hidden");
+      overlayEl.classList.add("is-hidden");
       if (webviewEl != null) {
         SlotController.ensureWebviewAttached("ai0");
       }
@@ -158,7 +164,7 @@ export function updateAssistantConnectionUI(
   }
 
   if (controller.statusDot != null) {
-    controller.statusDot.classList.toggle("connected", isConnected);
+    controller.statusDot.classList.toggle("is-connected", isConnected);
   }
 
   if (controller.statusText != null) {

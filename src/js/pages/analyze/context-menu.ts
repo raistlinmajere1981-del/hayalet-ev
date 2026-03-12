@@ -55,9 +55,9 @@ export function showReadModal(payload: MessageActionPayload): void {
     body.scrollTop = 0;
   }
 
-  readModalEl.classList.remove("hidden");
+  readModalEl.classList.remove("is-hidden");
 }
 
 function hideReadModal(): void {
-  readModalEl?.classList.add("hidden");
+  readModalEl?.classList.add("is-hidden");
 }

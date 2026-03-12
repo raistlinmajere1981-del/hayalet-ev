@@ -40,7 +40,7 @@ export function renderProtocolListView(args: {
     const item = document.createElement("div");
     item.className = "protocol-item";
     if (key === selectedProtocolKey) {
-      item.classList.add("active");
+      item.classList.add("is-active");
     }
 
     const icon = document.createElement("span");
@@ -89,12 +89,12 @@ export function applyProtocolSelectionView(args: {
 
   if (protocolTextareaEl) {
     protocolTextareaEl.value = protocols[key] ?? "";
-    protocolTextareaEl.classList.remove("hidden");
+    protocolTextareaEl.classList.remove("is-hidden");
   }
 
-  protocolEmptyEl?.classList.add("hidden");
-  protocolSaveBtn?.classList.remove("hidden");
-  protocolTagButtonsEl?.classList.remove("hidden");
+  protocolEmptyEl?.classList.add("is-hidden");
+  protocolSaveBtn?.classList.remove("is-hidden");
+  protocolTagButtonsEl?.classList.remove("is-hidden");
   setStatus("");
 }
 
@@ -142,5 +142,5 @@ export function setProtocolStatusView(
 ): void {
   if (!protocolStatusEl) return;
   protocolStatusEl.textContent = text;
-  protocolStatusEl.className = `form-hint ${type}`;
+  protocolStatusEl.className = `form-hint is-${type}`;
 }

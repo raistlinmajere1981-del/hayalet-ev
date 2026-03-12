@@ -98,7 +98,7 @@ export class MemoryOverlay {
   private _newImportanceValue = 3;
 
   onLocaleChanged(): void {
-    if (this.overlay?.classList.contains("hidden") !== false) {
+    if (this.overlay?.classList.contains("is-hidden") !== false) {
       return;
     }
     void this._loadAndRender();
@@ -176,7 +176,7 @@ export class MemoryOverlay {
     const highlight = (val: number): void => {
       spans.forEach((s) => {
         const star = parseInt((s as HTMLElement).dataset["star"] ?? "0", 10);
-        s.classList.toggle("active", star <= val);
+        s.classList.toggle("is-active", star <= val);
       });
     };
     highlight(parseInt(el.dataset["value"] ?? "3", 10));
@@ -192,12 +192,12 @@ export class MemoryOverlay {
 
   open(): void {
     if (!this.overlay) return;
-    this.overlay.classList.remove("hidden");
+    this.overlay.classList.remove("is-hidden");
     void this._loadAndRender();
   }
 
   close(): void {
-    this.overlay?.classList.add("hidden");
+    this.overlay?.classList.add("is-hidden");
   }
 
   private async _loadAndRender(): Promise<void> {
@@ -277,7 +277,7 @@ export class MemoryOverlay {
     const sorted = Array.from(tagCounts.entries()).sort((a, b) => b[1] - a[1]);
     for (const [tag, count] of sorted) {
       const chip = document.createElement("span");
-      chip.className = "memory-tag-chip" + (this._activeTagFilter.has(tag) ? " active" : "");
+      chip.className = "memory-tag-chip" + (this._activeTagFilter.has(tag) ? " is-active" : "");
       chip.textContent = `${tag} (${count})`;
       chip.addEventListener("click", () => {
         if (this._activeTagFilter.has(tag)) {
@@ -335,11 +335,11 @@ export class MemoryOverlay {
     }
 
     if (items.length === 0) {
-      if (this.emptyState) this.emptyState.style.display = "flex";
+      this.emptyState?.classList.remove("is-hidden");
       return;
     }
 
-    if (this.emptyState) this.emptyState.style.display = "none";
+    this.emptyState?.classList.add("is-hidden");
 
     for (const item of items) {
       const card = this._buildCard(item);
@@ -386,14 +386,14 @@ export class MemoryOverlay {
         </div>
       </div>
       <div class="memory-card-summary">${item.summary ?? ""}</div>
-      <div class="memory-card-content collapsed" data-expanded="false">${item.content}</div>
+      <div class="memory-card-content is-collapsed" data-expanded="false">${item.content}</div>
       <div class="memory-card-expand-btn">▼ ${expandLabel}</div>
       <div class="memory-card-tags">${tagsHtml}</div>
       <div class="memory-card-meta">
         <span title="${createdAtTitle}">${formatDate(item.createdAt)}</span>
         <span title="${accessCountTitle}">👁️ ${item.accessCount}</span>
       </div>
-      <div class="memory-card-edit-form hidden">
+      <div class="memory-card-edit-form is-hidden">
         <textarea class="memory-textarea input edit-content-input">${item.content}</textarea>
         <input class="memory-input input input-sm edit-summary-input" type="text" value="${item.summary ?? ""}" placeholder="${editSummaryPlaceholder}" />
         <input class="memory-input input input-sm edit-tags-input" type="text" value="${item.tags.join(", ")}" placeholder="${editTagsPlaceholder}" />
@@ -415,7 +415,7 @@ export class MemoryOverlay {
       expandBtn.addEventListener("click", () => {
         const expanded = contentEl.dataset["expanded"] === "true";
         contentEl.dataset["expanded"] = expanded ? "false" : "true";
-        contentEl.classList.toggle("collapsed", expanded);
+        contentEl.classList.toggle("is-collapsed", expanded);
         expandBtn.textContent = expanded
           ? `▼ ${memoryT("expandButton")}`
           : `▲ ${memoryT("collapseButton")}`;
@@ -442,15 +442,15 @@ export class MemoryOverlay {
       const spans = editImportancePicker.querySelectorAll("span[data-star]");
       spans.forEach((s) => {
         const star = parseInt((s as HTMLElement).dataset["star"] ?? "0", 10);
-        s.classList.toggle("active", star <= item.importance);
+        s.classList.toggle("is-active", star <= item.importance);
       });
     }
 
     editBtn?.addEventListener("click", () => {
-      editForm?.classList.toggle("hidden");
+      editForm?.classList.toggle("is-hidden");
     });
     editCancelBtn?.addEventListener("click", () => {
-      editForm?.classList.add("hidden");
+      editForm?.classList.add("is-hidden");
     });
     editSaveBtn?.addEventListener("click", () => {
       const contentInput = card.querySelector<HTMLTextAreaElement>(".edit-content-input");

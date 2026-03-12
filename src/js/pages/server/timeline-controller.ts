@@ -115,7 +115,7 @@ export function rebuildTimelineView(args: {
   state.timelineLog.innerHTML = "";
   if (threads.length === 0) {
     const empty = document.createElement("div");
-    empty.className = "log-empty-state";
+    empty.className = "ds-log-empty";
     empty.textContent = AppI18n.t("app.server.page.timelineEmpty");
     state.timelineLog.appendChild(empty);
     return;

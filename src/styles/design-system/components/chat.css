@@ -80,6 +80,11 @@
   object-fit: var(--app-shell-chat-empty-icon-fit);
 }
 
+.ds-chat__empty-icon.is-fallback {
+  display: block;
+  background: var(--accent-gradient);
+}
+
 .ds-chat__empty-icon.is-avatar {
   padding: 0;
   opacity: 1;
@@ -98,13 +103,13 @@
   gap: var(--space-1);
 }
 
-#chat-empty-title {
+.chat-empty-title {
   font-family: var(--font-display);
   font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
   color: var(--text-primary);
 }
 
-#chat-empty-subtitle {
+.chat-empty-subtitle {
   max-width: 30ch;
   line-height: var(--leading-relaxed);
   color: var(--text-secondary);
@@ -136,6 +141,11 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   box-shadow: var(--surface-outline);
+}
+
+.ds-message__bubble--plain {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ds-message--user .ds-message__bubble {
@@ -357,7 +367,7 @@
   border-color: var(--border-strong);
 }
 
-.ds-custom-select.is-open .ds-custom-select__trigger {
+.ds-custom-select.is-expanded .ds-custom-select__trigger {
   border-color: var(--border-focus);
 }
 
@@ -380,7 +390,7 @@
   z-index: var(--z-dropdown);
 }
 
-.ds-custom-select.is-open .ds-custom-select__menu {
+.ds-custom-select.is-expanded .ds-custom-select__menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

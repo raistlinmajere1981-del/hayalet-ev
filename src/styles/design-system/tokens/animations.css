@@ -2,6 +2,7 @@
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
+  --duration-theme-transition: 200ms;
   --duration-pulse: 1s;
   --duration-pulse-fast: 0.5s;
   --duration-spin: 0.8s;

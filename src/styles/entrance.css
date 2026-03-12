@@ -3,7 +3,7 @@
 @import "./entrance/report.css";
 @import "./entrance/test.css";
 
-#page-entrance {
+.page-entrance {
   height: var(--layout-page-height);
   overflow-y: auto;
 }

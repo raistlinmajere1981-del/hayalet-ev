@@ -17,7 +17,7 @@
     visibility var(--duration-normal) var(--ease-out);
 }
 
-.webview-overlay.hidden {
+.webview-overlay.is-hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -44,18 +44,18 @@
   transition: var(--transition-normal);
 }
 
-.webview-overlay.connecting .overlay-icon {
+.webview-overlay.is-connecting .overlay-icon {
   animation: spin var(--duration-pulse) linear infinite;
 }
 
-.webview-overlay.error .overlay-icon {
+.webview-overlay.is-error .overlay-icon {
   border-color: var(--color-error);
   border-top-color: transparent;
   animation: pulse var(--duration-flow) ease-in-out infinite;
 }
 
-.webview-overlay.empty .overlay-icon,
-.webview-overlay.disconnected .overlay-icon {
+.webview-overlay.is-empty .overlay-icon,
+.webview-overlay.is-disconnected .overlay-icon {
   border-color: var(--border-default);
   border-top-color: var(--text-muted);
   opacity: 0.4;
@@ -78,10 +78,10 @@
   margin: 0;
 }
 
-.webview-overlay.error .overlay-title {
+.webview-overlay.is-error .overlay-title {
   color: var(--color-error);
 }
 
-.webview-overlay.connecting .overlay-title {
+.webview-overlay.is-connecting .overlay-title {
   color: var(--color-accent);
 }

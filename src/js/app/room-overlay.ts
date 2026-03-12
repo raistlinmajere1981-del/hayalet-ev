@@ -91,9 +91,9 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
   }
 
   const close = (): void => {
-    refs.overlay?.classList.add("hidden");
+    refs.overlay?.classList.add("is-hidden");
     state.isOpen = false;
-    document.body.style.removeProperty("overflow");
+    document.body.classList.remove("is-scroll-locked");
   };
 
   const refresh = async (): Promise<void> => {
@@ -105,8 +105,8 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
 
   const open = async (): Promise<void> => {
     state.isOpen = true;
-    refs.overlay?.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
+    refs.overlay?.classList.remove("is-hidden");
+    document.body.classList.add("is-scroll-locked");
     await refresh();
   };
 

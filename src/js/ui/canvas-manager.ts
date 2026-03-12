@@ -26,6 +26,7 @@ const canvasManager = {
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
+      // NOTE: Runtime canvas backgrounds stay inline to match caller intent.
       canvas.style.backgroundColor = backgroundColor;
 
       const ctx = canvas.getContext("2d");

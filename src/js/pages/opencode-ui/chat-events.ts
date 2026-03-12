@@ -30,8 +30,9 @@ export function initOpencodeUiChatEvents(options: InitOpencodeUiChatEventsOption
   }
 
   const updateInputState = (): void => {
+    // NOTE: Auto-resize relies on runtime scrollHeight; CSS max-height clamps the result.
     chatInput.style.height = "";
-    chatInput.style.height = `${String(Math.min(chatInput.scrollHeight, 200))}px`;
+    chatInput.style.height = `${String(chatInput.scrollHeight)}px`;
     options.setSendButtonState();
   };
 
