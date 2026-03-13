@@ -28,7 +28,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-
 .conv-card:only-child {
   grid-column: 1 / -1;
 }
@@ -100,7 +99,7 @@
 }
 
 .msg-virtual-scroll {
-  height: 400px;
+  height: var(--layout-message-virtual-scroll-h);
   overflow: auto;
   position: relative;
 }

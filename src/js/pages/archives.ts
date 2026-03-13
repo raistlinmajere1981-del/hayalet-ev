@@ -183,11 +183,10 @@ export class ArchivesController {
     document.getElementById("btn-delete")?.addEventListener("click", () => {
       const entry =
         this.selectedId !== null
-          ? this.entries.find(
+          ? (this.entries.find(
               (archiveEntry) =>
-                archiveEntry.id === this.selectedId &&
-                archiveEntry.provider === this.activeProvider
-            ) ?? null
+                archiveEntry.id === this.selectedId && archiveEntry.provider === this.activeProvider
+            ) ?? null)
           : null;
       if (entry) void this.deleteEntry(entry);
     });
@@ -297,9 +296,12 @@ export class ArchivesController {
       }));
 
       const results = (await Promise.all(
-        providers.map(({ accountId }) =>
-          accountId !== null ? electronApi.dbGetConversations({ accountId }) : Promise.resolve({ data: [] })
-        )
+        providers.map(async ({ accountId }) => {
+          if (accountId === null) {
+            return { data: [] };
+          }
+          return await electronApi.dbGetConversations({ accountId });
+        })
       )) as Array<{ data?: unknown } | undefined>;
 
       this.entries = providers.flatMap(({ provider, accountId }, index) => {
@@ -325,9 +327,9 @@ export class ArchivesController {
 
       const selectedEntry =
         this.selectedId !== null
-          ? this.entries.find(
+          ? (this.entries.find(
               (entry) => entry.id === this.selectedId && entry.provider === this.activeProvider
-            ) ?? null
+            ) ?? null)
           : null;
 
       if (selectedEntry !== null) {

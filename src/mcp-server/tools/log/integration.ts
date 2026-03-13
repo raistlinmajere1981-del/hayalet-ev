@@ -4,11 +4,7 @@ import { readFile, readdir, stat } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { createMcpTranslator } from "../../utils/i18n/index.js";
-import {
-  findLatestSession,
-  resolveExistingLogDir,
-  type LogAppId,
-} from "../../utils/log-utils.js";
+import { findLatestSession, resolveExistingLogDir, type LogAppId } from "../../utils/log-utils.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 
 interface SessionInfo {
@@ -73,7 +69,7 @@ export async function readElectronLogs(args: {
   correlationId?: string;
 }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args.app ?? "hayalet-ev");
+  const logDir = resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args.app ?? "hayalet-ev");
 
   let sessionId: string | undefined = args.sessionId;
   if (sessionId == null || sessionId === "") {
@@ -90,12 +86,14 @@ export async function readElectronLogs(args: {
 
   const sessionDir = join(logDir, sessionId);
   const type = args.type ?? "structured";
-  let lines: string[] = [];
+  let lines: string[];
 
   if (type === "console") {
     const files = await readdir(sessionDir);
     const consoleFiles = files
-      .filter((file) => file === "console.log" || (file.startsWith("console-") && file.endsWith(".log")))
+      .filter(
+        (file) => file === "console.log" || (file.startsWith("console-") && file.endsWith(".log"))
+      )
       .sort();
 
     if (consoleFiles.length === 0) {
@@ -154,8 +152,10 @@ export async function readElectronLogs(args: {
       ) {
         continue;
       }
-      if (args.contains != null && !(normalizedEntry.message ?? "").includes(args.contains)) continue;
-      if (args.correlationId != null && normalizedEntry.correlationId !== args.correlationId) continue;
+      if (args.contains != null && !(normalizedEntry.message ?? "").includes(args.contains))
+        continue;
+      if (args.correlationId != null && normalizedEntry.correlationId !== args.correlationId)
+        continue;
 
       entries.push(normalizedEntry);
     }
@@ -185,7 +185,7 @@ export async function listLogSessions(args?: {
   includeStats?: boolean;
 }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args?.app ?? "hayalet-ev");
+  const logDir = resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args?.app ?? "hayalet-ev");
 
   if (!existsSync(logDir)) {
     return {
@@ -266,7 +266,7 @@ export async function getSessionSummary(args: {
   sessionId?: string;
 }): Promise<unknown> {
   const t = await createMcpTranslator();
-  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args.app ?? "hayalet-ev");
+  const logDir = resolveExistingLogDir(join(PROJECT_ROOT, "logs"), args.app ?? "hayalet-ev");
 
   let sessionId: string | undefined = args.sessionId;
   if (sessionId == null || sessionId === "") {
@@ -328,7 +328,7 @@ export async function getSessionSummary(args: {
 
     const level =
       typeof entry.level === "string"
-        ? normalizeStructuredLevel(entry.level) ?? logIntegrationT(t, "common.unknown")
+        ? (normalizeStructuredLevel(entry.level) ?? logIntegrationT(t, "common.unknown"))
         : logIntegrationT(t, "common.unknown");
     stats.byLevel[level] = (stats.byLevel[level] ?? 0) + 1;
 
@@ -347,7 +347,7 @@ export async function getSessionSummary(args: {
       sessionId,
       stats,
     },
-    ...((Object.keys(degraded).length > 0 || malformedLines > 0)
+    ...(Object.keys(degraded).length > 0 || malformedLines > 0
       ? {
           degraded: {
             ...degraded,

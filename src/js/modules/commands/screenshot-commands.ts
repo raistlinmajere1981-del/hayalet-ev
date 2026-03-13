@@ -77,11 +77,7 @@ export async function screenshotManagerHandler(
     const sender = payload.sender ?? providerRaw;
 
     if (saved !== "") {
-      Logger.panel(
-        LogCategory.COMMAND,
-        LogLevel.INFO,
-        commandRuntimeT("screenshotRan", { kind })
-      );
+      Logger.panel(LogCategory.COMMAND, LogLevel.INFO, commandRuntimeT("screenshotRan", { kind }));
 
       try {
         await WebviewManager.send({

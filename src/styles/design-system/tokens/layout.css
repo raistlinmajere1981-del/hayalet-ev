@@ -2,6 +2,7 @@
   --layout-app-height: 100vh;
   --layout-page-height: calc(var(--layout-app-height) - var(--topbar-height));
   --layout-offscreen-offset: -99999px;
+  --avatar-image: none;
   --layout-room-manager-modal-w: min(1080px, calc(100vw - 3rem));
   --layout-room-runtime-panel-min-h: 32rem;
   --layout-room-chip-min-h: 2rem;
@@ -32,6 +33,10 @@
   --layout-modal-default-w: 500px;
   --layout-modal-default-wide-w: 800px;
   --layout-workspace-sidebar-max-w: min(38vw, 560px);
+  --layout-settings-hub-max-w: 1440px;
+  --layout-assistant-runtime-stack-max-w: 460px;
+  --layout-assistant-session-controls-max-w: 24rem;
+  --layout-message-virtual-scroll-h: 400px;
 
   --layout-modal-compact-w: 420px;
   --layout-modal-character-w: 860px;
@@ -59,6 +64,7 @@
   --layout-character-active-w: 42%;
   --layout-panel-item-h: 300px;
   --layout-data-label-w-sm: 72px;
+  --layout-logo-text-max-w: 92px;
 
   --layout-server-topbar-min-h: 48px;
   --layout-server-workspace-columns: minmax(0, 1.25fr) minmax(360px, 1fr);

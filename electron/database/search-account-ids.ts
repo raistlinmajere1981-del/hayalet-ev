@@ -25,7 +25,8 @@ function toAccountIds(value: unknown): string[] {
 
 function resolveSelectedUs1ProjectedAccountId(record: Record<string, unknown>): string | null {
   const us1Slot = toRecord(record["us1Slot"]);
-  const selectedRemoteUserIdRaw = us1Slot?.["selectedRemoteUserId"] ?? us1Slot?.["selectedIdentityId"];
+  const selectedRemoteUserIdRaw =
+    us1Slot?.["selectedRemoteUserId"] ?? us1Slot?.["selectedIdentityId"];
   const selectedRemoteUserId =
     typeof selectedRemoteUserIdRaw === "string" ? selectedRemoteUserIdRaw.trim() : "";
 

@@ -55,7 +55,6 @@ function warnBridgeOnce(provider: string, error: unknown): void {
   });
 }
 
-
 function trafficWebviewEventsT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.logs.traffic.${key}`, params);
 }
@@ -99,7 +98,6 @@ export function attachWebviewEvents(
     webviewEl.executeJavaScript(script).catch((err) => {
       warnBridgeOnce(provider, err);
     });
-
   };
 
   const handleNavEvent = (url: string | undefined, _eventType: string): void => {

@@ -210,7 +210,10 @@ export class MailSidecarStoreManager {
     return row === undefined ? null : mapSessionRow(row);
   }
 
-  findSessionMappingByReference(remoteUserId: string, referenceMessageId: string): MailSessionMapRecord | null {
+  findSessionMappingByReference(
+    remoteUserId: string,
+    referenceMessageId: string
+  ): MailSessionMapRecord | null {
     const row = this.getDb()
       .prepare<[string, string, string], MailSessionMapRow>(
         `SELECT remote_user_id, local_session_id, thread_message_id, last_message_id, created_at, updated_at
@@ -288,7 +291,10 @@ export class MailSidecarStoreManager {
   }
 
   upsertMessageMeta(input: MailMessageMetaWriteInput): MailMessageMetaRecord {
-    const transportMessageId = normalizeRequiredText(input.transportMessageId, "transportMessageId");
+    const transportMessageId = normalizeRequiredText(
+      input.transportMessageId,
+      "transportMessageId"
+    );
     const localMessageId = normalizeRequiredText(input.localMessageId, "localMessageId");
     const deliveryState = normalizeRequiredText(input.deliveryState, "deliveryState");
     const headersHash = normalizeRequiredText(input.headersHash, "headersHash");
@@ -367,7 +373,10 @@ export class MailSidecarStoreManager {
   }
 
   markReceiptProcessed(input: MailReceiptProcessedInput): MailReceiptLedgerRecord {
-    const transportMessageId = normalizeRequiredText(input.transportMessageId, "transportMessageId");
+    const transportMessageId = normalizeRequiredText(
+      input.transportMessageId,
+      "transportMessageId"
+    );
     const checksum = normalizeRequiredText(input.checksum, "checksum");
     const existing = this.findReceiptRecord({ transportMessageId, checksum });
     if (existing !== null) {

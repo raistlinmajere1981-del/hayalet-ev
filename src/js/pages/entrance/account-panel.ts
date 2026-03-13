@@ -496,7 +496,6 @@ export class AccountPanel {
     statusEl.className = `ds-status-msg ${normalizedType}`;
     statusEl.classList.add("is-visible");
 
-
     setTimeout(() => {
       statusEl.classList.remove("is-visible");
     }, 3000);

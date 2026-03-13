@@ -175,7 +175,6 @@ export function renderEntries(params: OverlayRenderParams): void {
       <div class="ds-log-message">${displayMessage}</div>
     `;
 
-
     row.addEventListener("click", () => {
       state.selectedEntryId = entry.id;
       renderEntries(params);

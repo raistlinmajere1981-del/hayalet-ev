@@ -1,6 +1,6 @@
 import type { FetchMessageObject, MessageEnvelopeObject } from "imapflow";
 import type { Attachment, ParsedMail } from "mailparser";
-import type { SendMailOptions, SentMessageInfo } from "nodemailer";
+import type { SendMailOptions } from "nodemailer";
 
 import type { MailTransportAccountConfig } from "@shared/settings.js";
 import type { ResolvedMailTransportAccountConfig } from "./config.js";
@@ -174,7 +174,7 @@ export interface MailTransportImapClient {
 }
 
 export interface MailTransportSmtpTransporter {
-  sendMail(message: SendMailOptions): Promise<SentMessageInfo & Record<string, unknown>>;
+  sendMail(message: SendMailOptions): Promise<Record<string, unknown>>;
   verify?(): Promise<unknown>;
   close?(): void;
 }
@@ -185,7 +185,9 @@ export interface MailTransportServiceOptions {
   now?: () => number;
   wait?: (ms: number) => Promise<void>;
   createImapClient?: (account: ResolvedMailTransportAccountConfig) => MailTransportImapClient;
-  createSmtpTransporter?: (account: ResolvedMailTransportAccountConfig) => MailTransportSmtpTransporter;
+  createSmtpTransporter?: (
+    account: ResolvedMailTransportAccountConfig
+  ) => MailTransportSmtpTransporter;
 }
 
 export interface MailTransportRuntimeConfig {

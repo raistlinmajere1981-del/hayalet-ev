@@ -502,10 +502,18 @@ declare global {
       draft: Us1MailAccountDraft,
       options?: { verifyAfterSave?: boolean }
     ) => Promise<Us1MailAccountMutationResult>;
-    us1VerifyMailAccount: (params: { mailAccountId: string }) => Promise<Us1MailAccountMutationResult>;
-    us1DeleteMailAccount: (params: Us1DeleteMailAccountParams) => Promise<Us1DeleteMailAccountResult>;
-    us1InviteRemoteUser: (params: Us1InviteRemoteUserParams) => Promise<Us1RemoteUserMutationResult>;
-    us1AcceptRemoteUser: (params: Us1AcceptRemoteUserParams) => Promise<Us1RemoteUserMutationResult>;
+    us1VerifyMailAccount: (params: {
+      mailAccountId: string;
+    }) => Promise<Us1MailAccountMutationResult>;
+    us1DeleteMailAccount: (
+      params: Us1DeleteMailAccountParams
+    ) => Promise<Us1DeleteMailAccountResult>;
+    us1InviteRemoteUser: (
+      params: Us1InviteRemoteUserParams
+    ) => Promise<Us1RemoteUserMutationResult>;
+    us1AcceptRemoteUser: (
+      params: Us1AcceptRemoteUserParams
+    ) => Promise<Us1RemoteUserMutationResult>;
     us1SyncRemoteUsers: (params?: Us1SyncRemoteUsersParams) => Promise<Us1RemoteUserMutationResult>;
     us1SendMessage: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
     us1SyncMessages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;

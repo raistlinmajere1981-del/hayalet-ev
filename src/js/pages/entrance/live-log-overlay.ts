@@ -145,6 +145,7 @@ export function setupEntranceLiveLogOverlay({
       for (const appDirName of getAppDirCandidates(app)) {
         const appDir = joinPath(state.baseLogsDir, appDirName);
         try {
+          // eslint-disable-next-line no-await-in-loop -- NOTE: directory scan is sequential per candidate.
           const entriesRaw = await electronApi.readDirectoryFiles(appDir);
           const entries = Array.isArray(entriesRaw) ? entriesRaw : [];
           entries
@@ -186,6 +187,7 @@ export function setupEntranceLiveLogOverlay({
     for (const appDirName of getAppDirCandidates(app)) {
       const structuredPath = joinPath(state.baseLogsDir, appDirName, sessionId, "structured.jsonl");
       try {
+        // eslint-disable-next-line no-await-in-loop -- NOTE: probe paths sequentially until a hit.
         const nextEncoded = await electronApi.readFile(structuredPath);
         if (typeof nextEncoded === "string" && nextEncoded !== "") {
           encoded = nextEncoded;
@@ -354,15 +356,14 @@ export function setupEntranceLiveLogOverlay({
   render();
   Logger.debug(LogCategory.ENTRANCE, entranceT("logs.liveOverlayReady"));
 
-  document.addEventListener(
-    "settings-hub:state-change",
-    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
-      if (event.detail?.open === true && event.detail.activePanel === "live-log") {
-        activate();
-        return;
-      }
+  document.addEventListener("settings-hub:state-change", ((
+    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
+  ) => {
+    if (event.detail.open === true && event.detail.activePanel === "live-log") {
+      activate();
+      return;
+    }
 
-      deactivate();
-    }) as EventListener
-  );
+    deactivate();
+  }) as EventListener);
 }

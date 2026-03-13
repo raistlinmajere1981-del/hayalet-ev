@@ -120,13 +120,10 @@ export function setupSettingsHub(): void {
     }
   });
 
-  document.addEventListener(
-    "settings-hub:open",
-    ((event: CustomEvent<{ panel?: string }>) => {
-      const requestedPanel = event.detail?.panel ?? "";
-      open(isSettingsPanelId(requestedPanel) ? requestedPanel : activePanel);
-    }) as EventListener
-  );
+  document.addEventListener("settings-hub:open", ((event: CustomEvent<{ panel?: string }>) => {
+    const requestedPanel = event.detail.panel ?? "";
+    open(isSettingsPanelId(requestedPanel) ? requestedPanel : activePanel);
+  }) as EventListener);
 
   document.addEventListener("settings-hub:close", () => {
     close();

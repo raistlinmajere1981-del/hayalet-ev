@@ -416,7 +416,7 @@ class Logger {
 
     appendBatch(batch)
       .then((result) => {
-        if (result?.success === false) {
+        if (result.success === false) {
           this.requeueBatch(batch);
         }
       })

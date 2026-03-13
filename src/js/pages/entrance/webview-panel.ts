@@ -1019,7 +1019,6 @@ export class WebviewPanel {
     }
   }
 
-
   showTestResultsModal(results: ProviderTestSuite): void {
     void import("../../ui/modal-manager.js").then((module) => {
       const { ModalManager: modalManager } = module;

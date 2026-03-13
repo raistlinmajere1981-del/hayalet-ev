@@ -101,7 +101,7 @@ export async function readElectronLogs(logDir: string, args?: LogReadArgs): Prom
     sessionId: requestedSessionId,
   } = args ?? {};
 
-  const targetLogDir = await resolveExistingLogDir(logDir, app);
+  const targetLogDir = resolveExistingLogDir(logDir, app);
 
   const sessionId = requestedSessionId ?? (await findLatestSession(targetLogDir));
 
@@ -228,7 +228,7 @@ export async function listLogSessions(
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const app = args?.app ?? "hayalet-ev";
-  const targetLogDir = await resolveExistingLogDir(logDir, app);
+  const targetLogDir = resolveExistingLogDir(logDir, app);
   const limit = args?.limit ?? 10;
 
   if (!existsSync(targetLogDir)) {
@@ -289,7 +289,7 @@ export async function getSessionSummary(
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const app = args?.app ?? "hayalet-ev";
-  const targetLogDir = await resolveExistingLogDir(logDir, app);
+  const targetLogDir = resolveExistingLogDir(logDir, app);
   const sessionId = args?.sessionId ?? (await findLatestSession(targetLogDir));
 
   if (sessionId == null) {

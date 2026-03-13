@@ -4,6 +4,7 @@
   --blur-surface-sm: blur(10px);
   --blur-surface-md: blur(14px);
   --blur-surface-lg: blur(16px);
+  --blur-surface-xl: blur(18px);
 
   --effect-gradient-surface-soft: linear-gradient(
     180deg,

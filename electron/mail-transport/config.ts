@@ -41,9 +41,10 @@ function normalizeSecure(value: boolean | undefined, port: number, fallback: boo
   return fallback;
 }
 
-function getProviderDefaults(
-  providerType: MailTransportAccountConfig["providerType"]
-): { imap: MailTransportServerConfig; smtp: MailTransportServerConfig } {
+function getProviderDefaults(providerType: MailTransportAccountConfig["providerType"]): {
+  imap: MailTransportServerConfig;
+  smtp: MailTransportServerConfig;
+} {
   if (providerType === "gmail") {
     return {
       imap: { host: "imap.gmail.com", port: 993, secure: true },
@@ -63,13 +64,23 @@ function resolveServerConfig(
 ): MailTransportServerConfig {
   const hasCustomHost = typeof config.host === "string" && config.host.trim() !== "";
   const hasCustomPort =
-    typeof config.port === "number" && Number.isFinite(config.port) && Number.isInteger(config.port) && config.port > 0;
+    typeof config.port === "number" &&
+    Number.isFinite(config.port) &&
+    Number.isInteger(config.port) &&
+    config.port > 0;
   const port = toPositiveInteger(config.port, fallback.port);
-  const host = typeof config.host === "string" && config.host.trim() !== "" ? config.host.trim() : fallback.host;
+  const host =
+    typeof config.host === "string" && config.host.trim() !== ""
+      ? config.host.trim()
+      : fallback.host;
   return {
     host,
     port,
-    secure: normalizeSecure(hasCustomHost || hasCustomPort ? config.secure : undefined, port, fallback.secure),
+    secure: normalizeSecure(
+      hasCustomHost || hasCustomPort ? config.secure : undefined,
+      port,
+      fallback.secure
+    ),
   };
 }
 
@@ -78,7 +89,7 @@ export function applyMailTransportAccountDefaults(
 ): ResolvedMailTransportAccountConfig {
   const providerDefaults = getProviderDefaults(account.providerType);
   const binding = account.binding ?? {};
-  const auth = account.auth ?? { user: account.email };
+  const auth = account.auth;
 
   return {
     ...account,
@@ -87,13 +98,15 @@ export function applyMailTransportAccountDefaults(
     smtp: resolveServerConfig(account.smtp, providerDefaults.smtp),
     auth: {
       ...auth,
-      user: typeof auth.user === "string" && auth.user.trim() !== "" ? auth.user.trim() : account.email,
+      user:
+        typeof auth.user === "string" && auth.user.trim() !== "" ? auth.user.trim() : account.email,
       password: typeof auth.password === "string" ? auth.password : "",
       accessToken: typeof auth.accessToken === "string" ? auth.accessToken : "",
       refreshToken: typeof auth.refreshToken === "string" ? auth.refreshToken : "",
       clientId: typeof auth.clientId === "string" ? auth.clientId : "",
       clientSecret: typeof auth.clientSecret === "string" ? auth.clientSecret : "",
-      expiresAt: typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt) ? auth.expiresAt : 0,
+      expiresAt:
+        typeof auth.expiresAt === "number" && Number.isFinite(auth.expiresAt) ? auth.expiresAt : 0,
       loginMethod: typeof auth.loginMethod === "string" ? auth.loginMethod : "",
     },
     defaultMailbox:
@@ -107,7 +120,8 @@ export function applyMailTransportAccountDefaults(
           ? binding.remoteUserId.trim()
           : null,
       defaultLocalSessionId:
-        typeof binding.defaultLocalSessionId === "string" && binding.defaultLocalSessionId.trim() !== ""
+        typeof binding.defaultLocalSessionId === "string" &&
+        binding.defaultLocalSessionId.trim() !== ""
           ? binding.defaultLocalSessionId.trim()
           : null,
     },

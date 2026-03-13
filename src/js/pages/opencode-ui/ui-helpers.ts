@@ -18,7 +18,6 @@ export function setupCustomSelect(
     dropdown.classList.toggle("is-expanded");
   });
 
-
   menu.addEventListener("click", function (e: Event) {
     const item = (e.target as HTMLElement).closest(".ds-custom-select__item");
     if (!item) return;
@@ -116,7 +115,6 @@ export function initUIHelpers(): void {
       el.classList.remove("is-expanded");
     });
   });
-
 
   const rightTabs = Array.from(
     document.querySelectorAll<HTMLButtonElement>(".ds-right-tab[data-rtab]")

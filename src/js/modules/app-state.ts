@@ -1,6 +1,11 @@
 import { SettingsManager } from "./settings-manager.js";
 import { Logger, LogCategory } from "./logger/index.js";
-import type { Account, AppSettings, RemoteUserIdentity, Us1SlotSettings } from "@shared/settings.js";
+import type {
+  Account,
+  AppSettings,
+  RemoteUserIdentity,
+  Us1SlotSettings,
+} from "@shared/settings.js";
 import { AppI18n } from "./i18n/index.js";
 import {
   buildUs1ProjectedAccountId,
@@ -134,7 +139,8 @@ class AppStateClass {
 
     return (
       this.getRemoteUsers().find(
-        (identity) => identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
+        (identity) =>
+          identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
       ) ?? null
     );
   }

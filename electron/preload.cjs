@@ -23,7 +23,6 @@ function warnPreloadOnce(key, message, error) {
   console.warn(message);
 }
 
-
 const PRELOAD_MESSAGE_FALLBACKS = {
   en: {
     appScriptLoaded: "/js/app.js loaded via src.",
@@ -79,8 +78,7 @@ function readLocaleFromSettings(settings) {
 function getPreloadFallbackTemplate(key) {
   const messageLocale = resolvePreloadMessageLocale(__app_preload_locale);
   return (
-    (PRELOAD_MESSAGE_FALLBACKS[messageLocale] &&
-      PRELOAD_MESSAGE_FALLBACKS[messageLocale][key]) ||
+    (PRELOAD_MESSAGE_FALLBACKS[messageLocale] && PRELOAD_MESSAGE_FALLBACKS[messageLocale][key]) ||
     PRELOAD_MESSAGE_FALLBACKS.en[key] ||
     key
   );
@@ -104,7 +102,6 @@ async function syncPreloadLocale(nextSettings) {
     nextLocale = normalizePreloadLocale(__app_preload_locale);
   }
 
-
   __app_preload_locale = nextLocale;
 
   try {
@@ -123,7 +120,6 @@ async function syncPreloadLocale(nextSettings) {
     __app_preload_catalog = null;
     __app_preload_locale = nextLocale;
   }
-
 
   return __app_preload_locale;
 }
@@ -153,7 +149,6 @@ function startPreloadLocaleSync() {
     );
     __app_preload_settings_channel = null;
   }
-
 }
 
 function getPreloadErrorMessage(error) {
@@ -198,7 +193,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     void syncPreloadLocale(settings);
     return result;
   },
-  us1UpsertMailAccount: (draft, options) => ipcRenderer.invoke("us1-upsert-mail-account", draft, options),
+  us1UpsertMailAccount: (draft, options) =>
+    ipcRenderer.invoke("us1-upsert-mail-account", draft, options),
   us1VerifyMailAccount: (params) => ipcRenderer.invoke("us1-verify-mail-account", params),
   us1DeleteMailAccount: (params) => ipcRenderer.invoke("us1-delete-mail-account", params),
   us1InviteRemoteUser: (params) => ipcRenderer.invoke("us1-invite-remote-user", params),

@@ -325,7 +325,8 @@ export class AnalyzeController {
     (["ai1", "ai2", "us1"] as const).forEach((slot) => {
       const hasAccount =
         slot === "ai1" ? ai1HasAccount : slot === "ai2" ? ai2HasAccount : us1HasIdentity;
-      const connected = slot === "ai1" ? ai1Connected : slot === "ai2" ? ai2Connected : us1Connected;
+      const connected =
+        slot === "ai1" ? ai1Connected : slot === "ai2" ? ai2Connected : us1Connected;
       const isActive = hasAccount && connected;
       const wasActive = this._slotActiveStates[slot];
 
@@ -381,7 +382,9 @@ export class AnalyzeController {
 
     if (!grid) return;
 
-    const configuredParticipants = (Object.entries(participants) as Array<[AnalyzeParticipant, boolean]>)
+    const configuredParticipants = (
+      Object.entries(participants) as Array<[AnalyzeParticipant, boolean]>
+    )
       .filter(([, visible]) => visible)
       .map(([slot]) => slot);
     const fallbackParticipants: AnalyzeParticipant[] = ["ai1", "ai2"];
@@ -527,13 +530,17 @@ export class AnalyzeController {
     const rawAttachments = await electronApi["dbGetAttachments"]({ accountId, conversationId });
     const messagesResult = isDbMessagesResult(rawMessages) ? rawMessages : {};
     const attachmentsResult = isDbAttachmentsResult(rawAttachments) ? rawAttachments : {};
-    const rawMessageItems = Array.isArray(messagesResult.data) ? (messagesResult.data as unknown[]) : [];
+    const rawMessageItems = Array.isArray(messagesResult.data)
+      ? (messagesResult.data as unknown[])
+      : [];
     const rawAttachmentItems = Array.isArray(attachmentsResult.data)
       ? (attachmentsResult.data as unknown[])
       : [];
-    const messages = rawMessageItems.filter((message): message is MessageItem => isMessageItem(message));
-    const attachments = rawAttachmentItems.filter(
-      (attachment): attachment is AttachmentData => isAttachmentData(attachment)
+    const messages = rawMessageItems.filter((message): message is MessageItem =>
+      isMessageItem(message)
+    );
+    const attachments = rawAttachmentItems.filter((attachment): attachment is AttachmentData =>
+      isAttachmentData(attachment)
     );
 
     container.innerHTML = "";
@@ -547,11 +554,14 @@ export class AnalyzeController {
       return;
     }
 
-    const attachmentsByMessage = attachments.reduce<Record<string, AttachmentData[]>>((acc, attachment) => {
-      acc[attachment.messageId] ??= [];
-      acc[attachment.messageId]?.push(attachment);
-      return acc;
-    }, {});
+    const attachmentsByMessage = attachments.reduce<Record<string, AttachmentData[]>>(
+      (acc, attachment) => {
+        acc[attachment.messageId] ??= [];
+        acc[attachment.messageId]?.push(attachment);
+        return acc;
+      },
+      {}
+    );
     const callbacks: RenderCallbacks = {
       onMessageAction: (action, payload: { provider: string; text: string }) => {
         applyMessageAction(action, payload, () => {
@@ -575,7 +585,10 @@ export class AnalyzeController {
 
     const lastAssistant = [...messages]
       .reverse()
-      .find((message) => message.role === "assistant" && (message.content ?? message.text ?? "").trim() !== "");
+      .find(
+        (message) =>
+          message.role === "assistant" && (message.content ?? message.text ?? "").trim() !== ""
+      );
     this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
     container.scrollTop = container.scrollHeight;
   }
@@ -583,7 +596,11 @@ export class AnalyzeController {
   _applyUs1Indicators(connected: boolean): void {
     TrafficManager.setIndicator("us1", "loading", this._us1LoadingBusy ? "busy" : "idle");
     TrafficManager.setIndicator("us1", "thinking", "idle");
-    TrafficManager.setIndicator("us1", "send", connected && this._us1SendBusy === false ? "idle" : "busy");
+    TrafficManager.setIndicator(
+      "us1",
+      "send",
+      connected && this._us1SendBusy === false ? "idle" : "busy"
+    );
   }
 
   async _sendUs1Message(message: string, attachments: StagedFile[]): Promise<void> {
@@ -697,6 +714,7 @@ export class AnalyzeController {
         continue;
       }
 
+      // eslint-disable-next-line no-await-in-loop -- NOTE: user confirmations must be sequential.
       const confirmation = await electronApi.showMessageBox({
         type: "question",
         title: "Import room package",
@@ -705,13 +723,14 @@ export class AnalyzeController {
         defaultId: 0,
         cancelId: 1,
       });
-      if ((confirmation?.response ?? 1) !== 0) {
+      if (confirmation.response !== 0) {
         Logger.warn(LogCategory.ANALYZE, "US1 room package import rejected", {
           roomPackage,
         });
         continue;
       }
 
+      // eslint-disable-next-line no-await-in-loop -- NOTE: keep import order aligned with confirmations.
       const importResult = await electronApi.roomsImportBundle({
         bundleFile: roomPackage.storedPath,
         overwriteWorkspace: true,

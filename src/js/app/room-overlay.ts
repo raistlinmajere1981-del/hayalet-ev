@@ -266,15 +266,14 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
 
   render(refs, state);
 
-  document.addEventListener(
-    "settings-hub:state-change",
-    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
-      if (event.detail?.open === true && event.detail.activePanel === "rooms") {
-        void activate();
-        return;
-      }
+  document.addEventListener("settings-hub:state-change", ((
+    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
+  ) => {
+    if (event.detail.open === true && event.detail.activePanel === "rooms") {
+      void activate();
+      return;
+    }
 
-      deactivate();
-    }) as EventListener
-  );
+    deactivate();
+  }) as EventListener);
 }

@@ -46,7 +46,7 @@ export async function streamLogsRealtime(
   args: StreamLogsRealtimeArgs
 ): Promise<StreamLogsRealtimeResult> {
   const t = await createMcpTranslator();
-  const logDir = await resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
+  const logDir = resolveExistingLogDir(join(PROJECT_ROOT, "logs"), "hayalet-ev");
   const sessionId = args.sessionId ?? (await getLatestSessionId(logDir, t));
   const sessionDir = join(logDir, sessionId);
   const structuredPath = join(sessionDir, "structured.jsonl");

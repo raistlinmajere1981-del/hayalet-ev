@@ -19,7 +19,6 @@ function warnWebviewOnce(key, message, context) {
   console.warn(message);
 }
 
-
 const WEBVIEW_PRELOAD_MESSAGE_FALLBACKS = {
   settingUpProvider: "Setting up provider for slot {{slot}} (source: {{source}})",
   providerConfigSet: "Provider config set: {{providerId}} {{providerName}}",
@@ -78,7 +77,6 @@ async function syncWebviewPreloadLocale() {
     );
   }
 
-
   try {
     const pack = await ipcRenderer.invoke("i18n-load-language", appLocale);
     const resolvedLocale =
@@ -95,7 +93,6 @@ async function syncWebviewPreloadLocale() {
     __app_preload_catalog = null;
     __app_preload_locale = appLocale;
   }
-
 }
 
 function getWebviewPreloadErrorMessage(error) {
@@ -303,7 +300,6 @@ function setupProvider() {
         { slot, error: getWebviewPreloadErrorMessage(err) }
       );
     }
-
   }
 
   function checkReady() {

@@ -383,15 +383,14 @@ export function setupBackupOverlay(): void {
     }
   });
 
-  document.addEventListener(
-    "settings-hub:state-change",
-    ((event: CustomEvent<{ open?: boolean; activePanel?: string | null }>) => {
-      if (event.detail?.open === true && event.detail.activePanel === "backup") {
-        void activate();
-        return;
-      }
+  document.addEventListener("settings-hub:state-change", ((
+    event: CustomEvent<{ open?: boolean; activePanel?: string | null }>
+  ) => {
+    if (event.detail.open === true && event.detail.activePanel === "backup") {
+      void activate();
+      return;
+    }
 
-      deactivate();
-    }) as EventListener
-  );
+    deactivate();
+  }) as EventListener);
 }

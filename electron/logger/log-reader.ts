@@ -27,7 +27,7 @@ async function loggerT(key: string, params?: Record<string, string | number>): P
 
 function getMainAppLogDirCandidates(): string[] {
   const logDir = getLogDir();
-  let pathCandidates: string[] = [];
+  let pathCandidates: string[];
 
   try {
     pathCandidates = [Paths.getMainAppLogsDir(), Paths.getLegacyMainAppLogsDir()];

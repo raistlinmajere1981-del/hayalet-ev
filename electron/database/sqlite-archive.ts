@@ -13,7 +13,6 @@ import { createMessageDedupeKey } from "./message-dedupe.js";
 import { getDatabaseForAccount, getAttachmentPath, ensureAttachmentDir } from "./sqlite-manager.js";
 import { copyFileSync, statSync, existsSync, writeFileSync } from "fs";
 import type { SyncMessagesParams, SyncMessagesResult } from "@electron/types";
-import { isUs1SyntheticSessionUri } from "@shared/archive.js";
 
 const logger = getLoggerCore();
 
@@ -114,11 +113,12 @@ export class SQLiteArchiveManager {
   }
 
   private extractProvider(webUrl: string): string {
-    if (isUs1SyntheticSessionUri(webUrl)) return "us1";
-    if (webUrl.includes("chatgpt.com")) return "chatgpt";
-    if (webUrl.includes("gemini.google.com")) return "gemini";
-    if (webUrl.includes("grok")) return "grok";
-    if (webUrl.includes("opencode")) return "opencode";
+    const normalized = String(webUrl);
+    if (normalized.startsWith("mail://remote-user/")) return "us1";
+    if (normalized.includes("chatgpt.com")) return "chatgpt";
+    if (normalized.includes("gemini.google.com")) return "gemini";
+    if (normalized.includes("grok")) return "grok";
+    if (normalized.includes("opencode")) return "opencode";
     return "unknown";
   }
 
@@ -153,7 +153,10 @@ export class SQLiteArchiveManager {
     return typeof title === "string" ? title.trim() : "";
   }
 
-  private getConversationIdentity(webUrl: string, providerOverride?: string): {
+  private getConversationIdentity(
+    webUrl: string,
+    providerOverride?: string
+  ): {
     conversationId: string;
     provider: string;
   } {

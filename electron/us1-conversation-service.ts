@@ -5,10 +5,7 @@ import type {
   MailTransportAccountConfig,
   RemoteUserIdentity,
 } from "@shared/settings.js";
-import {
-  buildUs1ProjectedAccountId,
-  buildUs1SyntheticSessionUri,
-} from "@shared/archive.js";
+import { buildUs1ProjectedAccountId, buildUs1SyntheticSessionUri } from "@shared/archive.js";
 import type {
   Us1RoomPackageCandidate,
   Us1SendMessageParams,
@@ -72,7 +69,10 @@ interface ConversationEnvelope {
 }
 
 interface MailTransportFacade {
-  sendMail(accountConfig: MailTransportAccountConfig, message: SendMailRequest): Promise<SendMailResult>;
+  sendMail(
+    accountConfig: MailTransportAccountConfig,
+    message: SendMailRequest
+  ): Promise<SendMailResult>;
   fetchInbox(
     accountConfig: MailTransportAccountConfig,
     request?: { limit?: number; includeAttachmentContent?: boolean }
@@ -183,8 +183,11 @@ function normalizeEmail(value: unknown): string {
 }
 
 function buildLocalMessageId(prefix: string, token: string, now: number): string {
-  const normalizedToken = token.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
-  return `${prefix}:${normalizedToken || "us1"}:${now}`;
+  const normalizedToken = token
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+  return `${prefix}:${normalizedToken !== "" ? normalizedToken : "us1"}:${now}`;
 }
 
 function buildSyntheticTransportMessageId(localMessageId: string): string {
@@ -222,7 +225,9 @@ function extractJsonBlock(text: string, startMarker: string, endMarker: string):
 function stripJsonBlock(text: string, startMarker: string, endMarker: string): string {
   const escapedStart = startMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escapedEnd = endMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return normalizeText(text.replace(new RegExp(`\\s*${escapedStart}[\\s\\S]+?${escapedEnd}\\s*`, "g"), "\n"));
+  return normalizeText(
+    text.replace(new RegExp(`\\s*${escapedStart}[\\s\\S]+?${escapedEnd}\\s*`, "g"), "\n")
+  );
 }
 
 function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
@@ -349,7 +354,9 @@ function buildConversationSubject(text: string, attachmentCount: number): string
   return SUBJECT_PREFIX;
 }
 
-function buildConversationTitle(remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">): string {
+function buildConversationTitle(
+  remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">
+): string {
   return normalizeOptionalText(remoteUser.nickname) ?? remoteUser.email;
 }
 
@@ -414,16 +421,17 @@ export class Us1ConversationService {
     } = {}
   ) {
     this.transport = options.transport ?? new MailTransportService();
-    this.now = options.now ?? (() => Date.now());
+    this.now = options.now ?? ((): number => Date.now());
     this.settingsStore = {
       loadSettings: options.settingsStore?.loadSettings ?? loadPersistedSettings,
-      saveSettings: options.settingsStore?.saveSettings ?? ((settings) => persistSettingsToDisk(settings)),
+      saveSettings: options.settingsStore?.saveSettings ?? persistSettingsToDisk,
     };
     this.archiveFactory =
       options.archiveFactory ??
-      (async (accountId) => {
-        const { SQLiteArchiveManager } = await import("./database/sqlite-archive.ts");
-        return new SQLiteArchiveManager(accountId);
+      (async (accountId: string): Promise<ArchiveManagerLike> => {
+        const { SQLiteArchiveManager: sqliteArchiveManagerCtor } =
+          await import("./database/sqlite-archive.ts");
+        return new sqliteArchiveManagerCtor(accountId);
       });
   }
 
@@ -502,15 +510,12 @@ export class Us1ConversationService {
       });
 
       const archiveContext = await this.prepareArchiveContext(remoteUser, localSessionId);
-      const projectedMessage = await this.appendArchiveMessage(
-        archiveContext,
-        {
-          role: "user",
-          author: localProfile.nickname,
-          text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
-          domId: localMessageId,
-        }
-      );
+      const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+        role: "user",
+        author: localProfile.nickname,
+        text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
+        domId: localMessageId,
+      });
       const attachmentRefs = await this.saveOutboundAttachments(
         archiveContext.manager,
         projectedMessage.conversationId,
@@ -522,9 +527,7 @@ export class Us1ConversationService {
         remoteUserId: remoteUser.remoteUserId,
         localSessionId,
         threadMessageId:
-          transportResult.threadMessageId ??
-          threadMessageId ??
-          transportResult.transportMessageId,
+          transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
         lastMessageId: transportResult.transportMessageId,
       });
       sidecar.upsertMessageMeta({
@@ -545,9 +548,7 @@ export class Us1ConversationService {
 
       this.patchRemoteUserTransportState(settings, remoteUser.remoteUserId, {
         threadMessageId:
-          transportResult.threadMessageId ??
-          threadMessageId ??
-          transportResult.transportMessageId,
+          transportResult.threadMessageId ?? threadMessageId ?? transportResult.transportMessageId,
         lastTransportMessageId: transportResult.transportMessageId,
         lastSyncAt: this.now(),
         lastError: null,
@@ -615,13 +616,20 @@ export class Us1ConversationService {
           continue;
         }
 
-        const protocolHeader = parseHeaderValue(message.parsed.headerLines, "X-Hayalet-Ev-Protocol");
+        const protocolHeader = parseHeaderValue(
+          message.parsed.headerLines,
+          "X-Hayalet-Ev-Protocol"
+        );
         if (protocolHeader === HANDSHAKE_PROTOCOL) {
           continue;
         }
 
         const messageEnvelope = extractConversationEnvelope(message.parsed.text);
-        const remoteUserId = this.resolveRemoteUserId(messageEnvelope, message, activeRemoteUser.remoteUserId);
+        const remoteUserId = this.resolveRemoteUserId(
+          messageEnvelope,
+          message,
+          activeRemoteUser.remoteUserId
+        );
         const existingRemoteUser = this.findRemoteUser(settings, remoteUserId);
         if (remoteUserId === "" || (existingRemoteUser === null && messageEnvelope === null)) {
           skippedCount += 1;
@@ -632,19 +640,12 @@ export class Us1ConversationService {
           remoteUserId,
           email: remoteUserId,
           nickname:
-            messageEnvelope?.profile.nickname ??
-            existingRemoteUser?.nickname ??
-            remoteUserId,
-          avatar:
-            messageEnvelope?.profile.avatar ??
-            existingRemoteUser?.avatar ??
-            "",
+            messageEnvelope?.profile.nickname ?? existingRemoteUser?.nickname ?? remoteUserId,
+          avatar: messageEnvelope?.profile.avatar ?? existingRemoteUser?.avatar ?? "",
           avatarPath: existingRemoteUser?.avatarPath ?? "",
           handshakeState: "active",
           profileRevision:
-            messageEnvelope?.profile.profileRevision ??
-            existingRemoteUser?.profileRevision ??
-            1,
+            messageEnvelope?.profile.profileRevision ?? existingRemoteUser?.profileRevision ?? 1,
           linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
           inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
           acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
@@ -668,12 +669,14 @@ export class Us1ConversationService {
         if (localSessionId === null) {
           localSessionId = buildSessionId(
             remoteUserId,
-            normalizeOptionalText(message.threadMessageId) ?? normalizeOptionalText(message.transportMessageId),
+            normalizeOptionalText(message.threadMessageId) ??
+              normalizeOptionalText(message.transportMessageId),
             this.now()
           );
           unresolvedSessionCount += 1;
         }
 
+        // eslint-disable-next-line no-await-in-loop -- NOTE: per-message archive work is sequential.
         const archiveContext = await this.prepareArchiveContext(nextRemoteUser, localSessionId);
         const transportMessageId =
           normalizeOptionalText(message.transportMessageId) ??
@@ -683,15 +686,14 @@ export class Us1ConversationService {
           message.parsed.attachments.length,
           INBOUND_ATTACHMENT_ONLY_TEXT
         );
-        const projectedMessage = await this.appendArchiveMessage(
-          archiveContext,
-          {
-            role: "assistant",
-            author: buildConversationTitle(nextRemoteUser),
-            text: displayText,
-            domId: transportMessageId,
-          }
-        );
+        // eslint-disable-next-line no-await-in-loop -- NOTE: projection order must be preserved.
+        const projectedMessage = await this.appendArchiveMessage(archiveContext, {
+          role: "assistant",
+          author: buildConversationTitle(nextRemoteUser),
+          text: displayText,
+          domId: transportMessageId,
+        });
+        // eslint-disable-next-line no-await-in-loop -- NOTE: attachment persistence is sequential per message.
         const inboundAttachments = await this.saveInboundAttachments(
           archiveContext.manager,
           projectedMessage.conversationId,
@@ -737,12 +739,12 @@ export class Us1ConversationService {
 
       if (activeConversationId === null) {
         const latestMapping = sidecar.getLatestSessionMapping(activeRemoteUser.remoteUserId);
-        const fallbackSessionId =
-          activeLocalSessionId ??
-          latestMapping?.localSessionId ??
-          null;
+        const fallbackSessionId = activeLocalSessionId ?? latestMapping?.localSessionId ?? null;
         if (fallbackSessionId !== null) {
-          const archiveContext = await this.prepareArchiveContext(activeRemoteUser, fallbackSessionId);
+          const archiveContext = await this.prepareArchiveContext(
+            activeRemoteUser,
+            fallbackSessionId
+          );
           activeConversationId = archiveContext.conversationId;
           activeLocalSessionId = fallbackSessionId;
         }
@@ -802,8 +804,9 @@ export class Us1ConversationService {
       return null;
     }
 
+    const integrations = settings.integrations ?? {};
     const account =
-      settings.integrations?.mailTransport?.accounts?.find(
+      integrations.mailTransport?.accounts.find(
         (candidate) => candidate.id === remoteUser.linkedMailAccountId
       ) ?? null;
     if (account === null || account.enabled === false) {
@@ -821,17 +824,23 @@ export class Us1ConversationService {
   }
 
   private findRemoteUser(settings: AppSettings, remoteUserId: string): RemoteUserIdentity | null {
-    return (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ?? null;
+    return (
+      (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ??
+      null
+    );
   }
 
   private buildLocalProfile(
     settings: AppSettings,
     account: MailTransportAccountConfig
   ): MessageProfile {
-    const nickname = normalizeOptionalText(settings.user?.nickname) ?? normalizeEmail(account.email);
+    const nickname =
+      normalizeOptionalText(settings.user?.nickname) ?? normalizeEmail(account.email);
     const rawAvatar = normalizeOptionalText(settings.user?.avatarPath) ?? "";
     const avatar =
-      rawAvatar.startsWith("https://") || rawAvatar.startsWith("http://") || rawAvatar.startsWith("data:")
+      rawAvatar.startsWith("https://") ||
+      rawAvatar.startsWith("http://") ||
+      rawAvatar.startsWith("data:")
         ? rawAvatar
         : "";
 
@@ -877,9 +886,14 @@ export class Us1ConversationService {
     settings.remoteUsers = sortRemoteUsers(remoteUsers);
   }
 
-  private upsertRemoteUser(settings: AppSettings, candidate: RemoteUserIdentity): RemoteUserIdentity {
+  private upsertRemoteUser(
+    settings: AppSettings,
+    candidate: RemoteUserIdentity
+  ): RemoteUserIdentity {
     const remoteUsers = settings.remoteUsers ?? [];
-    const index = remoteUsers.findIndex((remoteUser) => remoteUser.remoteUserId === candidate.remoteUserId);
+    const index = remoteUsers.findIndex(
+      (remoteUser) => remoteUser.remoteUserId === candidate.remoteUserId
+    );
     const existingRemoteUser = index >= 0 ? (remoteUsers[index] ?? null) : null;
 
     const shouldApplyIncomingProfile =
@@ -887,28 +901,33 @@ export class Us1ConversationService {
       candidate.profileRevision >= existingRemoteUser.profileRevision ||
       candidate.handshakeState === "active";
     const nextHandshakeState =
-      existingRemoteUser?.handshakeState === "active" && candidate.handshakeState === "handshake_pending"
+      existingRemoteUser?.handshakeState === "active" &&
+      candidate.handshakeState === "handshake_pending"
         ? "active"
         : candidate.handshakeState;
     const resolvedLastSyncAt = candidate.lastSyncAt ?? existingRemoteUser?.lastSyncAt;
+    const fallbackRemoteUser = existingRemoteUser ?? candidate;
+    const resolvedNickname =
+      shouldApplyIncomingProfile === true
+        ? (candidate.nickname ?? candidate.email)
+        : (fallbackRemoteUser.nickname ?? candidate.nickname ?? candidate.email);
+    const resolvedAvatar =
+      shouldApplyIncomingProfile === true
+        ? (candidate.avatar ?? "")
+        : (fallbackRemoteUser.avatar ?? candidate.avatar ?? "");
+    const resolvedProfileRevision =
+      shouldApplyIncomingProfile === true
+        ? candidate.profileRevision
+        : fallbackRemoteUser.profileRevision;
 
     const nextRemoteUser: RemoteUserIdentity = {
       remoteUserId: candidate.remoteUserId,
       email: candidate.email,
-      nickname:
-        shouldApplyIncomingProfile === true
-          ? candidate.nickname ?? candidate.email
-          : existingRemoteUser?.nickname ?? candidate.nickname ?? candidate.email,
-      avatar:
-        shouldApplyIncomingProfile === true
-          ? candidate.avatar ?? ""
-          : existingRemoteUser?.avatar ?? candidate.avatar ?? "",
+      nickname: resolvedNickname,
+      avatar: resolvedAvatar,
       avatarPath: existingRemoteUser?.avatarPath ?? candidate.avatarPath ?? "",
       handshakeState: nextHandshakeState,
-      profileRevision:
-        shouldApplyIncomingProfile === true
-          ? candidate.profileRevision
-          : existingRemoteUser?.profileRevision ?? candidate.profileRevision,
+      profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
       inviteMessageId: candidate.inviteMessageId ?? existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: candidate.acceptMessageId ?? existingRemoteUser?.acceptMessageId ?? null,
@@ -957,7 +976,7 @@ export class Us1ConversationService {
             ? "active"
             : envelope.messageType === "invite"
               ? "handshake_pending"
-              : existingRemoteUser?.handshakeState ?? "handshake_pending";
+              : (existingRemoteUser?.handshakeState ?? "handshake_pending");
 
       this.upsertRemoteUser(settings, {
         remoteUserId: envelope.profile.remoteUserId,
@@ -971,11 +990,11 @@ export class Us1ConversationService {
         inviteMessageId:
           envelope.messageType === "invite"
             ? message.transportMessageId
-            : existingRemoteUser?.inviteMessageId ?? null,
+            : (existingRemoteUser?.inviteMessageId ?? null),
         acceptMessageId:
           envelope.messageType === "accept"
             ? message.transportMessageId
-            : existingRemoteUser?.acceptMessageId ?? null,
+            : (existingRemoteUser?.acceptMessageId ?? null),
         threadMessageId: existingRemoteUser?.threadMessageId ?? message.transportMessageId ?? null,
         lastTransportMessageId: message.transportMessageId,
         lastSyncAt: this.now(),
@@ -989,13 +1008,14 @@ export class Us1ConversationService {
     message: FetchInboxResult["messages"][number],
     activeRemoteUserId: string
   ): string {
-    return (
-      normalizeEmail(messageEnvelope?.profile.email) ||
-      normalizeEmail(messageEnvelope?.profile.remoteUserId) ||
-      normalizeEmail(message.remoteUserId) ||
-      normalizeEmail(message.parsed.from.find((entry) => entry.address !== null)?.address) ||
-      activeRemoteUserId
-    );
+    const candidates = [
+      normalizeEmail(messageEnvelope?.profile.email),
+      normalizeEmail(messageEnvelope?.profile.remoteUserId),
+      normalizeEmail(message.remoteUserId),
+      normalizeEmail(message.parsed.from.find((entry) => entry.address !== null)?.address),
+    ];
+    const resolved = candidates.find((value) => value !== "");
+    return resolved ?? activeRemoteUserId;
   }
 
   private async prepareArchiveContext(
@@ -1084,6 +1104,7 @@ export class Us1ConversationService {
       }
 
       const originalName = normalizeOptionalText(attachment.name) ?? basename(filePath);
+      // eslint-disable-next-line no-await-in-loop -- NOTE: attachment save order is sequential.
       const saveResult = await manager.saveAttachment(
         conversationId,
         messageId,
@@ -1135,6 +1156,7 @@ export class Us1ConversationService {
         continue;
       }
 
+      // eslint-disable-next-line no-await-in-loop -- NOTE: attachment content is persisted sequentially.
       const saveResult = await manager.saveAttachmentContent(
         conversationId,
         messageId,
@@ -1184,18 +1206,16 @@ export class Us1ConversationService {
     }
 
     try {
-      const parsed = JSON.parse(content.toString("utf-8")) as {
-        manifest?: { id?: unknown };
-        files?: unknown;
-      };
-      return (
-        parsed !== null &&
-        typeof parsed === "object" &&
-        typeof parsed.manifest?.id === "string" &&
-        parsed.manifest.id.trim() !== "" &&
-        parsed.files !== null &&
-        typeof parsed.files === "object"
-      );
+      const parsed: unknown = JSON.parse(content.toString("utf-8"));
+      if (parsed === null || typeof parsed !== "object") {
+        return false;
+      }
+      const record = parsed as { manifest?: { id?: unknown }; files?: unknown };
+      const manifestId = record.manifest?.id;
+      if (typeof manifestId !== "string" || manifestId.trim() === "") {
+        return false;
+      }
+      return record.files !== null && typeof record.files === "object";
     } catch {
       return false;
     }

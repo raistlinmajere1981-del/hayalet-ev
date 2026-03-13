@@ -50,8 +50,14 @@ interface HandshakeEnvelope {
 
 interface MailTransportFacade {
   probeAccount(accountConfig: MailTransportAccountConfig): Promise<ProbeMailAccountResult>;
-  sendMail(accountConfig: MailTransportAccountConfig, message: SendMailRequest): Promise<SendMailResult>;
-  fetchInbox(accountConfig: MailTransportAccountConfig, request?: { limit?: number }): Promise<FetchInboxResult>;
+  sendMail(
+    accountConfig: MailTransportAccountConfig,
+    message: SendMailRequest
+  ): Promise<SendMailResult>;
+  fetchInbox(
+    accountConfig: MailTransportAccountConfig,
+    request?: { limit?: number }
+  ): Promise<FetchInboxResult>;
 }
 
 interface MailIdentitySettingsStore {
@@ -96,8 +102,11 @@ function buildInviteId(now: number): string {
 }
 
 function buildLocalMessageId(prefix: string, token: string, now: number): string {
-  const normalizedToken = token.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
-  return `${prefix}:${normalizedToken || "mail"}:${now}`;
+  const normalizedToken = token
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+  return `${prefix}:${normalizedToken !== "" ? normalizedToken : "mail"}:${now}`;
 }
 
 function buildHandshakeSubject(messageType: HandshakeMessageType): string {
@@ -122,7 +131,9 @@ function serializeHandshakeEnvelope(envelope: HandshakeEnvelope): string {
 }
 
 function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
-  const match = text.match(/--- HAYALET_EV_US1_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_PAYLOAD ---/);
+  const match = text.match(
+    /--- HAYALET_EV_US1_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_PAYLOAD ---/
+  );
   if (match === null) {
     return null;
   }
@@ -137,7 +148,9 @@ function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
     if (
       parsed?.protocol !== HANDSHAKE_PROTOCOL ||
       parsed.version !== HANDSHAKE_VERSION ||
-      (parsed.messageType !== "invite" && parsed.messageType !== "accept" && parsed.messageType !== "profile")
+      (parsed.messageType !== "invite" &&
+        parsed.messageType !== "accept" &&
+        parsed.messageType !== "profile")
     ) {
       return null;
     }
@@ -222,10 +235,10 @@ export class MailIdentityService {
     } = {}
   ) {
     this.transport = options.transport ?? new MailTransportService();
-    this.now = options.now ?? (() => Date.now());
+    this.now = options.now ?? ((): number => Date.now());
     this.settingsStore = {
       loadSettings: options.settingsStore?.loadSettings ?? loadPersistedSettings,
-      saveSettings: options.settingsStore?.saveSettings ?? ((settings) => persistSettingsToDisk(settings)),
+      saveSettings: options.settingsStore?.saveSettings ?? persistSettingsToDisk,
     };
   }
 
@@ -246,10 +259,14 @@ export class MailIdentityService {
       if (requestedId !== null) {
         return account.id === requestedId;
       }
-      return account.email.toLowerCase() === normalizedEmail && account.providerType === draft.providerType;
+      return (
+        account.email.toLowerCase() === normalizedEmail &&
+        account.providerType === draft.providerType
+      );
     });
     const existingAccount = existingIndex >= 0 ? (accounts[existingIndex] ?? null) : null;
-    const nextAccountId = requestedId ?? existingAccount?.id ?? buildMailAccountId(normalizedEmail, draft.providerType);
+    const nextAccountId =
+      requestedId ?? existingAccount?.id ?? buildMailAccountId(normalizedEmail, draft.providerType);
     const nextAccount = this.buildMailAccountConfig(nextAccountId, draft, existingAccount);
 
     if (
@@ -260,7 +277,10 @@ export class MailIdentityService {
           account.providerType === nextAccount.providerType
       )
     ) {
-      return { success: false, error: "A local mail account with the same email and provider already exists." };
+      return {
+        success: false,
+        error: "A local mail account with the same email and provider already exists.",
+      };
     }
 
     if (existingIndex >= 0) {
@@ -311,7 +331,8 @@ export class MailIdentityService {
     if (settings.us1Slot?.selectedRemoteUserId !== null) {
       const selectedRemoteUserId = settings.us1Slot?.selectedRemoteUserId ?? null;
       const hasSelectedRemoteUser = (settings.remoteUsers ?? []).some(
-        (remoteUser) => remoteUser.remoteUserId === selectedRemoteUserId && remoteUser.handshakeState === "active"
+        (remoteUser) =>
+          remoteUser.remoteUserId === selectedRemoteUserId && remoteUser.handshakeState === "active"
       );
       if (!hasSelectedRemoteUser && settings.us1Slot) {
         settings.us1Slot.selectedRemoteUserId = null;
@@ -336,7 +357,10 @@ export class MailIdentityService {
       return { success: false, error: `Mail account is disabled: ${account.id}` };
     }
     if (account.connectionState !== "connected") {
-      return { success: false, error: `Mail account must be connected before inviting a remote user: ${account.id}` };
+      return {
+        success: false,
+        error: `Mail account must be connected before inviting a remote user: ${account.id}`,
+      };
     }
 
     const remoteEmail = normalizeEmail(params.email);
@@ -379,7 +403,8 @@ export class MailIdentityService {
       const remoteUser = this.upsertRemoteUser(settings, {
         remoteUserId,
         email: remoteEmail,
-        nickname: normalizeOptionalText(params.nickname) ?? existingRemoteUser?.nickname ?? remoteEmail,
+        nickname:
+          normalizeOptionalText(params.nickname) ?? existingRemoteUser?.nickname ?? remoteEmail,
         avatar: existingRemoteUser?.avatar ?? "",
         avatarPath: existingRemoteUser?.avatarPath ?? "",
         handshakeState: "invite_sent",
@@ -404,7 +429,8 @@ export class MailIdentityService {
       const remoteUser = this.upsertRemoteUser(settings, {
         remoteUserId,
         email: remoteEmail,
-        nickname: normalizeOptionalText(params.nickname) ?? existingRemoteUser?.nickname ?? remoteEmail,
+        nickname:
+          normalizeOptionalText(params.nickname) ?? existingRemoteUser?.nickname ?? remoteEmail,
         avatar: existingRemoteUser?.avatar ?? "",
         avatarPath: existingRemoteUser?.avatarPath ?? "",
         handshakeState: "error",
@@ -449,10 +475,16 @@ export class MailIdentityService {
 
     const account = this.findMailAccount(settings, remoteUser.linkedMailAccountId);
     if (account === null) {
-      return { success: false, error: `Linked mail account not found: ${remoteUser.linkedMailAccountId}` };
+      return {
+        success: false,
+        error: `Linked mail account not found: ${remoteUser.linkedMailAccountId}`,
+      };
     }
     if (account.connectionState !== "connected") {
-      return { success: false, error: `Mail account must be connected before accept: ${account.id}` };
+      return {
+        success: false,
+        error: `Mail account must be connected before accept: ${account.id}`,
+      };
     }
 
     const profile = this.buildLocalProfile(settings, account);
@@ -477,14 +509,17 @@ export class MailIdentityService {
           "X-Hayalet-Ev-Message-Type": "accept",
         },
         ...(remoteUser.inviteMessageId !== null ? { inReplyTo: remoteUser.inviteMessageId } : {}),
-        ...(replyReference !== null ? { references: replyReference, threadMessageId: replyReference } : {}),
+        ...(replyReference !== null
+          ? { references: replyReference, threadMessageId: replyReference }
+          : {}),
       });
 
       const nextRemoteUser = this.upsertRemoteUser(settings, {
         ...remoteUser,
         handshakeState: "active",
         acceptMessageId: sendResult.transportMessageId,
-        threadMessageId: remoteUser.threadMessageId ?? sendResult.threadMessageId ?? sendResult.transportMessageId,
+        threadMessageId:
+          remoteUser.threadMessageId ?? sendResult.threadMessageId ?? sendResult.transportMessageId,
         lastTransportMessageId: sendResult.transportMessageId,
         lastSyncAt: this.now(),
         lastError: null,
@@ -516,13 +551,19 @@ export class MailIdentityService {
     }
   }
 
-  async syncRemoteUsers(params: Us1SyncRemoteUsersParams = {}): Promise<Us1RemoteUserMutationResult> {
+  async syncRemoteUsers(
+    params: Us1SyncRemoteUsersParams = {}
+  ): Promise<Us1RemoteUserMutationResult> {
     const settings = await this.loadNormalizedSettings();
-    const allAccounts = this.getMailAccounts(settings).filter((account) => account.enabled !== false);
+    const allAccounts = this.getMailAccounts(settings).filter(
+      (account) => account.enabled !== false
+    );
     const accountList =
       normalizeOptionalText(params.mailAccountId) === null
         ? allAccounts
-        : allAccounts.filter((account) => account.id === normalizeOptionalText(params.mailAccountId));
+        : allAccounts.filter(
+            (account) => account.id === normalizeOptionalText(params.mailAccountId)
+          );
 
     if (accountList.length === 0) {
       return { success: false, error: "No local mail account is available for handshake sync." };
@@ -535,6 +576,7 @@ export class MailIdentityService {
 
     for (const account of accountList) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- NOTE: handshake sync is sequential per account.
         const fetchResult = await this.transport.fetchInbox(account, {
           ...(typeof params.limit === "number" ? { limit: params.limit } : {}),
         });
@@ -591,7 +633,10 @@ export class MailIdentityService {
       });
 
       await this.persistSettings(settings);
-      const localMailAccount = this.toLocalMailAccountSummary(this.getMailAccounts(settings), normalizedMailAccountId);
+      const localMailAccount = this.toLocalMailAccountSummary(
+        this.getMailAccounts(settings),
+        normalizedMailAccountId
+      );
       return {
         success: true,
         ...(localMailAccount !== undefined ? { localMailAccount } : {}),
@@ -604,7 +649,10 @@ export class MailIdentityService {
       });
 
       await this.persistSettings(settings);
-      const localMailAccount = this.toLocalMailAccountSummary(this.getMailAccounts(settings), normalizedMailAccountId);
+      const localMailAccount = this.toLocalMailAccountSummary(
+        this.getMailAccounts(settings),
+        normalizedMailAccountId
+      );
       return {
         success: false,
         ...(localMailAccount !== undefined ? { localMailAccount } : {}),
@@ -639,12 +687,18 @@ export class MailIdentityService {
     settings.integrations.mailTransport.accounts = accounts;
   }
 
-  private findMailAccount(settings: AppSettings, mailAccountId: string): MailTransportAccountConfig | null {
+  private findMailAccount(
+    settings: AppSettings,
+    mailAccountId: string
+  ): MailTransportAccountConfig | null {
     return this.getMailAccounts(settings).find((account) => account.id === mailAccountId) ?? null;
   }
 
   private findRemoteUser(settings: AppSettings, remoteUserId: string): RemoteUserIdentity | null {
-    return (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ?? null;
+    return (
+      (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ??
+      null
+    );
   }
 
   private buildMailAccountConfig(
@@ -665,37 +719,52 @@ export class MailIdentityService {
       imap: {
         host: normalizeOptionalText(draft.imap?.host) ?? existingAccount?.imap.host ?? "",
         port:
-          typeof draft.imap?.port === "number" && Number.isInteger(draft.imap.port) && draft.imap.port > 0
+          typeof draft.imap?.port === "number" &&
+          Number.isInteger(draft.imap.port) &&
+          draft.imap.port > 0
             ? draft.imap.port
-            : existingAccount?.imap.port ?? 0,
+            : (existingAccount?.imap.port ?? 0),
         secure:
           typeof draft.imap?.secure === "boolean"
             ? draft.imap.secure
-            : existingAccount?.imap.secure ?? false,
+            : (existingAccount?.imap.secure ?? false),
       },
       smtp: {
         host: normalizeOptionalText(draft.smtp?.host) ?? existingAccount?.smtp.host ?? "",
         port:
-          typeof draft.smtp?.port === "number" && Number.isInteger(draft.smtp.port) && draft.smtp.port > 0
+          typeof draft.smtp?.port === "number" &&
+          Number.isInteger(draft.smtp.port) &&
+          draft.smtp.port > 0
             ? draft.smtp.port
-            : existingAccount?.smtp.port ?? 0,
+            : (existingAccount?.smtp.port ?? 0),
         secure:
           typeof draft.smtp?.secure === "boolean"
             ? draft.smtp.secure
-            : existingAccount?.smtp.secure ?? false,
+            : (existingAccount?.smtp.secure ?? false),
       },
       auth: {
-        user: normalizeOptionalText(draft.auth?.user) ?? existingAccount?.auth.user ?? normalizedEmail,
-        password: normalizeOptionalText(draft.auth?.password) ?? existingAccount?.auth.password ?? "",
-        accessToken: normalizeOptionalText(draft.auth?.accessToken) ?? existingAccount?.auth.accessToken ?? "",
-        refreshToken: normalizeOptionalText(draft.auth?.refreshToken) ?? existingAccount?.auth.refreshToken ?? "",
-        clientId: normalizeOptionalText(draft.auth?.clientId) ?? existingAccount?.auth.clientId ?? "",
-        clientSecret: normalizeOptionalText(draft.auth?.clientSecret) ?? existingAccount?.auth.clientSecret ?? "",
+        user:
+          normalizeOptionalText(draft.auth?.user) ?? existingAccount?.auth.user ?? normalizedEmail,
+        password:
+          normalizeOptionalText(draft.auth?.password) ?? existingAccount?.auth.password ?? "",
+        accessToken:
+          normalizeOptionalText(draft.auth?.accessToken) ?? existingAccount?.auth.accessToken ?? "",
+        refreshToken:
+          normalizeOptionalText(draft.auth?.refreshToken) ??
+          existingAccount?.auth.refreshToken ??
+          "",
+        clientId:
+          normalizeOptionalText(draft.auth?.clientId) ?? existingAccount?.auth.clientId ?? "",
+        clientSecret:
+          normalizeOptionalText(draft.auth?.clientSecret) ??
+          existingAccount?.auth.clientSecret ??
+          "",
         expiresAt:
           typeof draft.auth?.expiresAt === "number" && Number.isFinite(draft.auth.expiresAt)
             ? Math.trunc(draft.auth.expiresAt)
-            : existingAccount?.auth.expiresAt ?? 0,
-        loginMethod: normalizeOptionalText(draft.auth?.loginMethod) ?? existingAccount?.auth.loginMethod ?? "",
+            : (existingAccount?.auth.expiresAt ?? 0),
+        loginMethod:
+          normalizeOptionalText(draft.auth?.loginMethod) ?? existingAccount?.auth.loginMethod ?? "",
       },
       defaultMailbox: existingAccount?.defaultMailbox ?? "INBOX",
       fetchBatchSize: existingAccount?.fetchBatchSize ?? 20,
@@ -730,13 +799,22 @@ export class MailIdentityService {
     };
   }
 
-  private buildStateSnapshot(settings: AppSettings, preferredMailAccountId: string | null = null): Us1StateSnapshot {
+  private buildStateSnapshot(
+    settings: AppSettings,
+    preferredMailAccountId: string | null = null
+  ): Us1StateSnapshot {
     const localMailAccounts = this.getMailAccounts(settings)
       .map((account) => this.toLocalMailAccountSummary(this.getMailAccounts(settings), account.id))
       .filter((account): account is LocalMailAccountSummary => account !== undefined);
     const remoteUsers = sortRemoteUsers(settings.remoteUsers ?? []);
-    const activeRemoteUsers = remoteUsers.filter((remoteUser) => remoteUser.handshakeState === "active");
-    const selectedMailAccountId = this.resolveSelectedMailAccountId(settings, localMailAccounts, preferredMailAccountId);
+    const activeRemoteUsers = remoteUsers.filter(
+      (remoteUser) => remoteUser.handshakeState === "active"
+    );
+    const selectedMailAccountId = this.resolveSelectedMailAccountId(
+      settings,
+      localMailAccounts,
+      preferredMailAccountId
+    );
     const selectedMailAccount = localMailAccounts.find(
       (localMailAccount) => localMailAccount.mailAccountId === selectedMailAccountId
     );
@@ -745,15 +823,15 @@ export class MailIdentityService {
       localMailAccounts,
       remoteUsers,
       activeRemoteUsers,
-      us1Slot:
-        settings.us1Slot ?? {
-          selectedRemoteUserId: null,
-          connectionState: "disconnected",
-          catchCommands: false,
-        },
+      us1Slot: settings.us1Slot ?? {
+        selectedRemoteUserId: null,
+        connectionState: "disconnected",
+        catchCommands: false,
+      },
       selectedMailAccountId,
       canAddRemoteUser:
-        selectedMailAccount?.enabled === true && selectedMailAccount.connectionState === "connected",
+        selectedMailAccount?.enabled === true &&
+        selectedMailAccount.connectionState === "connected",
     };
   }
 
@@ -764,15 +842,23 @@ export class MailIdentityService {
   ): string | null {
     if (
       preferredMailAccountId !== null &&
-      localMailAccounts.some((localMailAccount) => localMailAccount.mailAccountId === preferredMailAccountId)
+      localMailAccounts.some(
+        (localMailAccount) => localMailAccount.mailAccountId === preferredMailAccountId
+      )
     ) {
       return preferredMailAccountId;
     }
 
-    const selectedRemoteUser = this.findRemoteUser(settings, settings.us1Slot?.selectedRemoteUserId ?? "");
+    const selectedRemoteUser = this.findRemoteUser(
+      settings,
+      settings.us1Slot?.selectedRemoteUserId ?? ""
+    );
     if (
       selectedRemoteUser !== null &&
-      localMailAccounts.some((localMailAccount) => localMailAccount.mailAccountId === selectedRemoteUser.linkedMailAccountId)
+      localMailAccounts.some(
+        (localMailAccount) =>
+          localMailAccount.mailAccountId === selectedRemoteUser.linkedMailAccountId
+      )
     ) {
       return selectedRemoteUser.linkedMailAccountId;
     }
@@ -782,7 +868,8 @@ export class MailIdentityService {
         (localMailAccount) =>
           localMailAccount.enabled === true && localMailAccount.connectionState === "connected"
       )?.mailAccountId ??
-      localMailAccounts.find((localMailAccount) => localMailAccount.enabled === true)?.mailAccountId ??
+      localMailAccounts.find((localMailAccount) => localMailAccount.enabled === true)
+        ?.mailAccountId ??
       localMailAccounts[0]?.mailAccountId ??
       null
     );
@@ -819,10 +906,13 @@ export class MailIdentityService {
     settings: AppSettings,
     account: MailTransportAccountConfig
   ): HandshakeEnvelope["profile"] {
-    const nickname = normalizeOptionalText(settings.user?.nickname) ?? normalizeEmail(account.email);
+    const nickname =
+      normalizeOptionalText(settings.user?.nickname) ?? normalizeEmail(account.email);
     const rawAvatar = normalizeOptionalText(settings.user?.avatarPath) ?? "";
     const avatar =
-      rawAvatar.startsWith("https://") || rawAvatar.startsWith("http://") || rawAvatar.startsWith("data:")
+      rawAvatar.startsWith("https://") ||
+      rawAvatar.startsWith("http://") ||
+      rawAvatar.startsWith("data:")
         ? rawAvatar
         : "";
 
@@ -845,7 +935,10 @@ export class MailIdentityService {
         continue;
       }
 
-      const protocolHeader = parseHandshakeHeaderValue(message.parsed.headerLines, "X-Hayalet-Ev-Protocol");
+      const protocolHeader = parseHandshakeHeaderValue(
+        message.parsed.headerLines,
+        "X-Hayalet-Ev-Protocol"
+      );
       if (protocolHeader !== HANDSHAKE_PROTOCOL) {
         continue;
       }
@@ -876,7 +969,8 @@ export class MailIdentityService {
     envelope: HandshakeEnvelope
   ): void {
     const existingRemoteUser = this.findRemoteUser(settings, envelope.profile.remoteUserId);
-    const nextState = existingRemoteUser?.handshakeState === "active" ? "active" : "handshake_pending";
+    const nextState =
+      existingRemoteUser?.handshakeState === "active" ? "active" : "handshake_pending";
 
     this.upsertRemoteUser(settings, {
       remoteUserId: envelope.profile.remoteUserId,
@@ -947,9 +1041,14 @@ export class MailIdentityService {
     });
   }
 
-  private upsertRemoteUser(settings: AppSettings, candidate: RemoteUserIdentity): RemoteUserIdentity {
+  private upsertRemoteUser(
+    settings: AppSettings,
+    candidate: RemoteUserIdentity
+  ): RemoteUserIdentity {
     const remoteUsers = settings.remoteUsers ?? [];
-    const index = remoteUsers.findIndex((remoteUser) => remoteUser.remoteUserId === candidate.remoteUserId);
+    const index = remoteUsers.findIndex(
+      (remoteUser) => remoteUser.remoteUserId === candidate.remoteUserId
+    );
     const existingRemoteUser = index >= 0 ? (remoteUsers[index] ?? null) : null;
 
     const shouldApplyIncomingProfile =
@@ -957,16 +1056,25 @@ export class MailIdentityService {
       candidate.profileRevision >= existingRemoteUser.profileRevision ||
       candidate.handshakeState === "active";
     const nextHandshakeState =
-      existingRemoteUser?.handshakeState === "active" && candidate.handshakeState === "handshake_pending"
+      existingRemoteUser?.handshakeState === "active" &&
+      candidate.handshakeState === "handshake_pending"
         ? "active"
         : candidate.handshakeState;
 
-    const resolvedNickname =
-      shouldApplyIncomingProfile === true
-        ? candidate.nickname ?? candidate.email
-        : existingRemoteUser?.nickname ?? candidate.nickname ?? candidate.email;
-    const resolvedAvatar =
-      shouldApplyIncomingProfile === true ? candidate.avatar ?? "" : existingRemoteUser?.avatar ?? candidate.avatar ?? "";
+    let resolvedNickname: string;
+    let resolvedAvatar: string;
+    let resolvedProfileRevision: number;
+
+    if (shouldApplyIncomingProfile === true) {
+      resolvedNickname = candidate.nickname ?? candidate.email;
+      resolvedAvatar = candidate.avatar ?? "";
+      resolvedProfileRevision = candidate.profileRevision;
+    } else {
+      resolvedNickname = existingRemoteUser.nickname ?? candidate.nickname ?? candidate.email;
+      resolvedAvatar = existingRemoteUser.avatar ?? candidate.avatar ?? "";
+      resolvedProfileRevision = existingRemoteUser.profileRevision;
+    }
+
     const resolvedLastSyncAt = candidate.lastSyncAt ?? existingRemoteUser?.lastSyncAt;
 
     const nextRemoteUser: RemoteUserIdentity = {
@@ -976,15 +1084,13 @@ export class MailIdentityService {
       avatar: resolvedAvatar,
       avatarPath: existingRemoteUser?.avatarPath ?? candidate.avatarPath ?? "",
       handshakeState: nextHandshakeState,
-      profileRevision:
-        shouldApplyIncomingProfile === true
-          ? candidate.profileRevision
-          : existingRemoteUser?.profileRevision ?? candidate.profileRevision,
+      profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
       inviteMessageId: candidate.inviteMessageId ?? existingRemoteUser?.inviteMessageId ?? null,
       acceptMessageId: candidate.acceptMessageId ?? existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: candidate.threadMessageId ?? existingRemoteUser?.threadMessageId ?? null,
-      lastTransportMessageId: candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
+      lastTransportMessageId:
+        candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
       lastError: candidate.lastError ?? null,
       ...(resolvedLastSyncAt !== undefined ? { lastSyncAt: resolvedLastSyncAt } : {}),
     };

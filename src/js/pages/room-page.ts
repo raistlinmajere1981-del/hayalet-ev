@@ -243,7 +243,8 @@ export class RoomPageController implements PageController {
       const page = this.getPage();
       this.markRuntimeReady(webview, false);
       this.runtimeState = "loading";
-      this.lastRuntimeEvent = webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent =
+        webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }
@@ -257,7 +258,8 @@ export class RoomPageController implements PageController {
     webview.addEventListener("did-stop-loading", () => {
       const page = this.getPage();
       this.runtimeState = "ready";
-      this.lastRuntimeEvent = webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
+      this.lastRuntimeEvent =
+        webview.getAttribute("src") ?? toRoomRuntimeFileUrl(this.room.runtimeEntryPath);
       if (page !== null) {
         this.updateRuntimeStatus(page);
       }

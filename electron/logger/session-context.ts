@@ -34,7 +34,9 @@ export function createSessionId(now: Date = new Date()): string {
   const iso = now.toISOString();
   const date = iso.slice(0, 10).replace(/-/g, "");
   const time = iso.slice(11, 19).replace(/:/g, "");
-  const random = Math.random().toString(36).slice(2, 2 + SESSION_RANDOM_LENGTH);
+  const random = Math.random()
+    .toString(36)
+    .slice(2, 2 + SESSION_RANDOM_LENGTH);
   return `${date}-${time}-${random}`;
 }
 
@@ -47,11 +49,11 @@ export function buildSessionMeta(args: {
   return {
     sessionId: args.sessionId,
     startTime: args.startTime,
-    pid: args.pid,
     platform: process.platform,
     nodeVersion: process.version,
     electronVersion: process.versions.electron,
-    appVersion: args.appVersion,
+    ...(args.appVersion !== undefined ? { appVersion: args.appVersion } : {}),
+    ...(args.pid !== undefined ? { pid: args.pid } : {}),
   };
 }
 
@@ -68,7 +70,7 @@ export function buildSessionSummary(args: {
   const resolvedEndTime = args.endTime ?? new Date().toISOString();
   const derivedDuration =
     args.duration ??
-    (() => {
+    ((): number | undefined => {
       const startMs = Date.parse(args.startTime);
       const endMs = Date.parse(resolvedEndTime);
       if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
@@ -80,8 +82,8 @@ export function buildSessionSummary(args: {
   return {
     sessionId: args.sessionId,
     startTime: args.startTime,
-    ...(resolvedEndTime ? { endTime: resolvedEndTime } : {}),
-    ...(args.endReason ? { endReason: args.endReason } : {}),
+    ...(resolvedEndTime.length > 0 ? { endTime: resolvedEndTime } : {}),
+    ...(args.endReason !== undefined ? { endReason: args.endReason } : {}),
     ...(derivedDuration !== undefined ? { duration: derivedDuration } : {}),
     stats: args.stats,
     ...(args.performance ? { performance: args.performance } : {}),
@@ -122,7 +124,9 @@ export function normalizeSessionMeta(raw: Record<string, unknown> | null): Sessi
   return meta;
 }
 
-export function normalizeSessionSummary(raw: Record<string, unknown> | null): SessionSummary | null {
+export function normalizeSessionSummary(
+  raw: Record<string, unknown> | null
+): SessionSummary | null {
   if (!isRecord(raw)) return null;
 
   const sessionId = asString(raw["sessionId"]);
@@ -137,10 +141,8 @@ export function normalizeSessionSummary(raw: Record<string, unknown> | null): Se
 
   const statsRaw = isRecord(raw["stats"]) ? raw["stats"] : {};
   const totalLogs = asNumber(statsRaw["totalLogs"]) ?? 0;
-  const errorCount =
-    asNumber(statsRaw["errorCount"]) ?? asNumber(statsRaw["errors"]) ?? 0;
-  const warningCount =
-    asNumber(statsRaw["warningCount"]) ?? asNumber(statsRaw["warnings"]) ?? 0;
+  const errorCount = asNumber(statsRaw["errorCount"]) ?? asNumber(statsRaw["errors"]) ?? 0;
+  const warningCount = asNumber(statsRaw["warningCount"]) ?? asNumber(statsRaw["warnings"]) ?? 0;
   const chunks = asNumber(statsRaw["chunks"]);
 
   const stats: SessionSummary["stats"] = {
@@ -158,7 +160,7 @@ export function normalizeSessionSummary(raw: Record<string, unknown> | null): Se
 
   const resolvedDuration =
     duration ??
-    (() => {
+    ((): number | undefined => {
       if (startTime.length === 0 || endTime == null) return undefined;
       const startMs = Date.parse(startTime);
       const endMs = Date.parse(endTime);
@@ -185,8 +187,8 @@ export function normalizeSessionSummary(raw: Record<string, unknown> | null): Se
   return {
     sessionId,
     startTime,
-    ...(endTime ? { endTime } : {}),
-    ...(endReason ? { endReason } : {}),
+    ...(endTime !== undefined && endTime.length > 0 ? { endTime } : {}),
+    ...(endReason !== undefined ? { endReason } : {}),
     ...(resolvedDuration !== undefined ? { duration: resolvedDuration } : {}),
     stats,
     ...(performance ? { performance } : {}),

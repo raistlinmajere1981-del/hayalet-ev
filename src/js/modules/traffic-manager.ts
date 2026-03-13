@@ -47,7 +47,6 @@ const TIMING_CONFIG = {
   },
 };
 
-
 const defaultStatus = (): { loading: string; thinking: string; send: string } => ({
   loading: "idle",
   thinking: "idle",
@@ -134,14 +133,18 @@ class TrafficManagerClass {
 
   constructor() {
     this.indicators = { ai0: {}, ai1: {}, ai2: {}, us1: {} };
-    this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState(), us1: defaultState() };
+    this.state = {
+      ai0: defaultState(),
+      ai1: defaultState(),
+      ai2: defaultState(),
+      us1: defaultState(),
+    };
     this.listeners = [];
     this.webviews = {};
     this.pollTimer = null;
     this._runners = {};
     this._skipNextLoading = { ai0: false, ai1: false, ai2: false, us1: false };
     this.logEventFailureWarned = false;
-
 
     this.loadingTracker = new LoadingTracker(TIMING_CONFIG);
     this.thinkingTracker = new ThinkingTracker(TIMING_CONFIG);
@@ -639,7 +642,6 @@ class TrafficManagerClass {
         event,
       });
     }
-
   }
 
   refreshIndicators(provider: string): void {

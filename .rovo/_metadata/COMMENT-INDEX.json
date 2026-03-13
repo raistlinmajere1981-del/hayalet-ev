@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-11T23:52:19.698Z",
+  "generatedAt": "2026-03-13T09:59:07.547Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 429,
-    "filesWithComments": 103,
-    "commentsIndexed": 251,
-    "fileLevelComments": 192,
+    "filesScanned": 443,
+    "filesWithComments": 106,
+    "commentsIndexed": 261,
+    "fileLevelComments": 202,
     "symbolLevelComments": 59,
     "prefixCounts": {
       "none": 18,
       "AI": 0,
-      "NOTE": 228,
+      "NOTE": 238,
       "WARNING": 5,
       "TODO": 0
     }
@@ -84,9 +84,35 @@
         },
         {
           "kind": "note",
-          "startLine": 80,
-          "endLine": 80,
+          "startLine": 84,
+          "endLine": 84,
           "text": "NOTE: Extremely rare: Map set failed or raced. Use a safe fallback.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "electron/database/mail-sidecar-sqlite.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 1,
+          "endLine": 1,
+          "text": "NOTE: Per-account mail metadata sidecar at data/{email}_{provider}/mail-sidecar.db.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -215,8 +241,8 @@
         },
         {
           "kind": "note",
-          "startLine": 244,
-          "endLine": 244,
+          "startLine": 241,
+          "endLine": 241,
           "text": "NOTE: Alias for backward compat.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -653,8 +679,8 @@
         },
         {
           "kind": "note",
-          "startLine": 36,
-          "endLine": 36,
+          "startLine": 38,
+          "endLine": 38,
           "text": "NOTE: Call after app.whenReady() in main.ts.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -682,8 +708,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 286,
-          "endLine": 286,
+          "startLine": 385,
+          "endLine": 385,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -691,8 +717,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 310,
-          "endLine": 310,
+          "startLine": 409,
+          "endLine": 409,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -769,8 +795,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 60,
-          "endLine": 60,
+          "startLine": 61,
+          "endLine": 61,
           "text": "NOTE: Sender nickname preserves the real sender in relay/++cmd scenarios.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -955,8 +981,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 69,
-          "endLine": 69,
+          "startLine": 70,
+          "endLine": 70,
           "text": "NOTE: Inject ServerCommands into CoreEngine to break the circular dependency.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -964,8 +990,8 @@
         },
         {
           "kind": "note",
-          "startLine": 216,
-          "endLine": 216,
+          "startLine": 219,
+          "endLine": 219,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -975,14 +1001,14 @@
     },
     {
       "path": "src/js/app/indicators.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -998,6 +1024,15 @@
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "updateIndicatorAvatars"
+        },
+        {
+          "kind": "note",
+          "startLine": 95,
+          "endLine": 95,
+          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -1048,8 +1083,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 141,
-          "endLine": 141,
+          "startLine": 155,
+          "endLine": 155,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1174,8 +1209,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 74,
-          "endLine": 74,
+          "startLine": 75,
+          "endLine": 75,
           "text": "NOTE: Use debug to avoid toast triggers during init.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1343,8 +1378,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 188,
-          "endLine": 188,
+          "startLine": 185,
+          "endLine": 185,
           "text": "NOTE: Attach event listeners before setting src to avoid race conditions.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1378,8 +1413,8 @@
         },
         {
           "kind": "note",
-          "startLine": 151,
-          "endLine": 151,
+          "startLine": 154,
+          "endLine": 154,
           "text": "NOTE: Skip the next loading trigger after leaving the default page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1387,8 +1422,8 @@
         },
         {
           "kind": "note",
-          "startLine": 161,
-          "endLine": 161,
+          "startLine": 164,
+          "endLine": 164,
           "text": "NOTE: Deprecated; use isSlotUrlExcluded from url-utils.ts directly.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1396,8 +1431,8 @@
         },
         {
           "kind": "note",
-          "startLine": 180,
-          "endLine": 180,
+          "startLine": 183,
+          "endLine": 183,
           "text": "NOTE: Ignore listener errors to keep iteration running.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1405,8 +1440,8 @@
         },
         {
           "kind": "note",
-          "startLine": 280,
-          "endLine": 280,
+          "startLine": 289,
+          "endLine": 289,
           "text": "NOTE: Probe lock flag to avoid concurrent probing.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1414,8 +1449,8 @@
         },
         {
           "kind": "note",
-          "startLine": 353,
-          "endLine": 353,
+          "startLine": 362,
+          "endLine": 362,
           "text": "NOTE: Skip if already probing this provider.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1423,8 +1458,8 @@
         },
         {
           "kind": "note",
-          "startLine": 406,
-          "endLine": 406,
+          "startLine": 415,
+          "endLine": 415,
           "text": "NOTE: Use a shorter delay to keep polling responsive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1432,8 +1467,8 @@
         },
         {
           "kind": "note",
-          "startLine": 746,
-          "endLine": 746,
+          "startLine": 763,
+          "endLine": 763,
           "text": "NOTE: Ignore listener errors to keep iteration running.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1597,8 +1632,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 350,
-          "endLine": 350,
+          "startLine": 432,
+          "endLine": 432,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1606,9 +1641,53 @@
         },
         {
           "kind": "note",
-          "startLine": 369,
-          "endLine": 369,
+          "startLine": 451,
+          "endLine": 451,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/analyze/message-renderer.ts",
+      "totalComments": 3,
+      "byKind": {
+        "note": 3
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 3,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 303,
+          "endLine": 303,
+          "text": "NOTE: Virtualized list heights are runtime-derived from message count.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 319,
+          "endLine": 319,
+          "text": "NOTE: Virtualization spacers depend on runtime message counts.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 413,
+          "endLine": 413,
+          "text": "NOTE: Virtualized spacers use runtime heights based on scroll state.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -1632,8 +1711,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 484,
-          "endLine": 484,
+          "startLine": 556,
+          "endLine": 556,
           "text": "NOTE: Clear the search timeout to avoid leaks.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1643,14 +1722,14 @@
     },
     {
       "path": "src/js/pages/assistant/assistant.ts",
-      "totalComments": 5,
+      "totalComments": 6,
       "byKind": {
-        "note": 5
+        "note": 6
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 5,
+        "NOTE": 6,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1685,8 +1764,17 @@
         },
         {
           "kind": "note",
-          "startLine": 1899,
-          "endLine": 1899,
+          "startLine": 759,
+          "endLine": 759,
+          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 1900,
+          "endLine": 1900,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1694,8 +1782,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1955,
-          "endLine": 1955,
+          "startLine": 1956,
+          "endLine": 1956,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1873,14 +1961,14 @@
     },
     {
       "path": "src/js/pages/entrance.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1888,8 +1976,17 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 664,
-          "endLine": 664,
+          "startLine": 234,
+          "endLine": 234,
+          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 539,
+          "endLine": 539,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1949,9 +2046,61 @@
         },
         {
           "kind": "note",
-          "startLine": 1331,
-          "endLine": 1331,
+          "startLine": 1328,
+          "endLine": 1328,
           "text": "NOTE: Level mapping: 0=log, 1=warn, 2=error, 3=debug.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/opencode-ui/chat-events.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 33,
+          "endLine": 33,
+          "text": "NOTE: Auto-resize relies on runtime scrollHeight; CSS max-height clamps the result.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/opencode-ui/composer-actions.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 0,
+        "AI": 0,
+        "NOTE": 1,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 284,
+          "endLine": 284,
+          "text": "NOTE: Auto-resize relies on runtime scrollHeight; keep inline height reset.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -2014,14 +2163,14 @@
     },
     {
       "path": "src/js/ui/canvas-manager.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -2037,6 +2186,15 @@
           "prefix": "NOTE",
           "scopeType": "interface",
           "scopeName": "CanvasOptions"
+        },
+        {
+          "kind": "note",
+          "startLine": 29,
+          "endLine": 29,
+          "text": "NOTE: Runtime canvas backgrounds stay inline to match caller intent.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
         }
       ]
     },
@@ -2098,14 +2256,14 @@
     },
     {
       "path": "src/js/ui/splash-screen.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -2116,6 +2274,15 @@
           "startLine": 85,
           "endLine": 85,
           "text": "NOTE: Force re-fetch after injecting DOM.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 131,
+          "endLine": 131,
+          "text": "NOTE: Progress is runtime-driven via CSS var to avoid width injection.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -2139,8 +2306,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 273,
-          "endLine": 273,
+          "startLine": 296,
+          "endLine": 296,
           "text": "NOTE: Avoid Logger.debug() here to prevent init issues during startup.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2148,8 +2315,8 @@
         },
         {
           "kind": "note",
-          "startLine": 331,
-          "endLine": 331,
+          "startLine": 354,
+          "endLine": 354,
           "text": "NOTE: Expose to window for consistent access across Vite HMR reloads.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2159,14 +2326,14 @@
     },
     {
       "path": "src/js/ui/toast-manager.ts",
-      "totalComments": 1,
+      "totalComments": 2,
       "byKind": {
-        "note": 1
+        "note": 2
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 1,
+        "NOTE": 2,
         "WARNING": 0,
         "TODO": 0
       },
@@ -2174,8 +2341,17 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 299,
-          "endLine": 299,
+          "startLine": 123,
+          "endLine": 123,
+          "text": "NOTE: Duration is runtime-defined; keep via CSS var.",
+          "prefix": "NOTE",
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 300,
+          "endLine": 300,
           "text": "NOTE: Deprecated alias retained for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2200,8 +2376,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 61,
-          "endLine": 61,
+          "startLine": 76,
+          "endLine": 76,
           "text": "NOTE: Some LLMs occasionally send tool_input as a raw string; parse before failing.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3015,14 +3191,14 @@
     },
     {
       "path": "src/mcp-server/tools/log/integration.ts",
-      "totalComments": 2,
+      "totalComments": 1,
       "byKind": {
-        "note": 2
+        "note": 1
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 1,
         "WARNING": 0,
         "TODO": 0
       },
@@ -3033,15 +3209,6 @@
           "startLine": 1,
           "endLine": 1,
           "text": "NOTE: Integration layer for legacy log tooling.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 176,
-          "endLine": 176,
-          "text": "NOTE: Ignore malformed summary files and continue with basic session info.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -3636,32 +3803,6 @@
       ]
     },
     {
-      "path": "src/mcp-server/utils/log-utils.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 137,
-          "endLine": 137,
-          "text": "NOTE: Ignore parse errors.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
       "path": "src/mcp-server/utils/mcp-logger.ts",
       "totalComments": 6,
       "byKind": {
@@ -3688,8 +3829,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 205,
-          "endLine": 205,
+          "startLine": 208,
+          "endLine": 208,
           "text": "WARNING: stderr is safe here; stdout must remain valid JSON-RPC output.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -3697,8 +3838,8 @@
         },
         {
           "kind": "note",
-          "startLine": 265,
-          "endLine": 265,
+          "startLine": 267,
+          "endLine": 267,
           "text": "NOTE: Sanitize arguments by truncating large payloads.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3706,8 +3847,8 @@
         },
         {
           "kind": "note",
-          "startLine": 276,
-          "endLine": 276,
+          "startLine": 278,
+          "endLine": 278,
           "text": "NOTE: Sanitize results by truncating large payloads.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -3715,8 +3856,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 325,
-          "endLine": 325,
+          "startLine": 327,
+          "endLine": 327,
           "text": "WARNING: stderr is the only safe console channel here because stdout must remain valid JSON-RPC.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -3724,8 +3865,8 @@
         },
         {
           "kind": "note",
-          "startLine": 338,
-          "endLine": 338,
+          "startLine": 340,
+          "endLine": 340,
           "text": "NOTE: Startup logging is written to mcp-tools.jsonl because stdout must stay clean for JSON-RPC.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4117,8 +4258,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 118,
-          "endLine": 118,
+          "startLine": 210,
+          "endLine": 210,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4425,7 +4566,7 @@
       "name": "initPaths",
       "comments": [
         {
-          "startLine": 36,
+          "startLine": 38,
           "kind": "note",
           "text": "NOTE: Call after app.whenReady() in main.ts."
         }
@@ -4437,7 +4578,7 @@
       "name": "readFlagValue",
       "comments": [
         {
-          "startLine": 286,
+          "startLine": 385,
           "kind": "note",
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive."
         }
@@ -4473,7 +4614,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 141,
+          "startLine": 155,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }
@@ -4509,7 +4650,7 @@
       "name": "waitForDomReady",
       "comments": [
         {
-          "startLine": 188,
+          "startLine": 185,
           "kind": "note",
           "text": "NOTE: Attach event listeners before setting src to avoid race conditions."
         }

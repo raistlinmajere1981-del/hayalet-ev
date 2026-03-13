@@ -769,9 +769,9 @@
     align-items: flex-start;
     gap: var(--space-1);
   }
-  
+
   .ds-rtab-panel--health .ds-kv-row__value {
     width: 100%;
     text-align: left;
   }
-  }
+}

@@ -108,8 +108,7 @@ export function createDefaultHandler(
 ) => Promise<{ success: boolean; command: string; args: string | undefined; detail: string }> {
   return async (payload: CommandPayload = {}) => {
     const argsValue = payload.args ?? "";
-    const info =
-      argsValue !== "" ? commandRuntimeT("logArgsInfo", { args: argsValue }) : "";
+    const info = argsValue !== "" ? commandRuntimeT("logArgsInfo", { args: argsValue }) : "";
     Logger.panel(
       LogCategory.COMMAND,
       LogLevel.INFO,

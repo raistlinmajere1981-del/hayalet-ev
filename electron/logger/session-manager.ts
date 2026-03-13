@@ -2,7 +2,7 @@ import { mkdir, writeFile, readFile, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { Paths } from "../paths.ts";
-import type { AppState, SessionListItem } from "@electron/types";
+import type { AppState, SessionListItem, SessionMeta, SessionSummary } from "@electron/types";
 import { translateElectronMessage } from "../i18n/language-service.ts";
 import {
   buildSessionMeta,
@@ -165,12 +165,12 @@ export async function listSessions(): Promise<SessionListItem[]> {
         let summary = null;
 
         try {
+          // eslint-disable-next-line no-await-in-loop -- NOTE: keep per-entry IO sequential to cap load.
           const [metaContent, summaryContent] = await Promise.all([
             existsSync(metaPath) ? readFile(metaPath, "utf-8") : Promise.resolve(null),
             existsSync(summaryPath) ? readFile(summaryPath, "utf-8") : Promise.resolve(null),
           ]);
-          meta =
-            metaContent !== null ? normalizeSessionMeta(parseJsonObject(metaContent)) : null;
+          meta = metaContent !== null ? normalizeSessionMeta(parseJsonObject(metaContent)) : null;
           summary =
             summaryContent !== null
               ? normalizeSessionSummary(parseJsonObject(summaryContent))

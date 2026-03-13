@@ -74,8 +74,7 @@ export async function handleToolCall(
   }
 
   // NOTE: Some LLMs occasionally send tool_input as a raw string; parse before failing.
-  let safeArgs: Record<string, unknown> | undefined =
-    typeof args === "string" ? undefined : args;
+  let safeArgs: Record<string, unknown> | undefined = typeof args === "string" ? undefined : args;
   if (typeof args === "string") {
     try {
       safeArgs = JSON.parse(args) as Record<string, unknown>;
@@ -107,12 +106,7 @@ export async function handleToolCall(
   }
 
   try {
-    return await executeHandlerWithLogging(
-      name,
-      safeArgs as Record<string, unknown> | undefined,
-      handler,
-      logging
-    );
+    return await executeHandlerWithLogging(name, safeArgs, handler, logging);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

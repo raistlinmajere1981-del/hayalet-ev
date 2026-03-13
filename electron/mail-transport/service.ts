@@ -4,7 +4,10 @@ import nodemailer, { type SendMailOptions } from "nodemailer";
 
 import type { MailTransportAccountConfig } from "@shared/settings.js";
 import { hashString, normalizeText } from "../database/hash-utils.js";
-import { MailSidecarStoreManager, type MailSessionMapRecord } from "../database/mail-sidecar-manager.js";
+import {
+  MailSidecarStoreManager,
+  type MailSessionMapRecord,
+} from "../database/mail-sidecar-manager.js";
 import {
   applyMailTransportAccountDefaults,
   type ResolvedMailTransportAccountConfig,
@@ -68,7 +71,9 @@ function toTimestamp(value: Date | string | number | null | undefined, fallback:
   return fallback;
 }
 
-function flattenAddresses(value: AddressObject | AddressObject[] | undefined): MailTransportMessageAddress[] {
+function flattenAddresses(
+  value: AddressObject | AddressObject[] | undefined
+): MailTransportMessageAddress[] {
   if (value === undefined) {
     return [];
   }
@@ -98,9 +103,16 @@ function normalizeParsedAttachment(
   };
 }
 
-function normalizeReferences(references: ParsedMail["references"], inReplyTo?: string | undefined): string[] {
+function normalizeReferences(
+  references: ParsedMail["references"],
+  inReplyTo?: string | undefined
+): string[] {
   const values = [
-    ...(Array.isArray(references) ? references : typeof references === "string" ? [references] : []),
+    ...(Array.isArray(references)
+      ? references
+      : typeof references === "string"
+        ? [references]
+        : []),
     ...(typeof inReplyTo === "string" ? [inReplyTo] : []),
   ]
     .map((entry) => normalizeOptionalText(entry))
@@ -122,7 +134,11 @@ function parseCursor(cursor: string | null | undefined): number | null {
   if (match === null) {
     return null;
   }
-  const parsed = Number.parseInt(match[1], 10);
+  const [, raw] = match;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -169,7 +185,9 @@ function buildTransportMessageId(accountId: string, localMessageId: string, now:
   return `<${hashString(`${accountId}:${localMessageId}:${now}`)}@${DEFAULT_DOMAIN}>`;
 }
 
-function isAuthenticationError(error: Error & { code?: unknown; authenticationFailed?: unknown }): boolean {
+function isAuthenticationError(
+  error: Error & { code?: unknown; authenticationFailed?: unknown }
+): boolean {
   if (error.code === "EAUTH" || error.authenticationFailed === true) {
     return true;
   }
@@ -201,7 +219,9 @@ export class MailTransportError extends Error {
     this.name = "MailTransportError";
     this.kind = kind;
     this.retriable = options.retriable ?? false;
-    this.details = options.details;
+    if (options.details !== undefined) {
+      this.details = options.details;
+    }
   }
 }
 
@@ -239,11 +259,13 @@ function classifyTransportError(
     return new MailTransportError(fallbackKind, error.message, {
       cause: error,
       retriable,
-      details: errorCode !== "" ? { code: errorCode } : undefined,
+      ...(errorCode !== "" ? { details: { code: errorCode } } : {}),
     });
   }
 
-  return new MailTransportError(fallbackKind, String(error), { retriable: fallbackKind === "transport_error" });
+  return new MailTransportError(fallbackKind, String(error), {
+    retriable: fallbackKind === "transport_error",
+  });
 }
 
 export class MailTransportService {
@@ -251,7 +273,9 @@ export class MailTransportService {
   private maxRetries: number;
   private now: () => number;
   private wait: (ms: number) => Promise<void>;
-  private createImapClient: (account: ResolvedMailTransportAccountConfig) => MailTransportImapClient;
+  private createImapClient: (
+    account: ResolvedMailTransportAccountConfig
+  ) => MailTransportImapClient;
   private createSmtpTransporter: (
     account: ResolvedMailTransportAccountConfig
   ) => MailTransportSmtpTransporter;
@@ -259,26 +283,27 @@ export class MailTransportService {
   constructor(options: MailTransportServiceOptions = {}) {
     this.retryBaseMs = options.retryBaseMs ?? 1500;
     this.maxRetries = options.maxRetries ?? 2;
-    this.now = options.now ?? (() => Date.now());
+    this.now = options.now ?? ((): number => Date.now());
     this.wait =
       options.wait ??
-      (async (ms: number) => {
+      (async (ms: number): Promise<void> => {
         await new Promise((resolve) => setTimeout(resolve, ms));
       });
     this.createImapClient =
       options.createImapClient ??
-      ((account) => {
+      ((account): MailTransportImapClient => {
+        const loginMethod = normalizeOptionalText(account.auth.loginMethod);
         const auth =
           account.authType === "oauth2"
             ? {
                 user: account.auth.user,
                 accessToken: normalizeOptionalText(account.auth.accessToken) ?? "",
-                loginMethod: normalizeOptionalText(account.auth.loginMethod) ?? undefined,
+                ...(loginMethod !== null ? { loginMethod } : {}),
               }
             : {
                 user: account.auth.user,
                 pass: normalizeOptionalText(account.auth.password) ?? "",
-                loginMethod: normalizeOptionalText(account.auth.loginMethod) ?? undefined,
+                ...(loginMethod !== null ? { loginMethod } : {}),
               };
 
         const config: ImapFlowOptions = {
@@ -293,17 +318,25 @@ export class MailTransportService {
       });
     this.createSmtpTransporter =
       options.createSmtpTransporter ??
-      ((account) => {
+      ((account): MailTransportSmtpTransporter => {
+        const refreshToken = normalizeOptionalText(account.auth.refreshToken);
+        const clientId = normalizeOptionalText(account.auth.clientId);
+        const clientSecret = normalizeOptionalText(account.auth.clientSecret);
+        const expiresAt = account.auth.expiresAt;
+        const expires =
+          typeof expiresAt === "number" && Number.isFinite(expiresAt) && expiresAt > 0
+            ? expiresAt
+            : undefined;
         const auth =
           account.authType === "oauth2"
             ? {
                 type: "OAuth2" as const,
                 user: account.auth.user,
                 accessToken: normalizeOptionalText(account.auth.accessToken) ?? "",
-                refreshToken: normalizeOptionalText(account.auth.refreshToken) ?? undefined,
-                clientId: normalizeOptionalText(account.auth.clientId) ?? undefined,
-                clientSecret: normalizeOptionalText(account.auth.clientSecret) ?? undefined,
-                expires: account.auth.expiresAt && account.auth.expiresAt > 0 ? account.auth.expiresAt : undefined,
+                ...(refreshToken !== null ? { refreshToken } : {}),
+                ...(clientId !== null ? { clientId } : {}),
+                ...(clientSecret !== null ? { clientSecret } : {}),
+                ...(expires !== undefined ? { expires } : {}),
               }
             : {
                 user: account.auth.user,
@@ -326,7 +359,7 @@ export class MailTransportService {
 
     const transporter = this.createSmtpTransporter(account);
     const client = this.createImapClient(account);
-    let imapConnected = false;
+    let imapConnected: boolean = false;
 
     try {
       await this.withRetry("probeSmtp", async () => {
@@ -335,8 +368,8 @@ export class MailTransportService {
 
       await this.withRetry("probeImap", async () => {
         await client.connect();
-        imapConnected = true;
       });
+      imapConnected = true;
 
       return {
         accountId: account.id,
@@ -360,12 +393,16 @@ export class MailTransportService {
     }
   }
 
-  async sendMail(accountConfig: MailTransportAccountConfig, message: SendMailRequest): Promise<SendMailResult> {
+  async sendMail(
+    accountConfig: MailTransportAccountConfig,
+    message: SendMailRequest
+  ): Promise<SendMailResult> {
     const account = this.resolveAccount(accountConfig);
     this.validateSmtpAccount(account);
 
     const sidecar = new MailSidecarStoreManager(account.id);
-    const remoteUserId = normalizeOptionalText(message.remoteUserId) ?? account.binding.remoteUserId;
+    const remoteUserId =
+      normalizeOptionalText(message.remoteUserId) ?? account.binding.remoteUserId;
     const localSessionId =
       normalizeOptionalText(message.localSessionId) ?? account.binding.defaultLocalSessionId;
     const transportMessageId = normalizeMessageId(
@@ -396,12 +433,15 @@ export class MailTransportService {
     const transporter = this.createSmtpTransporter(account);
 
     try {
-      const info = await this.withRetry("sendMail", async () => {
-        return await transporter.sendMail(this.buildSendMailOptions(account, message, transportMessageId));
+      const info = await this.withRetry("sendMail", async (): Promise<Record<string, unknown>> => {
+        return await transporter.sendMail(
+          this.buildSendMailOptions(account, message, transportMessageId)
+        );
       });
 
+      const infoMessageId = (info as { messageId?: string }).messageId;
       const resolvedTransportMessageId = normalizeMessageId(
-        normalizeOptionalText((info as { messageId?: string }).messageId) ?? transportMessageId
+        normalizeOptionalText(infoMessageId) ?? transportMessageId
       );
 
       sidecar.upsertMessageMeta({
@@ -420,16 +460,24 @@ export class MailTransportService {
         });
       }
 
+      const accepted = this.collectAddressList(info["accepted"]);
+      const rejected = this.collectAddressList(info["rejected"]);
+      const pending = this.collectAddressList(info["pending"]);
+      const responseValue = info["response"];
+      const response = normalizeOptionalText(
+        typeof responseValue === "string" ? responseValue : null
+      );
+
       return {
         accountId: account.id,
         localMessageId: message.localMessageId,
         transportMessageId: resolvedTransportMessageId,
         deliveryState: "sent",
         headersHash,
-        accepted: this.collectAddressList(info["accepted"]),
-        rejected: this.collectAddressList(info["rejected"]),
-        pending: this.collectAddressList(info["pending"]),
-        response: normalizeOptionalText(typeof info["response"] === "string" ? info["response"] : null),
+        accepted,
+        rejected,
+        pending,
+        response,
         remoteUserId,
         localSessionId,
         threadMessageId,
@@ -456,17 +504,19 @@ export class MailTransportService {
 
     const sidecar = new MailSidecarStoreManager(account.id);
     const mailbox = normalizeOptionalText(request.mailbox) ?? account.defaultMailbox;
-    const limit = typeof request.limit === "number" && request.limit > 0 ? Math.trunc(request.limit) : account.fetchBatchSize;
-    const existingCursor = normalizeOptionalText(request.cursor) ?? sidecar.getSyncCursor(account.id)?.cursor ?? null;
+    const limit =
+      typeof request.limit === "number" && request.limit > 0
+        ? Math.trunc(request.limit)
+        : account.fetchBatchSize;
+    const existingCursor =
+      normalizeOptionalText(request.cursor) ?? sidecar.getSyncCursor(account.id)?.cursor ?? null;
     const sinceUid = parseCursor(existingCursor);
     const client = this.createImapClient(account);
 
-    let lock:
-      | {
-          path: string;
-          release(): void;
-        }
-      | null = null;
+    let lock: {
+      path: string;
+      release(): void;
+    } | null = null;
 
     try {
       await this.withRetry("fetchInbox", async () => {
@@ -499,18 +549,24 @@ export class MailTransportService {
           continue;
         }
 
-        const processed = await this.processIncomingMessage(account, {
+        const requestPayload: ProcessIncomingMessageRequest = {
           mailbox,
           uid: message.uid,
           source: message.source,
           internalDate: message.internalDate ?? null,
-          envelope: message.envelope,
-          flags: message.flags,
           threadId: normalizeOptionalText(message.threadId),
-          remoteUserId: request.remoteUserId,
-          localSessionId: request.localSessionId,
-          includeAttachmentContent: request.includeAttachmentContent,
-        });
+          ...(message.envelope !== undefined ? { envelope: message.envelope } : {}),
+          ...(message.flags !== undefined ? { flags: message.flags } : {}),
+          ...(request.remoteUserId !== undefined ? { remoteUserId: request.remoteUserId } : {}),
+          ...(request.localSessionId !== undefined
+            ? { localSessionId: request.localSessionId }
+            : {}),
+          ...(request.includeAttachmentContent !== undefined
+            ? { includeAttachmentContent: request.includeAttachmentContent }
+            : {}),
+        };
+
+        const processed = await this.processIncomingMessage(account, requestPayload);
 
         messages.push(processed);
         maxUid = maxUid === null ? message.uid : Math.max(maxUid, message.uid);
@@ -555,10 +611,17 @@ export class MailTransportService {
     const account = this.resolveAccount(accountConfig);
     this.validateAccountEnabled(account);
     const sidecar = new MailSidecarStoreManager(account.id);
-    const parsed = await this.parseTransportMessage(request.source, {
-      receivedAt: request.internalDate ?? undefined,
-      includeAttachmentContent: request.includeAttachmentContent,
-    });
+    const parseOptions: {
+      receivedAt?: string | number | Date;
+      includeAttachmentContent?: boolean;
+    } = {};
+    if (request.internalDate != null) {
+      parseOptions.receivedAt = request.internalDate;
+    }
+    if (request.includeAttachmentContent !== undefined) {
+      parseOptions.includeAttachmentContent = request.includeAttachmentContent;
+    }
+    const parsed = await this.parseTransportMessage(request.source, parseOptions);
 
     const fingerprint = this.computeReceiptFingerprint(parsed);
     const isDuplicate = sidecar.hasProcessedReceipt({
@@ -569,7 +632,12 @@ export class MailTransportService {
     const sessionContext = this.resolveSessionContext(account, sidecar, parsed, request);
     const localMessageId =
       normalizeOptionalText(request.localMessageId) ??
-      buildDefaultLocalMessageId(account.id, fingerprint, request.uid ?? null, sessionContext.remoteUserId);
+      buildDefaultLocalMessageId(
+        account.id,
+        fingerprint,
+        request.uid ?? null,
+        sessionContext.remoteUserId
+      );
     const deliveryState = isDuplicate ? "duplicate_skipped" : "received";
 
     if (!isDuplicate && parsed.transportMessageId !== null) {
@@ -581,7 +649,11 @@ export class MailTransportService {
       });
     }
 
-    if (!isDuplicate && sessionContext.remoteUserId !== null && sessionContext.localSessionId !== null) {
+    if (
+      !isDuplicate &&
+      sessionContext.remoteUserId !== null &&
+      sessionContext.localSessionId !== null
+    ) {
       sidecar.upsertSessionMapping({
         remoteUserId: sessionContext.remoteUserId,
         localSessionId: sessionContext.localSessionId,
@@ -592,7 +664,9 @@ export class MailTransportService {
 
     if (!isDuplicate) {
       sidecar.markReceiptProcessed({
-        transportMessageId: parsed.transportMessageId ?? buildTransportMessageId(account.id, localMessageId, this.now()),
+        transportMessageId:
+          parsed.transportMessageId ??
+          buildTransportMessageId(account.id, localMessageId, this.now()),
         checksum: fingerprint,
         processedAt: this.now(),
       });
@@ -630,9 +704,13 @@ export class MailTransportService {
 
     return {
       transportMessageId:
-        normalizeOptionalText(parsed.messageId) !== null ? normalizeMessageId(parsed.messageId as string) : null,
+        normalizeOptionalText(parsed.messageId) !== null
+          ? normalizeMessageId(parsed.messageId as string)
+          : null,
       inReplyTo:
-        normalizeOptionalText(parsed.inReplyTo) !== null ? normalizeMessageId(parsed.inReplyTo as string) : null,
+        normalizeOptionalText(parsed.inReplyTo) !== null
+          ? normalizeMessageId(parsed.inReplyTo as string)
+          : null,
       references: normalizeReferences(parsed.references, parsed.inReplyTo),
       subject: normalizeOptionalText(parsed.subject),
       text: normalizeText(parsed.text ?? ""),
@@ -671,13 +749,18 @@ export class MailTransportService {
     );
   }
 
-  private resolveAccount(accountConfig: MailTransportAccountConfig): ResolvedMailTransportAccountConfig {
+  private resolveAccount(
+    accountConfig: MailTransportAccountConfig
+  ): ResolvedMailTransportAccountConfig {
     return applyMailTransportAccountDefaults(accountConfig);
   }
 
   private validateAccountEnabled(account: ResolvedMailTransportAccountConfig): void {
     if (account.enabled !== true) {
-      throw new MailTransportError("config_error", `Mail transport account is disabled: ${account.id}`);
+      throw new MailTransportError(
+        "config_error",
+        `Mail transport account is disabled: ${account.id}`
+      );
     }
   }
 
@@ -687,19 +770,22 @@ export class MailTransportService {
       throw new MailTransportError("config_error", `SMTP host missing for account: ${account.id}`);
     }
     if (normalizeOptionalText(account.auth.user) === null) {
-      throw new MailTransportError("config_error", `Mail auth user missing for account: ${account.id}`);
+      throw new MailTransportError(
+        "config_error",
+        `Mail auth user missing for account: ${account.id}`
+      );
     }
-    if (
-      account.authType === "password" &&
-      normalizeOptionalText(account.auth.password) === null
-    ) {
-      throw new MailTransportError("config_error", `Mail password missing for account: ${account.id}`);
+    if (account.authType === "password" && normalizeOptionalText(account.auth.password) === null) {
+      throw new MailTransportError(
+        "config_error",
+        `Mail password missing for account: ${account.id}`
+      );
     }
-    if (
-        account.authType === "oauth2" &&
-        normalizeOptionalText(account.auth.accessToken) === null
-      ) {
-      throw new MailTransportError("config_error", `Mail access token missing for account: ${account.id}`);
+    if (account.authType === "oauth2" && normalizeOptionalText(account.auth.accessToken) === null) {
+      throw new MailTransportError(
+        "config_error",
+        `Mail access token missing for account: ${account.id}`
+      );
     }
   }
 
@@ -709,19 +795,22 @@ export class MailTransportService {
       throw new MailTransportError("config_error", `IMAP host missing for account: ${account.id}`);
     }
     if (normalizeOptionalText(account.auth.user) === null) {
-      throw new MailTransportError("config_error", `Mail auth user missing for account: ${account.id}`);
+      throw new MailTransportError(
+        "config_error",
+        `Mail auth user missing for account: ${account.id}`
+      );
     }
-    if (
-      account.authType === "password" &&
-      normalizeOptionalText(account.auth.password) === null
-    ) {
-      throw new MailTransportError("config_error", `Mail password missing for account: ${account.id}`);
+    if (account.authType === "password" && normalizeOptionalText(account.auth.password) === null) {
+      throw new MailTransportError(
+        "config_error",
+        `Mail password missing for account: ${account.id}`
+      );
     }
-    if (
-      account.authType === "oauth2" &&
-      normalizeOptionalText(account.auth.accessToken) === null
-    ) {
-      throw new MailTransportError("config_error", `Mail access token missing for account: ${account.id}`);
+    if (account.authType === "oauth2" && normalizeOptionalText(account.auth.accessToken) === null) {
+      throw new MailTransportError(
+        "config_error",
+        `Mail access token missing for account: ${account.id}`
+      );
     }
   }
 
@@ -735,13 +824,17 @@ export class MailTransportService {
       to: message.to,
       ...(message.cc !== undefined ? { cc: message.cc } : {}),
       ...(message.bcc !== undefined ? { bcc: message.bcc } : {}),
-      ...(normalizeOptionalText(message.replyTo) !== null ? { replyTo: message.replyTo ?? undefined } : {}),
+      ...(normalizeOptionalText(message.replyTo) !== null
+        ? { replyTo: message.replyTo ?? undefined }
+        : {}),
       subject: message.subject,
       ...(typeof message.text === "string" ? { text: message.text } : {}),
       ...(typeof message.html === "string" ? { html: message.html } : {}),
       ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
-      ...(normalizeOptionalText(message.inReplyTo) !== null ? { inReplyTo: message.inReplyTo ?? undefined } : {}),
-      ...(message.references !== undefined ? { references: message.references } : {}),
+      ...(normalizeOptionalText(message.inReplyTo) !== null
+        ? { inReplyTo: message.inReplyTo ?? undefined }
+        : {}),
+      ...(message.references != null ? { references: message.references } : {}),
       ...(message.headers !== undefined ? { headers: message.headers } : {}),
       messageId: transportMessageId,
     };
@@ -813,6 +906,7 @@ export class MailTransportService {
 
     for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- NOTE: retry loop is sequential by design.
         return await run();
       } catch (error) {
         const classified = classifyTransportError(error);
@@ -828,6 +922,7 @@ export class MailTransportService {
           throw classified;
         }
 
+        // eslint-disable-next-line no-await-in-loop -- NOTE: backoff must remain sequential.
         await this.wait(this.retryBaseMs * attempt);
       }
     }

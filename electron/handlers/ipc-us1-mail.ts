@@ -14,7 +14,10 @@ import { registerHandler } from "./ipc-helpers.ts";
 
 export function setupUs1MailHandlers(): void {
   registerHandler("us1-upsert-mail-account", async (_event, draft: unknown, options: unknown) => {
-    return await mailIdentityService.upsertMailAccount(draft as Us1MailAccountDraft, options as { verifyAfterSave?: boolean });
+    return await mailIdentityService.upsertMailAccount(
+      draft as Us1MailAccountDraft,
+      options as { verifyAfterSave?: boolean }
+    );
   });
 
   registerHandler("us1-verify-mail-account", async (_event, params: unknown) => {

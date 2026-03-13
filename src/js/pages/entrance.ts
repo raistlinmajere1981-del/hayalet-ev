@@ -232,7 +232,10 @@ export class EntranceHallController {
         const mimeType = getMimeTypeFromPath(candidate);
         avatarElement.innerHTML = ``;
         // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
-        avatarElement.style.setProperty("--avatar-image", `url(data:${mimeType};base64,${imageData})`);
+        avatarElement.style.setProperty(
+          "--avatar-image",
+          `url(data:${mimeType};base64,${imageData})`
+        );
         return true;
       };
 

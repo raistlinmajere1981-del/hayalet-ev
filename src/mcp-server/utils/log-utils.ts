@@ -35,13 +35,12 @@ function getBaseLogsDir(logDir: string): string {
 
 export function getLogDirCandidates(logDir: string, app: LogAppId = "app"): string[] {
   const baseLogsDir = getBaseLogsDir(logDir);
-  const dirNames =
-    app === "app" || app === "hayalet-ev" ? [...MAIN_APP_LOG_DIR_CANDIDATES] : [app];
+  const dirNames = app === "app" || app === "hayalet-ev" ? [...MAIN_APP_LOG_DIR_CANDIDATES] : [app];
 
   return Array.from(new Set(dirNames.map((dirName) => join(baseLogsDir, dirName))));
 }
 
-export async function resolveExistingLogDir(logDir: string, app: LogAppId = "app"): Promise<string> {
+export function resolveExistingLogDir(logDir: string, app: LogAppId = "app"): string {
   const candidates = getLogDirCandidates(logDir, app);
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
@@ -171,7 +170,11 @@ export async function readSessionInfo(logDir: string, sessionId: string): Promis
   let summary: Record<string, unknown> | null = null;
   const degraded: NonNullable<SessionInfo["degraded"]> = {};
 
-  const selectedMetaPath = existsSync(metaPath) ? metaPath : existsSync(legacyMetaPath) ? legacyMetaPath : null;
+  const selectedMetaPath = existsSync(metaPath)
+    ? metaPath
+    : existsSync(legacyMetaPath)
+      ? legacyMetaPath
+      : null;
 
   if (selectedMetaPath !== null) {
     try {

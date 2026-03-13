@@ -240,8 +240,11 @@
   padding: var(--space-3);
   border: var(--border-1) solid var(--border-default);
   border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-elevated) 80%, transparent), var(--bg-surface));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-elevated) 80%, transparent),
+    var(--bg-surface)
+  );
 }
 
 .us1-slot-panel__section-head {
@@ -350,13 +353,13 @@
   padding-inline: 0;
 }
 
-@media (max-width: 1360px) {
+@media (--breakpoint-max-1360) {
   .accordion-panels {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 1100px) {
+@media (--breakpoint-max-1100) {
   .us1-slot-panel__grid {
     grid-template-columns: 1fr;
   }

@@ -109,7 +109,9 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
       avatarPath: typeof avatarPath === "string" ? avatarPath : "",
       handshakeState: normalizedHandshakeState,
       profileRevision:
-        typeof profileRevision === "number" && Number.isFinite(profileRevision) && profileRevision >= 1
+        typeof profileRevision === "number" &&
+        Number.isFinite(profileRevision) &&
+        profileRevision >= 1
           ? Math.trunc(profileRevision)
           : 1,
       linkedMailAccountId: normalizedLinkedMailAccountId,
@@ -126,7 +128,8 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
           ? entry["threadMessageId"].trim()
           : null,
       lastTransportMessageId:
-        typeof entry["lastTransportMessageId"] === "string" && entry["lastTransportMessageId"].trim() !== ""
+        typeof entry["lastTransportMessageId"] === "string" &&
+        entry["lastTransportMessageId"].trim() !== ""
           ? entry["lastTransportMessageId"].trim()
           : null,
       lastError:
@@ -174,7 +177,9 @@ function normalizeMailTransportAuthType(value: unknown): MailTransportAuthType {
   return value === "oauth2" ? "oauth2" : "password";
 }
 
-function normalizeMailTransportConnectionState(value: unknown): "disconnected" | "connected" | "error" {
+function normalizeMailTransportConnectionState(
+  value: unknown
+): "disconnected" | "connected" | "error" {
   return value === "connected" || value === "error" ? value : "disconnected";
 }
 
@@ -244,9 +249,10 @@ function normalizeMailTransportBinding(raw: unknown): MailTransportAccountBindin
   };
 }
 
-function defaultMailTransportServers(
-  providerType: MailTransportProviderType
-): { imap: MailTransportServerConfig; smtp: MailTransportServerConfig } {
+function defaultMailTransportServers(providerType: MailTransportProviderType): {
+  imap: MailTransportServerConfig;
+  smtp: MailTransportServerConfig;
+} {
   if (providerType === "gmail") {
     return {
       imap: { host: "imap.gmail.com", port: 993, secure: true },
@@ -542,7 +548,10 @@ export function normalizeSettings(raw: unknown): AppSettings {
     };
   }
   const us1Slot = merged.us1Slot;
-  if (typeof us1Slot.selectedRemoteUserId !== "string" || us1Slot.selectedRemoteUserId.trim() === "") {
+  if (
+    typeof us1Slot.selectedRemoteUserId !== "string" ||
+    us1Slot.selectedRemoteUserId.trim() === ""
+  ) {
     us1Slot.selectedRemoteUserId = null;
   }
   if (us1Slot.connectionState !== "connected" && us1Slot.connectionState !== "disconnected") {
@@ -555,7 +564,8 @@ export function normalizeSettings(raw: unknown): AppSettings {
     us1Slot.selectedRemoteUserId === null ||
     !merged.remoteUsers.some(
       (identity) =>
-        identity.remoteUserId === us1Slot.selectedRemoteUserId && identity.handshakeState === "active"
+        identity.remoteUserId === us1Slot.selectedRemoteUserId &&
+        identity.handshakeState === "active"
     )
   ) {
     us1Slot.connectionState = "disconnected";
