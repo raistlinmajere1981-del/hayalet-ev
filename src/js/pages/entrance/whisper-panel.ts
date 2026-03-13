@@ -1,5 +1,6 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
 import type { Account } from "@shared/settings.js";
+import { CoreEngine } from "../../modules/core-engine.js";
 import { formatTime, t as entranceT } from "./i18n.js";
 
 interface WhisperRecord {
@@ -66,10 +67,8 @@ export class WhisperPanel {
       return;
     }
 
-    const { CoreEngine: coreEngine } = await import("../../modules/core-engine.js");
-
     const now = Date.now();
-    const bucketsRaw: unknown = await coreEngine.whisper("accounts");
+    const bucketsRaw: unknown = await CoreEngine.whisper("accounts");
     const buckets = Array.isArray(bucketsRaw)
       ? (bucketsRaw as WhisperAccountBucket[])
       : ([] as WhisperAccountBucket[]);
@@ -116,7 +115,7 @@ export class WhisperPanel {
       row.querySelector(".delete-btn")?.addEventListener("click", (e) => {
         e.stopPropagation();
         void (async (): Promise<void> => {
-          await coreEngine.whisper("remove", {
+          await CoreEngine.whisper("remove", {
             accountId: record.accountId,
             ...(record.id !== undefined && record.id !== "" ? { id: record.id } : {}),
           });
@@ -129,10 +128,9 @@ export class WhisperPanel {
   }
 
   async clearAll(): Promise<void> {
-    const { CoreEngine: coreEngine } = await import("../../modules/core-engine.js");
     await this.overdueWhispers.reduce(async (prev, record) => {
       await prev;
-      await coreEngine.whisper("remove", {
+      await CoreEngine.whisper("remove", {
         accountId: record.accountId,
         ...(record.id !== undefined && record.id !== "" ? { id: record.id } : {}),
       });

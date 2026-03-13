@@ -311,123 +311,6 @@
                   ></label>
                   <select id="app-language-select" class="select select-sm"></select>
                 </div>
-                <div class="gdrive-status-row">
-                  <label class="form-label" data-i18n-text="user.googleDrive.label"></label>
-                  <span
-                    class="status-dot"
-                    id="gdrive-status-dot"
-                    title=""
-                    data-i18n-title="user.googleDrive.statusTitle"
-                  ></span>
-                </div>
-                <input
-                  type="text"
-                  id="gdrive-client-id"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.clientIdPlaceholder"
-                />
-                <input
-                  type="text"
-                  id="gdrive-client-secret"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.clientSecretPlaceholder"
-                />
-                <input
-                  type="text"
-                  id="gdrive-auth-code"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.authCodePlaceholder"
-                />
-                <div class="btn-group-inline">
-                  <button
-                    class="btn btn-secondary btn-sm"
-                    id="gdrive-start-auth"
-                    data-i18n-text="user.googleDrive.startAuth"
-                  ></button>
-                  <button
-                    class="btn btn-primary btn-sm"
-                    id="gdrive-connect-btn"
-                    data-i18n-text="user.googleDrive.connect"
-                  ></button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="accounts"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span
-                class="entrance-panel__title ds-panel-title"
-                data-i18n-text="panels.accounts"
-              ></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="accounts-container">
-                <div class="account-list" id="account-list"></div>
-                <div class="account-form">
-                  <div class="account-form-header">
-                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"></span>
-                    <span id="account-status-msg" class="form-hint"></span>
-                  </div>
-                  <div class="account-form-body">
-                    <input
-                      type="text"
-                      id="new-account-email"
-                      class="input input-sm"
-                      placeholder=""
-                      data-i18n-placeholder="accounts.form.emailPlaceholder"
-                    />
-                    <input
-                      type="text"
-                      id="new-account-nickname"
-                      class="input input-sm"
-                      placeholder=""
-                      data-i18n-placeholder="accounts.form.nicknamePlaceholder"
-                    />
-                    <select id="new-account-provider" class="select">
-                      <option value="chatgpt">ChatGPT</option>
-                      <option value="gemini">Gemini</option>
-                      <option value="grok">Grok</option>
-                    </select>
-                    <div class="account-form-avatar-row">
-                      <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
-                      <button
-                        class="btn btn-ghost btn-sm"
-                        id="new-account-avatar-browse"
-                        data-i18n-text="accounts.form.avatarButton"
-                      ></button>
-                      <button
-                        class="btn btn-primary btn-sm"
-                        id="settings-create-account"
-                        data-i18n-text="accounts.form.createAction"
-                      ></button>
-                      <button
-                        class="btn btn-danger btn-sm is-hidden"
-                        id="settings-cancel-edit"
-                        data-i18n-text="accounts.form.cancelAction"
-                      ></button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="us1"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.us1"></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="us1-slot-panel__stack">
                 <section class="us1-slot-panel__section">
                   <div class="us1-slot-panel__section-head">
                     <span
@@ -646,6 +529,123 @@
                   </div>
                 </section>
 
+                <div class="gdrive-status-row">
+                  <label class="form-label" data-i18n-text="user.googleDrive.label"></label>
+                  <span
+                    class="status-dot"
+                    id="gdrive-status-dot"
+                    title=""
+                    data-i18n-title="user.googleDrive.statusTitle"
+                  ></span>
+                </div>
+                <input
+                  type="text"
+                  id="gdrive-client-id"
+                  class="input input-sm"
+                  placeholder=""
+                  data-i18n-placeholder="user.googleDrive.clientIdPlaceholder"
+                />
+                <input
+                  type="text"
+                  id="gdrive-client-secret"
+                  class="input input-sm"
+                  placeholder=""
+                  data-i18n-placeholder="user.googleDrive.clientSecretPlaceholder"
+                />
+                <input
+                  type="text"
+                  id="gdrive-auth-code"
+                  class="input input-sm"
+                  placeholder=""
+                  data-i18n-placeholder="user.googleDrive.authCodePlaceholder"
+                />
+                <div class="btn-group-inline">
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    id="gdrive-start-auth"
+                    data-i18n-text="user.googleDrive.startAuth"
+                  ></button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    id="gdrive-connect-btn"
+                    data-i18n-text="user.googleDrive.connect"
+                  ></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="accounts"
+          >
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span
+                class="entrance-panel__title ds-panel-title"
+                data-i18n-text="panels.accounts"
+              ></span>
+            </div>
+            <div class="entrance-panel__content">
+              <div class="accounts-container">
+                <div class="account-list" id="account-list"></div>
+                <div class="account-form">
+                  <div class="account-form-header">
+                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"></span>
+                    <span id="account-status-msg" class="form-hint"></span>
+                  </div>
+                  <div class="account-form-body">
+                    <input
+                      type="text"
+                      id="new-account-email"
+                      class="input input-sm"
+                      placeholder=""
+                      data-i18n-placeholder="accounts.form.emailPlaceholder"
+                    />
+                    <input
+                      type="text"
+                      id="new-account-nickname"
+                      class="input input-sm"
+                      placeholder=""
+                      data-i18n-placeholder="accounts.form.nicknamePlaceholder"
+                    />
+                    <select id="new-account-provider" class="select">
+                      <option value="chatgpt">ChatGPT</option>
+                      <option value="gemini">Gemini</option>
+                      <option value="grok">Grok</option>
+                    </select>
+                    <div class="account-form-avatar-row">
+                      <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        id="new-account-avatar-browse"
+                        data-i18n-text="accounts.form.avatarButton"
+                      ></button>
+                      <button
+                        class="btn btn-primary btn-sm"
+                        id="settings-create-account"
+                        data-i18n-text="accounts.form.createAction"
+                      ></button>
+                      <button
+                        class="btn btn-danger btn-sm is-hidden"
+                        id="settings-cancel-edit"
+                        data-i18n-text="accounts.form.cancelAction"
+                      ></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
+            data-panel="us1"
+          >
+            <div class="entrance-panel__header ds-surface-card__header">
+              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.us1"></span>
+            </div>
+            <div class="entrance-panel__content">
+              <div class="us1-slot-panel__stack">
                 <section class="us1-slot-panel__section">
                   <div class="us1-slot-panel__section-head">
                     <span

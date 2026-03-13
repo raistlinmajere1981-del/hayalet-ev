@@ -15,6 +15,7 @@ import { SettingsManager } from "../settings-manager.js";
 import { SlotController, SlotEvent } from "../slot-controller.js";
 import { TrafficManager } from "../traffic-manager.js";
 import { WebviewManager } from "../webview-manager.js";
+import { WhisperManager } from "../whisper-manager.js";
 
 interface RelayRef {
   isAIAIActive(): boolean;
@@ -120,9 +121,8 @@ export async function initializeCoreRuntime(
   }
 
   const whisperInitOptions = { settings: settings as unknown as Record<string, unknown> };
-  const whisperManagerModule = await import("../whisper-manager.js");
-  await whisperManagerModule.WhisperManager.init(whisperInitOptions);
-  whisperManagerModule.WhisperManager.setSender(
+  await WhisperManager.init(whisperInitOptions);
+  WhisperManager.setSender(
     async (accountId: string, text: string, whisperId: string) => {
       const result = await params.coreEngine.enqueueWhisperJob(
         accountId,
