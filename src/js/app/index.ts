@@ -136,8 +136,10 @@ async function initApp(): Promise<void> {
               (path) =>
                 path.startsWith("user") ||
                 path.startsWith("accounts") ||
+                path.startsWith("remoteUsers") ||
                 isAssistantAccountsSettingsPath(path) ||
                 path.startsWith("slots") ||
+                path.startsWith("us1Slot") ||
                 isAssistantSlotSettingsPath(path)
             );
 

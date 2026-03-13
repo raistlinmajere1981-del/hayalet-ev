@@ -12,6 +12,10 @@ import {
   closeDatabaseForAccount,
   getAccountFolder,
 } from "./sqlite-manager.js";
+import {
+  closeAllMailSidecarDatabases,
+  closeMailSidecarDatabaseForAccount,
+} from "./mail-sidecar-sqlite.js";
 import { collectSearchAccountIds } from "./search-account-ids.js";
 import { rmSync, existsSync } from "fs";
 import type { SyncMessagesParams } from "@electron/types";
@@ -453,6 +457,7 @@ export const databaseManager = {
 
       activeManagers.delete(accountId);
       closeDatabaseForAccount(accountId);
+      closeMailSidecarDatabaseForAccount(accountId);
 
       const accountFolder = getAccountFolder(accountId);
       if (existsSync(accountFolder)) {
@@ -485,6 +490,7 @@ export const databaseManager = {
     try {
       activeManagers.clear();
       closeAllDatabases();
+      closeAllMailSidecarDatabases();
 
       await logDatabaseInfo("cleanupComplete");
     } catch (err) {
@@ -496,3 +502,15 @@ export const databaseManager = {
 };
 
 export { databaseManager as DatabaseManager };
+export { MailSidecarStoreManager } from "./mail-sidecar-manager.js";
+export type {
+  MailMessageMetaRecord,
+  MailMessageMetaWriteInput,
+  MailReceiptLedgerRecord,
+  MailReceiptLookupInput,
+  MailReceiptProcessedInput,
+  MailSessionMapRecord,
+  MailSessionMapWriteInput,
+  MailSyncCursorRecord,
+  MailSyncCursorUpdateInput,
+} from "./mail-sidecar-manager.js";

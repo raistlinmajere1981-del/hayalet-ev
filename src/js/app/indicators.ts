@@ -13,30 +13,62 @@ export function updateIndicatorAvatars(): void {
   // NOTE: AI0 uses the provider logo only while connected.
   const ai0Connected = SlotController.isConnected("ai0");
   const ai0AvatarPath = ai0Connected === true ? getAvatar("ai0") : undefined;
+  const settings = SettingsManager.getSnapshot();
+  const assistantAccountId = settings.assistantSlot?.accountId ?? "";
 
-  const map = {
-    ai0: {
+  const map: Array<{
+    provider: "ai0" | "ai1" | "ai2" | "us1";
+    el: HTMLElement | null;
+    path: string | undefined;
+    slotState: "empty" | "disconnected" | "connected";
+    manageConversationSelect: boolean;
+    fallbackText?: string;
+  }> = [
+    {
+      provider: "ai0",
       el: document.getElementById("indicator-avatar-ai0"),
       path: ai0AvatarPath,
-      connected: ai0Connected,
-      nickname: AppState.getNickname("ai0"),
-      isAssistant: true,
+      slotState: assistantAccountId === "" ? "empty" : ai0Connected === true ? "connected" : "disconnected",
+      manageConversationSelect: false,
     },
-    ai1: {
+    {
+      provider: "ai1",
       el: document.getElementById("indicator-avatar-ai1"),
       path: getAvatar("ai1"),
-      connected: SlotController.isConnected("ai1"),
-      nickname: AppState.getNickname("ai1"),
-      isAssistant: false,
+      slotState:
+        AppState.getAccountForSlot("ai1") === null
+          ? "empty"
+          : SlotController.isConnected("ai1") === true
+            ? "connected"
+            : "disconnected",
+      manageConversationSelect: true,
     },
-    ai2: {
+    {
+      provider: "ai2",
       el: document.getElementById("indicator-avatar-ai2"),
       path: getAvatar("ai2"),
-      connected: SlotController.isConnected("ai2"),
-      nickname: AppState.getNickname("ai2"),
-      isAssistant: false,
+      slotState:
+        AppState.getAccountForSlot("ai2") === null
+          ? "empty"
+          : SlotController.isConnected("ai2") === true
+            ? "connected"
+            : "disconnected",
+      manageConversationSelect: true,
     },
-  };
+    {
+      provider: "us1",
+      el: document.getElementById("indicator-avatar-us1"),
+      path: getAvatar("us1"),
+      slotState:
+        AppState.hasUs1Identity() === false
+          ? "empty"
+          : AppState.isUs1Connected() === true
+            ? "connected"
+            : "disconnected",
+      manageConversationSelect: false,
+      fallbackText: "US",
+    },
+  ];
 
   const buildDataUrl = async (filePath: string | undefined): Promise<string | null> => {
     if (filePath === undefined || filePath === "" || window.electronAPI?.readFile === undefined)
@@ -54,7 +86,8 @@ export function updateIndicatorAvatars(): void {
   const applyAvatar = (
     el: HTMLElement | null,
     src: string | null,
-    slotState: "empty" | "disconnected" | "connected"
+    slotState: "empty" | "disconnected" | "connected",
+    fallbackText = ""
   ): void => {
     if (el === null) return;
     if (src !== null && src !== "") {
@@ -65,7 +98,7 @@ export function updateIndicatorAvatars(): void {
     } else {
       el.style.removeProperty("--avatar-image");
       el.classList.add("avatar-placeholder");
-      el.textContent = "";
+      el.textContent = fallbackText;
     }
 
     const cluster = el.closest(".indicator-cluster");
@@ -81,35 +114,16 @@ export function updateIndicatorAvatars(): void {
     }
   };
 
-  Object.entries(map).forEach(([provider, { el, path, isAssistant }]) => {
+  map.forEach(({ provider, el, path, slotState, manageConversationSelect, fallbackText }) => {
     if (!el) return;
-    const providerKey = provider as "ai0" | "ai1" | "ai2";
-
-    let slotState: "empty" | "disconnected" | "connected" = "empty";
-
-    const settings = SettingsManager.getSnapshot();
-
-    const assistantAccountId = settings.assistantSlot?.accountId ?? "";
-    const slotAccountId = settings.slots[providerKey]?.accountId ?? "";
-    const hasAccount = isAssistant ? assistantAccountId !== "" : slotAccountId !== "";
-    const connected = SlotController.isConnected(provider);
-
-    if (!hasAccount) {
-      slotState = "empty";
-    } else if (connected === true) {
-      slotState = "connected";
-    } else {
-      slotState = "disconnected";
-    }
-
-    applyAvatar(el, null, slotState);
+    applyAvatar(el, null, slotState, fallbackText);
     if (path !== undefined && path !== "") {
       void buildDataUrl(path).then((uri) => {
-        if (uri !== null && uri !== "") applyAvatar(el, uri, slotState);
+        if (uri !== null && uri !== "") applyAvatar(el, uri, slotState, fallbackText);
       });
     }
 
-    if (isAssistant) return;
+    if (!manageConversationSelect) return;
 
     try {
       const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;

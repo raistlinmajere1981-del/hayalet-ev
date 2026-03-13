@@ -53,6 +53,7 @@ export interface Attachment {
 
 export interface SyncMessagesParams {
   accountId: string;
+  provider?: string;
   webUrl: string;
   messages: Array<{
     role: "user" | "assistant";

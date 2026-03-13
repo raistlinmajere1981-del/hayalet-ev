@@ -133,6 +133,10 @@ const paths: PathResolver = {
     return join(this.getAccountDir(accountId), "archive.db");
   },
 
+  getAccountMailSidecarDbPath(accountId: string): string {
+    return join(this.getAccountDir(accountId), "mail-sidecar.db");
+  },
+
   getWhispersPath(): string {
     return join(getConfig().dataDir, "whispers.json");
   },

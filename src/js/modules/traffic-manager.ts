@@ -133,11 +133,13 @@ class TrafficManagerClass {
   sendTracker: SendTracker;
 
   constructor() {
-    this.indicators = { ai0: {}, ai1: {}, ai2: {} };
-    this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState() };
+    this.indicators = { ai0: {}, ai1: {}, ai2: {}, us1: {} };
+    this.state = { ai0: defaultState(), ai1: defaultState(), ai2: defaultState(), us1: defaultState() };
     this.listeners = [];
+    this.webviews = {};
+    this.pollTimer = null;
     this._runners = {};
-    this._skipNextLoading = { ai0: false, ai1: false, ai2: false };
+    this._skipNextLoading = { ai0: false, ai1: false, ai2: false, us1: false };
     this.logEventFailureWarned = false;
 
 
@@ -185,6 +187,7 @@ class TrafficManagerClass {
     this.refreshIndicators("ai0");
     this.refreshIndicators("ai1");
     this.refreshIndicators("ai2");
+    this.refreshIndicators("us1");
   }
 
   cacheIndicators(): void {
@@ -202,6 +205,11 @@ class TrafficManagerClass {
       this.indicators["ai2"].loading = document.getElementById("ai2-loading-indicator");
       this.indicators["ai2"].send = document.getElementById("ai2-send-indicator");
       this.indicators["ai2"].thinking = document.getElementById("ai2-thinking-indicator");
+    }
+    if (this.indicators["us1"]) {
+      this.indicators["us1"].loading = document.getElementById("us1-loading-indicator");
+      this.indicators["us1"].send = document.getElementById("us1-send-indicator");
+      this.indicators["us1"].thinking = document.getElementById("us1-thinking-indicator");
     }
   }
 

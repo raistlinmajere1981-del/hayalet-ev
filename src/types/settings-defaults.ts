@@ -29,6 +29,10 @@ export function createDefaultAssistantAccounts(): Account[] {
   return [createDefaultAssistantAccount(), createDefaultOpencodeUiAccount()];
 }
 
+export function createDefaultRemoteUsers(): NonNullable<AppSettings["remoteUsers"]> {
+  return [];
+}
+
 export function createDefaultSettings(): AppSettings {
   const defaultGoogleDrive = {
     connected: false,
@@ -42,6 +46,12 @@ export function createDefaultSettings(): AppSettings {
     account: "",
   } as NonNullable<NonNullable<AppSettings["integrations"]>["googledrive"]>;
 
+  const defaultMailTransport = {
+    accounts: [],
+    retryBaseMs: 1500,
+    maxRetries: 2,
+  } as NonNullable<NonNullable<AppSettings["integrations"]>["mailTransport"]>;
+
   return {
     general: {
       language: DEFAULT_APP_LANGUAGE,
@@ -49,8 +59,15 @@ export function createDefaultSettings(): AppSettings {
     user: { nickname: "User", avatarPath: "src/assets/default.png" },
     integrations: {
       googledrive: defaultGoogleDrive,
+      mailTransport: defaultMailTransport,
     },
     accounts: [],
+    remoteUsers: createDefaultRemoteUsers(),
+    us1Slot: {
+      selectedRemoteUserId: null,
+      connectionState: "disconnected",
+      catchCommands: false,
+    },
     assistantAccounts: createDefaultAssistantAccounts(),
     slots: {
       ai1: {

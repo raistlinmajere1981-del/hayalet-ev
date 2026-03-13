@@ -26,6 +26,11 @@ import {
   switchSearchTab,
 } from "./archives/search-view.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
+import {
+  ARCHIVE_PROVIDER_KEYS,
+  isArchiveProviderKey,
+  type ArchiveProviderKey,
+} from "@shared/archive.js";
 
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
@@ -33,7 +38,7 @@ function archivesT(key: string, params?: TranslationParams): string {
 
 export class ArchivesController {
   entries: ArchiveEntry[];
-  activeProvider: string;
+  activeProvider: ArchiveProviderKey;
   selectedId: string | null;
   searchQuery: string;
   searchScope: string;
@@ -155,9 +160,10 @@ export class ArchivesController {
     document.getElementsByName("archives-provider").forEach((el) => {
       el.addEventListener("change", (e) => {
         const target = e.target as HTMLInputElement;
-        if (target.checked) {
+        const nextProvider = target.value;
+        if (target.checked && isArchiveProviderKey(nextProvider)) {
           this.clearStatus();
-          this.activeProvider = target.value;
+          this.activeProvider = nextProvider;
           this.selectedId = null;
           this.renderList();
           this.fillForm(null);
@@ -175,7 +181,14 @@ export class ArchivesController {
     });
 
     document.getElementById("btn-delete")?.addEventListener("click", () => {
-      const entry = this.entries.find((e) => e.id === this.selectedId);
+      const entry =
+        this.selectedId !== null
+          ? this.entries.find(
+              (archiveEntry) =>
+                archiveEntry.id === this.selectedId &&
+                archiveEntry.provider === this.activeProvider
+            ) ?? null
+          : null;
       if (entry) void this.deleteEntry(entry);
     });
 
@@ -236,7 +249,9 @@ export class ArchivesController {
               path.startsWith("accounts") ||
               isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
-              isAssistantSlotSettingsPath(path)
+              isAssistantSlotSettingsPath(path) ||
+              path.startsWith("remoteUsers") ||
+              path.startsWith("us1Slot")
           );
 
         if (!shouldApplyNames) {
@@ -244,6 +259,7 @@ export class ArchivesController {
         }
 
         this.applyNames();
+        void this.loadIndex();
       }
     );
 
@@ -269,35 +285,57 @@ export class ArchivesController {
       const electronApi = window.electronAPI;
       if (electronApi === undefined) {
         this.entries = [];
+        this.syncActiveProvider();
         this.renderList();
+        this.fillForm(null);
         return;
       }
 
-      const ai1Account = AppState.getAccountForSlot("ai1");
-      const ai2Account = AppState.getAccountForSlot("ai2");
+      const providers = ARCHIVE_PROVIDER_KEYS.map((provider) => ({
+        provider,
+        accountId: AppState.getArchiveAccountIdForProvider(provider),
+      }));
 
-      const resultsRaw: unknown = await Promise.all([
-        ai1Account?.id !== undefined && ai1Account.id !== ""
-          ? electronApi.dbGetConversations({ accountId: ai1Account.id })
-          : { data: [] },
-        ai2Account?.id !== undefined && ai2Account.id !== ""
-          ? electronApi.dbGetConversations({ accountId: ai2Account.id })
-          : { data: [] },
-      ]);
+      const results = (await Promise.all(
+        providers.map(({ accountId }) =>
+          accountId !== null ? electronApi.dbGetConversations({ accountId }) : Promise.resolve({ data: [] })
+        )
+      )) as Array<{ data?: unknown } | undefined>;
 
-      const results = resultsRaw as [unknown, unknown];
-      const ai1Result = results[0] as { data?: unknown } | undefined;
-      const ai2Result = results[1] as { data?: unknown } | undefined;
+      this.entries = providers.flatMap(({ provider, accountId }, index) => {
+        const result = results[index];
+        const rawEntries = Array.isArray(result?.data) ? (result.data as ArchiveEntry[]) : [];
+        return rawEntries.map((entry) => {
+          const nextEntry: ArchiveEntry = {
+            ...entry,
+            provider,
+          };
 
-      const ai1Entries = Array.isArray(ai1Result?.data) ? (ai1Result.data as ArchiveEntry[]) : [];
-      const ai2Entries = Array.isArray(ai2Result?.data) ? (ai2Result.data as ArchiveEntry[]) : [];
+          const resolvedAccountId = accountId ?? entry.accountId;
+          if (resolvedAccountId !== undefined) {
+            nextEntry.accountId = resolvedAccountId;
+          }
 
-      this.entries = [
-        ...ai1Entries.map((e) => ({ ...e, provider: "ai1" as const })),
-        ...ai2Entries.map((e) => ({ ...e, provider: "ai2" as const })),
-      ];
+          return nextEntry;
+        });
+      });
 
+      this.syncActiveProvider();
       this.renderList();
+
+      const selectedEntry =
+        this.selectedId !== null
+          ? this.entries.find(
+              (entry) => entry.id === this.selectedId && entry.provider === this.activeProvider
+            ) ?? null
+          : null;
+
+      if (selectedEntry !== null) {
+        this.fillForm(selectedEntry);
+      } else {
+        this.selectedId = null;
+        this.fillForm(null);
+      }
     } catch (e) {
       const err = e as Error;
       Logger.error(
@@ -305,6 +343,9 @@ export class ArchivesController {
         archivesT("logs.archiveReadError", { message: err.message })
       );
       this.entries = [];
+      this.syncActiveProvider();
+      this.renderList();
+      this.fillForm(null);
     }
   }
 
@@ -447,25 +488,55 @@ export class ArchivesController {
     this.statusEl.className = "form-hint";
   }
 
+  getAvailableProviders(): ArchiveProviderKey[] {
+    return ARCHIVE_PROVIDER_KEYS.filter((provider) => {
+      return AppState.getArchiveAccountIdForProvider(provider) !== null;
+    });
+  }
+
+  syncActiveProvider(): void {
+    const availableProviders = this.getAvailableProviders();
+    if (!availableProviders.includes(this.activeProvider)) {
+      this.activeProvider = availableProviders[0] ?? "ai1";
+    }
+
+    ARCHIVE_PROVIDER_KEYS.forEach((provider) => {
+      const radio = document.querySelector<HTMLInputElement>(
+        `input[name="archives-provider"][value="${provider}"]`
+      );
+      if (radio !== null) {
+        radio.checked = provider === this.activeProvider;
+      }
+    });
+  }
+
   applyNames(): void {
     const settings = SettingsManager.getSnapshot();
     const slots = settings.slots as Record<string, { accountId?: string }>;
     const ai1Assigned = slots["ai1"]?.accountId !== undefined && slots["ai1"].accountId !== "";
     const ai2Assigned = slots["ai2"]?.accountId !== undefined && slots["ai2"].accountId !== "";
+    const us1Assigned = AppState.getArchiveAccountIdForProvider("us1") !== null;
 
     const ai1Name = ai1Assigned ? AppState.getNickname("ai1") : "AI1";
     const ai2Name = ai2Assigned ? AppState.getNickname("ai2") : "AI2";
+    const us1Name = us1Assigned ? AppState.getNickname("us1") : "US1";
 
     const labelAi1 = document.getElementById("archives-provider-ai1");
     const labelAi2 = document.getElementById("archives-provider-ai2");
+    const labelUs1 = document.getElementById("archives-provider-us1");
     const radioAi1 = document.getElementById("archive-filter-ai1");
     const radioAi2 = document.getElementById("archive-filter-ai2");
+    const radioUs1 = document.getElementById("archive-filter-us1");
 
     if (labelAi1) labelAi1.textContent = ai1Name;
     if (labelAi2) labelAi2.textContent = ai2Name;
+    if (labelUs1) labelUs1.textContent = us1Name;
 
     if (radioAi1) (radioAi1 as HTMLInputElement).disabled = !ai1Assigned;
     if (radioAi2) (radioAi2 as HTMLInputElement).disabled = !ai2Assigned;
+    if (radioUs1) (radioUs1 as HTMLInputElement).disabled = !us1Assigned;
+
+    this.syncActiveProvider();
   }
 
   onShow(): void {

@@ -9,15 +9,23 @@
 .conversation-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
   padding: var(--space-4);
   min-height: 0;
   overflow: hidden;
 }
 
-.conversation-grid.single-ai {
+.conversation-grid.participant-count-1 {
   grid-template-columns: 1fr;
+}
+
+.conversation-grid.participant-count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.conversation-grid.participant-count-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 

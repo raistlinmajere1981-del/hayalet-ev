@@ -50,6 +50,33 @@ export interface SlotSettings {
   lastConnectionState?: "connected" | "disconnected" | null;
 }
 
+export type RemoteUserHandshakeState = "invite_sent" | "handshake_pending" | "active" | "error";
+
+export type Us1SlotConnectionState = "disconnected" | "connected";
+
+export interface RemoteUserIdentity {
+  remoteUserId: string;
+  email: string;
+  nickname?: string;
+  avatar?: string;
+  avatarPath?: string;
+  handshakeState: RemoteUserHandshakeState;
+  profileRevision: number;
+  linkedMailAccountId: string;
+  inviteMessageId?: string | null;
+  acceptMessageId?: string | null;
+  threadMessageId?: string | null;
+  lastTransportMessageId?: string | null;
+  lastSyncAt?: number;
+  lastError?: string | null;
+}
+
+export interface Us1SlotSettings {
+  selectedRemoteUserId: string | null;
+  connectionState?: Us1SlotConnectionState;
+  catchCommands?: boolean;
+}
+
 export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "dragdrop" | "injection";
 
 export type MessageMethod = "injection" | "xdotools";
@@ -77,6 +104,68 @@ export interface GoogleDriveSettings {
   expiresAt?: number;
 }
 
+export type MailTransportProviderType = "gmail" | "custom-imap-smtp";
+
+export type MailTransportAuthType = "password" | "oauth2";
+
+export type LocalMailAccountConnectionState = "disconnected" | "connected" | "error";
+
+export interface MailTransportServerConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+}
+
+export interface MailTransportAuthConfig {
+  user: string;
+  password?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  clientId?: string;
+  clientSecret?: string;
+  expiresAt?: number;
+  loginMethod?: string;
+}
+
+export interface MailTransportAccountBinding {
+  remoteUserId?: string | null;
+  defaultLocalSessionId?: string | null;
+}
+
+export interface MailTransportAccountConfig {
+  id: string;
+  providerType: MailTransportProviderType;
+  email: string;
+  enabled?: boolean;
+  connectionState?: LocalMailAccountConnectionState;
+  lastConnectionError?: string | null;
+  authType: MailTransportAuthType;
+  imap: MailTransportServerConfig;
+  smtp: MailTransportServerConfig;
+  auth: MailTransportAuthConfig;
+  defaultMailbox?: string;
+  fetchBatchSize?: number;
+  binding?: MailTransportAccountBinding;
+}
+
+export interface LocalMailAccountSummary {
+  mailAccountId: string;
+  providerType: MailTransportProviderType;
+  email: string;
+  authType: MailTransportAuthType;
+  authConfigRef: string;
+  configRef: string;
+  connectionState: LocalMailAccountConnectionState;
+  enabled: boolean;
+  lastConnectionError?: string | null;
+}
+
+export interface MailTransportSettings {
+  accounts: MailTransportAccountConfig[];
+  retryBaseMs?: number;
+  maxRetries?: number;
+}
+
 export interface OpencodeUiModelPreferences {
   hiddenProviders?: string[];
   hiddenModels?: string[];
@@ -94,12 +183,15 @@ export interface AppSettings {
   };
   integrations?: {
     googledrive?: GoogleDriveSettings;
+    mailTransport?: MailTransportSettings;
   };
   slots: {
     ai1: SlotSettings;
     ai2: SlotSettings;
     [key: string]: SlotSettings;
   };
+  remoteUsers?: RemoteUserIdentity[];
+  us1Slot?: Us1SlotSettings;
   assistantSlot?: SlotSettings;
   accounts: Account[];
   assistantAccounts?: Account[];

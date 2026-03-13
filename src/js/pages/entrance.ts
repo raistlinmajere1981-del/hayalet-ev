@@ -14,6 +14,7 @@ import { ButtonStates } from "../ui/button-states.js";
 
 import { UserPanel } from "./entrance/user-panel.js";
 import { SlotPanel } from "./entrance/slot-panel.js";
+import { Us1Panel } from "./entrance/us1-panel.js";
 import { AccountPanel } from "./entrance/account-panel.js";
 import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
@@ -26,6 +27,7 @@ export class EntranceHallController {
   userPanel: UserPanel;
   slotPanelAi1: SlotPanel;
   slotPanelAi2: SlotPanel;
+  us1Panel: Us1Panel;
   accountPanel: AccountPanel;
   whisperPanel: WhisperPanel;
   webviewPanel: WebviewPanel;
@@ -39,6 +41,7 @@ export class EntranceHallController {
     this.userPanel = new UserPanel(SettingsManager);
     this.slotPanelAi1 = new SlotPanel("ai1", SettingsManager);
     this.slotPanelAi2 = new SlotPanel("ai2", SettingsManager);
+    this.us1Panel = new Us1Panel(SettingsManager);
     this.accountPanel = new AccountPanel(SettingsManager);
     this.whisperPanel = new WhisperPanel();
     this.webviewPanel = new WebviewPanel();
@@ -50,6 +53,7 @@ export class EntranceHallController {
     this.userPanel.init();
     this.slotPanelAi1.init();
     this.slotPanelAi2.init();
+    this.us1Panel.init();
     this.accountPanel.init();
     this.whisperPanel.init();
     this.webviewPanel.init();
@@ -74,8 +78,11 @@ export class EntranceHallController {
             (path) =>
               path.startsWith("user") ||
               path.startsWith("accounts") ||
+              path.startsWith("integrations.mailTransport") ||
+              path.startsWith("remoteUsers") ||
               isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
+              path.startsWith("us1Slot") ||
               isAssistantSlotSettingsPath(path)
           );
 
@@ -434,6 +441,7 @@ export class EntranceHallController {
     ["user", "ai1", "ai2"].forEach((userType) => {
       this.updateUserStatus(userType);
     });
+    this.us1Panel.render();
     void this.whisperPanel.render();
   }
 

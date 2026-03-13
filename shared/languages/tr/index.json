@@ -60,6 +60,8 @@
         "sendButton": "Gönder",
         "addFileButton": "Dosya ekle",
         "noFiles": "Henüz dosya yok.",
+        "us1DummyReply": "US1 transport mesajı yerel olarak kaydetti. Archive projection daha sonraki bir fazda bağlanacak.",
+        "us1AttachmentOnlyMessage": "US1 için {{count}} dosya hazırlandı, ancak archive projection henüz etkin değil.",
         "buttons": {
           "sending": "Gönderiliyor...",
           "sent": "Gönderildi!",
@@ -5067,8 +5069,129 @@
       "settings": "Ayarlar",
       "user": "KULLANICI & DRIVE",
       "accounts": "HESAP YÖNETİMİ",
+      "us1": "US1 SLOT",
       "whisper": "BEKLEYEN KOMUTLAR",
       "report": "CANLI RAPOR"
+    },
+    "us1": {
+      "mailAccount": {
+        "sectionTitle": "Yerel mail hesabı",
+        "sectionNote": "Uzak bir Hayalet Ev kullanıcısını davet etmeden önce kendi mail hesabınızı bağlayın.",
+        "selectLabel": "Kayıtlı mail hesabı",
+        "selectPlaceholder": "-- Mail hesabı seç --",
+        "empty": "Henüz mail hesabı yok",
+        "providerLabel": "Sağlayıcı",
+        "providers": {
+          "gmail": "Gmail",
+          "custom": "Özel IMAP / SMTP"
+        },
+        "emailLabel": "Email",
+        "emailPlaceholder": "siz@example.com",
+        "authTypeLabel": "Kimlik doğrulama",
+        "authTypes": {
+          "password": "Uygulama şifresi",
+          "oauth2": "OAuth2"
+        },
+        "passwordLabel": "Uygulama şifresi",
+        "passwordPlaceholder": "Uygulama şifresini girin",
+        "accessTokenLabel": "Access token",
+        "accessTokenPlaceholder": "Access token yapıştırın",
+        "refreshTokenLabel": "Refresh token",
+        "refreshTokenPlaceholder": "Refresh token yapıştırın",
+        "clientIdLabel": "Client ID",
+        "clientIdPlaceholder": "OAuth client ID",
+        "clientSecretLabel": "Client secret",
+        "clientSecretPlaceholder": "OAuth client secret",
+        "imapHostLabel": "IMAP host",
+        "imapHostPlaceholder": "imap.example.com",
+        "imapPortLabel": "IMAP port",
+        "imapSecureLabel": "Güvenli IMAP kullan",
+        "smtpHostLabel": "SMTP host",
+        "smtpHostPlaceholder": "smtp.example.com",
+        "smtpPortLabel": "SMTP port",
+        "smtpSecureLabel": "Güvenli SMTP kullan",
+        "statusLabel": "Bağlantı",
+        "state": {
+          "disconnected": "Bağlı değil",
+          "connected": "Bağlı",
+          "error": "Hata"
+        },
+        "status": {
+          "none": "Mail hesabı seçilmedi.",
+          "disconnected": "Mail hesabı kaydedildi ama doğrulanmadı.",
+          "connected": "Mail hesabı doğrulandı ve hazır.",
+          "error": "Mail hesabı doğrulaması başarısız oldu."
+        },
+        "actions": {
+          "save": "Kaydet",
+          "verify": "Kaydet ve Doğrula",
+          "delete": "Sil"
+        }
+      },
+      "remote": {
+        "sectionTitle": "Remote user handshake",
+        "sectionNote": "Seçili mail hesabı üzerinden uzak Hayalet Ev kullanıcısını davet edin, sonra handshake durumunu senkronize edin veya kabul edin.",
+        "selectLabel": "Remote user",
+        "selectPlaceholder": "-- Remote user seç --",
+        "empty": "Henüz remote user yok",
+        "emailLabel": "Remote email",
+        "emailPlaceholder": "remote@example.com",
+        "nicknameLabel": "Takma ad",
+        "nicknamePlaceholder": "İsteğe bağlı takma ad",
+        "statusLabel": "Handshake",
+        "state": {
+          "invite_sent": "Davet gönderildi",
+          "handshake_pending": "Kabul bekleniyor",
+          "active": "Aktif",
+          "error": "Hata"
+        },
+        "status": {
+          "none": "Remote user seçilmedi.",
+          "invite_sent": "Davet gönderildi. Kabul bekleniyor.",
+          "handshake_pending": "Gelen davet alındı. Kabul gerekli.",
+          "active": "Handshake tamamlandı. Kullanıcı US1 slotuna bağlanabilir.",
+          "error": "Son handshake denemesi başarısız oldu."
+        },
+        "actions": {
+          "invite": "Davet gönder",
+          "accept": "Kabul et",
+          "refresh": "Inbox senkronize et"
+        }
+      },
+      "slotSectionTitle": "US1 runtime binding",
+      "slotSectionNote": "US1 slotuna yalnız aktif remote user bağlanabilir. Bu akış relay'e katılmaz.",
+      "selectLabel": "Aktif remote user",
+      "selectPlaceholder": "-- Aktif remote user seç --",
+      "noReadyUsers": "Aktif remote user yok",
+      "catchTitle": "US1 slotu için catchCommands tercihini sakla",
+      "catchLabel": "catchCommands",
+      "statusLabel": "Runtime durumu",
+      "phaseHint": "Handshake tamamlandı. Seçili kullanıcıyı US1 slotuna bağlayabilirsiniz.",
+      "phaseHintNoMailAccount": "Önce kendi mail hesabınızı ekleyip kaydedin.",
+      "phaseHintVerifyMail": "Remote user davet etmeden önce seçili mail hesabını doğrulayın.",
+      "phaseHintHandshake": "Bir remote user davet edin veya inbox senkronize edin, sonra handshake aktif olana kadar bekleyin.",
+      "status": {
+        "noMailAccount": "US1, yerel bir mail hesabı eklenmeden açılamaz.",
+        "noConnectedMailAccount": "US1, doğrulanmış bir yerel mail hesabı bekliyor.",
+        "noUsers": "Henüz aktif remote user yok.",
+        "empty": "US1 slotu için aktif bir remote user seçin.",
+        "ready": "US1 bağlaması hazır.",
+        "connected": "US1 seçili remote user ile bağlı."
+      },
+      "feedback": {
+        "electronUnavailable": "Electron API kullanılamıyor.",
+        "mailEmailRequired": "Mail hesabı email alanı gerekli.",
+        "mailSaveSuccess": "Mail hesabı kaydedildi.",
+        "mailVerifySuccess": "Mail hesabı doğrulandı.",
+        "mailAccountRequired": "Önce bir mail hesabı seçin.",
+        "mailDeleteSuccess": "Mail hesabı silindi.",
+        "remoteEmailRequired": "Remote user email alanı gerekli.",
+        "remoteUserRequired": "Önce bir remote user seçin.",
+        "inviteSent": "Davet maili gönderildi.",
+        "acceptSent": "Kabul maili gönderildi.",
+        "syncSuccess": "Inbox senkronizasyonu tamamlandı. {{count}} mesaj işlendi.",
+        "operationFailed": "İstenen işlem başarısız oldu."
+      }
     },
     "accounts": {
       "empty": "Henüz hesap yok",

@@ -55,6 +55,7 @@ export interface MessageAttachment {
 
 export interface MessageSyncPayload {
   accountId: string;
+  provider?: string;
   webUrl: string;
   messages: SyncMessage[];
   authors?: SyncAuthors;

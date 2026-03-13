@@ -11,9 +11,19 @@ import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
+import type { Us1RoomPackageCandidate } from "@shared/us1-mail.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
+import { createMessageBubble } from "./analyze/message-renderer-bubble.js";
+import {
+  isAttachmentData,
+  isDbAttachmentsResult,
+  isDbMessagesResult,
+  isMessageItem,
+  type AttachmentData,
+  type MessageItem,
+} from "./analyze/message-renderer-types.js";
 import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/upload-handler.js";
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
@@ -28,6 +38,8 @@ interface DraftState {
   message: string;
   files: StagedFile[];
 }
+
+type AnalyzeParticipant = "ai1" | "ai2" | "us1";
 
 function analyzeT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.analyze.${key}`, params);
@@ -59,25 +71,37 @@ function isDraftState(value: unknown): value is DraftState {
 
 export class AnalyzeController {
   stagedFiles: StagedFile[];
-  lastMessages: { ai1: string; ai2: string };
-  _slotActiveStates: { ai1: boolean; ai2: boolean };
+  lastMessages: Record<AnalyzeParticipant, string>;
+  us1SessionId: string | null;
+  us1SessionIdentityId: string | null;
+  _slotActiveStates: Record<AnalyzeParticipant, boolean>;
   beforeUnloadHandler: (() => void) | null;
   _unsubSettings: (() => void) | null;
   _unsubSlotController: (() => void) | null;
   _unsubAppState: (() => void) | null;
   _unsubI18n: (() => void) | null;
   _boundActions: boolean;
+  _us1PollTimer: number | null;
+  _us1SyncInFlight: boolean;
+  _us1LoadingBusy: boolean;
+  _us1SendBusy: boolean;
 
   constructor() {
     this.stagedFiles = [];
-    this.lastMessages = { ai1: "", ai2: "" };
-    this._slotActiveStates = { ai1: false, ai2: false };
+    this.lastMessages = { ai1: "", ai2: "", us1: "" };
+    this.us1SessionId = null;
+    this.us1SessionIdentityId = null;
+    this._slotActiveStates = { ai1: false, ai2: false, us1: false };
     this.beforeUnloadHandler = null;
     this._unsubSettings = null;
     this._unsubSlotController = null;
     this._unsubAppState = null;
     this._unsubI18n = null;
     this._boundActions = false;
+    this._us1PollTimer = null;
+    this._us1SyncInFlight = false;
+    this._us1LoadingBusy = false;
+    this._us1SendBusy = false;
   }
 
   async init(): Promise<void> {
@@ -93,8 +117,10 @@ export class AnalyzeController {
             (path) =>
               path.startsWith("user") ||
               path.startsWith("accounts") ||
+              path.startsWith("remoteUsers") ||
               isAssistantAccountsSettingsPath(path) ||
               path.startsWith("slots") ||
+              path.startsWith("us1Slot") ||
               isAssistantSlotSettingsPath(path)
           );
 
@@ -128,6 +154,7 @@ export class AnalyzeController {
       this.refreshUploads();
       void this._renderMessages("ai1");
       void this._renderMessages("ai2");
+      void this._renderUs1Messages();
     });
 
     this.updateConnectionStates();
@@ -167,13 +194,18 @@ export class AnalyzeController {
   }
 
   applyAvatars(): void {
-    const avatarTargets: Array<{ provider: "user" | "ai1" | "ai2"; elementId: string }> = [
+    const avatarTargets: Array<{
+      provider: "user" | "ai1" | "ai2" | "us1";
+      elementId: string;
+      fallbackText?: string;
+    }> = [
       { provider: "ai1", elementId: "avatar-ai1" },
       { provider: "ai2", elementId: "avatar-ai2" },
-      { provider: "user", elementId: "avatar-user-compose" },
+      { provider: "us1", elementId: "avatar-us1", fallbackText: "US" },
+      { provider: "user", elementId: "avatar-user-compose", fallbackText: "U" },
     ];
 
-    avatarTargets.forEach(({ provider, elementId }) => {
+    avatarTargets.forEach(({ provider, elementId, fallbackText = "" }) => {
       const configuredPath = AppState.getAvatar(provider);
       const candidates =
         provider === "user"
@@ -185,7 +217,7 @@ export class AnalyzeController {
       if (!el) return;
 
       if (electronApi === undefined) {
-        el.textContent = "";
+        el.textContent = fallbackText;
         return;
       }
 
@@ -196,7 +228,7 @@ export class AnalyzeController {
       const tryLoad = (index: number): void => {
         const candidate = filteredCandidates[index];
         if (candidate === undefined) {
-          el.textContent = "";
+          el.textContent = fallbackText;
           return;
         }
 
@@ -225,21 +257,57 @@ export class AnalyzeController {
     const nickUser = AppState.getNickname("user");
     const nickAi1 = AppState.getNickname("ai1");
     const nickAi2 = AppState.getNickname("ai2");
+    const nickUs1 = AppState.getNickname("us1");
 
     const nameAi1 = document.getElementById("name-ai1");
     const nameAi2 = document.getElementById("name-ai2");
+    const nameUs1 = document.getElementById("name-us1");
     if (nameAi1) nameAi1.textContent = nickAi1;
     if (nameAi2) nameAi2.textContent = nickAi2;
+    if (nameUs1) nameUs1.textContent = nickUs1;
 
     const sendLabelAi1 = document.getElementById("send-ai1-label");
     const sendLabelAi2 = document.getElementById("send-ai2-label");
+    const sendLabelUs1 = document.getElementById("send-us1-label");
     const nameUserCompose = document.getElementById("name-user-compose");
     if (sendLabelAi1) sendLabelAi1.textContent = nickAi1;
     if (sendLabelAi2) sendLabelAi2.textContent = nickAi2;
+    if (sendLabelUs1) sendLabelUs1.textContent = nickUs1;
     if (nameUserCompose) nameUserCompose.textContent = nickUser;
   }
 
+  _syncUs1IdentityContext(): void {
+    const identityId = AppState.getUs1Identity()?.remoteUserId ?? null;
+    if (identityId === this.us1SessionIdentityId) {
+      return;
+    }
+
+    this.us1SessionIdentityId = identityId;
+    this.us1SessionId = null;
+    this.lastMessages.us1 = "";
+    AppState.setActiveConversation("us1", null);
+  }
+
+  _createUs1LocalSessionId(): string {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  _ensureUs1LocalSessionId(): string | null {
+    this._syncUs1IdentityContext();
+    if (this.us1SessionIdentityId === null) {
+      return null;
+    }
+
+    if (this.us1SessionId === null || this.us1SessionId === "") {
+      this.us1SessionId = this._createUs1LocalSessionId();
+    }
+
+    return this.us1SessionId;
+  }
+
   updateConnectionStates(): void {
+    this._syncUs1IdentityContext();
+
     const composeInput = document.getElementById("compose-input") as HTMLTextAreaElement | null;
     const uploadBtn = document.getElementById("upload-add-btn") as HTMLButtonElement | null;
     const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
@@ -251,10 +319,13 @@ export class AnalyzeController {
     const ai2Connected = SlotController.isConnected("ai2");
     const ai1HasAccount = !!AppState.getAccountForSlot("ai1");
     const ai2HasAccount = !!AppState.getAccountForSlot("ai2");
+    const us1Connected = AppState.isUs1Connected();
+    const us1HasIdentity = AppState.hasUs1Identity();
 
-    (["ai1", "ai2"] as const).forEach((slot) => {
-      const hasAccount = slot === "ai1" ? ai1HasAccount : ai2HasAccount;
-      const connected = slot === "ai1" ? ai1Connected : ai2Connected;
+    (["ai1", "ai2", "us1"] as const).forEach((slot) => {
+      const hasAccount =
+        slot === "ai1" ? ai1HasAccount : slot === "ai2" ? ai2HasAccount : us1HasIdentity;
+      const connected = slot === "ai1" ? ai1Connected : slot === "ai2" ? ai2Connected : us1Connected;
       const isActive = hasAccount && connected;
       const wasActive = this._slotActiveStates[slot];
 
@@ -267,7 +338,14 @@ export class AnalyzeController {
       this._slotActiveStates[slot] = isActive;
     });
 
-    this._updateGridLayout(ai1Connected, ai2Connected);
+    this._applyUs1Indicators(us1Connected);
+
+    this._updateGridLayout({
+      ai1: ai1HasAccount,
+      ai2: ai2HasAccount,
+      us1: us1HasIdentity,
+    });
+    void this._renderUs1Messages();
 
     this._updateAIAIControls();
   }
@@ -295,21 +373,28 @@ export class AnalyzeController {
     }
   }
 
-  _updateGridLayout(ai1Connected: boolean, ai2Connected: boolean): void {
+  _updateGridLayout(participants: Record<AnalyzeParticipant, boolean>): void {
     const grid = document.querySelector(".conversation-grid");
     const cardAi1 = document.getElementById("card-ai1");
     const cardAi2 = document.getElementById("card-ai2");
+    const cardUs1 = document.getElementById("card-us1");
 
     if (!grid) return;
 
-    const onlyAi1 = ai1Connected && !ai2Connected;
-    const onlyAi2 = !ai1Connected && ai2Connected;
-    const singleAi = onlyAi1 || onlyAi2;
+    const configuredParticipants = (Object.entries(participants) as Array<[AnalyzeParticipant, boolean]>)
+      .filter(([, visible]) => visible)
+      .map(([slot]) => slot);
+    const fallbackParticipants: AnalyzeParticipant[] = ["ai1", "ai2"];
+    const visibleParticipants =
+      configuredParticipants.length > 0 ? configuredParticipants : fallbackParticipants;
+    const participantCount = Math.min(3, Math.max(1, visibleParticipants.length));
 
-    grid.classList.toggle("single-ai", singleAi);
+    grid.classList.remove("participant-count-1", "participant-count-2", "participant-count-3");
+    grid.classList.add(`participant-count-${participantCount}`);
 
-    if (cardAi1) cardAi1.classList.toggle("is-hidden", onlyAi2);
-    if (cardAi2) cardAi2.classList.toggle("is-hidden", onlyAi1);
+    if (cardAi1) cardAi1.classList.toggle("is-hidden", !visibleParticipants.includes("ai1"));
+    if (cardAi2) cardAi2.classList.toggle("is-hidden", !visibleParticipants.includes("ai2"));
+    if (cardUs1) cardUs1.classList.toggle("is-hidden", !visibleParticipants.includes("us1"));
   }
 
   _updateAIAIControls(): void {
@@ -373,7 +458,7 @@ export class AnalyzeController {
       }
     });
 
-    ["send-ai1", "send-ai2", "send-cross"].forEach((id) => {
+    ["send-ai1", "send-ai2", "send-us1", "send-cross"].forEach((id) => {
       document.getElementById(id)?.addEventListener("change", () => {
         this.updateSendButtonState();
       });
@@ -381,12 +466,19 @@ export class AnalyzeController {
   }
 
   _clearSlotMessages(provider: string): void {
-    resetMessageRenderState(provider);
+    if (provider === "ai1" || provider === "ai2") {
+      resetMessageRenderState(provider);
+    } else if (provider === "us1") {
+      this.us1SessionId = null;
+      AppState.setActiveConversation("us1", null);
+    }
     const container = document.getElementById(`messages-${provider}`);
     if (container) {
       container.innerHTML = "";
     }
-    this.lastMessages[provider as "ai1" | "ai2"] = "";
+    if (provider === "ai1" || provider === "ai2" || provider === "us1") {
+      this.lastMessages[provider] = "";
+    }
     Logger.info(LogCategory.ANALYZE, analyzeT("logs.slotMessagesCleared", { provider }));
   }
 
@@ -404,6 +496,250 @@ export class AnalyzeController {
       lastMessage: result.lastMessage.substring(0, 50),
     });
     this.lastMessages[provider] = result.lastMessage;
+  }
+
+  async _renderUs1Messages(): Promise<void> {
+    const container = document.getElementById("messages-us1");
+    if (!(container instanceof HTMLElement)) {
+      return;
+    }
+
+    const electronApi = window.electronAPI;
+    const accountId = AppState.getUs1ArchiveAccountId();
+    const conversationId = AppState.getState().activeConversations["us1"] ?? null;
+    if (
+      electronApi === undefined ||
+      typeof electronApi.dbGetMessages !== "function" ||
+      typeof electronApi["dbGetAttachments"] !== "function" ||
+      accountId === null ||
+      conversationId === null
+    ) {
+      container.innerHTML = "";
+      const placeholder = document.createElement("div");
+      placeholder.className = "message-placeholder";
+      placeholder.textContent = analyzeT("page.noMessages");
+      container.appendChild(placeholder);
+      this.lastMessages.us1 = "";
+      return;
+    }
+
+    const rawMessages = await electronApi.dbGetMessages({ accountId, conversationId });
+    const rawAttachments = await electronApi["dbGetAttachments"]({ accountId, conversationId });
+    const messagesResult = isDbMessagesResult(rawMessages) ? rawMessages : {};
+    const attachmentsResult = isDbAttachmentsResult(rawAttachments) ? rawAttachments : {};
+    const rawMessageItems = Array.isArray(messagesResult.data) ? (messagesResult.data as unknown[]) : [];
+    const rawAttachmentItems = Array.isArray(attachmentsResult.data)
+      ? (attachmentsResult.data as unknown[])
+      : [];
+    const messages = rawMessageItems.filter((message): message is MessageItem => isMessageItem(message));
+    const attachments = rawAttachmentItems.filter(
+      (attachment): attachment is AttachmentData => isAttachmentData(attachment)
+    );
+
+    container.innerHTML = "";
+
+    if (messages.length === 0) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "message-placeholder";
+      placeholder.textContent = analyzeT("page.noMessages");
+      container.appendChild(placeholder);
+      this.lastMessages.us1 = "";
+      return;
+    }
+
+    const attachmentsByMessage = attachments.reduce<Record<string, AttachmentData[]>>((acc, attachment) => {
+      acc[attachment.messageId] ??= [];
+      acc[attachment.messageId]?.push(attachment);
+      return acc;
+    }, {});
+    const callbacks: RenderCallbacks = {
+      onMessageAction: (action, payload: { provider: string; text: string }) => {
+        applyMessageAction(action, payload, () => {
+          this.updateSendButtonState();
+        });
+      },
+    };
+    const attachmentsBasePath = `data/${accountId}/attachments/${conversationId}`;
+
+    messages.forEach((message) => {
+      container.appendChild(
+        createMessageBubble(
+          message,
+          "us1",
+          attachmentsBasePath,
+          attachmentsByMessage[message.id] ?? [],
+          callbacks
+        )
+      );
+    });
+
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((message) => message.role === "assistant" && (message.content ?? message.text ?? "").trim() !== "");
+    this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
+    container.scrollTop = container.scrollHeight;
+  }
+
+  _applyUs1Indicators(connected: boolean): void {
+    TrafficManager.setIndicator("us1", "loading", this._us1LoadingBusy ? "busy" : "idle");
+    TrafficManager.setIndicator("us1", "thinking", "idle");
+    TrafficManager.setIndicator("us1", "send", connected && this._us1SendBusy === false ? "idle" : "busy");
+  }
+
+  async _sendUs1Message(message: string, attachments: StagedFile[]): Promise<void> {
+    const electronApi = window.electronAPI;
+    if (electronApi === undefined || typeof electronApi.us1SendMessage !== "function") {
+      throw new Error("US1 mail transport is unavailable.");
+    }
+
+    this._syncUs1IdentityContext();
+    const localSessionId = this._ensureUs1LocalSessionId();
+    if (localSessionId === null) {
+      throw new Error("US1 session could not be resolved.");
+    }
+
+    this._us1SendBusy = true;
+    this._applyUs1Indicators(AppState.isUs1Connected());
+
+    try {
+      const result = await electronApi.us1SendMessage({
+        text: message,
+        localSessionId,
+        attachments: attachments.map((file) => ({
+          path: file.path,
+          name: file.originalName ?? file.name,
+          mimeType: getMimeTypeFromPath(file.path),
+        })),
+      });
+
+      if (result.success !== true) {
+        throw new Error(result.error ?? "US1 outbound send failed.");
+      }
+
+      this.us1SessionId = result.localSessionId ?? localSessionId;
+      AppState.setActiveConversation("us1", result.conversationId ?? null);
+      await SettingsManager.reload();
+      this.applyAvatars();
+      this.applyNames();
+      await this._renderUs1Messages();
+      await this._syncUs1Messages({ showRoomPackages: true });
+    } finally {
+      this._us1SendBusy = false;
+      this._applyUs1Indicators(AppState.isUs1Connected());
+    }
+  }
+
+  async _syncUs1Messages(options: { showRoomPackages?: boolean } = {}): Promise<void> {
+    if (this._us1SyncInFlight === true) {
+      return;
+    }
+
+    const electronApi = window.electronAPI;
+    if (
+      electronApi === undefined ||
+      typeof electronApi.us1SyncMessages !== "function" ||
+      AppState.isUs1Connected() !== true
+    ) {
+      return;
+    }
+
+    this._us1SyncInFlight = true;
+    this._us1LoadingBusy = true;
+    this._applyUs1Indicators(true);
+
+    try {
+      const result = await electronApi.us1SyncMessages({
+        localSessionId: this.us1SessionId,
+      });
+      if (result.success !== true) {
+        throw new Error(result.error ?? "US1 inbound sync failed.");
+      }
+
+      if ((result.fetchedCount ?? 0) > 0 || (result.processedCount ?? 0) > 0) {
+        await SettingsManager.reload();
+        this.applyAvatars();
+        this.applyNames();
+      }
+
+      this.us1SessionId = result.localSessionId ?? this.us1SessionId;
+      AppState.setActiveConversation("us1", result.conversationId ?? null);
+      await this._renderUs1Messages();
+
+      if (options.showRoomPackages === true) {
+        await this._handleIncomingUs1RoomPackages(result.roomPackages ?? []);
+      }
+    } catch (error) {
+      Logger.warn(LogCategory.ANALYZE, "US1 inbound sync failed", {
+        error,
+      });
+    } finally {
+      this._us1SyncInFlight = false;
+      this._us1LoadingBusy = false;
+      this._applyUs1Indicators(AppState.isUs1Connected());
+    }
+  }
+
+  async _handleIncomingUs1RoomPackages(roomPackages: Us1RoomPackageCandidate[]): Promise<void> {
+    const electronApi = window.electronAPI;
+    if (
+      electronApi === undefined ||
+      typeof electronApi.showMessageBox !== "function" ||
+      typeof electronApi.roomsImportBundle !== "function"
+    ) {
+      return;
+    }
+
+    for (const roomPackage of roomPackages) {
+      if (roomPackage.storedPath.trim() === "") {
+        Logger.warn(LogCategory.ANALYZE, "US1 room package missing attachment path", {
+          roomPackage,
+        });
+        continue;
+      }
+
+      const confirmation = await electronApi.showMessageBox({
+        type: "question",
+        title: "Import room package",
+        message: `${roomPackage.originalName} was received from ${AppState.getNickname("us1")}. Import it now?`,
+        buttons: ["Import", "Cancel"],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if ((confirmation?.response ?? 1) !== 0) {
+        Logger.warn(LogCategory.ANALYZE, "US1 room package import rejected", {
+          roomPackage,
+        });
+        continue;
+      }
+
+      const importResult = await electronApi.roomsImportBundle({
+        bundleFile: roomPackage.storedPath,
+        overwriteWorkspace: true,
+      });
+      if (importResult.success !== true) {
+        Logger.warn(LogCategory.ANALYZE, "US1 room package import failed", {
+          roomPackage,
+          error: importResult.error,
+        });
+      }
+    }
+  }
+
+  _startUs1Polling(): void {
+    if (this._us1PollTimer !== null || AppState.isUs1Connected() !== true) {
+      return;
+    }
+
+    this._us1PollTimer = window.setInterval(() => {
+      void this._syncUs1Messages({ showRoomPackages: true });
+    }, 12000);
+  }
+
+  _stopUs1Polling(): void {
+    if (this._us1PollTimer !== null) {
+      window.clearInterval(this._us1PollTimer);
+      this._us1PollTimer = null;
+    }
   }
 
   refreshUploads(): void {
@@ -460,14 +796,16 @@ export class AnalyzeController {
     const hasFiles = this.stagedFiles.length > 0;
     const sendAi1 = (document.getElementById("send-ai1") as HTMLInputElement | null)?.checked;
     const sendAi2 = (document.getElementById("send-ai2") as HTMLInputElement | null)?.checked;
+    const sendUs1 = (document.getElementById("send-us1") as HTMLInputElement | null)?.checked;
     const cross = (document.getElementById("send-cross") as HTMLInputElement | null)?.checked;
     const sendBtn = document.getElementById("compose-send-btn") as HTMLButtonElement | null;
 
     const shouldSendAi1 = sendAi1 === true;
     const shouldSendAi2 = sendAi2 === true;
+    const shouldSendUs1 = sendUs1 === true;
     const shouldCross = cross === true;
 
-    if ((!shouldSendAi1 && !shouldSendAi2) || (msg === "" && !hasFiles)) return;
+    if ((!shouldSendAi1 && !shouldSendAi2 && !shouldSendUs1) || (msg === "" && !hasFiles)) return;
 
     if (sendBtn) {
       ButtonStates.setLoading(sendBtn, analyzeT("page.buttons.sending"));
@@ -509,7 +847,7 @@ export class AnalyzeController {
 
     const sendFlow = async (): Promise<void> => {
       try {
-        if (allSame) {
+        if (targets.length > 0 && allSame) {
           await CoreEngine.sendBatch({
             targets,
             text: texts[0] ?? "",
@@ -517,7 +855,7 @@ export class AnalyzeController {
             page: "analyze",
             archiveFolders,
           });
-        } else {
+        } else if (targets.length > 0) {
           await targets.reduce(async (prev, provider) => {
             await prev;
             await CoreEngine.sendBatch({
@@ -528,6 +866,9 @@ export class AnalyzeController {
               archiveFolders,
             });
           }, Promise.resolve());
+        }
+        if (shouldSendUs1) {
+          await this._sendUs1Message(msg, attachList);
         }
         if (sendBtn) {
           ButtonStates.setSuccess(sendBtn, analyzeT("page.buttons.sent"), 1500);
@@ -590,7 +931,8 @@ export class AnalyzeController {
 
     const sendAi1 = (document.getElementById("send-ai1") as HTMLInputElement | null)?.checked;
     const sendAi2 = (document.getElementById("send-ai2") as HTMLInputElement | null)?.checked;
-    const hasTarget = sendAi1 === true || sendAi2 === true;
+    const sendUs1 = (document.getElementById("send-us1") as HTMLInputElement | null)?.checked;
+    const hasTarget = sendAi1 === true || sendAi2 === true || sendUs1 === true;
     const message = (
       (document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? ""
     ).trim();
@@ -603,18 +945,23 @@ export class AnalyzeController {
   _resetSendTargetsOnShow(): void {
     const sendAi1 = document.getElementById("send-ai1") as HTMLInputElement | null;
     const sendAi2 = document.getElementById("send-ai2") as HTMLInputElement | null;
+    const sendUs1 = document.getElementById("send-us1") as HTMLInputElement | null;
     const cross = document.getElementById("send-cross") as HTMLInputElement | null;
 
     const ai1CanSend =
       AppState.getAccountForSlot("ai1") !== null && SlotController.isConnected("ai1") === true;
     const ai2CanSend =
       AppState.getAccountForSlot("ai2") !== null && SlotController.isConnected("ai2") === true;
+    const us1CanSend = AppState.hasUs1Identity() && AppState.isUs1Connected();
 
     if (sendAi1) {
       sendAi1.checked = ai1CanSend;
     }
     if (sendAi2) {
       sendAi2.checked = ai2CanSend;
+    }
+    if (sendUs1) {
+      sendUs1.checked = !ai1CanSend && !ai2CanSend && us1CanSend;
     }
     if (cross) {
       cross.checked = false;
@@ -659,9 +1006,13 @@ export class AnalyzeController {
     this.updateConnectionStates();
     this._resetSendTargetsOnShow();
     this.updateSendButtonState();
+    void this._syncUs1Messages({ showRoomPackages: true });
+    this._startUs1Polling();
   }
 
   onHide(): void {
+    this._stopUs1Polling();
+
     try {
       this._persistDraft();
     } catch (_) {}

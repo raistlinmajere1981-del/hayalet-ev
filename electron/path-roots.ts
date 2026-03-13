@@ -4,7 +4,7 @@ import { dirname, join } from "path";
 const { app } = electron;
 
 function isPackagedMode(): boolean {
-  return app.isPackaged;
+  return app?.isPackaged === true;
 }
 
 export function resolveProjectRoot(): string {

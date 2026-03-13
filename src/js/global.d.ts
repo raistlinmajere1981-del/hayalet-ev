@@ -5,6 +5,20 @@ import type {
   ProviderTestProgressEvent,
   ProviderTestSuite,
 } from "@shared/provider.js";
+import type {
+  Us1AcceptRemoteUserParams,
+  Us1DeleteMailAccountParams,
+  Us1DeleteMailAccountResult,
+  Us1InviteRemoteUserParams,
+  Us1MailAccountDraft,
+  Us1MailAccountMutationResult,
+  Us1RemoteUserMutationResult,
+  Us1SendMessageParams,
+  Us1SendMessageResult,
+  Us1SyncMessagesParams,
+  Us1SyncMessagesResult,
+  Us1SyncRemoteUsersParams,
+} from "@shared/us1-mail.js";
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../types/rooms.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 
@@ -484,6 +498,17 @@ declare global {
     getStartupFlags: () => { startPage: string | null; autoConnect: boolean };
     loadSettings: () => Promise<Record<string, unknown>>;
     saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
+    us1UpsertMailAccount: (
+      draft: Us1MailAccountDraft,
+      options?: { verifyAfterSave?: boolean }
+    ) => Promise<Us1MailAccountMutationResult>;
+    us1VerifyMailAccount: (params: { mailAccountId: string }) => Promise<Us1MailAccountMutationResult>;
+    us1DeleteMailAccount: (params: Us1DeleteMailAccountParams) => Promise<Us1DeleteMailAccountResult>;
+    us1InviteRemoteUser: (params: Us1InviteRemoteUserParams) => Promise<Us1RemoteUserMutationResult>;
+    us1AcceptRemoteUser: (params: Us1AcceptRemoteUserParams) => Promise<Us1RemoteUserMutationResult>;
+    us1SyncRemoteUsers: (params?: Us1SyncRemoteUsersParams) => Promise<Us1RemoteUserMutationResult>;
+    us1SendMessage: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;
+    us1SyncMessages: (params?: Us1SyncMessagesParams) => Promise<Us1SyncMessagesResult>;
     i18nListLanguages: () => Promise<LanguageDescriptor[]>;
     i18nLoadLanguage: (locale: string) => Promise<LoadedLanguagePack | null>;
 

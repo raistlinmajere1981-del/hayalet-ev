@@ -1,7 +1,12 @@
 import { SettingsManager } from "./settings-manager.js";
 import { Logger, LogCategory } from "./logger/index.js";
-import type { Account, AppSettings } from "@shared/settings.js";
+import type { Account, AppSettings, RemoteUserIdentity, Us1SlotSettings } from "@shared/settings.js";
 import { AppI18n } from "./i18n/index.js";
+import {
+  buildUs1ProjectedAccountId,
+  isUs1ProjectedAccountId,
+  type ArchiveProviderKey,
+} from "@shared/archive.js";
 
 interface AppStateSnapshot {
   activeProvider: string | null;
@@ -50,7 +55,7 @@ class AppStateClass {
     this.listeners = [];
     this.chat = {
       activeTargets: ["ai1"],
-      titleByProvider: { ai0: "", ai1: "", ai2: "" },
+      titleByProvider: { ai0: "", ai1: "", ai2: "", us1: "" },
     };
     this.assistantRelay = {
       active: false,
@@ -60,10 +65,10 @@ class AppStateClass {
 
   init(defaultProvider = "ai1"): void {
     this.activeProvider = defaultProvider;
-    this.activeConversations = { ai0: null, ai1: null, ai2: null };
+    this.activeConversations = { ai0: null, ai1: null, ai2: null, us1: null };
     this.chat = {
       activeTargets: ["ai1"],
-      titleByProvider: { ai0: "", ai1: "", ai2: "" },
+      titleByProvider: { ai0: "", ai1: "", ai2: "", us1: "" },
     };
     this.assistantRelay = {
       active: false,
@@ -102,6 +107,86 @@ class AppStateClass {
     return settings.accounts.find((acc) => acc.id === accountId) ?? null;
   }
 
+  getRemoteUsers(): RemoteUserIdentity[] {
+    const settings = this.getSettings();
+    if (settings === null || !Array.isArray(settings.remoteUsers)) {
+      return [];
+    }
+    return settings.remoteUsers;
+  }
+
+  getUs1SlotSettings(): Us1SlotSettings {
+    const settings = this.getSettings();
+    return (
+      settings?.us1Slot ?? {
+        selectedRemoteUserId: null,
+        connectionState: "disconnected",
+        catchCommands: false,
+      }
+    );
+  }
+
+  getUs1Identity(): RemoteUserIdentity | null {
+    const selectedRemoteUserId = this.getUs1SlotSettings().selectedRemoteUserId;
+    if (selectedRemoteUserId === null || selectedRemoteUserId === "") {
+      return null;
+    }
+
+    return (
+      this.getRemoteUsers().find(
+        (identity) => identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
+      ) ?? null
+    );
+  }
+
+  hasUs1Identity(): boolean {
+    return this.getUs1Identity() !== null;
+  }
+
+  isUs1Connected(): boolean {
+    return this.getUs1SlotSettings().connectionState === "connected" && this.hasUs1Identity();
+  }
+
+  getUs1ArchiveAccountId(): string | null {
+    const identity = this.getUs1Identity();
+    if (identity?.remoteUserId === undefined || identity.remoteUserId === "") {
+      return null;
+    }
+
+    const accountId = buildUs1ProjectedAccountId(identity.remoteUserId);
+    return accountId !== "" ? accountId : null;
+  }
+
+  getArchiveAccountIdForProvider(provider: string): string | null {
+    if (provider === "us1") {
+      return this.getUs1ArchiveAccountId();
+    }
+
+    const account = this.getAccountForSlot(provider);
+    return account?.id ?? null;
+  }
+
+  resolveArchiveProviderByAccountId(accountId: string): ArchiveProviderKey | null {
+    if (accountId === "") {
+      return null;
+    }
+
+    if (this.getAccountForSlot("ai1")?.id === accountId) {
+      return "ai1";
+    }
+
+    if (this.getAccountForSlot("ai2")?.id === accountId) {
+      return "ai2";
+    }
+
+    const us1AccountId = this.getUs1ArchiveAccountId();
+    if (us1AccountId === accountId || isUs1ProjectedAccountId(accountId)) {
+      return "us1";
+    }
+
+    return null;
+  }
+
   getProviderIdForSlot(slot: string): string | null {
     const account = this.getAccountForSlot(slot);
     return account?.provider ?? null;
@@ -112,6 +197,10 @@ class AppStateClass {
     if (settings === null) return "";
     if (provider === "user") {
       return settings.user?.avatarPath ?? "";
+    }
+    if (provider === "us1") {
+      const identity = this.getUs1Identity();
+      return identity?.avatarPath ?? identity?.avatar ?? "";
     }
     const account = this.getAccountForSlot(provider);
     return account?.avatarPath ?? "";
@@ -128,6 +217,10 @@ class AppStateClass {
         return getDefaultUserNickname();
       }
       return nickname;
+    }
+    if (provider === "us1") {
+      const identity = this.getUs1Identity();
+      return String(identity?.nickname ?? identity?.email ?? "US1");
     }
     const account = this.getAccountForSlot(provider);
     return String(account?.nickname ?? account?.email ?? provider.toUpperCase());

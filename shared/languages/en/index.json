@@ -60,6 +60,8 @@
         "sendButton": "Send",
         "addFileButton": "Add File",
         "noFiles": "No files yet.",
+        "us1DummyReply": "US1 transport recorded the message locally. Archive projection will arrive in a later phase.",
+        "us1AttachmentOnlyMessage": "{{count}} file(s) are staged for US1, but archive projection is not enabled yet.",
         "buttons": {
           "sending": "Sending...",
           "sent": "Sent!",
@@ -5067,8 +5069,129 @@
       "settings": "Settings",
       "user": "USER & DRIVE",
       "accounts": "ACCOUNT MANAGEMENT",
+      "us1": "US1 SLOT",
       "whisper": "PENDING COMMANDS",
       "report": "LIVE REPORT"
+    },
+    "us1": {
+      "mailAccount": {
+        "sectionTitle": "Local mail account",
+        "sectionNote": "Connect your own inbox before inviting a remote Hayalet Ev user.",
+        "selectLabel": "Saved mail account",
+        "selectPlaceholder": "-- Select mail account --",
+        "empty": "No mail account yet",
+        "providerLabel": "Provider",
+        "providers": {
+          "gmail": "Gmail",
+          "custom": "Custom IMAP / SMTP"
+        },
+        "emailLabel": "Email",
+        "emailPlaceholder": "you@example.com",
+        "authTypeLabel": "Auth",
+        "authTypes": {
+          "password": "App password",
+          "oauth2": "OAuth2"
+        },
+        "passwordLabel": "App password",
+        "passwordPlaceholder": "Enter app password",
+        "accessTokenLabel": "Access token",
+        "accessTokenPlaceholder": "Paste access token",
+        "refreshTokenLabel": "Refresh token",
+        "refreshTokenPlaceholder": "Paste refresh token",
+        "clientIdLabel": "Client ID",
+        "clientIdPlaceholder": "OAuth client ID",
+        "clientSecretLabel": "Client secret",
+        "clientSecretPlaceholder": "OAuth client secret",
+        "imapHostLabel": "IMAP host",
+        "imapHostPlaceholder": "imap.example.com",
+        "imapPortLabel": "IMAP port",
+        "imapSecureLabel": "Use secure IMAP",
+        "smtpHostLabel": "SMTP host",
+        "smtpHostPlaceholder": "smtp.example.com",
+        "smtpPortLabel": "SMTP port",
+        "smtpSecureLabel": "Use secure SMTP",
+        "statusLabel": "Connection",
+        "state": {
+          "disconnected": "Disconnected",
+          "connected": "Connected",
+          "error": "Error"
+        },
+        "status": {
+          "none": "No mail account selected.",
+          "disconnected": "Mail account saved but not verified.",
+          "connected": "Mail account verified and ready.",
+          "error": "Mail account verification failed."
+        },
+        "actions": {
+          "save": "Save",
+          "verify": "Save & Verify",
+          "delete": "Delete"
+        }
+      },
+      "remote": {
+        "sectionTitle": "Remote user handshake",
+        "sectionNote": "Invite the remote Hayalet Ev user over the selected mail account, then sync or accept the handshake.",
+        "selectLabel": "Remote user",
+        "selectPlaceholder": "-- Select remote user --",
+        "empty": "No remote user yet",
+        "emailLabel": "Remote email",
+        "emailPlaceholder": "remote@example.com",
+        "nicknameLabel": "Nickname",
+        "nicknamePlaceholder": "Optional nickname",
+        "statusLabel": "Handshake",
+        "state": {
+          "invite_sent": "Invite sent",
+          "handshake_pending": "Accept required",
+          "active": "Active",
+          "error": "Error"
+        },
+        "status": {
+          "none": "No remote user selected.",
+          "invite_sent": "Invite sent. Waiting for accept.",
+          "handshake_pending": "Incoming invite received. Accept is required.",
+          "active": "Handshake complete. User can be bound to US1.",
+          "error": "Last handshake attempt failed."
+        },
+        "actions": {
+          "invite": "Send invite",
+          "accept": "Accept",
+          "refresh": "Sync inbox"
+        }
+      },
+      "slotSectionTitle": "US1 runtime binding",
+      "slotSectionNote": "Only active remote users can be attached to the US1 slot. This does not join relay.",
+      "selectLabel": "Active remote user",
+      "selectPlaceholder": "-- Select active remote user --",
+      "noReadyUsers": "No active remote user",
+      "catchTitle": "Persist the catchCommands preference for the US1 slot",
+      "catchLabel": "catchCommands",
+      "statusLabel": "Runtime status",
+      "phaseHint": "Handshake is complete. You can connect the selected user to US1.",
+      "phaseHintNoMailAccount": "Add and save your own mail account first.",
+      "phaseHintVerifyMail": "Verify the selected mail account before inviting a remote user.",
+      "phaseHintHandshake": "Invite or sync a remote user, then wait until the handshake becomes active.",
+      "status": {
+        "noMailAccount": "US1 is locked until a local mail account is added.",
+        "noConnectedMailAccount": "US1 is waiting for a verified local mail account.",
+        "noUsers": "No active remote user is available yet.",
+        "empty": "Select an active remote user for the US1 slot.",
+        "ready": "US1 binding is ready.",
+        "connected": "US1 is connected to the selected remote user."
+      },
+      "feedback": {
+        "electronUnavailable": "Electron API is unavailable.",
+        "mailEmailRequired": "Mail account email is required.",
+        "mailSaveSuccess": "Mail account saved.",
+        "mailVerifySuccess": "Mail account verified.",
+        "mailAccountRequired": "Select a mail account first.",
+        "mailDeleteSuccess": "Mail account deleted.",
+        "remoteEmailRequired": "Remote user email is required.",
+        "remoteUserRequired": "Select a remote user first.",
+        "inviteSent": "Invite mail sent.",
+        "acceptSent": "Accept mail sent.",
+        "syncSuccess": "Inbox sync completed. {{count}} message(s) processed.",
+        "operationFailed": "The requested operation failed."
+      }
     },
     "accounts": {
       "empty": "No accounts yet",

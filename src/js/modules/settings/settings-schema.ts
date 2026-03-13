@@ -2,8 +2,17 @@ import type {
   Account,
   AppSettings,
   SlotSettings,
+  RemoteUserIdentity,
+  Us1SlotSettings,
   MessageMethod,
   UploadMethod,
+  MailTransportSettings,
+  MailTransportAccountConfig,
+  MailTransportServerConfig,
+  MailTransportAuthConfig,
+  MailTransportAccountBinding,
+  MailTransportProviderType,
+  MailTransportAuthType,
 } from "@shared/settings.js";
 import { ASSISTANT_ACCOUNTS_SETTINGS_KEY, ASSISTANT_SLOT_SETTINGS_KEY } from "@shared/settings.js";
 import { isAssistantProviderId } from "@shared/common.js";
@@ -13,6 +22,7 @@ import {
   DEFAULT_OPENCODE_UI_ACCOUNT_ID,
   createDefaultAssistantAccount,
   createDefaultOpencodeUiAccount,
+  createDefaultRemoteUsers,
   createDefaultSettings,
 } from "@shared/settings-defaults.js";
 
@@ -41,6 +51,290 @@ type SettingsInput = Partial<AppSettings> & {
   [ASSISTANT_ACCOUNTS_SETTINGS_KEY]?: Account[];
   [ASSISTANT_SLOT_SETTINGS_KEY]?: SlotSettings;
 };
+
+function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+
+  return raw.filter(isPlainObject).reduce<RemoteUserIdentity[]>((acc, entry) => {
+    const remoteUserId = entry["remoteUserId"] ?? entry["id"];
+    const email = entry["email"];
+    const nickname = entry["nickname"];
+    const avatar = entry["avatar"];
+    const avatarPath = entry["avatarPath"];
+    const handshakeState = entry["handshakeState"];
+    const linkedMailAccountId = entry["linkedMailAccountId"];
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const normalizedRemoteUserId =
+      typeof remoteUserId === "string" && remoteUserId.trim() !== ""
+        ? remoteUserId.trim()
+        : normalizedEmail;
+    const normalizedLinkedMailAccountId =
+      typeof linkedMailAccountId === "string" && linkedMailAccountId.trim() !== ""
+        ? linkedMailAccountId.trim()
+        : "";
+
+    if (
+      normalizedRemoteUserId === "" ||
+      normalizedLinkedMailAccountId === "" ||
+      normalizedRemoteUserId === "us1_demo_remote_user"
+    ) {
+      return acc;
+    }
+
+    const normalizedHandshakeState =
+      handshakeState === "invite_sent" ||
+      handshakeState === "handshake_pending" ||
+      handshakeState === "active" ||
+      handshakeState === "error"
+        ? handshakeState
+        : handshakeState === "ready"
+          ? "active"
+          : handshakeState === "pending"
+            ? "handshake_pending"
+            : "handshake_pending";
+    const profileRevision = entry["profileRevision"];
+    const lastSyncAt = entry["lastSyncAt"];
+    const normalizedLastSyncAt =
+      typeof lastSyncAt === "number" && Number.isFinite(lastSyncAt) && lastSyncAt >= 0
+        ? Math.trunc(lastSyncAt)
+        : undefined;
+
+    const nextRemoteUser: RemoteUserIdentity = {
+      remoteUserId: normalizedRemoteUserId,
+      email: normalizedEmail,
+      nickname: typeof nickname === "string" ? nickname : "",
+      avatar: typeof avatar === "string" ? avatar : "",
+      avatarPath: typeof avatarPath === "string" ? avatarPath : "",
+      handshakeState: normalizedHandshakeState,
+      profileRevision:
+        typeof profileRevision === "number" && Number.isFinite(profileRevision) && profileRevision >= 1
+          ? Math.trunc(profileRevision)
+          : 1,
+      linkedMailAccountId: normalizedLinkedMailAccountId,
+      inviteMessageId:
+        typeof entry["inviteMessageId"] === "string" && entry["inviteMessageId"].trim() !== ""
+          ? entry["inviteMessageId"].trim()
+          : null,
+      acceptMessageId:
+        typeof entry["acceptMessageId"] === "string" && entry["acceptMessageId"].trim() !== ""
+          ? entry["acceptMessageId"].trim()
+          : null,
+      threadMessageId:
+        typeof entry["threadMessageId"] === "string" && entry["threadMessageId"].trim() !== ""
+          ? entry["threadMessageId"].trim()
+          : null,
+      lastTransportMessageId:
+        typeof entry["lastTransportMessageId"] === "string" && entry["lastTransportMessageId"].trim() !== ""
+          ? entry["lastTransportMessageId"].trim()
+          : null,
+      lastError:
+        typeof entry["lastError"] === "string" && entry["lastError"].trim() !== ""
+          ? entry["lastError"].trim()
+          : null,
+      ...(normalizedLastSyncAt !== undefined ? { lastSyncAt: normalizedLastSyncAt } : {}),
+    };
+
+    acc.push(nextRemoteUser);
+    return acc;
+  }, []);
+}
+
+function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
+  if (!isPlainObject(raw)) {
+    return undefined;
+  }
+
+  const selectedRemoteUserId = raw["selectedRemoteUserId"] ?? raw["selectedIdentityId"];
+  const connectionState = raw["connectionState"];
+  const connected = raw["connected"];
+  const catchCommands = raw["catchCommands"];
+
+  return {
+    selectedRemoteUserId:
+      typeof selectedRemoteUserId === "string" && selectedRemoteUserId.trim() !== ""
+        ? selectedRemoteUserId
+        : null,
+    connectionState:
+      connectionState === "connected" || connectionState === "disconnected"
+        ? connectionState
+        : connected === true
+          ? "connected"
+          : "disconnected",
+    catchCommands: catchCommands === true,
+  };
+}
+
+function normalizeMailTransportProviderType(value: unknown): MailTransportProviderType {
+  return value === "gmail" ? "gmail" : "custom-imap-smtp";
+}
+
+function normalizeMailTransportAuthType(value: unknown): MailTransportAuthType {
+  return value === "oauth2" ? "oauth2" : "password";
+}
+
+function normalizeMailTransportConnectionState(value: unknown): "disconnected" | "connected" | "error" {
+  return value === "connected" || value === "error" ? value : "disconnected";
+}
+
+function normalizeMailTransportPort(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 65535) {
+    return value;
+  }
+  return fallback;
+}
+
+function normalizeMailTransportServer(
+  raw: unknown,
+  fallback: MailTransportServerConfig
+): MailTransportServerConfig {
+  if (!isPlainObject(raw)) {
+    return { ...fallback };
+  }
+
+  const port = normalizeMailTransportPort(raw["port"], fallback.port);
+  const secure =
+    typeof raw["secure"] === "boolean"
+      ? raw["secure"]
+      : port === 465 || port === 993
+        ? true
+        : fallback.secure;
+
+  return {
+    host: typeof raw["host"] === "string" ? raw["host"].trim() : fallback.host,
+    port,
+    secure,
+  };
+}
+
+function normalizeMailTransportAuth(raw: unknown, email: string): MailTransportAuthConfig {
+  if (!isPlainObject(raw)) {
+    return { user: email };
+  }
+
+  const expiresAt = raw["expiresAt"];
+
+  return {
+    user: typeof raw["user"] === "string" && raw["user"].trim() !== "" ? raw["user"].trim() : email,
+    password: typeof raw["password"] === "string" ? raw["password"] : "",
+    accessToken: typeof raw["accessToken"] === "string" ? raw["accessToken"] : "",
+    refreshToken: typeof raw["refreshToken"] === "string" ? raw["refreshToken"] : "",
+    clientId: typeof raw["clientId"] === "string" ? raw["clientId"] : "",
+    clientSecret: typeof raw["clientSecret"] === "string" ? raw["clientSecret"] : "",
+    expiresAt: typeof expiresAt === "number" && Number.isFinite(expiresAt) ? expiresAt : 0,
+    loginMethod: typeof raw["loginMethod"] === "string" ? raw["loginMethod"] : "",
+  };
+}
+
+function normalizeMailTransportBinding(raw: unknown): MailTransportAccountBinding | undefined {
+  if (!isPlainObject(raw)) {
+    return undefined;
+  }
+
+  return {
+    remoteUserId:
+      typeof raw["remoteUserId"] === "string" && raw["remoteUserId"].trim() !== ""
+        ? raw["remoteUserId"].trim()
+        : null,
+    defaultLocalSessionId:
+      typeof raw["defaultLocalSessionId"] === "string" && raw["defaultLocalSessionId"].trim() !== ""
+        ? raw["defaultLocalSessionId"].trim()
+        : null,
+  };
+}
+
+function defaultMailTransportServers(
+  providerType: MailTransportProviderType
+): { imap: MailTransportServerConfig; smtp: MailTransportServerConfig } {
+  if (providerType === "gmail") {
+    return {
+      imap: { host: "imap.gmail.com", port: 993, secure: true },
+      smtp: { host: "smtp.gmail.com", port: 465, secure: true },
+    };
+  }
+
+  return {
+    imap: { host: "", port: 993, secure: true },
+    smtp: { host: "", port: 465, secure: true },
+  };
+}
+
+function normalizeMailTransportAccount(raw: unknown): MailTransportAccountConfig | null {
+  if (!isPlainObject(raw)) {
+    return null;
+  }
+
+  const providerType = normalizeMailTransportProviderType(raw["providerType"]);
+  const email = typeof raw["email"] === "string" ? raw["email"].trim() : "";
+  const id =
+    typeof raw["id"] === "string" && raw["id"].trim() !== ""
+      ? raw["id"].trim()
+      : email !== ""
+        ? `mail_${email.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`
+        : "";
+
+  if (id === "") {
+    return null;
+  }
+
+  const defaults = defaultMailTransportServers(providerType);
+  const fetchBatchSize = raw["fetchBatchSize"];
+
+  const binding = normalizeMailTransportBinding(raw["binding"]);
+
+  return {
+    id,
+    providerType,
+    email,
+    enabled: raw["enabled"] !== false,
+    connectionState: normalizeMailTransportConnectionState(raw["connectionState"]),
+    lastConnectionError:
+      typeof raw["lastConnectionError"] === "string" && raw["lastConnectionError"].trim() !== ""
+        ? raw["lastConnectionError"].trim()
+        : null,
+    authType: normalizeMailTransportAuthType(raw["authType"]),
+    imap: normalizeMailTransportServer(raw["imap"], defaults.imap),
+    smtp: normalizeMailTransportServer(raw["smtp"], defaults.smtp),
+    auth: normalizeMailTransportAuth(raw["auth"], email),
+    defaultMailbox:
+      typeof raw["defaultMailbox"] === "string" && raw["defaultMailbox"].trim() !== ""
+        ? raw["defaultMailbox"].trim()
+        : "INBOX",
+    fetchBatchSize:
+      typeof fetchBatchSize === "number" && Number.isInteger(fetchBatchSize) && fetchBatchSize >= 1
+        ? fetchBatchSize
+        : 20,
+    ...(binding !== undefined ? { binding } : {}),
+  };
+}
+
+function normalizeMailTransportSettings(raw: unknown): MailTransportSettings | undefined {
+  if (!isPlainObject(raw)) {
+    return undefined;
+  }
+
+  const accounts = Array.isArray(raw["accounts"])
+    ? raw["accounts"]
+        .map((entry) => normalizeMailTransportAccount(entry))
+        .filter((entry): entry is MailTransportAccountConfig => entry !== null)
+    : [];
+
+  const retryBaseMs = raw["retryBaseMs"];
+  const maxRetries = raw["maxRetries"];
+
+  return {
+    accounts,
+    retryBaseMs:
+      typeof retryBaseMs === "number" && Number.isFinite(retryBaseMs) && retryBaseMs >= 0
+        ? Math.trunc(retryBaseMs)
+        : 1500,
+    maxRetries:
+      typeof maxRetries === "number" && Number.isFinite(maxRetries) && maxRetries >= 1
+        ? Math.trunc(maxRetries)
+        : 2,
+  };
+}
 
 function resolveAssistantAccounts(raw: SettingsInput): Account[] | undefined {
   if (Array.isArray(raw.assistantAccounts)) {
@@ -78,13 +372,28 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
     out.general = r.general;
   }
 
+  const integrations: NonNullable<AppSettings["integrations"]> = {};
   const gd = r.integrations?.googledrive;
   if (isPlainObject(gd)) {
-    out.integrations = { googledrive: gd };
+    integrations.googledrive = gd;
+  }
+
+  const mailTransport = normalizeMailTransportSettings(r.integrations?.mailTransport);
+  if (mailTransport !== undefined) {
+    integrations.mailTransport = mailTransport;
+  }
+
+  if (Object.keys(integrations).length > 0) {
+    out.integrations = integrations;
   }
 
   if (Array.isArray(r.accounts)) {
     out.accounts = r.accounts;
+  }
+
+  const remoteUsers = normalizeRemoteUsers(r.remoteUsers);
+  if (remoteUsers !== undefined) {
+    out.remoteUsers = remoteUsers;
   }
 
   const assistantAccounts = resolveAssistantAccounts(r);
@@ -123,6 +432,11 @@ function normalizeKnownSettings(raw: unknown): Record<string, unknown> {
   });
   out.slots = slots as { ai1: SlotSettings; ai2: SlotSettings; [key: string]: SlotSettings };
 
+  const us1Slot = normalizeUs1Slot(r.us1Slot);
+  if (us1Slot !== undefined) {
+    out.us1Slot = us1Slot;
+  }
+
   const assistantSlot = resolveAssistantSlot(r);
   if (isPlainObject(assistantSlot)) {
     out.assistantSlot = {
@@ -156,6 +470,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
 
   if (!Array.isArray(merged.accounts)) {
     merged.accounts = [];
+  }
+
+  if (!Array.isArray(merged.remoteUsers)) {
+    merged.remoteUsers = createDefaultRemoteUsers();
+  } else {
+    merged.remoteUsers = normalizeRemoteUsers(merged.remoteUsers) ?? createDefaultRemoteUsers();
   }
 
   if (!isPlainObject(merged.general)) {
@@ -214,6 +534,33 @@ export function normalizeSettings(raw: unknown): AppSettings {
     merged.slots[slot].fileMethod ??= "dragdrop";
   }
 
+  if (!isPlainObject(merged.us1Slot)) {
+    merged.us1Slot = defaults.us1Slot ?? {
+      selectedRemoteUserId: null,
+      connectionState: "disconnected",
+      catchCommands: false,
+    };
+  }
+  const us1Slot = merged.us1Slot;
+  if (typeof us1Slot.selectedRemoteUserId !== "string" || us1Slot.selectedRemoteUserId.trim() === "") {
+    us1Slot.selectedRemoteUserId = null;
+  }
+  if (us1Slot.connectionState !== "connected" && us1Slot.connectionState !== "disconnected") {
+    us1Slot.connectionState = "disconnected";
+  }
+  if (typeof us1Slot.catchCommands !== "boolean") {
+    us1Slot.catchCommands = false;
+  }
+  if (
+    us1Slot.selectedRemoteUserId === null ||
+    !merged.remoteUsers.some(
+      (identity) =>
+        identity.remoteUserId === us1Slot.selectedRemoteUserId && identity.handshakeState === "active"
+    )
+  ) {
+    us1Slot.connectionState = "disconnected";
+  }
+
   if (!isPlainObject(merged.assistantSlot)) {
     merged.assistantSlot = defaults.assistantSlot ?? {
       accountId: DEFAULT_ASSISTANT_ACCOUNT_ID,
@@ -247,6 +594,14 @@ export function normalizeSettings(raw: unknown): AppSettings {
     } else {
       delete merged.integrations.googledrive;
     }
+  }
+  const normalizedMailTransport = normalizeMailTransportSettings(merged.integrations.mailTransport);
+  if (normalizedMailTransport !== undefined) {
+    merged.integrations.mailTransport = normalizedMailTransport;
+  } else if (defaults.integrations?.mailTransport) {
+    merged.integrations.mailTransport = defaults.integrations.mailTransport;
+  } else {
+    delete merged.integrations.mailTransport;
   }
 
   if (!isPlainObject(merged.assistants)) {

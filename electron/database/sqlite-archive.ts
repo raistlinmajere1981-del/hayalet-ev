@@ -11,8 +11,9 @@ import { normalizeAppLanguage } from "../../shared/i18n/locale.js";
 import { hashString } from "./hash-utils.js";
 import { createMessageDedupeKey } from "./message-dedupe.js";
 import { getDatabaseForAccount, getAttachmentPath, ensureAttachmentDir } from "./sqlite-manager.js";
-import { copyFileSync, statSync, existsSync } from "fs";
+import { copyFileSync, statSync, existsSync, writeFileSync } from "fs";
 import type { SyncMessagesParams, SyncMessagesResult } from "@electron/types";
+import { isUs1SyntheticSessionUri } from "@shared/archive.js";
 
 const logger = getLoggerCore();
 
@@ -113,6 +114,7 @@ export class SQLiteArchiveManager {
   }
 
   private extractProvider(webUrl: string): string {
+    if (isUs1SyntheticSessionUri(webUrl)) return "us1";
     if (webUrl.includes("chatgpt.com")) return "chatgpt";
     if (webUrl.includes("gemini.google.com")) return "gemini";
     if (webUrl.includes("grok")) return "grok";
@@ -151,13 +153,18 @@ export class SQLiteArchiveManager {
     return typeof title === "string" ? title.trim() : "";
   }
 
-  private getConversationIdentity(webUrl: string): {
+  private getConversationIdentity(webUrl: string, providerOverride?: string): {
     conversationId: string;
     provider: string;
   } {
+    const normalizedProviderOverride =
+      typeof providerOverride === "string" && providerOverride.trim() !== ""
+        ? providerOverride.trim()
+        : this.extractProvider(webUrl);
+
     return {
       conversationId: this.generateConversationId(webUrl),
-      provider: this.extractProvider(webUrl),
+      provider: normalizedProviderOverride,
     };
   }
 
@@ -252,7 +259,7 @@ export class SQLiteArchiveManager {
     const db = this.getDb();
 
     try {
-      const { conversationId, provider } = this.getConversationIdentity(webUrl);
+      const { conversationId, provider } = this.getConversationIdentity(webUrl, params.provider);
       const now = new Date().toISOString();
       const autoTitle = await this.buildAutoTitle(db);
 
@@ -694,6 +701,64 @@ export class SQLiteArchiveManager {
       return { success: true, data: { attachmentId, storedPath: relativePath } };
     } catch (err) {
       await logDatabaseError("saveAttachment", {
+        accountId: this.accountId,
+        conversationId,
+        messageId,
+        error: err,
+      });
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
+  async saveAttachmentContent(
+    conversationId: string,
+    messageId: string,
+    content: Buffer,
+    originalName: string,
+    mimeType?: string
+  ): Promise<IpcResult<{ attachmentId: string; storedPath: string }>> {
+    try {
+      const db = this.getDb();
+      const attachmentId = hashString(`${messageId}-${originalName}-${Date.now()}`);
+      const storedName = `${attachmentId}_${originalName}`;
+
+      const attachDir = ensureAttachmentDir(this.accountId, conversationId, messageId);
+      const targetPath = `${attachDir}/${storedName}`;
+
+      writeFileSync(targetPath, content);
+
+      const relativePath = getAttachmentPath(this.accountId, conversationId, messageId, storedName);
+
+      const stmt = db.prepare(`
+        INSERT INTO attachments (id, message_id, conversation_id, account_id, original_name, stored_name, stored_path, mime_type, size, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        attachmentId,
+        messageId,
+        conversationId,
+        this.accountId,
+        originalName,
+        storedName,
+        relativePath,
+        mimeType ?? null,
+        content.length,
+        new Date().toISOString()
+      );
+
+      await logDatabaseInfo(
+        "attachmentSaved",
+        { originalName },
+        {
+          attachmentId,
+          messageId,
+          originalName,
+        }
+      );
+
+      return { success: true, data: { attachmentId, storedPath: relativePath } };
+    } catch (err) {
+      await logDatabaseError("saveAttachmentContent", {
         accountId: this.accountId,
         conversationId,
         messageId,

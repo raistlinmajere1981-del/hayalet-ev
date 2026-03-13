@@ -1,3 +1,6 @@
+import { AppState } from "../../modules/app-state.js";
+import { isUs1ProjectedAccountId } from "@shared/archive.js";
+
 export function escapeHtml(text: string): string {
   const div = document.createElement("div");
   div.textContent = text;
@@ -16,7 +19,18 @@ export function highlightSnippet(text: string, query: string): string {
 
 export function getAccountLabel(accountId: string | undefined): string {
   if (accountId === undefined || accountId === "") return "";
-  const provider = accountId.split("_")[0];
+  const normalizedAccountId = accountId;
+
+  const archiveProvider = AppState.resolveArchiveProviderByAccountId(normalizedAccountId);
+  if (archiveProvider !== null) {
+    return AppState.getNickname(archiveProvider);
+  }
+
+  if (isUs1ProjectedAccountId(normalizedAccountId)) {
+    return AppState.getNickname("us1");
+  }
+
+  const provider = normalizedAccountId.split("_")[0];
   if (provider === undefined || provider === "") return "";
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }

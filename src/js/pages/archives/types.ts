@@ -1,5 +1,6 @@
 export interface ArchiveEntry {
   id: string;
+  accountId?: string;
   title?: string;
   summary?: string;
   webUrl?: string;

@@ -24,6 +24,7 @@ export interface PathResolver {
 
   getAccountDir(accountId: string): string;
   getAccountDbPath(accountId: string): string;
+  getAccountMailSidecarDbPath(accountId: string): string;
   getWhispersPath(): string;
 
   getPreloadPath(filename: string): string;

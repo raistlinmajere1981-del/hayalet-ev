@@ -63,6 +63,7 @@ export interface DbGetMessagesResult {
 
 export interface DbSyncMessagesParams {
   accountId: string;
+  provider?: string;
   webUrl: string;
   messages: Array<{
     role: string;
@@ -200,6 +201,60 @@ export interface DbSearchAllAccountsResult {
     messages: Array<DbSearchMessageResult & { accountId: string }>;
     attachments: Array<DbSearchAttachmentResult & { accountId: string }>;
   };
+  error?: string;
+}
+
+export interface Us1SendMessageParams {
+  text?: string;
+  localSessionId?: string | null;
+  attachments?: Array<{
+    path: string;
+    name?: string;
+    mimeType?: string;
+  }>;
+}
+
+export interface Us1RoomPackageCandidate {
+  remoteUserId: string;
+  localSessionId: string;
+  conversationId: string;
+  messageId: string;
+  attachmentId?: string;
+  originalName: string;
+  storedPath: string;
+  mimeType?: string | null;
+  size?: number;
+}
+
+export interface Us1SendMessageResult {
+  success: boolean;
+  remoteUserId?: string;
+  localSessionId?: string;
+  conversationId?: string;
+  transportMessageId?: string;
+  archiveMessageId?: string;
+  deliveryState?: string;
+  attachmentCount?: number;
+  error?: string;
+}
+
+export interface Us1SyncMessagesParams {
+  limit?: number;
+  localSessionId?: string | null;
+}
+
+export interface Us1SyncMessagesResult {
+  success: boolean;
+  remoteUserId?: string;
+  localSessionId?: string | null;
+  conversationId?: string | null;
+  fetchedCount?: number;
+  processedCount?: number;
+  duplicateCount?: number;
+  projectedCount?: number;
+  skippedCount?: number;
+  unresolvedSessionCount?: number;
+  roomPackages?: Us1RoomPackageCandidate[];
   error?: string;
 }
 
@@ -415,6 +470,8 @@ export interface IPCChannelMap {
     params: { slot: "ai0" | "ai1" | "ai2" };
     result: ProviderTestSuite;
   };
+  "us1-send-message": { params: Us1SendMessageParams; result: Us1SendMessageResult };
+  "us1-sync-messages": { params: Us1SyncMessagesParams; result: Us1SyncMessagesResult };
 }
 
 export type IPCChannel = keyof IPCChannelMap;

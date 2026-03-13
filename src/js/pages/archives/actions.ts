@@ -68,8 +68,10 @@ export async function deleteArchiveEntry(
       ButtonStates.setLoading(deleteBtn, archivesT("actions.buttons.deleteLoading"));
     }
 
-    const accountInfo = AppState.getAccountForSlot(entry.provider ?? "");
-    if (accountInfo?.id === undefined || accountInfo.id === "") {
+    const accountId =
+      entry.accountId ??
+      AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
+    if (accountId === null || accountId === "") {
       if (deleteBtn) {
         ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
       }
@@ -87,7 +89,7 @@ export async function deleteArchiveEntry(
     }
 
     const resultRaw: unknown = await electronApi.dbDeleteConversation({
-      accountId: accountInfo.id,
+      accountId,
       conversationId: entry.id,
     });
     const result = resultRaw as ArchivesIpcResult | undefined;
@@ -151,8 +153,8 @@ export async function performArchiveSearch(ctx: ArchivesActionsContext): Promise
       messages = messageRows.map((row) => mapMessageResult(row));
       attachments = attachmentRows.map((row) => mapFileResult(row));
     } else {
-      const accountInfo = AppState.getAccountForSlot(ctx.activeProvider);
-      if (accountInfo?.id === undefined || accountInfo.id === "") {
+      const accountId = AppState.getArchiveAccountIdForProvider(ctx.activeProvider);
+      if (accountId === null || accountId === "") {
         ctx.searchResults = { messages: [], attachments: [] };
         ctx.renderSearchResults();
         return;
@@ -164,14 +166,14 @@ export async function performArchiveSearch(ctx: ArchivesActionsContext): Promise
       let attachmentsRaw: unknown;
       if (typeof dbSearchMessages === "function") {
         messagesRaw = await dbSearchMessages({
-          accountId: accountInfo.id,
+          accountId,
           query: ctx.searchQuery,
           limit: 50,
         });
       }
       if (typeof dbSearchAttachments === "function") {
         attachmentsRaw = await dbSearchAttachments({
-          accountId: accountInfo.id,
+          accountId,
           query: ctx.searchQuery,
           limit: 50,
         });
@@ -184,14 +186,14 @@ export async function performArchiveSearch(ctx: ArchivesActionsContext): Promise
         const mapped = mapMessageResult(row);
         return {
           ...mapped,
-          accountId: mapped.accountId ?? accountInfo.id,
+          accountId: mapped.accountId ?? accountId,
         };
       });
       attachments = attachmentRows.map((row) => {
         const mapped = mapFileResult(row);
         return {
           ...mapped,
-          accountId: mapped.accountId ?? accountInfo.id,
+          accountId: mapped.accountId ?? accountId,
         };
       });
     }
@@ -238,15 +240,7 @@ export async function navigateArchiveResult(
     return;
   }
 
-  const ai1Account = AppState.getAccountForSlot("ai1");
-  const ai2Account = AppState.getAccountForSlot("ai2");
-
-  let targetProvider: string | null = null;
-  if (ai1Account?.id === accountId) {
-    targetProvider = "ai1";
-  } else if (ai2Account?.id === accountId) {
-    targetProvider = "ai2";
-  }
+  const targetProvider = AppState.resolveArchiveProviderByAccountId(accountId);
 
   if (targetProvider === null) {
     ctx.setStatus(archivesT("actions.status.accountMissing"), "error");
@@ -265,7 +259,9 @@ export async function navigateArchiveResult(
   ctx.selectedId = conversationId;
   ctx.renderList();
 
-  const entry = ctx.entries.find((item) => item.id === conversationId);
+  const entry = ctx.entries.find(
+    (item) => item.id === conversationId && item.provider === targetProvider
+  );
   if (entry) {
     ctx.fillForm(entry);
 
@@ -281,14 +277,18 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
     ctx.setStatus(archivesT("actions.status.conversationNotSelected"), "warning");
     return;
   }
-  const entry = ctx.entries.find((item) => item.id === ctx.selectedId);
+  const entry = ctx.entries.find(
+    (item) => item.id === ctx.selectedId && item.provider === ctx.activeProvider
+  );
   if (entry === undefined) {
     ctx.setStatus(archivesT("actions.status.entryNotFound"), "error");
     return;
   }
 
-  const accountInfo = AppState.getAccountForSlot(entry.provider ?? "");
-  if (accountInfo?.id === undefined || accountInfo.id === "") {
+  const accountId =
+    entry.accountId ??
+    AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
+  if (accountId === null || accountId === "") {
     ctx.setStatus(archivesT("actions.status.accountInfoMissing"), "error");
     return;
   }
@@ -308,7 +308,7 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
 
   try {
     const resultRaw: unknown = await electronApi.dbUpdateConversation({
-      accountId: accountInfo.id,
+      accountId,
       conversationId: entry.id,
       title: newTitle,
       summary: newSummary,

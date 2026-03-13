@@ -56,6 +56,31 @@
           <div class="message-placeholder" data-shell-i18n-text="app.analyze.page.noMessages"></div>
         </div>
       </div>
+
+      <div class="conv-card glass-panel ds-surface-card ds-surface-card--stack is-hidden" id="card-us1">
+        <div class="conv-header ds-surface-card__header">
+          <div class="identity">
+            <div class="avatar-circle" id="avatar-us1">US</div>
+            <div>
+              <div class="name" id="name-us1">US1</div>
+              <div
+                class="identity-status"
+                id="status-us1"
+                data-shell-i18n-text="app.analyze.page.disconnectedStatus"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div
+          class="conv-body"
+          id="messages-us1"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+        >
+          <div class="message-placeholder" data-shell-i18n-text="app.analyze.page.noMessages"></div>
+        </div>
+      </div>
     </div>
 
     <div class="compose-row">
@@ -103,6 +128,10 @@
               <input type="checkbox" id="send-ai2" checked />
               <span id="send-ai2-label">AI2</span></label
             >
+            <label class="ds-choice-chip ds-choice-chip--segmented">
+              <input type="checkbox" id="send-us1" />
+              <span id="send-us1-label">US1</span>
+            </label>
             <label class="ds-choice-chip ds-choice-chip--segmented">
               <input type="checkbox" id="send-cross" />
               <span data-shell-i18n-text="app.analyze.page.crossLabel"></span>

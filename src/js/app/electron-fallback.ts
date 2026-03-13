@@ -45,6 +45,22 @@ export function ensureElectronApiFallback(): void {
         return await Promise.resolve(false);
       }
     },
+    us1UpsertMailAccount: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1VerifyMailAccount: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1DeleteMailAccount: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1InviteRemoteUser: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1AcceptRemoteUser: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1SyncRemoteUsers: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1SendMessage: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
+    us1SyncMessages: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
     i18nListLanguages: async (): Promise<ReturnType<typeof getBuiltInLanguageDescriptors>> => {
       return await Promise.resolve(getBuiltInLanguageDescriptors());
     },
