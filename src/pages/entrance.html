@@ -319,45 +319,33 @@
       </div>
     </div>
 
-    <div class="control-panel-accordion ds-surface-card ds-surface-card--stack">
-      <button class="accordion-toggle" id="settings-accordion-toggle" aria-expanded="false">
-        <span class="accordion-icon">⚙️</span>
-        <span class="accordion-title" data-i18n-text="panels.settings"></span>
-        <span class="accordion-chevron">▼</span>
-      </button>
-
-      <div class="accordion-content" id="settings-accordion-content">
-        <div class="accordion-panels">
-
-
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="whisper"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span
-                class="entrance-panel__title ds-panel-title"
-                data-i18n-text="panels.whisper"
-              ></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="entrance-whisper-container">
-                <div class="entrance-whisper-header">
-                  <button
-                    class="btn btn-ghost btn-sm"
-                    id="whisper-clear-btn"
-                    data-i18n-text="whisper.clear"
-                  ></button>
-                </div>
-                <div
-                  class="entrance-whisper-list"
-                  id="whisper-pending-list"
-                  aria-live="polite"
-                ></div>
-              </div>
-            </div>
+    <div class="whisper-overlay is-hidden" id="whisper-overlay" aria-hidden="true">
+      <div class="whisper-overlay__backdrop" id="whisper-overlay-backdrop"></div>
+      <div
+        class="whisper-overlay__panel ds-surface-card ds-surface-card--stack"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="whisper-overlay-title"
+      >
+        <div class="whisper-overlay__header">
+          <span
+            class="whisper-overlay__title"
+            id="whisper-overlay-title"
+            data-i18n-text="panels.whisper"
+          ></span>
+          <div class="whisper-overlay__actions">
+            <button
+              class="btn btn-ghost btn-sm"
+              id="whisper-clear-btn"
+              type="button"
+              data-i18n-text="whisper.clear"
+            ></button>
+            <button class="btn btn-ghost btn-sm" id="whisper-overlay-close" type="button">
+              Close
+            </button>
           </div>
         </div>
+        <div class="whisper-overlay__list" id="whisper-pending-list" aria-live="polite"></div>
       </div>
     </div>
   </div>

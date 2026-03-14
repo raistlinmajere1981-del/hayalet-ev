@@ -2,6 +2,7 @@ import { SettingsManager } from "../../modules/settings-manager.js";
 import { getAiProviderAccounts } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 import { CoreEngine } from "../../modules/core-engine.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import { formatTime, t as entranceT } from "./i18n.js";
 
 interface WhisperRecord {
@@ -20,15 +21,28 @@ interface WhisperAccountBucket {
 
 export class WhisperPanel {
   listEl: HTMLElement | null;
+  overlayEl: HTMLElement | null;
+  overlayBackdropEl: HTMLElement | null;
+  overlayCloseBtn: HTMLButtonElement | null;
   overdueWhispers: WhisperRecord[];
+  autoOpenPending: boolean;
+  isOverlayOpen: boolean;
 
   constructor() {
     this.listEl = null;
+    this.overlayEl = null;
+    this.overlayBackdropEl = null;
+    this.overlayCloseBtn = null;
     this.overdueWhispers = [];
+    this.autoOpenPending = true;
+    this.isOverlayOpen = false;
   }
 
   init(): void {
     this.listEl = document.getElementById("whisper-pending-list");
+    this.overlayEl = document.getElementById("whisper-overlay");
+    this.overlayBackdropEl = document.getElementById("whisper-overlay-backdrop");
+    this.overlayCloseBtn = document.getElementById("whisper-overlay-close") as HTMLButtonElement | null;
     this.setupListeners();
     void this.render();
   }
@@ -40,7 +54,45 @@ export class WhisperPanel {
     document.getElementById("whisper-clear-btn")?.addEventListener("click", () => {
       void this.clearAll();
     });
+    this.overlayBackdropEl?.addEventListener("click", () => {
+      this.hideOverlay();
+    });
+    this.overlayCloseBtn?.addEventListener("click", () => {
+      this.hideOverlay();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && this.isOverlayOpen) {
+        this.hideOverlay();
+      }
+    });
   }
+
+  applyOverlayTranslations(): void {
+    const label = AppI18n.t("app.common.close");
+    if (this.overlayCloseBtn) {
+      this.overlayCloseBtn.textContent = label;
+      this.overlayCloseBtn.setAttribute("aria-label", label);
+      this.overlayCloseBtn.setAttribute("title", label);
+    }
+  }
+
+  showOverlay(): void {
+    if (!this.overlayEl) {
+      return;
+    }
+    this.overlayEl.classList.remove("is-hidden");
+    this.overlayEl.setAttribute("aria-hidden", "false");
+    this.isOverlayOpen = true;
+  }
+
+  hideOverlay(): void {
+    if (this.overlayEl) {
+      this.overlayEl.classList.add("is-hidden");
+      this.overlayEl.setAttribute("aria-hidden", "true");
+    }
+    this.isOverlayOpen = false;
+  }
+
 
   getAccountMap(): Map<string, Account> {
     const settings = SettingsManager.getSnapshot();
@@ -68,6 +120,8 @@ export class WhisperPanel {
       return;
     }
 
+    this.applyOverlayTranslations();
+
     const now = Date.now();
     const bucketsRaw: unknown = await CoreEngine.whisper("accounts");
     const buckets = Array.isArray(bucketsRaw)
@@ -85,11 +139,19 @@ export class WhisperPanel {
 
     this.overdueWhispers = records.sort((a, b) => (a.when ?? 0) - (b.when ?? 0));
 
+    const shouldAutoOpen = this.autoOpenPending && this.overdueWhispers.length > 0;
+    this.autoOpenPending = false;
+
     this.listEl.innerHTML = "";
 
     if (this.overdueWhispers.length === 0) {
       this.listEl.innerHTML = `<div class="empty-message">${entranceT("whisper.empty")}</div>`;
+      this.hideOverlay();
       return;
+    }
+
+    if (shouldAutoOpen) {
+      this.showOverlay();
     }
 
     const accountMap = this.getAccountMap();

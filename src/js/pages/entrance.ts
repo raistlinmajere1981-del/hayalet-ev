@@ -143,15 +143,6 @@ export class EntranceHallController {
         }
       });
 
-      const accordionToggle = document.getElementById("settings-accordion-toggle");
-      const accordionContent = document.getElementById("settings-accordion-content");
-      if (accordionToggle && accordionContent) {
-        accordionToggle.addEventListener("click", () => {
-          const isOpen = accordionContent.classList.contains("is-expanded");
-          accordionContent.classList.toggle("is-expanded");
-          accordionToggle.setAttribute("aria-expanded", String(!isOpen));
-        });
-      }
     } catch (error) {
       Logger.error(
         LogCategory.ENTRANCE,

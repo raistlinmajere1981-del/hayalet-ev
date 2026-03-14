@@ -33,12 +33,10 @@ async function migrateLegacySettings(): Promise<void> {
   await writeFile(settingsPath, data, { encoding: "utf-8", mode: 0o644 });
 }
 
-
 export async function loadSettings(): Promise<AppSettings | null> {
   try {
     await mkdir(getConfigDir(), { recursive: true });
     await migrateLegacySettings();
-
 
     if (existsSync(getSettingsPath())) {
       const data = await readFile(getSettingsPath(), "utf-8");
