@@ -751,9 +751,15 @@
       "currentThemeLabel": "Aktif tema",
       "nav": {
         "theme": "Tema",
+        "accounts": "Hesaplar",
         "backup": "Backup",
         "rooms": "Odalar",
         "liveLog": "Canlı Log"
+      },
+      "accounts": {
+        "title": "Hesap Ayarları",
+        "userColumn": "Kullanıcı Hesap Ayarları",
+        "slotColumn": "Slot Hesap Ayarları"
       }
     },
     "liveLog": {

@@ -194,17 +194,21 @@ export class EntranceHallController {
   applySettingsToUI(_settings: AppSettings, _changedPaths: string[] = []): void {
     const ai1Nickname = AppState.getNickname("ai1");
     const ai2Nickname = AppState.getNickname("ai2");
+    const us1Nickname = AppState.getNickname("us1");
 
     const ai1NickEl = document.getElementById("ai1-nickname");
     const ai2NickEl = document.getElementById("ai2-nickname");
+    const us1NickEl = document.getElementById("us1-nickname");
 
     if (ai1NickEl) ai1NickEl.textContent = ai1Nickname;
     if (ai2NickEl) ai2NickEl.textContent = ai2Nickname;
+    if (us1NickEl) us1NickEl.textContent = us1Nickname;
 
     const getAvatar = (provider: string): string => AppState.getAvatar(provider);
     void this.updateAvatar("user", getAvatar("user"));
     void this.updateAvatar("ai1", getAvatar("ai1"));
     void this.updateAvatar("ai2", getAvatar("ai2"));
+    void this.updateAvatar("us1", getAvatar("us1"));
 
     this.updateUI();
   }

@@ -134,6 +134,66 @@
         ></div>
       </div>
 
+      <div
+        class="slot-card glass-panel ds-surface-card ds-surface-card--stack slot-card--us1"
+        data-slot="us1"
+      >
+        <div class="slot-header">
+          <div class="slot-header-top">
+            <div class="slot-avatar-wrapper">
+              <div class="avatar-placeholder img-cover" id="us1-avatar"></div>
+              <span class="slot-status-dot" id="us1-status-dot"></span>
+            </div>
+            <div class="slot-info">
+              <span class="slot-nickname" id="us1-nickname">US1</span>
+              <select id="us1-identity-select" class="select-compact"></select>
+            </div>
+          </div>
+          <div class="slot-header-actions slot-header-actions--us1">
+            <label
+              class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
+              title=""
+              data-i18n-title="us1.catchTitle"
+            >
+              <input type="checkbox" id="us1-catch-check" />
+              <span data-i18n-text="us1.catchLabel"></span>
+            </label>
+            <div class="us1-slot-panel__actions us1-slot-panel__actions--compact">
+              <button
+                class="btn btn-primary btn-sm"
+                id="us1-connect-btn"
+                data-i18n-text="slot.connect"
+              ></button>
+              <button
+                class="btn btn-secondary btn-sm"
+                id="us1-disconnect-btn"
+                data-i18n-text="slot.disconnect"
+              ></button>
+              <button
+                class="btn btn-ghost btn-sm"
+                id="us1-sync-messages-btn"
+                data-i18n-text="us1.actions.checkMail"
+              ></button>
+            </div>
+          </div>
+        </div>
+        <div class="slot-url-bar slot-url-bar--us1">
+          <div class="slot-url" data-i18n-text="panels.us1"></div>
+        </div>
+        <div class="slot-webview-container slot-webview-container--us1">
+          <div
+            class="us1-slot-panel__report us1-slot-panel__report--webview"
+            id="us1-report-log"
+            aria-live="polite"
+          ></div>
+          <div
+            class="ds-status-msg us1-slot-panel__feedback us1-slot-panel__feedback--overlay"
+            id="us1-feedback-msg"
+          ></div>
+        </div>
+      </div>
+
+
       <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai2">
         <div class="slot-header">
           <div class="slot-header-top">
@@ -268,535 +328,7 @@
 
       <div class="accordion-content" id="settings-accordion-content">
         <div class="accordion-panels">
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="user"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span
-                class="entrance-panel__title ds-panel-title"
-                data-i18n-text="panels.user"
-              ></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="user-settings-column">
-                <div class="user-avatar-row">
-                  <div
-                    class="user-avatar-wrapper"
-                    id="user-avatar-edit-btn"
-                    title=""
-                    role="button"
-                    tabindex="0"
-                    aria-label=""
-                    data-i18n-title="user.changeAvatarTitle"
-                    data-i18n-aria-label="user.changeAvatarTitle"
-                  >
-                    <div class="avatar-placeholder img-cover" id="user-avatar"></div>
-                    <div class="user-edit-overlay">📷</div>
-                  </div>
-                  <input
-                    type="text"
-                    id="user-nickname-input"
-                    class="input input-sm"
-                    placeholder=""
-                    data-i18n-placeholder="user.nicknamePlaceholder"
-                  />
-                </div>
-                <div class="setting-group">
-                  <label
-                    class="form-label"
-                    id="app-language-label"
-                    for="app-language-select"
-                    data-i18n-text="user.language.label"
-                  ></label>
-                  <select id="app-language-select" class="select select-sm"></select>
-                </div>
-                <section class="us1-slot-panel__section">
-                  <div class="us1-slot-panel__section-head">
-                    <span
-                      class="us1-slot-panel__section-title"
-                      data-i18n-text="us1.mailAccount.sectionTitle"
-                    ></span>
-                    <p
-                      class="us1-slot-panel__section-note"
-                      data-i18n-text="us1.mailAccount.sectionNote"
-                    ></p>
-                  </div>
-                  <div class="us1-slot-panel__status-block">
-                    <span class="form-label" data-i18n-text="us1.mailAccount.verifiedLabel"></span>
-                    <div class="us1-slot-panel__status" id="us1-mail-verified-email"></div>
-                    <div class="us1-slot-panel__hint" id="us1-mail-account-status"></div>
-                  </div>
-                  <div class="us1-slot-panel__grid">
-                    <div class="us1-slot-panel__field">
-                      <label
-                        class="form-label"
-                        for="us1-mail-provider-select"
-                        data-i18n-text="us1.mailAccount.providerLabel"
-                      ></label>
-                      <select id="us1-mail-provider-select" class="select select-sm">
-                        <option
-                          value="gmail"
-                          data-i18n-text="us1.mailAccount.providers.gmail"
-                        ></option>
-                        <option
-                          value="custom-imap-smtp"
-                          data-i18n-text="us1.mailAccount.providers.custom"
-                        ></option>
-                      </select>
-                    </div>
-                    <div
-                      class="us1-slot-panel__field us1-slot-panel__field--wide"
-                      data-us1-mail-gmail-helper
-                    >
-                      <label
-                        class="form-label"
-                        data-i18n-text="us1.mailAccount.gmailHelperTitle"
-                      ></label>
-                      <div class="ds-stack-v ds-stack-v--sm">
-                        <button
-                          class="btn btn-secondary btn-sm us1-slot-panel__gmail-action"
-                          id="us1-mail-gmail-open-security"
-                          data-i18n-text="us1.mailAccount.gmailHelperStep1"
-                        ></button>
-                        <div class="us1-slot-panel__grid us1-slot-panel__gmail-panel">
-                          <div class="us1-slot-panel__field us1-slot-panel__field--wide">
-                            <label
-                              class="form-label"
-                              data-i18n-text="us1.mailAccount.gmailEmailLabel"
-                            ></label>
-                            <input
-                              id="us1-mail-gmail-email-easy"
-                              class="input input-sm"
-                              type="email"
-                              data-i18n-placeholder="us1.mailAccount.gmailEmailPlaceholder"
-                            />
-                          </div>
-                          <div class="us1-slot-panel__field us1-slot-panel__field--wide">
-                            <label
-                              class="form-label"
-                              data-i18n-text="us1.mailAccount.gmailPasswordLabel"
-                            ></label>
-                            <input
-                              id="us1-mail-gmail-password-easy"
-                              class="input input-sm"
-                              type="password"
-                              data-i18n-placeholder="us1.mailAccount.gmailPasswordPlaceholder"
-                            />
-                          </div>
-                          <button
-                            class="btn btn-primary btn-sm us1-slot-panel__gmail-action us1-slot-panel__gmail-action--spaced"
-                            id="us1-mail-gmail-connect-easy"
-                            data-i18n-text="us1.mailAccount.gmailHelperStep2"
-                          ></button>
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      class="us1-slot-panel__field us1-slot-panel__field--wide"
-                      data-us1-mail-manual-fields
-                    >
-                      <label
-                        class="form-label"
-                        for="us1-mail-email-input"
-                        data-i18n-text="us1.mailAccount.emailLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-email-input"
-                        class="input input-sm"
-                        type="email"
-                        autocomplete="email"
-                        data-i18n-placeholder="us1.mailAccount.emailPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-manual-fields>
-                      <label
-                        class="form-label"
-                        for="us1-mail-auth-type-select"
-                        data-i18n-text="us1.mailAccount.authTypeLabel"
-                      ></label>
-                      <select id="us1-mail-auth-type-select" class="select select-sm">
-                        <option
-                          value="password"
-                          data-i18n-text="us1.mailAccount.authTypes.password"
-                        ></option>
-                        <option
-                          value="oauth2"
-                          data-i18n-text="us1.mailAccount.authTypes.oauth2"
-                        ></option>
-                      </select>
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-password>
-                      <label
-                        class="form-label"
-                        for="us1-mail-password-input"
-                        data-i18n-text="us1.mailAccount.passwordLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-password-input"
-                        class="input input-sm"
-                        type="password"
-                        autocomplete="current-password"
-                        data-i18n-placeholder="us1.mailAccount.passwordPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-oauth>
-                      <label
-                        class="form-label"
-                        for="us1-mail-access-token-input"
-                        data-i18n-text="us1.mailAccount.accessTokenLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-access-token-input"
-                        class="input input-sm"
-                        type="password"
-                        data-i18n-placeholder="us1.mailAccount.accessTokenPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-oauth>
-                      <label
-                        class="form-label"
-                        for="us1-mail-refresh-token-input"
-                        data-i18n-text="us1.mailAccount.refreshTokenLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-refresh-token-input"
-                        class="input input-sm"
-                        type="password"
-                        data-i18n-placeholder="us1.mailAccount.refreshTokenPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-oauth>
-                      <label
-                        class="form-label"
-                        for="us1-mail-client-id-input"
-                        data-i18n-text="us1.mailAccount.clientIdLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-client-id-input"
-                        class="input input-sm"
-                        type="text"
-                        data-i18n-placeholder="us1.mailAccount.clientIdPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-oauth>
-                      <label
-                        class="form-label"
-                        for="us1-mail-client-secret-input"
-                        data-i18n-text="us1.mailAccount.clientSecretLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-client-secret-input"
-                        class="input input-sm"
-                        type="password"
-                        data-i18n-placeholder="us1.mailAccount.clientSecretPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-custom>
-                      <label
-                        class="form-label"
-                        for="us1-mail-imap-host-input"
-                        data-i18n-text="us1.mailAccount.imapHostLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-imap-host-input"
-                        class="input input-sm"
-                        type="text"
-                        data-i18n-placeholder="us1.mailAccount.imapHostPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-custom>
-                      <label
-                        class="form-label"
-                        for="us1-mail-imap-port-input"
-                        data-i18n-text="us1.mailAccount.imapPortLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-imap-port-input"
-                        class="input input-sm"
-                        type="number"
-                        inputmode="numeric"
-                      />
-                    </div>
-                    <label class="us1-slot-panel__checkbox" data-us1-mail-custom>
-                      <input id="us1-mail-imap-secure-check" type="checkbox" />
-                      <span data-i18n-text="us1.mailAccount.imapSecureLabel"></span>
-                    </label>
-                    <div class="us1-slot-panel__field" data-us1-mail-custom>
-                      <label
-                        class="form-label"
-                        for="us1-mail-smtp-host-input"
-                        data-i18n-text="us1.mailAccount.smtpHostLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-smtp-host-input"
-                        class="input input-sm"
-                        type="text"
-                        data-i18n-placeholder="us1.mailAccount.smtpHostPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field" data-us1-mail-custom>
-                      <label
-                        class="form-label"
-                        for="us1-mail-smtp-port-input"
-                        data-i18n-text="us1.mailAccount.smtpPortLabel"
-                      ></label>
-                      <input
-                        id="us1-mail-smtp-port-input"
-                        class="input input-sm"
-                        type="number"
-                        inputmode="numeric"
-                      />
-                    </div>
-                    <label class="us1-slot-panel__checkbox" data-us1-mail-custom>
-                      <input id="us1-mail-smtp-secure-check" type="checkbox" />
-                      <span data-i18n-text="us1.mailAccount.smtpSecureLabel"></span>
-                    </label>
-                  </div>
-                  <div class="us1-slot-panel__actions">
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      id="us1-mail-save-btn"
-                      data-i18n-text="us1.mailAccount.actions.save"
-                    ></button>
-                    <button
-                      class="btn btn-primary btn-sm"
-                      id="us1-mail-verify-btn"
-                      data-i18n-text="us1.mailAccount.actions.verify"
-                    ></button>
-                    <button
-                      class="btn btn-ghost btn-sm"
-                      id="us1-mail-delete-btn"
-                      data-i18n-text="us1.mailAccount.actions.delete"
-                    ></button>
-                  </div>
-                </section>
 
-                <div class="gdrive-status-row">
-                  <label class="form-label" data-i18n-text="user.googleDrive.label"></label>
-                  <span
-                    class="status-dot"
-                    id="gdrive-status-dot"
-                    title=""
-                    data-i18n-title="user.googleDrive.statusTitle"
-                  ></span>
-                </div>
-                <input
-                  type="text"
-                  id="gdrive-client-id"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.clientIdPlaceholder"
-                />
-                <input
-                  type="text"
-                  id="gdrive-client-secret"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.clientSecretPlaceholder"
-                />
-                <input
-                  type="text"
-                  id="gdrive-auth-code"
-                  class="input input-sm"
-                  placeholder=""
-                  data-i18n-placeholder="user.googleDrive.authCodePlaceholder"
-                />
-                <div class="btn-group-inline">
-                  <button
-                    class="btn btn-secondary btn-sm"
-                    id="gdrive-start-auth"
-                    data-i18n-text="user.googleDrive.startAuth"
-                  ></button>
-                  <button
-                    class="btn btn-primary btn-sm"
-                    id="gdrive-connect-btn"
-                    data-i18n-text="user.googleDrive.connect"
-                  ></button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="accounts"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span
-                class="entrance-panel__title ds-panel-title"
-                data-i18n-text="panels.accounts"
-              ></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="accounts-container">
-                <div class="account-list-pane">
-                  <div class="account-list-header">
-                    <span class="account-list-title" data-i18n-text="accounts.listTitle"></span>
-                    <span class="account-list-note" data-i18n-text="accounts.listNote"></span>
-                  </div>
-                  <div class="account-list" id="account-list"></div>
-                </div>
-                <div class="account-form">
-                  <div class="account-form-header">
-                    <span id="account-form-title" data-i18n-text="accounts.form.createTitle"></span>
-                    <span id="account-status-msg" class="form-hint"></span>
-                  </div>
-                  <div class="account-form-body">
-                    <div class="account-form-grid">
-                      <div class="account-form-field">
-                        <label
-                          class="form-label"
-                          for="new-account-kind"
-                          data-i18n-text="accounts.form.kindLabel"
-                        ></label>
-                        <select id="new-account-kind" class="select select-sm">
-                          <option
-                            value="ai-provider"
-                            data-i18n-text="accounts.form.kindOptions.aiProvider"
-                          ></option>
-                          <option
-                            value="remote-email"
-                            data-i18n-text="accounts.form.kindOptions.remoteEmail"
-                          ></option>
-                        </select>
-                      </div>
-                      <div class="account-form-field" data-account-kind="ai-provider">
-                        <label
-                          class="form-label"
-                          for="new-account-provider"
-                          data-i18n-text="accounts.form.providerLabel"
-                        ></label>
-                        <select id="new-account-provider" class="select select-sm">
-                          <option value="chatgpt">ChatGPT</option>
-                          <option value="gemini">Gemini</option>
-                          <option value="grok">Grok</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="account-kind-note" id="account-kind-note"></div>
-                    <input
-                      type="text"
-                      id="new-account-email"
-                      class="input input-sm"
-                      placeholder=""
-                      data-i18n-placeholder="accounts.form.emailPlaceholder"
-                    />
-                    <input
-                      type="text"
-                      id="new-account-nickname"
-                      class="input input-sm"
-                      placeholder=""
-                      data-i18n-placeholder="accounts.form.nicknamePlaceholder"
-                      data-account-kind="ai-provider"
-                    />
-                    <div
-                      class="account-remote-note"
-                      id="remote-account-mail-status"
-                      data-account-kind="remote-email"
-                    ></div>
-                    <div class="account-form-avatar-row" data-account-kind="ai-provider">
-                      <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
-                      <button
-                        class="btn btn-ghost btn-sm"
-                        id="new-account-avatar-browse"
-                        data-i18n-text="accounts.form.avatarButton"
-                      ></button>
-                    </div>
-                    <div class="account-form-actions">
-                      <button
-                        class="btn btn-primary btn-sm"
-                        id="settings-create-account"
-                        data-i18n-text="accounts.form.createAction"
-                      ></button>
-                      <button
-                        class="btn btn-secondary btn-sm is-hidden"
-                        id="settings-sync-remote-accounts"
-                        data-i18n-text="accounts.form.remoteSyncAction"
-                      ></button>
-                      <button
-                        class="btn btn-danger btn-sm is-hidden"
-                        id="settings-cancel-edit"
-                        data-i18n-text="accounts.form.cancelAction"
-                      ></button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
-            data-panel="us1"
-          >
-            <div class="entrance-panel__header ds-surface-card__header">
-              <span class="entrance-panel__title ds-panel-title" data-i18n-text="panels.us1"></span>
-            </div>
-            <div class="entrance-panel__content">
-              <div class="us1-slot-panel__stack">
-                <section class="us1-slot-panel__section">
-                  <div class="us1-slot-panel__section-head">
-                    <span
-                      class="us1-slot-panel__section-title"
-                      data-i18n-text="us1.slotSectionTitle"
-                    ></span>
-                    <p
-                      class="us1-slot-panel__section-note"
-                      data-i18n-text="us1.slotSectionNote"
-                    ></p>
-                  </div>
-                  <div class="setting-group us1-slot-panel__group">
-                    <label
-                      class="form-label"
-                      for="us1-identity-select"
-                      data-i18n-text="us1.selectLabel"
-                    ></label>
-                    <select id="us1-identity-select" class="select select-sm"></select>
-                  </div>
-                  <div class="us1-slot-panel__actions">
-                    <button
-                      class="btn btn-primary btn-sm"
-                      id="us1-connect-btn"
-                      data-i18n-text="slot.connect"
-                    ></button>
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      id="us1-disconnect-btn"
-                      data-i18n-text="slot.disconnect"
-                    ></button>
-                    <button
-                      class="btn btn-ghost btn-sm"
-                      id="us1-sync-messages-btn"
-                      data-i18n-text="us1.actions.checkMail"
-                    ></button>
-                  </div>
-                  <label
-                    class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
-                    title=""
-                    data-i18n-title="us1.catchTitle"
-                  >
-                    <input type="checkbox" id="us1-catch-check" />
-                    <span data-i18n-text="us1.catchLabel"></span>
-                  </label>
-                  <div class="us1-slot-panel__status-block">
-                    <span class="form-label" data-i18n-text="us1.statusLabel"></span>
-                    <div class="us1-slot-panel__status" id="us1-status-text"></div>
-                    <div class="us1-slot-panel__hint" id="us1-phase-hint"></div>
-                  </div>
-                  <div class="us1-slot-panel__status-block">
-                    <span class="form-label" data-i18n-text="us1.reportLabel"></span>
-                    <div
-                      class="us1-slot-panel__report"
-                      id="us1-report-log"
-                      aria-live="polite"
-                    ></div>
-                  </div>
-                  <div class="ds-status-msg us1-slot-panel__feedback" id="us1-feedback-msg"></div>
-                </section>
-              </div>
-            </div>
-          </div>
 
           <div
             class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"

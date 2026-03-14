@@ -1,4 +1,4 @@
-const SETTINGS_PANELS = ["theme", "backup", "rooms", "live-log"] as const;
+const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
 
 type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
 

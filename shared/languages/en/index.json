@@ -751,9 +751,15 @@
       "currentThemeLabel": "Active theme",
       "nav": {
         "theme": "Theme",
+        "accounts": "Accounts",
         "backup": "Backup",
         "rooms": "Rooms",
         "liveLog": "Live Log"
+      },
+      "accounts": {
+        "title": "Account Settings",
+        "userColumn": "User Account Settings",
+        "slotColumn": "Slot Account Settings"
       }
     },
     "liveLog": {

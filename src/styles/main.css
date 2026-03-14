@@ -882,6 +882,33 @@ body.is-scroll-locked {
   padding-right: var(--space-1);
 }
 
+.settings-accounts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.settings-accounts-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.settings-accounts-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.settings-accounts-column [data-panel="accounts"] .accounts-container {
+  height: auto;
+}
+
 .settings-theme-current {
   display: inline-flex;
   align-items: center;
@@ -956,6 +983,10 @@ body.is-scroll-locked {
 
 @media (--breakpoint-max-1200) {
   .settings-theme-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-accounts-grid {
     grid-template-columns: 1fr;
   }
 }
