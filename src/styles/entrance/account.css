@@ -315,8 +315,8 @@
 
 .whisper-overlay__panel {
   position: relative;
-  width: min(720px, 100%);
-  max-height: min(70vh, 720px);
+  width: min(var(--layout-whisper-panel-max), 100%);
+  max-height: min(70vh, var(--layout-whisper-panel-max));
   display: flex;
   flex-direction: column;
   border: var(--border-1) solid var(--border-default);
