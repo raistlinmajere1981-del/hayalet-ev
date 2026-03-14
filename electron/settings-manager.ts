@@ -18,9 +18,27 @@ function getSettingsPath(): string {
   return join(getConfigDir(), "settings.json");
 }
 
+function getLegacySettingsPath(): string {
+  return join(Paths.getProjectRoot(), "dist", "config", "settings.json");
+}
+
+async function migrateLegacySettings(): Promise<void> {
+  const settingsPath = getSettingsPath();
+  if (existsSync(settingsPath)) return;
+
+  const legacyPath = getLegacySettingsPath();
+  if (!existsSync(legacyPath)) return;
+
+  const data = await readFile(legacyPath, "utf-8");
+  await writeFile(settingsPath, data, { encoding: "utf-8", mode: 0o644 });
+}
+
+
 export async function loadSettings(): Promise<AppSettings | null> {
   try {
     await mkdir(getConfigDir(), { recursive: true });
+    await migrateLegacySettings();
+
 
     if (existsSync(getSettingsPath())) {
       const data = await readFile(getSettingsPath(), "utf-8");

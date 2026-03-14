@@ -1,10 +1,38 @@
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const electronRequire = createRequire(import.meta.url);
-const moduleDir = dirname(fileURLToPath(import.meta.url));
-const defaultProjectRoot = resolve(moduleDir, "..");
+const moduleFileName = fileURLToPath(import.meta.url);
+
+function isProjectRoot(candidateDir: string): boolean {
+  return (
+    existsSync(join(candidateDir, "package.json")) && existsSync(join(candidateDir, "AGENTS.md"))
+  );
+}
+
+function resolveProjectRootFromFile(moduleFile: string): string {
+  let currentDir = dirname(moduleFile);
+
+  for (;;) {
+    if (isProjectRoot(currentDir)) return currentDir;
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
+
+  const moduleDir = dirname(moduleFile);
+  const distElectronSuffix = join("dist", "electron");
+  if (moduleDir.endsWith(distElectronSuffix)) {
+    return resolve(moduleDir, "..", "..");
+  }
+
+  return resolve(moduleDir, "..");
+}
+
+const defaultProjectRoot = resolveProjectRootFromFile(moduleFileName);
 
 function getElectronApp(): { isPackaged?: boolean; getPath?: (name: string) => string } | null {
   try {
