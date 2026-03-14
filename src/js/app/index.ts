@@ -8,13 +8,13 @@ import { SettingsManager } from "../modules/settings-manager.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { WebviewManager } from "../modules/webview-manager.js";
 import { ConversationListManager } from "../modules/conversation-list-manager.js";
-import { MetaCommandManager } from "../modules/meta-command-manager.js";
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 import type { PageController } from "./types.js";
+import type { StartupRoomsSnapshot } from "@shared/index.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
 import { applyShellStaticTranslations, bootstrapShellI18n } from "./shell-i18n.js";
 import {
@@ -96,17 +96,25 @@ async function initApp(): Promise<void> {
     await SettingsManager.load();
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
+    const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
+      | {
+          startPage: string | null;
+          autoConnect: boolean;
+          roomsSnapshot: StartupRoomsSnapshot | null;
+        }
+      | undefined;
 
     SplashScreen.update(10, AppI18n.t("app.startup.loadingSettings"));
 
     TrafficManager.init();
 
+    Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:start");
     await CoreEngine.init();
-    SplashScreen.update(30, AppI18n.t("app.startup.loadingCommands"));
-
-    await MetaCommandManager.loadCommands();
-    SplashScreen.update(40, AppI18n.t("app.startup.loadingRooms"));
-    await RoomRegistry.loadInstalledRooms();
+    Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:complete");
+    SplashScreen.update(30, AppI18n.t("app.startup.loadingRooms"));
+    Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:start");
+    await RoomRegistry.loadInstalledRooms(startupFlags?.roomsSnapshot ?? null);
+    Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:complete");
     SplashScreen.update(45, AppI18n.t("app.startup.preparingUi"));
 
     try {
@@ -165,7 +173,9 @@ async function initApp(): Promise<void> {
       );
     }
 
+    Logger.info(LogCategory.SYSTEM, "[startup] init-controllers:start");
     await initControllers(controllers);
+    Logger.info(LogCategory.SYSTEM, "[startup] init-controllers:complete");
     setControllers(controllers);
 
     window.SlotController = SlotController;
@@ -189,9 +199,6 @@ async function initApp(): Promise<void> {
 
     SplashScreen.update(90, AppI18n.t("app.startup.finalizing"));
 
-    const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
-      | { startPage: string | null; autoConnect: boolean }
-      | undefined;
     const startPage = startupFlags?.startPage ?? "entrance";
     const autoConnect = startupFlags?.autoConnect ?? false;
 

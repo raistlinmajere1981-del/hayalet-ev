@@ -17,6 +17,8 @@ import type {
   Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
 
+import { google } from "googleapis";
+import * as http from "http";
 import { normalizeSettings } from "../src/js/modules/settings/settings-schema.ts";
 import { applyMailTransportAccountDefaults, MailTransportService } from "./mail-transport/index.js";
 import type {
@@ -242,6 +244,114 @@ export class MailIdentityService {
     };
   }
 
+  async startGmailOauth(): Promise<{ success: boolean; authUrl?: string; error?: string }> {
+    try {
+      const settings = await this.loadNormalizedSettings();
+      const gconf = settings.integrations?.googledrive ?? {};
+      const clientId = (gconf as any).clientId ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret = (gconf as any).clientSecret ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+
+      if (!clientId || !clientSecret) {
+        return {
+          success: false,
+          error: "Google Client ID or Client Secret is missing in Drive settings.",
+        };
+      }
+
+      // Try loopback first, fallback to oob if requested or failed
+      const redirect = "http://localhost:3322";
+      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirect);
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        prompt: "consent",
+        scope: [
+          "https://mail.google.com/",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile",
+        ],
+      });
+
+      return { success: true, authUrl };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  async exchangeGmailCode(
+    code: string
+  ): Promise<{ success: boolean; email?: string; tokens?: any; error?: string }> {
+    try {
+      const settings = await this.loadNormalizedSettings();
+      const gconf = settings.integrations?.googledrive ?? {};
+      const clientId = (gconf as any).clientId ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret = (gconf as any).clientSecret ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+
+      if (!clientId || !clientSecret) {
+        return {
+          success: false,
+          error: "Google Client ID or Client Secret is missing in Drive settings.",
+        };
+      }
+
+      // We use localhost for exchange if it looks like a code from there, otherwise oob
+      const redirect = code.length > 50 ? "http://localhost:3322" : "urn:ietf:wg:oauth:2.0:oob";
+      const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirect);
+
+      const { tokens } = await oauth2Client.getToken(code.trim());
+      oauth2Client.setCredentials(tokens);
+
+      const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
+      const userInfo = await oauth2.userinfo.get();
+      const email = userInfo.data.email ?? "";
+
+      return { success: true, email, tokens };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  async listenForGmailCode(): Promise<{ success: boolean; code?: string; error?: string }> {
+    return new Promise((resolve) => {
+      const server = http.createServer(async (req, res) => {
+        try {
+          if (req.url?.startsWith("/?code=")) {
+            const code = new URL(req.url, "http://localhost:3322").searchParams.get("code");
+            res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+            res.end(
+              "<h1>Bağlantı Başarılı!</h1><p>Hayalet Ev'e geri dönebilirsiniz. Bu pencereyi kapatabilirsiniz.</p>"
+            );
+            server.close();
+            resolve({ success: true, code: code ?? "" });
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        } catch (err) {
+          res.writeHead(500);
+          res.end();
+          server.close();
+          resolve({ success: false, error: String(err) });
+        }
+      });
+
+      server.listen(3322, () => {
+        // Timeout after 5 minutes
+        setTimeout(
+          () => {
+            server.close();
+            resolve({ success: false, error: "Zaman aşımı. Lütfen tekrar deneyin." });
+          },
+          5 * 60 * 1000
+        );
+      });
+
+      server.on("error", (err) => {
+        resolve({ success: false, error: String(err) });
+      });
+    });
+  }
+
   async upsertMailAccount(
     draft: Us1MailAccountDraft,
     options: { verifyAfterSave?: boolean } = {}
@@ -324,9 +434,22 @@ export class MailIdentityService {
     }
 
     this.setMailAccounts(settings, nextAccounts);
+    const removedRemoteUserIds = new Set(
+      (settings.remoteUsers ?? [])
+        .filter((remoteUser) => remoteUser.linkedMailAccountId === normalizedMailAccountId)
+        .map((remoteUser) => remoteUser.remoteUserId)
+    );
     settings.remoteUsers = (settings.remoteUsers ?? []).filter(
       (remoteUser) => remoteUser.linkedMailAccountId !== normalizedMailAccountId
     );
+    settings.accounts = (settings.accounts ?? []).filter((account) => {
+      const remoteUserId =
+        normalizeOptionalText(account.remoteEmail?.remoteUserId) ?? normalizeEmail(account.email);
+      return (
+        account.provider !== "remote-email" &&
+        account.accountKind !== "remote-email"
+      ) || !removedRemoteUserIds.has(remoteUserId);
+    });
 
     if (settings.us1Slot?.selectedRemoteUserId !== null) {
       const selectedRemoteUserId = settings.us1Slot?.selectedRemoteUserId ?? null;
@@ -336,6 +459,7 @@ export class MailIdentityService {
       );
       if (!hasSelectedRemoteUser && settings.us1Slot) {
         settings.us1Slot.selectedRemoteUserId = null;
+        settings.us1Slot.selectedAccountId = null;
         settings.us1Slot.connectionState = "disconnected";
       }
     }
@@ -631,6 +755,7 @@ export class MailIdentityService {
         connectionState: "connected",
         lastConnectionError: null,
       });
+      this.setVerifiedLocalMailAccount(settings, normalizedMailAccountId);
 
       await this.persistSettings(settings);
       const localMailAccount = this.toLocalMailAccountSummary(
@@ -681,10 +806,51 @@ export class MailIdentityService {
     settings.integrations ??= {};
     settings.integrations.mailTransport ??= {
       accounts: [],
+      localAccount: null,
       retryBaseMs: 1500,
       maxRetries: 2,
     };
     settings.integrations.mailTransport.accounts = accounts;
+
+    const verifiedLocalMailAccountId = this.getVerifiedLocalMailAccountId(settings);
+    if (
+      verifiedLocalMailAccountId !== null &&
+      !accounts.some((account) => account.id === verifiedLocalMailAccountId)
+    ) {
+      this.setVerifiedLocalMailAccount(
+        settings,
+        accounts.find(
+          (account) => account.enabled !== false && account.connectionState === "connected"
+        )?.id ?? null
+      );
+    }
+  }
+
+  private getVerifiedLocalMailAccountId(settings: AppSettings): string | null {
+    return normalizeOptionalText(settings.integrations?.mailTransport?.localAccount?.id);
+  }
+
+  private setVerifiedLocalMailAccount(
+    settings: AppSettings,
+    mailAccountId: string | null
+  ): void {
+    settings.integrations ??= {};
+    settings.integrations.mailTransport ??= {
+      accounts: [],
+      localAccount: null,
+      retryBaseMs: 1500,
+      maxRetries: 2,
+    };
+
+    const verifiedLocalMailAccount =
+      mailAccountId === null ? null : this.findMailAccount(settings, mailAccountId);
+
+    settings.integrations.mailTransport.localAccount =
+      verifiedLocalMailAccount !== null ? { ...verifiedLocalMailAccount } : null;
+
+    settings.user ??= {};
+    settings.user.email =
+      verifiedLocalMailAccount !== null ? normalizeEmail(verifiedLocalMailAccount.email) : "";
   }
 
   private findMailAccount(
@@ -818,6 +984,7 @@ export class MailIdentityService {
     const selectedMailAccount = localMailAccounts.find(
       (localMailAccount) => localMailAccount.mailAccountId === selectedMailAccountId
     );
+    const verifiedLocalMailAccountId = this.getVerifiedLocalMailAccountId(settings);
 
     return {
       localMailAccounts,
@@ -829,6 +996,9 @@ export class MailIdentityService {
         catchCommands: false,
       },
       selectedMailAccountId,
+      selectedRemoteAccountId: normalizeOptionalText(settings.us1Slot?.selectedAccountId),
+      verifiedLocalMailAccountId,
+      verifiedUserEmail: normalizeOptionalText(settings.user?.email),
       canAddRemoteUser:
         selectedMailAccount?.enabled === true &&
         selectedMailAccount.connectionState === "connected",
@@ -840,6 +1010,16 @@ export class MailIdentityService {
     localMailAccounts: LocalMailAccountSummary[],
     preferredMailAccountId: string | null
   ): string | null {
+    const verifiedLocalMailAccountId = this.getVerifiedLocalMailAccountId(settings);
+    if (
+      verifiedLocalMailAccountId !== null &&
+      localMailAccounts.some(
+        (localMailAccount) => localMailAccount.mailAccountId === verifiedLocalMailAccountId
+      )
+    ) {
+      return verifiedLocalMailAccountId;
+    }
+
     if (
       preferredMailAccountId !== null &&
       localMailAccounts.some(
@@ -900,6 +1080,13 @@ export class MailIdentityService {
       lastConnectionError: patch.lastConnectionError ?? null,
     };
     this.setMailAccounts(settings, accounts);
+
+    if (
+      patch.connectionState === "connected" &&
+      this.getVerifiedLocalMailAccountId(settings) === null
+    ) {
+      this.setVerifiedLocalMailAccount(settings, mailAccountId);
+    }
   }
 
   private buildLocalProfile(
@@ -1092,6 +1279,7 @@ export class MailIdentityService {
       lastTransportMessageId:
         candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
       lastError: candidate.lastError ?? null,
+      sessionAlias: candidate.sessionAlias ?? existingRemoteUser?.sessionAlias ?? null,
       ...(resolvedLastSyncAt !== undefined ? { lastSyncAt: resolvedLastSyncAt } : {}),
     };
 

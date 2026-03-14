@@ -8,9 +8,12 @@ import type {
   Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
 
+import { shell } from "electron";
 import { mailIdentityService } from "../mail-identity-service.ts";
 import { us1ConversationService } from "../us1-conversation-service.ts";
 import { registerHandler } from "./ipc-helpers.ts";
+
+const ALLOWED_GOOGLE_AUTH_DOMAINS = ["accounts.google.com", "www.google.com", "google.com"];
 
 export function setupUs1MailHandlers(): void {
   registerHandler("us1-upsert-mail-account", async (_event, draft: unknown, options: unknown) => {
@@ -47,5 +50,49 @@ export function setupUs1MailHandlers(): void {
 
   registerHandler("us1-sync-messages", async (_event, params: unknown) => {
     return await us1ConversationService.syncMessages((params ?? {}) as Us1SyncMessagesParams);
+  });
+
+  registerHandler("us1-mail-start-gmail-oauth", async (_event) => {
+    console.log("[IPC] Starting Gmail OAuth...");
+    const result = await mailIdentityService.startGmailOauth();
+    console.log(
+      "[IPC] startGmailOauth result:",
+      result.success,
+      result.authUrl ? "URL present" : "URL missing"
+    );
+
+    if (!result.success) {
+      return result;
+    }
+
+    if (result.authUrl) {
+      try {
+        const urlObj = new URL(result.authUrl);
+        console.log("[IPC] Hostname check:", urlObj.hostname);
+
+        if (ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
+          console.log("[IPC] Opening external URL:", result.authUrl);
+          await shell.openExternal(result.authUrl);
+          return { success: true };
+        } else {
+          console.error("[IPC] Domain not allowed:", urlObj.hostname);
+          return { success: false, error: `Domain not allowed: ${urlObj.hostname}` };
+        }
+      } catch (err) {
+        console.error("[IPC] Error opening URL:", err);
+        return { success: false, error: `Browser open error: ${String(err)}` };
+      }
+    }
+
+    return { success: false, error: "Auth URL generation failed." };
+  });
+
+  registerHandler("us1-mail-exchange-gmail-code", async (_event, params: unknown) => {
+    const payload = params as { code: string };
+    return await mailIdentityService.exchangeGmailCode(payload.code);
+  });
+
+  registerHandler("us1-mail-listen-gmail-code", async (_event) => {
+    return await mailIdentityService.listenForGmailCode();
   });
 }

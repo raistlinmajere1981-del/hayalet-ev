@@ -1,15 +1,33 @@
-import electron from "electron";
+import { createRequire } from "node:module";
 import { dirname, join } from "path";
 
-const { app } = electron;
+const electronRequire = createRequire(import.meta.url);
+
+function getElectronApp(): { isPackaged?: boolean; getPath?: (name: string) => string } | null {
+  try {
+    const electronModule = electronRequire("electron");
+    if (electronModule === null || typeof electronModule !== "object") {
+      return null;
+    }
+
+    const app = (electronModule as { app?: { isPackaged?: boolean; getPath?: (name: string) => string } }).app;
+    return app !== undefined && typeof app === "object" ? app : null;
+  } catch {
+    return null;
+  }
+}
 
 function isPackagedMode(): boolean {
-  return app.isPackaged === true;
+  return getElectronApp()?.isPackaged === true;
 }
 
 export function resolveProjectRoot(): string {
+  const app = getElectronApp();
   if (isPackagedMode()) {
-    return dirname(app.getPath("exe"));
+    const executablePath = app?.getPath?.("exe");
+    return typeof executablePath === "string" && executablePath !== ""
+      ? dirname(executablePath)
+      : process.cwd();
   }
 
   // eslint-disable-next-line no-restricted-syntax

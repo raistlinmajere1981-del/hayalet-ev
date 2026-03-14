@@ -259,11 +259,39 @@ test("mail identity service saves and verifies a local mail account", async () =
   const savedAccount = store.snapshot().integrations?.mailTransport?.accounts[0];
   assert.ok(savedAccount);
   assert.equal(savedAccount.connectionState, "disconnected");
+  assert.equal(store.snapshot().integrations?.mailTransport?.localAccount, null);
+  assert.equal(store.snapshot().user?.email, "");
 
   const verifyResult = await service.verifyMailAccount(savedAccount.id);
   assert.equal(verifyResult.success, true);
   assert.equal(verifyResult.localMailAccount?.connectionState, "connected");
   assert.equal(store.snapshot().integrations?.mailTransport?.accounts[0]?.connectionState, "connected");
+  assert.equal(store.snapshot().integrations?.mailTransport?.localAccount?.id, savedAccount.id);
+  assert.equal(store.snapshot().user?.email, "local@example.com");
+  assert.equal(verifyResult.state?.verifiedLocalMailAccountId, savedAccount.id);
+  assert.equal(verifyResult.state?.verifiedUserEmail, "local@example.com");
+});
+
+test("updating a verified local mail account keeps the old verified identity until re-verify", async () => {
+  const { service, store, accountId } = await createConnectedServiceContext();
+
+  const updateResult = await service.upsertMailAccount(
+    {
+      ...createMailAccountDraft("changed@example.com"),
+      mailAccountId: accountId,
+    },
+    { verifyAfterSave: false }
+  );
+
+  assert.equal(updateResult.success, true);
+  assert.equal(store.snapshot().integrations?.mailTransport?.accounts[0]?.email, "changed@example.com");
+  assert.equal(store.snapshot().integrations?.mailTransport?.localAccount?.email, "local@example.com");
+  assert.equal(store.snapshot().user?.email, "local@example.com");
+
+  const verifyResult = await service.verifyMailAccount(accountId);
+  assert.equal(verifyResult.success, true);
+  assert.equal(store.snapshot().integrations?.mailTransport?.localAccount?.email, "changed@example.com");
+  assert.equal(store.snapshot().user?.email, "changed@example.com");
 });
 
 test("inviteRemoteUser creates an invite_sent remote user bound to the selected mail account", async () => {
@@ -389,7 +417,9 @@ test("deleteMailAccount removes linked remote users and disconnects the US1 slot
 
   const nextSettings = store.snapshot();
   assert.equal(nextSettings.integrations?.mailTransport?.accounts.length, 0);
+  assert.equal(nextSettings.integrations?.mailTransport?.localAccount, null);
   assert.equal(nextSettings.remoteUsers?.length ?? 0, 0);
+  assert.equal(nextSettings.user?.email, "");
   assert.equal(nextSettings.us1Slot?.selectedRemoteUserId, null);
   assert.equal(nextSettings.us1Slot?.connectionState, "disconnected");
 });

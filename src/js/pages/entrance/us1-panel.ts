@@ -1,13 +1,13 @@
-import type {
-  AppSettings,
-  MailTransportAccountConfig,
-  RemoteUserIdentity,
-} from "@shared/settings.js";
+import type { AppSettings, MailTransportAccountConfig } from "@shared/settings.js";
+import { getRemoteEmailAccounts } from "@shared/settings.js";
 import type { Us1MailAccountDraft } from "@shared/us1-mail.js";
+import { buildRemoteEmailAccountId } from "@shared/archive.js";
 
 import { AppState } from "../../modules/app-state.js";
+import { ConversationListManager } from "../../modules/conversation-list-manager.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
-import { t as entranceT } from "./i18n.js";
+import { getErrorMessage } from "@shared/index.js";
+import { formatTime, t as entranceT } from "./i18n.js";
 
 interface SettingsManagerLike {
   getSnapshot(): AppSettings;
@@ -16,12 +16,26 @@ interface SettingsManagerLike {
   load?(options?: { force?: boolean }): Promise<AppSettings>;
 }
 
-type FeedbackKind = "success" | "error" | "info";
+type FeedbackKind = "success" | "error" | "info" | "warning";
+
+interface ActiveRemoteBinding {
+  accountId: string;
+  remoteUserId: string;
+  email: string;
+  nickname: string;
+}
+
+interface ReportEntry {
+  id: string;
+  at: number;
+  kind: FeedbackKind;
+  message: string;
+}
 
 export class Us1Panel {
   settingsManager: SettingsManagerLike;
-  selectedMailAccountId: string | null = null;
-  selectedRemoteUserId: string | null = null;
+  reportEntries: ReportEntry[] = [];
+  loadingBusy = false;
 
   constructor(settingsManager: SettingsManagerLike) {
     this.settingsManager = settingsManager;
@@ -33,15 +47,6 @@ export class Us1Panel {
   }
 
   setupListeners(): void {
-    const mailAccountSelect = document.getElementById(
-      "us1-mail-account-select"
-    ) as HTMLSelectElement | null;
-    mailAccountSelect?.addEventListener("change", (event) => {
-      this.selectedMailAccountId = this.readSelectValue(event.target as HTMLSelectElement);
-      this.selectedRemoteUserId = null;
-      this.render();
-    });
-
     const providerSelect = document.getElementById(
       "us1-mail-provider-select"
     ) as HTMLSelectElement | null;
@@ -68,35 +73,23 @@ export class Us1Panel {
       void this.handleDeleteMailAccount();
     });
 
-    const remoteUserSelect = document.getElementById(
-      "us1-remote-user-select"
-    ) as HTMLSelectElement | null;
-    remoteUserSelect?.addEventListener("change", (event) => {
-      this.selectedRemoteUserId = this.readSelectValue(event.target as HTMLSelectElement);
-      this.render();
+    document.getElementById("us1-mail-gmail-open-security")?.addEventListener("click", () => {
+      const electronApi = window.electronAPI;
+      if (electronApi) {
+        void electronApi.openPath("https://myaccount.google.com/apppasswords");
+      }
     });
 
-    document.getElementById("us1-remote-invite-btn")?.addEventListener("click", () => {
-      void this.handleInviteRemoteUser();
-    });
-
-    document.getElementById("us1-remote-accept-btn")?.addEventListener("click", () => {
-      void this.handleAcceptRemoteUser();
-    });
-
-    document.getElementById("us1-remote-refresh-btn")?.addEventListener("click", () => {
-      void this.handleRefreshRemoteUsers();
+    document.getElementById("us1-mail-gmail-connect-easy")?.addEventListener("click", () => {
+      void this.handleGmailConnectEasy();
     });
 
     const slotUserSelect = document.getElementById(
       "us1-identity-select"
     ) as HTMLSelectElement | null;
     slotUserSelect?.addEventListener("change", (event) => {
-      const selectedRemoteUserId = this.readSelectValue(event.target as HTMLSelectElement);
-      void this.updateUs1Slot({
-        selectedRemoteUserId,
-        connectionState: "disconnected",
-      });
+      const selectedAccountId = this.readSelectValue(event.target as HTMLSelectElement);
+      void this.handleSlotSelectionChange(selectedAccountId);
     });
 
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
@@ -107,90 +100,91 @@ export class Us1Panel {
     });
 
     document.getElementById("us1-connect-btn")?.addEventListener("click", () => {
-      if (AppState.hasUs1Identity() === false || AppState.isUs1Connected() === true) {
-        return;
-      }
-      void this.updateUs1Slot({ connectionState: "connected" });
+      void this.handleConnect();
     });
 
     document.getElementById("us1-disconnect-btn")?.addEventListener("click", () => {
-      if (AppState.isUs1Connected() === false) {
-        return;
-      }
-      void this.updateUs1Slot({ connectionState: "disconnected" });
+      void this.handleDisconnect();
+    });
+
+    document.getElementById("us1-sync-messages-btn")?.addEventListener("click", () => {
+      void this.handleManualMailCheck();
     });
   }
 
-  getLocalMailAccounts(settings: AppSettings): MailTransportAccountConfig[] {
+  private getMailAccounts(settings: AppSettings): MailTransportAccountConfig[] {
     return settings.integrations?.mailTransport?.accounts ?? [];
   }
 
-  getRemoteUsers(settings: AppSettings, mailAccountId: string | null = null): RemoteUserIdentity[] {
-    const remoteUsers = settings.remoteUsers ?? [];
-    if (mailAccountId === null) {
-      return remoteUsers;
+  private getEditableMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
+    return settings.integrations?.mailTransport?.localAccount ?? this.getMailAccounts(settings)[0] ?? null;
+  }
+
+  private getVerifiedLocalMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
+    const localAccount = settings.integrations?.mailTransport?.localAccount ?? null;
+    if (localAccount?.connectionState === "connected") {
+      return localAccount;
     }
-    return remoteUsers.filter((remoteUser) => remoteUser.linkedMailAccountId === mailAccountId);
+    return null;
   }
 
-  getActiveRemoteUsers(settings: AppSettings): RemoteUserIdentity[] {
-    return this.getRemoteUsers(settings).filter((identity) => identity.handshakeState === "active");
+  private getActiveRemoteBindings(settings: AppSettings): ActiveRemoteBinding[] {
+    return getRemoteEmailAccounts(settings.accounts)
+      .map((account) => {
+        const remoteUserId = this.normalizeText(account.remoteEmail?.remoteUserId);
+        if (remoteUserId === null || account.remoteEmail?.handshakeState !== "active") {
+          return null;
+        }
+
+        const accountId = buildRemoteEmailAccountId(remoteUserId) ?? account.id;
+        const email = `${account.email}`.trim();
+        const fallbackNickname = email.split("@")[0] ?? email;
+        const nickname = `${account.nickname ?? fallbackNickname}`.trim() || fallbackNickname;
+        return {
+          accountId,
+          remoteUserId,
+          email,
+          nickname,
+        };
+      })
+      .filter((binding): binding is ActiveRemoteBinding => binding !== null)
+      .sort((left, right) => {
+        const leftLabel = `${left.nickname} ${left.email}`.toLowerCase();
+        const rightLabel = `${right.nickname} ${right.email}`.toLowerCase();
+        return leftLabel.localeCompare(rightLabel, "tr");
+      });
   }
 
-  resolveSelectedMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
-    const accounts = this.getLocalMailAccounts(settings);
-    const preferredMailAccountId =
-      this.selectedMailAccountId ??
-      this.getRemoteUsers(settings).find(
-        (remoteUser) => remoteUser.remoteUserId === settings.us1Slot?.selectedRemoteUserId
-      )?.linkedMailAccountId ??
-      accounts.find(
-        (account) => account.enabled !== false && account.connectionState === "connected"
-      )?.id ??
-      accounts.find((account) => account.enabled !== false)?.id ??
-      accounts[0]?.id ??
-      null;
-
-    this.selectedMailAccountId =
-      preferredMailAccountId !== null &&
-      accounts.some((account) => account.id === preferredMailAccountId)
-        ? preferredMailAccountId
-        : null;
-
-    return accounts.find((account) => account.id === this.selectedMailAccountId) ?? null;
-  }
-
-  resolveSelectedRemoteUser(
+  private resolveSelectedBinding(
     settings: AppSettings,
-    mailAccountId: string | null
-  ): RemoteUserIdentity | null {
-    const remoteUsers = this.getRemoteUsers(settings, mailAccountId);
-    const preferredRemoteUserId =
-      this.selectedRemoteUserId ??
-      settings.us1Slot?.selectedRemoteUserId ??
-      remoteUsers[0]?.remoteUserId ??
-      null;
-
-    this.selectedRemoteUserId =
-      preferredRemoteUserId !== null &&
-      remoteUsers.some((remoteUser) => remoteUser.remoteUserId === preferredRemoteUserId)
-        ? preferredRemoteUserId
-        : null;
+    bindings: ActiveRemoteBinding[]
+  ): ActiveRemoteBinding | null {
+    const selectedAccountId = this.normalizeText(settings.us1Slot?.selectedAccountId);
+    const selectedRemoteUserId = this.normalizeText(settings.us1Slot?.selectedRemoteUserId);
 
     return (
-      remoteUsers.find((remoteUser) => remoteUser.remoteUserId === this.selectedRemoteUserId) ??
+      bindings.find((binding) => binding.accountId === selectedAccountId) ??
+      bindings.find((binding) => binding.remoteUserId === selectedRemoteUserId) ??
       null
     );
   }
 
-  readSelectValue(select: HTMLSelectElement | null): string | null {
+  private readSelectValue(select: HTMLSelectElement | null): string | null {
     if (select === null || select.value.trim() === "") {
       return null;
     }
     return select.value.trim();
   }
 
-  async reloadSettings(): Promise<void> {
+  private normalizeText(value: string | null | undefined): string | null {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  }
+
+  private async reloadSettings(): Promise<void> {
     if (typeof this.settingsManager.reload === "function") {
       await this.settingsManager.reload();
       return;
@@ -200,14 +194,16 @@ export class Us1Panel {
     }
   }
 
-  async handleSaveMailAccount(verifyAfterSave: boolean): Promise<void> {
+  private async handleSaveMailAccount(verifyAfterSave: boolean): Promise<void> {
     const electronApi = window.electronAPI;
     if (electronApi === undefined) {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
 
-    const draft = this.collectMailAccountDraft();
+    const settings = this.settingsManager.getSnapshot();
+    const selectedMailAccount = this.getEditableMailAccount(settings);
+    const draft = this.collectMailAccountDraft(selectedMailAccount?.id ?? null);
     if (draft.email === "") {
       this.showFeedback(entranceT("us1.feedback.mailEmailRequired"), "error");
       return;
@@ -215,191 +211,260 @@ export class Us1Panel {
 
     const result = await electronApi.us1UpsertMailAccount(draft, { verifyAfterSave });
     await this.reloadSettings();
-    this.selectedMailAccountId =
-      result.localMailAccount?.mailAccountId ?? this.selectedMailAccountId;
     this.render();
 
     if (result.success) {
-      this.showFeedback(
-        verifyAfterSave === true
-          ? entranceT("us1.feedback.mailVerifySuccess")
-          : entranceT("us1.feedback.mailSaveSuccess"),
-        "success"
-      );
+      const message = verifyAfterSave
+        ? entranceT("us1.feedback.mailVerifySuccess")
+        : entranceT("us1.feedback.mailSaveSuccess");
+      this.addReport(message, "success");
+      this.showFeedback(message, "success");
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
+    this.addReport(errorMessage, "error");
+    this.showFeedback(errorMessage, "error");
   }
 
-  async handleDeleteMailAccount(): Promise<void> {
+  private async handleDeleteMailAccount(): Promise<void> {
     const electronApi = window.electronAPI;
-    const mailAccountId = this.selectedMailAccountId;
-    if (electronApi === undefined || mailAccountId === null) {
+    const settings = this.settingsManager.getSnapshot();
+    const selectedMailAccount = this.getEditableMailAccount(settings);
+    if (electronApi === undefined || selectedMailAccount === null) {
       this.showFeedback(entranceT("us1.feedback.mailAccountRequired"), "error");
       return;
     }
 
-    const result = await electronApi.us1DeleteMailAccount({ mailAccountId });
+    const result = await electronApi.us1DeleteMailAccount({ mailAccountId: selectedMailAccount.id });
     await this.reloadSettings();
-    this.selectedMailAccountId = null;
-    this.selectedRemoteUserId = null;
     this.render();
 
     if (result.success) {
-      this.showFeedback(entranceT("us1.feedback.mailDeleteSuccess"), "success");
+      const message = entranceT("us1.feedback.mailDeleteSuccess");
+      this.addReport(message, "success");
+      this.showFeedback(message, "success");
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    const errorMessage = result.error ?? entranceT("us1.feedback.operationFailed");
+    this.addReport(errorMessage, "error");
+    this.showFeedback(errorMessage, "error");
   }
 
-  async handleInviteRemoteUser(): Promise<void> {
-    const electronApi = window.electronAPI;
-    const selectedMailAccountId = this.selectedMailAccountId;
-    if (electronApi === undefined) {
-      this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
-      return;
+  private async handleGmailConnectEasy(): Promise<void> {
+    const providerSelect = document.getElementById(
+      "us1-mail-provider-select"
+    ) as HTMLSelectElement | null;
+    if (providerSelect) {
+      providerSelect.value = "gmail";
     }
-    if (selectedMailAccountId === null) {
-      this.showFeedback(entranceT("us1.feedback.mailAccountRequired"), "error");
-      return;
-    }
+    this.renderMailAccountFormState();
+    await this.handleSaveMailAccount(true);
+  }
 
-    const remoteEmailInput = document.getElementById(
-      "us1-remote-email-input"
-    ) as HTMLInputElement | null;
-    const remoteNicknameInput = document.getElementById(
-      "us1-remote-nickname-input"
-    ) as HTMLInputElement | null;
-    const email = remoteEmailInput?.value.trim().toLowerCase() ?? "";
-    const nickname = remoteNicknameInput?.value.trim() ?? "";
+  private async handleSlotSelectionChange(selectedAccountId: string | null): Promise<void> {
+    const settings = this.settingsManager.getSnapshot();
+    const binding = this.getActiveRemoteBindings(settings).find(
+      (candidate) => candidate.accountId === selectedAccountId
+    );
 
-    if (email === "") {
-      this.showFeedback(entranceT("us1.feedback.remoteEmailRequired"), "error");
-      return;
-    }
-
-    const result = await electronApi.us1InviteRemoteUser({
-      mailAccountId: selectedMailAccountId,
-      email,
-      nickname,
+    await this.updateUs1Slot({
+      selectedAccountId: binding?.accountId ?? null,
+      selectedRemoteUserId: binding?.remoteUserId ?? null,
+      connectionState: "disconnected",
     });
-    await this.reloadSettings();
-    this.selectedRemoteUserId = result.remoteUser?.remoteUserId ?? email;
-    this.render();
-
-    if (result.success) {
-      this.showFeedback(entranceT("us1.feedback.inviteSent"), "success");
-      return;
-    }
-
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
   }
 
-  async handleAcceptRemoteUser(): Promise<void> {
+  private async handleConnect(): Promise<void> {
     const electronApi = window.electronAPI;
-    const remoteUserId = this.selectedRemoteUserId;
-    if (electronApi === undefined) {
+    const settings = this.settingsManager.getSnapshot();
+    const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
+    const activeBindings = this.getActiveRemoteBindings(settings);
+    const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
+
+    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
-    if (remoteUserId === null) {
-      this.showFeedback(entranceT("us1.feedback.remoteUserRequired"), "error");
+    if (verifiedLocalMailAccount === null) {
+      this.showFeedback(entranceT("us1.status.noConnectedMailAccount"), "warning");
+      return;
+    }
+    if (selectedBinding === null) {
+      this.showFeedback(entranceT("us1.status.empty"), "warning");
+      return;
+    }
+    if (AppState.isUs1Connected() === true) {
       return;
     }
 
-    const result = await electronApi.us1AcceptRemoteUser({ remoteUserId });
-    await this.reloadSettings();
-    this.render();
+    this.loadingBusy = true;
+    this.syncIndicators(AppState.isUs1Connected());
 
-    if (result.success) {
-      this.showFeedback(entranceT("us1.feedback.acceptSent"), "success");
-      return;
+    try {
+      await this.updateUs1Slot({
+        selectedAccountId: selectedBinding.accountId,
+        selectedRemoteUserId: selectedBinding.remoteUserId,
+        connectionState: "connected",
+      });
+
+      const result = await electronApi.us1SyncMessages();
+      await this.reloadSettings();
+      this.render();
+
+      if (result.success !== true) {
+        throw new Error(result.error ?? entranceT("us1.feedback.operationFailed"));
+      }
+
+      const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      await ConversationListManager.refresh({
+        silent: true,
+        provider: "us1",
+        ...(typeof result.conversationId === "string" && result.conversationId !== ""
+          ? { forceSelectId: result.conversationId }
+          : {}),
+      });
+      const message = entranceT("us1.feedback.connectSuccess", {
+        count: String(processedCount),
+      });
+      this.addReport(message, "success");
+      this.showFeedback(message, "success");
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      this.addReport(errorMessage, "error");
+      this.showFeedback(errorMessage, "error");
+    } finally {
+      this.loadingBusy = false;
+      this.render();
     }
-
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
   }
 
-  async handleRefreshRemoteUsers(): Promise<void> {
+  private async handleDisconnect(): Promise<void> {
+    if (AppState.isUs1Connected() === false) {
+      return;
+    }
+
+    await this.updateUs1Slot({ connectionState: "disconnected" });
+    const message = entranceT("us1.feedback.disconnectSuccess");
+    this.addReport(message, "info");
+    this.showFeedback(message, "info");
+  }
+
+  private async handleManualMailCheck(): Promise<void> {
     const electronApi = window.electronAPI;
-    if (electronApi === undefined) {
+    if (electronApi === undefined || typeof electronApi.us1SyncMessages !== "function") {
       this.showFeedback(entranceT("us1.feedback.electronUnavailable"), "error");
       return;
     }
-
-    const result = await electronApi.us1SyncRemoteUsers({
-      ...(this.selectedMailAccountId !== null ? { mailAccountId: this.selectedMailAccountId } : {}),
-      limit: 25,
-    });
-    await this.reloadSettings();
-    this.render();
-
-    if (result.success) {
-      this.showFeedback(
-        entranceT("us1.feedback.syncSuccess", {
-          count: String(result.processedCount ?? 0),
-        }),
-        "success"
-      );
+    if (AppState.isUs1Connected() !== true) {
+      this.showFeedback(entranceT("us1.feedback.syncRequiresConnection"), "warning");
       return;
     }
 
-    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+    this.loadingBusy = true;
+    this.syncIndicators(true);
+
+    try {
+      const result = await electronApi.us1SyncMessages();
+      await this.reloadSettings();
+      this.render();
+
+      if (result.success !== true) {
+        throw new Error(result.error ?? entranceT("us1.feedback.operationFailed"));
+      }
+
+      const processedCount = result.processedCount ?? result.fetchedCount ?? 0;
+      await ConversationListManager.refresh({
+        silent: true,
+        provider: "us1",
+        ...(typeof result.conversationId === "string" && result.conversationId !== ""
+          ? { forceSelectId: result.conversationId }
+          : {}),
+      });
+      const message = entranceT("us1.feedback.syncSuccess", {
+        count: String(processedCount),
+      });
+      this.addReport(message, "success");
+      this.showFeedback(message, "success");
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      this.addReport(errorMessage, "error");
+      this.showFeedback(errorMessage, "error");
+    } finally {
+      this.loadingBusy = false;
+      this.render();
+    }
   }
 
-  collectMailAccountDraft(): Us1MailAccountDraft {
+  private collectMailAccountDraft(mailAccountId: string | null): Us1MailAccountDraft {
     const providerType =
       (document.getElementById("us1-mail-provider-select") as HTMLSelectElement | null)?.value ===
       "custom-imap-smtp"
         ? "custom-imap-smtp"
         : "gmail";
     const authType =
-      (document.getElementById("us1-mail-auth-type-select") as HTMLSelectElement | null)?.value ===
-      "oauth2"
-        ? "oauth2"
-        : "password";
+      providerType === "gmail"
+        ? "password"
+        : (document.getElementById("us1-mail-auth-type-select") as HTMLSelectElement | null)
+              ?.value === "oauth2"
+          ? "oauth2"
+          : "password";
+
+    const gmailEmailInput = document.getElementById(
+      "us1-mail-gmail-email-easy"
+    ) as HTMLInputElement | null;
+    const gmailPasswordInput = document.getElementById(
+      "us1-mail-gmail-password-easy"
+    ) as HTMLInputElement | null;
+    const emailInput = document.getElementById("us1-mail-email-input") as HTMLInputElement | null;
+    const email =
+      providerType === "gmail"
+        ? gmailEmailInput?.value.trim().toLowerCase() ?? ""
+        : emailInput?.value.trim().toLowerCase() ?? "";
 
     const imapPort = this.readNumberInput("us1-mail-imap-port-input");
     const smtpPort = this.readNumberInput("us1-mail-smtp-port-input");
 
     return {
-      mailAccountId: this.selectedMailAccountId,
+      ...(mailAccountId !== null ? { mailAccountId } : {}),
       providerType,
-      email:
-        (
-          document.getElementById("us1-mail-email-input") as HTMLInputElement | null
-        )?.value.trim() ?? "",
+      email,
       enabled: true,
       authType,
-      imap: {
-        host:
-          (
-            document.getElementById("us1-mail-imap-host-input") as HTMLInputElement | null
-          )?.value.trim() ?? "",
-        secure:
-          (document.getElementById("us1-mail-imap-secure-check") as HTMLInputElement | null)
-            ?.checked ?? false,
-        ...(imapPort !== undefined ? { port: imapPort } : {}),
-      },
-      smtp: {
-        host:
-          (
-            document.getElementById("us1-mail-smtp-host-input") as HTMLInputElement | null
-          )?.value.trim() ?? "",
-        secure:
-          (document.getElementById("us1-mail-smtp-secure-check") as HTMLInputElement | null)
-            ?.checked ?? false,
-        ...(smtpPort !== undefined ? { port: smtpPort } : {}),
-      },
+      imap:
+        providerType === "gmail"
+          ? { host: "imap.gmail.com", port: 993, secure: true }
+          : {
+              host:
+                (
+                  document.getElementById("us1-mail-imap-host-input") as HTMLInputElement | null
+                )?.value.trim() ?? "",
+              secure:
+                (document.getElementById("us1-mail-imap-secure-check") as HTMLInputElement | null)
+                  ?.checked ?? false,
+              ...(imapPort !== undefined ? { port: imapPort } : {}),
+            },
+      smtp:
+        providerType === "gmail"
+          ? { host: "smtp.gmail.com", port: 465, secure: true }
+          : {
+              host:
+                (
+                  document.getElementById("us1-mail-smtp-host-input") as HTMLInputElement | null
+                )?.value.trim() ?? "",
+              secure:
+                (document.getElementById("us1-mail-smtp-secure-check") as HTMLInputElement | null)
+                  ?.checked ?? false,
+              ...(smtpPort !== undefined ? { port: smtpPort } : {}),
+            },
       auth: {
-        user:
-          (
-            document.getElementById("us1-mail-email-input") as HTMLInputElement | null
-          )?.value.trim() ?? "",
+        user: email,
         password:
-          (document.getElementById("us1-mail-password-input") as HTMLInputElement | null)?.value ??
-          "",
+          providerType === "gmail"
+            ? gmailPasswordInput?.value.trim().replace(/\s/g, "") ?? ""
+            : (document.getElementById("us1-mail-password-input") as HTMLInputElement | null)
+                ?.value ?? "",
         accessToken:
           (document.getElementById("us1-mail-access-token-input") as HTMLInputElement | null)
             ?.value ?? "",
@@ -416,7 +481,7 @@ export class Us1Panel {
     };
   }
 
-  readNumberInput(elementId: string): number | undefined {
+  private readNumberInput(elementId: string): number | undefined {
     const value =
       (document.getElementById(elementId) as HTMLInputElement | null)?.value.trim() ?? "";
     if (value === "") {
@@ -426,7 +491,7 @@ export class Us1Panel {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
 
-  async updateUs1Slot(patch: Partial<NonNullable<AppSettings["us1Slot"]>>): Promise<void> {
+  private async updateUs1Slot(patch: Partial<NonNullable<AppSettings["us1Slot"]>>): Promise<void> {
     const settings = this.settingsManager.getSnapshot();
     await this.settingsManager.save({
       ...settings,
@@ -441,24 +506,17 @@ export class Us1Panel {
 
   render(): void {
     const settings = this.settingsManager.getSnapshot();
-    const selectedMailAccount = this.resolveSelectedMailAccount(settings);
-    const remoteUsers = this.getRemoteUsers(settings, selectedMailAccount?.id ?? null);
-    const selectedRemoteUser = this.resolveSelectedRemoteUser(
-      settings,
-      selectedMailAccount?.id ?? null
-    );
-    const activeRemoteUsers = this.getActiveRemoteUsers(settings);
-    const selectedSlotRemoteUserId = settings.us1Slot?.selectedRemoteUserId ?? null;
-    const selectedSlotRemoteUser =
-      activeRemoteUsers.find((identity) => identity.remoteUserId === selectedSlotRemoteUserId) ??
-      null;
+    const editableMailAccount = this.getEditableMailAccount(settings);
+    const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
+    const activeBindings = this.getActiveRemoteBindings(settings);
+    const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
     const connected = AppState.isUs1Connected();
 
-    this.renderMailAccountSelect(settings, selectedMailAccount);
-    this.renderMailAccountForm(selectedMailAccount);
-    this.renderRemoteUserSelect(remoteUsers, selectedRemoteUser);
-    this.renderRemoteUserForm(selectedRemoteUser);
-    this.renderSlotSelect(activeRemoteUsers, selectedSlotRemoteUser);
+    this.renderMailAccountIdentity(editableMailAccount, verifiedLocalMailAccount);
+    this.renderMailAccountForm(editableMailAccount);
+    this.renderMailAccountFormState();
+    this.renderSlotSelect(activeBindings, selectedBinding);
+    this.renderReportLog();
 
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
     if (catchCheck) {
@@ -467,7 +525,7 @@ export class Us1Panel {
 
     const connectBtn = document.getElementById("us1-connect-btn") as HTMLButtonElement | null;
     if (connectBtn) {
-      connectBtn.disabled = selectedSlotRemoteUser === null || connected;
+      connectBtn.disabled = selectedBinding === null || connected;
     }
 
     const disconnectBtn = document.getElementById("us1-disconnect-btn") as HTMLButtonElement | null;
@@ -475,61 +533,60 @@ export class Us1Panel {
       disconnectBtn.disabled = connected === false;
     }
 
+    const syncBtn = document.getElementById("us1-sync-messages-btn") as HTMLButtonElement | null;
+    if (syncBtn) {
+      syncBtn.disabled = connected === false;
+    }
+
     const statusText = document.getElementById("us1-status-text");
     if (statusText) {
       statusText.textContent = this.getSlotStatusText(
-        selectedMailAccount,
-        activeRemoteUsers.length,
-        selectedSlotRemoteUser,
+        editableMailAccount,
+        verifiedLocalMailAccount,
+        activeBindings.length,
+        selectedBinding,
         connected
       );
     }
 
     const hintText = document.getElementById("us1-phase-hint");
     if (hintText) {
-      hintText.textContent = this.getPhaseHint(selectedMailAccount, activeRemoteUsers.length);
+      hintText.textContent = this.getPhaseHint(
+        editableMailAccount,
+        verifiedLocalMailAccount,
+        activeBindings.length
+      );
     }
 
     this.syncIndicators(connected);
   }
 
-  renderMailAccountSelect(
-    settings: AppSettings,
-    selectedMailAccount: MailTransportAccountConfig | null
+  private renderMailAccountIdentity(
+    editableMailAccount: MailTransportAccountConfig | null,
+    verifiedLocalMailAccount: MailTransportAccountConfig | null
   ): void {
-    const mailAccountSelect = document.getElementById(
-      "us1-mail-account-select"
-    ) as HTMLSelectElement | null;
-    if (mailAccountSelect === null) {
-      return;
+    const verifiedEmailEl = document.getElementById("us1-mail-verified-email");
+    if (verifiedEmailEl) {
+      verifiedEmailEl.textContent =
+        verifiedLocalMailAccount?.email ?? entranceT("us1.mailAccount.verifiedEmpty");
     }
 
-    const accounts = this.getLocalMailAccounts(settings);
-    mailAccountSelect.innerHTML = "";
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent =
-      accounts.length > 0
-        ? entranceT("us1.mailAccount.selectPlaceholder")
-        : entranceT("us1.mailAccount.empty");
-    mailAccountSelect.appendChild(placeholder);
-
-    accounts.forEach((account) => {
-      const option = document.createElement("option");
-      option.value = account.id;
-      option.textContent = `${account.email} · ${this.getMailAccountStateLabel(account)}`;
-      mailAccountSelect.appendChild(option);
-    });
-
-    mailAccountSelect.value = selectedMailAccount?.id ?? "";
-    mailAccountSelect.disabled = accounts.length === 0;
+    const statusEl = document.getElementById("us1-mail-account-status");
+    if (statusEl) {
+      statusEl.textContent = this.getMailAccountStatusText(editableMailAccount);
+    }
   }
 
-  renderMailAccountForm(selectedMailAccount: MailTransportAccountConfig | null): void {
+  private renderMailAccountForm(selectedMailAccount: MailTransportAccountConfig | null): void {
     const providerSelect = document.getElementById(
       "us1-mail-provider-select"
     ) as HTMLSelectElement | null;
+    const gmailEmailInput = document.getElementById(
+      "us1-mail-gmail-email-easy"
+    ) as HTMLInputElement | null;
+    const gmailPasswordInput = document.getElementById(
+      "us1-mail-gmail-password-easy"
+    ) as HTMLInputElement | null;
     const emailInput = document.getElementById("us1-mail-email-input") as HTMLInputElement | null;
     const authTypeSelect = document.getElementById(
       "us1-mail-auth-type-select"
@@ -569,6 +626,8 @@ export class Us1Panel {
     ) as HTMLInputElement | null;
 
     if (providerSelect) providerSelect.value = selectedMailAccount?.providerType ?? "gmail";
+    if (gmailEmailInput) gmailEmailInput.value = selectedMailAccount?.email ?? "";
+    if (gmailPasswordInput) gmailPasswordInput.value = selectedMailAccount?.auth.password ?? "";
     if (emailInput) emailInput.value = selectedMailAccount?.email ?? "";
     if (authTypeSelect) authTypeSelect.value = selectedMailAccount?.authType ?? "password";
     if (passwordInput) passwordInput.value = selectedMailAccount?.auth.password ?? "";
@@ -591,113 +650,59 @@ export class Us1Panel {
     }
     if (smtpSecureCheck) smtpSecureCheck.checked = selectedMailAccount?.smtp.secure ?? true;
 
-    this.renderMailAccountFormState();
-
-    const accountStatus = document.getElementById("us1-mail-account-status");
-    if (accountStatus) {
-      accountStatus.textContent = this.getMailAccountStatusText(selectedMailAccount);
-    }
-
     const deleteBtn = document.getElementById("us1-mail-delete-btn") as HTMLButtonElement | null;
     if (deleteBtn) {
       deleteBtn.disabled = selectedMailAccount === null;
     }
   }
 
-  renderMailAccountFormState(): void {
-    const providerType =
-      (document.getElementById("us1-mail-provider-select") as HTMLSelectElement | null)?.value ??
-      "gmail";
-    const authType =
-      (document.getElementById("us1-mail-auth-type-select") as HTMLSelectElement | null)?.value ??
-      "password";
+  private renderMailAccountFormState(): void {
+    const providerSelect = document.getElementById(
+      "us1-mail-provider-select"
+    ) as HTMLSelectElement | null;
+    const authTypeSelect = document.getElementById(
+      "us1-mail-auth-type-select"
+    ) as HTMLSelectElement | null;
+    const providerType = providerSelect?.value ?? "gmail";
+    const authType = authTypeSelect?.value ?? "password";
+
+    if (providerType === "gmail" && authTypeSelect) {
+      authTypeSelect.value = "password";
+    }
 
     document
       .querySelectorAll<HTMLElement>("[data-us1-mail-custom]")
       .forEach((element) =>
         element.classList.toggle("is-hidden", providerType !== "custom-imap-smtp")
       );
+
+    document
+      .querySelectorAll<HTMLElement>("[data-us1-mail-gmail-helper]")
+      .forEach((element) => element.classList.toggle("is-hidden", providerType !== "gmail"));
+
+    document
+      .querySelectorAll<HTMLElement>("[data-us1-mail-manual-fields]")
+      .forEach((element) => element.classList.toggle("is-hidden", providerType === "gmail"));
+
     document
       .querySelectorAll<HTMLElement>("[data-us1-mail-password]")
-      .forEach((element) => element.classList.toggle("is-hidden", authType !== "password"));
+      .forEach((element) =>
+        element.classList.toggle(
+          "is-hidden",
+          authType !== "password" || providerType === "gmail"
+        )
+      );
+
     document
       .querySelectorAll<HTMLElement>("[data-us1-mail-oauth]")
-      .forEach((element) => element.classList.toggle("is-hidden", authType !== "oauth2"));
+      .forEach((element) =>
+        element.classList.toggle("is-hidden", authType !== "oauth2" || providerType === "gmail")
+      );
   }
 
-  renderRemoteUserSelect(
-    remoteUsers: RemoteUserIdentity[],
-    selectedRemoteUser: RemoteUserIdentity | null
-  ): void {
-    const remoteUserSelect = document.getElementById(
-      "us1-remote-user-select"
-    ) as HTMLSelectElement | null;
-    if (remoteUserSelect === null) {
-      return;
-    }
-
-    remoteUserSelect.innerHTML = "";
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent =
-      remoteUsers.length > 0
-        ? entranceT("us1.remote.selectPlaceholder")
-        : entranceT("us1.remote.empty");
-    remoteUserSelect.appendChild(placeholder);
-
-    remoteUsers.forEach((remoteUser) => {
-      const option = document.createElement("option");
-      option.value = remoteUser.remoteUserId;
-      option.textContent = `${remoteUser.nickname ?? remoteUser.email} · ${this.getRemoteUserStateLabel(remoteUser)}`;
-      remoteUserSelect.appendChild(option);
-    });
-
-    remoteUserSelect.value = selectedRemoteUser?.remoteUserId ?? "";
-    remoteUserSelect.disabled = remoteUsers.length === 0;
-
-    const remoteStatus = document.getElementById("us1-remote-user-status");
-    if (remoteStatus) {
-      remoteStatus.textContent = this.getRemoteUserStatusText(selectedRemoteUser);
-    }
-
-    const acceptBtn = document.getElementById("us1-remote-accept-btn") as HTMLButtonElement | null;
-    if (acceptBtn) {
-      acceptBtn.disabled = selectedRemoteUser?.handshakeState !== "handshake_pending";
-    }
-  }
-
-  renderRemoteUserForm(selectedRemoteUser: RemoteUserIdentity | null): void {
-    const emailInput = document.getElementById("us1-remote-email-input") as HTMLInputElement | null;
-    const nicknameInput = document.getElementById(
-      "us1-remote-nickname-input"
-    ) as HTMLInputElement | null;
-
-    if (emailInput) {
-      emailInput.value = selectedRemoteUser?.email ?? "";
-    }
-    if (nicknameInput) {
-      nicknameInput.value = selectedRemoteUser?.nickname ?? "";
-    }
-
-    const inviteBtn = document.getElementById("us1-remote-invite-btn") as HTMLButtonElement | null;
-    if (inviteBtn) {
-      inviteBtn.disabled =
-        this.selectedMailAccountId === null ||
-        this.getSelectedMailAccountConnectionState() !== "connected";
-    }
-
-    const refreshBtn = document.getElementById(
-      "us1-remote-refresh-btn"
-    ) as HTMLButtonElement | null;
-    if (refreshBtn) {
-      refreshBtn.disabled = this.selectedMailAccountId === null;
-    }
-  }
-
-  renderSlotSelect(
-    activeRemoteUsers: RemoteUserIdentity[],
-    selectedRemoteUser: RemoteUserIdentity | null
+  private renderSlotSelect(
+    activeBindings: ActiveRemoteBinding[],
+    selectedBinding: ActiveRemoteBinding | null
   ): void {
     const slotUserSelect = document.getElementById(
       "us1-identity-select"
@@ -711,23 +716,23 @@ export class Us1Panel {
     const placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent =
-      activeRemoteUsers.length > 0
+      activeBindings.length > 0
         ? entranceT("us1.selectPlaceholder")
         : entranceT("us1.noReadyUsers");
     slotUserSelect.appendChild(placeholder);
 
-    activeRemoteUsers.forEach((identity) => {
+    activeBindings.forEach((binding) => {
       const option = document.createElement("option");
-      option.value = identity.remoteUserId;
-      option.textContent = `${identity.nickname ?? identity.email} (${identity.email})`;
+      option.value = binding.accountId;
+      option.textContent = `${binding.nickname} (${binding.email})`;
       slotUserSelect.appendChild(option);
     });
 
-    slotUserSelect.value = selectedRemoteUser?.remoteUserId ?? "";
-    slotUserSelect.disabled = activeRemoteUsers.length === 0;
+    slotUserSelect.value = selectedBinding?.accountId ?? "";
+    slotUserSelect.disabled = activeBindings.length === 0;
   }
 
-  getMailAccountStatusText(selectedMailAccount: MailTransportAccountConfig | null): string {
+  private getMailAccountStatusText(selectedMailAccount: MailTransportAccountConfig | null): string {
     if (selectedMailAccount === null) {
       return entranceT("us1.mailAccount.status.none");
     }
@@ -736,45 +741,23 @@ export class Us1Panel {
     );
   }
 
-  getMailAccountStateLabel(selectedMailAccount: MailTransportAccountConfig): string {
-    return entranceT(
-      `us1.mailAccount.state.${selectedMailAccount.connectionState ?? "disconnected"}`
-    );
-  }
-
-  getRemoteUserStatusText(selectedRemoteUser: RemoteUserIdentity | null): string {
-    if (selectedRemoteUser === null) {
-      return entranceT("us1.remote.status.none");
-    }
-    return entranceT(`us1.remote.status.${selectedRemoteUser.handshakeState}`);
-  }
-
-  getRemoteUserStateLabel(remoteUser: RemoteUserIdentity): string {
-    return entranceT(`us1.remote.state.${remoteUser.handshakeState}`);
-  }
-
-  getSelectedMailAccountConnectionState(): "connected" | "disconnected" | "error" {
-    const settings = this.settingsManager.getSnapshot();
-    const selectedMailAccount = this.resolveSelectedMailAccount(settings);
-    return selectedMailAccount?.connectionState ?? "disconnected";
-  }
-
-  getSlotStatusText(
-    selectedMailAccount: MailTransportAccountConfig | null,
+  private getSlotStatusText(
+    editableMailAccount: MailTransportAccountConfig | null,
+    verifiedLocalMailAccount: MailTransportAccountConfig | null,
     activeUserCount: number,
-    selectedRemoteUser: RemoteUserIdentity | null,
+    selectedBinding: ActiveRemoteBinding | null,
     connected: boolean
   ): string {
-    if (selectedMailAccount === null) {
+    if (editableMailAccount === null) {
       return entranceT("us1.status.noMailAccount");
     }
-    if (selectedMailAccount.connectionState !== "connected") {
+    if (verifiedLocalMailAccount === null) {
       return entranceT("us1.status.noConnectedMailAccount");
     }
     if (activeUserCount === 0) {
       return entranceT("us1.status.noUsers");
     }
-    if (selectedRemoteUser === null) {
+    if (selectedBinding === null) {
       return entranceT("us1.status.empty");
     }
     if (connected) {
@@ -783,14 +766,15 @@ export class Us1Panel {
     return entranceT("us1.status.ready");
   }
 
-  getPhaseHint(
-    selectedMailAccount: MailTransportAccountConfig | null,
+  private getPhaseHint(
+    editableMailAccount: MailTransportAccountConfig | null,
+    verifiedLocalMailAccount: MailTransportAccountConfig | null,
     activeUserCount: number
   ): string {
-    if (selectedMailAccount === null) {
+    if (editableMailAccount === null) {
       return entranceT("us1.phaseHintNoMailAccount");
     }
-    if (selectedMailAccount.connectionState !== "connected") {
+    if (verifiedLocalMailAccount === null) {
       return entranceT("us1.phaseHintVerifyMail");
     }
     if (activeUserCount === 0) {
@@ -799,7 +783,57 @@ export class Us1Panel {
     return entranceT("us1.phaseHint");
   }
 
-  showFeedback(message: string, kind: FeedbackKind = "info"): void {
+  private addReport(message: string, kind: FeedbackKind = "info"): void {
+    const trimmed = message.trim();
+    if (trimmed === "") {
+      return;
+    }
+
+    this.reportEntries = [
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        at: Date.now(),
+        kind,
+        message: trimmed,
+      },
+      ...this.reportEntries,
+    ].slice(0, 16);
+  }
+
+  private renderReportLog(): void {
+    const reportEl = document.getElementById("us1-report-log");
+    if (reportEl === null) {
+      return;
+    }
+
+    reportEl.innerHTML = "";
+
+    if (this.reportEntries.length === 0) {
+      reportEl.innerHTML = `<div class="empty-message">${this.escapeHtml(
+        entranceT("us1.reportEmpty")
+      )}</div>`;
+      return;
+    }
+
+    this.reportEntries.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = `us1-slot-panel__report-entry is-${entry.kind}`;
+      row.innerHTML = `
+        <span class="us1-slot-panel__report-time">${this.escapeHtml(formatTime(entry.at))}</span>
+        <div>${this.escapeHtml(entry.message)}</div>
+      `;
+      reportEl.appendChild(row);
+    });
+  }
+
+  private escapeHtml(text: string): string {
+    if (text === "") {
+      return "";
+    }
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  private showFeedback(message: string, kind: FeedbackKind = "info"): void {
     const statusEl = document.getElementById("us1-feedback-msg");
     if (statusEl === null) {
       return;
@@ -813,9 +847,11 @@ export class Us1Panel {
     }, 3200);
   }
 
-  syncIndicators(connected: boolean): void {
-    TrafficManager.setIndicator("us1", "loading", "idle");
-    TrafficManager.setIndicator("us1", "thinking", "idle");
+  private syncIndicators(connected: boolean): void {
+    TrafficManager.setIndicator("us1", "loading", this.loadingBusy ? "busy" : "idle");
+    if (connected === false) {
+      TrafficManager.setIndicator("us1", "thinking", "idle");
+    }
     TrafficManager.setIndicator("us1", "send", connected ? "idle" : "busy");
   }
 }

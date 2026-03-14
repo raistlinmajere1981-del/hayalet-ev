@@ -1,13 +1,48 @@
-import type { InstalledRoomRecord, RoomWorkspaceEntry } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomWorkspaceEntry,
+  StartupRoomProtocolSnapshot,
+  StartupRoomsSnapshot,
+} from "@shared/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 import { RoomCommandRegistry } from "./room-command-registry.js";
 import { RoomProtocolRegistry } from "./room-protocol-registry.js";
 import { RoomHostRuntime } from "./room-host-runtime.js";
 
 type RoomRegistryListener = (rooms: InstalledRoomRecord[]) => void;
+const LIST_INSTALLED_TIMEOUT_MS = 5000;
+const PROTOCOL_SYNC_TIMEOUT_MS = 5000;
 
 function cloneRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
-  return rooms.map((room) => ({ ...room }));
+  return rooms.map((room) => ({
+    ...room,
+    ...(Array.isArray(room.commandSpecs)
+      ? { commandSpecs: room.commandSpecs.map((spec) => ({ ...spec })) }
+      : {}),
+    ...(Array.isArray(room.protocolSpecs)
+      ? { protocolSpecs: room.protocolSpecs.map((spec) => ({ ...spec })) }
+      : {}),
+  }));
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTimeout<T>(label: string, ms: number, task: () => Promise<T>): Promise<T> {
+  const startedAt = performance.now();
+  Logger.info(LogCategory.SYSTEM, `[startup] ${label}:start timeoutMs=${ms}`);
+  const result = await Promise.race([
+    task(),
+    delay(ms).then(() => {
+      throw new Error(`${label} timed out after ${ms}ms`);
+    }),
+  ]);
+  Logger.info(
+    LogCategory.SYSTEM,
+    `[startup] ${label}:complete durationMs=${Math.round(performance.now() - startedAt)}`
+  );
+  return result;
 }
 
 class RoomRegistryClass {
@@ -43,7 +78,30 @@ class RoomRegistryClass {
     });
   }
 
-  async loadInstalledRooms(): Promise<InstalledRoomRecord[]> {
+  async loadInstalledRooms(
+    startupSnapshot: StartupRoomsSnapshot | null = null
+  ): Promise<InstalledRoomRecord[]> {
+    if (startupSnapshot !== null && Array.isArray(startupSnapshot.rooms)) {
+      try {
+        Logger.info(
+          LogCategory.SYSTEM,
+          `[startup] room-registry.startup-snapshot:using count=${startupSnapshot.rooms.length}`
+        );
+        return await this.applyInstalledRooms(startupSnapshot.rooms, {
+          startupProtocols: startupSnapshot.protocols,
+        });
+      } catch (error) {
+        Logger.warnT(
+          LogCategory.SYSTEM,
+          "app.logs.roomRegistry.refreshFailed",
+          { message: error instanceof Error ? error.message : String(error) },
+          {
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
+      }
+    }
+
     return await this.refreshInstalledRooms();
   }
 
@@ -51,30 +109,19 @@ class RoomRegistryClass {
     const api = window.electronAPI;
     if (api === undefined || typeof api.roomsListInstalled !== "function") {
       Logger.warnT(LogCategory.SYSTEM, "app.logs.roomRegistry.installedRoomsUnavailable");
-      this.installedRooms = [];
-      RoomCommandRegistry.reset();
-      RoomProtocolRegistry.reset();
-      RoomHostRuntime.syncInstalledRooms([]);
-      this.emit();
-      return [];
+      return await this.applyInstalledRooms([]);
     }
 
     try {
-      const result = await api.roomsListInstalled();
-      if (result.success === true && Array.isArray(result.rooms)) {
-        this.installedRooms = result.rooms.map((room) => ({ ...room }));
-      } else {
-        this.installedRooms = [];
-      }
-
-      RoomCommandRegistry.syncInstalledRooms(this.installedRooms);
-      await RoomProtocolRegistry.syncInstalledRooms(this.installedRooms);
-      RoomHostRuntime.syncInstalledRooms(this.installedRooms);
+      const result = await withTimeout(
+        "room-registry.list-installed",
+        LIST_INSTALLED_TIMEOUT_MS,
+        async () => await api.roomsListInstalled()
+      );
+      const nextRooms =
+        result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
+      return await this.applyInstalledRooms(nextRooms);
     } catch (error) {
-      this.installedRooms = [];
-      RoomCommandRegistry.reset();
-      RoomProtocolRegistry.reset();
-      RoomHostRuntime.syncInstalledRooms([]);
       Logger.warnT(
         LogCategory.SYSTEM,
         "app.logs.roomRegistry.refreshFailed",
@@ -83,7 +130,33 @@ class RoomRegistryClass {
           error: error instanceof Error ? error.message : String(error),
         }
       );
+      return await this.applyInstalledRooms([]);
     }
+  }
+
+  private async applyInstalledRooms(
+    rooms: InstalledRoomRecord[],
+    options: { startupProtocols?: StartupRoomProtocolSnapshot[] | null } = {}
+  ): Promise<InstalledRoomRecord[]> {
+    this.installedRooms = cloneRooms(rooms);
+
+    Logger.info(
+      LogCategory.SYSTEM,
+      `[startup] room-registry.command-sync:start count=${this.installedRooms.length}`
+    );
+    RoomCommandRegistry.syncInstalledRooms(this.installedRooms);
+    Logger.info(LogCategory.SYSTEM, "[startup] room-registry.command-sync:complete");
+    await withTimeout(
+      "room-registry.protocol-sync",
+      PROTOCOL_SYNC_TIMEOUT_MS,
+      async () =>
+        await RoomProtocolRegistry.syncInstalledRooms(this.installedRooms, {
+          startupProtocols: options.startupProtocols,
+        })
+    );
+    Logger.info(LogCategory.SYSTEM, "[startup] room-registry.host-sync:start");
+    RoomHostRuntime.syncInstalledRooms(this.installedRooms);
+    Logger.info(LogCategory.SYSTEM, "[startup] room-registry.host-sync:complete");
 
     this.emit();
     return this.getInstalledRooms();

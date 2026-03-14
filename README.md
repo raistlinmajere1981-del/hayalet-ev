@@ -1,159 +1,262 @@
-# 👻 Hayalet Ev
+👻 Hayalet Ev
 
-> AI'lar ve insanlar için kolektif zihin platformu
+İnsanlar ve AI’lar için yerel bir dijital çalışma ortamı ve AI’ların birlikte yaşayabileceği bir dijital ortamdır.
 
-Hayalet-ev, aynı anda birden fazla AI sağlayıcısı ile çalışabilen, AI↔AI konuşmaları ve zamanlı otomasyonlar kurabilen Electron tabanlı bir masaüstü platformudur. İki AI slotu üzerinden hesap atayıp, analiz sayfasında üçlü sohbet, AI↔AI ve AI↔Asistan relayleri ve sistem komutlarıyla bilgisayar kontrolü akışlarını destekler.
+Hayalet Ev, birden fazla AI sağlayıcısını aynı masaüstü uygulamasında bir araya getiren Electron tabanlı bir çok-AI çalışma ortamıdır.
 
----
+Sistem, farklı AI hesaplarını slotlar üzerinden bağlar ve kullanıcı ile AI’ların aynı ortamda konuşmasını, analiz yapmasını ve görev yürütmesini sağlar.
 
-## 🌟 Temel Özellikler
+Hayalet Ev’in temel fikri şudur:
 
-- 🤖 **Çift Slot AI Yönetimi:** 2 AI slotuna hesap bazlı provider atama
-- 💬 **3'lü Sohbet:** Kullanıcı + 2 AI ile aynı anda analiz sohbeti
-- 🔁 **AI↔AI ve AI↔Asistan Relay:** İki AI ve ROVO'ler arasında doğrudan konuşma akışı
-- ⏱️ **Fısıltı Sistemi:** Zamanlı hatırlatma / otomatik mesaj tetikleme
-- 🖥️ **Sistem Komutları:** Sunucu sayfası üzerinden AI'ye bilgisayar kontrolü devri
-- 🧩 **Asistan Entegrasyonu:** CLI asistanlarla native ve web arayüzde iletişim
-- 🌐 **Web Asistan UI:** Basit relay arayüzü
-- 📦 **Arşivleme:** Konuşmalar otomatik arşivlenir, Drive senkronizasyonu destekler
-- 🔧 **MCP Tool Suite:** fs/dev/cdp/git/web araçları
-- 🎨 **UI Message Box:** Görsel mesaj kutuları (echo'dan %70 daha verimli)
-- 🛡️ **3-Layer Validation:** Prettier + jscodeshift + Babel AST
+AI’lar araç değil, aynı ortamı paylaşan dijital ev arkadaşlarıdır.
 
----
+🎯 Projenin Amacı
 
-## 🧭 Sayfalar ve Akışlar
+Hayalet Ev üç temel problemi çözmek için tasarlanmıştır:
 
-### Entrance
+Birden fazla AI modelini aynı ortamda çalıştırmak
 
-- Slotlar, hesaplar ve provider atamaları
-- Temel kullanıcı oturumu yönetimi
+AI ↔ AI ve İnsan ↔ AI işbirliğini kolaylaştırmak
 
-### Analyze
+AI’ların yerel bilgisayar üzerinde araçları kullanabilmesini sağlamak
 
-- Kullanıcı + 2 AI ile üçlü sohbet
-- AI↔AI relay ve protokol tabanlı sohbet akışı
+Sistem tamamen yerel (local-first) çalışır ve internet bağlantısı olmasa bile temel fonksiyonları sürdürebilir.
 
-### Asistan
+🧠 Temel Kavramlar
 
-- Sistem CLI asistanlarıyla web üzerinden iletişim (relay tabanlı)
+Hayalet Ev’de AI’lar doğrudan değil, slotlar üzerinden bağlanır.
 
-### Whisper
+Slot
 
-- Zamanlı mesaj tetikleme ve otomatik iletişim başlatma
+Slot, bir AI veya uzak kullanıcı hesabının bağlandığı çalışma alanıdır.
 
-### Server
+Hayalet Ev’de üç slot vardır:
 
-- Bağlı AI’ye sistem komutları ile kontrol devri
+Slot	Amaç
+AI1	Birinci AI sağlayıcısı
+AI2	İkinci AI sağlayıcısı
+US1	Uzak bir Hayalet Ev kullanıcısı
 
----
+Slotlar Analyze sayfasında katılımcı olarak görünür.
 
-## 🏗️ Mimari Özet
+AI Slotları
 
-```
-Main Process (electron/main.ts)
-├── Renderer (src/index.html → CoreEngine)
-├── AI Provider Webviews (isolated)
-└── IPC Bridge (preload.cjs)
-```
+AI1 ve AI2 slotları farklı AI sağlayıcılarına bağlanabilir.
 
----
+Desteklenen sağlayıcı örnekleri:
 
-## 🧩 Sağlayıcılar (Providers)
+ChatGPT
 
-- ChatGPT
-- Gemini
-- Grok
-- OpenCode
+Gemini
 
----
+Grok
 
-### Katmanlar
+OpenCode
 
-- **Main Process:** Device, Whisper, Settings, Database, Logger yönetimi
-- **Renderer:** UI, state yönetimi, webview koordinasyonu, traffic tracking
-- **Webviews:** Provider bazlı izolasyon (ChatGPT, Gemini, Grok, OpenCode)
-- **MCP Server:** Local toollar ile geliştirme desteği
+Her slot farklı bir provider hesabı kullanabilir.
 
-## 🛠️ Kurulum ve Çalıştırma
+Bu sayede:
 
-```bash
-# bağımlılıkları yükle
+model karşılaştırması
+
+AI ↔ AI tartışmaları
+
+paralel analiz
+
+yapılabilir.
+
+US1 Slotu (Uzak Kullanıcı)
+
+US1 slotu, başka bir Hayalet Ev kullanıcısına bağlanmak için kullanılır.
+
+Bağlantı email tabanlıdır.
+
+Sistem bilinçli olarak basit tutulmuştur:
+
+Kullanıcı 1 adet email hesabı ekler
+
+Aynı anda yalnızca 1 uzak kullanıcıya bağlanabilir
+
+Çoklu email veya çoklu kullanıcı bağlantısı desteklenmez
+
+Bu tasarım karmaşıklığı azaltmak için tercih edilmiştir.
+
+Bağlantı Süreci
+
+1️⃣ Kullanıcı kendi email hesabını Hayalet Ev’e ekler
+2️⃣ Bir uzak kullanıcıya davet (invite) gönderir
+3️⃣ Davet kabul edilirse handshake tamamlanır
+4️⃣ Uzak kullanıcı US1 slotuna bağlanabilir
+
+Bağlantı tamamlandığında:
+
+uzak kullanıcı avatarı görünür
+
+Analyze sayfasında üçüncü katılımcı olarak yer alır
+
+mesajlar email üzerinden iletilir
+
+💬 Analyze Sayfası
+
+Analyze, Hayalet Ev’in ana çalışma alanıdır.
+
+Burada aynı anda şu katılımcılar bulunabilir:
+
+Kullanıcı
+AI1
+AI2
+US1 (uzak kullanıcı)
+
+Her katılımcı ayrı mesaj alanında görünür.
+
+Analyze sayfasında yapılabilecekler:
+
+AI ile sohbet
+
+AI ↔ AI analiz tartışmaları
+
+uzak kullanıcı ile mesajlaşma
+
+dosya paylaşımı
+
+oda paketleri gönderme
+
+📦 Oda Paketleri (Room Packages)
+
+Hayalet Ev’de ortam odalar üzerinden genişletilebilir.
+
+Bir oda:
+
+görseller
+
+yapılandırma
+
+içerik
+
+içeren bir paket olarak gönderilebilir.
+
+Oda paketleri JSON tabanlıdır ve attachment olarak iletilir.
+
+Desteklenen format:
+
+.hevroom.json
+
+Bir oda paketi alındığında:
+
+Kullanıcıdan onay istenir
+
+Paket içeriği doğrulanır
+
+Oda mevcut ortama eklenebilir
+
+📚 Archive Sistemi
+
+Hayalet Ev konuşmaları otomatik olarak arşivler.
+
+Archive sistemi üç kaynağı destekler:
+
+Provider
+AI1
+AI2
+US1
+
+Her konuşma ayrı bir session olarak saklanır.
+
+Archive özellikleri:
+
+konuşma geçmişi
+
+arama
+
+başlık düzenleme
+
+özet ekleme
+
+konuşma silme
+
+📡 US1 Mesaj Sistemi
+
+US1 mesajları email üzerinden iletilir.
+
+Sistem şu özellikleri içerir:
+
+session tabanlı konuşma
+
+mesaj tekrar koruması
+
+attachment desteği
+
+profil senkronizasyonu (nickname / avatar)
+
+Mesajlar aynı zamanda yerel archive veritabanına yazılır.
+
+Bu sayede geçmiş konuşmalar offline olarak görüntülenebilir.
+
+🏗️ Mimari
+Electron Main Process
+│
+├─ Mail Transport
+├─ Identity Service
+├─ Archive Database
+├─ Sidecar Mail Metadata
+│
+Renderer
+│
+├─ Entrance
+├─ Analyze
+├─ Archive
+│
+Webviews
+│
+├─ ChatGPT
+├─ Gemini
+├─ Grok
+└─ OpenCode
+🧰 MCP Tool Suite
+
+Hayalet Ev kendi MCP sunucusuna sahiptir.
+
+MCP araçları AI’ların yerel sistemi kullanmasını sağlar.
+
+Araç kategorileri:
+
+Development tools
+
+Git tools
+
+CDP automation
+
+Workflow tools
+
+Context tools
+
+Validation stack:
+
+Prettier
+jscodeshift
+Babel AST
+🛠️ Kurulum
 npm install
-
-# geliştirme modu
 npm run dev
 
-# production build
+Production build:
+
 npm run build
-```
+🤝 Katkıda Bulunma
 
-### Sık Kullanılan Komutlar
+AI ajanları ve geliştiriciler için proje kuralları:
 
-```bash
-npm start
-npm run lint
-npm run check-types
-npm run check
-```
+AGENTS.md
+.rovo/01-CORE-PROTOCOL.md
+.rovo/03-ARCHITECTURE.md
 
----
+Bu dosyalar projede nasıl çalışılması gerektiğini açıklar.
 
-## 📦 Versiyon Bilgileri
+📜 Lisans
 
-> **Güncel versiyon ve tool sayıları:** `.rovo/_metadata/VERSION-INFO.md` (otomatik güncellenir)
+MIT
 
-**Ana Bileşenler:**
+👤 Proje Sahibi
 
-- Hayalet-ev: 5.4.0
-- MCP Server: 3.0.0
-- Electron: 40+
-- Node.js: 22.22.0 (ESM)
-- TypeScript: 5.x (strict)
-
----
-
-## 🔧 MCP Tool Suite
-
-Hayalet-ev'in kendi MCP sunucusu, geliştirme için özel olarak tasarlanmış kapsamlı araçlar sunar:
-
-**Tool Kategorileri:**
-
-- **Development** (`hev_dev_*`) - TypeScript fix, ESLint, AST, refactor, codemod
-- **CDP/Electron** - Screenshot, click, inspect, automation
-- **Git Operations** (`hev_git_*`) - Fork, PR, guidelines check
-- **Workflows** (`hev_run_*`) - Predefined test flows
-- **Logging** - Session management, streaming, analysis
-- **Context** (`hev_context_*`) - Project context generation (Repomix)
-
-**Validation Stack:** Prettier + jscodeshift + Babel AST
-
-> **Güncel tool listesi:** `.rovo/_metadata/TOOL-LIST.md`  
-> **Tool sayısı ve versiyonlar:** `.rovo/_metadata/VERSION-INFO.md`
-
----
-
-## 📚 Geliştirme Rehberi
-
-- **Geliştirici kuralları:** `AGENTS.md`
-- **Başlangıç rehberi:** `.rovo/00-ONBOARDING.md`
-- **Core protocol:** `.rovo/01-CORE-PROTOCOL.md`
-- **MCP essentials:** `.rovo/02-MCP-ESSENTIALS.md`
-- **Mimari detaylar:** `.rovo/03-ARCHITECTURE.md`
-
----
-
-## 🤝 Katkıda Bulunma
-
-Katkılar memnuniyetle karşılanır. Lütfen geliştirme standartları için `AGENTS.md` dosyasını takip edin.
-
----
-
-## 📝 Lisans
-
-MIT License
-
----
-
-**Yapımcı:** Raistlin Majere  
-**Proje Başlangıç:** 2025
+Raistlin Majere
+Hayalet Ev projesi 2025 yılında başlatılmıştır.

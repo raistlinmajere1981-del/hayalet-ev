@@ -48,6 +48,7 @@ export function createDefaultSettings(): AppSettings {
 
   const defaultMailTransport = {
     accounts: [],
+    localAccount: null,
     retryBaseMs: 1500,
     maxRetries: 2,
   } as NonNullable<NonNullable<AppSettings["integrations"]>["mailTransport"]>;
@@ -56,7 +57,7 @@ export function createDefaultSettings(): AppSettings {
     general: {
       language: DEFAULT_APP_LANGUAGE,
     },
-    user: { nickname: "User", avatarPath: "src/assets/default.png" },
+    user: { nickname: "User", email: "", avatarPath: "src/assets/default.png" },
     integrations: {
       googledrive: defaultGoogleDrive,
       mailTransport: defaultMailTransport,
@@ -65,6 +66,7 @@ export function createDefaultSettings(): AppSettings {
     remoteUsers: createDefaultRemoteUsers(),
     us1Slot: {
       selectedRemoteUserId: null,
+      selectedAccountId: null,
       connectionState: "disconnected",
       catchCommands: false,
     },

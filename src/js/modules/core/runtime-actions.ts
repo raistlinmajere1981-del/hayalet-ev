@@ -40,6 +40,58 @@ export interface CoreRuntimeHandles {
   slotDisconnectCompleteUnsub: (() => void) | null;
 }
 
+const STARTUP_STEP_TIMEOUT_MS = 8000;
+const SLOT_CONTROLLER_STARTUP_TIMEOUT_MS = 12000;
+
+async function runStartupStep<T>(
+  step: string,
+  task: () => Promise<T>,
+  options: { timeoutMs?: number; critical?: boolean } = {}
+): Promise<T | null> {
+  const timeoutMs = options.timeoutMs ?? STARTUP_STEP_TIMEOUT_MS;
+  const critical = options.critical === true;
+  const startedAt = performance.now();
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  Logger.info(LogCategory.SYSTEM, `[startup] ${step}:start`, {
+    step,
+    timeoutMs,
+    critical,
+  });
+
+  try {
+    const result = await Promise.race([
+      task(),
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${step} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+
+    Logger.info(LogCategory.SYSTEM, `[startup] ${step}:complete`, {
+      step,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+    return result;
+  } catch (error) {
+    Logger.warn(LogCategory.SYSTEM, `[startup] ${step}:failed`, {
+      step,
+      durationMs: Math.round(performance.now() - startedAt),
+      message: getErrorMessage(error),
+      critical,
+    });
+    if (critical) {
+      throw error;
+    }
+    return null;
+  } finally {
+    if (timeoutHandle !== null) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
 function whisperT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.whisper.runtime.${key}`, params);
 }
@@ -71,11 +123,14 @@ export async function initializeCoreRuntime(
 ): Promise<CoreRuntimeHandles> {
   ErrorBoundary.init();
 
+  Logger.info(LogCategory.SYSTEM, "[startup] core-runtime:start");
   const settings = await SettingsManager.load();
+  Logger.info(LogCategory.SYSTEM, "[startup] settings-manager.load:complete");
   WebviewManager.setSettings(settings);
-  await FileManager.ensureDirs("all");
+  await runStartupStep("file-manager.ensureDirs", async () => await FileManager.ensureDirs("all"));
   AppState.init("ai1");
-  await CommandManager.init();
+  Logger.info(LogCategory.SYSTEM, "[startup] app-state.init:complete");
+  await runStartupStep("command-manager.init", async () => await CommandManager.init());
 
   const cleanupInterval = setInterval(() => {
     try {
@@ -121,22 +176,23 @@ export async function initializeCoreRuntime(
   }
 
   const whisperInitOptions = { settings: settings as unknown as Record<string, unknown> };
-  await WhisperManager.init(whisperInitOptions);
-  WhisperManager.setSender(
-    async (accountId: string, text: string, whisperId: string) => {
-      const result = await params.coreEngine.enqueueWhisperJob(
-        accountId,
-        { id: whisperId, text },
-        text
-      );
-      if (!result.success) {
-        throw new Error(whisperError("sendFailed", result.message));
-      }
+  await runStartupStep("whisper-manager.init", async () => await WhisperManager.init(whisperInitOptions));
+  WhisperManager.setSender(async (accountId: string, text: string, whisperId: string) => {
+    const result = await params.coreEngine.enqueueWhisperJob(
+      accountId,
+      { id: whisperId, text },
+      text
+    );
+    if (!result.success) {
+      throw new Error(whisperError("sendFailed", result.message));
     }
-  );
+  });
 
   WebviewManager.initSyncer(params.coreEngine as never);
-  await SlotController.init();
+  Logger.info(LogCategory.SYSTEM, "[startup] webview-manager.initSyncer:complete");
+  await runStartupStep("slot-controller.init", async () => await SlotController.init(), {
+    timeoutMs: SLOT_CONTROLLER_STARTUP_TIMEOUT_MS,
+  });
 
   const slotTrafficStartedUnsub = SlotController.on(
     SlotEvent.TRAFFIC_STARTED,
@@ -180,6 +236,8 @@ export async function initializeCoreRuntime(
     }
     params.applySettingsUpdate(nextSettings);
   });
+
+  Logger.info(LogCategory.SYSTEM, "[startup] core-runtime:complete");
 
   return {
     settings,

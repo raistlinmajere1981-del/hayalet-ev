@@ -11,6 +11,7 @@ let __app_preload_catalog = null;
 let __app_preload_settings_channel = null;
 
 const PRELOAD_DIAGNOSTIC_ONCE = new Set();
+const STARTUP_ROOMS_SNAPSHOT_FLAG = "--app-rooms-snapshot";
 
 function warnPreloadOnce(key, message, error) {
   if (PRELOAD_DIAGNOSTIC_ONCE.has(key)) return;
@@ -22,6 +23,38 @@ function warnPreloadOnce(key, message, error) {
   }
   console.warn(message);
 }
+
+function readArgFlagValue(argv, flagName) {
+  const prefix = `${flagName}=`;
+  const raw = argv.find((arg) => typeof arg === "string" && arg.startsWith(prefix));
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const value = raw.slice(prefix.length).trim();
+  return value === "" ? null : value;
+}
+
+function readStartupRoomsSnapshotFromArgv(argv) {
+  const raw = readArgFlagValue(argv, STARTUP_ROOMS_SNAPSHOT_FLAG);
+  if (raw === null) {
+    return null;
+  }
+
+  try {
+    const decoded = Buffer.from(raw, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    warnPreloadOnce(
+      "startup-rooms-snapshot-invalid",
+      "Failed to read startup rooms snapshot in preload.",
+      error
+    );
+    return null;
+  }
+}
+
+const STARTUP_ROOMS_SNAPSHOT = readStartupRoomsSnapshotFromArgv(process.argv || []);
 
 const PRELOAD_MESSAGE_FALLBACKS = {
   en: {
@@ -182,7 +215,6 @@ function preloadT(key, params) {
   });
 }
 
-void syncPreloadLocale();
 startPreloadLocaleSync();
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -202,6 +234,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   us1SyncRemoteUsers: (params) => ipcRenderer.invoke("us1-sync-remote-users", params),
   us1SendMessage: (params) => ipcRenderer.invoke("us1-send-message", params),
   us1SyncMessages: (params) => ipcRenderer.invoke("us1-sync-messages", params),
+  us1MailStartGmailOauth: () => ipcRenderer.invoke("us1-mail-start-gmail-oauth"),
+  us1MailExchangeGmailCode: (params) => ipcRenderer.invoke("us1-mail-exchange-gmail-code", params),
+  us1MailListenGmailCode: () => ipcRenderer.invoke("us1-mail-listen-gmail-code"),
   i18nListLanguages: () => ipcRenderer.invoke("i18n-list-languages"),
   i18nLoadLanguage: (locale) => ipcRenderer.invoke("i18n-load-language", locale),
   showOpenDialog: (options) => ipcRenderer.invoke("show-open-dialog", options),
@@ -290,13 +325,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dbSearchAllAccounts: (params) => ipcRenderer.invoke("db-search-all-accounts", params),
   dbUpdateConversation: (params) => ipcRenderer.invoke("db-update-conversation", params),
 
-  metaDefineCommand: (params) => ipcRenderer.invoke("meta-define-command", params),
-  metaDeleteCommand: (params) => ipcRenderer.invoke("meta-delete-command", params),
-  metaListCommands: () => ipcRenderer.invoke("meta-list-commands"),
-  metaGetCommand: (params) => ipcRenderer.invoke("meta-get-command", params),
-
   logger: {
-    appendBatch: (entries) => ipcRenderer.invoke("logger:appendBatch", entries),
+    appendBatch: (entries) => {
+      ipcRenderer.send("logger:appendBatch", entries);
+      return Promise.resolve({ success: true });
+    },
     getSessionId: () => ipcRenderer.invoke("get-session-id"),
     readAllLogs: (sessionId) => ipcRenderer.invoke("read-all-logs", sessionId),
     queryLogs: (query) => ipcRenderer.invoke("query-logs", query),
@@ -386,24 +419,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getStartupFlags: () => {
     const argv = process.argv || [];
 
-    const readFlagValue = (flagName) => {
-      const prefix = `${flagName}=`;
-      const raw = argv.find((arg) => typeof arg === "string" && arg.startsWith(prefix));
-      if (typeof raw !== "string") {
-        return null;
-      }
-      const value = raw.slice(prefix.length).trim();
-      return value === "" ? null : value;
-    };
-
-    const startPage = readFlagValue("--app-start-page") ?? readFlagValue("--start-page");
+    const startPage =
+      readArgFlagValue(argv, "--app-start-page") ?? readArgFlagValue(argv, "--start-page");
     const autoConnect =
       argv.includes("--app-auto-connect=1") ||
       argv.includes("--app-auto-connect=true") ||
       argv.includes("--app-auto-connect") ||
       argv.includes("--auto-connect");
 
-    return { startPage, autoConnect };
+    return {
+      startPage,
+      autoConnect,
+      roomsSnapshot: STARTUP_ROOMS_SNAPSHOT,
+    };
   },
 
   // WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.

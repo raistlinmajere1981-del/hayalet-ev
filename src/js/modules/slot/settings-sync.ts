@@ -2,7 +2,12 @@ import { ProviderRegistry } from "../webview/provider-registry.js";
 import type { SlotId } from "@shared/index.js";
 import { LogLevel } from "@shared/index.js";
 import type { BaseProviderConfig } from "@shared/provider.js";
-import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
+import {
+  getAiProviderAccounts,
+  isAssistantAccountsSettingsPath,
+  isAssistantSlotSettingsPath,
+} from "@shared/settings.js";
+import type { Account as SharedAccount } from "@shared/settings.js";
 
 interface SlotState {
   accountId: string | null;
@@ -15,16 +20,11 @@ interface SlotSettings {
   accountId?: string;
 }
 
-interface Account {
-  id: string;
-  provider?: string;
-}
-
 export interface Settings {
   slots?: Record<string, SlotSettings>;
-  accounts?: Account[];
+  accounts?: SharedAccount[];
   assistantSlot?: SlotSettings;
-  assistantAccounts?: Account[];
+  assistantAccounts?: SharedAccount[];
 }
 
 interface SlotStates {
@@ -133,13 +133,13 @@ export function syncSlotWithSettings(
     return;
   }
 
-  const accountList = isAssistantSlot ? settings.assistantAccounts : settings.accounts;
+  const accountList = isAssistantSlot
+    ? settings.assistantAccounts
+    : getAiProviderAccounts(settings.accounts);
   const account = accountList?.find((a) => a.id === newAccountId);
   const providerId = account?.provider ?? null;
   const providerConfig =
-    providerId !== null && providerId !== ""
-      ? (ProviderRegistry.get(providerId) as BaseProviderConfig | null)
-      : null;
+    providerId !== null ? (ProviderRegistry.get(providerId) as BaseProviderConfig | null) : null;
 
   slotState.accountId = newAccountId;
   slotState.providerId = providerId;

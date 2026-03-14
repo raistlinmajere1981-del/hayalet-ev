@@ -88,6 +88,17 @@ export interface RoomRegistryState {
   rooms: InstalledRoomRecord[];
 }
 
+export interface StartupRoomProtocolSnapshot {
+  roomId: string;
+  key: string;
+  body: string;
+}
+
+export interface StartupRoomsSnapshot {
+  rooms: InstalledRoomRecord[];
+  protocols: StartupRoomProtocolSnapshot[];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && Array.isArray(value) === false;
 }

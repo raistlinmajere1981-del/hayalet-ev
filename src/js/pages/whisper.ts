@@ -2,6 +2,7 @@ import { CoreEngine } from "../modules/core-engine.js";
 import { SettingsManager } from "../modules/settings-manager.js";
 import { getErrorMessage } from "@shared/index.js";
 import { AppI18n } from "../modules/i18n/index.js";
+import { getAiProviderAccounts } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 import { resolveIntlLocale } from "../../../shared/i18n/locale.js";
 
@@ -92,12 +93,9 @@ export class WhisperController {
 
   getAccounts(): Account[] {
     const settings = SettingsManager.getSnapshot();
-    return Array.isArray(settings.accounts)
-      ? settings.accounts.filter(
-          (account): account is Account =>
-            typeof account.id === "string" && account.id.trim() !== ""
-        )
-      : [];
+    return getAiProviderAccounts(settings.accounts).filter(
+      (account): account is Account => typeof account.id === "string" && account.id.trim() !== ""
+    );
   }
 
   getAccountLabel(account: Account): string {

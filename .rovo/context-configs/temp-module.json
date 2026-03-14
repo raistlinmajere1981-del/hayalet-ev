@@ -1,0 +1,22 @@
+{
+  "output": {
+    "style": "plain",
+    "filePath": "/home/raistlin/hayalet-ev/.rovo/context/module-us1.txt",
+    "headerText": "# app Bağlamı - Modül: us1\n",
+    "showLineNumbers": true
+  },
+  "include": [
+    "AGENTS.md",
+    "src/js/modules/us1/**/*.ts",
+    "src/js/modules/us1.ts",
+    "src/js/modules/**/us1*.ts",
+    "electron/us1*.ts",
+    "electron/**/us1*.ts",
+    "mcp-server/**/us1*.ts",
+    "**/us1*.test.ts",
+    "**/us1*.spec.ts"
+  ],
+  "ignore": {
+    "useDefaultPatterns": true
+  }
+}

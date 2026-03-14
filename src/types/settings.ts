@@ -19,7 +19,8 @@ export function isAssistantAccountsSettingsPath(path: string): boolean {
 
 export interface Account {
   id: string;
-  provider: AllProviderId;
+  provider: AllProviderId | "remote-email";
+  accountKind?: AccountKind;
   email: string;
   dbPath?: string | null;
   name?: string;
@@ -29,7 +30,10 @@ export interface Account {
   createdAt?: number;
   lastUsedAt?: number;
   lastSessionUrl?: string | null;
+  remoteEmail?: RemoteEmailAccountState;
 }
+
+export type AccountKind = "ai-provider" | "remote-email";
 
 export interface SlotAssignment {
   slot: SlotId;
@@ -69,10 +73,27 @@ export interface RemoteUserIdentity {
   lastTransportMessageId?: string | null;
   lastSyncAt?: number;
   lastError?: string | null;
+  sessionAlias?: string | null;
+}
+
+export interface RemoteEmailAccountState {
+  remoteUserId: string;
+  handshakeState: RemoteUserHandshakeState;
+  linkedLocalMailAccountId: string;
+  profileRevision: number;
+  inviteMessageId?: string | null;
+  acceptMessageId?: string | null;
+  threadMessageId?: string | null;
+  lastTransportMessageId?: string | null;
+  lastSyncAt?: number;
+  lastError?: string | null;
+  sessionAlias?: string | null;
+  pendingIncoming?: boolean;
 }
 
 export interface Us1SlotSettings {
   selectedRemoteUserId: string | null;
+  selectedAccountId?: string | null;
   connectionState?: Us1SlotConnectionState;
   catchCommands?: boolean;
 }
@@ -162,6 +183,7 @@ export interface LocalMailAccountSummary {
 
 export interface MailTransportSettings {
   accounts: MailTransportAccountConfig[];
+  localAccount?: MailTransportAccountConfig | null;
   retryBaseMs?: number;
   maxRetries?: number;
 }
@@ -179,6 +201,7 @@ export interface AppSettings {
   general?: GeneralSettings;
   user?: {
     nickname?: string;
+    email?: string;
     avatarPath?: string;
   };
   integrations?: {
@@ -234,3 +257,25 @@ export interface SettingsChangeEvent {
 }
 
 export type SettingsListener = (event: SettingsChangeEvent) => void;
+
+export function isRemoteEmailAccount(account: Account | null | undefined): boolean {
+  return account?.accountKind === "remote-email" || account?.provider === "remote-email";
+}
+
+export function isAiProviderAccount(account: Account | null | undefined): boolean {
+  return account !== null && account !== undefined && !isRemoteEmailAccount(account);
+}
+
+export function getAiProviderAccounts(
+  accounts: readonly Account[] | null | undefined
+): Account[] {
+  return Array.isArray(accounts) ? accounts.filter((account) => isAiProviderAccount(account)) : [];
+}
+
+export function getRemoteEmailAccounts(
+  accounts: readonly Account[] | null | undefined
+): Account[] {
+  return Array.isArray(accounts)
+    ? accounts.filter((account) => isRemoteEmailAccount(account))
+    : [];
+}

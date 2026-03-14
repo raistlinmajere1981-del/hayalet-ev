@@ -11,7 +11,7 @@ import Database from "../../electron/native/better-sqlite3.ts";
 import { initPaths, Paths } from "../../electron/paths.ts";
 import { Us1ConversationService } from "../../electron/us1-conversation-service.ts";
 import { hashString } from "../../electron/database/hash-utils.ts";
-import { buildUs1ProjectedAccountId } from "../../src/types/archive.ts";
+import { buildRemoteEmailAccountId } from "../../src/types/archive.ts";
 import { createDefaultSettings } from "../../src/types/settings-defaults.ts";
 import type { AppSettings, MailTransportAccountConfig } from "../../src/types/settings.ts";
 import { normalizeSettings } from "../../src/js/modules/settings/settings-schema.ts";
@@ -446,7 +446,7 @@ test("US1 conversation service sends outbound mail and projects archive metadata
   });
   const tempRoot = await mkdtemp(join(tmpdir(), "us1-mail-outbound-"));
   const attachmentPath = join(tempRoot, "note.txt");
-  const projectedAccountId = buildUs1ProjectedAccountId("remote@example.com");
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
 
   try {
     await writeFile(attachmentPath, "outbound attachment", "utf8");
@@ -468,7 +468,7 @@ test("US1 conversation service sends outbound mail and projects archive metadata
     assert.equal(meta?.metadata?.["direction"], "outbound");
     assert.equal(meta?.metadata?.["localSessionId"], result.localSessionId);
 
-    const db = new Database(Paths.getAccountDbPath(projectedAccountId), { readonly: true });
+    const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
     const messages = db
       .prepare<[string], { role: string; content: string }>(
         "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC"
@@ -489,7 +489,7 @@ test("US1 conversation service sends outbound mail and projects archive metadata
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
     cleanupAccount(accountId);
-    cleanupAccount(projectedAccountId);
+    cleanupAccount(remoteAccountId);
   }
 });
 
@@ -506,7 +506,7 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
       saveSettings: (settings) => store.saveSettings(settings),
     },
   });
-  const projectedAccountId = buildUs1ProjectedAccountId("remote@example.com");
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
 
   try {
     const outbound = await service.sendMessage({ text: "Thread opener" });
@@ -605,7 +605,7 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
     assert.equal(meta?.metadata?.["direction"], "inbound");
     assert.equal(meta?.metadata?.["localSessionId"], outbound.localSessionId);
 
-    const db = new Database(Paths.getAccountDbPath(projectedAccountId), { readonly: true });
+    const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
     const messages = db
       .prepare<[string], { role: string; content: string }>(
         "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at ASC"
@@ -625,6 +625,6 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
     assert.equal(attachments[0]?.original_name, "mail-room.hevroom.json");
   } finally {
     cleanupAccount(accountId);
-    cleanupAccount(projectedAccountId);
+    cleanupAccount(remoteAccountId);
   }
 });

@@ -1,3 +1,4 @@
+import { getAiProviderAccounts } from "@shared/settings.js";
 import type { AppSettings, Account } from "@shared/settings.js";
 import { t as entranceT } from "./i18n.js";
 
@@ -89,7 +90,7 @@ export class SlotPanel {
   render(): void {
     const settings = this.settingsManager.getSnapshot();
     const slotSettings = settings.slots[this.slotId as "ai1" | "ai2"];
-    const accounts = settings.accounts;
+    const accounts = getAiProviderAccounts(settings.accounts);
 
     const otherSlot = this.slotId === "ai1" ? "ai2" : "ai1";
     const otherAccountId = settings.slots[otherSlot].accountId;

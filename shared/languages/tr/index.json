@@ -5076,7 +5076,7 @@
     "us1": {
       "mailAccount": {
         "sectionTitle": "Yerel mail hesabı",
-        "sectionNote": "Uzak bir Hayalet Ev kullanıcısını davet etmeden önce kendi mail hesabınızı bağlayın.",
+        "sectionNote": "Kendi kullanıcı email hesabınızı burada doğrulayın. Bu hesap Google Drive bağlantısından bağımsızdır ve uzak kullanıcı davetleri için kullanılır.",
         "selectLabel": "Kayıtlı mail hesabı",
         "selectPlaceholder": "-- Mail hesabı seç --",
         "empty": "Henüz mail hesabı yok",
@@ -5092,6 +5092,7 @@
           "password": "Uygulama şifresi",
           "oauth2": "OAuth2"
         },
+        "gmailOauthLabel": "Google Bağlantısı",
         "passwordLabel": "Uygulama şifresi",
         "passwordPlaceholder": "Uygulama şifresini girin",
         "accessTokenLabel": "Access token",
@@ -5126,7 +5127,16 @@
           "save": "Kaydet",
           "verify": "Kaydet ve Doğrula",
           "delete": "Sil"
-        }
+        },
+        "verifiedLabel": "Doğrulanmış kullanıcı emaili",
+        "verifiedEmpty": "Henüz doğrulanmış kullanıcı emaili yok.",
+        "gmailHelperTitle": "Gmail uygulama şifresi ile bağlan",
+        "gmailHelperStep1": "Gmail uygulama şifresi al",
+        "gmailEmailLabel": "Gmail email",
+        "gmailEmailPlaceholder": "ornek@gmail.com",
+        "gmailPasswordLabel": "Gmail uygulama şifresi",
+        "gmailPasswordPlaceholder": "16 haneli uygulama şifresi",
+        "gmailHelperStep2": "Bağla ve doğrula"
       },
       "remote": {
         "sectionTitle": "Remote user handshake",
@@ -5158,25 +5168,25 @@
           "refresh": "Inbox senkronize et"
         }
       },
-      "slotSectionTitle": "US1 runtime binding",
-      "slotSectionNote": "US1 slotuna yalnız aktif remote user bağlanabilir. Bu akış relay'e katılmaz.",
-      "selectLabel": "Aktif remote user",
-      "selectPlaceholder": "-- Aktif remote user seç --",
-      "noReadyUsers": "Aktif remote user yok",
-      "catchTitle": "US1 slotu için catchCommands tercihini sakla",
-      "catchLabel": "catchCommands",
-      "statusLabel": "Runtime durumu",
-      "phaseHint": "Handshake tamamlandı. Seçili kullanıcıyı US1 slotuna bağlayabilirsiniz.",
-      "phaseHintNoMailAccount": "Önce kendi mail hesabınızı ekleyip kaydedin.",
-      "phaseHintVerifyMail": "Remote user davet etmeden önce seçili mail hesabını doğrulayın.",
-      "phaseHintHandshake": "Bir remote user davet edin veya inbox senkronize edin, sonra handshake aktif olana kadar bekleyin.",
+      "slotSectionTitle": "US1 Slotu",
+      "slotSectionNote": "Burada sadece handshake tamamlanmış uzak email hesapları görünür. Hesap ekleme ve handshake işlemleri Hesap Yönetimi alanından yapılır.",
+      "selectLabel": "Hesap listesi",
+      "selectPlaceholder": "-- Uzak hesap seç --",
+      "noReadyUsers": "Henüz handshake tamamlanmış uzak hesap yok",
+      "catchTitle": "US1 slotunda gelen komutları yakala seçeneğini sakla",
+      "catchLabel": "Komutları yakala",
+      "statusLabel": "Bağlantı durumu",
+      "phaseHint": "Handshake tamamlandı. Seçilen uzak hesabı US1 slotuna bağlayabilirsiniz.",
+      "phaseHintNoMailAccount": "Önce Kullanıcı & Drive alanından kendi kullanıcı emailinizi kaydedin.",
+      "phaseHintVerifyMail": "Uzak hesap eklemeden önce kullanıcı email hesabını doğrulayın.",
+      "phaseHintHandshake": "Hesap Yönetimi alanından bir uzak email hesabı ekleyin ve handshake tamamlanana kadar bekleyin.",
       "status": {
-        "noMailAccount": "US1, yerel bir mail hesabı eklenmeden açılamaz.",
-        "noConnectedMailAccount": "US1, doğrulanmış bir yerel mail hesabı bekliyor.",
-        "noUsers": "Henüz aktif remote user yok.",
-        "empty": "US1 slotu için aktif bir remote user seçin.",
-        "ready": "US1 bağlaması hazır.",
-        "connected": "US1 seçili remote user ile bağlı."
+        "noMailAccount": "US1 açılmadan önce bir kullanıcı email hesabı eklenmeli.",
+        "noConnectedMailAccount": "US1 doğrulanmış bir kullanıcı email hesabı bekliyor.",
+        "noUsers": "Henüz handshake tamamlanmış uzak hesap yok.",
+        "empty": "US1 slotu için bir uzak hesap seçin.",
+        "ready": "US1 bağlantısı hazır.",
+        "connected": "US1 seçili uzak hesaba bağlı."
       },
       "feedback": {
         "electronUnavailable": "Electron API kullanılamıyor.",
@@ -5190,8 +5200,16 @@
         "inviteSent": "Davet maili gönderildi.",
         "acceptSent": "Kabul maili gönderildi.",
         "syncSuccess": "Inbox senkronizasyonu tamamlandı. {{count}} mesaj işlendi.",
-        "operationFailed": "İstenen işlem başarısız oldu."
-      }
+        "operationFailed": "İstenen işlem başarısız oldu.",
+        "connectSuccess": "US1 bağlandı. İlk kontrol tamamlandı, {{count}} mesaj işlendi.",
+        "disconnectSuccess": "US1 bağlantısı kesildi.",
+        "syncRequiresConnection": "Mail kontrolü için önce US1 bağlantısını açın."
+      },
+      "actions": {
+        "checkMail": "Mail Kontrol Et"
+      },
+      "reportLabel": "Rapor",
+      "reportEmpty": "Henüz US1 log kaydı yok."
     },
     "accounts": {
       "empty": "Henüz hesap yok",
@@ -5207,7 +5225,20 @@
         "avatarButton": "📷 Avatar",
         "createAction": "Ekle",
         "updateAction": "Güncelle",
-        "cancelAction": "İptal"
+        "cancelAction": "İptal",
+        "kindLabel": "Hesap türü",
+        "kindOptions": {
+          "aiProvider": "AI Provider",
+          "remoteEmail": "Uzak Email"
+        },
+        "providerLabel": "Sağlayıcı",
+        "aiNote": "AI provider hesabı ekleyin veya mevcut hesabı düzenleyin.",
+        "remoteTitle": "Uzak Email Hesabı",
+        "remoteNote": "Davet gönderildiğinde hesap listeye eklenir. Handshake tamamlanınca US1 slotunda seçilebilir olur.",
+        "remoteInviteAction": "Davet Gönder",
+        "remoteSyncAction": "Davetleri Senkronize Et",
+        "remoteMailReady": "Doğrulanmış kullanıcı maili hazır: {{email}}",
+        "remoteMailMissing": "Önce Kullanıcı & Drive alanından doğrulanmış bir kullanıcı maili ekleyin."
       },
       "dialog": {
         "avatarTitle": "Avatar seç",
@@ -5229,6 +5260,12 @@
         "editingMissing": "Düzenlenen hesap bulunamadı",
         "accountMissing": "Hesap bulunamadı",
         "updateError": "Güncelleme hatası: {{message}}"
+      },
+      "listTitle": "Hesap listesi",
+      "listNote": "AI provider ve uzak email hesapları burada birlikte yönetilir.",
+      "types": {
+        "aiProvider": "AI Provider",
+        "remoteEmail": "Uzak Email"
       }
     },
     "whisper": {

@@ -5076,7 +5076,7 @@
     "us1": {
       "mailAccount": {
         "sectionTitle": "Local mail account",
-        "sectionNote": "Connect your own inbox before inviting a remote Hayalet Ev user.",
+        "sectionNote": "Verify your own user email account here. This account is independent from the Google Drive connection and is used for remote user invites.",
         "selectLabel": "Saved mail account",
         "selectPlaceholder": "-- Select mail account --",
         "empty": "No mail account yet",
@@ -5092,6 +5092,7 @@
           "password": "App password",
           "oauth2": "OAuth2"
         },
+        "gmailOauthLabel": "Google Connection",
         "passwordLabel": "App password",
         "passwordPlaceholder": "Enter app password",
         "accessTokenLabel": "Access token",
@@ -5126,7 +5127,16 @@
           "save": "Save",
           "verify": "Save & Verify",
           "delete": "Delete"
-        }
+        },
+        "verifiedLabel": "Verified user email",
+        "verifiedEmpty": "No verified user email yet.",
+        "gmailHelperTitle": "Connect with a Gmail app password",
+        "gmailHelperStep1": "Get Gmail app password",
+        "gmailEmailLabel": "Gmail email",
+        "gmailEmailPlaceholder": "example@gmail.com",
+        "gmailPasswordLabel": "Gmail app password",
+        "gmailPasswordPlaceholder": "16 character app password",
+        "gmailHelperStep2": "Connect and verify"
       },
       "remote": {
         "sectionTitle": "Remote user handshake",
@@ -5158,25 +5168,25 @@
           "refresh": "Sync inbox"
         }
       },
-      "slotSectionTitle": "US1 runtime binding",
-      "slotSectionNote": "Only active remote users can be attached to the US1 slot. This does not join relay.",
-      "selectLabel": "Active remote user",
-      "selectPlaceholder": "-- Select active remote user --",
-      "noReadyUsers": "No active remote user",
-      "catchTitle": "Persist the catchCommands preference for the US1 slot",
-      "catchLabel": "catchCommands",
-      "statusLabel": "Runtime status",
-      "phaseHint": "Handshake is complete. You can connect the selected user to US1.",
-      "phaseHintNoMailAccount": "Add and save your own mail account first.",
-      "phaseHintVerifyMail": "Verify the selected mail account before inviting a remote user.",
-      "phaseHintHandshake": "Invite or sync a remote user, then wait until the handshake becomes active.",
+      "slotSectionTitle": "US1 Slot",
+      "slotSectionNote": "Only handshake-complete remote email accounts appear here. Account creation and handshake actions now live in Account Management.",
+      "selectLabel": "Account list",
+      "selectPlaceholder": "-- Select remote account --",
+      "noReadyUsers": "No handshake-complete remote account yet",
+      "catchTitle": "Persist the capture incoming commands preference for the US1 slot",
+      "catchLabel": "Capture commands",
+      "statusLabel": "Connection status",
+      "phaseHint": "Handshake is complete. You can bind the selected remote account to the US1 slot.",
+      "phaseHintNoMailAccount": "Save your own user email in User & Drive first.",
+      "phaseHintVerifyMail": "Verify the user email account before adding a remote account.",
+      "phaseHintHandshake": "Add a remote email account from Account Management and wait for the handshake to complete.",
       "status": {
-        "noMailAccount": "US1 is locked until a local mail account is added.",
-        "noConnectedMailAccount": "US1 is waiting for a verified local mail account.",
-        "noUsers": "No active remote user is available yet.",
-        "empty": "Select an active remote user for the US1 slot.",
-        "ready": "US1 binding is ready.",
-        "connected": "US1 is connected to the selected remote user."
+        "noMailAccount": "Add a user email account before enabling US1.",
+        "noConnectedMailAccount": "US1 is waiting for a verified user email account.",
+        "noUsers": "No handshake-complete remote account is available yet.",
+        "empty": "Select a remote account for the US1 slot.",
+        "ready": "US1 connection is ready.",
+        "connected": "US1 is connected to the selected remote account."
       },
       "feedback": {
         "electronUnavailable": "Electron API is unavailable.",
@@ -5190,8 +5200,16 @@
         "inviteSent": "Invite mail sent.",
         "acceptSent": "Accept mail sent.",
         "syncSuccess": "Inbox sync completed. {{count}} message(s) processed.",
-        "operationFailed": "The requested operation failed."
-      }
+        "operationFailed": "The requested operation failed.",
+        "connectSuccess": "US1 connected. Initial check completed, {{count}} message(s) processed.",
+        "disconnectSuccess": "US1 connection closed.",
+        "syncRequiresConnection": "Open the US1 connection before checking mail."
+      },
+      "actions": {
+        "checkMail": "Check Mail"
+      },
+      "reportLabel": "Report",
+      "reportEmpty": "No US1 log entry yet."
     },
     "accounts": {
       "empty": "No accounts yet",
@@ -5207,7 +5225,20 @@
         "avatarButton": "📷 Avatar",
         "createAction": "Add",
         "updateAction": "Update",
-        "cancelAction": "Cancel"
+        "cancelAction": "Cancel",
+        "kindLabel": "Account type",
+        "kindOptions": {
+          "aiProvider": "AI Provider",
+          "remoteEmail": "Remote Email"
+        },
+        "providerLabel": "Provider",
+        "aiNote": "Add an AI provider account or edit an existing one.",
+        "remoteTitle": "Remote Email Account",
+        "remoteNote": "When an invite is sent the account appears in the list. It becomes selectable for the US1 slot after the handshake completes.",
+        "remoteInviteAction": "Send Invite",
+        "remoteSyncAction": "Sync Invites",
+        "remoteMailReady": "Verified user mail is ready: {{email}}",
+        "remoteMailMissing": "Add a verified user mail account from User & Drive first."
       },
       "dialog": {
         "avatarTitle": "Choose avatar",
@@ -5229,6 +5260,12 @@
         "editingMissing": "The account being edited was not found",
         "accountMissing": "Account not found",
         "updateError": "Update error: {{message}}"
+      },
+      "listTitle": "Account list",
+      "listNote": "AI provider and remote email accounts are managed together here.",
+      "types": {
+        "aiProvider": "AI Provider",
+        "remoteEmail": "Remote Email"
       }
     },
     "whisper": {

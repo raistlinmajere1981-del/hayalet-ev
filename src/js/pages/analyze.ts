@@ -7,6 +7,7 @@ import { CoreEngine } from "../modules/core-engine.js";
 import { Logger } from "../modules/logger/index.js";
 import { AppState } from "../modules/app-state.js";
 import { AppI18n } from "../modules/i18n/index.js";
+import { ConversationListManager } from "../modules/conversation-list-manager.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
@@ -30,8 +31,9 @@ import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 
 interface ConversationSelectedDetail {
-  provider?: "ai1" | "ai2";
+  provider?: "ai1" | "ai2" | "us1";
   isNew?: boolean;
+  localSessionId?: string | null;
 }
 
 interface DraftState {
@@ -54,10 +56,15 @@ function isConversationSelectedDetail(value: unknown): value is ConversationSele
   const provider = maybe["provider"];
   const isNew = maybe["isNew"];
 
-  const providerValid = provider === undefined || provider === "ai1" || provider === "ai2";
+  const providerValid =
+    provider === undefined || provider === "ai1" || provider === "ai2" || provider === "us1";
   const isNewValid = isNew === undefined || typeof isNew === "boolean";
+  const localSessionIdValid =
+    maybe["localSessionId"] === undefined ||
+    maybe["localSessionId"] === null ||
+    typeof maybe["localSessionId"] === "string";
 
-  return providerValid && isNewValid;
+  return providerValid && isNewValid && localSessionIdValid;
 }
 
 function isDraftState(value: unknown): value is DraftState {
@@ -85,6 +92,8 @@ export class AnalyzeController {
   _us1SyncInFlight: boolean;
   _us1LoadingBusy: boolean;
   _us1SendBusy: boolean;
+  _us1AwaitingReply: boolean;
+  _syncingUs1Indicators: boolean;
 
   constructor() {
     this.stagedFiles = [];
@@ -102,6 +111,8 @@ export class AnalyzeController {
     this._us1SyncInFlight = false;
     this._us1LoadingBusy = false;
     this._us1SendBusy = false;
+    this._us1AwaitingReply = false;
+    this._syncingUs1Indicators = false;
   }
 
   async init(): Promise<void> {
@@ -161,7 +172,7 @@ export class AnalyzeController {
     this.refreshUploads();
 
     initReadModal();
-    await this._initDraftSystem();
+    void this._initDraftSystem();
 
     window.addEventListener("conversation-selected", (e) => {
       const rawDetail: unknown = (e as CustomEvent<unknown>).detail;
@@ -174,6 +185,12 @@ export class AnalyzeController {
             analyzeT("logs.newConversationSelected", { provider: detail.provider })
           );
           this._clearSlotMessages(detail.provider);
+        } else if (detail.provider === "us1") {
+          this.us1SessionId =
+            typeof detail.localSessionId === "string" && detail.localSessionId.trim() !== ""
+              ? detail.localSessionId.trim()
+              : null;
+          void this._renderUs1Messages();
         } else {
           Logger.debug(
             LogCategory.ANALYZE,
@@ -277,7 +294,7 @@ export class AnalyzeController {
   }
 
   _syncUs1IdentityContext(): void {
-    const identityId = AppState.getUs1Identity()?.remoteUserId ?? null;
+    const identityId = AppState.getUs1ArchiveAccountId();
     if (identityId === this.us1SessionIdentityId) {
       return;
     }
@@ -321,6 +338,9 @@ export class AnalyzeController {
     const ai2HasAccount = !!AppState.getAccountForSlot("ai2");
     const us1Connected = AppState.isUs1Connected();
     const us1HasIdentity = AppState.hasUs1Identity();
+    if (us1Connected === false) {
+      this._us1AwaitingReply = false;
+    }
 
     (["ai1", "ai2", "us1"] as const).forEach((slot) => {
       const hasAccount =
@@ -474,6 +494,8 @@ export class AnalyzeController {
     } else if (provider === "us1") {
       this.us1SessionId = null;
       AppState.setActiveConversation("us1", null);
+      this._us1AwaitingReply = false;
+      this._applyUs1Indicators(AppState.isUs1Connected());
     }
     const container = document.getElementById(`messages-${provider}`);
     if (container) {
@@ -523,6 +545,8 @@ export class AnalyzeController {
       placeholder.textContent = analyzeT("page.noMessages");
       container.appendChild(placeholder);
       this.lastMessages.us1 = "";
+      this._us1AwaitingReply = false;
+      this._applyUs1Indicators(AppState.isUs1Connected());
       return;
     }
 
@@ -551,6 +575,8 @@ export class AnalyzeController {
       placeholder.textContent = analyzeT("page.noMessages");
       container.appendChild(placeholder);
       this.lastMessages.us1 = "";
+      this._us1AwaitingReply = false;
+      this._applyUs1Indicators(AppState.isUs1Connected());
       return;
     }
 
@@ -589,18 +615,58 @@ export class AnalyzeController {
         (message) =>
           message.role === "assistant" && (message.content ?? message.text ?? "").trim() !== ""
       );
+    const lastMeaningful = [...messages]
+      .reverse()
+      .find((message) => {
+        const text = (message.content ?? message.text ?? "").trim();
+        return text !== "" && (message.role === "assistant" || message.role === "user");
+      });
     this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
+    this._us1AwaitingReply = lastMeaningful?.role === "user";
     container.scrollTop = container.scrollHeight;
+    this._applyUs1Indicators(AppState.isUs1Connected());
   }
 
   _applyUs1Indicators(connected: boolean): void {
-    TrafficManager.setIndicator("us1", "loading", this._us1LoadingBusy ? "busy" : "idle");
-    TrafficManager.setIndicator("us1", "thinking", "idle");
-    TrafficManager.setIndicator(
-      "us1",
-      "send",
-      connected && this._us1SendBusy === false ? "idle" : "busy"
-    );
+    if (this._syncingUs1Indicators) {
+      return;
+    }
+
+    this._syncingUs1Indicators = true;
+    try {
+      TrafficManager.setIndicator("us1", "loading", this._us1LoadingBusy ? "busy" : "idle");
+      TrafficManager.setIndicator(
+        "us1",
+        "thinking",
+        connected && this._us1AwaitingReply ? "busy" : "idle"
+      );
+      TrafficManager.setIndicator(
+        "us1",
+        "send",
+        this._isUs1SendReady(connected) ? "idle" : "busy"
+      );
+    } finally {
+      this._syncingUs1Indicators = false;
+    }
+  }
+
+  _isUs1SendReady(connected: boolean): boolean {
+    if (connected === false || this._us1SendBusy === true) {
+      return false;
+    }
+
+    const analyzePage = document.getElementById("page-analyze");
+    const analyzeVisible = analyzePage instanceof HTMLElement && !analyzePage.classList.contains("is-hidden");
+    if (analyzeVisible === false) {
+      return true;
+    }
+
+    const sendUs1 = (document.getElementById("send-us1") as HTMLInputElement | null)?.checked === true;
+    const message = (
+      (document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? ""
+    ).trim();
+    const hasContent = message !== "" || this.stagedFiles.length > 0;
+    return sendUs1 && hasContent;
   }
 
   async _sendUs1Message(message: string, attachments: StagedFile[]): Promise<void> {
@@ -616,6 +682,7 @@ export class AnalyzeController {
     }
 
     this._us1SendBusy = true;
+    this._us1AwaitingReply = true;
     this._applyUs1Indicators(AppState.isUs1Connected());
 
     try {
@@ -635,11 +702,22 @@ export class AnalyzeController {
 
       this.us1SessionId = result.localSessionId ?? localSessionId;
       AppState.setActiveConversation("us1", result.conversationId ?? null);
+      await ConversationListManager.refresh({
+        silent: true,
+        provider: "us1",
+        ...(typeof result.conversationId === "string" && result.conversationId !== ""
+          ? { forceSelectId: result.conversationId }
+          : {}),
+        skipNotify: true,
+      });
       await SettingsManager.reload();
       this.applyAvatars();
       this.applyNames();
       await this._renderUs1Messages();
       await this._syncUs1Messages({ showRoomPackages: true });
+    } catch (error) {
+      this._us1AwaitingReply = false;
+      throw error;
     } finally {
       this._us1SendBusy = false;
       this._applyUs1Indicators(AppState.isUs1Connected());
@@ -680,6 +758,14 @@ export class AnalyzeController {
 
       this.us1SessionId = result.localSessionId ?? this.us1SessionId;
       AppState.setActiveConversation("us1", result.conversationId ?? null);
+      await ConversationListManager.refresh({
+        silent: true,
+        provider: "us1",
+        ...(typeof result.conversationId === "string" && result.conversationId !== ""
+          ? { forceSelectId: result.conversationId }
+          : {}),
+        skipNotify: true,
+      });
       await this._renderUs1Messages();
 
       if (options.showRoomPackages === true) {
@@ -751,7 +837,7 @@ export class AnalyzeController {
 
     this._us1PollTimer = window.setInterval(() => {
       void this._syncUs1Messages({ showRoomPackages: true });
-    }, 12000);
+    }, 30000);
   }
 
   _stopUs1Polling(): void {
@@ -788,18 +874,22 @@ export class AnalyzeController {
 
   async _initDraftSystem(): Promise<void> {
     initDraft();
-    const draftResult = await loadDraft();
-    const draft = isDraftState(draftResult) ? draftResult : { message: "", files: [] };
-
-    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
-    if (textarea) textarea.value = draft.message;
-    this.stagedFiles = draft.files;
-    this._renderUploadList();
-
     this.beforeUnloadHandler = (): void => {
       this._persistDraft();
     };
     window.addEventListener("beforeunload", this.beforeUnloadHandler);
+
+    const draftResult = await loadDraft();
+    const draft = isDraftState(draftResult) ? draftResult : { message: "", files: [] };
+
+    const textarea = document.getElementById("compose-input") as HTMLTextAreaElement | null;
+    if (textarea !== null && textarea.value.trim() === "") {
+      textarea.value = draft.message;
+    }
+    if (this.stagedFiles.length === 0) {
+      this.stagedFiles = draft.files;
+    }
+    this._renderUploadList();
   }
 
   _persistDraft(): void {
@@ -959,6 +1049,7 @@ export class AnalyzeController {
 
     btn.disabled = !hasTarget || !hasContent;
     this._updateCrossCheckboxState();
+    this._applyUs1Indicators(AppState.isUs1Connected());
   }
 
   _resetSendTargetsOnShow(): void {

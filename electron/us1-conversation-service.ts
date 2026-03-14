@@ -1,11 +1,17 @@
 import { basename } from "node:path";
 
 import type {
+  Account,
   AppSettings,
   MailTransportAccountConfig,
   RemoteUserIdentity,
 } from "@shared/settings.js";
-import { buildUs1ProjectedAccountId, buildUs1SyntheticSessionUri } from "@shared/archive.js";
+import { getRemoteEmailAccounts } from "@shared/settings.js";
+import {
+  buildRemoteEmailAccountId,
+  buildUs1SyntheticSessionUri,
+  extractUs1RemoteIdentityIdFromAccountId,
+} from "@shared/archive.js";
 import type {
   Us1RoomPackageCandidate,
   Us1SendMessageParams,
@@ -91,7 +97,7 @@ interface ResolvedBinding {
 
 interface ArchiveContext {
   manager: ArchiveManagerLike;
-  projectedAccountId: string;
+  archiveAccountId: string;
   webUrl: string;
   conversationId: string;
 }
@@ -180,6 +186,53 @@ function normalizeOptionalText(value: unknown): string | null {
 
 function normalizeEmail(value: unknown): string {
   return normalizeOptionalText(value)?.toLowerCase() ?? "";
+}
+
+function resolveSelectedRemoteUserId(settings: AppSettings): string | null {
+  const selectedAccountId = normalizeOptionalText(settings.us1Slot?.selectedAccountId);
+  const remoteUserIdFromAccountId =
+    selectedAccountId !== null
+      ? extractUs1RemoteIdentityIdFromAccountId(selectedAccountId)
+      : null;
+
+  return remoteUserIdFromAccountId ?? normalizeOptionalText(settings.us1Slot?.selectedRemoteUserId);
+}
+
+function buildRemoteUserFromRemoteAccount(account: Account | null | undefined): RemoteUserIdentity | null {
+  const remoteState = account?.remoteEmail;
+  const remoteUserId = normalizeOptionalText(remoteState?.remoteUserId);
+  const email = normalizeEmail(account?.email ?? remoteUserId ?? "");
+  if (remoteState === undefined || remoteState === null || remoteUserId === null || email === "") {
+    return null;
+  }
+
+  return {
+    remoteUserId,
+    email,
+    ...(typeof account?.nickname === "string" ? { nickname: account.nickname } : {}),
+    ...(typeof account?.avatar === "string" ? { avatar: account.avatar } : {}),
+    ...(typeof account?.avatarPath === "string" ? { avatarPath: account.avatarPath } : {}),
+    handshakeState: remoteState.handshakeState,
+    profileRevision: remoteState.profileRevision,
+    linkedMailAccountId: remoteState.linkedLocalMailAccountId,
+    ...(remoteState.inviteMessageId !== undefined
+      ? { inviteMessageId: remoteState.inviteMessageId ?? null }
+      : {}),
+    ...(remoteState.acceptMessageId !== undefined
+      ? { acceptMessageId: remoteState.acceptMessageId ?? null }
+      : {}),
+    ...(remoteState.threadMessageId !== undefined
+      ? { threadMessageId: remoteState.threadMessageId ?? null }
+      : {}),
+    ...(remoteState.lastTransportMessageId !== undefined
+      ? { lastTransportMessageId: remoteState.lastTransportMessageId ?? null }
+      : {}),
+    ...(remoteState.lastSyncAt !== undefined ? { lastSyncAt: remoteState.lastSyncAt } : {}),
+    ...(remoteState.lastError !== undefined ? { lastError: remoteState.lastError ?? null } : {}),
+    ...(remoteState.sessionAlias !== undefined
+      ? { sessionAlias: remoteState.sessionAlias ?? null }
+      : {}),
+  };
 }
 
 function buildLocalMessageId(prefix: string, token: string, now: number): string {
@@ -780,7 +833,7 @@ export class Us1ConversationService {
   }
 
   private async persistSettings(settings: AppSettings): Promise<void> {
-    const saved = await this.settingsStore.saveSettings(settings);
+    const saved = await this.settingsStore.saveSettings(normalizeSettings(settings));
     if (saved !== true) {
       throw new Error("Failed to persist US1 conversation settings.");
     }
@@ -790,7 +843,47 @@ export class Us1ConversationService {
     settings: AppSettings,
     requireConnected: boolean
   ): ResolvedBinding | null {
-    const selectedRemoteUserId = normalizeOptionalText(settings.us1Slot?.selectedRemoteUserId);
+    const remoteAccounts = getRemoteEmailAccounts(settings.accounts);
+    const selectedAccountId = normalizeOptionalText(settings.us1Slot?.selectedAccountId);
+    const selectedRemoteUserId = resolveSelectedRemoteUserId(settings);
+    const integrations = settings.integrations ?? {};
+
+    const remoteAccount =
+      (selectedAccountId !== null
+        ? remoteAccounts.find(
+            (candidate) =>
+              candidate.id === selectedAccountId &&
+              candidate.remoteEmail?.handshakeState === "active"
+          )
+        : null) ??
+      (selectedRemoteUserId !== null
+        ? remoteAccounts.find(
+            (candidate) =>
+              normalizeOptionalText(candidate.remoteEmail?.remoteUserId) === selectedRemoteUserId &&
+              candidate.remoteEmail?.handshakeState === "active"
+          )
+        : null) ??
+      null;
+
+    const remoteUserFromAccount = buildRemoteUserFromRemoteAccount(remoteAccount);
+    if (remoteUserFromAccount !== null) {
+      const account =
+        integrations.mailTransport?.accounts.find(
+          (candidate) => candidate.id === remoteUserFromAccount.linkedMailAccountId
+        ) ?? null;
+      if (account !== null && account.enabled !== false) {
+        if (
+          requireConnected === true &&
+          (settings.us1Slot?.connectionState !== "connected" ||
+            account.connectionState !== "connected")
+        ) {
+          return null;
+        }
+
+        return { remoteUser: remoteUserFromAccount, account };
+      }
+    }
+
     if (selectedRemoteUserId === null) {
       return null;
     }
@@ -804,7 +897,6 @@ export class Us1ConversationService {
       return null;
     }
 
-    const integrations = settings.integrations ?? {};
     const account =
       integrations.mailTransport?.accounts.find(
         (candidate) => candidate.id === remoteUser.linkedMailAccountId
@@ -824,6 +916,15 @@ export class Us1ConversationService {
   }
 
   private findRemoteUser(settings: AppSettings, remoteUserId: string): RemoteUserIdentity | null {
+    const remoteUserFromAccount = buildRemoteUserFromRemoteAccount(
+      getRemoteEmailAccounts(settings.accounts).find(
+        (account) => normalizeOptionalText(account.remoteEmail?.remoteUserId) === remoteUserId
+      ) ?? null
+    );
+    if (remoteUserFromAccount !== null) {
+      return remoteUserFromAccount;
+    }
+
     return (
       (settings.remoteUsers ?? []).find((remoteUser) => remoteUser.remoteUserId === remoteUserId) ??
       null
@@ -935,6 +1036,7 @@ export class Us1ConversationService {
       lastTransportMessageId:
         candidate.lastTransportMessageId ?? existingRemoteUser?.lastTransportMessageId ?? null,
       lastError: candidate.lastError ?? null,
+      sessionAlias: candidate.sessionAlias ?? existingRemoteUser?.sessionAlias ?? null,
       ...(resolvedLastSyncAt !== undefined ? { lastSyncAt: resolvedLastSyncAt } : {}),
     };
 
@@ -1022,9 +1124,9 @@ export class Us1ConversationService {
     remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
     localSessionId: string
   ): Promise<ArchiveContext> {
-    const projectedAccountId = buildUs1ProjectedAccountId(remoteUser.remoteUserId);
-    if (projectedAccountId === "") {
-      throw new Error("US1 projected account id could not be resolved.");
+    const archiveAccountId = buildRemoteEmailAccountId(remoteUser.remoteUserId);
+    if (archiveAccountId === "") {
+      throw new Error("US1 archive account id could not be resolved.");
     }
 
     const webUrl = buildUs1SyntheticSessionUri(remoteUser.remoteUserId, localSessionId);
@@ -1032,7 +1134,7 @@ export class Us1ConversationService {
       throw new Error("US1 synthetic session uri could not be resolved.");
     }
 
-    const manager = await this.archiveFactory(projectedAccountId);
+    const manager = await this.archiveFactory(archiveAccountId);
     const metadataResult = await manager.upsertConversationMetadata({
       webUrl,
       provider: "us1",
@@ -1044,7 +1146,7 @@ export class Us1ConversationService {
 
     return {
       manager,
-      projectedAccountId,
+      archiveAccountId,
       webUrl,
       conversationId: metadataResult.data.conversationId,
     };
@@ -1064,7 +1166,7 @@ export class Us1ConversationService {
     const messageId = buildArchiveMessageId(archiveContext.conversationId, message.domId);
 
     const syncResult = await archiveContext.manager.syncMessages({
-      accountId: archiveContext.projectedAccountId,
+      accountId: archiveContext.archiveAccountId,
       provider: "us1",
       webUrl: archiveContext.webUrl,
       messages: [

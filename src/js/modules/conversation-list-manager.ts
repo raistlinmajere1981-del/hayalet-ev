@@ -7,6 +7,7 @@ import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
 import { SlotController, SlotEvent } from "./slot-controller.js";
 import { AppState } from "./app-state.js";
+import { parseUs1SyntheticSessionUri } from "@shared/archive.js";
 
 interface RawConversationEntry {
   id?: string;
@@ -29,6 +30,7 @@ interface ConversationEntry {
   folder: string;
   title: string;
   lastMessageTime?: number;
+  localSessionId?: string | null;
 }
 
 function conversationListT(key: string, params?: Record<string, string | number>): string {
@@ -44,9 +46,9 @@ class ConversationListManagerClass {
   _i18nSub: (() => void) | null;
 
   constructor() {
-    this.selects = { ai1: null, ai2: null };
+    this.selects = { ai1: null, ai2: null, us1: null };
     this.entries = [];
-    this.currentSelections = { ai1: "new", ai2: "new" };
+    this.currentSelections = { ai1: "new", ai2: "new", us1: "new" };
     this._settingsSub = null;
     this._slotControllerSub = null;
     this._i18nSub = null;
@@ -56,6 +58,7 @@ class ConversationListManagerClass {
     this.selects = {
       ai1: document.getElementById("conversation-ai1") as HTMLSelectElement | null,
       ai2: document.getElementById("conversation-ai2") as HTMLSelectElement | null,
+      us1: document.getElementById("conversation-us1") as HTMLSelectElement | null,
     };
 
     await this.refresh({ silent: true });
@@ -66,10 +69,22 @@ class ConversationListManagerClass {
   subscribeToSettings(): void {
     this._settingsSub = SettingsManager.subscribe(
       ({ changedPaths }: { changedPaths: string[] }) => {
-        const slotAccountPaths = ["slots.ai1.accountId", "slots.ai2.accountId"];
+        const slotAccountPaths = [
+          "slots.ai1.accountId",
+          "slots.ai2.accountId",
+          "us1Slot.selectedAccountId",
+          "us1Slot.selectedRemoteUserId",
+          "us1Slot.connectionState",
+        ];
         const slotChanged =
           changedPaths.includes("*") ||
-          changedPaths.some((p: string) => slotAccountPaths.some((path) => p === path));
+          changedPaths.some(
+            (p: string) =>
+              slotAccountPaths.some((path) => p === path) ||
+              p.startsWith("remoteUsers") ||
+              p.startsWith("accounts") ||
+              p.startsWith("integrations.mailTransport")
+          );
 
         if (slotChanged) {
           void this.refresh({ silent: true, skipNotify: true });
@@ -112,6 +127,12 @@ class ConversationListManagerClass {
         this.handleConversationChange(provider);
       });
     }
+
+    const us1RefreshBtn = document.getElementById("conversation-refresh-us1");
+    us1RefreshBtn?.addEventListener("click", (event) => {
+      event.preventDefault();
+      void this.handleUs1Refresh();
+    });
   }
 
   handleConversationChange(provider: string, options = { isInitial: false }): void {
@@ -124,7 +145,11 @@ class ConversationListManagerClass {
     this._clearMessagesArea(provider);
 
     const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
-    SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
+    if (provider === "us1") {
+      AppState.setActiveConversation("us1", conversationId === "new" ? null : conversationId);
+    } else {
+      SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
+    }
 
     if (!options.isInitial) {
       Logger.info(
@@ -135,7 +160,11 @@ class ConversationListManagerClass {
 
     window.dispatchEvent(
       new CustomEvent("conversation-selected", {
-        detail: { provider, isNew: conversationId === "new" },
+        detail: {
+          provider,
+          isNew: conversationId === "new",
+          ...(provider === "us1" ? { localSessionId: entry?.localSessionId ?? null } : {}),
+        },
       })
     );
   }
@@ -165,6 +194,7 @@ class ConversationListManagerClass {
 
       const ai1Account = AppState.getAccountForSlot("ai1");
       const ai2Account = AppState.getAccountForSlot("ai2");
+      const us1AccountId = AppState.getUs1ArchiveAccountId();
 
       const ai1Result =
         ai1Account?.id !== undefined && ai1Account.id !== ""
@@ -178,9 +208,16 @@ class ConversationListManagerClass {
               | { data: unknown[] }
               | undefined)
           : { data: [] };
+      const us1Result =
+        us1AccountId !== null && us1AccountId !== ""
+          ? ((await electronApi.dbGetConversations({ accountId: us1AccountId })) as
+              | { data: unknown[] }
+              | undefined)
+          : { data: [] };
 
       const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
       const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
+      const us1Entries = Array.isArray(us1Result?.data) ? us1Result.data : [];
 
       this.entries = [
         ...ai1Entries.map((e: unknown) => {
@@ -213,6 +250,22 @@ class ConversationListManagerClass {
             title: String(entry.title ?? ""),
           } as ConversationEntry;
         }),
+        ...us1Entries.map((e: unknown) => {
+          const entry = e as RawConversationEntry;
+          return {
+            conversationId: String(entry.id ?? ""),
+            id: String(entry.id ?? ""),
+            webUrl: String(entry.webUrl ?? ""),
+            provider: "us1" as const,
+            mtime:
+              Number(entry.updatedAt ?? entry.createdAt ?? 0) !== 0
+                ? Number(entry.updatedAt ?? entry.createdAt ?? 0)
+                : 0,
+            folder: "",
+            title: String(entry.title ?? ""),
+            localSessionId: parseUs1SyntheticSessionUri(entry.webUrl)?.localSessionId ?? null,
+          } as ConversationEntry;
+        }),
       ];
 
       this.renderAll({ silent });
@@ -231,7 +284,7 @@ class ConversationListManagerClass {
             ? this.entries.find((e) => e.id === forceSelectId)?.provider
             : null);
         const providers =
-          targetProvider !== null && targetProvider !== "" ? [targetProvider] : ["ai1", "ai2"];
+          targetProvider !== null && targetProvider !== "" ? [targetProvider] : ["ai1", "ai2", "us1"];
 
         await new Promise((resolve) =>
           setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_LIST_MICRO)
@@ -243,7 +296,19 @@ class ConversationListManagerClass {
           const isNew = (selections[providerStr] ?? "new") === "new";
           window.dispatchEvent(
             new CustomEvent("conversation-selected", {
-              detail: { provider: providerStr, isNew },
+              detail: {
+                provider: providerStr,
+                isNew,
+                ...(providerStr === "us1"
+                  ? {
+                      localSessionId:
+                        this.entries.find(
+                          (entry) =>
+                            entry.provider === "us1" && entry.id === (selections[providerStr] ?? "")
+                        )?.localSessionId ?? null,
+                    }
+                  : {}),
+              },
             })
           );
         }
@@ -269,10 +334,20 @@ class ConversationListManagerClass {
 
     const settings = SettingsManager.getSnapshot();
     const slot = (settings.slots[provider] ?? {}) as SlotSettings;
-    const hasAccount = slot.accountId !== undefined && slot.accountId !== "";
-    const isConnected = SlotController.isConnected(provider) === true;
+    const hasAccount =
+      provider === "us1"
+        ? AppState.hasUs1Identity() === true
+        : slot.accountId !== undefined && slot.accountId !== "";
+    const isConnected =
+      provider === "us1" ? AppState.isUs1Connected() === true : SlotController.isConnected(provider) === true;
 
     select.disabled = !hasAccount || !isConnected;
+    const refreshBtn = document.getElementById(`conversation-refresh-${provider}`) as
+      | HTMLButtonElement
+      | null;
+    if (refreshBtn) {
+      refreshBtn.disabled = !hasAccount || !isConnected;
+    }
 
     const currentVal =
       options.silent === true ? select.value : (this.currentSelections[provider] ?? "new");
@@ -300,6 +375,9 @@ class ConversationListManagerClass {
       const option = new Option(entry.title, entry.id);
       option.dataset["folder"] = entry.folder;
       option.dataset["url"] = entry.webUrl;
+      if (provider === "us1") {
+        option.dataset["us1SessionId"] = entry.localSessionId ?? "";
+      }
       select.appendChild(option);
     }
 
@@ -340,6 +418,52 @@ class ConversationListManagerClass {
     this._settingsSub = null;
     this._slotControllerSub = null;
     this._i18nSub = null;
+  }
+
+  async handleUs1Refresh(): Promise<void> {
+    const electronApi = window.electronAPI;
+    if (
+      electronApi === undefined ||
+      typeof electronApi.us1SyncMessages !== "function" ||
+      AppState.isUs1Connected() !== true
+    ) {
+      return;
+    }
+
+    const selectedConversationId = this.currentSelections["us1"] ?? "new";
+    const selectedEntry =
+      selectedConversationId !== "new"
+        ? this.entries.find((entry) => entry.provider === "us1" && entry.id === selectedConversationId)
+        : null;
+
+    try {
+      const result = await electronApi.us1SyncMessages({
+        localSessionId: selectedEntry?.localSessionId ?? null,
+      });
+      if (result.success !== true) {
+        throw new Error(result.error ?? "US1 conversation refresh failed.");
+      }
+
+      await SettingsManager.reload();
+
+      const forceSelectId =
+        (typeof result.conversationId === "string" && result.conversationId !== ""
+          ? result.conversationId
+          : selectedConversationId !== "new"
+            ? selectedConversationId
+            : null) ?? undefined;
+
+      await this.refresh({
+        silent: true,
+        provider: "us1",
+        ...(forceSelectId !== undefined ? { forceSelectId } : {}),
+      });
+    } catch (error) {
+      Logger.error(
+        LogCategory.WEBVIEW,
+        conversationListT("logs.refreshError", { message: getErrorMessage(error) })
+      );
+    }
   }
 }
 

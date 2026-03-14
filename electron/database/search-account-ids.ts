@@ -1,4 +1,4 @@
-import { buildUs1ProjectedAccountId } from "@shared/archive.js";
+import { buildRemoteEmailAccountId } from "@shared/archive.js";
 
 function toRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== "object") {
@@ -25,6 +25,13 @@ function toAccountIds(value: unknown): string[] {
 
 function resolveSelectedUs1ProjectedAccountId(record: Record<string, unknown>): string | null {
   const us1Slot = toRecord(record["us1Slot"]);
+  const selectedAccountIdRaw = us1Slot?.["selectedAccountId"];
+  const selectedAccountId =
+    typeof selectedAccountIdRaw === "string" ? selectedAccountIdRaw.trim() : "";
+  if (selectedAccountId !== "") {
+    return selectedAccountId;
+  }
+
   const selectedRemoteUserIdRaw =
     us1Slot?.["selectedRemoteUserId"] ?? us1Slot?.["selectedIdentityId"];
   const selectedRemoteUserId =
@@ -51,7 +58,7 @@ function resolveSelectedUs1ProjectedAccountId(record: Record<string, unknown>): 
     return null;
   }
 
-  const accountId = buildUs1ProjectedAccountId(selectedRemoteUserId);
+  const accountId = buildRemoteEmailAccountId(selectedRemoteUserId);
   return accountId !== "" ? accountId : null;
 }
 

@@ -38,9 +38,6 @@ const COMMAND_DESCRIPTION_NAMES = [
   "GetFile",
   "GetItDone",
   "ListFiles",
-  "DefineCommand",
-  "DeleteCommand",
-  "ListCustomCommands",
 ] as const;
 
 type CommandDescriptionName = (typeof COMMAND_DESCRIPTION_NAMES)[number];

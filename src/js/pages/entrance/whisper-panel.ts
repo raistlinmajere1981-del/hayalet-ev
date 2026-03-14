@@ -1,4 +1,5 @@
 import { SettingsManager } from "../../modules/settings-manager.js";
+import { getAiProviderAccounts } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 import { CoreEngine } from "../../modules/core-engine.js";
 import { formatTime, t as entranceT } from "./i18n.js";
@@ -43,7 +44,7 @@ export class WhisperPanel {
 
   getAccountMap(): Map<string, Account> {
     const settings = SettingsManager.getSnapshot();
-    const accounts = Array.isArray(settings.accounts) ? settings.accounts : [];
+    const accounts = getAiProviderAccounts(settings.accounts);
     return new Map(
       accounts
         .filter(

@@ -1,6 +1,7 @@
-import { app, BrowserWindow, dialog, shell } from "electron";
+import { app, BrowserWindow, dialog, shell, ipcMain } from "electron";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { existsSync, readFileSync } from "fs";
+import { dirname, join } from "path";
 import { initPaths, Paths } from "./paths.ts";
 import { deviceActionHandler } from "./device-manager.ts";
 import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
@@ -61,8 +62,59 @@ import { SessionManager } from "./session-manager.ts";
 function generateCorrelationId(prefix: string = "op"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
-import { MetaCommandManager } from "./meta-command-manager.ts";
 import type { LogQueryParams } from "./types/index.ts";
+
+function cloneInstalledRoomRecord(record: InstalledRoomRecord): InstalledRoomRecord {
+  return {
+    ...record,
+    ...(Array.isArray(record.commandSpecs)
+      ? { commandSpecs: record.commandSpecs.map((spec) => ({ ...spec })) }
+      : {}),
+    ...(Array.isArray(record.protocolSpecs)
+      ? { protocolSpecs: record.protocolSpecs.map((spec) => ({ ...spec })) }
+      : {}),
+  };
+}
+
+function readStartupRoomsSnapshot(): StartupRoomsSnapshot | null {
+  const registryPath = Paths.getRoomsRegistryPath();
+  if (existsSync(registryPath) === false) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(registryPath, "utf8")) as RoomRegistryState;
+    const rooms = Array.isArray(parsed.rooms)
+      ? parsed.rooms.map((room) => cloneInstalledRoomRecord(room))
+      : [];
+    const protocols: StartupRoomProtocolSnapshot[] = [];
+
+    rooms.forEach((room) => {
+      (room.protocolSpecs ?? []).forEach((spec) => {
+        const protocolPath = join(room.installedDir, "protocols", `${spec.key}.md`);
+        let body = "";
+
+        try {
+          if (existsSync(protocolPath) === true) {
+            body = readFileSync(protocolPath, "utf8");
+          }
+        } catch {
+          body = "";
+        }
+
+        protocols.push({
+          roomId: room.id,
+          key: spec.key,
+          body,
+        });
+      });
+    });
+
+    return { rooms, protocols };
+  } catch {
+    return null;
+  }
+}
 
 import { setupFsHandlers } from "./handlers/ipc-fs.ts";
 import { setupWindowHandlers } from "./handlers/ipc-window.ts";
@@ -79,6 +131,12 @@ import { setupUs1MailHandlers } from "./handlers/ipc-us1-mail.ts";
 import { registerHandler, handleLoggerAppendBatch } from "./handlers/ipc-helpers.ts";
 import { initLogger, shutdownLogger, getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomRegistryState,
+  StartupRoomProtocolSnapshot,
+  StartupRoomsSnapshot,
+} from "@shared/index.js";
 import { translateElectronMessage } from "./i18n/language-service.ts";
 
 const logger = getLoggerCore();
@@ -271,12 +329,7 @@ void app.whenReady().then(async () => {
 
     await syncOpencodeBinarySettingsOnStartup();
 
-    const startupFlags = parseStartupFlagsFromArgv(process.argv);
-    mainWindow = createAppWindow({ startupFlags });
-
-    setMainWindow(mainWindow);
-
-    setupFsHandlers(mainWindow);
+    setupFsHandlers(null);
     setupWindowHandlers();
     setupDatabaseHandlers();
     setupProviderHandlers();
@@ -284,9 +337,15 @@ void app.whenReady().then(async () => {
     setupI18nHandlers();
     setupMemoryHandlers();
     setupOpencodeUiToolsHandlers();
-    setupRoomHandlers(mainWindow);
+    setupRoomHandlers(null);
     setupBackupHandlers();
     setupUs1MailHandlers();
+
+    const startupFlags = parseStartupFlagsFromArgv(process.argv);
+    startupFlags.roomsSnapshot = readStartupRoomsSnapshot();
+    mainWindow = createAppWindow({ startupFlags });
+
+    setMainWindow(mainWindow);
 
     try {
       initWindowManager({ mainWindow });
@@ -546,22 +605,10 @@ registerHandler("command-move", commandMove);
 registerHandler("capture-page", capturePageHandler);
 registerHandler("screenshot-capture", screenshotCaptureHandler);
 
-registerHandler(
-  "meta-define-command",
-  async (event, params: { name: string; description?: string; code: string; createdBy?: string }) =>
-    await MetaCommandManager.defineCommand(event, params)
-);
-registerHandler(
-  "meta-delete-command",
-  async (event, params: { name: string }) => await MetaCommandManager.deleteCommand(event, params)
-);
-registerHandler("meta-list-commands", (event) => MetaCommandManager.listCommands(event));
-registerHandler(
-  "meta-get-command",
-  async (event, params: { name: string }) => await MetaCommandManager.getCommand(event, params)
-);
-
 registerHandler("logger:appendBatch", handleLoggerAppendBatch);
+ipcMain.on("logger:appendBatch", (event, entries: unknown[]) => {
+  void handleLoggerAppendBatch(event as never, entries);
+});
 
 registerHandler("copy-to-assets", copyToAssets);
 registerHandler("copy-file-to", copyFileTo);

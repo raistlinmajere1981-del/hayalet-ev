@@ -21,7 +21,6 @@ import { listFilesHandler } from "./commands/file-commands.js";
 async function getAiChatHandlers(): Promise<typeof import("./commands/ai-chat-commands.js")> {
   return await import("./commands/ai-chat-commands.js");
 }
-import { MetaCommandManager } from "./meta-command-manager.js";
 import { RoomCommandRegistry } from "./rooms/room-command-registry.js";
 import {
   getCommandDescription,
@@ -63,9 +62,6 @@ const BUILTIN_COMMANDS: CommandDefinition[] = [
   { name: "GetFile", category: "ai1-ai2" },
   { name: "GetItDone", category: "ai1-ai2" },
   { name: "ListFiles", category: "ai1-ai2", supportsTestMode: true },
-  { name: "DefineCommand", category: "ai1-ai2" },
-  { name: "DeleteCommand", category: "ai1-ai2" },
-  { name: "ListCustomCommands", category: "ai1-ai2" },
 ];
 
 const COMMAND_LIST = BUILTIN_COMMANDS.map((command) => command.name);
@@ -117,14 +113,6 @@ function getCommandDefinition(commandName: string): CommandDefinition | null {
   const builtIn = BUILTIN_BY_KEY.get(key);
   if (builtIn !== undefined) {
     return builtIn;
-  }
-
-  if (MetaCommandManager.hasCommand(canonicalName)) {
-    return {
-      name: canonicalName,
-      category: "ai1-ai2",
-      supportsTestMode: false,
-    };
   }
 
   const roomMetadata = RoomCommandRegistry.getMetadata(canonicalName);
@@ -247,58 +235,6 @@ handlers["assistantaisend"] = async (payload): Promise<unknown> => {
   return await assistantAISendHandler(payload);
 };
 
-handlers["definecommand"] = async (payload?: CommandPayload): Promise<unknown> => {
-  const args = typeof payload?.args === "string" ? payload.args : "";
-  const match = args.match(/^([A-Za-z0-9_]+)\s*,\s*"([^"]*)"\s*,\s*`([\s\S]*)`$/);
-
-  if (match === null) {
-    return {
-      success: false,
-      error: AppI18n.t("app.commands.runtime.invalidDefineFormat"),
-    };
-  }
-
-  const name = match[1];
-  const description = match[2];
-  const code = match[3];
-  if (
-    name === undefined ||
-    name === "" ||
-    description === undefined ||
-    description === "" ||
-    code === undefined ||
-    code === ""
-  ) {
-    return { success: false, error: AppI18n.t("app.commands.runtime.invalidCommandData") };
-  }
-  const sender = payload?.sender !== undefined ? String(payload.sender) : "unknown";
-  const result = await MetaCommandManager.defineCommand(name, description, code, sender);
-  return result;
-};
-
-handlers["deletecommand"] = async (payload?: CommandPayload): Promise<unknown> => {
-  const name = (typeof payload?.args === "string" ? payload.args : "").trim();
-  if (name === "") {
-    return { success: false, error: AppI18n.t("app.commands.runtime.commandNameRequired") };
-  }
-  const result = await MetaCommandManager.deleteCommand(name);
-  return result;
-};
-
-handlers["listcustomcommands"] = (): {
-  success: boolean;
-  message: string;
-  commands: Record<string, unknown>;
-} => {
-  const commands = MetaCommandManager.listCommands();
-  const names = Object.keys(commands);
-  return {
-    success: true,
-    message: AppI18n.t("app.commands.runtime.customCommandCount", { count: names.length }),
-    commands,
-  };
-};
-
 const serverCommands = {
   async run(commandName: string, payload: Record<string, unknown> = {}): Promise<unknown> {
     const canonicalCommandName = resolveCanonicalCommandName(commandName);
@@ -323,15 +259,6 @@ const serverCommands = {
       return handler(payload);
     }
 
-    if (MetaCommandManager.hasCommand(canonicalCommandName)) {
-      const argsStr = (payload as { args?: string }).args ?? "";
-      const args =
-        argsStr !== ""
-          ? argsStr.split(",").map((s: string) => s.trim().replace(/^["']|["']$/g, ""))
-          : [];
-      return await MetaCommandManager.runCommand(canonicalCommandName, args);
-    }
-
     if (RoomCommandRegistry.has(canonicalCommandName)) {
       return await RoomCommandRegistry.run(canonicalCommandName, payload);
     }
@@ -347,10 +274,7 @@ const serverCommands = {
   },
 
   list(): string[] {
-    const customCmds = MetaCommandManager.getCommandNames();
-    return Array.from(
-      new Set([...COMMAND_LIST, ...customCmds, ...RoomCommandRegistry.listCommands()])
-    );
+    return Array.from(new Set([...COMMAND_LIST, ...RoomCommandRegistry.listCommands()]));
   },
 
   listByCategory(category: CommandCategory): string[] {
@@ -362,12 +286,7 @@ const serverCommands = {
       return [...builtIns, ...RoomCommandRegistry.listCommands(category)];
     }
 
-    const merged = new Set([
-      ...builtIns,
-      ...MetaCommandManager.getCommandNames(),
-      ...RoomCommandRegistry.listCommands(category),
-    ]);
-    return Array.from(merged);
+    return Array.from(new Set([...builtIns, ...RoomCommandRegistry.listCommands(category)]));
   },
 
   getCatalog(category?: CommandCategory): CommandCatalogItem[] {
@@ -384,14 +303,7 @@ const serverCommands = {
       return builtIns;
     }
 
-    const custom = MetaCommandManager.getCommandNames().map((name) => ({
-      name,
-      category: "ai1-ai2" as const,
-      isCustom: true,
-      supportsTestMode: false,
-    }));
-
-    return [...builtIns, ...custom, ...RoomCommandRegistry.getCatalog(category)];
+    return [...builtIns, ...RoomCommandRegistry.getCatalog(category)];
   },
 
   getCommandMeta(commandName: string): CommandCatalogItem | undefined {
@@ -403,11 +315,7 @@ const serverCommands = {
   has(commandName: string): boolean {
     const canonicalCommandName = resolveCanonicalCommandName(commandName);
     const key = canonicalCommandName !== "" ? canonicalCommandName.toLowerCase() : "";
-    return (
-      handlers[key] !== undefined ||
-      MetaCommandManager.hasCommand(canonicalCommandName) ||
-      RoomCommandRegistry.has(canonicalCommandName)
-    );
+    return handlers[key] !== undefined || RoomCommandRegistry.has(canonicalCommandName);
   },
 
   getDescription(commandName: string): CommandDescriptionInfo | undefined {

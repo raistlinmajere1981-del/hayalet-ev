@@ -1,6 +1,7 @@
 // NOTE: All path construction must go through this module; avoid process.cwd() or ../ paths elsewhere.
 // NOTE: Dev/prod detection should only happen here.
 
+import { existsSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import type { PathConfig, PathResolver } from "./types/paths.ts";
@@ -8,6 +9,11 @@ import { readElectronAppLanguageSync } from "./i18n/language-service.ts";
 import { getBuiltInLanguagePack } from "../shared/i18n/bundled-languages.ts";
 import { translateCatalog } from "../shared/i18n/catalog.ts";
 import { DEFAULT_APP_LANGUAGE } from "../src/types/i18n.ts";
+import {
+  buildLegacyUs1ProjectedAccountIdFromRemoteAccountId,
+  extractRemoteEmailFromAccountId,
+  isRemoteEmailAccountId,
+} from "../src/types/archive.ts";
 import {
   detectPackagedMode,
   resolveAssetsDir,
@@ -114,6 +120,11 @@ const paths: PathResolver = {
   },
 
   sanitizeAccountId(accountId: string): string {
+    if (isRemoteEmailAccountId(accountId)) {
+      const remoteEmail = extractRemoteEmailFromAccountId(accountId) ?? "unknown";
+      return `${remoteEmail.replace(/[@.]/g, "_")}_remote_email`;
+    }
+
     const parts = accountId.split("_");
     const provider = parts[parts.length - 1] ?? "unknown";
     const emailCandidate = parts.slice(0, -1).join("_");
@@ -126,7 +137,18 @@ const paths: PathResolver = {
 
   getAccountDir(accountId: string): string {
     const safeName = this.sanitizeAccountId(accountId);
-    return join(getConfig().dataDir, safeName);
+    const primaryPath = join(getConfig().dataDir, safeName);
+    if (existsSync(primaryPath) || !isRemoteEmailAccountId(accountId)) {
+      return primaryPath;
+    }
+
+    const legacyProjectedAccountId = buildLegacyUs1ProjectedAccountIdFromRemoteAccountId(accountId);
+    if (legacyProjectedAccountId === null) {
+      return primaryPath;
+    }
+
+    const legacyPath = join(getConfig().dataDir, this.sanitizeAccountId(legacyProjectedAccountId));
+    return existsSync(legacyPath) ? legacyPath : primaryPath;
   },
 
   getAccountDbPath(accountId: string): string {

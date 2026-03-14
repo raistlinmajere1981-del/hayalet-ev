@@ -101,7 +101,16 @@ export class EntranceHallController {
           this.webviewPanel.applyGating(typedSettings, changedPaths);
         }
 
-        if (changedPaths.includes("*") || changedPaths.some((p) => p.startsWith("accounts"))) {
+        if (
+          changedPaths.includes("*") ||
+          changedPaths.some(
+            (p) =>
+              p.startsWith("accounts") ||
+              p.startsWith("remoteUsers") ||
+              p.startsWith("us1Slot") ||
+              p.startsWith("integrations.mailTransport")
+          )
+        ) {
           this.accountPanel.render();
           this.slotPanelAi1.render();
           this.slotPanelAi2.render();
@@ -165,6 +174,7 @@ export class EntranceHallController {
     this.accountPanel.render();
     this.slotPanelAi1.render();
     this.slotPanelAi2.render();
+    void this.whisperPanel.render();
     this.webviewPanel.onLocaleChanged();
     this.updateUI();
   }

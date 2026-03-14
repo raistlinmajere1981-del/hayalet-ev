@@ -1,5 +1,5 @@
-import type { IpcMainInvokeEvent } from "electron";
-import { BrowserWindow } from "electron";
+import { createRequire } from "node:module";
+import type { BrowserWindow as ElectronBrowserWindow, IpcMainInvokeEvent } from "electron";
 import type { LogEntry, LogLevel, LogCategory, TranslationParams } from "@shared/index.js";
 
 import type {
@@ -20,6 +20,24 @@ import {
   createElectronTranslator,
   readElectronAppLanguageSync,
 } from "../../i18n/language-service.ts";
+
+const electronRequire = createRequire(import.meta.url);
+
+function getElectronWindows(): ElectronBrowserWindow[] {
+  try {
+    const electronModule = electronRequire("electron");
+    if (electronModule === null || typeof electronModule !== "object") {
+      return [];
+    }
+
+    const browserWindow = (electronModule as {
+      BrowserWindow?: { getAllWindows?: () => ElectronBrowserWindow[] };
+    }).BrowserWindow;
+    return typeof browserWindow?.getAllWindows === "function" ? browserWindow.getAllWindows() : [];
+  } catch {
+    return [];
+  }
+}
 
 export class LoggerCore {
   private static instance: LoggerCore | null = null;
@@ -219,7 +237,7 @@ export class LoggerCore {
       };
     });
 
-    const allWindows = BrowserWindow.getAllWindows();
+    const allWindows = getElectronWindows();
     for (const window of allWindows) {
       if (!window.isDestroyed()) {
         window.webContents.send("log:ui-notify-batch", payload);

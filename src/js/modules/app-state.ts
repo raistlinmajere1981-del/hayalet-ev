@@ -6,10 +6,13 @@ import type {
   RemoteUserIdentity,
   Us1SlotSettings,
 } from "@shared/settings.js";
+import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js";
 import { AppI18n } from "./i18n/index.js";
 import {
-  buildUs1ProjectedAccountId,
+  buildRemoteEmailAccountId,
+  extractUs1RemoteIdentityIdFromAccountId,
   isUs1ProjectedAccountId,
+  isRemoteEmailAccountId,
   type ArchiveProviderKey,
 } from "@shared/archive.js";
 
@@ -109,7 +112,8 @@ class AppStateClass {
 
     const accountId = settings.slots[slot]?.accountId;
     if (accountId === undefined || accountId === "") return null;
-    return settings.accounts.find((acc) => acc.id === accountId) ?? null;
+    const account = settings.accounts.find((acc) => acc.id === accountId) ?? null;
+    return isAiProviderAccount(account) ? account : null;
   }
 
   getRemoteUsers(): RemoteUserIdentity[] {
@@ -125,24 +129,99 @@ class AppStateClass {
     return (
       settings?.us1Slot ?? {
         selectedRemoteUserId: null,
+        selectedAccountId: null,
         connectionState: "disconnected",
         catchCommands: false,
       }
     );
   }
 
-  getUs1Identity(): RemoteUserIdentity | null {
-    const selectedRemoteUserId = this.getUs1SlotSettings().selectedRemoteUserId;
-    if (selectedRemoteUserId === null || selectedRemoteUserId === "") {
+  private getUs1RemoteAccount(settings: AppSettings | null = null): Account | null {
+    const effectiveSettings = settings ?? this.getSettings();
+    if (effectiveSettings === null) {
+      return null;
+    }
+
+    const remoteAccounts = getRemoteEmailAccounts(effectiveSettings.accounts);
+    const selectedAccountId =
+      typeof effectiveSettings.us1Slot?.selectedAccountId === "string"
+        ? effectiveSettings.us1Slot.selectedAccountId.trim()
+        : "";
+    if (selectedAccountId !== "") {
+      const selectedAccount =
+        remoteAccounts.find((account) => account.id === selectedAccountId) ?? null;
+      if (selectedAccount?.remoteEmail?.handshakeState === "active") {
+        return selectedAccount;
+      }
+    }
+
+    const selectedRemoteUserId =
+      typeof effectiveSettings.us1Slot?.selectedRemoteUserId === "string"
+        ? effectiveSettings.us1Slot.selectedRemoteUserId.trim()
+        : "";
+    if (selectedRemoteUserId === "") {
       return null;
     }
 
     return (
-      this.getRemoteUsers().find(
-        (identity) =>
-          identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
+      remoteAccounts.find(
+        (account) =>
+          account.remoteEmail?.remoteUserId === selectedRemoteUserId &&
+          account.remoteEmail.handshakeState === "active"
       ) ?? null
     );
+  }
+
+  getUs1Identity(): RemoteUserIdentity | null {
+    const settings = this.getSettings();
+    const remoteAccount = this.getUs1RemoteAccount(settings);
+    const remoteState = remoteAccount?.remoteEmail ?? null;
+    if (remoteAccount !== null && remoteState !== null) {
+      return {
+        remoteUserId: remoteState.remoteUserId,
+        email: remoteAccount.email,
+        ...(remoteAccount.nickname !== undefined ? { nickname: remoteAccount.nickname } : {}),
+        ...(remoteAccount.avatar !== undefined ? { avatar: remoteAccount.avatar } : {}),
+        ...(remoteAccount.avatarPath !== undefined
+          ? { avatarPath: remoteAccount.avatarPath }
+          : {}),
+        handshakeState: remoteState.handshakeState,
+        profileRevision: remoteState.profileRevision,
+        linkedMailAccountId: remoteState.linkedLocalMailAccountId,
+        ...(remoteState.inviteMessageId !== undefined
+          ? { inviteMessageId: remoteState.inviteMessageId ?? null }
+          : {}),
+        ...(remoteState.acceptMessageId !== undefined
+          ? { acceptMessageId: remoteState.acceptMessageId ?? null }
+          : {}),
+        ...(remoteState.threadMessageId !== undefined
+          ? { threadMessageId: remoteState.threadMessageId ?? null }
+          : {}),
+        ...(remoteState.lastTransportMessageId !== undefined
+          ? { lastTransportMessageId: remoteState.lastTransportMessageId ?? null }
+          : {}),
+        ...(remoteState.lastSyncAt !== undefined ? { lastSyncAt: remoteState.lastSyncAt } : {}),
+        ...(remoteState.lastError !== undefined ? { lastError: remoteState.lastError ?? null } : {}),
+        ...(remoteState.sessionAlias !== undefined
+          ? { sessionAlias: remoteState.sessionAlias ?? null }
+          : {}),
+      };
+    }
+
+    const selectedRemoteUserId =
+      typeof settings?.us1Slot?.selectedRemoteUserId === "string"
+        ? settings.us1Slot.selectedRemoteUserId.trim()
+        : typeof settings?.us1Slot?.selectedAccountId === "string"
+          ? extractUs1RemoteIdentityIdFromAccountId(settings.us1Slot.selectedAccountId)
+          : null;
+    if (selectedRemoteUserId === null || selectedRemoteUserId === "") {
+      return null;
+    }
+
+    return this.getRemoteUsers().find(
+      (identity) =>
+        identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
+    ) ?? null;
   }
 
   hasUs1Identity(): boolean {
@@ -154,12 +233,23 @@ class AppStateClass {
   }
 
   getUs1ArchiveAccountId(): string | null {
+    const remoteAccount = this.getUs1RemoteAccount();
+    if (remoteAccount?.id) {
+      return remoteAccount.id;
+    }
+
     const identity = this.getUs1Identity();
     if (identity?.remoteUserId === undefined || identity.remoteUserId === "") {
       return null;
     }
 
-    const accountId = buildUs1ProjectedAccountId(identity.remoteUserId);
+    const selectedAccountId = this.getUs1SlotSettings().selectedAccountId;
+    const derivedAccountId = buildRemoteEmailAccountId(identity.remoteUserId);
+    const accountId =
+      (typeof selectedAccountId === "string" && selectedAccountId.trim() !== ""
+        ? selectedAccountId.trim()
+        : null) ??
+      derivedAccountId;
     return accountId !== "" ? accountId : null;
   }
 
@@ -186,7 +276,11 @@ class AppStateClass {
     }
 
     const us1AccountId = this.getUs1ArchiveAccountId();
-    if (us1AccountId === accountId || isUs1ProjectedAccountId(accountId)) {
+    if (
+      us1AccountId === accountId ||
+      isUs1ProjectedAccountId(accountId) ||
+      isRemoteEmailAccountId(accountId)
+    ) {
       return "us1";
     }
 

@@ -19,7 +19,11 @@ import type {
   Us1SyncMessagesResult,
   Us1SyncRemoteUsersParams,
 } from "@shared/us1-mail.js";
-import type { InstalledRoomRecord, RoomWorkspaceEntry } from "../types/rooms.js";
+import type {
+  InstalledRoomRecord,
+  RoomWorkspaceEntry,
+  StartupRoomsSnapshot,
+} from "../types/rooms.js";
 import type { LanguageDescriptor, LoadedLanguagePack, TranslationParams } from "../types/i18n.js";
 
 export {};
@@ -495,7 +499,11 @@ declare global {
   }
 
   interface ElectronAPI {
-    getStartupFlags: () => { startPage: string | null; autoConnect: boolean };
+    getStartupFlags: () => {
+      startPage: string | null;
+      autoConnect: boolean;
+      roomsSnapshot: StartupRoomsSnapshot | null;
+    };
     loadSettings: () => Promise<Record<string, unknown>>;
     saveSettings: (settings: Record<string, unknown>) => Promise<boolean>;
     us1UpsertMailAccount: (
@@ -865,11 +873,6 @@ declare global {
     assistantStatus: () => Promise<{ connected: boolean }>;
     assistantGetConfig: (providerId: string) => Promise<Record<string, unknown>>;
     onAssistantDisconnected: (callback: () => void) => () => void;
-
-    metaCommand: (
-      command: string,
-      args?: Record<string, unknown>
-    ) => Promise<IPCResult & { command?: string }>;
 
     opencodeServeStart: (options?: {
       port?: number;

@@ -25,6 +25,9 @@ export interface Us1StateSnapshot {
   activeRemoteUsers: RemoteUserIdentity[];
   us1Slot: Us1SlotSettings;
   selectedMailAccountId: string | null;
+  selectedRemoteAccountId?: string | null;
+  verifiedLocalMailAccountId?: string | null;
+  verifiedUserEmail?: string | null;
   canAddRemoteUser: boolean;
 }
 

@@ -1,7 +1,12 @@
+import type { StartupRoomsSnapshot } from "@shared/index.js";
+
 export interface StartupFlags {
   startPage: string | null;
   autoConnect: boolean;
+  roomsSnapshot: StartupRoomsSnapshot | null;
 }
+
+const STARTUP_ROOMS_SNAPSHOT_FLAG = "--app-rooms-snapshot";
 
 function readFlagValue(argv: readonly string[], flagName: string): string | null {
   const prefix = `${flagName}=`;
@@ -36,6 +41,7 @@ export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags
   return {
     startPage,
     autoConnect,
+    roomsSnapshot: null,
   };
 }
 
@@ -49,6 +55,13 @@ export function buildPreloadAdditionalArguments(flags: StartupFlags): string[] {
 
   if (flags.autoConnect) {
     args.push("--app-auto-connect=1");
+  }
+
+  if (flags.roomsSnapshot !== null) {
+    const encodedSnapshot = Buffer.from(JSON.stringify(flags.roomsSnapshot), "utf8").toString(
+      "base64"
+    );
+    args.push(`${STARTUP_ROOMS_SNAPSHOT_FLAG}=${encodedSnapshot}`);
   }
 
   return args;

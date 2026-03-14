@@ -71,8 +71,33 @@
 
 .accounts-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: var(--space-3);
+  height: 100%;
+}
+
+.account-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.account-list-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.account-list-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.account-list-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
 }
 
 .account-list {
@@ -134,12 +159,43 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .account-nick {
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--text-primary);
+}
+
+.account-type {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.account-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  border: var(--border-1) solid var(--border-default);
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.account-state-badge.is-active {
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--border-default));
+}
+
+.account-state-badge.is-pending,
+.account-state-badge.is-invite {
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-default));
+}
+
+.account-state-badge.is-error {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-default));
 }
 
 .account-provider {
@@ -160,12 +216,14 @@
   gap: var(--space-1);
   margin-left: auto;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .account-form {
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  min-height: 0;
 }
 
 .account-form-header {
@@ -186,10 +244,39 @@
   gap: var(--space-2);
 }
 
+.account-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.account-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.account-kind-note,
+.account-remote-note {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: var(--border-1) solid var(--border-default);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
 .account-form-avatar-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.account-form-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .avatar-preview-box {
@@ -235,4 +322,11 @@
 
 .entrance-whisper-item:hover {
   background: var(--hover-overlay);
+}
+
+@media (--breakpoint-max-1100) {
+  .account-form-grid,
+  .accounts-container {
+    grid-template-columns: 1fr;
+  }
 }

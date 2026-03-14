@@ -322,15 +322,15 @@
                       data-i18n-text="us1.mailAccount.sectionNote"
                     ></p>
                   </div>
+                  <div class="us1-slot-panel__status-block">
+                    <span
+                      class="form-label"
+                      data-i18n-text="us1.mailAccount.verifiedLabel"
+                    ></span>
+                    <div class="us1-slot-panel__status" id="us1-mail-verified-email"></div>
+                    <div class="us1-slot-panel__hint" id="us1-mail-account-status"></div>
+                  </div>
                   <div class="us1-slot-panel__grid">
-                    <div class="us1-slot-panel__field">
-                      <label
-                        class="form-label"
-                        for="us1-mail-account-select"
-                        data-i18n-text="us1.mailAccount.selectLabel"
-                      ></label>
-                      <select id="us1-mail-account-select" class="select select-sm"></select>
-                    </div>
                     <div class="us1-slot-panel__field">
                       <label
                         class="form-label"
@@ -348,7 +348,67 @@
                         ></option>
                       </select>
                     </div>
-                    <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                    <div
+                      class="us1-slot-panel__field us1-slot-panel__field--wide"
+                      data-us1-mail-gmail-helper
+                    >
+                      <label
+                        class="form-label"
+                        data-i18n-text="us1.mailAccount.gmailHelperTitle"
+                      ></label>
+                      <div class="ds-stack-v ds-stack-v--sm">
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          id="us1-mail-gmail-open-security"
+                          style="width: 100%"
+                          data-i18n-text="us1.mailAccount.gmailHelperStep1"
+                        ></button>
+                        <div
+                          class="us1-slot-panel__grid"
+                          style="
+                            padding: 10px;
+                            background: var(--ds-surface-secondary);
+                            border-radius: 4px;
+                            margin-top: 8px;
+                          "
+                        >
+                          <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                            <label
+                              class="form-label"
+                              data-i18n-text="us1.mailAccount.gmailEmailLabel"
+                            ></label>
+                            <input
+                              id="us1-mail-gmail-email-easy"
+                              class="input input-sm"
+                              type="email"
+                              data-i18n-placeholder="us1.mailAccount.gmailEmailPlaceholder"
+                            />
+                          </div>
+                          <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                            <label
+                              class="form-label"
+                              data-i18n-text="us1.mailAccount.gmailPasswordLabel"
+                            ></label>
+                            <input
+                              id="us1-mail-gmail-password-easy"
+                              class="input input-sm"
+                              type="password"
+                              data-i18n-placeholder="us1.mailAccount.gmailPasswordPlaceholder"
+                            />
+                          </div>
+                          <button
+                            class="btn btn-primary btn-sm"
+                            id="us1-mail-gmail-connect-easy"
+                            style="width: 100%; margin-top: 8px"
+                            data-i18n-text="us1.mailAccount.gmailHelperStep2"
+                          ></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="us1-slot-panel__field us1-slot-panel__field--wide"
+                      data-us1-mail-manual-fields
+                    >
                       <label
                         class="form-label"
                         for="us1-mail-email-input"
@@ -362,7 +422,7 @@
                         data-i18n-placeholder="us1.mailAccount.emailPlaceholder"
                       />
                     </div>
-                    <div class="us1-slot-panel__field">
+                    <div class="us1-slot-panel__field" data-us1-mail-manual-fields>
                       <label
                         class="form-label"
                         for="us1-mail-auth-type-select"
@@ -506,10 +566,6 @@
                       <span data-i18n-text="us1.mailAccount.smtpSecureLabel"></span>
                     </label>
                   </div>
-                  <div class="us1-slot-panel__status-block">
-                    <span class="form-label" data-i18n-text="us1.mailAccount.statusLabel"></span>
-                    <div class="us1-slot-panel__status" id="us1-mail-account-status"></div>
-                  </div>
                   <div class="us1-slot-panel__actions">
                     <button
                       class="btn btn-secondary btn-sm"
@@ -587,13 +643,57 @@
             </div>
             <div class="entrance-panel__content">
               <div class="accounts-container">
-                <div class="account-list" id="account-list"></div>
+                <div class="account-list-pane">
+                  <div class="account-list-header">
+                    <span
+                      class="account-list-title"
+                      data-i18n-text="accounts.listTitle"
+                    ></span>
+                    <span
+                      class="account-list-note"
+                      data-i18n-text="accounts.listNote"
+                    ></span>
+                  </div>
+                  <div class="account-list" id="account-list"></div>
+                </div>
                 <div class="account-form">
                   <div class="account-form-header">
                     <span id="account-form-title" data-i18n-text="accounts.form.createTitle"></span>
                     <span id="account-status-msg" class="form-hint"></span>
                   </div>
                   <div class="account-form-body">
+                    <div class="account-form-grid">
+                      <div class="account-form-field">
+                        <label
+                          class="form-label"
+                          for="new-account-kind"
+                          data-i18n-text="accounts.form.kindLabel"
+                        ></label>
+                        <select id="new-account-kind" class="select select-sm">
+                          <option
+                            value="ai-provider"
+                            data-i18n-text="accounts.form.kindOptions.aiProvider"
+                          ></option>
+                          <option
+                            value="remote-email"
+                            data-i18n-text="accounts.form.kindOptions.remoteEmail"
+                          ></option>
+                        </select>
+                      </div>
+                      <div class="account-form-field" data-account-kind="ai-provider">
+                        <label
+                          class="form-label"
+                          for="new-account-provider"
+                          data-i18n-text="accounts.form.providerLabel"
+                        ></label>
+                        <select id="new-account-provider" class="select select-sm">
+                          <option value="chatgpt">ChatGPT</option>
+                          <option value="gemini">Gemini</option>
+                          <option value="grok">Grok</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="account-kind-note" id="account-kind-note"></div>
                     <input
                       type="text"
                       id="new-account-email"
@@ -607,23 +707,31 @@
                       class="input input-sm"
                       placeholder=""
                       data-i18n-placeholder="accounts.form.nicknamePlaceholder"
+                      data-account-kind="ai-provider"
                     />
-                    <select id="new-account-provider" class="select">
-                      <option value="chatgpt">ChatGPT</option>
-                      <option value="gemini">Gemini</option>
-                      <option value="grok">Grok</option>
-                    </select>
-                    <div class="account-form-avatar-row">
+                    <div
+                      class="account-remote-note"
+                      id="remote-account-mail-status"
+                      data-account-kind="remote-email"
+                    ></div>
+                    <div class="account-form-avatar-row" data-account-kind="ai-provider">
                       <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
                       <button
                         class="btn btn-ghost btn-sm"
                         id="new-account-avatar-browse"
                         data-i18n-text="accounts.form.avatarButton"
                       ></button>
+                    </div>
+                    <div class="account-form-actions">
                       <button
                         class="btn btn-primary btn-sm"
                         id="settings-create-account"
                         data-i18n-text="accounts.form.createAction"
+                      ></button>
+                      <button
+                        class="btn btn-secondary btn-sm is-hidden"
+                        id="settings-sync-remote-accounts"
+                        data-i18n-text="accounts.form.remoteSyncAction"
                       ></button>
                       <button
                         class="btn btn-danger btn-sm is-hidden"
@@ -646,78 +754,6 @@
             </div>
             <div class="entrance-panel__content">
               <div class="us1-slot-panel__stack">
-                <section class="us1-slot-panel__section">
-                  <div class="us1-slot-panel__section-head">
-                    <span
-                      class="us1-slot-panel__section-title"
-                      data-i18n-text="us1.remote.sectionTitle"
-                    ></span>
-                    <p
-                      class="us1-slot-panel__section-note"
-                      data-i18n-text="us1.remote.sectionNote"
-                    ></p>
-                  </div>
-                  <div class="us1-slot-panel__grid">
-                    <div class="us1-slot-panel__field">
-                      <label
-                        class="form-label"
-                        for="us1-remote-user-select"
-                        data-i18n-text="us1.remote.selectLabel"
-                      ></label>
-                      <select id="us1-remote-user-select" class="select select-sm"></select>
-                    </div>
-                    <div class="us1-slot-panel__field us1-slot-panel__field--wide">
-                      <label
-                        class="form-label"
-                        for="us1-remote-email-input"
-                        data-i18n-text="us1.remote.emailLabel"
-                      ></label>
-                      <input
-                        id="us1-remote-email-input"
-                        class="input input-sm"
-                        type="email"
-                        autocomplete="off"
-                        data-i18n-placeholder="us1.remote.emailPlaceholder"
-                      />
-                    </div>
-                    <div class="us1-slot-panel__field us1-slot-panel__field--wide">
-                      <label
-                        class="form-label"
-                        for="us1-remote-nickname-input"
-                        data-i18n-text="us1.remote.nicknameLabel"
-                      ></label>
-                      <input
-                        id="us1-remote-nickname-input"
-                        class="input input-sm"
-                        type="text"
-                        autocomplete="off"
-                        data-i18n-placeholder="us1.remote.nicknamePlaceholder"
-                      />
-                    </div>
-                  </div>
-                  <div class="us1-slot-panel__status-block">
-                    <span class="form-label" data-i18n-text="us1.remote.statusLabel"></span>
-                    <div class="us1-slot-panel__status" id="us1-remote-user-status"></div>
-                  </div>
-                  <div class="us1-slot-panel__actions">
-                    <button
-                      class="btn btn-primary btn-sm"
-                      id="us1-remote-invite-btn"
-                      data-i18n-text="us1.remote.actions.invite"
-                    ></button>
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      id="us1-remote-accept-btn"
-                      data-i18n-text="us1.remote.actions.accept"
-                    ></button>
-                    <button
-                      class="btn btn-ghost btn-sm"
-                      id="us1-remote-refresh-btn"
-                      data-i18n-text="us1.remote.actions.refresh"
-                    ></button>
-                  </div>
-                </section>
-
                 <section class="us1-slot-panel__section">
                   <div class="us1-slot-panel__section-head">
                     <span
@@ -748,6 +784,11 @@
                       id="us1-disconnect-btn"
                       data-i18n-text="slot.disconnect"
                     ></button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      id="us1-sync-messages-btn"
+                      data-i18n-text="us1.actions.checkMail"
+                    ></button>
                   </div>
                   <label
                     class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
@@ -761,6 +802,10 @@
                     <span class="form-label" data-i18n-text="us1.statusLabel"></span>
                     <div class="us1-slot-panel__status" id="us1-status-text"></div>
                     <div class="us1-slot-panel__hint" id="us1-phase-hint"></div>
+                  </div>
+                  <div class="us1-slot-panel__status-block">
+                    <span class="form-label" data-i18n-text="us1.reportLabel"></span>
+                    <div class="us1-slot-panel__report" id="us1-report-log" aria-live="polite"></div>
                   </div>
                   <div class="ds-status-msg us1-slot-panel__feedback" id="us1-feedback-msg"></div>
                 </section>

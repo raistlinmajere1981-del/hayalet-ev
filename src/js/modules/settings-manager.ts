@@ -95,7 +95,6 @@ class SettingsManagerClass {
     this._loaded = true;
 
     this._emitter.emit({ settings: this._settings, changedPaths: ["*"] });
-    this._broadcast.post({ type: "settings-changed", payload: this._settings });
 
     return this._settings;
   }

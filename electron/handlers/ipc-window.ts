@@ -522,6 +522,10 @@ export function setupWindowHandlers(): void {
   });
 
   registerHandler("shell-open-path", async (_event, path: string) => {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      await shell.openExternal(path);
+      return "";
+    }
     return await shell.openPath(path);
   });
 }

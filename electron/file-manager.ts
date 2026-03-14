@@ -88,7 +88,7 @@ export async function fmEnsureDirs(
         resolved[key] = p;
       })
     );
-    return { success: true, ...resolved };
+    return { success: true, paths: resolved };
   } catch (err: unknown) {
     return { success: false, message: (err as Error).message };
   }
@@ -337,6 +337,12 @@ export async function generateTree(
 export async function openPath(targetPath: string): Promise<ResultBase> {
   try {
     if (targetPath.length === 0) throw new Error(await fileManagerT("pathMissing"));
+
+    if (targetPath.startsWith("http://") || targetPath.startsWith("https://")) {
+      await shell.openExternal(targetPath);
+      return { success: true };
+    }
+
     const absolutePath = resolve(Paths.getProjectRoot(), targetPath);
     const res = await shell.openPath(absolutePath);
     if (res.length > 0) throw new Error(res);

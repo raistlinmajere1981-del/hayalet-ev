@@ -2,12 +2,14 @@ import { ImapFlow, type ImapFlowOptions } from "imapflow";
 import { simpleParser, type AddressObject, type Attachment, type ParsedMail } from "mailparser";
 import nodemailer, { type SendMailOptions } from "nodemailer";
 
+import { LogCategory, LogLevel } from "@shared/index.js";
 import type { MailTransportAccountConfig } from "@shared/settings.js";
 import { hashString, normalizeText } from "../database/hash-utils.js";
 import {
   MailSidecarStoreManager,
   type MailSessionMapRecord,
 } from "../database/mail-sidecar-manager.js";
+import { getLoggerCore } from "../logger/index.js";
 import {
   applyMailTransportAccountDefaults,
   type ResolvedMailTransportAccountConfig,
@@ -186,9 +188,17 @@ function buildTransportMessageId(accountId: string, localMessageId: string, now:
 }
 
 function isAuthenticationError(
-  error: Error & { code?: unknown; authenticationFailed?: unknown }
+  error: Error & {
+    code?: unknown;
+    authenticationFailed?: unknown;
+    serverResponseCode?: string | unknown;
+  }
 ): boolean {
-  if (error.code === "EAUTH" || error.authenticationFailed === true) {
+  if (
+    error.code === "EAUTH" ||
+    error.authenticationFailed === true ||
+    (error.serverResponseCode as unknown) === "AUTHENTICATIONFAILED"
+  ) {
     return true;
   }
 
@@ -215,7 +225,7 @@ export class MailTransportError extends Error {
       details?: Record<string, unknown>;
     } = {}
   ) {
-    super(message, { cause: options.cause });
+    super(message, { cause: options.cause } as any);
     this.name = "MailTransportError";
     this.kind = kind;
     this.retriable = options.retriable ?? false;
@@ -234,15 +244,18 @@ function classifyTransportError(
   }
 
   if (error instanceof Error) {
-    const authLikeError = error as Error & {
-      code?: unknown;
-      response?: unknown;
-      serverResponseCode?: unknown;
-      authenticationFailed?: unknown;
-    };
+    const authLikeError = error as any;
     const errorCode = typeof authLikeError.code === "string" ? authLikeError.code : "";
     if (isAuthenticationError(authLikeError)) {
-      return new MailTransportError("auth_error", error.message, {
+      const responseText = authLikeError.responseText;
+      const message =
+        error.message === "Command failed" &&
+        typeof responseText === "string" &&
+        responseText !== ""
+          ? responseText
+          : error.message;
+
+      return new MailTransportError("auth_error", message, {
         cause: error,
         retriable: false,
         details: {
@@ -251,6 +264,7 @@ function classifyTransportError(
           ...(authLikeError.serverResponseCode !== undefined
             ? { serverResponseCode: authLikeError.serverResponseCode }
             : {}),
+          ...(responseText !== undefined ? { responseText } : {}),
         },
       });
     }
@@ -361,6 +375,8 @@ export class MailTransportService {
     const client = this.createImapClient(account);
     let imapConnected: boolean = false;
 
+    const logger = getLoggerCore();
+
     try {
       await this.withRetry("probeSmtp", async () => {
         await transporter.verify?.();
@@ -378,7 +394,19 @@ export class MailTransportService {
         imapVerified: true,
       };
     } catch (error) {
-      throw classifyTransportError(error);
+      const classified = classifyTransportError(error);
+      await logger.logInternal(
+        LogCategory.ENTRANCE,
+        LogLevel.ERROR,
+        `Mail account probe failed for ${account.id}: ${classified.message}`,
+        {
+          accountId: account.id,
+          email: account.email,
+          kind: classified.kind,
+          details: classified.details,
+        }
+      );
+      throw classified;
     } finally {
       transporter.close?.();
       if (imapConnected) {

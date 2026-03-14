@@ -1,4 +1,9 @@
-import type { InstalledRoomRecord, RoomProtocolSpec } from "@shared/index.js";
+import type {
+  InstalledRoomRecord,
+  RoomProtocolSpec,
+  StartupRoomProtocolSnapshot,
+} from "@shared/index.js";
+import { decodeBase64 } from "../../constants/index.js";
 import { Logger, LogCategory } from "../logger/index.js";
 
 interface RoomProtocolEntry {
@@ -23,15 +28,43 @@ function isSafeProtocolBasename(key: string): boolean {
   return /^[A-Za-z0-9._-]+$/.test(key);
 }
 
+function buildStartupProtocolKey(roomId: string, key: string): string {
+  return `${roomId}::${normalizeProtocolKey(key)}`;
+}
+
+function decodeProtocolBody(content: string): string {
+  const trimmed = content.trim();
+  if (trimmed === "") {
+    return "";
+  }
+
+  const looksLikeBase64 = trimmed.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(trimmed);
+  if (looksLikeBase64 !== true) {
+    return content;
+  }
+
+  const decoded = decodeBase64(trimmed);
+  return decoded.trim() !== "" ? decoded : content;
+}
+
 class RoomProtocolRegistryClass {
   private entriesByKey = new Map<string, RoomProtocolEntry>();
   private keyByScenario = new Map<string, string>();
   private runtimeBodiesByRoom = new Map<string, Record<string, string>>();
 
-  async syncInstalledRooms(rooms: InstalledRoomRecord[]): Promise<void> {
+  async syncInstalledRooms(
+    rooms: InstalledRoomRecord[],
+    options: { startupProtocols?: StartupRoomProtocolSnapshot[] | null } = {}
+  ): Promise<void> {
     const nextEntries = new Map<string, RoomProtocolEntry>();
     const nextScenarioMap = new Map<string, string>();
     const activeRoomIds = new Set(rooms.map((room) => room.id));
+    const startupProtocolBodies = new Map(
+      (options.startupProtocols ?? []).map((protocol) => [
+        buildStartupProtocolKey(protocol.roomId, protocol.key),
+        protocol.body,
+      ])
+    );
     const resolvedProtocols = (
       await Promise.all(
         rooms.map(
@@ -40,7 +73,7 @@ class RoomProtocolRegistryClass {
               (room.protocolSpecs ?? []).map(async (spec) => ({
                 room,
                 spec,
-                defaultBody: await this.readProtocolDefaultBody(room, spec),
+                defaultBody: await this.readProtocolDefaultBody(room, spec, startupProtocolBodies),
               }))
             )
         )
@@ -158,8 +191,14 @@ class RoomProtocolRegistryClass {
 
   private async readProtocolDefaultBody(
     room: InstalledRoomRecord,
-    spec: RoomProtocolSpec
+    spec: RoomProtocolSpec,
+    startupProtocolBodies: Map<string, string>
   ): Promise<string> {
+    const startupBody = startupProtocolBodies.get(buildStartupProtocolKey(room.id, spec.key));
+    if (typeof startupBody === "string") {
+      return startupBody;
+    }
+
     if (typeof window === "undefined") {
       return "";
     }
@@ -176,7 +215,7 @@ class RoomProtocolRegistryClass {
     const protocolPath = `${room.installedDir.replace(/\\/g, "/")}/protocols/${spec.key}.md`;
     try {
       const content = await readFile(protocolPath);
-      return typeof content === "string" ? content : "";
+      return typeof content === "string" ? decodeProtocolBody(content) : "";
     } catch {
       return "";
     }

@@ -96,7 +96,7 @@ Devam etmem için "evet" yaz.
 
 ---
 
-## 🔄 Session Bootstrap (Her Session'da Çalıştır)
+## 🔄 Session Bootstrap: Her Session'da Çalıştır
 
 ```
 1. hev_mcp_health()                → MCP çalışıyor mu? Versiyon ve tool sayısı
@@ -396,7 +396,7 @@ Bu tool, AI0 webview'de ilgili MCP panelini açıp switch'leri OFF→ON yapar ve
 
 Yeni standart klasör yapısı:
 
-- `logs/hayalet-ev/<sessionId>/...`
+- `logs/app/<sessionId>/...`
 - `logs/mcp-server/<sessionId>/...`
 - `logs/ghost-agent/<sessionId>/...`
 

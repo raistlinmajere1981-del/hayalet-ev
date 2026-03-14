@@ -4,6 +4,7 @@ import { LogCategory, LogLevel } from "@shared/logging-core";
 import { Logger } from "./logger/index.js";
 import { AppI18n } from "./i18n/index.js";
 import { SettingsManager } from "./settings-manager.js";
+import { getAiProviderAccounts } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 
 interface WhisperRecord {
@@ -31,11 +32,9 @@ function whisperT(key: string, params?: Record<string, string | number>): string
 
 function getRegisteredAccounts(): Account[] {
   const settings = SettingsManager.getSnapshot();
-  return Array.isArray(settings.accounts)
-    ? settings.accounts.filter(
-        (account): account is Account => typeof account.id === "string" && account.id.trim() !== ""
-      )
-    : [];
+  return getAiProviderAccounts(settings.accounts).filter(
+    (account): account is Account => typeof account.id === "string" && account.id.trim() !== ""
+  );
 }
 
 function resolveAccountId(name = ""): string {
