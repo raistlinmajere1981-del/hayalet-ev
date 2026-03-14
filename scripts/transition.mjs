@@ -15,6 +15,8 @@ import {
   waitForMode,
   writeControl,
 } from "./lib/transition-runtime.mjs";
+import { formatModeOutput, normalizeModeInput } from "./lib/mode-alias.mjs";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -156,8 +158,9 @@ async function runStatus(options) {
   const status = await getRuntimeStatus({ runtimeControlPath, maxStaleMs: options.maxStaleMs });
   writeResult({
     success: true,
-    mode: status.resolved.mode,
+    mode: formatModeOutput(status.resolved.mode),
     shouldStop: status.resolved.shouldStop,
+
     reason: status.resolved.reason,
     confidence: status.resolved.confidence,
     control: status.control,
@@ -167,14 +170,17 @@ async function runStatus(options) {
 }
 
 async function runWait(mode, options) {
-  if (typeof mode !== "string" || mode === "") {
-    fail({ error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|app|ghost-agent>" });
+  const normalizedMode = normalizeModeInput(mode);
+  if (normalizedMode === null) {
+    fail({
+      error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent>",
+    });
     return;
   }
 
   const waited = await waitForMode({
     runtimeControlPath,
-    expectedMode: mode,
+    expectedMode: normalizedMode,
     timeoutMs: options.timeoutMs,
     intervalMs: options.intervalMs,
     maxStaleMs: options.maxStaleMs,
@@ -183,9 +189,9 @@ async function runWait(mode, options) {
   if (!waited.success) {
     fail({
       error: waited.error,
-      expectedMode: waited.expectedMode,
+      expectedMode: formatModeOutput(waited.expectedMode),
       elapsedMs: waited.elapsedMs,
-      mode: waited.status?.resolved.mode ?? null,
+      mode: formatModeOutput(waited.status?.resolved.mode ?? null),
       shouldStop: waited.status?.resolved.shouldStop ?? null,
       reason: waited.status?.resolved.reason ?? null,
     });
@@ -194,15 +200,16 @@ async function runWait(mode, options) {
 
   writeResult({
     success: true,
-    expectedMode: waited.expectedMode,
+    expectedMode: formatModeOutput(waited.expectedMode),
     elapsedMs: waited.elapsedMs,
-    mode: waited.status.resolved.mode,
+    mode: formatModeOutput(waited.status.resolved.mode),
     shouldStop: waited.status.resolved.shouldStop,
     reason: waited.status.resolved.reason,
     control: waited.status.control,
     snapshot: waited.status.snapshot,
   });
 }
+
 
 async function executeAction(action, options) {
   if (!isTransitionAction(action)) {
@@ -226,9 +233,10 @@ async function executeAction(action, options) {
     fail({
       error: sourceModeCheck.reason,
       action,
-      modeBefore: statusBefore.resolved.mode,
-      expectedMode: config.expectedMode,
+      modeBefore: formatModeOutput(statusBefore.resolved.mode),
+      expectedMode: formatModeOutput(config.expectedMode),
     });
+
     return;
   }
 
@@ -253,10 +261,11 @@ async function executeAction(action, options) {
     fail({
       error: `Action ${action} requires active ${config.closeTarget} app process to close.`,
       action,
-      modeBefore: statusBefore.resolved.mode,
-      expectedMode: config.expectedMode,
+      modeBefore: formatModeOutput(statusBefore.resolved.mode),
+      expectedMode: formatModeOutput(config.expectedMode),
       snapshot: statusBefore.snapshot,
     });
+
     return;
   }
 
@@ -352,11 +361,12 @@ async function executeAction(action, options) {
         error: waitResult.error,
         action,
         transitionId,
-        expectedMode: config.expectedMode,
+        expectedMode: formatModeOutput(config.expectedMode),
         elapsedMs: waitResult.elapsedMs,
-        finalMode: waitResult.status?.resolved.mode ?? null,
+        finalMode: formatModeOutput(waitResult.status?.resolved.mode ?? null),
         reason: waitResult.status?.resolved.reason ?? null,
       });
+
       return;
     }
   }
@@ -367,10 +377,10 @@ async function executeAction(action, options) {
     success: true,
     action,
     transitionId,
-    expectedMode: config.expectedMode,
+    expectedMode: formatModeOutput(config.expectedMode),
     waitEnabled: shouldWait,
-    modeBefore: statusBefore.resolved.mode,
-    modeAfter: statusAfter.resolved.mode,
+    modeBefore: formatModeOutput(statusBefore.resolved.mode),
+    modeAfter: formatModeOutput(statusAfter.resolved.mode),
     reasonAfter: statusAfter.resolved.reason,
     controlAfter: statusAfter.control,
     killedPids: termination.killedPids,
@@ -379,29 +389,31 @@ async function executeAction(action, options) {
       waitResult === null
         ? null
         : {
-            expectedMode: waitResult.expectedMode,
+            expectedMode: formatModeOutput(waitResult.expectedMode),
             elapsedMs: waitResult.elapsedMs,
-            finalMode: waitResult.status?.resolved.mode ?? null,
+            finalMode: formatModeOutput(waitResult.status?.resolved.mode ?? null),
           },
   });
+
 }
 
 async function runSwitch(targetMode, options) {
-  if (typeof targetMode !== "string" || targetMode === "") {
+  const normalizedTargetMode = normalizeModeInput(targetMode);
+  if (normalizedTargetMode === null) {
     fail({
-      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|app|ghost-agent>",
+      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent>",
     });
     return;
   }
 
   const statusBefore = await getRuntimeStatus({ runtimeControlPath, maxStaleMs: options.maxStaleMs });
-  const resolution = resolveActionForTargetMode(statusBefore.resolved.mode, targetMode);
+  const resolution = resolveActionForTargetMode(statusBefore.resolved.mode, normalizedTargetMode);
 
   if (resolution.error) {
     fail({
       error: resolution.error,
-      modeBefore: statusBefore.resolved.mode,
-      targetMode,
+      modeBefore: formatModeOutput(statusBefore.resolved.mode),
+      targetMode: formatModeOutput(normalizedTargetMode),
     });
     return;
   }
@@ -411,8 +423,8 @@ async function runSwitch(targetMode, options) {
       success: true,
       action: null,
       noop: true,
-      mode: statusBefore.resolved.mode,
-      targetMode,
+      mode: formatModeOutput(statusBefore.resolved.mode),
+      targetMode: formatModeOutput(normalizedTargetMode),
       reason: resolution.reason ?? "No-op",
       control: statusBefore.control,
       snapshot: statusBefore.snapshot,
@@ -428,14 +440,16 @@ async function runSwitch(targetMode, options) {
   await executeAction(resolution.action, effectiveOptions);
 }
 
+
 function printHelp() {
   writeResult({
     success: true,
     usage: [
       "node scripts/transition.mjs status",
-      "node scripts/transition.mjs wait <terminal|app|ghost-agent> [--timeout <ms>]",
+      "node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent> [--timeout <ms>]",
       "node scripts/transition.mjs trigger <main-close|main-to-ghost|ghost-close|ghost-return-main> [--wait]",
-      "node scripts/transition.mjs switch <terminal|app|ghost-agent> [--wait]",
+      "node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent> [--wait]",
+
     ],
     options: {
       wait: "Wait until expected mode is observed",

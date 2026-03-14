@@ -38,7 +38,10 @@ function parseModeStatusOutput(stdout: string): string | null {
 
   try {
     const parsed = JSON.parse(stdout.slice(firstBrace, lastBrace + 1)) as { mode?: unknown };
-    return typeof parsed.mode === "string" ? parsed.mode.trim().toLowerCase() : null;
+    const mode = typeof parsed.mode === "string" ? parsed.mode.trim().toLowerCase() : null;
+    if (mode === "hayalet-ev") return "app";
+    return mode;
+
   } catch {
     return null;
   }

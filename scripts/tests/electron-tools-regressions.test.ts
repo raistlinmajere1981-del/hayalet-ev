@@ -15,7 +15,8 @@ test("testElectron should not start wrapper when runtime mode is already app", a
     if (command === "npm run mode:status") {
       return {
         stdout:
-          "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"app\"\n}\n",
+          "\n> app@5.4.0 mode:status\n> node scripts/transition.mjs status\n\n{\n  \"success\": true,\n  \"mode\": \"hayalet-ev\"\n}\n",
+
         stderr: "",
       };
     }

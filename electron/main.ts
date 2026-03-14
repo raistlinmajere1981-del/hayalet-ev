@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, shell, ipcMain } from "electron";
 import { fileURLToPath } from "url";
 import { existsSync, readFileSync } from "fs";
-import { dirname, join } from "path";
+import { basename, dirname, join } from "path";
 import { initPaths, Paths } from "./paths.ts";
 import { deviceActionHandler } from "./device-manager.ts";
 import { capturePageHandler, screenshotCaptureHandler } from "./screenshot-manager.ts";
@@ -145,6 +145,10 @@ const moduleFilename = fileURLToPath(import.meta.url);
 const moduleDirname = dirname(moduleFilename);
 
 initPaths(moduleDirname);
+
+const appInstanceLabel = basename(Paths.getProjectRoot());
+app.setName(appInstanceLabel);
+app.setPath("userData", join(Paths.getDataDir(), "electron-user-data"));
 
 const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());

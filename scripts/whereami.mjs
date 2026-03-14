@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { defaultControl, normalizeControl } from "./lib/ghost-wrapper-runtime.mjs";
 import { resolveWhereamiProviderContext } from "./lib/whereami-provider-context.mjs";
 import { resolveWhereAmI } from "./lib/whereami-runtime.mjs";
+import { formatModeOutput } from "./lib/mode-alias.mjs";
+
 
 const execFileAsync = promisify(execFile);
 
@@ -118,15 +120,23 @@ async function main() {
       ? providerContext.effectiveMode
       : resolved.mode;
 
+  const displayMode = formatModeOutput(effectiveMode);
+  const displayAppMode = formatModeOutput(resolved.mode);
+  const providerContextOutput = {
+    ...providerContext,
+    effectiveMode: formatModeOutput(providerContext.effectiveMode),
+  };
+
   const payload = {
     ...resolved,
-    mode: effectiveMode,
-    appMode: resolved.mode,
-    effectiveMode,
-    providerContext,
+    mode: displayMode,
+    appMode: displayAppMode,
+    effectiveMode: displayMode,
+    providerContext: providerContextOutput,
     timestamp: nowIso(),
     runtimeControlPath,
   };
+
 
   if (modeOnly) {
     process.stdout.write(`${payload.mode}\n`);
