@@ -514,10 +514,7 @@
         }
       },
       "runtime": {
-        "invalidDefineFormat": "Invalid format. Usage: DefineCommand(Name, \"description\", `code`)",
-        "invalidCommandData": "Invalid command data",
         "commandNameRequired": "Command name is required",
-        "customCommandCount": "{{count}} custom command found",
         "outOfScopeLog": "Command out of scope: {{command}}",
         "undefinedCommandLog": "Undefined command: {{command}}",
         "undefinedCommand": "Undefined command",
@@ -682,24 +679,6 @@
           "detail": "Builds a file tree for the requested scope. Directories such as node_modules and dist are automatically excluded. The result is saved as a file and sent to the related AI slot.",
           "usage": "++cmd:ListFiles(<scope>)\nScope: project (default) or a directory path",
           "example": "++cmd:ListFiles(project)\n++cmd:ListFiles(src/js)"
-        },
-        "DefineCommand": {
-          "description": "Defines a new custom command.",
-          "detail": "Creates a user-defined meta command. The command name, description, and JavaScript code to run are provided. Defined commands are stored persistently and can be used like other commands.",
-          "usage": "++cmd:DefineCommand(<name>, \"<description>\", `<code>`)",
-          "example": "++cmd:DefineCommand(Greet, \"Greeting command\", `return 'Hello!'`)"
-        },
-        "DeleteCommand": {
-          "description": "Deletes a custom command.",
-          "detail": "Permanently deletes a user-defined command that was previously created with DefineCommand. System commands cannot be removed; only user-defined commands can be deleted.",
-          "usage": "++cmd:DeleteCommand(<command_name>)",
-          "example": "++cmd:DeleteCommand(Greet)"
-        },
-        "ListCustomCommands": {
-          "description": "Lists the defined custom commands.",
-          "detail": "Returns the list of all user-defined commands created with DefineCommand. It shows each command's name, description, and creation details.",
-          "usage": "++cmd:ListCustomCommands()",
-          "example": "++cmd:ListCustomCommands()"
         }
       }
     }
@@ -1686,22 +1665,6 @@
         "actionError": "Device action failed: {{message}}",
         "fallbackCalled": "Device fallback called for action {{action}}"
       },
-      "metaCommandManager": {
-        "customCommandsLoaded": "{{count}} custom command(s) loaded",
-        "loadCommandsError": "Custom commands could not be loaded: {{message}}",
-        "commandDefined": "Custom command defined: {{name}}",
-        "compilationError": "Command compilation failed for {{name}}: {{message}}",
-        "compilationReturnError": "Command compilation failed",
-        "commandParseError": "Command payload could not be parsed",
-        "apiUnavailable": "Command API is unavailable",
-        "commandNotFound": "Custom command not found: {{name}}",
-        "defineCommandFailed": "Custom command definition failed",
-        "defineCommandError": "Custom command definition failed: {{message}}",
-        "deleteCommandFailed": "Custom command delete failed",
-        "deleteCommandError": "Custom command delete failed: {{message}}",
-        "runCommandFailed": "Custom command run failed for {{name}}",
-        "runCommandError": "Custom command run failed for {{name}}: {{message}}"
-      },
       "ipcClient": {
         "invokeFailed": "IPC invoke failed for {{channel}}: {{message}}",
         "apiUnavailable": "electronAPI is unavailable; the preload script may not have loaded"
@@ -2246,23 +2209,6 @@
         "restartError": "Restart error: {{message}}",
         "listFilesError": "ListFiles error: {{message}}",
         "undefinedCommand": "Undefined command: {{commandName}}"
-      }
-    },
-    "metaCommand": {
-      "commandNameRequired": "Command name is required",
-      "commandCodeRequired": "Command code is required",
-      "commandCreated": "Command created: {{name}}",
-      "commandUpdated": "Command updated: {{name}}",
-      "commandDeleted": "Command deleted: {{name}}",
-      "commandNotFound": "Command not found: {{name}}",
-      "deleteError": "deleteCommand error",
-      "logs": {
-        "loadCustomCommandsError": "Custom commands could not be loaded: {{message}}",
-        "saveCustomCommandsError": "Custom commands could not be saved: {{message}}",
-        "defineCommandError": "defineCommand failed: {{message}}",
-        "deleteCommandError": "deleteCommand failed: {{message}}",
-        "listCommandsError": "listCommands failed: {{message}}",
-        "getCommandError": "getCommand failed: {{message}}"
       }
     },
     "ipcProvider": {

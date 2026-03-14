@@ -57,21 +57,6 @@ export interface CommandArgs {
   target?: SlotId;
 }
 
-export interface MetaCommand {
-  name: string;
-  description: string;
-  code: string;
-  createdBy: string;
-  createdAt: number;
-  updatedAt?: number;
-}
-
-export interface MetaCommandListResult {
-  success: boolean;
-  commands?: Record<string, MetaCommand>;
-  message?: string;
-}
-
 export interface ExecutorContext {
   slot: SlotId;
   jobId?: string;

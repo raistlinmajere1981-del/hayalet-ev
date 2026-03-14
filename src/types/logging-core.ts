@@ -32,7 +32,6 @@ export enum LogCategory {
   TRAFFIC = "traffic",
   RELAY = "relay",
   COMMAND = "command",
-  META_COMMAND = "meta-command",
   SERVER_COMMANDS = "server-commands",
   CATCH_MANAGER = "catch-manager",
 

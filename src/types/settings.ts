@@ -123,6 +123,11 @@ export interface GoogleDriveSettings {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: number;
+  clientId?: string;
+  clientSecret?: string;
+  authorizationCode?: string;
+  account?: string;
+  tokens?: unknown;
 }
 
 export type MailTransportProviderType = "gmail" | "custom-imap-smtp";
@@ -266,16 +271,12 @@ export function isAiProviderAccount(account: Account | null | undefined): boolea
   return account !== null && account !== undefined && !isRemoteEmailAccount(account);
 }
 
-export function getAiProviderAccounts(
-  accounts: readonly Account[] | null | undefined
-): Account[] {
-  return Array.isArray(accounts) ? accounts.filter((account) => isAiProviderAccount(account)) : [];
+export function getAiProviderAccounts(accounts: readonly Account[] | null | undefined): Account[] {
+  const list: readonly Account[] = Array.isArray(accounts) ? accounts : [];
+  return list.filter((account) => isAiProviderAccount(account));
 }
 
-export function getRemoteEmailAccounts(
-  accounts: readonly Account[] | null | undefined
-): Account[] {
-  return Array.isArray(accounts)
-    ? accounts.filter((account) => isRemoteEmailAccount(account))
-    : [];
+export function getRemoteEmailAccounts(accounts: readonly Account[] | null | undefined): Account[] {
+  const list: readonly Account[] = Array.isArray(accounts) ? accounts : [];
+  return list.filter((account) => isRemoteEmailAccount(account));
 }

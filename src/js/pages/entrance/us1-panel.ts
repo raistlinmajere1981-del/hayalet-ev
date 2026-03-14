@@ -117,7 +117,11 @@ export class Us1Panel {
   }
 
   private getEditableMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
-    return settings.integrations?.mailTransport?.localAccount ?? this.getMailAccounts(settings)[0] ?? null;
+    return (
+      settings.integrations?.mailTransport?.localAccount ??
+      this.getMailAccounts(settings)[0] ??
+      null
+    );
   }
 
   private getVerifiedLocalMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
@@ -136,10 +140,12 @@ export class Us1Panel {
           return null;
         }
 
-        const accountId = buildRemoteEmailAccountId(remoteUserId) ?? account.id;
+        const derivedAccountId = buildRemoteEmailAccountId(remoteUserId);
+        const accountId = derivedAccountId !== "" ? derivedAccountId : account.id;
         const email = `${account.email}`.trim();
         const fallbackNickname = email.split("@")[0] ?? email;
-        const nickname = `${account.nickname ?? fallbackNickname}`.trim() || fallbackNickname;
+        const nicknameCandidate = `${account.nickname ?? fallbackNickname}`.trim();
+        const nickname = nicknameCandidate !== "" ? nicknameCandidate : fallbackNickname;
         return {
           accountId,
           remoteUserId,
@@ -236,7 +242,9 @@ export class Us1Panel {
       return;
     }
 
-    const result = await electronApi.us1DeleteMailAccount({ mailAccountId: selectedMailAccount.id });
+    const result = await electronApi.us1DeleteMailAccount({
+      mailAccountId: selectedMailAccount.id,
+    });
     await this.reloadSettings();
     this.render();
 
@@ -420,8 +428,8 @@ export class Us1Panel {
     const emailInput = document.getElementById("us1-mail-email-input") as HTMLInputElement | null;
     const email =
       providerType === "gmail"
-        ? gmailEmailInput?.value.trim().toLowerCase() ?? ""
-        : emailInput?.value.trim().toLowerCase() ?? "";
+        ? (gmailEmailInput?.value.trim().toLowerCase() ?? "")
+        : (emailInput?.value.trim().toLowerCase() ?? "");
 
     const imapPort = this.readNumberInput("us1-mail-imap-port-input");
     const smtpPort = this.readNumberInput("us1-mail-smtp-port-input");
@@ -462,9 +470,9 @@ export class Us1Panel {
         user: email,
         password:
           providerType === "gmail"
-            ? gmailPasswordInput?.value.trim().replace(/\s/g, "") ?? ""
-            : (document.getElementById("us1-mail-password-input") as HTMLInputElement | null)
-                ?.value ?? "",
+            ? (gmailPasswordInput?.value.trim().replace(/\s/g, "") ?? "")
+            : ((document.getElementById("us1-mail-password-input") as HTMLInputElement | null)
+                ?.value ?? ""),
         accessToken:
           (document.getElementById("us1-mail-access-token-input") as HTMLInputElement | null)
             ?.value ?? "",
@@ -687,10 +695,7 @@ export class Us1Panel {
     document
       .querySelectorAll<HTMLElement>("[data-us1-mail-password]")
       .forEach((element) =>
-        element.classList.toggle(
-          "is-hidden",
-          authType !== "password" || providerType === "gmail"
-        )
+        element.classList.toggle("is-hidden", authType !== "password" || providerType === "gmail")
       );
 
     document

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-13T14:59:16.413Z",
+  "generatedAt": "2026-03-14T14:45:00.737Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,16 +16,16 @@
     ]
   },
   "stats": {
-    "filesScanned": 443,
-    "filesWithComments": 106,
+    "filesScanned": 441,
+    "filesWithComments": 105,
     "commentsIndexed": 261,
-    "fileLevelComments": 202,
-    "symbolLevelComments": 59,
+    "fileLevelComments": 203,
+    "symbolLevelComments": 58,
     "prefixCounts": {
-      "none": 18,
+      "none": 20,
       "AI": 0,
-      "NOTE": 238,
-      "WARNING": 5,
+      "NOTE": 237,
+      "WARNING": 4,
       "TODO": 0
     }
   },
@@ -223,8 +223,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 174,
-          "endLine": 174,
+          "startLine": 194,
+          "endLine": 194,
           "text": "NOTE: Queue log broadcasts to UI (renderer process).",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -232,8 +232,8 @@
         },
         {
           "kind": "note",
-          "startLine": 175,
-          "endLine": 175,
+          "startLine": 195,
+          "endLine": 195,
           "text": "NOTE: Uses short interval batching to avoid UI spam without dropping events.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -241,8 +241,8 @@
         },
         {
           "kind": "note",
-          "startLine": 241,
-          "endLine": 241,
+          "startLine": 261,
+          "endLine": 261,
           "text": "NOTE: Alias for backward compat.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -309,26 +309,36 @@
       ]
     },
     {
-      "path": "electron/meta-command-manager.ts",
-      "totalComments": 1,
+      "path": "electron/mail-identity-service.ts",
+      "totalComments": 2,
       "byKind": {
-        "warning": 1
+        "fallback": 1,
+        "note": 1
       },
       "byPrefix": {
-        "none": 0,
+        "none": 2,
         "AI": 0,
         "NOTE": 0,
-        "WARNING": 1,
+        "WARNING": 0,
         "TODO": 0
       },
       "symbols": [],
       "comments": [
         {
-          "kind": "warning",
-          "startLine": 1,
-          "endLine": 1,
-          "text": "WARNING: JavaScript commands run with full system access.",
-          "prefix": "WARNING",
+          "kind": "fallback",
+          "startLine": 263,
+          "endLine": 263,
+          "text": "Try loopback first, fallback to oob if requested or failed",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        },
+        {
+          "kind": "note",
+          "startLine": 301,
+          "endLine": 301,
+          "text": "We use localhost for exchange if it looks like a code from there, otherwise oob",
+          "prefix": null,
           "scopeType": "file",
           "scopeName": null
         }
@@ -679,8 +689,8 @@
         },
         {
           "kind": "note",
-          "startLine": 38,
-          "endLine": 38,
+          "startLine": 44,
+          "endLine": 44,
           "text": "NOTE: Call after app.whenReady() in main.ts.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -702,23 +712,21 @@
         "WARNING": 1,
         "TODO": 0
       },
-      "symbols": [
-        "readFlagValue"
-      ],
+      "symbols": [],
       "comments": [
         {
           "kind": "note",
-          "startLine": 385,
-          "endLine": 385,
+          "startLine": 418,
+          "endLine": 418,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
-          "scopeType": "function",
-          "scopeName": "readFlagValue"
+          "scopeType": "file",
+          "scopeName": null
         },
         {
           "kind": "warning",
-          "startLine": 409,
-          "endLine": 409,
+          "startLine": 437,
+          "endLine": 437,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -990,8 +998,8 @@
         },
         {
           "kind": "note",
-          "startLine": 219,
-          "endLine": 219,
+          "startLine": 226,
+          "endLine": 226,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1083,8 +1091,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 155,
-          "endLine": 155,
+          "startLine": 159,
+          "endLine": 159,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1632,8 +1640,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 432,
-          "endLine": 432,
+          "startLine": 452,
+          "endLine": 452,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1641,8 +1649,8 @@
         },
         {
           "kind": "note",
-          "startLine": 451,
-          "endLine": 451,
+          "startLine": 471,
+          "endLine": 471,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1976,8 +1984,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 234,
-          "endLine": 234,
+          "startLine": 244,
+          "endLine": 244,
           "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1985,35 +1993,9 @@
         },
         {
           "kind": "note",
-          "startLine": 539,
-          "endLine": 539,
+          "startLine": 549,
+          "endLine": 549,
           "text": "NOTE: Escape HTML to prevent XSS.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/js/pages/entrance/account-panel.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 393,
-          "endLine": 393,
-          "text": "NOTE: Keep account IDs stable even when emails change.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -4258,8 +4240,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 210,
-          "endLine": 210,
+          "startLine": 238,
+          "endLine": 238,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4566,21 +4548,9 @@
       "name": "initPaths",
       "comments": [
         {
-          "startLine": 38,
+          "startLine": 44,
           "kind": "note",
           "text": "NOTE: Call after app.whenReady() in main.ts."
-        }
-      ]
-    },
-    {
-      "file": "electron/preload.cjs",
-      "type": "function",
-      "name": "readFlagValue",
-      "comments": [
-        {
-          "startLine": 385,
-          "kind": "note",
-          "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive."
         }
       ]
     },
@@ -4614,7 +4584,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 155,
+          "startLine": 159,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }

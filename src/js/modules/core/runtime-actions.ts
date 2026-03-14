@@ -51,7 +51,7 @@ async function runStartupStep<T>(
   const timeoutMs = options.timeoutMs ?? STARTUP_STEP_TIMEOUT_MS;
   const critical = options.critical === true;
   const startedAt = performance.now();
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  let timeoutHandle!: ReturnType<typeof setTimeout>;
 
   Logger.info(LogCategory.SYSTEM, `[startup] ${step}:start`, {
     step,
@@ -86,9 +86,7 @@ async function runStartupStep<T>(
     }
     return null;
   } finally {
-    if (timeoutHandle !== null) {
-      clearTimeout(timeoutHandle);
-    }
+    clearTimeout(timeoutHandle);
   }
 }
 
@@ -127,10 +125,14 @@ export async function initializeCoreRuntime(
   const settings = await SettingsManager.load();
   Logger.info(LogCategory.SYSTEM, "[startup] settings-manager.load:complete");
   WebviewManager.setSettings(settings);
-  await runStartupStep("file-manager.ensureDirs", async () => await FileManager.ensureDirs("all"));
+  await runStartupStep("file-manager.ensureDirs", async () => {
+    await FileManager.ensureDirs("all");
+  });
   AppState.init("ai1");
   Logger.info(LogCategory.SYSTEM, "[startup] app-state.init:complete");
-  await runStartupStep("command-manager.init", async () => await CommandManager.init());
+  await runStartupStep("command-manager.init", async () => {
+    await CommandManager.init();
+  });
 
   const cleanupInterval = setInterval(() => {
     try {
@@ -176,7 +178,9 @@ export async function initializeCoreRuntime(
   }
 
   const whisperInitOptions = { settings: settings as unknown as Record<string, unknown> };
-  await runStartupStep("whisper-manager.init", async () => await WhisperManager.init(whisperInitOptions));
+  await runStartupStep("whisper-manager.init", async () => {
+    await WhisperManager.init(whisperInitOptions);
+  });
   WhisperManager.setSender(async (accountId: string, text: string, whisperId: string) => {
     const result = await params.coreEngine.enqueueWhisperJob(
       accountId,
@@ -190,9 +194,15 @@ export async function initializeCoreRuntime(
 
   WebviewManager.initSyncer(params.coreEngine as never);
   Logger.info(LogCategory.SYSTEM, "[startup] webview-manager.initSyncer:complete");
-  await runStartupStep("slot-controller.init", async () => await SlotController.init(), {
-    timeoutMs: SLOT_CONTROLLER_STARTUP_TIMEOUT_MS,
-  });
+  await runStartupStep(
+    "slot-controller.init",
+    async () => {
+      await SlotController.init();
+    },
+    {
+      timeoutMs: SLOT_CONTROLLER_STARTUP_TIMEOUT_MS,
+    }
+  );
 
   const slotTrafficStartedUnsub = SlotController.on(
     SlotEvent.TRAFFIC_STARTED,

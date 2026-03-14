@@ -182,9 +182,7 @@ class AppStateClass {
         email: remoteAccount.email,
         ...(remoteAccount.nickname !== undefined ? { nickname: remoteAccount.nickname } : {}),
         ...(remoteAccount.avatar !== undefined ? { avatar: remoteAccount.avatar } : {}),
-        ...(remoteAccount.avatarPath !== undefined
-          ? { avatarPath: remoteAccount.avatarPath }
-          : {}),
+        ...(remoteAccount.avatarPath !== undefined ? { avatarPath: remoteAccount.avatarPath } : {}),
         handshakeState: remoteState.handshakeState,
         profileRevision: remoteState.profileRevision,
         linkedMailAccountId: remoteState.linkedLocalMailAccountId,
@@ -201,7 +199,9 @@ class AppStateClass {
           ? { lastTransportMessageId: remoteState.lastTransportMessageId ?? null }
           : {}),
         ...(remoteState.lastSyncAt !== undefined ? { lastSyncAt: remoteState.lastSyncAt } : {}),
-        ...(remoteState.lastError !== undefined ? { lastError: remoteState.lastError ?? null } : {}),
+        ...(remoteState.lastError !== undefined
+          ? { lastError: remoteState.lastError ?? null }
+          : {}),
         ...(remoteState.sessionAlias !== undefined
           ? { sessionAlias: remoteState.sessionAlias ?? null }
           : {}),
@@ -218,10 +218,12 @@ class AppStateClass {
       return null;
     }
 
-    return this.getRemoteUsers().find(
-      (identity) =>
-        identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
-    ) ?? null;
+    return (
+      this.getRemoteUsers().find(
+        (identity) =>
+          identity.remoteUserId === selectedRemoteUserId && identity.handshakeState === "active"
+      ) ?? null
+    );
   }
 
   hasUs1Identity(): boolean {
@@ -234,7 +236,7 @@ class AppStateClass {
 
   getUs1ArchiveAccountId(): string | null {
     const remoteAccount = this.getUs1RemoteAccount();
-    if (remoteAccount?.id) {
+    if (typeof remoteAccount?.id === "string" && remoteAccount.id !== "") {
       return remoteAccount.id;
     }
 
@@ -248,8 +250,7 @@ class AppStateClass {
     const accountId =
       (typeof selectedAccountId === "string" && selectedAccountId.trim() !== ""
         ? selectedAccountId.trim()
-        : null) ??
-      derivedAccountId;
+        : null) ?? derivedAccountId;
     return accountId !== "" ? accountId : null;
   }
 

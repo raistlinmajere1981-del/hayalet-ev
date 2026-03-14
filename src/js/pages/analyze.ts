@@ -615,12 +615,10 @@ export class AnalyzeController {
         (message) =>
           message.role === "assistant" && (message.content ?? message.text ?? "").trim() !== ""
       );
-    const lastMeaningful = [...messages]
-      .reverse()
-      .find((message) => {
-        const text = (message.content ?? message.text ?? "").trim();
-        return text !== "" && (message.role === "assistant" || message.role === "user");
-      });
+    const lastMeaningful = [...messages].reverse().find((message) => {
+      const text = (message.content ?? message.text ?? "").trim();
+      return text !== "" && (message.role === "assistant" || message.role === "user");
+    });
     this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
     this._us1AwaitingReply = lastMeaningful?.role === "user";
     container.scrollTop = container.scrollHeight;
@@ -640,11 +638,7 @@ export class AnalyzeController {
         "thinking",
         connected && this._us1AwaitingReply ? "busy" : "idle"
       );
-      TrafficManager.setIndicator(
-        "us1",
-        "send",
-        this._isUs1SendReady(connected) ? "idle" : "busy"
-      );
+      TrafficManager.setIndicator("us1", "send", this._isUs1SendReady(connected) ? "idle" : "busy");
     } finally {
       this._syncingUs1Indicators = false;
     }
@@ -656,12 +650,14 @@ export class AnalyzeController {
     }
 
     const analyzePage = document.getElementById("page-analyze");
-    const analyzeVisible = analyzePage instanceof HTMLElement && !analyzePage.classList.contains("is-hidden");
+    const analyzeVisible =
+      analyzePage instanceof HTMLElement && !analyzePage.classList.contains("is-hidden");
     if (analyzeVisible === false) {
       return true;
     }
 
-    const sendUs1 = (document.getElementById("send-us1") as HTMLInputElement | null)?.checked === true;
+    const sendUs1 =
+      (document.getElementById("send-us1") as HTMLInputElement | null)?.checked === true;
     const message = (
       (document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? ""
     ).trim();

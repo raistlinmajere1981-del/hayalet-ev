@@ -247,11 +247,13 @@ export class MailIdentityService {
   async startGmailOauth(): Promise<{ success: boolean; authUrl?: string; error?: string }> {
     try {
       const settings = await this.loadNormalizedSettings();
-      const gconf = settings.integrations?.googledrive ?? {};
-      const clientId = (gconf as any).clientId ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
-      const clientSecret = (gconf as any).clientSecret ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+      const gconf = settings.integrations?.googledrive;
+      const clientId =
+        normalizeOptionalText(gconf?.clientId) ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret =
+        normalizeOptionalText(gconf?.clientSecret) ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
 
-      if (!clientId || !clientSecret) {
+      if (clientId.length === 0 || clientSecret.length === 0) {
         return {
           success: false,
           error: "Google Client ID or Client Secret is missing in Drive settings.",
@@ -280,14 +282,16 @@ export class MailIdentityService {
 
   async exchangeGmailCode(
     code: string
-  ): Promise<{ success: boolean; email?: string; tokens?: any; error?: string }> {
+  ): Promise<{ success: boolean; email?: string; tokens?: unknown; error?: string }> {
     try {
       const settings = await this.loadNormalizedSettings();
-      const gconf = settings.integrations?.googledrive ?? {};
-      const clientId = (gconf as any).clientId ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
-      const clientSecret = (gconf as any).clientSecret ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
+      const gconf = settings.integrations?.googledrive;
+      const clientId =
+        normalizeOptionalText(gconf?.clientId) ?? process.env["GOOGLE_CLIENT_ID"] ?? "";
+      const clientSecret =
+        normalizeOptionalText(gconf?.clientSecret) ?? process.env["GOOGLE_CLIENT_SECRET"] ?? "";
 
-      if (!clientId || !clientSecret) {
+      if (clientId.length === 0 || clientSecret.length === 0) {
         return {
           success: false,
           error: "Google Client ID or Client Secret is missing in Drive settings.",
@@ -312,10 +316,10 @@ export class MailIdentityService {
   }
 
   async listenForGmailCode(): Promise<{ success: boolean; code?: string; error?: string }> {
-    return new Promise((resolve) => {
-      const server = http.createServer(async (req, res) => {
+    return await new Promise((resolve) => {
+      const server = http.createServer((req, res) => {
         try {
-          if (req.url?.startsWith("/?code=")) {
+          if (req.url?.startsWith("/?code=") === true) {
             const code = new URL(req.url, "http://localhost:3322").searchParams.get("code");
             res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
             res.end(
@@ -442,13 +446,13 @@ export class MailIdentityService {
     settings.remoteUsers = (settings.remoteUsers ?? []).filter(
       (remoteUser) => remoteUser.linkedMailAccountId !== normalizedMailAccountId
     );
-    settings.accounts = (settings.accounts ?? []).filter((account) => {
+    settings.accounts = settings.accounts.filter((account) => {
       const remoteUserId =
         normalizeOptionalText(account.remoteEmail?.remoteUserId) ?? normalizeEmail(account.email);
       return (
-        account.provider !== "remote-email" &&
-        account.accountKind !== "remote-email"
-      ) || !removedRemoteUserIds.has(remoteUserId);
+        (account.provider !== "remote-email" && account.accountKind !== "remote-email") ||
+        !removedRemoteUserIds.has(remoteUserId)
+      );
     });
 
     if (settings.us1Slot?.selectedRemoteUserId !== null) {
@@ -830,10 +834,7 @@ export class MailIdentityService {
     return normalizeOptionalText(settings.integrations?.mailTransport?.localAccount?.id);
   }
 
-  private setVerifiedLocalMailAccount(
-    settings: AppSettings,
-    mailAccountId: string | null
-  ): void {
+  private setVerifiedLocalMailAccount(settings: AppSettings, mailAccountId: string | null): void {
     settings.integrations ??= {};
     settings.integrations.mailTransport ??= {
       accounts: [],

@@ -20,6 +20,9 @@
   --size-control-3xl: 50px;
 
   --size-webview-offscreen: 1px;
+
+  --size-us1-report-min-h: 140px;
+  --size-us1-report-max-h: 220px;
   --size-select-max-w: 140px;
   --size-dropdown-md: 220px;
   --size-status-pill-min-w: 4.5rem;

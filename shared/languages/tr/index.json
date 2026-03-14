@@ -514,10 +514,7 @@
         }
       },
       "runtime": {
-        "invalidDefineFormat": "Gecersiz format. Kullanim: DefineCommand(Name, \"aciklama\", `kod`)",
-        "invalidCommandData": "Gecersiz komut bilgileri",
         "commandNameRequired": "Komut adi gerekli",
-        "customCommandCount": "{{count}} custom command bulundu",
         "outOfScopeLog": "Komut kapsam disi: {{command}}",
         "undefinedCommandLog": "Tanimsiz komut: {{command}}",
         "undefinedCommand": "Tanimsiz komut",
@@ -682,24 +679,6 @@
           "detail": "Belirtilen kapsamda dosya ağacı oluşturur. node_modules ve dist gibi klasörler otomatik hariç tutulur. Sonuç dosya olarak kaydedilir ve ilgili AI slotuna gönderilir.",
           "usage": "++cmd:ListFiles(<kapsam>)\nKapsam: project (varsayılan) veya dizin yolu",
           "example": "++cmd:ListFiles(project)\n++cmd:ListFiles(src/js)"
-        },
-        "DefineCommand": {
-          "description": "Yeni bir özel komut tanımlar.",
-          "detail": "Kullanıcı tanımlı meta komut oluşturur. Komut adı, açıklaması ve çalıştırılacak JavaScript kodu belirtilir. Tanımlanan komutlar kalıcı olarak saklanır ve diğer komutlar gibi kullanılabilir.",
-          "usage": "++cmd:DefineCommand(<ad>, \"<açıklama>\", `<kod>`)",
-          "example": "++cmd:DefineCommand(Selamla, \"Selamlama komutu\", `return 'Merhaba!'`)"
-        },
-        "DeleteCommand": {
-          "description": "Özel bir komutu siler.",
-          "detail": "Daha önce DefineCommand ile tanımlanmış bir kullanıcı komutunu kalıcı olarak siler. Sistem komutları silinemez, yalnızca kullanıcı tanımlı komutlar silinebilir.",
-          "usage": "++cmd:DeleteCommand(<komut_adı>)",
-          "example": "++cmd:DeleteCommand(Selamla)"
-        },
-        "ListCustomCommands": {
-          "description": "Tanımlı özel komutları listeler.",
-          "detail": "DefineCommand ile oluşturulmuş tüm kullanıcı tanımlı komutların listesini döndürür. Her komutun adı, açıklaması ve oluşturulma bilgilerini gösterir.",
-          "usage": "++cmd:ListCustomCommands()",
-          "example": "++cmd:ListCustomCommands()"
         }
       }
     }
@@ -1686,22 +1665,6 @@
         "actionError": "Device action başarısız: {{message}}",
         "fallbackCalled": "{{action}} işlemi için device fallback çağrıldı"
       },
-      "metaCommandManager": {
-        "customCommandsLoaded": "{{count}} özel komut yüklendi",
-        "loadCommandsError": "Özel komutlar yüklenemedi: {{message}}",
-        "commandDefined": "Özel komut tanımlandı: {{name}}",
-        "compilationError": "{{name}} için komut derleme başarısız: {{message}}",
-        "compilationReturnError": "Komut derleme başarısız",
-        "commandParseError": "Komut payload çözümlenemedi",
-        "apiUnavailable": "Komut API kullanılamıyor",
-        "commandNotFound": "Özel komut bulunamadı: {{name}}",
-        "defineCommandFailed": "Özel komut tanımlama başarısız",
-        "defineCommandError": "Özel komut tanımlama başarısız: {{message}}",
-        "deleteCommandFailed": "Özel komut silme başarısız",
-        "deleteCommandError": "Özel komut silme başarısız: {{message}}",
-        "runCommandFailed": "{{name}} için özel komut çalıştırma başarısız",
-        "runCommandError": "{{name}} için özel komut çalıştırma başarısız: {{message}}"
-      },
       "ipcClient": {
         "invokeFailed": "{{channel}} için IPC invoke başarısız: {{message}}",
         "apiUnavailable": "electronAPI kullanılamıyor; preload script yüklenmemiş olabilir"
@@ -2246,23 +2209,6 @@
         "restartError": "Yeniden başlatma hatası: {{message}}",
         "listFilesError": "ListFiles hatası: {{message}}",
         "undefinedCommand": "Tanımsız komut: {{commandName}}"
-      }
-    },
-    "metaCommand": {
-      "commandNameRequired": "Komut adı gerekli",
-      "commandCodeRequired": "Komut kodu gerekli",
-      "commandCreated": "Komut oluşturuldu: {{name}}",
-      "commandUpdated": "Komut güncellendi: {{name}}",
-      "commandDeleted": "Komut silindi: {{name}}",
-      "commandNotFound": "Komut bulunamadı: {{name}}",
-      "deleteError": "deleteCommand hatası",
-      "logs": {
-        "loadCustomCommandsError": "Özel komutlar yüklenemedi: {{message}}",
-        "saveCustomCommandsError": "Özel komutlar kaydedilemedi: {{message}}",
-        "defineCommandError": "defineCommand başarısız: {{message}}",
-        "deleteCommandError": "deleteCommand başarısız: {{message}}",
-        "listCommandsError": "listCommands başarısız: {{message}}",
-        "getCommandError": "getCommand başarısız: {{message}}"
       }
     },
     "ipcProvider": {

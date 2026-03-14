@@ -191,13 +191,13 @@ function isAuthenticationError(
   error: Error & {
     code?: unknown;
     authenticationFailed?: unknown;
-    serverResponseCode?: string | unknown;
+    serverResponseCode?: unknown;
   }
 ): boolean {
   if (
     error.code === "EAUTH" ||
     error.authenticationFailed === true ||
-    (error.serverResponseCode as unknown) === "AUTHENTICATIONFAILED"
+    error.serverResponseCode === "AUTHENTICATIONFAILED"
   ) {
     return true;
   }
@@ -225,7 +225,9 @@ export class MailTransportError extends Error {
       details?: Record<string, unknown>;
     } = {}
   ) {
-    super(message, { cause: options.cause } as any);
+    const errorOptions: ErrorOptions | undefined =
+      options.cause !== undefined ? { cause: options.cause } : undefined;
+    super(message, errorOptions);
     this.name = "MailTransportError";
     this.kind = kind;
     this.retriable = options.retriable ?? false;
@@ -242,9 +244,14 @@ function classifyTransportError(
   if (error instanceof MailTransportError) {
     return error;
   }
-
   if (error instanceof Error) {
-    const authLikeError = error as any;
+    const authLikeError = error as Error & {
+      code?: unknown;
+      authenticationFailed?: unknown;
+      responseText?: unknown;
+      response?: unknown;
+      serverResponseCode?: unknown;
+    };
     const errorCode = typeof authLikeError.code === "string" ? authLikeError.code : "";
     if (isAuthenticationError(authLikeError)) {
       const responseText = authLikeError.responseText;

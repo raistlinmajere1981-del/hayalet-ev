@@ -25,8 +25,8 @@ function cloneRooms(rooms: InstalledRoomRecord[]): InstalledRoomRecord[] {
   }));
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function delay(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function withTimeout<T>(label: string, ms: number, task: () => Promise<T>): Promise<T> {
@@ -118,8 +118,7 @@ class RoomRegistryClass {
         LIST_INSTALLED_TIMEOUT_MS,
         async () => await api.roomsListInstalled()
       );
-      const nextRooms =
-        result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
+      const nextRooms = result.success === true && Array.isArray(result.rooms) ? result.rooms : [];
       return await this.applyInstalledRooms(nextRooms);
     } catch (error) {
       Logger.warnT(
@@ -146,14 +145,11 @@ class RoomRegistryClass {
     );
     RoomCommandRegistry.syncInstalledRooms(this.installedRooms);
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.command-sync:complete");
-    await withTimeout(
-      "room-registry.protocol-sync",
-      PROTOCOL_SYNC_TIMEOUT_MS,
-      async () =>
-        await RoomProtocolRegistry.syncInstalledRooms(this.installedRooms, {
-          startupProtocols: options.startupProtocols,
-        })
-    );
+    const protocolOptions =
+      options.startupProtocols !== undefined ? { startupProtocols: options.startupProtocols } : {};
+    await withTimeout("room-registry.protocol-sync", PROTOCOL_SYNC_TIMEOUT_MS, async () => {
+      await RoomProtocolRegistry.syncInstalledRooms(this.installedRooms, protocolOptions);
+    });
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.host-sync:start");
     RoomHostRuntime.syncInstalledRooms(this.installedRooms);
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.host-sync:complete");

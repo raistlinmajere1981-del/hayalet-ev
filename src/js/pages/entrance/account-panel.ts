@@ -11,6 +11,7 @@ import {
   type AccountKind,
   type AppSettings,
   type Account,
+  type MailTransportAccountConfig,
 } from "@shared/settings.js";
 import { t as entranceT } from "./i18n.js";
 
@@ -117,10 +118,14 @@ export class AccountPanel {
   }
 
   private getRemoteUserId(account: Account): string {
-    return account.remoteEmail?.remoteUserId ?? extractUs1RemoteIdentityIdFromAccountId(account.id) ?? account.email;
+    return (
+      account.remoteEmail?.remoteUserId ??
+      extractUs1RemoteIdentityIdFromAccountId(account.id) ??
+      account.email
+    );
   }
 
-  private getVerifiedLocalMailAccount(settings: AppSettings) {
+  private getVerifiedLocalMailAccount(settings: AppSettings): MailTransportAccountConfig | null {
     const localAccount = settings.integrations?.mailTransport?.localAccount ?? null;
     if (localAccount?.connectionState === "connected") {
       return localAccount;

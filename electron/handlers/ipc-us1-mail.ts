@@ -53,26 +53,28 @@ export function setupUs1MailHandlers(): void {
   });
 
   registerHandler("us1-mail-start-gmail-oauth", async (_event) => {
-    console.log("[IPC] Starting Gmail OAuth...");
+    console.info("[IPC] Starting Gmail OAuth...");
     const result = await mailIdentityService.startGmailOauth();
-    console.log(
+    const authUrl = typeof result.authUrl === "string" ? result.authUrl.trim() : "";
+    const hasAuthUrl = authUrl !== "";
+    console.info(
       "[IPC] startGmailOauth result:",
       result.success,
-      result.authUrl ? "URL present" : "URL missing"
+      hasAuthUrl ? "URL present" : "URL missing"
     );
 
     if (!result.success) {
       return result;
     }
 
-    if (result.authUrl) {
+    if (hasAuthUrl) {
       try {
-        const urlObj = new URL(result.authUrl);
-        console.log("[IPC] Hostname check:", urlObj.hostname);
+        const urlObj = new URL(authUrl);
+        console.info("[IPC] Hostname check:", urlObj.hostname);
 
         if (ALLOWED_GOOGLE_AUTH_DOMAINS.includes(urlObj.hostname)) {
-          console.log("[IPC] Opening external URL:", result.authUrl);
-          await shell.openExternal(result.authUrl);
+          console.info("[IPC] Opening external URL:", authUrl);
+          await shell.openExternal(authUrl);
           return { success: true };
         } else {
           console.error("[IPC] Domain not allowed:", urlObj.hostname);

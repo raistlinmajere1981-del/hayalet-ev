@@ -191,18 +191,18 @@ function normalizeEmail(value: unknown): string {
 function resolveSelectedRemoteUserId(settings: AppSettings): string | null {
   const selectedAccountId = normalizeOptionalText(settings.us1Slot?.selectedAccountId);
   const remoteUserIdFromAccountId =
-    selectedAccountId !== null
-      ? extractUs1RemoteIdentityIdFromAccountId(selectedAccountId)
-      : null;
+    selectedAccountId !== null ? extractUs1RemoteIdentityIdFromAccountId(selectedAccountId) : null;
 
   return remoteUserIdFromAccountId ?? normalizeOptionalText(settings.us1Slot?.selectedRemoteUserId);
 }
 
-function buildRemoteUserFromRemoteAccount(account: Account | null | undefined): RemoteUserIdentity | null {
+function buildRemoteUserFromRemoteAccount(
+  account: Account | null | undefined
+): RemoteUserIdentity | null {
   const remoteState = account?.remoteEmail;
   const remoteUserId = normalizeOptionalText(remoteState?.remoteUserId);
   const email = normalizeEmail(account?.email ?? remoteUserId ?? "");
-  if (remoteState === undefined || remoteState === null || remoteUserId === null || email === "") {
+  if (remoteState === undefined || remoteUserId === null || email === "") {
     return null;
   }
 

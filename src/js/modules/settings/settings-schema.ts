@@ -233,8 +233,7 @@ function normalizeAccount(raw: unknown): Account | null {
   }
 
   const id = typeof raw["id"] === "string" ? raw["id"].trim() : "";
-  const email =
-    typeof raw["email"] === "string" ? raw["email"].trim().toLowerCase() : "";
+  const email = typeof raw["email"] === "string" ? raw["email"].trim().toLowerCase() : "";
   const provider =
     typeof raw["provider"] === "string" && raw["provider"].trim() !== ""
       ? raw["provider"].trim()
@@ -262,8 +261,7 @@ function normalizeAccount(raw: unknown): Account | null {
     provider: (accountKind === "remote-email" ? "remote-email" : provider) as Account["provider"],
     accountKind,
     email,
-    dbPath:
-      typeof raw["dbPath"] === "string" && raw["dbPath"].trim() !== "" ? raw["dbPath"] : null,
+    dbPath: typeof raw["dbPath"] === "string" && raw["dbPath"].trim() !== "" ? raw["dbPath"] : null,
     name: typeof raw["name"] === "string" ? raw["name"] : "",
     nickname: typeof raw["nickname"] === "string" ? raw["nickname"] : "",
     avatar: typeof raw["avatar"] === "string" ? raw["avatar"] : "",
@@ -423,8 +421,7 @@ function buildRemoteAccountFromIdentity(
           : "",
     avatarPath,
     lastSessionUrl: existingAccount?.lastSessionUrl ?? null,
-    ...(typeof existingAccount?.createdAt === "number" &&
-    Number.isFinite(existingAccount.createdAt)
+    ...(typeof existingAccount?.createdAt === "number" && Number.isFinite(existingAccount.createdAt)
       ? { createdAt: Math.trunc(existingAccount.createdAt) }
       : {}),
     ...(typeof existingAccount?.lastUsedAt === "number" &&
@@ -655,8 +652,8 @@ function normalizeMailTransportSettings(raw: unknown): MailTransportSettings | u
 
   const accounts = Array.isArray(raw["accounts"])
     ? raw["accounts"]
-      .map((entry) => normalizeMailTransportAccount(entry))
-      .filter((entry): entry is MailTransportAccountConfig => entry !== null)
+        .map((entry) => normalizeMailTransportAccount(entry))
+        .filter((entry): entry is MailTransportAccountConfig => entry !== null)
     : [];
   const localAccount = normalizeMailTransportAccount(raw["localAccount"]);
 
@@ -667,7 +664,9 @@ function normalizeMailTransportSettings(raw: unknown): MailTransportSettings | u
     accounts,
     localAccount:
       localAccount ??
-      accounts.find((account) => account.enabled !== false && account.connectionState === "connected") ??
+      accounts.find(
+        (account) => account.enabled !== false && account.connectionState === "connected"
+      ) ??
       null,
     retryBaseMs:
       typeof retryBaseMs === "number" && Number.isFinite(retryBaseMs) && retryBaseMs >= 0
@@ -901,10 +900,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   ) {
     us1Slot.selectedRemoteUserId = null;
   }
-  if (
-    typeof us1Slot.selectedAccountId !== "string" ||
-    us1Slot.selectedAccountId.trim() === ""
-  ) {
+  if (typeof us1Slot.selectedAccountId !== "string" || us1Slot.selectedAccountId.trim() === "") {
     us1Slot.selectedAccountId =
       us1Slot.selectedRemoteUserId !== null
         ? buildRemoteEmailAccountId(us1Slot.selectedRemoteUserId)
@@ -981,7 +977,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   const localMailAccount = merged.integrations.mailTransport?.localAccount;
   if (!isPlainObject(merged.user)) {
-    merged.user = defaults.user ?? { nickname: "User", email: "", avatarPath: "src/assets/default.png" };
+    merged.user = defaults.user ?? {
+      nickname: "User",
+      email: "",
+      avatarPath: "src/assets/default.png",
+    };
   }
   if (typeof merged.user.email !== "string") {
     merged.user.email = "";

@@ -25,14 +25,16 @@ const electronRequire = createRequire(import.meta.url);
 
 function getElectronWindows(): ElectronBrowserWindow[] {
   try {
-    const electronModule = electronRequire("electron");
+    const electronModule: unknown = electronRequire("electron");
     if (electronModule === null || typeof electronModule !== "object") {
       return [];
     }
 
-    const browserWindow = (electronModule as {
-      BrowserWindow?: { getAllWindows?: () => ElectronBrowserWindow[] };
-    }).BrowserWindow;
+    const browserWindow = (
+      electronModule as {
+        BrowserWindow?: { getAllWindows?: () => ElectronBrowserWindow[] };
+      }
+    ).BrowserWindow;
     return typeof browserWindow?.getAllWindows === "function" ? browserWindow.getAllWindows() : [];
   } catch {
     return [];

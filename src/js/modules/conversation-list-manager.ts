@@ -284,7 +284,9 @@ class ConversationListManagerClass {
             ? this.entries.find((e) => e.id === forceSelectId)?.provider
             : null);
         const providers =
-          targetProvider !== null && targetProvider !== "" ? [targetProvider] : ["ai1", "ai2", "us1"];
+          targetProvider !== null && targetProvider !== ""
+            ? [targetProvider]
+            : ["ai1", "ai2", "us1"];
 
         await new Promise((resolve) =>
           setTimeout(resolve, ASSISTANT_TIMEOUTS.CONVERSATION_LIST_MICRO)
@@ -339,12 +341,14 @@ class ConversationListManagerClass {
         ? AppState.hasUs1Identity() === true
         : slot.accountId !== undefined && slot.accountId !== "";
     const isConnected =
-      provider === "us1" ? AppState.isUs1Connected() === true : SlotController.isConnected(provider) === true;
+      provider === "us1"
+        ? AppState.isUs1Connected() === true
+        : SlotController.isConnected(provider) === true;
 
     select.disabled = !hasAccount || !isConnected;
-    const refreshBtn = document.getElementById(`conversation-refresh-${provider}`) as
-      | HTMLButtonElement
-      | null;
+    const refreshBtn = document.getElementById(
+      `conversation-refresh-${provider}`
+    ) as HTMLButtonElement | null;
     if (refreshBtn) {
       refreshBtn.disabled = !hasAccount || !isConnected;
     }
@@ -433,7 +437,9 @@ class ConversationListManagerClass {
     const selectedConversationId = this.currentSelections["us1"] ?? "new";
     const selectedEntry =
       selectedConversationId !== "new"
-        ? this.entries.find((entry) => entry.provider === "us1" && entry.id === selectedConversationId)
+        ? this.entries.find(
+            (entry) => entry.provider === "us1" && entry.id === selectedConversationId
+          )
         : null;
 
     try {

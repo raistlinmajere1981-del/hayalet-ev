@@ -79,10 +79,14 @@ export function extractRemoteEmailFromAccountId(accountId: string): string | nul
 }
 
 export function extractUs1RemoteIdentityIdFromAccountId(accountId: string): string | null {
-  return extractRemoteEmailFromAccountId(accountId) ?? extractUs1RemoteUserIdFromAccountId(accountId);
+  return (
+    extractRemoteEmailFromAccountId(accountId) ?? extractUs1RemoteUserIdFromAccountId(accountId)
+  );
 }
 
-export function buildLegacyUs1ProjectedAccountIdFromRemoteAccountId(accountId: string): string | null {
+export function buildLegacyUs1ProjectedAccountIdFromRemoteAccountId(
+  accountId: string
+): string | null {
   const remoteIdentityId = extractRemoteEmailFromAccountId(accountId);
   if (remoteIdentityId === null) {
     return null;
