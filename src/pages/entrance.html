@@ -78,43 +78,47 @@
                   <span data-i18n-text="slot.rememberLabel"></span>
                 </label>
               </div>
-              <button
-                class="btn btn-primary btn-sm slot-connect-btn"
-                id="ai1-toggle-btn"
-                data-i18n-text="slot.selectAccount"
-              ></button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm"
-                id="ai1-devtools-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.devtoolsTitle"
-                data-i18n-aria-label="slot.devtoolsTitle"
-              >
-                🔧
-              </button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm slot-test-btn"
-                id="ai1-test-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.providerTestTitle"
-                data-i18n-aria-label="slot.providerTestTitle"
-                disabled
-              >
-                🧪
-              </button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
-                id="ai1-sync-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.providerSyncTitle"
-                data-i18n-aria-label="slot.providerSyncTitle"
-                disabled
-              >
-                🔄
-              </button>
+              <div class="slot-action-stack">
+                <button
+                  class="btn btn-primary btn-sm slot-connect-btn"
+                  id="ai1-toggle-btn"
+                  data-i18n-text="slot.selectAccount"
+                ></button>
+                <div class="slot-action-icons">
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm"
+                    id="ai1-devtools-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.devtoolsTitle"
+                    data-i18n-aria-label="slot.devtoolsTitle"
+                  >
+                    🔧
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm slot-test-btn"
+                    id="ai1-test-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.providerTestTitle"
+                    data-i18n-aria-label="slot.providerTestTitle"
+                    disabled
+                  >
+                    🧪
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
+                    id="ai1-sync-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.providerSyncTitle"
+                    data-i18n-aria-label="slot.providerSyncTitle"
+                    disabled
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -150,35 +154,22 @@
             </div>
           </div>
           <div class="slot-header-actions slot-header-actions--us1">
-            <label
-              class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
-              title=""
-              data-i18n-title="us1.catchTitle"
-            >
-              <input type="checkbox" id="us1-catch-check" />
-              <span data-i18n-text="us1.catchLabel"></span>
-            </label>
-            <div class="us1-slot-panel__actions us1-slot-panel__actions--compact">
+            <div class="us1-slot-panel__header-row">
+              <label
+                class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
+                title=""
+                data-i18n-title="us1.catchTitle"
+              >
+                <input type="checkbox" id="us1-catch-check" />
+                <span data-i18n-text="us1.catchLabel"></span>
+              </label>
               <button
-                class="btn btn-primary btn-sm"
-                id="us1-connect-btn"
+                class="btn btn-primary btn-sm slot-connect-btn us1-slot-panel__toggle-btn"
+                id="us1-toggle-btn"
                 data-i18n-text="slot.connect"
-              ></button>
-              <button
-                class="btn btn-secondary btn-sm"
-                id="us1-disconnect-btn"
-                data-i18n-text="slot.disconnect"
-              ></button>
-              <button
-                class="btn btn-ghost btn-sm"
-                id="us1-sync-messages-btn"
-                data-i18n-text="us1.actions.checkMail"
               ></button>
             </div>
           </div>
-        </div>
-        <div class="slot-url-bar slot-url-bar--us1">
-          <div class="slot-url" data-i18n-text="panels.us1"></div>
         </div>
         <div class="slot-webview-container slot-webview-container--us1">
           <div
@@ -192,7 +183,6 @@
           ></div>
         </div>
       </div>
-
 
       <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai2">
         <div class="slot-header">
@@ -262,43 +252,47 @@
                   <span data-i18n-text="slot.rememberLabel"></span>
                 </label>
               </div>
-              <button
-                class="btn btn-primary btn-sm slot-connect-btn"
-                id="ai2-toggle-btn"
-                data-i18n-text="slot.selectAccount"
-              ></button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm"
-                id="ai2-devtools-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.devtoolsTitle"
-                data-i18n-aria-label="slot.devtoolsTitle"
-              >
-                🔧
-              </button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm slot-test-btn"
-                id="ai2-test-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.providerTestTitle"
-                data-i18n-aria-label="slot.providerTestTitle"
-                disabled
-              >
-                🧪
-              </button>
-              <button
-                class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
-                id="ai2-sync-btn"
-                title=""
-                aria-label=""
-                data-i18n-title="slot.providerSyncTitle"
-                data-i18n-aria-label="slot.providerSyncTitle"
-                disabled
-              >
-                🔄
-              </button>
+              <div class="slot-action-stack">
+                <button
+                  class="btn btn-primary btn-sm slot-connect-btn"
+                  id="ai2-toggle-btn"
+                  data-i18n-text="slot.selectAccount"
+                ></button>
+                <div class="slot-action-icons">
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm"
+                    id="ai2-devtools-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.devtoolsTitle"
+                    data-i18n-aria-label="slot.devtoolsTitle"
+                  >
+                    🔧
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm slot-test-btn"
+                    id="ai2-test-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.providerTestTitle"
+                    data-i18n-aria-label="slot.providerTestTitle"
+                    disabled
+                  >
+                    🧪
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-icon btn-sm slot-sync-btn"
+                    id="ai2-sync-btn"
+                    title=""
+                    aria-label=""
+                    data-i18n-title="slot.providerSyncTitle"
+                    data-i18n-aria-label="slot.providerSyncTitle"
+                    disabled
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

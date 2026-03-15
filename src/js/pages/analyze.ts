@@ -223,24 +223,46 @@ export class AnalyzeController {
     ];
 
     avatarTargets.forEach(({ provider, elementId, fallbackText = "" }) => {
-      const configuredPath = AppState.getAvatar(provider);
-      const candidates =
-        provider === "user"
-          ? ["src/assets/user.png", configuredPath, "src/assets/default.png"]
-          : [configuredPath];
-      const electronApi = window.electronAPI;
+      const configuredPath = AppState.getAvatar(provider).trim();
+      const isUser = provider === "user";
+      const isUs1 = provider === "us1";
+      const slotAssigned = isUser
+        ? true
+        : isUs1
+          ? AppState.hasUs1Identity()
+          : AppState.getAccountForSlot(provider) !== null;
 
       const el = document.getElementById(elementId);
       if (!el) return;
 
+      if (!slotAssigned) {
+        el.textContent = "";
+        el.innerHTML = "";
+        return;
+      }
+
+      const electronApi = window.electronAPI;
       if (electronApi === undefined) {
         el.textContent = fallbackText;
         return;
       }
 
+      const fallbackCandidates: string[] = [];
+      if (isUser) {
+        fallbackCandidates.push("src/assets/user.png", "src/assets/default.png");
+      } else {
+        const providerId = isUs1 ? "" : AppState.getProviderIdForSlot(provider) ?? "";
+        if (providerId !== "") {
+          fallbackCandidates.push(`src/assets/${providerId}.png`);
+        }
+        fallbackCandidates.push("src/assets/default.png");
+      }
+
+      const candidates = [configuredPath, ...fallbackCandidates];
       const filteredCandidates = candidates.filter(
         (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
       );
+
 
       const tryLoad = (index: number): void => {
         const candidate = filteredCandidates[index];

@@ -23,8 +23,7 @@ import {
 } from "./path-roots.ts";
 
 let config: (PathConfig & { electronDir: string }) | null = null;
-const MAIN_APP_LOG_DIR_NAME = "hayalet-ev";
-const LEGACY_MAIN_APP_LOG_DIR_NAME = "app";
+const MAIN_APP_LOG_DIR_NAME = "app";
 
 function pathsT(key: string): string {
   const locale = readElectronAppLanguageSync();
@@ -89,10 +88,6 @@ const paths: PathResolver = {
 
   getMainAppLogsDir(): string {
     return join(getConfig().logsDir, MAIN_APP_LOG_DIR_NAME);
-  },
-
-  getLegacyMainAppLogsDir(): string {
-    return join(getConfig().logsDir, LEGACY_MAIN_APP_LOG_DIR_NAME);
   },
 
   getCommandsDir(): string {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-14T18:04:30.665Z",
+  "generatedAt": "2026-03-15T09:35:32.601Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -1984,8 +1984,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 244,
-          "endLine": 244,
+          "startLine": 238,
+          "endLine": 238,
           "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1993,8 +1993,8 @@
         },
         {
           "kind": "note",
-          "startLine": 549,
-          "endLine": 549,
+          "startLine": 543,
+          "endLine": 543,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",

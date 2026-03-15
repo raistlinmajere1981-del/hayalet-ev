@@ -72,13 +72,7 @@ export function setupEntranceLiveLogOverlay({
   const pollIntervalMs = 2000;
   const state = createInitialOverlayState();
 
-  const getAppDirCandidates = (app: typeof state.activeApp): string[] => {
-    if (app === "app") {
-      return ["hayalet-ev", "app"];
-    }
-
-    return [app];
-  };
+  const getAppDirCandidates = (app: typeof state.activeApp): string[] => [app];
 
   const render = (): void => {
     renderEntries({

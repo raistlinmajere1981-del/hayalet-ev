@@ -91,7 +91,7 @@ interface LogReadArgs {
 export async function readElectronLogs(logDir: string, args?: LogReadArgs): Promise<ToolResult> {
   const t = await createMcpTranslator();
   const {
-    app = "hayalet-ev",
+    app = "app",
     type = "console",
     tail = 50,
     source,
@@ -227,7 +227,7 @@ export async function listLogSessions(
   args?: { app?: LogAppId; limit?: number }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "hayalet-ev";
+  const app = args?.app ?? "app";
   const targetLogDir = resolveExistingLogDir(logDir, app);
   const limit = args?.limit ?? 10;
 
@@ -288,7 +288,7 @@ export async function getSessionSummary(
   args?: { app?: LogAppId; sessionId?: string }
 ): Promise<ToolResult> {
   const t = await createMcpTranslator();
-  const app = args?.app ?? "hayalet-ev";
+  const app = args?.app ?? "app";
   const targetLogDir = resolveExistingLogDir(logDir, app);
   const sessionId = args?.sessionId ?? (await findLatestSession(targetLogDir));
 

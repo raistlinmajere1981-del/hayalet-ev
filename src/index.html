@@ -547,35 +547,23 @@
           aria-label=""
           data-shell-i18n-aria-label="settingsHub.ariaLabel"
         >
-          <div class="settings-hub-header">
-            <div class="settings-hub-heading">
-              <span class="settings-hub-kicker" data-shell-i18n-text="settingsHub.kicker"></span>
-              <h2 class="settings-hub-title" data-shell-i18n-text="settingsHub.title"></h2>
-              <p class="settings-hub-subtitle" data-shell-i18n-text="settingsHub.subtitle"></p>
-            </div>
-            <button
-              class="btn btn-ghost btn-sm"
-              id="settings-hub-close"
-              data-shell-i18n-text="common.close"
-            ></button>
-          </div>
-
           <div class="settings-hub-layout">
-            <aside
-              class="settings-hub-nav"
-              role="tablist"
-              aria-label=""
-              data-shell-i18n-aria-label="settingsHub.ariaLabel"
-            >
-              <button
-                class="settings-hub-tab is-active"
-                id="settings-tab-theme"
-                type="button"
-                role="tab"
-                aria-selected="true"
-                aria-controls="settings-panel-theme"
-                data-settings-panel="theme"
+            <aside class="settings-hub-nav">
+              <div
+                class="settings-hub-tabs"
+                role="tablist"
+                aria-label=""
+                data-shell-i18n-aria-label="settingsHub.ariaLabel"
               >
+                <button
+                  class="settings-hub-tab is-active"
+                  id="settings-tab-theme"
+                  type="button"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="settings-panel-theme"
+                  data-settings-panel="theme"
+                >
                 <span class="settings-hub-tab__index">01</span>
                 <span
                   class="settings-hub-tab__label"
@@ -642,6 +630,12 @@
                   data-shell-i18n-text="settingsHub.nav.liveLog"
                 ></span>
               </button>
+              </div>
+              <button
+                class="btn btn-ghost btn-sm settings-hub-close"
+                id="settings-hub-close"
+                data-shell-i18n-text="common.close"
+              ></button>
             </aside>
 
             <div class="settings-hub-panels">
@@ -702,8 +696,6 @@
                         <strong data-shell-i18n-text="themes.ivory-lab.name"></strong>
                         <small data-shell-i18n-text="themes.ivory-lab.description"></small>
                       </span>
-
-
                     </button>
                     <button
                       class="theme-dropdown-item settings-theme-option"
@@ -746,14 +738,11 @@
                   <div class="settings-panel-scroll">
                     <div class="settings-accounts-grid">
                       <section class="settings-accounts-column">
-                        <h4
-                          class="settings-accounts-title"
-                          data-shell-i18n-text="settingsHub.accounts.userColumn"
-                        ></h4>
                         <div
                           class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
                           data-panel="user"
                         >
+
                           <div class="entrance-panel__header ds-surface-card__header">
                             <span
                               class="entrance-panel__title ds-panel-title"
@@ -794,23 +783,19 @@
                                 <select id="app-language-select" class="select select-sm"></select>
                               </div>
                               <section class="us1-slot-panel__section">
-                                <div class="us1-slot-panel__section-head">
-                                  <span
-                                    class="us1-slot-panel__section-title"
-                                    data-i18n-text="us1.mailAccount.sectionTitle"
-                                  ></span>
-                                  <p
-                                    class="us1-slot-panel__section-note"
-                                    data-i18n-text="us1.mailAccount.sectionNote"
-                                  ></p>
-                                </div>
                                 <div class="us1-slot-panel__status-block">
                                   <span
                                     class="form-label"
                                     data-i18n-text="us1.mailAccount.verifiedLabel"
                                   ></span>
-                                  <div class="us1-slot-panel__status" id="us1-mail-verified-email"></div>
-                                  <div class="us1-slot-panel__hint" id="us1-mail-account-status"></div>
+                                  <div
+                                    class="us1-slot-panel__status"
+                                    id="us1-mail-verified-email"
+                                  ></div>
+                                  <div
+                                    class="us1-slot-panel__hint"
+                                    id="us1-mail-account-status"
+                                  ></div>
                                 </div>
                                 <div class="us1-slot-panel__grid">
                                   <div class="us1-slot-panel__field">
@@ -845,7 +830,9 @@
                                         data-i18n-text="us1.mailAccount.gmailHelperStep1"
                                       ></button>
                                       <div class="us1-slot-panel__grid us1-slot-panel__gmail-panel">
-                                        <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                        <div
+                                          class="us1-slot-panel__field us1-slot-panel__field--wide"
+                                        >
                                           <label
                                             class="form-label"
                                             data-i18n-text="us1.mailAccount.gmailEmailLabel"
@@ -857,7 +844,9 @@
                                             data-i18n-placeholder="us1.mailAccount.gmailEmailPlaceholder"
                                           />
                                         </div>
-                                        <div class="us1-slot-panel__field us1-slot-panel__field--wide">
+                                        <div
+                                          class="us1-slot-panel__field us1-slot-panel__field--wide"
+                                        >
                                           <label
                                             class="form-label"
                                             data-i18n-text="us1.mailAccount.gmailPasswordLabel"
@@ -869,11 +858,6 @@
                                             data-i18n-placeholder="us1.mailAccount.gmailPasswordPlaceholder"
                                           />
                                         </div>
-                                        <button
-                                          class="btn btn-primary btn-sm us1-slot-panel__gmail-action us1-slot-panel__gmail-action--spaced"
-                                          id="us1-mail-gmail-connect-easy"
-                                          data-i18n-text="us1.mailAccount.gmailHelperStep2"
-                                        ></button>
                                       </div>
                                     </div>
                                   </div>
@@ -1040,14 +1024,9 @@
                                 </div>
                                 <div class="us1-slot-panel__actions">
                                   <button
-                                    class="btn btn-secondary btn-sm"
-                                    id="us1-mail-save-btn"
-                                    data-i18n-text="us1.mailAccount.actions.save"
-                                  ></button>
-                                  <button
                                     class="btn btn-primary btn-sm"
                                     id="us1-mail-verify-btn"
-                                    data-i18n-text="us1.mailAccount.actions.verify"
+                                    data-i18n-text="us1.mailAccount.actions.connect"
                                   ></button>
                                   <button
                                     class="btn btn-ghost btn-sm"
@@ -1058,7 +1037,10 @@
                               </section>
 
                               <div class="gdrive-status-row">
-                                <label class="form-label" data-i18n-text="user.googleDrive.label"></label>
+                                <label
+                                  class="form-label"
+                                  data-i18n-text="user.googleDrive.label"
+                                ></label>
                                 <span
                                   class="status-dot"
                                   id="gdrive-status-dot"
@@ -1104,14 +1086,11 @@
                         </div>
                       </section>
                       <section class="settings-accounts-column">
-                        <h4
-                          class="settings-accounts-title"
-                          data-shell-i18n-text="settingsHub.accounts.slotColumn"
-                        ></h4>
                         <div
                           class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
                           data-panel="accounts"
                         >
+
                           <div class="entrance-panel__header ds-surface-card__header">
                             <span
                               class="entrance-panel__title ds-panel-title"
@@ -1194,8 +1173,14 @@
                                     id="remote-account-mail-status"
                                     data-account-kind="remote-email"
                                   ></div>
-                                  <div class="account-form-avatar-row" data-account-kind="ai-provider">
-                                    <div class="avatar-preview-box" id="new-account-avatar-preview"></div>
+                                  <div
+                                    class="account-form-avatar-row"
+                                    data-account-kind="ai-provider"
+                                  >
+                                    <div
+                                      class="avatar-preview-box"
+                                      id="new-account-avatar-preview"
+                                    ></div>
                                     <button
                                       class="btn btn-ghost btn-sm"
                                       id="new-account-avatar-browse"
@@ -1292,14 +1277,7 @@
                           ></div>
                         </div>
                         <div class="room-manager-section-body">
-                          <div class="room-manager-select">
-                            <select id="backup-overlay-scopes" class="select select-sm"></select>
-                            <button
-                              class="btn btn-ghost btn-sm"
-                              id="backup-overlay-refresh"
-                              data-shell-i18n-text="common.refresh"
-                            ></button>
-                          </div>
+                          <div id="backup-overlay-scopes"></div>
                         </div>
                       </section>
                       <section class="room-manager-section">
@@ -1423,12 +1401,72 @@
                         class="settings-panel-kicker"
                         data-shell-i18n-text="settingsHub.nav.liveLog"
                       ></span>
-                      <h3 class="settings-panel-title" data-shell-i18n-text="reportModal.title"></h3>
+                      <h3
+                        class="settings-panel-title"
+                        data-shell-i18n-text="reportModal.title"
+                      ></h3>
                     </div>
                   </div>
 
                   <div class="settings-panel-scroll">
-                    <div class="live-log-shell" id="live-log-overlay"></div>
+                    <div class="live-log-shell">
+                      <div class="live-log-toolbar">
+                        <div class="live-log-app-tabs" id="live-log-app-tabs">
+                          <button class="btn btn-ghost btn-sm is-active" type="button" data-app="app">
+                            App
+                          </button>
+                          <button class="btn btn-ghost btn-sm" type="button" data-app="mcp-server">
+                            MCP Server
+                          </button>
+                          <button class="btn btn-ghost btn-sm" type="button" data-app="ghost-agent">
+                            Ghost Agent
+                          </button>
+                        </div>
+                        <label class="live-log-control">
+                          <span data-i18n-text="liveLog.sessionLabel"></span>
+                          <select id="live-log-session-select" class="select select-sm"></select>
+                        </label>
+                        <label class="live-log-control">
+                          <span data-i18n-text="liveLog.levelLabel"></span>
+                          <select id="live-log-level-select" class="select select-sm">
+                            <option value="all" data-i18n-text="liveLog.levels.all"></option>
+                            <option value="error" data-i18n-text="liveLog.levels.error"></option>
+                            <option value="warning" data-i18n-text="liveLog.levels.warning"></option>
+                            <option value="info" data-i18n-text="liveLog.levels.info"></option>
+                            <option value="success" data-i18n-text="liveLog.levels.success"></option>
+                            <option value="debug" data-i18n-text="liveLog.levels.debug"></option>
+                          </select>
+                        </label>
+                        <label class="live-log-control live-log-control-search">
+                          <span data-i18n-text="liveLog.searchLabel"></span>
+                          <input
+                            class="input input-sm"
+                            id="live-log-search"
+                            type="search"
+                            data-i18n-placeholder="liveLog.searchPlaceholder"
+                          />
+                        </label>
+                        <div class="live-log-header-actions">
+                          <div class="live-log-metrics" id="live-log-metrics"></div>
+                          <button class="btn btn-ghost btn-sm" id="live-log-pause" type="button"></button>
+                          <button
+                            class="btn btn-ghost btn-sm"
+                            id="live-log-clear"
+                            type="button"
+                            data-i18n-text="liveLog.clear"
+                            data-i18n-title="liveLog.clearTitle"
+                          ></button>
+                        </div>
+                      </div>
+                      <div class="live-log-body">
+                        <div class="live-log-content" id="live-log-content"></div>
+                        <div class="live-log-detail">
+                          <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle"></div>
+                          <div class="live-log-detail-meta" id="live-log-meta"></div>
+                          <pre class="live-log-detail-context" id="live-log-context"></pre>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1458,6 +1496,6 @@
         <div class="livefix-countdown-label" data-shell-i18n-text="livefix.secondsLabel"></div>
       </div>
     </div>
-  <script type="module" src="/js/app/index.ts"></script>
+    <script type="module" src="/js/app/index.ts"></script>
   </body>
 </html>

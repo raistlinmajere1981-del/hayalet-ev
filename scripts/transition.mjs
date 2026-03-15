@@ -15,8 +15,6 @@ import {
   waitForMode,
   writeControl,
 } from "./lib/transition-runtime.mjs";
-import { formatModeOutput, normalizeModeInput } from "./lib/mode-alias.mjs";
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,6 +26,13 @@ const runtimeEventLogPath = join(root, "data", "assistant-runtime-events.log");
 function parseNumber(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeModeInput(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  return trimmed.toLowerCase();
 }
 
 function parseOptions(argv) {
@@ -158,7 +163,7 @@ async function runStatus(options) {
   const status = await getRuntimeStatus({ runtimeControlPath, maxStaleMs: options.maxStaleMs });
   writeResult({
     success: true,
-    mode: formatModeOutput(status.resolved.mode),
+    mode: status.resolved.mode,
     shouldStop: status.resolved.shouldStop,
 
     reason: status.resolved.reason,
@@ -173,7 +178,7 @@ async function runWait(mode, options) {
   const normalizedMode = normalizeModeInput(mode);
   if (normalizedMode === null) {
     fail({
-      error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent>",
+      error: "Mode is required. Usage: node scripts/transition.mjs wait <terminal|app|ghost-agent>",
     });
     return;
   }
@@ -189,9 +194,9 @@ async function runWait(mode, options) {
   if (!waited.success) {
     fail({
       error: waited.error,
-      expectedMode: formatModeOutput(waited.expectedMode),
+      expectedMode: waited.expectedMode,
       elapsedMs: waited.elapsedMs,
-      mode: formatModeOutput(waited.status?.resolved.mode ?? null),
+      mode: waited.status?.resolved.mode ?? null,
       shouldStop: waited.status?.resolved.shouldStop ?? null,
       reason: waited.status?.resolved.reason ?? null,
     });
@@ -200,9 +205,9 @@ async function runWait(mode, options) {
 
   writeResult({
     success: true,
-    expectedMode: formatModeOutput(waited.expectedMode),
+    expectedMode: waited.expectedMode,
     elapsedMs: waited.elapsedMs,
-    mode: formatModeOutput(waited.status.resolved.mode),
+    mode: waited.status.resolved.mode,
     shouldStop: waited.status.resolved.shouldStop,
     reason: waited.status.resolved.reason,
     control: waited.status.control,
@@ -233,8 +238,8 @@ async function executeAction(action, options) {
     fail({
       error: sourceModeCheck.reason,
       action,
-      modeBefore: formatModeOutput(statusBefore.resolved.mode),
-      expectedMode: formatModeOutput(config.expectedMode),
+      modeBefore: statusBefore.resolved.mode,
+      expectedMode: config.expectedMode,
     });
 
     return;
@@ -261,8 +266,8 @@ async function executeAction(action, options) {
     fail({
       error: `Action ${action} requires active ${config.closeTarget} app process to close.`,
       action,
-      modeBefore: formatModeOutput(statusBefore.resolved.mode),
-      expectedMode: formatModeOutput(config.expectedMode),
+      modeBefore: statusBefore.resolved.mode,
+      expectedMode: config.expectedMode,
       snapshot: statusBefore.snapshot,
     });
 
@@ -361,9 +366,9 @@ async function executeAction(action, options) {
         error: waitResult.error,
         action,
         transitionId,
-        expectedMode: formatModeOutput(config.expectedMode),
+        expectedMode: config.expectedMode,
         elapsedMs: waitResult.elapsedMs,
-        finalMode: formatModeOutput(waitResult.status?.resolved.mode ?? null),
+        finalMode: waitResult.status?.resolved.mode ?? null,
         reason: waitResult.status?.resolved.reason ?? null,
       });
 
@@ -377,10 +382,10 @@ async function executeAction(action, options) {
     success: true,
     action,
     transitionId,
-    expectedMode: formatModeOutput(config.expectedMode),
+    expectedMode: config.expectedMode,
     waitEnabled: shouldWait,
-    modeBefore: formatModeOutput(statusBefore.resolved.mode),
-    modeAfter: formatModeOutput(statusAfter.resolved.mode),
+    modeBefore: statusBefore.resolved.mode,
+    modeAfter: statusAfter.resolved.mode,
     reasonAfter: statusAfter.resolved.reason,
     controlAfter: statusAfter.control,
     killedPids: termination.killedPids,
@@ -389,9 +394,9 @@ async function executeAction(action, options) {
       waitResult === null
         ? null
         : {
-            expectedMode: formatModeOutput(waitResult.expectedMode),
+            expectedMode: waitResult.expectedMode,
             elapsedMs: waitResult.elapsedMs,
-            finalMode: formatModeOutput(waitResult.status?.resolved.mode ?? null),
+            finalMode: waitResult.status?.resolved.mode ?? null,
           },
   });
 
@@ -401,7 +406,7 @@ async function runSwitch(targetMode, options) {
   const normalizedTargetMode = normalizeModeInput(targetMode);
   if (normalizedTargetMode === null) {
     fail({
-      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent>",
+      error: "Target mode is required. Usage: node scripts/transition.mjs switch <terminal|app|ghost-agent>",
     });
     return;
   }
@@ -412,8 +417,8 @@ async function runSwitch(targetMode, options) {
   if (resolution.error) {
     fail({
       error: resolution.error,
-      modeBefore: formatModeOutput(statusBefore.resolved.mode),
-      targetMode: formatModeOutput(normalizedTargetMode),
+      modeBefore: statusBefore.resolved.mode,
+      targetMode: normalizedTargetMode,
     });
     return;
   }
@@ -423,8 +428,8 @@ async function runSwitch(targetMode, options) {
       success: true,
       action: null,
       noop: true,
-      mode: formatModeOutput(statusBefore.resolved.mode),
-      targetMode: formatModeOutput(normalizedTargetMode),
+      mode: statusBefore.resolved.mode,
+      targetMode: normalizedTargetMode,
       reason: resolution.reason ?? "No-op",
       control: statusBefore.control,
       snapshot: statusBefore.snapshot,
@@ -446,9 +451,9 @@ function printHelp() {
     success: true,
     usage: [
       "node scripts/transition.mjs status",
-      "node scripts/transition.mjs wait <terminal|hayalet-ev|ghost-agent> [--timeout <ms>]",
+      "node scripts/transition.mjs wait <terminal|app|ghost-agent> [--timeout <ms>]",
       "node scripts/transition.mjs trigger <main-close|main-to-ghost|ghost-close|ghost-return-main> [--wait]",
-      "node scripts/transition.mjs switch <terminal|hayalet-ev|ghost-agent> [--wait]",
+      "node scripts/transition.mjs switch <terminal|app|ghost-agent> [--wait]",
 
     ],
     options: {

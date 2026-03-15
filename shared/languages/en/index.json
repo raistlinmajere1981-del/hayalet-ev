@@ -5076,9 +5076,8 @@
           "error": "Mail account verification failed."
         },
         "actions": {
-          "save": "Save",
-          "verify": "Save & Verify",
-          "delete": "Delete"
+          "connect": "Connect",
+          "delete": "Delete Account"
         },
         "verifiedLabel": "Verified user email",
         "verifiedEmpty": "No verified user email yet.",
@@ -5087,8 +5086,7 @@
         "gmailEmailLabel": "Gmail email",
         "gmailEmailPlaceholder": "example@gmail.com",
         "gmailPasswordLabel": "Gmail app password",
-        "gmailPasswordPlaceholder": "16 character app password",
-        "gmailHelperStep2": "Connect and verify"
+        "gmailPasswordPlaceholder": "16 character app password"
       },
       "remote": {
         "sectionTitle": "Remote user handshake",

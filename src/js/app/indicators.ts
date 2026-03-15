@@ -84,6 +84,26 @@ export function updateIndicatorAvatars(): void {
     }
   };
 
+  const getFallbackPath = (
+    provider: "ai0" | "ai1" | "ai2" | "us1",
+    slotState: "empty" | "disconnected" | "connected"
+  ): string => {
+    if (slotState === "empty") return "";
+
+    if (provider === "ai1" || provider === "ai2") {
+      const providerId = AppState.getProviderIdForSlot(provider) ?? "";
+      if (providerId !== "") return `src/assets/${providerId}.png`;
+      return "src/assets/default.png";
+    }
+
+    if (provider === "us1") {
+      return "src/assets/default.png";
+    }
+
+    return "";
+  };
+
+
   const applyAvatar = (
     el: HTMLElement | null,
     src: string | null,
@@ -117,14 +137,33 @@ export function updateIndicatorAvatars(): void {
 
   map.forEach(({ provider, el, path, slotState, manageConversationSelect, fallbackText }) => {
     if (!el) return;
-    applyAvatar(el, null, slotState, fallbackText);
-    if (path !== undefined && path !== "") {
-      void buildDataUrl(path).then((uri) => {
-        if (uri !== null && uri !== "") applyAvatar(el, uri, slotState, fallbackText);
+    const fallbackPath = getFallbackPath(provider, slotState);
+    const fallbackLabel = slotState === "empty" ? "" : (fallbackText ?? "");
+    const candidates = [path ?? "", fallbackPath].filter(
+      (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
+    );
+
+    applyAvatar(el, null, slotState, fallbackLabel);
+    const tryLoad = (index: number): void => {
+      const candidate = candidates[index];
+      if (candidate === undefined) {
+        return;
+      }
+      void buildDataUrl(candidate).then((uri) => {
+        if (uri !== null && uri !== "") {
+          applyAvatar(el, uri, slotState, fallbackLabel);
+        } else {
+          tryLoad(index + 1);
+        }
       });
+    };
+
+    if (candidates.length > 0) {
+      tryLoad(0);
     }
 
     if (!manageConversationSelect) return;
+
 
     try {
       const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;

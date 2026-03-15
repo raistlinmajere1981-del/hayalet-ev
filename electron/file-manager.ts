@@ -133,15 +133,32 @@ export async function copyToAssets(
   _event: IpcMainInvokeEvent,
   srcPath: string,
   _role: string = "",
-  accountInfo: { email?: string; provider?: string } | null = null
+  accountInfo: { id?: string; email?: string; provider?: string } | null = null
 ): Promise<ResultBase> {
   try {
     if (srcPath.length === 0 || !existsSync(srcPath)) {
       throw new Error(await fileManagerT("sourceFileMissing"));
     }
-    const assetsDir = Paths.getAssetsDir();
-    if (!existsSync(assetsDir)) {
-      await mkdir(assetsDir, { recursive: true });
+    const role = String(_role).trim().toLowerCase();
+    let avatarDir = Paths.getAssetsDir();
+
+    if (role === "user") {
+      avatarDir = Paths.getDataDir();
+    } else if (role === "assistant") {
+      avatarDir = join(Paths.getDataDir(), "shared");
+    } else if (role === "account") {
+      const accountId =
+        typeof accountInfo?.id === "string" ? accountInfo.id.trim() : "";
+      if (accountId !== "") {
+        avatarDir = Paths.getAccountDir(accountId);
+      } else {
+        avatarDir = Paths.getDataDir();
+      }
+    }
+
+
+    if (!existsSync(avatarDir)) {
+      await mkdir(avatarDir, { recursive: true });
     }
     const baseName = basename(srcPath);
     const parts = baseName.split(".");
@@ -162,10 +179,8 @@ export async function copyToAssets(
         .trim()
         .replace(/[^a-z0-9_-]/gi, "");
       candidate = `${safeEmail}-${safeProvider}${ext}`;
-    } else if (_role.length > 0) {
-      const normalizedRole = String(_role)
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]+/g, "");
+    } else if (role.length > 0) {
+      const normalizedRole = role.replace(/[^a-z0-9_-]+/g, "");
       const safeRole = normalizedRole.length > 0 ? normalizedRole : "avatar";
       candidate = `${safeRole}${ext}`;
     } else {
@@ -173,20 +188,20 @@ export async function copyToAssets(
       const stem = stemBase.length > 0 ? stemBase : "avatar";
       candidate = `${stem}${ext}`;
       let counter = 1;
-      while (existsSync(join(assetsDir, candidate))) {
+      while (existsSync(join(avatarDir, candidate))) {
         candidate = `${stem} (${counter})${ext}`;
         counter += 1;
       }
     }
 
-    if (String(_role).toLowerCase() === "user") {
+    if (role === "user") {
       try {
-        const entries = await readdir(assetsDir);
+        const entries = await readdir(avatarDir);
         await Promise.all(
           entries
             .filter((name) => /^user\.[^./\\]+$/i.test(name))
             .map(async (name) => {
-              await rm(join(assetsDir, name), { force: true });
+              await rm(join(avatarDir, name), { force: true });
             })
         );
       } catch (e) {
@@ -200,7 +215,7 @@ export async function copyToAssets(
       }
     }
 
-    const destPath = join(assetsDir, candidate);
+    const destPath = join(avatarDir, candidate);
     await copyFile(srcPath, destPath);
     return { success: true, path: destPath, fileName: candidate };
   } catch (error: unknown) {

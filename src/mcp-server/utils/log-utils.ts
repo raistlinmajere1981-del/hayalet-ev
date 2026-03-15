@@ -4,10 +4,10 @@ import { existsSync } from "fs";
 import { createMcpTranslatorSync } from "./i18n/index.js";
 
 const logUtilsT = createMcpTranslatorSync();
-const MAIN_APP_LOG_DIR_CANDIDATES = ["hayalet-ev", "app"] as const;
-const KNOWN_LOG_APPS = new Set(["app", "hayalet-ev", "mcp-server", "ghost-agent"]);
+const MAIN_APP_LOG_DIR_CANDIDATES = ["app"] as const;
+const KNOWN_LOG_APPS = new Set(["app", "mcp-server", "ghost-agent"]);
 
-export type LogAppId = "app" | "hayalet-ev" | "mcp-server" | "ghost-agent";
+export type LogAppId = "app" | "mcp-server" | "ghost-agent";
 
 interface LogFilters {
   source?: string;
@@ -35,7 +35,7 @@ function getBaseLogsDir(logDir: string): string {
 
 export function getLogDirCandidates(logDir: string, app: LogAppId = "app"): string[] {
   const baseLogsDir = getBaseLogsDir(logDir);
-  const dirNames = app === "app" || app === "hayalet-ev" ? [...MAIN_APP_LOG_DIR_CANDIDATES] : [app];
+  const dirNames = app === "app" ? [...MAIN_APP_LOG_DIR_CANDIDATES] : [app];
 
   return Array.from(new Set(dirNames.map((dirName) => join(baseLogsDir, dirName))));
 }

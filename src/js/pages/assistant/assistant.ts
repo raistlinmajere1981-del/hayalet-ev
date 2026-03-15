@@ -94,8 +94,17 @@ interface ScenarioPanelState {
   suite: ProviderTestSuite | null;
 }
 
-const ASSISTANT_CUSTOM_AVATAR_PATH = "src/assets/assistant.png";
+const ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH = "data/shared/assistant.png";
 const ASSISTANT_DEFAULT_AVATAR_PATH = "src/assets/opencode.png";
+
+function getAssistantCustomAvatarPath(): string {
+  const dataDir = FileManager.getPath("data");
+  if (dataDir === "") {
+    return ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH;
+  }
+  const normalized = dataDir.replace(/[\\/]+$/g, "");
+  return `${normalized}/shared/assistant.png`;
+}
 
 function assistantT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`shell.assistant.${key}`, params);
@@ -659,8 +668,10 @@ export class AssistantController {
 
       const sourceDataUrl = `data:${getMimeTypeFromPath(selectedPath)};base64,${sourceBase64}`;
       const pngBase64 = await this._convertImageToPngBase64(sourceDataUrl);
+      await FileManager.ensureDirs("data");
+      const customAvatarPath = getAssistantCustomAvatarPath();
       const savedPath = await FileManager.writeFileAtomic(
-        ASSISTANT_CUSTOM_AVATAR_PATH,
+        customAvatarPath,
         pngBase64,
         "base64"
       );
@@ -670,12 +681,12 @@ export class AssistantController {
       }
 
       const updated = await this._saveAssistantIdentityPatch({
-        avatarPath: ASSISTANT_CUSTOM_AVATAR_PATH,
+        avatarPath: savedPath,
       });
 
       if (updated) {
         Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarUpdated"), {
-          avatarPath: ASSISTANT_CUSTOM_AVATAR_PATH,
+          avatarPath: savedPath,
         });
       }
     } catch (error) {
@@ -732,9 +743,10 @@ export class AssistantController {
     }
 
     const preferredAvatarPath = avatarPath ?? "";
+    const customAvatarPath = getAssistantCustomAvatarPath();
     const candidates = [
       preferredAvatarPath !== ASSISTANT_DEFAULT_AVATAR_PATH ? preferredAvatarPath : "",
-      ASSISTANT_CUSTOM_AVATAR_PATH,
+      customAvatarPath,
       preferredAvatarPath,
       ASSISTANT_DEFAULT_AVATAR_PATH,
     ];

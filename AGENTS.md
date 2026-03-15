@@ -57,18 +57,18 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 ### Zorunlu Onay Formatı
 
 > ⚠️ Onay formatı sunulmadan önce MCP bağımsız `npm run mode:status` çağrılır ve `npm run whereami` ile cross-check edilir.
-> ⚠️ `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken yapılır, bu kontrolde komut çalıştırılmaz, sadece görevi verenin AI olup olmadığı kontrol edilir.
+> ⚠️ `whoareyou` sınıflandırması sadece mod `app` iken yapılır, bu kontrolde komut çalıştırılmaz, sadece görevi verenin AI olup olmadığı kontrol edilir.
 > ⚠️ Bütün işlemlerde süreç başladığı noktaya dönmekle sonuçlanır, mode geçişleri ve modalara özel süreçler planlanır.
 
 ```
 [DEĞİŞİKLİK ONAYI]
 🖥️ Mod: <`npm run mode:status` sonucuna göre>
-         `hayalet-ev`   → "Hayalet-ev (Aktif)"
+         `app`          → "App (Aktif)"
          `ghost-agent`  → "Ghost Agent (Aktif)"
          `terminal`     → "Terminal (Standart)"
          `transitioning`→ "Geçiş (Bekle)"
          `conflict`     → "ÇAKIŞMA (Durdur)"
-🤖 Muhatap: <mod `hayalet-ev` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
+🤖 Muhatap: <mod `app` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
          `kullanici`    → "Kullanıcı"
          `ai`           → "AI"
 🔍 Hata: [tek cümle — ne yanlış]
@@ -86,11 +86,11 @@ Devam etmem için "evet" yaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
-> **Kural:** Mod `hayalet-ev` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
+> **Kural:** Mod `app` iken aşağıdaki gören mesajında aşağıdaki ibarelerden biri varsa muhatap `AI` seçilir:
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
 > - Karşı taraf mesajında kendini açıkça AI olarak tanıttıysa
 > **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
-> **Kural:** Muhatap `AI` ve mod `hayalet-ev` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir.
+> **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir.
 > **Kural:** `++cmd:AsistanAISend()` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
 > **Kural:** Muhatap sınıflandırması ve AI'ye özel davranışlar için canonical akış: `workflow:ai-counterparty`.
 
@@ -102,7 +102,7 @@ Devam etmem için "evet" yaz.
 1. hev_mcp_health()                → MCP çalışıyor mu? Versiyon ve tool sayısı
 2. npm run mode:status             → Wrapper control-plane durumunu al (ZORUNLU)
 3. npm run whereami                → Mod + çakışma tespiti (fallback / cross-check)
-4. whoareyou kontrolü              → SADECE mod `hayalet-ev` ise muhatap sınıflandır (`kullanici` | `ai`)
+4. whoareyou kontrolü              → SADECE mod `app` ise muhatap sınıflandır (`kullanici` | `ai`)
 5. hev_list_tools()                → Kategorize edilmiş güncel tool listesi
 6. hev_suggest_tool(intent)        → Amaca göre tool önerisi (lazy discovery)
 7. hev_fs_read({ file_path: ".rovo/_metadata/CHARACTER.md" }) → Karakter profilini yükle, Aktif Profil bölümündeki özelliklere göre davran
@@ -177,37 +177,37 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   2. Değişiklikler terminal modda direkt uygulanır
   3. Plan/onay formatı korunur ve syntax doğrulama zorunludur
 
-- `workflow:hayalet-ev-mode`:
-  1. `npm run mode:status` sonucu `hayalet-ev` ise değişiklik tipi değerlendirilir
-  2. CSS / AGENTS.md / ghost-agent / mcp-server değişikliklerinde hayalet-ev içinde standart süreç (plan,onay,işlem) uygulanır
-  3. Bu grupta agent geçiş tetiklemez; işlem hayalet-ev modunda tamamlanır
+- `workflow:app-mode`:
+  1. `npm run mode:status` sonucu `app` ise değişiklik tipi değerlendirilir
+  2. CSS / AGENTS.md / ghost-agent / mcp-server değişikliklerinde app içinde standart süreç (plan,onay,işlem) uygulanır
+  3. Bu grupta agent geçiş tetiklemez; işlem app modunda tamamlanır
 
 - `workflow:ghost-agent-mode`:
   1. Uygulama kaynak kodu / mantık değişikliği gerekiyorsa `npm run mode:switch -- ghost-agent` ile geçiş yapılır
-  2. İşlem tamamlanınca `npm run mode:switch -- hayalet-ev` ile geri dönüş yapılır
+  2. İşlem tamamlanınca `npm run mode:switch -- app` ile geri dönüş yapılır
   3. Agent başladığı noktaya döner ve rapor verir
 
 - `workflow:transition-control`:
   1. Agent geçişlerde Electron click/xdotool kullanmaz; yalnızca `mode:*` komutlarını kullanır
-  2. Hedef moda geçiş için `npm run mode:switch -- <terminal|hayalet-ev|ghost-agent>`
+  2. Hedef moda geçiş için `npm run mode:switch -- <terminal|app|ghost-agent>`
   3. Buton semantiği gerektiğinde `npm run mode:trigger -- <main-close|main-to-ghost|ghost-close|ghost-return-main>`
   4. Geçiş doğrulaması için `npm run mode:wait -- <mode>` ve `npm run whereami` cross-check yapılır
 
 - `workflow:ai-counterparty`:
-  1. `whoareyou` sınıflandırması sadece mod `hayalet-ev` iken yapılır
+  1. `whoareyou` sınıflandırması sadece mod `app` iken yapılır
   2. Görev öncesi session'da relay aktif mesajı/sinyali varsa muhatap `AI` seçilir
   3. Relay sinyali yoksa ve karşı taraf kendini AI olarak tanıttıysa muhatap `AI` seçilir
   4. Bu iki koşul da yoksa varsayılan muhatap `Kullanıcı` seçilir
-  5. Muhatap `AI` ve mod `hayalet-ev` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir
+  5. Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir
 
 ### 🌐 Çalışma Modu Tespiti (Her İşlem Öncesi ZORUNLU)
 
-Agent mod kararını `workflow:terminal-mode`, `workflow:hayalet-ev-mode` ve `workflow:ghost-agent-mode` akışlarına göre verir:
+Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:ghost-agent-mode` akışlarına göre verir:
 
 | Durum                                                             | Mod Sonucu      | Hangi Workflow?             |
 | ----------------------------------------------------------------- | --------------- | --------------------------- |
 | ❌ Hayalet-ev kapalı                                              | **terminal**    | `workflow:terminal-mode`    |
-| ✅ Bağlı + CSS / AGENTS.md / ghost-agent / mcp-server değişikliği | **hayalet-ev**  | `workflow:hayalet-ev-mode`  |
+| ✅ Bağlı + CSS / AGENTS.md / ghost-agent / mcp-server değişikliği | **app**         | `workflow:app-mode`         |
 | ✅ Bağlı + uygulama kaynak kodu / mantık değişikliği              | **ghost-agent** | `workflow:ghost-agent-mode` |
 
 **Kural:** `npm run mode:status` her işlem öncesi çağrılır — aynı session içinde bile.
@@ -275,7 +275,7 @@ Memory akışı tamamen MCP üzerinden yürür.
 | **Proje**      | Hayalet-ev (Ghost House)                         |
 | **Stack**      | Electron + TypeScript (strict) + Vite            |
 | **Database**   | SQLite (per-account, `better-sqlite3`, WAL mode) |
-| **MCP Server** | hayalet-ev MCP (`hev_*` prefix)                  |
+| **MCP Server** | app MCP (`hev_*` prefix)                         |
 | **Validation** | 3-Layer: Prettier → jscodeshift → Babel AST      |
 
 > Detaylı mimari bilgi: `.rovo/03-ARCHITECTURE.md`
@@ -328,8 +328,8 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 
 ### Mod Tanımları
 
-- `terminal`: Hayalet-ev **kapalı** — wrapper/app süreçleri yok veya durdurulmuş
-- `hayalet-ev`: Ana uygulama **aktif** — normal çalışma ve restart gerektirmeyen düzenlemeler
+- `terminal`: App **kapalı** — wrapper/app süreçleri yok veya durdurulmuş
+- `app`: Ana uygulama **aktif** — normal çalışma ve restart gerektirmeyen düzenlemeler
 - `ghost-agent`: Ghost Agent **aktif** — uygulama mantığı / kaynak kodu odaklı çalışma
 - `soft`: Runtime control içinde kullanılan hedef durum (`desiredMode=soft`), çalışma modu çıktısı değildir
 
@@ -345,9 +345,9 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 ### Wrapper Control Plane Komutları
 
 - `npm run mode:status` → wrapper/runtime + process probe birleşik durumunu döndürür
-- `npm run mode:switch -- <terminal|hayalet-ev|ghost-agent>` → hedef moda güvenli geçiş başlatır
+- `npm run mode:switch -- <terminal|app|ghost-agent>` → hedef moda güvenli geçiş başlatır
 - `npm run mode:trigger -- <main-close|main-to-ghost|ghost-close|ghost-return-main>` → buton semantiğine birebir geçiş tetikler
-- `npm run mode:wait -- <terminal|hayalet-ev|ghost-agent>` → geçiş tamamlanana kadar bekler
+- `npm run mode:wait -- <terminal|app|ghost-agent>` → geçiş tamamlanana kadar bekler
 - `npm run whereami` → cross-check/fallback durum doğrulaması
 
 ### Action Semantiği (Buton Eşlemesi)
@@ -355,7 +355,7 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 - `main-close` → Hayalet-ev kapat butonu: runtime `terminal/idle`, ana app kapanır, wrapper sonlanır
 - `main-to-ghost` → Asistan Ghost Agent butonu: runtime `ghost-agent/preparing-handoff`, ana app kapanır, wrapper ghost başlatır
 - `ghost-close` → Ghost Agent kapat butonu: runtime `terminal/idle`, ghost kapanır, wrapper sonlanır
-- `ghost-return-main` → Ghost Agent "Hayalet-ev'e Geç" butonu: runtime `soft/idle`, ghost kapanır, wrapper hayalet-ev'i Asistan başlangıcıyla açar
+- `ghost-return-main` → Ghost Agent "App'e Geç" butonu: runtime `soft/idle`, ghost kapanır, wrapper app'i Asistan başlangıcıyla açar
 
 ### Geçiş Kuralları
 
@@ -374,7 +374,7 @@ AI0 Asistan webview içinde OpenCode MCP panel toggle testleri için:
 - Ön kontrol: `hev_check_electron_connection`
 - Otomatik toggle cycle: `hev_toggle_mcp_panel_servers`
   - `provider`: `auto` (önerilen), `opencode`
-  - `servers`: örn. `['context7','websearch','hayalet-ev']`
+  - `servers`: örn. `['context7','websearch','app']`
   - `settleMs`: toggle sonrası bekleme (ms)
   - `cycles`: OFF→ON tekrar sayısı
 
@@ -408,9 +408,9 @@ Yeni standart klasör yapısı:
 
 ### Visibility Kuralı
 
-- `visibility` sadece **hayalet-ev** loglarında kullanılır.
+- `visibility` sadece **app** loglarında kullanılır.
 - `mcp-server` ve `ghost-agent` loglarında `visibility` beklenmez.
-- Hayalet-ev semantiği korunur:
+- App semantiği korunur:
   - Toast: `L1`
   - Log View: `L1-L2`
   - Canlı Log: `L1-L2-L3`
@@ -419,11 +419,11 @@ Yeni standart klasör yapısı:
 
 App bazlı log okuma/listeme/özet için aşağıdaki tool'larda `app` parametresi kullanılabilir:
 
-- `hev_read_electron_logs({ app: "hayalet-ev"|"mcp-server"|"ghost-agent", ... })`
-- `hev_list_log_sessions({ app: "hayalet-ev"|"mcp-server"|"ghost-agent", ... })`
-- `hev_get_session_summary({ app: "hayalet-ev"|"mcp-server"|"ghost-agent", ... })`
+- `hev_read_electron_logs({ app: "app"|"mcp-server"|"ghost-agent", ... })`
+- `hev_list_log_sessions({ app: "app"|"mcp-server"|"ghost-agent", ... })`
+- `hev_get_session_summary({ app: "app"|"mcp-server"|"ghost-agent", ... })`
 
-`app` verilmezse varsayılan `hayalet-ev` kabul edilir.
+`app` verilmezse varsayılan `app` kabul edilir.
 
 ### Ghost-Agent Renderer Log Akışı
 

@@ -7,10 +7,7 @@ import { createMcpTranslatorSync } from "../../utils/i18n/index.js";
 import { PROJECT_ROOT } from "../../utils/project-root.js";
 
 const MCP_LOG_DIR = join(PROJECT_ROOT, "logs", "mcp-server");
-const APP_LOG_DIR_CANDIDATES = [
-  join(PROJECT_ROOT, "logs", "hayalet-ev"),
-  join(PROJECT_ROOT, "logs", "app"),
-];
+const APP_LOG_DIR_CANDIDATES = [join(PROJECT_ROOT, "logs", "app")];
 
 interface MCPLogEntry {
   timestamp: string;

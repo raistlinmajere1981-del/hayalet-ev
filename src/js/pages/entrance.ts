@@ -142,7 +142,6 @@ export class EntranceHallController {
           });
         }
       });
-
     } catch (error) {
       Logger.error(
         LogCategory.ENTRANCE,
@@ -215,12 +214,36 @@ export class EntranceHallController {
       return;
     }
 
-    const candidates =
-      userType === "user" ? ["src/assets/user.png", "src/assets/default.png"] : [avatarPath ?? ""];
+    const isUser = userType === "user";
+    const isUs1 = userType === "us1";
+    const isSlotEmpty =
+      !isUser &&
+      (isUs1 ? AppState.hasUs1Identity() === false : AppState.getAccountForSlot(userType) === null);
+
+    if (isSlotEmpty) {
+      avatarElement.innerHTML = "";
+      avatarElement.style.removeProperty("--avatar-image");
+      return;
+    }
+
+    const normalizedPath = (avatarPath ?? "").trim();
+    const fallbackCandidates: string[] = [];
+    if (!isUser) {
+      const providerId = isUs1 ? "" : AppState.getProviderIdForSlot(userType) ?? "";
+      if (providerId !== "") {
+        fallbackCandidates.push(`src/assets/${providerId}.png`);
+      }
+      fallbackCandidates.push("src/assets/default.png");
+    }
+
+    const candidates = isUser
+      ? [normalizedPath, "src/assets/user.png", "src/assets/default.png"]
+      : [normalizedPath, ...fallbackCandidates];
 
     const uniqueCandidates = candidates.filter(
       (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
     );
+
 
     try {
       const tryLoadCandidate = async (index: number): Promise<boolean> => {

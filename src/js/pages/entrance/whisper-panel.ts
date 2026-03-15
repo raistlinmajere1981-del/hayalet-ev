@@ -42,7 +42,9 @@ export class WhisperPanel {
     this.listEl = document.getElementById("whisper-pending-list");
     this.overlayEl = document.getElementById("whisper-overlay");
     this.overlayBackdropEl = document.getElementById("whisper-overlay-backdrop");
-    this.overlayCloseBtn = document.getElementById("whisper-overlay-close") as HTMLButtonElement | null;
+    this.overlayCloseBtn = document.getElementById(
+      "whisper-overlay-close"
+    ) as HTMLButtonElement | null;
     this.setupListeners();
     void this.render();
   }
@@ -92,7 +94,6 @@ export class WhisperPanel {
     }
     this.isOverlayOpen = false;
   }
-
 
   getAccountMap(): Map<string, Account> {
     const settings = SettingsManager.getSnapshot();

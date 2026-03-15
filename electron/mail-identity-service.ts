@@ -397,17 +397,44 @@ export class MailIdentityService {
       };
     }
 
-    if (existingIndex >= 0) {
-      accounts[existingIndex] = nextAccount;
-    } else {
-      accounts.push(nextAccount);
-    }
-
-    this.setMailAccounts(settings, accounts);
+    const upsertAccount = (account: MailTransportAccountConfig): void => {
+      if (existingIndex >= 0) {
+        accounts[existingIndex] = account;
+      } else {
+        accounts.push(account);
+      }
+    };
 
     if (options.verifyAfterSave === true) {
-      return await this.verifyMailAccountInternal(settings, nextAccount.id);
+      try {
+        await this.transport.probeAccount(nextAccount);
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+
+      const connectedAccount: MailTransportAccountConfig = {
+        ...nextAccount,
+        connectionState: "connected",
+        lastConnectionError: null,
+      };
+
+      upsertAccount(connectedAccount);
+      this.setMailAccounts(settings, accounts);
+      this.setVerifiedLocalMailAccount(settings, connectedAccount.id);
+      await this.persistSettings(settings);
+      const localMailAccount = this.toLocalMailAccountSummary(accounts, connectedAccount.id);
+      return {
+        success: true,
+        ...(localMailAccount !== undefined ? { localMailAccount } : {}),
+        state: this.buildStateSnapshot(settings, connectedAccount.id),
+      };
     }
+
+    upsertAccount(nextAccount);
+    this.setMailAccounts(settings, accounts);
 
     await this.persistSettings(settings);
     const localMailAccount = this.toLocalMailAccountSummary(accounts, nextAccount.id);

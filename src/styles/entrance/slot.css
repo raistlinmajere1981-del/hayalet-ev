@@ -80,9 +80,23 @@
 
 .slot-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2);
   flex-shrink: 0;
+}
+
+.slot-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: stretch;
+}
+
+.slot-action-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
 }
 
 .slot-checkboxes-column {
@@ -180,15 +194,33 @@
   gap: var(--space-2);
 }
 
-.slot-card--us1 .us1-slot-panel__actions--compact {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-1);
+.us1-slot-panel__header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
-.slot-card--us1 .us1-slot-panel__actions--compact .btn {
-  width: 100%;
+.us1-slot-panel__catch {
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: var(--space-44);
+  overflow: hidden;
+  --ds-choice-min-h: var(--size-choice-pill-sm);
+  --ds-choice-gap: var(--space-1);
+  --ds-choice-pad-x: var(--space-1-5);
+}
+
+.us1-slot-panel__catch span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.us1-slot-panel__toggle-btn {
+  margin-left: auto;
 }
 
 .slot-card--us1 .us1-slot-panel__report--webview {
@@ -208,7 +240,6 @@
   padding: 0;
   pointer-events: none;
 }
-
 
 .control-panel-accordion {
   flex-shrink: 0;

@@ -30,7 +30,7 @@ function getMainAppLogDirCandidates(): string[] {
   let pathCandidates: string[];
 
   try {
-    pathCandidates = [Paths.getMainAppLogsDir(), Paths.getLegacyMainAppLogsDir()];
+    pathCandidates = [Paths.getMainAppLogsDir()];
   } catch {
     pathCandidates = [];
   }

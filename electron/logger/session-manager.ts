@@ -28,7 +28,7 @@ async function loggerT(key: string, params?: Record<string, string | number>): P
 
 function getAppLogDirCandidates(): string[] {
   try {
-    return Array.from(new Set([Paths.getMainAppLogsDir(), Paths.getLegacyMainAppLogsDir()]));
+    return [Paths.getMainAppLogsDir()];
   } catch {
     return [];
   }

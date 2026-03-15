@@ -56,8 +56,9 @@ export class AccountPanel {
 
     document.getElementById("new-account-kind")?.addEventListener("change", () => {
       this._editingAccountId = null;
-      this.renderFormState();
+      this.renderFormMeta();
     });
+
 
     document.getElementById("settings-sync-remote-accounts")?.addEventListener("click", () => {
       void this.handleSyncRemoteAccounts();
@@ -254,22 +255,31 @@ export class AccountPanel {
     }
 
     const electronApi = window.electronAPI;
+    const canRead = typeof electronApi?.readFile === "function";
     const avatarPath = account.avatarPath ?? "";
     const avatarUrl = account.avatar ?? "";
+    const fallbackPath =
+      account.provider && account.provider !== ""
+        ? `src/assets/${account.provider}.png`
+        : "src/assets/default.png";
+    const altText = this.escapeHtml(entranceT("accounts.avatarAlt"));
 
-    if (avatarPath !== "") {
+    const tryLoadFile = async (filePath: string): Promise<boolean> => {
+      if (!canRead) return false;
       try {
-        if (!electronApi) {
-          previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
-          return;
-        }
-        const data = await electronApi.readFile(avatarPath);
-        const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarAlt"))}" class="img-cover">`;
-        return;
+        const data = await electronApi.readFile(filePath);
+        const base64 = String(data ?? "");
+        if (base64 === "") return false;
+        const mimeType = getMimeTypeFromPath(filePath);
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${base64}" alt="${altText}" class="img-cover">`;
+        return true;
       } catch {
-        previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
+        return false;
       }
+    };
+
+    if (avatarPath !== "" && (await tryLoadFile(avatarPath))) {
+      return;
     }
 
     if (
@@ -277,12 +287,17 @@ export class AccountPanel {
       avatarUrl.startsWith("http://") ||
       avatarUrl.startsWith("data:")
     ) {
-      previewEl.innerHTML = `<img src="${this.escapeHtml(avatarUrl)}" alt="${this.escapeHtml(entranceT("accounts.avatarAlt"))}" class="img-cover">`;
+      previewEl.innerHTML = `<img src="${this.escapeHtml(avatarUrl)}" alt="${altText}" class="img-cover">`;
+      return;
+    }
+
+    if (fallbackPath !== "" && (await tryLoadFile(fallbackPath))) {
       return;
     }
 
     previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
   }
+
 
   async renderNewAccountAvatarPreview(): Promise<void> {
     const previewEl = document.getElementById("new-account-avatar-preview");
@@ -291,26 +306,32 @@ export class AccountPanel {
     }
 
     const electronApi = window.electronAPI;
+    const canRead = typeof electronApi?.readFile === "function";
     const avatarPath = this._newAccountAvatarPath;
+    const altText = this.escapeHtml(entranceT("accounts.avatarPreviewAlt"));
 
-    if (avatarPath !== null && avatarPath !== "") {
+    const tryLoadFile = async (filePath: string): Promise<boolean> => {
+      if (!canRead) return false;
       try {
-        if (!electronApi) {
-          previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
-          return;
-        }
-        const data = await electronApi.readFile(avatarPath);
-        const mimeType = getMimeTypeFromPath(avatarPath);
-        previewEl.innerHTML = `<img src="data:${mimeType};base64,${String(data)}" alt="${this.escapeHtml(entranceT("accounts.avatarPreviewAlt"))}" class="img-cover">`;
-        return;
+        const data = await electronApi.readFile(filePath);
+        const base64 = String(data ?? "");
+        if (base64 === "") return false;
+        const mimeType = getMimeTypeFromPath(filePath);
+        previewEl.innerHTML = `<img src="data:${mimeType};base64,${base64}" alt="${altText}" class="img-cover">`;
+        return true;
       } catch {
-        previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
-        return;
+        return false;
       }
+    };
+
+    if (avatarPath !== null && avatarPath !== "" && (await tryLoadFile(avatarPath))) {
+      return;
     }
 
     previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
   }
+
+
 
   startEdit(account: Account): void {
     if (this.getAccountKind(account) === "remote-email") {
@@ -358,15 +379,27 @@ export class AccountPanel {
     if (nicknameEl) {
       nicknameEl.value = "";
     }
-
     this.renderFormState();
-    void this.renderNewAccountAvatarPreview();
+    this.clearNewAccountAvatarPreview();
     this.render();
+  }
+
+
+  private clearNewAccountAvatarPreview(): void {
+    this._newAccountAvatarPath = null;
+    const previewEl = document.getElementById("new-account-avatar-preview");
+    if (previewEl) {
+      previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
+    }
   }
 
   private renderFormMeta(): void {
     this.renderFormState();
-    void this.renderNewAccountAvatarPreview();
+    if (this._newAccountAvatarPath === null || this._newAccountAvatarPath === "") {
+      this.clearNewAccountAvatarPreview();
+    } else {
+      void this.renderNewAccountAvatarPreview();
+    }
   }
 
   private renderFormState(): void {
@@ -582,7 +615,8 @@ export class AccountPanel {
 
     const email = emailEl?.value.trim() ?? "";
     const provider = providerEl?.value ?? "";
-    const nickname = nicknameEl?.value.trim() ?? provider;
+    const nicknameInput = nicknameEl?.value.trim() ?? "";
+    const nickname = nicknameInput !== "" ? nicknameInput : provider;
 
     if (email === "" || provider === "") {
       this.showFeedback(entranceT("accounts.feedback.emailProviderRequired"), "error");
@@ -618,8 +652,9 @@ export class AccountPanel {
         });
         finalAvatarPath = copied?.path ?? "";
       } else {
-        finalAvatarPath = `src/assets/${provider}.png`;
+        finalAvatarPath = "";
       }
+
 
       const newAccount: Account = {
         id: accountId,

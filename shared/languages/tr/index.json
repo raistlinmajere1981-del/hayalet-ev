@@ -5076,9 +5076,8 @@
           "error": "Mail hesabı doğrulaması başarısız oldu."
         },
         "actions": {
-          "save": "Kaydet",
-          "verify": "Kaydet ve Doğrula",
-          "delete": "Sil"
+          "connect": "Bağlan",
+          "delete": "Hesabı Sil"
         },
         "verifiedLabel": "Doğrulanmış kullanıcı emaili",
         "verifiedEmpty": "Henüz doğrulanmış kullanıcı emaili yok.",
@@ -5087,8 +5086,7 @@
         "gmailEmailLabel": "Gmail email",
         "gmailEmailPlaceholder": "ornek@gmail.com",
         "gmailPasswordLabel": "Gmail uygulama şifresi",
-        "gmailPasswordPlaceholder": "16 haneli uygulama şifresi",
-        "gmailHelperStep2": "Bağla ve doğrula"
+        "gmailPasswordPlaceholder": "16 haneli uygulama şifresi"
       },
       "remote": {
         "sectionTitle": "Remote user handshake",

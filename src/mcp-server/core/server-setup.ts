@@ -10,7 +10,7 @@ import { getAllDefinitions, getToolCount } from "./registry.js";
 import { registerAllTools } from "./handlers/index.js";
 import { handleToolCall } from "./handlers.js";
 
-const LOG_DIR = join(PROJECT_ROOT, "logs", "hayalet-ev");
+const LOG_DIR = join(PROJECT_ROOT, "logs", "app");
 
 const MCP_VERSION = "3.0.0";
 const startupTranslator = createMcpTranslatorSync();

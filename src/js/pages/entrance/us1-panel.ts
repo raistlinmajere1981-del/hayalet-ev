@@ -61,9 +61,6 @@ export class Us1Panel {
       this.renderMailAccountFormState();
     });
 
-    document.getElementById("us1-mail-save-btn")?.addEventListener("click", () => {
-      void this.handleSaveMailAccount(false);
-    });
 
     document.getElementById("us1-mail-verify-btn")?.addEventListener("click", () => {
       void this.handleSaveMailAccount(true);
@@ -80,9 +77,6 @@ export class Us1Panel {
       }
     });
 
-    document.getElementById("us1-mail-gmail-connect-easy")?.addEventListener("click", () => {
-      void this.handleGmailConnectEasy();
-    });
 
     const slotUserSelect = document.getElementById(
       "us1-identity-select"
@@ -99,12 +93,12 @@ export class Us1Panel {
       });
     });
 
-    document.getElementById("us1-connect-btn")?.addEventListener("click", () => {
-      void this.handleConnect();
-    });
-
-    document.getElementById("us1-disconnect-btn")?.addEventListener("click", () => {
-      void this.handleDisconnect();
+    document.getElementById("us1-toggle-btn")?.addEventListener("click", () => {
+      if (AppState.isUs1Connected() === true) {
+        void this.handleDisconnect();
+      } else {
+        void this.handleConnect();
+      }
     });
 
     document.getElementById("us1-sync-messages-btn")?.addEventListener("click", () => {
@@ -260,16 +254,6 @@ export class Us1Panel {
     this.showFeedback(errorMessage, "error");
   }
 
-  private async handleGmailConnectEasy(): Promise<void> {
-    const providerSelect = document.getElementById(
-      "us1-mail-provider-select"
-    ) as HTMLSelectElement | null;
-    if (providerSelect) {
-      providerSelect.value = "gmail";
-    }
-    this.renderMailAccountFormState();
-    await this.handleSaveMailAccount(true);
-  }
 
   private async handleSlotSelectionChange(selectedAccountId: string | null): Promise<void> {
     const settings = this.settingsManager.getSnapshot();
@@ -531,19 +515,24 @@ export class Us1Panel {
       catchCheck.checked = settings.us1Slot?.catchCommands === true;
     }
 
-    const connectBtn = document.getElementById("us1-connect-btn") as HTMLButtonElement | null;
-    if (connectBtn) {
-      connectBtn.disabled = selectedBinding === null || connected;
-    }
-
-    const disconnectBtn = document.getElementById("us1-disconnect-btn") as HTMLButtonElement | null;
-    if (disconnectBtn) {
-      disconnectBtn.disabled = connected === false;
-    }
-
-    const syncBtn = document.getElementById("us1-sync-messages-btn") as HTMLButtonElement | null;
-    if (syncBtn) {
-      syncBtn.disabled = connected === false;
+    const toggleBtn = document.getElementById("us1-toggle-btn") as HTMLButtonElement | null;
+    if (toggleBtn) {
+      if (selectedBinding === null) {
+        toggleBtn.textContent = entranceT("slot.selectAccount");
+        toggleBtn.disabled = true;
+        toggleBtn.classList.remove("btn-secondary");
+        toggleBtn.classList.add("btn-primary");
+      } else if (connected) {
+        toggleBtn.textContent = entranceT("slot.disconnect");
+        toggleBtn.disabled = false;
+        toggleBtn.classList.remove("btn-primary");
+        toggleBtn.classList.add("btn-secondary");
+      } else {
+        toggleBtn.textContent = entranceT("slot.connect");
+        toggleBtn.disabled = false;
+        toggleBtn.classList.remove("btn-secondary");
+        toggleBtn.classList.add("btn-primary");
+      }
     }
 
     const statusText = document.getElementById("us1-status-text");
