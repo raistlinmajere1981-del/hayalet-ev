@@ -187,6 +187,24 @@ test("normalize settings backfills remote users from stored remote email account
   assert.equal(normalized.accounts[0]?.remoteEmail?.pendingIncoming, true);
 });
 
+test("normalize settings preserves rejected remote handshake state", () => {
+  const normalized = normalizeSettings({
+    remoteUsers: [
+      {
+        remoteUserId: "remote@example.com",
+        email: "remote@example.com",
+        nickname: "Remote User",
+        handshakeState: "rejected",
+        profileRevision: 4,
+        linkedMailAccountId: "mail_local_example_com",
+      },
+    ],
+  });
+
+  assert.equal(normalized.remoteUsers?.[0]?.handshakeState, "rejected");
+  assert.equal(normalized.accounts[0]?.remoteEmail?.handshakeState, "rejected");
+});
+
 test("remote email account id helpers round-trip normalized email values", () => {
   const accountId = buildRemoteEmailAccountId("Remote@Example.com");
 

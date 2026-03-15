@@ -91,6 +91,7 @@ function normalizeRemoteUsers(raw: unknown): RemoteUserIdentity[] | undefined {
       handshakeState === "invite_sent" ||
       handshakeState === "handshake_pending" ||
       handshakeState === "active" ||
+      handshakeState === "rejected" ||
       handshakeState === "error"
         ? handshakeState
         : handshakeState === "ready"
@@ -185,6 +186,7 @@ function normalizeRemoteEmailAccountState(raw: unknown): Account["remoteEmail"] 
       handshakeState === "invite_sent" ||
       handshakeState === "handshake_pending" ||
       handshakeState === "active" ||
+      handshakeState === "rejected" ||
       handshakeState === "error"
         ? handshakeState
         : "handshake_pending",
@@ -399,7 +401,7 @@ function buildRemoteAccountFromIdentity(
       ? remoteUser.avatarPath.trim()
       : typeof existingAccount?.avatarPath === "string" && existingAccount.avatarPath.trim() !== ""
         ? existingAccount.avatarPath.trim()
-        : "src/assets/default.png";
+        : "";
   const lastSyncAt =
     typeof remoteUser.lastSyncAt === "number" && Number.isFinite(remoteUser.lastSyncAt)
       ? Math.trunc(remoteUser.lastSyncAt)

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
+import { closeDatabaseForAccount } from "../../electron/database/sqlite-manager.ts";
 import { MailIdentityService } from "../../electron/mail-identity-service.ts";
 import type {
   FetchInboxResult,
@@ -8,7 +11,9 @@ import type {
   ParsedTransportMessage,
   SendMailRequest,
 } from "../../electron/mail-transport/index.ts";
+import { initPaths, Paths } from "../../electron/paths.ts";
 import { createDefaultSettings } from "../../src/types/settings-defaults.ts";
+import { buildRemoteEmailAccountId } from "../../src/types/archive.ts";
 import type { AppSettings, RemoteUserIdentity } from "../../src/types/settings.ts";
 import { normalizeSettings } from "../../src/js/modules/settings/settings-schema.ts";
 
@@ -18,7 +23,9 @@ const PAYLOAD_START = "--- HAYALET_EV_US1_PAYLOAD ---";
 const PAYLOAD_END = "--- /HAYALET_EV_US1_PAYLOAD ---";
 const FIXED_NOW = 1700000000000;
 
-type HandshakeMessageType = "invite" | "accept" | "profile";
+type HandshakeMessageType = "invite" | "accept" | "reject" | "profile";
+
+initPaths(join(process.cwd(), "electron"));
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -41,7 +48,11 @@ function createSettingsStore(initial?: AppSettings) {
   };
 }
 
-function createParsedMessage(text: string, transportMessageId: string): ParsedTransportMessage {
+function createParsedMessage(
+  text: string,
+  transportMessageId: string,
+  attachments: MailTransportParsedAttachment[] = []
+): ParsedTransportMessage {
   return {
     transportMessageId,
     inReplyTo: null,
@@ -59,7 +70,7 @@ function createParsedMessage(text: string, transportMessageId: string): ParsedTr
     cc: [],
     bcc: [],
     replyTo: [],
-    attachments: [] satisfies MailTransportParsedAttachment[],
+    attachments,
     receivedAt: FIXED_NOW,
     rawSize: text.length,
   };
@@ -71,6 +82,8 @@ function createHandshakePayload(options: {
   nickname?: string;
   profileRevision?: number;
   inviteId?: string;
+  avatar?: string;
+  avatarAttachmentName?: string | null;
 }): string {
   return [
     "Hayalet Ev US1 handshake payload.",
@@ -87,7 +100,10 @@ function createHandshakePayload(options: {
           remoteUserId: options.email,
           email: options.email,
           nickname: options.nickname ?? options.email,
-          avatar: "",
+          avatar: options.avatar ?? "",
+          ...(options.avatarAttachmentName !== undefined
+            ? { avatarAttachmentName: options.avatarAttachmentName }
+            : {}),
           profileRevision: options.profileRevision ?? FIXED_NOW,
         },
       },
@@ -106,12 +122,17 @@ function createFetchedHandshakeResult(options: {
   email: string;
   nickname?: string;
   inviteId?: string;
+  avatar?: string;
+  avatarAttachmentName?: string | null;
+  attachments?: MailTransportParsedAttachment[];
 }): FetchInboxResult {
   const text = createHandshakePayload({
     messageType: options.messageType,
     email: options.email,
     nickname: options.nickname,
     inviteId: options.inviteId,
+    avatar: options.avatar,
+    avatarAttachmentName: options.avatarAttachmentName,
   });
 
   return {
@@ -137,10 +158,25 @@ function createFetchedHandshakeResult(options: {
         remoteUserId: options.email,
         localSessionId: null,
         threadMessageId: options.transportMessageId,
-        parsed: createParsedMessage(text, options.transportMessageId),
+        parsed: createParsedMessage(text, options.transportMessageId, options.attachments ?? []),
       },
     ],
   };
+}
+
+function extractHandshakeEnvelope(message: SendMailRequest): Record<string, unknown> {
+  const text = typeof message.text === "string" ? message.text : "";
+  const match = text.match(
+    /--- HAYALET_EV_US1_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_PAYLOAD ---/
+  );
+  assert.ok(match?.[1]);
+  return JSON.parse(match[1]) as Record<string, unknown>;
+}
+
+function cleanupRemoteAccount(remoteUserId: string): void {
+  const accountId = buildRemoteEmailAccountId(remoteUserId);
+  closeDatabaseForAccount(accountId);
+  rmSync(Paths.getAccountDir(accountId), { recursive: true, force: true });
 }
 
 function createTransportStub() {
@@ -296,61 +332,165 @@ test("updating a verified local mail account keeps the old verified identity unt
 
 test("inviteRemoteUser creates an invite_sent remote user bound to the selected mail account", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
+  const avatarPath = join(Paths.getDataDir(), "mail-identity-local-avatar.png");
+  rmSync(avatarPath, { force: true });
+  writeFileSync(avatarPath, "fake-image");
 
-  const inviteResult = await service.inviteRemoteUser({
-    mailAccountId: accountId,
-    email: "remote@example.com",
-    nickname: "Remote Ghost",
-  });
+  try {
+    await store.saveSettings({
+      ...store.snapshot(),
+      user: {
+        ...(store.snapshot().user ?? {}),
+        avatarPath,
+      },
+    });
 
-  assert.equal(inviteResult.success, true);
-  assert.equal(inviteResult.remoteUser?.handshakeState, "invite_sent");
-  assert.equal(inviteResult.remoteUser?.linkedMailAccountId, accountId);
-  assert.equal(transportStub.sentMessages.length, 1);
-  assert.equal(
-    transportStub.sentMessages[0]?.headers?.["X-Hayalet-Ev-Message-Type"],
-    "invite"
-  );
+    const inviteResult = await service.inviteRemoteUser({
+      mailAccountId: accountId,
+      email: "remote@example.com",
+      nickname: "Remote Ghost",
+    });
 
-  const storedRemoteUser = store.snapshot().remoteUsers?.[0];
-  assert.equal(storedRemoteUser?.remoteUserId, "remote@example.com");
-  assert.equal(storedRemoteUser?.handshakeState, "invite_sent");
+    assert.equal(inviteResult.success, true);
+    assert.equal(inviteResult.remoteUser?.handshakeState, "invite_sent");
+    assert.equal(inviteResult.remoteUser?.linkedMailAccountId, accountId);
+    assert.equal(transportStub.sentMessages.length, 1);
+    assert.equal(
+      transportStub.sentMessages[0]?.headers?.["X-Hayalet-Ev-Message-Type"],
+      "invite"
+    );
+    assert.equal(transportStub.sentMessages[0]?.attachments?.length, 1);
+    assert.equal(transportStub.sentMessages[0]?.attachments?.[0]?.path, avatarPath);
+
+    const envelope = extractHandshakeEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    assert.equal(
+      (envelope["profile"] as Record<string, unknown>)?.["avatarAttachmentName"],
+      "us1-avatar.png"
+    );
+
+    const storedRemoteUser = store.snapshot().remoteUsers?.[0];
+    assert.equal(storedRemoteUser?.remoteUserId, "remote@example.com");
+    assert.equal(storedRemoteUser?.handshakeState, "invite_sent");
+  } finally {
+    rmSync(avatarPath, { force: true });
+    cleanupRemoteAccount("remote@example.com");
+  }
 });
 
 test("syncRemoteUsers promotes incoming invite to handshake_pending and incoming accept to active", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
+  const avatarContent = Buffer.from("remote-avatar");
+  const avatarAttachmentName = "us1-avatar.png";
 
-  transportStub.enqueueFetch(
-    createFetchedHandshakeResult({
-      accountId,
-      transportMessageId: "<incoming-invite@example.test>",
-      messageType: "invite",
-      email: "remote@example.com",
-      nickname: "Remote Ghost",
-    })
-  );
+  try {
+    transportStub.enqueueFetch(
+      createFetchedHandshakeResult({
+        accountId,
+        transportMessageId: "<incoming-invite@example.test>",
+        messageType: "invite",
+        email: "remote@example.com",
+        nickname: "Remote Ghost",
+        avatarAttachmentName,
+        attachments: [
+          {
+            filename: avatarAttachmentName,
+            contentType: "image/png",
+            contentDisposition: "attachment",
+            checksum: "invite-avatar",
+            size: avatarContent.length,
+            contentId: null,
+            inline: false,
+            content: avatarContent,
+          },
+        ],
+      })
+    );
 
-  const inviteSync = await service.syncRemoteUsers({ mailAccountId: accountId, limit: 10 });
-  assert.equal(inviteSync.success, true);
-  assert.equal(inviteSync.fetchedCount, 1);
-  assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "handshake_pending");
+    const inviteSync = await service.syncRemoteUsers({ mailAccountId: accountId, limit: 10 });
+    assert.equal(inviteSync.success, true);
+    assert.equal(inviteSync.fetchedCount, 1);
+    assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "handshake_pending");
+    assert.equal(
+      store.snapshot().remoteUsers?.[0]?.avatar,
+      `data:image/png;base64,${avatarContent.toString("base64")}`
+    );
 
-  transportStub.enqueueFetch(
-    createFetchedHandshakeResult({
-      accountId,
-      transportMessageId: "<incoming-accept@example.test>",
-      messageType: "accept",
-      email: "remote@example.com",
-      nickname: "Remote Ghost",
-    })
-  );
+    transportStub.enqueueFetch(
+      createFetchedHandshakeResult({
+        accountId,
+        transportMessageId: "<incoming-accept@example.test>",
+        messageType: "accept",
+        email: "remote@example.com",
+        nickname: "Remote Ghost",
+        avatarAttachmentName,
+        attachments: [
+          {
+            filename: avatarAttachmentName,
+            contentType: "image/png",
+            contentDisposition: "attachment",
+            checksum: "accept-avatar",
+            size: avatarContent.length,
+            contentId: null,
+            inline: false,
+            content: avatarContent,
+          },
+        ],
+      })
+    );
 
-  const acceptSync = await service.syncRemoteUsers({ mailAccountId: accountId, limit: 10 });
-  assert.equal(acceptSync.success, true);
-  assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "active");
+    const acceptSync = await service.syncRemoteUsers({ mailAccountId: accountId, limit: 10 });
+    assert.equal(acceptSync.success, true);
+    assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "active");
+    assert.equal(existsSync(Paths.getAccountDbPath(buildRemoteEmailAccountId("remote@example.com"))), true);
+    assert.equal(existsSync(store.snapshot().remoteUsers?.[0]?.avatarPath ?? ""), true);
+    assert.equal(
+      store.snapshot().accounts.find((account) => account.id === buildRemoteEmailAccountId("remote@example.com"))?.dbPath,
+      Paths.getAccountDbPath(buildRemoteEmailAccountId("remote@example.com"))
+    );
+  } finally {
+    cleanupRemoteAccount("remote@example.com");
+  }
 });
 
 test("acceptRemoteUser sends an accept message and activates the remote user", async () => {
+  const { service, store, transportStub, accountId } = await createConnectedServiceContext();
+  try {
+    await store.saveSettings({
+      ...store.snapshot(),
+      remoteUsers: [
+        {
+          remoteUserId: "remote@example.com",
+          email: "remote@example.com",
+          nickname: "Remote Ghost",
+          avatar: `data:image/png;base64,${Buffer.from("accept-avatar").toString("base64")}`,
+          avatarPath: "",
+          handshakeState: "handshake_pending",
+          profileRevision: FIXED_NOW,
+          linkedMailAccountId: accountId,
+          inviteMessageId: "<invite@example.test>",
+          threadMessageId: "<invite@example.test>",
+          lastTransportMessageId: "<invite@example.test>",
+          lastError: null,
+        } satisfies RemoteUserIdentity,
+      ],
+    });
+
+    const acceptResult = await service.acceptRemoteUser({ remoteUserId: "remote@example.com" });
+    assert.equal(acceptResult.success, true);
+    assert.equal(acceptResult.remoteUser?.handshakeState, "active");
+    assert.equal(
+      transportStub.sentMessages.at(-1)?.headers?.["X-Hayalet-Ev-Message-Type"],
+      "accept"
+    );
+    assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "active");
+    assert.equal(existsSync(Paths.getAccountDbPath(buildRemoteEmailAccountId("remote@example.com"))), true);
+    assert.equal(existsSync(store.snapshot().remoteUsers?.[0]?.avatarPath ?? ""), true);
+  } finally {
+    cleanupRemoteAccount("remote@example.com");
+  }
+});
+
+test("rejectRemoteUser sends a reject message and removes the pending remote user from receiver settings", async () => {
   const { service, store, transportStub, accountId } = await createConnectedServiceContext();
 
   await store.saveSettings({
@@ -373,14 +513,59 @@ test("acceptRemoteUser sends an accept message and activates the remote user", a
     ],
   });
 
-  const acceptResult = await service.acceptRemoteUser({ remoteUserId: "remote@example.com" });
-  assert.equal(acceptResult.success, true);
-  assert.equal(acceptResult.remoteUser?.handshakeState, "active");
+  const rejectResult = await service.rejectRemoteUser({ remoteUserId: "remote@example.com" });
+  assert.equal(rejectResult.success, true);
   assert.equal(
     transportStub.sentMessages.at(-1)?.headers?.["X-Hayalet-Ev-Message-Type"],
-    "accept"
+    "reject"
   );
-  assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "active");
+  assert.equal(store.snapshot().remoteUsers?.length ?? 0, 0);
+  assert.equal(
+    store.snapshot().accounts.some((account) => account.id === buildRemoteEmailAccountId("remote@example.com")),
+    false
+  );
+});
+
+test("syncRemoteUsers marks invite sender side as rejected when a reject handshake arrives", async () => {
+  const { service, store, transportStub, accountId } = await createConnectedServiceContext();
+
+  await store.saveSettings({
+    ...store.snapshot(),
+    remoteUsers: [
+      {
+        remoteUserId: "remote@example.com",
+        email: "remote@example.com",
+        nickname: "Remote Ghost",
+        avatar: "data:image/png;base64,cmVtb3Rl",
+        avatarPath: "",
+        handshakeState: "invite_sent",
+        profileRevision: FIXED_NOW,
+        linkedMailAccountId: accountId,
+        inviteMessageId: "<invite@example.test>",
+        threadMessageId: "<invite@example.test>",
+        lastTransportMessageId: "<invite@example.test>",
+        lastError: null,
+      } satisfies RemoteUserIdentity,
+    ],
+  });
+
+  transportStub.enqueueFetch(
+    createFetchedHandshakeResult({
+      accountId,
+      transportMessageId: "<incoming-reject@example.test>",
+      messageType: "reject",
+      email: "remote@example.com",
+      nickname: "Remote Ghost",
+    })
+  );
+
+  const syncResult = await service.syncRemoteUsers({ mailAccountId: accountId, limit: 10 });
+  assert.equal(syncResult.success, true);
+  assert.equal(store.snapshot().remoteUsers?.[0]?.handshakeState, "rejected");
+  assert.equal(
+    store.snapshot().accounts.find((account) => account.id === buildRemoteEmailAccountId("remote@example.com"))?.remoteEmail?.handshakeState,
+    "rejected"
+  );
 });
 
 test("deleteMailAccount removes linked remote users and disconnects the US1 slot", async () => {

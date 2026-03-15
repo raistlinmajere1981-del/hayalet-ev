@@ -150,7 +150,7 @@ const appInstanceLabel = basename(Paths.getProjectRoot());
 app.setName(appInstanceLabel);
 app.setPath("userData", join(Paths.getDataDir(), "electron-user-data"));
 
-const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
+const CDP_PORT = process.env["CDP_PORT"] ?? 9223;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow: BrowserWindow | null = null;
@@ -269,30 +269,19 @@ async function syncOpencodeBinarySettingsOnStartup(): Promise<void> {
   }
 }
 
-const gotTheLock = app.requestSingleInstanceLock();
-
-if (!gotTheLock) {
-  void logger.logInternalT(
-    LogCategory.MAIN,
-    LogLevel.INFO,
-    "electron.main.logs.anotherInstanceRunningExiting"
-  );
-  app.quit();
-} else {
-  app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
-    if (mainWindow !== null) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
-      void logger.logInternalT(
-        LogCategory.MAIN,
-        LogLevel.INFO,
-        "electron.main.logs.secondInstanceFocused"
-      );
+app.on("second-instance", (_event, _commandLine, _workingDirectory) => {
+  if (mainWindow !== null) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
     }
-  });
-}
+    mainWindow.focus();
+    void logger.logInternalT(
+      LogCategory.MAIN,
+      LogLevel.INFO,
+      "electron.main.logs.secondInstanceFocused"
+    );
+  }
+});
 
 void app.whenReady().then(async () => {
   try {

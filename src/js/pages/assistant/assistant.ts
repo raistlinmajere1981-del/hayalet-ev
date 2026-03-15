@@ -670,11 +670,7 @@ export class AssistantController {
       const pngBase64 = await this._convertImageToPngBase64(sourceDataUrl);
       await FileManager.ensureDirs("data");
       const customAvatarPath = getAssistantCustomAvatarPath();
-      const savedPath = await FileManager.writeFileAtomic(
-        customAvatarPath,
-        pngBase64,
-        "base64"
-      );
+      const savedPath = await FileManager.writeFileAtomic(customAvatarPath, pngBase64, "base64");
 
       if (savedPath === "") {
         throw new Error(assistantT("errors.avatarSaveFailed"));

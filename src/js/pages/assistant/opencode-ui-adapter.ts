@@ -111,7 +111,7 @@ export class OpenCodeUiAdapter implements AssistantProviderAdapter {
       const result = await electronApi.opencodeServeStart({
         ...(typeof port === "number" ? { port } : {}),
         ...(binaryPath !== undefined ? { binaryPath } : {}),
-        cors: ["http://localhost:5173"],
+        cors: ["http://localhost:5174"],
       });
 
       if (result.success === true) {

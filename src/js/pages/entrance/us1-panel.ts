@@ -61,7 +61,6 @@ export class Us1Panel {
       this.renderMailAccountFormState();
     });
 
-
     document.getElementById("us1-mail-verify-btn")?.addEventListener("click", () => {
       void this.handleSaveMailAccount(true);
     });
@@ -76,7 +75,6 @@ export class Us1Panel {
         void electronApi.openPath("https://myaccount.google.com/apppasswords");
       }
     });
-
 
     const slotUserSelect = document.getElementById(
       "us1-identity-select"
@@ -253,7 +251,6 @@ export class Us1Panel {
     this.addReport(errorMessage, "error");
     this.showFeedback(errorMessage, "error");
   }
-
 
   private async handleSlotSelectionChange(selectedAccountId: string | null): Promise<void> {
     const settings = this.settingsManager.getSnapshot();

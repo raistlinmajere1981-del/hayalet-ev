@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { copyFileSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -626,5 +626,109 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync does not activate unknown remote users from normal conversation mail", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_skip`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const activeRemoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+  const strangerRemoteAccountId = buildRemoteEmailAccountId("stranger@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:7",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        {
+          status: "processed",
+          duplicate: false,
+          accountId,
+          mailbox: "INBOX",
+          uid: 7,
+          threadId: null,
+          transportMessageId: "<incoming-stranger@example.test>",
+          localMessageId: "local-stranger-1",
+          fingerprint: "fingerprint-stranger-1",
+          headersHash: "headers-stranger-1",
+          deliveryState: "received",
+          remoteUserId: "stranger@example.com",
+          localSessionId: null,
+          threadMessageId: "<incoming-stranger@example.test>",
+          parsed: {
+            transportMessageId: "<incoming-stranger@example.test>",
+            inReplyTo: null,
+            references: [],
+            subject: "New stranger thread",
+            text: [
+              "Hello from stranger",
+              "",
+              MESSAGE_PAYLOAD_START,
+              JSON.stringify(
+                {
+                  protocol: MESSAGE_PROTOCOL,
+                  version: 1,
+                  messageType: "conversation",
+                  sentAt: FIXED_NOW + 2,
+                  localSessionId: null,
+                  profile: {
+                    remoteUserId: "stranger@example.com",
+                    email: "stranger@example.com",
+                    nickname: "Stranger",
+                    avatar: "https://example.com/stranger.png",
+                    profileRevision: 9,
+                  },
+                },
+                null,
+                2
+              ),
+              MESSAGE_PAYLOAD_END,
+              "",
+            ].join("\n"),
+            html: null,
+            headersHash: "headers-stranger-1",
+            headerLines: [`X-Hayalet-Ev-Protocol: ${MESSAGE_PROTOCOL}`],
+            from: [{ name: "Stranger", address: "stranger@example.com" }],
+            to: [],
+            cc: [],
+            bcc: [],
+            replyTo: [],
+            attachments: [],
+            receivedAt: FIXED_NOW + 2,
+            rawSize: 128,
+          },
+        },
+      ],
+    });
+
+    const result = await service.syncMessages();
+
+    assert.equal(result.success, true);
+    assert.equal(result.projectedCount, 0);
+    assert.equal(result.skippedCount, 1);
+    assert.equal(
+      store.snapshot().remoteUsers.some((remoteUser) => remoteUser.remoteUserId === "stranger@example.com"),
+      false
+    );
+    assert.equal(existsSync(Paths.getAccountDbPath(activeRemoteAccountId)), false);
+    assert.equal(existsSync(Paths.getAccountDbPath(strangerRemoteAccountId)), false);
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(activeRemoteAccountId);
+    cleanupAccount(strangerRemoteAccountId);
   }
 });

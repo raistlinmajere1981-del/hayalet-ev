@@ -229,7 +229,7 @@ export class EntranceHallController {
     const normalizedPath = (avatarPath ?? "").trim();
     const fallbackCandidates: string[] = [];
     if (!isUser) {
-      const providerId = isUs1 ? "" : AppState.getProviderIdForSlot(userType) ?? "";
+      const providerId = isUs1 ? "" : (AppState.getProviderIdForSlot(userType) ?? "");
       if (providerId !== "") {
         fallbackCandidates.push(`src/assets/${providerId}.png`);
       }
@@ -243,7 +243,6 @@ export class EntranceHallController {
     const uniqueCandidates = candidates.filter(
       (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
     );
-
 
     try {
       const tryLoadCandidate = async (index: number): Promise<boolean> => {

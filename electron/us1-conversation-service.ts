@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, extname } from "node:path";
 
 import type {
   Account,
@@ -46,7 +46,7 @@ const OUTBOUND_ATTACHMENT_ONLY_TEXT = "Attachment-only message.";
 const INBOUND_ATTACHMENT_ONLY_TEXT = "Attachment-only mail message.";
 const SUBJECT_PREFIX = "[Hayalet Ev] US1";
 
-type HandshakeMessageType = "invite" | "accept" | "profile";
+type HandshakeMessageType = "invite" | "accept" | "reject" | "profile";
 
 interface HandshakeEnvelope {
   protocol: typeof HANDSHAKE_PROTOCOL;
@@ -62,6 +62,7 @@ interface MessageProfile {
   email: string;
   nickname: string;
   avatar: string;
+  avatarAttachmentName?: string | null;
   profileRevision: number;
 }
 
@@ -268,6 +269,63 @@ function parseHeaderValue(headerLines: string[], headerName: string): string | n
   return null;
 }
 
+function getAvatarExtension(
+  filename: string | null,
+  contentType: string | null,
+  fallback = ".png"
+): string {
+  const fromFilename = filename !== null ? extname(filename).toLowerCase() : "";
+  if (fromFilename !== "") {
+    return fromFilename;
+  }
+
+  if (contentType === "image/jpeg") return ".jpg";
+  if (contentType === "image/webp") return ".webp";
+  if (contentType === "image/gif") return ".gif";
+  if (contentType === "image/svg+xml") return ".svg";
+  return fallback;
+}
+
+function getAvatarMimeType(filename: string | null, contentType: string | null): string {
+  if (contentType !== null && contentType.trim() !== "") {
+    return contentType;
+  }
+
+  const extension = getAvatarExtension(filename, null, ".png");
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".svg") return "image/svg+xml";
+  return "image/png";
+}
+
+function buildImageDataUrl(contentType: string, content: Buffer): string {
+  return `data:${contentType};base64,${content.toString("base64")}`;
+}
+
+function findHandshakeAvatarAttachment(
+  attachments: MailTransportParsedAttachment[],
+  avatarAttachmentName: string | null
+): MailTransportParsedAttachment | null {
+  if (avatarAttachmentName !== null) {
+    const matched = attachments.find(
+      (attachment) =>
+        normalizeOptionalText(attachment.filename)?.toLowerCase() ===
+        avatarAttachmentName.toLowerCase()
+    );
+    if (matched !== undefined) {
+      return matched;
+    }
+  }
+
+  return (
+    attachments.find((attachment) => {
+      const contentType = normalizeOptionalText(attachment.contentType);
+      return contentType?.startsWith("image/") === true;
+    }) ?? null
+  );
+}
+
 function extractJsonBlock(text: string, startMarker: string, endMarker: string): string | null {
   const escapedStart = startMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escapedEnd = endMarker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -296,6 +354,7 @@ function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
       parsed.version !== HANDSHAKE_VERSION ||
       (parsed.messageType !== "invite" &&
         parsed.messageType !== "accept" &&
+        parsed.messageType !== "reject" &&
         parsed.messageType !== "profile")
     ) {
       return null;
@@ -338,6 +397,7 @@ function normalizeMessageProfile(profile: unknown): MessageProfile | null {
     email,
     nickname: normalizeOptionalText(source["nickname"]) ?? email,
     avatar: normalizeOptionalText(source["avatar"]) ?? "",
+    avatarAttachmentName: normalizeOptionalText(source["avatarAttachmentName"]),
     profileRevision:
       typeof source["profileRevision"] === "number" &&
       Number.isFinite(source["profileRevision"]) &&
@@ -430,7 +490,8 @@ function sortRemoteUsers(remoteUsers: RemoteUserIdentity[]): RemoteUserIdentity[
     active: 0,
     handshake_pending: 1,
     invite_sent: 2,
-    error: 3,
+    rejected: 3,
+    error: 4,
   };
 
   return [...remoteUsers].sort((left, right) => {
@@ -684,7 +745,7 @@ export class Us1ConversationService {
           activeRemoteUser.remoteUserId
         );
         const existingRemoteUser = this.findRemoteUser(settings, remoteUserId);
-        if (remoteUserId === "" || (existingRemoteUser === null && messageEnvelope === null)) {
+        if (remoteUserId === "" || existingRemoteUser?.handshakeState !== "active") {
           skippedCount += 1;
           continue;
         }
@@ -693,22 +754,22 @@ export class Us1ConversationService {
           remoteUserId,
           email: remoteUserId,
           nickname:
-            messageEnvelope?.profile.nickname ?? existingRemoteUser?.nickname ?? remoteUserId,
-          avatar: messageEnvelope?.profile.avatar ?? existingRemoteUser?.avatar ?? "",
-          avatarPath: existingRemoteUser?.avatarPath ?? "",
+            messageEnvelope?.profile.nickname ?? existingRemoteUser.nickname ?? remoteUserId,
+          avatar: messageEnvelope?.profile.avatar ?? existingRemoteUser.avatar ?? "",
+          avatarPath: existingRemoteUser.avatarPath ?? "",
           handshakeState: "active",
           profileRevision:
-            messageEnvelope?.profile.profileRevision ?? existingRemoteUser?.profileRevision ?? 1,
-          linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
-          inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
-          acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
+            messageEnvelope?.profile.profileRevision ?? existingRemoteUser.profileRevision,
+          linkedMailAccountId: existingRemoteUser.linkedMailAccountId,
+          inviteMessageId: existingRemoteUser.inviteMessageId ?? null,
+          acceptMessageId: existingRemoteUser.acceptMessageId ?? null,
           threadMessageId:
             normalizeOptionalText(message.threadMessageId) ??
-            existingRemoteUser?.threadMessageId ??
+            existingRemoteUser.threadMessageId ??
             normalizeOptionalText(message.transportMessageId),
           lastTransportMessageId:
             normalizeOptionalText(message.transportMessageId) ??
-            existingRemoteUser?.lastTransportMessageId ??
+            existingRemoteUser.lastTransportMessageId ??
             null,
           lastSyncAt: this.now(),
           lastError: null,
@@ -954,6 +1015,32 @@ export class Us1ConversationService {
     };
   }
 
+  private resolveHandshakeAvatar(
+    profile: MessageProfile,
+    attachments: MailTransportParsedAttachment[]
+  ): string {
+    if (
+      profile.avatar.startsWith("https://") ||
+      profile.avatar.startsWith("http://") ||
+      profile.avatar.startsWith("data:")
+    ) {
+      return profile.avatar;
+    }
+
+    const attachment = findHandshakeAvatarAttachment(
+      attachments,
+      profile.avatarAttachmentName ?? null
+    );
+    if (attachment?.content === undefined) {
+      return "";
+    }
+
+    return buildImageDataUrl(
+      getAvatarMimeType(attachment.filename, normalizeOptionalText(attachment.contentType)),
+      attachment.content
+    );
+  }
+
   private patchRemoteUserTransportState(
     settings: AppSettings,
     remoteUserId: string,
@@ -1002,8 +1089,7 @@ export class Us1ConversationService {
       candidate.profileRevision >= existingRemoteUser.profileRevision ||
       candidate.handshakeState === "active";
     const nextHandshakeState =
-      existingRemoteUser?.handshakeState === "active" &&
-      candidate.handshakeState === "handshake_pending"
+      existingRemoteUser?.handshakeState === "active" && candidate.handshakeState !== "active"
         ? "active"
         : candidate.handshakeState;
     const resolvedLastSyncAt = candidate.lastSyncAt ?? existingRemoteUser?.lastSyncAt;
@@ -1026,7 +1112,10 @@ export class Us1ConversationService {
       email: candidate.email,
       nickname: resolvedNickname,
       avatar: resolvedAvatar,
-      avatarPath: existingRemoteUser?.avatarPath ?? candidate.avatarPath ?? "",
+      avatarPath:
+        normalizeOptionalText(candidate.avatarPath) ??
+        normalizeOptionalText(existingRemoteUser?.avatarPath) ??
+        "",
       handshakeState: nextHandshakeState,
       profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
@@ -1074,17 +1163,24 @@ export class Us1ConversationService {
       const handshakeState =
         envelope.messageType === "accept"
           ? "active"
-          : existingRemoteUser?.handshakeState === "active"
-            ? "active"
-            : envelope.messageType === "invite"
-              ? "handshake_pending"
-              : (existingRemoteUser?.handshakeState ?? "handshake_pending");
+          : envelope.messageType === "reject"
+            ? existingRemoteUser?.handshakeState === "active"
+              ? "active"
+              : "rejected"
+            : existingRemoteUser?.handshakeState === "active"
+              ? "active"
+              : envelope.messageType === "invite"
+                ? "handshake_pending"
+                : (existingRemoteUser?.handshakeState ?? "handshake_pending");
 
       this.upsertRemoteUser(settings, {
         remoteUserId: envelope.profile.remoteUserId,
         email: envelope.profile.email,
         nickname: envelope.profile.nickname,
-        avatar: envelope.profile.avatar,
+        avatar:
+          envelope.messageType === "reject"
+            ? (existingRemoteUser?.avatar ?? "")
+            : this.resolveHandshakeAvatar(envelope.profile, message.parsed.attachments),
         avatarPath: existingRemoteUser?.avatarPath ?? "",
         handshakeState,
         profileRevision: envelope.profile.profileRevision,

@@ -3,7 +3,7 @@ import { WEBVIEW_TEST_SCENARIO } from "../shared/scenarios.ts";
 export const OPENCODE_DEFAULTS = {
   port: 4096,
   hostname: "127.0.0.1",
-  cors: "http://localhost:5173",
+  cors: "http://localhost:5174",
   command: "opencode",
   portRange: { start: 4096, end: 4110 },
 };

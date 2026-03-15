@@ -564,72 +564,72 @@
                   aria-controls="settings-panel-theme"
                   data-settings-panel="theme"
                 >
-                <span class="settings-hub-tab__index">01</span>
-                <span
-                  class="settings-hub-tab__label"
-                  data-shell-i18n-text="settingsHub.nav.theme"
-                ></span>
-              </button>
-              <button
-                class="settings-hub-tab"
-                id="settings-tab-accounts"
-                type="button"
-                role="tab"
-                aria-selected="false"
-                aria-controls="settings-panel-accounts"
-                data-settings-panel="accounts"
-              >
-                <span class="settings-hub-tab__index">02</span>
-                <span
-                  class="settings-hub-tab__label"
-                  data-shell-i18n-text="settingsHub.nav.accounts"
-                ></span>
-              </button>
-              <button
-                class="settings-hub-tab"
-                id="settings-tab-backup"
-                type="button"
-                role="tab"
-                aria-selected="false"
-                aria-controls="backup-overlay"
-                data-settings-panel="backup"
-              >
-                <span class="settings-hub-tab__index">03</span>
-                <span
-                  class="settings-hub-tab__label"
-                  data-shell-i18n-text="settingsHub.nav.backup"
-                ></span>
-              </button>
-              <button
-                class="settings-hub-tab"
-                id="settings-tab-rooms"
-                type="button"
-                role="tab"
-                aria-selected="false"
-                aria-controls="rooms-overlay"
-                data-settings-panel="rooms"
-              >
-                <span class="settings-hub-tab__index">04</span>
-                <span
-                  class="settings-hub-tab__label"
-                  data-shell-i18n-text="settingsHub.nav.rooms"
-                ></span>
-              </button>
-              <button
-                class="settings-hub-tab"
-                id="settings-tab-live-log"
-                type="button"
-                role="tab"
-                aria-selected="false"
-                aria-controls="live-log-overlay"
-                data-settings-panel="live-log"
-              >
-                <span class="settings-hub-tab__index">05</span>
-                <span
-                  class="settings-hub-tab__label"
-                  data-shell-i18n-text="settingsHub.nav.liveLog"
-                ></span>
-              </button>
+                  <span class="settings-hub-tab__index">01</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.theme"
+                  ></span>
+                </button>
+                <button
+                  class="settings-hub-tab"
+                  id="settings-tab-accounts"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="settings-panel-accounts"
+                  data-settings-panel="accounts"
+                >
+                  <span class="settings-hub-tab__index">02</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.accounts"
+                  ></span>
+                </button>
+                <button
+                  class="settings-hub-tab"
+                  id="settings-tab-backup"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="backup-overlay"
+                  data-settings-panel="backup"
+                >
+                  <span class="settings-hub-tab__index">03</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.backup"
+                  ></span>
+                </button>
+                <button
+                  class="settings-hub-tab"
+                  id="settings-tab-rooms"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="rooms-overlay"
+                  data-settings-panel="rooms"
+                >
+                  <span class="settings-hub-tab__index">04</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.rooms"
+                  ></span>
+                </button>
+                <button
+                  class="settings-hub-tab"
+                  id="settings-tab-live-log"
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="live-log-overlay"
+                  data-settings-panel="live-log"
+                >
+                  <span class="settings-hub-tab__index">05</span>
+                  <span
+                    class="settings-hub-tab__label"
+                    data-shell-i18n-text="settingsHub.nav.liveLog"
+                  ></span>
+                </button>
               </div>
               <button
                 class="btn btn-ghost btn-sm settings-hub-close"
@@ -742,7 +742,6 @@
                           class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
                           data-panel="user"
                         >
-
                           <div class="entrance-panel__header ds-surface-card__header">
                             <span
                               class="entrance-panel__title ds-panel-title"
@@ -1090,7 +1089,6 @@
                           class="entrance-panel glass-panel ds-surface-card ds-surface-card--stack"
                           data-panel="accounts"
                         >
-
                           <div class="entrance-panel__header ds-surface-card__header">
                             <span
                               class="entrance-panel__title ds-panel-title"
@@ -1412,7 +1410,11 @@
                     <div class="live-log-shell">
                       <div class="live-log-toolbar">
                         <div class="live-log-app-tabs" id="live-log-app-tabs">
-                          <button class="btn btn-ghost btn-sm is-active" type="button" data-app="app">
+                          <button
+                            class="btn btn-ghost btn-sm is-active"
+                            type="button"
+                            data-app="app"
+                          >
                             App
                           </button>
                           <button class="btn btn-ghost btn-sm" type="button" data-app="mcp-server">
@@ -1431,9 +1433,15 @@
                           <select id="live-log-level-select" class="select select-sm">
                             <option value="all" data-i18n-text="liveLog.levels.all"></option>
                             <option value="error" data-i18n-text="liveLog.levels.error"></option>
-                            <option value="warning" data-i18n-text="liveLog.levels.warning"></option>
+                            <option
+                              value="warning"
+                              data-i18n-text="liveLog.levels.warning"
+                            ></option>
                             <option value="info" data-i18n-text="liveLog.levels.info"></option>
-                            <option value="success" data-i18n-text="liveLog.levels.success"></option>
+                            <option
+                              value="success"
+                              data-i18n-text="liveLog.levels.success"
+                            ></option>
                             <option value="debug" data-i18n-text="liveLog.levels.debug"></option>
                           </select>
                         </label>
@@ -1448,7 +1456,11 @@
                         </label>
                         <div class="live-log-header-actions">
                           <div class="live-log-metrics" id="live-log-metrics"></div>
-                          <button class="btn btn-ghost btn-sm" id="live-log-pause" type="button"></button>
+                          <button
+                            class="btn btn-ghost btn-sm"
+                            id="live-log-pause"
+                            type="button"
+                          ></button>
                           <button
                             class="btn btn-ghost btn-sm"
                             id="live-log-clear"
@@ -1461,7 +1473,10 @@
                       <div class="live-log-body">
                         <div class="live-log-content" id="live-log-content"></div>
                         <div class="live-log-detail">
-                          <div class="live-log-detail-title" data-i18n-text="liveLog.detailTitle"></div>
+                          <div
+                            class="live-log-detail-title"
+                            data-i18n-text="liveLog.detailTitle"
+                          ></div>
                           <div class="live-log-detail-meta" id="live-log-meta"></div>
                           <pre class="live-log-detail-context" id="live-log-context"></pre>
                         </div>

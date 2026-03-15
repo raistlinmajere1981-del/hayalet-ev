@@ -147,15 +147,13 @@ export async function copyToAssets(
     } else if (role === "assistant") {
       avatarDir = join(Paths.getDataDir(), "shared");
     } else if (role === "account") {
-      const accountId =
-        typeof accountInfo?.id === "string" ? accountInfo.id.trim() : "";
+      const accountId = typeof accountInfo?.id === "string" ? accountInfo.id.trim() : "";
       if (accountId !== "") {
         avatarDir = Paths.getAccountDir(accountId);
       } else {
         avatarDir = Paths.getDataDir();
       }
     }
-
 
     if (!existsSync(avatarDir)) {
       await mkdir(avatarDir, { recursive: true });

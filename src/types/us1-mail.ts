@@ -68,6 +68,10 @@ export interface Us1AcceptRemoteUserParams {
   remoteUserId: string;
 }
 
+export interface Us1RejectRemoteUserParams {
+  remoteUserId: string;
+}
+
 export interface Us1SyncRemoteUsersParams {
   mailAccountId?: string;
   limit?: number;

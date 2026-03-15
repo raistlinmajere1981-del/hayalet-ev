@@ -1,10 +1,15 @@
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { extname, join } from "node:path";
+
 import type {
+  Account,
   AppSettings,
   LocalMailAccountSummary,
   LocalMailAccountConnectionState,
   MailTransportAccountConfig,
   RemoteUserIdentity,
 } from "@shared/settings.js";
+import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import type {
   Us1AcceptRemoteUserParams,
   Us1DeleteMailAccountParams,
@@ -12,6 +17,7 @@ import type {
   Us1InviteRemoteUserParams,
   Us1MailAccountDraft,
   Us1MailAccountMutationResult,
+  Us1RejectRemoteUserParams,
   Us1RemoteUserMutationResult,
   Us1StateSnapshot,
   Us1SyncRemoteUsersParams,
@@ -20,20 +26,27 @@ import type {
 import { google } from "googleapis";
 import * as http from "http";
 import { normalizeSettings } from "../src/js/modules/settings/settings-schema.ts";
+import { getDatabaseForAccount } from "./database/sqlite-manager.ts";
 import { applyMailTransportAccountDefaults, MailTransportService } from "./mail-transport/index.js";
 import type {
   FetchInboxResult,
+  MailTransportParsedAttachment,
+  MailTransportSendAttachment,
   ProbeMailAccountResult,
   SendMailRequest,
   SendMailResult,
 } from "./mail-transport/index.js";
+import { Paths } from "./paths.ts";
 
 const HANDSHAKE_PROTOCOL = "hayalet-ev-us1-handshake";
 const HANDSHAKE_VERSION = 1;
 const PAYLOAD_START = "--- HAYALET_EV_US1_PAYLOAD ---";
 const PAYLOAD_END = "--- /HAYALET_EV_US1_PAYLOAD ---";
 
-type HandshakeMessageType = "invite" | "accept" | "profile";
+type HandshakeMessageType = "invite" | "accept" | "reject" | "profile";
+
+const DEFAULT_USER_AVATAR_PATH = "src/assets/default.png";
+const HANDSHAKE_AVATAR_BASENAME = "us1-avatar";
 
 interface HandshakeEnvelope {
   protocol: typeof HANDSHAKE_PROTOCOL;
@@ -46,6 +59,7 @@ interface HandshakeEnvelope {
     email: string;
     nickname: string;
     avatar: string;
+    avatarAttachmentName?: string | null;
     profileRevision: number;
   };
 }
@@ -58,7 +72,7 @@ interface MailTransportFacade {
   ): Promise<SendMailResult>;
   fetchInbox(
     accountConfig: MailTransportAccountConfig,
-    request?: { limit?: number }
+    request?: { limit?: number; includeAttachmentContent?: boolean }
   ): Promise<FetchInboxResult>;
 }
 
@@ -118,7 +132,99 @@ function buildHandshakeSubject(messageType: HandshakeMessageType): string {
   if (messageType === "accept") {
     return "[Hayalet Ev] US1 Accept";
   }
+  if (messageType === "reject") {
+    return "[Hayalet Ev] US1 Reject";
+  }
   return "[Hayalet Ev] US1 Profile";
+}
+
+function isRemoteAvatarUrl(value: string): boolean {
+  return value.startsWith("https://") || value.startsWith("http://") || value.startsWith("data:");
+}
+
+function isBundledDefaultAvatarPath(value: string): boolean {
+  return value.replace(/\\/g, "/").endsWith(DEFAULT_USER_AVATAR_PATH);
+}
+
+function getAvatarExtension(
+  filename: string | null,
+  contentType: string | null,
+  fallback = ".png"
+): string {
+  const fromFilename = filename !== null ? extname(filename).toLowerCase() : "";
+  if (fromFilename !== "") {
+    return fromFilename;
+  }
+
+  if (contentType === "image/jpeg") return ".jpg";
+  if (contentType === "image/webp") return ".webp";
+  if (contentType === "image/gif") return ".gif";
+  if (contentType === "image/svg+xml") return ".svg";
+  return fallback;
+}
+
+function getAvatarMimeType(filename: string | null, contentType: string | null): string {
+  if (contentType !== null && contentType.trim() !== "") {
+    return contentType;
+  }
+
+  const extension = getAvatarExtension(filename, null, ".png");
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  if (extension === ".svg") return "image/svg+xml";
+  return "image/png";
+}
+
+function buildImageDataUrl(contentType: string, content: Buffer): string {
+  return `data:${contentType};base64,${content.toString("base64")}`;
+}
+
+function decodeDataUrl(value: string): {
+  mimeType: string;
+  content: Buffer;
+} | null {
+  const match = value.match(/^data:([^;]+);base64,(.+)$/);
+  if (match === null) {
+    return null;
+  }
+
+  const [, mimeType, rawContent] = match;
+  if (typeof mimeType !== "string" || typeof rawContent !== "string") {
+    return null;
+  }
+
+  try {
+    return {
+      mimeType,
+      content: Buffer.from(rawContent, "base64"),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function findHandshakeAvatarAttachment(
+  attachments: MailTransportParsedAttachment[],
+  avatarAttachmentName: string | null
+): MailTransportParsedAttachment | null {
+  if (avatarAttachmentName !== null) {
+    const matched = attachments.find(
+      (attachment) =>
+        normalizeOptionalText(attachment.filename)?.toLowerCase() ===
+        avatarAttachmentName.toLowerCase()
+    );
+    if (matched !== undefined) {
+      return matched;
+    }
+  }
+
+  return (
+    attachments.find((attachment) => {
+      const contentType = normalizeOptionalText(attachment.contentType);
+      return contentType?.startsWith("image/") === true;
+    }) ?? null
+  );
 }
 
 function serializeHandshakeEnvelope(envelope: HandshakeEnvelope): string {
@@ -152,6 +258,7 @@ function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
       parsed.version !== HANDSHAKE_VERSION ||
       (parsed.messageType !== "invite" &&
         parsed.messageType !== "accept" &&
+        parsed.messageType !== "reject" &&
         parsed.messageType !== "profile")
     ) {
       return null;
@@ -178,6 +285,7 @@ function extractHandshakeEnvelope(text: string): HandshakeEnvelope | null {
         email,
         nickname: normalizeOptionalText(profile?.nickname) ?? email,
         avatar: normalizeOptionalText(profile?.avatar) ?? "",
+        avatarAttachmentName: normalizeOptionalText(profile?.avatarAttachmentName),
         profileRevision:
           typeof profile?.profileRevision === "number" &&
           Number.isFinite(profile.profileRevision) &&
@@ -212,7 +320,8 @@ function sortRemoteUsers(remoteUsers: RemoteUserIdentity[]): RemoteUserIdentity[
     active: 0,
     handshake_pending: 1,
     invite_sent: 2,
-    error: 3,
+    rejected: 3,
+    error: 4,
   };
 
   return [...remoteUsers].sort((left, right) => {
@@ -532,7 +641,7 @@ export class MailIdentityService {
       return { success: false, error: `Remote user is already active: ${remoteEmail}` };
     }
 
-    const profile = this.buildLocalProfile(settings, account);
+    const { profile, attachments } = this.buildLocalProfile(settings, account);
     const inviteId = buildInviteId(this.now());
 
     try {
@@ -553,6 +662,7 @@ export class MailIdentityService {
           "X-Hayalet-Ev-Protocol": HANDSHAKE_PROTOCOL,
           "X-Hayalet-Ev-Message-Type": "invite",
         },
+        ...(attachments.length > 0 ? { attachments } : {}),
       });
 
       const remoteUser = this.upsertRemoteUser(settings, {
@@ -642,7 +752,7 @@ export class MailIdentityService {
       };
     }
 
-    const profile = this.buildLocalProfile(settings, account);
+    const { profile, attachments } = this.buildLocalProfile(settings, account);
 
     try {
       const replyReference = remoteUser.threadMessageId ?? remoteUser.inviteMessageId ?? null;
@@ -667,23 +777,116 @@ export class MailIdentityService {
         ...(replyReference !== null
           ? { references: replyReference, threadMessageId: replyReference }
           : {}),
+        ...(attachments.length > 0 ? { attachments } : {}),
       });
 
-      const nextRemoteUser = this.upsertRemoteUser(settings, {
-        ...remoteUser,
-        handshakeState: "active",
-        acceptMessageId: sendResult.transportMessageId,
-        threadMessageId:
-          remoteUser.threadMessageId ?? sendResult.threadMessageId ?? sendResult.transportMessageId,
-        lastTransportMessageId: sendResult.transportMessageId,
-        lastSyncAt: this.now(),
-        lastError: null,
-      });
+      const nextRemoteUser = this.provisionRemoteUser(
+        settings,
+        this.upsertRemoteUser(settings, {
+          ...remoteUser,
+          handshakeState: "active",
+          acceptMessageId: sendResult.transportMessageId,
+          threadMessageId:
+            remoteUser.threadMessageId ??
+            sendResult.threadMessageId ??
+            sendResult.transportMessageId,
+          lastTransportMessageId: sendResult.transportMessageId,
+          lastSyncAt: this.now(),
+          lastError: null,
+        })
+      );
 
       await this.persistSettings(settings);
       return {
         success: true,
         remoteUser: nextRemoteUser,
+        remoteUsers: sortRemoteUsers(settings.remoteUsers ?? []),
+        state: this.buildStateSnapshot(settings, account.id),
+      };
+    } catch (error) {
+      const nextRemoteUser = this.upsertRemoteUser(settings, {
+        ...remoteUser,
+        handshakeState: "error",
+        lastSyncAt: this.now(),
+        lastError: error instanceof Error ? error.message : String(error),
+      });
+
+      await this.persistSettings(settings);
+      return {
+        success: false,
+        remoteUser: nextRemoteUser,
+        remoteUsers: sortRemoteUsers(settings.remoteUsers ?? []),
+        state: this.buildStateSnapshot(settings, account.id),
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async rejectRemoteUser(params: Us1RejectRemoteUserParams): Promise<Us1RemoteUserMutationResult> {
+    const settings = await this.loadNormalizedSettings();
+    const remoteUserId = normalizeOptionalText(params.remoteUserId);
+    if (remoteUserId === null) {
+      return { success: false, error: "remoteUserId is required." };
+    }
+
+    const remoteUser = this.findRemoteUser(settings, remoteUserId);
+    if (remoteUser === null) {
+      return { success: false, error: `Remote user not found: ${remoteUserId}` };
+    }
+    if (remoteUser.handshakeState !== "handshake_pending") {
+      return {
+        success: false,
+        error: `Remote user must be in handshake_pending state before reject: ${remoteUserId}`,
+      };
+    }
+
+    const account = this.findMailAccount(settings, remoteUser.linkedMailAccountId);
+    if (account === null) {
+      return {
+        success: false,
+        error: `Linked mail account not found: ${remoteUser.linkedMailAccountId}`,
+      };
+    }
+    if (account.connectionState !== "connected") {
+      return {
+        success: false,
+        error: `Mail account must be connected before reject: ${account.id}`,
+      };
+    }
+
+    const { profile, attachments } = this.buildLocalProfile(settings, account);
+    const replyReference = remoteUser.threadMessageId ?? remoteUser.inviteMessageId ?? null;
+
+    try {
+      await this.transport.sendMail(account, {
+        localMessageId: buildLocalMessageId("us1-reject", remoteUser.remoteUserId, this.now()),
+        remoteUserId: remoteUser.remoteUserId,
+        to: remoteUser.email,
+        subject: buildHandshakeSubject("reject"),
+        text: serializeHandshakeEnvelope({
+          protocol: HANDSHAKE_PROTOCOL,
+          version: HANDSHAKE_VERSION,
+          messageType: "reject",
+          inviteId: remoteUser.inviteMessageId ?? buildInviteId(this.now()),
+          sentAt: this.now(),
+          profile,
+        }),
+        headers: {
+          "X-Hayalet-Ev-Protocol": HANDSHAKE_PROTOCOL,
+          "X-Hayalet-Ev-Message-Type": "reject",
+        },
+        ...(remoteUser.inviteMessageId !== null ? { inReplyTo: remoteUser.inviteMessageId } : {}),
+        ...(replyReference !== null
+          ? { references: replyReference, threadMessageId: replyReference }
+          : {}),
+        ...(attachments.length > 0 ? { attachments } : {}),
+      });
+
+      this.removeRemoteUser(settings, remoteUser.remoteUserId);
+      await this.persistSettings(settings);
+
+      return {
+        success: true,
         remoteUsers: sortRemoteUsers(settings.remoteUsers ?? []),
         state: this.buildStateSnapshot(settings, account.id),
       };
@@ -734,6 +937,7 @@ export class MailIdentityService {
         // eslint-disable-next-line no-await-in-loop -- NOTE: handshake sync is sequential per account.
         const fetchResult = await this.transport.fetchInbox(account, {
           ...(typeof params.limit === "number" ? { limit: params.limit } : {}),
+          includeAttachmentContent: true,
         });
         fetchedCount += fetchResult.fetchedCount;
         processedCount += fetchResult.processedCount;
@@ -1120,24 +1324,198 @@ export class MailIdentityService {
   private buildLocalProfile(
     settings: AppSettings,
     account: MailTransportAccountConfig
-  ): HandshakeEnvelope["profile"] {
+  ): {
+    profile: HandshakeEnvelope["profile"];
+    attachments: MailTransportSendAttachment[];
+  } {
     const nickname =
       normalizeOptionalText(settings.user?.nickname) ?? normalizeEmail(account.email);
     const rawAvatar = normalizeOptionalText(settings.user?.avatarPath) ?? "";
-    const avatar =
-      rawAvatar.startsWith("https://") ||
-      rawAvatar.startsWith("http://") ||
-      rawAvatar.startsWith("data:")
-        ? rawAvatar
-        : "";
+    let avatar = "";
+    let avatarAttachmentName: string | null = null;
+    const attachments: MailTransportSendAttachment[] = [];
+
+    if (isRemoteAvatarUrl(rawAvatar)) {
+      avatar = rawAvatar;
+    } else if (
+      rawAvatar !== "" &&
+      !isBundledDefaultAvatarPath(rawAvatar) &&
+      existsSync(rawAvatar)
+    ) {
+      const extension = getAvatarExtension(rawAvatar, null);
+      avatarAttachmentName = `${HANDSHAKE_AVATAR_BASENAME}${extension}`;
+      attachments.push({
+        path: rawAvatar,
+        filename: avatarAttachmentName,
+      });
+    }
 
     return {
-      remoteUserId: buildRemoteUserId(account.email),
-      email: normalizeEmail(account.email),
-      nickname,
-      avatar,
-      profileRevision: this.now(),
+      profile: {
+        remoteUserId: buildRemoteUserId(account.email),
+        email: normalizeEmail(account.email),
+        nickname,
+        avatar,
+        ...(avatarAttachmentName !== null ? { avatarAttachmentName } : {}),
+        profileRevision: this.now(),
+      },
+      attachments,
     };
+  }
+
+  private resolveHandshakeAvatar(
+    profile: HandshakeEnvelope["profile"],
+    attachments: MailTransportParsedAttachment[]
+  ): string {
+    if (isRemoteAvatarUrl(profile.avatar)) {
+      return profile.avatar;
+    }
+
+    const attachment = findHandshakeAvatarAttachment(
+      attachments,
+      profile.avatarAttachmentName ?? null
+    );
+    if (attachment?.content === undefined) {
+      return "";
+    }
+
+    return buildImageDataUrl(
+      getAvatarMimeType(attachment.filename, normalizeOptionalText(attachment.contentType)),
+      attachment.content
+    );
+  }
+
+  private upsertRemoteAccountProjection(
+    settings: AppSettings,
+    remoteUser: RemoteUserIdentity,
+    patch: {
+      avatarPath?: string;
+      dbPath?: string | null;
+    } = {}
+  ): void {
+    const accountId = buildRemoteEmailAccountId(remoteUser.remoteUserId);
+    if (accountId === "") {
+      return;
+    }
+
+    const index = settings.accounts.findIndex(
+      (account) =>
+        account.id === accountId ||
+        normalizeOptionalText(account.remoteEmail?.remoteUserId) === remoteUser.remoteUserId
+    );
+    const existingAccount = index >= 0 ? (settings.accounts[index] ?? null) : null;
+
+    const nextAccount: Account = {
+      id: accountId,
+      provider: "remote-email",
+      accountKind: "remote-email",
+      email: remoteUser.email,
+      dbPath: patch.dbPath ?? existingAccount?.dbPath ?? null,
+      name: typeof existingAccount?.name === "string" ? existingAccount.name : "",
+      nickname: remoteUser.nickname ?? remoteUser.email,
+      avatar: remoteUser.avatar ?? existingAccount?.avatar ?? "",
+      avatarPath: patch.avatarPath ?? remoteUser.avatarPath ?? existingAccount?.avatarPath ?? "",
+      createdAt: existingAccount?.createdAt ?? this.now(),
+      ...(typeof existingAccount?.lastUsedAt === "number"
+        ? { lastUsedAt: existingAccount.lastUsedAt }
+        : {}),
+      ...(existingAccount?.lastSessionUrl !== undefined
+        ? { lastSessionUrl: existingAccount.lastSessionUrl ?? null }
+        : { lastSessionUrl: null }),
+      remoteEmail: {
+        remoteUserId: remoteUser.remoteUserId,
+        handshakeState: remoteUser.handshakeState,
+        linkedLocalMailAccountId: remoteUser.linkedMailAccountId,
+        profileRevision: remoteUser.profileRevision,
+        inviteMessageId: remoteUser.inviteMessageId ?? null,
+        acceptMessageId: remoteUser.acceptMessageId ?? null,
+        threadMessageId: remoteUser.threadMessageId ?? null,
+        lastTransportMessageId: remoteUser.lastTransportMessageId ?? null,
+        lastError: remoteUser.lastError ?? null,
+        sessionAlias: remoteUser.sessionAlias ?? null,
+        pendingIncoming: existingAccount?.remoteEmail?.pendingIncoming === true,
+        ...(typeof remoteUser.lastSyncAt === "number" ? { lastSyncAt: remoteUser.lastSyncAt } : {}),
+      },
+    };
+
+    if (index >= 0) {
+      settings.accounts[index] = nextAccount;
+    } else {
+      settings.accounts.push(nextAccount);
+    }
+  }
+
+  private removeRemoteUser(settings: AppSettings, remoteUserId: string): void {
+    settings.remoteUsers = (settings.remoteUsers ?? []).filter(
+      (remoteUser) => remoteUser.remoteUserId !== remoteUserId
+    );
+    settings.accounts = settings.accounts.filter((account) => {
+      if (account.provider !== "remote-email" && account.accountKind !== "remote-email") {
+        return true;
+      }
+
+      const accountRemoteUserId =
+        normalizeOptionalText(account.remoteEmail?.remoteUserId) ?? normalizeEmail(account.email);
+      return accountRemoteUserId !== remoteUserId;
+    });
+
+    if (settings.us1Slot?.selectedRemoteUserId === remoteUserId) {
+      settings.us1Slot.selectedRemoteUserId = null;
+      settings.us1Slot.selectedAccountId = null;
+      settings.us1Slot.connectionState = "disconnected";
+    }
+  }
+
+  private provisionRemoteUser(
+    settings: AppSettings,
+    remoteUser: RemoteUserIdentity
+  ): RemoteUserIdentity {
+    const accountId = buildRemoteEmailAccountId(remoteUser.remoteUserId);
+    if (accountId === "") {
+      return remoteUser;
+    }
+
+    const accountDir = Paths.getAccountDir(accountId);
+    mkdirSync(accountDir, { recursive: true });
+
+    const avatarSourcePath = normalizeOptionalText(remoteUser.avatarPath);
+    const avatarValue = normalizeOptionalText(remoteUser.avatar);
+    const avatarData = avatarValue !== null ? decodeDataUrl(avatarValue) : null;
+    let nextAvatarPath = avatarSourcePath ?? "";
+
+    if (avatarData !== null) {
+      const avatarExtension = getAvatarExtension(null, avatarData.mimeType);
+      nextAvatarPath = join(accountDir, `${HANDSHAKE_AVATAR_BASENAME}${avatarExtension}`);
+      writeFileSync(nextAvatarPath, avatarData.content);
+    } else if (
+      avatarSourcePath !== null &&
+      avatarSourcePath !== "" &&
+      !isRemoteAvatarUrl(avatarSourcePath) &&
+      existsSync(avatarSourcePath)
+    ) {
+      const avatarExtension = getAvatarExtension(avatarSourcePath, null);
+      nextAvatarPath = join(accountDir, `${HANDSHAKE_AVATAR_BASENAME}${avatarExtension}`);
+      if (avatarSourcePath !== nextAvatarPath) {
+        copyFileSync(avatarSourcePath, nextAvatarPath);
+      }
+    }
+
+    getDatabaseForAccount(accountId);
+    const dbPath = Paths.getAccountDbPath(accountId);
+    const nextRemoteUser =
+      nextAvatarPath === (remoteUser.avatarPath ?? "")
+        ? remoteUser
+        : this.upsertRemoteUser(settings, {
+            ...remoteUser,
+            avatarPath: nextAvatarPath,
+          });
+
+    this.upsertRemoteAccountProjection(settings, nextRemoteUser, {
+      avatarPath: nextAvatarPath,
+      dbPath,
+    });
+
+    return nextRemoteUser;
   }
 
   private applyFetchedHandshakeMessages(
@@ -1164,16 +1542,39 @@ export class MailIdentityService {
       }
 
       if (envelope.messageType === "invite") {
-        this.handleIncomingInvite(settings, account, message.transportMessageId, envelope);
+        this.handleIncomingInvite(
+          settings,
+          account,
+          message.transportMessageId,
+          envelope,
+          message.parsed.attachments
+        );
         continue;
       }
 
       if (envelope.messageType === "accept") {
-        this.handleIncomingAccept(settings, account, message.transportMessageId, envelope);
+        this.handleIncomingAccept(
+          settings,
+          account,
+          message.transportMessageId,
+          envelope,
+          message.parsed.attachments
+        );
         continue;
       }
 
-      this.handleIncomingProfile(settings, account, message.transportMessageId, envelope);
+      if (envelope.messageType === "reject") {
+        this.handleIncomingReject(settings, account, message.transportMessageId, envelope);
+        continue;
+      }
+
+      this.handleIncomingProfile(
+        settings,
+        account,
+        message.transportMessageId,
+        envelope,
+        message.parsed.attachments
+      );
     }
   }
 
@@ -1181,7 +1582,8 @@ export class MailIdentityService {
     settings: AppSettings,
     account: MailTransportAccountConfig,
     transportMessageId: string | null,
-    envelope: HandshakeEnvelope
+    envelope: HandshakeEnvelope,
+    attachments: MailTransportParsedAttachment[]
   ): void {
     const existingRemoteUser = this.findRemoteUser(settings, envelope.profile.remoteUserId);
     const nextState =
@@ -1191,7 +1593,7 @@ export class MailIdentityService {
       remoteUserId: envelope.profile.remoteUserId,
       email: envelope.profile.email,
       nickname: envelope.profile.nickname,
-      avatar: envelope.profile.avatar,
+      avatar: this.resolveHandshakeAvatar(envelope.profile, attachments),
       avatarPath: existingRemoteUser?.avatarPath ?? "",
       handshakeState: nextState,
       profileRevision: envelope.profile.profileRevision,
@@ -1209,21 +1611,54 @@ export class MailIdentityService {
     settings: AppSettings,
     account: MailTransportAccountConfig,
     transportMessageId: string | null,
+    envelope: HandshakeEnvelope,
+    attachments: MailTransportParsedAttachment[]
+  ): void {
+    const existingRemoteUser = this.findRemoteUser(settings, envelope.profile.remoteUserId);
+
+    this.provisionRemoteUser(
+      settings,
+      this.upsertRemoteUser(settings, {
+        remoteUserId: envelope.profile.remoteUserId,
+        email: envelope.profile.email,
+        nickname: envelope.profile.nickname,
+        avatar: this.resolveHandshakeAvatar(envelope.profile, attachments),
+        avatarPath: existingRemoteUser?.avatarPath ?? "",
+        handshakeState: "active",
+        profileRevision: envelope.profile.profileRevision,
+        linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
+        inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
+        acceptMessageId: transportMessageId,
+        threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
+        lastTransportMessageId: transportMessageId,
+        lastSyncAt: this.now(),
+        lastError: null,
+      })
+    );
+  }
+
+  private handleIncomingReject(
+    settings: AppSettings,
+    account: MailTransportAccountConfig,
+    transportMessageId: string | null,
     envelope: HandshakeEnvelope
   ): void {
     const existingRemoteUser = this.findRemoteUser(settings, envelope.profile.remoteUserId);
+    if (existingRemoteUser?.handshakeState === "active") {
+      return;
+    }
 
     this.upsertRemoteUser(settings, {
       remoteUserId: envelope.profile.remoteUserId,
       email: envelope.profile.email,
       nickname: envelope.profile.nickname,
-      avatar: envelope.profile.avatar,
+      avatar: existingRemoteUser?.avatar ?? envelope.profile.avatar,
       avatarPath: existingRemoteUser?.avatarPath ?? "",
-      handshakeState: "active",
-      profileRevision: envelope.profile.profileRevision,
+      handshakeState: "rejected",
+      profileRevision: existingRemoteUser?.profileRevision ?? envelope.profile.profileRevision,
       linkedMailAccountId: existingRemoteUser?.linkedMailAccountId ?? account.id,
       inviteMessageId: existingRemoteUser?.inviteMessageId ?? null,
-      acceptMessageId: transportMessageId,
+      acceptMessageId: existingRemoteUser?.acceptMessageId ?? null,
       threadMessageId: existingRemoteUser?.threadMessageId ?? transportMessageId,
       lastTransportMessageId: transportMessageId,
       lastSyncAt: this.now(),
@@ -1235,14 +1670,15 @@ export class MailIdentityService {
     settings: AppSettings,
     account: MailTransportAccountConfig,
     transportMessageId: string | null,
-    envelope: HandshakeEnvelope
+    envelope: HandshakeEnvelope,
+    attachments: MailTransportParsedAttachment[]
   ): void {
     const existingRemoteUser = this.findRemoteUser(settings, envelope.profile.remoteUserId);
     this.upsertRemoteUser(settings, {
       remoteUserId: envelope.profile.remoteUserId,
       email: envelope.profile.email,
       nickname: envelope.profile.nickname,
-      avatar: envelope.profile.avatar,
+      avatar: this.resolveHandshakeAvatar(envelope.profile, attachments),
       avatarPath: existingRemoteUser?.avatarPath ?? "",
       handshakeState: existingRemoteUser?.handshakeState ?? "handshake_pending",
       profileRevision: envelope.profile.profileRevision,
@@ -1271,8 +1707,7 @@ export class MailIdentityService {
       candidate.profileRevision >= existingRemoteUser.profileRevision ||
       candidate.handshakeState === "active";
     const nextHandshakeState =
-      existingRemoteUser?.handshakeState === "active" &&
-      candidate.handshakeState === "handshake_pending"
+      existingRemoteUser?.handshakeState === "active" && candidate.handshakeState !== "active"
         ? "active"
         : candidate.handshakeState;
 
@@ -1297,7 +1732,10 @@ export class MailIdentityService {
       email: candidate.email,
       nickname: resolvedNickname,
       avatar: resolvedAvatar,
-      avatarPath: existingRemoteUser?.avatarPath ?? candidate.avatarPath ?? "",
+      avatarPath:
+        normalizeOptionalText(candidate.avatarPath) ??
+        normalizeOptionalText(existingRemoteUser?.avatarPath) ??
+        "",
       handshakeState: nextHandshakeState,
       profileRevision: resolvedProfileRevision,
       linkedMailAccountId: candidate.linkedMailAccountId,
@@ -1318,6 +1756,7 @@ export class MailIdentityService {
     }
 
     settings.remoteUsers = sortRemoteUsers(remoteUsers);
+    this.upsertRemoteAccountProjection(settings, nextRemoteUser);
     return nextRemoteUser;
   }
 }

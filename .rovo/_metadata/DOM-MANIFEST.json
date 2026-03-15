@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-15T09:35:33.704Z",
+  "generatedAt": "2026-03-15T20:25:53.978Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 459,
-    "ids": 483,
+    "ids": 481,
     "testIds": 15,
-    "querySelectors": 123,
-    "totalSelectors": 621
+    "querySelectors": 124,
+    "totalSelectors": 620
   },
   "lookup": {
     "id": {
@@ -446,7 +446,6 @@
       "us1-mail-client-secret-input": "#us1-mail-client-secret-input",
       "us1-mail-delete-btn": "#us1-mail-delete-btn",
       "us1-mail-email-input": "#us1-mail-email-input",
-      "us1-mail-gmail-connect-easy": "#us1-mail-gmail-connect-easy",
       "us1-mail-gmail-email-easy": "#us1-mail-gmail-email-easy",
       "us1-mail-gmail-open-security": "#us1-mail-gmail-open-security",
       "us1-mail-gmail-password-easy": "#us1-mail-gmail-password-easy",
@@ -456,7 +455,6 @@
       "us1-mail-password-input": "#us1-mail-password-input",
       "us1-mail-provider-select": "#us1-mail-provider-select",
       "us1-mail-refresh-token-input": "#us1-mail-refresh-token-input",
-      "us1-mail-save-btn": "#us1-mail-save-btn",
       "us1-mail-smtp-host-input": "#us1-mail-smtp-host-input",
       "us1-mail-smtp-port-input": "#us1-mail-smtp-port-input",
       "us1-mail-smtp-secure-check": "#us1-mail-smtp-secure-check",
@@ -558,6 +556,7 @@
       "prosemirror": ".ProseMirror",
       "protocol_tag_btn": ".protocol-tag-btn",
       "ql_editor_textarea": ".ql-editor.textarea",
+      "reject_btn": ".reject-btn",
       "result_item": ".result-item",
       "scenario_overlay_close": ".scenario-overlay__close",
       "scenario_overlay_copy": ".scenario-overlay__copy",

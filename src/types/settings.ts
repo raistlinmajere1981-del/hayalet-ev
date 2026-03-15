@@ -54,7 +54,12 @@ export interface SlotSettings {
   lastConnectionState?: "connected" | "disconnected" | null;
 }
 
-export type RemoteUserHandshakeState = "invite_sent" | "handshake_pending" | "active" | "error";
+export type RemoteUserHandshakeState =
+  | "invite_sent"
+  | "handshake_pending"
+  | "active"
+  | "rejected"
+  | "error";
 
 export type Us1SlotConnectionState = "disconnected" | "connected";
 

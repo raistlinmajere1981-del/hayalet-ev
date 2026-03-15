@@ -5103,6 +5103,7 @@
           "invite_sent": "Davet gönderildi",
           "handshake_pending": "Kabul bekleniyor",
           "active": "Aktif",
+          "rejected": "Reddedildi",
           "error": "Hata"
         },
         "status": {
@@ -5110,11 +5111,13 @@
           "invite_sent": "Davet gönderildi. Kabul bekleniyor.",
           "handshake_pending": "Gelen davet alındı. Kabul gerekli.",
           "active": "Handshake tamamlandı. Kullanıcı US1 slotuna bağlanabilir.",
+          "rejected": "Davet uzak kullanıcı tarafından reddedildi.",
           "error": "Son handshake denemesi başarısız oldu."
         },
         "actions": {
           "invite": "Davet gönder",
           "accept": "Kabul et",
+          "reject": "Reddet",
           "refresh": "Inbox senkronize et"
         }
       },
@@ -5149,6 +5152,7 @@
         "remoteUserRequired": "Önce bir remote user seçin.",
         "inviteSent": "Davet maili gönderildi.",
         "acceptSent": "Kabul maili gönderildi.",
+        "rejectSent": "Reddetme maili gönderildi.",
         "syncSuccess": "Inbox senkronizasyonu tamamlandı. {{count}} mesaj işlendi.",
         "operationFailed": "İstenen işlem başarısız oldu.",
         "connectSuccess": "US1 bağlandı. İlk kontrol tamamlandı, {{count}} mesaj işlendi.",

@@ -55,6 +55,8 @@ export function ensureElectronApiFallback(): void {
       await Promise.resolve({ success: false, error: "fallback" }),
     us1AcceptRemoteUser: async (): Promise<{ success: boolean; error: string }> =>
       await Promise.resolve({ success: false, error: "fallback" }),
+    us1RejectRemoteUser: async (): Promise<{ success: boolean; error: string }> =>
+      await Promise.resolve({ success: false, error: "fallback" }),
     us1SyncRemoteUsers: async (): Promise<{ success: boolean; error: string }> =>
       await Promise.resolve({ success: false, error: "fallback" }),
     us1SendMessage: async (): Promise<{ success: boolean; error: string }> =>

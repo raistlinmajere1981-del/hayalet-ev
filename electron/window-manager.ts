@@ -24,7 +24,7 @@ async function windowT(key: string, params?: TranslationParams): Promise<string>
 }
 
 function resolveCorsAllowOrigin(isDev: boolean, referrer?: string): string {
-  const fallbackOrigin = isDev ? "http://localhost:5173" : "null";
+  const fallbackOrigin = isDev ? "http://localhost:5174" : "null";
   if (referrer === undefined || referrer.length === 0) return fallbackOrigin;
 
   try {
@@ -32,8 +32,8 @@ function resolveCorsAllowOrigin(isDev: boolean, referrer?: string): string {
     const isAllowedOrigin =
       origin === "null" ||
       origin === "https://opencode.ai" ||
-      origin === "http://localhost:5173" ||
-      origin === "http://127.0.0.1:5173" ||
+      origin === "http://localhost:5174" ||
+      origin === "http://127.0.0.1:5174" ||
       /^http:\/\/127\.0\.0\.1:\d+$/.test(origin);
     return isAllowedOrigin ? origin : fallbackOrigin;
   } catch {
@@ -335,7 +335,7 @@ export function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
 
   const nodeEnv = process.env["NODE_ENV"];
   if (isDev || nodeEnv === undefined || nodeEnv.length === 0 || nodeEnv === "development") {
-    void win.loadURL("http://localhost:5173");
+    void win.loadURL("http://localhost:5174");
   } else {
     void win.loadFile(Paths.getHtmlEntryPath());
   }

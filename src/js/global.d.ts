@@ -12,6 +12,7 @@ import type {
   Us1InviteRemoteUserParams,
   Us1MailAccountDraft,
   Us1MailAccountMutationResult,
+  Us1RejectRemoteUserParams,
   Us1RemoteUserMutationResult,
   Us1SendMessageParams,
   Us1SendMessageResult,
@@ -521,6 +522,9 @@ declare global {
     ) => Promise<Us1RemoteUserMutationResult>;
     us1AcceptRemoteUser: (
       params: Us1AcceptRemoteUserParams
+    ) => Promise<Us1RemoteUserMutationResult>;
+    us1RejectRemoteUser: (
+      params: Us1RejectRemoteUserParams
     ) => Promise<Us1RemoteUserMutationResult>;
     us1SyncRemoteUsers: (params?: Us1SyncRemoteUsersParams) => Promise<Us1RemoteUserMutationResult>;
     us1SendMessage: (params: Us1SendMessageParams) => Promise<Us1SendMessageResult>;

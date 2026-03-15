@@ -194,6 +194,10 @@
   border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-default));
 }
 
+.account-state-badge.is-rejected {
+  border-color: color-mix(in srgb, var(--color-error) 28%, var(--color-warning) 28%);
+}
+
 .account-state-badge.is-error {
   border-color: color-mix(in srgb, var(--color-error) 45%, var(--border-default));
 }

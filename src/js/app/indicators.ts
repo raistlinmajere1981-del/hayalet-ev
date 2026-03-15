@@ -103,7 +103,6 @@ export function updateIndicatorAvatars(): void {
     return "";
   };
 
-
   const applyAvatar = (
     el: HTMLElement | null,
     src: string | null,
@@ -163,7 +162,6 @@ export function updateIndicatorAvatars(): void {
     }
 
     if (!manageConversationSelect) return;
-
 
     try {
       const conv = document.getElementById(`conversation-${provider}`) as HTMLSelectElement | null;

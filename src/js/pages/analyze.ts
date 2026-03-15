@@ -251,7 +251,7 @@ export class AnalyzeController {
       if (isUser) {
         fallbackCandidates.push("src/assets/user.png", "src/assets/default.png");
       } else {
-        const providerId = isUs1 ? "" : AppState.getProviderIdForSlot(provider) ?? "";
+        const providerId = isUs1 ? "" : (AppState.getProviderIdForSlot(provider) ?? "");
         if (providerId !== "") {
           fallbackCandidates.push(`src/assets/${providerId}.png`);
         }
@@ -262,7 +262,6 @@ export class AnalyzeController {
       const filteredCandidates = candidates.filter(
         (candidate, index, arr) => candidate !== "" && arr.indexOf(candidate) === index
       );
-
 
       const tryLoad = (index: number): void => {
         const candidate = filteredCandidates[index];

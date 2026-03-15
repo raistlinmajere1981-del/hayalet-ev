@@ -59,7 +59,6 @@ export class AccountPanel {
       this.renderFormMeta();
     });
 
-
     document.getElementById("settings-sync-remote-accounts")?.addEventListener("click", () => {
       void this.handleSyncRemoteAccounts();
     });
@@ -94,7 +93,8 @@ export class AccountPanel {
       ["active", 0],
       ["handshake_pending", 1],
       ["invite_sent", 2],
-      ["error", 3],
+      ["rejected", 3],
+      ["error", 4],
     ]);
 
     return accounts.sort((left, right) => {
@@ -177,7 +177,7 @@ export class AccountPanel {
       const actionMarkup = isRemote
         ? [
             account.remoteEmail?.handshakeState === "handshake_pending"
-              ? `<button class="btn btn-secondary btn-xs accept-btn" title="${this.escapeHtml(entranceT("us1.remote.actions.accept"))}" data-id="${this.escapeHtml(account.id)}">${this.escapeHtml(entranceT("us1.remote.actions.accept"))}</button>`
+              ? `<button class="btn btn-secondary btn-xs accept-btn" title="${this.escapeHtml(entranceT("us1.remote.actions.accept"))}" data-id="${this.escapeHtml(account.id)}">${this.escapeHtml(entranceT("us1.remote.actions.accept"))}</button><button class="btn btn-ghost btn-xs reject-btn" title="${this.escapeHtml(entranceT("us1.remote.actions.reject"))}" data-id="${this.escapeHtml(account.id)}">${this.escapeHtml(entranceT("us1.remote.actions.reject"))}</button>`
               : "",
             `<button class="btn btn-ghost btn-xs delete-btn" title="${this.escapeHtml(entranceT("accounts.deleteTitle"))}" data-id="${this.escapeHtml(account.id)}">×</button>`,
           ].join("")
@@ -219,6 +219,10 @@ export class AccountPanel {
         void this.acceptRemoteAccount(account);
       });
 
+      item.querySelector(".reject-btn")?.addEventListener("click", () => {
+        void this.rejectRemoteAccount(account);
+      });
+
       accountListEl.appendChild(item);
       void this.renderAccountAvatar(account);
     });
@@ -245,6 +249,9 @@ export class AccountPanel {
     if (state === "invite_sent") {
       return "is-invite";
     }
+    if (state === "rejected") {
+      return "is-rejected";
+    }
     return "is-error";
   }
 
@@ -259,9 +266,9 @@ export class AccountPanel {
     const avatarPath = account.avatarPath ?? "";
     const avatarUrl = account.avatar ?? "";
     const fallbackPath =
-      account.provider && account.provider !== ""
-        ? `src/assets/${account.provider}.png`
-        : "src/assets/default.png";
+      account.provider === "remote-email"
+        ? "src/assets/default.png"
+        : `src/assets/${account.provider}.png`;
     const altText = this.escapeHtml(entranceT("accounts.avatarAlt"));
 
     const tryLoadFile = async (filePath: string): Promise<boolean> => {
@@ -298,7 +305,6 @@ export class AccountPanel {
     previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
   }
 
-
   async renderNewAccountAvatarPreview(): Promise<void> {
     const previewEl = document.getElementById("new-account-avatar-preview");
     if (!previewEl) {
@@ -330,8 +336,6 @@ export class AccountPanel {
 
     previewEl.innerHTML = '<div class="avatar-placeholder">?</div>';
   }
-
-
 
   startEdit(account: Account): void {
     if (this.getAccountKind(account) === "remote-email") {
@@ -383,7 +387,6 @@ export class AccountPanel {
     this.clearNewAccountAvatarPreview();
     this.render();
   }
-
 
   private clearNewAccountAvatarPreview(): void {
     this._newAccountAvatarPath = null;
@@ -608,6 +611,26 @@ export class AccountPanel {
     this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
   }
 
+  private async rejectRemoteAccount(account: Account): Promise<void> {
+    const electronApi = window.electronAPI;
+    if (!electronApi) {
+      this.showFeedback(entranceT("accounts.feedback.electronApiMissing"), "error");
+      return;
+    }
+
+    const remoteUserId = this.getRemoteUserId(account);
+    const result = await electronApi.us1RejectRemoteUser({ remoteUserId });
+    await this.reloadSettings();
+    this.render();
+
+    if (result.success) {
+      this.showFeedback(entranceT("us1.feedback.rejectSent"), "success");
+      return;
+    }
+
+    this.showFeedback(result.error ?? entranceT("us1.feedback.operationFailed"), "error");
+  }
+
   async createAccount(): Promise<void> {
     const emailEl = document.getElementById("new-account-email") as HTMLInputElement | null;
     const providerEl = document.getElementById("new-account-provider") as HTMLSelectElement | null;
@@ -654,7 +677,6 @@ export class AccountPanel {
       } else {
         finalAvatarPath = "";
       }
-
 
       const newAccount: Account = {
         id: accountId,

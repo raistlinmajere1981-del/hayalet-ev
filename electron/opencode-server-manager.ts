@@ -286,7 +286,7 @@ export class OpenCodeServerManager {
 
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"];
 
-    const cors = options.cors ?? ["http://localhost:5173"];
+    const cors = options.cors ?? ["http://localhost:5174"];
     cors.forEach((origin) => {
       args.push("--cors", origin);
     });

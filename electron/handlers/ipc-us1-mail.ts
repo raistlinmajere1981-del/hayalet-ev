@@ -3,6 +3,7 @@ import type {
   Us1DeleteMailAccountParams,
   Us1InviteRemoteUserParams,
   Us1MailAccountDraft,
+  Us1RejectRemoteUserParams,
   Us1SendMessageParams,
   Us1SyncMessagesParams,
   Us1SyncRemoteUsersParams,
@@ -38,6 +39,10 @@ export function setupUs1MailHandlers(): void {
 
   registerHandler("us1-accept-remote-user", async (_event, params: unknown) => {
     return await mailIdentityService.acceptRemoteUser(params as Us1AcceptRemoteUserParams);
+  });
+
+  registerHandler("us1-reject-remote-user", async (_event, params: unknown) => {
+    return await mailIdentityService.rejectRemoteUser(params as Us1RejectRemoteUserParams);
   });
 
   registerHandler("us1-sync-remote-users", async (_event, params: unknown) => {

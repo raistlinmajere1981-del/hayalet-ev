@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-15T09:35:32.601Z",
+  "generatedAt": "2026-03-15T20:25:53.320Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -326,8 +326,8 @@
       "comments": [
         {
           "kind": "fallback",
-          "startLine": 263,
-          "endLine": 263,
+          "startLine": 372,
+          "endLine": 372,
           "text": "Try loopback first, fallback to oob if requested or failed",
           "prefix": null,
           "scopeType": "file",
@@ -335,8 +335,8 @@
         },
         {
           "kind": "note",
-          "startLine": 301,
-          "endLine": 301,
+          "startLine": 410,
+          "endLine": 410,
           "text": "We use localhost for exchange if it looks like a code from there, otherwise oob",
           "prefix": null,
           "scopeType": "file",
@@ -689,8 +689,8 @@
         },
         {
           "kind": "note",
-          "startLine": 44,
-          "endLine": 44,
+          "startLine": 43,
+          "endLine": 43,
           "text": "NOTE: Call after app.whenReady() in main.ts.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -716,8 +716,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 418,
-          "endLine": 418,
+          "startLine": 419,
+          "endLine": 419,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -725,8 +725,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 437,
-          "endLine": 437,
+          "startLine": 438,
+          "endLine": 438,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -1035,8 +1035,8 @@
         },
         {
           "kind": "note",
-          "startLine": 95,
-          "endLine": 95,
+          "startLine": 114,
+          "endLine": 114,
           "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1091,8 +1091,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 159,
-          "endLine": 159,
+          "startLine": 160,
+          "endLine": 160,
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs).",
           "prefix": "NOTE",
           "scopeType": "interface",
@@ -1640,8 +1640,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 452,
-          "endLine": 452,
+          "startLine": 473,
+          "endLine": 473,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1649,8 +1649,8 @@
         },
         {
           "kind": "note",
-          "startLine": 471,
-          "endLine": 471,
+          "startLine": 492,
+          "endLine": 492,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1763,8 +1763,8 @@
         },
         {
           "kind": "note",
-          "startLine": 285,
-          "endLine": 285,
+          "startLine": 294,
+          "endLine": 294,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1772,8 +1772,8 @@
         },
         {
           "kind": "note",
-          "startLine": 759,
-          "endLine": 759,
+          "startLine": 767,
+          "endLine": 767,
           "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1781,8 +1781,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1900,
-          "endLine": 1900,
+          "startLine": 1908,
+          "endLine": 1908,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1790,8 +1790,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1956,
-          "endLine": 1956,
+          "startLine": 1964,
+          "endLine": 1964,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1984,8 +1984,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 238,
-          "endLine": 238,
+          "startLine": 261,
+          "endLine": 261,
           "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1993,8 +1993,8 @@
         },
         {
           "kind": "note",
-          "startLine": 543,
-          "endLine": 543,
+          "startLine": 566,
+          "endLine": 566,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2930,8 +2930,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 75,
-          "endLine": 75,
+          "startLine": 74,
+          "endLine": 74,
           "text": "NOTE: Ignore the probe error and continue with the explicit start attempt.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4240,8 +4240,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 238,
-          "endLine": 238,
+          "startLine": 243,
+          "endLine": 243,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4548,7 +4548,7 @@
       "name": "initPaths",
       "comments": [
         {
-          "startLine": 44,
+          "startLine": 43,
           "kind": "note",
           "text": "NOTE: Call after app.whenReady() in main.ts."
         }
@@ -4584,7 +4584,7 @@
       "name": "Window",
       "comments": [
         {
-          "startLine": 159,
+          "startLine": 160,
           "kind": "note",
           "text": "NOTE: API exposed by the Electron preload layer (electron/preload.cjs)."
         }

@@ -231,6 +231,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   us1DeleteMailAccount: (params) => ipcRenderer.invoke("us1-delete-mail-account", params),
   us1InviteRemoteUser: (params) => ipcRenderer.invoke("us1-invite-remote-user", params),
   us1AcceptRemoteUser: (params) => ipcRenderer.invoke("us1-accept-remote-user", params),
+  us1RejectRemoteUser: (params) => ipcRenderer.invoke("us1-reject-remote-user", params),
   us1SyncRemoteUsers: (params) => ipcRenderer.invoke("us1-sync-remote-users", params),
   us1SendMessage: (params) => ipcRenderer.invoke("us1-send-message", params),
   us1SyncMessages: (params) => ipcRenderer.invoke("us1-sync-messages", params),

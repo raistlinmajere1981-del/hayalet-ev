@@ -5103,6 +5103,7 @@
           "invite_sent": "Invite sent",
           "handshake_pending": "Accept required",
           "active": "Active",
+          "rejected": "Rejected",
           "error": "Error"
         },
         "status": {
@@ -5110,11 +5111,13 @@
           "invite_sent": "Invite sent. Waiting for accept.",
           "handshake_pending": "Incoming invite received. Accept is required.",
           "active": "Handshake complete. User can be bound to US1.",
+          "rejected": "The invite was declined by the remote user.",
           "error": "Last handshake attempt failed."
         },
         "actions": {
           "invite": "Send invite",
           "accept": "Accept",
+          "reject": "Reject",
           "refresh": "Sync inbox"
         }
       },
@@ -5149,6 +5152,7 @@
         "remoteUserRequired": "Select a remote user first.",
         "inviteSent": "Invite mail sent.",
         "acceptSent": "Accept mail sent.",
+        "rejectSent": "Reject mail sent.",
         "syncSuccess": "Inbox sync completed. {{count}} message(s) processed.",
         "operationFailed": "The requested operation failed.",
         "connectSuccess": "US1 connected. Initial check completed, {{count}} message(s) processed.",
