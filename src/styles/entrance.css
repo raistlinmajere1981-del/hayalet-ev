@@ -1,6 +1,7 @@
 @import "./entrance/slot.css";
 @import "./entrance/account.css";
 @import "./entrance/report.css";
+@import "./entrance/scene.css";
 @import "./entrance/test.css";
 
 .page-entrance {
@@ -9,6 +10,7 @@
 }
 
 .entrance-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;

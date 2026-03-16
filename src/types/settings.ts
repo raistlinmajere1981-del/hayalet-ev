@@ -101,6 +101,9 @@ export interface Us1SlotSettings {
   selectedAccountId?: string | null;
   connectionState?: Us1SlotConnectionState;
   catchCommands?: boolean;
+  resumeLastSession?: boolean;
+  rememberConnectionStatus?: boolean;
+  lastConnectionState?: Us1SlotConnectionState | null;
 }
 
 export type UploadMethod = "catbox" | "uguu" | "tmpfile" | "googledrive" | "dragdrop" | "injection";

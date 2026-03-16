@@ -1,8 +1,11 @@
 import type { StartupRoomsSnapshot } from "@shared/index.js";
 
+export type StartupUiMode = "classic" | "scene";
+
 export interface StartupFlags {
   startPage: string | null;
   autoConnect: boolean;
+  uiMode: StartupUiMode;
   roomsSnapshot: StartupRoomsSnapshot | null;
 }
 
@@ -27,9 +30,16 @@ function normalizeStartPage(startPage: string | null): string | null {
   return startPage;
 }
 
+function normalizeUiMode(uiMode: string | null): StartupUiMode {
+  return uiMode === "scene" ? "scene" : "classic";
+}
+
 export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags {
   const startPage = normalizeStartPage(
     readFlagValue(argv, "--app-start-page") ?? readFlagValue(argv, "--start-page")
+  );
+  const uiMode = normalizeUiMode(
+    readFlagValue(argv, "--app-ui-mode") ?? readFlagValue(argv, "--ui-mode")
   );
 
   const autoConnect =
@@ -41,6 +51,7 @@ export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags
   return {
     startPage,
     autoConnect,
+    uiMode,
     roomsSnapshot: null,
   };
 }
@@ -55,6 +66,10 @@ export function buildPreloadAdditionalArguments(flags: StartupFlags): string[] {
 
   if (flags.autoConnect) {
     args.push("--app-auto-connect=1");
+  }
+
+  if (normalizeUiMode(flags.uiMode) === "scene") {
+    args.push("--app-ui-mode=scene");
   }
 
   if (flags.roomsSnapshot !== null) {

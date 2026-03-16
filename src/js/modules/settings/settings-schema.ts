@@ -481,6 +481,9 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
   const connectionState = raw["connectionState"];
   const connected = raw["connected"];
   const catchCommands = raw["catchCommands"];
+  const resumeLastSession = raw["resumeLastSession"];
+  const rememberConnectionStatus = raw["rememberConnectionStatus"];
+  const lastConnectionState = raw["lastConnectionState"];
 
   return {
     selectedRemoteUserId:
@@ -498,6 +501,13 @@ function normalizeUs1Slot(raw: unknown): Us1SlotSettings | undefined {
           ? "connected"
           : "disconnected",
     catchCommands: catchCommands === true,
+    resumeLastSession: typeof resumeLastSession === "boolean" ? resumeLastSession : true,
+    rememberConnectionStatus:
+      typeof rememberConnectionStatus === "boolean" ? rememberConnectionStatus : false,
+    lastConnectionState:
+      lastConnectionState === "connected" || lastConnectionState === "disconnected"
+        ? lastConnectionState
+        : "disconnected",
   };
 }
 
@@ -893,6 +903,9 @@ export function normalizeSettings(raw: unknown): AppSettings {
       selectedAccountId: null,
       connectionState: "disconnected",
       catchCommands: false,
+      resumeLastSession: true,
+      rememberConnectionStatus: false,
+      lastConnectionState: "disconnected",
     };
   }
   const us1Slot = merged.us1Slot;
@@ -923,6 +936,18 @@ export function normalizeSettings(raw: unknown): AppSettings {
   }
   if (typeof us1Slot.catchCommands !== "boolean") {
     us1Slot.catchCommands = false;
+  }
+  if (typeof us1Slot.resumeLastSession !== "boolean") {
+    us1Slot.resumeLastSession = true;
+  }
+  if (typeof us1Slot.rememberConnectionStatus !== "boolean") {
+    us1Slot.rememberConnectionStatus = false;
+  }
+  if (
+    us1Slot.lastConnectionState !== "connected" &&
+    us1Slot.lastConnectionState !== "disconnected"
+  ) {
+    us1Slot.lastConnectionState = "disconnected";
   }
   if (
     us1Slot.selectedRemoteUserId === null ||

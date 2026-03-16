@@ -91,6 +91,26 @@ export class Us1Panel {
       });
     });
 
+    const resumeCheck = document.getElementById(
+      "us1-resume-last-session-check"
+    ) as HTMLInputElement | null;
+    resumeCheck?.addEventListener("change", (event) => {
+      void this.updateUs1Slot({
+        resumeLastSession: (event.target as HTMLInputElement).checked,
+      });
+    });
+
+    const rememberConnectionCheck = document.getElementById(
+      "us1-remember-connection-check"
+    ) as HTMLInputElement | null;
+    rememberConnectionCheck?.addEventListener("change", (event) => {
+      const checked = (event.target as HTMLInputElement).checked;
+      void this.updateUs1Slot({
+        rememberConnectionStatus: checked,
+        lastConnectionState: AppState.isUs1Connected() === true ? "connected" : "disconnected",
+      });
+    });
+
     document.getElementById("us1-toggle-btn")?.addEventListener("click", () => {
       if (AppState.isUs1Connected() === true) {
         void this.handleDisconnect();
@@ -261,8 +281,17 @@ export class Us1Panel {
     await this.updateUs1Slot({
       selectedAccountId: binding?.accountId ?? null,
       selectedRemoteUserId: binding?.remoteUserId ?? null,
-      connectionState: "disconnected",
+      ...this.buildUs1ConnectionStatePatch("disconnected", settings),
     });
+  }
+
+  private buildUs1ConnectionStatePatch(
+    state: "connected" | "disconnected",
+    settings: AppSettings = this.settingsManager.getSnapshot()
+  ): Partial<NonNullable<AppSettings["us1Slot"]>> {
+    return settings.us1Slot?.rememberConnectionStatus === true
+      ? { connectionState: state, lastConnectionState: state }
+      : { connectionState: state };
   }
 
   private async handleConnect(): Promise<void> {
@@ -295,7 +324,7 @@ export class Us1Panel {
       await this.updateUs1Slot({
         selectedAccountId: selectedBinding.accountId,
         selectedRemoteUserId: selectedBinding.remoteUserId,
-        connectionState: "connected",
+        ...this.buildUs1ConnectionStatePatch("connected", settings),
       });
 
       const result = await electronApi.us1SyncMessages();
@@ -320,6 +349,7 @@ export class Us1Panel {
       this.addReport(message, "success");
       this.showFeedback(message, "success");
     } catch (error) {
+      await this.updateUs1Slot(this.buildUs1ConnectionStatePatch("disconnected"));
       const errorMessage = getErrorMessage(error);
       this.addReport(errorMessage, "error");
       this.showFeedback(errorMessage, "error");
@@ -334,7 +364,7 @@ export class Us1Panel {
       return;
     }
 
-    await this.updateUs1Slot({ connectionState: "disconnected" });
+    await this.updateUs1Slot(this.buildUs1ConnectionStatePatch("disconnected"));
     const message = entranceT("us1.feedback.disconnectSuccess");
     this.addReport(message, "info");
     this.showFeedback(message, "info");
@@ -510,6 +540,20 @@ export class Us1Panel {
     const catchCheck = document.getElementById("us1-catch-check") as HTMLInputElement | null;
     if (catchCheck) {
       catchCheck.checked = settings.us1Slot?.catchCommands === true;
+    }
+
+    const resumeCheck = document.getElementById(
+      "us1-resume-last-session-check"
+    ) as HTMLInputElement | null;
+    if (resumeCheck) {
+      resumeCheck.checked = settings.us1Slot?.resumeLastSession ?? true;
+    }
+
+    const rememberConnectionCheck = document.getElementById(
+      "us1-remember-connection-check"
+    ) as HTMLInputElement | null;
+    if (rememberConnectionCheck) {
+      rememberConnectionCheck.checked = settings.us1Slot?.rememberConnectionStatus === true;
     }
 
     const toggleBtn = document.getElementById("us1-toggle-btn") as HTMLButtonElement | null;

@@ -22,7 +22,8 @@ export function normalizeControl(raw, now = new Date().toISOString()) {
     : base.phase;
 
   return {
-    workflowSessionId: typeof data.workflowSessionId === "string" ? data.workflowSessionId : base.workflowSessionId,
+    workflowSessionId:
+      typeof data.workflowSessionId === "string" ? data.workflowSessionId : base.workflowSessionId,
     desiredMode,
     phase,
     updatedAt: typeof data.updatedAt === "string" ? data.updatedAt : base.updatedAt,
@@ -71,6 +72,20 @@ export function toMainRunningControl(control, now = new Date().toISOString()) {
     phase: "idle",
     updatedAt: now,
   });
+}
+
+export function normalizeMainAppUiMode(uiMode) {
+  return uiMode === "scene" ? "scene" : "classic";
+}
+
+export function resolveMainAppScriptName(useAssistantStartupFlags = false, uiMode = "classic") {
+  const normalizedUiMode = normalizeMainAppUiMode(uiMode);
+
+  if (useAssistantStartupFlags) {
+    return normalizedUiMode === "scene" ? "electron:dev:assistant:scene" : "electron:dev:assistant";
+  }
+
+  return normalizedUiMode === "scene" ? "electron:dev:scene" : "electron:dev";
 }
 
 export function buildMainAppLaunchArgs(mainEntry, useAssistantStartupFlags = false) {

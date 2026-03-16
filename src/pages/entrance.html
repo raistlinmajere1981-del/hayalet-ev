@@ -9,6 +9,14 @@
     data-shell-i18n-text="sideNav.entranceLabel"
   ></h2>
   <div class="entrance-page">
+    <div class="entrance-scene" id="entrance-scene-root" aria-label="Entrance scene" hidden>
+      <div class="entrance-scene__surface">
+        <img class="entrance-scene__background" id="entrance-scene-background" alt="" />
+        <div class="entrance-scene__hotspots" id="entrance-scene-hotspots"></div>
+        <div class="entrance-scene__characters" id="entrance-scene-characters"></div>
+        <div class="entrance-scene__menu-host" id="entrance-scene-menu-host"></div>
+      </div>
+    </div>
     <div class="slot-grid">
       <div class="slot-card glass-panel ds-surface-card ds-surface-card--stack" data-slot="ai1">
         <div class="slot-header">
@@ -155,14 +163,32 @@
           </div>
           <div class="slot-header-actions slot-header-actions--us1">
             <div class="us1-slot-panel__header-row">
-              <label
-                class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__catch"
-                title=""
-                data-i18n-title="us1.catchTitle"
-              >
-                <input type="checkbox" id="us1-catch-check" />
-                <span data-i18n-text="us1.catchLabel"></span>
-              </label>
+              <div class="slot-checkboxes-column us1-slot-panel__checkboxes">
+                <label
+                  class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__choice"
+                  title=""
+                  data-i18n-title="us1.catchTitle"
+                >
+                  <input type="checkbox" id="us1-catch-check" />
+                  <span data-i18n-text="us1.catchLabel"></span>
+                </label>
+                <label
+                  class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__choice"
+                  title=""
+                  data-i18n-title="slot.resumeTitle"
+                >
+                  <input type="checkbox" id="us1-resume-last-session-check" />
+                  <span data-i18n-text="slot.resumeLabel"></span>
+                </label>
+                <label
+                  class="ds-choice-chip ds-choice-chip--segmented us1-slot-panel__choice"
+                  title=""
+                  data-i18n-title="slot.rememberTitle"
+                >
+                  <input type="checkbox" id="us1-remember-connection-check" />
+                  <span data-i18n-text="slot.rememberLabel"></span>
+                </label>
+              </div>
               <button
                 class="btn btn-primary btn-sm slot-connect-btn us1-slot-panel__toggle-btn"
                 id="us1-toggle-btn"

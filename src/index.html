@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="und" data-theme="obsidian">
+<html lang="und" data-theme="obsidian" data-ui-mode="classic">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +11,17 @@
     <link rel="stylesheet" href="/styles/server.css" />
     <link rel="stylesheet" href="/styles/whisper.css" />
     <link rel="stylesheet" href="/styles/assistant.css" />
+    <script>
+      (() => {
+        try {
+          const uiMode =
+            window.electronAPI?.getStartupFlags?.()?.uiMode === "scene" ? "scene" : "classic";
+          document.documentElement.setAttribute("data-ui-mode", uiMode);
+        } catch {
+          document.documentElement.setAttribute("data-ui-mode", "classic");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="splash-screen" class="splash">

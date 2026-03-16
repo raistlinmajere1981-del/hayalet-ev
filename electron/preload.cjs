@@ -34,6 +34,10 @@ function readArgFlagValue(argv, flagName) {
   return value === "" ? null : value;
 }
 
+function normalizeUiModeFlag(value) {
+  return value === "scene" ? "scene" : "classic";
+}
+
 function readStartupRoomsSnapshotFromArgv(argv) {
   const raw = readArgFlagValue(argv, STARTUP_ROOMS_SNAPSHOT_FLAG);
   if (raw === null) {
@@ -422,6 +426,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
     const startPage =
       readArgFlagValue(argv, "--app-start-page") ?? readArgFlagValue(argv, "--start-page");
+    const uiMode = normalizeUiModeFlag(
+      readArgFlagValue(argv, "--app-ui-mode") ?? readArgFlagValue(argv, "--ui-mode")
+    );
     const autoConnect =
       argv.includes("--app-auto-connect=1") ||
       argv.includes("--app-auto-connect=true") ||
@@ -431,6 +438,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return {
       startPage,
       autoConnect,
+      uiMode,
       roomsSnapshot: STARTUP_ROOMS_SNAPSHOT,
     };
   },

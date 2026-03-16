@@ -69,6 +69,9 @@ export function createDefaultSettings(): AppSettings {
       selectedAccountId: null,
       connectionState: "disconnected",
       catchCommands: false,
+      resumeLastSession: true,
+      rememberConnectionStatus: false,
+      lastConnectionState: "disconnected",
     },
     assistantAccounts: createDefaultAssistantAccounts(),
     slots: {

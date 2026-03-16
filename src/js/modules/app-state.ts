@@ -132,6 +132,9 @@ class AppStateClass {
         selectedAccountId: null,
         connectionState: "disconnected",
         catchCommands: false,
+        resumeLastSession: true,
+        rememberConnectionStatus: false,
+        lastConnectionState: "disconnected",
       }
     );
   }

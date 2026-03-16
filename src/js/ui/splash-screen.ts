@@ -2,6 +2,8 @@ import { LogCategory } from "@shared/logging-core";
 import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
 import { AppI18n } from "../modules/i18n/index.js";
+import { SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import { getCurrentUiMode, isSceneUiMode, type UiMode } from "./ui-mode.js";
 
 interface SplashElements {
   container: HTMLElement | null;
@@ -28,8 +30,146 @@ let showTime: number = 0;
 let currentProgress: number = 0;
 let isVisible: boolean = false;
 let isInitialized: boolean = false;
+let sceneAnimationTimer: ReturnType<typeof setInterval> | null = null;
+let sceneFrameIndex: number = 0;
+let sceneAnimationCompleted: boolean = false;
+
+function createClassicSplashMarkup(): string {
+  const title = AppI18n.t("app.documentTitle");
+  const versionLabel = AppI18n.t("app.splash.version");
+
+  return `
+    <div class="splash-content">
+      <div class="splash-logo-container">
+        <img src="/assets/logo.jpg" alt="${title}" class="splash-logo" id="${ELEMENT_IDS.logo}" />
+        <div class="splash-logo-glow"></div>
+      </div>
+      <h1 class="splash-title">${title}</h1>
+      <p class="splash-version">${versionLabel}</p>
+      <div class="splash-loader">
+        <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
+      </div>
+      <p class="splash-status" id="${ELEMENT_IDS.status}">${AppI18n.t("app.startup.starting")}</p>
+    </div>
+  `;
+}
+
+function createSceneSplashMarkup(): string {
+  const title = AppI18n.t("app.documentTitle");
+  const versionLabel = AppI18n.t("app.splash.version");
+  const frameMarkup = SCENE_THEME_CONFIG.loading.frames
+    .map(
+      (frameSrc, index) => `
+        <img
+          src="${frameSrc}"
+          alt=""
+          class="splash-scene-frame${index === 0 ? " is-active" : ""}"
+          data-scene-frame-index="${index}"
+        />
+      `
+    )
+    .join("");
+
+  return `
+    <div class="splash-content splash-content--scene">
+      <div class="splash-scene-stage" id="${ELEMENT_IDS.logo}">
+        <div class="splash-scene-door">${frameMarkup}</div>
+      </div>
+      <div class="splash-scene-copy">
+        <p class="splash-scene-kicker">${SCENE_THEME_CONFIG.themeId}</p>
+        <h1 class="splash-title">${title}</h1>
+        <p class="splash-version">${versionLabel}</p>
+        <div class="splash-loader">
+          <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
+        </div>
+        <p class="splash-status" id="${ELEMENT_IDS.status}">${AppI18n.t("app.startup.starting")}</p>
+      </div>
+    </div>
+  `;
+}
+
+function buildSplashMarkup(uiMode: UiMode): string {
+  return uiMode === "scene" ? createSceneSplashMarkup() : createClassicSplashMarkup();
+}
+
+function stopSceneAnimation(): void {
+  if (sceneAnimationTimer !== null) {
+    clearInterval(sceneAnimationTimer);
+    sceneAnimationTimer = null;
+  }
+}
+
+function resetSceneAnimation(): void {
+  stopSceneAnimation();
+  sceneFrameIndex = 0;
+  sceneAnimationCompleted = false;
+  setSceneFrame(sceneFrameIndex);
+}
+
+function setSceneFrame(index: number): void {
+  const frames = Array.from(document.querySelectorAll<HTMLImageElement>(".splash-scene-frame"));
+  frames.forEach((frame, frameIndex) => {
+    frame.classList.toggle("is-active", frameIndex === index);
+  });
+}
+
+function startSceneAnimation(): void {
+  if (!isSceneUiMode()) {
+    stopSceneAnimation();
+    return;
+  }
+
+  const frameCount = SCENE_THEME_CONFIG.loading.frames.length;
+  if (frameCount <= 1) {
+    setSceneFrame(0);
+    sceneAnimationCompleted = true;
+    return;
+  }
+
+  if (sceneAnimationTimer !== null || sceneAnimationCompleted) {
+    return;
+  }
+
+  setSceneFrame(sceneFrameIndex);
+  sceneAnimationTimer = setInterval(() => {
+    if (sceneFrameIndex >= frameCount - 1) {
+      sceneAnimationCompleted = true;
+      stopSceneAnimation();
+      return;
+    }
+
+    sceneFrameIndex += 1;
+    setSceneFrame(sceneFrameIndex);
+
+    if (sceneFrameIndex >= frameCount - 1) {
+      sceneAnimationCompleted = true;
+      stopSceneAnimation();
+    }
+  }, SCENE_THEME_CONFIG.loading.frameDurationMs);
+}
+
+function syncSplashVariant(): void {
+  const container = document.getElementById(ELEMENT_IDS.container);
+  if (!(container instanceof HTMLElement)) {
+    return;
+  }
+
+  const uiMode = getCurrentUiMode();
+  if (container.dataset["uiMode"] === uiMode) {
+    return;
+  }
+
+  container.dataset["uiMode"] = uiMode;
+  container.innerHTML = buildSplashMarkup(uiMode);
+  resetSceneAnimation();
+  if (uiMode !== "scene") {
+    stopSceneAnimation();
+  }
+  isInitialized = false;
+}
 
 function getElements(): SplashElements {
+  syncSplashVariant();
   if (!isInitialized) {
     elements = {
       container: document.getElementById(ELEMENT_IDS.container),
@@ -54,23 +194,8 @@ function createSplashElement(): HTMLElement {
   const splash = document.createElement("div");
   splash.id = ELEMENT_IDS.container;
   splash.className = "splash";
-
-  const title = AppI18n.t("app.documentTitle");
-  const versionLabel = AppI18n.t("app.splash.version");
-  splash.innerHTML = `
-    <div class="splash-content">
-      <div class="splash-logo-container">
-        <img src="/assets/logo.jpg" alt="${title}" class="splash-logo" id="${ELEMENT_IDS.logo}" />
-        <div class="splash-logo-glow"></div>
-      </div>
-      <h1 class="splash-title">${title}</h1>
-      <p class="splash-version">${versionLabel}</p>
-      <div class="splash-loader">
-        <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
-      </div>
-      <p class="splash-status" id="${ELEMENT_IDS.status}">${AppI18n.t("app.startup.starting")}</p>
-    </div>
-  `;
+  splash.dataset["uiMode"] = getCurrentUiMode();
+  splash.innerHTML = buildSplashMarkup(getCurrentUiMode());
 
   return splash;
 }
@@ -90,6 +215,8 @@ const splashScreen = {
     showTime = Date.now();
     isVisible = true;
     currentProgress = 0;
+    resetSceneAnimation();
+    startSceneAnimation();
 
     logSplashDebug("splashShown", undefined, { timestamp: showTime });
   },
@@ -109,6 +236,7 @@ const splashScreen = {
 
     await new Promise((resolve) => setTimeout(resolve, HIDE_ANIMATION_DURATION));
 
+    stopSceneAnimation();
     container.remove();
     isVisible = false;
     isInitialized = false;
@@ -159,6 +287,7 @@ const splashScreen = {
         showTime = Date.now();
       }
     }
+    startSceneAnimation();
     splashScreen.setProgress(percent);
     splashScreen.setStatus(message);
   },
@@ -177,6 +306,8 @@ const splashScreen = {
   },
 
   reset(): void {
+    syncSplashVariant();
+    resetSceneAnimation();
     splashScreen.setProgress(0);
     splashScreen.setStatus(AppI18n.t("app.startup.starting"));
     currentProgress = 0;

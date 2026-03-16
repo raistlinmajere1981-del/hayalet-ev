@@ -503,6 +503,7 @@ declare global {
     getStartupFlags: () => {
       startPage: string | null;
       autoConnect: boolean;
+      uiMode: "classic" | "scene";
       roomsSnapshot: StartupRoomsSnapshot | null;
     };
     loadSettings: () => Promise<Record<string, unknown>>;

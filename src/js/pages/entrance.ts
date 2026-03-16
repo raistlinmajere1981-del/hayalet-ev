@@ -19,11 +19,13 @@ import { AccountPanel } from "./entrance/account-panel.js";
 import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
+import { EntranceSceneController } from "./entrance/scene/scene-controller.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { applyEntranceStaticTranslations, t as entranceT } from "./entrance/i18n.js";
 
 export class EntranceHallController {
   defaultsApplied: boolean;
+  us1ConnectionPreferenceApplied: boolean;
   userPanel: UserPanel;
   slotPanelAi1: SlotPanel;
   slotPanelAi2: SlotPanel;
@@ -31,12 +33,14 @@ export class EntranceHallController {
   accountPanel: AccountPanel;
   whisperPanel: WhisperPanel;
   webviewPanel: WebviewPanel;
+  sceneController: EntranceSceneController;
   _unsubSettings: (() => void) | null = null;
   _unsubSlotController: (() => void) | null = null;
   _unsubI18n: (() => void) | null = null;
 
   constructor() {
     this.defaultsApplied = false;
+    this.us1ConnectionPreferenceApplied = false;
 
     this.userPanel = new UserPanel(SettingsManager);
     this.slotPanelAi1 = new SlotPanel("ai1", SettingsManager);
@@ -45,6 +49,7 @@ export class EntranceHallController {
     this.accountPanel = new AccountPanel(SettingsManager);
     this.whisperPanel = new WhisperPanel();
     this.webviewPanel = new WebviewPanel();
+    this.sceneController = new EntranceSceneController();
   }
 
   async init(): Promise<void> {
@@ -57,10 +62,12 @@ export class EntranceHallController {
     this.accountPanel.init();
     this.whisperPanel.init();
     this.webviewPanel.init();
+    this.sceneController.init();
 
     this.setupEventListeners();
     this.setupLiveLogOverlay();
     await this.loadUserSettings();
+    await this.applyUs1RememberedConnectionPreference();
     this.setupI18nBindings();
 
     await this.webviewPanel.setupWebviews();
@@ -88,6 +95,7 @@ export class EntranceHallController {
 
         if (shouldApplyIdentityUi) {
           this.applySettingsToUI(typedSettings, changedPaths);
+          this.sceneController.syncScene();
         }
 
         const shouldApplyWebviewGating =
@@ -126,6 +134,7 @@ export class EntranceHallController {
 
     this._unsubSlotController ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
       this.webviewPanel.applyGating(SettingsManager.getSnapshot(), ["*"]);
+      this.sceneController.syncScene();
     });
   }
 
@@ -166,6 +175,7 @@ export class EntranceHallController {
     this.slotPanelAi2.render();
     void this.whisperPanel.render();
     this.webviewPanel.onLocaleChanged();
+    this.sceneController.syncScene();
     this.updateUI();
   }
 
@@ -179,6 +189,49 @@ export class EntranceHallController {
         entranceT("logs.settingsLoadError", { message: getErrorMessage(error) })
       );
     }
+  }
+
+  shouldAutoConnectUs1(settings: AppSettings): boolean {
+    const us1Slot = settings.us1Slot;
+    return (
+      AppState.hasUs1Identity() === true &&
+      us1Slot?.rememberConnectionStatus === true &&
+      us1Slot.lastConnectionState === "connected"
+    );
+  }
+
+  async applyUs1RememberedConnectionPreference(): Promise<void> {
+    if (this.us1ConnectionPreferenceApplied) {
+      return;
+    }
+    this.us1ConnectionPreferenceApplied = true;
+
+    const settings = SettingsManager.getSnapshot();
+    const shouldAutoConnect = this.shouldAutoConnectUs1(settings);
+    const hasStaleConnectedState = settings.us1Slot?.connectionState === "connected";
+
+    if (hasStaleConnectedState) {
+      await SettingsManager.save({
+        ...settings,
+        us1Slot: {
+          ...settings.us1Slot,
+          connectionState: "disconnected",
+        },
+      });
+    }
+
+    if (!shouldAutoConnect) {
+      return;
+    }
+
+    const toggleBtn = document.getElementById("us1-toggle-btn") as HTMLButtonElement | null;
+    if (!toggleBtn || toggleBtn.disabled || AppState.isUs1Connected() === true) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      toggleBtn.click();
+    });
   }
 
   applySettingsToUI(_settings: AppSettings, _changedPaths: string[] = []): void {
@@ -207,10 +260,24 @@ export class EntranceHallController {
     const avatarElement = document.getElementById(`${userType}-avatar`);
     if (!avatarElement) return;
 
+    const clearAvatar = (): void => {
+      avatarElement.replaceChildren();
+      avatarElement.style.removeProperty("--avatar-image");
+    };
+
+    const renderAvatarImage = (src: string, alt: string): void => {
+      const image = document.createElement("img");
+      image.className = "img-cover";
+      image.alt = alt;
+      image.src = src;
+      image.style.borderRadius = "inherit";
+      avatarElement.replaceChildren(image);
+      avatarElement.style.removeProperty("--avatar-image");
+    };
+
     const electronApi = window.electronAPI;
     if (!electronApi?.readFile) {
-      avatarElement.innerHTML = "";
-      avatarElement.style.removeProperty("--avatar-image");
+      clearAvatar();
       return;
     }
 
@@ -221,8 +288,7 @@ export class EntranceHallController {
       (isUs1 ? AppState.hasUs1Identity() === false : AppState.getAccountForSlot(userType) === null);
 
     if (isSlotEmpty) {
-      avatarElement.innerHTML = "";
-      avatarElement.style.removeProperty("--avatar-image");
+      clearAvatar();
       return;
     }
 
@@ -257,19 +323,13 @@ export class EntranceHallController {
         }
 
         const mimeType = getMimeTypeFromPath(candidate);
-        avatarElement.innerHTML = ``;
-        // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
-        avatarElement.style.setProperty(
-          "--avatar-image",
-          `url(data:${mimeType};base64,${imageData})`
-        );
+        renderAvatarImage(`data:${mimeType};base64,${imageData}`, `${userType} avatar`);
         return true;
       };
 
       const loaded = await tryLoadCandidate(0);
       if (!loaded) {
-        avatarElement.innerHTML = "";
-        avatarElement.style.removeProperty("--avatar-image");
+        clearAvatar();
       }
     } catch (error) {
       Logger.error(
@@ -282,8 +342,7 @@ export class EntranceHallController {
         }
       );
 
-      avatarElement.innerHTML = "";
-      avatarElement.style.removeProperty("--avatar-image");
+      clearAvatar();
     }
   }
 
@@ -477,6 +536,7 @@ export class EntranceHallController {
 
   async onShow(): Promise<void> {
     await this.loadUserSettings();
+    this.sceneController.onShow();
     this.updateUI();
   }
 

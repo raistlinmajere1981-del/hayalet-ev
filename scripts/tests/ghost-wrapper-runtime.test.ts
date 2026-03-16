@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   normalizeControl,
+  normalizeMainAppUiMode,
+  resolveMainAppScriptName,
   shouldStartGhost,
   toGhostRunningControl,
   toGhostOnlyStartControl,
@@ -215,6 +217,19 @@ test("buildMainAppLaunchArgs enables assistant startup flags after ghost return"
     "--start-page=assistant",
     "--auto-connect",
   ]);
+});
+
+test("normalizeMainAppUiMode falls back to classic", () => {
+  assert.equal(normalizeMainAppUiMode("scene"), "scene");
+  assert.equal(normalizeMainAppUiMode("classic"), "classic");
+  assert.equal(normalizeMainAppUiMode("unexpected"), "classic");
+});
+
+test("resolveMainAppScriptName picks the correct npm script for uiMode and startup flags", () => {
+  assert.equal(resolveMainAppScriptName(false, "classic"), "electron:dev");
+  assert.equal(resolveMainAppScriptName(false, "scene"), "electron:dev:scene");
+  assert.equal(resolveMainAppScriptName(true, "classic"), "electron:dev:assistant");
+  assert.equal(resolveMainAppScriptName(true, "scene"), "electron:dev:assistant:scene");
 });
 
 test("toMainRunningControl forces soft idle for active main app", () => {

@@ -111,11 +111,16 @@ export function updateIndicatorAvatars(): void {
   ): void => {
     if (el === null) return;
     if (src !== null && src !== "") {
-      // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
-      el.style.setProperty("--avatar-image", `url('${src}')`);
+      const image = document.createElement("img");
+      image.className = "img-cover";
+      image.alt = "";
+      image.src = src;
+      image.style.borderRadius = "inherit";
+      el.replaceChildren(image);
+      el.style.removeProperty("--avatar-image");
       el.classList.remove("avatar-placeholder");
-      el.textContent = "";
     } else {
+      el.replaceChildren();
       el.style.removeProperty("--avatar-image");
       el.classList.add("avatar-placeholder");
       el.textContent = fallbackText;

@@ -11,10 +11,10 @@ import { ConversationListManager } from "../modules/conversation-list-manager.js
 import { RoomRegistry } from "../modules/rooms/room-registry.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { SplashScreen } from "../ui/splash-screen.js";
+import { applyUiMode } from "../ui/ui-mode.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 
 import type { PageController } from "./types.js";
-import type { StartupRoomsSnapshot } from "@shared/index.js";
 import { ensureElectronApiFallback } from "./electron-fallback.js";
 import { applyShellStaticTranslations, bootstrapShellI18n } from "./shell-i18n.js";
 import {
@@ -96,13 +96,8 @@ async function initApp(): Promise<void> {
     await SettingsManager.load();
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
-    const startupFlags = window.electronAPI?.["getStartupFlags"]?.() as
-      | {
-          startPage: string | null;
-          autoConnect: boolean;
-          roomsSnapshot: StartupRoomsSnapshot | null;
-        }
-      | undefined;
+    const startupFlags = window.electronAPI?.getStartupFlags?.();
+    applyUiMode(startupFlags?.uiMode);
 
     SplashScreen.update(10, AppI18n.t("app.startup.loadingSettings"));
 

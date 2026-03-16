@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import {
   defaultControl,
   formatWrapperEvent,
+  normalizeMainAppUiMode,
   normalizeControl,
+  resolveMainAppScriptName,
   shouldStartGhost,
   shouldReopenMainAfterGhost,
   toGhostOnlyStartControl,
@@ -24,6 +26,7 @@ const runtimeEventLogPath = join(root, "data", "assistant-runtime-events.log");
 
 const env = {
   ...process.env,
+  APP_UI_MODE: normalizeMainAppUiMode(process.env.APP_UI_MODE),
   LIBVA_DRIVER_NAME: process.env.LIBVA_DRIVER_NAME ?? "i965",
 };
 
@@ -36,7 +39,11 @@ async function ensureControlFile() {
   try {
     await access(runtimeControlPath);
   } catch {
-    await writeFile(runtimeControlPath, `${JSON.stringify(defaultControl(nowIso()), null, 2)}\n`, "utf-8");
+    await writeFile(
+      runtimeControlPath,
+      `${JSON.stringify(defaultControl(nowIso()), null, 2)}\n`,
+      "utf-8"
+    );
   }
 }
 
@@ -92,18 +99,18 @@ function run(command, args, label) {
 async function runMainApp(useAssistantStartupFlags = false) {
   const currentControl = await readControl();
   const runningMainControl = toMainRunningControl(currentControl, nowIso());
+  const uiMode = normalizeMainAppUiMode(env.APP_UI_MODE);
+  const scriptName = resolveMainAppScriptName(useAssistantStartupFlags, uiMode);
   await writeControl(runningMainControl);
   await logWrapperEvent("cycle.main.sync", {
     desiredMode: runningMainControl.desiredMode,
     phase: runningMainControl.phase,
     workflowSessionId: runningMainControl.workflowSessionId,
     assistantStartup: useAssistantStartupFlags,
+    uiMode,
   });
 
-  if (useAssistantStartupFlags) {
-    return await run("npm", ["run", "electron:dev:assistant"], "app");
-  }
-  return await run("npm", ["run", "electron:dev"], "app");
+  return await run("npm", ["run", scriptName], "app");
 }
 
 async function runGhostApp() {

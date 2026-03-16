@@ -16,6 +16,7 @@ test("reads startup flags from legacy CLI arguments", () => {
 
   assert.equal(flags.startPage, "assistant");
   assert.equal(flags.autoConnect, true);
+  assert.equal(flags.uiMode, "classic");
 });
 
 test("reads startup flags from app-prefixed preload arguments", () => {
@@ -24,25 +25,35 @@ test("reads startup flags from app-prefixed preload arguments", () => {
     "./dist/electron/main.js",
     "--app-start-page=assistant",
     "--app-auto-connect=1",
+    "--app-ui-mode=scene",
   ]);
 
   assert.equal(flags.startPage, "assistant");
   assert.equal(flags.autoConnect, true);
+  assert.equal(flags.uiMode, "scene");
 });
 
 test("serializes startup flags into preload additional arguments", () => {
   const args = buildPreloadAdditionalArguments({
     startPage: "assistant",
     autoConnect: true,
+    uiMode: "scene",
+    roomsSnapshot: null,
   });
 
-  assert.deepEqual(args, ["--app-start-page=assistant", "--app-auto-connect=1"]);
+  assert.deepEqual(args, [
+    "--app-start-page=assistant",
+    "--app-auto-connect=1",
+    "--app-ui-mode=scene",
+  ]);
 });
 
 test("omits empty startup flags while serializing preload arguments", () => {
   const args = buildPreloadAdditionalArguments({
     startPage: null,
     autoConnect: false,
+    uiMode: "classic",
+    roomsSnapshot: null,
   });
 
   assert.deepEqual(args, []);
