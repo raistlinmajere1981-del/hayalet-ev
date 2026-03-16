@@ -12,6 +12,62 @@
     <div class="entrance-scene" id="entrance-scene-root" aria-label="Entrance scene" hidden>
       <div class="entrance-scene__surface">
         <img class="entrance-scene__background" id="entrance-scene-background" alt="" />
+        <div class="entrance-scene__window-controls" aria-label="Scene window controls">
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="minimize"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.minimize"
+            data-shell-i18n-aria-label="window.minimize"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <rect x="3" y="7" width="10" height="2" rx="0.5" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="minimize-to-tray"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.minimizeToTray"
+            data-shell-i18n-aria-label="window.minimizeToTray"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 11L3 6h10l-5 5z" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="fullscreen"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.fullscreen"
+            data-shell-i18n-aria-label="window.fullscreen"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M3 3h4v2H5v2H3V3zm6 0h4v4h-2V5H9V3zM3 9h2v2h2v2H3V9zm8 2h2v2h-4v-2h2z" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control entrance-scene__window-control--close"
+            type="button"
+            data-window-action="close"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="common.close"
+            data-shell-i18n-aria-label="common.closeAriaLabel"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path
+                d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"
+              />
+            </svg>
+          </button>
+        </div>
         <div class="entrance-scene__hotspots" id="entrance-scene-hotspots"></div>
         <div class="entrance-scene__characters" id="entrance-scene-characters"></div>
         <div class="entrance-scene__menu-host" id="entrance-scene-menu-host"></div>

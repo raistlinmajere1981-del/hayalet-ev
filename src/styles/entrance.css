@@ -17,6 +17,15 @@
   background: var(--bg-app);
 }
 
+[data-ui-mode="scene"][data-active-page="entrance"] .page-entrance {
+  height: 100%;
+  overflow: hidden;
+}
+
+[data-ui-mode="scene"][data-active-page="entrance"] .entrance-page {
+  min-height: 100%;
+}
+
 .slot-grid {
   flex: 1;
   display: grid;

@@ -36,6 +36,10 @@ function matchesPageDataset(candidate: string | undefined, pageName: string): bo
   return normalizePageName(candidate) === pageName;
 }
 
+function syncShellLayoutState(pageName: string): void {
+  document.documentElement.setAttribute("data-active-page", pageName);
+}
+
 export function setControllers(c: Record<string, PageController>): void {
   controllers = c;
 }
@@ -84,6 +88,7 @@ export function showPage(pageName: string): void {
   if (pageElement !== null) {
     pageElement.classList.remove("is-hidden");
     currentPage = normalizedPageName;
+    syncShellLayoutState(normalizedPageName);
 
     const controller = controllers[normalizedPageName];
     if (controller?.onShow !== undefined) {
@@ -95,22 +100,26 @@ export function showPage(pageName: string): void {
 }
 
 export function setupWindowControls(): void {
-  const minimizeToTrayBtn = document.getElementById("window-minimize-to-tray");
-  const minimizeBtn = document.getElementById("window-minimize");
-  const fullscreenBtn = document.getElementById("window-fullscreen");
-  const closeBtn = document.getElementById("window-close");
-  if (minimizeToTrayBtn !== null)
-    minimizeToTrayBtn.addEventListener("click", () => {
-      WindowManager.minimizeToTray();
+  document.querySelectorAll<HTMLElement>("[data-window-action]").forEach((button) => {
+    const action = button.dataset["windowAction"];
+    if (action === undefined || action === "") {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      if (action === "minimize-to-tray") {
+        WindowManager.minimizeToTray();
+        return;
+      }
+
+      if (action === "close") {
+        WindowManager.closeApp();
+        return;
+      }
+
+      WindowManager.apply(action);
     });
-  if (minimizeBtn !== null)
-    minimizeBtn.addEventListener("click", () => WindowManager.apply("minimize"));
-  if (fullscreenBtn !== null)
-    fullscreenBtn.addEventListener("click", () => WindowManager.apply("fullscreen"));
-  if (closeBtn !== null)
-    closeBtn.addEventListener("click", () => {
-      WindowManager.closeApp();
-    });
+  });
 }
 
 export function setupTopBarButtons(): void {

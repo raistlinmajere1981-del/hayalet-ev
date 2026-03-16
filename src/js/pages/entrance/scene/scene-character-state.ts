@@ -5,15 +5,19 @@ import { TrafficManager } from "../../../modules/traffic-manager.js";
 export type SceneCharacterSlot = "ai0" | "ai1" | "ai2" | "us1";
 export type SceneCharacterState = "inactive" | "connected" | "thinking" | "loading";
 
-export function getSceneCharacterState(slot: SceneCharacterSlot): SceneCharacterState {
-  const trafficState = TrafficManager.state[slot];
-
-  if (trafficState?.status.loading === "busy") {
-    return "loading";
+export function getSceneCharacterState(slot: SceneCharacterSlot | null): SceneCharacterState {
+  if (slot === null) {
+    return "inactive";
   }
+
+  const trafficState = TrafficManager.state[slot];
 
   if (trafficState?.status.thinking === "busy") {
     return "thinking";
+  }
+
+  if (trafficState?.status.loading === "busy") {
+    return "loading";
   }
 
   if (slot === "us1") {
@@ -23,6 +27,6 @@ export function getSceneCharacterState(slot: SceneCharacterSlot): SceneCharacter
   return SlotController.isConnected(slot) ? "connected" : "inactive";
 }
 
-export function getSceneCharacterStateClass(slot: SceneCharacterSlot): string {
+export function getSceneCharacterStateClass(slot: SceneCharacterSlot | null): string {
   return `is-${getSceneCharacterState(slot)}`;
 }

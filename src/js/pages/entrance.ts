@@ -20,6 +20,7 @@ import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
 import { EntranceSceneController } from "./entrance/scene/scene-controller.js";
+import { createSceneEntranceBridge } from "./entrance/scene/scene-entrance-bridge.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { applyEntranceStaticTranslations, t as entranceT } from "./entrance/i18n.js";
 
@@ -49,7 +50,18 @@ export class EntranceHallController {
     this.accountPanel = new AccountPanel(SettingsManager);
     this.whisperPanel = new WhisperPanel();
     this.webviewPanel = new WebviewPanel();
-    this.sceneController = new EntranceSceneController();
+    this.sceneController = new EntranceSceneController(
+      createSceneEntranceBridge({
+        slotPanels: {
+          ai1: this.slotPanelAi1,
+          ai2: this.slotPanelAi2,
+        },
+        us1Panel: this.us1Panel,
+        webviewPanel: this.webviewPanel,
+        connectUser: (slot) => this.connectUser(slot),
+        disconnectUser: (slot) => this.disconnectUser(slot),
+      })
+    );
   }
 
   async init(): Promise<void> {

@@ -680,6 +680,19 @@ body.is-scroll-locked {
   display: none;
 }
 
+[data-ui-mode="scene"][data-active-page="entrance"] .top-bar,
+[data-ui-mode="scene"][data-active-page="entrance"] .side-nav-overlay {
+  display: none;
+}
+
+[data-ui-mode="scene"][data-active-page="entrance"] .main-content {
+  height: var(--layout-app-height);
+}
+
+[data-ui-mode="scene"][data-active-page="entrance"] .settings-hub-overlay {
+  inset: 0;
+}
+
 .settings-hub-backdrop {
   position: absolute;
   inset: 0;

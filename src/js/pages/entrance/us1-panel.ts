@@ -32,6 +32,15 @@ interface ReportEntry {
   message: string;
 }
 
+export interface Us1SceneState {
+  connected: boolean;
+  canConnect: boolean;
+  connectDisabledReason: string | null;
+  catchCommands: boolean;
+  resumeLastSession: boolean;
+  rememberConnectionStatus: boolean;
+}
+
 export class Us1Panel {
   settingsManager: SettingsManagerLike;
   reportEntries: ReportEntry[] = [];
@@ -521,6 +530,62 @@ export class Us1Panel {
     });
     await this.reloadSettings();
     this.render();
+  }
+
+  getSceneState(): Us1SceneState {
+    const settings = this.settingsManager.getSnapshot();
+    const verifiedLocalMailAccount = this.getVerifiedLocalMailAccount(settings);
+    const activeBindings = this.getActiveRemoteBindings(settings);
+    const selectedBinding = this.resolveSelectedBinding(settings, activeBindings);
+    const connected = AppState.isUs1Connected();
+
+    let connectDisabledReason: string | null = null;
+    if (verifiedLocalMailAccount === null) {
+      connectDisabledReason = entranceT("us1.status.noConnectedMailAccount");
+    } else if (activeBindings.length === 0) {
+      connectDisabledReason = entranceT("us1.status.noUsers");
+    } else if (selectedBinding === null) {
+      connectDisabledReason = entranceT("us1.status.empty");
+    }
+
+    return {
+      connected,
+      canConnect: connected || connectDisabledReason === null,
+      connectDisabledReason,
+      catchCommands: settings.us1Slot?.catchCommands === true,
+      resumeLastSession: settings.us1Slot?.resumeLastSession ?? true,
+      rememberConnectionStatus: settings.us1Slot?.rememberConnectionStatus === true,
+    };
+  }
+
+  async selectSceneBinding(accountId: string | null): Promise<void> {
+    await this.handleSlotSelectionChange(accountId);
+  }
+
+  async toggleSceneConnection(): Promise<void> {
+    if (AppState.isUs1Connected() === true) {
+      await this.handleDisconnect();
+      return;
+    }
+
+    await this.handleConnect();
+  }
+
+  async updateScenePreferences(
+    patch: Partial<
+      Pick<
+        NonNullable<AppSettings["us1Slot"]>,
+        "catchCommands" | "resumeLastSession" | "rememberConnectionStatus"
+      >
+    >
+  ): Promise<void> {
+    const nextPatch: Partial<NonNullable<AppSettings["us1Slot"]>> = { ...patch };
+    if (Object.prototype.hasOwnProperty.call(nextPatch, "rememberConnectionStatus")) {
+      nextPatch.lastConnectionState =
+        AppState.isUs1Connected() === true ? "connected" : "disconnected";
+    }
+
+    await this.updateUs1Slot(nextPatch);
   }
 
   render(): void {
