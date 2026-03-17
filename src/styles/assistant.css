@@ -74,16 +74,32 @@
   pointer-events: none;
 }
 
+.assistant-scene__characters .entrance-scene__character {
+  cursor: default;
+}
+
+.assistant-scene__characters .entrance-scene__character-label {
+  display: inline-flex;
+}
+
+[data-scene-debug="true"] .assistant-scene__characters .entrance-scene__character {
+  cursor: pointer;
+}
+
 .assistant-scene__character {
   position: absolute;
-  left: 36%;
-  bottom: 10%;
+  left: var(--assistant-scene-character-left, 36%);
+  bottom: var(--assistant-scene-character-bottom, 10%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
   pointer-events: none;
+  z-index: calc(var(--assistant-scene-character-depth, 1) * 10);
   filter: drop-shadow(0 20px 28px rgb(0 0 0 / 0.34));
+  transform:
+    translateX(-50%) scale(var(--assistant-scene-character-scale, 1))
+    scale(var(--assistant-scene-character-depth-scale, 1));
   transition:
     opacity var(--duration-normal) var(--ease-out),
     filter var(--duration-normal) var(--ease-out),
@@ -111,7 +127,10 @@
 
 .assistant-scene__character-stage {
   position: relative;
-  height: clamp(13rem, 31vh, 18rem);
+  display: inline-flex;
+  align-items: flex-end;
+  width: fit-content;
+  height: calc(clamp(13rem, 31vh, 18rem) * var(--assistant-scene-character-body-scale, 1));
 }
 
 .assistant-scene__character-body {
@@ -122,10 +141,13 @@
 
 .assistant-scene__character-head {
   position: absolute;
-  top: 31%;
-  left: 50%;
-  width: 37%;
+  top: var(--assistant-scene-character-head-top, 31%);
+  left: var(--assistant-scene-character-head-left, 50%);
+  width: var(--assistant-scene-character-head-size, 37%);
   aspect-ratio: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transform: translate(-50%, -50%);
   border-radius: 999px;
   overflow: hidden;
@@ -140,11 +162,10 @@
 .assistant-scene__character-avatar {
   width: 100%;
   height: 100%;
-  background-image: var(--avatar-image, none);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  transform: scale(1.08);
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transform: scale(var(--assistant-scene-character-avatar-scale, 1.08));
 }
 
 .assistant-scene__character-label {
@@ -160,8 +181,24 @@
   text-transform: uppercase;
 }
 
+.assistant-scene__character-anchor-marker {
+  display: none;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: rgb(16 9 8 / 0.72);
+  border: 1px solid rgb(255 225 191 / 0.12);
+  color: rgb(243 205 162 / 0.78);
+  font-family: var(--font-scene-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
 .assistant-scene__hotspot {
   position: absolute;
+  left: var(--assistant-scene-hotspot-left, 0);
+  top: var(--assistant-scene-hotspot-top, 0);
+  width: var(--assistant-scene-hotspot-width, 0);
+  height: var(--assistant-scene-hotspot-height, 0);
   display: inline-flex;
   align-items: flex-end;
   justify-content: center;
@@ -185,14 +222,38 @@
 .assistant-scene__hotspot::before {
   content: "";
   position: absolute;
+  inset: 0;
+  border: 1px solid rgb(255 231 201 / 0.18);
+  border-radius: 1.15rem;
+  transform:
+    perspective(900px)
+    rotateY(var(--assistant-scene-hotspot-frame-perspective, 0deg))
+    rotate(var(--assistant-scene-hotspot-frame-rotate, 0deg));
+  box-shadow:
+    0 0 0 1px rgb(255 244 230 / 0.05) inset,
+    0 0 0.85rem
+      hsl(
+        var(--assistant-scene-hotspot-hover-glow-hue, 33deg)
+        72%
+        70% /
+        calc(var(--assistant-scene-hotspot-hover-glow-alpha, 0.34) * 0.25)
+      );
+  pointer-events: none;
+}
+
+.assistant-scene__hotspot::after {
+  content: "";
+  position: absolute;
   inset: -0.5rem;
   border: 1px dashed rgb(255 231 201 / 0.16);
   border-radius: 1.25rem;
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-out);
+  pointer-events: none;
 }
 
 .assistant-scene__hotspot:hover,
+.assistant-scene__hotspot.is-selected,
 .assistant-scene__hotspot:focus-visible {
   opacity: 1;
   transform: translateY(-2px);
@@ -206,7 +267,22 @@
 }
 
 .assistant-scene__hotspot:hover::before,
+.assistant-scene__hotspot.is-selected::before,
 .assistant-scene__hotspot:focus-visible::before {
+  box-shadow:
+    0 0 0 1px rgb(255 244 230 / 0.08) inset,
+    0 0 1.15rem
+      hsl(
+        var(--assistant-scene-hotspot-hover-glow-hue, 33deg)
+        72%
+        70% /
+        calc(var(--assistant-scene-hotspot-hover-glow-alpha, 0.34) * 0.85)
+      );
+}
+
+.assistant-scene__hotspot:hover::after,
+.assistant-scene__hotspot.is-selected::after,
+.assistant-scene__hotspot:focus-visible::after {
   opacity: 1;
 }
 
@@ -215,17 +291,17 @@
 }
 
 .assistant-scene__hotspot--door {
-  left: 7%;
-  top: 22%;
-  width: 13%;
-  height: 48%;
+  --assistant-scene-hotspot-left: 7%;
+  --assistant-scene-hotspot-top: 22%;
+  --assistant-scene-hotspot-width: 13%;
+  --assistant-scene-hotspot-height: 48%;
 }
 
 .assistant-scene__hotspot--screen {
-  left: 44%;
-  top: 32%;
-  width: 18%;
-  height: 18%;
+  --assistant-scene-hotspot-left: 44%;
+  --assistant-scene-hotspot-top: 32%;
+  --assistant-scene-hotspot-width: 18%;
+  --assistant-scene-hotspot-height: 18%;
 }
 
 .assistant-scene__hotspot-label {
@@ -239,6 +315,11 @@
   font-weight: var(--font-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.assistant-scene__hotspot-label.is-selected {
+  background: rgb(24 14 11 / 0.92);
+  box-shadow: 0 0 0 1px rgb(126 201 255 / 0.32);
 }
 
 .assistant-scene__screen-view {
@@ -343,6 +424,29 @@
 .assistant-scene__exit--right:hover .assistant-scene__exit-copy,
 .assistant-scene__exit--right:focus-visible .assistant-scene__exit-copy {
   transform: translateX(-0.2rem);
+}
+
+[data-scene-debug="true"] .assistant-scene__character {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+[data-scene-debug="true"] .assistant-scene__characters .entrance-scene__character-head {
+  pointer-events: auto;
+}
+
+[data-scene-debug="true"] .assistant-scene__characters {
+  pointer-events: auto;
+}
+
+[data-scene-debug="true"] .assistant-scene__character.is-selected .assistant-scene__character-head {
+  box-shadow:
+    0 0 0 3px rgb(126 201 255 / 0.2),
+    0 0 0 10px rgb(83 149 221 / 0.16);
+}
+
+[data-scene-debug="true"] .assistant-scene__character-anchor-marker {
+  display: inline-flex;
 }
 
 [data-ui-mode="scene"][data-active-page="assistant"] .page-assistant {

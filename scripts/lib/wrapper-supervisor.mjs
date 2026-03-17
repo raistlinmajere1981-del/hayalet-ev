@@ -175,7 +175,7 @@ export function createWrapperSupervisor({ root, env, dashboard, sessionId, onEve
       assistantStartup,
       uiMode,
       sceneDebug,
-      cdpPort: process.env.CDP_PORT ?? "9223",
+      cdpPort: process.env.CDP_PORT ?? "9222",
     });
   }
 

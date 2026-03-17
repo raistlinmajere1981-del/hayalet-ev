@@ -12,10 +12,20 @@ export type EntranceSceneEditorSelection =
   | { kind: "character"; id: string }
   | null;
 
+export interface EntranceSceneEditorRoomOption {
+  id: string;
+  label: string;
+}
+
 interface EntranceSceneEditorCallbacks {
+  isActive(): boolean;
   getSceneMap(): EntranceSceneMap;
   getSelection(): EntranceSceneEditorSelection;
+  getRoomOptions(): EntranceSceneEditorRoomOption[];
+  getActiveRoomId(): string;
   setSelection(selection: EntranceSceneEditorSelection): void;
+  navigateToRoom(roomId: string): void;
+  supportsHotspotLabels(hotspot: EntranceSceneHotspotConfig): boolean;
   updateHotspot(
     id: string,
     updater: (hotspot: EntranceSceneHotspotConfig) => EntranceSceneHotspotConfig
@@ -81,6 +91,8 @@ export class EntranceSceneEditor {
   refresh(): void {
     const sceneMap = this.callbacks.getSceneMap();
     const selection = this.callbacks.getSelection();
+    const roomOptions = this.callbacks.getRoomOptions();
+    const activeRoomId = this.callbacks.getActiveRoomId();
     const previousPanel = this.host.querySelector<HTMLElement>(".entrance-scene__editor-panel");
     if (previousPanel !== null) {
       this.panelScroll = {
@@ -101,6 +113,23 @@ export class EntranceSceneEditor {
         : null;
 
     panel.innerHTML = `
+      <div class="entrance-scene__editor-room-list" role="tablist" aria-label="Scene rooms">
+        ${roomOptions
+          .map(
+            (room) => `
+            <button
+              type="button"
+              class="entrance-scene__editor-room-btn${room.id === activeRoomId ? " is-active" : ""}"
+              data-editor-action="room"
+              data-room-id="${room.id}"
+              aria-pressed="${String(room.id === activeRoomId)}"
+            >
+              ${room.label}
+            </button>
+          `
+          )
+          .join("")}
+      </div>
       <div class="entrance-scene__editor-header">
         <div class="entrance-scene__editor-drag-handle" data-editor-drag-handle="true">
           <h3 class="entrance-scene__editor-title">Scene Editor</h3>
@@ -168,6 +197,7 @@ export class EntranceSceneEditor {
     }
 
     if (hotspot !== null) {
+      const showLabels = this.callbacks.supportsHotspotLabels(hotspot);
       return `
         <div class="entrance-scene__editor-selected-title">Hotspot: ${hotspot.id}</div>
         <div class="entrance-scene__editor-section">
@@ -176,14 +206,20 @@ export class EntranceSceneEditor {
             ${HOTSPOT_DOOR_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
           </div>
         </div>
-        <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Label</div>
-          <div class="entrance-scene__editor-grid">
-            ${HOTSPOT_LABEL_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
-          </div>
-          ${this.renderLabelTextRow(hotspot)}
-          ${this.renderFontPresetRow(hotspot)}
-        </div>
+        ${
+          showLabels
+            ? `
+              <div class="entrance-scene__editor-section">
+                <div class="entrance-scene__editor-section-title">Label</div>
+                <div class="entrance-scene__editor-grid">
+                  ${HOTSPOT_LABEL_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
+                </div>
+                ${this.renderLabelTextRow(hotspot)}
+                ${this.renderFontPresetRow(hotspot)}
+              </div>
+            `
+            : ""
+        }
       `;
     }
 
@@ -290,6 +326,14 @@ export class EntranceSceneEditor {
       return;
     }
 
+    if (action === "room") {
+      const roomId = actionButton.dataset["roomId"] ?? "";
+      if (roomId !== "") {
+        this.callbacks.navigateToRoom(roomId);
+      }
+      return;
+    }
+
     if (action === "reset") {
       this.callbacks.resetDraft();
       return;
@@ -337,13 +381,23 @@ export class EntranceSceneEditor {
       return;
     }
     const nextValue = target.value.trim();
-    this.callbacks.updateHotspot(id, (hotspot) => ({
-      ...hotspot,
-      labelCustomText: nextValue === "" ? undefined : nextValue,
-    }));
+    this.callbacks.updateHotspot(id, (hotspot) => {
+      if (nextValue === "") {
+        const { labelCustomText: _labelCustomText, ...nextHotspot } = hotspot;
+        return nextHotspot;
+      }
+      return {
+        ...hotspot,
+        labelCustomText: nextValue,
+      };
+    });
   };
 
   private handleKeydown = (event: KeyboardEvent): void => {
+    if (!this.callbacks.isActive()) {
+      return;
+    }
+
     const selection = this.callbacks.getSelection();
     if (selection === null) {
       return;
@@ -441,6 +495,10 @@ export class EntranceSceneEditor {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
+    if (!this.callbacks.isActive()) {
+      return;
+    }
+
     if (this.dragState?.pointerId !== event.pointerId) {
       return;
     }
@@ -460,6 +518,10 @@ export class EntranceSceneEditor {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
+    if (!this.callbacks.isActive()) {
+      return;
+    }
+
     if (this.dragState?.pointerId !== event.pointerId) {
       return;
     }

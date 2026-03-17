@@ -14,7 +14,7 @@
  * 
  * Gereksinimler:
  *   - Electron uygulaması çalışıyor olmalı (npm start)
- *   - CDP port 9223 açık olmalı
+ *   - CDP port 9222 açık olmalı
  */
 
 import { spawn } from 'child_process';
@@ -31,7 +31,7 @@ const PROJECT_ROOT = resolve(__dirname, '../..');
 // ============================================================================
 
 const CONFIG = {
-  cdpPort: process.env.CDP_PORT || 9223,
+  cdpPort: process.env.CDP_PORT || 9222,
   cdpHost: 'localhost',
   startupWait: 8000,      // Electron başlatma bekleme süresi (ms)
   testTimeout: 30000,     // Test timeout (ms)

@@ -2,6 +2,7 @@ import { AppState } from "../../../modules/app-state.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
+import { SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
 import { SCENE_THEME_CONFIG } from "../../../scene/scene-config.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
 
@@ -90,14 +91,30 @@ export class EntranceSceneController {
     }
     if (this.sceneDebugEnabled && this.editorHost !== null) {
       this.editor = new EntranceSceneEditor(this.editorHost, {
+        isActive: (): boolean =>
+          isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "entrance",
         getSceneMap: (): EntranceSceneMap => this.sceneMap,
         getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+        getRoomOptions: (): Array<{ id: string; label: string }> =>
+          SCENE_DEBUG_ROOMS.map((room) => ({
+            id: room.id,
+            label: shellT(room.labelKey),
+          })),
+        getActiveRoomId: (): string => "entrance",
         setSelection: (selection): void => {
           this.editorSelection = selection;
           this.editor?.refresh();
           this.renderHotspots();
           void this.renderCharacters();
         },
+        navigateToRoom: (roomId: string): void => {
+          document.dispatchEvent(
+            new CustomEvent("navigate-page", {
+              detail: { page: roomId },
+            })
+          );
+        },
+        supportsHotspotLabels: (): boolean => true,
         updateHotspot: (id, updater): void => {
           this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
             hotspot.id === id ? updater(hotspot) : hotspot
@@ -369,6 +386,10 @@ export class EntranceSceneController {
           detail: { panel: hotspot.action.panel },
         })
       );
+      return;
+    }
+
+    if (hotspot.action.type === "screen") {
       return;
     }
 

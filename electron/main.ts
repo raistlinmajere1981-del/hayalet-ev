@@ -150,7 +150,7 @@ const appInstanceLabel = basename(Paths.getProjectRoot());
 app.setName(appInstanceLabel);
 app.setPath("userData", join(Paths.getDataDir(), "electron-user-data"));
 
-const CDP_PORT = process.env["CDP_PORT"] ?? 9223;
+const CDP_PORT = process.env["CDP_PORT"] ?? 9222;
 app.commandLine.appendSwitch("remote-debugging-port", CDP_PORT.toString());
 
 let mainWindow: BrowserWindow | null = null;

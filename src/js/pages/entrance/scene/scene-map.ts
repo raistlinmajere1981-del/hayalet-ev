@@ -15,7 +15,7 @@ export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRE
 
 export interface EntranceSceneHotspotActionNavigate {
   type: "navigate";
-  page: "analyze" | "archives" | "server" | "whisper" | "assistant";
+  page: "analyze" | "archives" | "server" | "whisper" | "assistant" | "entrance";
 }
 
 export interface EntranceSceneHotspotActionSettings {
@@ -23,9 +23,15 @@ export interface EntranceSceneHotspotActionSettings {
   panel: "theme" | "accounts" | "backup" | "rooms" | "live-log";
 }
 
+export interface EntranceSceneHotspotActionScreen {
+  type: "screen";
+  screen: "primary";
+}
+
 export type EntranceSceneHotspotAction =
   | EntranceSceneHotspotActionNavigate
-  | EntranceSceneHotspotActionSettings;
+  | EntranceSceneHotspotActionSettings
+  | EntranceSceneHotspotActionScreen;
 
 export interface EntranceSceneHotspotConfig {
   id: string;
@@ -72,7 +78,8 @@ export interface EntranceSceneMap {
   characterAnchors: EntranceSceneCharacterAnchorConfig[];
 }
 
-const STORAGE_KEY = "entrance-scene-map-draft-v1";
+const ENTRANCE_STORAGE_KEY = "entrance-scene-map-draft-v1";
+const ASSISTANT_STORAGE_KEY = "assistant-scene-map-draft-v1";
 
 export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   referenceSize: {
@@ -289,6 +296,74 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
+export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
+  referenceSize: {
+    width: 1920,
+    height: 1080,
+  },
+  hotspots: [
+    {
+      id: "door-entrance",
+      labelKey: "sideNav.entranceLabel",
+      labelCustomText: "Entrance",
+      leftPx: 134,
+      topPx: 238,
+      widthPx: 250,
+      heightPx: 518,
+      labelCenterXPx: 259,
+      labelTopPx: 712,
+      labelWidthPx: 260,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "left-angled",
+      frameRotateDeg: -1.5,
+      framePerspectiveDeg: 10,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "navigate", page: "entrance" },
+    },
+    {
+      id: "screen-primary",
+      labelKey: "",
+      labelCustomText: "Open screen",
+      leftPx: 845,
+      topPx: 346,
+      widthPx: 346,
+      heightPx: 194,
+      labelCenterXPx: 1018,
+      labelTopPx: 500,
+      labelWidthPx: 260,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "screen", screen: "primary" },
+    },
+  ],
+  characterAnchors: [
+    {
+      id: "anchor-ai0",
+      kind: "assistant",
+      preferredSlot: "ai0",
+      leftPx: 691,
+      bottomPx: 108,
+      scale: 0.66,
+      depth: 4,
+    },
+  ],
+};
+
 export function cloneEntranceSceneMap(
   source: EntranceSceneMap = DEFAULT_ENTRANCE_SCENE_MAP
 ): EntranceSceneMap {
@@ -326,8 +401,10 @@ function normalizeCharacterAnchor(
   };
 }
 
-export function normalizeEntranceSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
-  const defaultMap = DEFAULT_ENTRANCE_SCENE_MAP;
+function normalizeSceneMap(
+  source: Partial<EntranceSceneMap>,
+  defaultMap: EntranceSceneMap
+): EntranceSceneMap {
   const hotspotById = new Map<string, Partial<EntranceSceneHotspotConfig>>(
     (Array.isArray(source.hotspots)
       ? (source.hotspots as Array<Partial<EntranceSceneHotspotConfig>>)
@@ -359,13 +436,41 @@ export function normalizeEntranceSceneMap(source: Partial<EntranceSceneMap>): En
   };
 }
 
+export function normalizeEntranceSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
+  return normalizeSceneMap(source, DEFAULT_ENTRANCE_SCENE_MAP);
+}
+
+export function normalizeAssistantSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
+  const normalized = normalizeSceneMap(source, DEFAULT_ASSISTANT_SCENE_MAP);
+  normalized.characterAnchors = normalized.characterAnchors.map((anchor) => {
+    if (
+      anchor.id === "anchor-ai0" &&
+      anchor.leftPx === 691 &&
+      anchor.bottomPx === 108 &&
+      anchor.depth === 4 &&
+      anchor.scale === 1
+    ) {
+      return {
+        ...anchor,
+        scale: DEFAULT_ASSISTANT_SCENE_MAP.characterAnchors[0]?.scale ?? 0.66,
+      };
+    }
+
+    return anchor;
+  });
+  return normalized;
+}
+
 export function serializeEntranceSceneMap(sceneMap: EntranceSceneMap): string {
   return JSON.stringify(sceneMap, null, 2);
 }
 
-export function loadEntranceSceneMapDraft(): EntranceSceneMap | null {
+function loadSceneMapDraft(
+  storageKey: string,
+  normalizer: (source: Partial<EntranceSceneMap>) => EntranceSceneMap
+): EntranceSceneMap | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (raw === null || raw.trim() === "") {
       return null;
     }
@@ -377,24 +482,48 @@ export function loadEntranceSceneMapDraft(): EntranceSceneMap | null {
     ) {
       return null;
     }
-    return normalizeEntranceSceneMap(parsed);
+    return normalizer(parsed);
   } catch {
     return null;
   }
 }
 
-export function saveEntranceSceneMapDraft(sceneMap: EntranceSceneMap): void {
+export function loadEntranceSceneMapDraft(): EntranceSceneMap | null {
+  return loadSceneMapDraft(ENTRANCE_STORAGE_KEY, normalizeEntranceSceneMap);
+}
+
+export function loadAssistantSceneMapDraft(): EntranceSceneMap | null {
+  return loadSceneMapDraft(ASSISTANT_STORAGE_KEY, normalizeAssistantSceneMap);
+}
+
+function saveSceneMapDraft(storageKey: string, sceneMap: EntranceSceneMap): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, serializeEntranceSceneMap(sceneMap));
+    window.localStorage.setItem(storageKey, serializeEntranceSceneMap(sceneMap));
+  } catch {
+    // Ignore draft persistence failures in constrained environments.
+  }
+}
+
+export function saveEntranceSceneMapDraft(sceneMap: EntranceSceneMap): void {
+  saveSceneMapDraft(ENTRANCE_STORAGE_KEY, sceneMap);
+}
+
+export function saveAssistantSceneMapDraft(sceneMap: EntranceSceneMap): void {
+  saveSceneMapDraft(ASSISTANT_STORAGE_KEY, sceneMap);
+}
+
+function clearSceneMapDraft(storageKey: string): void {
+  try {
+    window.localStorage.removeItem(storageKey);
   } catch {
     // Ignore draft persistence failures in constrained environments.
   }
 }
 
 export function clearEntranceSceneMapDraft(): void {
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Ignore draft persistence failures in constrained environments.
-  }
+  clearSceneMapDraft(ENTRANCE_STORAGE_KEY);
+}
+
+export function clearAssistantSceneMapDraft(): void {
+  clearSceneMapDraft(ASSISTANT_STORAGE_KEY);
 }

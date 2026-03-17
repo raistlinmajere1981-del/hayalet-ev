@@ -16,6 +16,7 @@ import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ThemeManager, type ThemeId } from "../../ui/theme-manager.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
+import { shellT } from "../../app/shell-i18n.js";
 import {
   registerAssistantDeliveryHandler,
   type AssistantDeliveryRequest,
@@ -69,11 +70,29 @@ import {
   bindAssistantWebviewIpcEvents,
 } from "./webview-bindings.js";
 import {
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+} from "../entrance/scene/scene-editor.js";
+import { resolveSceneAvatarSource } from "../entrance/scene/scene-avatar.js";
+import { applySceneDebugFlag } from "../entrance/scene/scene-debug.js";
+import {
+  clearAssistantSceneMapDraft,
+  cloneEntranceSceneMap,
+  DEFAULT_ASSISTANT_SCENE_MAP,
+  loadAssistantSceneMapDraft,
+  saveAssistantSceneMapDraft,
+  serializeEntranceSceneMap,
+  type EntranceSceneHotspotConfig,
+  type EntranceSceneMap,
+} from "../entrance/scene/scene-map.js";
+import {
   applyConnectButtonState,
   updateOverlayView,
   updateServerStatusView,
   updateTrafficStatusView,
 } from "./view-helpers.js";
+import { getSceneCharacterRoleConfig } from "../../scene/scene-config.js";
+import { SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
 import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
@@ -82,7 +101,6 @@ import type {
 } from "@shared/provider.js";
 import assistantSceneBackground from "../../../assets/themes/castle/assistant/assistant_bg_main.webp";
 import assistantSceneScreen from "../../../assets/themes/castle/assistant/assistant_screen.webp";
-import assistantSceneAiBody from "../../../assets/themes/castle/characters/ai/ai_body_base.webp";
 
 interface ScenarioPanelState {
   scenarioId: string;
@@ -105,6 +123,23 @@ function getAssistantCustomAvatarPath(): string {
   }
   const normalized = dataDir.replace(/[\\/]+$/g, "");
   return `${normalized}/shared/assistant.png`;
+}
+
+function getFirstNonEmpty(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const normalized = value?.trim() ?? "";
+    if (normalized !== "") {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+function toHeadLabel(label: string): string {
+  const compact = label.replace(/\s+/g, "").trim().toUpperCase();
+  const head = compact.slice(0, 2);
+  return head === "" ? "?" : head;
 }
 
 function assistantT(key: string, params?: TranslationParams): string {
@@ -198,6 +233,12 @@ export class AssistantController {
   scenarioPanelState: ScenarioPanelState | null;
   providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
   _assistantSceneScreenOpen: boolean;
+  _assistantSceneDebugEnabled: boolean;
+  _assistantSceneMap: EntranceSceneMap;
+  _assistantSceneEditor: EntranceSceneEditor | null;
+  _assistantSceneSelection: EntranceSceneEditorSelection;
+  _assistantSceneResizeObserver: ResizeObserver | null;
+  _assistantSceneCharacterRenderToken: number;
 
   _isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -248,6 +289,12 @@ export class AssistantController {
     this.scenarioPanelState = null;
     this.providerTestProgressHandler = null;
     this._assistantSceneScreenOpen = false;
+    this._assistantSceneDebugEnabled = false;
+    this._assistantSceneMap = cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+    this._assistantSceneEditor = null;
+    this._assistantSceneSelection = null;
+    this._assistantSceneResizeObserver = null;
+    this._assistantSceneCharacterRenderToken = 0;
   }
 
   async init(): Promise<void> {
@@ -282,6 +329,9 @@ export class AssistantController {
     this.opencodeSettingsBtn = document.getElementById(
       "assistant-opencode-settings-btn"
     ) as HTMLButtonElement | null;
+    this._assistantSceneDebugEnabled = applySceneDebugFlag();
+    this._assistantSceneMap =
+      loadAssistantSceneMapDraft() ?? cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
 
     this._populateProviderSelect();
     this._initActiveAdapter();
@@ -289,8 +339,11 @@ export class AssistantController {
     await this._syncAssistantRuntimeDefaults();
     await this._syncIdentityCard();
     const runtimeState = await readAssistantRuntimeState();
+    this._setupAssistantSceneDebug();
     this._syncAssistantSceneAssets();
+    this._renderAssistantScene();
     this._syncAssistantSceneVisibility();
+    this._observeAssistantSceneLayout();
 
     // NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
     const ai0Wv = document.getElementById("ai0-webview");
@@ -336,6 +389,8 @@ export class AssistantController {
       this._updateConnectionUI(true);
       this._refreshOpencodeDoctorStatus();
       this.memoryOverlay.onLocaleChanged();
+      this._renderAssistantScene();
+      this._assistantSceneEditor?.refresh();
       if (this.scenarioPanelState !== null) {
         this._syncScenarioPanelLocale();
         this._renderTestPanel();
@@ -405,17 +460,13 @@ export class AssistantController {
 
   async _syncIdentityCard(): Promise<void> {
     const nicknameEl = document.getElementById("assistant-nickname");
-    const sceneLabelEl = document.getElementById("assistant-scene-ai0-label");
     if (nicknameEl != null) {
       nicknameEl.textContent = AppState.getNickname("ai0");
-    }
-    if (sceneLabelEl != null) {
-      sceneLabelEl.textContent = AppState.getNickname("ai0");
     }
 
     await this._updateAvatar(AppState.getAvatar("ai0"));
     this._updateIdentityStatusDot();
-    this._syncAssistantSceneCharacterState();
+    this._renderAssistantScene();
   }
 
   _syncAssistantSceneAssets(): void {
@@ -425,7 +476,6 @@ export class AssistantController {
     const screenArt = document.getElementById(
       "assistant-scene-screen-art"
     ) as HTMLImageElement | null;
-    const body = document.getElementById("assistant-scene-ai0-body") as HTMLImageElement | null;
 
     if (background !== null) {
       background.src = assistantSceneBackground;
@@ -436,11 +486,371 @@ export class AssistantController {
       screenArt.src = assistantSceneScreen;
       screenArt.alt = "";
     }
+  }
 
-    if (body !== null) {
-      body.src = assistantSceneAiBody;
-      body.alt = "";
+  _setupAssistantSceneDebug(): void {
+    const editorHost = document.getElementById("assistant-scene-editor-host");
+    if (!(editorHost instanceof HTMLElement)) {
+      this._assistantSceneEditor = null;
+      return;
     }
+
+    if (!this._assistantSceneDebugEnabled) {
+      editorHost.replaceChildren();
+      this._assistantSceneEditor = null;
+      return;
+    }
+
+    this._assistantSceneEditor = new EntranceSceneEditor(editorHost, {
+      isActive: (): boolean => this._isAssistantSceneDebugActive(),
+      getSceneMap: (): EntranceSceneMap => this._assistantSceneMap,
+      getSelection: (): EntranceSceneEditorSelection => this._assistantSceneSelection,
+      getRoomOptions: (): Array<{ id: string; label: string }> =>
+        SCENE_DEBUG_ROOMS.map((room) => ({
+          id: room.id,
+          label: shellT(room.labelKey),
+        })),
+      getActiveRoomId: (): string => "assistant",
+      setSelection: (selection): void => {
+        this._assistantSceneSelection = selection;
+        this._assistantSceneEditor?.refresh();
+        this._renderAssistantScene();
+      },
+      navigateToRoom: (roomId: string): void => {
+        this._navigateToPage(roomId);
+      },
+      supportsHotspotLabels: (): boolean => false,
+      updateHotspot: (id, updater): void => {
+        this._assistantSceneMap.hotspots = this._assistantSceneMap.hotspots.map((hotspot) =>
+          hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this._persistAssistantSceneMapDraft();
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      updateCharacterAnchor: (id, updater): void => {
+        this._assistantSceneMap.characterAnchors = this._assistantSceneMap.characterAnchors.map(
+          (anchor) => (anchor.id === id ? updater(anchor) : anchor)
+        );
+        this._persistAssistantSceneMapDraft();
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      resetDraft: (): void => {
+        this._assistantSceneMap = cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+        clearAssistantSceneMapDraft();
+        this._assistantSceneSelection = null;
+        this._renderAssistantScene();
+        this._assistantSceneEditor?.refresh();
+      },
+      copySceneMap: async (): Promise<void> => {
+        try {
+          await navigator.clipboard.writeText(serializeEntranceSceneMap(this._assistantSceneMap));
+        } catch {
+          console.info("Assistant scene map copy failed.");
+        }
+      },
+    });
+    this._assistantSceneEditor.refresh();
+  }
+
+  _observeAssistantSceneLayout(): void {
+    const sceneRoot = document.getElementById("assistant-scene-root");
+    if (!(sceneRoot instanceof HTMLElement) || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    this._assistantSceneResizeObserver?.disconnect();
+    this._assistantSceneResizeObserver = new ResizeObserver(() => {
+      if (!isSceneUiMode()) {
+        return;
+      }
+      this._renderAssistantScene();
+      this._assistantSceneEditor?.refresh();
+    });
+    this._assistantSceneResizeObserver.observe(sceneRoot);
+  }
+
+  _renderAssistantScene(): void {
+    this._renderAssistantSceneHotspots();
+    void this._renderAssistantSceneCharacter();
+  }
+
+  _renderAssistantSceneHotspots(): void {
+    const projection = this._getAssistantSceneProjection();
+    const hotspotBindings = [
+      {
+        elementId: "assistant-scene-door-hotspot",
+        hotspotId: "door-entrance",
+      },
+      {
+        elementId: "assistant-scene-screen-hotspot",
+        hotspotId: "screen-primary",
+      },
+    ] as const;
+
+    hotspotBindings.forEach(({ elementId, hotspotId }) => {
+      const hotspot = this._resolveAssistantSceneHotspot(hotspotId);
+      const button = document.getElementById(elementId);
+      if (hotspot === null || !(button instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const labelText = this._resolveAssistantSceneHotspotLabel(hotspot);
+      const selected =
+        this._assistantSceneSelection?.kind === "hotspot" &&
+        this._assistantSceneSelection.id === hotspot.id;
+      const label = button.querySelector<HTMLElement>(".assistant-scene__hotspot-label");
+
+      button.dataset["hotspotId"] = hotspot.id;
+      button.dataset["frameVariant"] = hotspot.frameVariant;
+      button.classList.toggle("is-selected", selected);
+      button.style.setProperty(
+        "--assistant-scene-hotspot-left",
+        `${projection.offsetX + hotspot.leftPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-top",
+        `${projection.offsetY + hotspot.topPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-width",
+        `${hotspot.widthPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-height",
+        `${hotspot.heightPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-frame-rotate",
+        `${hotspot.frameRotateDeg}deg`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-frame-perspective",
+        `${hotspot.framePerspectiveDeg}deg`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-hover-glow-hue",
+        `${hotspot.frameHoverGlowHueDeg}deg`
+      );
+      button.style.setProperty(
+        "--assistant-scene-hotspot-hover-glow-alpha",
+        `${hotspot.frameHoverGlowAlpha}`
+      );
+      button.ariaLabel = labelText;
+
+      if (label !== null) {
+        label.textContent = labelText;
+        label.classList.toggle("is-selected", selected);
+      }
+    });
+  }
+
+  async _renderAssistantSceneCharacter(): Promise<void> {
+    const characterLayer = document.getElementById("assistant-scene-characters");
+    if (!(characterLayer instanceof HTMLElement)) {
+      return;
+    }
+
+    const anchor =
+      this._assistantSceneMap.characterAnchors.find((item) => item.id === "anchor-ai0") ?? null;
+    if (anchor === null) {
+      characterLayer.replaceChildren();
+      return;
+    }
+
+    const renderToken = ++this._assistantSceneCharacterRenderToken;
+    const label = AppState.getNickname("ai0");
+    const avatarSource = await resolveSceneAvatarSource(this._getAssistantSceneAvatarSource());
+    if (renderToken !== this._assistantSceneCharacterRenderToken) {
+      return;
+    }
+
+    const projection = this._getAssistantSceneProjection();
+    const roleConfig = getSceneCharacterRoleConfig("assistant");
+    const depth = Number.isFinite(anchor.depth) ? Math.max(1, anchor.depth) : 1;
+    const sceneCharacter = document.createElement("div");
+    sceneCharacter.id = "assistant-scene-ai0-character";
+    sceneCharacter.className = "entrance-scene__character";
+    sceneCharacter.dataset["slot"] = "ai0";
+    sceneCharacter.dataset["characterId"] = "scene-assistant-ai0";
+    sceneCharacter.dataset["kind"] = "assistant";
+    sceneCharacter.dataset["role"] = "assistant";
+    sceneCharacter.dataset["variant"] = "assistant";
+    sceneCharacter.dataset["anchorId"] = anchor.id;
+    sceneCharacter.style.setProperty(
+      "--scene-character-left",
+      `${projection.offsetX + anchor.leftPx * projection.scale}px`
+    );
+    sceneCharacter.style.setProperty(
+      "--scene-character-bottom",
+      `${projection.offsetY + anchor.bottomPx * projection.scale}px`
+    );
+    sceneCharacter.style.setProperty("--scene-character-scale", String(anchor.scale));
+    sceneCharacter.style.setProperty("--scene-character-depth", String(depth));
+    sceneCharacter.style.setProperty(
+      "--scene-character-depth-scale",
+      String(this._getAssistantSceneDepthScale(depth))
+    );
+    sceneCharacter.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
+    sceneCharacter.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
+    sceneCharacter.style.setProperty("--scene-character-head-left", `${roleConfig.headLeftPct}%`);
+    sceneCharacter.style.setProperty("--scene-character-head-size", `${roleConfig.headSizePct}%`);
+    sceneCharacter.style.setProperty(
+      "--scene-character-avatar-scale",
+      String(roleConfig.avatarScale)
+    );
+    sceneCharacter.classList.toggle(
+      "is-selected",
+      this._assistantSceneSelection?.kind === "character" &&
+        this._assistantSceneSelection.id === anchor.id
+    );
+
+    if (this._assistantSceneEditor !== null) {
+      sceneCharacter.tabIndex = 0;
+      sceneCharacter.role = "button";
+      sceneCharacter.setAttribute("aria-label", label);
+    } else {
+      sceneCharacter.tabIndex = -1;
+      sceneCharacter.removeAttribute("role");
+      sceneCharacter.removeAttribute("aria-label");
+    }
+
+    const stage = document.createElement("div");
+    stage.className = "entrance-scene__character-stage";
+
+    const body = document.createElement("img");
+    body.className = "entrance-scene__character-body";
+    body.src = roleConfig.bodySrc;
+    body.alt = "";
+    body.ariaHidden = "true";
+    stage.appendChild(body);
+
+    const head = document.createElement("span");
+    head.className = "entrance-scene__character-head";
+    head.ariaHidden = "true";
+    if (avatarSource !== null) {
+      const avatar = document.createElement("img");
+      avatar.className = "entrance-scene__character-avatar";
+      avatar.src = avatarSource;
+      avatar.alt = "";
+      avatar.ariaHidden = "true";
+      head.appendChild(avatar);
+    } else {
+      const fallback = document.createElement("span");
+      fallback.className = "entrance-scene__character-head-fallback";
+      fallback.ariaHidden = "true";
+      fallback.textContent = toHeadLabel(label);
+      head.appendChild(fallback);
+    }
+    stage.appendChild(head);
+
+    const characterLabel = document.createElement("span");
+    characterLabel.className = "entrance-scene__character-label";
+    characterLabel.textContent = label;
+
+    const anchorMarker = document.createElement("span");
+    anchorMarker.className = "entrance-scene__character-anchor-marker";
+    anchorMarker.ariaHidden = String(!this._assistantSceneDebugEnabled);
+    anchorMarker.textContent = anchor.id;
+
+    sceneCharacter.append(stage, characterLabel, anchorMarker);
+    sceneCharacter.addEventListener("click", () => {
+      if (this._assistantSceneEditor === null) {
+        return;
+      }
+      this._assistantSceneSelection = { kind: "character", id: anchor.id };
+      this._assistantSceneEditor.refresh();
+      this._renderAssistantScene();
+    });
+    sceneCharacter.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (this._assistantSceneEditor === null) {
+        return;
+      }
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      this._assistantSceneSelection = { kind: "character", id: anchor.id };
+      this._assistantSceneEditor.refresh();
+      this._renderAssistantScene();
+    });
+
+    characterLayer.replaceChildren(sceneCharacter);
+    this._syncAssistantSceneCharacterState();
+  }
+
+  _getAssistantSceneAvatarSource(): string | null {
+    const assistantAccount = AppState.getAccountForSlot("ai0");
+    const preferredAvatarPath = AppState.getAvatar("ai0");
+    const customAvatarPath = getAssistantCustomAvatarPath();
+
+    return getFirstNonEmpty(
+      assistantAccount?.avatarPath,
+      assistantAccount?.avatar,
+      preferredAvatarPath !== ASSISTANT_DEFAULT_AVATAR_PATH ? preferredAvatarPath : "",
+      customAvatarPath,
+      preferredAvatarPath,
+      ASSISTANT_DEFAULT_AVATAR_PATH
+    );
+  }
+
+  _getAssistantSceneProjection(): {
+    offsetX: number;
+    offsetY: number;
+    scale: number;
+  } {
+    const sceneRoot = document.getElementById("assistant-scene-root");
+    if (!(sceneRoot instanceof HTMLElement)) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const surfaceWidth = sceneRoot.clientWidth;
+    const surfaceHeight = sceneRoot.clientHeight;
+    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const scale = Math.max(
+      surfaceWidth / this._assistantSceneMap.referenceSize.width,
+      surfaceHeight / this._assistantSceneMap.referenceSize.height
+    );
+
+    return {
+      offsetX: (surfaceWidth - this._assistantSceneMap.referenceSize.width * scale) / 2,
+      offsetY: (surfaceHeight - this._assistantSceneMap.referenceSize.height * scale) / 2,
+      scale,
+    };
+  }
+
+  _getAssistantSceneDepthScale(depth: number): number {
+    const normalizedDepth = Math.max(1, Number.isFinite(depth) ? depth : 1);
+    const scaled = 1 - (normalizedDepth - 1) * 0.02;
+    return Number(Math.max(0.75, scaled).toFixed(3));
+  }
+
+  _resolveAssistantSceneHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
+    return this._assistantSceneMap.hotspots.find((item) => item.id === hotspotId) ?? null;
+  }
+
+  _resolveAssistantSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel !== "") {
+      return customLabel;
+    }
+    if (hotspot.labelKey !== "") {
+      return shellT(hotspot.labelKey);
+    }
+    return hotspot.id;
+  }
+
+  _persistAssistantSceneMapDraft(): void {
+    saveAssistantSceneMapDraft(this._assistantSceneMap);
+  }
+
+  _isAssistantSceneDebugActive(): boolean {
+    return isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "assistant";
   }
 
   _setAssistantSceneScreenOpen(open: boolean): void {
@@ -471,6 +881,11 @@ export class AssistantController {
         "is-scene-screen-open",
         sceneActive && this._assistantSceneScreenOpen
       );
+    }
+
+    if (sceneActive) {
+      this._renderAssistantScene();
+      this._assistantSceneEditor?.refresh();
     }
   }
 
@@ -833,12 +1248,30 @@ export class AssistantController {
       return;
     }
 
+    const resetAvatarTarget = (element: HTMLElement): void => {
+      element.style.removeProperty("--avatar-image");
+      if (element instanceof HTMLImageElement) {
+        element.removeAttribute("src");
+        return;
+      }
+
+      element.innerHTML = "";
+    };
+
+    const applyAvatarTarget = (element: HTMLElement, source: string): void => {
+      if (element instanceof HTMLImageElement) {
+        element.style.removeProperty("--avatar-image");
+        element.src = source;
+        return;
+      }
+
+      element.innerHTML = "";
+      element.style.setProperty("--avatar-image", `url(${source})`);
+    };
+
     const electronApi = window.electronAPI;
     if (!electronApi?.readFile) {
-      avatarElements.forEach((element) => {
-        element.innerHTML = "";
-        element.style.removeProperty("--avatar-image");
-      });
+      avatarElements.forEach(resetAvatarTarget);
       return;
     }
 
@@ -867,29 +1300,22 @@ export class AssistantController {
         }
 
         const mimeType = getMimeTypeFromPath(candidate);
+        const avatarSource = `data:${mimeType};base64,${imageData}`;
         avatarElements.forEach((element) => {
-          element.innerHTML = "";
-          // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
-          element.style.setProperty("--avatar-image", `url(data:${mimeType};base64,${imageData})`);
+          applyAvatarTarget(element, avatarSource);
         });
         return true;
       };
 
       const loaded = await tryLoadCandidate(0);
       if (!loaded) {
-        avatarElements.forEach((element) => {
-          element.innerHTML = "";
-          element.style.removeProperty("--avatar-image");
-        });
+        avatarElements.forEach(resetAvatarTarget);
       }
     } catch (error) {
       Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarLoadFailed"), {
         error: error instanceof Error ? error.message : String(error),
       });
-      avatarElements.forEach((element) => {
-        element.innerHTML = "";
-        element.style.removeProperty("--avatar-image");
-      });
+      avatarElements.forEach(resetAvatarTarget);
     }
   }
 
@@ -1020,7 +1446,7 @@ export class AssistantController {
     });
   }
 
-  _setupEventListeners(currentMode: AssistantRuntimeMode): void {
+  _setupEventListeners(_currentMode: AssistantRuntimeMode): void {
     bindAssistantBasicEvents({
       connectBtn: this.connectBtn,
       resumeLastSessionCheckbox: this.resumeLastSessionCheckbox,
@@ -1112,11 +1538,23 @@ export class AssistantController {
     const exitRight = document.getElementById("assistant-scene-exit-right");
 
     doorHotspot?.addEventListener("click", () => {
+      if (this._assistantSceneEditor !== null) {
+        this._assistantSceneSelection = { kind: "hotspot", id: "door-entrance" };
+        this._assistantSceneEditor.refresh();
+        this._renderAssistantScene();
+        return;
+      }
       this._setAssistantSceneScreenOpen(false);
       this._navigateToPage("entrance");
     });
 
     screenHotspot?.addEventListener("click", () => {
+      if (this._assistantSceneEditor !== null) {
+        this._assistantSceneSelection = { kind: "hotspot", id: "screen-primary" };
+        this._assistantSceneEditor.refresh();
+        this._renderAssistantScene();
+        return;
+      }
       this._setAssistantSceneScreenOpen(true);
     });
 
@@ -2098,6 +2536,8 @@ export class AssistantController {
     this._unsubAppState?.();
     this._unsubI18n?.();
     this._unsubTheme?.();
+    this._assistantSceneResizeObserver?.disconnect();
+    this._assistantSceneResizeObserver = null;
     this.memoryOverlay.destroy();
   }
 }

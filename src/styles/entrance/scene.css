@@ -742,6 +742,7 @@
 }
 
 .entrance-scene__editor-header,
+.entrance-scene__editor-room-list,
 .entrance-scene__editor-toolbar,
 .entrance-scene__editor-drag-handle,
 .entrance-scene__editor-stepper,
@@ -782,13 +783,19 @@
 }
 
 .entrance-scene__editor-toolbar,
+.entrance-scene__editor-room-list,
 .entrance-scene__editor-stepper,
 .entrance-scene__editor-row-controls,
 .entrance-scene__editor-list {
   gap: var(--scene-rem-0-4);
 }
 
+.entrance-scene__editor-room-list {
+  flex-wrap: wrap;
+}
+
 .entrance-scene__editor-chip,
+.entrance-scene__editor-room-btn,
 .entrance-scene__editor-adjust,
 .entrance-scene__editor-item {
   border: var(--scene-px-1) solid rgb(255 222 186 / 0.1);
@@ -798,12 +805,14 @@
 }
 
 .entrance-scene__editor-chip,
+.entrance-scene__editor-room-btn,
 .entrance-scene__editor-adjust {
   min-height: var(--scene-rem-2);
   padding: var(--scene-rem-0-2) var(--scene-rem-0-65);
 }
 
 .entrance-scene__editor-chip.is-active,
+.entrance-scene__editor-room-btn.is-active,
 .entrance-scene__editor-item.is-selected {
   border-color: rgb(126 201 255 / 0.42);
   background: rgb(83 149 221 / 0.14);
