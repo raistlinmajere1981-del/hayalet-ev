@@ -73,12 +73,17 @@
   --scene-hotspot-width: auto;
   --scene-hotspot-height: auto;
   --scene-hotspot-frame-rotate: 0deg;
+  --scene-hotspot-frame-perspective: 0deg;
+  --scene-hotspot-hover-glow-hue: 33deg;
+  --scene-hotspot-hover-glow-alpha: 0.34;
+
   --scene-hotspot-label-left: auto;
   --scene-hotspot-label-top: auto;
   --scene-hotspot-label-width: auto;
   --scene-hotspot-label-height: clamp(var(--scene-rem-2), 2.8vw, var(--scene-rem-2-8));
   --scene-hotspot-label-rotate: 0deg;
-  --scene-hotspot-label-font-family: var(--font-display);
+  --scene-hotspot-label-frame-perspective: 0deg;
+  --scene-hotspot-label-font-family: var(--font-scene-display);
   --scene-hotspot-label-font-size: clamp(var(--scene-rem-1), 1.24vw, var(--scene-rem-1-5));
   --scene-hotspot-label-letter-spacing: clamp(var(--scene-em-0-02), 0.05vw, var(--scene-em-0-05));
 
@@ -86,6 +91,8 @@
   --scene-character-bottom: auto;
   --scene-character-scale: 1;
   --scene-character-depth: 1;
+  --scene-character-depth-scale: 1;
+
   --scene-character-body-scale: 1;
   --scene-character-head-top: 29.5%;
   --scene-character-head-left: 50%;
@@ -277,7 +284,8 @@
 .entrance-scene__hotspot[data-frame-variant="left-angled"]::after {
   border-radius: var(--scene-rem-0-28) var(--scene-rem-0-38) var(--scene-rem-0-14)
     var(--scene-rem-0-18);
-  transform: perspective(var(--scene-rem-18)) rotateY(14deg)
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(1deg);
   transform-origin: left center;
 }
@@ -286,7 +294,8 @@
 .entrance-scene__hotspot[data-frame-variant="right-angled"]::after {
   border-radius: var(--scene-rem-0-38) var(--scene-rem-0-28) var(--scene-rem-0-18)
     var(--scene-rem-0-14);
-  transform: perspective(var(--scene-rem-18)) rotateY(-14deg)
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(-1deg);
   transform-origin: right center;
 }
@@ -295,7 +304,9 @@
 .entrance-scene__hotspot[data-frame-variant="flat"]::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]::before,
 .entrance-scene__hotspot[data-frame-variant="upper"]::after {
-  transform: rotate(var(--scene-hotspot-frame-rotate, 0deg));
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+    rotate(var(--scene-hotspot-frame-rotate, 0deg));
   transform-origin: center center;
 }
 
@@ -303,39 +314,57 @@
 .entrance-scene__hotspot.is-selected::before,
 .entrance-scene__hotspot:focus-visible::before {
   opacity: 1;
-  border-color: rgb(255 223 173 / 0.62);
+  border-color: transparent;
   box-shadow:
-    inset 0 0 0 var(--scene-px-1) rgb(255 241 216 / 0.24),
-    0 0 var(--scene-rem-1-4) rgb(255 191 112 / 0.26),
-    0 0 var(--scene-rem-0-35) rgb(255 219 166 / 0.32);
+    0 0 var(--scene-rem-1-7)
+      hsl(var(--scene-hotspot-hover-glow-hue) 72% 70% / var(--scene-hotspot-hover-glow-alpha)),
+    0 0 var(--scene-rem-0-45)
+      hsl(
+        var(--scene-hotspot-hover-glow-hue)
+          80%
+          72%
+          / calc(var(--scene-hotspot-hover-glow-alpha) * 1.35)
+      );
 }
+
 
 .entrance-scene__hotspot:hover::after,
 .entrance-scene__hotspot.is-selected::after,
 .entrance-scene__hotspot:focus-visible::after {
   opacity: 1;
-  box-shadow: 0 0 var(--scene-rem-2) rgb(255 191 112 / 0.18);
-  transform: scale(1.02);
+  box-shadow: 0 0 var(--scene-rem-2-6)
+    hsl(
+      var(--scene-hotspot-hover-glow-hue) 70% 65% /
+        calc(var(--scene-hotspot-hover-glow-alpha) * 0.8)
+    );
 }
+
 
 .entrance-scene__hotspot[data-frame-variant="left-angled"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="left-angled"]:focus-visible::after {
-  transform: perspective(var(--scene-rem-18)) rotateY(14deg)
-    rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(1deg) scale(1.02);
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+    rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(1deg);
 }
+
 
 .entrance-scene__hotspot[data-frame-variant="right-angled"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="right-angled"]:focus-visible::after {
-  transform: perspective(var(--scene-rem-18)) rotateY(-14deg)
-    rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(-1deg) scale(1.02);
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+    rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(-1deg);
 }
+
 
 .entrance-scene__hotspot[data-frame-variant="flat"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="flat"]:focus-visible::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]:focus-visible::after {
-  transform: rotate(var(--scene-hotspot-frame-rotate, 0deg)) scale(1.02);
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+    rotate(var(--scene-hotspot-frame-rotate, 0deg));
 }
+
 
 .entrance-scene__hotspot-label {
   position: absolute;
@@ -386,6 +415,9 @@
   border-radius: var(--scene-rem-0-35);
   opacity: 0;
   pointer-events: none;
+  transform: perspective(var(--scene-rem-18))
+    rotateY(var(--scene-hotspot-label-frame-perspective, 0deg));
+  transform-origin: center;
   transition:
     opacity var(--duration-normal) var(--ease-out),
     border-color var(--duration-normal) var(--ease-out),
@@ -400,9 +432,9 @@
     0 var(--scene-px-1) 0 rgb(255 250 240 / 0.28),
     0 0 var(--scene-rem-1) rgb(255 224 171 / 0.32),
     0 var(--scene-px-2) var(--scene-px-10) rgb(35 17 12 / 0.62);
-  transform: translateX(-50%) translateY(var(--scene-px-neg-1))
-    rotate(var(--scene-hotspot-label-rotate, 0deg));
+  transform: translateX(-50%) rotate(var(--scene-hotspot-label-rotate, 0deg));
 }
+
 
 .entrance-scene__characters {
   pointer-events: none;
@@ -412,8 +444,10 @@
   position: absolute;
   left: var(--scene-character-left);
   bottom: var(--scene-character-bottom);
-  transform: translateX(-50%) scale(var(--scene-character-scale, 1));
-  z-index: var(--scene-character-depth, 1);
+  transform: translateX(-50%) scale(var(--scene-character-scale, 1))
+    scale(var(--scene-character-depth-scale, 1));
+
+  z-index: calc(var(--scene-character-depth, 1) * 10);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -442,7 +476,9 @@
 .entrance-scene__character:hover,
 .entrance-scene__character:focus-visible,
 .entrance-scene__character.is-menu-open {
-  transform: translateX(-50%) scale(var(--scene-character-scale, 1));
+  transform: translateX(-50%) scale(var(--scene-character-scale, 1))
+    scale(var(--scene-character-depth-scale, 1));
+
   outline: none;
 }
 

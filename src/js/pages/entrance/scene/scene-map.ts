@@ -41,6 +41,11 @@ export interface EntranceSceneHotspotConfig {
   labelFontPreset: EntranceSceneLabelFontPreset;
   frameVariant: "flat" | "upper" | "left-angled" | "right-angled";
   frameRotateDeg: number;
+  framePerspectiveDeg: number;
+  frameHoverGlowHueDeg: number;
+  frameHoverGlowAlpha: number;
+
+  labelFramePerspectiveDeg: number;
   action: EntranceSceneHotspotAction;
 }
 
@@ -88,6 +93,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "left-angled",
       frameRotateDeg: -2.5,
+      framePerspectiveDeg: 14,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+
+      labelFramePerspectiveDeg: 0,
       action: { type: "navigate", page: "analyze" },
     },
     {
@@ -107,6 +117,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "flat",
       frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+
       action: { type: "navigate", page: "archives" },
     },
     {
@@ -126,6 +141,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "upper",
       frameRotateDeg: -0.8,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+
+      labelFramePerspectiveDeg: 0,
       action: { type: "navigate", page: "whisper" },
     },
     {
@@ -145,6 +165,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "upper",
       frameRotateDeg: 0.8,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+
       action: { type: "navigate", page: "assistant" },
     },
     {
@@ -164,6 +189,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "flat",
       frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+
+      labelFramePerspectiveDeg: 0,
       action: { type: "navigate", page: "server" },
     },
     {
@@ -183,6 +213,11 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       labelFontPreset: "display",
       frameVariant: "right-angled",
       frameRotateDeg: 2.5,
+      framePerspectiveDeg: -14,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+
+      labelFramePerspectiveDeg: 0,
       action: { type: "settings", panel: "theme" },
     },
   ],

@@ -36,10 +36,10 @@ const ELEMENT_IDS = {
 } as const;
 
 const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> = {
-  display: "var(--font-display)",
-  inscription: '"Baskerville Old Face", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-  classic: '"Times New Roman", "Iowan Old Style", Georgia, serif',
-  sans: "var(--font-sans)",
+  display: "var(--font-scene-display)",
+  inscription: "var(--font-scene-inscription)",
+  classic: "var(--font-scene-classic)",
+  sans: "var(--font-scene-sans)",
 };
 
 export class EntranceSceneController {
@@ -217,6 +217,19 @@ export class EntranceSceneController {
       button.classList.toggle("is-selected", hotspotSelected);
       button.style.setProperty("--scene-hotspot-frame-rotate", `${hotspot.frameRotateDeg}deg`);
       button.style.setProperty(
+        "--scene-hotspot-frame-perspective",
+        `${hotspot.framePerspectiveDeg}deg`
+      );
+      button.style.setProperty(
+        "--scene-hotspot-hover-glow-hue",
+        `${hotspot.frameHoverGlowHueDeg}deg`
+      );
+      button.style.setProperty(
+        "--scene-hotspot-hover-glow-alpha",
+        `${hotspot.frameHoverGlowAlpha}`
+      );
+
+      button.style.setProperty(
         "--scene-hotspot-left",
         `${projection.offsetX + hotspot.leftPx * projection.scale}px`
       );
@@ -257,6 +270,10 @@ export class EntranceSceneController {
         `${hotspot.labelHeightPx * projection.scale}px`
       );
       label.style.setProperty("--scene-hotspot-label-rotate", `${hotspot.labelRotateDeg}deg`);
+      label.style.setProperty(
+        "--scene-hotspot-label-frame-perspective",
+        `${hotspot.labelFramePerspectiveDeg}deg`
+      );
       label.style.setProperty(
         "--scene-hotspot-label-font-size",
         `${hotspot.labelFontSizePx * projection.scale}px`
@@ -320,6 +337,14 @@ export class EntranceSceneController {
       scale,
     };
   }
+
+  private getDepthScale(depth: number): number {
+    const safeDepth = Number.isFinite(depth) ? depth : 1;
+    const normalizedDepth = Math.max(1, safeDepth);
+    const scaled = 1 - (normalizedDepth - 1) * 0.02;
+    return Number(Math.max(0.75, scaled).toFixed(3));
+  }
+
 
   private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
     if (hotspot.action.type === "settings") {
@@ -390,6 +415,9 @@ export class EntranceSceneController {
         "is-selected",
         this.editorSelection?.kind === "character" && this.editorSelection.id === character.anchorId
       );
+
+      const depthScale = this.getDepthScale(character.depth);
+
       characterNode.style.setProperty(
         "--scene-character-left",
         `${projection.offsetX + character.leftPx * projection.scale}px`
@@ -400,6 +428,8 @@ export class EntranceSceneController {
       );
       characterNode.style.setProperty("--scene-character-scale", String(character.scale));
       characterNode.style.setProperty("--scene-character-depth", String(character.depth));
+      characterNode.style.setProperty("--scene-character-depth-scale", String(depthScale));
+
       characterNode.style.setProperty("--scene-character-body-scale", String(character.bodyScale));
       characterNode.style.setProperty("--scene-character-head-top", `${character.headTopPct}%`);
       characterNode.style.setProperty("--scene-character-head-left", `${character.headLeftPct}%`);

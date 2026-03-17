@@ -1,7 +1,43 @@
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../assets/fonts/PlayfairDisplay-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../../assets/fonts/CormorantGaramond-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Crimson Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../../assets/fonts/CrimsonPro-600.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../../assets/fonts/Manrope-600.woff2") format("woff2");
+}
+
 :root {
   --font-sans: "IBM Plex Sans", "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Monaco, Consolas, monospace;
+  --font-scene-display: "Playfair Display", var(--font-display);
+  --font-scene-inscription: "Cormorant Garamond", var(--font-display);
+  --font-scene-classic: "Crimson Pro", var(--font-display);
+  --font-scene-sans: "Manrope", var(--font-sans);
 
   --text-2xs: 10px;
   --text-caption: 13px;

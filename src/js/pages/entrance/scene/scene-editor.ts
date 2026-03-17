@@ -27,11 +27,20 @@ interface EntranceSceneEditorCallbacks {
   copySceneMap(): Promise<void>;
 }
 
-const HOTSPOT_FIELDS = [
+const HOTSPOT_DOOR_FIELDS = [
   ["leftPx", "X"],
   ["topPx", "Y"],
   ["widthPx", "W"],
   ["heightPx", "H"],
+
+  ["frameRotateDeg", "Frame R"],
+  ["framePerspectiveDeg", "Frame P"],
+  ["frameHoverGlowHueDeg", "Glow H"],
+  ["frameHoverGlowAlpha", "Glow A"],
+] as const;
+
+
+const HOTSPOT_LABEL_FIELDS = [
   ["labelCenterXPx", "Label X"],
   ["labelTopPx", "Label Y"],
   ["labelWidthPx", "Label W"],
@@ -39,7 +48,7 @@ const HOTSPOT_FIELDS = [
   ["labelRotateDeg", "Label R"],
   ["labelFontSizePx", "Text"],
   ["labelLetterSpacingPx", "Track"],
-  ["frameRotateDeg", "Frame R"],
+  ["labelFramePerspectiveDeg", "Label P"],
 ] as const;
 
 const CHARACTER_FIELDS = [
@@ -159,10 +168,19 @@ export class EntranceSceneEditor {
     if (hotspot !== null) {
       return `
         <div class="entrance-scene__editor-selected-title">Hotspot: ${hotspot.id}</div>
-        <div class="entrance-scene__editor-grid">
-          ${HOTSPOT_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
+        <div class="entrance-scene__editor-section">
+          <div class="entrance-scene__editor-section-title">Door</div>
+          <div class="entrance-scene__editor-grid">
+            ${HOTSPOT_DOOR_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
+          </div>
         </div>
-        ${this.renderFontPresetRow(hotspot)}
+        <div class="entrance-scene__editor-section">
+          <div class="entrance-scene__editor-section-title">Label</div>
+          <div class="entrance-scene__editor-grid">
+            ${HOTSPOT_LABEL_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
+          </div>
+          ${this.renderFontPresetRow(hotspot)}
+        </div>
       `;
     }
 
@@ -279,7 +297,7 @@ export class EntranceSceneEditor {
       const id = actionButton.dataset["id"] ?? "";
       const field = actionButton.dataset["field"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      this.adjustField(kind, id, field, direction);
+      this.adjustField(kind, id, field, this.getAdjustDelta(field, direction));
     }
   };
 
@@ -332,10 +350,10 @@ export class EntranceSceneEditor {
       this.adjustField("character", selection.id, "bottomPx", -step);
     } else if (event.key === "[") {
       event.preventDefault();
-      this.adjustField("character", selection.id, "scale", -0.01);
+      this.adjustField("character", selection.id, "scale", -this.getScaleStep());
     } else if (event.key === "]") {
       event.preventDefault();
-      this.adjustField("character", selection.id, "scale", 0.01);
+      this.adjustField("character", selection.id, "scale", this.getScaleStep());
     }
   };
 
@@ -429,11 +447,39 @@ export class EntranceSceneEditor {
     if (field === "scale") {
       return Number(Math.max(0.2, next).toFixed(2));
     }
-    if (field.endsWith("RotateDeg")) {
+    if (field.endsWith("Alpha")) {
+      return Number(Math.min(1, Math.max(0, next)).toFixed(2));
+    }
+    if (field.endsWith("HueDeg")) {
+      const wrapped = ((next % 360) + 360) % 360;
+      return Math.round(wrapped);
+    }
+    if (field.endsWith("RotateDeg") || field.endsWith("PerspectiveDeg")) {
       return Number(next.toFixed(1));
     }
     return Math.round(next);
   }
+
+  private getScaleStep(): number {
+    return Math.max(0.01, this.step / 100);
+  }
+
+  private getAdjustDelta(field: string, direction: number): number {
+    if (field === "scale") {
+      return direction * this.getScaleStep();
+    }
+    if (field.endsWith("Alpha")) {
+      return direction * this.getScaleStep();
+    }
+    if (field.endsWith("HueDeg")) {
+      return direction * this.step;
+    }
+    if (field.endsWith("Px")) {
+      return direction * this.step;
+    }
+    return direction;
+  }
+
 
   private shiftFontPreset(
     current: EntranceSceneLabelFontPreset,
