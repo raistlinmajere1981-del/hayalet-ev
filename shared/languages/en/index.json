@@ -5032,6 +5032,11 @@
       "whisper": "PENDING COMMANDS",
       "report": "LIVE REPORT"
     },
+    "scene": {
+      "editor": {
+        "customLabelPlaceholder": "Leave blank for the default label."
+      }
+    },
     "us1": {
       "mailAccount": {
         "sectionTitle": "Local mail account",

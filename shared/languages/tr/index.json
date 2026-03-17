@@ -5032,6 +5032,11 @@
       "whisper": "BEKLEYEN KOMUTLAR",
       "report": "CANLI RAPOR"
     },
+    "scene": {
+      "editor": {
+        "customLabelPlaceholder": "Varsayılan isim için boş bırakın."
+      }
+    },
     "us1": {
       "mailAccount": {
         "sectionTitle": "Yerel mail hesabı",

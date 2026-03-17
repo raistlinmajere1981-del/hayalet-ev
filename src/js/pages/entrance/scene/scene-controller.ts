@@ -193,6 +193,32 @@ export class EntranceSceneController {
     this.background.alt = "";
   }
 
+  private resolveHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel !== "") {
+      return customLabel;
+    }
+    return shellT(hotspot.labelKey);
+  }
+
+  private resolveHotspotLabelFont(
+    hotspot: EntranceSceneHotspotConfig,
+    labelText: string
+  ): string {
+    const baseFont = HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset];
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel === "" || !this.hasNonAscii(labelText)) {
+      return baseFont;
+    }
+    return "var(--font-scene-sans)";
+  }
+
+  private hasNonAscii(value: string): boolean {
+    return /[^\x00-\x7F]/.test(value);
+  }
+
   private renderHotspots(): void {
     if (this.hotspotLayer === null) {
       return;
@@ -202,7 +228,7 @@ export class EntranceSceneController {
     const fragment = document.createDocumentFragment();
 
     this.sceneMap.hotspots.forEach((hotspot) => {
-      const labelText = shellT(hotspot.labelKey);
+      const labelText = this.resolveHotspotLabel(hotspot);
       const hotspotSelected =
         this.editorSelection?.kind === "hotspot" && this.editorSelection.id === hotspot.id;
       const wrapper = document.createElement("div");
@@ -284,7 +310,7 @@ export class EntranceSceneController {
       );
       label.style.setProperty(
         "--scene-hotspot-label-font-family",
-        HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset]
+        this.resolveHotspotLabelFont(hotspot, labelText)
       );
       label.addEventListener("click", () => {
         this.handleHotspotInteraction(hotspot);

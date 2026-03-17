@@ -27,6 +27,7 @@ export type EntranceSceneHotspotAction =
 export interface EntranceSceneHotspotConfig {
   id: string;
   labelKey: string;
+  labelCustomText?: string;
   leftPx: number;
   topPx: number;
   widthPx: number;

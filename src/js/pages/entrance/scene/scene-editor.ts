@@ -5,6 +5,7 @@ import type {
   EntranceSceneMap,
 } from "./scene-map.js";
 import { ENTRANCE_SCENE_LABEL_FONT_PRESETS } from "./scene-map.js";
+import { t as entranceT } from "../i18n.js";
 
 export type EntranceSceneEditorSelection =
   | { kind: "hotspot"; id: string }
@@ -70,6 +71,7 @@ export class EntranceSceneEditor {
     this.host = host;
     this.callbacks = callbacks;
     this.host.addEventListener("click", this.handleClick);
+    this.host.addEventListener("change", this.handleChange);
     this.host.addEventListener("pointerdown", this.handlePointerDown);
     window.addEventListener("pointermove", this.handlePointerMove);
     window.addEventListener("pointerup", this.handlePointerUp);
@@ -179,6 +181,7 @@ export class EntranceSceneEditor {
           <div class="entrance-scene__editor-grid">
             ${HOTSPOT_LABEL_FIELDS.map(([field, label]) => this.renderControlRow("hotspot", hotspot.id, field, label, hotspot[field])).join("")}
           </div>
+          ${this.renderLabelTextRow(hotspot)}
           ${this.renderFontPresetRow(hotspot)}
         </div>
       `;
@@ -232,6 +235,25 @@ export class EntranceSceneEditor {
       >
         ${label}
       </button>
+    `;
+  }
+
+  private renderLabelTextRow(hotspot: EntranceSceneHotspotConfig): string {
+    const value = typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText : "";
+    const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
+    return `
+      <label class="entrance-scene__editor-row entrance-scene__editor-row--stack">
+        <span class="entrance-scene__editor-row-label">Custom label</span>
+        <input
+          type="text"
+          class="entrance-scene__editor-input"
+          value="${this.escapeAttribute(value)}"
+          placeholder="${placeholder}"
+          data-editor-action="text"
+          data-id="${hotspot.id}"
+          data-field="labelCustomText"
+        />
+      </label>
     `;
   }
 
@@ -301,6 +323,26 @@ export class EntranceSceneEditor {
     }
   };
 
+  private handleChange = (event: Event): void => {
+    const target = event.target as HTMLElement | null;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (target.dataset["editorAction"] !== "text") {
+      return;
+    }
+    const id = target.dataset["id"] ?? "";
+    const field = target.dataset["field"] ?? "";
+    if (id === "" || field !== "labelCustomText") {
+      return;
+    }
+    const nextValue = target.value.trim();
+    this.callbacks.updateHotspot(id, (hotspot) => ({
+      ...hotspot,
+      labelCustomText: nextValue === "" ? undefined : nextValue,
+    }));
+  };
+
   private handleKeydown = (event: KeyboardEvent): void => {
     const selection = this.callbacks.getSelection();
     if (selection === null) {
@@ -328,10 +370,20 @@ export class EntranceSceneEditor {
         this.adjustField("hotspot", selection.id, "topPx", step);
       } else if (event.key === "[") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "frameRotateDeg", -0.5);
+        this.adjustField(
+          "hotspot",
+          selection.id,
+          "frameRotateDeg",
+          this.getAdjustDelta("frameRotateDeg", -1)
+        );
       } else if (event.key === "]") {
         event.preventDefault();
-        this.adjustField("hotspot", selection.id, "frameRotateDeg", 0.5);
+        this.adjustField(
+          "hotspot",
+          selection.id,
+          "frameRotateDeg",
+          this.getAdjustDelta("frameRotateDeg", 1)
+        );
       }
       return;
     }
@@ -468,6 +520,9 @@ export class EntranceSceneEditor {
     if (field === "scale") {
       return direction * this.getScaleStep();
     }
+    if (field === "frameRotateDeg") {
+      return direction * (this.step / 10);
+    }
     if (field.endsWith("Alpha")) {
       return direction * this.getScaleStep();
     }
@@ -503,6 +558,15 @@ export class EntranceSceneEditor {
       return "Sans";
     }
     return "Display";
+  }
+
+  private escapeAttribute(value: string): string {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/'/g, "&#39;");
   }
 
   private applyPanelPosition(panel: HTMLElement): void {
