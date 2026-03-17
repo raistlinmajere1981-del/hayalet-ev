@@ -93,24 +93,26 @@ async function initApp(): Promise<void> {
     setupUILogListener();
     Logger.debugT(LogCategory.SYSTEM, "app.logs.uiLogListenerReady");
 
+    SplashScreen.update(5, AppI18n.t("app.startup.loadingSettings"));
     await SettingsManager.load();
+    SplashScreen.update(12, AppI18n.t("app.startup.loadingLanguage"));
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
     const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
 
-    SplashScreen.update(10, AppI18n.t("app.startup.loadingSettings"));
+    SplashScreen.update(18, AppI18n.t("app.startup.startingCore"));
 
     TrafficManager.init();
 
     Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:start");
     await CoreEngine.init();
     Logger.info(LogCategory.SYSTEM, "[startup] core-engine.init:complete");
-    SplashScreen.update(30, AppI18n.t("app.startup.loadingRooms"));
+    SplashScreen.update(60, AppI18n.t("app.startup.loadingRooms"));
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:start");
     await RoomRegistry.loadInstalledRooms(startupFlags?.roomsSnapshot ?? null);
     Logger.info(LogCategory.SYSTEM, "[startup] room-registry.load:complete");
-    SplashScreen.update(45, AppI18n.t("app.startup.preparingUi"));
+    SplashScreen.update(70, AppI18n.t("app.startup.preparingUi"));
 
     try {
       document.documentElement.setAttribute("spellcheck", "false");
@@ -128,7 +130,7 @@ async function initApp(): Promise<void> {
     injectPageTemplates();
     registerWebviews();
     applyShellStaticTranslations();
-    SplashScreen.update(50, AppI18n.t("app.startup.startingModules"));
+    SplashScreen.update(80, AppI18n.t("app.startup.startingModules"));
 
     try {
       window.__app_settings_unsub ??= SettingsManager.subscribe(

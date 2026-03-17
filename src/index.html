@@ -24,26 +24,82 @@
     </script>
   </head>
   <body>
-    <div id="splash-screen" class="splash">
-      <div class="splash-content">
-        <div class="splash-logo-container">
-          <img
-            src="/assets/logo.jpg"
-            alt=""
-            class="splash-logo"
-            id="splash-logo"
-            data-shell-i18n-alt="app.documentTitle"
-          />
-          <div class="splash-logo-glow"></div>
-        </div>
-        <h1 class="splash-title" data-shell-i18n-text="app.documentTitle"></h1>
-        <p class="splash-version" data-shell-i18n-text="app.splash.version"></p>
-        <div class="splash-loader">
-          <div class="splash-progress" id="splash-progress"></div>
-        </div>
-        <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting"></p>
-      </div>
-    </div>
+    <script>
+      (() => {
+        const uiMode =
+          document.documentElement.getAttribute("data-ui-mode") === "scene" ? "scene" : "classic";
+        const splash = document.createElement("div");
+        splash.id = "splash-screen";
+        splash.className = "splash";
+        splash.dataset.uiMode = uiMode;
+
+        const classicMarkup = `
+          <div class="splash-content">
+            <div class="splash-logo-container">
+              <img
+                src="/assets/logo.jpg"
+                alt=""
+                class="splash-logo"
+                id="splash-logo"
+                data-shell-i18n-alt="app.documentTitle"
+              />
+              <div class="splash-logo-glow"></div>
+            </div>
+            <h1 class="splash-title" data-shell-i18n-text="app.documentTitle"></h1>
+            <p class="splash-version" data-shell-i18n-text="app.splash.version"></p>
+            <div class="splash-loader">
+              <div class="splash-progress" id="splash-progress"></div>
+            </div>
+            <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting"></p>
+          </div>
+        `;
+
+        const sceneMarkup = `
+          <div class="splash-content splash-content--scene">
+            <div class="splash-scene-stage" id="splash-logo">
+              <div class="splash-scene-door">
+                <img
+                  src="/assets/themes/castle/loading/loading_door_01.webp"
+                  alt=""
+                  class="splash-scene-frame is-active"
+                  data-scene-frame-index="0"
+                />
+                <img
+                  src="/assets/themes/castle/loading/loading_door_02.webp"
+                  alt=""
+                  class="splash-scene-frame"
+                  data-scene-frame-index="1"
+                />
+                <img
+                  src="/assets/themes/castle/loading/loading_door_03.webp"
+                  alt=""
+                  class="splash-scene-frame"
+                  data-scene-frame-index="2"
+                />
+                <img
+                  src="/assets/themes/castle/loading/loading_door_04.webp"
+                  alt=""
+                  class="splash-scene-frame"
+                  data-scene-frame-index="3"
+                />
+              </div>
+            </div>
+            <div class="splash-scene-copy">
+              <p class="splash-scene-kicker">castle</p>
+              <h1 class="splash-title" data-shell-i18n-text="app.documentTitle"></h1>
+              <p class="splash-version" data-shell-i18n-text="app.splash.version"></p>
+              <div class="splash-loader">
+                <div class="splash-progress" id="splash-progress"></div>
+              </div>
+              <p class="splash-status" id="splash-status" data-shell-i18n-text="app.startup.starting"></p>
+            </div>
+          </div>
+        `;
+
+        splash.innerHTML = uiMode === "scene" ? sceneMarkup : classicMarkup;
+        document.body.insertBefore(splash, document.body.firstChild);
+      })();
+    </script>
 
     <div id="global-webview-container" class="app-offscreen-webviews">
       <webview

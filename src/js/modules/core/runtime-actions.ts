@@ -9,6 +9,7 @@ import type { CommandJob } from "../command-manager.js";
 import { ErrorBoundary } from "../error-boundary.js";
 import { FileManager } from "../file-manager.js";
 import { AppI18n } from "../i18n/index.js";
+import { SplashScreen } from "../../ui/splash-screen.js";
 import { Logger, LogCategory } from "../logger/index.js";
 import { RelayManager } from "../relay-manager.js";
 import { SettingsManager } from "../settings-manager.js";
@@ -41,6 +42,33 @@ export interface CoreRuntimeHandles {
 }
 
 const STARTUP_STEP_TIMEOUT_MS = 8000;
+
+const STARTUP_SPLASH_STEPS: Record<string, { percent: number; messageKey: string }> = {
+  "file-manager.ensureDirs": {
+    percent: 22,
+    messageKey: "app.startup.preparingFiles",
+  },
+  "command-manager.init": {
+    percent: 28,
+    messageKey: "app.startup.loadingCommands",
+  },
+  "whisper-manager.init": {
+    percent: 36,
+    messageKey: "app.startup.loadingWhispers",
+  },
+  "slot-controller.init": {
+    percent: 50,
+    messageKey: "app.startup.startingSlots",
+  },
+};
+
+function updateStartupSplash(step: string): void {
+  const entry = STARTUP_SPLASH_STEPS[step];
+  if (!entry) {
+    return;
+  }
+  SplashScreen.update(entry.percent, AppI18n.t(entry.messageKey));
+}
 const SLOT_CONTROLLER_STARTUP_TIMEOUT_MS = 12000;
 
 async function runStartupStep<T>(
@@ -52,6 +80,8 @@ async function runStartupStep<T>(
   const critical = options.critical === true;
   const startedAt = performance.now();
   let timeoutHandle!: ReturnType<typeof setTimeout>;
+
+  updateStartupSplash(step);
 
   Logger.info(LogCategory.SYSTEM, `[startup] ${step}:start`, {
     step,
@@ -192,6 +222,7 @@ export async function initializeCoreRuntime(
     }
   });
 
+  SplashScreen.update(42, AppI18n.t("app.startup.startingWebviews"));
   WebviewManager.initSyncer(params.coreEngine as never);
   Logger.info(LogCategory.SYSTEM, "[startup] webview-manager.initSyncer:complete");
   await runStartupStep(

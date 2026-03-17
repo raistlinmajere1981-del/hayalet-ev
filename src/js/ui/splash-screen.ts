@@ -19,6 +19,9 @@ const ELEMENT_IDS = {
   logo: "splash-logo",
 };
 
+const SCENE_STATUS_KEY = "app.startup.sceneLines";
+const SCENE_STATUS_SEPARATOR = "\n";
+
 let elements: SplashElements = {
   container: null,
   progress: null,
@@ -33,6 +36,9 @@ let isInitialized: boolean = false;
 let sceneAnimationTimer: ReturnType<typeof setInterval> | null = null;
 let sceneFrameIndex: number = 0;
 let sceneAnimationCompleted: boolean = false;
+
+let sceneStatusQueue: string[] = [];
+let sceneStatusIndex = 0;
 
 function createClassicSplashMarkup(): string {
   const title = AppI18n.t("app.documentTitle");
@@ -148,6 +154,51 @@ function startSceneAnimation(): void {
   }, SCENE_THEME_CONFIG.loading.frameDurationMs);
 }
 
+function shuffleSceneLines(lines: string[]): string[] {
+  const next = [...lines];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+function parseSceneStatusLines(raw: string): string[] {
+  const fallback = AppI18n.t("app.common.translationMissing");
+  if (raw.trim() === "" || raw === fallback) {
+    return [];
+  }
+  return raw
+    .split(SCENE_STATUS_SEPARATOR)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function resetSceneStatusQueue(): void {
+  if (!isSceneUiMode()) {
+    sceneStatusQueue = [];
+    sceneStatusIndex = 0;
+    return;
+  }
+  sceneStatusQueue = shuffleSceneLines(parseSceneStatusLines(AppI18n.t(SCENE_STATUS_KEY)));
+  sceneStatusIndex = 0;
+}
+
+function nextSceneStatus(): string | null {
+  if (!isSceneUiMode()) {
+    return null;
+  }
+  if (sceneStatusQueue.length === 0 || sceneStatusIndex >= sceneStatusQueue.length) {
+    resetSceneStatusQueue();
+  }
+  if (sceneStatusQueue.length === 0) {
+    return null;
+  }
+  const next = sceneStatusQueue[sceneStatusIndex];
+  sceneStatusIndex += 1;
+  return next;
+}
+
 function syncSplashVariant(): void {
   const container = document.getElementById(ELEMENT_IDS.container);
   if (!(container instanceof HTMLElement)) {
@@ -162,6 +213,7 @@ function syncSplashVariant(): void {
   container.dataset["uiMode"] = uiMode;
   container.innerHTML = buildSplashMarkup(uiMode);
   resetSceneAnimation();
+  resetSceneStatusQueue();
   if (uiMode !== "scene") {
     stopSceneAnimation();
   }
@@ -216,6 +268,7 @@ const splashScreen = {
     isVisible = true;
     currentProgress = 0;
     resetSceneAnimation();
+    resetSceneStatusQueue();
     startSceneAnimation();
 
     logSplashDebug("splashShown", undefined, { timestamp: showTime });
@@ -289,7 +342,8 @@ const splashScreen = {
     }
     startSceneAnimation();
     splashScreen.setProgress(percent);
-    splashScreen.setStatus(message);
+    const sceneStatus = nextSceneStatus();
+    splashScreen.setStatus(sceneStatus ?? message);
   },
 
   get isVisible(): boolean {
@@ -307,6 +361,7 @@ const splashScreen = {
 
   reset(): void {
     syncSplashVariant();
+    resetSceneStatusQueue();
     resetSceneAnimation();
     splashScreen.setProgress(0);
     splashScreen.setStatus(AppI18n.t("app.startup.starting"));

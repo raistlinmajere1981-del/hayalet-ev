@@ -5,11 +5,18 @@
       "starting": "Starting...",
       "ready": "Ready!",
       "loadingSettings": "Loading settings...",
+      "loadingLanguage": "Loading language pack...",
+      "startingCore": "Starting core services...",
+      "preparingFiles": "Preparing file directories...",
       "loadingCommands": "Loading commands...",
+      "loadingWhispers": "Starting whisper services...",
+      "startingWebviews": "Starting webview sync...",
+      "startingSlots": "Starting slot controller...",
       "loadingRooms": "Preparing rooms...",
       "preparingUi": "Preparing interface...",
       "startingModules": "Starting modules...",
       "finalizing": "Finalizing...",
+      "sceneLines": "Oiling the gates...\nStoking the hearth...\nChanging the watch...\nPolishing the armor...\nRefreshing the torches...\nSweeping the courtyard...\nBoiling the kettles in the kitchen...\nWatering the horses...\nRestocking the pantry...\nChecking the banners...",
       "startupError": "Startup error"
     },
     "splash": {

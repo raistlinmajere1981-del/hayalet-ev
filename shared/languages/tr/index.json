@@ -5,11 +5,18 @@
       "starting": "Başlatılıyor...",
       "ready": "Hazır!",
       "loadingSettings": "Ayarlar yükleniyor...",
+      "loadingLanguage": "Dil paketi hazırlanıyor...",
+      "startingCore": "Çekirdek servisler başlatılıyor...",
+      "preparingFiles": "Dosya dizinleri hazırlanıyor...",
       "loadingCommands": "Komutlar yükleniyor...",
+      "loadingWhispers": "Whisper servisi başlatılıyor...",
+      "startingWebviews": "Webview senkronizasyonu başlatılıyor...",
+      "startingSlots": "Slot denetleyicisi başlatılıyor...",
       "loadingRooms": "Odalar hazırlanıyor...",
       "preparingUi": "Arayüz hazırlanıyor...",
       "startingModules": "Modüller başlatılıyor...",
       "finalizing": "Son hazırlıklar...",
+      "sceneLines": "Kapılar yağlanıyor...\nŞömineye odun atılıyor...\nNöbetçiler değişiyor...\nZırhlar parlatılıyor...\nMeşaleler tazeleniyor...\nAvlu süpürülüyor...\nMutfakta kazanlar kaynıyor...\nAtlar sulanıyor...\nKiler düzenleniyor...\nSancaklar kontrol ediliyor...",
       "startupError": "Başlatma hatası"
     },
     "splash": {
