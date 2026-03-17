@@ -502,6 +502,8 @@
 
 .entrance-scene__character.is-connected {
   opacity: 1;
+  background: transparent;
+  box-shadow: none;
   filter: saturate(1.04) brightness(1.02)
     drop-shadow(0 var(--scene-rem-1-1) var(--scene-rem-1-7) rgb(0 0 0 / 0.4));
 }
