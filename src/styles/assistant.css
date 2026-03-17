@@ -249,27 +249,6 @@
   flex: 0 0 auto;
 }
 
-.assistant-mode-dropdown {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1-5);
-  min-width: 0;
-}
-
-.assistant-mode-dropdown-btn {
-  width: 100%;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-width: 0;
-  font-weight: var(--font-medium);
-}
-
-.assistant-mode-dropdown-menu {
-  min-width: var(--size-dropdown-md);
-}
-
 .assistant-opencode-action-row {
   display: grid;
   grid-template-columns: repeat(3, var(--size-control-pill));

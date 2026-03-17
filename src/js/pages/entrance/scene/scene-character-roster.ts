@@ -1,4 +1,5 @@
-import { isAiProviderAccount } from "@shared/settings.js";
+import { buildRemoteEmailAccountId } from "@shared/archive.js";
+import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
 import { AppState } from "../../../modules/app-state.js";
 import { getSceneCharacterRoleConfig } from "../../../scene/scene-config.js";
@@ -15,6 +16,15 @@ import {
 } from "./scene-character-state.js";
 
 type SceneCharacterAnchor = EntranceSceneCharacterAnchorConfig;
+
+interface Us1SceneBinding {
+  accountId: string;
+  remoteUserId: string;
+  email: string;
+  nickname: string | null;
+  avatar?: string;
+  avatarPath?: string;
+}
 
 export interface SceneCharacterDescriptor {
   id: string;
@@ -112,6 +122,69 @@ function getFirstNonEmpty(...values: Array<string | null | undefined>): string |
   }
 
   return null;
+}
+
+function getUs1ActiveBindings(): Us1SceneBinding[] {
+  const settings = AppState.getSettings();
+  if (settings === null) {
+    return [];
+  }
+
+  return getRemoteEmailAccounts(settings.accounts)
+    .map((account) => {
+      const remoteUserId = account.remoteEmail?.remoteUserId?.trim() ?? "";
+      if (remoteUserId === "" || account.remoteEmail?.handshakeState !== "active") {
+        return null;
+      }
+
+      const derivedAccountId = buildRemoteEmailAccountId(remoteUserId);
+      const accountId = derivedAccountId !== "" ? derivedAccountId : account.id;
+      const normalizedAccountId = typeof accountId === "string" ? accountId.trim() : "";
+      if (normalizedAccountId === "") {
+        return null;
+      }
+
+      const email = `${account.email ?? ""}`.trim();
+      const fallbackNickname = email.split("@")[0] ?? email;
+      const nickname = getFirstNonEmpty(account.nickname, fallbackNickname) ?? fallbackNickname;
+
+      return {
+        accountId: normalizedAccountId,
+        remoteUserId,
+        email,
+        nickname,
+        avatar: account.avatar,
+        avatarPath: account.avatarPath,
+      };
+    })
+    .filter((binding): binding is Us1SceneBinding => binding !== null)
+    .sort((left, right) => {
+      const leftLabel = `${left.nickname} ${left.email}`.toLowerCase();
+      const rightLabel = `${right.nickname} ${right.email}`.toLowerCase();
+      return leftLabel.localeCompare(rightLabel, "tr");
+    });
+}
+
+function getUs1SceneBinding(): Us1SceneBinding | null {
+  const us1Identity = AppState.getUs1Identity();
+  if (us1Identity !== null) {
+    const accountId =
+      AppState.getUs1ArchiveAccountId() ?? buildRemoteEmailAccountId(us1Identity.remoteUserId);
+    const normalizedAccountId = typeof accountId === "string" ? accountId.trim() : "";
+    if (normalizedAccountId !== "") {
+      return {
+        accountId: normalizedAccountId,
+        remoteUserId: us1Identity.remoteUserId,
+        email: us1Identity.email,
+        nickname: us1Identity.nickname ?? null,
+        avatar: us1Identity.avatar,
+        avatarPath: us1Identity.avatarPath,
+      };
+    }
+  }
+
+  const bindings = getUs1ActiveBindings();
+  return bindings[0] ?? null;
 }
 
 function getAiAnchorQueue(anchors: readonly SceneCharacterAnchor[]): SceneCharacterAnchor[] {
@@ -254,27 +327,26 @@ function createUserCharacterDescriptor(anchor: SceneCharacterAnchor): SceneChara
 function createUs1CharacterDescriptor(
   anchor: SceneCharacterAnchor
 ): SceneCharacterDescriptor | null {
-  const us1Identity = AppState.getUs1Identity();
-  const us1AccountId = AppState.getUs1ArchiveAccountId();
-  if (us1Identity === null) {
+  const us1Binding = getUs1SceneBinding();
+  if (us1Binding === null) {
     return null;
   }
 
-  const label = getFirstNonEmpty(us1Identity.nickname, us1Identity.email, "US1") ?? "US1";
+  const label = getFirstNonEmpty(us1Binding.nickname, us1Binding.email, "US1") ?? "US1";
 
   return {
-    id: `scene-remote-${us1Identity.remoteUserId}`,
+    id: `scene-remote-${us1Binding.remoteUserId}`,
     kind: "us1",
-    accountId: us1AccountId,
-    remoteUserId: us1Identity.remoteUserId,
+    accountId: us1Binding.accountId,
+    remoteUserId: us1Binding.remoteUserId,
     providerId: "remote-email",
     slot: "us1",
     label,
     headLabel: toHeadLabel(label),
     variant: "remote",
     avatarSource: getFirstNonEmpty(
-      us1Identity.avatarPath,
-      us1Identity.avatar,
+      us1Binding.avatarPath,
+      us1Binding.avatar,
       "src/assets/default.png"
     ),
     ...createDescriptorBase("human", anchor, getSceneCharacterState("us1")),

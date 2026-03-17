@@ -35,13 +35,8 @@ import type {
   AssistantProviderAdapter,
 } from "@shared/assistant.js";
 import { AssistantProviderRegistry } from "./provider-registry.js";
-import {
-  createGhostHandoffRuntimePatch,
-  shouldAutoEnableKeepServersOnClose,
-} from "./ghost-handoff.js";
 import type { OverlayStage } from "./overlay-stage.js";
 import {
-  generateWorkflowSessionId,
   type AssistantRuntimeMode,
   readAssistantRuntimeState,
   syncAssistantRuntimeDefaults,
@@ -52,7 +47,6 @@ import { toggleAssistantConnection } from "./connection-lifecycle.js";
 import { updateAssistantConnectionUI } from "./connection-ui.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
-import { setupAssistantModeDropdown } from "./mode-dropdown.js";
 import {
   handleOpencodeActionButtonClick,
   openOpencodeSettingsModal,
@@ -828,42 +822,6 @@ export class AssistantController {
     }
   }
 
-  async _ensureKeepServersOnCloseForGhostMode(): Promise<void> {
-    const isChecked = this.keepServersOnAppCloseCheckbox?.checked === true;
-    if (!shouldAutoEnableKeepServersOnClose(isChecked)) return;
-
-    if (this.keepServersOnAppCloseCheckbox) {
-      this.keepServersOnAppCloseCheckbox.checked = true;
-    }
-
-    await this._saveKeepServersOnClosePreference(true);
-  }
-
-  async _triggerGhostHandoff(): Promise<void> {
-    const runtimePatch = createGhostHandoffRuntimePatch(generateWorkflowSessionId());
-    await updateAssistantRuntimeState(runtimePatch);
-
-    const electronApi = window.electronAPI;
-    if (electronApi === undefined || typeof electronApi.windowClose !== "function") {
-      Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.ghostCloseApiMissing"));
-      await updateAssistantRuntimeState({ desiredMode: "soft", phase: "idle" });
-      return;
-    }
-
-    Logger.info(LogCategory.ASSISTANT_CORE, assistantT("logs.ghostHandoffStarted"), {
-      workflowSessionId: runtimePatch.workflowSessionId,
-    });
-    electronApi.windowClose();
-  }
-
-  async _handleGhostAgentButtonClick(): Promise<void> {
-    await this._ensureKeepServersOnCloseForGhostMode();
-    if (this._connectFlowActive) {
-      this._cancelConnectFlow();
-    }
-    await this._triggerGhostHandoff();
-  }
-
   async _saveLastOpencodeUiSessionId(sessionId: string | null): Promise<void> {
     if (sessionId === null || sessionId === "") return;
     const settings = SettingsManager.getSnapshot() as AppSettings | null;
@@ -989,17 +947,6 @@ export class AssistantController {
       },
       onTestClick: () => {
         this._handleTestClick();
-      },
-    });
-
-    const modeDropdowns = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-assistant-mode-dropdown]")
-    );
-    setupAssistantModeDropdown({
-      dropdowns: modeDropdowns,
-      currentMode,
-      onGhostAgentClick: () => {
-        void this._handleGhostAgentButtonClick();
       },
     });
 

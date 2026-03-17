@@ -4,6 +4,7 @@ import { WebviewManager } from "../../../modules/webview-manager.js";
 import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
 import { SettingsManager } from "../../../modules/settings-manager.js";
 import { t as entranceT } from "../i18n.js";
+import type { AppSettings } from "@shared/settings.js";
 
 import type { SlotPanel } from "../slot-panel.js";
 import type { Us1Panel } from "../us1-panel.js";
@@ -103,6 +104,29 @@ function isAiSlotId(value: string | null): value is AiSlotId {
   return value === "ai1" || value === "ai2";
 }
 
+function normalizeSlotValue(value: string | null | undefined): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function resolveUs1SlotAssignment(
+  settings: AppSettings,
+  character: SceneCharacterDescriptor
+): { assigned: boolean; matchesCharacter: boolean } {
+  const selectedAccountId = normalizeSlotValue(settings.us1Slot?.selectedAccountId);
+  const selectedRemoteUserId = normalizeSlotValue(settings.us1Slot?.selectedRemoteUserId);
+  const characterAccountId = normalizeSlotValue(character.accountId);
+  const characterRemoteUserId = normalizeSlotValue(character.remoteUserId);
+  const assigned = selectedAccountId !== "" || selectedRemoteUserId !== "";
+  const matchesCharacter =
+    (selectedAccountId !== "" &&
+      characterAccountId !== "" &&
+      selectedAccountId === characterAccountId) ||
+    (selectedRemoteUserId !== "" &&
+      characterRemoteUserId !== "" &&
+      selectedRemoteUserId === characterRemoteUserId);
+  return { assigned, matchesCharacter };
+}
+
 function getManualRefreshLabel(): string {
   return isTurkishLocale() ? "Manuel refresh" : "Manual refresh";
 }
@@ -123,6 +147,10 @@ function getPendingSlotSubtitle(slot: string): string {
 
 function getNoAvailableSlotReason(): string {
   return isTurkishLocale() ? "Uygun boş AI slotu yok." : "No available AI slot.";
+}
+
+function getUs1SlotOccupiedReason(): string {
+  return isTurkishLocale() ? "US1 slotu dolu." : "US1 slot is already occupied.";
 }
 
 function getConnectFirstReason(): string {
@@ -321,6 +349,21 @@ export class SceneEntranceBridge {
 
     if (character.kind === "us1") {
       if (actionId === "connect") {
+        const settings = SettingsManager.getSnapshot();
+        const assignment = resolveUs1SlotAssignment(settings, character);
+        const connected = this.us1Panel.getSceneState().connected;
+
+        if (connected === false) {
+          if (assignment.assigned && assignment.matchesCharacter === false) {
+            return;
+          }
+
+          const candidateAccountId = normalizeSlotValue(character.accountId);
+          if (assignment.assigned === false && candidateAccountId !== "") {
+            await this.us1Panel.selectSceneBinding(candidateAccountId);
+          }
+        }
+
         await this.us1Panel.toggleSceneConnection();
       } else if (actionId === "manualRefresh") {
         await ConversationListManager.handleUs1Refresh();
@@ -609,6 +652,20 @@ export class SceneEntranceBridge {
 
   private getUs1MenuState(character: SceneCharacterDescriptor): SceneCharacterMenuState {
     const sceneState = this.us1Panel.getSceneState();
+    const settings = SettingsManager.getSnapshot();
+    const assignment = resolveUs1SlotAssignment(settings, character);
+    const slotOccupiedByOther = assignment.assigned && assignment.matchesCharacter === false;
+    const canAutoAssign =
+      assignment.assigned === false && normalizeSlotValue(character.accountId) !== "";
+    const canConnect = sceneState.connected || sceneState.canConnect || canAutoAssign;
+    const connectDisabled =
+      sceneState.connected === false && (slotOccupiedByOther || canConnect === false);
+    const connectDisabledReason =
+      sceneState.connected === false && connectDisabled
+        ? slotOccupiedByOther
+          ? getUs1SlotOccupiedReason()
+          : sceneState.connectDisabledReason
+        : null;
     const sessionSnapshot = readSelectSnapshot("conversation-us1");
     const bindingSnapshot = readSelectSnapshot("us1-identity-select");
     const refreshButtonDisabled = readButtonDisabled("conversation-refresh-us1");
@@ -624,10 +681,8 @@ export class SceneEntranceBridge {
           "connect",
           sceneState.connected ? entranceT("slot.disconnect") : entranceT("slot.connect"),
           sceneState.connected ? "secondary" : "primary",
-          sceneState.connected === false && sceneState.canConnect === false,
-          sceneState.connected === false && sceneState.canConnect === false
-            ? sceneState.connectDisabledReason
-            : null
+          connectDisabled,
+          connectDisabledReason
         ),
         buildActionState(
           "manualRefresh",
