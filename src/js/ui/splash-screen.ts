@@ -82,9 +82,6 @@ function createSceneSplashMarkup(): string {
         <div class="splash-scene-door">${frameMarkup}</div>
       </div>
       <div class="splash-scene-copy">
-        <p class="splash-scene-kicker">${SCENE_THEME_CONFIG.themeId}</p>
-        <h1 class="splash-title">${title}</h1>
-        <p class="splash-version">${versionLabel}</p>
         <div class="splash-loader">
           <div class="splash-progress" id="${ELEMENT_IDS.progress}"></div>
         </div>

@@ -93,11 +93,10 @@ async function initApp(): Promise<void> {
     setupUILogListener();
     Logger.debugT(LogCategory.SYSTEM, "app.logs.uiLogListenerReady");
 
-    SplashScreen.update(5, AppI18n.t("app.startup.loadingSettings"));
     await SettingsManager.load();
-    SplashScreen.update(12, AppI18n.t("app.startup.loadingLanguage"));
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
+    SplashScreen.setProgress(12);
     const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
 

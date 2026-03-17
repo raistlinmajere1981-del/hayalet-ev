@@ -11,7 +11,7 @@ import {
   getBuiltInLanguageDescriptors,
   getBuiltInLanguagePack,
 } from "../../../../shared/i18n/bundled-languages.js";
-import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
+import { normalizeAppLanguage, resolveSelectorLanguage } from "../../../../shared/i18n/locale.js";
 
 interface I18nSettingsSnapshot {
   general?: {
@@ -118,8 +118,13 @@ class AppI18nManager {
       nextPack = null;
     }
 
+    const builtInPack = getBuiltInLanguagePack(normalized);
+    const fallbackLocale = resolveSelectorLanguage(normalized);
+    const fallbackPack =
+      fallbackLocale !== normalized ? getBuiltInLanguagePack(fallbackLocale) : null;
+
     this.currentLocale = normalized;
-    this.activePack = nextPack ?? getBuiltInLanguagePack(normalized) ?? this.activePack;
+    this.activePack = nextPack ?? builtInPack ?? fallbackPack ?? this.activePack;
     this.activeCatalog = this.activePack.catalog;
     this.applyDocumentLocale(this.activePack);
 
