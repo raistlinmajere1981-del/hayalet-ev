@@ -14,6 +14,9 @@ import {
 } from "@shared/archive.js";
 import type {
   Us1RoomPackageCandidate,
+  Us1SessionEvent,
+  Us1SessionMode,
+  Us1SessionOpenHint,
   Us1SendMessageParams,
   Us1SendMessageResult,
   Us1SyncMessagesParams,
@@ -72,7 +75,22 @@ interface ConversationEnvelope {
   messageType: typeof MESSAGE_TYPE_CONVERSATION;
   sentAt: number;
   localSessionId: string | null;
+  session: ConversationSessionDescriptor | null;
+  thread: ConversationThreadDescriptor | null;
   profile: MessageProfile;
+}
+
+interface ConversationSessionDescriptor {
+  id: string;
+  mode: Us1SessionMode;
+  title: string | null;
+  createdAt: number;
+  openHint: Us1SessionOpenHint;
+}
+
+interface ConversationThreadDescriptor {
+  threadRootMessageId: string | null;
+  replyToMessageId: string | null;
 }
 
 interface MailTransportFacade {
@@ -253,6 +271,14 @@ function buildSessionId(remoteUserId: string, threadSeed: string | null, now: nu
   return `us1-${hashString(`${remoteUserId}:${seed}:${now}`).slice(0, 16)}`;
 }
 
+function normalizeSessionMode(value: unknown): Us1SessionMode | null {
+  return value === "new" || value === "reply" ? value : null;
+}
+
+function normalizeSessionOpenHint(value: unknown): Us1SessionOpenHint | null {
+  return value === "auto_if_idle" || value === "list_only" ? value : null;
+}
+
 function parseHeaderValue(headerLines: string[], headerName: string): string | null {
   const normalizedHeaderName = headerName.toLowerCase();
   for (const line of headerLines) {
@@ -407,6 +433,69 @@ function normalizeMessageProfile(profile: unknown): MessageProfile | null {
   };
 }
 
+function normalizeConversationSession(
+  session: unknown,
+  fallbackLocalSessionId: string | null,
+  fallbackSentAt: number
+): ConversationSessionDescriptor | null {
+  const legacySessionId = normalizeOptionalText(fallbackLocalSessionId);
+  if (session === null || session === undefined) {
+    if (legacySessionId === null) {
+      return null;
+    }
+    return {
+      id: legacySessionId,
+      mode: "reply",
+      title: null,
+      createdAt: fallbackSentAt,
+      openHint: "list_only",
+    };
+  }
+
+  if (typeof session !== "object") {
+    return legacySessionId === null
+      ? null
+      : {
+          id: legacySessionId,
+          mode: "reply",
+          title: null,
+          createdAt: fallbackSentAt,
+          openHint: "list_only",
+        };
+  }
+
+  const source = session as Record<string, unknown>;
+  const id = normalizeOptionalText(source["id"]) ?? legacySessionId;
+  if (id === null) {
+    return null;
+  }
+
+  return {
+    id,
+    mode: normalizeSessionMode(source["mode"]) ?? "reply",
+    title: normalizeOptionalText(source["title"]),
+    createdAt:
+      typeof source["createdAt"] === "number" &&
+      Number.isFinite(source["createdAt"]) &&
+      source["createdAt"] >= 0
+        ? Math.trunc(source["createdAt"])
+        : fallbackSentAt,
+    openHint: normalizeSessionOpenHint(source["openHint"]) ?? "list_only",
+  };
+}
+
+function normalizeConversationThread(thread: unknown): ConversationThreadDescriptor | null {
+  if (thread === null || thread === undefined || typeof thread !== "object") {
+    return null;
+  }
+
+  const source = thread as Record<string, unknown>;
+  return {
+    threadRootMessageId: normalizeOptionalText(source["threadRootMessageId"]),
+    replyToMessageId: normalizeOptionalText(source["replyToMessageId"]),
+  };
+}
+
 function extractConversationEnvelope(text: string): ConversationEnvelope | null {
   const payload = extractJsonBlock(text, MESSAGE_PAYLOAD_START, MESSAGE_PAYLOAD_END);
   if (payload === null) {
@@ -437,6 +526,14 @@ function extractConversationEnvelope(text: string): ConversationEnvelope | null 
           ? Math.trunc(parsed.sentAt)
           : Date.now(),
       localSessionId: normalizeOptionalText(parsed.localSessionId),
+      session: normalizeConversationSession(
+        (parsed as Record<string, unknown>)["session"],
+        normalizeOptionalText(parsed.localSessionId),
+        typeof parsed.sentAt === "number" && Number.isFinite(parsed.sentAt) && parsed.sentAt >= 0
+          ? Math.trunc(parsed.sentAt)
+          : Date.now()
+      ),
+      thread: normalizeConversationThread((parsed as Record<string, unknown>)["thread"]),
       profile,
     };
   } catch {
@@ -467,10 +564,30 @@ function buildConversationSubject(text: string, attachmentCount: number): string
   return SUBJECT_PREFIX;
 }
 
-function buildConversationTitle(
+function buildSessionTitle(text: string, attachmentCount: number): string | null {
+  const preview = normalizeText(text).replace(/\n+/g, " ").slice(0, 48);
+  if (preview !== "") {
+    return preview;
+  }
+  if (attachmentCount > 0) {
+    return `${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"}`;
+  }
+  return null;
+}
+
+function buildConversationAuthor(
   remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">
 ): string {
   return normalizeOptionalText(remoteUser.nickname) ?? remoteUser.email;
+}
+
+function buildConversationTitle(
+  remoteUser: Pick<RemoteUserIdentity, "nickname" | "email">,
+  sessionTitle?: string | null
+): string {
+  const author = buildConversationAuthor(remoteUser);
+  const normalizedSessionTitle = normalizeOptionalText(sessionTitle);
+  return normalizedSessionTitle === null ? author : `${author} / ${normalizedSessionTitle}`;
 }
 
 function buildArchiveMessageId(conversationId: string, domId: string): string {
@@ -572,10 +689,14 @@ export class Us1ConversationService {
       requestedSessionId !== null
         ? sidecar.getSessionMapping(remoteUser.remoteUserId, requestedSessionId)
         : sidecar.getLatestSessionMapping(remoteUser.remoteUserId);
+    const isNewSession = latestMapping === null;
     const localSessionId =
       requestedSessionId ??
       latestMapping?.localSessionId ??
       buildSessionId(remoteUser.remoteUserId, latestMapping?.threadMessageId ?? null, this.now());
+    const sessionTitle = isNewSession ? buildSessionTitle(text, attachments.length) : null;
+    const sessionMode: Us1SessionMode = isNewSession ? "new" : "reply";
+    const sessionOpenHint: Us1SessionOpenHint = isNewSession ? "auto_if_idle" : "list_only";
     const localProfile = this.buildLocalProfile(settings, account);
     const localMessageId = buildLocalMessageId("us1-out", remoteUser.remoteUserId, this.now());
     const threadMessageId =
@@ -597,6 +718,17 @@ export class Us1ConversationService {
           messageType: MESSAGE_TYPE_CONVERSATION,
           sentAt: this.now(),
           localSessionId,
+          session: {
+            id: localSessionId,
+            mode: sessionMode,
+            title: sessionTitle,
+            createdAt: this.now(),
+            openHint: sessionOpenHint,
+          },
+          thread: {
+            threadRootMessageId: threadMessageId,
+            replyToMessageId: inReplyTo,
+          },
           profile: localProfile,
         }),
         inReplyTo,
@@ -611,6 +743,8 @@ export class Us1ConversationService {
           "X-Hayalet-Ev-Protocol": MESSAGE_PROTOCOL,
           "X-Hayalet-Ev-Message-Type": MESSAGE_TYPE_CONVERSATION,
           "X-Hayalet-Ev-Remote-User-Id": remoteUser.remoteUserId,
+          "X-Hayalet-Ev-Session-Id": localSessionId,
+          "X-Hayalet-Ev-Session-Mode": sessionMode,
           "X-Hayalet-Ev-Local-Session-Id": localSessionId,
           "X-Hayalet-Ev-Profile-Revision": String(localProfile.profileRevision),
         },
@@ -623,10 +757,14 @@ export class Us1ConversationService {
         })),
       });
 
-      const archiveContext = await this.prepareArchiveContext(remoteUser, localSessionId);
+      const archiveContext = await this.prepareArchiveContext(
+        remoteUser,
+        localSessionId,
+        isNewSession ? buildConversationTitle(remoteUser, sessionTitle) : null
+      );
       const projectedMessage = await this.appendArchiveMessage(archiveContext, {
         role: "user",
-        author: localProfile.nickname,
+        author: buildConversationAuthor(localProfile),
         text: text !== "" ? text : OUTBOUND_ATTACHMENT_ONLY_TEXT,
         domId: localMessageId,
       });
@@ -722,6 +860,7 @@ export class Us1ConversationService {
       let activeConversationId: string | null = null;
       let activeLocalSessionId: string | null = normalizeOptionalText(params.localSessionId);
       const roomPackages: Us1RoomPackageCandidate[] = [];
+      const sessionEventsById = new Map<string, Us1SessionEvent>();
 
       this.applyFetchedHandshakeMessages(settings, account, fetchResult);
 
@@ -775,11 +914,19 @@ export class Us1ConversationService {
           lastError: null,
         });
 
+        const sessionDescriptor = messageEnvelope?.session ?? null;
+        const sessionTitle = normalizeOptionalText(sessionDescriptor?.title);
+        const sessionIdFromEnvelope = normalizeOptionalText(sessionDescriptor?.id);
+        const explicitSessionId =
+          sessionIdFromEnvelope ?? normalizeOptionalText(messageEnvelope?.localSessionId);
         let localSessionId =
+          sessionIdFromEnvelope ??
           normalizeOptionalText(message.localSessionId) ??
           normalizeOptionalText(messageEnvelope?.localSessionId) ??
           sidecar.getLatestSessionMapping(remoteUserId)?.localSessionId ??
           null;
+        const existingSessionMapping =
+          localSessionId !== null ? sidecar.getSessionMapping(remoteUserId, localSessionId) : null;
         if (localSessionId === null) {
           localSessionId = buildSessionId(
             remoteUserId,
@@ -790,8 +937,29 @@ export class Us1ConversationService {
           unresolvedSessionCount += 1;
         }
 
+        const isNewSession = existingSessionMapping === null;
+        const archiveTitle =
+          isNewSession === true
+            ? buildConversationTitle(
+                nextRemoteUser,
+                sessionTitle ??
+                  buildSessionTitle(
+                    toDisplayText(
+                      message.parsed.text,
+                      message.parsed.attachments.length,
+                      INBOUND_ATTACHMENT_ONLY_TEXT
+                    ),
+                    message.parsed.attachments.length
+                  )
+              )
+            : null;
+
         // eslint-disable-next-line no-await-in-loop -- NOTE: per-message archive work is sequential.
-        const archiveContext = await this.prepareArchiveContext(nextRemoteUser, localSessionId);
+        const archiveContext = await this.prepareArchiveContext(
+          nextRemoteUser,
+          localSessionId,
+          archiveTitle
+        );
         const transportMessageId =
           normalizeOptionalText(message.transportMessageId) ??
           buildSyntheticTransportMessageId(message.localMessageId);
@@ -803,7 +971,7 @@ export class Us1ConversationService {
         // eslint-disable-next-line no-await-in-loop -- NOTE: projection order must be preserved.
         const projectedMessage = await this.appendArchiveMessage(archiveContext, {
           role: "assistant",
-          author: buildConversationTitle(nextRemoteUser),
+          author: buildConversationAuthor(nextRemoteUser),
           text: displayText,
           domId: transportMessageId,
         });
@@ -844,6 +1012,20 @@ export class Us1ConversationService {
         });
 
         projectedCount += 1;
+        const sessionEvent = sessionEventsById.get(localSessionId);
+        sessionEventsById.set(localSessionId, {
+          remoteUserId,
+          localSessionId,
+          conversationId: projectedMessage.conversationId,
+          sessionTitle,
+          mode: sessionDescriptor?.mode ?? (isNewSession ? "new" : "reply"),
+          openHint: sessionDescriptor?.openHint ?? (isNewSession ? "auto_if_idle" : "list_only"),
+          createdAt: sessionDescriptor?.createdAt ?? messageEnvelope?.sentAt,
+          sentAt: messageEnvelope?.sentAt ?? message.parsed.receivedAt,
+          isNewSession:
+            sessionEvent?.isNewSession === true ||
+            (isNewSession === true && explicitSessionId !== null),
+        });
         if (remoteUserId === activeRemoteUser.remoteUserId) {
           activeConversationId = projectedMessage.conversationId;
           activeLocalSessionId = localSessionId;
@@ -878,6 +1060,7 @@ export class Us1ConversationService {
         skippedCount,
         unresolvedSessionCount,
         roomPackages,
+        sessionEvents: Array.from(sessionEventsById.values()),
       };
     } catch (error) {
       this.patchRemoteUserTransportState(settings, activeRemoteUser.remoteUserId, {
@@ -1218,7 +1401,8 @@ export class Us1ConversationService {
 
   private async prepareArchiveContext(
     remoteUser: Pick<RemoteUserIdentity, "remoteUserId" | "nickname" | "email">,
-    localSessionId: string
+    localSessionId: string,
+    title?: string | null
   ): Promise<ArchiveContext> {
     const archiveAccountId = buildRemoteEmailAccountId(remoteUser.remoteUserId);
     if (archiveAccountId === "") {
@@ -1234,7 +1418,7 @@ export class Us1ConversationService {
     const metadataResult = await manager.upsertConversationMetadata({
       webUrl,
       provider: "us1",
-      title: buildConversationTitle(remoteUser),
+      title,
     });
     if (metadataResult.success !== true || metadataResult.data === undefined) {
       throw new Error(metadataResult.error ?? "US1 archive conversation metadata sync failed.");

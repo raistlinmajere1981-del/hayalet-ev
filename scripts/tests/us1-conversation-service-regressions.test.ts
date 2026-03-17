@@ -152,7 +152,17 @@ function createTransportStub() {
   };
 }
 
-function buildConversationPayload(nickname: string, profileRevision: number, text: string): string {
+function buildConversationPayload(
+  nickname: string,
+  profileRevision: number,
+  text: string,
+  options: {
+    localSessionId?: string | null;
+    mode?: "new" | "reply";
+    title?: string | null;
+  } = {}
+): string {
+  const localSessionId = options.localSessionId ?? null;
   return [
     text,
     "",
@@ -163,7 +173,17 @@ function buildConversationPayload(nickname: string, profileRevision: number, tex
         version: 1,
         messageType: "conversation",
         sentAt: FIXED_NOW + 1,
-        localSessionId: null,
+        localSessionId,
+        session:
+          localSessionId !== null
+            ? {
+                id: localSessionId,
+                mode: options.mode ?? "reply",
+                title: options.title ?? null,
+                createdAt: FIXED_NOW + 1,
+                openHint: options.mode === "new" ? "auto_if_idle" : "list_only",
+              }
+            : null,
         profile: {
           remoteUserId: "remote@example.com",
           email: "remote@example.com",
@@ -178,6 +198,15 @@ function buildConversationPayload(nickname: string, profileRevision: number, tex
     MESSAGE_PAYLOAD_END,
     "",
   ].join("\n");
+}
+
+function extractConversationEnvelope(message: SendMailRequest): Record<string, unknown> {
+  const text = typeof message.text === "string" ? message.text : "";
+  const match = text.match(
+    /--- HAYALET_EV_US1_MESSAGE_PAYLOAD ---\s*([\s\S]+?)\s*--- \/HAYALET_EV_US1_MESSAGE_PAYLOAD ---/
+  );
+  assert.ok(match?.[1]);
+  return JSON.parse(match[1]) as Record<string, unknown>;
 }
 
 function cleanupAccount(accountId: string): void {
@@ -461,6 +490,12 @@ test("US1 conversation service sends outbound mail and projects archive metadata
     assert.equal(transportStub.sentMessages[0]?.to, "remote@example.com");
     assert.equal(typeof result.transportMessageId, "string");
     assert.equal(typeof result.conversationId, "string");
+    const envelope = extractConversationEnvelope(transportStub.sentMessages[0] as SendMailRequest);
+    assert.equal(
+      (envelope["session"] as Record<string, unknown>)?.["id"],
+      result.localSessionId ?? null
+    );
+    assert.equal((envelope["session"] as Record<string, unknown>)?.["mode"], "new");
 
     const sidecar = new MailSidecarStoreManager(accountId);
     const meta = sidecar.getMessageMeta(result.transportMessageId ?? "");
@@ -590,6 +625,8 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
     assert.equal(result.success, true);
     assert.equal(result.projectedCount, 1);
     assert.equal(result.localSessionId, outbound.localSessionId);
+    assert.equal(result.sessionEvents?.[0]?.mode, "reply");
+    assert.equal(result.sessionEvents?.[0]?.isNewSession, false);
     assert.equal(result.roomPackages?.length, 1);
     assert.equal(result.roomPackages?.[0]?.originalName, "mail-room.hevroom.json");
 
@@ -623,6 +660,100 @@ test("US1 conversation service syncs inbound mail, updates remote profile, and f
     assert.equal(messages[1]?.content, "Inbound hello");
     assert.equal(attachments.length, 1);
     assert.equal(attachments[0]?.original_name, "mail-room.hevroom.json");
+  } finally {
+    cleanupAccount(accountId);
+    cleanupAccount(remoteAccountId);
+  }
+});
+
+test("US1 conversation sync keeps explicit inbound new session ids isolated", async () => {
+  const accountId = `us1_mail_${Date.now().toString(36)}_new_session`;
+  const store = createSettingsStore(createSettings(accountId));
+  const transportStub = createTransportStub();
+  const service = new Us1ConversationService({
+    now: () => FIXED_NOW,
+    transport: transportStub.transport,
+    archiveFactory: createArchiveFactory(),
+    settingsStore: {
+      loadSettings: () => store.loadSettings(),
+      saveSettings: (settings) => store.saveSettings(settings),
+    },
+  });
+  const remoteAccountId = buildRemoteEmailAccountId("remote@example.com");
+
+  try {
+    transportStub.enqueueFetch({
+      accountId,
+      mailbox: "INBOX",
+      cursor: "uid:9",
+      fetchedCount: 1,
+      processedCount: 1,
+      duplicateCount: 0,
+      messages: [
+        {
+          status: "processed",
+          duplicate: false,
+          accountId,
+          mailbox: "INBOX",
+          uid: 9,
+          threadId: null,
+          transportMessageId: "<incoming-new-session@example.test>",
+          localMessageId: "local-new-session-1",
+          fingerprint: "fingerprint-new-session-1",
+          headersHash: "headers-new-session-1",
+          deliveryState: "received",
+          remoteUserId: "remote@example.com",
+          localSessionId: "us1-remote-session-1",
+          threadMessageId: "<incoming-new-session@example.test>",
+          parsed: {
+            transportMessageId: "<incoming-new-session@example.test>",
+            inReplyTo: null,
+            references: [],
+            subject: "Fresh remote session",
+            text: buildConversationPayload("Remote Fresh", 12, "Brand new thread", {
+              localSessionId: "us1-remote-session-1",
+              mode: "new",
+              title: "Fresh thread",
+            }),
+            html: null,
+            headersHash: "headers-new-session-1",
+            headerLines: [
+              `X-Hayalet-Ev-Protocol: ${MESSAGE_PROTOCOL}`,
+              "X-Hayalet-Ev-Session-Id: us1-remote-session-1",
+            ],
+            from: [{ name: "Remote Fresh", address: "remote@example.com" }],
+            to: [],
+            cc: [],
+            bcc: [],
+            replyTo: [],
+            attachments: [],
+            receivedAt: FIXED_NOW + 3,
+            rawSize: 128,
+          },
+        },
+      ],
+    });
+
+    const result = await service.syncMessages();
+
+    assert.equal(result.success, true);
+    assert.equal(result.projectedCount, 1);
+    assert.equal(result.localSessionId, "us1-remote-session-1");
+    assert.equal(result.sessionEvents?.length, 1);
+    assert.equal(result.sessionEvents?.[0]?.localSessionId, "us1-remote-session-1");
+    assert.equal(result.sessionEvents?.[0]?.mode, "new");
+    assert.equal(result.sessionEvents?.[0]?.isNewSession, true);
+
+    const db = new Database(Paths.getAccountDbPath(remoteAccountId), { readonly: true });
+    const conversation = db
+      .prepare<[string], { title: string; web_url: string }>(
+        "SELECT title, web_url FROM conversations WHERE id = ? LIMIT 1"
+      )
+      .get(result.conversationId ?? "");
+    db.close();
+
+    assert.equal(conversation?.title, "Remote Fresh / Fresh thread");
+    assert.match(conversation?.web_url ?? "", /us1-remote-session-1/);
   } finally {
     cleanupAccount(accountId);
     cleanupAccount(remoteAccountId);

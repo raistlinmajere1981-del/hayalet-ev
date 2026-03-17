@@ -106,6 +106,22 @@ export interface Us1RoomPackageCandidate {
   size?: number;
 }
 
+export type Us1SessionMode = "new" | "reply";
+
+export type Us1SessionOpenHint = "auto_if_idle" | "list_only";
+
+export interface Us1SessionEvent {
+  remoteUserId: string;
+  localSessionId: string;
+  conversationId: string;
+  sessionTitle?: string | null;
+  mode?: Us1SessionMode;
+  openHint?: Us1SessionOpenHint;
+  createdAt?: number;
+  sentAt?: number;
+  isNewSession: boolean;
+}
+
 export interface Us1SendMessageParams {
   text?: string;
   localSessionId?: string | null;
@@ -141,5 +157,6 @@ export interface Us1SyncMessagesResult {
   skippedCount?: number;
   unresolvedSessionCount?: number;
   roomPackages?: Us1RoomPackageCandidate[];
+  sessionEvents?: Us1SessionEvent[];
   error?: string;
 }

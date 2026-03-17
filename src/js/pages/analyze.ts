@@ -12,7 +12,7 @@ import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
-import type { Us1RoomPackageCandidate } from "@shared/us1-mail.js";
+import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
@@ -343,6 +343,79 @@ export class AnalyzeController {
     return this.us1SessionId;
   }
 
+  _chooseUs1AutoOpenSession(
+    sessionEvents: Us1SessionEvent[],
+    options: {
+      currentSessionId: string | null;
+      currentConversationId: string | null;
+      isNewSelected: boolean;
+      composeHasDraft: boolean;
+    }
+  ): Us1SessionEvent | null {
+    const eligibleEvents = sessionEvents.filter(
+      (sessionEvent) =>
+        sessionEvent.localSessionId.trim() !== "" && sessionEvent.conversationId.trim() !== ""
+    );
+    if (eligibleEvents.length === 0) {
+      return null;
+    }
+
+    const currentMatch =
+      [...eligibleEvents]
+        .reverse()
+        .find(
+          (sessionEvent) =>
+            (options.currentSessionId !== null &&
+              sessionEvent.localSessionId === options.currentSessionId) ||
+            (options.currentConversationId !== null &&
+              sessionEvent.conversationId === options.currentConversationId)
+        ) ?? null;
+    if (currentMatch !== null) {
+      return currentMatch;
+    }
+
+    if (options.currentConversationId === null || options.isNewSelected === true) {
+      return eligibleEvents[eligibleEvents.length - 1] ?? null;
+    }
+
+    if (options.composeHasDraft === false && options.currentSessionId === null) {
+      return eligibleEvents[eligibleEvents.length - 1] ?? null;
+    }
+
+    return null;
+  }
+
+  _applyUs1PendingSessions(
+    sessionEvents: Us1SessionEvent[],
+    activeSessionId: string | null,
+    activeConversationId: string | null
+  ): void {
+    const seenSessionIds = new Set<string>();
+    for (const sessionEvent of sessionEvents) {
+      const localSessionId = sessionEvent.localSessionId.trim();
+      const conversationId = sessionEvent.conversationId.trim();
+      if (localSessionId === "" || conversationId === "" || seenSessionIds.has(localSessionId)) {
+        continue;
+      }
+      seenSessionIds.add(localSessionId);
+
+      if (
+        (activeSessionId !== null && localSessionId === activeSessionId) ||
+        (activeConversationId !== null && conversationId === activeConversationId)
+      ) {
+        AppState.clearUs1PendingSession(localSessionId);
+        AppState.clearUs1PendingSessionByConversation(conversationId);
+        continue;
+      }
+
+      AppState.markUs1PendingSession(localSessionId, {
+        conversationId,
+        unreadDelta: 1,
+        updatedAt: sessionEvent.sentAt ?? sessionEvent.createdAt,
+      });
+    }
+  }
+
   updateConnectionStates(): void {
     this._syncUs1IdentityContext();
 
@@ -642,6 +715,8 @@ export class AnalyzeController {
     });
     this.lastMessages.us1 = lastAssistant?.content ?? lastAssistant?.text ?? "";
     this._us1AwaitingReply = lastMeaningful?.role === "user";
+    AppState.clearUs1PendingSession(this.us1SessionId);
+    AppState.clearUs1PendingSessionByConversation(conversationId);
     container.scrollTop = container.scrollHeight;
     this._applyUs1Indicators(AppState.isUs1Connected());
   }
@@ -758,6 +833,17 @@ export class AnalyzeController {
     this._us1SyncInFlight = true;
     this._us1LoadingBusy = true;
     this._applyUs1Indicators(true);
+    const conversationSelect = document.getElementById(
+      "conversation-us1"
+    ) as HTMLSelectElement | null;
+    const selectedConversationValue = conversationSelect?.value ?? "new";
+    const isNewSelected = selectedConversationValue === "new";
+    const currentConversationId = AppState.getState().activeConversations["us1"] ?? null;
+    const currentSessionId = this.us1SessionId;
+    const composeHasDraft =
+      (((document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? "").trim() !==
+        "" ||
+        this.stagedFiles.length > 0);
 
     try {
       const result = await electronApi.us1SyncMessages({
@@ -773,13 +859,34 @@ export class AnalyzeController {
         this.applyNames();
       }
 
-      this.us1SessionId = result.localSessionId ?? this.us1SessionId;
-      AppState.setActiveConversation("us1", result.conversationId ?? null);
+      const sessionEvents = Array.isArray(result.sessionEvents) ? result.sessionEvents : [];
+      const autoOpenSession = this._chooseUs1AutoOpenSession(sessionEvents, {
+        currentSessionId,
+        currentConversationId,
+        isNewSelected,
+        composeHasDraft,
+      });
+      const nextConversationId =
+        autoOpenSession?.conversationId ??
+        (sessionEvents.length > 0 && currentConversationId !== null
+          ? currentConversationId
+          : (result.conversationId ?? currentConversationId));
+      const nextSessionId =
+        autoOpenSession?.localSessionId ??
+        (nextConversationId === currentConversationId
+          ? (currentSessionId ?? result.localSessionId ?? null)
+          : (result.localSessionId ?? currentSessionId));
+
+      this._applyUs1PendingSessions(sessionEvents, nextSessionId, nextConversationId);
+      this.us1SessionId = nextSessionId;
+      AppState.setActiveConversation("us1", nextConversationId ?? null);
       await ConversationListManager.refresh({
         silent: true,
         provider: "us1",
-        ...(typeof result.conversationId === "string" && result.conversationId !== ""
-          ? { forceSelectId: result.conversationId }
+        ...(typeof nextConversationId === "string" &&
+        nextConversationId !== "" &&
+        autoOpenSession !== null
+          ? { forceSelectId: nextConversationId }
           : {}),
         skipNotify: true,
       });

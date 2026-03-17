@@ -31,6 +31,7 @@ interface ConversationEntry {
   title: string;
   lastMessageTime?: number;
   localSessionId?: string | null;
+  pendingUnreadCount?: number;
 }
 
 function conversationListT(key: string, params?: Record<string, string | number>): string {
@@ -43,6 +44,7 @@ class ConversationListManagerClass {
   currentSelections: Record<string, string>;
   _settingsSub: (() => void) | null;
   _slotControllerSub: (() => void) | null;
+  _appStateSub: (() => void) | null;
   _i18nSub: (() => void) | null;
 
   constructor() {
@@ -51,6 +53,7 @@ class ConversationListManagerClass {
     this.currentSelections = { ai1: "new", ai2: "new", us1: "new" };
     this._settingsSub = null;
     this._slotControllerSub = null;
+    this._appStateSub = null;
     this._i18nSub = null;
   }
 
@@ -93,6 +96,10 @@ class ConversationListManagerClass {
     );
 
     this._slotControllerSub ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
+      this.renderAll({ silent: true });
+    });
+
+    this._appStateSub ??= AppState.subscribe(() => {
       this.renderAll({ silent: true });
     });
 
@@ -147,6 +154,10 @@ class ConversationListManagerClass {
     const entry = this.entries.find((e) => e.id === conversationId && e.provider === provider);
     if (provider === "us1") {
       AppState.setActiveConversation("us1", conversationId === "new" ? null : conversationId);
+      AppState.clearUs1PendingSession(entry?.localSessionId ?? null);
+      if (conversationId !== "new") {
+        AppState.clearUs1PendingSessionByConversation(conversationId);
+      }
     } else {
       SlotController.navigate(provider as SlotId, entry?.webUrl ?? null);
     }
@@ -218,6 +229,7 @@ class ConversationListManagerClass {
       const ai1Entries = Array.isArray(ai1Result?.data) ? ai1Result.data : [];
       const ai2Entries = Array.isArray(ai2Result?.data) ? ai2Result.data : [];
       const us1Entries = Array.isArray(us1Result?.data) ? us1Result.data : [];
+      const us1PendingSessions = AppState.getUs1PendingSessions();
 
       this.entries = [
         ...ai1Entries.map((e: unknown) => {
@@ -252,6 +264,7 @@ class ConversationListManagerClass {
         }),
         ...us1Entries.map((e: unknown) => {
           const entry = e as RawConversationEntry;
+          const localSessionId = parseUs1SyntheticSessionUri(entry.webUrl)?.localSessionId ?? null;
           return {
             conversationId: String(entry.id ?? ""),
             id: String(entry.id ?? ""),
@@ -263,7 +276,9 @@ class ConversationListManagerClass {
                 : 0,
             folder: "",
             title: String(entry.title ?? ""),
-            localSessionId: parseUs1SyntheticSessionUri(entry.webUrl)?.localSessionId ?? null,
+            localSessionId,
+            pendingUnreadCount:
+              localSessionId !== null ? (us1PendingSessions[localSessionId]?.unreadCount ?? 0) : 0,
           } as ConversationEntry;
         }),
       ];
@@ -376,11 +391,16 @@ class ConversationListManagerClass {
     providerEntries.sort((a, b) => b.mtime - a.mtime);
 
     for (const entry of providerEntries) {
-      const option = new Option(entry.title, entry.id);
+      const optionLabel =
+        provider === "us1" && (entry.pendingUnreadCount ?? 0) > 0
+          ? `${entry.title} [new${(entry.pendingUnreadCount ?? 0) > 1 ? ` x${entry.pendingUnreadCount}` : ""}]`
+          : entry.title;
+      const option = new Option(optionLabel, entry.id);
       option.dataset["folder"] = entry.folder;
       option.dataset["url"] = entry.webUrl;
       if (provider === "us1") {
         option.dataset["us1SessionId"] = entry.localSessionId ?? "";
+        option.dataset["pendingUnreadCount"] = String(entry.pendingUnreadCount ?? 0);
       }
       select.appendChild(option);
     }
@@ -418,9 +438,11 @@ class ConversationListManagerClass {
   destroy(): void {
     this._settingsSub?.();
     this._slotControllerSub?.();
+    this._appStateSub?.();
     this._i18nSub?.();
     this._settingsSub = null;
     this._slotControllerSub = null;
+    this._appStateSub = null;
     this._i18nSub = null;
   }
 
@@ -450,13 +472,31 @@ class ConversationListManagerClass {
         throw new Error(result.error ?? "US1 conversation refresh failed.");
       }
 
+      const sessionEvents = Array.isArray(result.sessionEvents) ? result.sessionEvents : [];
+      for (const sessionEvent of sessionEvents) {
+        if (
+          sessionEvent.localSessionId === (selectedEntry?.localSessionId ?? null) ||
+          sessionEvent.conversationId === selectedConversationId
+        ) {
+          AppState.clearUs1PendingSession(sessionEvent.localSessionId);
+          AppState.clearUs1PendingSessionByConversation(sessionEvent.conversationId);
+          continue;
+        }
+
+        AppState.markUs1PendingSession(sessionEvent.localSessionId, {
+          conversationId: sessionEvent.conversationId,
+          unreadDelta: 1,
+          updatedAt: sessionEvent.sentAt ?? sessionEvent.createdAt,
+        });
+      }
+
       await SettingsManager.reload();
 
       const forceSelectId =
-        (typeof result.conversationId === "string" && result.conversationId !== ""
-          ? result.conversationId
-          : selectedConversationId !== "new"
-            ? selectedConversationId
+        (selectedConversationId !== "new"
+          ? selectedConversationId
+          : typeof result.conversationId === "string" && result.conversationId !== ""
+            ? result.conversationId
             : null) ?? undefined;
 
       await this.refresh({

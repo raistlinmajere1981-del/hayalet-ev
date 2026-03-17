@@ -148,6 +148,25 @@ function buildHeadersHash(lines: string[]): string {
   return hashString(lines.join("\n"));
 }
 
+function parseHeaderValue(headerLines: string[], headerName: string): string | null {
+  const normalizedHeaderName = headerName.toLowerCase();
+  for (const line of headerLines) {
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim().toLowerCase();
+    if (key !== normalizedHeaderName) {
+      continue;
+    }
+
+    return normalizeOptionalText(line.slice(separatorIndex + 1));
+  }
+
+  return null;
+}
+
 function buildOutboundHeadersHash(message: SendMailRequest, transportMessageId: string): string {
   return hashString(
     JSON.stringify({
@@ -893,6 +912,9 @@ export class MailTransportService {
     threadMessageId: string | null;
     matchedMapping: MailSessionMapRecord | null;
   } {
+    const sessionIdHeader =
+      parseHeaderValue(parsed.headerLines, "X-Hayalet-Ev-Session-Id") ??
+      parseHeaderValue(parsed.headerLines, "X-Hayalet-Ev-Local-Session-Id");
     const remoteUserId =
       normalizeOptionalText(request.remoteUserId) ??
       account.binding.remoteUserId ??
@@ -916,6 +938,7 @@ export class MailTransportService {
 
     const localSessionId =
       normalizeOptionalText(request.localSessionId) ??
+      sessionIdHeader ??
       matchedMapping?.localSessionId ??
       account.binding.defaultLocalSessionId ??
       null;
