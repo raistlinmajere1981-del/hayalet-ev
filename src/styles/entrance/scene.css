@@ -210,6 +210,44 @@
   color: rgb(255 210 198 / 0.96);
 }
 
+.entrance-scene__ui-mode {
+  position: relative;
+  display: inline-flex;
+}
+
+.entrance-scene__ui-mode-menu {
+  top: calc(100% + var(--scene-rem-0-35));
+  right: 0;
+  min-width: var(--scene-rem-10);
+  padding: var(--scene-rem-0-35) 0;
+  border: var(--scene-px-1) solid rgb(255 217 166 / 0.18);
+  border-radius: var(--scene-rem-0-7);
+  background:
+    linear-gradient(180deg, rgb(48 29 24 / 0.96), rgb(20 12 10 / 0.92)),
+    rgb(20 12 10 / 0.92);
+  box-shadow: 0 var(--scene-rem-0-8) var(--scene-rem-2) rgb(0 0 0 / 0.35);
+}
+
+.entrance-scene__ui-mode-menu .ui-mode-option {
+  align-items: center;
+  padding: var(--scene-rem-0-4) var(--scene-rem-0-8);
+  color: rgb(255 228 198 / 0.9);
+}
+
+.entrance-scene__ui-mode-menu .ui-mode-option:hover {
+  background: rgb(255 255 255 / 0.06);
+  color: rgb(255 240 220 / 1);
+}
+
+.entrance-scene__ui-mode-menu .theme-dropdown-icon {
+  font-size: var(--scene-rem-0-8);
+}
+
+.entrance-scene__ui-mode-menu .theme-dropdown-copy strong {
+  font-family: var(--font-scene-sans);
+  font-size: var(--scene-rem-0-7);
+}
+
 .entrance-scene__hotspots,
 .entrance-scene__characters,
 .entrance-scene__editor-host,
@@ -225,6 +263,10 @@
 .entrance-scene__editor-host,
 .entrance-scene__menu-host {
   pointer-events: none;
+}
+
+.entrance-scene__menu-host {
+  z-index: 1100;
 }
 
 .entrance-scene__hotspot-item {
@@ -674,7 +716,7 @@
 
 .entrance-scene__editor-host {
   display: none;
-  z-index: 19;
+  z-index: 1000;
 }
 
 .entrance-scene__editor-panel {

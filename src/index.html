@@ -574,6 +574,58 @@
           </div>
 
           <div class="top-bar-actions">
+            <div class="ui-mode-dropdown theme-dropdown" data-ui-mode-dropdown="true">
+              <button
+                class="icon-btn ui-mode-toggle ui-mode-dropdown-btn"
+                id="topbar-ui-mode-toggle"
+                type="button"
+                title=""
+                aria-label=""
+                aria-expanded="false"
+                data-shell-i18n-title="uiMode.toggle"
+                data-shell-i18n-aria-label="uiMode.toggle"
+                data-ui-mode-trigger="true"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M2.5 2.5h6v6h-6zM7.5 7.5h6v6h-6z" />
+                </svg>
+              </button>
+              <div class="ui-mode-dropdown-menu theme-dropdown-menu" role="menu">
+                <button
+                  class="theme-dropdown-item ui-mode-option"
+                  type="button"
+                  role="menuitem"
+                  data-ui-mode-option="classic"
+                >
+                  <span class="theme-dropdown-icon">C</span>
+                  <span class="theme-dropdown-copy">
+                    <strong data-shell-i18n-text="uiMode.options.classic"></strong>
+                  </span>
+                </button>
+                <button
+                  class="theme-dropdown-item ui-mode-option"
+                  type="button"
+                  role="menuitem"
+                  data-ui-mode-option="scene"
+                >
+                  <span class="theme-dropdown-icon">S</span>
+                  <span class="theme-dropdown-copy">
+                    <strong data-shell-i18n-text="uiMode.options.scene"></strong>
+                  </span>
+                </button>
+                <button
+                  class="theme-dropdown-item ui-mode-option"
+                  type="button"
+                  role="menuitem"
+                  data-ui-mode-option="scene-debug"
+                >
+                  <span class="theme-dropdown-icon">D</span>
+                  <span class="theme-dropdown-copy">
+                    <strong data-shell-i18n-text="uiMode.options.sceneDebug"></strong>
+                  </span>
+                </button>
+              </div>
+            </div>
             <button
               class="settings-hub-trigger"
               id="topbar-settings-open"

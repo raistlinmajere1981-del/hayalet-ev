@@ -1,4 +1,5 @@
 import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
+import { spawn } from "node:child_process";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { PARTITIONS } from "@slots";
@@ -457,8 +458,101 @@ export function windowToggleFullscreen(): void {
   }
 }
 
+type RestartUiMode = "classic" | "scene";
+
 interface AppRestartOptions {
   forceFullRestart?: boolean;
+  uiMode?: RestartUiMode;
+  sceneDebug?: boolean;
+}
+
+const UI_MODE_ARG_PREFIXES = ["--app-ui-mode", "--ui-mode"];
+const SCENE_DEBUG_ARG_PREFIXES = ["--app-scene-debug", "--scene-debug"];
+
+function shouldStripArg(arg: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => arg === prefix || arg.startsWith(`${prefix}=`));
+}
+
+function buildRelaunchArgs(options: AppRestartOptions): string[] {
+  const baseArgs = process.argv.slice(1);
+  const overrideUiMode = options.uiMode !== undefined;
+  const overrideSceneDebug = options.sceneDebug !== undefined;
+
+  if (!overrideUiMode && !overrideSceneDebug) {
+    return baseArgs;
+  }
+
+  const nextArgs = baseArgs.filter((arg) => {
+    if (overrideUiMode && shouldStripArg(arg, UI_MODE_ARG_PREFIXES)) {
+      return false;
+    }
+    if (overrideSceneDebug && shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (overrideUiMode && options.uiMode === "scene") {
+    nextArgs.push("--app-ui-mode=scene");
+  }
+
+  if (overrideSceneDebug && options.sceneDebug === true) {
+    nextArgs.push("--app-scene-debug=1");
+  }
+
+  return nextArgs;
+}
+
+function readArgValue(prefixes: string[]): string | null {
+  for (const arg of process.argv) {
+    for (const prefix of prefixes) {
+      if (arg.startsWith(`${prefix}=`)) {
+        const value = arg.slice(prefix.length + 1).trim();
+        return value === "" ? null : value;
+      }
+      if (arg === prefix) {
+        return "";
+      }
+    }
+  }
+  return null;
+}
+
+function resolveRestartUiMode(options: AppRestartOptions): RestartUiMode {
+  if (options.uiMode !== undefined) {
+    return options.uiMode;
+  }
+  const raw = readArgValue(UI_MODE_ARG_PREFIXES);
+  return raw === "scene" ? "scene" : "classic";
+}
+
+function resolveRestartSceneDebug(options: AppRestartOptions): boolean {
+  if (options.sceneDebug !== undefined) {
+    return options.sceneDebug;
+  }
+  return process.argv.some((arg) => shouldStripArg(arg, SCENE_DEBUG_ARG_PREFIXES));
+}
+
+function resolveDevRestartScript(options: AppRestartOptions): string {
+  const sceneDebug = resolveRestartSceneDebug(options);
+  if (sceneDebug) {
+    return "start:scene:debug";
+  }
+  const uiMode = resolveRestartUiMode(options);
+  return uiMode === "scene" ? "start:scene" : "start";
+}
+
+function spawnDevRestart(scriptName: string): void {
+  const command = process.platform === "win32" ? "npm.cmd" : "npm";
+  setTimeout(() => {
+    const child = spawn(command, ["run", scriptName], {
+      cwd: Paths.getProjectRoot(),
+      env: process.env,
+      detached: true,
+      stdio: "ignore",
+    });
+    child.unref();
+  }, 250);
 }
 
 export async function appRestart(options: AppRestartOptions = {}): Promise<{
@@ -466,17 +560,28 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
   message?: string;
 }> {
   try {
-    if (!app.isPackaged && options.forceFullRestart !== true) {
-      if (_mainWindow !== null) {
+    const shouldRelaunch =
+      options.forceFullRestart === true ||
+      options.uiMode !== undefined ||
+      options.sceneDebug !== undefined;
+
+    if (!app.isPackaged) {
+      if (!shouldRelaunch && _mainWindow !== null) {
         _mainWindow.reload();
         return {
           success: true,
           message: await windowT("devPageReloaded"),
         };
       }
+
+      const scriptName = resolveDevRestartScript(options);
+      spawnDevRestart(scriptName);
+      app.quit();
+      return { success: true };
     }
 
-    app.relaunch();
+    const relaunchArgs = buildRelaunchArgs(options);
+    app.relaunch({ args: relaunchArgs });
     app.quit();
     return { success: true };
   } catch (err) {

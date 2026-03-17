@@ -233,7 +233,11 @@ export function ensureElectronApiFallback(): void {
     windowMinimize: (): void => {},
     windowToggleFullscreen: (): void => {},
     windowClose: (): void => {},
-    appRestart: async (): Promise<{ success: boolean; message?: string }> =>
+    appRestart: async (_options?: {
+      forceFullRestart?: boolean;
+      uiMode?: "classic" | "scene";
+      sceneDebug?: boolean;
+    }): Promise<{ success: boolean; message?: string }> =>
       await Promise.resolve({ success: true, message: "fallback" }),
     generateTree: async (): Promise<{ success: boolean }> =>
       await Promise.resolve({ success: false }),

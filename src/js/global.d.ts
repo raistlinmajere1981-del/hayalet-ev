@@ -788,6 +788,8 @@ declare global {
     windowMinimizeToTray: () => void;
     appRestart: (options?: {
       forceFullRestart?: boolean;
+      uiMode?: "classic" | "scene";
+      sceneDebug?: boolean;
     }) => Promise<{ success: boolean; message?: string }>;
 
     logger: {

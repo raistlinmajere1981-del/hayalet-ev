@@ -748,6 +748,16 @@
       "minimize": "Görev çubuğuna küçült",
       "fullscreen": "Tam ekran"
     },
+    "uiMode": {
+      "toggle": "Arayüz modunu değiştir",
+      "options": {
+        "classic": "Klasik",
+        "scene": "Sahne",
+        "sceneDebug": "Sahne Debug"
+      },
+      "confirmTitle": "Yeniden başlatma gerekli",
+      "confirmMessage": "{{mode}} moduna geçmek için uygulama yeniden başlatılsın mı?"
+    },
     "settingsHub": {
       "openTitle": "Ayar güvertesini aç",
       "openButton": "Ayarlar",

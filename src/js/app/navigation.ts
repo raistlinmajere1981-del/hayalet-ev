@@ -2,11 +2,77 @@ import { getErrorMessage } from "@shared/index.js";
 import { Logger, LogCategory, LogVisibility } from "../modules/logger/index.js";
 import { WindowManager } from "../modules/window-manager.js";
 import { ThemeManager } from "../ui/theme-manager.js";
+import { Modal } from "../ui/modal-manager.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
 const SPECIAL_PAGES = ["settings", "archives", "webview"];
+
+type UiModeToggleState = "classic" | "scene" | "scene-debug";
+
+const UI_MODE_DROPDOWN_SELECTOR = "[data-ui-mode-dropdown]";
+const UI_MODE_TRIGGER_SELECTOR = "[data-ui-mode-trigger]";
+const UI_MODE_OPTION_SELECTOR = "[data-ui-mode-option]";
+const UI_MODE_OPTIONS: UiModeToggleState[] = ["classic", "scene", "scene-debug"];
+
+function isUiModeToggleState(value: string): value is UiModeToggleState {
+  return UI_MODE_OPTIONS.includes(value as UiModeToggleState);
+}
+
+function getUiModeToggleState(): UiModeToggleState {
+  const uiMode = document.documentElement.getAttribute("data-ui-mode");
+  if (uiMode !== "scene") {
+    return "classic";
+  }
+
+  const sceneDebug = document.documentElement.getAttribute("data-scene-debug");
+  return sceneDebug === "true" ? "scene-debug" : "scene";
+}
+
+function getUiModeLabel(state: UiModeToggleState): string {
+  if (state === "scene-debug") {
+    return shellT("uiMode.options.sceneDebug");
+  }
+  if (state === "scene") {
+    return shellT("uiMode.options.scene");
+  }
+  return shellT("uiMode.options.classic");
+}
+
+function getUiModeRestartOptions(state: UiModeToggleState): {
+  uiMode: "classic" | "scene";
+  sceneDebug: boolean;
+} {
+  if (state === "scene-debug") {
+    return { uiMode: "scene", sceneDebug: true };
+  }
+  if (state === "scene") {
+    return { uiMode: "scene", sceneDebug: false };
+  }
+  return { uiMode: "classic", sceneDebug: false };
+}
+
+function syncUiModeDropdownOptions(dropdown: HTMLElement): void {
+  const state = getUiModeToggleState();
+  dropdown.dataset["uiModeState"] = state;
+
+  const options = Array.from(dropdown.querySelectorAll<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR));
+  options.forEach((option) => {
+    const optionState = option.dataset["uiModeOption"] ?? "";
+    const isActive = optionState === state;
+    option.hidden = isActive;
+    option.setAttribute("aria-hidden", String(isActive));
+  });
+}
+
+function setUiModeDropdownExpanded(dropdown: HTMLElement, expanded: boolean): void {
+  dropdown.classList.toggle("is-expanded", expanded);
+  const trigger = dropdown.querySelector<HTMLButtonElement>(UI_MODE_TRIGGER_SELECTOR);
+  if (trigger !== null) {
+    trigger.setAttribute("aria-expanded", String(expanded));
+  }
+}
 
 let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};
@@ -144,6 +210,85 @@ export function setupTopBarButtons(): void {
 
       ThemeManager.onChange(() => {
         themeToggle.textContent = ThemeManager.getIcon();
+      });
+    }
+
+    const uiModeDropdowns = Array.from(
+      document.querySelectorAll<HTMLElement>(UI_MODE_DROPDOWN_SELECTOR)
+    );
+
+    if (uiModeDropdowns.length > 0) {
+      const closeAll = (): void => {
+        uiModeDropdowns.forEach((dropdown) => {
+          setUiModeDropdownExpanded(dropdown, false);
+        });
+      };
+
+      uiModeDropdowns.forEach((dropdown) => {
+        syncUiModeDropdownOptions(dropdown);
+
+        const trigger = dropdown.querySelector<HTMLButtonElement>(UI_MODE_TRIGGER_SELECTOR);
+        if (trigger !== null) {
+          trigger.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const isExpanded = dropdown.classList.contains("is-expanded");
+            closeAll();
+            setUiModeDropdownExpanded(dropdown, !isExpanded);
+          });
+        }
+
+        dropdown.addEventListener("click", async (event) => {
+          const target = event.target as HTMLElement;
+          const option = target.closest<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR);
+          if (option == null) {
+            return;
+          }
+
+          event.stopPropagation();
+          closeAll();
+
+          const optionState = option.dataset["uiModeOption"] ?? "";
+          if (!isUiModeToggleState(optionState)) {
+            return;
+          }
+
+          if (optionState === getUiModeToggleState()) {
+            return;
+          }
+
+          const confirmed = await Modal.confirm({
+            title: shellT("uiMode.confirmTitle"),
+            message: shellT("uiMode.confirmMessage", { mode: getUiModeLabel(optionState) }),
+          });
+
+          if (!confirmed) {
+            return;
+          }
+
+          const electronApi = window.electronAPI;
+          if (!electronApi?.appRestart) {
+            return;
+          }
+
+          const restartOptions = getUiModeRestartOptions(optionState);
+
+          try {
+            await electronApi.appRestart({
+              forceFullRestart: true,
+              uiMode: restartOptions.uiMode,
+              sceneDebug: restartOptions.sceneDebug,
+            });
+          } catch {
+            void 0;
+          }
+        });
+      });
+
+      document.addEventListener("click", closeAll);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeAll();
+        }
       });
     }
 

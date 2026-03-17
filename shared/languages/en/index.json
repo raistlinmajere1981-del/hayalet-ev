@@ -748,6 +748,16 @@
       "minimize": "Minimize to taskbar",
       "fullscreen": "Fullscreen"
     },
+    "uiMode": {
+      "toggle": "Switch UI mode",
+      "options": {
+        "classic": "Classic",
+        "scene": "Scene",
+        "sceneDebug": "Scene Debug"
+      },
+      "confirmTitle": "Restart required",
+      "confirmMessage": "Switch to {{mode}} mode and restart the app?"
+    },
     "settingsHub": {
       "openTitle": "Open the settings deck",
       "openButton": "Settings",
