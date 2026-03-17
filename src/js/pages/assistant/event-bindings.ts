@@ -1,6 +1,5 @@
 interface BindAssistantBasicEventsOptions {
   connectBtn: HTMLButtonElement | null;
-  ghostAgentBtn: HTMLButtonElement | null;
   resumeLastSessionCheckbox: HTMLInputElement | null;
   keepServersOnAppCloseCheckbox: HTMLInputElement | null;
   catchCommandsCheckbox: HTMLInputElement | null;
@@ -11,7 +10,6 @@ interface BindAssistantBasicEventsOptions {
   devtoolsBtn: HTMLButtonElement | null;
   testBtn: HTMLButtonElement | null;
   onConnectClick: () => void;
-  onGhostAgentClick: () => void;
   onResumeLastSessionChange: (enabled: boolean) => void;
   onKeepServersOnCloseChange: (enabled: boolean) => void;
   onCatchCommandsChange: (enabled: boolean) => void;
@@ -25,7 +23,6 @@ interface BindAssistantBasicEventsOptions {
 
 export function bindAssistantBasicEvents(options: BindAssistantBasicEventsOptions): void {
   options.connectBtn?.addEventListener("click", options.onConnectClick);
-  options.ghostAgentBtn?.addEventListener("click", options.onGhostAgentClick);
   options.resumeLastSessionCheckbox?.addEventListener("change", () => {
     options.onResumeLastSessionChange(options.resumeLastSessionCheckbox?.checked === true);
   });

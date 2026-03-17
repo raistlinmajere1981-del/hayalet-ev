@@ -9,7 +9,6 @@ import type { OverlayStage } from "./overlay-stage.js";
 
 export interface AssistantConnectionUiController {
   providerSelect: HTMLSelectElement | null;
-  ghostAgentBtn: HTMLButtonElement | null;
   devtoolsBtn: HTMLButtonElement | null;
   testBtn: HTMLButtonElement | null;
   urlDisplay: HTMLElement | null;
@@ -147,10 +146,6 @@ export function updateAssistantConnectionUI(
     connectFlowActive: controller._connectFlowActive,
   });
   controller._setButtonState(buttonState);
-
-  if (controller.ghostAgentBtn != null) {
-    controller.ghostAgentBtn.disabled = isConnectingUi;
-  }
 
   if (controller.devtoolsBtn != null) {
     controller.devtoolsBtn.disabled = !isConnected;

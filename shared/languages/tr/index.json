@@ -1026,6 +1026,7 @@
       "page": {
         "avatarUpdateTitle": "AI0 avatarını güncelle",
         "nicknameUpdateTitle": "AI0 takma adını güncelle",
+        "modeMenuTitle": "Mod",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Bağlanınca son oturuma dön",
         "resumeLastSessionLabel": "Son Oturuma Devam",

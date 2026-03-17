@@ -168,6 +168,36 @@
         </div>
 
         <div class="assistant-opencode-actions">
+          <div class="assistant-mode-dropdown theme-dropdown" data-assistant-mode-dropdown="true">
+            <button
+              class="theme-dropdown-btn assistant-mode-dropdown-btn"
+              id="assistant-mode-toggle"
+              type="button"
+              title=""
+              aria-label=""
+              aria-expanded="false"
+              data-shell-i18n-title="assistant.page.modeMenuTitle"
+              data-shell-i18n-aria-label="assistant.page.modeMenuTitle"
+              data-assistant-mode-trigger="true"
+            >
+              <span data-shell-i18n-text="assistant.page.modeMenuTitle"></span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            <div class="assistant-mode-dropdown-menu theme-dropdown-menu" role="menu">
+              <button
+                class="theme-dropdown-item assistant-mode-option"
+                type="button"
+                role="menuitem"
+                data-assistant-mode-option="ghost-agent"
+              >
+                <span class="theme-dropdown-icon">G</span>
+                <span class="theme-dropdown-copy">
+                  <strong data-shell-i18n-text="assistant.page.ghostAgentButton"></strong>
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div class="assistant-opencode-action-row">
             <button
               class="btn btn-ghost btn-icon btn-sm"
@@ -203,12 +233,6 @@
               🔧
             </button>
           </div>
-
-          <button
-            class="btn btn-sm btn-secondary assistant-ghost-agent-btn"
-            id="assistant-ghost-agent-btn"
-            data-shell-i18n-text="assistant.page.ghostAgentButton"
-          ></button>
         </div>
 
         <div id="assistant-url-display" class="assistant-url-display">-</div>

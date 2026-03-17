@@ -1026,6 +1026,7 @@
       "page": {
         "avatarUpdateTitle": "Update AI0 avatar",
         "nicknameUpdateTitle": "Update AI0 nickname",
+        "modeMenuTitle": "Mode",
         "ghostAgentButton": "Ghost Agent",
         "resumeLastSessionTitle": "Resume the last session after connecting",
         "resumeLastSessionLabel": "Resume Last Session",

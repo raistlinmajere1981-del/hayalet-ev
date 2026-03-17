@@ -42,6 +42,8 @@ import {
 import type { OverlayStage } from "./overlay-stage.js";
 import {
   generateWorkflowSessionId,
+  type AssistantRuntimeMode,
+  readAssistantRuntimeState,
   syncAssistantRuntimeDefaults,
   updateAssistantRuntimeState,
 } from "./assistant-runtime.js";
@@ -50,6 +52,7 @@ import { toggleAssistantConnection } from "./connection-lifecycle.js";
 import { updateAssistantConnectionUI } from "./connection-ui.js";
 import { CharacterOverlay } from "./character-overlay.js";
 import { MemoryOverlay } from "./memory-overlay.js";
+import { setupAssistantModeDropdown } from "./mode-dropdown.js";
 import {
   handleOpencodeActionButtonClick,
   openOpencodeSettingsModal,
@@ -177,7 +180,6 @@ export class AssistantController {
   _providerToolsReady: boolean;
   providerSelect: HTMLSelectElement | null;
   connectBtn: HTMLButtonElement | null;
-  ghostAgentBtn: HTMLButtonElement | null;
   resumeLastSessionCheckbox: HTMLInputElement | null;
   keepServersOnAppCloseCheckbox: HTMLInputElement | null;
   catchCommandsCheckbox: HTMLInputElement | null;
@@ -227,7 +229,6 @@ export class AssistantController {
     this._providerToolsReady = true;
     this.providerSelect = null;
     this.connectBtn = null;
-    this.ghostAgentBtn = null;
     this.resumeLastSessionCheckbox = null;
     this.keepServersOnAppCloseCheckbox = null;
     this.catchCommandsCheckbox = null;
@@ -256,9 +257,6 @@ export class AssistantController {
       "assistant-provider-select"
     ) as HTMLSelectElement | null;
     this.connectBtn = document.getElementById("assistant-connect-btn") as HTMLButtonElement | null;
-    this.ghostAgentBtn = document.getElementById(
-      "assistant-ghost-agent-btn"
-    ) as HTMLButtonElement | null;
     this.resumeLastSessionCheckbox = document.getElementById(
       "assistant-resume-last-session"
     ) as HTMLInputElement | null;
@@ -290,6 +288,7 @@ export class AssistantController {
     this._syncTogglePreferencesFromSettings();
     await this._syncAssistantRuntimeDefaults();
     await this._syncIdentityCard();
+    const runtimeState = await readAssistantRuntimeState();
 
     // NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
     const ai0Wv = document.getElementById("ai0-webview");
@@ -308,7 +307,7 @@ export class AssistantController {
     this.testPanel = document.getElementById("ai0-test-side-panel");
     this.characterOverlay.init();
     this.memoryOverlay.init();
-    this._setupEventListeners();
+    this._setupEventListeners(runtimeState?.desiredMode ?? "soft");
     this._refreshOpencodeDoctorStatus();
     this._unsubSettings = SettingsManager.subscribe(
       ({ settings, changedPaths }: { settings: unknown; changedPaths: string[] }) => {
@@ -949,10 +948,9 @@ export class AssistantController {
     });
   }
 
-  _setupEventListeners(): void {
+  _setupEventListeners(currentMode: AssistantRuntimeMode): void {
     bindAssistantBasicEvents({
       connectBtn: this.connectBtn,
-      ghostAgentBtn: this.ghostAgentBtn,
       resumeLastSessionCheckbox: this.resumeLastSessionCheckbox,
       keepServersOnAppCloseCheckbox: this.keepServersOnAppCloseCheckbox,
       catchCommandsCheckbox: this.catchCommandsCheckbox,
@@ -964,9 +962,6 @@ export class AssistantController {
       testBtn: this.testBtn,
       onConnectClick: () => {
         void this._toggleConnection();
-      },
-      onGhostAgentClick: () => {
-        void this._handleGhostAgentButtonClick();
       },
       onResumeLastSessionChange: (enabled: boolean) => {
         void this._saveResumeTogglePreference(enabled);
@@ -994,6 +989,17 @@ export class AssistantController {
       },
       onTestClick: () => {
         this._handleTestClick();
+      },
+    });
+
+    const modeDropdowns = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-assistant-mode-dropdown]")
+    );
+    setupAssistantModeDropdown({
+      dropdowns: modeDropdowns,
+      currentMode,
+      onGhostAgentClick: () => {
+        void this._handleGhostAgentButtonClick();
       },
     });
 

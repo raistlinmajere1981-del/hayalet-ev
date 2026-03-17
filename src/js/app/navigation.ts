@@ -3,6 +3,11 @@ import { Logger, LogCategory, LogVisibility } from "../modules/logger/index.js";
 import { WindowManager } from "../modules/window-manager.js";
 import { ThemeManager } from "../ui/theme-manager.js";
 import { Modal } from "../ui/modal-manager.js";
+import { createGhostHandoffRuntimePatch } from "../pages/assistant/ghost-handoff.js";
+import {
+  generateWorkflowSessionId,
+  updateAssistantRuntimeState,
+} from "../pages/assistant/assistant-runtime.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
@@ -51,6 +56,17 @@ function getUiModeRestartOptions(state: UiModeToggleState): {
     return { uiMode: "scene", sceneDebug: false };
   }
   return { uiMode: "classic", sceneDebug: false };
+}
+
+async function triggerGhostAgentHandoff(): Promise<void> {
+  await updateAssistantRuntimeState(createGhostHandoffRuntimePatch(generateWorkflowSessionId()));
+
+  const electronApi = window.electronAPI;
+  if (electronApi?.windowClose === undefined) {
+    return;
+  }
+
+  electronApi.windowClose();
 }
 
 function syncUiModeDropdownOptions(dropdown: HTMLElement): void {
@@ -248,6 +264,11 @@ export function setupTopBarButtons(): void {
           closeAll();
 
           const optionState = option.dataset["uiModeOption"] ?? "";
+          if (optionState === "ghost-agent") {
+            await triggerGhostAgentHandoff();
+            return;
+          }
+
           if (!isUiModeToggleState(optionState)) {
             return;
           }

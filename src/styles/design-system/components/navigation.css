@@ -219,6 +219,10 @@
   transition: var(--transition-fast);
 }
 
+.theme-dropdown-item[hidden] {
+  display: none !important;
+}
+
 .theme-dropdown-item:first-child {
   border-radius: var(--radius-dropdown) var(--radius-dropdown) 0 0;
 }

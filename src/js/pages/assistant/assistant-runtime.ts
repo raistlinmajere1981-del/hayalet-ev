@@ -7,8 +7,36 @@ function assistantT(key: string): string {
   return AppI18n.t(`shell.assistant.${key}`);
 }
 
+export type AssistantRuntimeMode = "terminal" | "soft" | "ghost-agent";
+export type AssistantRuntimePhase = "idle" | "preparing-handoff" | "in-ghost" | "returning";
+
+export interface AssistantRuntimeState {
+  workflowSessionId: string;
+  desiredMode: AssistantRuntimeMode;
+  phase: AssistantRuntimePhase;
+  updatedAt: string;
+}
+
 export function generateWorkflowSessionId(): string {
   return `wf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export async function readAssistantRuntimeState(): Promise<AssistantRuntimeState | null> {
+  const electronApi = window.electronAPI;
+  if (electronApi === undefined || typeof electronApi.assistantRuntimeRead !== "function") {
+    return null;
+  }
+
+  try {
+    const response = await electronApi.assistantRuntimeRead();
+    if (response.success !== true || response.state === undefined) {
+      return null;
+    }
+
+    return response.state as AssistantRuntimeState;
+  } catch {
+    return null;
+  }
 }
 
 export async function syncAssistantRuntimeDefaults(): Promise<void> {

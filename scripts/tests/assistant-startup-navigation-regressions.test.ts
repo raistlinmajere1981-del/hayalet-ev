@@ -25,11 +25,17 @@ test("page-init does not wire temporary test page assets", () => {
 test("navigation allows assistant page to activate side-nav item", () => {
   const indexHtml = read("src/index.html");
   const assistantPage = read("src/pages/assistant.html");
+  const entrancePage = read("src/pages/entrance.html");
   const navigation = read("src/js/app/navigation.ts");
 
   assert.match(indexHtml, /data-page="assistant"/);
+  assert.match(indexHtml, /data-ui-mode-option="ghost-agent"/);
   assert.match(assistantPage, /id="page-assistant"/);
+  assert.match(assistantPage, /data-assistant-mode-option="ghost-agent"/);
+  assert.match(entrancePage, /data-ui-mode-option="ghost-agent"/);
   assert.match(navigation, /const SPECIAL_PAGES = \["settings", "archives", "webview"\];/);
+  assert.match(navigation, /createGhostHandoffRuntimePatch/);
+  assert.match(navigation, /updateAssistantRuntimeState/);
   assert.doesNotMatch(navigation, /LEGACY_ASSISTANT_PAGE/);
   assert.match(navigation, /return pageName;/);
   assert.match(navigation, /return \[pageName\];/);
