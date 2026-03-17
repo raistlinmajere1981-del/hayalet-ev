@@ -693,15 +693,19 @@ body.is-scroll-locked {
 }
 
 [data-ui-mode="scene"][data-active-page="entrance"] .top-bar,
-[data-ui-mode="scene"][data-active-page="entrance"] .side-nav-overlay {
+[data-ui-mode="scene"][data-active-page="assistant"] .top-bar,
+[data-ui-mode="scene"][data-active-page="entrance"] .side-nav-overlay,
+[data-ui-mode="scene"][data-active-page="assistant"] .side-nav-overlay {
   display: none;
 }
 
-[data-ui-mode="scene"][data-active-page="entrance"] .main-content {
+[data-ui-mode="scene"][data-active-page="entrance"] .main-content,
+[data-ui-mode="scene"][data-active-page="assistant"] .main-content {
   height: var(--layout-app-height);
 }
 
-[data-ui-mode="scene"][data-active-page="entrance"] .settings-hub-overlay {
+[data-ui-mode="scene"][data-active-page="entrance"] .settings-hub-overlay,
+[data-ui-mode="scene"][data-active-page="assistant"] .settings-hub-overlay {
   inset: 0;
 }
 

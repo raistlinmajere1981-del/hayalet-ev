@@ -14,6 +14,7 @@ import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ThemeManager, type ThemeId } from "../../ui/theme-manager.js";
+import { isSceneUiMode } from "../../ui/ui-mode.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
   registerAssistantDeliveryHandler,
@@ -79,6 +80,9 @@ import type {
   ProviderTestProgressEvent,
   ProviderTestSuite,
 } from "@shared/provider.js";
+import assistantSceneBackground from "../../../assets/themes/castle/assistant/assistant_bg_main.webp";
+import assistantSceneScreen from "../../../assets/themes/castle/assistant/assistant_screen.webp";
+import assistantSceneAiBody from "../../../assets/themes/castle/characters/ai/ai_body_base.webp";
 
 interface ScenarioPanelState {
   scenarioId: string;
@@ -193,6 +197,7 @@ export class AssistantController {
   testPanel: HTMLElement | null;
   scenarioPanelState: ScenarioPanelState | null;
   providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
+  _assistantSceneScreenOpen: boolean;
 
   _isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -242,6 +247,7 @@ export class AssistantController {
     this.testPanel = null;
     this.scenarioPanelState = null;
     this.providerTestProgressHandler = null;
+    this._assistantSceneScreenOpen = false;
   }
 
   async init(): Promise<void> {
@@ -283,6 +289,8 @@ export class AssistantController {
     await this._syncAssistantRuntimeDefaults();
     await this._syncIdentityCard();
     const runtimeState = await readAssistantRuntimeState();
+    this._syncAssistantSceneAssets();
+    this._syncAssistantSceneVisibility();
 
     // NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.
     const ai0Wv = document.getElementById("ai0-webview");
@@ -397,12 +405,111 @@ export class AssistantController {
 
   async _syncIdentityCard(): Promise<void> {
     const nicknameEl = document.getElementById("assistant-nickname");
+    const sceneLabelEl = document.getElementById("assistant-scene-ai0-label");
     if (nicknameEl != null) {
       nicknameEl.textContent = AppState.getNickname("ai0");
+    }
+    if (sceneLabelEl != null) {
+      sceneLabelEl.textContent = AppState.getNickname("ai0");
     }
 
     await this._updateAvatar(AppState.getAvatar("ai0"));
     this._updateIdentityStatusDot();
+    this._syncAssistantSceneCharacterState();
+  }
+
+  _syncAssistantSceneAssets(): void {
+    const background = document.getElementById(
+      "assistant-scene-background"
+    ) as HTMLImageElement | null;
+    const screenArt = document.getElementById(
+      "assistant-scene-screen-art"
+    ) as HTMLImageElement | null;
+    const body = document.getElementById("assistant-scene-ai0-body") as HTMLImageElement | null;
+
+    if (background !== null) {
+      background.src = assistantSceneBackground;
+      background.alt = "";
+    }
+
+    if (screenArt !== null) {
+      screenArt.src = assistantSceneScreen;
+      screenArt.alt = "";
+    }
+
+    if (body !== null) {
+      body.src = assistantSceneAiBody;
+      body.alt = "";
+    }
+  }
+
+  _setAssistantSceneScreenOpen(open: boolean): void {
+    this._assistantSceneScreenOpen = open;
+    this._syncAssistantSceneVisibility();
+  }
+
+  _syncAssistantSceneVisibility(): void {
+    const sceneRoot = document.getElementById("assistant-scene-root");
+    const screenView = document.getElementById("assistant-scene-screen-view");
+    const container = document.querySelector(".assistant-container");
+    const sceneActive = isSceneUiMode();
+
+    if (sceneRoot instanceof HTMLElement) {
+      sceneRoot.hidden = !sceneActive;
+      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
+    }
+
+    if (screenView instanceof HTMLElement) {
+      screenView.setAttribute(
+        "aria-hidden",
+        String(!sceneActive || this._assistantSceneScreenOpen === false)
+      );
+    }
+
+    if (container instanceof HTMLElement) {
+      container.classList.toggle(
+        "is-scene-screen-open",
+        sceneActive && this._assistantSceneScreenOpen
+      );
+    }
+  }
+
+  _navigateToPage(page: string): void {
+    document.dispatchEvent(
+      new CustomEvent<{ page: string }>("navigate-page", {
+        detail: { page },
+      })
+    );
+  }
+
+  _syncAssistantSceneCharacterState(): void {
+    const sceneCharacter = document.getElementById("assistant-scene-ai0-character");
+    if (!(sceneCharacter instanceof HTMLElement)) {
+      return;
+    }
+
+    sceneCharacter.classList.remove("is-inactive", "is-loading", "is-connected", "is-thinking");
+
+    const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
+    const trafficState = TrafficManager.state["ai0"] as AssistantTrafficState | null;
+    const status = trafficState?.state?.status;
+
+    if (slotState?.state === SlotState.CONNECTING || status?.loading === "busy") {
+      sceneCharacter.classList.add("is-loading");
+      return;
+    }
+
+    if (slotState?.state === SlotState.CONNECTED && status?.thinking === "busy") {
+      sceneCharacter.classList.add("is-thinking");
+      return;
+    }
+
+    if (slotState?.state === SlotState.CONNECTED || this._isServerRunning) {
+      sceneCharacter.classList.add("is-connected");
+      return;
+    }
+
+    sceneCharacter.classList.add("is-inactive");
   }
 
   _bindIdentityAction(elementId: string, onActivate: () => void | Promise<void>): void {
@@ -719,15 +826,19 @@ export class AssistantController {
   }
 
   async _updateAvatar(avatarPath: string | null): Promise<void> {
-    const avatarElement = document.getElementById("ai0-avatar");
-    if (avatarElement == null) {
+    const avatarElements = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-assistant-avatar-target]")
+    );
+    if (avatarElements.length === 0) {
       return;
     }
 
     const electronApi = window.electronAPI;
     if (!electronApi?.readFile) {
-      avatarElement.innerHTML = "";
-      avatarElement.style.removeProperty("--avatar-image");
+      avatarElements.forEach((element) => {
+        element.innerHTML = "";
+        element.style.removeProperty("--avatar-image");
+      });
       return;
     }
 
@@ -756,26 +867,29 @@ export class AssistantController {
         }
 
         const mimeType = getMimeTypeFromPath(candidate);
-        avatarElement.innerHTML = "";
-        // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
-        avatarElement.style.setProperty(
-          "--avatar-image",
-          `url(data:${mimeType};base64,${imageData})`
-        );
+        avatarElements.forEach((element) => {
+          element.innerHTML = "";
+          // NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.
+          element.style.setProperty("--avatar-image", `url(data:${mimeType};base64,${imageData})`);
+        });
         return true;
       };
 
       const loaded = await tryLoadCandidate(0);
       if (!loaded) {
-        avatarElement.innerHTML = "";
-        avatarElement.style.removeProperty("--avatar-image");
+        avatarElements.forEach((element) => {
+          element.innerHTML = "";
+          element.style.removeProperty("--avatar-image");
+        });
       }
     } catch (error) {
       Logger.error(LogCategory.ASSISTANT_CORE, assistantT("logs.avatarLoadFailed"), {
         error: error instanceof Error ? error.message : String(error),
       });
-      avatarElement.innerHTML = "";
-      avatarElement.style.removeProperty("--avatar-image");
+      avatarElements.forEach((element) => {
+        element.innerHTML = "";
+        element.style.removeProperty("--avatar-image");
+      });
     }
   }
 
@@ -957,6 +1071,7 @@ export class AssistantController {
       this._editIdentityNickname();
     });
     this._setupIdentityNicknameModalEvents();
+    this._setupAssistantSceneEvents();
 
     const ai0Webview = document.getElementById("ai0-webview");
     bindAssistantWebviewIpcEvents({
@@ -987,6 +1102,30 @@ export class AssistantController {
       onAssistantRuntimeControl: async (patch: Record<string, unknown>) => {
         await this._updateAssistantRuntimeState(patch);
       },
+    });
+  }
+
+  _setupAssistantSceneEvents(): void {
+    const doorHotspot = document.getElementById("assistant-scene-door-hotspot");
+    const screenHotspot = document.getElementById("assistant-scene-screen-hotspot");
+    const exitLeft = document.getElementById("assistant-scene-exit-left");
+    const exitRight = document.getElementById("assistant-scene-exit-right");
+
+    doorHotspot?.addEventListener("click", () => {
+      this._setAssistantSceneScreenOpen(false);
+      this._navigateToPage("entrance");
+    });
+
+    screenHotspot?.addEventListener("click", () => {
+      this._setAssistantSceneScreenOpen(true);
+    });
+
+    exitLeft?.addEventListener("click", () => {
+      this._setAssistantSceneScreenOpen(false);
+    });
+
+    exitRight?.addEventListener("click", () => {
+      this._setAssistantSceneScreenOpen(false);
     });
   }
 
@@ -1717,6 +1856,7 @@ export class AssistantController {
 
     updateAssistantConnectionUI(this, skipSystemServerSync);
     this._updateIdentityStatusDot();
+    this._syncAssistantSceneCharacterState();
   }
 
   _updateOverlay(
@@ -1732,16 +1872,23 @@ export class AssistantController {
   _updateTrafficUI(trafficState: AssistantTrafficState | null): void {
     const state = trafficState as AssistantTrafficState;
     const status = state.state?.status;
-    if (status === undefined) return;
+    if (status === undefined) {
+      this._syncAssistantSceneCharacterState();
+      return;
+    }
     const slotState = SlotController.getState("ai0") as SlotStateInfo | null;
     const isConnected = slotState?.state === SlotState.CONNECTED;
 
-    if (!isConnected) return;
+    if (!isConnected) {
+      this._syncAssistantSceneCharacterState();
+      return;
+    }
 
     updateTrafficStatusView(state, {
       statusDot: this.statusDot,
       statusText: this.statusText,
     });
+    this._syncAssistantSceneCharacterState();
   }
 
   _onSettingsChange(_settings: unknown, changedPaths: string[] = []): void {
@@ -1919,11 +2066,14 @@ export class AssistantController {
   }
 
   onShow(): void {
+    this._syncAssistantSceneVisibility();
     this._updateConnectionUI();
     this._syncOpencodeUiTheme();
   }
 
-  onHide(): void {}
+  onHide(): void {
+    this._setAssistantSceneScreenOpen(false);
+  }
 
   async destroy(): Promise<void> {
     registerAssistantDeliveryHandler(null);
