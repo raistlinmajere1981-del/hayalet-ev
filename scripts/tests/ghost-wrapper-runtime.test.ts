@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   normalizeControl,
   normalizeMainAppUiMode,
+  normalizeWrapperRestartRequest,
   resolveMainAppScriptName,
   shouldStartGhost,
   toGhostRunningControl,
@@ -219,10 +220,52 @@ test("buildMainAppLaunchArgs enables assistant startup flags after ghost return"
   ]);
 });
 
+test("buildMainAppLaunchArgs supports direct-launch options for scene mode", () => {
+  const args = buildMainAppLaunchArgs("/tmp/main.js", {
+    assistantStartup: true,
+    uiMode: "scene",
+    sceneDebug: true,
+    cdpPort: "9555",
+  });
+
+  assert.deepEqual(args, [
+    "/tmp/main.js",
+    "--no-sandbox",
+    "--remote-debugging-port=9555",
+    "--start-page=assistant",
+    "--auto-connect",
+    "--ui-mode=scene",
+    "--scene-debug",
+  ]);
+});
+
+test("buildMainAppLaunchArgs ignores sceneDebug outside scene mode", () => {
+  const args = buildMainAppLaunchArgs("/tmp/main.js", {
+    assistantStartup: false,
+    uiMode: "classic",
+    sceneDebug: true,
+    cdpPort: null,
+  });
+
+  assert.deepEqual(args, ["/tmp/main.js", "--no-sandbox"]);
+});
+
 test("normalizeMainAppUiMode falls back to classic", () => {
   assert.equal(normalizeMainAppUiMode("scene"), "scene");
   assert.equal(normalizeMainAppUiMode("classic"), "classic");
   assert.equal(normalizeMainAppUiMode("unexpected"), "classic");
+});
+
+test("normalizeWrapperRestartRequest normalizes uiMode and sceneDebug", () => {
+  assert.deepEqual(normalizeWrapperRestartRequest({ uiMode: "scene", sceneDebug: true }), {
+    uiMode: "scene",
+    sceneDebug: true,
+  });
+
+  assert.deepEqual(normalizeWrapperRestartRequest({ uiMode: "invalid", sceneDebug: "yes" }), {
+    uiMode: "classic",
+    sceneDebug: false,
+  });
 });
 
 test("resolveMainAppScriptName picks the correct npm script for uiMode and startup flags", () => {

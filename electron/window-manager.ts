@@ -1,6 +1,7 @@
 import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
 import { spawn } from "node:child_process";
-import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { PARTITIONS } from "@slots";
@@ -469,6 +470,7 @@ interface AppRestartOptions {
 
 const UI_MODE_ARG_PREFIXES = ["--app-ui-mode", "--ui-mode"];
 const SCENE_DEBUG_ARG_PREFIXES = ["--app-scene-debug", "--scene-debug"];
+const WRAPPER_RESTART_REQUEST_FILE = "assistant-wrapper-restart.json";
 
 function shouldStripArg(arg: string, prefixes: string[]): boolean {
   return prefixes.some((prefix) => arg === prefix || arg.startsWith(`${prefix}=`));
@@ -560,6 +562,25 @@ function buildDevRestartEnv(scriptName: string): NodeJS.ProcessEnv {
   return env;
 }
 
+function isWrapperManagedRestart(): boolean {
+  return process.env.HAYALET_WRAPPER_MANAGED === "1";
+}
+
+function getWrapperRestartRequestPath(): string {
+  return join(Paths.getProjectRoot(), "data", WRAPPER_RESTART_REQUEST_FILE);
+}
+
+async function writeWrapperRestartRequest(options: AppRestartOptions): Promise<void> {
+  const restartRequest = {
+    requestedAt: new Date().toISOString(),
+    uiMode: resolveRestartUiMode(options),
+    sceneDebug: resolveRestartSceneDebug(options),
+  };
+  const filePath = getWrapperRestartRequestPath();
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(restartRequest, null, 2)}\n`, "utf-8");
+}
+
 function spawnDevRestart(scriptName: string): void {
   const projectRoot = Paths.getProjectRoot();
   const helperPath = join(projectRoot, "scripts", "dev-restart-helper.mjs");
@@ -590,6 +611,12 @@ export async function appRestart(options: AppRestartOptions = {}): Promise<{
           success: true,
           message: await windowT("devPageReloaded"),
         };
+      }
+
+      if (shouldRelaunch && isWrapperManagedRestart()) {
+        await writeWrapperRestartRequest(options);
+        app.quit();
+        return { success: true };
       }
 
       const scriptName = resolveDevRestartScript(options);

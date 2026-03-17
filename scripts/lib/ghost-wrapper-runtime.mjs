@@ -78,6 +78,14 @@ export function normalizeMainAppUiMode(uiMode) {
   return uiMode === "scene" ? "scene" : "classic";
 }
 
+export function normalizeWrapperRestartRequest(raw) {
+  const data = typeof raw === "object" && raw !== null ? raw : {};
+  return {
+    uiMode: normalizeMainAppUiMode(data.uiMode),
+    sceneDebug: data.sceneDebug === true,
+  };
+}
+
 export function resolveMainAppScriptName(
   useAssistantStartupFlags = false,
   uiMode = "classic",
@@ -95,10 +103,34 @@ export function resolveMainAppScriptName(
   return normalizedUiMode === "scene" ? `electron:dev:scene${debugSuffix}` : "electron:dev";
 }
 
-export function buildMainAppLaunchArgs(mainEntry, useAssistantStartupFlags = false) {
+export function buildMainAppLaunchArgs(mainEntry, options = false) {
+  const normalizedOptions =
+    typeof options === "boolean"
+      ? {
+          assistantStartup: options,
+          uiMode: "classic",
+          sceneDebug: false,
+          cdpPort: null,
+        }
+      : {
+          assistantStartup: options?.assistantStartup === true,
+          uiMode: normalizeMainAppUiMode(options?.uiMode),
+          sceneDebug: options?.sceneDebug === true,
+          cdpPort: typeof options?.cdpPort === "string" && options.cdpPort !== "" ? options.cdpPort : null,
+        };
+
   const args = [mainEntry, "--no-sandbox"];
-  if (useAssistantStartupFlags) {
+  if (normalizedOptions.cdpPort !== null) {
+    args.push(`--remote-debugging-port=${normalizedOptions.cdpPort}`);
+  }
+  if (normalizedOptions.assistantStartup) {
     args.push("--start-page=assistant", "--auto-connect");
+  }
+  if (normalizedOptions.uiMode === "scene") {
+    args.push("--ui-mode=scene");
+    if (normalizedOptions.sceneDebug) {
+      args.push("--scene-debug");
+    }
   }
   return args;
 }

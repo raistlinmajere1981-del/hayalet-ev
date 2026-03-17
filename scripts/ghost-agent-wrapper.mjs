@@ -1,5 +1,4 @@
-import { spawn } from "node:child_process";
-import { access, appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -7,22 +6,25 @@ import {
   formatWrapperEvent,
   normalizeMainAppUiMode,
   normalizeControl,
-  resolveMainAppScriptName,
-  shouldStartGhost,
+  normalizeWrapperRestartRequest,
   shouldReopenMainAfterGhost,
+  shouldStartGhost,
   toGhostOnlyStartControl,
   toGhostRunningControl,
   toMainRunningControl,
   toPostGhostControl,
 } from "./lib/ghost-wrapper-runtime.mjs";
+import { createWrapperDashboard } from "./lib/wrapper-dashboard.mjs";
+import { createWrapperSessionId } from "./lib/wrapper-events.mjs";
+import { createWrapperSupervisor } from "./lib/wrapper-supervisor.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const root = dirname(__dirname);
 
-const ghostEntry = join(root, "dist", "ghost-agent", "electron", "main.js");
 const runtimeControlPath = join(root, "data", "assistant-runtime.json");
 const runtimeEventLogPath = join(root, "data", "assistant-runtime-events.log");
+const wrapperRestartRequestPath = join(root, "data", "assistant-wrapper-restart.json");
 
 const env = {
   ...process.env,
@@ -44,26 +46,20 @@ async function ensureControlFile() {
   try {
     await access(runtimeControlPath);
   } catch {
-    await writeFile(
-      runtimeControlPath,
-      `${JSON.stringify(defaultControl(nowIso()), null, 2)}\n`,
-      "utf-8"
-    );
+    await writeFile(runtimeControlPath, `${JSON.stringify(defaultControl(nowIso()), null, 2)}\n`, "utf-8");
   }
 }
 
 async function logWrapperEvent(event, details = {}) {
   const line = formatWrapperEvent(event, details, nowIso());
   await appendFile(runtimeEventLogPath, `${line}\n`, "utf-8");
-  console.info(`[ghost-agent-wrapper] ${line}`);
 }
 
 async function readControl() {
   await ensureControlFile();
   try {
     const raw = await readFile(runtimeControlPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    return normalizeControl(parsed, nowIso());
+    return normalizeControl(JSON.parse(raw), nowIso());
   } catch {
     return defaultControl(nowIso());
   }
@@ -75,99 +71,124 @@ async function writeControl(nextControl) {
   return normalized;
 }
 
-function run(command, args, label) {
-  return new Promise((resolve) => {
-    const child = spawn(command, args, {
-      cwd: root,
-      stdio: "inherit",
-      env,
-    });
-
-    child.on("spawn", () => {
-      void logWrapperEvent("process.spawn", {
-        label,
-        pid: child.pid,
-        command,
-      });
-    });
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        console.error(`[ghost-agent-wrapper] ${label} exited with code ${String(code)}`);
-      }
-      void logWrapperEvent("process.exit", { label, code: code ?? 0 });
-      resolve(code ?? 0);
-    });
-  });
+async function clearWrapperRestartRequest() {
+  await rm(wrapperRestartRequestPath, { force: true });
 }
 
-async function runMainApp(useAssistantStartupFlags = false) {
+async function consumeWrapperRestartRequest() {
+  try {
+    const raw = await readFile(wrapperRestartRequestPath, "utf-8");
+    await clearWrapperRestartRequest();
+    return normalizeWrapperRestartRequest(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function createRuntimeTools(sessionId) {
+  const dashboard = createWrapperDashboard({ sessionId });
+  dashboard.attach();
+
+  const supervisor = createWrapperSupervisor({
+    root,
+    env,
+    dashboard,
+    sessionId,
+    onEvent(event, details) {
+      void logWrapperEvent(`supervisor.${event}`, { sessionId, ...details });
+    },
+  });
+
+  return {
+    dashboard,
+    sessionId,
+    supervisor,
+  };
+}
+
+async function runMain(supervisor, launchOptions) {
   const currentControl = await readControl();
   const runningMainControl = toMainRunningControl(currentControl, nowIso());
-  const uiMode = normalizeMainAppUiMode(env.APP_UI_MODE);
-  const sceneDebug = isSceneDebugEnabled();
-  const scriptName = resolveMainAppScriptName(useAssistantStartupFlags, uiMode, sceneDebug);
+  const uiMode = normalizeMainAppUiMode(launchOptions.uiMode);
+  const sceneDebug = launchOptions.sceneDebug === true;
   await writeControl(runningMainControl);
   await logWrapperEvent("cycle.main.sync", {
     desiredMode: runningMainControl.desiredMode,
     phase: runningMainControl.phase,
     workflowSessionId: runningMainControl.workflowSessionId,
-    assistantStartup: useAssistantStartupFlags,
+    assistantStartup: launchOptions.assistantStartup === true,
     uiMode,
     sceneDebug,
   });
 
-  return await run("npm", ["run", scriptName], "app");
+  return supervisor.runMainAppCycle({
+    assistantStartup: launchOptions.assistantStartup === true,
+    uiMode,
+    sceneDebug,
+  });
 }
 
-async function runGhostApp() {
-  const cdpPort = process.env.CDP_PORT ?? "9222";
-  return await run(
-    "electron",
-    [ghostEntry, "--no-sandbox", `--remote-debugging-port=${cdpPort}`],
-    "ghost-agent"
-  );
+async function runGhost(supervisor) {
+  return supervisor.runGhostAppCycle();
 }
 
 async function runGhostOnly() {
   await ensureControlFile();
-  await logWrapperEvent("wrapper.start", { runtimeControlPath, mode: "ghost-only" });
+  await clearWrapperRestartRequest();
+  const { dashboard, sessionId, supervisor } = createRuntimeTools(createWrapperSessionId());
+  await logWrapperEvent("wrapper.start", { runtimeControlPath, mode: "ghost-only", sessionId });
 
-  // Runtime'ı ghost-only moduna al: desiredMode=ghost-agent, phase=in-ghost
-  const startControl = await readControl();
-  const ghostOnlyControl = toGhostOnlyStartControl(startControl, nowIso());
-  await writeControl(ghostOnlyControl);
-  await logWrapperEvent("cycle.ghost.start", {
-    nextTarget: "ghost",
-    desiredMode: ghostOnlyControl.desiredMode,
-    phase: ghostOnlyControl.phase,
-  });
+  try {
+    const startControl = await readControl();
+    const ghostOnlyControl = toGhostOnlyStartControl(startControl, nowIso());
+    await writeControl(ghostOnlyControl);
+    await logWrapperEvent("cycle.ghost.start", {
+      nextTarget: "ghost",
+      desiredMode: ghostOnlyControl.desiredMode,
+      phase: ghostOnlyControl.phase,
+      sessionId,
+    });
 
-  const code = await runGhostApp();
+    const code = await runGhost(supervisor);
+    const afterControl = await readControl();
+    const idleControl = toPostGhostControl(afterControl, nowIso());
+    await writeControl(idleControl);
+    await logWrapperEvent("cycle.ghost.closed", {
+      code,
+      desiredMode: idleControl.desiredMode,
+      phase: idleControl.phase,
+      sessionId,
+    });
 
-  // Ghost kapandı — runtime'ı oku ve post-ghost durumuna geçir
-  const afterControl = await readControl();
-  const idleControl = toPostGhostControl(afterControl, nowIso());
-  await writeControl(idleControl);
-  await logWrapperEvent("cycle.ghost.closed", {
-    code,
-    desiredMode: idleControl.desiredMode,
-    phase: idleControl.phase,
-  });
+    if (shouldReopenMainAfterGhost(idleControl)) {
+      supervisor.emit("cycle.to-app");
+      await logWrapperEvent("cycle.main.start", { nextTarget: "app", assistantStartup: true, sessionId });
+      const mainCode = await runMain(supervisor, {
+        assistantStartup: true,
+        uiMode: normalizeMainAppUiMode(env.APP_UI_MODE),
+        sceneDebug: isSceneDebugEnabled(),
+      });
+      process.exitCode = mainCode !== 0 ? mainCode : code;
+      return;
+    }
 
-  // "Hayalet-ev'e Geç" butonuna basıldıysa (desiredMode=soft) app'i aç
-  if (shouldReopenMainAfterGhost(idleControl)) {
-    await logWrapperEvent("cycle.main.start", { nextTarget: "app", assistantStartup: true });
-    await runMainApp(true);
-  } else {
+    supervisor.emit("cycle.stop");
     await logWrapperEvent("cycle.stop", {
       reason: "ghost-close-requested",
       desiredMode: idleControl.desiredMode,
       phase: idleControl.phase,
+      sessionId,
     });
+    process.exitCode = code !== 0 ? code : 0;
+  } catch (error) {
+    dashboard.user(`Hata: ${error instanceof Error ? error.message : String(error)}`);
+    await logWrapperEvent("wrapper.error", { sessionId, message: error instanceof Error ? error.message : String(error) });
+    process.exitCode = 1;
+  } finally {
+    await supervisor.cleanup();
+    await logWrapperEvent("wrapper.stop", { sessionId, mode: "ghost-only" });
+    dashboard.dispose();
   }
-
-  process.exitCode = code !== 0 ? code : 0;
 }
 
 async function main() {
@@ -176,78 +197,131 @@ async function main() {
   }
 
   await ensureControlFile();
-  await logWrapperEvent("wrapper.start", { runtimeControlPath });
+  await clearWrapperRestartRequest();
+  const { dashboard, sessionId, supervisor } = createRuntimeTools(createWrapperSessionId());
+  await logWrapperEvent("wrapper.start", { runtimeControlPath, sessionId });
 
   let nextTarget = "app";
-  let launchAssistantOnNextMain = false;
+  let nextMainLaunchOptions = {
+    assistantStartup: false,
+    uiMode: normalizeMainAppUiMode(env.APP_UI_MODE),
+    sceneDebug: isSceneDebugEnabled(),
+  };
 
-  while (true) {
-    if (nextTarget === "app") {
-      await logWrapperEvent("cycle.main.start", {
-        nextTarget,
-        assistantStartup: launchAssistantOnNextMain,
-      });
-      const code = await runMainApp(launchAssistantOnNextMain);
-      launchAssistantOnNextMain = false;
-      if (code !== 0) {
-        await logWrapperEvent("cycle.main.crash", { code });
-        process.exitCode = code;
-        return;
+  try {
+    while (true) {
+      if (nextTarget === "app") {
+        const launchOptions = { ...nextMainLaunchOptions };
+        await logWrapperEvent("cycle.main.start", {
+          nextTarget,
+          assistantStartup: launchOptions.assistantStartup,
+          uiMode: launchOptions.uiMode,
+          sceneDebug: launchOptions.sceneDebug,
+          sessionId,
+        });
+        const code = await runMain(supervisor, launchOptions);
+        nextMainLaunchOptions = {
+          ...launchOptions,
+          assistantStartup: false,
+        };
+        if (code !== 0) {
+          dashboard.user(`Hata: ana uygulama ${code} kodu ile kapandi.`);
+          await logWrapperEvent("cycle.main.crash", { code, sessionId });
+          process.exitCode = code;
+          return;
+        }
+
+        const restartRequest = await consumeWrapperRestartRequest();
+        if (restartRequest !== null) {
+          nextMainLaunchOptions = {
+            ...launchOptions,
+            ...restartRequest,
+            assistantStartup: launchOptions.assistantStartup,
+          };
+          supervisor.emit("cycle.to-app");
+          await logWrapperEvent("cycle.main.restart", {
+            sessionId,
+            uiMode: nextMainLaunchOptions.uiMode,
+            sceneDebug: nextMainLaunchOptions.sceneDebug,
+          });
+          nextTarget = "app";
+          continue;
+        }
+
+        const control = await readControl();
+        await logWrapperEvent("cycle.main.closed", {
+          desiredMode: control.desiredMode,
+          phase: control.phase,
+          workflowSessionId: control.workflowSessionId,
+          sessionId,
+        });
+
+        if (!shouldStartGhost(control)) {
+          supervisor.emit("cycle.stop");
+          await logWrapperEvent("cycle.stop", {
+            reason: "ghost-not-requested",
+            desiredMode: control.desiredMode,
+            phase: control.phase,
+            sessionId,
+          });
+          return;
+        }
+
+        const inGhostControl = toGhostRunningControl(control, nowIso());
+        await writeControl(inGhostControl);
+        supervisor.emit("cycle.to-ghost");
+        await logWrapperEvent("cycle.ghost.prepare", {
+          desiredMode: inGhostControl.desiredMode,
+          phase: inGhostControl.phase,
+          sessionId,
+        });
+        nextTarget = "ghost";
+        continue;
+      }
+
+      await logWrapperEvent("cycle.ghost.start", { nextTarget, sessionId });
+      const ghostCode = await runGhost(supervisor);
+      if (ghostCode !== 0) {
+        dashboard.user(`Hata: Ghost Agent ${ghostCode} kodu ile kapandi. Ana uygulamaya donus denenecek.`);
       }
 
       const control = await readControl();
-      await logWrapperEvent("cycle.main.closed", {
-        desiredMode: control.desiredMode,
-        phase: control.phase,
-        workflowSessionId: control.workflowSessionId,
+      const idleControl = toPostGhostControl(control, nowIso());
+      await writeControl(idleControl);
+      await logWrapperEvent("cycle.ghost.closed", {
+        code: ghostCode,
+        desiredMode: idleControl.desiredMode,
+        phase: idleControl.phase,
+        workflowSessionId: idleControl.workflowSessionId,
+        sessionId,
       });
 
-      if (!shouldStartGhost(control)) {
+      if (!shouldReopenMainAfterGhost(idleControl)) {
+        supervisor.emit("cycle.stop");
         await logWrapperEvent("cycle.stop", {
-          reason: "ghost-not-requested",
-          desiredMode: control.desiredMode,
-          phase: control.phase,
+          reason: "ghost-close-requested",
+          desiredMode: idleControl.desiredMode,
+          phase: idleControl.phase,
+          sessionId,
         });
         return;
       }
 
-      const inGhostControl = toGhostRunningControl(control, nowIso());
-      await writeControl(inGhostControl);
-      await logWrapperEvent("cycle.ghost.prepare", {
-        desiredMode: inGhostControl.desiredMode,
-        phase: inGhostControl.phase,
-      });
-      nextTarget = "ghost";
-      continue;
+      nextMainLaunchOptions = {
+        ...nextMainLaunchOptions,
+        assistantStartup: true,
+      };
+      nextTarget = "app";
+      supervisor.emit("cycle.to-app");
     }
-
-    await logWrapperEvent("cycle.ghost.start", { nextTarget });
-    const ghostCode = await runGhostApp();
-    if (ghostCode !== 0) {
-      console.error("[ghost-agent-wrapper] ghost-agent ended with non-zero exit; returning to app");
-    }
-
-    const control = await readControl();
-    const idleControl = toPostGhostControl(control, nowIso());
-    await writeControl(idleControl);
-    await logWrapperEvent("cycle.ghost.closed", {
-      code: ghostCode,
-      desiredMode: idleControl.desiredMode,
-      phase: idleControl.phase,
-      workflowSessionId: idleControl.workflowSessionId,
-    });
-
-    if (!shouldReopenMainAfterGhost(idleControl)) {
-      await logWrapperEvent("cycle.stop", {
-        reason: "ghost-close-requested",
-        desiredMode: idleControl.desiredMode,
-        phase: idleControl.phase,
-      });
-      return;
-    }
-
-    launchAssistantOnNextMain = true;
-    nextTarget = "app";
+  } catch (error) {
+    dashboard.user(`Hata: ${error instanceof Error ? error.message : String(error)}`);
+    await logWrapperEvent("wrapper.error", { sessionId, message: error instanceof Error ? error.message : String(error) });
+    process.exitCode = 1;
+  } finally {
+    await supervisor.cleanup();
+    await logWrapperEvent("wrapper.stop", { sessionId });
+    dashboard.dispose();
   }
 }
 
