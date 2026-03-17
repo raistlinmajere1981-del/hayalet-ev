@@ -37,7 +37,7 @@ const ACTION_CONFIG = Object.freeze({
   },
   "ghost-return-main": {
     desiredMode: "soft",
-    phase: "idle",
+    phase: "returning",
     closeTarget: "ghost",
     expectedMode: "app",
     requiresWrapper: false,
@@ -424,6 +424,16 @@ export async function waitForMode({
   while (Date.now() - startedAt <= timeoutMs) {
     const status = await getRuntimeStatus({ runtimeControlPath, maxStaleMs });
     lastStatus = status;
+
+    if (status.resolved.shouldStop === true) {
+      return {
+        success: false,
+        expectedMode,
+        elapsedMs: Date.now() - startedAt,
+        status,
+        error: status.resolved.reason ?? "Transition halted due to stop signal.",
+      };
+    }
 
     if (status.resolved.mode === expectedMode && status.resolved.shouldStop !== true) {
       return {

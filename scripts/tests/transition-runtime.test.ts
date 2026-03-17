@@ -96,7 +96,7 @@ test("buildControlForAction keeps workflow for ghost-return-main", () => {
 
   assert.equal(next.workflowSessionId, "wf-existing");
   assert.equal(next.desiredMode, "soft");
-  assert.equal(next.phase, "idle");
+  assert.equal(next.phase, "returning");
   assert.equal(next.updatedAt, "2026-03-04T10:02:00.000Z");
 });
 

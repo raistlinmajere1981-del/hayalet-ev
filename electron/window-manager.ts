@@ -1,5 +1,6 @@
 import { BrowserWindow, session, Tray, Menu, nativeImage, app, shell, screen } from "electron";
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 import { getLoggerCore } from "./logger/index.js";
 import { LogCategory, LogLevel } from "@shared/index.js";
 import { PARTITIONS } from "@slots";
@@ -542,17 +543,34 @@ function resolveDevRestartScript(options: AppRestartOptions): string {
   return uiMode === "scene" ? "start:scene" : "start";
 }
 
+function buildDevRestartEnv(scriptName: string): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+
+  if (scriptName === "start") {
+    delete env.APP_UI_MODE;
+    delete env.APP_SCENE_DEBUG;
+  } else if (scriptName === "start:scene") {
+    env.APP_UI_MODE = "scene";
+    delete env.APP_SCENE_DEBUG;
+  } else if (scriptName === "start:scene:debug") {
+    env.APP_UI_MODE = "scene";
+    env.APP_SCENE_DEBUG = "1";
+  }
+
+  return env;
+}
+
 function spawnDevRestart(scriptName: string): void {
-  const command = process.platform === "win32" ? "npm.cmd" : "npm";
-  setTimeout(() => {
-    const child = spawn(command, ["run", scriptName], {
-      cwd: Paths.getProjectRoot(),
-      env: process.env,
-      detached: true,
-      stdio: "ignore",
-    });
-    child.unref();
-  }, 250);
+  const projectRoot = Paths.getProjectRoot();
+  const helperPath = join(projectRoot, "scripts", "dev-restart-helper.mjs");
+  const restartEnv = buildDevRestartEnv(scriptName);
+  const child = spawn(process.execPath, [helperPath, "--pid", String(process.pid), "--script", scriptName], {
+    cwd: projectRoot,
+    env: restartEnv,
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
 }
 
 export async function appRestart(options: AppRestartOptions = {}): Promise<{

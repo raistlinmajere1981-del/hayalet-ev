@@ -88,6 +88,29 @@ test("returns transitioning during preparing-handoff", () => {
   assert.equal(result.shouldStop, false);
 });
 
+
+test("returns transitioning during returning phase with ghost alive", () => {
+  const result = resolveWhereAmI({
+    control: {
+      workflowSessionId: "wf-return",
+      desiredMode: "soft",
+      phase: "returning",
+      updatedAt: "2026-03-02T10:00:00.000Z",
+    },
+    probes: {
+      mainProcess: false,
+      ghostProcess: true,
+      wrapperProcess: true,
+      opencodeServerRunning: false,
+    },
+    nowIso: "2026-03-02T10:00:10.000Z",
+  });
+
+  assert.equal(result.mode, "transitioning");
+  assert.equal(result.shouldStop, false);
+});
+
+
 test("falls back to terminal when preparing-handoff runtime is stale and no processes are alive", () => {
   const result = resolveWhereAmI({
     control: {
