@@ -7,7 +7,7 @@
 
 ## 🏗️ Proje Özeti
 
-**Hayalet-ev (Ghost House):** Electron tabanlı multi-AI chat platformu
+**Hayalet-ev — Ghost House:** Electron tabanlı multi-AI chat platformu
 
 ### Tech Stack
 
@@ -29,20 +29,20 @@
 ### Mimari Yapı
 
 ```
-Main Process (Node.js)
+Main Process - Node.js
   ├── electron/              # Ana process kodları
   │   ├── main.js           # Entry point
   │   ├── preload.cjs       # IPC bridge
   │   ├── database/         # SQLite
   │   └── logger/           # Log sistemi
   │
-  └── Renderer Process (Chromium)
+  └── Renderer Process - Chromium
       ├── src/js/           # UI kodları
       ├── src/ui/           # HTML templates
       └── src/assets/       # CSS, images
 
-MCP Server (Ayrı process)
-  └── mcp-server/           # hev_* toolları (sayı: hev_mcp_health ile kontrol et)
+MCP Server - Ayrı process
+  └── mcp-server/           # hev_* toolları - sayı: hev_mcp_health ile kontrol et
 ```
 
 ---
@@ -57,9 +57,9 @@ MCP Server (Ayrı process)
 
 **Kritik Metodlar:**
 
-- `initialize()` - Uygulama başlangıcı
-- `handleMessage()` - Mesaj yönlendirme
-- `shutdown()` - Güvenli kapatma
+- `initialize` - Uygulama başlangıcı
+- `handleMessage` - Mesaj yönlendirme
+- `shutdown` - Güvenli kapatma
 
 **Dikkat:** Başlatma sırası kritik. Yanlış sıra = race condition.
 
@@ -73,9 +73,9 @@ MCP Server (Ayrı process)
 
 **Kritik Metodlar:**
 
-- `createSlot()` - Yeni slot oluştur
-- `activateSlot()` - Slot'u aktif et
-- `destroySlot()` - Slot'u temizle
+- `createSlot` - Yeni slot oluştur
+- `activateSlot` - Slot'u aktif et
+- `destroySlot` - Slot'u temizle
 
 ---
 
@@ -83,15 +83,15 @@ MCP Server (Ayrı process)
 
 **Dosya:** `src/js/modules/webview-manager.ts`
 
-**Rol:** Webview lifecycle yönetimi. AI provider'ların (ChatGPT, Gemini, Grok) webview'larını kontrol eder.
+**Rol:** Webview lifecycle yönetimi. AI provider'ların — ChatGPT, Gemini, Grok — webview'larını kontrol eder.
 
 **Kritik Metodlar:**
 
-- `createWebview()` - Provider webview oluştur
-- `loadProvider()` - Provider URL yükle
-- `handleNavigation()` - Sayfa geçişleri
+- `createWebview` - Provider webview oluştur
+- `loadProvider` - Provider URL yükle
+- `handleNavigation` - Sayfa geçişleri
 
-**Dikkat:** Electron security (contextIsolation, sandbox) kritik.
+**Dikkat:** Electron security — contextIsolation, sandbox — kritik.
 
 ---
 
@@ -103,9 +103,9 @@ MCP Server (Ayrı process)
 
 **Kritik Metodlar:**
 
-- `trackRequest()` - İstek takibi
-- `trackResponse()` - Yanıt takibi
-- `getAnalytics()` - İstatistikler
+- `trackRequest` - İstek takibi
+- `trackResponse` - Yanıt takibi
+- `getAnalytics` - İstatistikler
 
 ---
 
@@ -123,21 +123,21 @@ Her AI için ayrı config:
 
 ```typescript
 // Selector'ları test et
-hev_validate_provider_selectors({ provider_name: "chatgpt" });
+hev_validate_provider_selectors{ provider_name: "chatgpt" };
 ```
 
 ---
 
-## 🔐 IPC (Inter-Process Communication)
+## 🔐 IPC — Inter-Process Communication
 
 ### Güvenlik Kuralı: `contextIsolation = true`
 
 **Yapı:**
 
 ```
-Renderer Process (Chromium)
+Renderer Process - Chromium
   ↕️ IPC
-Main Process (Node.js)
+Main Process - Node.js
   ↕️ Native API
 OS
 ```
@@ -157,19 +157,19 @@ OS
 
 ```javascript
 // Doğru: Secure IPC
-contextBridge.exposeInMainWorld("electronAPI", {
-  sendMessage: (channel, data) => {
+contextBridge.exposeInMainWorld "electronAPI", {
+  sendMessage: channel, data => {
     // Sadece whitelist kanalları
-    if (validChannels.includes(channel)) {
-      ipcRenderer.invoke(channel, data);
+    if validChannels.includes channel {
+      ipcRenderer.invoke channel, data;
     }
   },
-});
+};
 ```
 
 ---
 
-## 🗄️ Database (SQLite - Per-Account)
+## 🗄️ Database — SQLite - Per-Account
 
 ### Konum
 
@@ -192,7 +192,7 @@ data/
 
 ```sql
 -- conversations
-CREATE TABLE conversations (
+CREATE TABLE conversations
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL,
   web_url TEXT NOT NULL,
@@ -203,10 +203,10 @@ CREATE TABLE conversations (
   last_message_id TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+;
 
 -- messages
-CREATE TABLE messages (
+CREATE TABLE messages
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
   account_id TEXT NOT NULL,
@@ -217,11 +217,11 @@ CREATE TABLE messages (
   dom_id TEXT,
   content_hash TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-);
+  FOREIGN KEY conversation_id REFERENCES conversations id ON DELETE CASCADE
+;
 
 -- attachments
-CREATE TABLE attachments (
+CREATE TABLE attachments
   id TEXT PRIMARY KEY,
   message_id TEXT NOT NULL,
   conversation_id TEXT NOT NULL,
@@ -232,27 +232,27 @@ CREATE TABLE attachments (
   mime_type TEXT,
   size INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
-);
+  FOREIGN KEY message_id REFERENCES messages id ON DELETE CASCADE
+;
 ```
 
 ### Kullanım
 
 ```typescript
 // Slot'a hesap atandığında veritabanı başlatılır
-await window.electronAPI.initAccount({ accountId: "user@gmail.com_chatgpt" });
+await window.electronAPI.initAccount{ accountId: "user@gmail.com_chatgpt" };
 
 // Konuşmaları getir
-const conversations = await window.electronAPI.dbGetConversations({
+const conversations = await window.electronAPI.dbGetConversations{
   accountId: "user@gmail.com_chatgpt"
-});
+};
 
 // Mesajları senkronize et
-await window.electronAPI.dbSyncMessages({
+await window.electronAPI.dbSyncMessages{
   accountId: "user@gmail.com_chatgpt",
   webUrl: "https://chatgpt.com/c/123",
   messages: [...]
-});
+};
 ```
 
 ### Dosya Yapısı
@@ -290,13 +290,13 @@ await window.electronAPI.dbSyncMessages({
 
 ```typescript
 // Son hataları oku
-hev_read_electron_logs({ type: "error", limit: 50 });
+hev_read_electron_logs{ type: "error", limit: 50 };
 
 // Belirli session
-hev_get_session_summary({ session_id: "2026-02-01-143022" });
+hev_get_session_summary{ session_id: "2026-02-01-143022" };
 
 // Hata analizi
-hev_get_error_hints({ error_message: "..." });
+hev_get_error_hints{ error_message: "..." };
 ```
 
 ---
@@ -333,21 +333,21 @@ npm start
 
 # Build
 npm run build                  # Renderer build
-npm run build:all              # 🆕 Tüm build (renderer + electron + mcp)
+npm run build:all              # 🆕 Tüm build - renderer + electron + mcp
 
 # Test
 npm run test
 
 # Lint
-npm run lint                   # Tüm proje (src + electron + mcp)
+npm run lint                   # Tüm proje - src + electron + mcp
 npm run lint:fix               # Auto-fix
 
 # TypeScript kontrol
 npm run check-types            # Tüm proje kontrol
 
-# Tüm kontroller (pre-commit)
+# Tüm kontroller - pre-commit
 npm run check                  # lint + types
-npm run ai:check               # 🆕 Unified check (AI development)
+npm run ai:check               # 🆕 Unified check - AI development
 
 # Clean
 npm run clean                  # Dist temizle
@@ -358,7 +358,7 @@ npm run clean:all              # 🆕 Tümünü temizle
 
 ```bash
 npm run mcp:build              # MCP build
-npm run mcp:check              # 🆕 MCP kontrol (type + lint)
+npm run mcp:check              # 🆕 MCP kontrol - type + lint
 npm run mcp:lint               # 🆕 MCP lint
 npm run mcp:lint:fix           # 🆕 MCP auto-fix
 ```
@@ -371,13 +371,13 @@ npm run mcp:lint:fix           # 🆕 MCP auto-fix
 
 ```typescript
 // Log okuma
-hev_read_electron_logs({ type: "error", limit: 50 });
+hev_read_electron_logs{ type: "error", limit: 50 };
 
 // CDP ile canlı debug
-hev_check_electron_connection();
-hev_send_command_to_electron({ command: "document.title" });
-hev_take_cdp_screenshot();
-hev_inspect_element({ selector: "#main-content" });
+hev_check_electron_connection;
+hev_send_command_to_electron{ command: "document.title" };
+hev_take_cdp_screenshot;
+hev_inspect_element{ selector: "#main-content" };
 ```
 
 ---
@@ -392,9 +392,9 @@ hev_inspect_element({ selector: "#main-content" });
 
 ### 2. Electron Security
 
-- `nodeIntegration: false` (varsayılan)
-- `contextIsolation: true` (zorunlu)
-- `sandbox: true` (tercih edilen)
+- `nodeIntegration: false` — varsayılan
+- `contextIsolation: true` — zorunlu
+- `sandbox: true` — tercih edilen
 
 ### 3. Memory Yönetimi
 
@@ -445,9 +445,9 @@ hev_inspect_element({ selector: "#main-content" });
 
 ### IPC Optimizasyon
 
-- Log'ları batch et (50 log veya 100ms)
+- Log'ları batch et — 50 log veya 100ms
 - Büyük payload'ları chunk'la
-- Throttle kullan (1s)
+- Throttle kullan — 1s
 
 ### Render Optimizasyon
 

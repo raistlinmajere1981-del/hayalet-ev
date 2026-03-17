@@ -7,16 +7,16 @@
 
 ---
 
-## Debug (8 tools)
+## Debug - 8 tools
 
 | Tool | Description |
 |------|-------------|
 | `hev_analyze_mcp_tool_usage` | MCP tool kullanım istatistiklerini analiz et: toplam çağrı, tool bazında kullanım, ortalama süre ve hata oranı. |
 | `hev_correlate_mcp_errors` | MCP hatalarını diğer sistem logları ile ilişkilendir. Hata zamanına yakın eventleri bulur. |
-| `hev_get_agent_tool_trace` | AI agent'ın kullandığı tool'ların sıralı izini (trace) göster. |
+| `hev_get_agent_tool_trace` | AI agent'ın kullandığı tool'ların sıralı izini - trace göster. |
 | `hev_get_error_hints` | Belirli bir hata mesajı için bilinen pattern'leri eşleştir ve çözüm önerileri döndür. |
 | `hev_get_mcp_tool_performance` | Belirli bir MCP tool'un detaylı performans metriklerini al. |
-| `hev_get_session_summary` | Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum). |
+| `hev_get_session_summary` | Belirli bir session'ın özet bilgilerini al - hata sayısı, süre, son durum. |
 | `hev_list_log_sessions` | Mevcut log session'larını listele. Her session bir uygulama çalıştırmasını temsil eder. |
 | `hev_read_electron_logs` | Electron console ve error loglarını oku. Source, level, içerik ve correlation ID ile filtreleme destekler. |
 
@@ -28,7 +28,7 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
@@ -38,17 +38,17 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
 #### `hev_get_agent_tool_trace`
 
-**Description:** AI agent'ın kullandığı tool'ların sıralı izini (trace) göster.
+**Description:** AI agent'ın kullandığı tool'ların sıralı izini - trace göster.
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
@@ -58,7 +58,7 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
@@ -68,17 +68,17 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
 #### `hev_get_session_summary`
 
-**Description:** Belirli bir session'ın özet bilgilerini al (hata sayısı, süre, son durum).
+**Description:** Belirli bir session'ın özet bilgilerini al - hata sayısı, süre, son durum.
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
@@ -88,7 +88,7 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
@@ -98,11 +98,11 @@
 
 **Category:** Debug
 
-**Prefix:** `hev_* (debug)`
+**Prefix:** `hev_* - debug`
 
 ---
 
-## Electron/CDP (17 tools)
+## Electron/CDP - 17 tools
 
 | Tool | Description |
 |------|-------------|
@@ -112,15 +112,15 @@
 | `hev_fill_input_field` | Bir input alanına değer yaz. |
 | `hev_get_electron_window_info` | Electron penceresinin boyut, pozisyon ve URL bilgilerini al. |
 | `hev_get_page_dom_structure` | Sayfanın DOM yapısını al. Debug ve element bulma için kullanışlı. |
-| `hev_inspect_element` | Bir elementin detaylı bilgilerini al (boyut, pozisyon, görünürlük, içerik). |
+| `hev_inspect_element` | Bir elementin detaylı bilgilerini al - boyut, pozisyon, görünürlük, içerik. |
 | `hev_list_tools` | app MCP tool'larını kategorize ederek listele |
 | `hev_mcp_health` | app MCP sağlık durumunu kontrol et. Çalışma durumu, versiyon ve tool sayısını gösterir. |
 | `hev_query_elements` | Bir selector ile eşleşen tüm elementleri bul ve listele. |
 | `hev_scroll_page` | Sayfada belirli bir konuma scroll yap. |
 | `hev_send_command_to_electron` | Electron uygulamasında JavaScript kodu çalıştır. Herhangi bir JS expression çalıştırabilir. |
-| `hev_send_key_press` | Klavye tuşu gönder (Enter, Escape, Tab vb.). |
-| `hev_stream_logs_realtime` | Gerçek zamanlı log akışı (tail -f benzeri). Yeni kayıtlar geldikçe stream eder. Durdurmak için Ctrl+C kullan. |
-| `hev_take_cdp_screenshot` | Electron penceresinin ekran görüntüsünü al (CDP üzerinden, tam sayfa). |
+| `hev_send_key_press` | Klavye tuşu gönder - Enter, Escape, Tab vb.. |
+| `hev_stream_logs_realtime` | Gerçek zamanlı log akışı - tail -f benzeri. Yeni kayıtlar geldikçe stream eder. Durdurmak için Ctrl+C kullan. |
+| `hev_take_cdp_screenshot` | Electron penceresinin ekran görüntüsünü al - CDP üzerinden, tam sayfa. |
 | `hev_test_electron` | application Electron uygulamasını test et |
 | `hev_toggle_mcp_panel_servers` | AI0 webview içindeki OpenCode MCP panelinde belirtilen sunucuları OFF→ON cycle ile toggle eder. |
 
@@ -132,7 +132,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -142,7 +142,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -152,7 +152,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -162,7 +162,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -172,7 +172,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -182,17 +182,17 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
 #### `hev_inspect_element`
 
-**Description:** Bir elementin detaylı bilgilerini al (boyut, pozisyon, görünürlük, içerik).
+**Description:** Bir elementin detaylı bilgilerini al - boyut, pozisyon, görünürlük, içerik.
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -202,7 +202,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -212,7 +212,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -222,7 +222,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -232,7 +232,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -242,37 +242,37 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
 #### `hev_send_key_press`
 
-**Description:** Klavye tuşu gönder (Enter, Escape, Tab vb.).
+**Description:** Klavye tuşu gönder - Enter, Escape, Tab vb..
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
 #### `hev_stream_logs_realtime`
 
-**Description:** Gerçek zamanlı log akışı (tail -f benzeri). Yeni kayıtlar geldikçe stream eder. Durdurmak için Ctrl+C kullan.
+**Description:** Gerçek zamanlı log akışı - tail -f benzeri. Yeni kayıtlar geldikçe stream eder. Durdurmak için Ctrl+C kullan.
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
 #### `hev_take_cdp_screenshot`
 
-**Description:** Electron penceresinin ekran görüntüsünü al (CDP üzerinden, tam sayfa).
+**Description:** Electron penceresinin ekran görüntüsünü al - CDP üzerinden, tam sayfa.
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -282,7 +282,7 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
@@ -292,24 +292,24 @@
 
 **Category:** Electron/CDP
 
-**Prefix:** `hev_* (others)`
+**Prefix:** `hev_* - others`
 
 ---
 
-## Context (4 tools)
+## Context - 4 tools
 
 | Tool | Description |
 |------|-------------|
-| `hev_context_generate` | Proje context'i oluştur (Repomix). L1=Quick(7K), L2=Standard(48K), L3=Deep(360K), L4=Full(518K token) |
-| `hev_context_module` | Belirli bir modül için özel context oluştur (örn: webview, traffic, slot) |
+| `hev_context_generate` | Proje context'i oluştur - Repomix. L1=Quick7K, L2=Standard48K, L3=Deep360K, L4=Full518K token |
+| `hev_context_module` | Belirli bir modül için özel context oluştur - örn: webview, traffic, slot |
 | `hev_context_read` | Oluşturulmuş context dosyasını oku. Önce hev_context_generate ile oluşturulmalı. |
-| `hev_context_status` | Mevcut context dosyalarının durumunu göster (boyut, yaş, token sayısı) |
+| `hev_context_status` | Mevcut context dosyalarının durumunu göster - boyut, yaş, token sayısı |
 
 ### Detailed Tools
 
 #### `hev_context_generate`
 
-**Description:** Proje context'i oluştur (Repomix). L1=Quick(7K), L2=Standard(48K), L3=Deep(360K), L4=Full(518K token)
+**Description:** Proje context'i oluştur - Repomix. L1=Quick7K, L2=Standard48K, L3=Deep360K, L4=Full518K token
 
 **Category:** Context
 
@@ -319,7 +319,7 @@
 
 #### `hev_context_module`
 
-**Description:** Belirli bir modül için özel context oluştur (örn: webview, traffic, slot)
+**Description:** Belirli bir modül için özel context oluştur - örn: webview, traffic, slot
 
 **Category:** Context
 
@@ -339,7 +339,7 @@
 
 #### `hev_context_status`
 
-**Description:** Mevcut context dosyalarının durumunu göster (boyut, yaş, token sayısı)
+**Description:** Mevcut context dosyalarının durumunu göster - boyut, yaş, token sayısı
 
 **Category:** Context
 
@@ -347,7 +347,7 @@
 
 ---
 
-## Development (30 tools)
+## Development - 30 tools
 
 | Tool | Description |
 |------|-------------|
@@ -359,10 +359,10 @@
 | `hev_dev_completions` | Dosya konumunda completion önerileri döndürür. |
 | `hev_dev_document_symbols` | Bir dosyanın sembol ağacını döndürür. |
 | `hev_dev_edit_lines` | Scope ve parantez güvenlik kontrolleriyle satır aralığı bazlı dosya düzenleme yapar. |
-| `hev_dev_eslint_dashboard` | ESLint sorunlarını dashboard formatında analiz eder (kural analitiği, kümelendirme). |
+| `hev_dev_eslint_dashboard` | ESLint sorunlarını dashboard formatında analiz eder - kural analitiği, kümelendirme. |
 | `hev_dev_find_references` | Dosya konumundaki sembolün proje genelindeki reference'larını listeler. |
-| `hev_dev_fix_typescript_batch` | TypeScript hatalarını toplu şekilde otomatik düzeltir (undefined kontrolleri, optional chaining). |
-| `hev_dev_generate_diagram` | Generate a module dependency diagram (Mermaid or DOT format) |
+| `hev_dev_fix_typescript_batch` | TypeScript hatalarını toplu şekilde otomatik düzeltir - undefined kontrolleri, optional chaining. |
+| `hev_dev_generate_diagram` | Generate a module dependency diagram - Mermaid or DOT format |
 | `hev_dev_git_diff` | Staged veya unstaged dosyalar için git değişikliklerini gösterir. |
 | `hev_dev_go_to_definition` | Dosya konumundaki sembolün definition konumunu bulur. |
 | `hev_dev_lint_file` | Tek dosyada ESLint çalıştırır. |
@@ -377,8 +377,8 @@
 | `hev_dev_ts_diagnostics` | In-process language service ile tek dosya için TypeScript tanılarını döndürür. |
 | `hev_dev_ts_service_stats` | TypeScript language service cache ve proje istatistiklerini gösterir. |
 | `hev_dev_type_info` | Dosya konumunda hover benzeri tip bilgisini döndürür. |
-| `hev_dev_typescript_dashboard` | TypeScript hatalarını dashboard formatında analiz eder (hata sayısı, üst dosyalar, kategoriler). |
-| `hev_dev_typescript_type_helper` | Tip uyuşmazlıklarını analiz eder ve çözüm önerir (interface karşılaştırma, eksik alanlar, fix önerileri). |
+| `hev_dev_typescript_dashboard` | TypeScript hatalarını dashboard formatında analiz eder - hata sayısı, üst dosyalar, kategoriler. |
+| `hev_dev_typescript_type_helper` | Tip uyuşmazlıklarını analiz eder ve çözüm önerir - interface karşılaştırma, eksik alanlar, fix önerileri. |
 | `hev_dev_update_cache` | Dosya hash ve export haritaları için development cache'ini günceller veya gösterir. |
 | `hev_dev_visualize_structure` | AST scope haritası, bracket analizi ve yorum incelemesi ile dosya yapısını görselleştirir. |
 
@@ -466,7 +466,7 @@
 
 #### `hev_dev_eslint_dashboard`
 
-**Description:** ESLint sorunlarını dashboard formatında analiz eder (kural analitiği, kümelendirme).
+**Description:** ESLint sorunlarını dashboard formatında analiz eder - kural analitiği, kümelendirme.
 
 **Category:** Development
 
@@ -486,7 +486,7 @@
 
 #### `hev_dev_fix_typescript_batch`
 
-**Description:** TypeScript hatalarını toplu şekilde otomatik düzeltir (undefined kontrolleri, optional chaining).
+**Description:** TypeScript hatalarını toplu şekilde otomatik düzeltir - undefined kontrolleri, optional chaining.
 
 **Category:** Development
 
@@ -496,7 +496,7 @@
 
 #### `hev_dev_generate_diagram`
 
-**Description:** Generate a module dependency diagram (Mermaid or DOT format)
+**Description:** Generate a module dependency diagram - Mermaid or DOT format
 
 **Category:** Development
 
@@ -646,7 +646,7 @@
 
 #### `hev_dev_typescript_dashboard`
 
-**Description:** TypeScript hatalarını dashboard formatında analiz eder (hata sayısı, üst dosyalar, kategoriler).
+**Description:** TypeScript hatalarını dashboard formatında analiz eder - hata sayısı, üst dosyalar, kategoriler.
 
 **Category:** Development
 
@@ -656,7 +656,7 @@
 
 #### `hev_dev_typescript_type_helper`
 
-**Description:** Tip uyuşmazlıklarını analiz eder ve çözüm önerir (interface karşılaştırma, eksik alanlar, fix önerileri).
+**Description:** Tip uyuşmazlıklarını analiz eder ve çözüm önerir - interface karşılaştırma, eksik alanlar, fix önerileri.
 
 **Category:** Development
 
@@ -684,11 +684,11 @@
 
 ---
 
-## Filesystem (24 tools)
+## Filesystem - 24 tools
 
 | Tool | Description |
 |------|-------------|
-| `hev_fs_append_chunk` | Dosyaya içerik ekle (streaming) |
+| `hev_fs_append_chunk` | Dosyaya içerik ekle - streaming |
 | `hev_fs_backup` | Dosyanın yedeğini al |
 | `hev_fs_bash` | Shell komutu çalıştır |
 | `hev_fs_cancel_chunk_session` | Aktif bir chunk oturumunu iptal eder ve geçici dosyaları siler. |
@@ -704,15 +704,15 @@ KULLANIM: edits: [{old_text: 'mevcut metin', new_text: 'yeni metin'}]
 old_text dosyada exact match ile bulunur ve new_text ile değiştirilir.
 
 PARAMETRELER:
-• edits (zorunlu): [{old_text, new_text}] dizisi. En az 1 edit gerekli.
-• dry_run: true ile önizle, false ile uygula (varsayılan: false)
-• all_or_nothing: true ise tek edit fail olursa hiçbiri yazılmaz (varsayılan: false)
-• match_scope: 'first'|'last'|'all'|[0,2] — hangi occurrence değişir (varsayılan: 'all')
-• ignore_whitespace: true ise boşluk farklarını yoksayar, orijinal format korunur (varsayılan: false)
-• normalize_eol: 'lf'|'crlf'|'auto'|'preserve' — satır sonu normalizasyonu (varsayılan: 'auto')
+• edits - zorunlu: [{old_text, new_text}] dizisi. En az 1 edit gerekli.
+• dry_run: true ile önizle, false ile uygula - varsayılan: false
+• all_or_nothing: true ise tek edit fail olursa hiçbiri yazılmaz - varsayılan: false
+• match_scope: 'first'|'last'|'all'|[0,2] — hangi occurrence değişir - varsayılan: 'all'
+• ignore_whitespace: true ise boşluk farklarını yoksayar, orijinal format korunur - varsayılan: false
+• normalize_eol: 'lf'|'crlf'|'auto'|'preserve' — satır sonu normalizasyonu - varsayılan: 'auto'
 
 ÖNEMLİ:
-• old_text dosyadaki metinle birebir eşleşmeli (indent ve newline dahil)
+• old_text dosyadaki metinle birebir eşleşmeli - indent ve newline dahil
 • Birden fazla occurrence varsa match_scope ile kontrol et
 • Kritik edit'lerde all_or_nothing=true kullan
 • Önce dry_run=true ile test et, sonra uygula |
@@ -725,9 +725,9 @@ PARAMETRELER:
 
 📌 KULLANIM MODLARI:
 • Parametresiz → Tüm dosyayı oku
-• head=N → İlk N satırı oku (adet)
-• tail=N → Son N satırı oku (adet)
-• start_line=X, end_line=Y → X. satırdan Y. satıra kadar oku (1-based, inclusive)
+• head=N → İlk N satırı oku - adet
+• tail=N → Son N satırı oku - adet
+• start_line=X, end_line=Y → X. satırdan Y. satıra kadar oku - 1-based, inclusive
 
 ⚠️ Satır aralığı okumak için MUTLAKA start_line + end_line kullan. head/tail TEK BAŞINA kullanılır.
 
@@ -740,10 +740,10 @@ PARAMETRELER:
 | `hev_fs_trash_empty` | Çöp kutusunu boşalt |
 | `hev_fs_trash_list` | Çöp kutusundaki dosyaları listele |
 | `hev_fs_undo` | Son işlemi geri al |
-| `hev_fs_write` | Dosyaya içerik yaz. Yeni dosya oluşturur veya mevcut dosyayı üzerine yazar (overwrite=true).
+| `hev_fs_write` | Dosyaya içerik yaz. Yeni dosya oluşturur veya mevcut dosyayı üzerine yazar - overwrite=true.
 
 ⚠️ BOYUT LİMİTİ: Content 500 satır veya ~50KB'ı aşıyorsa bu tool kullanılmamalı.
-LLM output token limiti (8192) nedeniyle büyük dosyalar incomplete/malformed oluşur.
+LLM output token limiti - 8192 nedeniyle büyük dosyalar incomplete/malformed oluşur.
 
 🔄 BÜYÜK DOSYALAR İÇİN: hev_fs_start_chunked_session → hev_fs_write_chunk → hev_fs_finalize_chunked akışını kullan.
 Bu akış UTF-8 validation, checksum ve rollback desteği sağlar. |
@@ -753,7 +753,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar. |
 
 #### `hev_fs_append_chunk`
 
-**Description:** Dosyaya içerik ekle (streaming)
+**Description:** Dosyaya içerik ekle - streaming
 
 **Category:** Filesystem
 
@@ -859,15 +859,15 @@ KULLANIM: edits: [{old_text: 'mevcut metin', new_text: 'yeni metin'}]
 old_text dosyada exact match ile bulunur ve new_text ile değiştirilir.
 
 PARAMETRELER:
-• edits (zorunlu): [{old_text, new_text}] dizisi. En az 1 edit gerekli.
-• dry_run: true ile önizle, false ile uygula (varsayılan: false)
-• all_or_nothing: true ise tek edit fail olursa hiçbiri yazılmaz (varsayılan: false)
-• match_scope: 'first'|'last'|'all'|[0,2] — hangi occurrence değişir (varsayılan: 'all')
-• ignore_whitespace: true ise boşluk farklarını yoksayar, orijinal format korunur (varsayılan: false)
-• normalize_eol: 'lf'|'crlf'|'auto'|'preserve' — satır sonu normalizasyonu (varsayılan: 'auto')
+• edits - zorunlu: [{old_text, new_text}] dizisi. En az 1 edit gerekli.
+• dry_run: true ile önizle, false ile uygula - varsayılan: false
+• all_or_nothing: true ise tek edit fail olursa hiçbiri yazılmaz - varsayılan: false
+• match_scope: 'first'|'last'|'all'|[0,2] — hangi occurrence değişir - varsayılan: 'all'
+• ignore_whitespace: true ise boşluk farklarını yoksayar, orijinal format korunur - varsayılan: false
+• normalize_eol: 'lf'|'crlf'|'auto'|'preserve' — satır sonu normalizasyonu - varsayılan: 'auto'
 
 ÖNEMLİ:
-• old_text dosyadaki metinle birebir eşleşmeli (indent ve newline dahil)
+• old_text dosyadaki metinle birebir eşleşmeli - indent ve newline dahil
 • Birden fazla occurrence varsa match_scope ile kontrol et
 • Kritik edit'lerde all_or_nothing=true kullan
 • Önce dry_run=true ile test et, sonra uygula
@@ -934,9 +934,9 @@ PARAMETRELER:
 
 📌 KULLANIM MODLARI:
 • Parametresiz → Tüm dosyayı oku
-• head=N → İlk N satırı oku (adet)
-• tail=N → Son N satırı oku (adet)
-• start_line=X, end_line=Y → X. satırdan Y. satıra kadar oku (1-based, inclusive)
+• head=N → İlk N satırı oku - adet
+• tail=N → Son N satırı oku - adet
+• start_line=X, end_line=Y → X. satırdan Y. satıra kadar oku - 1-based, inclusive
 
 ⚠️ Satır aralığı okumak için MUTLAKA start_line + end_line kullan. head/tail TEK BAŞINA kullanılır.
 
@@ -1003,10 +1003,10 @@ PARAMETRELER:
 
 #### `hev_fs_write`
 
-**Description:** Dosyaya içerik yaz. Yeni dosya oluşturur veya mevcut dosyayı üzerine yazar (overwrite=true).
+**Description:** Dosyaya içerik yaz. Yeni dosya oluşturur veya mevcut dosyayı üzerine yazar - overwrite=true.
 
 ⚠️ BOYUT LİMİTİ: Content 500 satır veya ~50KB'ı aşıyorsa bu tool kullanılmamalı.
-LLM output token limiti (8192) nedeniyle büyük dosyalar incomplete/malformed oluşur.
+LLM output token limiti - 8192 nedeniyle büyük dosyalar incomplete/malformed oluşur.
 
 🔄 BÜYÜK DOSYALAR İÇİN: hev_fs_start_chunked_session → hev_fs_write_chunk → hev_fs_finalize_chunked akışını kullan.
 Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
@@ -1027,7 +1027,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 ---
 
-## Git/PR (4 tools)
+## Git/PR - 4 tools
 
 | Tool | Description |
 |------|-------------|
@@ -1078,7 +1078,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 ---
 
-## Memory (7 tools)
+## Memory - 7 tools
 
 | Tool | Description |
 |------|-------------|
@@ -1087,8 +1087,8 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 | `hev_memory_prune` | Non-pinned memory kayıtlarını limit ve yaş kuralına göre temizle. |
 | `hev_memory_search` | Ortak hafızayı ara ve prompt-uyumlu kısa context formatıyla döndür. |
 | `hev_memory_stats` | Memory veritabanının özet istatistiklerini getir. |
-| `hev_memory_update` | Mevcut memory kaydını güncelle (içerik, etiket, önem, pinned). |
-| `hev_memory_write` | libSQL tabanlı ortak hafızaya yeni kayıt ekle (provider-bağımsız). |
+| `hev_memory_update` | Mevcut memory kaydını güncelle - içerik, etiket, önem, pinned. |
+| `hev_memory_write` | libSQL tabanlı ortak hafızaya yeni kayıt ekle - provider-bağımsız. |
 
 ### Detailed Tools
 
@@ -1144,7 +1144,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 #### `hev_memory_update`
 
-**Description:** Mevcut memory kaydını güncelle (içerik, etiket, önem, pinned).
+**Description:** Mevcut memory kaydını güncelle - içerik, etiket, önem, pinned.
 
 **Category:** Memory
 
@@ -1154,7 +1154,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 #### `hev_memory_write`
 
-**Description:** libSQL tabanlı ortak hafızaya yeni kayıt ekle (provider-bağımsız).
+**Description:** libSQL tabanlı ortak hafızaya yeni kayıt ekle - provider-bağımsız.
 
 **Category:** Memory
 
@@ -1162,17 +1162,17 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 ---
 
-## UI/Display (1 tools)
+## UI/Display - 1 tools
 
 | Tool | Description |
 |------|-------------|
-| `hev_message_box` | Display a formatted, visually appealing message box with various types (success, error, warning, info, question, progress, table, menu, tree). Provides consistent UX and token efficiency compared to manual echo formatting. |
+| `hev_message_box` | Display a formatted, visually appealing message box with various types - success, error, warning, info, question, progress, table, menu, tree. Provides consistent UX and token efficiency compared to manual echo formatting. |
 
 ### Detailed Tools
 
 #### `hev_message_box`
 
-**Description:** Display a formatted, visually appealing message box with various types (success, error, warning, info, question, progress, table, menu, tree). Provides consistent UX and token efficiency compared to manual echo formatting.
+**Description:** Display a formatted, visually appealing message box with various types - success, error, warning, info, question, progress, table, menu, tree. Provides consistent UX and token efficiency compared to manual echo formatting.
 
 **Category:** UI/Display
 
@@ -1180,30 +1180,30 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 ---
 
-## Tool Discovery (1 tools)
+## Tool Discovery - 1 tools
 
 | Tool | Description |
 |------|-------------|
-| `hev_suggest_tool` | AI agent'a tool önerisi yap (intent-based discovery). Ne yapmak istediğini söyle, en uygun tool'ları önerelim. |
+| `hev_suggest_tool` | AI agent'a tool önerisi yap - intent-based discovery. Ne yapmak istediğini söyle, en uygun tool'ları önerelim. |
 
 ### Detailed Tools
 
 #### `hev_suggest_tool`
 
-**Description:** AI agent'a tool önerisi yap (intent-based discovery). Ne yapmak istediğini söyle, en uygun tool'ları önerelim.
+**Description:** AI agent'a tool önerisi yap - intent-based discovery. Ne yapmak istediğini söyle, en uygun tool'ları önerelim.
 
 **Category:** Tool Discovery
 
-**Prefix:** `hev_* (discovery)`
+**Prefix:** `hev_* - discovery`
 
 ---
 
-## Web (3 tools)
+## Web - 3 tools
 
 | Tool | Description |
 |------|-------------|
 | `hev_web_fetch_url` | URL'den web sayfası içeriğini çek ve parse et. HTML'den temiz metin çıkarır, mevcut cheerio tabanlı scraper ile markdown'a dönüştürür. |
-| `hev_web_search` | Web araması yap. Varsayılan sağlayıcı SearXNG'dir (Docker zorunlu değil). Gerekirse DuckDuckGo fallback kullanılabilir. |
+| `hev_web_search` | Web araması yap. Varsayılan sağlayıcı SearXNG'dir - Docker zorunlu değil. Gerekirse DuckDuckGo fallback kullanılabilir. |
 | `hev_web_search_and_fetch` | Web araması yap ve ilk N sonucun içeriğini otomatik çek. Arama + content fetch birleşik akışı. |
 
 ### Detailed Tools
@@ -1220,7 +1220,7 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 #### `hev_web_search`
 
-**Description:** Web araması yap. Varsayılan sağlayıcı SearXNG'dir (Docker zorunlu değil). Gerekirse DuckDuckGo fallback kullanılabilir.
+**Description:** Web araması yap. Varsayılan sağlayıcı SearXNG'dir - Docker zorunlu değil. Gerekirse DuckDuckGo fallback kullanılabilir.
 
 **Category:** Web
 
@@ -1242,11 +1242,11 @@ Bu akış UTF-8 validation, checksum ve rollback desteği sağlar.
 
 ### List all tools
 ```bash
-hev_list_tools()
+hev_list_tools
 ```
 
 ### Get tool schema
 ```bash
-mcp__app__get_tool_schema({ tool_name: "hev_dev_typescript_dashboard" })
+mcp__app__get_tool_schema{ tool_name: "hev_dev_typescript_dashboard" }
 ```
 

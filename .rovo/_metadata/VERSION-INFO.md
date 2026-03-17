@@ -9,7 +9,7 @@
 
 | Key | Value |
 |-----|-------|
-| **Name** | app (Ghost House) |
+| **Name** | app - Ghost House |
 | **Version** | 5.4.0 |
 | **Last Updated** | 2026-03-17 |
 | **Git Branch** | main |
@@ -34,15 +34,15 @@
 | Key | Value |
 |-----|-------|
 | **Electron** | 39+ |
-| **Node.js** | v22.22.1 (ESM) |
-| **TypeScript** | 5.x (strict) |
+| **Node.js** | v22.22.1 - ESM |
+| **TypeScript** | 5.x - strict |
 | **Vite** | 7.3 |
 
 ## Memory System
 
 | Key | Value |
 |-----|-------|
-| **Database** | SQLite (per-account) |
+| **Database** | SQLite - per-account |
 | **Status** | Production Ready ✅ |
 | **Format** | data/{email}_{provider}/archive.db |
 | **Features** | Full-text search, Transaction support, WAL mode |

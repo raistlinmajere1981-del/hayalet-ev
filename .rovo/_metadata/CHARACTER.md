@@ -44,7 +44,7 @@ Karakter profilin gÃ¼ncellendi. `.rovo/_metadata/CHARACTER.md` dosyasÄ±nÄ±
 
 ---
 
-## ðï¸ Ãzellik Havuzu (Referans)
+## ðï¸ Ãzellik Havuzu - Referans
 
 AÅaÄÄ±daki tÃ¼m Ã¶zellikler overlay'de kategorilere gÃ¶re listelenir.
 Aktif profile eklenenler yukarÄ±daki `Aktif Profil` bÃ¶lÃ¼mÃ¼ne yazÄ±lÄ±r.

@@ -4,9 +4,9 @@
 
 ---
 
-### Built-in Öncelik Kuralı (Primary → Fallback)
+### Built-in Öncelik Kuralı — Primary → Fallback
 
-| ✅ Built-in (ÖNCELİK)  | 🟡 Hayalet-ev MCP (YEDEK/FALLBACK)               |
+| ✅ Built-in — ÖNCELİK  | 🟡 Hayalet-ev MCP — YEDEK/FALLBACK               |
 | ---------------------- | ------------------------------------------------ |
 | `open_files`           | `hev_fs_read`                                    |
 | `create_file`          | `hev_fs_write`                                   |
@@ -15,41 +15,42 @@
 | `delete_file`          | `hev_fs_delete`                                  |
 | `move_file`            | `hev_fs_move`                                    |
 | `expand_folder`        | `hev_fs_list`                                    |
-| `grep`                 | `hev_dev_search_symbol` (TS/sembol odaklı arama) |
-| `bash`                 | `hev_fs_bash` (MCP context gerektiren durumlar)  |
+| `grep`                 | `hev_dev_search_symbol` — TS/sembol odaklı arama |
+| `bash`                 | `hev_fs_bash` — MCP context gerektiren durumlar  |
 
 > **Kural:** Aynı iş için built-in karşılık varsa **önce built-in** kullan.
 > **MCP Kullanımı:** Sadece built-in karşılık yoksa veya `hev_*` tool açıkça ek yetenek sağlıyorsa tercih et.
 
-### Dosya Düzenleme Akışı (3 Adım — ZORUNLU)
+### Dosya Düzenleme Akışı — 3 Adım, ZORUNLU
 
 ```
-1. hev_fs_read({ file_path })              → Oku, satır numaralarını öğren
-2. hev_fs_edit({ file_path, edits })       → Değişikliği yap
-   VEYA hev_dev_edit_lines({ ... })        → Satır bazlı düzenleme
-3. hev_dev_check_syntax({ file_path })     → Doğrula (ZORUNLU)
+1. hev_fs_read{ file_path }              → Oku, satır numaralarını öğren
+2. hev_fs_edit{ file_path, edits }       → Değişikliği yap
+   VEYA hev_dev_edit_lines{ ... }        → Satır bazlı düzenleme
+3. hev_dev_check_syntax{ file_path }     → Doğrula - ZORUNLU
 ```
 
-### Edit Tool Seçimi (Tier Sistemi)
+### Edit Tool Seçimi — Tier Sistemi
 
 | Tier | Tool                          | Ne Zaman?                                           |
 | ---- | ----------------------------- | --------------------------------------------------- |
 | 1    | `hev_fs_edit`                 | Pattern-based find/replace                          |
-| 2    | `hev_dev_edit_lines`          | Satır bazlı düzenleme (ÖNERİLEN)                    |
-| 3    | `hev_dev_smart_insert`        | Doğal dil ile pozisyon bulma (`"after function X"`) |
+| 2    | `hev_dev_edit_lines`          | Satır bazlı düzenleme — ÖNERİLEN                    |
+| 3    | `hev_dev_smart_insert`        | Doğal dil ile pozisyon bulma — `"after function X"` |
 | 4    | `hev_dev_safe_batch_refactor` | Toplu refactor — auto-rollback destekli             |
 
-### MCP Tool Ekleme (Otomatik Build + Restart)
+### MCP Tool Ekleme — Otomatik Build + Restart
 
 Yeni MCP tool eklerken `hev_dev_register_tool` için varsayılan akış:
 
-- `auto_build_restart: true` (varsayılan) → kayıt sonrası `npm run mcp:build` çalışır ve MCP restart tetiklenir.
-- `dry_run: true` ise sadece önizleme olur (build/restart çalışmaz).
-- MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir (OpenCode).
+- `auto_build_restart: true` — varsayılan → kayıt sonrası `npm run mcp:build` çalışır ve MCP restart tetiklenir.
+- `dry_run: true` ise sadece önizleme olur — build/restart çalışmaz.
+- MCP panel toggle otomasyonu için `hev_toggle_mcp_panel_servers` kullanılabilir — OpenCode.
+
 
 ---
 
-## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ (ZORUNLU)
+## 🚨 #2 KURAL: DEĞİŞİKLİK ONAY PROTOKOLÜ — ZORUNLU
 
 Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde açıkla.
 **Kod değişikliğine başlamadan önce** kullanıcıdan onay alınması zorunludur.
@@ -63,11 +64,11 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 ```
 [DEĞİŞİKLİK ONAYI]
 🖥️ Mod: <`npm run mode:status` sonucuna göre>
-         `app`          → "App (Aktif)"
-         `ghost-agent`  → "Ghost Agent (Aktif)"
-         `terminal`     → "Terminal (Standart)"
-         `transitioning`→ "Geçiş (Bekle)"
-         `conflict`     → "ÇAKIŞMA (Durdur)"
+         `app`          → "App - Aktif"
+         `ghost-agent`  → "Ghost Agent - Aktif"
+         `terminal`     → "Terminal - Standart"
+         `transitioning`→ "Geçiş - Bekle"
+         `conflict`     → "ÇAKIŞMA - Durdur"
 🤖 Muhatap: <mod `app` ise `whoareyou`, değilse varsayılan `Kullanıcı`>
          `kullanici`    → "Kullanıcı"
          `ai`           → "AI"
@@ -82,7 +83,7 @@ Plan aşamasında kullanıcıya kod gösterme, planı basit ve kısa biçimde a�
 Devam etmem için "evet" yaz.
 ```
 
-> **Kural:** "evet" (veya açık onay) gelmeden değişiklik uygulanmaz.
+> **Kural:** "evet" veya açık onay gelmeden değişiklik uygulanmaz.
 > **Kural:** Hiçbir plugin/skill bu onay adımını atlayamaz.
 > **Kural:** Onay sonrası süreç bitmeden kullanıcı tekrar bekletilmez — sonuç bildirimi ile çember kapanır.
 > **Kural:** Mod alanı her seferinde `npm run mode:status` çıktısına göre dinamik doldurulur; `npm run whereami` ile cross-check edilir — hardcode yazılmaz.
@@ -90,29 +91,31 @@ Devam etmem için "evet" yaz.
 > - Görev öncesi session içinde relay'in aktif olduğuna dair mesaj/işaret görüldüyse
 > - Karşı taraf mesajında kendini açıkça AI olarak tanıttıysa
 > **Kural:** Bu iki durumun dışındaki tüm senaryolarda varsayılan muhatap `Kullanıcı` seçilir.
-> **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir.
-> **Kural:** `++cmd:AsistanAISend()` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
+> **Kural:** Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir.
+> **Kural:** `++cmd:AsistanAISend` args vermeden çalışır; hedef, settings'teki son aktif relay AI kaydından çözülür.
 > **Kural:** Muhatap sınıflandırması ve AI'ye özel davranışlar için canonical akış: `workflow:ai-counterparty`.
 
 ---
 
-## 🔄 Session Bootstrap: Her Session'da Çalıştır
+## 🔄 Session Bootstrap: Adaptive — Varsayılan, Düşük Context
 
-```
-1. hev_mcp_health()                → MCP çalışıyor mu? Versiyon ve tool sayısı
-2. npm run mode:status             → Wrapper control-plane durumunu al (ZORUNLU)
-3. npm run whereami                → Mod + çakışma tespiti (fallback / cross-check)
-4. whoareyou kontrolü              → SADECE mod `app` ise muhatap sınıflandır (`kullanici` | `ai`)
-5. hev_list_tools()                → Kategorize edilmiş güncel tool listesi
-6. hev_suggest_tool(intent)        → Amaca göre tool önerisi (lazy discovery)
-7. hev_fs_read({ file_path: ".rovo/_metadata/CHARACTER.md" }) → Karakter profilini yükle, Aktif Profil bölümündeki özelliklere göre davran
-8. hev_fs_read({ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }) → Donanım, OS, runtime ve shell/terminal profilini yükle; timeout, concurrency, ağır görev ve yerel bağımlılık kararlarında gerektiğinde kullan
-9. hev_fs_read({ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }) → Statik DOM selector indeksini yükle; Electron/CDP işlemlerinde önce buradaki lookup'ı kullan
-```
+Base — her session, düşük maliyet:
+1. `hev_mcp_health` → MCP çalışıyor mu? Versiyon ve tool sayısı
+2. `hev_memory_bootstrap_policy{ namespace: "policy" }` → Sadece session başında 1 kez
+3. Gerektiğinde — `hev_list_tools` → MCP tool kullanacaksan
+4. Gerektiğinde — `hev_suggest_tool{ intent }` → Intent belirsizse
+
+Koşullu adımlar:
+1. Değişiklik veya mod kararı gerekiyorsa → `npm run mode:status`, `npm run whereami`
+2. Mod `app` ise ve muhatap sınıflandırması gerekiyorsa → whoareyou kontrolü
+3. Electron/CDP işi varsa → `hev_fs_read{ file_path: ".rovo/_metadata/DOM-MANIFEST.json" }`
+4. Performans/uzun job/yerel bağımlılık kararı varsa → `hev_fs_read{ file_path: ".rovo/_metadata/SYSTEM-INFO.md" }`
+5. Karakter profili gerekiyorsa → `hev_fs_read{ file_path: ".rovo/_metadata/CHARACTER.md" }`
+
 
 > **SYSTEM-INFO Kullanım Kuralı:** `.rovo/_metadata/SYSTEM-INFO.md` build sırasında otomatik üretilen bir ortam snapshot'ıdır. CPU/RAM/OS/runtime kapasitesi hakkında planlama, performans beklentisi ve yerel araç uyumluluğu kararlarında kullanılabilir; anlık `free RAM` gibi değerler runtime gerçeği değil, build-time referans kabul edilir.
 
-## 🧭 Hardcoded Workflow Senaryoları (Tek Kaynak: AGENTS.md)
+## 🧭 Hardcoded Workflow Senaryoları — Tek Kaynak: AGENTS.md
 
 MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosyadan takip edilir.
 
@@ -127,8 +130,8 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 
 - `typescript-fix-large`:
   1. `hev_dev_typescript_dashboard`
-  2. `hev_dev_safe_batch_refactor` (gerekirse)
-  3. `hev_dev_fix_typescript_batch` (TS2722/TS2532 için)
+  2. `hev_dev_safe_batch_refactor` — gerekirse
+  3. `hev_dev_fix_typescript_batch` — TS2722/TS2532 için
   4. `hev_dev_typescript_dashboard` ile ilerleme kontrolü
   5. `hev_dev_typescript_type_helper` ile kalan karmaşık tip hataları
 
@@ -150,27 +153,27 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   2. `hev_fs_bash` ile branch hazırlığı
   3. `hev_dev_safe_batch_refactor`
   4. `hev_dev_check_syntax`
-  5. `hev_dev_test_run` (test varsa)
+  5. `hev_dev_test_run` — test varsa
 
 - `debug-electron`:
   1. `hev_check_electron_connection`
   2. `hev_read_electron_logs`
-  3. `hev_get_error_hints` (hata mesajı varsa)
-  4. `hev_take_cdp_screenshot` (UI sorunu varsa)
+  3. `hev_get_error_hints` — hata mesajı varsa
+  4. `hev_take_cdp_screenshot` — UI sorunu varsa
   5. `hev_collect_error_context`
 
 - `create-pr`:
   1. `hev_dev_git_diff`
   2. `hev_dev_check_syntax`
-  3. `hev_git_check_guidelines` (varsa)
+  3. `hev_git_check_guidelines` — varsa
   4. `hev_git_create_pr`
 
 - `eslint-fix-large`:
   1. `hev_dev_eslint_dashboard`
-  2. Kademeli düzeltme (`hev_dev_lint_file` / proje lint)
+  2. Kademeli düzeltme — `hev_dev_lint_file` / proje lint
   3. `hev_dev_eslint_dashboard` ile tekrar kontrol
 
-### C. Operasyonel Kontrol Workflow'ları (Canonical)
+### C. Operasyonel Kontrol Workflow'ları — Canonical
 
 - `workflow:terminal-mode`:
   1. `npm run mode:status` sonucu `terminal` ise bu akış seçilir
@@ -179,7 +182,7 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
 
 - `workflow:app-mode`:
   1. `npm run mode:status` sonucu `app` ise değişiklik tipi değerlendirilir
-  2. CSS / AGENTS.md / ghost-agent / mcp-server değişikliklerinde app içinde standart süreç (plan,onay,işlem) uygulanır
+  2. CSS / AGENTS.md / ghost-agent / mcp-server değişikliklerinde app içinde standart süreç: plan,onay,işlem uygulanır
   3. Bu grupta agent geçiş tetiklemez; işlem app modunda tamamlanır
 
 - `workflow:ghost-agent-mode`:
@@ -198,9 +201,9 @@ MCP workflow tool sistemi kaldırılmıştır. Workflow kılavuzu sadece bu dosy
   2. Görev öncesi session'da relay aktif mesajı/sinyali varsa muhatap `AI` seçilir
   3. Relay sinyali yoksa ve karşı taraf kendini AI olarak tanıttıysa muhatap `AI` seçilir
   4. Bu iki koşul da yoksa varsayılan muhatap `Kullanıcı` seçilir
-  5. Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend()` eklenir
+  5. Muhatap `AI` ve mod `app` ise final raporun sonuna `++cmd:AsistanAISend` eklenir
 
-### 🌐 Çalışma Modu Tespiti (Her İşlem Öncesi ZORUNLU)
+### 🌐 Çalışma Modu Tespiti — Her İşlem Öncesi ZORUNLU
 
 Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:ghost-agent-mode` akışlarına göre verir:
 
@@ -219,49 +222,49 @@ Agent mod kararını `workflow:terminal-mode`, `workflow:app-mode` ve `workflow:
 **MCP çalışmazsa:** Mod tespiti için `npm run mode:status` + `npm run whereami` kullanılmaya devam edilir. Sadece MCP tool işlemlerinin riskini kullanıcıya bildir.
 
 > Tool sayısını, isimlerini veya parametrelerini ezberlemene gerek yok.
-> İhtiyacın olduğunda `hev_suggest_tool({ intent: "..." })` ile runtime'da keşfet.
+> İhtiyacın olduğunda `hev_suggest_tool{ intent: "..." }` ile runtime'da keşfet.
 
 ---
 
-## 🧠 MCP Shared Memory Protokolü (ZORUNLU)
+## 🧠 MCP Shared Memory Protokolü — ZORUNLU
 
 Bu projede aynı anda tek asistan aktif olabilir; ancak farklı provider'lar zaman içinde aynı hafızayı kullanır.
 Memory akışı tamamen MCP üzerinden yürür.
 
 ### Zorunlu Akış
 
-1. **Session başında policy bootstrap (1 kez)**
-   - `hev_memory_bootstrap_policy({ namespace: "policy" })`
-2. **Memory çekme (ihtiyaca göre)**
+1. **Session başında policy bootstrap — 1 kez**
+   - `hev_memory_bootstrap_policy{ namespace: "policy" }`
+2. **Memory çekme — ihtiyaca göre**
    - `policy` araması: session başında 1 kez veya policy değiştiğinde
    - `global` araması: sadece görev cross-session bağlam gerektiriyorsa
-   - Önerilen çağrı: `hev_memory_search({ namespace: "global", query: "<görev> <kullanıcı isteği>", response_format: "prompt_compact", budget_chars: 1000-1600 })`
-3. **Memory yazma (eşik bazlı + zorunlu tetikler)**
+   - Önerilen çağrı: `hev_memory_search{ namespace: "global", query: "<görev> <kullanıcı isteği>", response_format: "prompt_compact", budget_chars: 1000-1600 }`
+3. **Memory yazma — eşik bazlı + zorunlu tetikler**
    - Sadece şu durumlarda `hev_memory_write`: kalıcı karar, kullanıcı tercihi, tekrar kullanılacak teknik bulgu
    - Aşağıdaki durumlarda memory yazma zorunludur:
      - Hayalet-ev MCP tool kaynaklı hata görüldüğünde
      - Hayalet-ev MCP için geliştirme ihtiyacı/iyileştirme gereksinimi tespit edildiğinde
-     - Çalıştırılmak istenen kütüphane/uygulama sistemde bulunmadığında (missing dependency/tool)
-   - Trivial/tek seferlik görevlerde (zorunlu tetikler yoksa) memory yazma zorunlu değildir
+     - Çalıştırılmak istenen kütüphane/uygulama sistemde bulunmadığında — missing dependency/tool
+   - Trivial/tek seferlik görevlerde, zorunlu tetikler yoksa, memory yazma zorunlu değildir
 4. **Düzeltme varsa kaydı güncelle**
-   - `hev_memory_update({ id, ... })`
-5. **Periyodik bakım (görev-sonu değil)**
-   - `hev_memory_stats({ namespace: "global" })`
-   - `hev_memory_prune({ namespace: "global", max_items: 500, older_than_days: 30 })`
+   - `hev_memory_update{ id, ... }`
+5. **Periyodik bakım — görev-sonu değil**
+   - `hev_memory_stats{ namespace: "global" }`
+   - `hev_memory_prune{ namespace: "global", max_items: 500, older_than_days: 30 }`
    - Sıklık: günlük/haftalık bakım rutini; her görev sonunda çalıştırma
 
 ### Format ve Namespace Standartları
 
 - Prompt'a enjekte edilecek çıktı için varsayılan format: `response_format: "prompt_compact"`
 - `response_format: "json"` sadece debug/inceleme için kullanılır
-- `policy` namespace: AGENTS.md ve .rovo kuralları (pinned)
+- `policy` namespace: AGENTS.md ve .rovo kuralları — pinned
 - `global` namespace: provider bağımsız kalıcı gerçekler/tercihler/kararlar
 - Gerekirse geçici alanlar için `session-<id>` namespace kullanılabilir
 
-### Yazım Kuralları (Verimlilik)
+### Yazım Kuralları — Verimlilik
 
-- Her memory kaydı tek bir atomik bilgi taşımalı (1-2 cümle)
-- En az 2 tag kullanılmalı (`domain`, `intent` gibi)
+- Her memory kaydı tek bir atomik bilgi taşımalı — 1-2 cümle
+- En az 2 tag kullanılmalı — `domain`, `intent` gibi
 - `importance`: 1-5 arasında, gerçekten kritik değilse 5 verme
 - Gizli bilgi yazma: API key, token, credential, kişisel sırlar
 - Transkript dump etme; sadece karar, tercih, kalıcı gerçek ve policy yaz
@@ -272,10 +275,10 @@ Memory akışı tamamen MCP üzerinden yürür.
 
 | Anahtar        | Değer                                            |
 | -------------- | ------------------------------------------------ |
-| **Proje**      | Hayalet-ev (Ghost House)                         |
-| **Stack**      | Electron + TypeScript (strict) + Vite            |
-| **Database**   | SQLite (per-account, `better-sqlite3`, WAL mode) |
-| **MCP Server** | app MCP (`hev_*` prefix)                         |
+| **Proje**      | Hayalet-ev — Ghost House                         |
+| **Stack**      | Electron + TypeScript — strict + Vite            |
+| **Database**   | SQLite — per-account, `better-sqlite3`, WAL mode |
+| **MCP Server** | app MCP — `hev_*` prefix                         |
 | **Validation** | 3-Layer: Prettier → jscodeshift → Babel AST      |
 
 > Detaylı mimari bilgi: `.rovo/03-ARCHITECTURE.md`
@@ -291,20 +294,20 @@ Memory akışı tamamen MCP üzerinden yürür.
 | `.rovo/02-MCP-ESSENTIALS.md` | Temel tool kullanım rehberi |
 | `.rovo/03-ARCHITECTURE.md`   | Proje mimarisi              |
 
-### Metadata (Otomatik Güncellenen)
+### Metadata — Otomatik Güncellenen
 
 | Dosya                             | İçerik                         |
 | --------------------------------- | ------------------------------ |
 | `.rovo/_metadata/VERSION-INFO.md` | Versiyon, dependency'ler       |
-| `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi (referans) |
+| `.rovo/_metadata/TOOL-LIST.md`    | Güncel tool listesi — referans |
 | `.rovo/_metadata/SYSTEM-INFO.md`  | Donanım, OS, runtime ve ortam profili |
 | `.rovo/_metadata/DOM-MANIFEST.json` | Statik DOM selector lookup indeksi |
 | `.rovo/_metadata/COMMENT-INDEX.md` | Yüksek sinyalli comment özeti ve hızlı gezinme |
 | `.rovo/_metadata/COMMENT-INDEX.json` | Comment index'in makine tüketimine uygun sürümü |
 
-> **Not:** Birincil keşif yöntemi runtime discovery'dir (`hev_list_tools`, `hev_suggest_tool`). `SYSTEM-INFO.md`, `DOM-MANIFEST.json` ve `COMMENT-INDEX` çıktıları build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
+> **Not:** Birincil keşif yöntemi runtime discovery'dir — `hev_list_tools`, `hev_suggest_tool`. `SYSTEM-INFO.md`, `DOM-MANIFEST.json` ve `COMMENT-INDEX` çıktıları build sırasında otomatik güncellenir; `SYSTEM-INFO.md` planlama için referans snapshot sağlar, runtime telemetry yerine geçmez.
 
-### Comment Convention (Kısa)
+### Comment Convention — Kısa
 
 - Tüm yeni comment'ler English-only yazılır.
 - Comment, kodun ne yaptığını değil neden bu şekilde kaldığını anlatır.
@@ -322,7 +325,7 @@ Memory akışı tamamen MCP üzerinden yürür.
 
 ---
 
-## 👻 Çalışma Modları ve Ghost Workflow (Canonical)
+## 👻 Çalışma Modları ve Ghost Workflow — Canonical
 
 Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent geçişleri bu kurallara göre yönetilir.
 
@@ -331,7 +334,7 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 - `terminal`: App **kapalı** — wrapper/app süreçleri yok veya durdurulmuş
 - `app`: Ana uygulama **aktif** — normal çalışma ve restart gerektirmeyen düzenlemeler
 - `ghost-agent`: Ghost Agent **aktif** — uygulama mantığı / kaynak kodu odaklı çalışma
-- `soft`: Runtime control içinde kullanılan hedef durum (`desiredMode=soft`), çalışma modu çıktısı değildir
+- `soft`: Runtime control içinde kullanılan hedef durum — `desiredMode=soft` — çalışma modu çıktısı değildir
 
 ### Runtime Control Dosyası
 
@@ -350,7 +353,7 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 - `npm run mode:wait -- <terminal|app|ghost-agent>` → geçiş tamamlanana kadar bekler
 - `npm run whereami` → cross-check/fallback durum doğrulaması
 
-### Action Semantiği (Buton Eşlemesi)
+### Action Semantiği — Buton Eşlemesi
 
 - `main-close` → Hayalet-ev kapat butonu: runtime `terminal/idle`, ana app kapanır, wrapper sonlanır
 - `main-to-ghost` → Asistan Ghost Agent butonu: runtime `ghost-agent/preparing-handoff`, ana app kapanır, wrapper ghost başlatır
@@ -367,32 +370,32 @@ Bu bölüm, wrapper control-plane davranışının teknik kaynağıdır. Agent g
 
 ---
 
-## MCP Panel Otomasyonu (OpenCode)
+## MCP Panel Otomasyonu — OpenCode
 
 AI0 Asistan webview içinde OpenCode MCP panel toggle testleri için:
 
 - Ön kontrol: `hev_check_electron_connection`
 - Otomatik toggle cycle: `hev_toggle_mcp_panel_servers`
-  - `provider`: `auto` (önerilen), `opencode`
+  - `provider`: `auto` — önerilen, `opencode`
   - `servers`: örn. `['context7','websearch','app']`
-  - `settleMs`: toggle sonrası bekleme (ms)
+  - `settleMs`: toggle sonrası bekleme — ms
   - `cycles`: OFF→ON tekrar sayısı
 
 Bu tool, AI0 webview'de ilgili MCP panelini açıp switch'leri OFF→ON yapar ve final state'i döndürür. Yeni session'larda manuel DOM keşfi yerine önce bu tool kullanılmalıdır.
 
 ---
 
-## DOM Manifest (Statik)
+## DOM Manifest — Statik
 
 - Çıktı dosyası: `.rovo/_metadata/DOM-MANIFEST.json`
 - Üretici script: `scripts/generate-dom-manifest.js`
 - Build entegrasyonu: `npm run mcp:build` ve `npm run generate:docs` içinde otomatik çalışır
-- Kapsam: yalnızca statik tarama (`src`, `electron`, `ghost-agent`), Electron runtime testi/crawl yok
+- Kapsam: yalnızca statik tarama — `src`, `electron`, `ghost-agent` — Electron runtime testi/crawl yok
 - Kullanım kuralı: Electron/CDP adımlarında selector çözümleme için önce `lookup.id` ve `lookup.testid`, sonra gerekirse `lookup.query` kullanılır
 
 ---
 
-## 🪵 Log Sistemi (App-Scoped, Session Bazlı)
+## 🪵 Log Sistemi — App-Scoped, Session Bazlı
 
 Yeni standart klasör yapısı:
 
@@ -402,7 +405,7 @@ Yeni standart klasör yapısı:
 
 ### Temel Kurallar
 
-- Session'lar uygulama bazında bağımsızdır (cross-app ortak session zorunlu değildir).
+- Session'lar uygulama bazında bağımsızdır — cross-app ortak session zorunlu değildir.
 - `latest session` hesabı her zaman ilgili uygulamanın kendi klasöründe yapılır.
 - Cross-app karşılaştırma best-effort'tur; `updatedAt` + log timestamp yakınlığına göre yorumlanır.
 
@@ -415,32 +418,32 @@ Yeni standart klasör yapısı:
   - Log View: `L1-L2`
   - Canlı Log: `L1-L2-L3`
 
-### MCP Log Tool Kullanımı (app parametresi)
+### MCP Log Tool Kullanımı — app parametresi
 
 App bazlı log okuma/listeme/özet için aşağıdaki tool'larda `app` parametresi kullanılabilir:
 
-- `hev_read_electron_logs({ app: "app"|"mcp-server"|"ghost-agent", ... })`
-- `hev_list_log_sessions({ app: "app"|"mcp-server"|"ghost-agent", ... })`
-- `hev_get_session_summary({ app: "app"|"mcp-server"|"ghost-agent", ... })`
+- `hev_read_electron_logs{ app: "app"|"mcp-server"|"ghost-agent", ... }`
+- `hev_list_log_sessions{ app: "app"|"mcp-server"|"ghost-agent", ... }`
+- `hev_get_session_summary{ app: "app"|"mcp-server"|"ghost-agent", ... }`
 
 `app` verilmezse varsayılan `app` kabul edilir.
 
 ### Ghost-Agent Renderer Log Akışı
 
 - Renderer tarafı doğrudan `console` yerine IPC köprüsü ile main process logger'a yazar.
-- Köprü çağrısı: `window.electronAPI.ghostLog({ level, message, context })`
+- Köprü çağrısı: `window.electronAPI.ghostLog{ level, message, context }`
 - Main process bunu ghost logger'a aktarır ve `logs/ghost-agent/<sessionId>/` altında saklar.
 
 ---
 
 ## 🤖 AI Development Ortamı — TypeScript Language Service
 
-Projede **TypeScript Language Service** doğrudan entegre edilmiştir (`ts.createLanguageService`). Bu sayede `tsc` subprocess'e gerek kalmadan anlık tip analizi, cross-file referans bulma ve güvenli refactoring yapılabilir.
+Projede **TypeScript Language Service** doğrudan entegre edilmiştir — `ts.createLanguageService`. Bu sayede `tsc` subprocess'e gerek kalmadan anlık tip analizi, cross-file referans bulma ve güvenli refactoring yapılabilir.
 
 ### Mimari
 
 - **Lazy init** — ilk kullanımda ~6s, sonraki çağrılar ms seviyesinde
-- **LRU eviction** — bellekte max 1 proje (OOM koruması)
+- **LRU eviction** — bellekte max 1 proje — OOM koruması
 - **Auto-dispose** — 90s inaktivitede bellekten atılır
 - **Multi-tsconfig** — dosya yoluna göre otomatik tsconfig algılama:
   - `tsconfig.json` → `src/js/`, `src/types/`
@@ -451,11 +454,11 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir (`ts.creat
 
 | Tool                       | Açıklama                              | Warm Perf |
 | -------------------------- | ------------------------------------- | --------- |
-| `hev_dev_type_info`        | Sembolün tam tip bilgisi (hover)      | ~3ms      |
+| `hev_dev_type_info`        | Sembolün tam tip bilgisi - hover      | ~3ms      |
 | `hev_dev_go_to_definition` | Tanım yerine git                      | ~1ms      |
 | `hev_dev_find_references`  | Cross-file tüm kullanım yerleri       | ~20ms     |
-| `hev_dev_safe_rename`      | Cross-file rename preview (uygulamaz) | ~55ms     |
-| `hev_dev_document_symbols` | Dosya sembol ağacı (outline)          | ~1.4ms    |
+| `hev_dev_safe_rename`      | Cross-file rename preview — uygulamaz | ~55ms     |
+| `hev_dev_document_symbols` | Dosya sembol ağacı - outline          | ~1.4ms    |
 | `hev_dev_completions`      | Kod tamamlama önerileri               | ~1.8s     |
 | `hev_dev_signature_help`   | Fonksiyon parametre bilgisi           | ~5ms      |
 | `hev_dev_ts_service_stats` | Service durum bilgisi                 | anlık     |
@@ -464,12 +467,12 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir (`ts.creat
 
 | Tool                             | İyileştirme                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
-| `hev_dev_typescript_type_helper` | `tsc --noEmit` subprocess → TS API `getDiagnostics` (anında) |
+| `hev_dev_typescript_type_helper` | `tsc --noEmit` subprocess → TS API `getDiagnostics` — anında |
 | `hev_dev_search_symbol`          | Salt regex → Hybrid: regex + TS API tip zenginleştirme       |
 
 ### Kullanım İpuçları
 
-- **Tip bilgisi almak için**: `hev_dev_type_info` (1-indexed satır/sütun)
+- **Tip bilgisi almak için**: `hev_dev_type_info` — 1-indexed satır/sütun
 - **"Bu fonksiyon nerede tanımlı?"**: `hev_dev_go_to_definition`
 - **"Bu sembol nerede kullanılıyor?"**: `hev_dev_find_references`
 - **Güvenli rename**: `hev_dev_safe_rename` — önce preview, sonra `hev_fs_edit` ile uygula
@@ -477,5 +480,5 @@ Projede **TypeScript Language Service** doğrudan entegre edilmiştir (`ts.creat
 
 ---
 
-**Versiyon:** Runtime'da `hev_mcp_health()` ile kontrol et
+**Versiyon:** Runtime'da `hev_mcp_health` ile kontrol et
 **Son Güncelleme:** 2026-03-04

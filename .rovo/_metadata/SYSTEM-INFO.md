@@ -24,17 +24,17 @@
 
 | Key | Value |
 |-----|-------|
-| **Model** | Intel(R) Core(TM) i3-3217U CPU @ 1.80GHz |
+| **Model** | Intel R Core TM i3-3217U CPU @ 1.80GHz |
 | **Physical Cores** | 2 |
-| **Threads (Logical)** | 4 |
+| **Threads - Logical** | 4 |
 | **Base Speed** | 1795 MHz |
 
-## Memory (RAM)
+## Memory - RAM
 
 | Key | Value |
 |-----|-------|
 | **Total** | 11.6 GB |
-| **Free (at build time)** | 9.4 GB |
+| **Free - at build time** | 9.4 GB |
 
 ## Runtime
 

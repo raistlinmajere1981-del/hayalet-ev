@@ -69,14 +69,14 @@
 - Comments: 1
 - Prefixes: NOTE:1
 
-- L1 [note] [file] [NOTE]: NOTE: Parses .rovo/_metadata/TOOL-LIST.md (auto-generated per MCP build) for OpenCode UI.
+- L1 [note] [file] [NOTE]: NOTE: Parses .rovo/_metadata/TOOL-LIST.md - auto-generated per MCP build for OpenCode UI.
 
 ### `electron/logger/core/LoggerCore.ts`
 
 - Comments: 3
 - Prefixes: NOTE:3
 
-- L194 [note] [file] [NOTE]: NOTE: Queue log broadcasts to UI (renderer process).
+- L194 [note] [file] [NOTE]: NOTE: Queue log broadcasts to UI - renderer process.
 - L195 [note] [file] [NOTE]: NOTE: Uses short interval batching to avoid UI spam without dropping events.
 - L261 [note] [file] [NOTE]: NOTE: Alias for backward compat.
 
@@ -119,9 +119,9 @@
 - L196 [jsdoc] [function `rebuildBetterSqlite3Runtime`]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo}
 - L215 [jsdoc] [function `activateBetterSqlite3Runtime`]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
 - L246 [jsdoc] [function `prepareBetterSqlite3Runtime`]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
-- L259 [jsdoc] [function `ensureBetterSqlite3Runtime`]: @param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget()] @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
-- L267 [jsdoc] [function `getBetterSqlite3RuntimeStatus`]: @returns {{   projectRoot: string   activeBinaryPath: string   activeHash: string | null   detectedTarget: BetterSqlite3RuntimeTarget   runtimes: Array<BetterSqlite3RuntimeInfo & {     cacheExists: boolean     cacheHash:
-- L303 [jsdoc] [function `runBetterSqlite3RuntimeCli`]: @param {string[]} [argv=process.argv.slice(2)] @returns {void}
+- L259 [jsdoc] [function `ensureBetterSqlite3Runtime`]: @param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget] @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
+- L267 [jsdoc] [function `getBetterSqlite3RuntimeStatus`]: @returns {{   projectRoot: string   activeBinaryPath: string   activeHash: string | null   detectedTarget: BetterSqlite3RuntimeTarget   runtimes: Array<BetterSqlite3RuntimeInfo & {     cacheExists: boolean     cacheHash: string }> }}
+- L303 [jsdoc] [function `runBetterSqlite3RuntimeCli`]: @param {string[]} [argv=process.argv.slice2] @returns {void}
 
 ### `electron/opencode-server-manager.ts`
 
@@ -133,7 +133,7 @@
 - L228 [note] [file] [NOTE]: NOTE: Fail when a process started by this manager is already running.
 - L235 [note] [file] [NOTE]: NOTE: First, look for a running server in the port range.
 - L385 [note] [file] [NOTE]: NOTE: If the process was started by this manager, stop it directly.
-- L474 [note] [file] [NOTE]: NOTE: Server health check (HTTP request via Node.js - CSP bypass).
+- L474 [note] [file] [NOTE]: NOTE: Server health check - HTTP request via Node.js - CSP bypass.
 
 ### `electron/opencode-ui-session-watcher.ts`
 
@@ -152,9 +152,9 @@
 - Prefixes: NOTE:3
 - Symbols: `initPaths`
 
-- L1 [note] [file] [NOTE]: NOTE: All path construction must go through this module; avoid process.cwd() or ../ paths elsewhere.
+- L1 [note] [file] [NOTE]: NOTE: All path construction must go through this module; avoid process.cwd or ../ paths elsewhere.
 - L2 [note] [file] [NOTE]: NOTE: Dev/prod detection should only happen here.
-- L43 [note] [function `initPaths`] [NOTE]: NOTE: Call after app.whenReady() in main.ts.
+- L43 [note] [function `initPaths`] [NOTE]: NOTE: Call after app.whenReady in main.ts.
 
 ### `electron/preload.cjs`
 
@@ -176,7 +176,7 @@
 - Comments: 1
 - Prefixes: NOTE:1
 
-- L1 [note] [file] [NOTE]: NOTE: Clears cache on startup while preserving login data (cookies, localStorage).
+- L1 [note] [file] [NOTE]: NOTE: Clears cache on startup while preserving login data - cookies, localStorage.
 
 ### `electron/types/index.ts`
 
@@ -196,7 +196,7 @@
 - L324 [note] [file] [NOTE]: NOTE: Mirror the local-service CORS override for the assistant partition.
 - L343 [warning] [file] [WARNING]: WARNING: Install the webview navigation guard before any provider content starts navigating.
 - L500 [note] [file] [NOTE]: NOTE: Ignore malformed targets instead of blocking navigation entirely.
-- L504 [note] [file] [NOTE]: NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.
+- L504 [note] [file] [NOTE]: NOTE: Non-https schemes stay allowed so built-in Electron pages are not blocked.
 - L513 [note] [file] [NOTE]: NOTE: Skip enforcement when the current provider URL is unavailable.
 - L519 [note] [file] [NOTE]: NOTE: Unknown providers fall back to permissive navigation.
 
@@ -245,7 +245,7 @@
 - Prefixes: NOTE:1
 - Symbols: `Window`
 
-- L160 [note] [interface `Window`] [NOTE]: NOTE: API exposed by the Electron preload layer (electron/preload.cjs).
+- L160 [note] [interface `Window`] [NOTE]: NOTE: API exposed by the Electron preload layer - electron/preload.cjs.
 
 ### `src/js/modules/commands/ai-chat-commands.ts`
 
@@ -254,7 +254,7 @@
 
 - L361 [note] [file] [NOTE]: NOTE: The hev-sender tag preserves the originating AI nickname so ai0 sync can restore the author.
 - L362 [note] [file] [NOTE]: NOTE: Keep the tag for future ai0 DB support even though the sync path does not consume it today.
-- L469 [note] [file] [NOTE]: NOTE: The hev-sender tag marks Assistant (ai0) as the sender so sync can restore the author.
+- L469 [note] [file] [NOTE]: NOTE: The hev-sender tag marks Assistant - ai0 as the sender so sync can restore the author.
 
 ### `src/js/modules/commands/command-descriptions.ts`
 
@@ -335,7 +335,7 @@
 - Prefixes: NOTE:2
 
 - L269 [note] [file] [NOTE]: NOTE: In relay mode the user-side author actually comes from the peer AI.
-- L284 [note] [file] [NOTE]: NOTE: If the message contains a hev-sender tag (++cmd delivery), override the author.
+- L284 [note] [file] [NOTE]: NOTE: If the message contains a hev-sender tag - ++cmd delivery, override the author.
 
 ### `src/js/modules/webview/message-sender.ts`
 
@@ -407,7 +407,7 @@
 - Prefixes: NOTE:4
 
 - L1 [note] [file] [NOTE]: NOTE: Opened from the assistant page; writes selected features to .rovo/_metadata/CHARACTER.md.
-- L252 [note] [file] [NOTE]: NOTE: Snapshot the persisted selection so close() can discard local edits.
+- L252 [note] [file] [NOTE]: NOTE: Snapshot the persisted selection so close can discard local edits.
 - L351 [note] [file] [NOTE]: NOTE: Each line uses the "- Label" format.
 - L511 [note] [file] [NOTE]: NOTE: Clear only the groups first to preserve the empty state.
 
@@ -519,7 +519,7 @@
 - L8 [note] [interface `ModalButton`] [NOTE]: NOTE: New API preferred; keep for backward compatibility with legacy text.
 - L9 [note] [interface `ModalButton`] [NOTE]: NOTE: Legacy API; keep for backward compatibility.
 - L10 [note] [interface `ModalButton`] [NOTE]: NOTE: New API preferred; keep for backward compatibility with class.
-- L11 [note] [interface `ModalOptions`] [NOTE]: NOTE: Legacy API; kept for backward compatibility (e.g., 'btn-primary').
+- L11 [note] [interface `ModalOptions`] [NOTE]: NOTE: Legacy API; kept for backward compatibility - e.g., 'btn-primary'.
 
 ### `src/js/ui/splash-screen.ts`
 
@@ -534,7 +534,7 @@
 - Comments: 2
 - Prefixes: NOTE:2
 
-- L296 [note] [file] [NOTE]: NOTE: Avoid Logger.debug() here to prevent init issues during startup.
+- L296 [note] [file] [NOTE]: NOTE: Avoid Logger.debug here to prevent init issues during startup.
 - L354 [note] [file] [NOTE]: NOTE: Expose to window for consistent access across Vite HMR reloads.
 
 ### `src/js/ui/toast-manager.ts`
@@ -579,7 +579,7 @@
 - Comments: 1
 - Prefixes: NOTE:1
 
-- L7 [note] [file] [NOTE]: NOTE: Load .env from project root (silent to avoid JSONRPC pollution).
+- L7 [note] [file] [NOTE]: NOTE: Load .env from project root - silent to avoid JSONRPC pollution.
 
 ### `src/mcp-server/tools/cdp-tools.ts`
 
@@ -627,7 +627,7 @@
 
 - L36 [note] [interface `EslintMessage`] [NOTE]: NOTE: Severity levels: 1=warning, 2=error.
 - L131 [note] [file] [NOTE]: NOTE: --cache disabled to always show fresh results.
-- L386 [note] [file] [NOTE]: NOTE: Always show stats when provided (use !== undefined to allow 0 values).
+- L386 [note] [file] [NOTE]: NOTE: Always show stats when provided - use !== undefined to allow 0 values.
 
 ### `src/mcp-server/tools/dev/line-editor.ts`
 
@@ -662,7 +662,7 @@
 - Symbols: `TraverseModule`
 
 - L64 [note] [interface `TraverseModule`] [NOTE]: NOTE: Support both CommonJS and ESM Babel traverse exports.
-- L609 [note] [file] [NOTE]: NOTE: Use prevTokenEnd (whitespace-skipped) instead of checkPos (backslash-skipped).
+- L609 [note] [file] [NOTE]: NOTE: Use prevTokenEnd - whitespace-skipped instead of checkPos - backslash-skipped.
 
 ### `src/mcp-server/tools/dev/symbol-searcher.ts`
 
@@ -730,7 +730,7 @@
 - L343 [note] [file] [NOTE]: NOTE: Continue scanning optional template locations.
 - L364 [note] [file] [NOTE]: NOTE: Continue scanning optional files for DCO references.
 - L396 [note] [file] [NOTE]: NOTE: Makefile support is optional.
-- L580 [note] [file] [NOTE]: NOTE: Auto-generated metadata for listTools().
+- L580 [note] [file] [NOTE]: NOTE: Auto-generated metadata for listTools.
 
 ### `src/mcp-server/tools/log/enhanced-tools.ts`
 
@@ -777,7 +777,7 @@
 - L76 [note] [function `startChunkedSession`] [NOTE]: NOTE: Call order: start session -> write chunks -> finalize.
 - L363 [note] [file] [NOTE]: NOTE: Ignore temp cleanup failures after the final file is already durable.
 - L496 [note] [file] [NOTE]: NOTE: Ignore missing temp files during best-effort cleanup.
-- L689 [note] [file] [NOTE]: NOTE: Auto-generated metadata for listTools().
+- L689 [note] [file] [NOTE]: NOTE: Auto-generated metadata for listTools.
 
 ### `src/mcp-server/tools/ui-tools.ts`
 
@@ -840,9 +840,9 @@
 - Comments: 4
 - Prefixes: NOTE:4
 
-- L1 [note] [file] [NOTE]: NOTE: Maximum file size for collapsed view (bytes).
+- L1 [note] [file] [NOTE]: NOTE: Maximum file size for collapsed view - bytes.
 - L4 [note] [file] [NOTE]: NOTE: Supported code file extensions.
-- L29 [note] [file] [NOTE]: NOTE: Binary file extensions (skipped).
+- L29 [note] [file] [NOTE]: NOTE: Binary file extensions - skipped.
 - L65 [note] [file] [NOTE]: NOTE: Directories to ignore.
 
 ### `src/mcp-server/utils/file-utils/grep.ts`
@@ -963,7 +963,7 @@
 
 ## Symbol Map
 
-### `ModalButton` (interface)
+### `ModalButton` - interface
 
 - File: `src/js/ui/modal-manager.ts`
 - Comment count: 3
@@ -972,7 +972,7 @@
 - L9 [note]: NOTE: Legacy API; keep for backward compatibility.
 - L10 [note]: NOTE: New API preferred; keep for backward compatibility with class.
 
-### `AssistantProviderAdapter` (interface)
+### `AssistantProviderAdapter` - interface
 
 - File: `src/types/assistant.ts`
 - Comment count: 2
@@ -980,378 +980,378 @@
 - L57 [note]: NOTE: To add a provider, create an adapter under src/js/pages/assistant,
 - L58 [note]: NOTE: implement AssistantProviderAdapter, and register it in provider-registry.ts.
 
-### `commandInit` (function)
+### `commandInit` - function
 
 - File: `electron/command-manager.ts`
 - Comment count: 1
 
 - L37 [note]: NOTE: Queue management lives in src/js/modules/command-manager.js; this module is file I/O only.
 
-### `getConsoleLogPath` (function)
+### `getConsoleLogPath` - function
 
 - File: `electron/logger/log-writer.ts`
 - Comment count: 1
 
 - L173 [note]: NOTE: Write failure is silently ignored to prevent recursive logging.
 
-### `writeErrorLog` (function)
+### `writeErrorLog` - function
 
 - File: `electron/logger/log-writer.ts`
 - Comment count: 1
 
 - L99 [note]: NOTE: Write failure is silently ignored to prevent recursive logging.
 
-### `writeStateSnapshot` (function)
+### `writeStateSnapshot` - function
 
 - File: `electron/logger/log-writer.ts`
 - Comment count: 1
 
 - L154 [note]: NOTE: Write failure is silently ignored to prevent recursive logging.
 
-### `writeStructuredLog` (function)
+### `writeStructuredLog` - function
 
 - File: `electron/logger/log-writer.ts`
 - Comment count: 1
 
 - L118 [note]: NOTE: Write failure is silently ignored to prevent recursive logging.
 
-### `activateBetterSqlite3Runtime` (function)
+### `activateBetterSqlite3Runtime` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L215 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
 
-### `captureRuntimeBinary` (function)
+### `captureRuntimeBinary` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L175 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo}
 
-### `ensureBetterSqlite3Runtime` (function)
+### `ensureBetterSqlite3Runtime` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
-- L259 [jsdoc]: @param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget()] @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
+- L259 [jsdoc]: @param {BetterSqlite3RuntimeTarget} [target=detectBetterSqlite3RuntimeTarget] @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
 
-### `getBetterSqlite3RuntimeStatus` (function)
+### `getBetterSqlite3RuntimeStatus` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
-- L267 [jsdoc]: @returns {{   projectRoot: string   activeBinaryPath: string   activeHash: string | null   detectedTarget: BetterSqlite3RuntimeTarget   runtimes: Array<BetterSqlite3RuntimeInfo & {     cacheExists: boolean     cacheHash:
+- L267 [jsdoc]: @returns {{   projectRoot: string   activeBinaryPath: string   activeHash: string | null   detectedTarget: BetterSqlite3RuntimeTarget   runtimes: Array<BetterSqlite3RuntimeInfo & {     cacheExists: boolean     cacheHash: string }> }}
 
-### `getRuntimeInfo` (function)
+### `getRuntimeInfo` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L74 [jsdoc]: @param {unknown} target @returns {BetterSqlite3RuntimeInfo}
 
-### `hashFile` (function)
+### `hashFile` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L93 [jsdoc]: @param {string} filePath @returns {string | null}
 
-### `normalizeTarget` (function)
+### `normalizeTarget` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L33 [jsdoc]: @param {unknown} target @returns {BetterSqlite3RuntimeTarget}
 
-### `prepareBetterSqlite3Runtime` (function)
+### `prepareBetterSqlite3Runtime` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L246 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo & { activeHash: string | null, cacheHash: string }}
 
-### `rebuildBetterSqlite3Runtime` (function)
+### `rebuildBetterSqlite3Runtime` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L196 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {BetterSqlite3RuntimeInfo}
 
-### `resolveElectronVersion` (function)
+### `resolveElectronVersion` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L45 [jsdoc]: @returns {string}
 
-### `resolveTargetAbi` (function)
+### `resolveTargetAbi` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L64 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {string}
 
-### `resolveTargetVersion` (function)
+### `resolveTargetVersion` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L56 [jsdoc]: @param {BetterSqlite3RuntimeTarget} target @returns {string}
 
-### `runBetterSqlite3RuntimeCli` (function)
+### `runBetterSqlite3RuntimeCli` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
-- L303 [jsdoc]: @param {string[]} [argv=process.argv.slice(2)] @returns {void}
+- L303 [jsdoc]: @param {string[]} [argv=process.argv.slice2] @returns {void}
 
-### `runLocalNodeCommand` (function)
+### `runLocalNodeCommand` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L125 [jsdoc]: @param {string[]} args @param {string} label @returns {void}
 
-### `runLocalNpmCommand` (function)
+### `runLocalNpmCommand` - function
 
 - File: `electron/native/better-sqlite3-runtime.js`
 - Comment count: 1
 
 - L147 [jsdoc]: @param {string[]} args @param {string} label @returns {void}
 
-### `OpencodeUiSessionWatcherRegistry` (class)
+### `OpencodeUiSessionWatcherRegistry` - class
 
 - File: `electron/opencode-ui-session-watcher.ts`
 - Comment count: 1
 
 - L57 [note]: NOTE: SQLite WAL mode updates can hit -wal/-shm more often than the main db.
 
-### `initPaths` (function)
+### `initPaths` - function
 
 - File: `electron/paths.ts`
 - Comment count: 1
 
-- L43 [note]: NOTE: Call after app.whenReady() in main.ts.
+- L43 [note]: NOTE: Call after app.whenReady in main.ts.
 
-### `updateIndicatorAvatars` (function)
+### `updateIndicatorAvatars` - function
 
 - File: `src/js/app/indicators.ts`
 - Comment count: 1
 
 - L13 [note]: NOTE: AI0 uses the provider logo only while connected.
 
-### `setupReportPanel` (function)
+### `setupReportPanel` - function
 
 - File: `src/js/app/navigation.ts`
 - Comment count: 1
 
 - L226 [note]: NOTE: Kept for backward compatibility.
 
-### `Window` (interface)
+### `Window` - interface
 
 - File: `src/js/global.d.ts`
 - Comment count: 1
 
-- L160 [note]: NOTE: API exposed by the Electron preload layer (electron/preload.cjs).
+- L160 [note]: NOTE: API exposed by the Electron preload layer - electron/preload.cjs.
 
-### `CommandDescriptionInfo` (interface)
+### `CommandDescriptionInfo` - interface
 
 - File: `src/js/modules/commands/command-descriptions.ts`
 - Comment count: 1
 
 - L3 [jsdoc]: Command description registry for the server command panel. Each command exposes four localized fields: - description: one-line summary - detail: detailed behavior description - usage: inline command usage format - exampl
 
-### `registerServerCommands` (function)
+### `registerServerCommands` - function
 
 - File: `src/js/modules/core-engine.ts`
 - Comment count: 1
 
 - L33 [note]: NOTE: ServerCommands injected from app bootstrap to break circular dependency.
 
-### `waitForDomReady` (function)
+### `waitForDomReady` - function
 
 - File: `src/js/modules/slot/webview-handler.ts`
 - Comment count: 1
 
 - L185 [note]: NOTE: Attach event listeners before setting src to avoid race conditions.
 
-### `MemoryItem` (interface)
+### `MemoryItem` - interface
 
 - File: `src/js/pages/assistant/memory-overlay.ts`
 - Comment count: 1
 
 - L1 [note]: NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory.
 
-### `clearEntranceSceneMapDraft` (function)
+### `clearEntranceSceneMapDraft` - function
 
 - File: `src/js/pages/entrance/scene/scene-map.ts`
 - Comment count: 1
 
 - L351 [note]: Ignore draft persistence failures in constrained environments.
 
-### `SoundId` (type)
+### `SoundId` - type
 
 - File: `src/js/ui/audio-manager.ts`
 - Comment count: 1
 
 - L2 [note]: NOTE: Placeholder implementation; audio features are intentionally minimal.
 
-### `CanvasOptions` (interface)
+### `CanvasOptions` - interface
 
 - File: `src/js/ui/canvas-manager.ts`
 - Comment count: 1
 
 - L2 [note]: NOTE: Placeholder; canvas/WebGL features are intentionally not implemented yet.
 
-### `ModalOptions` (interface)
+### `ModalOptions` - interface
 
 - File: `src/js/ui/modal-manager.ts`
 - Comment count: 1
 
-- L11 [note]: NOTE: Legacy API; kept for backward compatibility (e.g., 'btn-primary').
+- L11 [note]: NOTE: Legacy API; kept for backward compatibility - e.g., 'btn-primary'.
 
-### `EslintMessage` (interface)
+### `EslintMessage` - interface
 
 - File: `src/mcp-server/tools/dev/eslint-dashboard.ts`
 - Comment count: 1
 
 - L36 [note]: NOTE: Severity levels: 1=warning, 2=error.
 
-### `TraverseModule` (interface)
+### `TraverseModule` - interface
 
 - File: `src/mcp-server/tools/dev/structure-visualizer-core.ts`
 - Comment count: 1
 
 - L64 [note]: NOTE: Support both CommonJS and ESM Babel traverse exports.
 
-### `validatePath` (function)
+### `validatePath` - function
 
 - File: `src/mcp-server/tools/fs/basic/operations.ts`
 - Comment count: 1
 
 - L60 [note]: NOTE: Block path traversal attempts.
 
-### `sanitizeContent` (function)
+### `sanitizeContent` - function
 
 - File: `src/mcp-server/tools/fs/shared/helpers.ts`
 - Comment count: 1
 
 - L4 [note]: NOTE: Normalize common LLM escape artifacts without touching valid sequences.
 
-### `safeChunkT` (function)
+### `safeChunkT` - function
 
 - File: `src/mcp-server/tools/safe-chunk-tools.ts`
 - Comment count: 1
 
 - L28 [note]: NOTE: Keep live sessions in memory until finalize or cancel completes.
 
-### `startChunkedSession` (function)
+### `startChunkedSession` - function
 
 - File: `src/mcp-server/tools/safe-chunk-tools.ts`
 - Comment count: 1
 
 - L76 [note]: NOTE: Call order: start session -> write chunks -> finalize.
 
-### `validateChunkBoundary` (function)
+### `validateChunkBoundary` - function
 
 - File: `src/mcp-server/tools/safe-chunk-tools.ts`
 - Comment count: 1
 
 - L54 [note]: NOTE: Prefer newline-terminated chunks so split boundaries stay predictable.
 
-### `validateUrl` (function)
+### `validateUrl` - function
 
 - File: `src/mcp-server/tools/web/fetch.ts`
 - Comment count: 1
 
 - L52 [note]: NOTE: Reject unsupported protocols and local addresses before fetching remote content.
 
-### `takeScreenshot` (function)
+### `takeScreenshot` - function
 
 - File: `src/mcp-server/utils/cdp-commands.ts`
 - Comment count: 1
 
 - L196 [note]: NOTE: On multi-monitor setups, screenshots can fail while in background. Bring to front first.
 
-### `connectToTarget` (function)
+### `connectToTarget` - function
 
 - File: `src/mcp-server/utils/cdp-connection.ts`
 - Comment count: 1
 
 - L99 [note]: NOTE: Fall back to the first target if no "page" target is available.
 
-### `findMainWindow` (function)
+### `findMainWindow` - function
 
 - File: `src/mcp-server/utils/cdp-connection.ts`
 - Comment count: 1
 
 - L95 [note]: NOTE: Prefer a "page" target first.
 
-### `parseCodeStructure` (function)
+### `parseCodeStructure` - function
 
 - File: `src/mcp-server/utils/file-utils/parse-structure.ts`
 - Comment count: 1
 
 - L3 [note]: NOTE: Regex-based parsing is used for performance instead of full AST parsing.
 
-### `removeStaleLock` (function)
+### `removeStaleLock` - function
 
 - File: `src/mcp-server/utils/git-utils.ts`
 - Comment count: 1
 
 - L37 [note]: NOTE: If we can't stat the file, assume it's not a problem.
 
-### `PrettierValidationResult` (interface)
+### `PrettierValidationResult` - interface
 
 - File: `src/mcp-server/utils/prettier-validator.ts`
 - Comment count: 1
 
 - L1 [note]: NOTE: Use Prettier parsing for syntax validation instead of custom bracket checks.
 
-### `createProgress` (function)
+### `createProgress` - function
 
 - File: `src/mcp-server/utils/progress.ts`
 - Comment count: 1
 
 - L63 [note]: NOTE: Ignore notification failures.
 
-### `getErrorMessage` (function)
+### `getErrorMessage` - function
 
 - File: `src/mcp-server/utils/progress.ts`
 - Comment count: 1
 
 - L12 [note]: NOTE: Global server reference set from index.ts.
 
-### `TypeInfoResult` (interface)
+### `TypeInfoResult` - interface
 
 - File: `src/mcp-server/utils/ts-language-service.ts`
 - Comment count: 1
 
 - L10 [note]: NOTE: Glob-like prefixes to match files to this tsconfig.
 
-### `getErrorMessage` (function)
+### `getErrorMessage` - function
 
 - File: `src/types/common.ts`
 - Comment count: 1
 
 - L90 [note]: NOTE: This helper exists because catch-block errors are typed as unknown.
 
-### `isAssistantProviderId` (function)
+### `isAssistantProviderId` - function
 
 - File: `src/types/common.ts`
 - Comment count: 1
 
 - L11 [note]: NOTE: Dedicated list for runtime guard checks.
 
-### `LogLevel` (type)
+### `LogLevel` - type
 
 - File: `src/types/common.ts`
 - Comment count: 1
 
 - L69 [note]: NOTE: Base64-encoded payload.
 
-### `UploadedFile` (interface)
+### `UploadedFile` - interface
 
 - File: `src/types/common.ts`
 - Comment count: 1
