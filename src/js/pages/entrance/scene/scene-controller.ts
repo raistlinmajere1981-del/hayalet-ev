@@ -40,6 +40,9 @@ const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> 
   inscription: "var(--font-scene-inscription)",
   classic: "var(--font-scene-classic)",
   sans: "var(--font-scene-sans)",
+  rounded: "var(--font-scene-rounded)",
+  condensed: "var(--font-scene-condensed)",
+  mono: "var(--font-scene-mono)",
 };
 
 export class EntranceSceneController {
@@ -202,21 +205,8 @@ export class EntranceSceneController {
     return shellT(hotspot.labelKey);
   }
 
-  private resolveHotspotLabelFont(
-    hotspot: EntranceSceneHotspotConfig,
-    labelText: string
-  ): string {
-    const baseFont = HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset];
-    const customLabel =
-      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
-    if (customLabel === "" || !this.hasNonAscii(labelText)) {
-      return baseFont;
-    }
-    return "var(--font-scene-sans)";
-  }
-
-  private hasNonAscii(value: string): boolean {
-    return /[^\x00-\x7F]/.test(value);
+  private resolveHotspotLabelFont(hotspot: EntranceSceneHotspotConfig): string {
+    return HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset] ?? "var(--font-scene-sans)";
   }
 
   private renderHotspots(): void {
@@ -310,7 +300,7 @@ export class EntranceSceneController {
       );
       label.style.setProperty(
         "--scene-hotspot-label-font-family",
-        this.resolveHotspotLabelFont(hotspot, labelText)
+        this.resolveHotspotLabelFont(hotspot)
       );
       label.addEventListener("click", () => {
         this.handleHotspotInteraction(hotspot);
@@ -443,6 +433,7 @@ export class EntranceSceneController {
       );
 
       const depthScale = this.getDepthScale(character.depth);
+      const depthZ = Number.isFinite(character.depth) ? Math.max(1, character.depth) : 1;
 
       characterNode.style.setProperty(
         "--scene-character-left",
@@ -453,7 +444,7 @@ export class EntranceSceneController {
         `${projection.offsetY + character.bottomPx * projection.scale}px`
       );
       characterNode.style.setProperty("--scene-character-scale", String(character.scale));
-      characterNode.style.setProperty("--scene-character-depth", String(character.depth));
+      characterNode.style.setProperty("--scene-character-depth", String(depthZ));
       characterNode.style.setProperty("--scene-character-depth-scale", String(depthScale));
 
       characterNode.style.setProperty("--scene-character-body-scale", String(character.bodyScale));

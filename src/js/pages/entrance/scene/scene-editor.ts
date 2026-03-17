@@ -557,6 +557,15 @@ export class EntranceSceneEditor {
     if (preset === "sans") {
       return "Sans";
     }
+    if (preset === "rounded") {
+      return "Rounded";
+    }
+    if (preset === "condensed") {
+      return "Condensed";
+    }
+    if (preset === "mono") {
+      return "Mono";
+    }
     return "Display";
   }
 

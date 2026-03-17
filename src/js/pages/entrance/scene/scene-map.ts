@@ -6,6 +6,9 @@ export const ENTRANCE_SCENE_LABEL_FONT_PRESETS = [
   "inscription",
   "classic",
   "sans",
+  "rounded",
+  "condensed",
+  "mono",
 ] as const;
 
 export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRESETS)[number];
