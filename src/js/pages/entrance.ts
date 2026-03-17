@@ -58,8 +58,12 @@ export class EntranceHallController {
         },
         us1Panel: this.us1Panel,
         webviewPanel: this.webviewPanel,
-        connectUser: (slot) => this.connectUser(slot),
-        disconnectUser: (slot) => this.disconnectUser(slot),
+        connectUser: async (slot) => {
+          await this.connectUser(slot);
+        },
+        disconnectUser: async (slot) => {
+          await this.disconnectUser(slot);
+        },
       })
     );
   }

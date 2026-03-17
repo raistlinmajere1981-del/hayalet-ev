@@ -38,7 +38,7 @@ data/*
 !data/rooms/**
 
 # Assets allowlist
-src/assets/*
+# (disabled to allow versioning assets under src/assets)
 
 # Commands (runtime data)
 /commands/
@@ -73,7 +73,7 @@ ghost-agent-restart-flag.json
 
 # TypeScript incremental build cache
 *.tsbuildinfo
-*.modified
+# *.modified (disabled to allow modified artifacts under src)
 
 # Git worktrees
 .worktrees/

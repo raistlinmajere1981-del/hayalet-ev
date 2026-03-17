@@ -6,6 +6,7 @@ export interface StartupFlags {
   startPage: string | null;
   autoConnect: boolean;
   uiMode: StartupUiMode;
+  sceneDebug: boolean;
   roomsSnapshot: StartupRoomsSnapshot | null;
 }
 
@@ -47,11 +48,17 @@ export function parseStartupFlagsFromArgv(argv: readonly string[]): StartupFlags
     argv.includes("--app-auto-connect=true") ||
     argv.includes("--app-auto-connect") ||
     argv.includes("--auto-connect");
+  const sceneDebug =
+    argv.includes("--app-scene-debug=1") ||
+    argv.includes("--app-scene-debug=true") ||
+    argv.includes("--app-scene-debug") ||
+    argv.includes("--scene-debug");
 
   return {
     startPage,
     autoConnect,
     uiMode,
+    sceneDebug,
     roomsSnapshot: null,
   };
 }
@@ -70,6 +77,10 @@ export function buildPreloadAdditionalArguments(flags: StartupFlags): string[] {
 
   if (normalizeUiMode(flags.uiMode) === "scene") {
     args.push("--app-ui-mode=scene");
+  }
+
+  if (flags.sceneDebug) {
+    args.push("--app-scene-debug=1");
   }
 
   if (flags.roomsSnapshot !== null) {

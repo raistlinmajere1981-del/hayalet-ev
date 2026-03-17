@@ -504,6 +504,7 @@ declare global {
       startPage: string | null;
       autoConnect: boolean;
       uiMode: "classic" | "scene";
+      sceneDebug: boolean;
       roomsSnapshot: StartupRoomsSnapshot | null;
     };
     loadSettings: () => Promise<Record<string, unknown>>;

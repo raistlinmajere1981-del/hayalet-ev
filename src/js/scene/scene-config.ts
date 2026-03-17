@@ -62,8 +62,5 @@ export const SCENE_THEME_CONFIG = {
 } as const;
 
 export function getSceneCharacterRoleConfig(role: SceneCharacterRole): SceneCharacterRoleConfig {
-  return (
-    SCENE_THEME_CONFIG.entrance.characterRoles[role] ??
-    SCENE_THEME_CONFIG.entrance.characterRoles[SCENE_THEME_CONFIG.entrance.fallbackCharacterRole]
-  );
+  return SCENE_THEME_CONFIG.entrance.characterRoles[role];
 }

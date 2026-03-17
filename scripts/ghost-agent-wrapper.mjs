@@ -30,6 +30,11 @@ const env = {
   LIBVA_DRIVER_NAME: process.env.LIBVA_DRIVER_NAME ?? "i965",
 };
 
+function isSceneDebugEnabled() {
+  const value = String(env.APP_SCENE_DEBUG ?? "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes" || value === "debug";
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -100,7 +105,8 @@ async function runMainApp(useAssistantStartupFlags = false) {
   const currentControl = await readControl();
   const runningMainControl = toMainRunningControl(currentControl, nowIso());
   const uiMode = normalizeMainAppUiMode(env.APP_UI_MODE);
-  const scriptName = resolveMainAppScriptName(useAssistantStartupFlags, uiMode);
+  const sceneDebug = isSceneDebugEnabled();
+  const scriptName = resolveMainAppScriptName(useAssistantStartupFlags, uiMode, sceneDebug);
   await writeControl(runningMainControl);
   await logWrapperEvent("cycle.main.sync", {
     desiredMode: runningMainControl.desiredMode,
@@ -108,6 +114,7 @@ async function runMainApp(useAssistantStartupFlags = false) {
     workflowSessionId: runningMainControl.workflowSessionId,
     assistantStartup: useAssistantStartupFlags,
     uiMode,
+    sceneDebug,
   });
 
   return await run("npm", ["run", scriptName], "app");

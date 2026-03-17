@@ -5,20 +5,16 @@ import { getSceneCharacterRoleConfig } from "../../../scene/scene-config.js";
 
 import type { SceneCharacterKind, SceneCharacterRole } from "./scene-character-role.js";
 import {
+  DEFAULT_ENTRANCE_SCENE_MAP,
+  type EntranceSceneCharacterAnchorConfig,
+} from "./scene-map.js";
+import {
   getSceneCharacterState,
   type SceneCharacterSlot,
   type SceneCharacterState,
 } from "./scene-character-state.js";
 
-interface SceneCharacterAnchor {
-  id: string;
-  kind: SceneCharacterKind;
-  preferredSlot?: SceneCharacterSlot;
-  leftPct: number;
-  bottomPct: number;
-  scale: number;
-  depth: number;
-}
+type SceneCharacterAnchor = EntranceSceneCharacterAnchorConfig;
 
 export interface SceneCharacterDescriptor {
   id: string;
@@ -31,8 +27,8 @@ export interface SceneCharacterDescriptor {
   anchorId: string;
   label: string;
   headLabel: string | null;
-  leftPct: number;
-  bottomPct: number;
+  leftPx: number;
+  bottomPx: number;
   scale: number;
   depth: number;
   state: SceneCharacterState;
@@ -46,77 +42,19 @@ export interface SceneCharacterDescriptor {
   avatarSource: string | null;
 }
 
-const SCENE_CHARACTER_ANCHORS: readonly SceneCharacterAnchor[] = [
-  {
-    id: "anchor-user",
-    kind: "user",
-    leftPct: 8,
-    bottomPct: 10,
-    scale: 0.9,
-    depth: 1,
-  },
-  {
-    id: "anchor-ai-left-outer",
-    kind: "ai",
-    leftPct: 22,
-    bottomPct: 15,
-    scale: 0.82,
-    depth: 2,
-  },
-  {
-    id: "anchor-ai1-primary",
-    kind: "ai",
-    preferredSlot: "ai1",
-    leftPct: 34,
-    bottomPct: 14,
-    scale: 0.84,
-    depth: 3,
-  },
-  {
-    id: "anchor-assistant",
-    kind: "assistant",
-    preferredSlot: "ai0",
-    leftPct: 60,
-    bottomPct: 13,
-    scale: 0.66,
-    depth: 4,
-  },
-  {
-    id: "anchor-us1",
-    kind: "us1",
-    preferredSlot: "us1",
-    leftPct: 71,
-    bottomPct: 10,
-    scale: 0.82,
-    depth: 5,
-  },
-  {
-    id: "anchor-ai2-primary",
-    kind: "ai",
-    preferredSlot: "ai2",
-    leftPct: 83,
-    bottomPct: 14,
-    scale: 0.84,
-    depth: 6,
-  },
-  {
-    id: "anchor-ai-right-outer",
-    kind: "ai",
-    leftPct: 92,
-    bottomPct: 15,
-    scale: 0.82,
-    depth: 7,
-  },
-] as const;
-
 function toHeadLabel(label: string): string {
   const compact = label.replace(/\s+/g, "").trim().toUpperCase();
-  return compact.slice(0, 2) || "?";
+  const head = compact.slice(0, 2);
+  return head === "" ? "?" : head;
 }
 
 function compareAccounts(left: Account, right: Account): number {
-  const leftLabel = String(left.nickname ?? left.email ?? left.id).toLocaleLowerCase("tr-TR");
-  const rightLabel = String(right.nickname ?? right.email ?? right.id).toLocaleLowerCase("tr-TR");
+  const leftLabel = (
+    getFirstNonEmpty(left.nickname, left.email, left.id) ?? left.id
+  ).toLocaleLowerCase("tr-TR");
+  const rightLabel = (
+    getFirstNonEmpty(right.nickname, right.email, right.id) ?? right.id
+  ).toLocaleLowerCase("tr-TR");
 
   if (leftLabel !== rightLabel) {
     return leftLabel.localeCompare(rightLabel, "tr");
@@ -176,14 +114,14 @@ function getFirstNonEmpty(...values: Array<string | null | undefined>): string |
   return null;
 }
 
-function getAiAnchorQueue(): SceneCharacterAnchor[] {
-  const anchors = SCENE_CHARACTER_ANCHORS.filter((anchor) => anchor.kind === "ai");
+function getAiAnchorQueue(anchors: readonly SceneCharacterAnchor[]): SceneCharacterAnchor[] {
+  const aiAnchors = anchors.filter((anchor) => anchor.kind === "ai");
   const ordered: SceneCharacterAnchor[] = [];
 
-  const ai1Anchor = anchors.find((anchor) => anchor.preferredSlot === "ai1");
-  const leftOuterAnchor = anchors.find((anchor) => anchor.id === "anchor-ai-left-outer");
-  const ai2Anchor = anchors.find((anchor) => anchor.preferredSlot === "ai2");
-  const rightOuterAnchor = anchors.find((anchor) => anchor.id === "anchor-ai-right-outer");
+  const ai1Anchor = aiAnchors.find((anchor) => anchor.preferredSlot === "ai1");
+  const leftOuterAnchor = aiAnchors.find((anchor) => anchor.id === "anchor-ai-left-outer");
+  const ai2Anchor = aiAnchors.find((anchor) => anchor.preferredSlot === "ai2");
+  const rightOuterAnchor = aiAnchors.find((anchor) => anchor.id === "anchor-ai-right-outer");
 
   [leftOuterAnchor, ai1Anchor, ai2Anchor, rightOuterAnchor].forEach((anchor) => {
     if (anchor !== undefined) {
@@ -202,8 +140,8 @@ function createDescriptorBase(
   SceneCharacterDescriptor,
   | "role"
   | "anchorId"
-  | "leftPct"
-  | "bottomPct"
+  | "leftPx"
+  | "bottomPx"
   | "scale"
   | "depth"
   | "state"
@@ -219,8 +157,8 @@ function createDescriptorBase(
   return {
     role,
     anchorId: anchor.id,
-    leftPct: anchor.leftPct,
-    bottomPct: anchor.bottomPct,
+    leftPx: anchor.leftPx,
+    bottomPx: anchor.bottomPx,
     scale: anchor.scale,
     depth: anchor.depth,
     state,
@@ -239,7 +177,8 @@ function createAiCharacterDescriptor(
   index: number
 ): SceneCharacterDescriptor {
   const slot = getSlotForAccount(account.id);
-  const label = String(account.nickname ?? account.email ?? `AI ${index + 1}`);
+  const fallbackLabel = `AI ${index + 1}`;
+  const label = getFirstNonEmpty(account.nickname, account.email, fallbackLabel) ?? fallbackLabel;
 
   return {
     id: `scene-account-${account.id}`,
@@ -321,7 +260,7 @@ function createUs1CharacterDescriptor(
     return null;
   }
 
-  const label = String(us1Identity.nickname ?? us1Identity.email ?? "US1");
+  const label = getFirstNonEmpty(us1Identity.nickname, us1Identity.email, "US1") ?? "US1";
 
   return {
     id: `scene-remote-${us1Identity.remoteUserId}`,
@@ -342,15 +281,17 @@ function createUs1CharacterDescriptor(
   };
 }
 
-export function buildSceneCharacterRoster(): SceneCharacterDescriptor[] {
+export function buildSceneCharacterRoster(
+  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_MAP.characterAnchors
+): SceneCharacterDescriptor[] {
   const roster: SceneCharacterDescriptor[] = [];
 
-  const userAnchor = SCENE_CHARACTER_ANCHORS.find((anchor) => anchor.kind === "user");
+  const userAnchor = anchors.find((anchor) => anchor.kind === "user");
   if (userAnchor !== undefined) {
     roster.push(createUserCharacterDescriptor(userAnchor));
   }
 
-  const aiAnchorQueue = getAiAnchorQueue();
+  const aiAnchorQueue = getAiAnchorQueue(anchors);
   const aiAccounts = getVisibleAiAccounts().slice(0, aiAnchorQueue.length);
   aiAccounts.forEach((account, index) => {
     const anchor = aiAnchorQueue[index];
@@ -361,12 +302,12 @@ export function buildSceneCharacterRoster(): SceneCharacterDescriptor[] {
     roster.push(createAiCharacterDescriptor(account, anchor, index));
   });
 
-  const assistantAnchor = SCENE_CHARACTER_ANCHORS.find((anchor) => anchor.kind === "assistant");
+  const assistantAnchor = anchors.find((anchor) => anchor.kind === "assistant");
   if (assistantAnchor !== undefined) {
     roster.push(createAssistantCharacterDescriptor(assistantAnchor));
   }
 
-  const us1Anchor = SCENE_CHARACTER_ANCHORS.find((anchor) => anchor.kind === "us1");
+  const us1Anchor = anchors.find((anchor) => anchor.kind === "us1");
   if (us1Anchor !== undefined) {
     const us1Descriptor = createUs1CharacterDescriptor(us1Anchor);
     if (us1Descriptor !== null) {

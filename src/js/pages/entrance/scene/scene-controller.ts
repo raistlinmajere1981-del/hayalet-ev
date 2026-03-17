@@ -6,22 +6,41 @@ import { SCENE_THEME_CONFIG } from "../../../scene/scene-config.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
 
 import { resolveSceneAvatarSource } from "./scene-avatar.js";
+import { EntranceSceneEditor, type EntranceSceneEditorSelection } from "./scene-editor.js";
 import { SceneCharacterMenu } from "./scene-character-menu.js";
 import { applySceneDebugFlag, isSceneDebugEnabled } from "./scene-debug.js";
+import {
+  clearEntranceSceneMapDraft,
+  cloneEntranceSceneMap,
+  DEFAULT_ENTRANCE_SCENE_MAP,
+  type EntranceSceneLabelFontPreset,
+  type EntranceSceneMap,
+  loadEntranceSceneMapDraft,
+  saveEntranceSceneMapDraft,
+  serializeEntranceSceneMap,
+  type EntranceSceneHotspotConfig,
+} from "./scene-map.js";
 import {
   buildSceneCharacterRoster,
   type SceneCharacterDescriptor,
 } from "./scene-character-roster.js";
 import type { SceneEntranceBridge } from "./scene-entrance-bridge.js";
-import { ENTRANCE_SCENE_HOTSPOTS, type EntranceSceneHotspotConfig } from "./scene-hotspots.js";
 
 const ELEMENT_IDS = {
   root: "entrance-scene-root",
   background: "entrance-scene-background",
   hotspotLayer: "entrance-scene-hotspots",
   characterLayer: "entrance-scene-characters",
+  editorHost: "entrance-scene-editor-host",
   menuHost: "entrance-scene-menu-host",
 } as const;
+
+const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> = {
+  display: "var(--font-display)",
+  inscription: '"Baskerville Old Face", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+  classic: '"Times New Roman", "Iowan Old Style", Georgia, serif',
+  sans: "var(--font-sans)",
+};
 
 export class EntranceSceneController {
   bridge: SceneEntranceBridge;
@@ -29,37 +48,91 @@ export class EntranceSceneController {
   background: HTMLImageElement | null = null;
   hotspotLayer: HTMLElement | null = null;
   characterLayer: HTMLElement | null = null;
+  editorHost: HTMLElement | null = null;
   menuHost: HTMLElement | null = null;
   menu: SceneCharacterMenu | null = null;
+  editor: EntranceSceneEditor | null = null;
+  resizeObserver: ResizeObserver | null = null;
   trafficUnsub: (() => void) | null = null;
   appStateUnsub: (() => void) | null = null;
   localeUnsub: (() => void) | null = null;
   characterRenderToken = 0;
   openCharacterId: string | null = null;
   characters = new Map<string, SceneCharacterDescriptor>();
+  sceneMap = cloneEntranceSceneMap();
+  sceneDebugEnabled = false;
+  editorSelection: EntranceSceneEditorSelection = null;
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
   }
 
   init(): void {
-    applySceneDebugFlag();
+    this.sceneDebugEnabled = applySceneDebugFlag();
     this.root = document.getElementById(ELEMENT_IDS.root);
     this.background = document.getElementById(ELEMENT_IDS.background) as HTMLImageElement | null;
     this.hotspotLayer = document.getElementById(ELEMENT_IDS.hotspotLayer);
     this.characterLayer = document.getElementById(ELEMENT_IDS.characterLayer);
+    this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
+    this.sceneMap =
+      loadEntranceSceneMapDraft() ?? cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
-        onClose: () => {
+        onClose: (): void => {
           this.openCharacterId = null;
           this.syncOpenMenuAnchor();
         },
       });
     }
+    if (this.sceneDebugEnabled && this.editorHost !== null) {
+      this.editor = new EntranceSceneEditor(this.editorHost, {
+        getSceneMap: (): EntranceSceneMap => this.sceneMap,
+        getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+        setSelection: (selection): void => {
+          this.editorSelection = selection;
+          this.editor?.refresh();
+          this.renderHotspots();
+          void this.renderCharacters();
+        },
+        updateHotspot: (id, updater): void => {
+          this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
+            hotspot.id === id ? updater(hotspot) : hotspot
+          );
+          this.persistSceneMapDraft();
+          this.renderHotspots();
+          this.editor?.refresh();
+        },
+        updateCharacterAnchor: (id, updater): void => {
+          this.sceneMap.characterAnchors = this.sceneMap.characterAnchors.map((anchor) =>
+            anchor.id === id ? updater(anchor) : anchor
+          );
+          this.persistSceneMapDraft();
+          void this.renderCharacters();
+          this.editor?.refresh();
+        },
+        resetDraft: (): void => {
+          this.sceneMap = cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
+          clearEntranceSceneMapDraft();
+          this.editorSelection = null;
+          this.renderHotspots();
+          void this.renderCharacters();
+          this.editor?.refresh();
+        },
+        copySceneMap: async (): Promise<void> => {
+          try {
+            await navigator.clipboard.writeText(serializeEntranceSceneMap(this.sceneMap));
+          } catch {
+            console.info("Scene map copy failed.");
+          }
+        },
+      });
+      this.editor.refresh();
+    }
 
     this.renderStatic();
     this.subscribeRuntimeSignals();
+    this.observeLayout();
     this.syncScene();
   }
 
@@ -85,12 +158,14 @@ export class EntranceSceneController {
     this.renderBackground();
     this.renderHotspots();
     void this.renderCharacters();
+    this.editor?.refresh();
   }
 
   private renderStatic(): void {
     this.renderBackground();
     this.renderHotspots();
     void this.renderCharacters();
+    this.editor?.refresh();
   }
 
   private subscribeRuntimeSignals(): void {
@@ -105,6 +180,7 @@ export class EntranceSceneController {
     this.localeUnsub ??= AppI18n.subscribe(() => {
       this.renderHotspots();
       this.syncOpenMenuAnchor();
+      this.editor?.refresh();
     });
   }
 
@@ -122,10 +198,13 @@ export class EntranceSceneController {
       return;
     }
 
+    const projection = this.getSceneProjection();
     const fragment = document.createDocumentFragment();
 
-    ENTRANCE_SCENE_HOTSPOTS.forEach((hotspot) => {
+    this.sceneMap.hotspots.forEach((hotspot) => {
       const labelText = shellT(hotspot.labelKey);
+      const hotspotSelected =
+        this.editorSelection?.kind === "hotspot" && this.editorSelection.id === hotspot.id;
       const wrapper = document.createElement("div");
       wrapper.className = "entrance-scene__hotspot-item";
 
@@ -134,29 +213,112 @@ export class EntranceSceneController {
       button.className = "entrance-scene__hotspot";
       button.dataset["hotspotId"] = hotspot.id;
       button.dataset["debugLabel"] = labelText;
-      button.style.setProperty("--scene-hotspot-left", `${hotspot.leftPct}%`);
-      button.style.setProperty("--scene-hotspot-top", `${hotspot.topPct}%`);
-      button.style.setProperty("--scene-hotspot-width", `${hotspot.widthPct}%`);
-      button.style.setProperty("--scene-hotspot-height", `${hotspot.heightPct}%`);
+      button.dataset["frameVariant"] = hotspot.frameVariant;
+      button.classList.toggle("is-selected", hotspotSelected);
+      button.style.setProperty("--scene-hotspot-frame-rotate", `${hotspot.frameRotateDeg}deg`);
+      button.style.setProperty(
+        "--scene-hotspot-left",
+        `${projection.offsetX + hotspot.leftPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--scene-hotspot-top",
+        `${projection.offsetY + hotspot.topPx * projection.scale}px`
+      );
+      button.style.setProperty("--scene-hotspot-width", `${hotspot.widthPx * projection.scale}px`);
+      button.style.setProperty(
+        "--scene-hotspot-height",
+        `${hotspot.heightPx * projection.scale}px`
+      );
       button.ariaLabel = labelText;
       button.addEventListener("click", () => {
-        this.handleHotspotAction(hotspot);
+        this.handleHotspotInteraction(hotspot);
       });
 
       const label = document.createElement("span");
       label.className = "entrance-scene__hotspot-label";
+      label.classList.toggle("is-selected", hotspotSelected);
       label.textContent = labelText;
       label.ariaHidden = "true";
-      label.style.setProperty("--scene-hotspot-label-left", `${hotspot.labelLeftPct}%`);
-      label.style.setProperty("--scene-hotspot-label-top", `${hotspot.labelTopPct}%`);
-      label.style.setProperty("--scene-hotspot-label-width", `${hotspot.labelWidthPct}%`);
+      label.dataset["hotspotId"] = hotspot.id;
+      label.style.setProperty(
+        "--scene-hotspot-label-left",
+        `${projection.offsetX + hotspot.labelCenterXPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--scene-hotspot-label-top",
+        `${projection.offsetY + hotspot.labelTopPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--scene-hotspot-label-width",
+        `${hotspot.labelWidthPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--scene-hotspot-label-height",
+        `${hotspot.labelHeightPx * projection.scale}px`
+      );
       label.style.setProperty("--scene-hotspot-label-rotate", `${hotspot.labelRotateDeg}deg`);
+      label.style.setProperty(
+        "--scene-hotspot-label-font-size",
+        `${hotspot.labelFontSizePx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--scene-hotspot-label-letter-spacing",
+        `${hotspot.labelLetterSpacingPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--scene-hotspot-label-font-family",
+        HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset]
+      );
+      label.addEventListener("click", () => {
+        this.handleHotspotInteraction(hotspot);
+      });
 
       wrapper.append(button, label);
       fragment.appendChild(wrapper);
     });
 
     this.hotspotLayer.replaceChildren(fragment);
+  }
+
+  private observeLayout(): void {
+    if (this.root === null || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = new ResizeObserver(() => {
+      if (!isSceneUiMode()) {
+        return;
+      }
+      this.renderHotspots();
+      void this.renderCharacters();
+      this.syncOpenMenuAnchor();
+      this.editor?.refresh();
+    });
+    this.resizeObserver.observe(this.root);
+  }
+
+  private getSceneProjection(): {
+    offsetX: number;
+    offsetY: number;
+    scale: number;
+  } {
+    const surfaceWidth = this.root?.clientWidth ?? 0;
+    const surfaceHeight = this.root?.clientHeight ?? 0;
+    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const scale = Math.max(
+      surfaceWidth / this.sceneMap.referenceSize.width,
+      surfaceHeight / this.sceneMap.referenceSize.height
+    );
+
+    return {
+      offsetX: (surfaceWidth - this.sceneMap.referenceSize.width * scale) / 2,
+      offsetY: (surfaceHeight - this.sceneMap.referenceSize.height * scale) / 2,
+      scale,
+    };
   }
 
   private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
@@ -176,18 +338,30 @@ export class EntranceSceneController {
     );
   }
 
+  private handleHotspotInteraction(hotspot: EntranceSceneHotspotConfig): void {
+    if (this.editor !== null) {
+      this.editorSelection = { kind: "hotspot", id: hotspot.id };
+      this.editor.refresh();
+      this.renderHotspots();
+      return;
+    }
+
+    this.handleHotspotAction(hotspot);
+  }
+
   private async renderCharacters(): Promise<void> {
     if (this.characterLayer === null || !isSceneUiMode()) {
       return;
     }
 
     const renderToken = ++this.characterRenderToken;
-    const characters = buildSceneCharacterRoster();
+    const characters = buildSceneCharacterRoster(this.sceneMap.characterAnchors);
     const fragment = document.createDocumentFragment();
     const sceneDebug = isSceneDebugEnabled();
+    const projection = this.getSceneProjection();
 
     const avatarSources = await Promise.all(
-      characters.map((character) => resolveSceneAvatarSource(character.avatarSource))
+      characters.map(async (character) => await resolveSceneAvatarSource(character.avatarSource))
     );
 
     if (renderToken !== this.characterRenderToken) {
@@ -212,8 +386,18 @@ export class EntranceSceneController {
       characterNode.dataset["role"] = character.role;
       characterNode.dataset["variant"] = character.variant;
       characterNode.dataset["anchorId"] = character.anchorId;
-      characterNode.style.setProperty("--scene-character-left", `${character.leftPct}%`);
-      characterNode.style.setProperty("--scene-character-bottom", `${character.bottomPct}%`);
+      characterNode.classList.toggle(
+        "is-selected",
+        this.editorSelection?.kind === "character" && this.editorSelection.id === character.anchorId
+      );
+      characterNode.style.setProperty(
+        "--scene-character-left",
+        `${projection.offsetX + character.leftPx * projection.scale}px`
+      );
+      characterNode.style.setProperty(
+        "--scene-character-bottom",
+        `${projection.offsetY + character.bottomPx * projection.scale}px`
+      );
       characterNode.style.setProperty("--scene-character-scale", String(character.scale));
       characterNode.style.setProperty("--scene-character-depth", String(character.depth));
       characterNode.style.setProperty("--scene-character-body-scale", String(character.bodyScale));
@@ -269,6 +453,12 @@ export class EntranceSceneController {
 
       characterNode.append(stage, label, anchorMarker);
       characterNode.addEventListener("click", () => {
+        if (this.editor !== null) {
+          this.editorSelection = { kind: "character", id: character.anchorId };
+          this.editor.refresh();
+          void this.renderCharacters();
+          return;
+        }
         this.toggleCharacterMenu(character, characterNode);
       });
       characterNode.addEventListener("keydown", (event) => {
@@ -276,6 +466,12 @@ export class EntranceSceneController {
           return;
         }
         event.preventDefault();
+        if (this.editor !== null) {
+          this.editorSelection = { kind: "character", id: character.anchorId };
+          this.editor.refresh();
+          void this.renderCharacters();
+          return;
+        }
         this.toggleCharacterMenu(character, characterNode);
       });
       fragment.appendChild(characterNode);
@@ -283,6 +479,10 @@ export class EntranceSceneController {
 
     this.characterLayer.replaceChildren(fragment);
     this.syncOpenMenuAnchor();
+  }
+
+  private persistSceneMapDraft(): void {
+    saveEntranceSceneMapDraft(this.sceneMap);
   }
 
   private toggleCharacterMenu(
@@ -324,7 +524,7 @@ export class EntranceSceneController {
 
     const character = this.characters.get(this.openCharacterId) ?? null;
     const selector = `[data-character-id="${this.escapeForAttribute(this.openCharacterId)}"]`;
-    const anchorElement = this.characterLayer.querySelector(selector) as HTMLElement | null;
+    const anchorElement = this.characterLayer.querySelector<HTMLElement>(selector);
 
     if (character === null || anchorElement === null) {
       this.menu.close();

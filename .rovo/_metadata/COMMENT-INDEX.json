@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-15T20:25:53.320Z",
+  "generatedAt": "2026-03-17T08:49:15.511Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 441,
-    "filesWithComments": 105,
-    "commentsIndexed": 261,
+    "filesScanned": 455,
+    "filesWithComments": 107,
+    "commentsIndexed": 262,
     "fileLevelComments": 203,
-    "symbolLevelComments": 58,
+    "symbolLevelComments": 59,
     "prefixCounts": {
-      "none": 20,
+      "none": 23,
       "AI": 0,
-      "NOTE": 237,
+      "NOTE": 235,
       "WARNING": 4,
       "TODO": 0
     }
@@ -716,8 +716,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 419,
-          "endLine": 419,
+          "startLine": 423,
+          "endLine": 423,
           "text": "NOTE: Startup flags are read from the preload process argv so the renderer stays passive.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -725,8 +725,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 438,
-          "endLine": 438,
+          "startLine": 452,
+          "endLine": 452,
           "text": "WARNING: Keep this allowlist narrow because callbacks are exposed to the renderer.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -998,8 +998,8 @@
         },
         {
           "kind": "note",
-          "startLine": 226,
-          "endLine": 226,
+          "startLine": 221,
+          "endLine": 221,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1009,14 +1009,14 @@
     },
     {
       "path": "src/js/app/indicators.ts",
-      "totalComments": 2,
+      "totalComments": 1,
       "byKind": {
-        "note": 2
+        "note": 1
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 1,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1032,15 +1032,6 @@
           "prefix": "NOTE",
           "scopeType": "function",
           "scopeName": "updateIndicatorAvatars"
-        },
-        {
-          "kind": "note",
-          "startLine": 114,
-          "endLine": 114,
-          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
         }
       ]
     },
@@ -1063,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 217,
-          "endLine": 217,
+          "startLine": 226,
+          "endLine": 226,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1969,14 +1960,14 @@
     },
     {
       "path": "src/js/pages/entrance.ts",
-      "totalComments": 2,
+      "totalComments": 1,
       "byKind": {
-        "note": 2
+        "note": 1
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 2,
+        "NOTE": 1,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1984,19 +1975,73 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 261,
-          "endLine": 261,
-          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
+          "startLine": 642,
+          "endLine": 642,
+          "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/entrance/scene/scene-debug.ts",
+      "totalComments": 1,
+      "byKind": {
+        "note": 1
+      },
+      "byPrefix": {
+        "none": 1,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 12,
+          "endLine": 12,
+          "text": "Ignore URL parsing failures and fall back to startup flags.",
+          "prefix": null,
+          "scopeType": "file",
+          "scopeName": null
+        }
+      ]
+    },
+    {
+      "path": "src/js/pages/entrance/scene/scene-map.ts",
+      "totalComments": 2,
+      "byKind": {
+        "note": 2
+      },
+      "byPrefix": {
+        "none": 2,
+        "AI": 0,
+        "NOTE": 0,
+        "WARNING": 0,
+        "TODO": 0
+      },
+      "symbols": [
+        "clearEntranceSceneMapDraft"
+      ],
+      "comments": [
+        {
+          "kind": "note",
+          "startLine": 351,
+          "endLine": 351,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "clearEntranceSceneMapDraft"
         },
         {
           "kind": "note",
-          "startLine": 566,
-          "endLine": 566,
-          "text": "NOTE: Escape HTML to prevent XSS.",
-          "prefix": "NOTE",
+          "startLine": 359,
+          "endLine": 359,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
           "scopeType": "file",
           "scopeName": null
         }
@@ -2253,8 +2298,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 85,
-          "endLine": 85,
+          "startLine": 210,
+          "endLine": 210,
           "text": "NOTE: Force re-fetch after injecting DOM.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2262,8 +2307,8 @@
         },
         {
           "kind": "note",
-          "startLine": 131,
-          "endLine": 131,
+          "startLine": 259,
+          "endLine": 259,
           "text": "NOTE: Progress is runtime-driven via CSS var to avoid width injection.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4240,8 +4285,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 243,
-          "endLine": 243,
+          "startLine": 246,
+          "endLine": 246,
           "text": "NOTE: Empty or null uses the PATH \"opencode\" binary.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4572,7 +4617,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 217,
+          "startLine": 226,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4635,6 +4680,18 @@
           "startLine": 1,
           "kind": "note",
           "text": "NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory."
+        }
+      ]
+    },
+    {
+      "file": "src/js/pages/entrance/scene/scene-map.ts",
+      "type": "function",
+      "name": "clearEntranceSceneMapDraft",
+      "comments": [
+        {
+          "startLine": 351,
+          "kind": "note",
+          "text": "Ignore draft persistence failures in constrained environments."
         }
       ]
     },

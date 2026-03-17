@@ -8,7 +8,6 @@ import { t as entranceT } from "../i18n.js";
 import type { SlotPanel } from "../slot-panel.js";
 import type { Us1Panel } from "../us1-panel.js";
 import type { WebviewPanel } from "../webview-panel.js";
-import type { MessageMethod, UploadMethod } from "@shared/settings.js";
 
 import { resolveSceneAiConnectSlot } from "./scene-connect-actions.js";
 import type { SceneCharacterDescriptor } from "./scene-character-roster.js";
@@ -167,11 +166,14 @@ function readSelectSnapshot(selectId: string): NativeSelectSnapshot | null {
   return {
     value: select.value,
     disabled: select.disabled,
-    options: Array.from(select.options).map((option) => ({
-      value: option.value,
-      label: option.textContent?.trim() ?? option.label ?? option.value,
-      disabled: option.disabled,
-    })),
+    options: Array.from(select.options).map((option) => {
+      const text = option.textContent.trim();
+      return {
+        value: option.value,
+        label: text !== "" ? text : option.label,
+        disabled: option.disabled,
+      };
+    }),
   };
 }
 
@@ -187,12 +189,12 @@ function readButtonDisabled(buttonId: string): boolean | null {
 
 function readButtonLabel(buttonId: string, fallback: string): string {
   const button = document.getElementById(buttonId) as HTMLButtonElement | null;
-  const title = button?.title?.trim() ?? "";
+  const title = button?.title.trim() ?? "";
   if (title !== "") {
     return title;
   }
 
-  const text = button?.textContent?.trim() ?? "";
+  const text = button?.textContent.trim() ?? "";
   return text !== "" ? text : fallback;
 }
 
@@ -313,7 +315,7 @@ export class SceneEntranceBridge {
     }
 
     if (character.kind === "assistant") {
-      await this.triggerAssistantAction(actionId);
+      this.triggerAssistantAction(actionId);
       return;
     }
 
@@ -367,9 +369,9 @@ export class SceneEntranceBridge {
     }
 
     if (selectId === "messageMethod") {
-      await this.slotPanels[slot].updateSetting("messageMethod", value as MessageMethod | string);
+      await this.slotPanels[slot].updateSetting("messageMethod", value);
     } else if (selectId === "fileMethod") {
-      await this.slotPanels[slot].updateSetting("fileMethod", value as UploadMethod | string);
+      await this.slotPanels[slot].updateSetting("fileMethod", value);
     }
   }
 
@@ -443,12 +445,12 @@ export class SceneEntranceBridge {
       this.webviewPanel.handleTestClick(slot);
     } else if (actionId === "providerSync") {
       this.webviewPanel.handleSyncClick(slot);
-    } else if (actionId === "devtools") {
+    } else {
       this.webviewPanel.openDevTools(slot);
     }
   }
 
-  private async triggerAssistantAction(actionId: SceneMenuActionId): Promise<void> {
+  private triggerAssistantAction(actionId: SceneMenuActionId): void {
     if (actionId === "connect") {
       clickButton("assistant-connect-btn");
       return;

@@ -96,7 +96,7 @@ async function initApp(): Promise<void> {
     await SettingsManager.load();
     await AppI18n.bootstrap(SettingsManager);
     bootstrapShellI18n();
-    const startupFlags = window.electronAPI?.getStartupFlags?.();
+    const startupFlags = window.electronAPI?.getStartupFlags();
     applyUiMode(startupFlags?.uiMode);
 
     SplashScreen.update(10, AppI18n.t("app.startup.loadingSettings"));

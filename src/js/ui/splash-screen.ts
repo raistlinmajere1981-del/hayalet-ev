@@ -119,7 +119,7 @@ function startSceneAnimation(): void {
     return;
   }
 
-  const frameCount = SCENE_THEME_CONFIG.loading.frames.length;
+  const frameCount = Number(SCENE_THEME_CONFIG.loading.frames.length);
   if (frameCount <= 1) {
     setSceneFrame(0);
     sceneAnimationCompleted = true;

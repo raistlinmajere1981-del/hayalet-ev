@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-15T20:25:53.978Z",
+  "generatedAt": "2026-03-17T08:49:16.223Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 459,
-    "ids": 481,
+    "filesScanned": 473,
+    "ids": 489,
     "testIds": 15,
-    "querySelectors": 124,
-    "totalSelectors": 620
+    "querySelectors": 125,
+    "totalSelectors": 629
   },
   "lookup": {
     "id": {
@@ -196,6 +196,12 @@
       "detail-content": "#detail-content",
       "detail-empty": "#detail-empty",
       "effort-dropdown": "#effort-dropdown",
+      "entrance-scene-background": "#entrance-scene-background",
+      "entrance-scene-characters": "#entrance-scene-characters",
+      "entrance-scene-editor-host": "#entrance-scene-editor-host",
+      "entrance-scene-hotspots": "#entrance-scene-hotspots",
+      "entrance-scene-menu-host": "#entrance-scene-menu-host",
+      "entrance-scene-root": "#entrance-scene-root",
       "error-area": "#error-area",
       "files-count": "#files-count",
       "gdrive-auth-code": "#gdrive-auth-code",
@@ -462,7 +468,9 @@
       "us1-mail-verify-btn": "#us1-mail-verify-btn",
       "us1-nickname": "#us1-nickname",
       "us1-phase-hint": "#us1-phase-hint",
+      "us1-remember-connection-check": "#us1-remember-connection-check",
       "us1-report-log": "#us1-report-log",
+      "us1-resume-last-session-check": "#us1-resume-last-session-check",
       "us1-send-indicator": "#us1-send-indicator",
       "us1-status-dot": "#us1-status-dot",
       "us1-status-text": "#us1-status-text",
@@ -571,6 +579,7 @@
       "user_query_bubble_with_background": ".user-query-bubble-with-background",
       "class_overflow_y": "[class*=\"overflow-y\"]",
       "class_prosemirror": "[class*=\"ProseMirror\"]",
+      "data_character_id": "[data-character-id=",
       "data_component": "[data-component=",
       "data_component_markdown": "[data-component=\"markdown\"]",
       "data_component_user_message_data_slot_user_message_text": "[data-component=\"user-message\"] [data-slot=\"user-message-text\"]",

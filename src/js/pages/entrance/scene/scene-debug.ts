@@ -5,7 +5,16 @@ export function isSceneDebugEnabled(): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
     const value = (params.get(SCENE_DEBUG_QUERY_KEY) ?? "").trim().toLowerCase();
-    return value === "1" || value === "true" || value === "yes" || value === "debug";
+    if (value === "1" || value === "true" || value === "yes" || value === "debug") {
+      return true;
+    }
+  } catch {
+    // Ignore URL parsing failures and fall back to startup flags.
+  }
+
+  try {
+    const startupFlags = window.electronAPI?.getStartupFlags();
+    return startupFlags?.sceneDebug === true;
   } catch {
     return false;
   }

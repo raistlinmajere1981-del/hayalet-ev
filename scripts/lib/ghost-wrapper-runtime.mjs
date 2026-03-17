@@ -78,14 +78,21 @@ export function normalizeMainAppUiMode(uiMode) {
   return uiMode === "scene" ? "scene" : "classic";
 }
 
-export function resolveMainAppScriptName(useAssistantStartupFlags = false, uiMode = "classic") {
+export function resolveMainAppScriptName(
+  useAssistantStartupFlags = false,
+  uiMode = "classic",
+  sceneDebug = false
+) {
   const normalizedUiMode = normalizeMainAppUiMode(uiMode);
+  const debugSuffix = sceneDebug && normalizedUiMode === "scene" ? ":debug" : "";
 
   if (useAssistantStartupFlags) {
-    return normalizedUiMode === "scene" ? "electron:dev:assistant:scene" : "electron:dev:assistant";
+    return normalizedUiMode === "scene"
+      ? `electron:dev:assistant:scene${debugSuffix}`
+      : "electron:dev:assistant";
   }
 
-  return normalizedUiMode === "scene" ? "electron:dev:scene" : "electron:dev";
+  return normalizedUiMode === "scene" ? `electron:dev:scene${debugSuffix}` : "electron:dev";
 }
 
 export function buildMainAppLaunchArgs(mainEntry, useAssistantStartupFlags = false) {

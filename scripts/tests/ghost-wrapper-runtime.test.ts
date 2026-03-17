@@ -228,8 +228,10 @@ test("normalizeMainAppUiMode falls back to classic", () => {
 test("resolveMainAppScriptName picks the correct npm script for uiMode and startup flags", () => {
   assert.equal(resolveMainAppScriptName(false, "classic"), "electron:dev");
   assert.equal(resolveMainAppScriptName(false, "scene"), "electron:dev:scene");
+  assert.equal(resolveMainAppScriptName(false, "scene", true), "electron:dev:scene:debug");
   assert.equal(resolveMainAppScriptName(true, "classic"), "electron:dev:assistant");
   assert.equal(resolveMainAppScriptName(true, "scene"), "electron:dev:assistant:scene");
+  assert.equal(resolveMainAppScriptName(true, "scene", true), "electron:dev:assistant:scene:debug");
 });
 
 test("toMainRunningControl forces soft idle for active main app", () => {

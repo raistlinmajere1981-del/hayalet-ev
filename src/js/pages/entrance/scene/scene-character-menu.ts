@@ -144,6 +144,7 @@ export class SceneCharacterMenu {
     }
 
     const state = this.bridge.getMenuState(this.character);
+    const character = this.character;
     const panel = document.createElement("section");
     panel.className = "entrance-scene__menu-panel";
     panel.setAttribute("role", "dialog");
@@ -164,19 +165,19 @@ export class SceneCharacterMenu {
     panel.appendChild(header);
 
     if (state.quickActions.length > 0) {
-      panel.appendChild(this.renderQuickSection(state.quickActions));
+      panel.appendChild(this.renderQuickSection(character, state.quickActions));
     }
 
     if (state.controls.length > 0) {
-      panel.appendChild(this.renderControlsSection(state.controls));
+      panel.appendChild(this.renderControlsSection(character, state.controls));
     }
 
     if (state.preferences.length > 0) {
-      panel.appendChild(this.renderPreferencesSection(state.preferences));
+      panel.appendChild(this.renderPreferencesSection(character, state.preferences));
     }
 
     if (state.advanced !== null) {
-      panel.appendChild(this.renderAdvancedSection(state.advanced));
+      panel.appendChild(this.renderAdvancedSection(character, state.advanced));
     }
 
     this.host.replaceChildren(panel);
@@ -184,14 +185,19 @@ export class SceneCharacterMenu {
     this.positionPanel();
   }
 
-  private renderQuickSection(actions: SceneCharacterMenuActionState[]): HTMLElement {
+  private renderQuickSection(
+    character: SceneCharacterDescriptor,
+    actions: SceneCharacterMenuActionState[]
+  ): HTMLElement {
     const section = this.createSection(getSectionTitle("quick"));
     const row = document.createElement("div");
     row.className = "entrance-scene__menu-action-row";
     actions.forEach((action) => {
       row.appendChild(
         this.createActionButton(action, () => {
-          void this.runAction(() => this.bridge.triggerAction(this.character!, action.id));
+          void this.runAction(async () => {
+            await this.bridge.triggerAction(character, action.id);
+          });
         })
       );
     });
@@ -199,35 +205,44 @@ export class SceneCharacterMenu {
     return section;
   }
 
-  private renderControlsSection(selects: SceneCharacterMenuSelectState[]): HTMLElement {
+  private renderControlsSection(
+    character: SceneCharacterDescriptor,
+    selects: SceneCharacterMenuSelectState[]
+  ): HTMLElement {
     const section = this.createSection(getSectionTitle("controls"));
     selects.forEach((selectState) => {
       section.appendChild(
         this.createSelectField(selectState, (value) => {
-          void this.runAction(() =>
-            this.bridge.updateSelect(this.character!, selectState.id, value)
-          );
+          void this.runAction(async () => {
+            await this.bridge.updateSelect(character, selectState.id, value);
+          });
         })
       );
     });
     return section;
   }
 
-  private renderPreferencesSection(toggles: SceneCharacterMenuToggleState[]): HTMLElement {
+  private renderPreferencesSection(
+    character: SceneCharacterDescriptor,
+    toggles: SceneCharacterMenuToggleState[]
+  ): HTMLElement {
     const section = this.createSection(getSectionTitle("preferences"));
     toggles.forEach((toggleState) => {
       section.appendChild(
         this.createToggleField(toggleState, (checked) => {
-          void this.runAction(() =>
-            this.bridge.updateToggle(this.character!, toggleState.id, checked)
-          );
+          void this.runAction(async () => {
+            await this.bridge.updateToggle(character, toggleState.id, checked);
+          });
         })
       );
     });
     return section;
   }
 
-  private renderAdvancedSection(state: SceneCharacterMenuAdvancedState): HTMLElement {
+  private renderAdvancedSection(
+    character: SceneCharacterDescriptor,
+    state: SceneCharacterMenuAdvancedState
+  ): HTMLElement {
     const details = document.createElement("details");
     details.className = "entrance-scene__menu-advanced";
     details.open = this.advancedExpanded;
@@ -246,9 +261,9 @@ export class SceneCharacterMenu {
     state.selects.forEach((selectState) => {
       content.appendChild(
         this.createSelectField(selectState, (value) => {
-          void this.runAction(() =>
-            this.bridge.updateSelect(this.character!, selectState.id, value)
-          );
+          void this.runAction(async () => {
+            await this.bridge.updateSelect(character, selectState.id, value);
+          });
         })
       );
     });
@@ -259,7 +274,9 @@ export class SceneCharacterMenu {
       state.actions.forEach((action) => {
         actions.appendChild(
           this.createActionButton(action, () => {
-            void this.runAction(() => this.bridge.triggerAction(this.character!, action.id));
+            void this.runAction(async () => {
+              await this.bridge.triggerAction(character, action.id);
+            });
           })
         );
       });
