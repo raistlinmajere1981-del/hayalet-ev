@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T00:31:54.265Z",
+  "generatedAt": "2026-03-18T01:11:17.272Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -10,10 +10,10 @@
   ],
   "stats": {
     "filesScanned": 474,
-    "ids": 500,
+    "ids": 510,
     "testIds": 15,
     "querySelectors": 129,
-    "totalSelectors": 644
+    "totalSelectors": 654
   },
   "lookup": {
     "id": {
@@ -415,6 +415,16 @@
       "settings-hub-overlay": "#settings-hub-overlay",
       "settings-panel-accounts": "#settings-panel-accounts",
       "settings-panel-theme": "#settings-panel-theme",
+      "settings-scene-background": "#settings-scene-background",
+      "settings-scene-characters": "#settings-scene-characters",
+      "settings-scene-door-hotspot": "#settings-scene-door-hotspot",
+      "settings-scene-exit-left": "#settings-scene-exit-left",
+      "settings-scene-exit-right": "#settings-scene-exit-right",
+      "settings-scene-panel-art": "#settings-scene-panel-art",
+      "settings-scene-panel-slot": "#settings-scene-panel-slot",
+      "settings-scene-panel-view": "#settings-scene-panel-view",
+      "settings-scene-room-view": "#settings-scene-room-view",
+      "settings-scene-root": "#settings-scene-root",
       "settings-sync-remote-accounts": "#settings-sync-remote-accounts",
       "settings-tab-accounts": "#settings-tab-accounts",
       "settings-tab-backup": "#settings-tab-backup",

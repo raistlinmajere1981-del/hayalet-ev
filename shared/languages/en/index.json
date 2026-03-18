@@ -777,6 +777,12 @@
         "title": "Account Settings",
         "userColumn": "User Account Settings",
         "slotColumn": "Slot Account Settings"
+      },
+      "scene": {
+        "ariaLabel": "Settings room",
+        "returnRoom": "Back",
+        "returnRoomTitle": "Return to the settings room",
+        "closeTitle": "Close the settings room"
       }
     },
     "liveLog": {

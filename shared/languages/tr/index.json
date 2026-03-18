@@ -777,6 +777,12 @@
         "title": "Hesap Ayarları",
         "userColumn": "Kullanıcı Hesap Ayarları",
         "slotColumn": "Slot Hesap Ayarları"
+      },
+      "scene": {
+        "ariaLabel": "Ayar odası",
+        "returnRoom": "Geri",
+        "returnRoomTitle": "Ayar odasına dön",
+        "closeTitle": "Ayar odasını kapat"
       }
     },
     "liveLog": {

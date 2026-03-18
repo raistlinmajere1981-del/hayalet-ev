@@ -20,7 +20,7 @@ export interface EntranceSceneHotspotActionNavigate {
 
 export interface EntranceSceneHotspotActionSettings {
   type: "settings";
-  panel: "theme" | "accounts" | "backup" | "rooms" | "live-log";
+  panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | null;
 }
 
 export interface EntranceSceneHotspotActionScreen {
@@ -229,7 +229,7 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       frameHoverGlowAlpha: 0.34,
 
       labelFramePerspectiveDeg: 0,
-      action: { type: "settings", panel: "theme" },
+      action: { type: "settings", panel: null },
     },
   ],
   characterAnchors: [

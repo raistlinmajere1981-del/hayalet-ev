@@ -3,6 +3,12 @@ import loadingDoor02 from "../../assets/themes/castle/loading/loading_door_02.we
 import loadingDoor03 from "../../assets/themes/castle/loading/loading_door_03.webp";
 import loadingDoor04 from "../../assets/themes/castle/loading/loading_door_04.webp";
 import entranceBackground from "../../assets/themes/castle/entrance/entrance_bg_main.webp";
+import settingsBackground from "../../assets/themes/castle/settings/settings_bg_main.webp";
+import settingsThemePanel from "../../assets/themes/castle/settings/settings_theme.webp";
+import settingsAccountsPanel from "../../assets/themes/castle/settings/settings_accounts.webp";
+import settingsBackupPanel from "../../assets/themes/castle/settings/settings_backup.webp";
+import settingsRoomsPanel from "../../assets/themes/castle/settings/settings_rooms.webp";
+import settingsLogViewPanel from "../../assets/themes/castle/settings/settings_log_view.webp";
 import aiBodyBase from "../../assets/themes/castle/characters/ai/ai_body_base.webp";
 import assistantBodyBase from "../../assets/themes/castle/characters/assistant/assistant_body_base.webp";
 import humanBodyBase from "../../assets/themes/castle/characters/human/human_body_base.webp";
@@ -58,6 +64,16 @@ export const SCENE_THEME_CONFIG = {
     backgroundSrc: entranceBackground,
     characterRoles: SCENE_CHARACTER_ROLE_CONFIG,
     fallbackCharacterRole: "ai" as SceneCharacterRole,
+  },
+  settings: {
+    backgroundSrc: settingsBackground,
+    panels: {
+      theme: settingsThemePanel,
+      accounts: settingsAccountsPanel,
+      backup: settingsBackupPanel,
+      rooms: settingsRoomsPanel,
+      "live-log": settingsLogViewPanel,
+    },
   },
 } as const;
 
