@@ -11,8 +11,12 @@ import { ConversationListManager } from "../modules/conversation-list-manager.js
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { SlotController, SlotEvent } from "../modules/slot-controller.js";
 import { ButtonStates } from "../ui/button-states.js";
+import { isSceneUiMode } from "../ui/ui-mode.js";
+import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
+import { SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
 
 import { renderMessages, resetMessageRenderState } from "./analyze/message-renderer.js";
 import type { RenderCallbacks } from "./analyze/message-renderer.js";
@@ -30,6 +34,26 @@ import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
 import { AnalyzeArchiveOverlayController } from "./analyze/archive-overlay-controller.js";
+import {
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+} from "./entrance/scene/scene-editor.js";
+import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
+import { applySceneDebugFlag } from "./entrance/scene/scene-debug.js";
+import {
+  buildSceneCharacterRoster,
+  type SceneCharacterDescriptor,
+} from "./entrance/scene/scene-character-roster.js";
+import {
+  clearAnalyzeSceneMapDraft,
+  cloneEntranceSceneMap,
+  DEFAULT_ANALYZE_SCENE_MAP,
+  loadAnalyzeSceneMapDraft,
+  saveAnalyzeSceneMapDraft,
+  serializeEntranceSceneMap,
+  type EntranceSceneHotspotConfig,
+  type EntranceSceneMap,
+} from "./entrance/scene/scene-map.js";
 
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
@@ -96,6 +120,14 @@ export class AnalyzeController {
   _us1SendBusy: boolean;
   _us1AwaitingReply: boolean;
   _syncingUs1Indicators: boolean;
+  _analyzeSceneTableOpen: boolean;
+  _analyzeSceneDebugEnabled: boolean;
+  _analyzeSceneBindingsReady: boolean;
+  _analyzeSceneMap: EntranceSceneMap;
+  _analyzeSceneEditor: EntranceSceneEditor | null;
+  _analyzeSceneSelection: EntranceSceneEditorSelection;
+  _analyzeSceneResizeObserver: ResizeObserver | null;
+  _analyzeSceneCharacterRenderToken: number;
 
   constructor() {
     this.archiveOverlay = new AnalyzeArchiveOverlayController();
@@ -116,10 +148,22 @@ export class AnalyzeController {
     this._us1SendBusy = false;
     this._us1AwaitingReply = false;
     this._syncingUs1Indicators = false;
+    this._analyzeSceneTableOpen = false;
+    this._analyzeSceneDebugEnabled = false;
+    this._analyzeSceneBindingsReady = false;
+    this._analyzeSceneMap = cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
+    this._analyzeSceneEditor = null;
+    this._analyzeSceneSelection = null;
+    this._analyzeSceneResizeObserver = null;
+    this._analyzeSceneCharacterRenderToken = 0;
   }
 
   async init(): Promise<void> {
     await this.loadSettings();
+    this._analyzeSceneDebugEnabled = applySceneDebugFlag();
+    this._analyzeSceneMap =
+      (this._analyzeSceneDebugEnabled ? loadAnalyzeSceneMapDraft() : null) ??
+      cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
     this.applyAvatars();
     this.applyNames();
 
@@ -145,35 +189,43 @@ export class AnalyzeController {
         this.applyAvatars();
         this.applyNames();
         this.updateConnectionStates();
+        void this._renderAnalyzeSceneCharacters();
       }
     );
 
     this.bindActions();
     TrafficManager.onUpdate(() => {
       this.updateSendButtonState();
+      void this._renderAnalyzeSceneCharacters();
     });
 
     this._unsubSlotController ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
       this.applyNames();
       this.updateConnectionStates();
+      void this._renderAnalyzeSceneCharacters();
     });
 
     this._unsubAppState ??= AppState.subscribe(() => {
       this.applyNames();
+      void this._renderAnalyzeSceneCharacters();
     });
 
     this._unsubI18n ??= AppI18n.subscribe(() => {
       this.applyNames();
       this.updateConnectionStates();
       this.refreshUploads();
+      this._renderAnalyzeSceneHotspots();
+      this._analyzeSceneEditor?.refresh();
       void this._renderMessages("ai1");
       void this._renderMessages("ai2");
       void this._renderUs1Messages();
+      void this._renderAnalyzeSceneCharacters();
     });
 
     this.updateConnectionStates();
     this.refreshUploads();
     await this.archiveOverlay.init();
+    this._initializeAnalyzeScene();
 
     initReadModal();
     void this._initDraftSystem();
@@ -208,6 +260,580 @@ export class AnalyzeController {
         });
       }
     });
+  }
+
+  _initializeAnalyzeScene(): void {
+    this._setupAnalyzeSceneDebug();
+    this._syncAnalyzeSceneAssets();
+    this._bindAnalyzeSceneEvents();
+    this._renderAnalyzeScene();
+    this._syncAnalyzeSceneVisibility();
+    this._observeAnalyzeSceneLayout();
+  }
+
+  _syncAnalyzeSceneAssets(): void {
+    const background = document.getElementById(
+      "analyze-scene-background"
+    ) as HTMLImageElement | null;
+    const tableArt = document.getElementById("analyze-scene-table-art") as HTMLImageElement | null;
+    const archiveArt = document.getElementById(
+      "analyze-archive-scene-art"
+    ) as HTMLImageElement | null;
+
+    if (background !== null) {
+      background.src = SCENE_THEME_CONFIG.analyze.backgroundSrc;
+      background.alt = "";
+    }
+
+    if (tableArt !== null) {
+      tableArt.src = SCENE_THEME_CONFIG.analyze.panels.table;
+      tableArt.alt = "";
+    }
+
+    if (archiveArt !== null) {
+      archiveArt.src = SCENE_THEME_CONFIG.analyze.panels.archive;
+      archiveArt.alt = "";
+    }
+  }
+
+  _setupAnalyzeSceneDebug(): void {
+    const editorHost = document.getElementById("analyze-scene-editor-host");
+    if (!(editorHost instanceof HTMLElement)) {
+      this._analyzeSceneEditor = null;
+      return;
+    }
+
+    if (!this._analyzeSceneDebugEnabled) {
+      editorHost.replaceChildren();
+      this._analyzeSceneEditor = null;
+      return;
+    }
+
+    this._analyzeSceneEditor = new EntranceSceneEditor(editorHost, {
+      isActive: (): boolean => this._isAnalyzeSceneDebugActive(),
+      getSceneMap: (): EntranceSceneMap => this._analyzeSceneMap,
+      getSelection: (): EntranceSceneEditorSelection => this._analyzeSceneSelection,
+      getRoomOptions: (): Array<{ id: string; label: string }> =>
+        SCENE_DEBUG_ROOMS.map((room) => ({
+          id: room.id,
+          label: shellT(room.labelKey),
+        })),
+      getActiveRoomId: (): string => "analyze",
+      setSelection: (selection): void => {
+        this._analyzeSceneSelection = selection;
+        this._analyzeSceneEditor?.refresh();
+        this._renderAnalyzeScene();
+      },
+      navigateToRoom: (roomId: string): void => {
+        this._navigateToAnalyzeSceneDebugRoom(roomId);
+      },
+      supportsHotspotLabels: (): boolean => false,
+      updateHotspot: (id, updater): void => {
+        this._analyzeSceneMap.hotspots = this._analyzeSceneMap.hotspots.map((hotspot) =>
+          hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this._persistAnalyzeSceneMapDraft();
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      updateCharacterAnchor: (id, updater): void => {
+        this._analyzeSceneMap.characterAnchors = this._analyzeSceneMap.characterAnchors.map(
+          (anchor) => (anchor.id === id ? updater(anchor) : anchor)
+        );
+        this._persistAnalyzeSceneMapDraft();
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      resetDraft: (): void => {
+        this._analyzeSceneMap = cloneEntranceSceneMap(DEFAULT_ANALYZE_SCENE_MAP);
+        clearAnalyzeSceneMapDraft();
+        this._analyzeSceneSelection = null;
+        this._renderAnalyzeScene();
+        this._analyzeSceneEditor?.refresh();
+      },
+      copySceneMap: async (): Promise<void> => {
+        try {
+          await navigator.clipboard.writeText(serializeEntranceSceneMap(this._analyzeSceneMap));
+        } catch {
+          console.info("Analyze scene map copy failed.");
+        }
+      },
+    });
+    this._analyzeSceneEditor.refresh();
+  }
+
+  _observeAnalyzeSceneLayout(): void {
+    const sceneRoot = document.getElementById("analyze-scene-root");
+    if (!(sceneRoot instanceof HTMLElement) || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    this._analyzeSceneResizeObserver?.disconnect();
+    this._analyzeSceneResizeObserver = new ResizeObserver(() => {
+      if (!isSceneUiMode()) {
+        return;
+      }
+      this._renderAnalyzeScene();
+      this._analyzeSceneEditor?.refresh();
+    });
+    this._analyzeSceneResizeObserver.observe(sceneRoot);
+  }
+
+  _renderAnalyzeScene(): void {
+    this._renderAnalyzeSceneHotspots();
+    void this._renderAnalyzeSceneCharacters();
+  }
+
+  _renderAnalyzeSceneHotspots(): void {
+    const hotspotLayer = document.getElementById("analyze-scene-hotspots");
+    if (!(hotspotLayer instanceof HTMLElement)) {
+      return;
+    }
+
+    const projection = this._getAnalyzeSceneProjection();
+    const fragment = document.createDocumentFragment();
+
+    this._analyzeSceneMap.hotspots.forEach((hotspot) => {
+      const labelText = this._resolveAnalyzeSceneHotspotLabel(hotspot);
+      const selected =
+        this._analyzeSceneSelection?.kind === "hotspot" &&
+        this._analyzeSceneSelection.id === hotspot.id;
+      const wrapper = document.createElement("div");
+      wrapper.className = "analyze-scene__hotspot-item";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "analyze-scene__hotspot";
+      button.dataset["hotspotId"] = hotspot.id;
+      button.dataset["frameVariant"] = hotspot.frameVariant;
+      button.classList.toggle("is-selected", selected);
+      button.style.setProperty(
+        "--analyze-scene-hotspot-left",
+        `${projection.offsetX + hotspot.leftPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-top",
+        `${projection.offsetY + hotspot.topPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-width",
+        `${hotspot.widthPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-height",
+        `${hotspot.heightPx * projection.scale}px`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-frame-rotate",
+        `${hotspot.frameRotateDeg}deg`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-frame-perspective",
+        `${hotspot.framePerspectiveDeg}deg`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-hover-glow-hue",
+        `${hotspot.frameHoverGlowHueDeg}deg`
+      );
+      button.style.setProperty(
+        "--analyze-scene-hotspot-hover-glow-alpha",
+        `${hotspot.frameHoverGlowAlpha}`
+      );
+      button.ariaLabel = labelText;
+      button.addEventListener("click", () => {
+        this._handleAnalyzeSceneHotspotInteraction(hotspot);
+      });
+
+      const label = document.createElement("span");
+      label.className = "analyze-scene__hotspot-label";
+      label.classList.toggle("is-selected", selected);
+      label.textContent = labelText;
+      label.ariaHidden = "true";
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-left",
+        `${projection.offsetX + hotspot.labelCenterXPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-top",
+        `${projection.offsetY + hotspot.labelTopPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-width",
+        `${hotspot.labelWidthPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-height",
+        `${hotspot.labelHeightPx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-rotate",
+        `${hotspot.labelRotateDeg}deg`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-frame-perspective",
+        `${hotspot.labelFramePerspectiveDeg}deg`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-font-size",
+        `${hotspot.labelFontSizePx * projection.scale}px`
+      );
+      label.style.setProperty(
+        "--analyze-scene-hotspot-label-letter-spacing",
+        `${hotspot.labelLetterSpacingPx * projection.scale}px`
+      );
+      label.addEventListener("click", () => {
+        this._handleAnalyzeSceneHotspotInteraction(hotspot);
+      });
+
+      wrapper.append(button, label);
+      fragment.appendChild(wrapper);
+    });
+
+    hotspotLayer.replaceChildren(fragment);
+  }
+
+  async _renderAnalyzeSceneCharacters(): Promise<void> {
+    const characterLayer = document.getElementById("analyze-scene-characters");
+    if (!(characterLayer instanceof HTMLElement)) {
+      return;
+    }
+
+    if (!isSceneUiMode()) {
+      characterLayer.replaceChildren();
+      return;
+    }
+
+    const hasConnectedAi = SlotController.isConnected("ai1") || SlotController.isConnected("ai2");
+    const roster: SceneCharacterDescriptor[] = buildSceneCharacterRoster(
+      this._analyzeSceneMap.characterAnchors
+    ).filter((character) => {
+      if (character.kind === "user") {
+        return true;
+      }
+
+      if (!hasConnectedAi) {
+        return false;
+      }
+
+      if (character.slot === "ai1") {
+        return SlotController.isConnected("ai1");
+      }
+
+      if (character.slot === "ai2") {
+        return SlotController.isConnected("ai2");
+      }
+
+      if (character.slot === "us1") {
+        return AppState.isUs1Connected();
+      }
+
+      return false;
+    });
+
+    const renderToken = ++this._analyzeSceneCharacterRenderToken;
+    const projection = this._getAnalyzeSceneProjection();
+    const avatarSources = await Promise.all(
+      roster.map(async (character) => await resolveSceneAvatarSource(character.avatarSource))
+    );
+
+    if (renderToken !== this._analyzeSceneCharacterRenderToken) {
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    roster.forEach((character, index) => {
+      const avatarSource = avatarSources[index] ?? null;
+      const depth = Number.isFinite(character.depth) ? Math.max(1, character.depth) : 1;
+      const characterNode = document.createElement("div");
+      characterNode.className = `entrance-scene__character analyze-scene__character is-${character.state}`;
+      if (character.slot !== null) {
+        characterNode.dataset["slot"] = character.slot;
+      }
+      characterNode.dataset["characterId"] = character.id;
+      characterNode.dataset["kind"] = character.kind;
+      characterNode.dataset["role"] = character.role;
+      characterNode.dataset["variant"] = character.variant;
+      characterNode.dataset["anchorId"] = character.anchorId;
+      characterNode.classList.toggle(
+        "is-selected",
+        this._analyzeSceneSelection?.kind === "character" &&
+          this._analyzeSceneSelection.id === character.anchorId
+      );
+      characterNode.style.setProperty(
+        "--scene-character-left",
+        `${projection.offsetX + character.leftPx * projection.scale}px`
+      );
+      characterNode.style.setProperty(
+        "--scene-character-bottom",
+        `${projection.offsetY + character.bottomPx * projection.scale}px`
+      );
+      characterNode.style.setProperty("--scene-character-scale", String(character.scale));
+      characterNode.style.setProperty("--scene-character-depth", String(depth));
+      characterNode.style.setProperty(
+        "--scene-character-depth-scale",
+        String(this._getAnalyzeSceneDepthScale(depth))
+      );
+      characterNode.style.setProperty("--scene-character-body-scale", String(character.bodyScale));
+      characterNode.style.setProperty("--scene-character-head-top", `${character.headTopPct}%`);
+      characterNode.style.setProperty("--scene-character-head-left", `${character.headLeftPct}%`);
+      characterNode.style.setProperty("--scene-character-head-size", `${character.headSizePct}%`);
+      characterNode.style.setProperty(
+        "--scene-character-avatar-scale",
+        String(character.avatarScale)
+      );
+
+      if (this._analyzeSceneEditor !== null) {
+        characterNode.tabIndex = 0;
+        characterNode.role = "button";
+        characterNode.setAttribute("aria-label", character.label);
+      } else {
+        characterNode.tabIndex = -1;
+        characterNode.removeAttribute("role");
+        characterNode.removeAttribute("aria-label");
+      }
+
+      const stage = document.createElement("div");
+      stage.className = "entrance-scene__character-stage";
+
+      const body = document.createElement("img");
+      body.className = "entrance-scene__character-body";
+      body.src = character.bodySrc;
+      body.alt = "";
+      body.ariaHidden = "true";
+      stage.appendChild(body);
+
+      const head = document.createElement("span");
+      head.className = "entrance-scene__character-head";
+      head.ariaHidden = "true";
+      if (avatarSource !== null) {
+        const avatar = document.createElement("img");
+        avatar.className = "entrance-scene__character-avatar";
+        avatar.src = avatarSource;
+        avatar.alt = "";
+        avatar.ariaHidden = "true";
+        head.appendChild(avatar);
+      } else {
+        const fallback = document.createElement("span");
+        fallback.className = "entrance-scene__character-head-fallback";
+        fallback.ariaHidden = "true";
+        fallback.textContent = character.headLabel ?? "?";
+        head.appendChild(fallback);
+      }
+      stage.appendChild(head);
+
+      const label = document.createElement("span");
+      label.className = "entrance-scene__character-label";
+      label.textContent = character.label;
+
+      const anchorMarker = document.createElement("span");
+      anchorMarker.className = "entrance-scene__character-anchor-marker";
+      anchorMarker.ariaHidden = String(!this._analyzeSceneDebugEnabled);
+      anchorMarker.textContent = character.anchorId;
+
+      characterNode.append(stage, label, anchorMarker);
+      characterNode.addEventListener("click", () => {
+        if (this._analyzeSceneEditor === null) {
+          return;
+        }
+        this._analyzeSceneSelection = { kind: "character", id: character.anchorId };
+        this._analyzeSceneEditor.refresh();
+        this._renderAnalyzeScene();
+      });
+      characterNode.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (this._analyzeSceneEditor === null) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        this._analyzeSceneSelection = { kind: "character", id: character.anchorId };
+        this._analyzeSceneEditor.refresh();
+        this._renderAnalyzeScene();
+      });
+
+      fragment.appendChild(characterNode);
+    });
+
+    characterLayer.replaceChildren(fragment);
+  }
+
+  _getAnalyzeSceneProjection(): { offsetX: number; offsetY: number; scale: number } {
+    const sceneRoot = document.getElementById("analyze-scene-root");
+    if (!(sceneRoot instanceof HTMLElement)) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const surfaceWidth = sceneRoot.clientWidth;
+    const surfaceHeight = sceneRoot.clientHeight;
+    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const scale = Math.max(
+      surfaceWidth / this._analyzeSceneMap.referenceSize.width,
+      surfaceHeight / this._analyzeSceneMap.referenceSize.height
+    );
+
+    return {
+      offsetX: (surfaceWidth - this._analyzeSceneMap.referenceSize.width * scale) / 2,
+      offsetY: (surfaceHeight - this._analyzeSceneMap.referenceSize.height * scale) / 2,
+      scale,
+    };
+  }
+
+  _getAnalyzeSceneDepthScale(depth: number): number {
+    const normalizedDepth = Math.max(1, Number.isFinite(depth) ? depth : 1);
+    const scaled = 1 - (normalizedDepth - 1) * 0.02;
+    return Number(Math.max(0.75, scaled).toFixed(3));
+  }
+
+  _resolveAnalyzeSceneHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
+    return this._analyzeSceneMap.hotspots.find((item) => item.id === hotspotId) ?? null;
+  }
+
+  _resolveAnalyzeSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel !== "") {
+      return customLabel;
+    }
+    if (hotspot.labelKey !== "") {
+      return shellT(hotspot.labelKey);
+    }
+    return hotspot.id;
+  }
+
+  _persistAnalyzeSceneMapDraft(): void {
+    saveAnalyzeSceneMapDraft(this._analyzeSceneMap);
+  }
+
+  _isAnalyzeSceneDebugActive(): boolean {
+    return (
+      isSceneUiMode() &&
+      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
+        "analyze"
+    );
+  }
+
+  _bindAnalyzeSceneEvents(): void {
+    if (this._analyzeSceneBindingsReady) {
+      return;
+    }
+
+    const exitLeft = document.getElementById("analyze-scene-exit-left");
+    const exitRight = document.getElementById("analyze-scene-exit-right");
+    const archiveExitLeft = document.getElementById("analyze-archive-exit-left");
+    const archiveExitRight = document.getElementById("analyze-archive-exit-right");
+
+    exitLeft?.addEventListener("click", () => {
+      this._setAnalyzeSceneTableOpen(false);
+    });
+
+    exitRight?.addEventListener("click", () => {
+      this._setAnalyzeSceneTableOpen(false);
+    });
+
+    archiveExitLeft?.addEventListener("click", () => {
+      this.archiveOverlay.close();
+    });
+
+    archiveExitRight?.addEventListener("click", () => {
+      this.archiveOverlay.close();
+    });
+
+    this._analyzeSceneBindingsReady = true;
+  }
+
+  _handleAnalyzeSceneHotspotInteraction(hotspot: EntranceSceneHotspotConfig): void {
+    if (this._analyzeSceneEditor !== null) {
+      this._analyzeSceneSelection = { kind: "hotspot", id: hotspot.id };
+      this._analyzeSceneEditor.refresh();
+      this._renderAnalyzeScene();
+      return;
+    }
+
+    this._handleAnalyzeSceneHotspotAction(hotspot);
+  }
+
+  _handleAnalyzeSceneHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
+    if (hotspot.action.type === "navigate") {
+      this.archiveOverlay.close();
+      this._setAnalyzeSceneTableOpen(false);
+      this._navigateToPage(hotspot.action.page);
+      return;
+    }
+
+    if (hotspot.action.type !== "screen") {
+      return;
+    }
+
+    if (hotspot.action.screen === "archive") {
+      void this.archiveOverlay.open();
+      return;
+    }
+
+    this.archiveOverlay.close();
+    this._setAnalyzeSceneTableOpen(true);
+  }
+
+  _setAnalyzeSceneTableOpen(open: boolean): void {
+    this._analyzeSceneTableOpen = open;
+    this._syncAnalyzeSceneVisibility();
+  }
+
+  _syncAnalyzeSceneVisibility(): void {
+    const sceneRoot = document.getElementById("analyze-scene-root");
+    const tableView = document.getElementById("analyze-scene-table-view");
+    const room = document.querySelector(".analyze-room");
+    const sceneActive = isSceneUiMode();
+
+    if (sceneRoot instanceof HTMLElement) {
+      sceneRoot.hidden = !sceneActive;
+      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
+    }
+
+    if (tableView instanceof HTMLElement) {
+      tableView.setAttribute(
+        "aria-hidden",
+        String(!sceneActive || this._analyzeSceneTableOpen === false)
+      );
+    }
+
+    if (room instanceof HTMLElement) {
+      room.classList.toggle("is-scene-table-open", sceneActive && this._analyzeSceneTableOpen);
+    }
+
+    if (!sceneActive) {
+      return;
+    }
+
+    this._syncAnalyzeSceneAssets();
+    this._renderAnalyzeScene();
+    this._analyzeSceneEditor?.refresh();
+  }
+
+  _navigateToPage(page: string): void {
+    document.dispatchEvent(
+      new CustomEvent<{ page: string }>("navigate-page", {
+        detail: { page },
+      })
+    );
+  }
+
+  _navigateToAnalyzeSceneDebugRoom(roomId: string): void {
+    this.archiveOverlay.close();
+    this._setAnalyzeSceneTableOpen(false);
+    if (roomId === "settings") {
+      document.dispatchEvent(
+        new CustomEvent("settings-hub:open", {
+          detail: { panel: null },
+        })
+      );
+      return;
+    }
+
+    this._navigateToPage(roomId);
   }
 
   async loadSettings(): Promise<void> {
@@ -1244,6 +1870,7 @@ export class AnalyzeController {
     this.archiveOverlay.onHostShow();
     this.refreshUploads();
     this.updateConnectionStates();
+    this._syncAnalyzeSceneVisibility();
     this._resetSendTargetsOnShow();
     this.updateSendButtonState();
     void this._syncUs1Messages({ showRoomPackages: true });
@@ -1251,6 +1878,8 @@ export class AnalyzeController {
   }
 
   onHide(): void {
+    this._setAnalyzeSceneTableOpen(false);
+    this._analyzeSceneSelection = null;
     this.archiveOverlay.onHostHide();
     this._stopUs1Polling();
 

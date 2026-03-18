@@ -2,6 +2,9 @@ import loadingDoor01 from "../../assets/themes/castle/loading/loading_door_01.we
 import loadingDoor02 from "../../assets/themes/castle/loading/loading_door_02.webp";
 import loadingDoor03 from "../../assets/themes/castle/loading/loading_door_03.webp";
 import loadingDoor04 from "../../assets/themes/castle/loading/loading_door_04.webp";
+import analyzeBackground from "../../assets/themes/castle/analyze/analyze_main_bg.webp";
+import analyzeArchivePanel from "../../assets/themes/castle/analyze/analyze_archive.webp";
+import analyzeTablePanel from "../../assets/themes/castle/analyze/analyze_table.webp";
 import entranceBackground from "../../assets/themes/castle/entrance/entrance_bg_main.webp";
 import entranceWhisperBackground from "../../assets/themes/castle/entrance/entrance_whisper.webp";
 import settingsBackground from "../../assets/themes/castle/settings/settings_bg_main.webp";
@@ -68,6 +71,13 @@ export const SCENE_THEME_CONFIG = {
     whisperBackgroundSrc: entranceWhisperBackground,
     characterRoles: SCENE_CHARACTER_ROLE_CONFIG,
     fallbackCharacterRole: "ai" as SceneCharacterRole,
+  },
+  analyze: {
+    backgroundSrc: analyzeBackground,
+    panels: {
+      archive: analyzeArchivePanel,
+      table: analyzeTablePanel,
+    },
   },
   settings: {
     backgroundSrc: settingsBackground,

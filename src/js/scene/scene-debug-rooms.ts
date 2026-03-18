@@ -1,4 +1,4 @@
-export type SceneDebugRoomId = "entrance" | "assistant" | "server" | "settings";
+export type SceneDebugRoomId = "entrance" | "analyze" | "assistant" | "server" | "settings";
 
 const SCENE_DEBUG_ROOM_ATTRIBUTE = "data-scene-debug-room";
 
@@ -10,7 +10,11 @@ export interface SceneDebugRoomDefinition {
 
 export function isSceneDebugRoomId(value: string | null | undefined): value is SceneDebugRoomId {
   return (
-    value === "entrance" || value === "assistant" || value === "server" || value === "settings"
+    value === "entrance" ||
+    value === "analyze" ||
+    value === "assistant" ||
+    value === "server" ||
+    value === "settings"
   );
 }
 
@@ -41,6 +45,11 @@ export const SCENE_DEBUG_ROOMS: readonly SceneDebugRoomDefinition[] = [
     id: "entrance",
     page: "entrance",
     labelKey: "sideNav.entranceLabel",
+  },
+  {
+    id: "analyze",
+    page: "analyze",
+    labelKey: "sideNav.analyzeLabel",
   },
   {
     id: "assistant",

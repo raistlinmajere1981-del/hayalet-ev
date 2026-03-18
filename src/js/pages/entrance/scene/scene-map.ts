@@ -29,7 +29,7 @@ export interface EntranceSceneHotspotActionSettingsSceneClose {
 
 export interface EntranceSceneHotspotActionScreen {
   type: "screen";
-  screen: "primary";
+  screen: "primary" | "archive";
 }
 
 export interface EntranceSceneHotspotActionWhisper {
@@ -89,6 +89,7 @@ export interface EntranceSceneMap {
 }
 
 const ENTRANCE_STORAGE_KEY = "entrance-scene-map-draft-v1";
+const ANALYZE_STORAGE_KEY = "analyze-scene-map-draft-v1";
 const ASSISTANT_STORAGE_KEY = "assistant-scene-map-draft-v1";
 const SETTINGS_STORAGE_KEY = "settings-scene-map-draft-v1";
 
@@ -350,6 +351,124 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
+export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
+  referenceSize: {
+    width: 1920,
+    height: 1080,
+  },
+  hotspots: [
+    {
+      id: "door-entrance",
+      labelKey: "",
+      labelCustomText: "Entrance",
+      leftPx: 132,
+      topPx: 178,
+      widthPx: 252,
+      heightPx: 616,
+      labelCenterXPx: 258,
+      labelTopPx: 144,
+      labelWidthPx: 244,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "left-angled",
+      frameRotateDeg: -1.5,
+      framePerspectiveDeg: 10,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "navigate", page: "entrance" },
+    },
+    {
+      id: "screen-primary",
+      labelKey: "",
+      labelCustomText: "Analyze",
+      leftPx: 760,
+      topPx: 392,
+      widthPx: 400,
+      heightPx: 224,
+      labelCenterXPx: 960,
+      labelTopPx: 634,
+      labelWidthPx: 260,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "screen", screen: "primary" },
+    },
+    {
+      id: "screen-archive",
+      labelKey: "",
+      labelCustomText: "Archives",
+      leftPx: 1332,
+      topPx: 302,
+      widthPx: 236,
+      heightPx: 282,
+      labelCenterXPx: 1450,
+      labelTopPx: 594,
+      labelWidthPx: 240,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "screen", screen: "archive" },
+    },
+  ],
+  characterAnchors: [
+    {
+      id: "anchor-user",
+      kind: "user",
+      leftPx: 482,
+      bottomPx: 102,
+      scale: 0.88,
+      depth: 2,
+    },
+    {
+      id: "anchor-ai1-primary",
+      kind: "ai",
+      preferredSlot: "ai1",
+      leftPx: 768,
+      bottomPx: 130,
+      scale: 0.8,
+      depth: 3,
+    },
+    {
+      id: "anchor-us1",
+      kind: "us1",
+      preferredSlot: "us1",
+      leftPx: 1046,
+      bottomPx: 112,
+      scale: 0.8,
+      depth: 4,
+    },
+    {
+      id: "anchor-ai2-primary",
+      kind: "ai",
+      preferredSlot: "ai2",
+      leftPx: 1326,
+      bottomPx: 128,
+      scale: 0.82,
+      depth: 5,
+    },
+  ],
+};
+
 export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
   referenceSize: {
     width: 1920,
@@ -604,6 +723,10 @@ export function normalizeAssistantSceneMap(source: Partial<EntranceSceneMap>): E
   return normalized;
 }
 
+export function normalizeAnalyzeSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
+  return normalizeSceneMap(source, DEFAULT_ANALYZE_SCENE_MAP);
+}
+
 export function normalizeSettingsSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
   return normalizeSceneMap(source, DEFAULT_SETTINGS_SCENE_MAP);
 }
@@ -639,6 +762,10 @@ export function loadEntranceSceneMapDraft(): EntranceSceneMap | null {
   return loadSceneMapDraft(ENTRANCE_STORAGE_KEY, normalizeEntranceSceneMap);
 }
 
+export function loadAnalyzeSceneMapDraft(): EntranceSceneMap | null {
+  return loadSceneMapDraft(ANALYZE_STORAGE_KEY, normalizeAnalyzeSceneMap);
+}
+
 export function loadAssistantSceneMapDraft(): EntranceSceneMap | null {
   return loadSceneMapDraft(ASSISTANT_STORAGE_KEY, normalizeAssistantSceneMap);
 }
@@ -659,6 +786,10 @@ export function saveEntranceSceneMapDraft(sceneMap: EntranceSceneMap): void {
   saveSceneMapDraft(ENTRANCE_STORAGE_KEY, sceneMap);
 }
 
+export function saveAnalyzeSceneMapDraft(sceneMap: EntranceSceneMap): void {
+  saveSceneMapDraft(ANALYZE_STORAGE_KEY, sceneMap);
+}
+
 export function saveAssistantSceneMapDraft(sceneMap: EntranceSceneMap): void {
   saveSceneMapDraft(ASSISTANT_STORAGE_KEY, sceneMap);
 }
@@ -677,6 +808,10 @@ function clearSceneMapDraft(storageKey: string): void {
 
 export function clearEntranceSceneMapDraft(): void {
   clearSceneMapDraft(ENTRANCE_STORAGE_KEY);
+}
+
+export function clearAnalyzeSceneMapDraft(): void {
+  clearSceneMapDraft(ANALYZE_STORAGE_KEY);
 }
 
 export function clearAssistantSceneMapDraft(): void {
