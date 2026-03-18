@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T11:05:19.630Z",
+  "generatedAt": "2026-03-18T11:52:20.005Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 472,
-    "ids": 514,
+    "filesScanned": 471,
+    "ids": 516,
     "testIds": 15,
     "querySelectors": 129,
-    "totalSelectors": 658
+    "totalSelectors": 660
   },
   "lookup": {
     "id": {
@@ -75,6 +75,11 @@
       "ai2-webview": "#ai2-webview",
       "ai2-webview-mount": "#ai2-webview-mount",
       "ai2-webview-overlay": "#ai2-webview-overlay",
+      "analyze-archive-backdrop": "#analyze-archive-backdrop",
+      "analyze-archive-close-btn": "#analyze-archive-close-btn",
+      "analyze-archive-open-btn": "#analyze-archive-open-btn",
+      "analyze-archive-overlay": "#analyze-archive-overlay",
+      "analyze-archive-overlay-title": "#analyze-archive-overlay-title",
       "app": "#app",
       "app-language-label": "#app-language-label",
       "app-language-select": "#app-language-select",
@@ -285,7 +290,6 @@
       "memory-overlay": "#memory-overlay",
       "memory-overlay-close": "#memory-overlay-close",
       "memory-stats-bar": "#memory-stats-bar",
-      "message-count": "#message-count",
       "messages-ai1": "#messages-ai1",
       "messages-ai2": "#messages-ai2",
       "messages-count": "#messages-count",
@@ -316,8 +320,6 @@
       "opencode-page-title": "#opencode-page-title",
       "page-analyze": "#page-analyze",
       "page-analyze-title": "#page-analyze-title",
-      "page-archives": "#page-archives",
-      "page-archives-title": "#page-archives-title",
       "page-assistant": "#page-assistant",
       "page-assistant-title": "#page-assistant-title",
       "page-entrance": "#page-entrance",

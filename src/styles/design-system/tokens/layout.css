@@ -37,6 +37,8 @@
   --layout-settings-hub-max-w: 1440px;
   --layout-assistant-runtime-stack-max-w: 460px;
   --layout-assistant-session-controls-max-w: 24rem;
+  --layout-analyze-archive-overlay-max-w: 1520px;
+  --layout-analyze-archive-overlay-subtitle-max-w: 48rem;
   --layout-message-virtual-scroll-h: 400px;
 
   --layout-modal-compact-w: 420px;

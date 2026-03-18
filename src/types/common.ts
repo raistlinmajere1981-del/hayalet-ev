@@ -17,7 +17,7 @@ export function isAssistantProviderId(value: unknown): value is AssistantProvide
 
 export type AllProviderId = ProviderId | AssistantProviderId;
 
-export type SpecialPage = "settings" | "archives" | "webview" | "assistant";
+export type SpecialPage = "settings" | "webview" | "assistant";
 
 export type Nullable<T> = T | null;
 

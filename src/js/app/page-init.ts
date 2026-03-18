@@ -5,13 +5,11 @@ import { ConversationListManager } from "../modules/conversation-list-manager.js
 import { EntranceHallController } from "../pages/entrance.js";
 import { AnalyzeController } from "../pages/analyze.js";
 import { ServerController } from "../pages/server.js";
-import { ArchivesController } from "../pages/archives.js";
 import { AssistantController } from "../pages/assistant/assistant.js";
 
 import entranceTemplate from "../../pages/entrance.html?raw";
 import analyzeTemplate from "../../pages/analyze.html?raw";
 import serverTemplate from "../../pages/server.html?raw";
-import archivesTemplate from "../../pages/archives.html?raw";
 import assistantTemplate from "../../pages/assistant.html?raw";
 
 import type { PageController } from "./types.js";
@@ -21,7 +19,7 @@ import { syncInstalledRoomChrome } from "./room-ui.js";
 export function injectPageTemplates(): void {
   const container = document.getElementById("pages-container");
   if (container) {
-    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${serverTemplate}${assistantTemplate}${archivesTemplate}`;
+    container.innerHTML = `${entranceTemplate}${analyzeTemplate}${serverTemplate}${assistantTemplate}`;
     syncInstalledRoomChrome();
   }
 }
@@ -38,13 +36,11 @@ export async function initControllers(controllers: Record<string, PageController
   controllers["entrance"] = new EntranceHallController();
   controllers["analyze"] = new AnalyzeController();
   controllers["server"] = new ServerController();
-  controllers["archives"] = new ArchivesController();
   controllers["assistant"] = new AssistantController();
   syncInstalledRoomChrome(controllers);
   await controllers["entrance"].init?.();
   await controllers["analyze"].init?.();
   await controllers["server"].init?.();
-  await controllers["archives"].init?.();
   await controllers["assistant"].init?.();
   const roomPageNames = Object.keys(controllers).filter((pageName) => pageName.startsWith("room-"));
   await roomPageNames.reduce<Promise<void>>(async (previous, pageName) => {

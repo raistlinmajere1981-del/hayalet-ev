@@ -8,12 +8,13 @@ import {
   generateWorkflowSessionId,
   updateAssistantRuntimeState,
 } from "../pages/assistant/assistant-runtime.js";
+import { ANALYZE_ARCHIVE_OPEN_EVENT } from "../pages/analyze/archive-overlay-controller.js";
 import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-debug-rooms.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
-const SPECIAL_PAGES = ["settings", "archives", "webview"];
+const SPECIAL_PAGES = ["settings", "webview"];
 
 type UiModeToggleState = "classic" | "scene" | "scene-debug";
 
@@ -166,7 +167,9 @@ export function setupNavigation(): void {
 }
 
 export function showPage(pageName: string): void {
-  const normalizedPageName = normalizePageName(pageName);
+  const requestedPageName = pageName === "archives" ? "analyze" : pageName;
+  const normalizedPageName = normalizePageName(requestedPageName);
+  const shouldOpenArchiveOverlay = pageName === "archives";
   const previousPage = currentPage;
   if (
     previousPage !== null &&
@@ -192,6 +195,10 @@ export function showPage(pageName: string): void {
     const controller = controllers[normalizedPageName];
     if (controller?.onShow !== undefined) {
       controller.onShow();
+    }
+
+    if (shouldOpenArchiveOverlay) {
+      window.dispatchEvent(new Event(ANALYZE_ARCHIVE_OPEN_EVENT));
     }
 
     setActiveNavigation(normalizedPageName);

@@ -74,7 +74,6 @@ export default defineConfig({
         entrance: resolve(__dirname, "src/pages/entrance.html"),
         assistant: resolve(__dirname, "src/pages/assistant.html"),
         analyze: resolve(__dirname, "src/pages/analyze.html"),
-        archives: resolve(__dirname, "src/pages/archives.html"),
         server: resolve(__dirname, "src/pages/server.html"),
         opencodeUi: resolve(__dirname, "src/pages/opencode-ui.html"),
       },

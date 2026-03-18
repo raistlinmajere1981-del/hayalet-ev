@@ -52,4 +52,7 @@
   --tracking-kicker: 0.1em;
   --tracking-pill: 0.12em;
   --tracking-widest: 0.14em;
+  --tracking-overlay: 0.18em;
+  --text-overlay-title-min: 1.35rem;
+  --text-overlay-title-max: 1.8rem;
 }

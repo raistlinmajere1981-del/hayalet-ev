@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T11:05:18.723Z",
+  "generatedAt": "2026-03-18T11:52:18.968Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -17,14 +17,14 @@
   },
   "stats": {
     "filesScanned": 455,
-    "filesWithComments": 107,
-    "commentsIndexed": 261,
-    "fileLevelComments": 201,
+    "filesWithComments": 106,
+    "commentsIndexed": 260,
+    "fileLevelComments": 200,
     "symbolLevelComments": 60,
     "prefixCounts": {
       "none": 23,
       "AI": 0,
-      "NOTE": 234,
+      "NOTE": 233,
       "WARNING": 4,
       "TODO": 0
     }
@@ -1054,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 411,
-          "endLine": 411,
+          "startLine": 418,
+          "endLine": 418,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1631,8 +1631,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 547,
-          "endLine": 547,
+          "startLine": 551,
+          "endLine": 551,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1640,8 +1640,8 @@
         },
         {
           "kind": "note",
-          "startLine": 566,
-          "endLine": 566,
+          "startLine": 570,
+          "endLine": 570,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1687,32 +1687,6 @@
           "startLine": 413,
           "endLine": 413,
           "text": "NOTE: Virtualized spacers use runtime heights based on scroll state.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        }
-      ]
-    },
-    {
-      "path": "src/js/pages/archives.ts",
-      "totalComments": 1,
-      "byKind": {
-        "note": 1
-      },
-      "byPrefix": {
-        "none": 0,
-        "AI": 0,
-        "NOTE": 1,
-        "WARNING": 0,
-        "TODO": 0
-      },
-      "symbols": [],
-      "comments": [
-        {
-          "kind": "note",
-          "startLine": 556,
-          "endLine": 556,
-          "text": "NOTE: Clear the search timeout to avoid leaks.",
           "prefix": "NOTE",
           "scopeType": "file",
           "scopeName": null
@@ -4609,7 +4583,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 411,
+          "startLine": 418,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }

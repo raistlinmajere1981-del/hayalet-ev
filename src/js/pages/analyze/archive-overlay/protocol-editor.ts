@@ -1,13 +1,13 @@
-import { AppI18n } from "../../modules/i18n/index.js";
-import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
-import { RoomProtocolRegistry } from "../../modules/rooms/room-protocol-registry.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
+import { formatErrorWithDetail } from "../../../../../shared/i18n/error-detail.js";
+import { RoomProtocolRegistry } from "../../../modules/rooms/room-protocol-registry.js";
 
 function archivesProtocolT(key: string, params?: Record<string, string | number>): string {
   return AppI18n.t(`app.archives.protocol.${key}`, params);
 }
 
 export async function loadProtocolsFromApi(
-  electronApi: (typeof window.electronAPI) | undefined
+  electronApi: typeof window.electronAPI | undefined
 ): Promise<Record<string, string>> {
   if (electronApi === undefined) {
     return RoomProtocolRegistry.mergeProtocolMap({});
@@ -99,7 +99,7 @@ export function applyProtocolSelectionView(args: {
 }
 
 export async function saveProtocolContent(args: {
-  electronApi: (typeof window.electronAPI) | undefined;
+  electronApi: typeof window.electronAPI | undefined;
   selectedProtocolKey: string;
   content: string;
 }): Promise<{ success: boolean; message?: string }> {

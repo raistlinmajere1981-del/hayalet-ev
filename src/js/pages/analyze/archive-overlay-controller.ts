@@ -1,17 +1,17 @@
 import type { TranslationParams } from "@shared/i18n.js";
-import { Logger } from "../modules/logger/index.js";
+import { Logger } from "../../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
-import { SettingsManager } from "../modules/settings-manager.js";
-import { AppState } from "../modules/app-state.js";
-import { AppI18n } from "../modules/i18n/index.js";
-import { ButtonStates } from "../ui/button-states.js";
-import type { ArchiveEntry, FileResult, MessageResult } from "./archives/types.js";
+import { SettingsManager } from "../../modules/settings-manager.js";
+import { AppState } from "../../modules/app-state.js";
+import { AppI18n } from "../../modules/i18n/index.js";
+import { ButtonStates } from "../../ui/button-states.js";
+import type { ArchiveEntry, FileResult, MessageResult } from "./archive-overlay/types.js";
 import {
   deleteArchiveEntry,
   navigateArchiveResult,
   performArchiveSearch,
   saveArchiveSelection,
-} from "./archives/actions.js";
+} from "./archive-overlay/actions.js";
 import {
   applyProtocolSelectionView,
   insertTagAtCursor as insertTagAtCursorInEditor,
@@ -19,12 +19,12 @@ import {
   renderProtocolListView,
   saveProtocolContent,
   setProtocolStatusView,
-} from "./archives/protocol-editor.js";
+} from "./archive-overlay/protocol-editor.js";
 import {
   clearSearchResultsView,
   renderSearchResultsView,
   switchSearchTab,
-} from "./archives/search-view.js";
+} from "./archive-overlay/search-view.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import {
   ARCHIVE_PROVIDER_KEYS,
@@ -32,11 +32,13 @@ import {
   type ArchiveProviderKey,
 } from "@shared/archive.js";
 
+export const ANALYZE_ARCHIVE_OPEN_EVENT = "analyze:open-archive-overlay";
+
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
 }
 
-export class ArchivesController {
+export class AnalyzeArchiveOverlayController {
   entries: ArchiveEntry[];
   activeProvider: ArchiveProviderKey;
   selectedId: string | null;
@@ -50,13 +52,19 @@ export class ArchivesController {
 
   _protocols: Record<string, string>;
   _selectedProtocolKey: string | null;
+  _isOpen: boolean;
+  _handleKeydown: (event: KeyboardEvent) => void;
+  _handleOpenRequest: () => void;
 
+  overlayEl: HTMLElement | null;
+  openButtonEl: HTMLButtonElement | null;
+  closeButtonEl: HTMLButtonElement | null;
+  backdropEl: HTMLElement | null;
   listEl: HTMLElement | null;
   titleEl: HTMLInputElement | null;
   summaryEl: HTMLTextAreaElement | null;
   webUrlDisplayEl: HTMLElement | null;
   statusEl: HTMLElement | null;
-  messageCountEl: HTMLElement | null;
   detailEmptyEl: HTMLElement | null;
   conversationFormEl: HTMLElement | null;
   searchInputEl: HTMLInputElement | null;
@@ -75,6 +83,7 @@ export class ArchivesController {
   protocolEmptyEl: HTMLElement | null;
   protocolStatusEl: HTMLElement | null;
   protocolTagButtonsEl: HTMLElement | null;
+
   constructor() {
     this.entries = [];
     this.activeProvider = "ai1";
@@ -87,12 +96,27 @@ export class ArchivesController {
     this._unsubSettings = null;
     this._unsubI18n = null;
 
+    this._protocols = {};
+    this._selectedProtocolKey = null;
+    this._isOpen = false;
+    this._handleKeydown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape" && this._isOpen) {
+        this.close();
+      }
+    };
+    this._handleOpenRequest = (): void => {
+      void this.open();
+    };
+
+    this.overlayEl = null;
+    this.openButtonEl = null;
+    this.closeButtonEl = null;
+    this.backdropEl = null;
     this.listEl = null;
     this.titleEl = null;
     this.summaryEl = null;
     this.webUrlDisplayEl = null;
     this.statusEl = null;
-    this.messageCountEl = null;
     this.detailEmptyEl = null;
     this.conversationFormEl = null;
     this.searchInputEl = null;
@@ -104,8 +128,6 @@ export class ArchivesController {
     this.resultsFilesEl = null;
     this._selectedEntry = null;
 
-    this._protocols = {};
-    this._selectedProtocolKey = null;
     this.protocolListEl = null;
     this.protocolEditorTitleEl = null;
     this.protocolTextareaEl = null;
@@ -116,24 +138,32 @@ export class ArchivesController {
   }
 
   async init(): Promise<void> {
-    await this.loadSettings();
     this.cacheElements();
     this.bindEvents();
-    await this.loadIndex();
-    await this.loadProtocols();
-    this.applyNames();
     this.ensureSubscriptions();
+    window.addEventListener("keydown", this._handleKeydown);
+    window.addEventListener(ANALYZE_ARCHIVE_OPEN_EVENT, this._handleOpenRequest);
+
+    await this.loadSettings();
+    this.applyNames();
     this.applyTranslations();
   }
 
   cacheElements(): void {
+    this.overlayEl = document.getElementById("analyze-archive-overlay");
+    this.openButtonEl = document.getElementById(
+      "analyze-archive-open-btn"
+    ) as HTMLButtonElement | null;
+    this.closeButtonEl = document.getElementById(
+      "analyze-archive-close-btn"
+    ) as HTMLButtonElement | null;
+    this.backdropEl = document.getElementById("analyze-archive-backdrop");
     this.listEl = document.getElementById("archives-list");
 
     this.titleEl = document.getElementById("archive-title") as HTMLInputElement | null;
     this.summaryEl = document.getElementById("archive-summary") as HTMLTextAreaElement | null;
     this.webUrlDisplayEl = document.getElementById("archive-weburl-display");
     this.statusEl = document.getElementById("archive-status");
-    this.messageCountEl = document.getElementById("message-count");
     this.detailEmptyEl = document.getElementById("detail-empty");
     this.conversationFormEl = document.getElementById("conversation-form");
 
@@ -157,6 +187,16 @@ export class ArchivesController {
   }
 
   bindEvents(): void {
+    this.openButtonEl?.addEventListener("click", () => {
+      void this.open();
+    });
+    this.closeButtonEl?.addEventListener("click", () => {
+      this.close();
+    });
+    this.backdropEl?.addEventListener("click", () => {
+      this.close();
+    });
+
     document.getElementsByName("archives-provider").forEach((el) => {
       el.addEventListener("change", (e) => {
         const target = e.target as HTMLInputElement;
@@ -258,13 +298,59 @@ export class ArchivesController {
         }
 
         this.applyNames();
-        void this.loadIndex();
+        if (this._isOpen) {
+          void this.loadIndex();
+        }
       }
     );
 
     this._unsubI18n ??= AppI18n.subscribe(() => {
       this.applyTranslations();
     });
+  }
+
+  async open(): Promise<void> {
+    if (!(this.overlayEl instanceof HTMLElement)) {
+      return;
+    }
+
+    this.overlayEl.classList.remove("is-hidden");
+    this.overlayEl.setAttribute("aria-hidden", "false");
+    this._isOpen = true;
+    this.clearStatus();
+    this.setProtocolStatus("");
+    await this.refreshOverlayState();
+    window.requestAnimationFrame(() => {
+      this.searchInputEl?.focus();
+    });
+  }
+
+  close(): void {
+    if (!(this.overlayEl instanceof HTMLElement)) {
+      return;
+    }
+
+    this.overlayEl.classList.add("is-hidden");
+    this.overlayEl.setAttribute("aria-hidden", "true");
+    this._isOpen = false;
+    this.clearStatus();
+    this.setProtocolStatus("");
+  }
+
+  onHostShow(): void {
+    this.applyNames();
+    this.applyTranslations();
+    if (this._isOpen) {
+      void this.refreshOverlayState();
+    }
+  }
+
+  onHostHide(): void {
+    this.close();
+    if (this._searchTimeout) {
+      clearTimeout(this._searchTimeout);
+      this._searchTimeout = null;
+    }
   }
 
   async loadSettings(): Promise<void> {
@@ -353,7 +439,7 @@ export class ArchivesController {
 
   renderList(): void {
     if (!this.listEl) return;
-    const items = this.entries.filter((e) => e.provider === this.activeProvider);
+    const items = this.entries.filter((entry) => entry.provider === this.activeProvider);
     this.listEl.innerHTML = "";
     if (items.length === 0) {
       const div = document.createElement("div");
@@ -410,9 +496,9 @@ export class ArchivesController {
 
     if (this.titleEl) this.titleEl.value = entry?.title ?? "";
     if (this.summaryEl) this.summaryEl.value = entry?.summary ?? "";
-    if (this.webUrlDisplayEl)
+    if (this.webUrlDisplayEl) {
       this.webUrlDisplayEl.textContent = entry?.webUrl ?? archivesT("page.webUrlEmpty");
-    if (this.messageCountEl) this.messageCountEl.textContent = String(entry?.messageCount ?? 0);
+    }
 
     this._selectedEntry = entry;
   }
@@ -456,6 +542,7 @@ export class ArchivesController {
 
   async navigateToResult(result: MessageResult | FileResult, type: string): Promise<void> {
     await navigateArchiveResult(this, result, type);
+    this.close();
   }
 
   switchTab(tab: string): void {
@@ -539,25 +626,6 @@ export class ArchivesController {
     if (radioUs1) (radioUs1 as HTMLInputElement).disabled = !us1Assigned;
 
     this.syncActiveProvider();
-  }
-
-  onShow(): void {
-    void this.loadSettings().then(() => {
-      this.applyNames();
-    });
-    this.ensureSubscriptions();
-    this.applyTranslations();
-    void this.loadIndex();
-    void this.loadProtocols();
-    this.clearStatus();
-  }
-  onHide(): void {
-    this.clearStatus();
-    // NOTE: Clear the search timeout to avoid leaks.
-    if (this._searchTimeout) {
-      clearTimeout(this._searchTimeout);
-      this._searchTimeout = null;
-    }
   }
 
   async loadProtocols(): Promise<void> {
@@ -658,6 +726,14 @@ export class ArchivesController {
 
   setProtocolStatus(text: string, type = "info"): void {
     setProtocolStatusView(this.protocolStatusEl, text, type);
+  }
+
+  private async refreshOverlayState(): Promise<void> {
+    await this.loadSettings();
+    this.applyNames();
+    this.applyTranslations();
+    await Promise.all([this.loadIndex(), this.loadProtocols()]);
+    this.applyTranslations();
   }
 
   private setElementText(id: string, text: string): void {

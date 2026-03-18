@@ -29,6 +29,7 @@ import { renderUploadList, addUploadFiles, removeUploadFile } from "./analyze/up
 import type { StagedFile } from "./analyze/upload-handler.js";
 import { applyMessageAction, initReadModal } from "./analyze/context-menu.js";
 import { initDraft, loadDraft, persistDraft } from "./analyze/draft-manager.js";
+import { AnalyzeArchiveOverlayController } from "./analyze/archive-overlay-controller.js";
 
 interface ConversationSelectedDetail {
   provider?: "ai1" | "ai2" | "us1";
@@ -77,6 +78,7 @@ function isDraftState(value: unknown): value is DraftState {
 }
 
 export class AnalyzeController {
+  archiveOverlay: AnalyzeArchiveOverlayController;
   stagedFiles: StagedFile[];
   lastMessages: Record<AnalyzeParticipant, string>;
   us1SessionId: string | null;
@@ -96,6 +98,7 @@ export class AnalyzeController {
   _syncingUs1Indicators: boolean;
 
   constructor() {
+    this.archiveOverlay = new AnalyzeArchiveOverlayController();
     this.stagedFiles = [];
     this.lastMessages = { ai1: "", ai2: "", us1: "" };
     this.us1SessionId = null;
@@ -170,6 +173,7 @@ export class AnalyzeController {
 
     this.updateConnectionStates();
     this.refreshUploads();
+    await this.archiveOverlay.init();
 
     initReadModal();
     void this._initDraftSystem();
@@ -1237,6 +1241,7 @@ export class AnalyzeController {
   }
 
   onShow(): void {
+    this.archiveOverlay.onHostShow();
     this.refreshUploads();
     this.updateConnectionStates();
     this._resetSendTargetsOnShow();
@@ -1246,6 +1251,7 @@ export class AnalyzeController {
   }
 
   onHide(): void {
+    this.archiveOverlay.onHostHide();
     this._stopUs1Polling();
 
     try {

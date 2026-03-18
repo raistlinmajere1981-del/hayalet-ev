@@ -1,13 +1,19 @@
 import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
-import { AppState } from "../../modules/app-state.js";
-import { ConversationListManager } from "../../modules/conversation-list-manager.js";
-import { AppI18n } from "../../modules/i18n/index.js";
-import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
-import { Logger } from "../../modules/logger/index.js";
-import { ButtonStates } from "../../ui/button-states.js";
-import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
-import { mapFileResult, mapMessageResult, toRecord, toRecordArray, unwrapIpcData } from "./ipc-mappers.js";
+import { AppState } from "../../../modules/app-state.js";
+import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
+import { resolveIpcErrorMessage } from "../../../modules/ipc-errors.js";
+import { Logger } from "../../../modules/logger/index.js";
+import { ButtonStates } from "../../../ui/button-states.js";
+import { formatErrorWithDetail } from "../../../../../shared/i18n/error-detail.js";
+import {
+  mapFileResult,
+  mapMessageResult,
+  toRecord,
+  toRecordArray,
+  unwrapIpcData,
+} from "./ipc-mappers.js";
 import type { ArchiveEntry, FileResult, MessageResult } from "./types.js";
 
 function archivesT(key: string, params?: TranslationParams): string {
@@ -69,8 +75,7 @@ export async function deleteArchiveEntry(
     }
 
     const accountId =
-      entry.accountId ??
-      AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
+      entry.accountId ?? AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
     if (accountId === null || accountId === "") {
       if (deleteBtn) {
         ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
@@ -125,7 +130,10 @@ export async function deleteArchiveEntry(
     if (deleteBtn) {
       ButtonStates.setError(deleteBtn, archivesT("actions.buttons.error"), 1500);
     }
-    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.deleteError", { message: err.message }));
+    Logger.error(
+      LogCategory.ARCHIVES,
+      archivesT("actions.logs.deleteError", { message: err.message })
+    );
     ctx.setStatus(formatErrorWithDetail(archivesT("actions.status.deleteError"), err), "error");
   }
 }
@@ -202,7 +210,10 @@ export async function performArchiveSearch(ctx: ArchivesActionsContext): Promise
     ctx.renderSearchResults();
   } catch (error) {
     const err = error as Error;
-    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.searchError", { message: err.message }));
+    Logger.error(
+      LogCategory.ARCHIVES,
+      archivesT("actions.logs.searchError", { message: err.message })
+    );
     ctx.searchResults = { messages: [], attachments: [] };
     ctx.renderSearchResults();
   }
@@ -286,8 +297,7 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
   }
 
   const accountId =
-    entry.accountId ??
-    AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
+    entry.accountId ?? AppState.getArchiveAccountIdForProvider(entry.provider ?? "");
   if (accountId === null || accountId === "") {
     ctx.setStatus(archivesT("actions.status.accountInfoMissing"), "error");
     return;
@@ -334,7 +344,10 @@ export async function saveArchiveSelection(ctx: ArchivesActionsContext): Promise
     if (saveBtn) {
       ButtonStates.setError(saveBtn, archivesT("actions.buttons.error"), 1500);
     }
-    Logger.error(LogCategory.ARCHIVES, archivesT("actions.logs.saveError", { message: err.message }));
+    Logger.error(
+      LogCategory.ARCHIVES,
+      archivesT("actions.logs.saveError", { message: err.message })
+    );
     ctx.setStatus(formatErrorWithDetail(archivesT("actions.status.saveFailed"), err), "error");
   }
 }

@@ -1,5 +1,5 @@
 import type { TranslationParams } from "@shared/i18n.js";
-import { AppI18n } from "../../modules/i18n/index.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
 import type { FileResult, MessageResult } from "./types.js";
 import {
   escapeHtml,
@@ -115,9 +115,7 @@ export function renderSearchResultsView(args: {
   if (resultsMessagesEl) {
     if (messages.length === 0) {
       resultsMessagesEl.innerHTML =
-        searchQuery !== ""
-          ? `<div class="no-results">${archivesT("search.noMessages")}</div>`
-          : "";
+        searchQuery !== "" ? `<div class="no-results">${archivesT("search.noMessages")}</div>` : "";
     } else {
       resultsMessagesEl.innerHTML = messages
         .map((message) => renderMessageResult(message, searchQuery, searchScope))
@@ -137,9 +135,7 @@ export function renderSearchResultsView(args: {
   if (resultsFilesEl) {
     if (attachments.length === 0) {
       resultsFilesEl.innerHTML =
-        searchQuery !== ""
-          ? `<div class="no-results">${archivesT("search.noFiles")}</div>`
-          : "";
+        searchQuery !== "" ? `<div class="no-results">${archivesT("search.noFiles")}</div>` : "";
       return;
     }
 
