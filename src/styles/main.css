@@ -826,7 +826,7 @@ body.is-scroll-locked {
 }
 
 .settings-scene__character {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .settings-scene__character .entrance-scene__character-stage {
@@ -881,6 +881,7 @@ body.is-scroll-locked {
 }
 
 .settings-scene__hotspot:hover::before,
+.settings-scene__hotspot.is-selected::before,
 .settings-scene__hotspot:focus-visible::before {
   transform: translateY(calc(var(--border-1) * -2));
   box-shadow:
@@ -894,6 +895,7 @@ body.is-scroll-locked {
 }
 
 .settings-scene__hotspot:hover::after,
+.settings-scene__hotspot.is-selected::after,
 .settings-scene__hotspot:focus-visible::after {
   opacity: 1;
 }
@@ -922,6 +924,7 @@ body.is-scroll-locked {
 }
 
 .settings-scene__hotspot:hover .settings-scene__hotspot-label,
+.settings-scene__hotspot .settings-scene__hotspot-label.is-selected,
 .settings-scene__hotspot:focus-visible .settings-scene__hotspot-label {
   opacity: 1;
   transform: translateX(-50%) translateY(0);

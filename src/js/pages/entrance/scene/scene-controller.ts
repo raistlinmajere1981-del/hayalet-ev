@@ -2,7 +2,7 @@ import { AppState } from "../../../modules/app-state.js";
 import { AppI18n } from "../../../modules/i18n/index.js";
 import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
-import { SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
+import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
 import { SCENE_THEME_CONFIG } from "../../../scene/scene-config.js";
 import { isSceneUiMode } from "../../../ui/ui-mode.js";
 
@@ -80,7 +80,8 @@ export class EntranceSceneController {
     this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
     this.sceneMap =
-      loadEntranceSceneMapDraft() ?? cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
+      (this.sceneDebugEnabled ? loadEntranceSceneMapDraft() : null) ??
+      cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
         onClose: (): void => {
@@ -93,7 +94,8 @@ export class EntranceSceneController {
       this.editor = new EntranceSceneEditor(this.editorHost, {
         isActive: (): boolean =>
           isSceneUiMode() &&
-          document.documentElement.getAttribute("data-active-page") === "entrance",
+          (getActiveSceneDebugRoomId() ??
+            document.documentElement.getAttribute("data-active-page")) === "entrance",
         getSceneMap: (): EntranceSceneMap => this.sceneMap,
         getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
         getRoomOptions: (): Array<{ id: string; label: string }> =>
@@ -109,6 +111,15 @@ export class EntranceSceneController {
           void this.renderCharacters();
         },
         navigateToRoom: (roomId: string): void => {
+          if (roomId === "settings") {
+            document.dispatchEvent(
+              new CustomEvent("settings-hub:open", {
+                detail: { panel: null },
+              })
+            );
+            return;
+          }
+
           document.dispatchEvent(
             new CustomEvent("navigate-page", {
               detail: { page: roomId },
@@ -380,6 +391,11 @@ export class EntranceSceneController {
   }
 
   private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
+    if (hotspot.action.type === "settings-scene-close") {
+      document.dispatchEvent(new CustomEvent("settings-hub:close"));
+      return;
+    }
+
     if (hotspot.action.type === "settings") {
       document.dispatchEvent(
         new CustomEvent("settings-hub:open", {
@@ -390,6 +406,11 @@ export class EntranceSceneController {
     }
 
     if (hotspot.action.type === "screen") {
+      return;
+    }
+
+    if (hotspot.action.type === "whisper-panel") {
+      document.dispatchEvent(new CustomEvent("entrance-whisper:open"));
       return;
     }
 

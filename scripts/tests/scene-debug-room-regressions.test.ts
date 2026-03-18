@@ -4,14 +4,16 @@ import test from "node:test";
 
 import {
   DEFAULT_ASSISTANT_SCENE_MAP,
+  DEFAULT_SETTINGS_SCENE_MAP,
   normalizeAssistantSceneMap,
+  normalizeSettingsSceneMap,
 } from "../../src/js/pages/entrance/scene/scene-map.ts";
 import { SCENE_DEBUG_ROOMS } from "../../src/js/scene/scene-debug-rooms.ts";
 
-test("scene debug room registry includes entrance and assistant pages", () => {
+test("scene debug room registry includes entrance, assistant, and settings rooms", () => {
   assert.deepEqual(
     SCENE_DEBUG_ROOMS.map((room) => room.id),
-    ["entrance", "assistant"]
+    ["entrance", "assistant", "settings"]
   );
 });
 
@@ -36,6 +38,39 @@ test("assistant scene map defines entrance door, screen hotspot, and ai0 anchor"
   assert.equal(
     normalized.characterAnchors.find((anchor) => anchor.id === "anchor-ai0")?.bottomPx,
     144
+  );
+});
+
+test("settings scene map defines close door, panel hotspots, and user anchor", () => {
+  assert.deepEqual(
+    DEFAULT_SETTINGS_SCENE_MAP.hotspots.map((hotspot) => hotspot.id),
+    [
+      "door-close",
+      "panel-theme",
+      "panel-accounts",
+      "panel-backup",
+      "panel-rooms",
+      "panel-live-log",
+    ]
+  );
+  assert.equal(DEFAULT_SETTINGS_SCENE_MAP.hotspots[0]?.action.type, "settings-scene-close");
+  assert.deepEqual(
+    DEFAULT_SETTINGS_SCENE_MAP.characterAnchors.map((anchor) => anchor.id),
+    ["anchor-user"]
+  );
+
+  const normalized = normalizeSettingsSceneMap({
+    hotspots: [{ id: "panel-live-log", leftPx: 1100 }],
+    characterAnchors: [{ id: "anchor-user", bottomPx: 140 }],
+  });
+
+  assert.equal(
+    normalized.hotspots.find((hotspot) => hotspot.id === "panel-live-log")?.leftPx,
+    1100
+  );
+  assert.equal(
+    normalized.characterAnchors.find((anchor) => anchor.id === "anchor-user")?.bottomPx,
+    140
   );
 });
 

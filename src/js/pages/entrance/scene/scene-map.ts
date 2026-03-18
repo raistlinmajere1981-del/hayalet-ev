@@ -15,12 +15,20 @@ export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRE
 
 export interface EntranceSceneHotspotActionNavigate {
   type: "navigate";
-  page: "analyze" | "archives" | "server" | "whisper" | "assistant" | "entrance";
+  page: "analyze" | "archives" | "server" | "assistant" | "entrance";
 }
 
 export interface EntranceSceneHotspotActionSettings {
   type: "settings";
   panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | null;
+}
+
+export interface EntranceSceneHotspotActionWhisperPanel {
+  type: "whisper-panel";
+}
+
+export interface EntranceSceneHotspotActionSettingsSceneClose {
+  type: "settings-scene-close";
 }
 
 export interface EntranceSceneHotspotActionScreen {
@@ -31,6 +39,8 @@ export interface EntranceSceneHotspotActionScreen {
 export type EntranceSceneHotspotAction =
   | EntranceSceneHotspotActionNavigate
   | EntranceSceneHotspotActionSettings
+  | EntranceSceneHotspotActionWhisperPanel
+  | EntranceSceneHotspotActionSettingsSceneClose
   | EntranceSceneHotspotActionScreen;
 
 export interface EntranceSceneHotspotConfig {
@@ -80,6 +90,7 @@ export interface EntranceSceneMap {
 
 const ENTRANCE_STORAGE_KEY = "entrance-scene-map-draft-v1";
 const ASSISTANT_STORAGE_KEY = "assistant-scene-map-draft-v1";
+const SETTINGS_STORAGE_KEY = "settings-scene-map-draft-v1";
 
 export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
   referenceSize: {
@@ -157,7 +168,7 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       frameHoverGlowAlpha: 0.34,
 
       labelFramePerspectiveDeg: 0,
-      action: { type: "navigate", page: "whisper" },
+      action: { type: "whisper-panel" },
     },
     {
       id: "door-assistant",
@@ -364,6 +375,163 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
   ],
 };
 
+export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
+  referenceSize: {
+    width: 1920,
+    height: 1080,
+  },
+  hotspots: [
+    {
+      id: "door-close",
+      labelKey: "common.close",
+      leftPx: 173,
+      topPx: 194,
+      widthPx: 221,
+      heightPx: 626,
+      labelCenterXPx: 284,
+      labelTopPx: 154,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "left-angled",
+      frameRotateDeg: -1.5,
+      framePerspectiveDeg: 10,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings-scene-close" },
+    },
+    {
+      id: "panel-theme",
+      labelKey: "settingsHub.nav.theme",
+      leftPx: 1190,
+      topPx: 216,
+      widthPx: 202,
+      heightPx: 184,
+      labelCenterXPx: 1291,
+      labelTopPx: 176,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 18,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings", panel: "theme" },
+    },
+    {
+      id: "panel-accounts",
+      labelKey: "settingsHub.nav.accounts",
+      leftPx: 576,
+      topPx: 302,
+      widthPx: 240,
+      heightPx: 194,
+      labelCenterXPx: 696,
+      labelTopPx: 262,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 18,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings", panel: "accounts" },
+    },
+    {
+      id: "panel-backup",
+      labelKey: "settingsHub.nav.backup",
+      leftPx: 1402,
+      topPx: 486,
+      widthPx: 192,
+      heightPx: 216,
+      labelCenterXPx: 1498,
+      labelTopPx: 446,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 18,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings", panel: "backup" },
+    },
+    {
+      id: "panel-rooms",
+      labelKey: "settingsHub.nav.rooms",
+      leftPx: 384,
+      topPx: 529,
+      widthPx: 250,
+      heightPx: 227,
+      labelCenterXPx: 509,
+      labelTopPx: 489,
+      labelWidthPx: 220,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 18,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings", panel: "rooms" },
+    },
+    {
+      id: "panel-live-log",
+      labelKey: "settingsHub.nav.liveLog",
+      leftPx: 1037,
+      topPx: 605,
+      widthPx: 269,
+      heightPx: 194,
+      labelCenterXPx: 1172,
+      labelTopPx: 565,
+      labelWidthPx: 240,
+      labelHeightPx: 40,
+      labelRotateDeg: 0,
+      labelFontSizePx: 18,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "settings", panel: "live-log" },
+    },
+  ],
+  characterAnchors: [
+    {
+      id: "anchor-user",
+      kind: "user",
+      leftPx: 937,
+      bottomPx: 113,
+      scale: 0.92,
+      depth: 4,
+    },
+  ],
+};
+
 export function cloneEntranceSceneMap(
   source: EntranceSceneMap = DEFAULT_ENTRANCE_SCENE_MAP
 ): EntranceSceneMap {
@@ -461,6 +629,10 @@ export function normalizeAssistantSceneMap(source: Partial<EntranceSceneMap>): E
   return normalized;
 }
 
+export function normalizeSettingsSceneMap(source: Partial<EntranceSceneMap>): EntranceSceneMap {
+  return normalizeSceneMap(source, DEFAULT_SETTINGS_SCENE_MAP);
+}
+
 export function serializeEntranceSceneMap(sceneMap: EntranceSceneMap): string {
   return JSON.stringify(sceneMap, null, 2);
 }
@@ -496,6 +668,10 @@ export function loadAssistantSceneMapDraft(): EntranceSceneMap | null {
   return loadSceneMapDraft(ASSISTANT_STORAGE_KEY, normalizeAssistantSceneMap);
 }
 
+export function loadSettingsSceneMapDraft(): EntranceSceneMap | null {
+  return loadSceneMapDraft(SETTINGS_STORAGE_KEY, normalizeSettingsSceneMap);
+}
+
 function saveSceneMapDraft(storageKey: string, sceneMap: EntranceSceneMap): void {
   try {
     window.localStorage.setItem(storageKey, serializeEntranceSceneMap(sceneMap));
@@ -512,6 +688,10 @@ export function saveAssistantSceneMapDraft(sceneMap: EntranceSceneMap): void {
   saveSceneMapDraft(ASSISTANT_STORAGE_KEY, sceneMap);
 }
 
+export function saveSettingsSceneMapDraft(sceneMap: EntranceSceneMap): void {
+  saveSceneMapDraft(SETTINGS_STORAGE_KEY, sceneMap);
+}
+
 function clearSceneMapDraft(storageKey: string): void {
   try {
     window.localStorage.removeItem(storageKey);
@@ -526,4 +706,8 @@ export function clearEntranceSceneMapDraft(): void {
 
 export function clearAssistantSceneMapDraft(): void {
   clearSceneMapDraft(ASSISTANT_STORAGE_KEY);
+}
+
+export function clearSettingsSceneMapDraft(): void {
+  clearSceneMapDraft(SETTINGS_STORAGE_KEY);
 }

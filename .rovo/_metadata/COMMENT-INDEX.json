@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T01:11:16.341Z",
+  "generatedAt": "2026-03-18T11:05:18.723Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,7 +16,7 @@
     ]
   },
   "stats": {
-    "filesScanned": 456,
+    "filesScanned": 455,
     "filesWithComments": 107,
     "commentsIndexed": 261,
     "fileLevelComments": 201,
@@ -1054,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 394,
-          "endLine": 394,
+          "startLine": 411,
+          "endLine": 411,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1754,8 +1754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 348,
-          "endLine": 348,
+          "startLine": 349,
+          "endLine": 349,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1763,8 +1763,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2448,
-          "endLine": 2448,
+          "startLine": 2466,
+          "endLine": 2466,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1772,8 +1772,8 @@
         },
         {
           "kind": "note",
-          "startLine": 2504,
-          "endLine": 2504,
+          "startLine": 2522,
+          "endLine": 2522,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2021,8 +2021,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 503,
-          "endLine": 503,
+          "startLine": 679,
+          "endLine": 679,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2030,8 +2030,8 @@
         },
         {
           "kind": "note",
-          "startLine": 519,
-          "endLine": 519,
+          "startLine": 699,
+          "endLine": 699,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -4609,7 +4609,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 394,
+          "startLine": 411,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4681,7 +4681,7 @@
       "name": "clearEntranceSceneMapDraft",
       "comments": [
         {
-          "startLine": 519,
+          "startLine": 699,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
@@ -4693,7 +4693,7 @@
       "name": "saveEntranceSceneMapDraft",
       "comments": [
         {
-          "startLine": 503,
+          "startLine": 679,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }

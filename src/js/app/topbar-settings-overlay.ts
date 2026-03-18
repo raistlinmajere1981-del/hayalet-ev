@@ -1,12 +1,44 @@
 import { AppState } from "../modules/app-state.js";
 import { AppI18n } from "../modules/i18n/index.js";
+import { shellT } from "./shell-i18n.js";
+import {
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+} from "../pages/entrance/scene/scene-editor.js";
 import { resolveSceneAvatarSource } from "../pages/entrance/scene/scene-avatar.js";
+import { applySceneDebugFlag } from "../pages/entrance/scene/scene-debug.js";
+import {
+  clearSettingsSceneMapDraft,
+  cloneEntranceSceneMap,
+  DEFAULT_SETTINGS_SCENE_MAP,
+  loadSettingsSceneMapDraft,
+  saveSettingsSceneMapDraft,
+  serializeEntranceSceneMap,
+  type EntranceSceneHotspotConfig,
+  type EntranceSceneMap,
+} from "../pages/entrance/scene/scene-map.js";
 import { getSceneCharacterRoleConfig, SCENE_THEME_CONFIG } from "../scene/scene-config.js";
+import {
+  getActiveSceneDebugRoomId,
+  isSceneDebugRoomId,
+  SCENE_DEBUG_ROOMS,
+  setActiveSceneDebugRoomId,
+} from "../scene/scene-debug-rooms.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
+const SETTINGS_SCENE_HOTSPOT_SELECTORS = {
+  "door-close": "#settings-scene-door-hotspot",
+  "panel-theme": '[data-settings-scene-panel="theme"]',
+  "panel-accounts": '[data-settings-scene-panel="accounts"]',
+  "panel-backup": '[data-settings-scene-panel="backup"]',
+  "panel-rooms": '[data-settings-scene-panel="rooms"]',
+  "panel-live-log": '[data-settings-scene-panel="live-log"]',
+} as const;
 
 type SettingsPanelId = (typeof SETTINGS_PANELS)[number];
+type SettingsSceneHotspotId = keyof typeof SETTINGS_SCENE_HOTSPOT_SELECTORS;
+type SettingsPanelHotspotId = Exclude<SettingsSceneHotspotId, "door-close">;
 
 interface SettingsHubState {
   open: boolean;
@@ -21,6 +53,7 @@ interface SettingsSceneState {
 interface SettingsSceneControllerDeps {
   overlay: HTMLElement;
   root: HTMLElement;
+  editorHost: HTMLElement;
   classicLayout: HTMLElement;
   panelsContainer: HTMLElement;
   roomView: HTMLElement;
@@ -36,6 +69,14 @@ interface SettingsSceneControllerDeps {
 
 function isSettingsPanelId(value: string): value is SettingsPanelId {
   return SETTINGS_PANELS.includes(value as SettingsPanelId);
+}
+
+function isSettingsSceneHotspotId(value: string): value is SettingsSceneHotspotId {
+  return value in SETTINGS_SCENE_HOTSPOT_SELECTORS;
+}
+
+function toSettingsPanelHotspotId(panelId: SettingsPanelId): SettingsPanelHotspotId {
+  return `panel-${panelId}` as SettingsPanelHotspotId;
 }
 
 function resolveSettingsPanelId(value: string | null | undefined): SettingsPanelId | null {
@@ -70,6 +111,7 @@ function dispatchSettingsHubState(state: SettingsHubState): void {
 class SettingsSceneController {
   private overlay: HTMLElement;
   private root: HTMLElement;
+  private editorHost: HTMLElement;
   private classicLayout: HTMLElement;
   private panelsContainer: HTMLElement;
   private roomView: HTMLElement;
@@ -83,11 +125,16 @@ class SettingsSceneController {
   private onReturnToRoom: () => void;
   private state: SettingsSceneState = { open: false, activePanel: null };
   private panelsPlaceholder: Comment | null = null;
+  private sceneMap: EntranceSceneMap = cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
+  private sceneDebugEnabled = false;
+  private editorSelection: EntranceSceneEditorSelection = null;
+  private editor: EntranceSceneEditor | null = null;
   private characterRenderToken = 0;
 
   constructor(deps: SettingsSceneControllerDeps) {
     this.overlay = deps.overlay;
     this.root = deps.root;
+    this.editorHost = deps.editorHost;
     this.classicLayout = deps.classicLayout;
     this.panelsContainer = deps.panelsContainer;
     this.roomView = deps.roomView;
@@ -102,14 +149,21 @@ class SettingsSceneController {
   }
 
   init(): void {
+    this.sceneDebugEnabled = applySceneDebugFlag();
+    this.sceneMap =
+      (this.sceneDebugEnabled ? loadSettingsSceneMapDraft() : null) ??
+      cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
     this.background.src = SCENE_THEME_CONFIG.settings.backgroundSrc;
     this.background.alt = "";
     this.bindSceneEvents();
+    this.setupEditor();
 
     AppState.subscribe(() => {
       void this.renderCharacter();
     });
     AppI18n.subscribe(() => {
+      this.renderHotspots();
+      this.editor?.refresh();
       void this.renderCharacter();
     });
   }
@@ -132,37 +186,113 @@ class SettingsSceneController {
 
     if (!sceneActive) {
       this.restorePanelsContainer();
+      this.syncActiveDebugRoom(false);
       return;
     }
 
     this.movePanelsToSceneSlot();
     this.syncPanelArt(nextState.activePanel);
+    this.syncActiveDebugRoom(true);
+    this.renderHotspots();
     void this.renderCharacter();
+    this.editor?.refresh();
   }
 
   private bindSceneEvents(): void {
+    this.getHotspotElement("door-close")?.addEventListener("click", () => {
+      this.handleHotspotInteraction("door-close");
+    });
+
+    SETTINGS_PANELS.forEach((panelId) => {
+      const element = this.getHotspotElement(toSettingsPanelHotspotId(panelId));
+      element?.addEventListener("click", () => {
+        this.handleHotspotInteraction(`panel-${panelId}`);
+      });
+    });
+
     this.root
-      .querySelectorAll<HTMLButtonElement>("[data-settings-scene-panel]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const panelId = resolveSettingsPanelId(button.dataset["settingsScenePanel"]);
-          if (panelId !== null) {
-            this.onOpenPanel(panelId);
-          }
-        });
+      .querySelector<HTMLElement>("#settings-scene-exit-left")
+      ?.addEventListener("click", () => {
+        this.onReturnToRoom();
       });
 
-    document.getElementById("settings-scene-door-hotspot")?.addEventListener("click", () => {
-      this.onClose();
-    });
+    this.root
+      .querySelector<HTMLElement>("#settings-scene-exit-right")
+      ?.addEventListener("click", () => {
+        this.onReturnToRoom();
+      });
+  }
 
-    document.getElementById("settings-scene-exit-left")?.addEventListener("click", () => {
-      this.onReturnToRoom();
-    });
+  private setupEditor(): void {
+    if (!this.sceneDebugEnabled) {
+      this.editorHost.replaceChildren();
+      this.editor = null;
+      return;
+    }
 
-    document.getElementById("settings-scene-exit-right")?.addEventListener("click", () => {
-      this.onReturnToRoom();
+    this.editor = new EntranceSceneEditor(this.editorHost, {
+      isActive: (): boolean => this.isEditorActive(),
+      getSceneMap: (): EntranceSceneMap => this.sceneMap,
+      getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
+      getRoomOptions: (): Array<{ id: string; label: string }> =>
+        SCENE_DEBUG_ROOMS.map((room) => ({
+          id: room.id,
+          label: shellT(room.labelKey),
+        })),
+      getActiveRoomId: (): string => "settings",
+      setSelection: (selection): void => {
+        this.editorSelection = selection;
+        this.editor?.refresh();
+        this.renderHotspots();
+        void this.renderCharacter();
+      },
+      navigateToRoom: (roomId: string): void => {
+        if (roomId === "settings") {
+          this.onReturnToRoom();
+          return;
+        }
+
+        this.onClose();
+        document.dispatchEvent(
+          new CustomEvent("navigate-page", {
+            detail: { page: roomId },
+          })
+        );
+      },
+      supportsHotspotLabels: (): boolean => false,
+      updateHotspot: (id, updater): void => {
+        this.sceneMap.hotspots = this.sceneMap.hotspots.map((hotspot) =>
+          hotspot.id === id ? updater(hotspot) : hotspot
+        );
+        this.persistSceneMapDraft();
+        this.renderHotspots();
+        this.editor?.refresh();
+      },
+      updateCharacterAnchor: (id, updater): void => {
+        this.sceneMap.characterAnchors = this.sceneMap.characterAnchors.map((anchor) =>
+          anchor.id === id ? updater(anchor) : anchor
+        );
+        this.persistSceneMapDraft();
+        void this.renderCharacter();
+        this.editor?.refresh();
+      },
+      resetDraft: (): void => {
+        this.sceneMap = cloneEntranceSceneMap(DEFAULT_SETTINGS_SCENE_MAP);
+        clearSettingsSceneMapDraft();
+        this.editorSelection = null;
+        this.renderHotspots();
+        void this.renderCharacter();
+        this.editor?.refresh();
+      },
+      copySceneMap: async (): Promise<void> => {
+        try {
+          await navigator.clipboard.writeText(serializeEntranceSceneMap(this.sceneMap));
+        } catch {
+          console.info("Settings scene map copy failed.");
+        }
+      },
     });
+    this.editor.refresh();
   }
 
   private movePanelsToSceneSlot(): void {
@@ -205,8 +335,165 @@ class SettingsSceneController {
     this.panelSlot.dataset["settingsPanel"] = panelId;
   }
 
+  private syncActiveDebugRoom(sceneActive: boolean): void {
+    if (!this.sceneDebugEnabled) {
+      return;
+    }
+
+    if (sceneActive) {
+      setActiveSceneDebugRoomId("settings");
+      return;
+    }
+
+    const currentPage = document.documentElement.getAttribute("data-active-page");
+    if (currentPage !== "settings" && isSceneDebugRoomId(currentPage)) {
+      setActiveSceneDebugRoomId(currentPage);
+      return;
+    }
+
+    setActiveSceneDebugRoomId(null);
+  }
+
+  private isEditorActive(): boolean {
+    return (
+      this.sceneDebugEnabled &&
+      this.state.open &&
+      isSceneUiMode() &&
+      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
+        "settings"
+    );
+  }
+
+  private getSceneProjection(): {
+    offsetX: number;
+    offsetY: number;
+    scale: number;
+  } {
+    const surfaceWidth = this.root.clientWidth;
+    const surfaceHeight = this.root.clientHeight;
+    if (surfaceWidth <= 0 || surfaceHeight <= 0) {
+      return { offsetX: 0, offsetY: 0, scale: 1 };
+    }
+
+    const scale = Math.max(
+      surfaceWidth / this.sceneMap.referenceSize.width,
+      surfaceHeight / this.sceneMap.referenceSize.height
+    );
+
+    return {
+      offsetX: (surfaceWidth - this.sceneMap.referenceSize.width * scale) / 2,
+      offsetY: (surfaceHeight - this.sceneMap.referenceSize.height * scale) / 2,
+      scale,
+    };
+  }
+
+  private getDepthScale(depth: number): number {
+    const normalizedDepth = Math.max(1, Number.isFinite(depth) ? depth : 1);
+    const scaled = 1 - (normalizedDepth - 1) * 0.02;
+    return Number(Math.max(0.75, scaled).toFixed(3));
+  }
+
+  private resolveHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
+    return this.sceneMap.hotspots.find((hotspot) => hotspot.id === hotspotId) ?? null;
+  }
+
+  private resolveHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
+    const customLabel =
+      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
+    if (customLabel !== "") {
+      return customLabel;
+    }
+
+    if (hotspot.labelKey !== "") {
+      return shellT(hotspot.labelKey);
+    }
+
+    return hotspot.id;
+  }
+
+  private getHotspotElement(hotspotId: string): HTMLButtonElement | null {
+    if (!isSettingsSceneHotspotId(hotspotId)) {
+      return null;
+    }
+
+    const element = this.root.querySelector(SETTINGS_SCENE_HOTSPOT_SELECTORS[hotspotId]);
+    return element instanceof HTMLButtonElement ? element : null;
+  }
+
+  private renderHotspots(): void {
+    const projection = this.getSceneProjection();
+
+    this.sceneMap.hotspots.forEach((hotspot) => {
+      const button = this.getHotspotElement(hotspot.id);
+      if (button === null) {
+        return;
+      }
+
+      const labelText = this.resolveHotspotLabel(hotspot);
+      const selected =
+        this.editorSelection?.kind === "hotspot" && this.editorSelection.id === hotspot.id;
+      const label = button.querySelector<HTMLElement>(".settings-scene__hotspot-label");
+
+      button.dataset["hotspotId"] = hotspot.id;
+      button.classList.toggle("is-selected", selected);
+      button.style.left = `${projection.offsetX + hotspot.leftPx * projection.scale}px`;
+      button.style.top = `${projection.offsetY + hotspot.topPx * projection.scale}px`;
+      button.style.width = `${hotspot.widthPx * projection.scale}px`;
+      button.style.height = `${hotspot.heightPx * projection.scale}px`;
+      button.ariaLabel = labelText;
+
+      if (label !== null) {
+        label.textContent = labelText;
+        label.classList.toggle("is-selected", selected);
+      }
+    });
+  }
+
+  private handleHotspotInteraction(hotspotId: string): void {
+    const hotspot = this.resolveHotspot(hotspotId);
+    if (hotspot === null) {
+      return;
+    }
+
+    if (this.isEditorActive()) {
+      this.editorSelection = { kind: "hotspot", id: hotspot.id };
+      this.editor?.refresh();
+      this.renderHotspots();
+      return;
+    }
+
+    this.handleHotspotAction(hotspot);
+  }
+
+  private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
+    if (hotspot.action.type === "settings-scene-close") {
+      this.onClose();
+      return;
+    }
+
+    if (hotspot.action.type === "settings") {
+      if (hotspot.action.panel === null) {
+        this.onReturnToRoom();
+        return;
+      }
+
+      this.onOpenPanel(hotspot.action.panel);
+      return;
+    }
+  }
+
+  private persistSceneMapDraft(): void {
+    saveSettingsSceneMapDraft(this.sceneMap);
+  }
+
   private async renderCharacter(): Promise<void> {
     if (!this.state.open || !isSceneUiMode()) {
+      return;
+    }
+
+    const anchor = this.sceneMap.characterAnchors.find((item) => item.id === "anchor-user") ?? null;
+    if (anchor === null) {
+      this.characterLayer.replaceChildren();
       return;
     }
 
@@ -221,15 +508,32 @@ class SettingsSceneController {
       return;
     }
 
+    const projection = this.getSceneProjection();
+    const depth = Number.isFinite(anchor.depth) ? Math.max(1, anchor.depth) : 1;
     const sceneCharacter = document.createElement("div");
-    sceneCharacter.className = "settings-scene__character entrance-scene__character";
+    sceneCharacter.className = "settings-scene__character entrance-scene__character is-connected";
+    sceneCharacter.dataset["characterId"] = "scene-user";
+    sceneCharacter.dataset["anchorId"] = anchor.id;
     sceneCharacter.dataset["kind"] = "user";
     sceneCharacter.dataset["role"] = "user";
-    sceneCharacter.style.setProperty("--scene-character-left", "48.8%");
-    sceneCharacter.style.setProperty("--scene-character-bottom", "10.5%");
-    sceneCharacter.style.setProperty("--scene-character-scale", "0.92");
-    sceneCharacter.style.setProperty("--scene-character-depth", "4");
-    sceneCharacter.style.setProperty("--scene-character-depth-scale", "0.94");
+    sceneCharacter.classList.toggle(
+      "is-selected",
+      this.editorSelection?.kind === "character" && this.editorSelection.id === anchor.id
+    );
+    sceneCharacter.style.setProperty(
+      "--scene-character-left",
+      `${projection.offsetX + anchor.leftPx * projection.scale}px`
+    );
+    sceneCharacter.style.setProperty(
+      "--scene-character-bottom",
+      `${projection.offsetY + anchor.bottomPx * projection.scale}px`
+    );
+    sceneCharacter.style.setProperty("--scene-character-scale", String(anchor.scale));
+    sceneCharacter.style.setProperty("--scene-character-depth", String(depth));
+    sceneCharacter.style.setProperty(
+      "--scene-character-depth-scale",
+      String(this.getDepthScale(depth))
+    );
     sceneCharacter.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
     sceneCharacter.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
     sceneCharacter.style.setProperty("--scene-character-head-left", `${roleConfig.headLeftPct}%`);
@@ -238,6 +542,16 @@ class SettingsSceneController {
       "--scene-character-avatar-scale",
       String(roleConfig.avatarScale)
     );
+
+    if (this.isEditorActive()) {
+      sceneCharacter.tabIndex = 0;
+      sceneCharacter.role = "button";
+      sceneCharacter.setAttribute("aria-label", label);
+    } else {
+      sceneCharacter.tabIndex = -1;
+      sceneCharacter.removeAttribute("role");
+      sceneCharacter.removeAttribute("aria-label");
+    }
 
     const stage = document.createElement("div");
     stage.className = "entrance-scene__character-stage";
@@ -272,7 +586,35 @@ class SettingsSceneController {
     characterLabel.className = "entrance-scene__character-label";
     characterLabel.textContent = label;
 
-    sceneCharacter.append(stage, characterLabel);
+    const anchorMarker = document.createElement("span");
+    anchorMarker.className = "entrance-scene__character-anchor-marker";
+    anchorMarker.ariaHidden = String(!this.sceneDebugEnabled);
+    anchorMarker.textContent = anchor.id;
+
+    sceneCharacter.append(stage, characterLabel, anchorMarker);
+    sceneCharacter.addEventListener("click", () => {
+      if (!this.isEditorActive()) {
+        return;
+      }
+
+      this.editorSelection = { kind: "character", id: anchor.id };
+      this.editor?.refresh();
+      void this.renderCharacter();
+    });
+    sceneCharacter.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      if (!this.isEditorActive()) {
+        return;
+      }
+
+      this.editorSelection = { kind: "character", id: anchor.id };
+      this.editor?.refresh();
+      void this.renderCharacter();
+    });
     this.characterLayer.replaceChildren(sceneCharacter);
   }
 }
@@ -287,6 +629,7 @@ export function setupSettingsHub(): void {
   const tabButtons = Array.from(document.querySelectorAll<HTMLButtonElement>(".settings-hub-tab"));
   const panels = Array.from(document.querySelectorAll<HTMLElement>(".settings-hub-panel"));
   const sceneRoot = document.getElementById("settings-scene-root");
+  const sceneEditorHost = document.getElementById("settings-scene-editor-host");
   const sceneRoomView = document.getElementById("settings-scene-room-view");
   const scenePanelView = document.getElementById("settings-scene-panel-view");
   const scenePanelSlot = document.getElementById("settings-scene-panel-slot");
@@ -308,6 +651,7 @@ export function setupSettingsHub(): void {
     tabButtons.length === 0 ||
     panels.length === 0 ||
     sceneRoot == null ||
+    sceneEditorHost == null ||
     sceneRoomView == null ||
     scenePanelView == null ||
     scenePanelSlot == null ||
@@ -325,6 +669,7 @@ export function setupSettingsHub(): void {
   const sceneController = new SettingsSceneController({
     overlay,
     root: sceneRoot,
+    editorHost: sceneEditorHost,
     classicLayout,
     panelsContainer,
     roomView: sceneRoomView,

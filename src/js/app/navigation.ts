@@ -8,6 +8,7 @@ import {
   generateWorkflowSessionId,
   updateAssistantRuntimeState,
 } from "../pages/assistant/assistant-runtime.js";
+import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-debug-rooms.js";
 
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
@@ -94,7 +95,7 @@ let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};
 
 function normalizePageName(pageName: string): string {
-  return pageName;
+  return pageName === "whisper" ? "entrance" : pageName;
 }
 
 function resolvePageDomNames(pageName: string): string[] {
@@ -120,6 +121,21 @@ function matchesPageDataset(candidate: string | undefined, pageName: string): bo
 
 function syncShellLayoutState(pageName: string): void {
   document.documentElement.setAttribute("data-active-page", pageName);
+}
+
+function syncActiveSceneDebugRoom(pageName: string): void {
+  const sceneDebugEnabled = document.documentElement.getAttribute("data-scene-debug") === "true";
+  if (!sceneDebugEnabled) {
+    setActiveSceneDebugRoomId(null);
+    return;
+  }
+
+  if (pageName !== "settings" && isSceneDebugRoomId(pageName)) {
+    setActiveSceneDebugRoomId(pageName);
+    return;
+  }
+
+  setActiveSceneDebugRoomId(null);
 }
 
 export function setControllers(c: Record<string, PageController>): void {
@@ -171,6 +187,7 @@ export function showPage(pageName: string): void {
     pageElement.classList.remove("is-hidden");
     currentPage = normalizedPageName;
     syncShellLayoutState(normalizedPageName);
+    syncActiveSceneDebugRoom(normalizedPageName);
 
     const controller = controllers[normalizedPageName];
     if (controller?.onShow !== undefined) {

@@ -76,7 +76,6 @@ export default defineConfig({
         analyze: resolve(__dirname, "src/pages/analyze.html"),
         archives: resolve(__dirname, "src/pages/archives.html"),
         server: resolve(__dirname, "src/pages/server.html"),
-        whisper: resolve(__dirname, "src/pages/whisper.html"),
         opencodeUi: resolve(__dirname, "src/pages/opencode-ui.html"),
       },
     },

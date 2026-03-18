@@ -62,6 +62,16 @@
   --layout-panel-card-min-h: 180px;
   --layout-panel-list-max-h: 260px;
   --layout-panel-scroll-vh-sm: 50vh;
+  --layout-whisper-dock-compose-min-w: var(--size-panel-compact);
+  --layout-whisper-dock-compose-max-w: var(--size-panel-wide);
+  --layout-whisper-dock-textarea-min-h: calc(var(--layout-modal-field-min-h) + var(--space-2));
+  --layout-whisper-dock-chip-max-w: var(--layout-archives-card-min-w-sm);
+  --layout-whisper-dock-empty-min-h: calc(
+    var(--layout-panel-card-min-h) - var(--size-control-3xl) - var(--space-3)
+  );
+  --layout-whisper-dock-scene-max-h: calc(
+    var(--layout-panel-card-min-h) + var(--layout-panel-list-max-h)
+  );
   --layout-character-active-w: 42%;
   --layout-panel-item-h: 300px;
   --layout-data-label-w-sm: 72px;
@@ -74,12 +84,6 @@
   --layout-server-command-guide-min-h: 160px;
   --layout-server-command-guide-max-h: 280px;
   --layout-server-workspace-stack-min-h: 420px;
-
-  --layout-whisper-sidebar-min: min(320px, calc(100vw - var(--space-8)));
-  --layout-whisper-sidebar-max: 380px;
-  --layout-whisper-card-min: min(320px, calc(100vw - var(--space-8)));
-  --layout-whisper-panel-max: 720px;
-  --layout-whisper-row-meta-w: 130px;
 }
 
 @supports (height: 100dvh) {

@@ -92,7 +92,7 @@ import {
   updateTrafficStatusView,
 } from "./view-helpers.js";
 import { getSceneCharacterRoleConfig } from "../../scene/scene-config.js";
-import { SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
+import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
 import type {
   ProviderScenarioCommandReport,
   ProviderScenarioProgressEvent,
@@ -331,7 +331,8 @@ export class AssistantController {
     ) as HTMLButtonElement | null;
     this._assistantSceneDebugEnabled = applySceneDebugFlag();
     this._assistantSceneMap =
-      loadAssistantSceneMapDraft() ?? cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+      (this._assistantSceneDebugEnabled ? loadAssistantSceneMapDraft() : null) ??
+      cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
 
     this._populateProviderSelect();
     this._initActiveAdapter();
@@ -517,7 +518,7 @@ export class AssistantController {
         this._renderAssistantScene();
       },
       navigateToRoom: (roomId: string): void => {
-        this._navigateToPage(roomId);
+        this._navigateToSceneDebugRoom(roomId);
       },
       supportsHotspotLabels: (): boolean => false,
       updateHotspot: (id, updater): void => {
@@ -851,7 +852,9 @@ export class AssistantController {
 
   _isAssistantSceneDebugActive(): boolean {
     return (
-      isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "assistant"
+      isSceneUiMode() &&
+      (getActiveSceneDebugRoomId() ?? document.documentElement.getAttribute("data-active-page")) ===
+        "assistant"
     );
   }
 
@@ -897,6 +900,21 @@ export class AssistantController {
         detail: { page },
       })
     );
+  }
+
+  _navigateToSceneDebugRoom(roomId: string): void {
+    if (roomId === "settings") {
+      this._setAssistantSceneScreenOpen(false);
+      document.dispatchEvent(
+        new CustomEvent("settings-hub:open", {
+          detail: { panel: null },
+        })
+      );
+      return;
+    }
+
+    this._setAssistantSceneScreenOpen(false);
+    this._navigateToPage(roomId);
   }
 
   _syncAssistantSceneCharacterState(): void {
