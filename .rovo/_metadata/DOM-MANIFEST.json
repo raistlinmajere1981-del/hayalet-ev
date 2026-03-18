@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-17T08:49:16.223Z",
+  "generatedAt": "2026-03-18T00:31:54.265Z",
   "generator": "scripts/generate-dom-manifest.js",
   "mode": "static-scan",
   "scope": [
@@ -9,11 +9,11 @@
     "ghost-agent"
   ],
   "stats": {
-    "filesScanned": 473,
-    "ids": 489,
+    "filesScanned": 474,
+    "ids": 500,
     "testIds": 15,
-    "querySelectors": 125,
-    "totalSelectors": 629
+    "querySelectors": 129,
+    "totalSelectors": 644
   },
   "lookup": {
     "id": {
@@ -110,7 +110,6 @@
       "assistant-character-btn": "#assistant-character-btn",
       "assistant-connect-btn": "#assistant-connect-btn",
       "assistant-devtools-btn": "#assistant-devtools-btn",
-      "assistant-ghost-agent-btn": "#assistant-ghost-agent-btn",
       "assistant-identity-modal": "#assistant-identity-modal",
       "assistant-identity-modal-cancel": "#assistant-identity-modal-cancel",
       "assistant-identity-modal-close": "#assistant-identity-modal-close",
@@ -128,6 +127,17 @@
       "assistant-opencode-settings-btn": "#assistant-opencode-settings-btn",
       "assistant-provider-select": "#assistant-provider-select",
       "assistant-resume-last-session": "#assistant-resume-last-session",
+      "assistant-scene-ai0-character": "#assistant-scene-ai0-character",
+      "assistant-scene-background": "#assistant-scene-background",
+      "assistant-scene-characters": "#assistant-scene-characters",
+      "assistant-scene-door-hotspot": "#assistant-scene-door-hotspot",
+      "assistant-scene-editor-host": "#assistant-scene-editor-host",
+      "assistant-scene-exit-left": "#assistant-scene-exit-left",
+      "assistant-scene-exit-right": "#assistant-scene-exit-right",
+      "assistant-scene-root": "#assistant-scene-root",
+      "assistant-scene-screen-art": "#assistant-scene-screen-art",
+      "assistant-scene-screen-hotspot": "#assistant-scene-screen-hotspot",
+      "assistant-scene-screen-view": "#assistant-scene-screen-view",
       "assistant-status-details": "#assistant-status-details",
       "assistant-status-dot": "#assistant-status-dot",
       "assistant-status-text": "#assistant-status-text",
@@ -438,6 +448,7 @@
       "tools-list": "#tools-list",
       "tools-panel-body": "#tools-panel-body",
       "topbar-settings-open": "#topbar-settings-open",
+      "topbar-ui-mode-toggle": "#topbar-ui-mode-toggle",
       "upload-add-btn": "#upload-add-btn",
       "upload-list": "#upload-list",
       "us1-avatar": "#us1-avatar",
@@ -527,6 +538,7 @@
     "query": {
       "accept_btn": ".accept-btn",
       "archive_item_selected": ".archive-item.selected",
+      "assistant_container": ".assistant-container",
       "assistant_test_panel_close": ".assistant-test-panel__close",
       "assistant_test_panel_copy": ".assistant-test-panel__copy",
       "assistant_test_panel_start": ".assistant-test-panel__start",
@@ -600,6 +612,9 @@
       "testid_prompt_textarea": "[data-testid=\"prompt-textarea\"]",
       "testid_stop_button_id_composer_submit_buttontestid_stop_button_button_aria_label": "[data-testid=\"stop-button\"], #composer-submit-button[data-testid=\"stop-button\"], button[aria-label=\"Stop streaming\"], button[aria-label=\"Yanıtlamayı durdur\"]",
       "testid_upload_drop_target": "[data-testid=\"upload-drop-target\"]",
+      "data_ui_mode_dropdown": "[data-ui-mode-dropdown]",
+      "data_ui_mode_option": "[data-ui-mode-option]",
+      "data_ui_mode_trigger": "[data-ui-mode-trigger]",
       "id_composer_submit_button_data_testid": "], #composer-submit-button[data-testid=",
       "button_data_testid": "], button[data-testid=",
       "selector": "*",

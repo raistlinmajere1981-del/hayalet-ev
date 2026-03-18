@@ -18,6 +18,7 @@
   --layout-modal-document-w: 900px;
   --layout-modal-dialog-w: 480px;
   --layout-modal-field-min-h: 100px;
+  --layout-ui-mode-dropdown-min-w: 180px;
 
   --layout-live-log-max-w: 1500px;
   --layout-live-log-search-min: min(220px, calc(100vw - var(--space-10)));

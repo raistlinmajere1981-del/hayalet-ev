@@ -3,8 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { TranslationParams } from "../../types/i18n.js";
-import type { MemoryItem, MemorySearchResult, MemoryStats } from "./memory/store.js";
-import { MemoryStore } from "./memory/store.js";
+import type {
+  MemoryItem,
+  MemorySearchResult,
+  MemoryStats,
+  MemoryStore as MemoryStoreInstance,
+} from "./memory/store.js";
 import { createMcpTranslator, createMcpTranslatorSync } from "../utils/i18n/index.js";
 
 interface MemoryStoreWriteArgs {
@@ -255,14 +259,28 @@ function buildPromptCompactPayload(
   };
 }
 
-const storePool = new Map<string, MemoryStore>();
+type MemoryStoreClass = new (options: { databasePath: string }) => MemoryStoreInstance;
 
-function getStore(projectRoot: string): MemoryStore {
+const storePool = new Map<string, MemoryStoreInstance>();
+let memoryStoreClass: MemoryStoreClass | null = null;
+
+async function getMemoryStoreClass(): Promise<MemoryStoreClass> {
+  if (memoryStoreClass !== null) {
+    return memoryStoreClass;
+  }
+
+  const module = await import("./memory/store.js");
+  memoryStoreClass = module.MemoryStore;
+  return memoryStoreClass;
+}
+
+async function getStore(projectRoot: string): Promise<MemoryStoreInstance> {
   const dbPath = join(projectRoot, "data", "shared", "assistant-memory.db");
   const existing = storePool.get(dbPath);
   if (existing) return existing;
 
-  const store = new MemoryStore({ databasePath: dbPath });
+  const memoryStoreCtor = await getMemoryStoreClass();
+  const store = new memoryStoreCtor({ databasePath: dbPath });
   storePool.set(dbPath, store);
   return store;
 }
@@ -275,7 +293,7 @@ export async function memoryWrite(
   const content = args.content?.trim();
   if (content == null || content === "") throw new Error(memoryT(t, "errors.contentRequired"));
 
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   const memory = await store.writeMemory({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
     content,
@@ -298,7 +316,7 @@ export async function memorySearch(
   projectRoot: string,
   args: MemoryStoreSearchArgs
 ): Promise<MemorySearchResponse> {
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   let raw = await store.searchMemory({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
     ...(args.query !== undefined ? { query: args.query } : {}),
@@ -343,7 +361,7 @@ export async function memoryUpdate(
     throw new Error(memoryT(t, "errors.idRequired"));
   }
 
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   const updated = await store.updateMemory({
     id: args.id,
     ...(args.content !== undefined ? { content: args.content } : {}),
@@ -367,7 +385,7 @@ export async function memoryDelete(
     const t = await createMcpTranslator();
     throw new Error(memoryT(t, "errors.idRequired"));
   }
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   const deleted = await store.deleteMemory(args.id);
   return { deleted, id: args.id };
 }
@@ -376,7 +394,7 @@ export async function memoryPrune(
   projectRoot: string,
   args: MemoryStorePruneArgs
 ): Promise<{ removed: number; maxItems: number }> {
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   const maxItems =
     typeof args.max_items === "number" && Number.isFinite(args.max_items)
       ? Math.max(0, Math.floor(args.max_items))
@@ -400,7 +418,7 @@ export async function memoryStats(
   projectRoot: string,
   args: MemoryStoreStatsArgs
 ): Promise<MemoryStats> {
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   return await store.getStats({
     ...(args.namespace !== undefined ? { namespace: args.namespace } : {}),
   });
@@ -410,7 +428,7 @@ export async function memoryBootstrapPolicy(
   projectRoot: string,
   args: MemoryBootstrapPolicyArgs = {}
 ): Promise<MemoryBootstrapPolicyReport> {
-  const store = getStore(projectRoot);
+  const store = await getStore(projectRoot);
   const trimmedNamespace = args.namespace?.trim();
   const namespace =
     trimmedNamespace != null && trimmedNamespace !== "" && trimmedNamespace.length > 0

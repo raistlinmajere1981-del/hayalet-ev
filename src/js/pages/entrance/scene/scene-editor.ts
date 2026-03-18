@@ -50,7 +50,6 @@ const HOTSPOT_DOOR_FIELDS = [
   ["frameHoverGlowAlpha", "Glow A"],
 ] as const;
 
-
 const HOTSPOT_LABEL_FIELDS = [
   ["labelCenterXPx", "Label X"],
   ["labelTopPx", "Label Y"],
@@ -596,7 +595,6 @@ export class EntranceSceneEditor {
     }
     return direction;
   }
-
 
   private shiftFontPreset(
     current: EntranceSceneLabelFontPreset,

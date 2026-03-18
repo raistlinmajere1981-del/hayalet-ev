@@ -26,6 +26,20 @@ interface Us1SceneBinding {
   avatarPath?: string;
 }
 
+function getSceneBindingAvatarFields(source: {
+  avatar?: string;
+  avatarPath?: string;
+}): Pick<Us1SceneBinding, "avatar" | "avatarPath"> {
+  const fields: Pick<Us1SceneBinding, "avatar" | "avatarPath"> = {};
+  if (typeof source.avatar === "string" && source.avatar.trim() !== "") {
+    fields.avatar = source.avatar;
+  }
+  if (typeof source.avatarPath === "string" && source.avatarPath.trim() !== "") {
+    fields.avatarPath = source.avatarPath;
+  }
+  return fields;
+}
+
 export interface SceneCharacterDescriptor {
   id: string;
   kind: SceneCharacterKind;
@@ -131,36 +145,35 @@ function getUs1ActiveBindings(): Us1SceneBinding[] {
   }
 
   return getRemoteEmailAccounts(settings.accounts)
-    .map((account) => {
-      const remoteUserId = account.remoteEmail?.remoteUserId?.trim() ?? "";
+    .reduce<Us1SceneBinding[]>((bindings, account) => {
+      const remoteUserId = account.remoteEmail?.remoteUserId.trim() ?? "";
       if (remoteUserId === "" || account.remoteEmail?.handshakeState !== "active") {
-        return null;
+        return bindings;
       }
 
       const derivedAccountId = buildRemoteEmailAccountId(remoteUserId);
       const accountId = derivedAccountId !== "" ? derivedAccountId : account.id;
       const normalizedAccountId = typeof accountId === "string" ? accountId.trim() : "";
       if (normalizedAccountId === "") {
-        return null;
+        return bindings;
       }
 
-      const email = `${account.email ?? ""}`.trim();
-      const fallbackNickname = email.split("@")[0] ?? email;
+      const email = account.email.trim();
+      const [fallbackNickname = email] = email.split("@");
       const nickname = getFirstNonEmpty(account.nickname, fallbackNickname) ?? fallbackNickname;
 
-      return {
+      bindings.push({
         accountId: normalizedAccountId,
         remoteUserId,
         email,
         nickname,
-        avatar: account.avatar,
-        avatarPath: account.avatarPath,
-      };
-    })
-    .filter((binding): binding is Us1SceneBinding => binding !== null)
+        ...getSceneBindingAvatarFields(account),
+      });
+      return bindings;
+    }, [])
     .sort((left, right) => {
-      const leftLabel = `${left.nickname} ${left.email}`.toLowerCase();
-      const rightLabel = `${right.nickname} ${right.email}`.toLowerCase();
+      const leftLabel = `${left.nickname ?? ""} ${left.email}`.toLowerCase();
+      const rightLabel = `${right.nickname ?? ""} ${right.email}`.toLowerCase();
       return leftLabel.localeCompare(rightLabel, "tr");
     });
 }
@@ -177,8 +190,7 @@ function getUs1SceneBinding(): Us1SceneBinding | null {
         remoteUserId: us1Identity.remoteUserId,
         email: us1Identity.email,
         nickname: us1Identity.nickname ?? null,
-        avatar: us1Identity.avatar,
-        avatarPath: us1Identity.avatarPath,
+        ...getSceneBindingAvatarFields(us1Identity),
       };
     }
   }

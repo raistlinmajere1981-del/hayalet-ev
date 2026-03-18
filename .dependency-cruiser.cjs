@@ -23,6 +23,7 @@ module.exports = {
           "electron/types/(server|error-patterns)\.ts$", // re-exported via index.ts
           "src/js/modules/webview/providers/shared/scraper-helpers\.ts$", // intentionally not imported (reference copy pattern)
           "src/types/us1-mail\.ts$", // type-only shared contract (depcruise treats as orphan)
+          "src/js/pages/entrance/scene/scene-character-role\.ts$", // type-only scene contract imported via `import type`
           "ghost-agent/src/shared/", // shared types for ghost-agent (imported via @shared alias, not resolvable by depcruise)
         ],
       },

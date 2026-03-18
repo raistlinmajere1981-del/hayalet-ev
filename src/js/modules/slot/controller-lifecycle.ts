@@ -395,7 +395,7 @@ export async function startSlotTraffic(
   context: LifecycleContext
 ): Promise<void> {
   const slotState = context.getSlot(slot);
-  if (!slotState || !slotState.webview || slotState.trafficStarted) {
+  if (!slotState?.webview || slotState.trafficStarted) {
     await Promise.resolve();
     return;
   }

@@ -153,7 +153,7 @@
 
 .splash-content--scene {
   gap: var(--space-6);
-  min-height: min(80vh, 48rem);
+  min-height: min(80vh, var(--splash-scene-shell-max-w));
 }
 
 .splash-scene-stage {

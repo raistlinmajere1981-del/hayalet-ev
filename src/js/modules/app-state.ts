@@ -132,8 +132,8 @@ class AppStateClass {
       [normalizedSessionId]: {
         conversationId:
           options.conversationId !== undefined
-            ? options.conversationId ?? null
-            : current?.conversationId ?? null,
+            ? (options.conversationId ?? null)
+            : (current?.conversationId ?? null),
         unreadCount: Math.max(1, (current?.unreadCount ?? 0) + (options.unreadDelta ?? 1)),
         updatedAt:
           typeof options.updatedAt === "number" && Number.isFinite(options.updatedAt)
@@ -145,8 +145,7 @@ class AppStateClass {
   }
 
   clearUs1PendingSession(localSessionId: string | null | undefined): void {
-    const normalizedSessionId =
-      typeof localSessionId === "string" ? localSessionId.trim() : "";
+    const normalizedSessionId = typeof localSessionId === "string" ? localSessionId.trim() : "";
     if (normalizedSessionId === "" || this.us1PendingSessions[normalizedSessionId] === undefined) {
       return;
     }

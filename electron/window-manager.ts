@@ -549,21 +549,21 @@ function buildDevRestartEnv(scriptName: string): NodeJS.ProcessEnv {
   const env = { ...process.env };
 
   if (scriptName === "start") {
-    delete env.APP_UI_MODE;
-    delete env.APP_SCENE_DEBUG;
+    delete env["APP_UI_MODE"];
+    delete env["APP_SCENE_DEBUG"];
   } else if (scriptName === "start:scene") {
-    env.APP_UI_MODE = "scene";
-    delete env.APP_SCENE_DEBUG;
+    env["APP_UI_MODE"] = "scene";
+    delete env["APP_SCENE_DEBUG"];
   } else if (scriptName === "start:scene:debug") {
-    env.APP_UI_MODE = "scene";
-    env.APP_SCENE_DEBUG = "1";
+    env["APP_UI_MODE"] = "scene";
+    env["APP_SCENE_DEBUG"] = "1";
   }
 
   return env;
 }
 
 function isWrapperManagedRestart(): boolean {
-  return process.env.HAYALET_WRAPPER_MANAGED === "1";
+  return process.env["HAYALET_WRAPPER_MANAGED"] === "1";
 }
 
 function getWrapperRestartRequestPath(): string {
@@ -585,12 +585,16 @@ function spawnDevRestart(scriptName: string): void {
   const projectRoot = Paths.getProjectRoot();
   const helperPath = join(projectRoot, "scripts", "dev-restart-helper.mjs");
   const restartEnv = buildDevRestartEnv(scriptName);
-  const child = spawn(process.execPath, [helperPath, "--pid", String(process.pid), "--script", scriptName], {
-    cwd: projectRoot,
-    env: restartEnv,
-    detached: true,
-    stdio: "ignore",
-  });
+  const child = spawn(
+    process.execPath,
+    [helperPath, "--pid", String(process.pid), "--script", scriptName],
+    {
+      cwd: projectRoot,
+      env: restartEnv,
+      detached: true,
+      stdio: "ignore",
+    }
+  );
   child.unref();
 }
 

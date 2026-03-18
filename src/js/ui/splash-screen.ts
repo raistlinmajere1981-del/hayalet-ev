@@ -61,8 +61,6 @@ function createClassicSplashMarkup(): string {
 }
 
 function createSceneSplashMarkup(): string {
-  const title = AppI18n.t("app.documentTitle");
-  const versionLabel = AppI18n.t("app.splash.version");
   const frameMarkup = SCENE_THEME_CONFIG.loading.frames
     .map(
       (frameSrc, index) => `
@@ -155,7 +153,13 @@ function shuffleSceneLines(lines: string[]): string[] {
   const next = [...lines];
   for (let i = next.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
+    const current = next[i];
+    const target = next[j];
+    if (current === undefined || target === undefined) {
+      continue;
+    }
+    next[i] = target;
+    next[j] = current;
   }
   return next;
 }
@@ -192,6 +196,9 @@ function nextSceneStatus(): string | null {
     return null;
   }
   const next = sceneStatusQueue[sceneStatusIndex];
+  if (next === undefined) {
+    return null;
+  }
   sceneStatusIndex += 1;
   return next;
 }

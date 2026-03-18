@@ -1013,6 +1013,7 @@ export class Us1ConversationService {
 
         projectedCount += 1;
         const sessionEvent = sessionEventsById.get(localSessionId);
+        const createdAt = sessionDescriptor?.createdAt ?? messageEnvelope?.sentAt;
         sessionEventsById.set(localSessionId, {
           remoteUserId,
           localSessionId,
@@ -1020,11 +1021,11 @@ export class Us1ConversationService {
           sessionTitle,
           mode: sessionDescriptor?.mode ?? (isNewSession ? "new" : "reply"),
           openHint: sessionDescriptor?.openHint ?? (isNewSession ? "auto_if_idle" : "list_only"),
-          createdAt: sessionDescriptor?.createdAt ?? messageEnvelope?.sentAt,
           sentAt: messageEnvelope?.sentAt ?? message.parsed.receivedAt,
           isNewSession:
             sessionEvent?.isNewSession === true ||
             (isNewSession === true && explicitSessionId !== null),
+          ...(createdAt !== undefined ? { createdAt } : {}),
         });
         if (remoteUserId === activeRemoteUser.remoteUserId) {
           activeConversationId = projectedMessage.conversationId;
@@ -1418,7 +1419,7 @@ export class Us1ConversationService {
     const metadataResult = await manager.upsertConversationMetadata({
       webUrl,
       provider: "us1",
-      title,
+      ...(title !== undefined ? { title } : {}),
     });
     if (metadataResult.success !== true || metadataResult.data === undefined) {
       throw new Error(metadataResult.error ?? "US1 archive conversation metadata sync failed.");

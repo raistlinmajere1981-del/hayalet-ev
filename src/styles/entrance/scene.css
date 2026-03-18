@@ -7,6 +7,7 @@
   --scene-rem-0-22: 0.22rem;
   --scene-rem-0-25: 0.25rem;
   --scene-rem-0-28: 0.28rem;
+  --scene-rem-0-3: 0.3rem;
   --scene-rem-0-34: 0.34rem;
   --scene-rem-0-35: 0.35rem;
   --scene-rem-0-38: 0.38rem;
@@ -46,6 +47,7 @@
   --scene-rem-3: 3rem;
   --scene-rem-4-5: 4.5rem;
   --scene-rem-7: 7rem;
+  --scene-rem-10: 10rem;
   --scene-rem-10-25: 10.25rem;
   --scene-rem-13-2: 13.2rem;
   --scene-rem-15: 15rem;
@@ -223,8 +225,7 @@
   border: var(--scene-px-1) solid rgb(255 217 166 / 0.18);
   border-radius: var(--scene-rem-0-7);
   background:
-    linear-gradient(180deg, rgb(48 29 24 / 0.96), rgb(20 12 10 / 0.92)),
-    rgb(20 12 10 / 0.92);
+    linear-gradient(180deg, rgb(48 29 24 / 0.96), rgb(20 12 10 / 0.92)), rgb(20 12 10 / 0.92);
   box-shadow: 0 var(--scene-rem-0-8) var(--scene-rem-2) rgb(0 0 0 / 0.35);
 }
 
@@ -326,8 +327,7 @@
 .entrance-scene__hotspot[data-frame-variant="left-angled"]::after {
   border-radius: var(--scene-rem-0-28) var(--scene-rem-0-38) var(--scene-rem-0-14)
     var(--scene-rem-0-18);
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(1deg);
   transform-origin: left center;
 }
@@ -336,8 +336,7 @@
 .entrance-scene__hotspot[data-frame-variant="right-angled"]::after {
   border-radius: var(--scene-rem-0-38) var(--scene-rem-0-28) var(--scene-rem-0-18)
     var(--scene-rem-0-14);
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(-1deg);
   transform-origin: right center;
 }
@@ -346,8 +345,7 @@
 .entrance-scene__hotspot[data-frame-variant="flat"]::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]::before,
 .entrance-scene__hotspot[data-frame-variant="upper"]::after {
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg));
   transform-origin: center center;
 }
@@ -362,13 +360,10 @@
       hsl(var(--scene-hotspot-hover-glow-hue) 72% 70% / var(--scene-hotspot-hover-glow-alpha)),
     0 0 var(--scene-rem-0-45)
       hsl(
-        var(--scene-hotspot-hover-glow-hue)
-          80%
-          72%
-          / calc(var(--scene-hotspot-hover-glow-alpha) * 1.35)
+        var(--scene-hotspot-hover-glow-hue) 80% 72% /
+          calc(var(--scene-hotspot-hover-glow-alpha) * 1.35)
       );
 }
-
 
 .entrance-scene__hotspot:hover::after,
 .entrance-scene__hotspot.is-selected::after,
@@ -381,32 +376,25 @@
     );
 }
 
-
 .entrance-scene__hotspot[data-frame-variant="left-angled"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="left-angled"]:focus-visible::after {
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(1deg);
 }
 
-
 .entrance-scene__hotspot[data-frame-variant="right-angled"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="right-angled"]:focus-visible::after {
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg)) skewY(-1deg);
 }
-
 
 .entrance-scene__hotspot[data-frame-variant="flat"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="flat"]:focus-visible::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]:hover::after,
 .entrance-scene__hotspot[data-frame-variant="upper"]:focus-visible::after {
-  transform: perspective(var(--scene-rem-18))
-    rotateY(var(--scene-hotspot-frame-perspective, 0deg))
+  transform: perspective(var(--scene-rem-18)) rotateY(var(--scene-hotspot-frame-perspective, 0deg))
     rotate(var(--scene-hotspot-frame-rotate, 0deg));
 }
-
 
 .entrance-scene__hotspot-label {
   position: absolute;
@@ -476,7 +464,6 @@
     0 var(--scene-px-2) var(--scene-px-10) rgb(35 17 12 / 0.62);
   transform: translateX(-50%) rotate(var(--scene-hotspot-label-rotate, 0deg));
 }
-
 
 .entrance-scene__characters {
   pointer-events: none;

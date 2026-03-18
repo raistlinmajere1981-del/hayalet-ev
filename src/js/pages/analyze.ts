@@ -408,10 +408,11 @@ export class AnalyzeController {
         continue;
       }
 
+      const updatedAt = sessionEvent.sentAt ?? sessionEvent.createdAt;
       AppState.markUs1PendingSession(localSessionId, {
         conversationId,
         unreadDelta: 1,
-        updatedAt: sessionEvent.sentAt ?? sessionEvent.createdAt,
+        ...(updatedAt !== undefined ? { updatedAt } : {}),
       });
     }
   }
@@ -841,9 +842,9 @@ export class AnalyzeController {
     const currentConversationId = AppState.getState().activeConversations["us1"] ?? null;
     const currentSessionId = this.us1SessionId;
     const composeHasDraft =
-      (((document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? "").trim() !==
-        "" ||
-        this.stagedFiles.length > 0);
+      (
+        (document.getElementById("compose-input") as HTMLTextAreaElement | null)?.value ?? ""
+      ).trim() !== "" || this.stagedFiles.length > 0;
 
     try {
       const result = await electronApi.us1SyncMessages({

@@ -253,7 +253,7 @@ export function setupTopBarButtons(): void {
           });
         }
 
-        dropdown.addEventListener("click", async (event) => {
+        dropdown.addEventListener("click", (event) => {
           const target = event.target as HTMLElement;
           const option = target.closest<HTMLButtonElement>(UI_MODE_OPTION_SELECTOR);
           if (option == null) {
@@ -265,7 +265,7 @@ export function setupTopBarButtons(): void {
 
           const optionState = option.dataset["uiModeOption"] ?? "";
           if (optionState === "ghost-agent") {
-            await triggerGhostAgentHandoff();
+            void triggerGhostAgentHandoff();
             return;
           }
 
@@ -277,31 +277,33 @@ export function setupTopBarButtons(): void {
             return;
           }
 
-          const confirmed = await Modal.confirm({
-            title: shellT("uiMode.confirmTitle"),
-            message: shellT("uiMode.confirmMessage", { mode: getUiModeLabel(optionState) }),
-          });
-
-          if (!confirmed) {
-            return;
-          }
-
-          const electronApi = window.electronAPI;
-          if (!electronApi?.appRestart) {
-            return;
-          }
-
-          const restartOptions = getUiModeRestartOptions(optionState);
-
-          try {
-            await electronApi.appRestart({
-              forceFullRestart: true,
-              uiMode: restartOptions.uiMode,
-              sceneDebug: restartOptions.sceneDebug,
+          void (async (): Promise<void> => {
+            const confirmed = await Modal.confirm({
+              title: shellT("uiMode.confirmTitle"),
+              message: shellT("uiMode.confirmMessage", { mode: getUiModeLabel(optionState) }),
             });
-          } catch {
-            void 0;
-          }
+
+            if (!confirmed) {
+              return;
+            }
+
+            const electronApi = window.electronAPI;
+            if (!electronApi?.appRestart) {
+              return;
+            }
+
+            const restartOptions = getUiModeRestartOptions(optionState);
+
+            try {
+              await electronApi.appRestart({
+                forceFullRestart: true,
+                uiMode: restartOptions.uiMode,
+                sceneDebug: restartOptions.sceneDebug,
+              });
+            } catch {
+              void 0;
+            }
+          })();
         });
       });
 

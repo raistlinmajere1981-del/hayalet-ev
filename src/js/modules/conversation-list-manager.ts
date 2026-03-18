@@ -391,9 +391,10 @@ class ConversationListManagerClass {
     providerEntries.sort((a, b) => b.mtime - a.mtime);
 
     for (const entry of providerEntries) {
+      const pendingUnreadCount = entry.pendingUnreadCount ?? 0;
       const optionLabel =
-        provider === "us1" && (entry.pendingUnreadCount ?? 0) > 0
-          ? `${entry.title} [new${(entry.pendingUnreadCount ?? 0) > 1 ? ` x${entry.pendingUnreadCount}` : ""}]`
+        provider === "us1" && pendingUnreadCount > 0
+          ? `${entry.title} [new${pendingUnreadCount > 1 ? ` x${pendingUnreadCount}` : ""}]`
           : entry.title;
       const option = new Option(optionLabel, entry.id);
       option.dataset["folder"] = entry.folder;
@@ -483,10 +484,11 @@ class ConversationListManagerClass {
           continue;
         }
 
+        const updatedAt = sessionEvent.sentAt ?? sessionEvent.createdAt;
         AppState.markUs1PendingSession(sessionEvent.localSessionId, {
           conversationId: sessionEvent.conversationId,
           unreadDelta: 1,
-          updatedAt: sessionEvent.sentAt ?? sessionEvent.createdAt,
+          ...(updatedAt !== undefined ? { updatedAt } : {}),
         });
       }
 

@@ -92,7 +92,8 @@ export class EntranceSceneController {
     if (this.sceneDebugEnabled && this.editorHost !== null) {
       this.editor = new EntranceSceneEditor(this.editorHost, {
         isActive: (): boolean =>
-          isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "entrance",
+          isSceneUiMode() &&
+          document.documentElement.getAttribute("data-active-page") === "entrance",
         getSceneMap: (): EntranceSceneMap => this.sceneMap,
         getSelection: (): EntranceSceneEditorSelection => this.editorSelection,
         getRoomOptions: (): Array<{ id: string; label: string }> =>
@@ -223,7 +224,7 @@ export class EntranceSceneController {
   }
 
   private resolveHotspotLabelFont(hotspot: EntranceSceneHotspotConfig): string {
-    return HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset] ?? "var(--font-scene-sans)";
+    return HOTSPOT_LABEL_FONT_FAMILIES[hotspot.labelFontPreset];
   }
 
   private renderHotspots(): void {
@@ -377,7 +378,6 @@ export class EntranceSceneController {
     const scaled = 1 - (normalizedDepth - 1) * 0.02;
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
-
 
   private handleHotspotAction(hotspot: EntranceSceneHotspotConfig): void {
     if (hotspot.action.type === "settings") {

@@ -636,7 +636,7 @@ body.is-scroll-locked {
 }
 
 .ui-mode-dropdown .theme-dropdown-menu {
-  min-width: 180px;
+  min-width: var(--layout-ui-mode-dropdown-min-w);
 }
 
 .ui-mode-dropdown .theme-dropdown-item {

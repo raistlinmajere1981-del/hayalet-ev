@@ -850,7 +850,9 @@ export class AssistantController {
   }
 
   _isAssistantSceneDebugActive(): boolean {
-    return isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "assistant";
+    return (
+      isSceneUiMode() && document.documentElement.getAttribute("data-active-page") === "assistant"
+    );
   }
 
   _setAssistantSceneScreenOpen(open: boolean): void {

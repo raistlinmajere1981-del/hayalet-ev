@@ -344,13 +344,12 @@ export function setupWindowHandlers(): void {
     const uiModeRaw = options?.["uiMode"];
     const uiMode = uiModeRaw === "classic" || uiModeRaw === "scene" ? uiModeRaw : undefined;
     const sceneDebugRaw = options?.["sceneDebug"];
-    const sceneDebug =
-      sceneDebugRaw === true ? true : sceneDebugRaw === false ? false : undefined;
+    const sceneDebug = sceneDebugRaw === true ? true : sceneDebugRaw === false ? false : undefined;
 
     return await appRestart({
       forceFullRestart: options?.["forceFullRestart"] === true,
-      uiMode,
-      sceneDebug,
+      ...(uiMode !== undefined ? { uiMode } : {}),
+      ...(sceneDebug !== undefined ? { sceneDebug } : {}),
     });
   });
 

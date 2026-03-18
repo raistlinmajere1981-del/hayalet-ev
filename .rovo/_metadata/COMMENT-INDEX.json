@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-17T08:49:15.511Z",
+  "generatedAt": "2026-03-18T00:31:53.548Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -16,15 +16,15 @@
     ]
   },
   "stats": {
-    "filesScanned": 455,
+    "filesScanned": 456,
     "filesWithComments": 107,
-    "commentsIndexed": 262,
-    "fileLevelComments": 203,
-    "symbolLevelComments": 59,
+    "commentsIndexed": 261,
+    "fileLevelComments": 201,
+    "symbolLevelComments": 60,
     "prefixCounts": {
       "none": 23,
       "AI": 0,
-      "NOTE": 235,
+      "NOTE": 234,
       "WARNING": 4,
       "TODO": 0
     }
@@ -830,8 +830,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 117,
-          "endLine": 117,
+          "startLine": 120,
+          "endLine": 120,
           "text": "NOTE: Log the resolved tray icon path because packaging issues often surface here first.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -839,8 +839,8 @@
         },
         {
           "kind": "note",
-          "startLine": 292,
-          "endLine": 292,
+          "startLine": 295,
+          "endLine": 295,
           "text": "NOTE: Local helper services need explicit CORS headers because they are called from isolated webviews.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -848,8 +848,8 @@
         },
         {
           "kind": "note",
-          "startLine": 310,
-          "endLine": 310,
+          "startLine": 313,
+          "endLine": 313,
           "text": "NOTE: The assistant webview needs broader connect-src rules for OpenCode changelog fetches and local helper services.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -857,8 +857,8 @@
         },
         {
           "kind": "note",
-          "startLine": 324,
-          "endLine": 324,
+          "startLine": 327,
+          "endLine": 327,
           "text": "NOTE: Mirror the local-service CORS override for the assistant partition.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -866,8 +866,8 @@
         },
         {
           "kind": "warning",
-          "startLine": 343,
-          "endLine": 343,
+          "startLine": 346,
+          "endLine": 346,
           "text": "WARNING: Install the webview navigation guard before any provider content starts navigating.",
           "prefix": "WARNING",
           "scopeType": "file",
@@ -875,8 +875,8 @@
         },
         {
           "kind": "note",
-          "startLine": 500,
-          "endLine": 500,
+          "startLine": 654,
+          "endLine": 654,
           "text": "NOTE: Ignore malformed targets instead of blocking navigation entirely.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -884,8 +884,8 @@
         },
         {
           "kind": "note",
-          "startLine": 504,
-          "endLine": 504,
+          "startLine": 658,
+          "endLine": 658,
           "text": "NOTE: Non-http(s) schemes stay allowed so built-in Electron pages are not blocked.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -893,8 +893,8 @@
         },
         {
           "kind": "note",
-          "startLine": 513,
-          "endLine": 513,
+          "startLine": 667,
+          "endLine": 667,
           "text": "NOTE: Skip enforcement when the current provider URL is unavailable.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -902,8 +902,8 @@
         },
         {
           "kind": "note",
-          "startLine": 519,
-          "endLine": 519,
+          "startLine": 673,
+          "endLine": 673,
           "text": "NOTE: Unknown providers fall back to permissive navigation.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -998,8 +998,8 @@
         },
         {
           "kind": "note",
-          "startLine": 221,
-          "endLine": 221,
+          "startLine": 222,
+          "endLine": 222,
           "text": "NOTE: --auto-connect clicks the assistant connect button on the assistant page.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1054,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 226,
-          "endLine": 226,
+          "startLine": 394,
+          "endLine": 394,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1631,8 +1631,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 473,
-          "endLine": 473,
+          "startLine": 547,
+          "endLine": 547,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1640,8 +1640,8 @@
         },
         {
           "kind": "note",
-          "startLine": 492,
-          "endLine": 492,
+          "startLine": 566,
+          "endLine": 566,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1721,14 +1721,14 @@
     },
     {
       "path": "src/js/pages/assistant/assistant.ts",
-      "totalComments": 6,
+      "totalComments": 5,
       "byKind": {
-        "note": 6
+        "note": 5
       },
       "byPrefix": {
         "none": 0,
         "AI": 0,
-        "NOTE": 6,
+        "NOTE": 5,
         "WARNING": 0,
         "TODO": 0
       },
@@ -1754,8 +1754,8 @@
         },
         {
           "kind": "note",
-          "startLine": 294,
-          "endLine": 294,
+          "startLine": 348,
+          "endLine": 348,
           "text": "NOTE: Attach the preload to the AI0 webview before loading the URL for the IPC bridge.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1763,17 +1763,8 @@
         },
         {
           "kind": "note",
-          "startLine": 767,
-          "endLine": 767,
-          "text": "NOTE: Runtime-loaded data URLs feed a CSS var to avoid direct backgroundImage.",
-          "prefix": "NOTE",
-          "scopeType": "file",
-          "scopeName": null
-        },
-        {
-          "kind": "note",
-          "startLine": 1908,
-          "endLine": 1908,
+          "startLine": 2448,
+          "endLine": 2448,
           "text": "NOTE: Ignore if the webview is not ready yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1781,8 +1772,8 @@
         },
         {
           "kind": "note",
-          "startLine": 1964,
-          "endLine": 1964,
+          "startLine": 2504,
+          "endLine": 2504,
           "text": "NOTE: Ignore if the webview has not finished loading yet.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2024,26 +2015,27 @@
         "TODO": 0
       },
       "symbols": [
+        "saveEntranceSceneMapDraft",
         "clearEntranceSceneMapDraft"
       ],
       "comments": [
         {
           "kind": "note",
-          "startLine": 351,
-          "endLine": 351,
+          "startLine": 503,
+          "endLine": 503,
+          "text": "Ignore draft persistence failures in constrained environments.",
+          "prefix": null,
+          "scopeType": "function",
+          "scopeName": "saveEntranceSceneMapDraft"
+        },
+        {
+          "kind": "note",
+          "startLine": 519,
+          "endLine": 519,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
           "scopeName": "clearEntranceSceneMapDraft"
-        },
-        {
-          "kind": "note",
-          "startLine": 359,
-          "endLine": 359,
-          "text": "Ignore draft persistence failures in constrained environments.",
-          "prefix": null,
-          "scopeType": "file",
-          "scopeName": null
         }
       ]
     },
@@ -2298,8 +2290,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 210,
-          "endLine": 210,
+          "startLine": 266,
+          "endLine": 266,
           "text": "NOTE: Force re-fetch after injecting DOM.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -2307,8 +2299,8 @@
         },
         {
           "kind": "note",
-          "startLine": 259,
-          "endLine": 259,
+          "startLine": 316,
+          "endLine": 316,
           "text": "NOTE: Progress is runtime-driven via CSS var to avoid width injection.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -4617,7 +4609,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 226,
+          "startLine": 394,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4689,7 +4681,19 @@
       "name": "clearEntranceSceneMapDraft",
       "comments": [
         {
-          "startLine": 351,
+          "startLine": 519,
+          "kind": "note",
+          "text": "Ignore draft persistence failures in constrained environments."
+        }
+      ]
+    },
+    {
+      "file": "src/js/pages/entrance/scene/scene-map.ts",
+      "type": "function",
+      "name": "saveEntranceSceneMapDraft",
+      "comments": [
+        {
+          "startLine": 503,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
