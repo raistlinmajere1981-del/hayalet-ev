@@ -409,11 +409,6 @@ export class EntranceSceneController {
       return;
     }
 
-    if (hotspot.action.type === "whisper-panel") {
-      document.dispatchEvent(new CustomEvent("entrance-whisper:open"));
-      return;
-    }
-
     document.dispatchEvent(
       new CustomEvent("navigate-page", {
         detail: { page: hotspot.action.page },

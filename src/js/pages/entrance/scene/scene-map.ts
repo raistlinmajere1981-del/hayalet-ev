@@ -15,16 +15,12 @@ export type EntranceSceneLabelFontPreset = (typeof ENTRANCE_SCENE_LABEL_FONT_PRE
 
 export interface EntranceSceneHotspotActionNavigate {
   type: "navigate";
-  page: "analyze" | "archives" | "server" | "assistant" | "entrance";
+  page: "analyze" | "server" | "assistant" | "entrance";
 }
 
 export interface EntranceSceneHotspotActionSettings {
   type: "settings";
   panel: "theme" | "accounts" | "backup" | "rooms" | "live-log" | null;
-}
-
-export interface EntranceSceneHotspotActionWhisperPanel {
-  type: "whisper-panel";
 }
 
 export interface EntranceSceneHotspotActionSettingsSceneClose {
@@ -39,7 +35,6 @@ export interface EntranceSceneHotspotActionScreen {
 export type EntranceSceneHotspotAction =
   | EntranceSceneHotspotActionNavigate
   | EntranceSceneHotspotActionSettings
-  | EntranceSceneHotspotActionWhisperPanel
   | EntranceSceneHotspotActionSettingsSceneClose
   | EntranceSceneHotspotActionScreen;
 
@@ -121,54 +116,6 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
 
       labelFramePerspectiveDeg: 0,
       action: { type: "navigate", page: "analyze" },
-    },
-    {
-      id: "door-archives",
-      labelKey: "sideNav.archivesLabel",
-      leftPx: 476,
-      topPx: 483,
-      widthPx: 167,
-      heightPx: 273,
-      labelCenterXPx: 555,
-      labelTopPx: 509,
-      labelWidthPx: 307,
-      labelHeightPx: 44,
-      labelRotateDeg: 0,
-      labelFontSizePx: 24,
-      labelLetterSpacingPx: 1,
-      labelFontPreset: "display",
-      frameVariant: "flat",
-      frameRotateDeg: 0,
-      framePerspectiveDeg: 0,
-      frameHoverGlowHueDeg: 33,
-      frameHoverGlowAlpha: 0.34,
-      labelFramePerspectiveDeg: 0,
-
-      action: { type: "navigate", page: "archives" },
-    },
-    {
-      id: "door-whisper",
-      labelKey: "sideNav.whisperLabel",
-      leftPx: 480,
-      topPx: 162,
-      widthPx: 146,
-      heightPx: 227,
-      labelCenterXPx: 561,
-      labelTopPx: 108,
-      labelWidthPx: 303,
-      labelHeightPx: 45,
-      labelRotateDeg: 0,
-      labelFontSizePx: 24,
-      labelLetterSpacingPx: 1,
-      labelFontPreset: "display",
-      frameVariant: "upper",
-      frameRotateDeg: -0.8,
-      framePerspectiveDeg: 0,
-      frameHoverGlowHueDeg: 33,
-      frameHoverGlowAlpha: 0.34,
-
-      labelFramePerspectiveDeg: 0,
-      action: { type: "whisper-panel" },
     },
     {
       id: "door-assistant",

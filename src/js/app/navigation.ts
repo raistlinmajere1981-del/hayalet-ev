@@ -8,7 +8,6 @@ import {
   generateWorkflowSessionId,
   updateAssistantRuntimeState,
 } from "../pages/assistant/assistant-runtime.js";
-import { ANALYZE_ARCHIVE_OPEN_EVENT } from "../pages/analyze/archive-overlay-controller.js";
 import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-debug-rooms.js";
 
 import type { PageController } from "./types.js";
@@ -95,10 +94,6 @@ function setUiModeDropdownExpanded(dropdown: HTMLElement, expanded: boolean): vo
 let currentPage: string | null = null;
 let controllers: Record<string, PageController> = {};
 
-function normalizePageName(pageName: string): string {
-  return pageName === "whisper" ? "entrance" : pageName;
-}
-
 function resolvePageDomNames(pageName: string): string[] {
   return [pageName];
 }
@@ -117,7 +112,7 @@ function matchesPageDataset(candidate: string | undefined, pageName: string): bo
   if (candidate === undefined || candidate === "") {
     return false;
   }
-  return normalizePageName(candidate) === pageName;
+  return candidate === pageName;
 }
 
 function syncShellLayoutState(pageName: string): void {
@@ -167,9 +162,7 @@ export function setupNavigation(): void {
 }
 
 export function showPage(pageName: string): void {
-  const requestedPageName = pageName === "archives" ? "analyze" : pageName;
-  const normalizedPageName = normalizePageName(requestedPageName);
-  const shouldOpenArchiveOverlay = pageName === "archives";
+  const normalizedPageName = pageName;
   const previousPage = currentPage;
   if (
     previousPage !== null &&
@@ -195,10 +188,6 @@ export function showPage(pageName: string): void {
     const controller = controllers[normalizedPageName];
     if (controller?.onShow !== undefined) {
       controller.onShow();
-    }
-
-    if (shouldOpenArchiveOverlay) {
-      window.dispatchEvent(new Event(ANALYZE_ARCHIVE_OPEN_EVENT));
     }
 
     setActiveNavigation(normalizedPageName);
@@ -388,7 +377,7 @@ export function setupTopBarButtons(): void {
 }
 
 export function setActiveNavigation(pageName: string): void {
-  const normalizedPageName = normalizePageName(pageName);
+  const normalizedPageName = pageName;
   const menuItems = document.querySelectorAll(".menu-item");
   menuItems.forEach((mi) => {
     mi.classList.remove("is-active");
