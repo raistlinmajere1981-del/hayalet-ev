@@ -245,7 +245,7 @@ export class ServerController {
     const background = document.getElementById(
       "server-scene-background"
     ) as HTMLImageElement | null;
-    const screenView = document.getElementById("server-scene-screen-view") as HTMLElement | null;
+    const screenView = document.getElementById("server-scene-screen-view");
     const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
 
     if (background !== null) {

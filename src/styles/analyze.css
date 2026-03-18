@@ -1,4 +1,44 @@
 .analyze-wrapper {
+  --analyze-scene-hotspot-frame-radius-flat: 0.75rem 0.75rem 0.35rem 0.35rem;
+  --analyze-scene-hotspot-frame-inset: -0.38rem;
+  --analyze-scene-hotspot-frame-radius-outer: 0.9rem 0.9rem 0.4rem 0.4rem;
+  --analyze-scene-hotspot-frame-radius-upper: 0.68rem 0.68rem 0.28rem 0.28rem;
+  --analyze-scene-hotspot-frame-radius-left: 0.58rem 0.72rem 0.28rem 0.34rem;
+  --analyze-scene-hotspot-frame-radius-right: 0.72rem 0.58rem 0.34rem 0.28rem;
+  --analyze-scene-hotspot-frame-perspective-depth: 18rem;
+  --analyze-scene-hotspot-hover-shadow:
+    0 0 1.7rem
+      hsl(
+        var(--analyze-scene-hotspot-hover-glow-hue) 72% 70% /
+          var(--analyze-scene-hotspot-hover-glow-alpha)
+      ),
+    0 0 0.45rem
+      hsl(
+        var(--analyze-scene-hotspot-hover-glow-hue) 80% 72% /
+          calc(var(--analyze-scene-hotspot-hover-glow-alpha) * 1.35)
+      );
+  --analyze-scene-hotspot-hover-outer-shadow: 0 0 2.6rem
+    hsl(
+      var(--analyze-scene-hotspot-hover-glow-hue) 70% 65% /
+        calc(var(--analyze-scene-hotspot-hover-glow-alpha) * 0.8)
+    );
+  --analyze-scene-hotspot-label-text-shadow:
+    0 var(--border-1) 0 rgb(255 248 236 / 0.22), 0 0 0.7rem rgb(255 213 144 / 0.16),
+    0 var(--border-2) var(--space-2) rgb(27 14 10 / 0.55);
+  --analyze-scene-hotspot-label-active-text-shadow:
+    0 var(--border-1) 0 rgb(255 250 240 / 0.28), 0 0 1rem rgb(255 224 171 / 0.32),
+    0 var(--border-2) var(--space-2-5) rgb(35 17 12 / 0.62);
+  --analyze-scene-hotspot-label-stroke-width: 0.55px;
+  --analyze-scene-hotspot-label-frame-radius: 0.35rem;
+  --analyze-scene-exit-copy-letter-spacing: 0.08em;
+  --analyze-scene-exit-shift: 0.2rem;
+  --analyze-scene-debug-label-shadow:
+    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.02), 0 0.4rem 1rem rgb(0 0 0 / 0.18);
+  --analyze-scene-debug-label-hover-shadow:
+    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.04), 0 0 0.8rem rgb(126 201 255 / 0.16),
+    0 0.4rem 1rem rgb(0 0 0 / 0.18);
+  --analyze-scene-panel-shadow:
+    0 1.9rem 3rem rgb(0 0 0 / 0.34), inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.03);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -138,7 +178,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 0.75rem 0.75rem 0.35rem 0.35rem;
+  border-radius: var(--analyze-scene-hotspot-frame-radius-flat);
   opacity: 0;
   transition:
     opacity var(--duration-normal) var(--ease-out),
@@ -153,27 +193,29 @@
 }
 
 .analyze-scene__hotspot::after {
-  inset: -0.38rem;
-  border-radius: 0.9rem 0.9rem 0.4rem 0.4rem;
+  inset: var(--analyze-scene-hotspot-frame-inset);
+  border-radius: var(--analyze-scene-hotspot-frame-radius-outer);
 }
 
 .analyze-scene__hotspot[data-frame-variant="upper"]::before,
 .analyze-scene__hotspot[data-frame-variant="upper"]::after {
-  border-radius: 0.68rem 0.68rem 0.28rem 0.28rem;
+  border-radius: var(--analyze-scene-hotspot-frame-radius-upper);
 }
 
 .analyze-scene__hotspot[data-frame-variant="left-angled"]::before,
 .analyze-scene__hotspot[data-frame-variant="left-angled"]::after {
-  border-radius: 0.58rem 0.72rem 0.28rem 0.34rem;
-  transform: perspective(18rem) rotateY(var(--analyze-scene-hotspot-frame-perspective))
+  border-radius: var(--analyze-scene-hotspot-frame-radius-left);
+  transform: perspective(var(--analyze-scene-hotspot-frame-perspective-depth))
+    rotateY(var(--analyze-scene-hotspot-frame-perspective))
     rotate(var(--analyze-scene-hotspot-frame-rotate)) skewY(1deg);
   transform-origin: left center;
 }
 
 .analyze-scene__hotspot[data-frame-variant="right-angled"]::before,
 .analyze-scene__hotspot[data-frame-variant="right-angled"]::after {
-  border-radius: 0.72rem 0.58rem 0.34rem 0.28rem;
-  transform: perspective(18rem) rotateY(var(--analyze-scene-hotspot-frame-perspective))
+  border-radius: var(--analyze-scene-hotspot-frame-radius-right);
+  transform: perspective(var(--analyze-scene-hotspot-frame-perspective-depth))
+    rotateY(var(--analyze-scene-hotspot-frame-perspective))
     rotate(var(--analyze-scene-hotspot-frame-rotate)) skewY(-1deg);
   transform-origin: right center;
 }
@@ -182,7 +224,8 @@
 .analyze-scene__hotspot[data-frame-variant="flat"]::after,
 .analyze-scene__hotspot[data-frame-variant="upper"]::before,
 .analyze-scene__hotspot[data-frame-variant="upper"]::after {
-  transform: perspective(18rem) rotateY(var(--analyze-scene-hotspot-frame-perspective))
+  transform: perspective(var(--analyze-scene-hotspot-frame-perspective-depth))
+    rotateY(var(--analyze-scene-hotspot-frame-perspective))
     rotate(var(--analyze-scene-hotspot-frame-rotate));
   transform-origin: center center;
 }
@@ -192,28 +235,14 @@
 .analyze-scene__hotspot:focus-visible::before {
   opacity: 1;
   border-color: transparent;
-  box-shadow:
-    0 0 1.7rem
-      hsl(
-        var(--analyze-scene-hotspot-hover-glow-hue) 72% 70% /
-          var(--analyze-scene-hotspot-hover-glow-alpha)
-      ),
-    0 0 0.45rem
-      hsl(
-        var(--analyze-scene-hotspot-hover-glow-hue) 80% 72% /
-          calc(var(--analyze-scene-hotspot-hover-glow-alpha) * 1.35)
-      );
+  box-shadow: var(--analyze-scene-hotspot-hover-shadow);
 }
 
 .analyze-scene__hotspot:hover::after,
 .analyze-scene__hotspot.is-selected::after,
 .analyze-scene__hotspot:focus-visible::after {
   opacity: 1;
-  box-shadow: 0 0 2.6rem
-    hsl(
-      var(--analyze-scene-hotspot-hover-glow-hue) 70% 65% /
-        calc(var(--analyze-scene-hotspot-hover-glow-alpha) * 0.8)
-    );
+  box-shadow: var(--analyze-scene-hotspot-hover-outer-shadow);
 }
 
 .analyze-scene__hotspot-label {
@@ -235,11 +264,8 @@
   text-align: center;
   text-transform: uppercase;
   isolation: isolate;
-  text-shadow:
-    0 1px 0 rgb(255 248 236 / 0.22),
-    0 0 0.7rem rgb(255 213 144 / 0.16),
-    0 2px 8px rgb(27 14 10 / 0.55);
-  -webkit-text-stroke: 0.55px rgb(58 31 20 / 0.88);
+  text-shadow: var(--analyze-scene-hotspot-label-text-shadow);
+  -webkit-text-stroke: var(--analyze-scene-hotspot-label-stroke-width) rgb(58 31 20 / 0.88);
   pointer-events: none;
   user-select: none;
   text-wrap: balance;
@@ -254,10 +280,11 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-radius: 0.35rem;
+  border-radius: var(--analyze-scene-hotspot-label-frame-radius);
   opacity: 0;
   pointer-events: none;
-  transform: perspective(18rem) rotateY(var(--analyze-scene-hotspot-label-frame-perspective));
+  transform: perspective(var(--analyze-scene-hotspot-frame-perspective-depth))
+    rotateY(var(--analyze-scene-hotspot-label-frame-perspective));
   transition:
     opacity var(--duration-normal) var(--ease-out),
     border-color var(--duration-normal) var(--ease-out),
@@ -268,10 +295,7 @@
 .analyze-scene__hotspot-label.is-selected,
 .analyze-scene__hotspot:focus-visible + .analyze-scene__hotspot-label {
   color: rgb(255 233 201 / 1);
-  text-shadow:
-    0 1px 0 rgb(255 250 240 / 0.28),
-    0 0 1rem rgb(255 224 171 / 0.32),
-    0 2px 10px rgb(35 17 12 / 0.62);
+  text-shadow: var(--analyze-scene-hotspot-label-active-text-shadow);
 }
 
 .analyze-scene__table-view {
@@ -350,7 +374,7 @@
   font-family: var(--font-scene-sans);
   font-size: var(--analyze-scene-exit-text-size);
   font-weight: var(--font-semibold);
-  letter-spacing: 0.08em;
+  letter-spacing: var(--analyze-scene-exit-copy-letter-spacing);
   text-transform: uppercase;
 }
 
@@ -389,7 +413,7 @@
 .analyze-archive-overlay__exit--left:focus-visible .analyze-archive-overlay__exit-arrow,
 .analyze-archive-overlay__exit--left:hover .analyze-archive-overlay__exit-copy,
 .analyze-archive-overlay__exit--left:focus-visible .analyze-archive-overlay__exit-copy {
-  transform: translateX(0.2rem);
+  transform: translateX(var(--analyze-scene-exit-shift));
 }
 
 .analyze-scene__exit--right:hover .analyze-scene__exit-arrow,
@@ -400,7 +424,7 @@
 .analyze-archive-overlay__exit--right:focus-visible .analyze-archive-overlay__exit-arrow,
 .analyze-archive-overlay__exit--right:hover .analyze-archive-overlay__exit-copy,
 .analyze-archive-overlay__exit--right:focus-visible .analyze-archive-overlay__exit-copy {
-  transform: translateX(-0.2rem);
+  transform: translateX(calc(var(--analyze-scene-exit-shift) * -1));
 }
 
 .analyze-archive-overlay__scene-art,
@@ -422,18 +446,13 @@
   opacity: 1;
   border: var(--border-1) solid rgb(255 224 187 / 0.22);
   background: linear-gradient(180deg, rgb(255 219 166 / 0.06), rgb(255 219 166 / 0.02));
-  box-shadow:
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.02),
-    0 0.4rem 1rem rgb(0 0 0 / 0.18);
+  box-shadow: var(--analyze-scene-debug-label-shadow);
 }
 
 [data-scene-debug="true"] .analyze-scene__hotspot-label:hover::before,
 [data-scene-debug="true"] .analyze-scene__hotspot-label.is-selected::before {
   border-color: rgb(126 201 255 / 0.48);
-  box-shadow:
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.04),
-    0 0 0.8rem rgb(126 201 255 / 0.16),
-    0 0.4rem 1rem rgb(0 0 0 / 0.18);
+  box-shadow: var(--analyze-scene-debug-label-hover-shadow);
 }
 
 [data-scene-debug="true"] .analyze-scene__characters {
@@ -824,9 +843,7 @@
   border: var(--border-1) solid rgb(255 221 186 / 0.14);
   border-radius: calc(var(--radius-modal) + var(--space-1));
   background: linear-gradient(180deg, rgb(28 18 15 / 0.78), rgb(13 9 8 / 0.92)), rgb(10 7 7 / 0.8);
-  box-shadow:
-    0 1.9rem 3rem rgb(0 0 0 / 0.34),
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.03);
+  box-shadow: var(--analyze-scene-panel-shadow);
   overflow: hidden;
 }
 
@@ -893,9 +910,7 @@
     var(--analyze-scene-frame-bottom) var(--analyze-scene-frame-left);
   border-color: rgb(255 221 186 / 0.14);
   background: linear-gradient(180deg, rgb(28 18 15 / 0.78), rgb(13 9 8 / 0.92)), rgb(10 7 7 / 0.8);
-  box-shadow:
-    0 1.9rem 3rem rgb(0 0 0 / 0.34),
-    inset 0 0 0 var(--border-1) rgb(255 255 255 / 0.03);
+  box-shadow: var(--analyze-scene-panel-shadow);
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"]

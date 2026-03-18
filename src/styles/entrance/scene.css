@@ -53,8 +53,10 @@
   --scene-rem-15: 15rem;
   --scene-rem-18: 18rem;
   --scene-rem-19: 19rem;
+  --scene-rem-20: 20rem;
   --scene-rem-21: 21rem;
   --scene-rem-25: 25rem;
+  --scene-rem-26: 26rem;
   --scene-rem-44: 44rem;
 
   --scene-em-0-02: 0.02em;
@@ -282,7 +284,13 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgb(12 8 8 / 0.18), transparent 22%, transparent 78%, rgb(12 8 8 / 0.24)),
+    linear-gradient(
+      180deg,
+      rgb(12 8 8 / 0.18),
+      transparent 22%,
+      transparent 78%,
+      rgb(12 8 8 / 0.24)
+    ),
     radial-gradient(circle at center, transparent 42%, rgb(7 4 4 / 0.2) 100%);
   pointer-events: none;
 }
@@ -303,8 +311,7 @@
   border: var(--scene-px-1) solid rgb(255 217 166 / 0.18);
   border-radius: var(--scene-px-999);
   background:
-    linear-gradient(180deg, rgb(48 29 24 / 0.9), rgb(20 12 10 / 0.88)),
-    rgb(20 12 10 / 0.88);
+    linear-gradient(180deg, rgb(48 29 24 / 0.9), rgb(20 12 10 / 0.88)), rgb(20 12 10 / 0.88);
   box-shadow:
     0 var(--scene-rem-1) var(--scene-rem-2-6) rgb(0 0 0 / 0.28),
     inset 0 0 0 var(--scene-px-1) rgb(255 255 255 / 0.04);
@@ -343,7 +350,7 @@
   text-transform: uppercase;
 }
 
-.entrance-scene__whisper-dock {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock {
   top: clamp(var(--scene-rem-3), 7.2vh, var(--scene-rem-4-5));
   left: clamp(var(--scene-rem-2), 7.4vw, var(--scene-rem-7));
   right: clamp(var(--scene-rem-2), 5.8vw, var(--scene-rem-4-5));
@@ -364,51 +371,51 @@
   backdrop-filter: blur(var(--scene-px-10));
 }
 
-.entrance-scene__whisper-dock .whisper-dock__toggle {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__toggle {
   flex-shrink: 0;
   padding-inline: clamp(var(--space-3), 1.8vw, var(--space-4));
 }
 
-.entrance-scene__whisper-dock .whisper-dock__content {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__content {
   flex: 1;
   min-height: 0;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__body {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__body {
   height: 100%;
   min-height: 0;
   max-height: none;
-  grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--scene-rem-20), var(--scene-rem-26)) minmax(0, 1fr);
   align-items: stretch;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__composer,
-.entrance-scene__whisper-dock .whisper-dock__viewer {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__composer,
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__viewer {
   display: flex;
   flex-direction: column;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__viewer {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__viewer {
   min-height: 0;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__columns {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__columns {
   flex: 1;
   min-height: 0;
   align-content: stretch;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__lane {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__lane {
   min-height: 0;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__list {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__list {
   min-height: 0;
   max-height: none;
   flex: 1;
 }
 
-.entrance-scene__whisper-dock .whisper-dock__empty-state {
+[data-ui-mode="scene"] .entrance-scene__whisper-dock .whisper-dock__empty-state {
   min-height: 100%;
 }
 

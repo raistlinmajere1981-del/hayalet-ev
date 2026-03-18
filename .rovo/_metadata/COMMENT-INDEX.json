@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-03-18T11:52:18.968Z",
+  "generatedAt": "2026-03-18T17:23:31.639Z",
   "generator": "scripts/generate-comment-metadata.js",
   "scope": {
     "included": [
@@ -1054,8 +1054,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 418,
-          "endLine": 418,
+          "startLine": 407,
+          "endLine": 407,
           "text": "NOTE: Kept for backward compatibility.",
           "prefix": "NOTE",
           "scopeType": "function",
@@ -1631,8 +1631,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 551,
-          "endLine": 551,
+          "startLine": 1177,
+          "endLine": 1177,
           "text": "NOTE: Prevent duplicate sends while the button is already loading.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1640,8 +1640,8 @@
         },
         {
           "kind": "note",
-          "startLine": 570,
-          "endLine": 570,
+          "startLine": 1196,
+          "endLine": 1196,
           "text": "NOTE: Allow Ctrl+Enter sends while still preventing duplicate dispatches.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1940,8 +1940,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 642,
-          "endLine": 642,
+          "startLine": 643,
+          "endLine": 643,
           "text": "NOTE: Escape HTML to prevent XSS.",
           "prefix": "NOTE",
           "scopeType": "file",
@@ -1995,8 +1995,8 @@
       "comments": [
         {
           "kind": "note",
-          "startLine": 679,
-          "endLine": 679,
+          "startLine": 781,
+          "endLine": 781,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -2004,8 +2004,8 @@
         },
         {
           "kind": "note",
-          "startLine": 699,
-          "endLine": 699,
+          "startLine": 805,
+          "endLine": 805,
           "text": "Ignore draft persistence failures in constrained environments.",
           "prefix": null,
           "scopeType": "function",
@@ -4583,7 +4583,7 @@
       "name": "setupReportPanel",
       "comments": [
         {
-          "startLine": 418,
+          "startLine": 407,
           "kind": "note",
           "text": "NOTE: Kept for backward compatibility."
         }
@@ -4655,7 +4655,7 @@
       "name": "clearEntranceSceneMapDraft",
       "comments": [
         {
-          "startLine": 699,
+          "startLine": 805,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }
@@ -4667,7 +4667,7 @@
       "name": "saveEntranceSceneMapDraft",
       "comments": [
         {
-          "startLine": 679,
+          "startLine": 781,
           "kind": "note",
           "text": "Ignore draft persistence failures in constrained environments."
         }

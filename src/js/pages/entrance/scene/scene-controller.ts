@@ -36,6 +36,8 @@ const ELEMENT_IDS = {
   menuHost: "entrance-scene-menu-host",
   whisperView: "entrance-scene-whisper-view",
   whisperClose: "entrance-scene-whisper-close",
+  classicWhisperDockHost: "entrance-classic-whisper-dock-host",
+  whisperDock: "whisper-dock",
 } as const;
 
 const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> = {
@@ -58,6 +60,8 @@ export class EntranceSceneController {
   menuHost: HTMLElement | null = null;
   whisperView: HTMLElement | null = null;
   whisperClose: HTMLButtonElement | null = null;
+  classicWhisperDockHost: HTMLElement | null = null;
+  whisperDock: HTMLElement | null = null;
   menu: SceneCharacterMenu | null = null;
   editor: EntranceSceneEditor | null = null;
   resizeObserver: ResizeObserver | null = null;
@@ -85,7 +89,11 @@ export class EntranceSceneController {
     this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
     this.whisperView = document.getElementById(ELEMENT_IDS.whisperView);
-    this.whisperClose = document.getElementById(ELEMENT_IDS.whisperClose) as HTMLButtonElement | null;
+    this.whisperClose = document.getElementById(
+      ELEMENT_IDS.whisperClose
+    ) as HTMLButtonElement | null;
+    this.classicWhisperDockHost = document.getElementById(ELEMENT_IDS.classicWhisperDockHost);
+    this.whisperDock = document.getElementById(ELEMENT_IDS.whisperDock);
     this.sceneMap =
       (this.sceneDebugEnabled ? loadEntranceSceneMapDraft() : null) ??
       cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
@@ -195,6 +203,7 @@ export class EntranceSceneController {
     const sceneActive = isSceneUiMode();
     this.root.hidden = !sceneActive;
     this.root.setAttribute("aria-hidden", String(!sceneActive));
+    this.syncWhisperDockHost(sceneActive);
 
     if (!sceneActive) {
       this.whisperViewOpen = false;
@@ -212,6 +221,7 @@ export class EntranceSceneController {
   }
 
   private renderStatic(): void {
+    this.syncWhisperDockHost(isSceneUiMode());
     this.renderBackground();
     this.syncWhisperView();
     this.renderHotspots();
@@ -252,6 +262,19 @@ export class EntranceSceneController {
     });
 
     document.addEventListener("keydown", this.handleDocumentKeydown);
+  }
+
+  private syncWhisperDockHost(sceneActive: boolean): void {
+    const nextHost = sceneActive ? this.whisperView : this.classicWhisperDockHost;
+    if (nextHost === null || this.whisperDock === null) {
+      return;
+    }
+
+    if (this.whisperDock.parentElement === nextHost) {
+      return;
+    }
+
+    nextHost.appendChild(this.whisperDock);
   }
 
   private handleDocumentKeydown = (event: KeyboardEvent): void => {

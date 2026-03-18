@@ -293,6 +293,10 @@
   background-position: center;
 }
 
+.entrance-classic__whisper {
+  display: block;
+}
+
 .whisper-dock {
   position: relative;
   margin: 0 var(--space-4) var(--space-4);
@@ -643,6 +647,10 @@
   font-size: var(--text-xs);
   line-height: var(--leading-relaxed);
   text-align: center;
+}
+
+[data-ui-mode="scene"] .entrance-classic__whisper {
+  display: none;
 }
 
 [data-ui-mode="scene"] .whisper-dock {
