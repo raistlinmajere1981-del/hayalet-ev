@@ -557,6 +557,7 @@ export class EntranceHallController {
   }
 
   onHide(): void {
+    this.sceneController.onHide();
     CoreEngine.resumeWhispers(true);
   }
 

@@ -3,6 +3,7 @@ import loadingDoor02 from "../../assets/themes/castle/loading/loading_door_02.we
 import loadingDoor03 from "../../assets/themes/castle/loading/loading_door_03.webp";
 import loadingDoor04 from "../../assets/themes/castle/loading/loading_door_04.webp";
 import entranceBackground from "../../assets/themes/castle/entrance/entrance_bg_main.webp";
+import entranceWhisperBackground from "../../assets/themes/castle/entrance/entrance_whisper.webp";
 import settingsBackground from "../../assets/themes/castle/settings/settings_bg_main.webp";
 import settingsThemePanel from "../../assets/themes/castle/settings/settings_theme.webp";
 import settingsAccountsPanel from "../../assets/themes/castle/settings/settings_accounts.webp";
@@ -64,6 +65,7 @@ export const SCENE_THEME_CONFIG = {
   },
   entrance: {
     backgroundSrc: entranceBackground,
+    whisperBackgroundSrc: entranceWhisperBackground,
     characterRoles: SCENE_CHARACTER_ROLE_CONFIG,
     fallbackCharacterRole: "ai" as SceneCharacterRole,
   },

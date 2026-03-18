@@ -32,11 +32,16 @@ export interface EntranceSceneHotspotActionScreen {
   screen: "primary";
 }
 
+export interface EntranceSceneHotspotActionWhisper {
+  type: "whisper";
+}
+
 export type EntranceSceneHotspotAction =
   | EntranceSceneHotspotActionNavigate
   | EntranceSceneHotspotActionSettings
   | EntranceSceneHotspotActionSettingsSceneClose
-  | EntranceSceneHotspotActionScreen;
+  | EntranceSceneHotspotActionScreen
+  | EntranceSceneHotspotActionWhisper;
 
 export interface EntranceSceneHotspotConfig {
   id: string;
@@ -164,6 +169,29 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
 
       labelFramePerspectiveDeg: 0,
       action: { type: "navigate", page: "server" },
+    },
+    {
+      id: "whisper-panel",
+      labelKey: "entrance.panels.whisper",
+      leftPx: 918,
+      topPx: 350,
+      widthPx: 248,
+      heightPx: 184,
+      labelCenterXPx: 1042,
+      labelTopPx: 311,
+      labelWidthPx: 310,
+      labelHeightPx: 44,
+      labelRotateDeg: 0,
+      labelFontSizePx: 22,
+      labelLetterSpacingPx: 1,
+      labelFontPreset: "display",
+      frameVariant: "flat",
+      frameRotateDeg: 0,
+      framePerspectiveDeg: 0,
+      frameHoverGlowHueDeg: 33,
+      frameHoverGlowAlpha: 0.34,
+      labelFramePerspectiveDeg: 0,
+      action: { type: "whisper" },
     },
     {
       id: "door-settings",

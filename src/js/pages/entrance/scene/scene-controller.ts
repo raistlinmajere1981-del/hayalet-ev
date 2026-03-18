@@ -34,6 +34,8 @@ const ELEMENT_IDS = {
   characterLayer: "entrance-scene-characters",
   editorHost: "entrance-scene-editor-host",
   menuHost: "entrance-scene-menu-host",
+  whisperView: "entrance-scene-whisper-view",
+  whisperClose: "entrance-scene-whisper-close",
 } as const;
 
 const HOTSPOT_LABEL_FONT_FAMILIES: Record<EntranceSceneLabelFontPreset, string> = {
@@ -54,6 +56,8 @@ export class EntranceSceneController {
   characterLayer: HTMLElement | null = null;
   editorHost: HTMLElement | null = null;
   menuHost: HTMLElement | null = null;
+  whisperView: HTMLElement | null = null;
+  whisperClose: HTMLButtonElement | null = null;
   menu: SceneCharacterMenu | null = null;
   editor: EntranceSceneEditor | null = null;
   resizeObserver: ResizeObserver | null = null;
@@ -66,6 +70,7 @@ export class EntranceSceneController {
   sceneMap = cloneEntranceSceneMap();
   sceneDebugEnabled = false;
   editorSelection: EntranceSceneEditorSelection = null;
+  whisperViewOpen = false;
 
   constructor(bridge: SceneEntranceBridge) {
     this.bridge = bridge;
@@ -79,9 +84,12 @@ export class EntranceSceneController {
     this.characterLayer = document.getElementById(ELEMENT_IDS.characterLayer);
     this.editorHost = document.getElementById(ELEMENT_IDS.editorHost);
     this.menuHost = document.getElementById(ELEMENT_IDS.menuHost);
+    this.whisperView = document.getElementById(ELEMENT_IDS.whisperView);
+    this.whisperClose = document.getElementById(ELEMENT_IDS.whisperClose) as HTMLButtonElement | null;
     this.sceneMap =
       (this.sceneDebugEnabled ? loadEntranceSceneMapDraft() : null) ??
       cloneEntranceSceneMap(DEFAULT_ENTRANCE_SCENE_MAP);
+    this.bindWhisperControls();
     if (this.menuHost !== null) {
       this.menu = new SceneCharacterMenu(this.menuHost, this.bridge, {
         onClose: (): void => {
@@ -172,6 +180,13 @@ export class EntranceSceneController {
     this.syncScene();
   }
 
+  onHide(): void {
+    this.whisperViewOpen = false;
+    this.syncWhisperView();
+    this.menu?.close(false);
+    this.openCharacterId = null;
+  }
+
   syncScene(): void {
     if (this.root === null) {
       return;
@@ -182,12 +197,15 @@ export class EntranceSceneController {
     this.root.setAttribute("aria-hidden", String(!sceneActive));
 
     if (!sceneActive) {
+      this.whisperViewOpen = false;
+      this.syncWhisperView();
       this.menu?.close(false);
       this.openCharacterId = null;
       return;
     }
 
     this.renderBackground();
+    this.syncWhisperView();
     this.renderHotspots();
     void this.renderCharacters();
     this.editor?.refresh();
@@ -195,6 +213,7 @@ export class EntranceSceneController {
 
   private renderStatic(): void {
     this.renderBackground();
+    this.syncWhisperView();
     this.renderHotspots();
     void this.renderCharacters();
     this.editor?.refresh();
@@ -221,8 +240,66 @@ export class EntranceSceneController {
       return;
     }
 
-    this.background.src = SCENE_THEME_CONFIG.entrance.backgroundSrc;
+    this.background.src = this.whisperViewOpen
+      ? SCENE_THEME_CONFIG.entrance.whisperBackgroundSrc
+      : SCENE_THEME_CONFIG.entrance.backgroundSrc;
     this.background.alt = "";
+  }
+
+  private bindWhisperControls(): void {
+    this.whisperClose?.addEventListener("click", () => {
+      this.closeWhisperView();
+    });
+
+    document.addEventListener("keydown", this.handleDocumentKeydown);
+  }
+
+  private handleDocumentKeydown = (event: KeyboardEvent): void => {
+    if (
+      event.key !== "Escape" ||
+      !this.whisperViewOpen ||
+      document.documentElement.getAttribute("data-active-page") !== "entrance"
+    ) {
+      return;
+    }
+
+    this.closeWhisperView();
+  };
+
+  private openWhisperView(): void {
+    if (!isSceneUiMode()) {
+      return;
+    }
+
+    this.whisperViewOpen = true;
+    this.menu?.close(false);
+    this.openCharacterId = null;
+    this.renderBackground();
+    this.syncWhisperView();
+    document.dispatchEvent(new CustomEvent("entrance-whisper:open"));
+  }
+
+  private closeWhisperView(): void {
+    if (!this.whisperViewOpen) {
+      return;
+    }
+
+    this.whisperViewOpen = false;
+    this.renderBackground();
+    this.syncWhisperView();
+  }
+
+  private syncWhisperView(): void {
+    const whisperOpen = this.whisperViewOpen && isSceneUiMode();
+
+    this.whisperView?.toggleAttribute("hidden", !whisperOpen);
+    this.whisperView?.setAttribute("aria-hidden", String(!whisperOpen));
+    this.hotspotLayer?.toggleAttribute("hidden", whisperOpen);
+    this.hotspotLayer?.setAttribute("aria-hidden", String(whisperOpen));
+    this.characterLayer?.toggleAttribute("hidden", whisperOpen);
+    this.characterLayer?.setAttribute("aria-hidden", String(whisperOpen));
+    this.menuHost?.toggleAttribute("hidden", whisperOpen);
+    this.menuHost?.setAttribute("aria-hidden", String(whisperOpen));
   }
 
   private resolveHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
@@ -406,6 +483,11 @@ export class EntranceSceneController {
     }
 
     if (hotspot.action.type === "screen") {
+      return;
+    }
+
+    if (hotspot.action.type === "whisper") {
+      this.openWhisperView();
       return;
     }
 

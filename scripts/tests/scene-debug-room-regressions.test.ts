@@ -3,8 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  DEFAULT_ENTRANCE_SCENE_MAP,
   DEFAULT_ASSISTANT_SCENE_MAP,
   DEFAULT_SETTINGS_SCENE_MAP,
+  normalizeEntranceSceneMap,
   normalizeAssistantSceneMap,
   normalizeSettingsSceneMap,
 } from "../../src/js/pages/entrance/scene/scene-map.ts";
@@ -14,6 +16,26 @@ test("scene debug room registry includes entrance, assistant, and settings rooms
   assert.deepEqual(
     SCENE_DEBUG_ROOMS.map((room) => room.id),
     ["entrance", "assistant", "settings"]
+  );
+});
+
+test("entrance scene map defines whisper hotspot alongside room doors", () => {
+  assert.deepEqual(
+    DEFAULT_ENTRANCE_SCENE_MAP.hotspots.map((hotspot) => hotspot.id),
+    ["door-analyze", "door-assistant", "door-server", "whisper-panel", "door-settings"]
+  );
+  assert.equal(
+    DEFAULT_ENTRANCE_SCENE_MAP.hotspots.find((hotspot) => hotspot.id === "whisper-panel")?.action.type,
+    "whisper"
+  );
+
+  const normalized = normalizeEntranceSceneMap({
+    hotspots: [{ id: "whisper-panel", leftPx: 960 }],
+  });
+
+  assert.equal(
+    normalized.hotspots.find((hotspot) => hotspot.id === "whisper-panel")?.leftPx,
+    960
   );
 });
 
