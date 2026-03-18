@@ -9,6 +9,8 @@ import { SlotController } from "../modules/slot-controller.js";
 import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
+import { SCENE_THEME_CONFIG, getSceneCharacterRoleConfig } from "../scene/scene-config.js";
+import { isSceneUiMode } from "../ui/ui-mode.js";
 import {
   buildCommandTestMessage,
   buildInlineCommandSnippet,
@@ -37,12 +39,40 @@ import {
   rebuildTimelineView,
   type TimelineState,
 } from "./server/timeline-controller.js";
+import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
+import { getSceneCharacterState } from "./entrance/scene/scene-character-state.js";
 import { initServerControllerPage } from "./server/init-controller.js";
 import type { ServerInitContext } from "./server/init-controller.js";
 import type { TimelineEvent } from "./server-timeline.js";
 
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
+const SERVER_SCENE_SLOTS = ["ai1", "ai2"] as const;
+
+const SERVER_SCENE_CHARACTER_LAYOUT: Record<
+  (typeof SERVER_SCENE_SLOTS)[number],
+  { left: string; bottom: string; scale: number; depth: number }
+> = {
+  ai1: { left: "35%", bottom: "11.5%", scale: 0.86, depth: 3 },
+  ai2: { left: "63%", bottom: "10.5%", scale: 0.84, depth: 5 },
+};
+
+function getFirstNonEmpty(...values: Array<string | null | undefined>): string | null {
+  for (const value of values) {
+    const normalized = value?.trim() ?? "";
+    if (normalized !== "") {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+function toHeadLabel(label: string): string {
+  const compact = label.replace(/\s+/g, "").trim().toUpperCase();
+  const head = compact.slice(0, 2);
+  return head === "" ? "?" : head;
+}
 
 function serverCommandPanelT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.commands.panel.${key}`, params);
@@ -76,6 +106,8 @@ export class ServerController {
   timelineLoadedSessionIds: Set<string>;
   timelineLoading: boolean;
   timelineInitialized: boolean;
+  _serverSceneScreenOpen: boolean;
+  _serverSceneBindingsReady: boolean;
 
   constructor() {
     this.isDelegated = false;
@@ -105,6 +137,8 @@ export class ServerController {
     this.timelineLoadedSessionIds = new Set();
     this.timelineLoading = false;
     this.timelineInitialized = false;
+    this._serverSceneScreenOpen = false;
+    this._serverSceneBindingsReady = false;
   }
 
   private getServerCommandsApi(): ServerCommandsApi {
@@ -205,6 +239,203 @@ export class ServerController {
     if (this.commandDetail !== null) {
       this.commandDetail.value = detailText;
     }
+  }
+
+  private syncServerSceneAssets(): void {
+    const background = document.getElementById(
+      "server-scene-background"
+    ) as HTMLImageElement | null;
+    const screenView = document.getElementById("server-scene-screen-view") as HTMLElement | null;
+    const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
+
+    if (background !== null) {
+      background.src = SCENE_THEME_CONFIG.server.backgroundSrc;
+      background.alt = "";
+    }
+
+    if (screenView !== null) {
+      screenView.style.setProperty(
+        "--server-scene-screen-art-url",
+        `url("${SCENE_THEME_CONFIG.server.panelArtSrc}")`
+      );
+    }
+
+    if (screenArt !== null) {
+      screenArt.src = SCENE_THEME_CONFIG.server.panelArtSrc;
+      screenArt.alt = "";
+    }
+  }
+
+  private bindServerSceneInteractions(): void {
+    if (this._serverSceneBindingsReady) {
+      return;
+    }
+
+    const terminalHotspot = document.getElementById("server-scene-terminal-hotspot");
+    const doorHotspot = document.getElementById("server-scene-door-hotspot");
+    const exitLeft = document.getElementById("server-scene-exit-left");
+    const exitRight = document.getElementById("server-scene-exit-right");
+
+    terminalHotspot?.addEventListener("click", () => {
+      this.setServerSceneScreenOpen(true);
+    });
+
+    doorHotspot?.addEventListener("click", () => {
+      this.setServerSceneScreenOpen(false);
+      this._navigateToPage("entrance");
+    });
+
+    exitLeft?.addEventListener("click", () => {
+      this.setServerSceneScreenOpen(false);
+    });
+
+    exitRight?.addEventListener("click", () => {
+      this.setServerSceneScreenOpen(false);
+    });
+
+    this._serverSceneBindingsReady = true;
+  }
+
+  private setServerSceneScreenOpen(open: boolean): void {
+    this._serverSceneScreenOpen = open;
+    this.syncServerSceneVisibility();
+  }
+
+  syncServerSceneVisibility(): void {
+    const sceneRoot = document.getElementById("server-scene-root");
+    const screenView = document.getElementById("server-scene-screen-view");
+    const room = document.querySelector(".server-room");
+    const sceneActive = isSceneUiMode();
+
+    if (sceneRoot instanceof HTMLElement) {
+      sceneRoot.hidden = !sceneActive;
+      sceneRoot.setAttribute("aria-hidden", String(!sceneActive));
+    }
+
+    if (screenView instanceof HTMLElement) {
+      screenView.setAttribute(
+        "aria-hidden",
+        String(!sceneActive || this._serverSceneScreenOpen === false)
+      );
+    }
+
+    if (room instanceof HTMLElement) {
+      room.classList.toggle("is-scene-screen-open", sceneActive && this._serverSceneScreenOpen);
+    }
+
+    if (!sceneActive) {
+      return;
+    }
+
+    this.syncServerSceneAssets();
+    void this.renderServerSceneCharacters();
+  }
+
+  private _navigateToPage(page: string): void {
+    document.dispatchEvent(
+      new CustomEvent<{ page: string }>("navigate-page", {
+        detail: { page },
+      })
+    );
+  }
+
+  private getServerSceneAvatarSource(slot: (typeof SERVER_SCENE_SLOTS)[number]): string | null {
+    const account = AppState.getAccountForSlot(slot);
+    return getFirstNonEmpty(account?.avatarPath, account?.avatar, AppState.getAvatar(slot));
+  }
+
+  async renderServerSceneCharacters(): Promise<void> {
+    const layer = document.getElementById("server-scene-characters");
+    if (!(layer instanceof HTMLElement) || !isSceneUiMode()) {
+      return;
+    }
+
+    const roleConfig = getSceneCharacterRoleConfig("ai");
+    const visibleSlots = SERVER_SCENE_SLOTS.filter(
+      (slot) => AppState.getAccountForSlot(slot) !== null
+    );
+
+    if (visibleSlots.length === 0) {
+      layer.replaceChildren();
+      return;
+    }
+
+    const avatarSources = await Promise.all(
+      visibleSlots.map(
+        async (slot) => await resolveSceneAvatarSource(this.getServerSceneAvatarSource(slot))
+      )
+    );
+
+    const fragment = document.createDocumentFragment();
+
+    visibleSlots.forEach((slot, index) => {
+      if (AppState.getAccountForSlot(slot) === null) {
+        return;
+      }
+
+      const layout = SERVER_SCENE_CHARACTER_LAYOUT[slot];
+      const label = AppState.getNickname(slot);
+      const avatarSource = avatarSources[index] ?? null;
+      const characterNode = document.createElement("div");
+      characterNode.className = `entrance-scene__character is-${getSceneCharacterState(slot)}`;
+      characterNode.dataset["slot"] = slot;
+      characterNode.dataset["characterId"] = `server-scene-${slot}`;
+      characterNode.dataset["kind"] = "ai";
+      characterNode.dataset["role"] = "ai";
+      characterNode.dataset["variant"] = "account";
+      characterNode.style.setProperty("--scene-character-left", layout.left);
+      characterNode.style.setProperty("--scene-character-bottom", layout.bottom);
+      characterNode.style.setProperty("--scene-character-scale", String(layout.scale));
+      characterNode.style.setProperty("--scene-character-depth", String(layout.depth));
+      characterNode.style.setProperty("--scene-character-depth-scale", "1");
+      characterNode.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
+      characterNode.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
+      characterNode.style.setProperty("--scene-character-head-left", `${roleConfig.headLeftPct}%`);
+      characterNode.style.setProperty("--scene-character-head-size", `${roleConfig.headSizePct}%`);
+      characterNode.style.setProperty(
+        "--scene-character-avatar-scale",
+        String(roleConfig.avatarScale)
+      );
+      characterNode.setAttribute("aria-hidden", "true");
+
+      const stage = document.createElement("div");
+      stage.className = "entrance-scene__character-stage";
+
+      const body = document.createElement("img");
+      body.className = "entrance-scene__character-body";
+      body.src = roleConfig.bodySrc;
+      body.alt = "";
+      body.ariaHidden = "true";
+      stage.appendChild(body);
+
+      const head = document.createElement("span");
+      head.className = "entrance-scene__character-head";
+      head.ariaHidden = "true";
+      if (avatarSource !== null) {
+        const avatar = document.createElement("img");
+        avatar.className = "entrance-scene__character-avatar";
+        avatar.src = avatarSource;
+        avatar.alt = "";
+        avatar.ariaHidden = "true";
+        head.appendChild(avatar);
+      } else {
+        const fallback = document.createElement("span");
+        fallback.className = "entrance-scene__character-head-fallback";
+        fallback.ariaHidden = "true";
+        fallback.textContent = toHeadLabel(label);
+        head.appendChild(fallback);
+      }
+      stage.appendChild(head);
+
+      const characterLabel = document.createElement("span");
+      characterLabel.className = "entrance-scene__character-label";
+      characterLabel.textContent = label;
+
+      characterNode.append(stage, characterLabel);
+      fragment.appendChild(characterNode);
+    });
+
+    layer.replaceChildren(fragment);
   }
 
   async runSelectedCommand(): Promise<void> {
@@ -429,6 +660,8 @@ export class ServerController {
 
   async init(): Promise<void> {
     await initServerControllerPage(this as unknown as ServerInitContext);
+    this.bindServerSceneInteractions();
+    this.syncServerSceneVisibility();
   }
 
   renderControllerOptions(): void {
@@ -550,6 +783,7 @@ export class ServerController {
   }
 
   onShow(): void {
+    this.syncServerSceneVisibility();
     this.renderControllerOptions();
     this.updateControlButtons();
     this.renderCommandPanel();
@@ -561,12 +795,7 @@ export class ServerController {
   }
 
   onHide(): void {
-    try {
-      this._unsubSettings?.();
-      this._unsubSettings = null;
-    } catch (_error) {
-      void 0;
-    }
+    this.setServerSceneScreenOpen(false);
   }
 
   private async initializeTimeline(): Promise<void> {

@@ -25,6 +25,8 @@ export interface ServerInitContext {
   renderControllerOptions: () => void;
   updateControlButtons: () => void;
   syncCategoryWithSlot: () => void;
+  syncServerSceneVisibility: () => void;
+  renderServerSceneCharacters: () => Promise<void>;
   assignControl: () => Promise<void>;
   reclaimControl: () => Promise<void>;
   runSelectedCommand: () => Promise<void>;
@@ -53,6 +55,8 @@ export async function initServerControllerPage(controller: ServerInitContext): P
       }
 
       controller.renderCommandPanel();
+      controller.syncServerSceneVisibility();
+      void controller.renderServerSceneCharacters();
     }
   );
 
@@ -152,14 +156,19 @@ export async function initServerControllerPage(controller: ServerInitContext): P
   AppState.subscribe(() => {
     controller.renderControllerOptions();
     controller.updateControlButtons();
+    controller.syncServerSceneVisibility();
+    void controller.renderServerSceneCharacters();
   });
 
   controller._unsubSlotController ??= SlotController.on(SlotEvent.STATE_CHANGED, () => {
     controller.updateControlButtons();
+    controller.syncServerSceneVisibility();
+    void controller.renderServerSceneCharacters();
   });
 
   controller.unsubscribeTraffic = TrafficManager.onUpdate((_snapshot) => {
     controller.updateControlButtons();
+    void controller.renderServerSceneCharacters();
   });
 
   controller.logUnsubscribe = Logger.subscribe((entry) => {
@@ -167,4 +176,6 @@ export async function initServerControllerPage(controller: ServerInitContext): P
   });
 
   await controller.initializeTimeline();
+  controller.syncServerSceneVisibility();
+  void controller.renderServerSceneCharacters();
 }

@@ -9,6 +9,8 @@ import settingsAccountsPanel from "../../assets/themes/castle/settings/settings_
 import settingsBackupPanel from "../../assets/themes/castle/settings/settings_backup.webp";
 import settingsRoomsPanel from "../../assets/themes/castle/settings/settings_rooms.webp";
 import settingsLogViewPanel from "../../assets/themes/castle/settings/settings_log_view.webp";
+import serverBackground from "../../assets/themes/castle/server/server_bg_main.webp";
+import serverTerminalPanel from "../../assets/themes/castle/server/server_terminal.webp";
 import aiBodyBase from "../../assets/themes/castle/characters/ai/ai_body_base.webp";
 import assistantBodyBase from "../../assets/themes/castle/characters/assistant/assistant_body_base.webp";
 import humanBodyBase from "../../assets/themes/castle/characters/human/human_body_base.webp";
@@ -74,6 +76,10 @@ export const SCENE_THEME_CONFIG = {
       rooms: settingsRoomsPanel,
       "live-log": settingsLogViewPanel,
     },
+  },
+  server: {
+    backgroundSrc: serverBackground,
+    panelArtSrc: serverTerminalPanel,
   },
 } as const;
 

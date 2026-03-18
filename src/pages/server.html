@@ -5,6 +5,188 @@
     data-shell-i18n-text="sideNav.serverLabel"
   ></h2>
   <div class="server-room">
+    <div class="server-scene" id="server-scene-root" aria-label="Server scene" hidden>
+      <div class="server-scene__surface">
+        <img class="server-scene__background" id="server-scene-background" alt="" />
+        <div class="entrance-scene__window-controls" aria-label="Scene window controls">
+          <div
+            class="entrance-scene__ui-mode ui-mode-dropdown theme-dropdown"
+            data-ui-mode-dropdown="true"
+          >
+            <button
+              class="entrance-scene__window-control entrance-scene__window-control--mode ui-mode-dropdown-btn"
+              type="button"
+              title=""
+              aria-label=""
+              aria-expanded="false"
+              data-shell-i18n-title="uiMode.toggle"
+              data-shell-i18n-aria-label="uiMode.toggle"
+              data-ui-mode-trigger="true"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M2.5 2.5h6v6h-6zM7.5 7.5h6v6h-6z" />
+              </svg>
+            </button>
+            <div
+              class="ui-mode-dropdown-menu theme-dropdown-menu entrance-scene__ui-mode-menu"
+              role="menu"
+            >
+              <button
+                class="theme-dropdown-item ui-mode-option"
+                type="button"
+                role="menuitem"
+                data-ui-mode-option="classic"
+              >
+                <span class="theme-dropdown-icon">C</span>
+                <span class="theme-dropdown-copy">
+                  <strong data-shell-i18n-text="uiMode.options.classic"></strong>
+                </span>
+              </button>
+              <button
+                class="theme-dropdown-item ui-mode-option"
+                type="button"
+                role="menuitem"
+                data-ui-mode-option="scene"
+              >
+                <span class="theme-dropdown-icon">S</span>
+                <span class="theme-dropdown-copy">
+                  <strong data-shell-i18n-text="uiMode.options.scene"></strong>
+                </span>
+              </button>
+              <button
+                class="theme-dropdown-item ui-mode-option"
+                type="button"
+                role="menuitem"
+                data-ui-mode-option="scene-debug"
+              >
+                <span class="theme-dropdown-icon">D</span>
+                <span class="theme-dropdown-copy">
+                  <strong data-shell-i18n-text="uiMode.options.sceneDebug"></strong>
+                </span>
+              </button>
+              <button
+                class="theme-dropdown-item ui-mode-option"
+                type="button"
+                role="menuitem"
+                data-ui-mode-option="ghost-agent"
+              >
+                <span class="theme-dropdown-icon">G</span>
+                <span class="theme-dropdown-copy">
+                  <strong data-shell-i18n-text="assistant.page.ghostAgentButton"></strong>
+                </span>
+              </button>
+            </div>
+          </div>
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="minimize"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.minimize"
+            data-shell-i18n-aria-label="window.minimize"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <rect x="3" y="7" width="10" height="2" rx="0.5" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="minimize-to-tray"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.minimizeToTray"
+            data-shell-i18n-aria-label="window.minimizeToTray"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 11L3 6h10l-5 5z" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control"
+            type="button"
+            data-window-action="fullscreen"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="window.fullscreen"
+            data-shell-i18n-aria-label="window.fullscreen"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M3 3h4v2H5v2H3V3zm6 0h4v4h-2V5H9V3zM3 9h2v2h2v2H3V9zm8 2h2v2h-4v-2h2z" />
+            </svg>
+          </button>
+          <button
+            class="entrance-scene__window-control entrance-scene__window-control--close"
+            type="button"
+            data-window-action="close"
+            title=""
+            aria-label=""
+            data-shell-i18n-title="common.close"
+            data-shell-i18n-aria-label="common.closeAriaLabel"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path
+                d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="server-scene__room-layer">
+          <button
+            class="server-scene__hotspot server-scene__hotspot--terminal"
+            id="server-scene-terminal-hotspot"
+            type="button"
+            aria-label="Open server terminal"
+          >
+            <span class="server-scene__hotspot-label">Open terminal</span>
+          </button>
+          <button
+            class="server-scene__hotspot server-scene__hotspot--door"
+            id="server-scene-door-hotspot"
+            type="button"
+            aria-label="Go to entrance"
+          >
+            <span class="server-scene__hotspot-label">Entrance</span>
+          </button>
+          <div
+            class="server-scene__characters entrance-scene__characters"
+            id="server-scene-characters"
+          ></div>
+        </div>
+
+        <div class="server-scene__screen-view" id="server-scene-screen-view" aria-hidden="true">
+          <img class="server-scene__screen-art" id="server-scene-screen-art" alt="" />
+          <div class="server-scene__screen-shade"></div>
+          <button
+            class="server-scene__exit server-scene__exit--left"
+            id="server-scene-exit-left"
+            type="button"
+            aria-label="Return to room"
+          >
+            <span class="server-scene__exit-arrow" aria-hidden="true">←</span>
+            <span class="server-scene__exit-copy" aria-hidden="true">Back</span>
+          </button>
+          <button
+            class="server-scene__exit server-scene__exit--right"
+            id="server-scene-exit-right"
+            type="button"
+            aria-label="Return to room"
+          >
+            <span class="server-scene__exit-copy" aria-hidden="true">Back</span>
+            <span class="server-scene__exit-arrow" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="server-topbar ds-toolbar-surface">
       <div class="left">
         <select id="server-controller-select" class="select">
