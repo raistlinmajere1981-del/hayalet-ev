@@ -1012,7 +1012,11 @@ body.is-scroll-locked {
 
 .settings-scene__panel-slot {
   position: absolute;
-  inset: 12.5% 10.25% 13.5%;
+  inset:
+    var(--settings-scene-frame-top, 12.5%)
+    var(--settings-scene-frame-right, 10.25%)
+    var(--settings-scene-frame-bottom, 13.5%)
+    var(--settings-scene-frame-left, 10.25%);
   z-index: 2;
   display: flex;
   min-height: 0;
@@ -1457,7 +1461,11 @@ body.is-scroll-locked {
 
 @media (--breakpoint-max-1024) {
   .settings-scene__panel-slot {
-    inset: 12% 8.5% 13%;
+    inset:
+      var(--settings-scene-frame-top, 12%)
+      var(--settings-scene-frame-right, 8.5%)
+      var(--settings-scene-frame-bottom, 13%)
+      var(--settings-scene-frame-left, 8.5%);
   }
 
   .settings-scene__hotspot--door {
@@ -1505,7 +1513,11 @@ body.is-scroll-locked {
 
 @media (--breakpoint-max-768) {
   .settings-scene__panel-slot {
-    inset: 11.5% 6.25% 12.25%;
+    inset:
+      var(--settings-scene-frame-top, 11.5%)
+      var(--settings-scene-frame-right, 6.25%)
+      var(--settings-scene-frame-bottom, 12.25%)
+      var(--settings-scene-frame-left, 6.25%);
   }
 
   .settings-scene__hotspot-label {

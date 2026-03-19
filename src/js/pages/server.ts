@@ -10,6 +10,7 @@ import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { SCENE_THEME_CONFIG, getSceneCharacterRoleConfig } from "../scene/scene-config.js";
+import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import {
   buildCommandTestMessage,
@@ -108,6 +109,7 @@ export class ServerController {
   timelineInitialized: boolean;
   _serverSceneScreenOpen: boolean;
   _serverSceneBindingsReady: boolean;
+  _serverSceneFrameController: SceneAlphaWindowFrameController | null;
 
   constructor() {
     this.isDelegated = false;
@@ -139,6 +141,7 @@ export class ServerController {
     this.timelineInitialized = false;
     this._serverSceneScreenOpen = false;
     this._serverSceneBindingsReady = false;
+    this._serverSceneFrameController = null;
   }
 
   private getServerCommandsApi(): ServerCommandsApi {
@@ -264,6 +267,8 @@ export class ServerController {
       screenArt.src = SCENE_THEME_CONFIG.server.panelArtSrc;
       screenArt.alt = "";
     }
+
+    this._serverSceneFrameController?.refresh();
   }
 
   private bindServerSceneInteractions(): void {
@@ -328,6 +333,7 @@ export class ServerController {
     }
 
     this.syncServerSceneAssets();
+    this._serverSceneFrameController?.refresh();
     void this.renderServerSceneCharacters();
   }
 
@@ -660,6 +666,24 @@ export class ServerController {
 
   async init(): Promise<void> {
     await initServerControllerPage(this as unknown as ServerInitContext);
+    const room = document.querySelector(".server-room");
+    const screenView = document.getElementById("server-scene-screen-view");
+    const screenArt = document.getElementById("server-scene-screen-art") as HTMLImageElement | null;
+
+    if (
+      room instanceof HTMLElement &&
+      screenView instanceof HTMLElement &&
+      screenArt instanceof HTMLImageElement
+    ) {
+      this._serverSceneFrameController?.disconnect();
+      this._serverSceneFrameController = new SceneAlphaWindowFrameController({
+        image: screenArt,
+        container: screenView,
+        target: room,
+        variablePrefix: "server-scene",
+      });
+    }
+
     this.bindServerSceneInteractions();
     this.syncServerSceneVisibility();
   }

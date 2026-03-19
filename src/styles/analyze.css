@@ -50,6 +50,10 @@
   position: relative;
   display: flex;
   flex: 1;
+  --analyze-scene-frame-left: clamp(9.5%, 9.25vw, 12.5%);
+  --analyze-scene-frame-right: clamp(9.5%, 9vw, 12.25%);
+  --analyze-scene-frame-top: clamp(10.75%, 10vh, 13%);
+  --analyze-scene-frame-bottom: clamp(8.5%, 8vh, 10.5%);
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -80,10 +84,6 @@
   --analyze-scene-hotspot-label-frame-perspective: 0deg;
   --analyze-scene-hotspot-label-font-size: 1.2rem;
   --analyze-scene-hotspot-label-letter-spacing: 0.05em;
-  --analyze-scene-frame-left: clamp(9.5%, 9.25vw, 12.5%);
-  --analyze-scene-frame-right: clamp(9.5%, 9vw, 12.25%);
-  --analyze-scene-frame-top: clamp(10.75%, 10vh, 13%);
-  --analyze-scene-frame-bottom: clamp(8.5%, 8vh, 10.5%);
   --analyze-scene-panel-shift-y: 1.5rem;
   --analyze-scene-exit-width-min: 4.75rem;
   --analyze-scene-exit-width-max: 12rem;
@@ -1423,7 +1423,7 @@
 }
 
 @media (--breakpoint-max-768) {
-  [data-ui-mode="scene"][data-active-page="analyze"] .analyze-scene__surface {
+  [data-ui-mode="scene"][data-active-page="analyze"] .analyze-room {
     --analyze-scene-frame-left: 5%;
     --analyze-scene-frame-right: 5%;
     --analyze-scene-frame-top: 10%;
@@ -1490,7 +1490,7 @@
 }
 
 @media (--breakpoint-max-height-700) {
-  [data-ui-mode="scene"][data-active-page="analyze"] .analyze-scene__surface {
+  [data-ui-mode="scene"][data-active-page="analyze"] .analyze-room {
     --analyze-scene-frame-top: 9%;
     --analyze-scene-frame-bottom: 6%;
   }

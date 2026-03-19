@@ -15,6 +15,7 @@ import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import type { Us1RoomPackageCandidate, Us1SessionEvent } from "@shared/us1-mail.js";
+import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
 import { SCENE_THEME_CONFIG } from "../scene/scene-config.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
 
@@ -128,6 +129,7 @@ export class AnalyzeController {
   _analyzeSceneSelection: EntranceSceneEditorSelection;
   _analyzeSceneResizeObserver: ResizeObserver | null;
   _analyzeSceneCharacterRenderToken: number;
+  _analyzeSceneFrameController: SceneAlphaWindowFrameController | null;
 
   constructor() {
     this.archiveOverlay = new AnalyzeArchiveOverlayController();
@@ -156,6 +158,7 @@ export class AnalyzeController {
     this._analyzeSceneSelection = null;
     this._analyzeSceneResizeObserver = null;
     this._analyzeSceneCharacterRenderToken = 0;
+    this._analyzeSceneFrameController = null;
   }
 
   async init(): Promise<void> {
@@ -263,6 +266,24 @@ export class AnalyzeController {
   }
 
   _initializeAnalyzeScene(): void {
+    const room = document.querySelector(".analyze-room");
+    const tableView = document.getElementById("analyze-scene-table-view");
+    const tableArt = document.getElementById("analyze-scene-table-art") as HTMLImageElement | null;
+
+    if (
+      room instanceof HTMLElement &&
+      tableView instanceof HTMLElement &&
+      tableArt instanceof HTMLImageElement
+    ) {
+      this._analyzeSceneFrameController?.disconnect();
+      this._analyzeSceneFrameController = new SceneAlphaWindowFrameController({
+        image: tableArt,
+        container: tableView,
+        target: room,
+        variablePrefix: "analyze-scene",
+      });
+    }
+
     this._setupAnalyzeSceneDebug();
     this._syncAnalyzeSceneAssets();
     this._bindAnalyzeSceneEvents();
@@ -294,6 +315,8 @@ export class AnalyzeController {
       archiveArt.src = SCENE_THEME_CONFIG.analyze.panels.archive;
       archiveArt.alt = "";
     }
+
+    this._analyzeSceneFrameController?.refresh();
   }
 
   _setupAnalyzeSceneDebug(): void {
@@ -809,6 +832,7 @@ export class AnalyzeController {
     }
 
     this._syncAnalyzeSceneAssets();
+    this._analyzeSceneFrameController?.refresh();
     this._renderAnalyzeScene();
     this._analyzeSceneEditor?.refresh();
   }

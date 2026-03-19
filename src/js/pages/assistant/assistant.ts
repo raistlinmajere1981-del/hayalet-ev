@@ -91,6 +91,7 @@ import {
   updateServerStatusView,
   updateTrafficStatusView,
 } from "./view-helpers.js";
+import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
 import { getSceneCharacterRoleConfig } from "../../scene/scene-config.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
 import type {
@@ -239,6 +240,7 @@ export class AssistantController {
   _assistantSceneSelection: EntranceSceneEditorSelection;
   _assistantSceneResizeObserver: ResizeObserver | null;
   _assistantSceneCharacterRenderToken: number;
+  _assistantSceneFrameController: SceneAlphaWindowFrameController | null;
 
   _isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
@@ -295,6 +297,7 @@ export class AssistantController {
     this._assistantSceneSelection = null;
     this._assistantSceneResizeObserver = null;
     this._assistantSceneCharacterRenderToken = 0;
+    this._assistantSceneFrameController = null;
   }
 
   async init(): Promise<void> {
@@ -333,6 +336,25 @@ export class AssistantController {
     this._assistantSceneMap =
       (this._assistantSceneDebugEnabled ? loadAssistantSceneMapDraft() : null) ??
       cloneEntranceSceneMap(DEFAULT_ASSISTANT_SCENE_MAP);
+    const assistantContainer = document.querySelector(".assistant-container");
+    const assistantSceneScreenView = document.getElementById("assistant-scene-screen-view");
+    const assistantSceneScreenArt = document.getElementById(
+      "assistant-scene-screen-art"
+    ) as HTMLImageElement | null;
+
+    if (
+      assistantContainer instanceof HTMLElement &&
+      assistantSceneScreenView instanceof HTMLElement &&
+      assistantSceneScreenArt instanceof HTMLImageElement
+    ) {
+      this._assistantSceneFrameController?.disconnect();
+      this._assistantSceneFrameController = new SceneAlphaWindowFrameController({
+        image: assistantSceneScreenArt,
+        container: assistantSceneScreenView,
+        target: assistantContainer,
+        variablePrefix: "assistant-scene",
+      });
+    }
 
     this._populateProviderSelect();
     this._initActiveAdapter();
@@ -487,6 +509,8 @@ export class AssistantController {
       screenArt.src = assistantSceneScreen;
       screenArt.alt = "";
     }
+
+    this._assistantSceneFrameController?.refresh();
   }
 
   _setupAssistantSceneDebug(): void {
@@ -889,6 +913,7 @@ export class AssistantController {
     }
 
     if (sceneActive) {
+      this._assistantSceneFrameController?.refresh();
       this._renderAssistantScene();
       this._assistantSceneEditor?.refresh();
     }
@@ -2558,6 +2583,8 @@ export class AssistantController {
     this._unsubTheme?.();
     this._assistantSceneResizeObserver?.disconnect();
     this._assistantSceneResizeObserver = null;
+    this._assistantSceneFrameController?.disconnect();
+    this._assistantSceneFrameController = null;
     this.memoryOverlay.destroy();
   }
 }

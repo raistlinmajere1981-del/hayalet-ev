@@ -24,6 +24,7 @@ import {
   SCENE_DEBUG_ROOMS,
   setActiveSceneDebugRoomId,
 } from "../scene/scene-debug-rooms.js";
+import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
@@ -120,6 +121,7 @@ class SettingsSceneController {
   private background: HTMLImageElement;
   private panelArt: HTMLImageElement;
   private characterLayer: HTMLElement;
+  private alphaFrameController: SceneAlphaWindowFrameController;
   private onClose: () => void;
   private onOpenPanel: (panelId: SettingsPanelId) => void;
   private onReturnToRoom: () => void;
@@ -143,6 +145,12 @@ class SettingsSceneController {
     this.background = deps.background;
     this.panelArt = deps.panelArt;
     this.characterLayer = deps.characterLayer;
+    this.alphaFrameController = new SceneAlphaWindowFrameController({
+      image: deps.panelArt,
+      container: deps.panelView,
+      target: deps.panelView,
+      variablePrefix: "settings-scene",
+    });
     this.onClose = deps.onClose;
     this.onOpenPanel = deps.onOpenPanel;
     this.onReturnToRoom = deps.onReturnToRoom;
@@ -192,6 +200,9 @@ class SettingsSceneController {
 
     this.movePanelsToSceneSlot();
     this.syncPanelArt(nextState.activePanel);
+    if (panelOpen) {
+      this.alphaFrameController.refresh();
+    }
     this.syncActiveDebugRoom(true);
     this.renderHotspots();
     void this.renderCharacter();
@@ -327,12 +338,14 @@ class SettingsSceneController {
       this.panelArt.removeAttribute("src");
       this.panelArt.alt = "";
       delete this.panelSlot.dataset["settingsPanel"];
+      this.alphaFrameController.clear();
       return;
     }
 
     this.panelArt.src = SCENE_THEME_CONFIG.settings.panels[panelId];
     this.panelArt.alt = "";
     this.panelSlot.dataset["settingsPanel"] = panelId;
+    this.alphaFrameController.refresh();
   }
 
   private syncActiveDebugRoom(sceneActive: boolean): void {
