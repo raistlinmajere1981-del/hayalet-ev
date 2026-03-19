@@ -467,10 +467,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
 });
 
 try {
-  const isMainFrame =
-    !window.location.href.startsWith("http") || window.location.hostname.includes("localhost");
+  function shouldInjectMainAppScript() {
+    const href = typeof window?.location?.href === "string" ? window.location.href : "";
+    const pathname =
+      typeof window?.location?.pathname === "string" ? window.location.pathname.trim() : "";
+    const isLocalRenderer = !href.startsWith("http") || window.location.hostname.includes("localhost");
 
-  if (typeof window !== "undefined" && isMainFrame) {
+    if (!isLocalRenderer) {
+      return false;
+    }
+
+    if (pathname === "" || pathname === "/") {
+      return true;
+    }
+
+    return pathname.endsWith("/index.html");
+  }
+
+  if (typeof window !== "undefined" && shouldInjectMainAppScript()) {
     function disableSpellcheck() {
       try {
         document.querySelectorAll("input, textarea").forEach((el) => {
@@ -492,6 +506,7 @@ try {
         window.__app_init_injected = true;
         disableSpellcheck();
 
+        // NOTE: External tool pages share this preload, but only the main shell should boot /js/app.js.
         const s = document.createElement("script");
         s.type = "module";
         s.src = "/js/app.js";

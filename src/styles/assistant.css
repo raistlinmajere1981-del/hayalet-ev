@@ -585,7 +585,6 @@
     left: 42%;
     bottom: 8%;
   }
-
 }
 
 @media (--breakpoint-max-768) {
@@ -609,7 +608,6 @@
       var(--assistant-scene-character-body-min-h)
     );
   }
-
 }
 
 .assistant-topbar {

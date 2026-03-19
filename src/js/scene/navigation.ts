@@ -1,3 +1,6 @@
+import { getCurrentPage, getLastPrimaryPage } from "../app/navigation.js";
+import { closeExternalPage, openExternalToolPage } from "../pages/shared/external-page.js";
+
 export function navigateToScenePage(page: string): void {
   document.dispatchEvent(
     new CustomEvent<{ page: string }>("navigate-page", {
@@ -7,13 +10,12 @@ export function navigateToScenePage(page: string): void {
 }
 
 export function openSceneSettingsPanel(panel: string | null): void {
-  document.dispatchEvent(
-    new CustomEvent("settings-hub:open", {
-      detail: { panel },
-    })
-  );
+  openExternalToolPage("settings", {
+    panel,
+    returnPage: getCurrentPage() ?? getLastPrimaryPage(),
+  });
 }
 
 export function closeSceneSettingsPanel(): void {
-  document.dispatchEvent(new CustomEvent("settings-hub:close"));
+  closeExternalPage();
 }

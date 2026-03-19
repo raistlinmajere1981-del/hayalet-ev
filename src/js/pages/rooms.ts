@@ -3,7 +3,7 @@ import { shellT } from "../app/shell-i18n.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
-import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
+import { getCoverSceneProjectionFromElement, type SceneProjection } from "../scene/projection.js";
 import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
@@ -15,7 +15,10 @@ import { isSceneUiMode } from "../ui/ui-mode.js";
 import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
 import { applySceneDebugFlag, isSceneDebugEnabled } from "./entrance/scene/scene-debug.js";
 import { buildSceneCharacterRoster } from "./entrance/scene/scene-character-roster.js";
-import { EntranceSceneEditor, type EntranceSceneEditorSelection } from "./entrance/scene/scene-editor.js";
+import {
+  EntranceSceneEditor,
+  type EntranceSceneEditorSelection,
+} from "./entrance/scene/scene-editor.js";
 import {
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
@@ -42,7 +45,7 @@ export class RoomsController implements PageController {
   private characterRenderToken = 0;
   private localeUnsub: (() => void) | null = null;
 
-  async init(): Promise<void> {
+  init(): void {
     this.sceneDebugEnabled = applySceneDebugFlag();
     this.sceneMap =
       (this.sceneDebugEnabled ? ROOMS_SCENE_DEBUG_STORE.loadDraft() : null) ??
@@ -115,7 +118,9 @@ export class RoomsController implements PageController {
         this.editor?.refresh();
       },
       updateBack: (id, updater): void => {
-        this.sceneMap.backs = this.sceneMap.backs.map((back) => (back.id === id ? updater(back) : back));
+        this.sceneMap.backs = this.sceneMap.backs.map((back) =>
+          back.id === id ? updater(back) : back
+        );
         this.persistSceneMapDraft();
         this.renderHotspots();
         this.editor?.refresh();
@@ -211,7 +216,10 @@ export class RoomsController implements PageController {
       return;
     }
 
-    const characters = buildSceneCharacterRoster(this.sceneMap.characters, this.sceneMap.characterRosterPreset);
+    const characters = buildSceneCharacterRoster(
+      this.sceneMap.characters,
+      this.sceneMap.characterRosterPreset
+    );
     if (characters.length === 0) {
       characterLayer.replaceChildren();
       return;
@@ -258,8 +266,12 @@ export class RoomsController implements PageController {
     }
 
     dispatchSceneAction(interactive.action, {
-      onNavigate: (page) => navigateToScenePage(page),
-      onSettings: (action) => openSceneSettingsPanel(action.panel),
+      onNavigate: (page) => {
+        navigateToScenePage(page);
+      },
+      onSettings: (action) => {
+        openSceneSettingsPanel(action.panel);
+      },
       onSettingsSceneClose: () => {},
       onScreen: () => {},
       onWhisper: () => {},
@@ -303,7 +315,7 @@ export class RoomsController implements PageController {
     return Number(Math.max(0.75, scaled).toFixed(3));
   }
 
-  private getSceneProjection() {
+  private getSceneProjection(): SceneProjection {
     return getCoverSceneProjectionFromElement(this.getRoot(), this.sceneMap.referenceSize);
   }
 

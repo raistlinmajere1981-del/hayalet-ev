@@ -1,10 +1,10 @@
-import { AppState } from "../modules/app-state.js";
-import { SettingsManager } from "../modules/settings-manager.js";
+import { AppState } from "../../modules/app-state.js";
+import { SettingsManager } from "../../modules/settings-manager.js";
 import type { Account } from "@shared/settings.js";
-import { CoreEngine } from "../modules/core-engine.js";
-import { AppI18n } from "../modules/i18n/index.js";
+import { CoreEngine } from "../../modules/core-engine.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import { getErrorMessage } from "@shared/index.js";
-import { formatDateTime, t as entranceT } from "./entrance/i18n.js";
+import { formatDateTime, t as whisperUiT } from "./i18n.js";
 
 interface WhisperRecord {
   id?: string;
@@ -283,7 +283,7 @@ export class WhisperDockController {
     if (disabled) {
       const option = document.createElement("option");
       option.value = "";
-      option.textContent = entranceT("whisper.noTargetOption");
+      option.textContent = whisperUiT("whisper.noTargetOption");
       this.addAccountSelect.appendChild(option);
       this.addAccountSelect.value = "";
     }
@@ -388,14 +388,14 @@ export class WhisperDockController {
 
   renderSummary(selectedSlotCount: number, pendingCount: number, readyCount: number): void {
     this.selectedCountEl?.replaceChildren(
-      document.createTextNode(entranceT("whisper.summarySelected", { count: selectedSlotCount }))
+      document.createTextNode(whisperUiT("whisper.summarySelected", { count: selectedSlotCount }))
     );
     this.pendingCountEl?.replaceChildren(
-      document.createTextNode(entranceT("whisper.summaryPending", { count: pendingCount }))
+      document.createTextNode(whisperUiT("whisper.summaryPending", { count: pendingCount }))
     );
 
     if (this.readyCountEl) {
-      this.readyCountEl.textContent = entranceT("whisper.summaryReady", { count: readyCount });
+      this.readyCountEl.textContent = whisperUiT("whisper.summaryReady", { count: readyCount });
       this.readyCountEl.classList.toggle("is-empty", readyCount === 0);
     }
 
@@ -412,7 +412,7 @@ export class WhisperDockController {
     if (bindings.length === 0) {
       const empty = document.createElement("div");
       empty.className = "whisper-dock__empty-state";
-      empty.textContent = entranceT("whisper.emptySlots");
+      empty.textContent = whisperUiT("whisper.emptySlots");
       this.filtersEl.appendChild(empty);
       return;
     }
@@ -469,7 +469,7 @@ export class WhisperDockController {
     empty.textContent = message;
     listEl.appendChild(empty);
     if (countEl) {
-      countEl.textContent = entranceT("whisper.sectionCount", { count });
+      countEl.textContent = whisperUiT("whisper.sectionCount", { count });
     }
   }
 
@@ -487,19 +487,19 @@ export class WhisperDockController {
     }
 
     if (!hasBindings) {
-      this.renderListEmptyState(listEl, entranceT("whisper.emptySlots"), countEl, 0);
+      this.renderListEmptyState(listEl, whisperUiT("whisper.emptySlots"), countEl, 0);
       return;
     }
 
     if (!hasSelection) {
-      this.renderListEmptyState(listEl, entranceT("whisper.emptySelection"), countEl, 0);
+      this.renderListEmptyState(listEl, whisperUiT("whisper.emptySelection"), countEl, 0);
       return;
     }
 
     if (records.length === 0) {
       this.renderListEmptyState(
         listEl,
-        entranceT(lane === "pending" ? "whisper.emptyPending" : "whisper.emptyDone"),
+        whisperUiT(lane === "pending" ? "whisper.emptyPending" : "whisper.emptyDone"),
         countEl,
         0
       );
@@ -508,7 +508,7 @@ export class WhisperDockController {
 
     listEl.innerHTML = "";
     if (countEl) {
-      countEl.textContent = entranceT("whisper.sectionCount", { count: records.length });
+      countEl.textContent = whisperUiT("whisper.sectionCount", { count: records.length });
     }
 
     records.forEach((record) => {
@@ -578,7 +578,7 @@ export class WhisperDockController {
     deleteBtn.className = "whisper-action-btn danger btn btn-xs btn-danger";
     deleteBtn.type = "button";
     deleteBtn.textContent = whisperT("actions.delete");
-    deleteBtn.title = entranceT("whisper.deleteTitle");
+    deleteBtn.title = whisperUiT("whisper.deleteTitle");
     deleteBtn.addEventListener("click", () => {
       void this.handleDelete(record.accountId, record.id ?? "");
     });

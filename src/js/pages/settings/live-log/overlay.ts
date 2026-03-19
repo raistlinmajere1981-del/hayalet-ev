@@ -1,7 +1,7 @@
 import { LogCategory } from "@shared/logging-core";
 import { MAX_LOGS_SERVER } from "@limits";
-import { Logger } from "../../modules/logger/index.js";
-import { AppI18n } from "../../modules/i18n/index.js";
+import { Logger } from "../../../modules/logger/index.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
 import {
   appendEntries,
   asText,
@@ -11,25 +11,25 @@ import {
   isRecord,
   joinPath,
   normalizeLogEntry,
-} from "./live-log-overlay-model.js";
-import { t as entranceT } from "./i18n.js";
+} from "./overlay-model.js";
+import { t as entranceT } from "../panel-i18n.js";
 import {
   renderDetail,
   renderEntries,
   setActiveTabUI,
   setPauseButtonUI,
   syncSessionSelect,
-} from "./live-log-overlay-render.js";
+} from "./overlay-render.js";
 
-interface SetupEntranceLiveLogOverlayOptions {
+interface SetupLiveLogOverlayOptions {
   formatLogCategory: (category: string) => string;
   escapeHtml: (text: string) => string;
 }
 
-export function setupEntranceLiveLogOverlay({
+export function setupLiveLogOverlay({
   formatLogCategory,
   escapeHtml,
-}: SetupEntranceLiveLogOverlayOptions): void {
+}: SetupLiveLogOverlayOptions): void {
   const electronApi = window.electronAPI;
   if (electronApi == null) {
     Logger.warn(LogCategory.ENTRANCE, entranceT("logs.liveOverlayBridgeUnavailable"));

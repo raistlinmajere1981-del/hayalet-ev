@@ -32,13 +32,26 @@ export interface RenderSceneInteractiveLayerOptions {
   onActivate(node: EntranceSceneInteractiveConfig): void;
 }
 
-function setVar(style: CSSStyleDeclaration, cssVarPrefix: string, suffix: string, value: string): void {
+function setVar(
+  style: CSSStyleDeclaration,
+  cssVarPrefix: string,
+  suffix: string,
+  value: string
+): void {
   style.setProperty(`--${cssVarPrefix}-${suffix}`, value);
 }
 
 export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayerOptions): void {
-  const { layer, nodes, projection, cssVarPrefix, classNames, selection, resolveLabel, onActivate } =
-    options;
+  const {
+    layer,
+    nodes,
+    projection,
+    cssVarPrefix,
+    classNames,
+    selection,
+    resolveLabel,
+    onActivate,
+  } = options;
   const fragment = document.createDocumentFragment();
 
   nodes.forEach((node) => {
@@ -68,18 +81,8 @@ export function renderSceneInteractiveLayer(options: RenderSceneInteractiveLayer
     setVar(button.style, cssVarPrefix, "width", `${node.rect.widthPx * projection.scale}px`);
     setVar(button.style, cssVarPrefix, "height", `${node.rect.heightPx * projection.scale}px`);
     setVar(button.style, cssVarPrefix, "frame-rotate", `${node.frame.rotateDeg}deg`);
-    setVar(
-      button.style,
-      cssVarPrefix,
-      "frame-perspective",
-      `${node.frame.perspectiveDeg}deg`
-    );
-    setVar(
-      button.style,
-      cssVarPrefix,
-      "hover-glow-hue",
-      `${node.frame.hoverGlowHueDeg}deg`
-    );
+    setVar(button.style, cssVarPrefix, "frame-perspective", `${node.frame.perspectiveDeg}deg`);
+    setVar(button.style, cssVarPrefix, "hover-glow-hue", `${node.frame.hoverGlowHueDeg}deg`);
     setVar(button.style, cssVarPrefix, "hover-glow-alpha", `${node.frame.hoverGlowAlpha}`);
     button.ariaLabel = labelText;
     button.addEventListener("click", () => {

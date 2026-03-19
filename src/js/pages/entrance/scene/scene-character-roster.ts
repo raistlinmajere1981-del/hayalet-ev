@@ -7,10 +7,7 @@ import type { SceneCharacterRosterPreset } from "../../../scene/schema.js";
 import { getSceneCharacterRoleConfig } from "../../../scene/theme-pack.js";
 
 import type { SceneCharacterKind, SceneCharacterRole } from "./scene-character-role.js";
-import {
-  DEFAULT_ENTRANCE_SCENE_MAP,
-  type EntranceSceneCharacterConfig,
-} from "./scene-map.js";
+import { DEFAULT_ENTRANCE_SCENE_MAP, type EntranceSceneCharacterConfig } from "./scene-map.js";
 import {
   getSceneCharacterState,
   type SceneCharacterSlot,
@@ -391,7 +388,11 @@ export function filterSceneCharacterRosterByPreset(
       return roster.filter((character) => character.kind === "user");
     case "connected-plus-user":
       return roster.filter(
-        (character) => character.kind === "user" || character.state === "connected" || character.state === "loading" || character.state === "thinking"
+        (character) =>
+          character.kind === "user" ||
+          character.state === "connected" ||
+          character.state === "loading" ||
+          character.state === "thinking"
       );
     case "all-characters":
     default:

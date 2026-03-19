@@ -12,12 +12,12 @@ import { TrafficManager } from "../modules/traffic-manager.js";
 import { getMimeTypeFromPath } from "../constants/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 
-import { UserPanel } from "./entrance/user-panel.js";
+import { UserPanel } from "./settings/accounts/user-panel.js";
 import { SlotPanel } from "./entrance/slot-panel.js";
-import { Us1Panel } from "./entrance/us1-panel.js";
-import { AccountPanel } from "./entrance/account-panel.js";
+import { Us1Panel } from "./settings/accounts/us1-panel.js";
+import { AccountPanel } from "./settings/accounts/account-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
-import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
+import { setupLiveLogOverlay as setupSettingsLiveLogOverlay } from "./settings/live-log/overlay.js";
 import { EntranceSceneController } from "./entrance/scene/scene-controller.js";
 import { createSceneEntranceBridge } from "./entrance/scene/scene-entrance-bridge.js";
 import { AppI18n } from "../modules/i18n/index.js";
@@ -642,7 +642,7 @@ export class EntranceHallController {
   }
 
   setupLiveLogOverlay(): void {
-    setupEntranceLiveLogOverlay({
+    setupSettingsLiveLogOverlay({
       formatLogCategory: this.formatLogCategory.bind(this),
       escapeHtml: this.escapeHtml.bind(this),
     });

@@ -12,7 +12,7 @@ import { isSceneDebugRoomId, setActiveSceneDebugRoomId } from "../scene/scene-de
 import type { PageController } from "./types.js";
 import { shellT } from "./shell-i18n.js";
 
-const SPECIAL_PAGES = ["settings", "whisper", "archives", "webview"];
+const SPECIAL_PAGES = ["webview", "settings", "archives", "whisper"];
 
 type UiModeToggleState = "classic" | "scene" | "scene-debug";
 
@@ -97,7 +97,8 @@ function syncTopBarUiModeLayer(): void {
     return;
   }
 
-  const hasExpandedDropdown = topBar.querySelector<HTMLElement>(".ui-mode-dropdown.is-expanded") !== null;
+  const hasExpandedDropdown =
+    topBar.querySelector<HTMLElement>(".ui-mode-dropdown.is-expanded") !== null;
   topBar.classList.toggle("is-ui-mode-expanded", hasExpandedDropdown);
 }
 
@@ -164,6 +165,13 @@ export function setupNavigation(): void {
       const page = e.detail.page;
       if (page !== "") {
         showPage(page);
+      }
+    }) as EventListener);
+
+    document.addEventListener("close-special-page", ((e: CustomEvent<{ page: string }>) => {
+      const page = typeof e.detail.page === "string" ? e.detail.page.trim() : "";
+      if (page !== "") {
+        closeSpecialPage(page);
       }
     }) as EventListener);
   } catch (error) {

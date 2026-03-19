@@ -221,6 +221,7 @@
     },
     "archives": {
       "page": {
+        "pageTitle": "Archive Console",
         "sidebarTitle": "Conversations",
         "detailTitle": "Conversation Details",
         "detailEmpty": "Select a conversation to view details",
@@ -5318,7 +5319,7 @@
       }
     },
     "whisper": {
-      "toggleEyebrow": "Entrance dock",
+      "toggleEyebrow": "Queue console",
       "composeEyebrow": "Add record",
       "composeTitle": "User record panel",
       "composeNote": "Queue a timed whisper for the account bound to AI1 or AI2.",

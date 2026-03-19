@@ -19,10 +19,7 @@ import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js
 import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
-import {
-  getSceneRoomBackgroundSrc,
-  getSceneRoomViewPanelArtSrc,
-} from "../scene/theme-pack.js";
+import { getSceneRoomBackgroundSrc, getSceneRoomViewPanelArtSrc } from "../scene/theme-pack.js";
 import { isSceneUiMode } from "../ui/ui-mode.js";
 import { shellT } from "../app/shell-i18n.js";
 import {

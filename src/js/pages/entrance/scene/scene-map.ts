@@ -61,7 +61,12 @@ export interface SceneDebugNodeListEntry {
   viewId?: string | null;
 }
 
-function createRect(leftPx: number, topPx: number, widthPx: number, heightPx: number): SceneNodeRect {
+function createRect(
+  leftPx: number,
+  topPx: number,
+  widthPx: number,
+  heightPx: number
+): SceneNodeRect {
   return {
     leftPx,
     topPx,
@@ -86,22 +91,20 @@ function createFrame(
   };
 }
 
-function createLabel(
-  options: {
-    visible?: boolean;
-    textKey: string;
-    customText?: string;
-    centerXPx: number;
-    topPx: number;
-    widthPx: number;
-    heightPx: number;
-    rotateDeg?: number;
-    fontSizePx: number;
-    letterSpacingPx: number;
-    fontPreset?: EntranceSceneLabelFontPreset;
-    framePerspectiveDeg?: number;
-  }
-): SceneNodeLabelDefinition {
+function createLabel(options: {
+  visible?: boolean;
+  textKey: string;
+  customText?: string;
+  centerXPx: number;
+  topPx: number;
+  widthPx: number;
+  heightPx: number;
+  rotateDeg?: number;
+  fontSizePx: number;
+  letterSpacingPx: number;
+  fontPreset?: EntranceSceneLabelFontPreset;
+  framePerspectiveDeg?: number;
+}): SceneNodeLabelDefinition {
   return {
     visible: options.visible ?? true,
     textKey: options.textKey,
@@ -295,9 +298,7 @@ export const DEFAULT_ENTRANCE_SCENE_MAP: EntranceSceneMap = {
       })
     ),
   ],
-  backs: [
-    createBack("back-whisper", "whisper", createEdgeBackRect(116), createEdgeBackLabel(502)),
-  ],
+  backs: [createBack("back-whisper", "whisper", createEdgeBackRect(116), createEdgeBackLabel(502))],
   characters: [
     createCharacter("anchor-user", "user", 154, 108, 0.9, 1),
     createCharacter("anchor-ai-left-outer", "ai", 422, 162, 0.82, 2),
@@ -349,12 +350,8 @@ export const DEFAULT_ASSISTANT_SCENE_MAP: EntranceSceneMap = {
       })
     ),
   ],
-  backs: [
-    createBack("back-primary", "primary", createEdgeBackRect(116), createEdgeBackLabel()),
-  ],
-  characters: [
-    createCharacter("anchor-ai0", "assistant", 691, 108, 0.66, 4, "ai0"),
-  ],
+  backs: [createBack("back-primary", "primary", createEdgeBackRect(116), createEdgeBackLabel())],
+  characters: [createCharacter("anchor-ai0", "assistant", 691, 108, 0.66, 4, "ai0")],
 };
 
 export const DEFAULT_ANALYZE_SCENE_MAP: EntranceSceneMap = {
@@ -524,12 +521,8 @@ export const DEFAULT_SETTINGS_SCENE_MAP: EntranceSceneMap = {
       })
     ),
   ],
-  backs: [
-    createBack("back-panel", "panel", createEdgeBackRect(116), createEdgeBackLabel()),
-  ],
-  characters: [
-    createCharacter("anchor-user", "user", 937, 113, 0.92, 4),
-  ],
+  backs: [createBack("back-panel", "panel", createEdgeBackRect(116), createEdgeBackLabel())],
+  characters: [createCharacter("anchor-user", "user", 937, 113, 0.92, 4)],
 };
 
 export const DEFAULT_ROOMS_SCENE_MAP: EntranceSceneMap = {
@@ -599,9 +592,7 @@ export const DEFAULT_SERVER_SCENE_MAP: EntranceSceneMap = {
       })
     ),
   ],
-  backs: [
-    createBack("back-primary", "primary", createEdgeBackRect(116), createEdgeBackLabel()),
-  ],
+  backs: [createBack("back-primary", "primary", createEdgeBackRect(116), createEdgeBackLabel())],
   characters: [
     createCharacter("anchor-ai1-primary", "ai", 672, 124, 0.86, 3, "ai1"),
     createCharacter("anchor-ai2-primary", "ai", 1210, 113, 0.84, 5, "ai2"),
@@ -675,10 +666,12 @@ export function listSceneDebugNodes(sceneMap: EntranceSceneMap): SceneDebugNodeL
   return buildSceneNodesFromMap(sceneMap).map((node) => ({
     kind: node.kind,
     id: node.id,
-    label: getSceneDebugNodeLabel(node as
-      | EntranceSceneInteractiveConfig
-      | EntranceSceneBackConfig
-      | EntranceSceneCharacterConfig),
+    label: getSceneDebugNodeLabel(
+      node as
+        | EntranceSceneInteractiveConfig
+        | EntranceSceneBackConfig
+        | EntranceSceneCharacterConfig
+    ),
     ...("viewId" in node ? { viewId: node.viewId } : {}),
   }));
 }
@@ -880,7 +873,9 @@ function normalizeSceneMap(
     interactives: defaultMap.interactives.map((fallback) =>
       normalizeInteractive(interactiveById.get(fallback.id) ?? {}, fallback)
     ),
-    backs: defaultMap.backs.map((fallback) => normalizeBack(backById.get(fallback.id) ?? {}, fallback)),
+    backs: defaultMap.backs.map((fallback) =>
+      normalizeBack(backById.get(fallback.id) ?? {}, fallback)
+    ),
     characters: defaultMap.characters.map((fallback) =>
       normalizeCharacter(characterById.get(fallback.id) ?? {}, fallback)
     ),

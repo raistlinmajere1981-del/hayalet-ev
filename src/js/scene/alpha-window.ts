@@ -35,8 +35,17 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function getImageSource(image: HTMLImageElement): string {
-  const resolved = image.currentSrc || image.src || image.getAttribute("src") || "";
-  return resolved.trim();
+  const currentSrc = image.currentSrc.trim();
+  if (currentSrc !== "") {
+    return currentSrc;
+  }
+
+  const imageSrc = image.src.trim();
+  if (imageSrc !== "") {
+    return imageSrc;
+  }
+
+  return image.getAttribute("src")?.trim() ?? "";
 }
 
 function clearFrameVariables(target: HTMLElement, prefix: string): void {
@@ -151,13 +160,16 @@ function scanTransparentBounds(
   };
 }
 
-function loadAlphaWindowBounds(src: string, alphaThreshold: number): Promise<AlphaWindowBounds | null> {
-  return new Promise((resolve) => {
+async function loadAlphaWindowBounds(
+  src: string,
+  alphaThreshold: number
+): Promise<AlphaWindowBounds | null> {
+  const bounds = await new Promise<AlphaWindowBounds | null>((resolve) => {
     const image = new Image();
     image.decoding = "async";
     image.onload = (): void => {
-      const sourceWidth = image.naturalWidth || image.width;
-      const sourceHeight = image.naturalHeight || image.height;
+      const sourceWidth = image.naturalWidth > 0 ? image.naturalWidth : image.width;
+      const sourceHeight = image.naturalHeight > 0 ? image.naturalHeight : image.height;
       if (sourceWidth <= 0 || sourceHeight <= 0) {
         resolve(null);
         return;
@@ -185,21 +197,25 @@ function loadAlphaWindowBounds(src: string, alphaThreshold: number): Promise<Alp
 
     image.src = src;
   });
+
+  return bounds;
 }
 
-function resolveAlphaWindowBounds(
+async function resolveAlphaWindowBounds(
   src: string,
   alphaThreshold: number
 ): Promise<AlphaWindowBounds | null> {
   const cacheKey = `${alphaThreshold}:${src}`;
   const cached = alphaWindowBoundsCache.get(cacheKey);
   if (cached !== undefined) {
-    return cached;
+    const bounds = await cached;
+    return bounds;
   }
 
   const promise = loadAlphaWindowBounds(src, alphaThreshold);
   alphaWindowBoundsCache.set(cacheKey, promise);
-  return promise;
+  const bounds = await promise;
+  return bounds;
 }
 
 export class SceneAlphaWindowFrameController {

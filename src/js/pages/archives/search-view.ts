@@ -1,5 +1,5 @@
 import type { TranslationParams } from "@shared/i18n.js";
-import { AppI18n } from "../../../modules/i18n/index.js";
+import { AppI18n } from "../../modules/i18n/index.js";
 import type { FileResult, MessageResult } from "./types.js";
 import {
   escapeHtml,

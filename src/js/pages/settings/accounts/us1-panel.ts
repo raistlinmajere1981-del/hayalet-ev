@@ -3,11 +3,11 @@ import { getRemoteEmailAccounts } from "@shared/settings.js";
 import type { Us1MailAccountDraft } from "@shared/us1-mail.js";
 import { buildRemoteEmailAccountId } from "@shared/archive.js";
 
-import { AppState } from "../../modules/app-state.js";
-import { ConversationListManager } from "../../modules/conversation-list-manager.js";
-import { TrafficManager } from "../../modules/traffic-manager.js";
+import { AppState } from "../../../modules/app-state.js";
+import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
+import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { getErrorMessage } from "@shared/index.js";
-import { formatTime, t as entranceT } from "./i18n.js";
+import { formatTime, t as entranceT } from "../panel-i18n.js";
 
 interface SettingsManagerLike {
   getSnapshot(): AppSettings;

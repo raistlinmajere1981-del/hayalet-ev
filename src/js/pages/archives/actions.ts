@@ -1,12 +1,12 @@
 import type { TranslationParams } from "@shared/i18n.js";
 import { LogCategory } from "@shared/logging-core";
-import { AppState } from "../../../modules/app-state.js";
-import { ConversationListManager } from "../../../modules/conversation-list-manager.js";
-import { AppI18n } from "../../../modules/i18n/index.js";
-import { resolveIpcErrorMessage } from "../../../modules/ipc-errors.js";
-import { Logger } from "../../../modules/logger/index.js";
-import { ButtonStates } from "../../../ui/button-states.js";
-import { formatErrorWithDetail } from "../../../../../shared/i18n/error-detail.js";
+import { AppState } from "../../modules/app-state.js";
+import { ConversationListManager } from "../../modules/conversation-list-manager.js";
+import { AppI18n } from "../../modules/i18n/index.js";
+import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
+import { Logger } from "../../modules/logger/index.js";
+import { ButtonStates } from "../../ui/button-states.js";
+import { formatErrorWithDetail } from "../../../../shared/i18n/error-detail.js";
 import {
   mapFileResult,
   mapMessageResult,

@@ -7,7 +7,7 @@ import { t as entranceT } from "../i18n.js";
 import type { AppSettings } from "@shared/settings.js";
 
 import type { SlotPanel } from "../slot-panel.js";
-import type { Us1Panel } from "../us1-panel.js";
+import type { Us1Panel } from "../../settings/accounts/us1-panel.js";
 import type { WebviewPanel } from "../webview-panel.js";
 
 import { resolveSceneAiConnectSlot } from "./scene-connect-actions.js";

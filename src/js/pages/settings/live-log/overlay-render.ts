@@ -1,5 +1,5 @@
-import { type OverlayLogEntry, type OverlayState } from "./live-log-overlay-model.js";
-import { formatDateTime, formatTime, t as entranceT } from "./i18n.js";
+import { type OverlayLogEntry, type OverlayState } from "./overlay-model.js";
+import { formatDateTime, formatTime, t as entranceT } from "../panel-i18n.js";
 
 interface OverlayRenderParams {
   state: OverlayState;

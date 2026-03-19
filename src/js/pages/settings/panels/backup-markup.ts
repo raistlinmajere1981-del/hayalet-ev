@@ -1,4 +1,4 @@
-import { AppI18n } from "../modules/i18n/index.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
 
 interface BackupScopeDefinition {
   id: string;

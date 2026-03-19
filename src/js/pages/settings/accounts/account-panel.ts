@@ -1,11 +1,11 @@
-import { getMimeTypeFromPath, generateAccountId } from "../../constants/index.js";
+import { getMimeTypeFromPath, generateAccountId } from "../../../constants/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { getErrorMessage } from "@shared/index.js";
 import {
   buildRemoteEmailAccountId,
   extractUs1RemoteIdentityIdFromAccountId,
 } from "@shared/archive.js";
-import { Logger } from "../../modules/logger/index.js";
+import { Logger } from "../../../modules/logger/index.js";
 import {
   isRemoteEmailAccount,
   type AccountKind,
@@ -13,7 +13,7 @@ import {
   type Account,
   type MailTransportAccountConfig,
 } from "@shared/settings.js";
-import { t as entranceT } from "./i18n.js";
+import { t as entranceT } from "../panel-i18n.js";
 
 interface SettingsManager {
   getSnapshot(): AppSettings;

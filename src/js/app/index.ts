@@ -37,8 +37,6 @@ import {
   initControllers,
   registerWebviews,
 } from "./page-init.js";
-import { setupRoomOverlay } from "./room-overlay.js";
-import { setupBackupOverlay } from "./backup-overlay.js";
 import { setupTopbarToolOverlays } from "./topbar-tool-overlays.js";
 
 declare global {
@@ -187,15 +185,25 @@ async function initApp(): Promise<void> {
     setupNavigation();
     setupWindowControls();
     setupTopBarButtons();
-    setupRoomOverlay(controllers);
-    setupBackupOverlay();
     setupTopbarToolOverlays();
     setupTopBarRelayButtons();
     setupReportPanel();
 
     SplashScreen.update(90, AppI18n.t("app.startup.finalizing"));
 
-    const startPage = startupFlags?.startPage ?? "entrance";
+    const requestedPage = new URLSearchParams(window.location.search).get("page");
+    const requestedPageName = requestedPage?.trim();
+    const startupPageName = startupFlags?.startPage?.trim();
+    const startPageCandidate =
+      requestedPageName !== undefined && requestedPageName !== ""
+        ? requestedPageName
+        : startupPageName !== undefined && startupPageName !== ""
+          ? startupPageName
+          : "entrance";
+    const startPage =
+      document.getElementById(`page-${startPageCandidate}`) instanceof HTMLElement
+        ? startPageCandidate
+        : "entrance";
     const autoConnect = startupFlags?.autoConnect ?? false;
 
     showPage(startPage);

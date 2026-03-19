@@ -1,11 +1,11 @@
-import { Logger } from "../../modules/logger/index.js";
+import { Logger } from "../../../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { DEFAULT_APP_LANGUAGE, type AppLanguage, type LanguageDescriptor } from "@shared/i18n.js";
 import { getErrorMessage } from "@shared/index.js";
-import { normalizeAppLanguage } from "../../../../shared/i18n/locale.js";
-import { AppI18n, formatLanguageLabel } from "../../modules/i18n/index.js";
+import { normalizeAppLanguage } from "../../../../../shared/i18n/locale.js";
+import { AppI18n, formatLanguageLabel } from "../../../modules/i18n/index.js";
 import type { AppSettings, GoogleDriveSettings } from "@shared/settings.js";
-import { t as entranceT } from "./i18n.js";
+import { t as entranceT } from "../panel-i18n.js";
 
 interface SettingsManager {
   getSnapshot(): AppSettings;

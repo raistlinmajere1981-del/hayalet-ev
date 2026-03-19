@@ -4,15 +4,15 @@ import { LogCategory } from "@shared/logging-core";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { AppState } from "../../modules/app-state.js";
 import { AppI18n } from "../../modules/i18n/index.js";
-import { closeSpecialPage, getCurrentPage } from "../../app/navigation.js";
 import { ButtonStates } from "../../ui/button-states.js";
-import type { ArchiveEntry, FileResult, MessageResult } from "./archive-overlay/types.js";
+import { closeExternalPage } from "../shared/external-page.js";
+import type { ArchiveEntry, FileResult, MessageResult } from "./types.js";
 import {
   deleteArchiveEntry,
   navigateArchiveResult,
   performArchiveSearch,
   saveArchiveSelection,
-} from "./archive-overlay/actions.js";
+} from "./actions.js";
 import {
   applyProtocolSelectionView,
   insertTagAtCursor as insertTagAtCursorInEditor,
@@ -20,12 +20,8 @@ import {
   renderProtocolListView,
   saveProtocolContent,
   setProtocolStatusView,
-} from "./archive-overlay/protocol-editor.js";
-import {
-  clearSearchResultsView,
-  renderSearchResultsView,
-  switchSearchTab,
-} from "./archive-overlay/search-view.js";
+} from "./protocol-editor.js";
+import { clearSearchResultsView, renderSearchResultsView, switchSearchTab } from "./search-view.js";
 import { isAssistantAccountsSettingsPath, isAssistantSlotSettingsPath } from "@shared/settings.js";
 import {
   ARCHIVE_PROVIDER_KEYS,
@@ -33,26 +29,11 @@ import {
   type ArchiveProviderKey,
 } from "@shared/archive.js";
 
-export const ARCHIVES_PAGE_OPEN_EVENT = "analyze:open-archive-overlay";
-export const ARCHIVES_PAGE_CLOSE_EVENT = "analyze:close-archive-overlay";
-export const ARCHIVES_PAGE_STATE_EVENT = "analyze:archive-overlay-state-change";
-export const ANALYZE_ARCHIVE_OPEN_EVENT = ARCHIVES_PAGE_OPEN_EVENT;
-export const ANALYZE_ARCHIVE_CLOSE_EVENT = ARCHIVES_PAGE_CLOSE_EVENT;
-export const ANALYZE_ARCHIVE_STATE_EVENT = ARCHIVES_PAGE_STATE_EVENT;
-
 function archivesT(key: string, params?: TranslationParams): string {
   return AppI18n.t(`app.archives.${key}`, params);
 }
 
-function dispatchArchivesPageState(open: boolean): void {
-  document.dispatchEvent(
-    new CustomEvent<{ open: boolean }>(ARCHIVES_PAGE_STATE_EVENT, {
-      detail: { open },
-    })
-  );
-}
-
-class ArchivesPageController {
+export class ArchivesPageController {
   entries: ArchiveEntry[];
   activeProvider: ArchiveProviderKey;
   selectedId: string | null;
@@ -67,8 +48,6 @@ class ArchivesPageController {
   _protocols: Record<string, string>;
   _selectedProtocolKey: string | null;
   _isOpen: boolean;
-  _handleOpenRequest: () => void;
-  _handleCloseRequest: () => void;
   overlayEl: HTMLElement | null;
   closeButtonEl: HTMLButtonElement | null;
   listEl: HTMLElement | null;
@@ -110,12 +89,6 @@ class ArchivesPageController {
     this._protocols = {};
     this._selectedProtocolKey = null;
     this._isOpen = false;
-    this._handleOpenRequest = (): void => {
-      void this.open();
-    };
-    this._handleCloseRequest = (): void => {
-      this.close();
-    };
 
     this.overlayEl = null;
     this.closeButtonEl = null;
@@ -148,13 +121,6 @@ class ArchivesPageController {
     this.cacheElements();
     this.bindEvents();
     this.ensureSubscriptions();
-    window.addEventListener(ANALYZE_ARCHIVE_OPEN_EVENT, this._handleOpenRequest);
-    document.addEventListener(ANALYZE_ARCHIVE_CLOSE_EVENT, this._handleCloseRequest);
-    document.addEventListener("settings-hub:state-change", ((event: CustomEvent<{ open?: boolean }>) => {
-      if (event.detail.open === true) {
-        this.close();
-      }
-    }) as EventListener);
 
     await this.loadSettings();
     this.applyNames();
@@ -164,7 +130,7 @@ class ArchivesPageController {
   cacheElements(): void {
     this.overlayEl = document.getElementById("page-archives");
     this.closeButtonEl = document.getElementById(
-      "analyze-archive-close-btn"
+      "archives-page-close-btn"
     ) as HTMLButtonElement | null;
     this.listEl = document.getElementById("archives-list");
 
@@ -316,17 +282,7 @@ class ArchivesPageController {
       return;
     }
 
-    if (getCurrentPage() !== "archives") {
-      document.dispatchEvent(
-        new CustomEvent<{ page: string }>("navigate-page", {
-          detail: { page: "archives" },
-        })
-      );
-      return;
-    }
-
     this._isOpen = true;
-    dispatchArchivesPageState(true);
     this.clearStatus();
     this.setProtocolStatus("");
     await this.refreshPageState();
@@ -336,16 +292,15 @@ class ArchivesPageController {
   }
 
   close(): void {
-    if (getCurrentPage() !== "archives" && !this._isOpen) {
-      return;
-    }
+    closeExternalPage();
+  }
 
-    closeSpecialPage("archives");
+  onShow(): void {
+    this.onHostShow();
   }
 
   onHostShow(): void {
     this._isOpen = true;
-    dispatchArchivesPageState(true);
     this.clearStatus();
     this.setProtocolStatus("");
     this.applyNames();
@@ -356,9 +311,12 @@ class ArchivesPageController {
     });
   }
 
+  onHide(): void {
+    this.onHostHide();
+  }
+
   onHostHide(): void {
     this._isOpen = false;
-    dispatchArchivesPageState(false);
     this.clearStatus();
     this.setProtocolStatus("");
     if (this._searchTimeout) {
@@ -827,5 +785,3 @@ class ArchivesPageController {
     this.renderSearchResults();
   }
 }
-
-export { ArchivesPageController, ArchivesPageController as AnalyzeArchiveOverlayController };

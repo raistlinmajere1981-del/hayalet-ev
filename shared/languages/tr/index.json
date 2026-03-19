@@ -221,6 +221,7 @@
     },
     "archives": {
       "page": {
+        "pageTitle": "Arşiv Konsolu",
         "sidebarTitle": "Sohbetler",
         "detailTitle": "Sohbet Detayları",
         "detailEmpty": "Detayları görmek için bir sohbet seçin",
@@ -5318,7 +5319,7 @@
       }
     },
     "whisper": {
-      "toggleEyebrow": "Entrance dock",
+      "toggleEyebrow": "Kuyruk konsolu",
       "composeEyebrow": "Kayıt ekle",
       "composeTitle": "Kullanıcı kayıt paneli",
       "composeNote": "Mesajı AI1 veya AI2 slotuna bağlı hesaba zamanlayıp kuyruğa al.",

@@ -1,13 +1,13 @@
-import { LogCategory, Logger } from "../modules/logger/index.js";
-import { AppI18n } from "../modules/i18n/index.js";
-import { Toast } from "../ui/toast-manager.js";
-import { shellT } from "./shell-i18n.js";
+import { LogCategory, Logger } from "../../../modules/logger/index.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
+import { Toast } from "../../../ui/toast-manager.js";
+import { shellT } from "../../../app/shell-i18n.js";
 import {
   buildBackupListMarkup,
   buildBackupPreviewMarkup,
   buildBackupScopesMarkup,
   buildBackupSummaryMarkup,
-} from "./backup-overlay-markup.js";
+} from "./backup-markup.js";
 
 interface BackupScopeDefinition {
   id: string;
@@ -173,7 +173,7 @@ async function refreshPreview(state: BackupOverlayState): Promise<void> {
   }
 }
 
-export function setupBackupOverlay(): void {
+export function setupSettingsBackupPanel(): void {
   const refs = getRefs();
   const state: BackupOverlayState = {
     scopes: [],

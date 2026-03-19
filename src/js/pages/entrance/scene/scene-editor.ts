@@ -228,7 +228,13 @@ export class EntranceSceneEditor {
         <div class="entrance-scene__editor-selected-title">Character: ${character.id}</div>
         <div class="entrance-scene__editor-grid">
           ${CHARACTER_FIELDS.map(([field, label]) =>
-            this.renderControlRow("character", character.id, field, label, this.readNumericField(character, field))
+            this.renderControlRow(
+              "character",
+              character.id,
+              field,
+              label,
+              this.readNumericField(character, field)
+            )
           ).join("")}
         </div>
       `;
@@ -248,9 +254,11 @@ export class EntranceSceneEditor {
       <div class="entrance-scene__editor-section">
         <div class="entrance-scene__editor-section-title">${title}</div>
         <div class="entrance-scene__editor-grid">
-          ${fields.map(([field, label]) =>
-            this.renderControlRow(kind, id, field, label, this.readNumericField(node, field))
-          ).join("")}
+          ${fields
+            .map(([field, label]) =>
+              this.renderControlRow(kind, id, field, label, this.readNumericField(node, field))
+            )
+            .join("")}
         </div>
       </div>
     `;
@@ -504,10 +512,20 @@ export class EntranceSceneEditor {
         this.adjustField(selection.kind, selection.id, "rect.topPx", step);
       } else if (selection.kind === "interactive" && event.key === "[") {
         event.preventDefault();
-        this.adjustField("interactive", selection.id, "frame.rotateDeg", this.getAdjustDelta("frame.rotateDeg", -1));
+        this.adjustField(
+          "interactive",
+          selection.id,
+          "frame.rotateDeg",
+          this.getAdjustDelta("frame.rotateDeg", -1)
+        );
       } else if (selection.kind === "interactive" && event.key === "]") {
         event.preventDefault();
-        this.adjustField("interactive", selection.id, "frame.rotateDeg", this.getAdjustDelta("frame.rotateDeg", 1));
+        this.adjustField(
+          "interactive",
+          selection.id,
+          "frame.rotateDeg",
+          this.getAdjustDelta("frame.rotateDeg", 1)
+        );
       }
       return;
     }
@@ -776,7 +794,11 @@ export class EntranceSceneEditor {
 
   private applyPanelPosition(panel: HTMLElement): void {
     if (this.panelPosition === null) {
-      this.panelPosition = this.clampPanelPosition(16, this.host.clientHeight - panel.offsetHeight - 16, panel);
+      this.panelPosition = this.clampPanelPosition(
+        16,
+        this.host.clientHeight - panel.offsetHeight - 16,
+        panel
+      );
     } else {
       this.panelPosition = this.clampPanelPosition(
         this.panelPosition.left,

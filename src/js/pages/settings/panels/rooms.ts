@@ -1,18 +1,14 @@
 import type { InstalledRoomRecord, RoomWorkspaceEntry } from "@shared/index.js";
-import type { PageController } from "./types.js";
-import { showPage } from "./navigation.js";
-import { syncInstalledRoomChrome } from "./room-ui.js";
-import { Toast } from "../ui/toast-manager.js";
-import { AppI18n } from "../modules/i18n/index.js";
-import { RoomRegistry } from "../modules/rooms/room-registry.js";
-import { resolveIpcErrorMessage } from "../modules/ipc-errors.js";
-import { getRoomPageName } from "../modules/rooms/room-markup.js";
+import { Toast } from "../../../ui/toast-manager.js";
+import { AppI18n } from "../../../modules/i18n/index.js";
+import { RoomRegistry } from "../../../modules/rooms/room-registry.js";
+import { resolveIpcErrorMessage } from "../../../modules/ipc-errors.js";
 import {
   buildInstalledRoomListMarkup,
   buildRoomOverlaySummary,
   buildWorkspaceRoomListMarkup,
-} from "../modules/rooms/room-overlay-markup.js";
-import { shellT } from "./shell-i18n.js";
+} from "../../../modules/rooms/room-overlay-markup.js";
+import { shellT } from "../../../app/shell-i18n.js";
 
 interface RoomOverlayRefs {
   importButton: HTMLButtonElement | null;
@@ -63,7 +59,7 @@ function render(refs: RoomOverlayRefs, state: RoomOverlayState): void {
   }
 }
 
-export function setupRoomOverlay(controllers: Record<string, PageController>): void {
+export function setupSettingsRoomsPanel(): void {
   const refs = getRefs();
   const state: RoomOverlayState = {
     workspaceRooms: [],
@@ -84,7 +80,6 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
   const refresh = async (): Promise<void> => {
     state.installedRooms = await RoomRegistry.refreshInstalledRooms();
     state.workspaceRooms = await RoomRegistry.listWorkspaceRooms();
-    syncInstalledRoomChrome(controllers);
     render(refs, state);
   };
 
@@ -99,7 +94,6 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
 
   RoomRegistry.subscribe((rooms) => {
     state.installedRooms = rooms;
-    syncInstalledRoomChrome(controllers);
     if (state.isOpen === true) {
       render(refs, state);
     }
@@ -212,12 +206,6 @@ export function setupRoomOverlay(controllers: Record<string, PageController>): v
     const action = button.dataset["roomAction"] ?? "";
     const roomId = button.dataset["roomId"] ?? "";
     if (roomId === "") {
-      return;
-    }
-
-    if (action === "open") {
-      deactivate();
-      showPage(getRoomPageName(roomId));
       return;
     }
 

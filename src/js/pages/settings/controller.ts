@@ -1,40 +1,36 @@
-import { AppState } from "../modules/app-state.js";
-import { AppI18n } from "../modules/i18n/index.js";
-import { shellT } from "./shell-i18n.js";
-import { closeSpecialPage, getCurrentPage } from "./navigation.js";
-import type { PageController } from "./types.js";
-import { dispatchSceneAction } from "../scene/action-dispatcher.js";
+import { AppState } from "../../modules/app-state.js";
+import { AppI18n } from "../../modules/i18n/index.js";
+import { shellT } from "../../app/shell-i18n.js";
+import { closeExternalPage, navigateMainShellPage } from "../shared/external-page.js";
+import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import {
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
-} from "../pages/entrance/scene/scene-editor.js";
-import { resolveSceneAvatarSource } from "../pages/entrance/scene/scene-avatar.js";
-import { applySceneDebugFlag } from "../pages/entrance/scene/scene-debug.js";
-import { buildSceneCharacterRoster } from "../pages/entrance/scene/scene-character-roster.js";
+} from "../entrance/scene/scene-editor.js";
+import { resolveSceneAvatarSource } from "../entrance/scene/scene-avatar.js";
+import { applySceneDebugFlag } from "../entrance/scene/scene-debug.js";
+import { buildSceneCharacterRoster } from "../entrance/scene/scene-character-roster.js";
 import {
   getSceneBackNodeForView,
   getSceneInteractiveNodesForView,
   resolveSceneNodeLabelText,
   type EntranceSceneMap,
-} from "../pages/entrance/scene/scene-map.js";
-import { createSceneDebugStore } from "../scene/debug-store.js";
+} from "../entrance/scene/scene-map.js";
+import { createSceneDebugStore } from "../../scene/debug-store.js";
 import {
   getActiveSceneDebugRoomId,
   isSceneDebugRoomId,
   SCENE_DEBUG_ROOMS,
   setActiveSceneDebugRoomId,
-} from "../scene/scene-debug-rooms.js";
-import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
-import { getCoverSceneProjection } from "../scene/projection.js";
-import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
-import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
-import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
-import { syncSceneViewRuntime } from "../scene/runtime.js";
-import {
-  getSceneRoomBackgroundSrc,
-  getSceneRoomPanelSrc,
-} from "../scene/theme-pack.js";
-import { isSceneUiMode } from "../ui/ui-mode.js";
+} from "../../scene/scene-debug-rooms.js";
+import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
+import { getCoverSceneProjection } from "../../scene/projection.js";
+import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
+import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
+import { renderSceneInteractiveLayer } from "../../scene/renderers/interactive-layer.js";
+import { syncSceneViewRuntime } from "../../scene/runtime.js";
+import { getSceneRoomBackgroundSrc, getSceneRoomPanelSrc } from "../../scene/theme-pack.js";
+import { isSceneUiMode } from "../../ui/ui-mode.js";
 
 const SETTINGS_PANELS = ["theme", "accounts", "backup", "rooms", "live-log"] as const;
 
@@ -72,7 +68,7 @@ function isSettingsPanelId(value: string): value is SettingsPanelId {
   return SETTINGS_PANELS.includes(value as SettingsPanelId);
 }
 
-function resolveSettingsPanelId(value: string | null | undefined): SettingsPanelId | null {
+export function resolveSettingsPanelId(value: string | null | undefined): SettingsPanelId | null {
   return value !== null && value !== undefined && isSettingsPanelId(value) ? value : null;
 }
 
@@ -254,11 +250,7 @@ class SettingsSceneController {
         }
 
         this.onClose();
-        document.dispatchEvent(
-          new CustomEvent("navigate-page", {
-            detail: { page: roomId },
-          })
-        );
+        navigateMainShellPage(roomId);
       },
       updateInteractive: (id, updater): void => {
         this.sceneMap.interactives = this.sceneMap.interactives.map((interactive) =>
@@ -269,7 +261,9 @@ class SettingsSceneController {
         this.editor?.refresh();
       },
       updateBack: (id, updater): void => {
-        this.sceneMap.backs = this.sceneMap.backs.map((back) => (back.id === id ? updater(back) : back));
+        this.sceneMap.backs = this.sceneMap.backs.map((back) =>
+          back.id === id ? updater(back) : back
+        );
         this.persistSceneMapDraft();
         this.sync(this.state);
         this.renderHotspots();
@@ -429,11 +423,7 @@ class SettingsSceneController {
     dispatchSceneAction(interactive.action, {
       onNavigate: (page) => {
         this.onClose();
-        document.dispatchEvent(
-          new CustomEvent("navigate-page", {
-            detail: { page },
-          })
-        );
+        navigateMainShellPage(page);
       },
       onSettings: (action) => {
         if (action.panel === null) {
@@ -502,7 +492,7 @@ class SettingsSceneController {
   }
 }
 
-export class SettingsPageController implements PageController {
+export class SettingsPageController {
   private page: HTMLElement | null = null;
   private closeButton: HTMLButtonElement | null = null;
   private classicLayout: HTMLElement | null = null;
@@ -524,7 +514,9 @@ export class SettingsPageController implements PageController {
     this.closeButton = document.getElementById("settings-hub-close") as HTMLButtonElement | null;
     this.classicLayout = this.page?.querySelector<HTMLElement>(".settings-hub-layout") ?? null;
     this.panelsContainer = this.page?.querySelector<HTMLElement>(".settings-hub-panels") ?? null;
-    this.tabButtons = Array.from(this.page?.querySelectorAll<HTMLButtonElement>(".settings-hub-tab") ?? []);
+    this.tabButtons = Array.from(
+      this.page?.querySelectorAll<HTMLButtonElement>(".settings-hub-tab") ?? []
+    );
     this.panels = Array.from(this.page?.querySelectorAll<HTMLElement>(".settings-hub-panel") ?? []);
     const sceneRoot = document.getElementById("settings-scene-root");
     const sceneHotspots = document.getElementById("settings-scene-hotspots");
@@ -614,22 +606,33 @@ export class SettingsPageController implements PageController {
     this.syncSceneUi();
   }
 
-  onShow(): void {
+  show(requestedPanel: SettingsPanelId | null = null): void {
     this.isOpen = true;
-    if (!isSceneUiMode() && this.visiblePanel === null) {
-      this.visiblePanel = this.activePanel;
+    this.visiblePanel = isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel);
+    if (this.visiblePanel !== null) {
+      this.activePanel = this.visiblePanel;
     }
+    document.documentElement.setAttribute("data-active-page", "settings");
+    this.syncActivePanelUi();
+    this.syncSceneUi();
+    this.emitState();
+  }
+
+  onShow(): void {
+    this.show(this.activePanel);
+  }
+
+  hide(): void {
+    this.isOpen = false;
+    this.visiblePanel = null;
+    document.documentElement.removeAttribute("data-active-page");
     this.syncActivePanelUi();
     this.syncSceneUi();
     this.emitState();
   }
 
   onHide(): void {
-    this.isOpen = false;
-    this.visiblePanel = null;
-    this.syncActivePanelUi();
-    this.syncSceneUi();
-    this.emitState();
+    this.hide();
   }
 
   private syncActivePanelUi(): void {
@@ -669,34 +672,11 @@ export class SettingsPageController implements PageController {
   }
 
   private open(requestedPanel: SettingsPanelId | null): void {
-    this.visiblePanel = isSceneUiMode() ? requestedPanel : (requestedPanel ?? this.activePanel);
-    if (this.visiblePanel !== null) {
-      this.activePanel = this.visiblePanel;
-    }
-
-    this.syncActivePanelUi();
-    this.syncSceneUi();
-
-    if (getCurrentPage() === "settings") {
-      if (this.isOpen) {
-        this.emitState();
-      }
-      return;
-    }
-
-    document.dispatchEvent(
-      new CustomEvent<{ page: string }>("navigate-page", {
-        detail: { page: "settings" },
-      })
-    );
+    this.show(requestedPanel);
   }
 
   private close(): void {
-    if (getCurrentPage() !== "settings" && !this.isOpen) {
-      return;
-    }
-
-    closeSpecialPage("settings");
+    closeExternalPage();
   }
 
   private selectPanel(panelId: SettingsPanelId): void {
@@ -704,8 +684,7 @@ export class SettingsPageController implements PageController {
     this.visiblePanel = panelId;
     this.syncActivePanelUi();
     this.syncSceneUi();
-
-    if (getCurrentPage() === "settings" && this.isOpen) {
+    if (this.isOpen) {
       this.emitState();
       return;
     }

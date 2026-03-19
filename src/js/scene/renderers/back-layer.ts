@@ -18,7 +18,9 @@ export interface RenderSceneBackLayerOptions {
 
 export function renderSceneBackLayer(options: RenderSceneBackLayerOptions): void {
   const { host, node, projection, resolveLabel, onActivate } = options;
-  host.querySelectorAll("[data-scene-generated-back='true']").forEach((element) => element.remove());
+  host.querySelectorAll("[data-scene-generated-back='true']").forEach((element) => {
+    element.remove();
+  });
 
   if (node === null) {
     return;

@@ -1,4 +1,4 @@
-import { AppState } from "../../../modules/app-state.js";
+import { AppState } from "../../modules/app-state.js";
 import { isUs1ProjectedAccountId } from "@shared/archive.js";
 
 export function escapeHtml(text: string): string {

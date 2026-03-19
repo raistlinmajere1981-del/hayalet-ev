@@ -135,7 +135,6 @@ body.is-scroll-locked {
   flex-direction: column;
 }
 
-.page-whisper,
 .page-archives,
 .page-settings {
   overflow: hidden;
@@ -149,7 +148,6 @@ body.is-scroll-locked {
   min-height: 100%;
 }
 
-.whisper-page,
 .archives-page {
   display: flex;
   flex-direction: column;
@@ -158,42 +156,11 @@ body.is-scroll-locked {
   min-height: 100%;
 }
 
-.whisper-page__header,
 .archives-page__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
-}
-
-.page-whisper .whisper-dock {
-  margin: 0;
-}
-
-.page-whisper .whisper-dock::before {
-  display: none;
-}
-
-.page-whisper .whisper-dock__toggle {
-  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
-  border-radius: var(--radius-card);
-  box-shadow: var(--floating-shadow);
-}
-
-.page-whisper .whisper-dock__content.is-expanded,
-.page-whisper .whisper-dock__toggle[aria-expanded="true"] + .whisper-dock__content {
-  margin-top: var(--space-2);
-  border: var(--border-1) solid color-mix(in srgb, var(--color-accent) 22%, var(--border-default));
-  border-radius: var(--radius-card);
-  box-shadow: var(--floating-shadow);
-}
-
-.page-whisper .whisper-dock__content:not(.is-expanded) {
-  pointer-events: none;
-}
-
-.page-whisper .whisper-dock__body {
-  max-height: none;
 }
 
 .archives-page__content {

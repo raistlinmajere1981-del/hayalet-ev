@@ -4,10 +4,7 @@ import { TrafficManager } from "../../../modules/traffic-manager.js";
 import { shellT } from "../../../app/shell-i18n.js";
 import { dispatchSceneAction } from "../../../scene/action-dispatcher.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../../scene/scene-debug-rooms.js";
-import {
-  navigateToScenePage,
-  openSceneSettingsPanel,
-} from "../../../scene/navigation.js";
+import { navigateToScenePage, openSceneSettingsPanel } from "../../../scene/navigation.js";
 import { createSceneDebugStore } from "../../../scene/debug-store.js";
 import { getCoverSceneProjection } from "../../../scene/projection.js";
 import { renderSceneCharacterLayer } from "../../../scene/renderers/character-layer.js";
@@ -122,7 +119,9 @@ export class EntranceSceneController {
           this.editor?.refresh();
         },
         updateBack: (id, updater): void => {
-          this.sceneMap.backs = this.sceneMap.backs.map((back) => (back.id === id ? updater(back) : back));
+          this.sceneMap.backs = this.sceneMap.backs.map((back) =>
+            back.id === id ? updater(back) : back
+          );
           this.persistSceneMapDraft();
           this.renderHotspots();
           this.editor?.refresh();
@@ -316,7 +315,10 @@ export class EntranceSceneController {
     }
 
     const renderToken = ++this.characterRenderToken;
-    const characters = buildSceneCharacterRoster(this.sceneMap.characters, this.sceneMap.characterRosterPreset);
+    const characters = buildSceneCharacterRoster(
+      this.sceneMap.characters,
+      this.sceneMap.characterRosterPreset
+    );
     this.characters = new Map(characters.map((character) => [character.id, character]));
     await renderSceneCharacterLayer({
       layer: this.characterLayer,
