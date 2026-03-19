@@ -3,6 +3,14 @@ import { isSceneRoomId, SCENE_ROOM_IDS, type SceneRoomId } from "./schema.js";
 export type SceneDebugRoomId = SceneRoomId;
 
 const SCENE_DEBUG_ROOM_ATTRIBUTE = "data-scene-debug-room";
+const SCENE_DEBUG_ROOM_LABEL_KEYS: Record<SceneDebugRoomId, string> = {
+  entrance: "sideNav.entranceLabel",
+  analyze: "sideNav.analyzeLabel",
+  assistant: "sideNav.assistantLabel",
+  server: "sideNav.serverLabel",
+  rooms: "sideNav.roomsLabel",
+  settings: "settingsHub.openButton",
+};
 
 export interface SceneDebugRoomDefinition {
   id: SceneDebugRoomId;
@@ -40,15 +48,6 @@ export const SCENE_DEBUG_ROOMS: readonly SceneDebugRoomDefinition[] = [
   ...SCENE_ROOM_IDS.map((roomId) => ({
     id: roomId,
     page: roomId,
-    labelKey:
-      roomId === "entrance"
-        ? "sideNav.entranceLabel"
-        : roomId === "analyze"
-          ? "sideNav.analyzeLabel"
-          : roomId === "assistant"
-            ? "sideNav.assistantLabel"
-            : roomId === "server"
-              ? "sideNav.serverLabel"
-              : "settingsHub.openButton",
+    labelKey: SCENE_DEBUG_ROOM_LABEL_KEYS[roomId],
   })),
 ];

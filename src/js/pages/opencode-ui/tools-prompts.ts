@@ -1,6 +1,12 @@
 import { apiCall } from "./api.js";
 import { formatDetailedErrorMessage, t } from "./i18n.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
+import {
+  createManagedOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 
 export type ToolSnapshotStatus = "loaded" | "empty" | "error";
 
@@ -36,6 +42,7 @@ interface QuickPromptPanelOptions {
 const QUICK_PROMPTS_STORAGE_KEY = "app:opencode-ui:quick-prompts";
 let quickPromptCache: QuickPromptRecord[] = [];
 let quickPromptPanelOptions: QuickPromptPanelOptions | null = null;
+let promptModalController: ManagedOverlayController | null = null;
 
 interface QuickPromptStoreResponse {
   success?: boolean;
@@ -178,10 +185,7 @@ function updateQuickPromptCount(count: number): void {
 }
 
 function closePromptModal(): void {
-  const modal = document.getElementById("prompt-modal");
-  if (modal != null) {
-    modal.classList.remove("is-active");
-  }
+  promptModalController?.close();
 }
 
 function openPromptModal(): void {
@@ -199,7 +203,7 @@ function openPromptModal(): void {
   modalTitle.textContent = t("prompt.modalTitle");
   modalName.value = "";
   modalContent.value = "";
-  modal.classList.add("is-active");
+  promptModalController?.open();
   requestAnimationFrame(() => {
     modalName.focus();
     modalName.select();
@@ -368,6 +372,21 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
     "prompt-modal-content"
   ) as HTMLTextAreaElement | null;
 
+  if (modal instanceof HTMLElement && promptModalController === null) {
+    promptModalController = createManagedOverlayController({
+      id: "opencode-ui-prompt-modal",
+      element: modal,
+      kind: OVERLAY_KINDS.modal,
+      exclusiveGroup: OVERLAY_GROUPS.opencodeUi,
+      isOpen: () => modal.classList.contains("is-active"),
+      setOpen: (open: boolean) => {
+        modal.classList.toggle("is-active", open);
+        modal.setAttribute("aria-hidden", String(!open));
+      },
+    });
+    modal.setAttribute("aria-hidden", String(!modal.classList.contains("is-active")));
+  }
+
   void refreshQuickPromptList(options);
 
   addButton?.addEventListener("click", () => {
@@ -384,12 +403,6 @@ export function initQuickPromptPanel(options: QuickPromptPanelOptions): void {
 
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) {
-      closePromptModal();
-    }
-  });
-
-  modal?.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
       closePromptModal();
     }
   });

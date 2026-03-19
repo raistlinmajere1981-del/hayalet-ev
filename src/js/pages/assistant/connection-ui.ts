@@ -29,6 +29,7 @@ export interface AssistantConnectionUiController {
     title: string,
     subtitle: string
   ) => void;
+  _hideOverlay: (overlayEl: HTMLElement | null) => void;
   _syncSystemServerStatus: (options?: { refreshUi?: boolean }) => Promise<void>;
 }
 
@@ -69,8 +70,6 @@ export function updateAssistantConnectionUI(
     webviewEl.dataset["eventsSetup"] = "true";
   }
 
-  let overlayVisible = false;
-
   if (overlayEl != null) {
     overlayEl.classList.remove(
       "is-hidden",
@@ -81,7 +80,6 @@ export function updateAssistantConnectionUI(
     );
 
     if (!hasAccount) {
-      overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
         "is-empty",
@@ -90,7 +88,6 @@ export function updateAssistantConnectionUI(
         assistantConnectionT("noAccountSubtitle")
       );
     } else if (isConnectingUi) {
-      overlayVisible = true;
       const stage = resolveOverlayStage({
         ...(typeof providerId === "string" && providerId !== "" ? { providerId } : {}),
         connectFlowActive: controller._connectFlowActive,
@@ -98,7 +95,6 @@ export function updateAssistantConnectionUI(
       });
       controller._updateOverlay(overlayEl, "is-connecting", "🔄", stage.title, stage.subtitle);
     } else if (shouldHoldToolsReadyOverlay) {
-      overlayVisible = true;
       const holdTitle =
         typeof controller._connectOverlayStage?.title === "string" &&
         controller._connectOverlayStage.title.trim() !== ""
@@ -112,7 +108,6 @@ export function updateAssistantConnectionUI(
 
       controller._updateOverlay(overlayEl, "is-connecting", "🔄", holdTitle, holdSubtitle);
     } else if (isError) {
-      overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
         "is-error",
@@ -121,7 +116,6 @@ export function updateAssistantConnectionUI(
         slotState.error ?? assistantConnectionT("connectionErrorRetry")
       );
     } else if (!isConnected) {
-      overlayVisible = true;
       controller._updateOverlay(
         overlayEl,
         "is-disconnected",
@@ -130,15 +124,11 @@ export function updateAssistantConnectionUI(
         assistantConnectionT("disconnectedSubtitle")
       );
     } else {
-      overlayEl.classList.add("is-hidden");
+      controller._hideOverlay(overlayEl);
       if (webviewEl != null) {
         SlotController.ensureWebviewAttached("ai0");
       }
     }
-  }
-
-  if (mountEl != null) {
-    mountEl.classList.toggle("webview-content-blocked", overlayVisible);
   }
 
   const buttonState = resolveAssistantConnectButtonState({

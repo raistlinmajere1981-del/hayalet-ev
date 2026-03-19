@@ -30,6 +30,11 @@
     0 var(--border-2) var(--space-2-5) rgb(35 17 12 / 0.62);
   --analyze-scene-hotspot-label-stroke-width: 0.55px;
   --analyze-scene-hotspot-label-frame-radius: 0.35rem;
+  --analyze-scene-hotspot-label-pad-y: 0.3rem;
+  --analyze-scene-hotspot-label-pad-x: 0.72rem;
+  --analyze-scene-hotspot-label-bg: rgb(18 10 8 / 0.78);
+  --analyze-scene-hotspot-label-bg-active: rgb(24 14 11 / 0.92);
+  --analyze-scene-hotspot-label-active-ring: rgb(126 201 255 / 0.32);
   --analyze-scene-exit-copy-letter-spacing: 0.08em;
   --analyze-scene-exit-shift: 0.2rem;
   --analyze-scene-debug-label-shadow:
@@ -85,6 +90,7 @@
   --analyze-scene-hotspot-label-height: 2.8rem;
   --analyze-scene-hotspot-label-rotate: 0deg;
   --analyze-scene-hotspot-label-frame-perspective: 0deg;
+  --analyze-scene-hotspot-label-font-family: var(--font-scene-display);
   --analyze-scene-hotspot-label-font-size: 1.2rem;
   --analyze-scene-hotspot-label-letter-spacing: 0.05em;
   --analyze-scene-panel-shift-y: 1.5rem;
@@ -115,15 +121,6 @@
     radial-gradient(circle at center, transparent 58%, rgb(5 4 4 / 0.34) 100%),
     linear-gradient(180deg, rgb(0 0 0 / 0), rgb(0 0 0 / 0.18));
   pointer-events: none;
-}
-
-.analyze-scene__background,
-.analyze-scene__panel-art,
-.analyze-archive-overlay__scene-art {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .analyze-scene__background {
@@ -263,8 +260,11 @@
   align-items: center;
   justify-content: center;
   transform: translateX(-50%) rotate(var(--analyze-scene-hotspot-label-rotate));
+  padding: var(--analyze-scene-hotspot-label-pad-y) var(--analyze-scene-hotspot-label-pad-x);
+  border-radius: 999px;
+  background: var(--analyze-scene-hotspot-label-bg);
   color: rgb(242 220 188 / 0.98);
-  font-family: var(--font-scene-display);
+  font-family: var(--analyze-scene-hotspot-label-font-family);
   font-size: var(--analyze-scene-hotspot-label-font-size);
   font-weight: 800;
   letter-spacing: var(--analyze-scene-hotspot-label-letter-spacing);
@@ -279,6 +279,8 @@
   text-wrap: balance;
   transition:
     color var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
     text-shadow var(--duration-normal) var(--ease-out),
     transform var(--duration-normal) var(--ease-out);
 }
@@ -302,8 +304,13 @@
 .analyze-scene__hotspot:hover + .analyze-scene__hotspot-label,
 .analyze-scene__hotspot-label.is-selected,
 .analyze-scene__hotspot:focus-visible + .analyze-scene__hotspot-label {
+  background: var(--analyze-scene-hotspot-label-bg-active);
   color: rgb(255 233 201 / 1);
   text-shadow: var(--analyze-scene-hotspot-label-active-text-shadow);
+}
+
+.analyze-scene__hotspot-label.is-selected {
+  box-shadow: 0 0 0 var(--border-1) var(--analyze-scene-hotspot-label-active-ring);
 }
 
 .analyze-scene__table-view {
@@ -332,8 +339,7 @@
 }
 
 .analyze-archive-overlay__scene-art,
-.analyze-archive-overlay__scene-shade,
-.analyze-archive-overlay__exit {
+.analyze-archive-overlay__scene-shade {
   display: none;
 }
 
@@ -360,7 +366,7 @@
 }
 
 [data-scene-debug="true"] .analyze-scene__characters {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 [data-scene-debug="true"] .analyze-scene__character {
@@ -715,11 +721,17 @@
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"] .page-analyze {
+  height: 100%;
   overflow: hidden;
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"] .analyze-scene {
   display: block;
+}
+
+[data-ui-mode="scene"][data-active-page="analyze"] .analyze-room {
+  height: 100%;
+  min-height: 100%;
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"] .analyze-wrapper {
@@ -770,8 +782,7 @@
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__scene-art,
-[data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__scene-shade,
-[data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__exit {
+[data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__scene-shade {
   display: block;
 }
 
@@ -785,11 +796,6 @@
 
 [data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__scene-shade {
   z-index: 1;
-}
-
-[data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__exit {
-  display: inline-flex;
-  z-index: 3;
 }
 
 [data-ui-mode="scene"][data-active-page="analyze"] .analyze-archive-overlay__panel {

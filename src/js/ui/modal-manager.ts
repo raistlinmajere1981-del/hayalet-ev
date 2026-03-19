@@ -1,6 +1,12 @@
 import { Logger } from "../modules/logger/index.js";
 import { LogCategory } from "@shared/logging-core";
 import { AppI18n } from "../modules/i18n/index.js";
+import {
+  createManagedOverlayController,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+  type OverlayKind,
+} from "./overlay-system.js";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 
@@ -20,6 +26,9 @@ interface ModalOptions {
   closable?: boolean;
   closeOnOverlay?: boolean;
   closeOnEscape?: boolean;
+  overlayKind?: OverlayKind;
+  overlayGroup?: string;
+  lockScroll?: boolean;
   buttons?: ModalButton[];
   onClose?: () => void;
 }
@@ -36,6 +45,7 @@ interface ConfirmOptions {
 interface ModalInstance {
   id: string;
   element: HTMLDivElement;
+  overlayController: ManagedOverlayController;
   options: ModalOptions;
   close: () => void;
 }
@@ -145,22 +155,26 @@ function createModalElement(id: string, options: ModalOptions): HTMLDivElement {
   return modalContainer;
 }
 
-function handleKeyDown(e: KeyboardEvent): void {
-  if (e.key === "Escape" && activeModal) {
-    const options = activeModal.options;
-    if (options.closeOnEscape !== false && options.closable !== false) {
-      modalApi.close(activeModal.id);
-    }
-  }
-}
-
 const modalApi = {
   open(options: ModalOptions): ModalInstance {
     const id = generateId();
     const element = createModalElement(id, options);
 
     document.body.appendChild(element);
-    document.body.classList.add("is-scroll-locked");
+    const overlayController = createManagedOverlayController({
+      id,
+      element,
+      kind: options.overlayKind ?? OVERLAY_KINDS.modal,
+      exclusiveGroup: options.overlayGroup,
+      lockScroll: options.lockScroll,
+      closeOnEscape: options.closeOnEscape !== false && options.closable !== false,
+      isOpen: () => element.isConnected && !element.classList.contains("modal-closing"),
+      setOpen: (open: boolean) => {
+        if (!open) {
+          modalApi.close(id);
+        }
+      },
+    });
 
     const focusableElements = element.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -173,6 +187,7 @@ const modalApi = {
     const instance: ModalInstance = {
       id,
       element,
+      overlayController,
       options,
       close: () => {
         modalApi.close(id);
@@ -181,8 +196,6 @@ const modalApi = {
 
     modals.set(id, instance);
     activeModal = instance;
-
-    document.addEventListener("keydown", handleKeyDown);
 
     Logger.infoT(LogCategory.UI_MODAL, "app.logs.uiModal.opened", undefined, {
       id,
@@ -209,11 +222,7 @@ const modalApi = {
         activeModal = modals.size > 0 ? (Array.from(modals.values()).pop() ?? null) : null;
       }
 
-      if (modals.size === 0) {
-        document.body.classList.remove("is-scroll-locked");
-        document.removeEventListener("keydown", handleKeyDown);
-      }
-
+      instance.overlayController.destroy();
       instance.options.onClose?.();
 
       Logger.debugT(LogCategory.UI_MODAL, "app.logs.uiModal.closed", undefined, {

@@ -5,7 +5,6 @@ import type {
   SceneCharacterRoleConfig,
 } from "../pages/entrance/scene/scene-character-role.js";
 import type {
-  SceneBackZoneThemeDefinition,
   SceneDebugEditableRoomId,
   SceneDebugThemeDefinition,
   SceneRoomId,
@@ -29,10 +28,6 @@ export function getSceneThemeId(): string {
 
 export function getSceneLoadingTheme(): SceneThemePack["loading"] {
   return ACTIVE_SCENE_THEME_PACK.loading;
-}
-
-export function getSceneBackZonePolicy(): SceneBackZoneThemeDefinition {
-  return ACTIVE_SCENE_THEME_PACK.ui.backZones;
 }
 
 export function getSceneDebugThemeConfig(): SceneDebugThemeDefinition {

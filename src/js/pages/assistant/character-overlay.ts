@@ -3,6 +3,12 @@ import type { AppLanguage } from "@shared/i18n.js";
 import { AppI18n } from "../../modules/i18n/index.js";
 import { translateCatalog } from "../../../../shared/i18n/catalog.js";
 import { getBuiltInLanguagePack } from "../../../../shared/i18n/bundled-languages.js";
+import {
+  createHiddenClassOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 
 interface CharacterFeature {
   id: string;
@@ -241,6 +247,7 @@ const CHARACTER_MD_PATH = ".rovo/_metadata/CHARACTER.md";
 
 export class CharacterOverlay {
   private overlay: HTMLElement | null = null;
+  private overlayController: ManagedOverlayController | null = null;
   private activeList: HTMLElement | null = null;
   private poolList: HTMLElement | null = null;
   private activeCount: HTMLElement | null = null;
@@ -254,8 +261,27 @@ export class CharacterOverlay {
   private savedSelected: Set<string> = new Set();
   private unsubscribeI18n: (() => void) | null = null;
 
+  destroy(): void {
+    this.unsubscribeI18n?.();
+    this.unsubscribeI18n = null;
+    this.overlayController?.destroy();
+    this.overlayController = null;
+    this.overlay = null;
+  }
+
   init(): void {
     this.overlay = document.getElementById("character-overlay");
+    if (this.overlay instanceof HTMLElement && this.overlayController === null) {
+      this.overlayController = createHiddenClassOverlayController({
+        id: "character-overlay",
+        element: this.overlay,
+        kind: OVERLAY_KINDS.assistant,
+        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
+        onAfterClose: () => {
+          this.selected = new Set(this.savedSelected);
+        },
+      });
+    }
     this.activeList = document.getElementById("character-active-list");
     this.poolList = document.getElementById("character-pool-list");
     this.activeCount = document.getElementById("character-active-count");
@@ -314,13 +340,12 @@ export class CharacterOverlay {
       this._renderActivePanel();
       this._updatePool();
       this._checkConflicts();
-      this.overlay?.classList.remove("is-hidden");
+      this.overlayController?.open();
     });
   }
 
   private close(): void {
-    this.overlay?.classList.add("is-hidden");
-    this.selected = new Set(this.savedSelected);
+    this.overlayController?.close();
   }
 
   private async _loadFromDisk(): Promise<void> {

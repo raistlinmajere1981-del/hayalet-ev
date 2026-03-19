@@ -53,6 +53,15 @@
         "sessionListReadFailed": "Session list could not be read: {{message}}"
       }
     },
+    "rooms": {
+      "page": {
+        "badge": "Scene Hub",
+        "title": "Rooms Corridor",
+        "subtitle": "This corridor will become the fixed scene hub for installed Ghost House rooms.",
+        "panelTitle": "Current Stage",
+        "panelDescription": "The background and scene-debug wiring are ready. Door assignment and per-room routing will be attached in the next step."
+      }
+    },
     "analyze": {
       "page": {
         "connectedStatus": "Connected",
@@ -704,6 +713,8 @@
       "assistantLabel": "Assistant",
       "serverTitle": "Server Room",
       "serverLabel": "Server",
+      "roomsTitle": "Rooms Corridor",
+      "roomsLabel": "Rooms",
       "archivesTitle": "Archives Room",
       "archivesLabel": "Archives",
       "whisperTitle": "Whisper Room",

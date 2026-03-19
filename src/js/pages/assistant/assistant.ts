@@ -14,6 +14,14 @@ import { AppState } from "../../modules/app-state.js";
 import { SlotController, SlotState } from "../../modules/slot-controller.js";
 import { TrafficManager } from "../../modules/traffic-manager.js";
 import { ThemeManager, type ThemeId } from "../../ui/theme-manager.js";
+import {
+  createHiddenClassOverlayController,
+  createInlineStatusOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type InlineStatusOverlayController,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 import { isSceneUiMode } from "../../ui/ui-mode.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import { shellT } from "../../app/shell-i18n.js";
@@ -75,30 +83,29 @@ import {
 } from "../entrance/scene/scene-editor.js";
 import { resolveSceneAvatarSource } from "../entrance/scene/scene-avatar.js";
 import { applySceneDebugFlag } from "../entrance/scene/scene-debug.js";
+import { buildSceneCharacterRoster } from "../entrance/scene/scene-character-roster.js";
 import {
-  getSceneHotspotLabelId,
-  getSceneNodeKindForHotspot,
-  hasSceneHotspotLabel,
-  isSceneDebugSelectionForCharacter,
-  isSceneDebugSelectionForHotspot,
-  type EntranceSceneHotspotConfig,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
   type EntranceSceneMap,
 } from "../entrance/scene/scene-map.js";
 import {
   applyConnectButtonState,
-  updateOverlayView,
   updateServerStatusView,
   updateTrafficStatusView,
 } from "./view-helpers.js";
 import { SceneAlphaWindowFrameController } from "../../scene/alpha-window.js";
+import { dispatchSceneAction } from "../../scene/action-dispatcher.js";
 import { createSceneDebugStore } from "../../scene/debug-store.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../../scene/scene-debug-rooms.js";
-import { bindSceneBackZones } from "../../scene/back-zone.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../../scene/projection.js";
+import { renderSceneBackLayer } from "../../scene/renderers/back-layer.js";
+import { renderSceneCharacterLayer } from "../../scene/renderers/character-layer.js";
+import { renderSceneInteractiveLayer } from "../../scene/renderers/interactive-layer.js";
 import { syncSceneViewRuntime } from "../../scene/runtime.js";
 import {
-  getSceneCharacterRoleConfig,
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
 } from "../../scene/theme-pack.js";
@@ -235,8 +242,11 @@ export class AssistantController {
   opencodeSettingsBtn: HTMLButtonElement | null;
   characterOverlay: CharacterOverlay;
   memoryOverlay: MemoryOverlay;
+  webviewStatusOverlayController: InlineStatusOverlayController | null;
+  identityModalController: ManagedOverlayController | null;
   memoryBtn: HTMLButtonElement | null;
   testPanel: HTMLElement | null;
+  testPanelController: ManagedOverlayController | null;
   scenarioPanelState: ScenarioPanelState | null;
   providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
   _assistantSceneScreenOpen: boolean;
@@ -292,8 +302,11 @@ export class AssistantController {
     this.opencodeSettingsBtn = null;
     this.characterOverlay = new CharacterOverlay();
     this.memoryOverlay = new MemoryOverlay();
+    this.webviewStatusOverlayController = null;
+    this.identityModalController = null;
     this.memoryBtn = null;
     this.testPanel = null;
+    this.testPanelController = null;
     this.scenarioPanelState = null;
     this.providerTestProgressHandler = null;
     this._assistantSceneScreenOpen = false;
@@ -389,6 +402,44 @@ export class AssistantController {
 
     this.memoryBtn = document.getElementById("assistant-memory-btn") as HTMLButtonElement | null;
     this.testPanel = document.getElementById("ai0-test-side-panel");
+    const ai0WebviewOverlay = document.getElementById("ai0-webview-overlay");
+    const ai0WebviewMount = document.getElementById("ai0-webview-mount");
+    const identityOverlay = document.getElementById("assistant-identity-modal");
+    if (
+      ai0WebviewOverlay instanceof HTMLElement &&
+      ai0WebviewMount instanceof HTMLElement &&
+      this.webviewStatusOverlayController === null
+    ) {
+      this.webviewStatusOverlayController = createInlineStatusOverlayController({
+        id: "ai0-webview-overlay",
+        element: ai0WebviewOverlay,
+        kind: OVERLAY_KINDS.status,
+        blockedTarget: ai0WebviewMount,
+        stateClasses: ["is-empty", "is-disconnected", "is-connecting", "is-error"],
+      });
+    }
+    if (identityOverlay instanceof HTMLElement && this.identityModalController === null) {
+      this.identityModalController = createHiddenClassOverlayController({
+        id: "assistant-identity-modal",
+        element: identityOverlay,
+        kind: OVERLAY_KINDS.assistant,
+        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
+      });
+    }
+    if (this.testPanel instanceof HTMLElement && this.testPanelController === null) {
+      this.testPanelController = createHiddenClassOverlayController({
+        id: "ai0-test-side-panel",
+        element: this.testPanel,
+        kind: OVERLAY_KINDS.scenario,
+        exclusiveGroup: OVERLAY_GROUPS.assistantScenario,
+        lockScroll: false,
+        closeOnEscape: true,
+        onAfterClose: () => {
+          this.scenarioPanelState = null;
+          this.testPanel?.replaceChildren();
+        },
+      });
+    }
     this.characterOverlay.init();
     this.memoryOverlay.init();
     this._setupEventListeners(runtimeState?.desiredMode ?? "soft");
@@ -550,25 +601,26 @@ export class AssistantController {
       navigateToRoom: (roomId: string): void => {
         this._navigateToSceneDebugRoom(roomId);
       },
-      updateHotspot: (id, updater): void => {
-        this._assistantSceneMap.hotspots = this._assistantSceneMap.hotspots.map((hotspot) =>
-          hotspot.id === id ? updater(hotspot) : hotspot
+      updateInteractive: (id, updater): void => {
+        this._assistantSceneMap.interactives = this._assistantSceneMap.interactives.map(
+          (interactive) => (interactive.id === id ? updater(interactive) : interactive)
         );
         this._persistAssistantSceneMapDraft();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
-      updateLabelNode: (id, updater): void => {
-        this._assistantSceneMap.hotspots = this._assistantSceneMap.hotspots.map((hotspot) =>
-          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
+      updateBack: (id, updater): void => {
+        this._assistantSceneMap.backs = this._assistantSceneMap.backs.map((back) =>
+          back.id === id ? updater(back) : back
         );
         this._persistAssistantSceneMapDraft();
+        this._syncAssistantSceneVisibility();
         this._renderAssistantScene();
         this._assistantSceneEditor?.refresh();
       },
-      updateCharacterAnchor: (id, updater): void => {
-        this._assistantSceneMap.characterAnchors = this._assistantSceneMap.characterAnchors.map(
-          (anchor) => (anchor.id === id ? updater(anchor) : anchor)
+      updateCharacter: (id, updater): void => {
+        this._assistantSceneMap.characters = this._assistantSceneMap.characters.map((character) =>
+          character.id === id ? updater(character) : character
         );
         this._persistAssistantSceneMapDraft();
         this._renderAssistantScene();
@@ -615,72 +667,26 @@ export class AssistantController {
   }
 
   _renderAssistantSceneHotspots(): void {
-    const projection = this._getAssistantSceneProjection();
-    const hotspotBindings = [
-      {
-        elementId: "assistant-scene-door-hotspot",
-        hotspotId: "door-entrance",
+    const hotspotLayer = document.getElementById("assistant-scene-hotspots");
+    if (!(hotspotLayer instanceof HTMLElement)) {
+      return;
+    }
+
+    renderSceneInteractiveLayer({
+      layer: hotspotLayer,
+      nodes: getSceneInteractiveNodesForView(this._assistantSceneMap),
+      projection: this._getAssistantSceneProjection(),
+      cssVarPrefix: "assistant-scene-hotspot",
+      classNames: {
+        item: "assistant-scene__hotspot-item",
+        button: "assistant-scene__hotspot",
+        label: "assistant-scene__hotspot-label",
       },
-      {
-        elementId: "assistant-scene-screen-hotspot",
-        hotspotId: "screen-primary",
+      selection: this._assistantSceneSelection,
+      resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
+      onActivate: (node) => {
+        this._handleAssistantSceneInteractive(node.id);
       },
-    ] as const;
-
-    hotspotBindings.forEach(({ elementId, hotspotId }) => {
-      const hotspot = this._resolveAssistantSceneHotspot(hotspotId);
-      const button = document.getElementById(elementId);
-      if (hotspot === null || !(button instanceof HTMLButtonElement)) {
-        return;
-      }
-
-      const labelText = this._resolveAssistantSceneHotspotLabel(hotspot);
-      const showLabel = hasSceneHotspotLabel(hotspot);
-      const selected = isSceneDebugSelectionForHotspot(this._assistantSceneSelection, hotspot);
-      const label = button.querySelector<HTMLElement>(".assistant-scene__hotspot-label");
-
-      button.dataset["hotspotId"] = hotspot.id;
-      button.dataset["frameVariant"] = hotspot.frameVariant;
-      button.classList.toggle("is-selected", selected);
-      button.style.setProperty(
-        "--assistant-scene-hotspot-left",
-        `${projection.offsetX + hotspot.leftPx * projection.scale}px`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-top",
-        `${projection.offsetY + hotspot.topPx * projection.scale}px`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-width",
-        `${hotspot.widthPx * projection.scale}px`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-height",
-        `${hotspot.heightPx * projection.scale}px`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-frame-rotate",
-        `${hotspot.frameRotateDeg}deg`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-frame-perspective",
-        `${hotspot.framePerspectiveDeg}deg`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-hover-glow-hue",
-        `${hotspot.frameHoverGlowHueDeg}deg`
-      );
-      button.style.setProperty(
-        "--assistant-scene-hotspot-hover-glow-alpha",
-        `${hotspot.frameHoverGlowAlpha}`
-      );
-      button.ariaLabel = labelText;
-
-      if (label !== null) {
-        label.textContent = showLabel ? labelText : "";
-        label.hidden = !showLabel;
-        label.classList.toggle("is-selected", selected);
-      }
     });
   }
 
@@ -690,130 +696,48 @@ export class AssistantController {
       return;
     }
 
-    const anchor =
-      this._assistantSceneMap.characterAnchors.find((item) => item.id === "anchor-ai0") ?? null;
-    if (anchor === null) {
+    const characters = buildSceneCharacterRoster(
+      this._assistantSceneMap.characters,
+      this._assistantSceneMap.characterRosterPreset
+    );
+    if (characters.length === 0) {
       characterLayer.replaceChildren();
       return;
     }
 
     const renderToken = ++this._assistantSceneCharacterRenderToken;
-    const label = AppState.getNickname("ai0");
-    const avatarSource = await resolveSceneAvatarSource(this._getAssistantSceneAvatarSource());
-    if (renderToken !== this._assistantSceneCharacterRenderToken) {
-      return;
-    }
-
-    const projection = this._getAssistantSceneProjection();
-    const roleConfig = getSceneCharacterRoleConfig("assistant");
-    const depth = Number.isFinite(anchor.depth) ? Math.max(1, anchor.depth) : 1;
-    const sceneCharacter = document.createElement("div");
-    sceneCharacter.id = "assistant-scene-ai0-character";
-    sceneCharacter.className = "entrance-scene__character";
-    sceneCharacter.dataset["slot"] = "ai0";
-    sceneCharacter.dataset["characterId"] = "scene-assistant-ai0";
-    sceneCharacter.dataset["kind"] = "assistant";
-    sceneCharacter.dataset["role"] = "assistant";
-    sceneCharacter.dataset["variant"] = "assistant";
-    sceneCharacter.dataset["anchorId"] = anchor.id;
-    sceneCharacter.style.setProperty(
-      "--scene-character-left",
-      `${projection.offsetX + anchor.leftPx * projection.scale}px`
-    );
-    sceneCharacter.style.setProperty(
-      "--scene-character-bottom",
-      `${projection.offsetY + anchor.bottomPx * projection.scale}px`
-    );
-    sceneCharacter.style.setProperty("--scene-character-scale", String(anchor.scale));
-    sceneCharacter.style.setProperty("--scene-character-depth", String(depth));
-    sceneCharacter.style.setProperty(
-      "--scene-character-depth-scale",
-      String(this._getAssistantSceneDepthScale(depth))
-    );
-    sceneCharacter.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
-    sceneCharacter.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
-    sceneCharacter.style.setProperty("--scene-character-head-left", `${roleConfig.headLeftPct}%`);
-    sceneCharacter.style.setProperty("--scene-character-head-size", `${roleConfig.headSizePct}%`);
-    sceneCharacter.style.setProperty(
-      "--scene-character-avatar-scale",
-      String(roleConfig.avatarScale)
-    );
-    sceneCharacter.classList.toggle(
-      "is-selected",
-      isSceneDebugSelectionForCharacter(this._assistantSceneSelection, anchor)
-    );
-
-    if (this._assistantSceneEditor !== null) {
-      sceneCharacter.tabIndex = 0;
-      sceneCharacter.role = "button";
-      sceneCharacter.setAttribute("aria-label", label);
-    } else {
-      sceneCharacter.tabIndex = -1;
-      sceneCharacter.removeAttribute("role");
-      sceneCharacter.removeAttribute("aria-label");
-    }
-
-    const stage = document.createElement("div");
-    stage.className = "entrance-scene__character-stage";
-
-    const body = document.createElement("img");
-    body.className = "entrance-scene__character-body";
-    body.src = roleConfig.bodySrc;
-    body.alt = "";
-    body.ariaHidden = "true";
-    stage.appendChild(body);
-
-    const head = document.createElement("span");
-    head.className = "entrance-scene__character-head";
-    head.ariaHidden = "true";
-    if (avatarSource !== null) {
-      const avatar = document.createElement("img");
-      avatar.className = "entrance-scene__character-avatar";
-      avatar.src = avatarSource;
-      avatar.alt = "";
-      avatar.ariaHidden = "true";
-      head.appendChild(avatar);
-    } else {
-      const fallback = document.createElement("span");
-      fallback.className = "entrance-scene__character-head-fallback";
-      fallback.ariaHidden = "true";
-      fallback.textContent = toHeadLabel(label);
-      head.appendChild(fallback);
-    }
-    stage.appendChild(head);
-
-    const characterLabel = document.createElement("span");
-    characterLabel.className = "entrance-scene__character-label";
-    characterLabel.textContent = label;
-
-    const anchorMarker = document.createElement("span");
-    anchorMarker.className = "entrance-scene__character-anchor-marker";
-    anchorMarker.ariaHidden = String(!this._assistantSceneDebugEnabled);
-    anchorMarker.textContent = anchor.id;
-
-    sceneCharacter.append(stage, characterLabel, anchorMarker);
-    sceneCharacter.addEventListener("click", () => {
-      if (this._assistantSceneEditor === null) {
-        return;
-      }
-      this._assistantSceneSelection = { kind: "character", id: anchor.id };
-      this._assistantSceneEditor.refresh();
-      this._renderAssistantScene();
+    await renderSceneCharacterLayer({
+      layer: characterLayer,
+      characters,
+      projection: this._getAssistantSceneProjection(),
+      sceneDebugEnabled: this._assistantSceneDebugEnabled,
+      interactive: this._assistantSceneEditor !== null,
+      selectedCharacterId:
+        this._assistantSceneSelection?.kind === "character"
+          ? this._assistantSceneSelection.id
+          : null,
+      isStale: () => renderToken !== this._assistantSceneCharacterRenderToken,
+      getDepthScale: (depth) => this._getAssistantSceneDepthScale(depth),
+      resolveAvatarSource: async (character) => {
+        const avatarInput =
+          character.slot === "ai0"
+            ? getFirstNonEmpty(character.avatarSource, this._getAssistantSceneAvatarSource())
+            : character.avatarSource;
+        return await resolveSceneAvatarSource(avatarInput);
+      },
+      getNodeClassName: (character) =>
+        `entrance-scene__character assistant-scene__character is-${character.state}`,
+      getNodeId: (character) => (character.slot === "ai0" ? "assistant-scene-ai0-character" : null),
+      getFallbackHeadLabel: (character) => character.headLabel ?? toHeadLabel(character.label),
+      onActivate: (character) => {
+        if (this._assistantSceneEditor === null) {
+          return;
+        }
+        this._assistantSceneSelection = { kind: "character", id: character.anchorId };
+        this._assistantSceneEditor.refresh();
+        this._renderAssistantScene();
+      },
     });
-    sceneCharacter.addEventListener("keydown", (event: KeyboardEvent) => {
-      if (this._assistantSceneEditor === null) {
-        return;
-      }
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-      event.preventDefault();
-      this._assistantSceneSelection = { kind: "character", id: anchor.id };
-      this._assistantSceneEditor.refresh();
-      this._renderAssistantScene();
-    });
-
-    characterLayer.replaceChildren(sceneCharacter);
     this._syncAssistantSceneCharacterState();
   }
 
@@ -848,22 +772,6 @@ export class AssistantController {
     const normalizedDepth = Math.max(1, Number.isFinite(depth) ? depth : 1);
     const scaled = 1 - (normalizedDepth - 1) * 0.02;
     return Number(Math.max(0.75, scaled).toFixed(3));
-  }
-
-  _resolveAssistantSceneHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
-    return this._assistantSceneMap.hotspots.find((item) => item.id === hotspotId) ?? null;
-  }
-
-  _resolveAssistantSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
-    const customLabel =
-      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
-    if (customLabel !== "") {
-      return customLabel;
-    }
-    if (hotspot.labelKey !== "") {
-      return shellT(hotspot.labelKey);
-    }
-    return hotspot.id;
   }
 
   _persistAssistantSceneMapDraft(): void {
@@ -901,6 +809,30 @@ export class AssistantController {
         roomOpenClass: "is-scene-screen-open",
       },
     });
+
+    if (screenView instanceof HTMLElement) {
+      renderSceneBackLayer({
+        host: screenView,
+        node:
+          sceneActive && this._assistantSceneScreenOpen
+            ? getSceneBackNodeForView(this._assistantSceneMap, "primary")
+            : null,
+        projection: this._getAssistantSceneProjection(),
+        resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
+        onActivate: () => {
+          if (this._assistantSceneEditor !== null) {
+            const back = getSceneBackNodeForView(this._assistantSceneMap, "primary");
+            if (back !== null) {
+              this._assistantSceneSelection = { kind: "back", id: back.id };
+              this._assistantSceneEditor.refresh();
+            }
+            return;
+          }
+
+          this._setAssistantSceneScreenOpen(false);
+        },
+      });
+    }
 
     if (sceneActive) {
       this._assistantSceneFrameController?.refresh();
@@ -991,7 +923,7 @@ export class AssistantController {
     }
 
     input.value = AppState.getNickname("ai0");
-    overlay.classList.remove("is-hidden");
+    this.identityModalController?.open();
 
     requestAnimationFrame(() => {
       input.focus();
@@ -1000,8 +932,7 @@ export class AssistantController {
   }
 
   _closeIdentityNicknameModal(): void {
-    const { overlay } = this._getIdentityNicknameModalElements();
-    overlay?.classList.add("is-hidden");
+    this.identityModalController?.close();
   }
 
   _setupIdentityNicknameModalEvents(): void {
@@ -1559,50 +1490,42 @@ export class AssistantController {
   }
 
   _setupAssistantSceneEvents(): void {
-    const doorHotspot = document.getElementById("assistant-scene-door-hotspot");
-    const screenHotspot = document.getElementById("assistant-scene-screen-hotspot");
-    const sceneRoot = document.getElementById("assistant-scene-root");
+    return;
+  }
 
-    doorHotspot?.addEventListener("click", () => {
-      if (this._assistantSceneEditor !== null) {
-        const hotspot = this._resolveAssistantSceneHotspot("door-entrance");
-        if (hotspot === null) {
-          return;
-        }
-        this._assistantSceneSelection = {
-          kind: getSceneNodeKindForHotspot(hotspot),
-          id: hotspot.id,
-        };
-        this._assistantSceneEditor.refresh();
-        this._renderAssistantScene();
-        return;
-      }
-      this._setAssistantSceneScreenOpen(false);
-      this._navigateToPage("entrance");
-    });
-
-    screenHotspot?.addEventListener("click", () => {
-      if (this._assistantSceneEditor !== null) {
-        const hotspot = this._resolveAssistantSceneHotspot("screen-primary");
-        if (hotspot === null) {
-          return;
-        }
-        this._assistantSceneSelection = {
-          kind: getSceneNodeKindForHotspot(hotspot),
-          id: hotspot.id,
-        };
-        this._assistantSceneEditor.refresh();
-        this._renderAssistantScene();
-        return;
-      }
-      this._setAssistantSceneScreenOpen(true);
-    });
-
-    if (sceneRoot !== null) {
-      bindSceneBackZones(sceneRoot, () => {
-        this._setAssistantSceneScreenOpen(false);
-      });
+  _handleAssistantSceneInteractive(id: string): void {
+    const interactive = this._assistantSceneMap.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
+      return;
     }
+
+    if (this._assistantSceneEditor !== null) {
+      this._assistantSceneSelection = { kind: "interactive", id: interactive.id };
+      this._assistantSceneEditor.refresh();
+      this._renderAssistantScene();
+      return;
+    }
+
+    dispatchSceneAction(interactive.action, {
+      onNavigate: (page) => {
+        this._setAssistantSceneScreenOpen(false);
+        this._navigateToPage(page);
+      },
+      onSettings: (action) => {
+        this._setAssistantSceneScreenOpen(false);
+        openSceneSettingsPanel(action.panel);
+      },
+      onSettingsSceneClose: () => {
+        this._setAssistantSceneScreenOpen(false);
+      },
+      onScreen: (action) => {
+        this._setAssistantSceneScreenOpen(action.screen === "primary");
+      },
+      onWhisper: () => {},
+      onBack: () => {
+        this._setAssistantSceneScreenOpen(false);
+      },
+    });
   }
 
   _isConnected(): boolean {
@@ -1992,8 +1915,7 @@ export class AssistantController {
   }
 
   _closeTestPanel(): void {
-    this.scenarioPanelState = null;
-    this.testPanel?.classList.add("is-hidden");
+    this.testPanelController?.close();
   }
 
   _requestScenarioCancellation(runId: string | null): void {
@@ -2071,7 +1993,7 @@ export class AssistantController {
     const panel = this.testPanel;
     if (!state || !panel) return;
 
-    panel.classList.remove("is-hidden");
+    this.testPanelController?.open();
 
     const displayCommands =
       state.commands.length > 0 ? state.commands : (state.suite?.commands ?? []);
@@ -2336,13 +2258,17 @@ export class AssistantController {
   }
 
   _updateOverlay(
-    overlayEl: HTMLElement | null,
+    _overlayEl: HTMLElement | null,
     stateClass: string,
-    _icon: string,
+    icon: string,
     title: string,
     subtitle: string
   ): void {
-    updateOverlayView(overlayEl, stateClass, title, subtitle);
+    this.webviewStatusOverlayController?.setState({ stateClass, icon, title, subtitle });
+  }
+
+  _hideOverlay(_overlayEl: HTMLElement | null): void {
+    this.webviewStatusOverlayController?.setState(null);
   }
 
   _updateTrafficUI(trafficState: AssistantTrafficState | null): void {
@@ -2584,6 +2510,14 @@ export class AssistantController {
     this._assistantSceneResizeObserver = null;
     this._assistantSceneFrameController?.disconnect();
     this._assistantSceneFrameController = null;
+    this.webviewStatusOverlayController?.setState(null);
+    this.webviewStatusOverlayController?.destroy();
+    this.webviewStatusOverlayController = null;
+    this.identityModalController?.destroy();
+    this.identityModalController = null;
+    this.testPanelController?.destroy();
+    this.testPanelController = null;
+    this.characterOverlay.destroy();
     this.memoryOverlay.destroy();
   }
 }

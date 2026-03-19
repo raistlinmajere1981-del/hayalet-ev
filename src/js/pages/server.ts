@@ -10,14 +10,16 @@ import { ServerCommands } from "../modules/server-commands.js";
 import { AppI18n } from "../modules/i18n/index.js";
 import { ButtonStates } from "../ui/button-states.js";
 import { SceneAlphaWindowFrameController } from "../scene/alpha-window.js";
-import { bindSceneBackZones } from "../scene/back-zone.js";
+import { dispatchSceneAction } from "../scene/action-dispatcher.js";
 import { createSceneDebugStore } from "../scene/debug-store.js";
 import { navigateToScenePage, openSceneSettingsPanel } from "../scene/navigation.js";
 import { getCoverSceneProjectionFromElement } from "../scene/projection.js";
+import { renderSceneBackLayer } from "../scene/renderers/back-layer.js";
+import { renderSceneCharacterLayer } from "../scene/renderers/character-layer.js";
+import { renderSceneInteractiveLayer } from "../scene/renderers/interactive-layer.js";
 import { getActiveSceneDebugRoomId, SCENE_DEBUG_ROOMS } from "../scene/scene-debug-rooms.js";
 import { syncSceneViewRuntime } from "../scene/runtime.js";
 import {
-  getSceneCharacterRoleConfig,
   getSceneRoomBackgroundSrc,
   getSceneRoomViewPanelArtSrc,
 } from "../scene/theme-pack.js";
@@ -52,19 +54,16 @@ import {
   type TimelineState,
 } from "./server/timeline-controller.js";
 import { resolveSceneAvatarSource } from "./entrance/scene/scene-avatar.js";
-import { getSceneCharacterState } from "./entrance/scene/scene-character-state.js";
 import { applySceneDebugFlag } from "./entrance/scene/scene-debug.js";
+import { buildSceneCharacterRoster } from "./entrance/scene/scene-character-roster.js";
 import {
   EntranceSceneEditor,
   type EntranceSceneEditorSelection,
 } from "./entrance/scene/scene-editor.js";
 import {
-  getSceneHotspotLabelId,
-  getSceneNodeKindForHotspot,
-  hasSceneHotspotLabel,
-  isSceneDebugSelectionForCharacter,
-  isSceneDebugSelectionForHotspot,
-  type EntranceSceneHotspotConfig,
+  getSceneBackNodeForView,
+  getSceneInteractiveNodesForView,
+  resolveSceneNodeLabelText,
   type EntranceSceneMap,
 } from "./entrance/scene/scene-map.js";
 import { initServerControllerPage } from "./server/init-controller.js";
@@ -73,19 +72,7 @@ import type { TimelineEvent } from "./server-timeline.js";
 
 const TIMELINE_SESSION_BATCH = 3;
 const TIMELINE_TOP_THRESHOLD = 52;
-const SERVER_SCENE_SLOTS = ["ai1", "ai2"] as const;
 const SERVER_SCENE_DEBUG_STORE = createSceneDebugStore("server");
-
-function getFirstNonEmpty(...values: Array<string | null | undefined>): string | null {
-  for (const value of values) {
-    const normalized = value?.trim() ?? "";
-    if (normalized !== "") {
-      return normalized;
-    }
-  }
-
-  return null;
-}
 
 function toHeadLabel(label: string): string {
   const compact = label.replace(/\s+/g, "").trim().toUpperCase();
@@ -336,25 +323,25 @@ export class ServerController {
 
         this._navigateToPage(roomId);
       },
-      updateHotspot: (id, updater): void => {
-        this._serverSceneMap.hotspots = this._serverSceneMap.hotspots.map((hotspot) =>
-          hotspot.id === id ? updater(hotspot) : hotspot
+      updateInteractive: (id, updater): void => {
+        this._serverSceneMap.interactives = this._serverSceneMap.interactives.map((interactive) =>
+          interactive.id === id ? updater(interactive) : interactive
         );
         this.persistServerSceneMapDraft();
         this.renderServerScene();
         this._serverSceneEditor?.refresh();
       },
-      updateLabelNode: (id, updater): void => {
-        this._serverSceneMap.hotspots = this._serverSceneMap.hotspots.map((hotspot) =>
-          getSceneHotspotLabelId(hotspot.id) === id ? updater(hotspot) : hotspot
+      updateBack: (id, updater): void => {
+        this._serverSceneMap.backs = this._serverSceneMap.backs.map((back) =>
+          back.id === id ? updater(back) : back
         );
         this.persistServerSceneMapDraft();
-        this.renderServerScene();
+        this.syncServerSceneVisibility();
         this._serverSceneEditor?.refresh();
       },
-      updateCharacterAnchor: (id, updater): void => {
-        this._serverSceneMap.characterAnchors = this._serverSceneMap.characterAnchors.map(
-          (anchor) => (anchor.id === id ? updater(anchor) : anchor)
+      updateCharacter: (id, updater): void => {
+        this._serverSceneMap.characters = this._serverSceneMap.characters.map((character) =>
+          character.id === id ? updater(character) : character
         );
         this.persistServerSceneMapDraft();
         void this.renderServerSceneCharacters();
@@ -401,60 +388,26 @@ export class ServerController {
   }
 
   private renderServerSceneHotspots(): void {
-    const projection = this.getServerSceneProjection();
-    const hotspotBindings = [
-      {
-        elementId: "server-scene-terminal-hotspot",
-        hotspotId: "screen-primary",
+    const hotspotLayer = document.getElementById("server-scene-hotspots");
+    if (!(hotspotLayer instanceof HTMLElement)) {
+      return;
+    }
+
+    renderSceneInteractiveLayer({
+      layer: hotspotLayer,
+      nodes: getSceneInteractiveNodesForView(this._serverSceneMap),
+      projection: this.getServerSceneProjection(),
+      cssVarPrefix: "server-scene-hotspot",
+      classNames: {
+        item: "server-scene__hotspot-item",
+        button: "server-scene__hotspot",
+        label: "server-scene__hotspot-label",
       },
-      {
-        elementId: "server-scene-door-hotspot",
-        hotspotId: "door-entrance",
+      selection: this._serverSceneSelection,
+      resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
+      onActivate: (node) => {
+        this.handleServerSceneInteractive(node.id);
       },
-    ] as const;
-
-    hotspotBindings.forEach(({ elementId, hotspotId }) => {
-      const hotspot = this.resolveServerSceneHotspot(hotspotId);
-      const button = document.getElementById(elementId);
-      if (hotspot === null || !(button instanceof HTMLButtonElement)) {
-        return;
-      }
-
-      const labelText = this.resolveServerSceneHotspotLabel(hotspot);
-      const showLabel = hasSceneHotspotLabel(hotspot);
-      const selected = isSceneDebugSelectionForHotspot(this._serverSceneSelection, hotspot);
-      const label = button.querySelector<HTMLElement>(".server-scene__hotspot-label");
-
-      button.dataset["hotspotId"] = hotspot.id;
-      button.dataset["frameVariant"] = hotspot.frameVariant;
-      button.classList.toggle("is-selected", selected);
-      button.style.left = `${projection.offsetX + hotspot.leftPx * projection.scale}px`;
-      button.style.top = `${projection.offsetY + hotspot.topPx * projection.scale}px`;
-      button.style.width = `${hotspot.widthPx * projection.scale}px`;
-      button.style.height = `${hotspot.heightPx * projection.scale}px`;
-      button.style.setProperty(
-        "--server-scene-hotspot-frame-rotate",
-        `${hotspot.frameRotateDeg}deg`
-      );
-      button.style.setProperty(
-        "--server-scene-hotspot-frame-perspective",
-        `${hotspot.framePerspectiveDeg}deg`
-      );
-      button.style.setProperty(
-        "--server-scene-hotspot-hover-glow-hue",
-        `${hotspot.frameHoverGlowHueDeg}deg`
-      );
-      button.style.setProperty(
-        "--server-scene-hotspot-hover-glow-alpha",
-        `${hotspot.frameHoverGlowAlpha}`
-      );
-      button.ariaLabel = labelText;
-
-      if (label !== null) {
-        label.textContent = showLabel ? labelText : "";
-        label.hidden = !showLabel;
-        label.classList.toggle("is-selected", selected);
-      }
     });
   }
 
@@ -464,24 +417,6 @@ export class ServerController {
       sceneRoot instanceof HTMLElement ? sceneRoot : null,
       this._serverSceneMap.referenceSize
     );
-  }
-
-  private resolveServerSceneHotspot(hotspotId: string): EntranceSceneHotspotConfig | null {
-    return this._serverSceneMap.hotspots.find((hotspot) => hotspot.id === hotspotId) ?? null;
-  }
-
-  private resolveServerSceneHotspotLabel(hotspot: EntranceSceneHotspotConfig): string {
-    const customLabel =
-      typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText.trim() : "";
-    if (customLabel !== "") {
-      return customLabel;
-    }
-
-    if (hotspot.labelKey !== "") {
-      return shellT(hotspot.labelKey);
-    }
-
-    return hotspot.id;
   }
 
   private persistServerSceneMapDraft(): void {
@@ -497,58 +432,40 @@ export class ServerController {
   }
 
   private bindServerSceneInteractions(): void {
-    if (this._serverSceneBindingsReady) {
+    this._serverSceneBindingsReady = true;
+  }
+
+  private handleServerSceneInteractive(id: string): void {
+    const interactive = this._serverSceneMap.interactives.find((node) => node.id === id) ?? null;
+    if (interactive === null) {
       return;
     }
 
-    const terminalHotspot = document.getElementById("server-scene-terminal-hotspot");
-    const doorHotspot = document.getElementById("server-scene-door-hotspot");
-    const sceneRoot = document.getElementById("server-scene-root");
-
-    terminalHotspot?.addEventListener("click", () => {
-      if (this._serverSceneEditor !== null) {
-        const hotspot = this.resolveServerSceneHotspot("screen-primary");
-        if (hotspot === null) {
-          return;
-        }
-        this._serverSceneSelection = {
-          kind: getSceneNodeKindForHotspot(hotspot),
-          id: hotspot.id,
-        };
-        this._serverSceneEditor.refresh();
-        this.renderServerScene();
-        return;
-      }
-
-      this.setServerSceneScreenOpen(true);
-    });
-
-    doorHotspot?.addEventListener("click", () => {
-      if (this._serverSceneEditor !== null) {
-        const hotspot = this.resolveServerSceneHotspot("door-entrance");
-        if (hotspot === null) {
-          return;
-        }
-        this._serverSceneSelection = {
-          kind: getSceneNodeKindForHotspot(hotspot),
-          id: hotspot.id,
-        };
-        this._serverSceneEditor.refresh();
-        this.renderServerScene();
-        return;
-      }
-
-      this.setServerSceneScreenOpen(false);
-      this._navigateToPage("entrance");
-    });
-
-    if (sceneRoot !== null) {
-      bindSceneBackZones(sceneRoot, () => {
-        this.setServerSceneScreenOpen(false);
-      });
+    if (this._serverSceneEditor !== null) {
+      this._serverSceneSelection = { kind: "interactive", id: interactive.id };
+      this._serverSceneEditor.refresh();
+      this.renderServerScene();
+      return;
     }
 
-    this._serverSceneBindingsReady = true;
+    dispatchSceneAction(interactive.action, {
+      onNavigate: (page) => {
+        this.setServerSceneScreenOpen(false);
+        this._navigateToPage(page);
+      },
+      onSettings: (action) => {
+        this.setServerSceneScreenOpen(false);
+        openSceneSettingsPanel(action.panel);
+      },
+      onSettingsSceneClose: () => {},
+      onScreen: (action) => {
+        this.setServerSceneScreenOpen(action.screen === "primary");
+      },
+      onWhisper: () => {},
+      onBack: () => {
+        this.setServerSceneScreenOpen(false);
+      },
+    });
   }
 
   private setServerSceneScreenOpen(open: boolean): void {
@@ -575,6 +492,21 @@ export class ServerController {
       },
     });
 
+    if (screenView instanceof HTMLElement) {
+      renderSceneBackLayer({
+        host: screenView,
+        node:
+          sceneActive && this._serverSceneScreenOpen
+            ? getSceneBackNodeForView(this._serverSceneMap, "primary")
+            : null,
+        projection: this.getServerSceneProjection(),
+        resolveLabel: (node) => resolveSceneNodeLabelText(node, shellT),
+        onActivate: () => {
+          this.setServerSceneScreenOpen(false);
+        },
+      });
+    }
+
     if (!sceneActive) {
       return;
     }
@@ -589,156 +521,47 @@ export class ServerController {
     navigateToScenePage(page);
   }
 
-  private getServerSceneAvatarSource(slot: (typeof SERVER_SCENE_SLOTS)[number]): string | null {
-    const account = AppState.getAccountForSlot(slot);
-    return getFirstNonEmpty(account?.avatarPath, account?.avatar, AppState.getAvatar(slot));
-  }
-
   async renderServerSceneCharacters(): Promise<void> {
     const layer = document.getElementById("server-scene-characters");
     if (!(layer instanceof HTMLElement) || !isSceneUiMode()) {
       return;
     }
 
-    const roleConfig = getSceneCharacterRoleConfig("ai");
-    const visibleSlots = SERVER_SCENE_SLOTS.filter(
-      (slot) => AppState.getAccountForSlot(slot) !== null
+    const characters = buildSceneCharacterRoster(
+      this._serverSceneMap.characters,
+      this._serverSceneMap.characterRosterPreset
     );
-
-    if (visibleSlots.length === 0) {
+    if (characters.length === 0) {
       layer.replaceChildren();
       return;
     }
 
-    const projection = this.getServerSceneProjection();
     const renderToken = ++this._serverSceneCharacterRenderToken;
-    const avatarSources = await Promise.all(
-      visibleSlots.map(
-        async (slot) => await resolveSceneAvatarSource(this.getServerSceneAvatarSource(slot))
-      )
-    );
-
-    if (renderToken !== this._serverSceneCharacterRenderToken) {
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-
-    visibleSlots.forEach((slot, index) => {
-      if (AppState.getAccountForSlot(slot) === null) {
-        return;
-      }
-
-      const anchor =
-        this._serverSceneMap.characterAnchors.find((item) => item.preferredSlot === slot) ?? null;
-      if (anchor === null) {
-        return;
-      }
-
-      const label = AppState.getNickname(slot);
-      const avatarSource = avatarSources[index] ?? null;
-      const characterNode = document.createElement("div");
-      characterNode.className = `entrance-scene__character is-${getSceneCharacterState(slot)}`;
-      characterNode.dataset["slot"] = slot;
-      characterNode.dataset["characterId"] = `server-scene-${slot}`;
-      characterNode.dataset["kind"] = anchor.kind;
-      characterNode.dataset["role"] = "ai";
-      characterNode.dataset["variant"] = "account";
-      characterNode.dataset["anchorId"] = anchor.id;
-      characterNode.style.setProperty(
-        "--scene-character-left",
-        `${projection.offsetX + anchor.leftPx * projection.scale}px`
-      );
-      characterNode.style.setProperty(
-        "--scene-character-bottom",
-        `${projection.offsetY + anchor.bottomPx * projection.scale}px`
-      );
-      characterNode.style.setProperty("--scene-character-scale", String(anchor.scale));
-      characterNode.style.setProperty("--scene-character-depth", String(anchor.depth));
-      characterNode.style.setProperty("--scene-character-depth-scale", "1");
-      characterNode.style.setProperty("--scene-character-body-scale", String(roleConfig.bodyScale));
-      characterNode.style.setProperty("--scene-character-head-top", `${roleConfig.headTopPct}%`);
-      characterNode.style.setProperty("--scene-character-head-left", `${roleConfig.headLeftPct}%`);
-      characterNode.style.setProperty("--scene-character-head-size", `${roleConfig.headSizePct}%`);
-      characterNode.style.setProperty(
-        "--scene-character-avatar-scale",
-        String(roleConfig.avatarScale)
-      );
-      characterNode.classList.toggle(
-        "is-selected",
-        isSceneDebugSelectionForCharacter(this._serverSceneSelection, anchor)
-      );
-
-      if (this._serverSceneEditor !== null) {
-        characterNode.tabIndex = 0;
-        characterNode.role = "button";
-        characterNode.setAttribute("aria-label", label);
-        characterNode.removeAttribute("aria-hidden");
-      } else {
-        characterNode.tabIndex = -1;
-        characterNode.removeAttribute("role");
-        characterNode.removeAttribute("aria-label");
-        characterNode.setAttribute("aria-hidden", "true");
-      }
-
-      const stage = document.createElement("div");
-      stage.className = "entrance-scene__character-stage";
-
-      const body = document.createElement("img");
-      body.className = "entrance-scene__character-body";
-      body.src = roleConfig.bodySrc;
-      body.alt = "";
-      body.ariaHidden = "true";
-      stage.appendChild(body);
-
-      const head = document.createElement("span");
-      head.className = "entrance-scene__character-head";
-      head.ariaHidden = "true";
-      if (avatarSource !== null) {
-        const avatar = document.createElement("img");
-        avatar.className = "entrance-scene__character-avatar";
-        avatar.src = avatarSource;
-        avatar.alt = "";
-        avatar.ariaHidden = "true";
-        head.appendChild(avatar);
-      } else {
-        const fallback = document.createElement("span");
-        fallback.className = "entrance-scene__character-head-fallback";
-        fallback.ariaHidden = "true";
-        fallback.textContent = toHeadLabel(label);
-        head.appendChild(fallback);
-      }
-      stage.appendChild(head);
-
-      const characterLabel = document.createElement("span");
-      characterLabel.className = "entrance-scene__character-label";
-      characterLabel.textContent = label;
-
-      characterNode.append(stage, characterLabel);
-      characterNode.addEventListener("click", () => {
+    await renderSceneCharacterLayer({
+      layer,
+      characters,
+      projection: this.getServerSceneProjection(),
+      sceneDebugEnabled: this._serverSceneDebugEnabled,
+      interactive: this._serverSceneEditor !== null,
+      selectedCharacterId:
+        this._serverSceneSelection?.kind === "character" ? this._serverSceneSelection.id : null,
+      isStale: () => renderToken !== this._serverSceneCharacterRenderToken,
+      getDepthScale: () => 1,
+      resolveAvatarSource: async (character) => {
+        return await resolveSceneAvatarSource(character.avatarSource);
+      },
+      getNodeClassName: (character) =>
+        `entrance-scene__character server-scene__character is-${character.state}`,
+      getFallbackHeadLabel: (character) => character.headLabel ?? toHeadLabel(character.label),
+      onActivate: (character) => {
         if (this._serverSceneEditor === null) {
           return;
         }
-        this._serverSceneSelection = { kind: "character", id: anchor.id };
+        this._serverSceneSelection = { kind: "character", id: character.anchorId };
         this._serverSceneEditor.refresh();
         this.renderServerScene();
-      });
-      characterNode.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (this._serverSceneEditor === null) {
-          return;
-        }
-        if (event.key !== "Enter" && event.key !== " ") {
-          return;
-        }
-        event.preventDefault();
-        this._serverSceneSelection = { kind: "character", id: anchor.id };
-        this._serverSceneEditor.refresh();
-        this.renderServerScene();
-      });
-      fragment.appendChild(characterNode);
+      },
     });
-
-    layer.replaceChildren(fragment);
   }
 
   async runSelectedCommand(): Promise<void> {

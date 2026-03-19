@@ -12,6 +12,14 @@ import { deliverToAssistant } from "../../modules/assistant-delivery.js";
 import { ProviderRegistry } from "../../modules/webview/provider-registry.js";
 import { WebviewManager } from "../../modules/webview-manager.js";
 import {
+  createHiddenClassOverlayController,
+  createInlineStatusOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type InlineStatusOverlayController,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
+import {
   buildScenarioCompletionMessage,
   buildScenarioProgressSummary,
   buildScenarioStatusCounts,
@@ -87,6 +95,8 @@ export class WebviewPanel {
   loadLogState: Record<string, { lastStart: number; lastStop: number }>;
   sessionUrlSaveTimers: Record<SlotType, ReturnType<typeof setTimeout> | null>;
   scenarioOverlayState: ScenarioOverlayState | null;
+  webviewStatusOverlayControllers: Partial<Record<SlotType, InlineStatusOverlayController>>;
+  scenarioOverlayControllers: Partial<Record<SlotType, ManagedOverlayController>>;
   providerTestProgressHandler: ((event: ProviderTestProgressEvent) => void) | null;
 
   constructor() {
@@ -102,11 +112,64 @@ export class WebviewPanel {
       ai2: null,
     };
     this.scenarioOverlayState = null;
+    this.webviewStatusOverlayControllers = {};
+    this.scenarioOverlayControllers = {};
     this.providerTestProgressHandler = null;
   }
 
   init(): void {
+    this.setupWebviewStatusOverlayControllers();
+    this.setupScenarioOverlayControllers();
     this.setupEventListeners();
+  }
+
+  setupWebviewStatusOverlayControllers(): void {
+    (["ai1", "ai2"] as SlotType[]).forEach((slot) => {
+      if (this.webviewStatusOverlayControllers[slot] !== undefined) {
+        return;
+      }
+
+      const overlayEl = document.getElementById(`${slot}-webview-overlay`);
+      const mountEl = document.getElementById(`${slot}-webview-mount`);
+      if (!(overlayEl instanceof HTMLElement) || !(mountEl instanceof HTMLElement)) {
+        return;
+      }
+
+      this.webviewStatusOverlayControllers[slot] = createInlineStatusOverlayController({
+        id: `${slot}-webview-overlay`,
+        element: overlayEl,
+        kind: OVERLAY_KINDS.status,
+        blockedTarget: mountEl,
+        stateClasses: ["is-empty", "is-disconnected", "is-connecting", "is-error"],
+      });
+    });
+  }
+
+  setupScenarioOverlayControllers(): void {
+    (["ai1", "ai2"] as SlotType[]).forEach((slot) => {
+      if (this.scenarioOverlayControllers[slot] !== undefined) {
+        return;
+      }
+
+      const overlayEl = document.getElementById(`${slot}-scenario-overlay`);
+      if (!(overlayEl instanceof HTMLElement)) {
+        return;
+      }
+
+      this.scenarioOverlayControllers[slot] = createHiddenClassOverlayController({
+        id: `${slot}-scenario-overlay`,
+        element: overlayEl,
+        kind: OVERLAY_KINDS.scenario,
+        exclusiveGroup: OVERLAY_GROUPS.entranceScenario,
+        lockScroll: false,
+        onAfterClose: () => {
+          overlayEl.innerHTML = "";
+          overlayEl.className = "webview-overlay is-hidden scenario-slot-overlay";
+          const mountEl = document.getElementById(`${slot}-webview-mount`);
+          mountEl?.classList.remove("webview-content-blocked");
+        },
+      });
+    });
   }
 
   setupEventListeners(): void {
@@ -463,15 +526,7 @@ export class WebviewPanel {
   }
 
   private resetScenarioOverlayState(state: ScenarioOverlayState): void {
-    const overlayEl = document.getElementById(`${state.hostSlot}-scenario-overlay`);
-    if (overlayEl) {
-      overlayEl.innerHTML = "";
-      overlayEl.className = "webview-overlay is-hidden scenario-slot-overlay";
-    }
-
-    const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
-    mountEl?.classList.remove("webview-content-blocked");
-
+    this.scenarioOverlayControllers[state.hostSlot]?.close();
     this.scenarioOverlayState = null;
   }
 
@@ -557,8 +612,8 @@ export class WebviewPanel {
     const mountEl = document.getElementById(`${state.hostSlot}-webview-mount`);
     if (!overlayEl || !mountEl) return;
 
+    this.scenarioOverlayControllers[state.hostSlot]?.open();
     overlayEl.className = "webview-overlay scenario-slot-overlay scenario-overlay";
-    overlayEl.classList.remove("is-hidden");
     mountEl.classList.add("webview-content-blocked");
 
     const displayCommands =
@@ -1084,9 +1139,9 @@ export class WebviewPanel {
     for (const provider of providers) {
       const state = this.getSlotState(settings, provider);
       const webviewEl = document.getElementById(`${provider}-webview`);
-      const overlayEl = document.getElementById(`${provider}-webview-overlay`);
       const urlDisplay = document.getElementById(`${provider}-url-display`);
       const hasScenarioOverlay = this.isScenarioOverlayHost(provider);
+      const overlayController = this.webviewStatusOverlayControllers[provider];
 
       if (hasScenarioOverlay) {
         this.setDevtoolsEnabled(provider, state.connected);
@@ -1098,6 +1153,7 @@ export class WebviewPanel {
         if (webviewEl) {
           webviewEl.classList.toggle("is-hidden", !(state.connected || state.connecting));
         }
+        overlayController?.setState(null);
         this.renderScenarioOverlay();
         continue;
       }
@@ -1108,39 +1164,36 @@ export class WebviewPanel {
         this.setSyncButtonEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
         if (webviewEl) webviewEl.classList.add("is-hidden");
-        if (overlayEl) {
-          overlayEl.className = "webview-overlay is-empty";
-          const title = overlayEl.querySelector(".overlay-title");
-          const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = AppI18n.t("entrance.webview.noAccount.title");
-          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.noAccount.subtitle");
-        }
+        overlayController?.setState({
+          stateClass: "is-empty",
+          icon: "🤖",
+          title: entranceWebviewT("noAccount.title"),
+          subtitle: entranceWebviewT("noAccount.subtitle"),
+        });
         continue;
       }
 
       if (!state.connected && !state.connecting) {
         this.setDevtoolsEnabled(provider, false);
         if (urlDisplay) urlDisplay.textContent = "";
-        if (overlayEl) {
-          overlayEl.className = "webview-overlay is-disconnected";
-          const title = overlayEl.querySelector(".overlay-title");
-          const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = AppI18n.t("entrance.webview.disconnected.title");
-          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.disconnected.subtitle");
-        }
+        overlayController?.setState({
+          stateClass: "is-disconnected",
+          icon: "⚡",
+          title: entranceWebviewT("disconnected.title"),
+          subtitle: entranceWebviewT("disconnected.subtitle"),
+        });
         if (webviewEl) webviewEl.classList.add("is-hidden");
         continue;
       }
 
       if (state.connecting) {
         this.setDevtoolsEnabled(provider, false);
-        if (overlayEl) {
-          overlayEl.className = "webview-overlay is-connecting";
-          const title = overlayEl.querySelector(".overlay-title");
-          const subtitle = overlayEl.querySelector(".overlay-subtitle");
-          if (title) title.textContent = AppI18n.t("entrance.webview.connecting.title");
-          if (subtitle) subtitle.textContent = AppI18n.t("entrance.webview.connecting.subtitle");
-        }
+        overlayController?.setState({
+          stateClass: "is-connecting",
+          icon: "🔄",
+          title: entranceWebviewT("connecting.title"),
+          subtitle: entranceWebviewT("connecting.subtitle"),
+        });
         const mountId = `${provider}-webview-mount`;
         const mountEl = document.getElementById(mountId);
         if (webviewEl && mountEl && !mountEl.contains(webviewEl)) {
@@ -1156,9 +1209,7 @@ export class WebviewPanel {
       this.setTestButtonEnabled(provider, true);
       this.setSyncButtonEnabled(provider, this.hasVerifiedSyncScenario(provider));
 
-      if (overlayEl) {
-        overlayEl.classList.add("is-hidden");
-      }
+      overlayController?.setState(null);
 
       const mountId = `${provider}-webview-mount`;
       const mountEl = document.getElementById(mountId);
@@ -1482,6 +1533,18 @@ export class WebviewPanel {
         clearTimeout(timer);
         this.sessionUrlSaveTimers[slot] = null;
       }
+    });
+
+    (Object.keys(this.webviewStatusOverlayControllers) as SlotType[]).forEach((slot) => {
+      this.webviewStatusOverlayControllers[slot]?.setState(null);
+      this.webviewStatusOverlayControllers[slot]?.destroy();
+      delete this.webviewStatusOverlayControllers[slot];
+    });
+
+    (Object.keys(this.scenarioOverlayControllers) as SlotType[]).forEach((slot) => {
+      this.scenarioOverlayControllers[slot]?.close();
+      this.scenarioOverlayControllers[slot]?.destroy();
+      delete this.scenarioOverlayControllers[slot];
     });
   }
 }

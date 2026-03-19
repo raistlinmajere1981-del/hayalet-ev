@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("scene debug store defines assistant, server, and settings defaults through one generic config map", () => {
+test("scene debug store defines assistant, server, rooms, and settings defaults through one generic config map", () => {
   const debugStoreSource = readFileSync("src/js/scene/debug-store.ts", "utf8");
 
   assert.match(
@@ -12,6 +12,10 @@ test("scene debug store defines assistant, server, and settings defaults through
   assert.match(
     debugStoreSource,
     /server:\s*\{[\s\S]*DEFAULT_SERVER_SCENE_MAP[\s\S]*normalizeServerSceneMap/
+  );
+  assert.match(
+    debugStoreSource,
+    /rooms:\s*\{[\s\S]*DEFAULT_ROOMS_SCENE_MAP[\s\S]*normalizeRoomsSceneMap/
   );
   assert.match(
     debugStoreSource,
@@ -29,14 +33,17 @@ test("scene debug store owns draft persistence and reads storage keys from the t
   assert.match(debugStoreSource, /getSceneDebugDraftStorageKey/);
   assert.match(
     manifestSource,
-    /editableRoomIds:\s*\["entrance",\s*"analyze",\s*"assistant",\s*"server",\s*"settings"\]/
+    /editableRoomIds:\s*\["entrance",\s*"analyze",\s*"assistant",\s*"server",\s*"rooms",\s*"settings"\]/
   );
   assert.match(
     manifestSource,
-    /draftStorageKeys:\s*\{[\s\S]*entrance:[\s\S]*server:[\s\S]*settings:/
+    /draftStorageKeys:\s*\{[\s\S]*entrance:[\s\S]*server:[\s\S]*rooms:[\s\S]*settings:/
   );
   assert.doesNotMatch(sceneMapSource, /loadEntranceSceneMapDraft/);
   assert.doesNotMatch(sceneMapSource, /saveEntranceSceneMapDraft/);
   assert.doesNotMatch(sceneMapSource, /clearEntranceSceneMapDraft/);
   assert.doesNotMatch(sceneMapSource, /scene-map-draft-v1/);
+  assert.match(debugStoreSource, /Array\.isArray\(parsed\.interactives\)/);
+  assert.match(debugStoreSource, /Array\.isArray\(parsed\.backs\)/);
+  assert.match(debugStoreSource, /Array\.isArray\(parsed\.characters\)/);
 });

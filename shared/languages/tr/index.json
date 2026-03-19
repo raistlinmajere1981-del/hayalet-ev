@@ -53,6 +53,15 @@
         "sessionListReadFailed": "Session listesi okunamadı: {{message}}"
       }
     },
+    "rooms": {
+      "page": {
+        "badge": "Scene Merkezi",
+        "title": "Odalar Koridoru",
+        "subtitle": "Bu koridor, Hayalet Ev'e eklenen odalar için sabit scene merkezi olacak.",
+        "panelTitle": "Mevcut Aşama",
+        "panelDescription": "Arka plan ve scene-debug bağlantısı hazır. Kapı atamaları ile oda yönlendirmeleri bir sonraki adımda bağlanacak."
+      }
+    },
     "analyze": {
       "page": {
         "connectedStatus": "Bağlı",
@@ -704,6 +713,8 @@
       "assistantLabel": "Asistan",
       "serverTitle": "Sunucu Odası",
       "serverLabel": "Sunucu",
+      "roomsTitle": "Odalar Koridoru",
+      "roomsLabel": "Odalar",
       "archivesTitle": "Arşiv Odası",
       "archivesLabel": "Arşiv",
       "whisperTitle": "Fısıltı Odası",

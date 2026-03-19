@@ -7,6 +7,7 @@ import { AppI18n } from "../../modules/i18n/index.js";
 import { Logger } from "../../modules/logger/index.js";
 import { SettingsManager } from "../../modules/settings-manager.js";
 import { resolveIpcErrorMessage } from "../../modules/ipc-errors.js";
+import { OVERLAY_GROUPS, OVERLAY_KINDS } from "../../ui/overlay-system.js";
 import { Toast } from "../../ui/toast-manager.js";
 import { getOpencodePreferences, normalizeOpencodePort } from "./opencode-preferences.js";
 
@@ -471,6 +472,8 @@ export async function openOpencodeSettingsModal(
     title: assistantT("opencodeDoctor.settingsModal.title"),
     content,
     size: "medium",
+    overlayKind: OVERLAY_KINDS.assistant,
+    overlayGroup: OVERLAY_GROUPS.assistantTools,
     buttons: [
       { label: AppI18n.t("shell.common.cancel"), variant: "secondary" },
       {

@@ -1,5 +1,11 @@
 // NOTE: Opened from the Assistant page; uses memory-* IPC channels for shared memory.
 import { AppI18n } from "../../modules/i18n/index.js";
+import {
+  createHiddenClassOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 
 interface MemoryItem {
   id: string;
@@ -66,6 +72,7 @@ function parseTags(value: string | null | undefined): string[] {
 
 export class MemoryOverlay {
   private overlay: HTMLElement | null = null;
+  private overlayController: ManagedOverlayController | null = null;
   private closeBtn: HTMLElement | null = null;
   private searchInput: HTMLInputElement | null = null;
   private resultCount: HTMLElement | null = null;
@@ -105,6 +112,8 @@ export class MemoryOverlay {
   }
 
   destroy(): void {
+    this.overlayController?.destroy();
+    this.overlayController = null;
     this.overlay = null;
     this.closeBtn = null;
     this.searchInput = null;
@@ -112,6 +121,14 @@ export class MemoryOverlay {
 
   init(): void {
     this.overlay = document.getElementById("memory-overlay");
+    if (this.overlay instanceof HTMLElement && this.overlayController === null) {
+      this.overlayController = createHiddenClassOverlayController({
+        id: "memory-overlay",
+        element: this.overlay,
+        kind: OVERLAY_KINDS.assistant,
+        exclusiveGroup: OVERLAY_GROUPS.assistantTools,
+      });
+    }
     this.closeBtn = document.getElementById("memory-overlay-close");
     this.searchInput = document.getElementById("mem-search-input") as HTMLInputElement | null;
     this.resultCount = document.getElementById("mem-result-count");
@@ -192,12 +209,12 @@ export class MemoryOverlay {
 
   open(): void {
     if (!this.overlay) return;
-    this.overlay.classList.remove("is-hidden");
+    this.overlayController?.open();
     void this._loadAndRender();
   }
 
   close(): void {
-    this.overlay?.classList.add("is-hidden");
+    this.overlayController?.close();
   }
 
   private async _loadAndRender(): Promise<void> {

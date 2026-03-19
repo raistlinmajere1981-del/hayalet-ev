@@ -1,4 +1,10 @@
 import { AppState } from "../../modules/app-state.js";
+import {
+  createHiddenClassOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 
 export interface MessageActionPayload {
   provider: string;
@@ -8,10 +14,19 @@ export interface MessageActionPayload {
 export type MessageAction = "read" | "prepend" | "append";
 type ActionCallback = () => void;
 
-let readModalEl: HTMLElement | null = null;
+let readModalController: ManagedOverlayController | null = null;
 
 export function initReadModal(): void {
-  readModalEl = document.getElementById("read-modal");
+  const readModalEl = document.getElementById("read-modal");
+  if (readModalEl instanceof HTMLElement && readModalController === null) {
+    readModalController = createHiddenClassOverlayController({
+      id: "analyze-read-modal",
+      element: readModalEl,
+      kind: OVERLAY_KINDS.workspace,
+      exclusiveGroup: OVERLAY_GROUPS.workspace,
+      syncAriaHidden: false,
+    });
+  }
   const closeBtn = document.getElementById("read-modal-close");
   closeBtn?.addEventListener("click", hideReadModal);
 }
@@ -47,7 +62,7 @@ export function applyMessageAction(
 }
 
 export function showReadModal(payload: MessageActionPayload): void {
-  if (!readModalEl) return;
+  if (readModalController === null) return;
 
   const body = document.getElementById("read-modal-body");
   if (body) {
@@ -55,9 +70,9 @@ export function showReadModal(payload: MessageActionPayload): void {
     body.scrollTop = 0;
   }
 
-  readModalEl.classList.remove("is-hidden");
+  readModalController.open();
 }
 
 function hideReadModal(): void {
-  readModalEl?.classList.add("is-hidden");
+  readModalController?.close();
 }

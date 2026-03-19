@@ -16,7 +16,6 @@ import { UserPanel } from "./entrance/user-panel.js";
 import { SlotPanel } from "./entrance/slot-panel.js";
 import { Us1Panel } from "./entrance/us1-panel.js";
 import { AccountPanel } from "./entrance/account-panel.js";
-import { WhisperPanel } from "./entrance/whisper-panel.js";
 import { WebviewPanel } from "./entrance/webview-panel.js";
 import { setupEntranceLiveLogOverlay } from "./entrance/live-log-overlay.js";
 import { EntranceSceneController } from "./entrance/scene/scene-controller.js";
@@ -32,7 +31,6 @@ export class EntranceHallController {
   slotPanelAi2: SlotPanel;
   us1Panel: Us1Panel;
   accountPanel: AccountPanel;
-  whisperPanel: WhisperPanel;
   webviewPanel: WebviewPanel;
   sceneController: EntranceSceneController;
   _unsubSettings: (() => void) | null = null;
@@ -48,7 +46,6 @@ export class EntranceHallController {
     this.slotPanelAi2 = new SlotPanel("ai2", SettingsManager);
     this.us1Panel = new Us1Panel(SettingsManager);
     this.accountPanel = new AccountPanel(SettingsManager);
-    this.whisperPanel = new WhisperPanel();
     this.webviewPanel = new WebviewPanel();
     this.sceneController = new EntranceSceneController(
       createSceneEntranceBridge({
@@ -76,7 +73,6 @@ export class EntranceHallController {
     this.slotPanelAi2.init();
     this.us1Panel.init();
     this.accountPanel.init();
-    this.whisperPanel.init();
     this.webviewPanel.init();
     this.sceneController.init();
 
@@ -189,7 +185,6 @@ export class EntranceHallController {
     this.accountPanel.render();
     this.slotPanelAi1.render();
     this.slotPanelAi2.render();
-    void this.whisperPanel.render();
     this.webviewPanel.onLocaleChanged();
     this.sceneController.syncScene();
     this.updateUI();
@@ -547,7 +542,6 @@ export class EntranceHallController {
       this.updateUserStatus(userType);
     });
     this.us1Panel.render();
-    void this.whisperPanel.render();
   }
 
   async onShow(): Promise<void> {

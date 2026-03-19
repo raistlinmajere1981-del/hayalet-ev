@@ -1,13 +1,15 @@
 import { buildRemoteEmailAccountId } from "@shared/archive.js";
 import { getRemoteEmailAccounts, isAiProviderAccount } from "@shared/settings.js";
 import type { Account } from "@shared/settings.js";
+import { FileManager } from "../../../modules/file-manager.js";
 import { AppState } from "../../../modules/app-state.js";
+import type { SceneCharacterRosterPreset } from "../../../scene/schema.js";
 import { getSceneCharacterRoleConfig } from "../../../scene/theme-pack.js";
 
 import type { SceneCharacterKind, SceneCharacterRole } from "./scene-character-role.js";
 import {
   DEFAULT_ENTRANCE_SCENE_MAP,
-  type EntranceSceneCharacterAnchorConfig,
+  type EntranceSceneCharacterConfig,
 } from "./scene-map.js";
 import {
   getSceneCharacterState,
@@ -15,7 +17,7 @@ import {
   type SceneCharacterState,
 } from "./scene-character-state.js";
 
-type SceneCharacterAnchor = EntranceSceneCharacterAnchorConfig;
+type SceneCharacterAnchor = EntranceSceneCharacterConfig;
 
 interface Us1SceneBinding {
   accountId: string;
@@ -25,6 +27,8 @@ interface Us1SceneBinding {
   avatar?: string;
   avatarPath?: string;
 }
+
+const ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH = "data/shared/assistant.png";
 
 function getSceneBindingAvatarFields(source: {
   avatar?: string;
@@ -138,6 +142,16 @@ function getFirstNonEmpty(...values: Array<string | null | undefined>): string |
   return null;
 }
 
+function getAssistantCustomAvatarPath(): string {
+  const dataDir = FileManager.getPath("data");
+  if (dataDir === "") {
+    return ASSISTANT_CUSTOM_AVATAR_RELATIVE_PATH;
+  }
+
+  const normalized = dataDir.replace(/[\\/]+$/g, "");
+  return `${normalized}/shared/assistant.png`;
+}
+
 function getUs1ActiveBindings(): Us1SceneBinding[] {
   const settings = AppState.getSettings();
   if (settings === null) {
@@ -200,7 +214,7 @@ function getUs1SceneBinding(): Us1SceneBinding | null {
 }
 
 function getAiAnchorQueue(anchors: readonly SceneCharacterAnchor[]): SceneCharacterAnchor[] {
-  const aiAnchors = anchors.filter((anchor) => anchor.kind === "ai");
+  const aiAnchors = anchors.filter((anchor) => anchor.characterKind === "ai");
   const ordered: SceneCharacterAnchor[] = [];
 
   const ai1Anchor = aiAnchors.find((anchor) => anchor.preferredSlot === "ai1");
@@ -306,6 +320,7 @@ function createAssistantCharacterDescriptor(
     avatarSource: getFirstNonEmpty(
       assistantAccount?.avatarPath,
       assistantAccount?.avatar,
+      getAssistantCustomAvatarPath(),
       AppState.getAvatar("ai0"),
       "src/assets/default.png"
     ),
@@ -365,12 +380,32 @@ function createUs1CharacterDescriptor(
   };
 }
 
+export function filterSceneCharacterRosterByPreset(
+  roster: readonly SceneCharacterDescriptor[],
+  preset: SceneCharacterRosterPreset
+): SceneCharacterDescriptor[] {
+  switch (preset) {
+    case "assistant-only":
+      return roster.filter((character) => character.kind === "assistant");
+    case "user-only":
+      return roster.filter((character) => character.kind === "user");
+    case "connected-plus-user":
+      return roster.filter(
+        (character) => character.kind === "user" || character.state === "connected" || character.state === "loading" || character.state === "thinking"
+      );
+    case "all-characters":
+    default:
+      return [...roster];
+  }
+}
+
 export function buildSceneCharacterRoster(
-  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_MAP.characterAnchors
+  anchors: readonly SceneCharacterAnchor[] = DEFAULT_ENTRANCE_SCENE_MAP.characters,
+  preset: SceneCharacterRosterPreset = DEFAULT_ENTRANCE_SCENE_MAP.characterRosterPreset
 ): SceneCharacterDescriptor[] {
   const roster: SceneCharacterDescriptor[] = [];
 
-  const userAnchor = anchors.find((anchor) => anchor.kind === "user");
+  const userAnchor = anchors.find((anchor) => anchor.characterKind === "user");
   if (userAnchor !== undefined) {
     roster.push(createUserCharacterDescriptor(userAnchor));
   }
@@ -386,12 +421,12 @@ export function buildSceneCharacterRoster(
     roster.push(createAiCharacterDescriptor(account, anchor, index));
   });
 
-  const assistantAnchor = anchors.find((anchor) => anchor.kind === "assistant");
+  const assistantAnchor = anchors.find((anchor) => anchor.characterKind === "assistant");
   if (assistantAnchor !== undefined) {
     roster.push(createAssistantCharacterDescriptor(assistantAnchor));
   }
 
-  const us1Anchor = anchors.find((anchor) => anchor.kind === "us1");
+  const us1Anchor = anchors.find((anchor) => anchor.characterKind === "us1");
   if (us1Anchor !== undefined) {
     const us1Descriptor = createUs1CharacterDescriptor(us1Anchor);
     if (us1Descriptor !== null) {
@@ -399,5 +434,8 @@ export function buildSceneCharacterRoster(
     }
   }
 
-  return roster.sort((left, right) => left.depth - right.depth);
+  return filterSceneCharacterRosterByPreset(
+    roster.sort((left, right) => left.depth - right.depth),
+    preset
+  );
 }

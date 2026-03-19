@@ -5,11 +5,13 @@ import {
   DEFAULT_ANALYZE_SCENE_MAP,
   DEFAULT_ASSISTANT_SCENE_MAP,
   DEFAULT_ENTRANCE_SCENE_MAP,
+  DEFAULT_ROOMS_SCENE_MAP,
   DEFAULT_SERVER_SCENE_MAP,
   DEFAULT_SETTINGS_SCENE_MAP,
   normalizeAnalyzeSceneMap,
   normalizeAssistantSceneMap,
   normalizeEntranceSceneMap,
+  normalizeRoomsSceneMap,
   normalizeServerSceneMap,
   normalizeSettingsSceneMap,
   serializeEntranceSceneMap,
@@ -53,6 +55,11 @@ const SCENE_DEBUG_STORE_CONFIG: Record<SceneDebugEditableRoomId, SceneDebugStore
     storageKey: getSceneDebugDraftStorageKey("server"),
     normalizer: normalizeServerSceneMap,
   },
+  rooms: {
+    defaultMap: DEFAULT_ROOMS_SCENE_MAP,
+    storageKey: getSceneDebugDraftStorageKey("rooms"),
+    normalizer: normalizeRoomsSceneMap,
+  },
   settings: {
     defaultMap: DEFAULT_SETTINGS_SCENE_MAP,
     storageKey: getSceneDebugDraftStorageKey("settings"),
@@ -70,8 +77,9 @@ function loadSceneDebugDraft(config: SceneDebugStoreConfig): EntranceSceneMap | 
     const parsed = JSON.parse(raw) as Partial<EntranceSceneMap>;
     if (
       parsed.referenceSize === undefined ||
-      !Array.isArray(parsed.hotspots) ||
-      !Array.isArray(parsed.characterAnchors)
+      !Array.isArray(parsed.interactives) ||
+      !Array.isArray(parsed.backs) ||
+      !Array.isArray(parsed.characters)
     ) {
       return null;
     }

@@ -15,6 +15,7 @@ import loadingDoor01 from "../loading/loading_door_01.webp";
 import loadingDoor02 from "../loading/loading_door_02.webp";
 import loadingDoor03 from "../loading/loading_door_03.webp";
 import loadingDoor04 from "../loading/loading_door_04.webp";
+import roomsBackground from "../rooms/rooms_bg_main.webp";
 import serverBackground from "../server/server_bg_main.webp";
 import serverTerminalPanel from "../server/server_terminal.webp";
 import settingsAccountsPanel from "../settings/settings_accounts.webp";
@@ -67,24 +68,15 @@ export const CASTLE_SCENE_THEME_PACK = {
     },
     fallbackRole: "ai",
   },
-  ui: {
-    backZones: {
-      revealMode: "hover-and-focus",
-      sides: ["left", "right"],
-      labels: {
-        left: "back",
-        right: "back",
-      },
-    },
-  },
   debug: {
     defaultRoomId: "entrance",
-    editableRoomIds: ["entrance", "analyze", "assistant", "server", "settings"],
+    editableRoomIds: ["entrance", "analyze", "assistant", "server", "rooms", "settings"],
     draftStorageKeys: {
       entrance: "entrance-scene-map-draft-v1",
       analyze: "analyze-scene-map-draft-v1",
       assistant: "assistant-scene-map-draft-v1",
       server: "server-scene-map-draft-v1",
+      rooms: "rooms-scene-map-draft-v1",
       settings: "settings-scene-map-draft-v1",
     },
   },
@@ -119,6 +111,9 @@ export const CASTLE_SCENE_THEME_PACK = {
           panelArtSrc: serverTerminalPanel,
         },
       },
+    },
+    rooms: {
+      backgroundSrc: roomsBackground,
     },
     settings: {
       backgroundSrc: settingsBackground,

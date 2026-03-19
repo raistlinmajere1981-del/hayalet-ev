@@ -2,6 +2,12 @@ import { escapeHtml } from "./chat-utils.js";
 import type { ByIdFn } from "./host-helpers.js";
 import { getIntlLocale, t } from "./i18n.js";
 import type { OpencodeUiModelPreferences, RuntimeState, SelectItem } from "./types.js";
+import {
+  createManagedOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "../../ui/overlay-system.js";
 
 interface ModelSettingsOverlayOptions {
   runtime: RuntimeState;
@@ -173,19 +179,45 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
     favoritesOnly: false,
     showHidden: false,
   };
+  let overlayController: ManagedOverlayController | null = null;
+
+  const ensureOverlayController = (): ManagedOverlayController | null => {
+    if (overlayController !== null) {
+      return overlayController;
+    }
+
+    const modal = options.byId<HTMLElement>("model-settings-modal");
+    if (!(modal instanceof HTMLElement)) {
+      return null;
+    }
+
+    overlayController = createManagedOverlayController({
+      id: "opencode-ui-model-settings-modal",
+      element: modal,
+      kind: OVERLAY_KINDS.modal,
+      exclusiveGroup: OVERLAY_GROUPS.opencodeUi,
+      isOpen: () => modal.classList.contains("is-active"),
+      setOpen: (open: boolean) => {
+        modal.classList.toggle("is-active", open);
+        modal.setAttribute("aria-hidden", String(!open));
+      },
+    });
+    modal.setAttribute("aria-hidden", String(!modal.classList.contains("is-active")));
+
+    return overlayController;
+  };
 
   const open = (): void => {
-    const modal = options.byId<HTMLElement>("model-settings-modal");
-    if (modal == null) {
+    const controller = ensureOverlayController();
+    if (controller === null) {
       return;
     }
-    modal.classList.add("is-active");
+    controller.open();
     refresh();
   };
 
   const close = (): void => {
-    const modal = options.byId<HTMLElement>("model-settings-modal");
-    modal?.classList.remove("is-active");
+    ensureOverlayController()?.close();
   };
 
   const refresh = (): void => {
@@ -293,12 +325,6 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
     options.byId<HTMLButtonElement>("model-settings-close")?.addEventListener("click", close);
     options.byId<HTMLElement>("model-settings-backdrop")?.addEventListener("click", close);
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        close();
-      }
-    });
-
     options.byId<HTMLInputElement>("model-settings-search")?.addEventListener("input", (event) => {
       ui.searchQuery = (event.target as HTMLInputElement).value;
       refresh();
@@ -355,6 +381,7 @@ export function createModelSettingsOverlayController(options: ModelSettingsOverl
 
   return {
     init(): void {
+      ensureOverlayController();
       bindActionHandlers();
       refresh();
     },

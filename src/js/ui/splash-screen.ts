@@ -3,6 +3,12 @@ import { Logger } from "../modules/logger/index.js";
 import { MINIMUM_DISPLAY_TIME, HIDE_ANIMATION_DURATION } from "@ui-constants";
 import { AppI18n } from "../modules/i18n/index.js";
 import { getSceneLoadingTheme } from "../scene/theme-pack.js";
+import {
+  createManagedOverlayController,
+  OVERLAY_GROUPS,
+  OVERLAY_KINDS,
+  type ManagedOverlayController,
+} from "./overlay-system.js";
 import { getCurrentUiMode, isSceneUiMode, type UiMode } from "./ui-mode.js";
 
 interface SplashElements {
@@ -36,6 +42,8 @@ let isInitialized: boolean = false;
 let sceneAnimationTimer: ReturnType<typeof setInterval> | null = null;
 let sceneFrameIndex: number = 0;
 let sceneAnimationCompleted: boolean = false;
+let splashOverlayController: ManagedOverlayController | null = null;
+let splashOverlayElement: HTMLElement | null = null;
 
 let sceneStatusQueue: string[] = [];
 let sceneStatusIndex = 0;
@@ -259,6 +267,36 @@ function createSplashElement(): HTMLElement {
   return splash;
 }
 
+function ensureSplashOverlayController(container: HTMLElement): void {
+  if (splashOverlayElement === container && splashOverlayController !== null) {
+    splashOverlayController.sync();
+    return;
+  }
+
+  splashOverlayController?.destroy();
+  splashOverlayElement = container;
+  splashOverlayController = createManagedOverlayController({
+    id: ELEMENT_IDS.container,
+    element: container,
+    kind: OVERLAY_KINDS.loading,
+    exclusiveGroup: OVERLAY_GROUPS.loading,
+    closeOnEscape: false,
+    isOpen: () => container.isConnected && !container.classList.contains("is-hidden"),
+    setOpen: (open: boolean) => {
+      container.classList.toggle("is-hidden", !open);
+      if (open) {
+        container.classList.remove("splash-hiding");
+      }
+    },
+  });
+}
+
+function disposeSplashOverlayController(): void {
+  splashOverlayController?.destroy();
+  splashOverlayController = null;
+  splashOverlayElement = null;
+}
+
 const splashScreen = {
   show(): void {
     let container = getElements().container;
@@ -270,7 +308,8 @@ const splashScreen = {
       getElements();
     }
 
-    container.classList.remove("is-hidden", "splash-hiding");
+    ensureSplashOverlayController(container);
+    splashOverlayController?.open();
     showTime = Date.now();
     isVisible = true;
     currentProgress = 0;
@@ -301,6 +340,7 @@ const splashScreen = {
     isVisible = false;
     isInitialized = false;
     elements = { container: null, progress: null, status: null, logo: null };
+    disposeSplashOverlayController();
 
     logSplashDebug("splashRemoved", undefined, {
       totalTime: Date.now() - showTime,

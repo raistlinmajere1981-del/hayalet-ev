@@ -1,17 +1,18 @@
 import type {
+  EntranceSceneBackConfig,
+  EntranceSceneCharacterConfig,
+  EntranceSceneInteractiveConfig,
   EntranceSceneLabelFontPreset,
-  EntranceSceneCharacterAnchorConfig,
-  EntranceSceneHotspotConfig,
   EntranceSceneMap,
   SceneDebugNodeListEntry,
   SceneDebugNodeSelection,
 } from "./scene-map.js";
 import {
   ENTRANCE_SCENE_LABEL_FONT_PRESETS,
-  getSceneHotspotLabelId,
   listSceneDebugNodes,
+  resolveSceneBackForSelection,
   resolveSceneCharacterForSelection,
-  resolveSceneHotspotForSelection,
+  resolveSceneInteractiveForSelection,
 } from "./scene-map.js";
 import { t as entranceT } from "../i18n.js";
 
@@ -30,43 +31,46 @@ interface EntranceSceneEditorCallbacks {
   getActiveRoomId(): string;
   setSelection(selection: EntranceSceneEditorSelection): void;
   navigateToRoom(roomId: string): void;
-  updateHotspot(
+  updateInteractive(
     id: string,
-    updater: (hotspot: EntranceSceneHotspotConfig) => EntranceSceneHotspotConfig
+    updater: (node: EntranceSceneInteractiveConfig) => EntranceSceneInteractiveConfig
   ): void;
-  updateLabelNode(
+  updateBack(id: string, updater: (node: EntranceSceneBackConfig) => EntranceSceneBackConfig): void;
+  updateCharacter(
     id: string,
-    updater: (hotspot: EntranceSceneHotspotConfig) => EntranceSceneHotspotConfig
-  ): void;
-  updateCharacterAnchor(
-    id: string,
-    updater: (anchor: EntranceSceneCharacterAnchorConfig) => EntranceSceneCharacterAnchorConfig
+    updater: (node: EntranceSceneCharacterConfig) => EntranceSceneCharacterConfig
   ): void;
   resetDraft(): void;
   copySceneMap(): Promise<void>;
 }
 
-const HOTSPOT_DOOR_FIELDS = [
-  ["leftPx", "X"],
-  ["topPx", "Y"],
-  ["widthPx", "W"],
-  ["heightPx", "H"],
-
-  ["frameRotateDeg", "Frame R"],
-  ["framePerspectiveDeg", "Frame P"],
-  ["frameHoverGlowHueDeg", "Glow H"],
-  ["frameHoverGlowAlpha", "Glow A"],
+const INTERACTIVE_FIELDS = [
+  ["rect.leftPx", "X"],
+  ["rect.topPx", "Y"],
+  ["rect.widthPx", "W"],
+  ["rect.heightPx", "H"],
+  ["frame.rotateDeg", "Frame R"],
+  ["frame.perspectiveDeg", "Frame P"],
+  ["frame.hoverGlowHueDeg", "Glow H"],
+  ["frame.hoverGlowAlpha", "Glow A"],
 ] as const;
 
-const HOTSPOT_LABEL_FIELDS = [
-  ["labelCenterXPx", "Label X"],
-  ["labelTopPx", "Label Y"],
-  ["labelWidthPx", "Label W"],
-  ["labelHeightPx", "Label H"],
-  ["labelRotateDeg", "Label R"],
-  ["labelFontSizePx", "Text"],
-  ["labelLetterSpacingPx", "Track"],
-  ["labelFramePerspectiveDeg", "Label P"],
+const BACK_FIELDS = [
+  ["rect.leftPx", "X"],
+  ["rect.topPx", "Y"],
+  ["rect.widthPx", "W"],
+  ["rect.heightPx", "H"],
+] as const;
+
+const LABEL_FIELDS = [
+  ["label.centerXPx", "Label X"],
+  ["label.topPx", "Label Y"],
+  ["label.widthPx", "Label W"],
+  ["label.heightPx", "Label H"],
+  ["label.rotateDeg", "Label R"],
+  ["label.fontSizePx", "Text"],
+  ["label.letterSpacingPx", "Track"],
+  ["label.framePerspectiveDeg", "Label P"],
 ] as const;
 
 const CHARACTER_FIELDS = [
@@ -77,9 +81,8 @@ const CHARACTER_FIELDS = [
 ] as const;
 
 const DEBUG_NODE_SECTIONS = [
-  { kind: "door", title: "Doors" },
-  { kind: "object", title: "Objects" },
-  { kind: "label", title: "Labels" },
+  { kind: "interactive", title: "Interactives" },
+  { kind: "back", title: "Back Areas" },
   { kind: "character", title: "Characters" },
 ] as const;
 
@@ -117,10 +120,12 @@ export class EntranceSceneEditor {
         left: previousPanel.scrollLeft,
       };
     }
+
     const panel = document.createElement("aside");
     panel.className = "entrance-scene__editor-panel";
 
-    const selectedHotspot = resolveSceneHotspotForSelection(sceneMap, selection);
+    const selectedInteractive = resolveSceneInteractiveForSelection(sceneMap, selection);
+    const selectedBack = resolveSceneBackForSelection(sceneMap, selection);
     const selectedCharacter = resolveSceneCharacterForSelection(sceneMap, selection);
 
     panel.innerHTML = `
@@ -168,7 +173,7 @@ export class EntranceSceneEditor {
           .join("")}
       </div>
       <div class="entrance-scene__editor-selected">
-        ${this.renderSelectedBlock(selection, selectedHotspot, selectedCharacter)}
+        ${this.renderSelectedBlock(selection, selectedInteractive, selectedBack, selectedCharacter)}
       </div>
       <div class="entrance-scene__editor-help">
         <span>Arrow: move</span>
@@ -194,57 +199,103 @@ export class EntranceSceneEditor {
 
   private renderSelectedBlock(
     selection: EntranceSceneEditorSelection,
-    hotspot: EntranceSceneHotspotConfig | null,
-    character: EntranceSceneCharacterAnchorConfig | null
+    interactive: EntranceSceneInteractiveConfig | null,
+    back: EntranceSceneBackConfig | null,
+    character: EntranceSceneCharacterConfig | null
   ): string {
-    if (selection === null || (hotspot === null && character === null)) {
-      return `<p class="entrance-scene__editor-empty">Select a door, object, label, or character node from the scene.</p>`;
+    if (selection === null || (interactive === null && back === null && character === null)) {
+      return `<p class="entrance-scene__editor-empty">Select an interactive area, back area, or character node from the scene.</p>`;
     }
 
-    if (hotspot !== null && (selection.kind === "door" || selection.kind === "object")) {
-      const title = selection.kind === "door" ? "Door" : "Object";
+    if (interactive !== null) {
       return `
-        <div class="entrance-scene__editor-selected-title">${title}: ${hotspot.id}</div>
-        <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Frame</div>
-          <div class="entrance-scene__editor-grid">
-            ${HOTSPOT_DOOR_FIELDS.map(([field, label]) =>
-              this.renderControlRow(selection.kind, hotspot.id, field, label, hotspot[field])
-            ).join("")}
-          </div>
-        </div>
+        <div class="entrance-scene__editor-selected-title">Interactive: ${interactive.id}</div>
+        ${this.renderNumericSection("Frame", "interactive", interactive.id, INTERACTIVE_FIELDS, interactive)}
+        ${this.renderLabelSection("interactive", interactive.id, interactive)}
       `;
     }
 
-    if (hotspot !== null && selection.kind === "label") {
-      const labelId = getSceneHotspotLabelId(hotspot.id);
+    if (back !== null) {
       return `
-        <div class="entrance-scene__editor-selected-title">Label: ${labelId}</div>
-        <div class="entrance-scene__editor-section">
-          <div class="entrance-scene__editor-section-title">Layout</div>
-          <div class="entrance-scene__editor-grid">
-            ${HOTSPOT_LABEL_FIELDS.map(([field, label]) =>
-              this.renderControlRow("label", labelId, field, label, hotspot[field])
-            ).join("")}
-          </div>
-          ${this.renderLabelTextRow(labelId, hotspot)}
-          ${this.renderFontPresetRow(labelId, hotspot)}
-        </div>
+        <div class="entrance-scene__editor-selected-title">Back: ${back.id}</div>
+        ${this.renderNumericSection("Placement", "back", back.id, BACK_FIELDS, back)}
+        ${this.renderLabelSection("back", back.id, back)}
       `;
     }
 
-    if (character !== null && selection.kind === "character") {
+    if (character !== null) {
       return `
         <div class="entrance-scene__editor-selected-title">Character: ${character.id}</div>
         <div class="entrance-scene__editor-grid">
           ${CHARACTER_FIELDS.map(([field, label]) =>
-            this.renderControlRow("character", character.id, field, label, character[field])
+            this.renderControlRow("character", character.id, field, label, this.readNumericField(character, field))
           ).join("")}
         </div>
       `;
     }
 
     return "";
+  }
+
+  private renderNumericSection(
+    title: string,
+    kind: "interactive" | "back",
+    id: string,
+    fields: readonly (readonly [string, string])[],
+    node: EntranceSceneInteractiveConfig | EntranceSceneBackConfig
+  ): string {
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-title">${title}</div>
+        <div class="entrance-scene__editor-grid">
+          ${fields.map(([field, label]) =>
+            this.renderControlRow(kind, id, field, label, this.readNumericField(node, field))
+          ).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  private renderLabelSection(
+    kind: "interactive" | "back",
+    id: string,
+    node: EntranceSceneInteractiveConfig | EntranceSceneBackConfig
+  ): string {
+    const value = typeof node.label.customText === "string" ? node.label.customText : "";
+    const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
+    return `
+      <div class="entrance-scene__editor-section">
+        <div class="entrance-scene__editor-section-title">Label</div>
+        <div class="entrance-scene__editor-grid">
+          ${LABEL_FIELDS.map(([field, label]) =>
+            this.renderControlRow(kind, id, field, label, this.readNumericField(node, field))
+          ).join("")}
+        </div>
+        <label class="entrance-scene__editor-row entrance-scene__editor-row--stack">
+          <span class="entrance-scene__editor-row-label">Custom label</span>
+          <input
+            type="text"
+            class="entrance-scene__editor-input"
+            value="${this.escapeAttribute(value)}"
+            placeholder="${placeholder}"
+            data-editor-action="text"
+            data-kind="${kind}"
+            data-id="${id}"
+          />
+        </label>
+        <label class="entrance-scene__editor-row">
+          <span class="entrance-scene__editor-row-label">Visible</span>
+          <input
+            type="checkbox"
+            ${node.label.visible ? "checked" : ""}
+            data-editor-action="toggle-label"
+            data-kind="${kind}"
+            data-id="${id}"
+          />
+        </label>
+        ${this.renderFontPresetRow(kind, id, node.label.fontPreset)}
+      </div>
+    `;
   }
 
   private renderControlRow(
@@ -306,33 +357,18 @@ export class EntranceSceneEditor {
     `;
   }
 
-  private renderLabelTextRow(id: string, hotspot: EntranceSceneHotspotConfig): string {
-    const value = typeof hotspot.labelCustomText === "string" ? hotspot.labelCustomText : "";
-    const placeholder = this.escapeAttribute(entranceT("scene.editor.customLabelPlaceholder"));
-    return `
-      <label class="entrance-scene__editor-row entrance-scene__editor-row--stack">
-        <span class="entrance-scene__editor-row-label">Custom label</span>
-        <input
-          type="text"
-          class="entrance-scene__editor-input"
-          value="${this.escapeAttribute(value)}"
-          placeholder="${placeholder}"
-          data-editor-action="text"
-          data-id="${id}"
-          data-field="labelCustomText"
-        />
-      </label>
-    `;
-  }
-
-  private renderFontPresetRow(id: string, hotspot: EntranceSceneHotspotConfig): string {
+  private renderFontPresetRow(
+    kind: "interactive" | "back",
+    id: string,
+    fontPreset: EntranceSceneLabelFontPreset
+  ): string {
     return `
       <div class="entrance-scene__editor-row">
         <span class="entrance-scene__editor-row-label">Font</span>
         <div class="entrance-scene__editor-row-controls">
-          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${id}" data-direction="-1">-</button>
-          <span class="entrance-scene__editor-row-value entrance-scene__editor-row-value--wide">${this.formatFontPreset(hotspot.labelFontPreset)}</span>
-          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-id="${id}" data-direction="1">+</button>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-kind="${kind}" data-id="${id}" data-direction="-1">-</button>
+          <span class="entrance-scene__editor-row-value entrance-scene__editor-row-value--wide">${this.formatFontPreset(fontPreset)}</span>
+          <button type="button" class="entrance-scene__editor-adjust" data-editor-action="cycle-font" data-kind="${kind}" data-id="${id}" data-direction="1">+</button>
         </div>
       </div>
     `;
@@ -374,22 +410,33 @@ export class EntranceSceneEditor {
     if (action === "select") {
       const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"];
-      if (
-        (kind === "door" || kind === "object" || kind === "label" || kind === "character") &&
-        id !== undefined
-      ) {
+      if ((kind === "interactive" || kind === "back" || kind === "character") && id !== undefined) {
         this.callbacks.setSelection({ kind, id });
       }
       return;
     }
 
     if (action === "cycle-font") {
+      const kind = actionButton.dataset["kind"];
       const id = actionButton.dataset["id"] ?? "";
       const direction = Number(actionButton.dataset["direction"] ?? "0");
-      this.callbacks.updateLabelNode(id, (hotspot) => ({
-        ...hotspot,
-        labelFontPreset: this.shiftFontPreset(hotspot.labelFontPreset, direction),
-      }));
+      if (kind === "interactive") {
+        this.callbacks.updateInteractive(id, (node) => ({
+          ...node,
+          label: {
+            ...node.label,
+            fontPreset: this.shiftFontPreset(node.label.fontPreset, direction),
+          },
+        }));
+      } else if (kind === "back") {
+        this.callbacks.updateBack(id, (node) => ({
+          ...node,
+          label: {
+            ...node.label,
+            fontPreset: this.shiftFontPreset(node.label.fontPreset, direction),
+          },
+        }));
+      }
       return;
     }
 
@@ -407,25 +454,23 @@ export class EntranceSceneEditor {
     if (!(target instanceof HTMLInputElement)) {
       return;
     }
-    if (target.dataset["editorAction"] !== "text") {
-      return;
-    }
+
+    const action = target.dataset["editorAction"] ?? "";
+    const kind = target.dataset["kind"] ?? "";
     const id = target.dataset["id"] ?? "";
-    const field = target.dataset["field"] ?? "";
-    if (id === "" || field !== "labelCustomText") {
+    if (id === "") {
       return;
     }
-    const nextValue = target.value.trim();
-    this.callbacks.updateLabelNode(id, (hotspot) => {
-      if (nextValue === "") {
-        const { labelCustomText: _labelCustomText, ...nextHotspot } = hotspot;
-        return nextHotspot;
-      }
-      return {
-        ...hotspot,
-        labelCustomText: nextValue,
-      };
-    });
+
+    if (action === "text") {
+      const nextValue = target.value.trim();
+      this.updateLabelText(kind, id, nextValue);
+      return;
+    }
+
+    if (action === "toggle-label") {
+      this.updateLabelVisible(kind, id, target.checked);
+    }
   };
 
   private handleKeydown = (event: KeyboardEvent): void => {
@@ -444,68 +489,25 @@ export class EntranceSceneEditor {
 
     const step = event.shiftKey ? this.step * 10 : this.step;
 
-    if (selection.kind === "door" || selection.kind === "object") {
+    if (selection.kind === "interactive" || selection.kind === "back") {
       if (event.key === "ArrowLeft") {
         event.preventDefault();
-        this.adjustField(selection.kind, selection.id, "leftPx", -step);
+        this.adjustField(selection.kind, selection.id, "rect.leftPx", -step);
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        this.adjustField(selection.kind, selection.id, "leftPx", step);
+        this.adjustField(selection.kind, selection.id, "rect.leftPx", step);
       } else if (event.key === "ArrowUp") {
         event.preventDefault();
-        this.adjustField(selection.kind, selection.id, "topPx", -step);
+        this.adjustField(selection.kind, selection.id, "rect.topPx", -step);
       } else if (event.key === "ArrowDown") {
         event.preventDefault();
-        this.adjustField(selection.kind, selection.id, "topPx", step);
-      } else if (event.key === "[") {
+        this.adjustField(selection.kind, selection.id, "rect.topPx", step);
+      } else if (selection.kind === "interactive" && event.key === "[") {
         event.preventDefault();
-        this.adjustField(
-          selection.kind,
-          selection.id,
-          "frameRotateDeg",
-          this.getAdjustDelta("frameRotateDeg", -1)
-        );
-      } else if (event.key === "]") {
+        this.adjustField("interactive", selection.id, "frame.rotateDeg", this.getAdjustDelta("frame.rotateDeg", -1));
+      } else if (selection.kind === "interactive" && event.key === "]") {
         event.preventDefault();
-        this.adjustField(
-          selection.kind,
-          selection.id,
-          "frameRotateDeg",
-          this.getAdjustDelta("frameRotateDeg", 1)
-        );
-      }
-      return;
-    }
-
-    if (selection.kind === "label") {
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        this.adjustField("label", selection.id, "labelCenterXPx", -step);
-      } else if (event.key === "ArrowRight") {
-        event.preventDefault();
-        this.adjustField("label", selection.id, "labelCenterXPx", step);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        this.adjustField("label", selection.id, "labelTopPx", -step);
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        this.adjustField("label", selection.id, "labelTopPx", step);
-      } else if (event.key === "[") {
-        event.preventDefault();
-        this.adjustField(
-          "label",
-          selection.id,
-          "labelRotateDeg",
-          this.getAdjustDelta("labelRotateDeg", -1)
-        );
-      } else if (event.key === "]") {
-        event.preventDefault();
-        this.adjustField(
-          "label",
-          selection.id,
-          "labelRotateDeg",
-          this.getAdjustDelta("labelRotateDeg", 1)
-        );
+        this.adjustField("interactive", selection.id, "frame.rotateDeg", this.getAdjustDelta("frame.rotateDeg", 1));
       }
       return;
     }
@@ -534,11 +536,7 @@ export class EntranceSceneEditor {
   private handlePointerDown = (event: PointerEvent): void => {
     const target = event.target as HTMLElement | null;
     const dragHandle = target?.closest<HTMLElement>("[data-editor-drag-handle]") ?? null;
-    if (dragHandle === null) {
-      return;
-    }
-
-    if (target?.closest("button") !== null) {
+    if (dragHandle === null || target?.closest("button") !== null) {
       return;
     }
 
@@ -563,11 +561,7 @@ export class EntranceSceneEditor {
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
-    if (!this.callbacks.isActive()) {
-      return;
-    }
-
-    if (this.dragState?.pointerId !== event.pointerId) {
+    if (!this.callbacks.isActive() || this.dragState?.pointerId !== event.pointerId) {
       return;
     }
 
@@ -586,11 +580,7 @@ export class EntranceSceneEditor {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    if (!this.callbacks.isActive()) {
-      return;
-    }
-
-    if (this.dragState?.pointerId !== event.pointerId) {
+    if (!this.callbacks.isActive() || this.dragState?.pointerId !== event.pointerId) {
       return;
     }
 
@@ -600,45 +590,113 @@ export class EntranceSceneEditor {
   };
 
   private adjustField(kind: string | undefined, id: string, field: string, delta: number): void {
-    if (kind === "door" || kind === "object") {
-      this.callbacks.updateHotspot(id, (hotspot) => ({
-        ...hotspot,
-        [field]: this.roundField(
-          field,
-          hotspot[field as keyof EntranceSceneHotspotConfig] as number,
-          delta
-        ),
-      }));
+    if (kind === "interactive") {
+      this.callbacks.updateInteractive(id, (node) => this.patchNumericField(node, field, delta));
       return;
     }
 
-    if (kind === "label") {
-      this.callbacks.updateLabelNode(id, (hotspot) => ({
-        ...hotspot,
-        [field]: this.roundField(
-          field,
-          hotspot[field as keyof EntranceSceneHotspotConfig] as number,
-          delta
-        ),
-      }));
+    if (kind === "back") {
+      this.callbacks.updateBack(id, (node) => this.patchNumericField(node, field, delta));
       return;
     }
 
     if (kind === "character") {
-      this.callbacks.updateCharacterAnchor(id, (anchor) => ({
-        ...anchor,
-        [field]: this.roundField(
-          field,
-          anchor[field as keyof EntranceSceneCharacterAnchorConfig] as number,
-          delta
-        ),
+      this.callbacks.updateCharacter(id, (node) => this.patchNumericField(node, field, delta));
+    }
+  }
+
+  private updateLabelText(kind: string, id: string, nextValue: string): void {
+    if (kind === "interactive") {
+      this.callbacks.updateInteractive(id, (node) => {
+        const label = { ...node.label };
+        if (nextValue === "") {
+          delete label.customText;
+        } else {
+          label.customText = nextValue;
+        }
+        return {
+          ...node,
+          label,
+        };
+      });
+      return;
+    }
+
+    if (kind === "back") {
+      this.callbacks.updateBack(id, (node) => {
+        const label = { ...node.label };
+        if (nextValue === "") {
+          delete label.customText;
+        } else {
+          label.customText = nextValue;
+        }
+        return {
+          ...node,
+          label,
+        };
+      });
+    }
+  }
+
+  private updateLabelVisible(kind: string, id: string, visible: boolean): void {
+    if (kind === "interactive") {
+      this.callbacks.updateInteractive(id, (node) => ({
+        ...node,
+        label: {
+          ...node.label,
+          visible,
+        },
+      }));
+      return;
+    }
+
+    if (kind === "back") {
+      this.callbacks.updateBack(id, (node) => ({
+        ...node,
+        label: {
+          ...node.label,
+          visible,
+        },
       }));
     }
   }
 
+  private patchNumericField<T extends object>(node: T, fieldPath: string, delta: number): T {
+    const segments = fieldPath.split(".");
+    const nextNode = structuredClone(node) as Record<string, unknown>;
+    let cursor: Record<string, unknown> = nextNode;
+    while (segments.length > 1) {
+      const segment = segments.shift();
+      if (segment === undefined) {
+        break;
+      }
+      cursor = cursor[segment] as Record<string, unknown>;
+    }
+    const leaf = segments[0];
+    if (leaf === undefined) {
+      return nextNode as T;
+    }
+
+    const currentValue = Number(cursor[leaf] ?? 0);
+    cursor[leaf] = this.roundField(fieldPath, currentValue, delta);
+    return nextNode as T;
+  }
+
+  private readNumericField(node: object, fieldPath: string): number {
+    const segments = fieldPath.split(".");
+    let cursor: unknown = node;
+    for (const segment of segments) {
+      if (cursor === null || cursor === undefined || typeof cursor !== "object") {
+        return 0;
+      }
+      cursor = (cursor as Record<string, unknown>)[segment];
+    }
+    return Number(cursor ?? 0);
+  }
+
   private roundField(field: string, current: number, delta: number): number {
     const next = current + delta;
-    if (field === "scale") {
+    if (field.endsWith("scale")) {
       return Number(Math.max(0.2, next).toFixed(2));
     }
     if (field.endsWith("Alpha")) {
@@ -648,7 +706,7 @@ export class EntranceSceneEditor {
       const wrapped = ((next % 360) + 360) % 360;
       return Math.round(wrapped);
     }
-    if (field.endsWith("RotateDeg") || field.endsWith("PerspectiveDeg")) {
+    if (field.endsWith("rotateDeg") || field.endsWith("perspectiveDeg")) {
       return Number(next.toFixed(1));
     }
     return Math.round(next);
@@ -659,10 +717,10 @@ export class EntranceSceneEditor {
   }
 
   private getAdjustDelta(field: string, direction: number): number {
-    if (field === "scale") {
+    if (field.endsWith("scale")) {
       return direction * this.getScaleStep();
     }
-    if (field.endsWith("RotateDeg")) {
+    if (field.endsWith("rotateDeg")) {
       return direction * (this.step / 10);
     }
     if (field.endsWith("Alpha")) {
@@ -671,10 +729,7 @@ export class EntranceSceneEditor {
     if (field.endsWith("HueDeg")) {
       return direction * this.step;
     }
-    if (field.endsWith("Px")) {
-      return direction * this.step;
-    }
-    return direction;
+    return direction * this.step;
   }
 
   private shiftFontPreset(
@@ -721,11 +776,7 @@ export class EntranceSceneEditor {
 
   private applyPanelPosition(panel: HTMLElement): void {
     if (this.panelPosition === null) {
-      this.panelPosition = this.clampPanelPosition(
-        16,
-        this.host.clientHeight - panel.offsetHeight - 16,
-        panel
-      );
+      this.panelPosition = this.clampPanelPosition(16, this.host.clientHeight - panel.offsetHeight - 16, panel);
     } else {
       this.panelPosition = this.clampPanelPosition(
         this.panelPosition.left,
